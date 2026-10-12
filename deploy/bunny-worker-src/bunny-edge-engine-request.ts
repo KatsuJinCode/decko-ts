@@ -19,19 +19,19 @@
 //     page (bunny-edge-error-page.ts, the staging host's error builder port
 //     — vm-staging-server.mjs:1497-1549; status per format/error.rb
 //     page_status_for_unknown). The throw site is src/card/render.ts:706-708
-//     (Ruby answers 404 for a missing card; before 2026-10-02 this edge fell
-//     through to 500).
+//     (Ruby answers 404 for a missing card; without this arm a missing card
+//     fell through to 500).
 //   view (<v>) not supported for <n>  -> 422 "Unsupported view" bare page
 //     (UnsupportedViewError's message shape, src/card/render.ts:18 — the
 //     edge's own case, no staging shape exists for it; the CF render path
 //     500s these instead)
 //   anything else                     -> 500 Decko's full-chrome Wild Card
-//     deck error page (the same port; live_Introduction.html shape)
+//     deck error page (the same port; the Introduction deck-error shape)
 // The no-route 404s (parsePath notFound + the api fallthrough) answer the
 // staging ROUTER's minimal stub — a different route class from the card
 // not_found page (vm-staging-server.mjs:2203). The budget 503 answers the
 // full chrome around the edge's own Slow-render body region, grace-bounded
-// back to the bare pre-lane page when the database is too slow to build
+// back to the bare stub page when the database is too slow to build
 // chrome (EDGE_ERROR_PAGE_GRACE_MS). Every error surface stays no-store.
 
 import type { FetchEngine } from "../../src/card/fetch.js";
@@ -118,7 +118,7 @@ export interface DeferredDeck {
 export interface EngineRequestOptions {
   /**
    * Wall-clock budget in milliseconds for the whole request. `undefined` or
-   * any value <= 0 means UNBOUNDED (the behavior this lane replaced).
+   * any value <= 0 means UNBOUNDED (the behavior a budget replaces).
    */
   budgetMs?: number;
   /** `Retry-After` value, in seconds, on the budget-exceeded response.
@@ -170,27 +170,26 @@ export function withIsolateRenderLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * THE DEADLINE (cold-render reliability, 2026-10-03 — measured, see
- * an internal work log).
+ * THE DEADLINE (cold-render reliability).
  *
  * A cold render on this edge is a long SERIAL chain of database round trips:
- * the trial edge measured 1,151 HTTP round trips (4.9 MB of database
- * response) to produce ONE 76-byte page, and 814 for Home. Wall time is the
- * sum of ~1,000-odd independent hop latencies, and before this deadline the
- * sum had NO upper bound in code — the only thing that stopped a slow chain
- * was the PLATFORM ending the script, and the platform answers that with an
- * opaque 5xx after a long wait. That is the operator-visible failure: a page
- * that returns 500 after ~40 s and 200 on retry, because the chain is
+ * one edge measured 1,151 HTTP round trips (4.9 MB of database response) to
+ * produce ONE 76-byte page, and 814 for Home. Wall time is the sum of
+ * ~1,000-odd independent hop latencies, and before this deadline the sum had
+ * NO upper bound in code — the only thing that stopped a slow chain was the
+ * PLATFORM ending the script, and the platform answers that with an opaque
+ * 5xx after a long wait. That is the operator-visible failure: a page that
+ * returns 500 after ~40 s and 200 on retry, because the chain is
  * deterministic and only the wait varied.
  *
  * This deadline makes the application, not the platform, the thing that ends
  * a slow request, and it ends it with an answer a client can act on: 503
  * (retryable by definition) + `Retry-After` + `no-store`. Two properties make
  * it safe:
- *   - it sits ABOVE every cold render measured on the trial edge (60 cold
- *     probes: p50 3.3 s, p95 5.0 s, max 13.5 s reproducibly on the heaviest
- *     card), so a render that would have succeeded still succeeds and its
- *     bytes are unchanged;
+ *   - it sits ABOVE every cold render measured on that edge (60 cold probes:
+ *     p50 3.3 s, p95 5.0 s, max 13.5 s reproducibly on the heaviest card),
+ *     so a render that would have succeeded still succeeds and its bytes are
+ *     unchanged;
  *   - it sits BELOW the ~40 s point at which the platform was observed
  *     taking the request over, so the budget is spent before the platform is.
  * A 503 is `uncacheable` by both cache modules (edgeRouteCacheClass returns
@@ -218,14 +217,13 @@ type EdgeEnv = Record<string, string | undefined>;
 
 /** The edge script variable that retunes the deadline WITHOUT a publish —
  *  the same operational property DECKO_EDGE_CACHE_TTL has for the cache TTL
- *  (a variable update is effective on running isolates immediately, proven
- *  live 2026-10-02 in an internal work log). */
+ *  (a variable update is effective on running isolates immediately). */
 export const EDGE_RENDER_BUDGET_ENV_VAR = "DECKO_EDGE_RENDER_BUDGET_MS";
 
 /** Resolve the per-request render budget from the edge environment.
  *  Absent or unparseable keeps DEFAULT_EDGE_RENDER_BUDGET_MS; an explicit
- *  "0" disables the deadline entirely (the pre-lane behavior), which is the
- *  operator's rollback that needs no republish. */
+ *  "0" disables the deadline entirely, which is the operator's rollback that
+ *  needs no republish. */
 export function resolveEdgeRenderBudgetMs(env: EdgeEnv): number {
   const raw = env[EDGE_RENDER_BUDGET_ENV_VAR];
   if (raw === undefined) return DEFAULT_EDGE_RENDER_BUDGET_MS;
@@ -235,12 +233,11 @@ export function resolveEdgeRenderBudgetMs(env: EdgeEnv): number {
   return Math.trunc(parsed);
 }
 
-/** The per-pipeline hop bound (P1 incident 2026-10-03, edge-incident-fix
- *  lane). The cold-render release shipped a 5,000 ms per-pipeline abort
- *  while the render still ran whole-deck recursive walks; real visitors'
- *  hops legitimately exceeded the bound and every page answered "Pipeline
- *  Transport failed ... signal timed out". The query scoping lands with
- *  this lane and the default raises to 15,000 ms
+/** The per-pipeline hop bound. The cold-render release shipped a 5,000 ms
+ *  per-pipeline abort while the render still ran whole-deck recursive
+ *  walks; real visitors' hops legitimately exceeded the bound and every page
+ *  answered "Pipeline Transport failed ... signal timed out". With the query
+ *  scoping in place the default raises to 15,000 ms
  *  (DEFAULT_PIPELINE_TIMEOUT_MS — above the scoped walks' worst case with
  *  headroom, below the 20,000 ms request budget), and this variable retunes
  *  the bound WITHOUT a republish — the same operational property
@@ -250,8 +247,8 @@ export const EDGE_PIPELINE_TIMEOUT_ENV_VAR = "DECKO_EDGE_PIPELINE_TIMEOUT_MS";
 /** Resolve the per-pipeline timeout from the edge environment. Same
  *  fail-safe semantics as the budget resolver: absent, empty, unparseable,
  *  or negative keeps DEFAULT_PIPELINE_TIMEOUT_MS; an explicit "0" passes 0
- *  through, which the driver maps to "no per-hop abort" (the pre-lane
- *  behavior — the operator's rollback that needs no republish). */
+ *  through, which the driver maps to "no per-hop abort" — the operator's
+ *  rollback that needs no republish. */
 export function resolveEdgePipelineTimeoutMs(env: EdgeEnv): number {
   const raw = env[EDGE_PIPELINE_TIMEOUT_ENV_VAR];
   if (raw === undefined) return DEFAULT_PIPELINE_TIMEOUT_MS;
@@ -267,14 +264,14 @@ export function resolveEdgePipelineTimeoutMs(env: EdgeEnv): number {
  *  hide behind a special case. It carries no card name (the request may not
  *  have parsed one yet) and no internal error text.
  *
- *  p2-error-shell lane (2026-10-03): the body region is re-homed into the
+ *  The body region is re-homed into the
  *  FULL-CHROME error page (bunny-edge-error-page.ts — the staging host's
  *  error builder port). No staging shape exists for an infra 503, so the
  *  title and body text are byte-identical to the bare page this replaced,
  *  and when the chrome cannot be built (or the chrome build outlives
  *  EDGE_ERROR_PAGE_GRACE_MS — the budget fired because the database is slow
  *  or dead, and the error page must not become a second long wait) the
- *  fallback IS the bare pre-lane page below. Retry-After and the diagnostic
+ *  fallback IS the bare stub page below. Retry-After and the diagnostic
  *  header are set on whichever arm answered. */
 async function budgetExceededResponse(
   deck: Deck,
@@ -383,14 +380,13 @@ export function json(
 // ${cardName}"), and parsePath decodes the URL path before render, so a
 // crafted URL name reaches the error page's <pre> — it must land as text,
 // not markup. Every interpolation of error text in an HTML page goes
-// through this. (Carried forward from the error-page-escape lane's 70d2042
-// monolith entry through the engine-request split — the split initially
-// dropped it; the deployed edge serves the hardened bytes, so this
-// adoption must not un-ship the fix — a regression here would again let a
-// crafted card name land in an error page as markup. edge-true-union merge:
-// the local copy is superseded by the single-source export this module now
-// imports from worker.ts — 5dd6ab0 exported the identical body there when
-// it escaped layoutPage's <title>; one implementation, two call sites.)
+// through this. (Carried forward from the monolith through the
+// engine-request split — the split initially dropped it; the deployed edge
+// serves the hardened bytes, so this adoption must not un-ship the fix — a
+// regression here would again let a crafted card name land in an error page
+// as markup. One implementation, two call sites: the local copy is
+// superseded by the single-source export this module now imports from
+// worker.ts, which exports the identical body for layoutPage's <title>.)
 
 export async function handleEngineRequest(
   request: Request,
@@ -419,17 +415,16 @@ async function dispatchEngineRequest(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  // The /files/ attachment route (edge-site-shell lane): live's pages
-  // reference EVERY image/script/css attachment by its absolute Spaces CDN
-  // URL (measured 2026-10-02: zero relative /files/ refs across the five
-  // live gate pages), so the served page bytes resolve without this route —
-  // but a /files/ URL hit directly must not fall into the card grammar's
+  // The /files/ attachment route: a served deck's pages
+  // reference EVERY image/script/css attachment by its absolute CDN
+  // URL (measured: zero relative /files/ refs across five served gate
+  // pages), so the served page bytes resolve without this route — but a
+  // /files/ URL hit directly must not fall into the card grammar's
   // 404 HTML. The route resolves the card id, derives the SAME CDN URL the
   // engine's attachment views derive (derivedCloudAttachmentSource — Ruby's
   // action-id filename derivation, never the stored key), and 302s to it;
-  // an unresolvable id answers the LIVE app's own shape for this path
-  // (404, text/plain, "Could not find <id>." — measured on the live
-  // site's /files/103/3649-small.jpg path).
+  // an unresolvable id answers the application's own shape for this path
+  // (404, text/plain, "Could not find <id>.").
   if (/^\/files\/\d+\/[^/]+/.test(url.pathname)) {
     // THE FRESHNESS GATE (the shared-edge
     // counterpart of the gate both Cloudflare twins run at their data
@@ -449,13 +444,12 @@ async function dispatchEngineRequest(
 
   if ("kind" in parsed) {
     if (parsed.kind === "new") {
-      // THE /new/:type ARM (route-gaps lane, 2026-10-05): decko's
+      // THE /new/:type ARM: decko's
       // engine_routes.rb:22 card-creation route — the signup journey's
-      // route the deck's own chrome links as /new/Sign_up. The create
+      // route a deck's own chrome links as /new/Sign_up. The create
       // form/denial/not-found decision (the anonymous viewer's
       // ok?(:create) on the virtual card) lives in
-      // bunny-edge-new-card-form.ts; the measured 404 this replaces is
-      // capture-log-demo-nav.jsonl seq 97.
+      // bunny-edge-new-card-form.ts; the 404 this replaces was measured.
       // THE FRESHNESS GATE (same gate as the
       // /files arm above): the type fetch (fetchByKey) and the
       // create-verdict walk in bunny-edge-new-card-form.ts both read the
@@ -467,12 +461,12 @@ async function dispatchEngineRequest(
       return await newCardRouteResponse(newCardDeck, parsed.typeName);
     }
     if (parsed.kind === "notFound") {
-      // THE NO-ROUTE CLASS (p2-error-shell lane, 2026-10-03): paths that
+      // THE NO-ROUTE CLASS: paths that
       // never parse to a card route answer the staging ROUTER's own minimal
       // stub (vm-staging-server.mjs:2203 — `<pre>No route for <path></pre>`,
       // pathname escaped), not the full-chrome card not_found page: staging
-      // routes only single-segment card names to the renderer, and live's
-      // Rails router 404s this class bare too. The title stays the edge's
+      // routes only single-segment card names to the renderer, and the
+      // platform router 404s this class bare too. The title stays the edge's
       // existing "Not found" (staging's default title is its own origin
       // name); headers keep the html() no-store pair.
       return noRouteNotFoundResponse(url.pathname);
@@ -486,9 +480,8 @@ async function dispatchEngineRequest(
       });
     }
     if (url.pathname.startsWith("/api/card/")) {
-      // THE HARDENED DECODE (deploy-surface-union: the third twin's arm
-      // shape — the twins' shared decodeName rule,
-      // worker-shared-surface.ts): a malformed % answers 400
+      // THE HARDENED DECODE (the shared decodeName
+      // rule, worker-shared-surface.ts): a malformed % answers 400
       // {"error":"empty card name"}, never an unhandled URIError escaping
       // the handler; an empty name answers the same 400. The whole arm
       // sits inside the structured-500 try so no engine error escapes
@@ -520,13 +513,12 @@ async function dispatchEngineRequest(
         if (record === undefined || record.name === undefined) {
           return json(404, { error: "card not found", name });
         }
-        // THE READ GATE (api-leak-fix lane, 2026-10-02): this route previously
+        // THE READ GATE: this route previously
         // served db_content_preview for cards the HTML views replace with the
         // denial span — the same hole the CF worker's record-JSON route had
-        // and closed (deploy/worker.ts cardRecordJson:469-492, the probe
-        // battery's batch-05 KNOWN HOLE there): verified live
-        // (GET /api/card/Taking%20Stock -> 200 + 200 chars of the denied
-        // card's content while GET /Taking%20Stock rendered the denial).
+        // and closed (deploy/worker.ts cardRecordJson:469-492): verified on a
+        // deployed edge (GET /api/card/<name> -> 200 plus content of a denied
+        // card while GET /<name> rendered the denial).
         // Ruby's GET of a denied card renders the denial (ok_to_read? fails,
         // set/all/permissions.rb:139-146); the JSON surface answers the CF
         // worker's exact shape, 403 {"error":"permission denied"} without the
@@ -535,12 +527,12 @@ async function dispatchEngineRequest(
         // permission seam, src/card/render.ts: stored-rule verdict, the mod
         // set-module overrides, and the fail-closed live rule walk incl.).
         // Pin: tests/deploy/bunny-edge-engine-request-api-card-read-gate.test.ts
-        // (red with the gate removed — queue job api-leak-lane-j2 —, green
-        // with it). The concurrent edge-redeploy lane's 89efcab implemented
-        // the same gate as an inline anonymous walk (403 "read denied");
-        // unification keeps the canReadCard delegation — one verdict path
-        // shared with the HTML judgments, override layer included — and the
-        // CF worker's response shape; the redeploy pin's unique cases ride in
+        // (red with the gate removed, green with it). A second host
+        // implemented the same gate as an inline anonymous walk (403 "read
+        // denied"); unification keeps the canReadCard delegation — one
+        // verdict path shared with the HTML judgments, override layer
+        // included — and the CF worker's response shape; that host's pin's
+        // unique cases ride in
         // tests/deploy/bunny-edge-engine-api-card-read-gate.test.ts.
         const typeRecord =
           record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
@@ -569,16 +561,16 @@ async function dispatchEngineRequest(
   }
 
   try {
-    // THE FULL PAGE SHELL (edge-site-shell lane, 2026-10-02): the page is
+    // THE FULL PAGE SHELL: the page is
     // the engine's own show_with_page_layout assembly — renderPageBytes
     // (src/card/render/page.ts: the per-card *layout rule, the *header/
     // *footer nests, the html_page head with favicon/stylesheet/script
     // tags) — with the five served-environment deltas the staging host has
-    // applied since r18 (bunny-edge-page-shell.ts, constants byte-verbatim
+    // applied (bunny-edge-page-shell.ts, constants byte-verbatim
     // from vm-staging-server.mjs:1586-1626). The former shell wrapped the
     // bare view in worker.ts layoutPage (inline <style>, a two-link nav,
-    // nothing else) — measured live 2026-10-02 as 0 <link>/0 <script> tags
-    // against the live site's 3/9, no navbar, no footer, no favicon.
+    // nothing else) — measured at 0 <link>/0 <script> tags against a
+    // served site's 3/9, no navbar, no footer, no favicon.
     //
     // VIEW SEMANTICS (Ruby route-faithful): the bare single-segment arm
     // (/:mark, rest.rb line 19) is show(nil) — the layout's {{_main|view}}
@@ -591,9 +583,9 @@ async function dispatchEngineRequest(
     // (page.ts:124-129), which parsePath does not carry — the engine's
     // UnsupportedViewError still maps to 422 below.
     //
-    // HISTORY VIEWS ride the page path too (p2-history-seam lane,
-    // 2026-10-03 — closes the edge-site-shell residual: they kept the bare
-    // layoutPage lane because HistoryRenderParams had no page-path seam).
+    // HISTORY VIEWS ride the page path too: they used to keep
+    // the bare layoutPage shell because HistoryRenderParams had no page-path
+    // seam.
     // renderPageBytes's historyParams argument (src/card/render/page.ts)
     // threads the query into the prepare render's RenderEngine.render, whose
     // prepareHistoryRender seats the render-time history reader the sync
@@ -602,12 +594,12 @@ async function dispatchEngineRequest(
     // with act_from_context's semantics intact: act_id present -> THAT act,
     // absent -> the last action's act. The wire keys parsePath extracts
     // (act_id/action_id/... — worker.ts:104-109) translate to the seam's
-    // camelCase fields HERE (historyRenderParamsFromWire); the bare lane
+    // camelCase fields HERE (historyRenderParamsFromWire); the bare shell
     // passed them untranslated, where the views could not read them — the
     // measured base state: ?act_id=<real> and no param rendered identical
     // last-act bodies.
     //
-    // deploy-surface-union: the query view REACHES the page path — the bare
+    // the query view REACHES the page path — the bare
     // arm's requestedView is queryViewFromUrl (the shared view_from_params
     // shape, rest.rb:100-103: first NON-BLANK of ?view=/ ?v=), the
     // capability the old third-twin handler carried and its parity pin
@@ -655,7 +647,7 @@ async function dispatchEngineRequest(
     // 422 unsupported-view case stays the edge's own (UnsupportedViewError's
     // message shape, src/card/render.ts:18); anything else is a 500.
     //
-    // THE FULL-CHROME ERROR SURFACES (p2-error-shell lane, 2026-10-03): the
+    // THE FULL-CHROME ERROR SURFACES: the
     // 404 and the 500 route through the staging host's error builder port
     // (bunny-edge-error-page.ts) — the not_found slot page (404, noindex,
     // "Could not find <Name>.") and the Wild Card deck error page (500),
@@ -665,7 +657,7 @@ async function dispatchEngineRequest(
     // keeps the bare page below, escape convention unchanged: the crafted
     // name rides the message, so every interpolation of it is escaped.
     //
-    // THE CLASSIFICATION (deploy-surface-union): mapRenderError — the
+    // THE CLASSIFICATION: mapRenderError — the
     // shared-surface table BOTH Cloudflare twins answer with — replaces the
     // carried two-regex arm. Same coverage for the two carried classes
     // (card not found: -> 404 chrome; view ( -> 422 bare) and one union
@@ -690,14 +682,14 @@ async function dispatchEngineRequest(
   }
 }
 
-/** The history views' WIRE-KEY -> seam translation (p2-history-seam lane):
+/** The history views' WIRE-KEY -> seam translation:
  *  worker.ts parsePath extracts the query under Ruby's param names
  *  (act_id/action_id/page/act_seq/action_view/hide_diff/act_context — the
  *  Card::Env.params keys, worker.ts:104-109), while HistoryRenderParams and
  *  the view fns read the camelCase fields (src/card/history/render-seam.ts).
- *  The bare lane passed the wire-keyed object straight through, where
+ *  The bare shell passed the wire-keyed object straight through, where
  *  `reader.params.actId` was undefined for every request — the act_id
- *  filter silently inert (measured at base 12bd5236: ?act_id=<real> and no
+ *  filter silently inert (measured at base: ?act_id=<real> and no
  *  param rendered identical bodies). This mapping is the seam's carrier:
  *  unknown keys are dropped, absent input maps to {} (renderPageBytes's
  *  undefined-safe contract), values pass verbatim (the views' own integer/
@@ -762,9 +754,8 @@ async function filesRouteResponse(deck: Deck, pathname: string): Promise<Respons
   });
 }
 
-/** The live app's own /files/ answer for an id it cannot resolve:
- *  404, text/plain, "Could not find <id>." (measured on the live
- *  site's /files/103/3649-small.jpg path, 2026-10-02). */
+/** The application's own /files/ answer for an id it cannot resolve:
+ *  404, text/plain, "Could not find <id>." */
 function filesNotFoundResponse(id: string): Response {
   return new Response(filesNotFoundBody(id), {
     status: 404,
