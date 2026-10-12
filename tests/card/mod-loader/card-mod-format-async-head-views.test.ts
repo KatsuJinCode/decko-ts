@@ -92,15 +92,15 @@ beforeAll(async () => {
   // URL is never asserted here (the title/favicon/stylesheet bytes are
   // what the parity block compares).
   //
-  // TWO shapes measured, not assumed:
-  //  - The junction rows carry their corpus name+key (all 5,061
-  //    junction-named records in fixtures/corpus-v2/recapture carry a
-  //    key column; render-test-storage's seedCard doc requires it).
+  // TWO shapes the seed must honor, not assume:
+  //  - The junction rows carry name+key (render-test-storage's seedCard
+  //    doc requires the key column on junction-named rows).
   //  - The compiled asset's IDENTIFIER lives on the JUNCTION row, not
   //    on the *asset output setting card that is its right side.
-  //    card-mod-script.ts#assetOutputUrl cites the oracle directly:
-  //    "oracle deck: card 307 '*all+*script+*asset output' db_content
-  //    '~307/1790061390.js'", and the URL is built from that row.
+  //    card-mod-script.ts#assetOutputUrl documents the deck shape it
+  //    reads: a "*all+*script+*asset output" junction whose db_content
+  //    is the compiled identifier ("~307/1790061390.js"), and the URL is
+  //    built from that row.
   await seedCard(s, { id: 920, name: "*all+*layout", leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(s, { id: 921, name: "*all+*style", leftId: 900, rightId: 908, typeId: 2, dbContent: "*style" });
   await seedCard(s, { id: 922, name: "*all+*script", leftId: 900, rightId: 909, typeId: 2, dbContent: "*script" });
@@ -162,10 +162,9 @@ describe("the async-view seam: the head read-set is warm after prepare", () => {
     const before = s.counting.snapshot();
     await s.engine.render("Async Head Probe", "core");
     const after = s.counting.snapshot();
-    // 2026-10-06 a1-mods-validation lane: this pin previously expected a
-    // zero-statement warm re-render. d19ec179 (2026-10-05, B-arm freshness
-    // repair) landed the deck_data_version freshness gate AFTER that pin
-    // was written: the render entry reads the stamp ONCE per request
+    // This pin previously expected a zero-statement warm re-render. The
+    // deck_data_version freshness gate landed after that pin was written:
+    // the render entry reads the stamp ONCE per request
     // (render.ts DECK_DATA_VERSION_STATEMENT, in-source comment
     // "Warm-render cost: exactly ONE statement") and
     // resets derived caches only when it moved. The gate is the documented
