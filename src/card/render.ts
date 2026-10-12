@@ -6683,9 +6683,9 @@ export class RenderEngine implements RenderEngineLike {
       // ARE nav candidates on list/pointer/session-prototype sets. The
       // prior deck-wide skip (SETTING_NEVER_VISIBLE via visibleGroupSettings)
       // left those virtual bars unjudged here while the sync nav still
-      // rendered them — isDenied map miss = gate-open = the over-allow the
-      // oracle span pairs pin (HBQ+*right+*layout+*self: two allowed bars
-      // where Ruby renders quiet denials). Seating the verdict the nav will
+      // rendered them — isDenied map miss = gate-open = the over-allow:
+      // a layout-prototype set renders two allowed bars
+      // where Ruby renders quiet denials. Seating the verdict the nav will
       // look up is the whole fix; the verdict itself (deny via the generic
       // _left walk, permissions.rb:55-71) needed no change.
       // (Merge note: supersedes bar-slots' V1 full-registration walk —
@@ -6745,22 +6745,23 @@ export class RenderEngine implements RenderEngineLike {
    *  its rule-cache walk emits no "<type>+<setting>" /
    *  "<type>+<anchor>+*type plus right+<setting>" lookup keys. The
    *  name-walk's candidates for an untyped input compose those forms with
-   *  the registry's RichText default; on the RVW+*right set prototype that
-   *  composition answered "existing" where the oracle pins the opposite
-   *  (the capture's slot census: hide:["bar_nav"] exactly on
+   *  the registry's RichText default; on an untyped `+*right` set prototype
+   *  that
+   *  composition answers "existing" where the answer must be the opposite
+   *  (the slot census hides bar_nav exactly on
    *  structure/autoname/help/input_type/on_create/on_update/on_delete/
    *  thanks/follow). Skip while the input's type is unresolved.
    *
    *  TPR CANDIDATES ANCHOR ON left_type, NOT THE CARD'S OWN TYPE:
    *  pattern/class_methods.rb:59-73 left_type = `card.superleft&.type_name
    *  || quick_type(card.name.left_name)`, where quick_type types a NEW
-   *  left card through ITS OWN *default walk — for the set prototype
-   *  *dummy+RVW (typed RichText via *all plus+*default) the TPR anchor is
+   *  left card through ITS OWN *default walk — for a set prototype
+   *  whose left is a typed *dummy, the TPR anchor is
    *  quick_type("*dummy") = the *all+*default rule's type ("Basic Cs"),
-   *  so Ruby's lookup key reads "BasicCs+RVW+type_plus_right+<setting>" —
+   *  so Ruby's lookup key reads "BasicCs+<set>+type_plus_right+<setting>" —
    *  an anchor naming NO card (@anchor_id nil, pattern/base.rb:75-80
    *  `elsif @anchor_id`) — and the key never forms: the
-   *  RichText+RVW+*type plus right+*structure rule (10722) stays
+   *  RichText+<set>+*type plus right+*structure rule stays
    *  unreachable and the prototype's existing-rule verdict for *structure
    *  is nil. The name walk instead composes the TPR candidate from the
    *  input's own type name (RichText), whose anchor card DOES exist — the
@@ -7304,9 +7305,8 @@ export class RenderEngine implements RenderEngineLike {
    *  +discussion cards the render closure carries, WITHOUT the
    *  viewRequiresTask gate (the comment form renders inside :open /
    *  :content bodies whose top view never requests task verdicts, so the
-   *  generic warm skips them entirely). Corpus input: the *update rule
-   *  row on the discussion's own *self set (Klickstein_continues+
-   *  discussion: left_id 9813's *update row, content "Anyone") is what
+   *  generic warm skips them entirely). The *update rule
+   *  row on a discussion's own *self set (content "Anyone") is what
    *  the anonymous viewer's update rides - the same algebra
    *  allTaskVerdictsForCard already walks. */
   async ensureDiscussionUpdateVerdicts(): Promise<void> {
