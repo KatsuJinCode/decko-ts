@@ -1,9 +1,7 @@
-// A deck lacking the codename set must still render its pages - the
-// edge-site-shell lane's residual #4 (WORK_DIR/
-// edge-site-shell-lane.md): the page HEAD's setting reads fetch ":codename"
-// marks (`Card::Rule.global_setting(:title)` in Ruby; the port's
-// globalSettingContent in src/card/render/page.ts) and an unmapped codename
-// made the whole page 500 with CodenameNotFoundError.
+// A deck lacking the codename set must still render its pages: the page
+// HEAD's setting reads fetch ":codename" marks (`Card::Rule.global_setting
+// (:title)` in Ruby; globalSettingContent in src/card/render/page.ts) and
+// an unmapped codename made the whole page 500 with CodenameNotFoundError.
 //
 // Ruby derivation (card-1.110.0, read from the installed gem): the head's
 // codename fetches cannot 500 a page. `Codename.id` (codename.rb:35-41) and
@@ -16,7 +14,7 @@
 // (format/render.rb:56-59, format/error.rb:69-84). Net: the page head
 // assembles minus the codename-dependent bits; the page renders.
 //
-// The port's page-head fetch sites (page.ts globalSettingContent, used by
+// The page-head fetch sites (page.ts globalSettingContent, used by
 // headContent for title, favicon, ace, tiny_mce) had no such tolerance:
 // DeckoName.parse(":title") -> idFromString (name.ts:257-259) raised
 // CodenameNotFoundError out of renderPageBytes. This file pins the Ruby
@@ -37,8 +35,8 @@ import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./ren
  *  the head's codename dependence: any deck missing this subset 500s on
  *  EVERY page at the head read. The layout is a plain card layout reachable
  *  by NAME (the *all+*layout rule junction); its content carries no
- *  ":codename" nests (the body's mark handling is the format lane's
- *  surface, not this pin's). */
+ *  ":codename" nests (the body's mark handling is a separate render
+ *  concern, not this pin's). */
 async function seedCodenamelessDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
   // The Basic cardtype - its "basic" codename is the layout classification's
@@ -55,7 +53,7 @@ async function seedCodenamelessDeck(): Promise<RenderTestStorage> {
     dbContent: "Probe Layout",
   });
   // The layout: main slot only - no ":codename" nests (the body's mark
-  // handling is the format lane's surface, not this pin's).
+  // handling is a separate render concern, not this pin's).
   await seedCard(storage, {
     id: 911,
     name: "Probe Layout",
@@ -71,8 +69,7 @@ async function seedCodenamelessDeck(): Promise<RenderTestStorage> {
   });
   // The serving boots' explicit warm (worker.ts:235-238 shape): environment
   // installed + codehash loaded - here it loads ZERO rows. The defect is not
-  // a missing warm (the warmup-fix lane closed that); it is the deck itself
-  // lacking the codename set.
+  // a missing warm; it is the deck itself lacking the codename set.
   await storage.fetcher.codenames.ensureLoaded();
   storage.fetcher.installNameEnvironment();
   return storage;
