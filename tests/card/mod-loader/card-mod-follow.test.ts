@@ -50,7 +50,7 @@ beforeAll(async () => {
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
   // the User cardtype card (the TYPE anchor of the type_plus_right/user
-  // sets; the corpus recapture carries this card with codename "user").
+  // sets; the card carries the codename "user").
   await seedCard(s, { id: 4, name: "User", codename: "user", typeId: 2 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
@@ -117,31 +117,24 @@ beforeAll(async () => {
     id: 211,
     leftId: 210,
     rightId: 130, // +followers right
-    // typeId 2 (RichText), NOT 14 — mm-I-R, the same oracle-capture
-    // correction the help suite's guide/popover probes took. With the
-    // Setting type (14 is this fixture's *setting cardtype card) the port
-    // answered card-mod-rules' SETTING cardtype :core
-    // (set/type/setting.rb:39-55, the "All X rules that apply to"
-    // listing), so right/followers.rb:13-15's super() never reached the
-    // junction's own body. Ruby's deck has no such card: the live capture
-    // (benchmarks/capture-readonly-rule-card-core-type-shape.rb →
-    // fixtures/captured/readonly-rule-card-core-type-shape.json,
-    // card_actions 5018 == 5018 around every render) shows all 450
-    // junction rows in the oracle app's development deck carry type_id
-    // 4/2/5/337/43/... and never the Setting type id (Card::SettingID =
-    // 278 in that deck; the *read setting itself is the Setting row).
+    // typeId 2 (RichText), NOT 14. With the Setting type (14 is this
+    // fixture's *setting cardtype card) the port answers card-mod-rules'
+    // SETTING cardtype :core (set/type/setting.rb:39-55, the "All X rules
+    // that apply to" listing), so right/followers.rb:13-15's super() never
+    // reaches the junction's own body. Ruby's deck has no such card:
+    // junction rows carry content type ids (4/2/5/337/43/...), never the
+    // Setting type (Card::SettingID = 278; the *read setting itself is the
+    // Setting row).
     typeId: 2,
     dbContent: "followers junction body",
   });
 
-  // Oracle User Probe (left side of the User+follow junction).
-  // seed-sweep 2026-09-29: the probe now CARRIES the User type its
-  // name claims - typeId 2 (RichText) left the type_plus_right/user/follow
-  // set module unreachable (the TYPE_PLUS_RIGHT anchor resolves from the
-  // LEFT card's type name, so a RichText-typed probe anchors
-  // "rich_text+Xfollow" and misses TypePlusRight::User::Follow). Deck
-  // truth (corpus recapture: codename "user" cardtype): the probe is a
-  // User card.
+  // Oracle User Probe (left side of the User+follow junction). The probe
+  // CARRIES the User type its name claims - typeId 2 (RichText) leaves the
+  // type_plus_right/user/follow set module unreachable (the
+  // TYPE_PLUS_RIGHT anchor resolves from the LEFT card's type name, so a
+  // RichText-typed probe anchors "rich_text+Xfollow" and misses
+  // TypePlusRight::User::Follow). The probe is a User card.
   await seedCard(s, {
     id: 300,
     name: "Oracle User Probe",
@@ -156,10 +149,9 @@ beforeAll(async () => {
     dbContent: "follow junction body",
   });
 
-  // The write-rule fallback the :edit arm needs (the card-mod-comment
-  // recipe, 9b8a80a): real decks bootstrap *all+*update off the *all set
-  // (card-mod-permissions-0.20.0/data/real.yml :14-19 all-fields block;
-  // recorded corpus rule 6570). With NO update rule the write verdict
+  // The write-rule fallback the :edit arm needs: real decks bootstrap
+  // *all+*update off the *all set (card-mod-permissions-0.20.0/data/real.yml
+  // :14-19 all-fields block). With NO update rule the write verdict
   // fail-closes — who_can -> [] -> among? -> false (permissions.rb:47-49,
   // :100-118) — and altered_view denies BEFORE the dispatch this suite
   // pins (permission.rb:19-23 ahead of render.rb:59-63): the :edit arm
