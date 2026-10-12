@@ -519,7 +519,7 @@ export class HelpRulesResolver implements HelpRulesApi {
 
   /** Memory peek: the static setting-help text this card's self/right set
    *  serves (setting-help-text.ts), or undefined when none is registered.
-   *  The render engine's link-target warm pass (view-fail class V4) reads
+   *  The render engine's link-target warm pass reads
    *  this in the prepare phase so a rule row's popover links ([[List]]
    *  [[Pointer]] [[Search]] — the *content options shape) resolve
    *  known-card BEFORE the sync render, without scanning the whole static

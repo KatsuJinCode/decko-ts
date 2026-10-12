@@ -134,7 +134,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
  *      setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
  */
 const {
-  // The one field the graded arm excludes. Bound then discarded, so the rest
+  // The one field this preset excludes. Bound then discarded, so the rest
   // destructures into exactly the five.
   defaultHtmlViewNest: _excludedFromGradedArm,
   ...gradedArmConstants

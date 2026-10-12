@@ -167,7 +167,7 @@ function itemNamesOf(card: FormatCard): string[] {
  *  List). */
 const LIST_FAMILY_TYPE_CODES = new Set(["list", "pointer"]);
 
-/** The URI path form of a card name ("/Aikido_Oak_Cliff+Gallery" — spaces
+/** The URI path form of a card name ("/My_Page+Gallery" — spaces
  *  to underscores, the "+" joint kept). */
 function cardPath(name: string): string {
   return `/${name.replace(/ /g, "_")}`;

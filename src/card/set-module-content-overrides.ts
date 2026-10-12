@@ -47,7 +47,7 @@
 //   a genuine per-process value: it is not comparable across languages and
 //   not across Ruby runs, and pretending otherwise would be the lie. The
 //   comparator canonicalizes it on both sides (src/testing/diff.ts
-//   normalizeModObjectAddresses), so the graded record view passes on the
+//   normalizeModObjectAddresses), so a record diff passes on the
 //   shape and on every other byte — not as an accepted exception.
 // - Self::Now / Right::WhenCreated / Right::WhenLastEdited:
 //   I18n.localize(..., format: :card_dayofwk_min_tz) renders the wall clock /

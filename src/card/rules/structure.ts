@@ -381,8 +381,8 @@ export function structuredCardContent(
  * `{{+image}}` therefore names `<instance>+image`, NOT the literal key
  * "+image" the un-contextualized walk produced (which matched no row,
  * landed in structureRefMisses, and rendered every template child as the
- * unknown-card empty slot even when the child row existed — the round-9
- * live-wire gap). Underscore refs stay skipped: `_left`/`_main` resolve
+ * unknown-card empty slot even when the child row existed). Underscore
+ * refs stay skipped: `_left`/`_main` resolve
  * against the render-time format context, not the name algebra alone.
  */
 export function templateReferenceNames(

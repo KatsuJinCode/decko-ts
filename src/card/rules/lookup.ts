@@ -166,7 +166,7 @@ export async function findRules(
  * cache.rb#lookup_key; used by the rule cache and for debugging only
  * (the live lookup walks by name, not by cache key — see rule/all.rb
  * note on codename resolution requiring the codename registry to be
- * initialized, which is wave-2+ work).
+ * initialized first).
  */
 export function ruleCacheKey(
   anchorId: number | undefined,

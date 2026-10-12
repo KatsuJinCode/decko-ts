@@ -143,8 +143,8 @@ function labelAsGeneric(
 
 /**
  * The concrete pattern table in LOOKUP order (reversed load order; see the
- * registration mechanism note above). Frozen: mod-supplied patterns (wave 3)
- * will extend via a register hook, not by mutating this table.
+ * registration mechanism note above). Frozen: mod-supplied patterns
+ * extend via a register hook, not by mutating this table.
  */
 export const PATTERN_TABLE: readonly PatternSpec[] = Object.freeze([
   {
