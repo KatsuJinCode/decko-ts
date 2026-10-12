@@ -2,18 +2,15 @@
 // re-ask the database for a key the SAME REQUEST already asked and the
 // database already answered "no" for.
 //
-// THE MECHANISM (measured 2026-10-05 on the L2 lane's 50-page demo deck;
-// the counts, the per-call-site ledger and both measured ends are in
-// WORK_DIR/fold-point-reads-lane.md):
+// THE MECHANISM:
 //
-// 1. Cluster 3 of the fold roadmap is `point-row-by-key` +
-//    `point-row-by-id` -- `SELECT * FROM cards WHERE key = ? AND trash = 0
-//    LIMIT 1` and `SELECT * FROM cards WHERE id = ? ...`. Measured across
-//    the 50-page surface: 2,356 statements (1,295 by key, 1,061 by id) on
-//    6,296 statements total. EVERY ONE carries exactly ONE bind, and EVERY
+// 1. The dominant point-read pair is `point-row-by-key` +
+//    `point-row-by-id` — `SELECT * FROM cards WHERE key = ? AND trash = 0
+//    LIMIT 1` and `SELECT * FROM cards WHERE id = ? ...`. EVERY ONE
+//    carries exactly ONE bind, and EVERY
 //    ONE reads a (family, param) pair the request had not read before
-//    (repeats = 0 on every page) -- so memoisation cannot win and the only
-//    lever is a negative the request already holds.
+//    (the same pair never repeats within a request) — so memoisation
+//    cannot win and the only lever is a negative the request already holds.
 // 2. The request ALREADY holds it. `seatNamesByWave` (render.ts:2643) asks a
 //    whole wave of names in ONE batched
 //    `SELECT * FROM cards WHERE "key" COLLATE NOCASE IN (...) AND trash = 0`
@@ -26,10 +23,10 @@
 //    "simple-name misses consult `cards` by key directly -- so no lexicon
 //    negative can stop them".
 // 4. So the SAME question is asked twice per render: once batched (answered
-//    "no"), once as a point read (answered "no" again, one round trip each).
-//    On /Aikido_in_Education the 20 prepareItemForRender reads under
-//    enrichPointerListItems and the 15 under enrichLinkTargetsForKnownClass
-//    are that shape; 21 of them are zero-row.
+//    "no"), once as a point read (answered "no" again, one round trip each) —
+//    the prepareItemForRender reads under
+//    enrichPointerListItems and enrichLinkTargetsForKnownClass are that
+//    shape, many of them zero-row.
 //
 // THE FOLD: before issuing the statement, a simple-name point read consults
 // the request-local dead set -- a lexicon entry the engine HOLDS whose value
@@ -83,10 +80,7 @@ const HOST = "point host";
 const LIVE_ITEMS = ["point host+live one", "point host+live two"];
 /** SIMPLE names on purpose. A compound mark resolves through the Lexicon
  *  (id_from_mark), so only a SIMPLE name mark reaches retrieveFromDb's
- *  `WHERE key = ?` arm - the shape the measured ledger shows (the 15
- *  zero-row key reads under enrichLinkTargetsForKnownClass on
- *  /Aikido_in_Education are "romain", "ken_kyung_ho_min", "administration",
- *  "theater_music", ... - all simple). */
+ *  `WHERE key = ?` arm. */
 const DEAD_ITEMS = ["ghost one", "ghost two", "ghost three"];
 
 /** The deck. The Pointer host's db_content is the item list the pointer-item
