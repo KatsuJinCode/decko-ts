@@ -1,11 +1,8 @@
-// The follow-rule runtime unit tests: the port of the follow option list
-// (card-mod-follow-0.20.0 lib/card/follow_option.rb + set/self/*.rb) and
+// The follow-rule runtime unit tests: the follow option list
+// (lib/card/follow_option.rb + set/self/*.rb) and
 // the follow-rule READ walk (set/all/follow.rb + set/all/follow/followed_by.rb
 // + set/type/set.rb), exercised against the real LocalSqliteDriver with
 // seeded preference rows.
-//
-// RED state: these modules do not exist yet — src/card/follow/*.ts is the
-// lane-follow port under test.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -50,8 +47,8 @@ beforeAll(async () => {
   // the User cardtype card (codename "user" — the preference SQL's
   // users.type_id join key, rule/preference_cache.rb) + users
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
-  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
-  await seedCard(s, { id: 301, name: "Tova", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Fixture Actor", typeId: 3 });
+  await seedCard(s, { id: 301, name: "Second Actor", typeId: 3 });
 
   // a followed card + its set
   await seedCard(s, { id: 200, name: "Make Contact", dbContent: "contact body" });
@@ -64,36 +61,36 @@ beforeAll(async () => {
     typeId: 13,
   });
 
-  // Riley's follow preference on that set: [[*always]]
-  // (4-part preference name "Make Contact+*self+Riley+*follow")
+  // The first actor's follow preference on that set: [[*always]]
+  // (4-part preference name "Make Contact+*self+Fixture Actor+*follow")
   await seedCard(s, {
     id: 220,
-    name: "Make Contact+*self+Riley+*follow",
+    name: "Make Contact+*self+Fixture Actor+*follow",
     leftId: 215,
     rightId: 110,
     typeId: 14,
     dbContent: "*always",
   });
-  // the 3-part left "Make Contact+*self+Riley"
+  // the 3-part left "Make Contact+*self+Fixture Actor"
   await seedCard(s, {
     id: 215,
-    name: "Make Contact+*self+Riley",
+    name: "Make Contact+*self+Fixture Actor",
     leftId: 210,
     rightId: 300,
     typeId: 14,
   });
 
-  // Tova follows the same set with [[*never]]
+  // The second actor follows the same set with [[*never]]
   await seedCard(s, {
     id: 216,
-    name: "Make Contact+*self+Tova",
+    name: "Make Contact+*self+Second Actor",
     leftId: 210,
     rightId: 301,
     typeId: 14,
   });
   await seedCard(s, {
     id: 221,
-    name: "Make Contact+*self+Tova+*follow",
+    name: "Make Contact+*self+Second Actor+*follow",
     leftId: 216,
     rightId: 110,
     typeId: 14,
@@ -145,8 +142,8 @@ describe("follow option list (lib/card/follow_option.rb + set/self/*.rb)", () =>
 
 describe("follow rule name construction (set/all/follow.rb + set/type/set.rb)", () => {
   it("builds [set, user, *follow] names (type/set.rb:19-21)", () => {
-    expect(followRuleNameFor("Make Contact+*self", "Riley")).toBe(
-      "Make Contact+*self+Riley+*follow",
+    expect(followRuleNameFor("Make Contact+*self", "Fixture Actor")).toBe(
+      "Make Contact+*self+Fixture Actor+*follow",
     );
   });
 
@@ -163,17 +160,17 @@ describe("follow rule name construction (set/all/follow.rb + set/type/set.rb)", 
 
 describe("follow rule read walk (followed_by.rb + rule.rb preference_names)", () => {
   it("reads the set names a user holds follow preferences for (rule.rb:39-45)", async () => {
-    const names = await preferenceNamesForUser(storage!.fetcher, "Riley");
-    expect(names).toContain("Make Contact+*self+Riley+*follow");
+    const names = await preferenceNamesForUser(storage!.fetcher, "Fixture Actor");
+    expect(names).toContain("Make Contact+*self+Fixture Actor+*follow");
   });
 
   it("walks the first applicable follow-rule option (followed_by.rb:39-43)", async () => {
     const s = storage!;
     const card = await s.fetcher.fetchByName("Make Contact");
     const alwaysOption = await followRuleOptionFor(s.fetcher, card!, 300);
-    expect(alwaysOption).toBe("*always"); // Riley: *always applies
+    expect(alwaysOption).toBe("*always"); // the first actor: *always applies
     const neverOption = await followRuleOptionFor(s.fetcher, card!, 301);
-    expect(neverOption).toBeNull(); // Tova: *never test returns false (self/never.rb:5)
+    expect(neverOption).toBeNull(); // the second: the *never test returns false (self/never.rb:5)
   });
 
   it("answers followedByUser from the preference walk (followed_by.rb:8-10)", async () => {
