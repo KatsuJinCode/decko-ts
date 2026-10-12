@@ -3,7 +3,7 @@
 // substrate -> 0006 role substrate, then create-owner -> grant-the-owner-a-role
 // -> read the permission state back.
 //
-// WHY THIS FILE EXISTS. The demo-account-seeding port (972b727) shipped the
+// WHY THIS FILE EXISTS. The demo-account-seeding work shipped the
 // account system and deliberately shipped NO roles, recording the omission in
 // its own migration header (deploy/migrations/0004-demo-account-substrate.sql
 // "NOT INCLUDED ... roles ... None is read by the census, the create, or
@@ -24,7 +24,7 @@
 // WHAT IS PROVEN, and against which Ruby source:
 //
 //   1. CONTROL: on 0001..0004 alone a signed-in viewer's party list carries NO
-//      role ids at all — the exact hole the suite was handed, reproduced rather
+//      role ids at all — the exact hole, reproduced rather
 //      than asserted from a comment. The codename lookups read-rules.ts:244-248
 //      issue both select NULL, so the `anyone` / `anyone_signed_in` parties
 //      (read-rules.ts:303-304, :320-322, the port of account_holder.rb:111-113
@@ -68,8 +68,8 @@
 // is not ported; the `add_item` / `drop_item` events are declarations only
 // (src/card/mod-loader/mods/card-mod-list.ts).
 //
-// NOT IN tests/standing-net.json — recorded in the receipt, same as the
-// 0004 journey.
+// Not part of tests/standing-net.json (this suite is offline-only), same as
+// the 0004 journey.
 //
 // STORAGE. A real temp FILE built by node:sqlite (DatabaseSync): the SQL files
 // are applied exactly as `wrangler d1 execute --file` would apply them, in
@@ -162,7 +162,7 @@ function armDemoProfile(): void {
  * Build a temp database with the migration chain applied, using node:sqlite.
  *
  * `withRoles: false` stops at 0004 — the control the journey proof needs: the
- * 0001..0004 chain exactly as it shipped before this port.
+ * 0001..0004 chain exactly as it shipped before the role substrate.
  */
 async function deck(opts: { withRoles?: boolean; applyRolesTwice?: boolean } = {}): Promise<Deck> {
   const dir = scratchDir("decko-demo-roles-");
