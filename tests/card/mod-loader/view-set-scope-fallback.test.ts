@@ -1,7 +1,7 @@
 // THE REGRESSION GUARD for the measured dispatch defect: registering a
 // set-scoped mod view corrupted rendering DECK-WIDE.
 //
-// MEASURED (mod-a batch 3, re-measured here): with card-mod-email
+// MEASURED: with card-mod-email
 // loaded and set/right/html_message's :content registered, a plain
 // RichText card's :content flipped from the shared card-slot wrapper
 //   <div id="plain_probe-content-view" class="card-slot content-view ...">plain body</div>
@@ -79,8 +79,7 @@ const scopedMods: DeckoModManifest = {
       // because this engine's setModuleShortname still derives a module
       // name from the WHOLE path and a nested file therefore lands on a
       // name no card token can look up (the KNOWN DIVERGENCE note in
-      // mod-registrar.ts#setModuleShortname; a separate change, measured
-      // at 71 -> 53 new mod-loader failures). Registering at the anchor
+      // mod-registrar.ts#setModuleShortname; a separate change). Registering at the anchor
       // path keeps THIS file about the invariant it exists to pin - a
       // set-scoped registration does not reach a card outside the set -
       // and the gem-path spelling is covered where the view is
@@ -228,26 +227,13 @@ describe("set-scoped view registrations must not leak to cards outside the set",
 
   it("a bootswatch_skin card DOES take the skin's :bar_bottom and :bar_left", async () => {
     const s = storage!;
-    // BYTE-PIN HISTORY (the surface-recount's one honest weakening, restored
-    // strict): this pin was created at 26ef575 as
-    // toBe("<code>skin css</code>") — true for the pre-port engine, whose
-    // bootswatch_skin :core answered the raw dbContent. The an earlier pass
-    // compile-engines merge ported the gem's core: html_views.rb:22
-    // `view :core, template: :haml` renders core.haml — the Use as current
-    // button (html_views.rb:50-54, core.haml:5), the Customize button, the
-    // Skin configuration accordion — NOT the raw body, and html_views.rb:
-    // 69-73 `view :bar_bottom do wrap_with :code do render_core end end`
-    // wraps THAT. The old literal bytes were therefore un-Ruby bytes; the
-    // merge re-shaped the pin to startsWith/endsWith/contains instead of
-    // re-deriving them. With the libsass byte-parity adapter landed
-    // (compile-engines-pin.test.ts + libsass-byte-parity-adapter.test.ts,
-    // byte-exact against fixtures/captured/compile-engines.json) the
-    // compile side is settled, so the strict form is back: the wrap
-    // contract is pinned BYTE-EXACT (slot ids normalized, see below) as
+    // BYTE-PIN CONTRACT: the wrap is pinned BYTE-EXACT (slot ids
+    // normalized, see below) as
     // "<code>" + the independently rendered :core + "</code>" — any
     // contamination (shared body, double wrap, scope leak) breaks
     // equality — plus one guard pinning the core
-    // to the haml port rather than a dbContent revert. The :core bytes
+    // to the gem's haml template rather than a dbContent revert. The :core
+    // bytes
     // themselves stay owned by bootstrap-code-file-pages.test.ts (the 21
     // skin pages byte-pinned through the same bootswatchSkinCoreHtml
     // builder): this file's charter is the SCOPE, and the probe bodies are
