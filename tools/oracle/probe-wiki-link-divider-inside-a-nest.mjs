@@ -2,7 +2,7 @@
 // divider rule against the oracle bytes for a nest that splits the TARGET.
 //
 // WHAT THIS IS
-//   M3: `[[/new/{{_self|linkname}}|add a {{_self|name}} card]]` carries a PIPE
+//   `[[/new/{{_self|linkname}}|add a {{_self|name}} card]]` carries a PIPE
 //   INSIDE a nest. Ruby splits at the divider index of the RAW `[[...]]`
 //   span, where the nest is opaque, so the oracle bytes are
 //
@@ -11,12 +11,12 @@
 //   Neither "first pipe" (target `/new/{{_self`) nor "last pipe" (label
 //   `card`) reproduces that.
 //
-//   The negdelta-zero lane wrote this probe with its OWN COPY of the regexp
-//   baked in as a literal, and its exit contract was inverted relative to a
-//   gate: `process.exit(seen ? 1 : 0)` — exit 0 meant "the regexp never sees
-//   the opener", i.e. exit 0 meant THE DEFECT. That copy also made the probe
-//   incapable of ever changing verdict when the source was fixed, which is
-//   the wrong shape for an instrument whose whole job is to be a gate.
+//   An earlier form of this probe carried its OWN COPY of the regexp as a
+//   baked-in literal, with an inverted exit contract (`process.exit(seen ?
+//   1 : 0)` -- exit 0 meant "the regexp never sees the opener", i.e. exit 0
+//   meant THE DEFECT). A baked-in copy also can never change verdict when
+//   the source is fixed -- the wrong shape for an instrument whose whole job
+//   is to be a gate.
 //
 //   This version READS THE LIVE SOURCE (`WIKI_LINK_REGEXP` out of
 //   src/card/render/format.ts, by locating the literal), evaluates the three
