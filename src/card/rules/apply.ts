@@ -11,10 +11,9 @@
 //   { "view": "content", "tag": "h1", "class": "lede" }
 //   { "extends": "titled", "title_class": "card-title-large" }
 //
-// This is enough for the 80% case (per-set visual overrides); the modding
-// story for the remaining 20% (method overrides, view caching, edit forms)
-// lands in the rule-evaluation v2 stream once we have real rule cards from
-// a Ruby dump to test against.
+// This is enough for the 80% case (per-set visual overrides); the remaining
+// 20% (method overrides, view caching, edit forms) needs full Ruby rule
+// semantics and is out of scope for this port.
 
 import type { CardRecord } from "../fetch/card-record.js";
 
@@ -42,7 +41,7 @@ export interface ViewOverride {
  *
  * Returns undefined when:
  * - the card has no db_content
- * - the content is not JSON (legacy HAML/Ruby — deferred to v2)
+ * - the content is not JSON (legacy HAML/Ruby — unsupported here)
  * - the parsed JSON doesn't have a "view" field
  *
  * The parser is forgiving: extra fields are kept in `opts` rather than
