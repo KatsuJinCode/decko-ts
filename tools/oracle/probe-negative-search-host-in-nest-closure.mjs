@@ -1,14 +1,13 @@
 // probe-negative-search-host-in-nest-closure.mjs -- why a Search card nested
-// inside a page renders search-no-results (lane-negdelta-zero, M5).
+// inside a page renders search-no-results.
 //
 // WHAT THIS IS
-//   Two census pages -- Family (41581 expected / 30341 actual) and Archetypal
-//   (101410 / 98505) -- nest a `{{_self+*referred_to_by}}` Search card. Ruby's
+//   Some census pages nest a `{{_self+*referred_to_by}}` Search card. Ruby's
 //   card_list view executes the CQL inside the view dispatch and renders the
 //   result rows; the TS port's card_list reads ONLY the pre-executed map
 //   (`executeSearch` -> `searchResults.get(key) ?? []`, src/card/render.ts:4213)
-//   and this lane's probe shows the map holds an EMPTY LIST for the host, so
-//   the view emits `<div class="search-no-results"></div>`.
+//   and this probe shows the map holds an EMPTY LIST for such a host, so the
+//   view emits `<div class="search-no-results"></div>`.
 //
 //   There are two candidate mechanisms and they need different fixes:
 //     A. the host was never SEATED (prepareNestClosureSearches' BFS never
@@ -27,7 +26,7 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negative-search-host-in-nest-closure.mjs \
-//     --page Family [--host "Family+*referred_to_by"] [--out tmp/negdelta-zero/m5.json]
+//     --page PAGE_NAME [--host "PAGE_NAME+*referred_to_by"] [--out OUT_JSON]
 //
 //   With no --page it probes every Search-typed card the page's nest closure
 //   seats. Exit 0 when a host reproduces (empty result where rows exist),
