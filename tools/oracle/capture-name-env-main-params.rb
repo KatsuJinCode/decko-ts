@@ -1,4 +1,4 @@
-# capture-name-env-main-params.rb - S2.2.b oracle capture: `_main` contextual
+# capture-name-env-main-params.rb - oracle capture: `_main` contextual
 # resolution through Card::Env.params[:main_name].
 #
 # Ruby truth pinned by this capture:
@@ -9,9 +9,8 @@
 #     fill through absolutize_extremes, lines 102-110).
 #
 # This runs inside the booted decko oracle app (the `english`-loaded app
-# path - the bare-gem `_main`-with-nil-params crash that kept S2.2.b
-# pinned-synthetic does not exist here), so the captured rows are the app
-# truth the contract statement names.
+# path - the bare-gem `_main`-with-nil-params crash does not exist here), so
+# the captured rows are the app truth.
 #
 # Run (from the oracle app dir):
 #   RAILS_ENV=development bundle exec decko runner \

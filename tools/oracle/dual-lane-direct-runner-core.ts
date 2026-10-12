@@ -1,5 +1,5 @@
-// dual-lane-direct-runner-core.ts -- 2026-10-01 direct grade runner
-// (direct-runner-builder lane). The grading protocol, ported from the
+// dual-lane-direct-runner-core.ts -- direct grade runner. The grading protocol,
+// ported from the
 // measuring instrument tools/oracle/verify-dual-lane.test.ts, with the vitest
 // shell replaced by a plain main().
 //
@@ -7,8 +7,7 @@
 //   The whole-site grade boots one `npx vitest run` child PER PHASE (24
 //   phases for the 48-shard set) and the driver runs 2 of them at a time, so
 //   the 137.6 worker-minutes of render compute the pass-19 log records become
-//   69.1 minutes of wall clock on a 28-core machine
-//   (grade-hours-autopsy-lane.md, Mechanism table). Two of the costs are
+//   69.1 minutes of wall clock on a 28-core machine. Two of the costs are
 //   structural rather than fundamental:
 //
 //     - a test-framework boot per phase, and
@@ -83,20 +82,20 @@ import {
 } from "../../src/card/set-module-content-overrides.js";
 import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 
-// The capture-deck wall clock (set-override-fidelity lane 2026-10-03): the
+// The capture-deck wall clock: the
 // corpus's graded card.content answers include wall-clock surfaces
 // (Self::Now — set/self/now.rb:1-3) whose captured bytes are a frozen sample
-// of a time-varying answer. The capture ran live on 2026-09-28 ~15:12
-// America/Los_Angeles (the *now record bytes carry the rendered instant);
+// of a time-varying answer. The capture ran at one specific wall-clock
+// instant (the *now record bytes carry the rendered instant);
 // grading against those bytes requires the SAME instant, so the runner pins
 // the card wall clock to the capture minute — the capture-environment model
 // (deck_origin precedent). Affects ONLY the card-content override path
 // (set-module-content-overrides.ts's clock seam), never Date.now() timing.
 //
 // CAPTURE_FROZEN_CLOCK names the instant the graded corpus was photographed
-// under (an ISO-8601 instant with an explicit zone, e.g. the corpus of
-// record's rig M4 epoch "2026-09-19T12:00:00Z", recorded in its provenance as
-// invocation.frozenClock). The default is the 2026-09-28 capture's minute,
+// under (an ISO-8601 instant with an explicit zone, e.g. the rig's frozen
+// epoch "2026-09-19T12:00:00Z", recorded in its provenance as
+// invocation.frozenClock). The default is the older corpus's capture minute,
 // which is right only for that older corpus.
 export function captureClockFromEnv(raw: string | undefined): Date {
   if (raw === undefined || raw === "") return CAPTURE_WALL_CLOCK_CAPTURE_INSTANT;
@@ -165,9 +164,8 @@ const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
  *  this should never fire; it is here so a future divergence shows up as a
  *  named bucket in the report rather than as a silently wrong attribution. */
 const UNATTRIBUTED_SHARD = "(unattributed)";
-/** Production resolves Cardio.config.default_html_view = :content (runbook
- *  section "five production-equivalent settings", item 5). Fallback main view
- *  for page-lane capture-error lines, where the oracle never resolved a main
+/** Production resolves Cardio.config.default_html_view = :content. Fallback main
+ *  view for page-lane capture-error lines, where the oracle never resolved a main
  *  nest view. */
 const PRODUCTION_DEFAULT_MAIN_VIEW = "content";
 
@@ -473,9 +471,9 @@ export interface DirectRunOptions {
 
 /** Peak resident set, sampled at the points where it actually grows: after
  *  the seed (the corpus is fully resident by then), after the view lane, and
- *  after the page lane. The redesign's worker count is gated on memory --
- *  "8 x 1536 MB = 12.3 GB fits the runbook's >=16 GB-free gate"
- *  (grade-hours-autopsy-lane.md Two-Minute-Design item 3) -- but that figure
+ *  after the page lane. The worker count is gated on memory --
+ *  "8 x 1536 MB = 12.3 GB fits the >=16 GB-free gate" --
+ *  but that figure
  *  is a heap CAP, never a measured footprint. A worker that only ever needs
  *  700 MB means W=16 was gated on a number that was never true; one that
  *  needs 2.4 GB means W=8 was. Sampled, not timer-polled: the sample points
@@ -587,8 +585,8 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   // The corpus seeding module the spec reaches as "./raw-corpus-seeding.js".
   //
   // This pointed at the per-worktree staging copy under the gitignored
-  // instrument tree (tmp/, .gitignore:45). That copy PREDATES the FULL
-  // REFERENCE GRAPH PASS, so the graded run staged 3,184 card_references
+  // instrument tree (tmp/, .gitignore:45). That copy predates the reference
+  // graph seeding pass, so the graded run staged 3,184 card_references
   // rows where the committed home stages 556,526. Every card a search card
   // queries therefore had no outgoing reference rows, and the engine --
   // whose generated SQL is correct -- rendered `search-no-results` where the
@@ -613,10 +611,9 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   }
   const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;
 
-  // The graded environment's cloud asset host: the live deployment serves
-  // carrierwave attachments from DigitalOcean Spaces FR1 (live-check-71:
-  // DO-host 34/34 pages, s3.amazonaws.com 0 occurrences), and the corpus
-  // expectations carry the same prefix (the close-71 transform moves engine
+  // The graded environment's cloud asset host: the deployment serves
+  // carrierwave attachments from DigitalOcean Spaces FR1, and the corpus
+  // expectations carry the same prefix (the companion transform moves engine
   // config and expectations TOGETHER). Set BEFORE any storage boot so every
   // worker's render emits the deployment form. The engine DEFAULT (fog s3
   // form) stays pinned for every suite that does not set it
@@ -839,7 +836,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
           }
         }
         const isSimple = card.name === undefined || card.name.isSimple;
-        // The set-module content override (set-override-fidelity lane): Ruby's
+        // The set-module content override: Ruby's
         // applicable set modules ride the card's singleton class
         // (mod/core/set/all/initialize.rb:61-74) and shadow card.content for
         // every caller — the record's content field photographs that answer.

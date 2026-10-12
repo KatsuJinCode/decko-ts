@@ -1,29 +1,30 @@
-// apply-m2-pointer-item-per-nest-read-verdict.mjs — the M2 edit, applied at
-// the byte level so no EOL in the carrier file is touched.
+// apply-m2-pointer-item-per-nest-read-verdict.mjs — the pointer-item
+// per-nest read-verdict edit, applied at the byte level so no EOL in the
+// carrier file is touched.
 //
 // WHY A SCRIPT AND NOT THE EDIT TOOL: src/card/render/views.ts is a MIXED-EOL
 // file (527 CRLF / 4919 LF-only lines at this commit). The Edit tool
-// normalizes CRLF to LF across the file, which produced 61 lines of pure-EOL
-// churn once already (negdelta-zero receipt, section 5). This script does exact
-// byte replacements and asserts each one applied.
+// normalizes CRLF to LF across the file, which has produced whole-file
+// pure-EOL churn before. This script does exact byte replacements and asserts
+// each one applied.
 //
-// THE MECHANISM (tools/oracle/probe-trace-phantom-item-verdict.mjs, run on
-// corpus card 802 "Quicksilver+Core Project" whose content is the single
-// pointer item `mytho-psychology`):
+// THE MECHANISM (see tools/oracle/probe-trace-phantom-item-verdict.mjs,
+// which traces a phantom pointer item's read verdict across a cold and a
+// warm render of the same nest):
 //
-//   verdict lookup   quicksilver+core_project | mytho_psychology
+//   verdict lookup   <item key>
 //                    -> {"read":true,"create":false}     (BOTH cold and warm)
-//   COLD  isDenied(mytho_psychology) -> false  x2   body = FULL bar (correct)
-//   WARM  isDenied(mytho_psychology) -> true   x1   body = two denied spans
+//   COLD  isDenied(item) -> false  x2   body = FULL bar (correct)
+//   WARM  isDenied(item) -> true   x1   body = two denied spans
 //
 // The two isDenied calls in the COLD run are bar_left + bar_menu passing the
 // gate; in the WARM run bar_left fails it and miniBarView short-circuits to
 // the two-span body. `isDenied` reads deniedVerdictsByKey — the DECK-GLOBAL
 // map, which RenderEngine#ensurePointerItemVerdicts fills ONCE per item key
-// ("first computation wins", pointerItemGlobalVerdictDone). `mytho-psychology`
-// is an item line on ~30 corpus cards; whichever one the run touches FIRST
-// decides the global entry, and the per-nest verdict this nest already read
-// never reaches the gate. Ruby builds the phantom fresh per nest
+// ("first computation wins", pointerItemGlobalVerdictDone). An item line that
+// appears on many corpus cards is decided by whichever nest the run touches
+// FIRST, and the per-nest verdict this nest already read never reaches the
+// gate. Ruby builds the phantom fresh per nest
 // (Nest::Fetch#new_card) and runs the walk on THAT card, so the per-nest
 // value is the faithful one.
 

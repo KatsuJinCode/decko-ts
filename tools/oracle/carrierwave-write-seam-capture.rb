@@ -1,5 +1,5 @@
-# carrierwave-write-seam-capture.rb - oracle capture for the four views the
-# carrierwave WRITE/output seam lane ports:
+# carrierwave-write-seam-capture.rb - oracle capture for the four views of
+# the carrierwave WRITE/output seam:
 #   card-mod-assets      :asset_output_url (set/abstract/asset_outputter.rb:61-63)
 #   card-mod-assets      :not_found        (set/right/asset_output.rb:24-29)
 #   card-mod-carrierwave :input            (set/type/file.rb:119-125, html)
@@ -25,7 +25,7 @@ OUT_PATH  = File.join(REPO_ROOT, "tmp", "carrierwave-write-seam-oracle.json")
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end

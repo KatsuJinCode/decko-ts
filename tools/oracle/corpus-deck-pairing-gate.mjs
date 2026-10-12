@@ -4,14 +4,13 @@
 // WHY THIS EXISTS
 //   A parity grade compares the reference's recorded output with the target's
 //   output for the same input. That comparison only means something when both
-//   sides rendered the SAME deck. The grade-11 seam-clean run (page lane
-//   3,636/6,588) broke this silently: the expected corpus was re-captured on a
-//   21,676-card snapshot deck (capture provenance sha ab2d762b...), while the
-//   graded engine was seeded from bench-corpus-raw.sqlite3 (49,829 cards, sha
-//   6a44dfdc...). 28,159 graded-deck cards do not exist in the capture deck.
-//   Ruby's Card.fetch therefore returned a not-found placeholder (id nil) for
-//   2,555 page entries whose cards the engine resolves to stored rows, and
-//   "Card.fetch returned nil" for 114 more. Every one of those reached the
+//   sides rendered the SAME deck. One earlier run broke this silently: the
+//   expected corpus was captured on a snapshot deck whose provenance carried a
+//   different sha from the graded deck the engine was seeded from. Tens of
+//   thousands of graded-deck cards did not exist in the capture deck, so
+//   Ruby's Card.fetch returned a not-found placeholder (id nil) for the page
+//   entries whose cards the engine resolves to stored rows, and
+//   "Card.fetch returned nil" for more. Every one of those reached the
 //   comparator as an engine "byte-diff" (or a capture-error row) and the run
 //   reported them as engine failures. The pairing was never checked: the fire
 //   script verified corpus digests and the bench sha separately, never that

@@ -1,19 +1,18 @@
 // analyze-set-override-canvas-diff-2026-10-03.mjs
 //
-// Blast-radius adjudication for the set-override-fidelity lane (RELAUNCH #4):
-// diffs THIS lane's full-canvas per-entry failures against the grade-9 base of
-// record (7e843131 = this branch's base tip, committed at
-// brandonDojoTech/tmp/wrong-goal-hunt/grade9-run4b-canvas-artifacts/
-// 7e843131-full-fails.json).
+// Blast-radius adjudication for set-override fidelity: diffs this run's
+// full-canvas per-entry failures against a recorded baseline fails JSON
+// (path passed as the second argument; the built-in default points at a
+// machine-local artifact from an earlier baseline run).
 //
-//   FIXED  = base fail that passes on this tip — legal ONLY for the four
-//            view-lane W5 record entries the targeted probe proved RED->GREEN
+//   FIXED  = baseline fail that passes on this tip — legal ONLY for the four
+//            view-lane record entries a targeted probe proved RED->GREEN
 //            (dual-lane-view:{*alerts,*now,*version,*input type+*right+*content
 //            options}:record); anything else is a mover that must be
-//            adjudicated from Ruby, never silently accepted.
-//   NEW    = this tip fails where base passed — MUST be zero (the port's only
-//            graded caller is the view-lane record handler; any NEW fail is a
-//            regression the lane has to explain).
+//            adjudicated against the Ruby oracle, never silently accepted.
+//   NEW    = this tip fails where the baseline passed — MUST be zero (the
+//            engine's only graded caller is the view-lane record handler; any
+//            NEW fail is a regression the run has to explain).
 //   STICKY = failing in both (Mod:record stays, the documented loud
 //            divergence).
 //

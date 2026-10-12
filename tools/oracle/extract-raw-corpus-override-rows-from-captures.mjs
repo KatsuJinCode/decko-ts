@@ -1,26 +1,22 @@
 // extract-raw-corpus-override-rows-from-captures.mjs -- build the raw-corpus
-// OVERRIDE TABLE from the oracle capture artifacts (harness-corpus-repair
-// lane 2026-10-02, extended by the m8-envelope-completion lane 2026-10-02 to
-// every entry of the M8 skin:record class, extended by the m8-siblings-litera
-// lane 2026-10-03 to the two bootstrap SCSS source siblings and to litera
-// skin -- the one bootswatch skin with no capture record -- via a LIVE
-// ?view=raw capture of culturesmith.com under the same gates, and by the
-// litera-custom-skin lane 2026-10-03 to litera skin customized 34530 via the
-// same LIVE ?view=raw route, class-calibrated on journal skin customized
-// 34179 whose oracle envelope the live raw view reproduces byte-exact).
+// OVERRIDE TABLE from the oracle capture artifacts. Covers: the M8
+// skin:record class (the 20 bootswatch skins), the two bootstrap SCSS source
+// siblings, journal skin customized 34179, and two rows with no capture
+// record (litera skin 33872, litera skin customized 34530), which are
+// restored from the served site's ?view=raw route under byte-stability and
+// class-calibration gates.
 //
 // WHAT THIS IS
 //   The oracle deck's stored bytes for some cards are unobtainable from
-//   bench-corpus-raw.sqlite3 (sha-pinned 6a44dfdc...): the capture-time deck
-//   held materialized bytes the dump does not carry (scss-double-emit-fix-lane.md:
-//   card 34179 "journal skin customized" = [corpus prefix 251,225][M 221,051
+//   bench-corpus-raw.sqlite3 (sha-pinned): the capture-time deck
+//   held materialized bytes the dump does not carry (journal skin customized
+//   34179 = [corpus prefix 251,225][M 221,051
 //   bytes of compiled decko application CSS][corpus tail 945]; an instr search
 //   for the M head over the whole corpus returns 0 rows). The oracle captures
 //   hold the oracle's record envelope, so the bytes ARE recoverable -- from
 //   the captures, not hand-authored.
 //
-//   The M8 skin:record class (residual-classes-dfe642b-w5.txt class [20],
-//   lines 104-123; negative deltas -495,051..-509,306) is the same mechanism
+//   The M8 skin:record class is the same mechanism
 //   for the 20 bootswatch skin cards themselves: each corpus row holds the
 //   50-byte un-materialized markup "[[themeless bootstrap skin]]\n[[+bootswatch
 //   theme]]" while the oracle record envelope holds ~473K-486K chars of
@@ -42,7 +38,7 @@
 //   3. corpus-absence: no corpus row CONTAINS the restored content. Exact
 //      form: containment implies length(content) >= |content|, so only rows
 //      that long are candidates, and each candidate is probed with a
-//      full-needle instr. (The journal lane's 80-char M-head probe is kept
+//      full-needle instr. (The 80-char M-head probe is kept
 //      for 34179, where the head is unique materialized decko CSS; for the
 //      skins that probe is NOT decisive -- the compiled themes share their
 //      10,624-char "// Bootstrap functions..." preamble and verbatim-passed
@@ -91,8 +87,8 @@ const VIEW_LANE_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-
 const P21_HTML_DIR =
   "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html";
 
-// The M8 skin:record class, residual-classes-dfe642b-w5.txt lines 104-123
-// (class [20], header line 103). Shard membership as captured there; the
+// The M8 skin:record class: the 20 bootswatch skins.
+// The
 // extractor re-locates every record by exact name and re-checks the id.
 const M8_CLASS_SKINS = [
   { skin: "cerulean skin", shard: "recapture-raw-shard-000017.jsonl" },
@@ -117,9 +113,8 @@ const M8_CLASS_SKINS = [
   { skin: "solar skin", shard: "recapture-raw-shard-000028.jsonl" },
 ];
 
-// The two bootstrap SCSS source siblings (m8-siblings-litera lane 2026-10-03):
-// the M8 corpus-materialization remainder entries the wave-2 receipts name
-// (bootstrap: core:record -248,378, bootstrap: functions:record -10,989).
+// The two bootstrap SCSS source siblings: the M8 corpus-materialization
+// remainder entries (bootstrap: core, bootstrap: functions).
 // Same class mechanism -- the corpus rows are EMPTY (0 bytes) while the oracle
 // record envelopes hold the full SCSS source (239,039 / 10,621 chars).
 const M8_BOOTSTRAP_SIBLINGS = [
@@ -127,28 +122,25 @@ const M8_BOOTSTRAP_SIBLINGS = [
   { name: "bootstrap: functions", shard: "recapture-raw-shard-000028.jsonl" },
 ];
 
-// The documented shared-source family (this file's header note: "compiled and
-// source share their 10,624-char '// Bootstrap functions...' preamble and
-// verbatim-passed library regions with the SCSS SOURCE rows the corpus holds
-// (classic bootstrap skin 22736, journal/litera/slate skin customized)").
-// Both siblings' bytes are verbatim REGIONS of these four monolithic rows
+// The documented shared-source family. Both siblings' bytes are verbatim
+// REGIONS of these four monolithic rows
 // (functions = the shared preamble at index 0 x4; core = the source region
 // after the preamble, offsets 10625/12185/13346/15893, once per row --
-// measured by the lane probe). For the sibling pair the containment gate is
+// measured). For the sibling pair the containment gate is
 // therefore: every containing corpus row must be IN this family; any
 // containing row outside it still fails the row. The skins keep the strict
 // hits==0 gate unchanged.
 const SHARED_SOURCE_FAMILY = [22736, 34179, 34530, 38274];
 
-// ---------- LIVE-capture arm: litera skin 33872 (m8-siblings-litera lane 2026-10-03) ----------
+// ---------- LIVE-capture arm: litera skin 33872 ----------
 // litera skin is the one bootswatch skin with NO capture record in any
 // expected-v2 shard (swept: only adjacent cards -- litera skin customized+*variables
-// 34533, +parent 1 45366 -- and no p21 file). The LIVE site serves the card's
-// stored bytes through the ?view=raw route (the ?view=record route answers 422
-// "view (record) not supported" for these card types, measured 2026-10-03).
-// Calibration: the live raw view of cerulean skin and journal skin contains
+// 34533, +parent 1 45366 -- and no cross-capture file). The served site holds
+// the card's stored bytes through the ?view=raw route (the ?view=record route
+// answers 422 "view (record) not supported" for these card types).
+// Calibration: the raw view of cerulean skin and journal skin contains
 // each skin's ORACLE envelope content BYTE-EXACT (single occurrence), which
-// pins both the extraction rule and live-stored==oracle-stored for this card
+// pins both the extraction rule and served-stored==oracle-stored for this card
 // class. The extraction rule (content sits between '<div id="main">' and
 // '</div><script>' in the raw-view body) must reproduce both calibration
 // contents byte-exact or this arm THROWS -- never emits on a broken rule.
@@ -754,20 +746,20 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
   );
 }
 
-// ---------- litera skin customized 34530 (LIVE-capture arm, litera-custom-skin lane 2026-10-03) ----------
+// ---------- litera skin customized 34530 (LIVE-capture arm) ----------
 // The corpus row (253,810 bytes of litera SCSS source) is one of the four
 // documented shared-source family rows; no expected-v2 capture record exists
-// for the plain name (the m8 lane swept: only adjacent junction cards 34533 /
-// 45366 were captured). The LIVE site serves the card's stored bytes through
-// the same ?view=raw route (titles verified "litera skin customized -
-// Culturesmith", so the right card was served). Class calibration: the same
-// wrapper rule on journal skin customized's live raw view reproduces 34179's
+// for the plain name (swept: only adjacent junction cards 34533 /
+// 45366 were captured). The served site holds the card's stored bytes through
+// the same ?view=raw route (the served page title verified the right card was
+// served). Class calibration: the same
+// wrapper rule on journal skin customized's raw view reproduces 34179's
 // ORACLE envelope content byte-exact (single occurrence) -- pins
-// live-stored==oracle-stored for the customized class, complementing the
+// served-stored==oracle-stored for the customized class, complementing the
 // plain-class pins (cerulean/journal) the 33872 arm carries. The restored
 // content decomposes against the corpus row in the proven 34179 double-emit
 // shape: [corpus prefix][compiled M][corpus tail]. Measured deck-state fact,
-// recorded not hidden: the live deck's stored bytes for litera skin (33872)
+// recorded not hidden: the served deck's stored bytes for litera skin (33872)
 // and litera skin customized (34530) are byte-identical (the same holds for
 // journal base vs journal customized vs 34179's oracle envelope).
 {
@@ -789,9 +781,9 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
       sha256: "bbe43a9803b516d53baf11f470b58d02c7021e110a6dda80104ebfc06cd5fee4",
     },
   ];
-  // rule calibration (plain class, m8 lane's recorded fetches) + class
-  // calibration (customized class, this lane's recorded fetch vs 34179's
-  // oracle envelope; canonical p21 file, independent of --capture).
+  // rule calibration (plain class, the recorded fetches) + class
+  // calibration (customized class, the recorded fetch vs 34179's
+  // oracle envelope; the canonical cross-capture file, independent of --capture).
   const P21_JOURNAL_CUSTOMIZED_CANONICAL =
     "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/" +
     "nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
@@ -1058,7 +1050,7 @@ provenance.push({
   corpusHeadAbsentRows: 0,
 });
 
-// ---------- +parent cross-check (unchanged from the proven lane) ----------
+// ---------- +parent cross-check ----------
 let shardRecords = [];
 try {
   const parentShard =

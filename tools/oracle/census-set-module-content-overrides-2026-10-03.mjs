@@ -1,11 +1,9 @@
 // census-set-module-content-overrides-2026-10-03.mjs
 //
-// Census leg of the set-override-fidelity lane (RELAUNCH build). Counts every
-// live card in the corpus mirror whose Ruby card.content would be answered by a
-// set-module code override rather than by the DB row.
+// Census of how many live cards in the corpus mirror have Ruby card.content
+// answered by a set-module code override rather than by the DB row.
 //
-// The module universe is the derivation output (set-override-fidelity-lane.md,
-// "[relaunch t1] RUBY DERIVATION COMPLETE"): every card-level `def content` in
+// The module universe is the derivation output: every card-level `def content` in
 // a nonbase set module across card-1.110.0 + the installed card-mod-0.20.0 gems,
 // swept with abstract include-chain closure. Dead ends (HamlFile, CodenameList,
 // AssetFile-descendant abstracts) have zero concrete includers and are excluded.
@@ -65,8 +63,8 @@ const cards = db
 // but the codename column lives on the part card rows themselves).
 const byId = new Map(cards.map((c) => [c.id, c]));
 
-// The mirror keeps junction name cells NULL (lead option (b),
-// render-test-storage.ts:200-213); the seeded storage composes junction names
+// The mirror keeps junction name cells NULL by design
+// (render-test-storage.ts:200-213); the seeded storage composes junction names
 // from left/right ids. Simple names read the name column directly.
 const simpleNameById = new Map();
 for (const c of cards) {

@@ -1,7 +1,7 @@
 # demo-view.rb — static-ruby oracle capture for card-mod-format's
-# view :demo (set/all/demo.rb:2-7), one of the census's two missing format
-# views (the other, :debug_server_error, needs the better_errors dev gem -
-# not in the frozen set; named remainder, not ported).
+# view :demo (set/all/demo.rb:2-7). The mod's other admin-facing view,
+# :debug_server_error, is out of scope for this script: it depends on the
+# better_errors development gem, which this oracle does not load.
 #
 # WHAT RUNS: the gem's own source lines extracted VERBATIM by line range +
 # the deck's REAL admin.yml files (every card-mod-*/config/admin.yml under
@@ -19,15 +19,15 @@
 #                      persisted-record _method=patch spoof + success
 #                      hiddens; embed_authenticity_token_in_remote_forms
 #                      =false).
-#   select_tag       - Rails form_tag_helper.rb select_tag: name/id
-#                      attrs first, caller opts in hash order; the
-#                      bootstrap wrapper appends " form-control" to the
-#                      class (the rules_tab select precedent,
-#                      card-mod-rules.ts's captured bytes).
+#   select_tag       - Rails form_tag_helper.rb select_tag semantics:
+#                      the name and id attrs come first, then the
+#                      caller's opts in hash order, and nothing else is
+#                      added — no installed gem overrides a bare
+#                      select_tag, so no class is appended here.
 #   options_for_select - Rails form_options_helper.rb:82-96: one
-#                      <option value="X">X</option> per item,
-#                      selected="selected" FIRST in the attrs on the
-#                      match (the captured options order, typeField).
+#                      <option value="X">X</option> per item, with the
+#                      selected="selected" marker placed FIRST among the
+#                      attributes of the matching entry.
 #   hidden_tags/success_tags - form_elements.rb:16-43 verbatim.
 #   wrap_with/output - the established content.rb:70-72/wrap.rb:128-131
 #                      shapes.
@@ -144,7 +144,7 @@ def sanitize_to_id(name)
 end
 
 # Rails options_for_select (form_options_helper.rb:82-96): the selected
-# marker renders FIRST in the option attrs (the captured order).
+# marker goes FIRST in each option's attribute list.
 def options_for_select(container, selected = nil)
   container.map do |value|
     selected_attr = value.to_s == selected.to_s ? ' selected="selected"' : ""

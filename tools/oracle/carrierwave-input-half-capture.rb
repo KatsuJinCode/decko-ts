@@ -1,5 +1,5 @@
 # carrierwave-input-half-capture.rb - oracle capture for the INPUT half of
-# the asset-output machinery (the lane-carrierwave-input-half port):
+# the asset-output machinery:
 #   card-mod-assets set/abstract/asset_outputter.rb:32-34 input_from_item_cards
 #   card-mod-assets set/abstract/asset_outputter.rb:74-76 input_item_cards
 #   card-mod-assets set/abstract/asset_inputter.rb:44-53  asset_input_content
@@ -165,7 +165,7 @@ payload["outputters"] = deep_sort(outputter_names.each_with_object({}) do |name,
 end)
 
 # ---- the named inputter cards the deck carries ------------------------------
-# "style: mods" is the deck-live *all+*style item (write-lane capture: id 328).
+# "style: mods" is the deck-live *all+*style item.
 # The mod asset cards ("mod: bootstrap+*style" family) are the ModAssets
 # inputters whose item cards are the VIRTUAL file cards.
 named = ["style: mods", "style: mod", "mod: bootstrap+*style", "mod: bootstrap+*script",

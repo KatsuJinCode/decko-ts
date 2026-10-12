@@ -1,17 +1,19 @@
-// denied-seam-reanchor-page-lane-expectations.mjs -- the denied-seam-reanchor
-// lane's corpus re-anchor tool: at the Opportunities dropdown-menu denied seam
+// denied-seam-reanchor-page-lane-expectations.mjs -- corpus re-anchor tool:
+// at the Opportunities dropdown-menu denied seam
 // (the `</div>` of the seam dropdown-divider, then the read-denied item span),
-// replace the STALE blank-line form with the live-true single-newline form in
+// replace the STALE blank-line form with the single-newline form in
 // every page-lane expectation carrying it.
 //
-// FINDING BEING EXECUTED (denied-chrome-newline lane, 2026-10-03): the corpus
+// FINDING BEING EXECUTED: the corpus
 // page-lane expectations carry a stale engine-era blank line at this seam
-// (`</div>\n\n<span class="denied">` in decoded bytes); live truth and the
-// engine (navbar-views.ts:167-172, live-pinned non-emission) both carry the
-// single newline. Census: 6,542 expectations stale / 42 live-true / 6,586
-// carrying the denied span at all (48 shards, 6,588 entries).
+// (`</div>\n\n<span class="denied">` in decoded bytes); the serving truth and
+// the engine (navbar-views.ts:167-172, pinned non-emission) both carry the
+// single newline. The census counted 6,542 stale expectations / 42 already
+// single-newline / 6,586 carrying the denied span at all (48 shards, 6,588
+// entries).
 //
-// BINDING + REVERSIBILITY (the close-71/w5 manifest pattern, reused):
+// BINDING + REVERSIBILITY (the same manifest pattern the sibling overlays
+// use):
 //   - apply refuses unless every page-lane shard is at the recorded prestate
 //     sha (the asset-host + w5-live chain's after-states).
 //   - the manifest records per-splice provenance: shard, line index, entry
@@ -20,8 +22,9 @@
 //     blanket literal replacement, which would also re-stale the 42
 //     already-live-true entries).
 //   - BYTE-LEVEL VALUE-LITERAL SPLICES ONLY: the tool never JSON-parses for
-//     the write path (parse-modify-dump strips trailing CRs -- prior-lane
-//     lesson); all shard files are CRLF, preserved because only the exact
+//     the write path (parse-modify-dump strips trailing CRs -- a lesson this
+//     corpus's tooling already learned); all shard files are CRLF, preserved
+//     because only the exact
 //     seam byte range is removed.
 //
 // MODES

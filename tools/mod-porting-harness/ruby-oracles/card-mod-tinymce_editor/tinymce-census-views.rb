@@ -1,5 +1,5 @@
 # tinymce-census-views.rb — static-ruby oracle capture for card-mod-
-# tinymce_editor's census views :nest_content, :new_image and
+# tinymce_editor's views :nest_content, :new_image and
 # :new_image_buttons (set/all/reference_editor/{nest_editor,nest_image}.rb).
 #
 # WHAT RUNS: the gems' own source lines extracted VERBATIM by line range.
@@ -20,17 +20,16 @@
 #   standard_save_button - form_buttons.rb:15-22 with no_origin_update: true
 #                      (no _update-origin class arm).
 #
-# THE OTHER FOUR CENSUS VIEWS (:nest_editor, :modal_nest_editor,
-# :nest_image, :modal_nest_image) are the reference-editor haml chrome -
-# the snippet-editor UI (reference_editor.haml + _nest_editor.haml +
-# nest_editor_tabs.rb + the option-select partials), whose state is
-# REQUEST-PARAM driven (:tm_snippet_raw, :tinymce_id) and whose JS surface
-# carries zero anchors on the migrated deck (the mod-coverage lane's
-# usage-weight finding). Named remainders in the harness receipt, not
-# ported here.
+# The reference editor's other four views (:nest_editor, :modal_nest_editor,
+# :nest_image, :modal_nest_image) are the haml snippet-editor chrome -
+# reference_editor.haml + _nest_editor.haml + nest_editor_tabs.rb + the
+# option-select partials - whose state is REQUEST-PARAM driven
+# (:tm_snippet_raw, :tinymce_id). They are captured by the sibling script
+# reference-editor-chrome-views.rb, not here.
 #
-# The capture corpus carries no live bytes for any tinymce view name (the
-# mod's existing js-keyed views ride the flat record; no html captures).
+# No recorded deck renders exist for these three contract views (the mod's
+# existing js-keyed views are recorded only as flat records, not html), so
+# the contracts here are pinned directly from the gem source.
 #
 # Usage: ruby tinymce-census-views.rb <card-mod-tinymce_editor-gem-path>
 
@@ -107,9 +106,9 @@ emit(behaviorId: "view:new_image",
 # the form-group div (card-mod-edit form.rb:86-88) over the lone save
 # button (form_buttons.rb:15-22: text "Save", add_class "submit-button
 # me-3 _update-history-pills", data-cy "save"; the no_origin_update opt
-# Rails emits VERBATIM as an attribute - the substrate's captured
-# no_origin_update="true" bytes; bootstrapify appends btn btn-primary;
-# the disable-with leads the caller attrs per the reverse_merge order).
+# Rails emits VERBATIM as an attribute; bootstrapify appends btn
+# btn-primary; the disable-with leads the caller attrs per the
+# reverse_merge order).
 emit(behaviorId: "view:new_image_buttons",
      kind: "view-fragment",
      scenario: "new_image_buttons_formgroup",

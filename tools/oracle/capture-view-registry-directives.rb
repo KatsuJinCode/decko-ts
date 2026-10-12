@@ -1,5 +1,5 @@
-# capture-view-registry-directives.rb - R3.1.a / R3.1.b / R3.4.b oracle
-# capture: the live html view registry's directive table, the skip_perms /
+# capture-view-registry-directives.rb - oracle capture: the html view
+# registry's directive table, the skip_perms /
 # underscore render forms, and the denial-substitution behavior.
 #
 # Ruby truth pinned by this capture:
@@ -9,13 +9,13 @@
 #     crud?(task) && task).
 #   - card-1.110.0 lib/card/format/render.rb:55-57 (view_setting = `try` of
 #     the directive method), :59-66 (view_method -> the `_view_<name>`
-#     Method - R3.1.a's "callable").
+#     Method — the callable the registry hands out).
 #   - card-1.110.0 lib/card/format/error.rb:27-31 (view_for_denial =
 #     view_setting(:denial, view) || :denial).
 #   - card-1.110.0 lib/card/format/method_delegation.rb:5-9,48-55
 #     (RENDER_METHOD_RE: `_render_<view>` sets skip_perms).
 #   - card-mod-format-0.20.0 set/all/html/menu.rb:8 (`view :menu,
-#     denial: :blank` - R3.4.b's substitution registry).
+#     denial: :blank` — the denial-substitution registry entry).
 #
 # READ-ONLY: no card is saved; renders are GET-equivalent view dispatches.
 # The probe asserts card_actions/Card counts are unchanged across the run.
@@ -35,7 +35,7 @@ OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "view-registry-directiv
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end
@@ -71,8 +71,8 @@ def survey_card(card)
       "perms"   => fmt.view_setting(:perms, sym),
       "denial"  => fmt.view_setting(:denial, sym),
       "unknown" => fmt.view_setting(:unknown, sym),
-      # R3.1.a "resolves to a callable": the Method object's parameters -
-      # the voo argument the view dispatches with.
+      # the registry's "resolves to a callable" fact: the Method object's
+      # parameters - the voo argument the view dispatches with.
       "method_parameters" => fmt.view_method(sym).parameters.map { |p| p.map(&:to_s) },
     }
   end
@@ -86,18 +86,18 @@ end
 
 # ---- 2. behavior arms ------------------------------------------------------
 #
-# DECK ARTIFACT (probed by probe-rule-card-fetch-and-guarded-views.rb and the
-# dead session's probe-scratch-bisect.rb bisect): this oracle deck carries no
-# usable name lexicon for JUNCTION names - Card.fetch("*all+*read") returns
-# nil even though the rule row exists (cards.id 10, left *all right *read;
-# the codename-registry lane's rule seeds cite the same ids). Simple-name
+# DECK ARTIFACT (see probe-rule-card-fetch-and-guarded-views.rb): this oracle
+# deck carries no usable name lexicon for JUNCTION names - Card.fetch("*all+*read")
+# returns
+# nil even though the rule row exists (cards.id 10, left *all right *read).
+# Simple-name
 # fetches are unaffected. Arms therefore pin on cards that fetch: the
 # "Oracle Basics" rich-text card (Anonymous read-DENIED, so every guarded
 # view denies) and the "*update" set card (also Anonymous read-denied; its
 # :menu view carries the :blank denial override). The update-permission
 # CHECK itself (card.ok?(:update)) raises NoMethodError (item_cards on nil)
 # on this deck for a card Anonymous cannot read - recorded under
-# deck_artifacts, NOT under behavior: it is the anonymized deck's fetch
+# deck_artifacts, NOT under behavior: it is this deck's fetch
 # gap, not Ruby's view-registry contract, and the port must not replay it.
 
 def render_outcome(card_name, view, opts = {})
@@ -117,27 +117,27 @@ Card::Auth.as_bot do
 end
 
 Card::Auth.as(Card::AnonymousID) do
-  # R3.1.b arm 2 (perms :none -> skip_check?): :title's directive is
+  # the perms :none arm (skip_check?): :title's directive is
   # perms :none (captured in the survey), so BOTH viewers render it with no
   # permission check at all.
   behavior["none_perms_anonymous_title"] = render_outcome("Oracle Basics", :title)
   behavior["none_perms_anonymous_url"]   = render_outcome("Oracle Basics", :url)
 
-  # R3.1.a's view_perms fallback (setting(:perms) || :read) exercised
+  # the view_perms fallback (setting(:perms) || :read) exercised
   # end-to-end: a plain content view (:titled carries no perms directive ->
   # :read) on a read-denied card denies, through the DEFAULT denial view
-  # (R3.4.b's non-substituted arm -> quiet_denial span). Both a basic card
+  # (the non-substituted arm -> quiet_denial span). Both a basic card
   # and a set card (whose own *self read rule denies too).
   behavior["guarded_read_anonymous_titled_denial_basic"]    = render_outcome("Oracle Basics", :titled)
   behavior["guarded_read_anonymous_titled_denial_set_card"] = render_outcome("*update", :titled)
 
-  # R3.4.b's SUBSTITUTED arm: the five views with `denial: :blank`
+  # the SUBSTITUTED arm: the five views with `denial: :blank`
   # (menu.rb:8 et al) render the empty string instead of the denial frame.
   behavior["denial_blank_substitution_menu"]                 = render_outcome("*update", :menu)
   behavior["denial_blank_substitution_edit_link"]            = render_outcome("*update", :edit_link)
   behavior["denial_blank_substitution_universal_edit_button"] = render_outcome("*update", :universal_edit_button)
 
-  # R3.1.b arm 1: the explicit skip_perms render option bypasses the
+  # the explicit skip_perms render option bypasses the
   # :update check on the guarded :edit_inline view ...
   behavior["guarded_update_anonymous_skip_perms"] =
     render_outcome("Oracle Basics", :edit_inline, { skip_perms: true })

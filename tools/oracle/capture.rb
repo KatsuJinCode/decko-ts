@@ -49,7 +49,7 @@ RENDER_VIEWS = %i[open closed content title].freeze
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end

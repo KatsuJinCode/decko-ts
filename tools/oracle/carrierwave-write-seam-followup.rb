@@ -1,4 +1,5 @@
-# carrierwave-write-seam-followup.rb - second oracle pass for the seam lane:
+# carrierwave-write-seam-followup.rb - second oracle pass for the carrierwave
+# write/output seam:
 # (1) the :input text_field branch (no_upload? true) - reached by setting
 #     Cardio.config.file_storage = :web (storage_type_from_config reads the
 #     config live; the deck default is :local, which is why the stored web
@@ -16,7 +17,7 @@ OUT_PATH = File.expand_path("../..", __dir__) +
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end
