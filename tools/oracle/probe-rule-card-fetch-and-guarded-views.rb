@@ -1,8 +1,7 @@
-# probe-rule-card-fetch-and-guarded-views.rb - diagnostic for the
-# view-registry-directives capture's guarded_update arms: why does
-# Card.fetch("*all+*read") return nil on the oracle deck, and what does the
-# update-guarded :edit_inline view render for Anonymous (default denial,
-# skip_perms option, underscore form)?
+# probe-rule-card-fetch-and-guarded-views.rb - diagnostic for the guarded
+# update arms of the view registry: why does Card.fetch("*all+*read") return
+# nil on the oracle deck, and what does the update-guarded :edit_inline view
+# render for Anonymous (default denial, skip_perms option, underscore form)?
 #
 # READ-ONLY: fetches and renders only; no card is saved.
 
