@@ -1,5 +1,6 @@
-# oracle-capture-content-inputs.rb - oracle capture for the card-mod-content
-# abstract :input views: Abstract::CodeContent (set/abstract/01_code_content.rb:2-5),
+# oracle-capture-content-inputs.rb - renders the card-mod-content
+# abstract :input views for byte fixtures: Abstract::CodeContent
+# (set/abstract/01_code_content.rb:2-5),
 # Abstract::HamlFile (set/abstract/haml_file.rb:11-14), Abstract::ReadOnly
 # (set/abstract/read_only.rb:1-4).
 #
@@ -14,7 +15,7 @@
 #    basket of abstract set modules).
 # 2. the set-module view registrations card-mod-content contributed for
 #    :input (with source locations proving which abstract file defined
-#    each - the live "which module registered :input" registry state).
+#    each - the actual "which module registered :input" registry state).
 # 3. the superView chain resolution for :input given an EMPTY cardChain
 #    (the abstract pseudo-pattern is anchorless - no concrete pattern
 #    instance matches, so the walker falls back to load-order
@@ -31,8 +32,8 @@
 # Determinism contract (mirrors oracle-capture-help-mod.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards
-# are created-if-missing and DELETED (trashed) after capture so the shared
-# oracle DB returns to its prior state (a re-run of capture.rb stays
+# are created-if-missing and DELETED (trashed) after the run so the shared
+# DB returns to its prior state (a re-run of this script stays
 # byte-stable).
 
 require "json"
@@ -109,7 +110,7 @@ end
 # Three abstract set modules define :input on their respective HtmlFormat
 # modules (format :html do block in each abstract file). Recording
 # presence + source_location proves which file contributed each :input -
-# the byte oracle pin linking the live render to the gem file.
+# the rendered pin linking the render to the gem file.
 abstract_code_content_html = Card::Set::Abstract::CodeContent.const_get(:HtmlFormat)
 abstract_haml_file_html    = Card::Set::Abstract::HamlFile.const_get(:HtmlFormat)
 abstract_read_only_html    = Card::Set::Abstract::ReadOnly.const_get(:HtmlFormat)
@@ -195,9 +196,9 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data. Everything this fixture records is order/registry/render
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data. Everything
+# this fixture records is order/registry/render
 # state the mod loader must reproduce.
 
 # ---- write ------------------------------------------------------------------
