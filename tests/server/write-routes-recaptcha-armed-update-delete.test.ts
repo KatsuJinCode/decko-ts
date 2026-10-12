@@ -522,7 +522,7 @@ describe("armed route pins: DELETE through the production recaptcha seat (no mod
       form: { recaptcha_token: "tok-del-human" },
     });
     expect(res.status).toBe(303); // the plain-form hard redirect (response.rb:31,41)
-    // the guard now verifies on delete too: the human verdict's canned body
+    // the guard verifies on delete too: the human verdict's canned body
     // carries action "delete" — recaptcha.rb:38 matches the save's OWN
     // card.act.action, and a trash flip save's action is :delete
     expect(delHumanStubCalls).toEqual([
