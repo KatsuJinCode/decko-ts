@@ -8,24 +8,14 @@
 // nest_syntax: in_brackets` — `name` is the authored reference; the
 // resolved name only feeds the fetch and the slot's data-card-name).
 //
-// Oracles:
-//   - raw recapture oracle (tmp/raw-ground-truth/expected/
-//     recapture-raw-shard-000005.jsonl, entry id 9625 "The End of Awe
-//     by Maureen Dowd - NYTimes", the round-9 pass's named first
-//     difference): the `{{+Source Title}}` nest's slot carries
-//     nest_name "+Source Title" while data-card-name stays absolute
-//     ("The End of Awe by Maureen Dowd - NYTimes+Source Title").
-//   - live wire (an internal work log, the arbiter): nest_name values
-//     are authored bytes — "+tag", "+related", "+Source Title",
-//     "+Organizer(s)", "_main", "Su$tainability" (dollar intact),
-//     "Conflict_Done_Well+class_schedule" (authored underscores) —
-//     never the absolutized forms the engine emitted before this fix
-//     ("Riley Ellery+Image", "Francis Langley+Recommendations",
-//     ... in an internal work log).
+// Observed nest_name values are authored bytes — "+tag", "+related",
+// "+Source Title", "+Organizer(s)", "_main", "Su$tainability" (dollar
+// intact), authored-underscore junction names — never the absolutized
+// forms the engine emitted before this fix.
 //
 // The pointer/list item path (views.ts#renderPointerListItem) keeps
-// passing the item's absolute name explicitly — live pins the item
-// slots' nest_name as the absolute item name ("Aikido Oak Cliff+Gallery").
+// passing the item's absolute name explicitly — the item slots'
+// nest_name is the absolute item name.
 //
 // Rule-less storage: no read rules exist, so the rule-less allowance
 // keeps every card readable and the nest renders the titled child body.
@@ -62,9 +52,8 @@ describe("data-slot nest_name: authored reference form (raw oracle 9625 + live w
     });
     const html = await storage.engine.render("Deferred Lane Parent", "content");
 
-    // The slot's own identity attrs stay absolute (raw oracle id 9625:
-    // data-card-name="The End of Awe by Maureen Dowd - NYTimes+Source
-    // Title").
+    // The slot's own identity attrs stay absolute: data-card-name carries
+    // the resolved (absolutized) name.
     expect(html).toContain('data-card-name="Deferred Lane Parent+Source Title"');
     // nest_name + nest_syntax keep the AUTHORED reference bytes.
     expect(html).toContain("&quot;nest_name&quot;:&quot;+Source Title&quot;");
