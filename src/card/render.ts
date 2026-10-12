@@ -6615,7 +6615,7 @@ export class RenderEngine implements RenderEngineLike {
       // single-word (all pre-existing head reads). Without this, a raw-dump
       // row seats where no normalized lookup can ever reach it and the
       // recent arm (format.ts#recentSettingCodenames -> fetchRenderCard)
-      // reads an empty membership on every raw-corpus render.
+      // reads an empty membership on every raw-dump render.
       record.key = record.name.key;
       await this.cacheFetchedRecord(record);
     }
@@ -6647,7 +6647,8 @@ export class RenderEngine implements RenderEngineLike {
    * id-less card shape (id undefined, type from the setting card) so
    * ruleNamesForCard drops the SELF candidate (pattern/all.rb#patterns'
    * new-card branch), letting the RSTAR *all+*<setting> candidate win
-   * for the Anonymous corpus viewer (the captured denial surface).
+   * for the Anonymous viewer (the denial surface a signed-out render
+   *  must produce).
    *
    * Idempotent: skip-if-set guard matches ensureVerdicts' skip-if-set
    * pattern (line 968). Warm renders stay at zero queries — verdicts
@@ -6703,7 +6704,7 @@ export class RenderEngine implements RenderEngineLike {
         // existing_rule_from_prototype → set_prototype.rule_card(setting) —
         // the first EXISTING stored rule in the prototype's candidate walk).
         // The set card's own pattern walk lands on the same stored rule for
-        // this corpus (documented on existingRuleKeys); memoized so the sync
+        // this deck (documented on existingRuleKeys); memoized so the sync
         // bar renderer (views.ts prepareBar's `voo.hide :bar_nav unless
         // existing_rule_card` + the one-line-content gate in rule-bar-right)
         // stays query-free.
@@ -7041,8 +7042,8 @@ export class RenderEngine implements RenderEngineLike {
    *  - known/virtual resolution for the three links (links.rb:141-144
    *    add_known_or_wanted_class -> Card.known? = real? || virtual?;
    *    virtual? = compound && structure.present? — states.rb:63-67 — which
-   *    for "Decko Bot 1+*account settings" hits the deck's
-   *    `*account settings+*right+*structure` rule, corpus rule card 34826).
+   *    for "<bot>+*account settings" hits the deck's
+   *    `*account settings+*right+*structure` rule).
    *  Memoized per actor; a no-op for signed-out or actor-less sessions.
    *  An unresolvable session account cannot exist in Ruby (Auth.current_id
    *  always names a live account card), so the engine degrades the whole
