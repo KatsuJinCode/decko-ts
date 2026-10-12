@@ -1,5 +1,5 @@
-# oracle-capture-admin-view-pins.rb - oracle byte-capture for the 5
-# rendered-unpinned core-mod admin views the lane-admin-pins capture targets:
+# oracle-capture-admin-view-pins.rb - renders the core-mod admin views this
+# fixture pins and records their bytes as JSON:
 #   1. set/self/mod.rb view :roles          (on the Mod cardtype card)
 #   2. set/self/mod.rb view :cardtypes      (on the Mod cardtype card)
 #   3. set/type/mod.rb view :styles         (on mod: format)
@@ -10,18 +10,18 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-admin-view-pins.rb
 #
-# Records to <lane-worktree>/fixtures/captured/admin-view-pins.json:
+# Records to fixtures/captured/admin-view-pins.json:
 #   1. rendered bytes for the 5 view names above, on the deck-resident
 #      targets the existing core-mod-admin-views.test.ts already uses
 #      (Mod = the cardtype card; mod: format = the format-mod instance).
-#      Captures run as Card::Auth.as_bot (Decko Bot admin) — the same
+#      Renders run as Card::Auth.as_bot (Decko Bot admin) — the same
 #      actor the engine's main render uses (viewer actorId 1).
 #   2. Per-view meta (id, name, key, type, db_content, codename, content)
 #      for each target, so the TS fixture can seed byte-identical cards.
 #   3. Source-location provenance for each view (instance_method.source_location
 #      of the view's set-module method) so the pin cites gem file:line.
 #   4. The no-write proof: card_actions count before and after the whole
-#      capture. The capture performs ZERO card writes (renders only).
+#      run. The script performs ZERO card writes (renders only).
 #
 # Normalizations applied (the same masks the TS test applies):
 #   - data-slot-id -> "RANDOMIZED" (SecureRandom.hex(10), wrap.rb:45)
@@ -137,7 +137,7 @@ results = {
 
 before_count = action_count
 
-# ---- target 1: Mod cardtype card (the 4 self/mod views) -----------------
+# ---- target 1: Mod cardtype card (the 5 self/mod views) -----------------
 modcard = Card["Mod"]
 raise "Mod cardtype card missing" unless modcard
 
