@@ -34,17 +34,16 @@
 // test:persistence-probe, plus the no-caching freshness stage appended below
 // and the conflict-marker pre-flight ahead of them.
 //
-// WHY no-caching is its OWN stage and not part of `npm test` (review finding
-// 16). tests/deploy/no-caching-synthetic.test.ts is the PUBLIC proof that a
-// write committed between two requests is visible to the next one on every
-// serving path — the deck_data_version stamp's whole reason to exist — and it
-// ran on no default command. It is fast in isolation (7.84 s measured alone,
-// 2026-10-11), but `npm test` (tests/card/) already costs ~155 s on this
-// tree, so adding it there would not keep that command under the two-minute
-// budget; it would also put a deploy-suite proof inside a card-only script.
-// A stage is the honest home: the suite runs on every release check, its
-// result is classified against KNOWN_FAILURES.md like every other stage, and
-// neither `npm test`'s scope nor its runtime changes.
+// WHY no-caching is its OWN stage and not part of `npm test`.
+// tests/deploy/no-caching-synthetic.test.ts is the PUBLIC proof that a write
+// committed between two requests is visible to the next one on every serving
+// path — the deck_data_version stamp's whole reason to exist — and it ran on
+// no default command. It is fast in isolation, but `npm test` (tests/card/)
+// already costs ~155 s on this tree, so adding it there would not keep that
+// command under the two-minute budget; it would also put a deploy-suite proof
+// inside a card-only script. A stage is the honest home: the suite runs on
+// every release check, its result is classified against KNOWN_FAILURES.md like
+// every other stage, and neither `npm test`'s scope nor its runtime changes.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -259,11 +258,10 @@ const known = knownFailureSuites();
 // Merge damage is checked FIRST and runs even if every other stage fails,
 // because it costs milliseconds and it is the one failure mode that makes the
 // rest of the report meaningless: a shipped `<<<<<<< HEAD` in a doc is not a
-// red suite, it is a file that was never finished. Two docs shipped that way
-// (docs/parity-method.md and tools/ruby-version-variance/README.md, both left
-// by the r9fix/gates merge), and nothing caught them, because every stage
-// here reports on test VERDICTS and no test reads a README for conflict
-// markers. Resolving them by hand is not the fix; this is.
+// red suite, it is a file that was never finished. Docs HAVE shipped that way,
+// and nothing caught them, because every stage here reports on test VERDICTS
+// and no test reads a README for conflict markers. Resolving them by hand is
+// not the fix; this is.
 const markers = conflictMarkers();
 const markerRow = {
   stage: "conflict-markers",
