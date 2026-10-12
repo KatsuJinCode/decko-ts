@@ -1,4 +1,4 @@
-// The card-mod-edit EDIT-VIEWS suite: the 16 views ported after write-path
+// The card-mod-edit edit-views suite: the 16 views ported after write-path
 // slices 3/4 (the inline-editing surface, the create surface, the board-tab
 // :guide_tab delegate, the structure/nests placeholders, the read-form
 // formgroups and the overlay guide), rendered through the real RenderEngine
@@ -214,7 +214,7 @@ const ANON_DENIED_VIEWS = [
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
 let botEngine: RenderEngine | undefined;
-let saraEngine: RenderEngine | undefined;
+let memberEngine: RenderEngine | undefined;
 let anonymousEngine: RenderEngine | undefined;
 
 beforeAll(async () => {
@@ -472,8 +472,8 @@ describeOrSkipLoud(
   !CAPTURES_PRESENT,
   "tests/card/mod-loader/card-mod-edit-views.test.ts",
   "fixtures/captured/{board-views,edit-views}.json — captured-oracle fixtures, absent on a clean clone",
-)("card-mod-edit EDIT-VIEWS lane", () => {
-  it("the pinned capture is render-only: card_actions count unchanged (no-write proof)", () => {
+)("card-mod-edit edit views", () => {
+  it("the recorded fixture is render-only: card_actions count unchanged (no-write proof)", () => {
     expect(FIXTURE.no_write_proof.unchanged).toBe(true);
     expect(FIXTURE.no_write_proof.actions_before).toBe(
       FIXTURE.no_write_proof.actions_after,
@@ -576,22 +576,22 @@ describeOrSkipLoud(
     expect(readFormHtml).toBe("");
   });
 
-  it("WITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle", async () => {
+  it("WITH the mod: plain-member stand-in - member verdicts split the arms like the oracle", async () => {
     const s = storage!;
-    saraEngine = new RenderEngine(new FetchEngine(s.counting));
-    saraEngine.viewer = { signedIn: true, actorId: 583 };
-    saraEngine.pageSession = { signedIn: true, actorId: 583 }; // the follow seam's Auth.current
-    await warmEngine(saraEngine);
+    memberEngine = new RenderEngine(new FetchEngine(s.counting));
+    memberEngine.viewer = { signedIn: true, actorId: 583 };
+    memberEngine.pageSession = { signedIn: true, actorId: 583 }; // the follow seam's Auth.current
+    await warmEngine(memberEngine);
 
     const basic = FIXTURE.targets.basic_note.views.tova;
     for (const view of ALL_VIEWS) {
       if (view === "edit_structure") continue;
       if ((BOARD_PINNED_VIEWS as readonly string[]).includes(view)) continue; // board fixture
-      const html = normalize(await saraEngine.render("Oracle Basics", view));
+      const html = normalize(await memberEngine.render("Oracle Basics", view));
       expect(html).toBe(basic[view]);
     }
     for (const view of BOTH_TARGET_VIEWS) {
-      const html = normalize(await saraEngine.render("Home", view));
+      const html = normalize(await memberEngine.render("Home", view));
       expect(html).toBe(FIXTURE.targets.deck_level.views.tova[view]);
     }
   });
@@ -621,7 +621,7 @@ describeOrSkipLoud(
     expect(arm.message).toContain("undefined method `gsub' for nil");
   });
 
-  it("the board-lane pinned capture is render-only (no-write proof)", () => {
+  it("the board fixture is render-only (no-write proof)", () => {
     expect(BOARD_FIXTURE.no_write_proof.unchanged).toBe(true);
     expect(BOARD_FIXTURE.no_write_proof.actions_before).toBe(
       BOARD_FIXTURE.no_write_proof.actions_after,
@@ -641,10 +641,10 @@ describeOrSkipLoud(
     }
   });
 
-  it("WITH the mod: tova stand-in - the board family matches the oracle bytes", async () => {
+  it("WITH the mod: plain-member stand-in - the board family matches the oracle bytes", async () => {
     const basic = BOARD_FIXTURE.targets.basic_note.views.tova;
     for (const view of BOARD_PINNED_VIEWS) {
-      const html = normalize(await saraEngine!.render("Oracle Basics", view));
+      const html = normalize(await memberEngine!.render("Oracle Basics", view));
       expect(html).toBe(basic[view]);
     }
   });
@@ -660,7 +660,7 @@ describeOrSkipLoud(
     }
   });
 
-  it("the machinery remainders (stage-5 verdict: both still failing)", () => {
+  it("the machinery remainders (both still fixture-recorded)", () => {
     // engage_tab's discussion arm (the unknown +discussion card's titled +
     // comment_box nest) and edit_rules' Home arm (the set card EXISTS in
     // the deck - the known branch needs the set card warmed in the render

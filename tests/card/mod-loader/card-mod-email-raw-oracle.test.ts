@@ -82,7 +82,7 @@ const FIXTURE_PRESENT = existsSync(FIXTURE);
 if (!FIXTURE_PRESENT) {
   console.warn(
     `[card-mod-email-raw-oracle] SKIPPED: ${FIXTURE} is not present. ` +
-      `These oracle bytes are captured from the reference deck and carry its ` +
+      `These oracle bytes were recorded from the reference deck and carry its ` +
       `real card names and addresses, so they are not committed to this fork. ` +
       `See docs/TESTING.md for how to supply them. This suite asserts real ` +
       `render behaviour when present and guards nothing when absent.`,
@@ -187,9 +187,9 @@ function linkBlock(html: string): string {
 }
 
 describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts", "FIXTURE_PRESENT")(
-  "U6/C8 — the reference deck's email templates against the raw Ruby oracle",
+  "the reference deck's email templates against the raw Ruby oracle",
   () => {
-  it("the fixture carries the five email_template cards with captured :content bytes", () => {
+  it("the fixture carries the five email_template cards with recorded :content bytes", () => {
     const templates = fixture.cards.filter((c) => TEMPLATE_IDS.includes(c.id as never));
     expect(templates).toHaveLength(5);
     for (const t of templates) {
@@ -248,7 +248,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   //   - with deck_origin set (the served-page configuration): the
   //     origin-absolute form.
   // The port resolves the origin per surface, so BOTH pins below hold.
-  it("base :url renders the view-lane card_url (origin absent, the fixture's own shape)", async () => {
+  it("base :url renders the origin-relative card_url (no origin configured, the fixture's own shape)", async () => {
     expect(await storage!.engine.render("verification email", "url")).toBe(
       "/verification_email",
     );
@@ -257,7 +257,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
     );
   });
 
-  it("base :url renders the origin-absolute card_url on the PAGE lane (the page oracle)", async () => {
+  it("base :url renders the origin-absolute card_url when the page configuration supplies deck_origin", async () => {
     // The engine's page configuration supplies deck_origin, so the test
     // installs that configuration around the page render.
     await withCapturePageLaneOrigin(async () => {
@@ -272,7 +272,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
     });
   });
 
-  it("base :id_url renders the view-lane card_url (origin absent)", async () => {
+  it("base :id_url renders the origin-relative card_url (origin absent)", async () => {
     // Ruby: card_url("~#{card.id}") (base.rb:29) through card_path →
     // `/~21783` (origin absent) or `https://<deck_origin>/~21783` (origin
     // present) — env/location.rb:6-21, serializable.rb:20-22. The pins are
@@ -280,7 +280,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
     expect(await storage!.engine.render("verification email", "id_url")).toBe("/~21783");
   });
 
-  it("base :id_url renders the origin-absolute card_url on the PAGE lane", async () => {
+  it("base :id_url renders the origin-absolute card_url when the page configuration supplies deck_origin", async () => {
     await withCapturePageLaneOrigin(async () => {
       expect(
         await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "id_url")),
@@ -362,7 +362,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
     // card_url surface-scoped (env/location.rb:19-21 + serializable.rb:20-22)
     // the origin-absent surface emits `/*changed_card?view=history` and the
     // origin-configured surface keeps the absolute form.
-    [21796, "the origin delta that used to sit at byte 737 is closed (fix-d1-url-origin lane, 2026-10-01): card_url resolves the per-render Env.origin, so the view lane renders the oracle's /*changed_card?view=history", true],
+    [21796, "the origin delta that used to sit at byte 737 is closed: card_url resolves the per-render Env.origin, so the origin-absent surface renders the oracle's /*changed_card?view=history", true],
   ] as const) {
     const byteExact = async () => {
       const oracle = fixture.views[String(id)]!.content!;

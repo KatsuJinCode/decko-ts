@@ -202,22 +202,22 @@ async function renderCustomizeButton(name: string): Promise<string> {
   return s.engine.render(name, "customize_button");
 }
 
-describe("M9 — Card.exist? drives new_customized_name (card-mod-bootstrap)", () => {
+describe("Card.exist? drives new_customized_name (card-mod-bootstrap)", () => {
   // -------------------------------------------------------------------------
   // The page-scoped map gate answered "free" for all of these before the
   // existence query landed.
   // -------------------------------------------------------------------------
-  it("suffixes the journal skin whose customized card exists (corpus 34179 -> oracle 22794)", async () => {
+  it("suffixes the journal skin whose customized card exists", async () => {
     const html = await renderCustomizeButton("journal skin");
     expect(proposedName(html)).toBe("journal skin customized 1");
   });
 
-  it("suffixes the slate skin whose customized card exists (corpus 38274 -> oracle 22818)", async () => {
+  it("suffixes the slate skin whose customized card exists", async () => {
     const html = await renderCustomizeButton("slate skin");
     expect(proposedName(html)).toBe("slate skin customized 1");
   });
 
-  it("suffixes the litera skin whose customized card exists (corpus 34530 -> 33872, uncaptured by the oracle)", async () => {
+  it("suffixes the litera skin whose customized card exists even when the reference deck never captured one", async () => {
     const html = await renderCustomizeButton("litera skin");
     expect(proposedName(html)).toBe("litera skin customized 1");
   });
@@ -258,14 +258,14 @@ describe("M9 — Card.exist? drives new_customized_name (card-mod-bootstrap)", (
   // case-folded render-card-map read) answers TRUE for this deck and renders
   // "... customized 1", which is the wrong name.
   // -------------------------------------------------------------------------
-  it("leaves a case-MISMATCHED customized sibling unsuffixed (the negdelta falsifier)", async () => {
+  it("leaves a case-MISMATCHED customized sibling unsuffixed (the case-folding falsifier)", async () => {
     const html = await renderCustomizeButton("Cerulean Case Skin");
     expect(proposedName(html)).toBe("Cerulean Case Skin customized");
   });
 });
 
-describe("M9 — RenderEngine#cardExists is an EXACT stored-name query", () => {
-  it("documents the case-fold the negdelta lane's lexicon arm fell into", () => {
+describe("RenderEngine#cardExists is an EXACT stored-name query", () => {
+  it("documents the case-fold a key-shaped lexicon lookup cannot distinguish", () => {
     // THE TRAP, MECHANICALLY. `DeckoName#key` is the canonical key, and
     // `Inflector#underscore` downcases (src/card/name/inflect.ts:264-271,
     // porting cardname lib/cardname.rb:106-116 simple_key). So every
@@ -312,7 +312,7 @@ describe("M9 — RenderEngine#cardExists is an EXACT stored-name query", () => {
   });
 });
 
-describe("M9 — the customized-name memo follows save-side invalidation", () => {
+describe("the customized-name memo follows save-side invalidation", () => {
   it("re-asks after a save creates the card the button had proposed", async () => {
     const s = storage;
     if (s === undefined) throw new Error("storage not seeded");
