@@ -1,5 +1,5 @@
-# oracle-capture-edit-name-type.rb - oracle capture for the card-mod-edit
-# NAME-EDITOR and TYPE-SHIFT surfaces (write-path slice 4, the edit2):
+# oracle-capture-edit-name-type.rb - renders the card-mod-edit
+# NAME-EDITOR and TYPE-SHIFT surfaces:
 # the framed name editor (frame -> header/menu/panel -> rename form), the
 # bare name form, the name formgroup, the name row, the framed type editor,
 # the bare type form, the type formgroup (the full cardtype select - the
@@ -10,11 +10,11 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-edit-name-type.rb
 #
-# Records to <script-repo>/fixtures/captured/edit-name-type.json:
-# 1. For each target card (the basic RichText "Oracle Basics" and the
+# Records to fixtures/captured/edit-name-type.json:
+# 1. For each target card (the basic RichText probe card and the
 #    deck-level "Home" - the SAME two targets the edit-forms capture used)
-#    and each actor (Decko Bot = signed-in admin, Tova = signed-in
-#    non-admin member, Anonymous): the rendered bytes of :edit_name,
+#    and each actor (Decko Bot = signed-in admin, a signed-in
+#    non-admin member account, Anonymous): the rendered bytes of :edit_name,
 #    :name_form, :name_formgroup, :edit_name_row, :edit_type,
 #    :edit_type_form, :type_formgroup, :board_type_formgroup.
 #    The perms-:update views (:edit_name, :name_form, :edit_type,
@@ -24,13 +24,13 @@
 #    (:name_formgroup, :edit_name_row, :type_formgroup,
 #    :board_type_formgroup) render for all three actors.
 # 2. The no-write proof: the card_actions count before and after the whole
-#    capture (renders + the validation-level conflict probe re-run, the
+#    run (renders + the validation-level conflict probe re-run, the
 #    SAME probe the edit-forms capture recorded - valid? runs validate-phase
-#    events only and cannot persist). The capture performs ZERO card writes:
+#    events only and cannot persist). The script performs ZERO card writes:
 #    no Card.create/update/save on any target.
 #
-# Targets are EXISTING cards ("Oracle Basics" id 605, "Home" id 521 - both
-# seeded by the oracle smoke seed).
+# Targets are EXISTING cards on the deck the script runs against (see
+# TARGETS).
 #
 # Determinism contract (mirrors oracle-capture-edit-forms.rb): output JSON
 # is pretty-printed with deeply sorted keys + a trailing newline; the same
@@ -134,7 +134,7 @@ TARGETS.each do |target|
   results["targets"][target[:label]] = entry
 end
 
-# ---- conflict probe re-run (Oracle Basics) ---------------------------------
+# ---- conflict probe re-run (the basic_note target) --------------------------
 # The SAME validation-level probe the edit-forms capture recorded: a stale
 # last_action_id_before_edit + valid? runs detect_conflict, adds the
 # :conflict error, and CANNOT persist (validate phase only). Included so
@@ -164,7 +164,7 @@ results["no_write_proof"] = {
 FileUtils.mkdir_p(File.dirname(OUT_PATH))
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(results)) + "\n")
 
-# Pin the oracle bytes beside the receipt (raw captures for reference).
+# Write the same bytes to CAPTURE_DIR when it exists (raw copies for reference).
 if File.directory?(PIN_DIR)
   File.write(File.join(PIN_DIR, "edit-name-type-oracle.json"),
              JSON.pretty_generate(deep_sort(results)) + "\n")
