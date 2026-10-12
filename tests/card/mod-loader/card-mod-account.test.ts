@@ -47,7 +47,7 @@ beforeAll(async () => {
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
   // the User cardtype card (the TYPE anchor of the type_plus_right/user
-  // sets; the corpus recapture carries this card with codename "user").
+  // sets; the card carries the codename "user")
   await seedCard(s, { id: 4, name: "User", codename: "user", typeId: 2 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
@@ -112,8 +112,7 @@ beforeAll(async () => {
   // type_plus_right/user/email set module unreachable (the card's
   // TYPE_PLUS_RIGHT anchor resolves from the LEFT card's type name, so a
   // RichText-typed probe anchors "rich_text+Xemail" and misses
-  // TypePlusRight::User::Email). Deck truth (corpus: codename
-  // "user" cardtype): the probe is a User card.
+  // TypePlusRight::User::Email). The probe is a User card.
   await seedCard(s, {
     id: 150,
     name: "Oracle Mail Probe",
@@ -163,10 +162,9 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // so it exists on every Ruby card — and the engine now registers it in
     // the shared HTML_VIEWS table the same way. Raising here was the
     // engine's gap, not Ruby's behaviour. It renders now, which is the
-    // faithful shape. (edge-signin-form-fix lane 2026-10-03: :core on
-    // *signin is now the SIGN-IN FORM on BOTH dispatch paths — the flat
-    // coreView self/signin branch renders it even WITHOUT the mod, which is
-    // the headless pattern the mod-less edge needs; see
+    // faithful shape. :core on *signin is the SIGN-IN FORM on BOTH dispatch
+    // paths — the flat coreView self/signin branch renders it even WITHOUT
+    // the mod, which is the headless pattern the mod-less edge needs; see
     // signin-core-form-view.test.ts. The two renders differ only in the
     // per-render random slot ids, normalized here.)
     const normalizeSlotIds = (html: string) =>
@@ -242,11 +240,8 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // only fires because the port has no Self::Signin :core registration —
     // set/type/setting.rb:39-55 would never be reached in Ruby, the
     // more-specific Self-pattern module overrides it). The view's own body —
-    // `_render_core` — is what this mod registers. The sign-in FORM bytes stay the
-    // named rails remainder in card-mod-account.ts's header ("signin
-    // core/open/title"), the forms/signin stack's territory.
-    // (edge-signin-form-fix lane 2026-10-03: :core IS PORTED now — the
-    // sign-in form, byte-first against the live oracle; dedicated pins in
+    // `_render_core` — is what this mod registers.
+    // :core is the sign-in form, with dedicated pins in
     // signin-core-form-view.test.ts. The delegation pin normalizes the
     // per-render random slot ids, because the form's help slots each carry
     // one — two raw renders can never be byte-equal.)
