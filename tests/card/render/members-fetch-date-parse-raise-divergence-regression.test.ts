@@ -1,24 +1,21 @@
 // members-fetch-date-parse-raise-divergence-regression.test.ts — the
-// ALWAYS-ON regression pin for the `engine-raise-divergence` page class
-// (pass15-page-fail-classes.md: 23 page-lane failures at tip 017b182 —
-// 21 NameNotFoundError on `X+*members` List item marks + 2 Date::Error
-// on Date-typed pages, all of which the oracle rendered).
+// ALWAYS-ON regression pin for the raise-divergence page class:
+// `X+*members` List item marks raising NameNotFoundError, and Date-typed
+// pages raising Date::Error, where Ruby rendered both.
 //
 // WHY THIS FILE EXISTS WHEN THE CLASS IS ALREADY FIXED
 // -----------------------------------------------------
-// The corpus proofs for this class live in two specs that are BOTH gated on
-// machine-local material and SKIP when it is absent:
+// The corpus-backed proofs for this class live in two specs that are BOTH
+// gated on env flags and machine-local material and SKIP when it is absent:
 //   - tests/card/render/raw-corpus-raise-leadview-pages.test.ts
-//     (RAISE_LEADVIEW_REPLAY=1, needs tmp/raw-ground-truth/bench-corpus-raw.sqlite3)
 //   - tests/card/render/raw-corpus-raise-leadview-sweep.test.ts
-//     (RAISE_LEADVIEW_SWEEP=1, same corpus + the page-lane yardstick shards)
-// Both call `ctx.skip()` when the gate is unset or the corpus is missing, so
-// an ordinary suite run reports them as skipped and a REGRESSION in either
-// mechanism is silent on any machine without the 217 MB corpus. This file
+// Both skip when the gate is unset or the corpus file is missing, so an
+// ordinary suite run reports them as skipped and a REGRESSION in either
+// mechanism is silent on any machine without the corpus. This file
 // pins the same two mechanisms hermetically — in-memory storage, no corpus,
 // no env gate — so they are checked on every run.
 //
-// MECHANISM 1 — the members-fetch half (21 pages).
+// MECHANISM 1 — the members-fetch half.
 //   `X+*members` List cards store their items as `~id` marks. DeckoName.parse
 //   resolves a mark through the SYNCHRONOUS name environment
 //   (src/card/name.ts:271 -> getNameEnvironment().lexicon.name(id)). Ruby's
@@ -36,8 +33,8 @@
 //   real cache reset, and the boundary that must STILL raise for an id the
 //   deck never held (the port must not have become a blanket swallow).
 //
-// MECHANISM 2 — the date-parse half (2 pages: 20190319, 20220323).
-//   Their Date-typed cards' content is the dashed two-digit-year form
+// MECHANISM 2 — the date-parse half.
+//   Date-typed cards whose content is the dashed two-digit-year form
 //   ("19-03-19", "22-03-23"). Ruby parses those; JS `new Date("19-03-19")`
 //   is Invalid Date, so the prepare-phase gate (src/card/render.ts:1347)
 //   raised Date::Error and the page died where Ruby rendered. The fix
@@ -58,7 +55,7 @@ import { formatDateCore } from "../../../src/card/render/views.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { NameNotFoundError } from "../../../src/card/name/errors.js";
 
-/** The three corpus members the members-fetch page exemplars list; ids are
+/** The members the members-fetch cards list; ids are
  *  arbitrary here (the mechanism is the mark parse, not the deck). */
 const MEMBERS = [
   { id: 393, name: "first member" },
@@ -89,7 +86,7 @@ describe("members-fetch name marks survive a Temporary-cache reset", () => {
       }
 
       // temporary.rb#within_key_counts: at 10,000 keys the whole store is
-      // dropped. This is the exact event that killed 21 pages.
+      // dropped. This is the exact event that killed the members-list pages.
       storage.fetcher.lexiconCache.temp.reset();
       expect(storage.fetcher.lexiconCache.temp.resetCount).toBeGreaterThan(0);
 
@@ -136,7 +133,8 @@ describe("members-fetch name marks survive a Temporary-cache reset", () => {
 
 describe("Date-typed pages: the dashed two-digit-year forms Ruby parses", () => {
   it("parses the two class exemplars' content (20190319, 20220323)", () => {
-    // The exact db_content of the two Date::Error pages in the yardstick.
+    // The dashed two-digit-year db_content forms that raised
+    // Date::Error before the fix.
     expect(parseRubyDateContent("19-03-19")).not.toBeNull();
     expect(parseRubyDateContent("22-03-23")).not.toBeNull();
     expect(isValidDateContent("19-03-19")).toBe(true);
@@ -145,8 +143,7 @@ describe("Date-typed pages: the dashed two-digit-year forms Ruby parses", () => 
 
   it("renders the oracle's strftime string for those contents", () => {
     // formatDateCore == ::Date.parse(content).strftime("%B %-d, %Y")
-    // (card-mod-date-0.20.0 set/type/date.rb:7). The corpus replay shows
-    // these exact strings in the oracle's page bytes.
+    // (card-mod-date-0.20.0 set/type/date.rb:7).
     expect(formatDateCore("19-03-19")).toBe("March 19, 2019");
     expect(formatDateCore("22-03-23")).toBe("March 23, 2022");
   });
@@ -178,12 +175,12 @@ describe("Date-typed pages: the dashed two-digit-year forms Ruby parses", () => 
       await seedCard(storage, { id: 34188, name: "20190319", typeId: 17, dbContent: "19-03-19" });
       await seedCard(storage, { id: 1135, name: "broken date", typeId: 17, dbContent: "brcvtwrvz" });
 
-      // The class-1 exemplar shape: no raise, the oracle's strftime body.
+      // The class exemplar shape: no raise, Ruby's strftime body.
       const good = await storage.engine.render("20190319", "open");
       expect(good).toContain("March 19, 2019");
 
-      // The boundary stays: corpus:1135's Date::Error sentinel is what the
-      // oracle captured for invalid content, so this must still raise.
+      // The boundary stays: invalid content must still raise
+      // Date::Error, Ruby's behavior for unparseable date strings.
       let captured: unknown;
       try {
         await storage.engine.render("broken_date", "open");
