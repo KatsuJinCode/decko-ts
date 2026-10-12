@@ -1,5 +1,4 @@
-// dual-lane-direct-driver.mjs -- 2026-10-01 direct grade runner driver
-// (direct-runner-builder lane).
+// dual-lane-direct-driver.mjs -- direct grade runner driver.
 //
 // WHAT THIS IS
 //   The scheduling half of the direct runner. It hands each of W workers a
@@ -9,12 +8,12 @@
 //   engine boot (open corpus, re-seed, lexicon warm) per worker instead of one
 //   per phase.
 //
-// THE PROBLEM IT IS BUILT AGAINST (grade-hours-autopsy-lane.md)
-//   The completed an earlier pass grade records 8,258.2 s of render compute over
+// THE PROBLEM IT IS BUILT AGAINST
+//   A completed earlier pass grade records 8,258.2 s of render compute over
 //   16,862 entries -- 137.6 worker-minutes -- turned into 4,146.9 s of wall
 //   clock (69.1 min) at 99.6% worker utilisation, i.e. wall = compute / 2
 //   exactly. The schedule was never the problem; the worker count was. The
-//   same receipt names two costs that per-worker booting removes:
+//   same analysis names two costs that per-worker booting removes:
 //     - 24 x (boot + full-corpus re-seed + per-id lexicon warm) = <= 8.4
 //       worker-min, plus 24 x a first-render lazy init of 19.8-30.7 s.
 //     - a heavy tail: the five heaviest phase pairs hold 43% of all compute,
@@ -35,7 +34,7 @@
 //   This replaced PASS19_PHASE_WEIGHTS_S, which was a STATED ASSUMPTION rather
 //   than a measurement: the recorded per-phase DONE durations split evenly
 //   across each phase's two shards, because the profiler could not split them
-//   (grade-hours-autopsy-lane.md Limitation 2 / the same note at
+//   (the same note lives at
 //   tools/dual-lane-verifier-fast.mjs:216-223). The W=8 probe measured what
 //   that assumption cost -- Pearson r = -0.21 between those weights and actual
 //   per-shard entry counts across all 48 shards, i.e. the weight signal was
@@ -50,8 +49,7 @@
 //   prediction of how long it will run. Against the probe's 8 measured workers
 //   it is the best proxy available BEFORE a run (r = 0.290, r^2 = 0.084) but
 //   still a weak one, and weaker than it looks because that run shared a
-//   machine that had 7.5 GB of 31.8 GB free. See
-//   an internal work log
+//   machine under memory pressure.
 //
 // SECOND-ORDER SIGNAL: FAILURE COST (--failure-artifacts)
 //   A prior run's per-shard failure counts, when they exist, are folded in as a
@@ -95,9 +93,8 @@
 //   It reads the per-worker artifacts a previous run already wrote and ranks
 //   shards by their recorded failures, which is the question the aggregate
 //   cannot answer -- `signatureCounts` is keyed by classification and
-//   `coverage` by counts, and a failure id carries no shard
-//   (w8-scaling-probe-lane.md Limitation 6). Exits 0 whether or not shards
-//   fail; a failing shard is the report's content, not its error.
+//   `coverage` by counts, and a failure id carries no shard. Exits 0 whether
+//   or not shards fail; a failing shard is the report's content, not its error.
 //
 //   NOT the production grade path. tools/dual-lane-verifier-fast.mjs remains
 //   that; this driver and the runner are additive and change nothing it does.
@@ -482,7 +479,7 @@ function applyFailureCostSignal(signal) {
   }
 
   // Start from the entry weights so any shard that fell back to the recorded
-  // an earlier pass seconds KEEPS that weight: the failure layer scales measured entry
+  // seconds KEEPS that weight: the failure layer scales measured entry
   // counts, and it has nothing to say about a shard it could not count.
   const weights = new Map(signal.weights);
   for (const [shard, weight] of costed.weights) weights.set(shard, weight);
@@ -885,7 +882,7 @@ async function main() {
   // hypothetical: a second driver invocation into the same --artifacts dir
   // overwrote the first run's per-worker artifacts (worker labels are queue
   // indexes and the runner names artifacts <label>-{aggregate,view,page}.json
-  // unconditionally) -- in the canvas-rerun lane w0-page.json's mtime moved
+  // unconditionally) -- w0-page.json's mtime moved
   // 06:32:45 -> 06:58:45, only w4/w7 survived, and shard coverage collapsed
   // 35 -> 26 of 48. The prior run's per-worker record is a measurement that
   // took real render-hours; losing it silently is the one outcome this driver
