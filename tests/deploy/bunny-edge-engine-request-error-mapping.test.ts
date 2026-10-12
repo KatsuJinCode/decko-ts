@@ -4,7 +4,7 @@
 // page, an unsupported view stays a 422 "Unsupported view" page, anything
 // else stays a 500 "Render error" page.
 //
-// The 404 is the 2026-10-02 lane fix: the entry's catch previously mapped
+// The 404 mapping closed a real gap: the entry's catch previously mapped
 // only "view ("-prefixed errors to 422 and fell through to 500 for
 // everything else, so a GET of a missing card answered 500 — while Ruby
 // answers 404 for a missing card and the CF worker's render path maps the
@@ -20,7 +20,7 @@
 //
 // NOT pinned here: the entry shell's serve callback (env + getDeck feeding
 // this handler) — it needs the Bunny Hrana socket; the split keeps it
-// type-checked via tsc and the live deploy.
+// type-checked via tsc and covered by the deployment build.
 
 import { describe, expect, it } from "vitest";
 
@@ -47,11 +47,10 @@ function realDeck(storage: RenderTestStorage) {
 }
 
 /** A deck whose page entry throws the given error; used only where the
- *  thing under test is the mapping of a MESSAGE, not the engine. Since the
- *  edge-site-shell lane (2026-10-02) the 200-path's render entry is
- *  renderPageBytes, whose first statement wraps the page assembly in
- *  engine.runWithPageConfig — so the stub throws there and the error
- *  surfaces through the same catch unchanged. */
+ *  thing under test is the mapping of a MESSAGE, not the engine. The
+ *  200-path's render entry is renderPageBytes, whose first statement wraps
+ *  the page assembly in engine.runWithPageConfig — so the stub throws there
+ *  and the error surfaces through the same catch unchanged. */
 function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
   return {
     fetcher: storage.fetcher,
@@ -108,11 +107,10 @@ describe("bunny edge engine request — render error mapping", () => {
       const res = await handleEngineRequest(edgeGet("/NoSuchCard"), realDeck(storage));
       expect(res.status).toBe(404);
       const body = await res.text();
-      // p2-error-shell lane (2026-10-03): the 404 body is the staging
-      // host's full-chrome not_found page (bunny-edge-error-page.ts) —
-      // the bare-shell assertions this pin carried before (<h1>Card not
+      // The 404 body is the full-chrome not_found page
+      // (bunny-edge-error-page.ts) — bare-shell assertions (<h1>Card not
       // found</h1> + the raw "card not found:" message) are superseded by
-      // the not_found slot bytes; the escape invariant moved to
+      // the not_found slot bytes; the escape invariant lives in
       // tests/deploy/bunny-edge-error-page.test.ts's crafted-name case.
       expect(body).toContain("<title>NoSuchCard - Test Site</title>");
       expect(body).toContain("<meta content='noindex' name='robots'>");
@@ -153,8 +151,8 @@ describe("bunny edge engine request — render error mapping", () => {
   it("a present card still renders 200 through the same handler", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // The page path is the engine's show_with_page_layout assembly
-      // (edge-site-shell lane, 2026-10-02); its head reads are codename-mark
+      // The page path is the engine's show_with_page_layout assembly; its
+      // head reads are codename-mark
       // fetches, so the deck carries the full shell seed set — the SAME ids
       // the 404 test's (first) storage seeded, keeping the process-global
       // name environment consistent across the file.
