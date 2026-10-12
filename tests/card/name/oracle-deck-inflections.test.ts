@@ -1,17 +1,17 @@
 /**
- * The deployed deck's inflection table (src/card/name/oracle-deck-inflections.ts).
+ * The deck's inflection table (src/card/name/oracle-deck-inflections.ts).
  *
  * The deck-serving origins apply CARD_GEM_INITIALIZER_INFLECTIONS at boot (the Rails
  * config/initializers/inflections.rb moment) so the engine keys names exactly
- * as the corpus's live Ruby stored them. The 2026-09-25 staging defect made
- * the stakes concrete: WITHOUT the boot call the engine computes
+ * as the deck's stored keys spell them. The stakes, concretely: WITHOUT the
+ * boot call the engine computes
  * `participant_` for "Participant(s)" (the default /s$/ singularization
- * strips the lone "s" segment), while the corpus stores `participant_s` —
- * the CQL plus-join resolved through DeckoName keying then fell back to
+ * strips the lone "s" segment), while the deck stores `participant_s` —
+ * the CQL plus-join resolved through DeckoName keying then falls back to
  * Ruby's -999 sentinel and every "+Project(s) Participating" section
- * rendered "0 results" site-wide.
+ * renders "0 results".
  *
- * These pins hold the PRODUCTION table (not a synthetic one — the seam
+ * These pins hold the REAL deck table (not a synthetic one — the seam
  * mechanics with synthetic tables live in deck-inflection-config.test.ts).
  */
 
@@ -30,31 +30,29 @@ afterEach(() => {
 describe("oracle deck inflection table (deployed deck boot data)", () => {
   it("default tables diverge from the corpus exactly on the recovered words", () => {
     resetDeckInflections();
-    // the DEFAULT-engine keys — the byte shapes that made the staging
-    // plus-joins return zero rows (projects-data-fix.md defect 1)
+    // the DEFAULT-engine keys — the byte shapes that make plus-joins
+    // return zero rows
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_");
     expect(DeckoName.parse("Project(s) Participating").key).toBe("project__participating");
-    expect(DeckoName.parse("Riley's").key).toBe("riley_");
+    expect(DeckoName.parse("Page's").key).toBe("page_");
   });
 
   it("keys parenthesized junction names exactly as the corpus stores them", () => {
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
-    // the corpus-stored keys (live Ruby's bytes, cards 406 / 420 / Riley's
-    // virtual participating section)
+    // the deck-stored keys
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_s");
     expect(DeckoName.parse("Project(s) Participating").key).toBe("project_s_participating");
-    // card 393's stored key (dual-lane capture db): live Ruby singularizes a
-    // trailing-s surname segment under the SAME default rules — the deck table
-    // changes nothing outside the three recovered uncountables. The corpus
-    // owner's own name is masked, so the pin carries a synthetic surname in
-    // the same inflection class ("Simmons" -> "simmon", the shape the corpus
-    // row exercised); the rule under test is unchanged.
-    expect(DeckoName.parse("Riley Simmons").key).toBe("riley_simmon");
+    // A trailing-s surname segment: the default Ruby rules singularize it
+    // ("Sims" -> "sim"), and the deck table changes nothing outside the
+    // three deck uncountables — this pin proves the table is not
+    // over-broad. The surname is synthetic, in the same trailing-s
+    // inflection class the rule under test handles.
+    expect(DeckoName.parse("Row Sims").key).toBe("row_sim");
     expect(
-      DeckoName.parse("Riley Simmons+Project(s) Participating").key,
-    ).toBe("riley_simmon+project_s_participating");
-    // the possessive family (Riley's -> riley_s) site-wide
-    expect(DeckoName.parse("Riley's").key).toBe("riley_s");
+      DeckoName.parse("Row Sims+Project(s) Participating").key,
+    ).toBe("row_sim+project_s_participating");
+    // the possessive family (Page's -> page_s)
+    expect(DeckoName.parse("Page's").key).toBe("page_s");
   });
 
   it("protects the other two recovered uncountables and nothing else", () => {
