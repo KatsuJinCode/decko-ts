@@ -1,11 +1,11 @@
-// Types + load-time validation for the captured Ruby oracle fixtures
+// Types + load-time validation for the recorded fixtures
 // (fixtures/captured/smoke.json, fixtures/captured/cql-basic.json).
 //
-// The schema is derived from the committed fixture bytes and the capture
-// scripts that wrote them (tools/oracle/capture.rb, cql_capture.rb). It is
-// exact: unknown keys and wrong-typed values fail loudly at load time, so
-// a re-capture that changes the format forces a deliberate schema update
-// instead of silently drifting past the replay harness.
+// The schema is derived from the committed fixture bytes and the recorder
+// that wrote them. It is exact: unknown keys and wrong-typed values fail
+// loudly at load time, so a re-recording that changes the format forces a
+// deliberate schema update instead of silently drifting past the replay
+// harness.
 
 import { readFileSync } from "node:fs";
 
@@ -24,7 +24,7 @@ export const CAPTURE_ERROR_PREFIX = "CAPTURE_ERROR:";
 
 /**
  * One entry of smoke.json `cards`, keyed by card name. Field set is exactly
- * what capture.rb#card_attributes records; `id` is DB-local and treated as
+ * what the recorder captures; `id` is DB-local and treated as
  * informational by the replay (docs/parity-method.md, "id stability").
  */
 export interface CapturedCardRecord {
@@ -41,7 +41,7 @@ export interface CapturedCardRecord {
 
 export type CardRecordWithoutId = Omit<CapturedCardRecord, "id">;
 
-/** smoke.json `read_rule`: one effective-reader probe over Oracle Restricted. */
+/** smoke.json `read_rule`: one effective-reader probe. */
 export interface ReadRuleFixture {
   target: string;
   set_card: string;
@@ -73,7 +73,7 @@ export interface SmokeFixture {
 
 /**
  * A recorded raise. The string always starts with CAPTURE_ERROR_PREFIX and
- * has the form `<prefix> <ruby class>: <message>`; parseCapturedError
+ * has the form `<prefix> <error class>: <message>`; parseCapturedError
  * splits it. cql `result` and the cql/render replay contract use this type.
  */
 export type CaptureErrorSentinel = string;
@@ -94,7 +94,7 @@ export function isCaptureErrorSentinel(value: unknown): value is CaptureErrorSen
   return typeof value === "string" && value.startsWith(CAPTURE_ERROR_PREFIX);
 }
 
-/** Split a sentinel into its Ruby error class and message. Throws if not a sentinel. */
+/** Split a sentinel into its error class and message. Throws if not a sentinel. */
 export function parseCapturedError(sentinel: string): { errorClass: string; message: string } {
   const preview = JSON.stringify(sentinel.slice(0, 80));
   if (!isCaptureErrorSentinel(sentinel)) {
@@ -128,10 +128,10 @@ export function parseRenderedKey(key: string): RenderedEntryKey {
 }
 
 /**
- * capture.rb renders one sentinel per card by calling
- * `format.render(:definitely_not_a_view)` and labels the entry
- * "<name>#unknown_view_sentinel". The label is a capture label, not a view;
- * the executable input view is this fixed one.
+ * The recorder renders one sentinel per card by asking for a view that does
+ * not exist and labels the entry "<name>#unknown_view_sentinel". The label
+ * is a recorder label, not a view; the executable input view is this fixed
+ * one.
  */
 export const UNKNOWN_VIEW_LABEL = "unknown_view_sentinel";
 export const UNKNOWN_VIEW_INPUT = "definitely_not_a_view";
