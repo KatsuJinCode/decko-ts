@@ -1,4 +1,4 @@
-// card-mod-virtual mod-loader tests: prove the ported Card::Virtual record
+// card-mod-virtual mod-loader tests: exercise the TS Card::Virtual record
 // model (card-mod-virtual-0.20.0 lib/card/virtual.rb) and the abstract
 // virtual_cache set module (set/abstract/virtual_cache.rb) against REAL
 // storage - in-memory better-sqlite3 loaded with db/schema.sqlite.sql (the
@@ -6,9 +6,9 @@
 // compared against expectations derived from the Ruby source. Each
 // expectation cites the Ruby file:line it derives from.
 //
-// The mod declares no html views (compat report metrics.htmlViewsDeclared:
-// 0, htmlViewsMissingNames: []), so the proof surface is the record model's
-// SQL semantics + the set module's predicates/event bodies/manifest shape.
+// The mod declares no html views, so the proof surface is the record
+// model's SQL semantics + the set module's predicates/event bodies/
+// manifest shape.
 
 import { describe, expect, it, afterEach } from "vitest";
 import { createHistoryTestStorage, type HistoryTestStorage } from "../history/history-test-storage.js";
@@ -136,11 +136,10 @@ describe("card-mod-virtual: the manifest", () => {
   it("registers the gem's one set module, abstract/virtual_cache, with no views", () => {
     expect(cardModVirtual.name).toBe("virtual");
     expect(cardModVirtual.gemName).toBe("card-mod-virtual");
-    // The setModule carries the two events[] entries (the LANDED+WIDENED
-    // mod-manifest.ts ModSetModuleFile.events surface). fn is the live
-    // exported stub; we assert the declaration shape + the fn identity
-    // (the body itself is exercised by the eventRegistry describe block
-    // below).
+    // The setModule carries the two events[] entries (the mod-manifest.ts
+    // ModSetModuleFile.events surface). fn is the exported stub; we assert
+    // the declaration shape + the fn identity (the body itself is
+    // exercised by the eventRegistry describe block below).
     expect(cardModVirtual.setModules).toEqual([
       {
         setPath: "abstract/virtual_cache",
