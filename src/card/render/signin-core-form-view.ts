@@ -9,8 +9,7 @@
 //      and without this branch the edge rendered the *signin card's EMPTY
 //      RichText content where production renders the login form.
 //
-// Ruby source (card-mod-account-0.20.0 set/self/signin.rb:114-125, read from
-// the downloaded gem this pass):
+// Ruby source (card-mod-account-0.20.0 set/self/signin.rb:114-125):
 //
 //   before :core do
 //     voo.edit_structure = [signin_field(:email), signin_field(:password)]
@@ -24,13 +23,11 @@
 //     end
 //   end
 //
-// The BYTE oracle is production's own anonymous GET /*signin
-// (REPO_DIR an internal work log, captured
-// 2026-10-03; the form region extracted verbatim as
-// signin-form-region-ref.txt in that directory). The hermetic pin
-// (tests/card/mod-loader/signin-core-form-view.test.ts) transcribes the
-// capture and holds the rendered bytes EQUAL modulo the per-render random
-// data-slot-id.
+// The rendered bytes must equal Ruby's production output for the anonymous
+// GET /*signin, modulo the per-render random
+// data-slot-id. The pin
+// (tests/card/mod-loader/signin-core-form-view.test.ts) holds the
+// rendered bytes EQUAL to that expected form shape.
 //
 // This module deliberately imports NO mod files: only the form substrate
 // and the slot emitters (the core-mod.ts import-safety rule — views.ts
@@ -53,23 +50,23 @@ const SIGNIN_FORM_LOCALE = {
   account_sign_in: "Sign in",
 } as const;
 
-/** The Rails tag-id sanitizer the captured editor input ids carry:
+/** The Rails tag-id sanitizer ActionView applies to form-field names:
  *  `card[subcards][+*email][content]` -> `card_subcards___email_content`.
  *  Mechanism: ActionView's id from a form-field name drops "]" and turns
  *  every other non-word char ("[", "+", "*") into "_" — three underscores
- *  between "subcards" and the field name in the captured bytes ([, +, *).
+ *  between "subcards" and the field name ([, +, *).
  *  The two sign-in field names ("email", "password") are pure lowercase
- *  words, so this exact mapping is all the captured shapes need. */
+ *  words, so this exact mapping is all the sign-in shapes need. */
 function signinSubcardInputId(field: string, attr: string): string {
   return `card_subcards___${field}_${attr.replace(/\[/g, "_")}`;
 }
 
-/** One edit_structure field's captured editor block: the form-group div,
+/** One edit_structure field's editor block: the form-group div,
  *  its label (title span + the help-view slot), and the content-editor
  *  inputs. `password` carries the _pw-input class, the literal placeholder
  *  and the toggle-password span (card-mod-bootstrap's password editor
- *  chrome, captured bytes) and NO value attribute; `email` renders the
- *  subcard's stored content as value (empty on the oracle deck: value=""). */
+ *  chrome) and NO value attribute; `email` renders the
+ *  subcard's stored content as value (empty for a fresh deck: value=""). */
 function signinFieldGroup(
   ctx: ViewContext,
   field: "email" | "password",
@@ -86,7 +83,7 @@ function signinFieldGroup(
   // The structural fallbacks are the account mod's own invariants: both
   // rights assign_type :phrase (right/email.rb:3, right/password.rb:3;
   // type_id 52 on every deck the mod ships on); the set-key list is the
-  // Phrase right-card's standard chain (the captured oracle bytes).
+  // Phrase right-card's standard chain.
   const setKeys = subcard?.setKeys ??
     `ALL ALL_PLUS TYPE-phrase RSTAR ${rightClass} TYPE_PLUS_RIGHT-rich_text-${safeRight}`;
   const typeId = subcard?.typeId !== undefined ? String(subcard.typeId) : "52";
@@ -99,7 +96,7 @@ function signinFieldGroup(
   // fixed Ruby semantics (view help, the edit_in_form+help show list, the
   // field's titled home view, the field title, the parent name context) —
   // constant across decks; slotOptionsJson orders/escapes it into the
-  // captured data-slot bytes.
+  // data-slot attribute.
   const dataSlot = slotOptionsJson({
     view: "help",
     show: ["edit_in_form", "help"],
@@ -111,7 +108,7 @@ function signinFieldGroup(
     `<label for="${contentId}"><span class="card-title" title="${field}">${field}</span>\n` +
     `<div${emitAttrs({
       // the subcard's slot id: name.ts safeKey (* -> X, + -> -) + the view —
-      // "Xsignin-Xemail-help-view", the captured bytes.
+      // e.g. "Xsignin-Xemail-help-view".
       id: `${ctx.fmt.card.name.safeKey}-X${field}-help-view`,
       class: `card-slot help-view ${setKeys}`,
       "data-card-name": subName,
@@ -142,7 +139,7 @@ function signinFieldGroup(
 }
 
 /** set/self/signin.rb:119-125 view :core — the sign-in form bytes (see the
- *  module docstring for the oracle and the Ruby mechanism). */
+ *  module docstring for the Ruby mechanism). */
 export function signinCoreHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
   const subcardFor = (field: "email" | "password") => {
@@ -173,7 +170,7 @@ export function signinCoreHtml(ctx: ViewContext): string {
     `<div class='signin-button'>\n` +
     // button_tag t(:account_sign_in), situation: "primary" — Rails'
     // button_tag helper (NOT decko's submit_button): name/type then the
-    // bootstrapified class, NO data-disable-with (the captured bytes).
+    // bootstrapified class, NO data-disable-with.
     `<button name="button" type="submit" class="btn btn-primary">${SIGNIN_FORM_LOCALE.account_sign_in}</button>\n` +
     `</div>\n` +
     `<div class='signup-button'>\n` +
@@ -182,7 +179,7 @@ export function signinCoreHtml(ctx: ViewContext): string {
     `</div>\n`;
   // card_form :update, recaptcha: :off, success: signin_success
   // (signin.rb:170-174 — { redirect: true, mark: "*previous" }) — the shell
-  // order the capture pins: class, id, recaptcha, action, accept-charset,
+  // attribute order: class, id, recaptcha, action, accept-charset,
   // data-remote, method, then utf8 + _method=patch + the success hiddens.
   return cardFormShell(ctx, {
     formClass: "card-form slotter autosave",
