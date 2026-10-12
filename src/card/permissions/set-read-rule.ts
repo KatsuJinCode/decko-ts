@@ -58,11 +58,11 @@
 // Rule-less decks: Ruby raises PermissionDenied from require_permission_rule!
 // (permissions.rb:77-85) when no read rule resolves at all — every real deck
 // bootstraps *all+*read (card/auth/setup.rb:44). The port instead stores
-// NULLs for that synthetic-seed case, the same documented divergence the
-// read side makes (read-rules.ts canReadByRuleLookup -> undefined,
-// ); the write-permission gate remains the
+// NULLs for that rule-less-seed case, the same documented divergence the
+// read side makes (read-rules.ts canReadByRuleLookup -> undefined); the
+// write-permission gate remains the
 // engine's canWrite seam (the :check_permissions validate event,
-// permissions.rb:22-25, is a later stream).
+// permissions.rb:22-25, is not ported).
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
@@ -287,7 +287,7 @@ async function directRuleClassName(
 /**
  * Rule::All#standard_rule? (all.rb:37-40): the name's right part is a
  * Setting-type card and its left part is a Set-type card. (preference?,
- * all.rb:42-47 — the SET+USER+SETTING shape — is a later stream and does
+ * all.rb:42-47 — the SET+USER+SETTING shape — is not ported and does
  * not gate the cascade here.)
  */
 export async function isStandardRuleCardRow(
