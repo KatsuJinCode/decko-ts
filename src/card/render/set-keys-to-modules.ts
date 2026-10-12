@@ -4,7 +4,7 @@
 // do |klass|; card.set_format_modules(klass).each do |m|;
 // singleton_class.send :include, m; end; end`).
 //
-// safe_set_keys is "ALL TYPE-rich_text SELF-oracle_basic" -
+// safe_set_keys is "ALL TYPE-rich_text SELF-basic" -
 // most-general-FIRST (render/set-keys.ts:63, the registry reverses
 // concrete lookup order). The set-module chain Ruby walks is the
 // reverse: most-specific-FIRST (the same instance list

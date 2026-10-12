@@ -1,5 +1,5 @@
 // Set-pattern CSS keys for the slot class attribute: the render-side adapter
-// to the set-pattern registry (src/card/set-patterns - the oracle-verified
+// to the set-pattern registry (src/card/set-patterns — the
 // port of Card::Set::Pattern). This file owns the RENDER-side input contract
 // (SetKeysInput, what a fetched record can supply) and delegates the
 // derivation to safeSetKeysForCard; the pattern table itself is NOT
@@ -16,8 +16,8 @@
 //     anchorless exactly when its mod/core/set_pattern/NN_*.rb file defines
 //     no anchor_name. star (04), rstar (05) and rule (06) define none, so
 //     their class fragments are the BARE caps codes ("STAR", "RSTAR",
-//     "RULE") - never "STAR-<anchor>" (oracle-verified in
-//     src/card/set-patterns/instance.ts: the captured
+//     "RULE") - never "STAR-<anchor>" (see
+//     src/card/set-patterns/instance.ts: the
 //     safe_set_keys of "*all+*read" is "ALL ALL_PLUS TYPE-list RSTAR RULE
 //     RIGHT-Xread TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread").
 // - applies?: 04_star.rb card.name.star? (lib/card/name.rb:115);
@@ -39,8 +39,8 @@ export interface SetKeysInput {
   /** The LEFT part's type NAME (08_type_plus_right.rb#anchor_name:
    *  `"#{left_type(card)}+#{card.name.tag}"`). undefined means the left
    *  card could not be fetched - Ruby's quick_type default then applies
-   *  ("RichText"; lib/card/set/pattern/class_methods.rb:59-71, oracle:
-   *  new "Zz Probe New+field" anchors "RichText+field"). */
+*  ("RichText"; lib/card/set/pattern/class_methods.rb:59-71 — a NEW
+  *  card's left part anchors "RichText+field"). */
   leftTypeName: string | undefined;
   /**
    * Card#rule? - the 06_rule.rb pattern_applies?. Ruby derives it from
@@ -56,7 +56,7 @@ export interface SetKeysInput {
   /**
    * Card#new_card? — pattern/all.rb:40-42 (`patterns`): a NEW card's pattern
    * list drops the first concrete pattern (*self), so its safe_set_keys
-   * carries NO SELF- token (oracle pins: the captured ZQVT+legacy
+   * carries NO SELF- token: a new `<x>+legacy` card's
    * closed-view slot reads "ALL ALL_PLUS TYPE-rich_text RIGHT-legacy
    * TYPE_PLUS_RIGHT-project-legacy", and every *all+*<setting> rule bar in
    * the page bytes reads "ALL ALL_PLUS TYPE-<t> RSTAR RULE RIGHT-<s>

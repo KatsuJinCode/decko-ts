@@ -18,14 +18,13 @@
 //        ::Haml::Engine.new(haml).render a_binding, locals || {}
 //
 // with NO options hash. So the option set the deck actually gets is Haml's
-// own defaults, MEASURED on the live oracle (not assumed):
+// own defaults, MEASURED rather than assumed:
 //
 //        format       :html5      attr_wrapper "'"
 //        escape_html  false       escape_attrs true
 //        escape_filter undefined  cdata false
 //
-// escape_html=false is the load-bearing one: `= expr` does NOT escape. The
-// fixtures under fixtures/captured/haml-slice/ pin it -
+// escape_html=false is the load-bearing one: `= expr` does NOT escape -
 // group_list.haml's `=title` renders "a & b <c>" verbatim.
 //
 // This is a real compiler: source text -> parse tree -> byte string. It is
@@ -34,14 +33,14 @@
 // algorithm (haml-5.2.2/lib/haml/attribute_builder.rb:3-60), both of which
 // are data about HTML/Haml rather than about any deck template.
 //
-// NOT PORTED (see the UNPORTED list in the recorded result): the :markdown filter and
+// NOT IMPLEMENTED: the :markdown filter and
 // Ruby's own SyntaxError text for a malformed multi-line `- if` condition.
 // Both are declared, not silently skipped - the test asserts the declared
 // list rather than quietly narrowing the gate.
 
-/** A HamlCompileError carries Haml's own class name so the byte-comparison
- *  against the oracle fixture can assert on `Name: message` the way the
- *  captured Ruby error does. */
+/** A HamlCompileError carries Haml's own class name so a byte comparison
+ *  against Haml's error output can assert on `Name: message` the way the
+ *  Ruby error does. */
 export class HamlCompileError extends Error {
   constructor(message: string, public readonly rubyClassName = "Haml::SyntaxError") {
     super(message);
@@ -51,7 +50,7 @@ export class HamlCompileError extends Error {
 
 /** Raised when the template uses a Ruby expression the subset evaluator does
  *  not model. Distinct from HamlCompileError: this is OUR boundary, not
- *  Haml's, and the recorded result must be able to say so. */
+ *  Haml's, and a caller must be able to say so. */
 export class HamlUnsupportedError extends Error {
   constructor(
     message: string,
@@ -75,7 +74,7 @@ export class HamlUnsupportedError extends Error {
  * helpers the template may CALL - their return values are inputs to the
  * compiler, not something it computes. `instanceVariables` stand in for the
  * format's ivars: an ivar the scope does not carry reads as nil, matching
- * Ruby (the `= @x` oracle case renders the empty string, not an error).
+ * Ruby (an `= @x` with no such ivar renders the empty string, not an error).
  */
 export interface HamlScope {
   locals: Record<string, unknown>;
@@ -1373,7 +1372,7 @@ function collectBranches(children: HamlNode[], ev: Evaluator): Branches {
 // ---------------------------------------------------------------------------
 
 /** The Haml constructs this compiler implements. The test asserts the list
- *  stays honest against the oracle fixture's coverage. */
+ *  stays honest against the declared coverage. */
 export function collectHamlFeatures(): readonly string[] {
   return [
     "doctype",

@@ -14,14 +14,13 @@
  *   cards.read_rule_class column value - the rule card's trunk is a Set, and
  *   the class is its tag, i.e. the PATTERN CARD NAME ("*all", "*self").
  *
- * Oracle-verified (decko 0.20.0 runner, tests/card/set-patterns/
- * set-pattern-oracle-capture.json):
- * - card "Oracle Junction" + setting *read candidates:
- *   ["Oracle Junction+*self+*read", "RichText+*type+*read", "*all+*read"],
- *   and rule_card(:read) resolves to "*all+*read" (id 10) with the cache
- *   holding "all+read" -> 10.
+ * Worked example (decko 0.20.0 runner):
+ * - card "<junction>" + setting *read candidates:
+ *   ["<junction>+*self+*read", "RichText+*type+*read", "*all+*read"],
+ *   and rule_card(:read) resolves to "*all+*read" with the cache
+ *   holding "all+read" -> that rule's id.
  * - "*all+*read".rule_class_name == "*all",
- *   "Oracle Restricted+*self+*read".rule_class_name == "*self".
+ *   a restricted "+*self+*read" rule's rule_class_name == "*self".
  */
 
 import { DeckoName, type Nameish } from "../name.js";

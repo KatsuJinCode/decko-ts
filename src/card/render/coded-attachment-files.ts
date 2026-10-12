@@ -16,29 +16,24 @@
 //   attachments create NO versions (create_versions? is false for .svg,
 //   set/type/image.rb:4-6).
 //
-// This port vendors the mod-owned files it renders verbatim under
-// mod-loader/mods/mod-coded-attachment-files/<mod>/data/files/... — the decko
-// project's own asset bytes, NOT captured render output (the vendored
-// decko_logo image-original.svg is sha256 312389d4825c90b0b9fe27969b333b831
-// 69e4328504115d21f2db7f04172f230, byte-identical to the file the oracle deck
-// reads at card-mod-carrierwave-0.20.0/data/files/decko_logo/, verified
-// 2026-09-28). The same bytes are vendored under logo/, the codename a stock
-// `decko setup` deck's *logo card carries (":logo/carrierwave.svg"; the gem
-// ships logo/image-original.svg with the identical sha256). A mod with no vendored files, a non-coded content shape, a
-// non-svg extension, or a missing file yields undefined — the caller then
-// takes its existing image_tag URL branch (Ruby would raise "can't find mod"
-// for an unresolvable coded dir; the fallback keeps the render safe, a
-// documented divergence).
+// The mod-owned files this module renders verbatim are vendored under
+// mod-loader/mods/mod-coded-attachment-files/<mod>/data/files/... — these are
+// the decko project's own asset bytes, not captured render output. Two
+// codenames are vendored, `decko_logo` and `logo`, both carrying the
+// carrierwave SVG and holding identical bytes. A mod with no vendored
+// files, a non-coded content shape, a non-svg extension, or a missing file
+// yields undefined — the caller then takes its existing image_tag URL branch
+// (Ruby would raise "can't find mod" for an unresolvable coded dir; the
+// fallback keeps the render safe, a documented divergence).
 
-// 2026-09-29 documented divergence (on top of the ones above): a runtime
-// with no filesystem (workerd, the Cloudflare Workers target of the
-// one-click deploy) yields undefined too — the caller's image_tag URL
-// branch takes over. The Node reads reach fs through a RUNTIME
-// process.getBuiltinModule probe instead of an import statement because a
-// static "node:fs" here is exactly what broke the deploy boot (vite hoists
-// the module's static imports to the worker bundle top; workerd rejects
-// the script at load with `No such module "node:fs"`, no nodejs_compat on
-// this deploy by design).
+// Second documented divergence: a runtime with no filesystem (workerd, the
+// Cloudflare Workers target of the one-click deploy) yields undefined too —
+// the caller's image_tag URL branch takes over. The Node reads reach fs
+// through a RUNTIME process.getBuiltinModule probe instead of an import
+// statement because a static "node:fs" here is exactly what broke the deploy
+// boot (vite hoists the module's static imports to the worker bundle top;
+// workerd rejects the script at load with `No such module "node:fs"`, no
+// nodejs_compat on this deploy by design).
 
 /** Structural slice of "node:fs" the coded read uses. Declared locally —
  *  never imported — so this module emits no node: specifier into any
@@ -50,9 +45,8 @@ interface NodeSyncFs {
 /** The Node fs module when running on Node, undefined otherwise. The probe
  *  is process.getBuiltinModule (Node >= 22.3): a runtime lookup with no
  *  import statement, so no bundler ever sees a "node:fs" reference from
- *  this file. workerd has no `process` global at all (probed via miniflare
- *  2026-09-29), so the probe answers undefined there. Cached after the
- *  first hit. */
+ *  this file. workerd has no `process` global at all, so the probe answers
+ *  undefined there. Cached after the first hit. */
 let nodeFsCache: NodeSyncFs | undefined;
 function nodeFsOrNull(): NodeSyncFs | undefined {
   if (nodeFsCache !== undefined) return nodeFsCache;

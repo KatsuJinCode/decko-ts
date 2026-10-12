@@ -6,7 +6,7 @@
  *
  * Storage shape: a set card is either the pattern card itself (anchorless,
  * e.g. "*all", "*star") or "anchor+*pattern-card" (e.g. "RichText+*type",
- * "RichText+child_one+*type plus right", "Oracle Junction+*self"). The
+ * "RichText+child_one+*type plus right", "<junction>+*self"). The
  * pattern is identified by the TAG CARD's codename; the anchor is the trunk.
  */
 
@@ -98,8 +98,8 @@ export function labelForParsedSet(parsed: ParsedSetName): string {
  * set/type/set.rb#uncapitalized_label. Reproduces the Ruby method's
  * observable behavior verbatim: the method always returns "".
  *
- * Why (the source's own bug, oracle-confirmed twice - capture2
- * all_set.uncapitalized_label == "" and tpr_set_labels
+ * Why (the source's own bug, confirmed on a running deck for both the
+ * all-set and the type-plus-right-set paths, where
  * .uncapitalized_label == "" despite label() returning real strings):
  * `label = label.to_s` introduces a local `label` at PARSE time, so the
  * RHS `label` reads the fresh nil local, not the method. nil.to_s -> "",

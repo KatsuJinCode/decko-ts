@@ -32,7 +32,7 @@
 //   formatDateCore which renders the date as "Month D, YYYY";
 //   time_ago_in_words renders "3 minutes" / "about 1 hour" / etc.
 //
-// === EXPORTED API (consumed by mod porters and the existing views) ===
+// === EXPORTED API (consumed by the mod packages and the existing views) ===
 //
 //   function timeAgoInWords(from: Date | number | string, now?: Date): string
 //   function distanceOfTimeInWords(
@@ -199,7 +199,7 @@ export function distanceOfTimeInWords(
  *  Note: Ruby's `length` is character count (post-Yard, String#length is
  *  grapheme-aware for some encodings). The TS port uses UTF-16 code units
  *  (the JS string length); the card en.yml files' format strings are pure
- *  ASCII so the distinction is moot for the captured oracle. */
+ *  ASCII so the distinction does not bite here. */
 export function truncate(text: string, length: number = 30, omission: string = "..."): string {
   if (text.length <= length) return text;
   const lengthWithRoomForOmission = length - omission.length;

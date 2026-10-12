@@ -27,15 +27,13 @@
 // setting codenames; the lookup takes the card's own codename (self set) or
 // its right part's codename (right set).
 //
-// COVERAGE: the settings the captured corpus deck exercises whose gems carry
-// a help_text/raw_help_text (fixtures/corpus-v2/recapture menu bytes + the
-// an earlier pass view-fail dump). Settings whose registration carries no
+// COVERAGE: the settings a deck exercises whose gems carry
+// a help_text/raw_help_text. Settings whose registration carries no
 // `help_text:` (e.g. *default - card-mod-content set/self/default.rb has only
 // short_help_text; *guide self - card-mod-help set/self/guide.rb) are
 // correctly ABSENT: their cards fall through to the rule-card branch and
-// render the nbsp placeholder when no readable *help rule exists (the
-// corpus pins both: "*default" -> "&amp;nbsp;",
-// "*table of contents" -> "&amp;nbsp;").
+// render the nbsp placeholder when no readable *help rule exists (both
+// "*default" and "*table of contents" render "&amp;nbsp;" that way).
 
 /** The help text for a setting's self set and/or right set, verbatim from the
  *  gems (the [[link]] chunks are processed at render time - see
@@ -70,7 +68,7 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
     self: "    Sidebar content of [[Layouts]] with sidebar. [[http://decko.org/sidebar|more]]\n",
   }],
   // card-mod-tinymce_editor-0.20.0 set/self/tiny_mce.rb:1-6 (card-level
-  // heredoc def; the set binds via the `tiny_mce` codename - the corpus card
+  // heredoc def; the set binds via the `tiny_mce` codename - the card
   // is named "*TinyMCE")
   ["tiny_mce", {
     self: "    Configure [[http://tinymce.com|TinyMCE]], Decko's default\n    [[http://en.wikipedia.org/wiki/Wysiwyg|wysiwyg]] editor.\n    [[http://decko.org/TinyMCE|more]]\n",
@@ -125,9 +123,8 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["delete", { self: "Who can delete cards", right: "Who can delete cards" }],
   // card-mod-layout-0.20.0 set/self/head.rb (setting_opts help_text)
   ["head", { self: "head tag content", right: "head tag content" }],
-  // --- 2026-09-29 extensions, sourced verbatim from the
-  // --- installed gems the same way; an earlier view-fail H4 class showed the
-  // --- captured corpus exercising these settings' menus too.
+  // Extensions beyond the settings the core gems register; each string below
+  // is still taken verbatim from the installed gem that defines the setting.
 
   // card-mod-style-0.20.0 set/self/style.rb:3-5 (setting_opts help_text -
   // registered on BOTH the Self and Right set modules, setting.rb:25-33)
@@ -146,7 +143,7 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["on_update", { self: "Configure events to be executed when card is updated", right: "Configure events to be executed when card is updated" }],
   ["on_delete", { self: "Configure events to be executed when card is deleted", right: "Configure events to be executed when card is deleted" }],
   // card-mod-ace_editor-0.20.0 set/self/ace.rb (format-level def, Self set
-  // only; the corpus card is named "*Ace", codename "ace")
+  // only; the card is named "*Ace", codename "ace")
   ["ace", {
     self: "Configure [[https://ace.c9.io/|ace]], Decko's default code editor, using these available [[https://github.com/ajaxorg/ace/wiki/Configuring-Ace|options]].",
   }],
@@ -177,9 +174,9 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   // the content's own indentation, terminator excluded). Ruby defines this on
   // the TypePlusRight::BootswatchSkin::Variables set (left card's TYPE is
   // Bootswatch skin); this registry keys by right codename only, which serves
-  // the same string to every *variables-right card. The corpus's
-  // *variables-right cards are all bootswatch skins (checked via the fresh-
-  // process replay's zero-new-failures gate).
+  // the same string to every *variables-right card. Such cards are bootswatch
+  // skins in practice, so keying by the right codename serves the intended
+  // string.
   ["variables", {
     right: "    Override bootstrap [[https://github.com/twbs/bootstrap/blob/v5.1.3/scss/_variables.scss|variables]]\n",
   }],

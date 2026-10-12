@@ -6,9 +6,9 @@
 // spans (:content, :char, :error inside the group).
 //
 // The HTML encoder then maps each kind through the alpha-style table to
-// `<span style="...">...</span>` wrappers; the `:error` kind is the one
-// the corpus content exercises (every byte of a non-JSON string is an
-// `:error` token, one byte per call).
+// `<span style="...">...</span>` wrappers; `:error` is the kind real content
+// exercises most (every byte of a non-JSON string is an `:error` token, one
+// byte per call).
 
 import { ALPHA_STYLES } from "../alpha-style.js";
 import { coderayEscape } from "../escape.js";
@@ -35,8 +35,7 @@ function wrapText(text: string, style: string | undefined): string {
  *  `encoder.begin_group state` then `encoder.text_token('"', :delimiter)`.
  *
  *  The inline styles are the alpha stylesheet's GROUP-SCOPED rules
- *  (coderay-1.1.3 styles/alpha.rb) - the oracle bytes pin them
- *  (view-surface shard-000028 *Ace 33795, 2026-10-01):
+ *  (coderay-1.1.3 styles/alpha.rb), taken verbatim:
  *    `.key { color: #606 }`                (alpha.rb:97)  - key group span
  *    `.key .delimiter { color: #404 }`     (alpha.rb:99)  - key quotes
  *    `.key .char { color: #60f }`          (alpha.rb:98)  - key escapes
@@ -45,10 +44,10 @@ function wrapText(text: string, style: string | undefined): string {
  *    `.string .content { color: #D20 }`    (alpha.rb:124)
  *    `.string .char { color: #b0b }`       (alpha.rb:123)
  *  The key CONTENT span carries NO style (`.key .content` has no alpha
- *  rule) but the span itself is still emitted - the oracle bytes carry
- *  `<span>default</span>` inside the key group; the encoder emits the
- *  span unconditionally for tokens inside a group and only the style
- *  attribute is style-dependent. */
+ *  rule) but the span itself is still emitted - a key prints as
+ *  `<span>default</span>` inside its group; the encoder emits the span
+ *  unconditionally for tokens inside a group and only the style attribute
+ *  is style-dependent. */
 const GROUP_SCOPED: Record<
   "string" | "key",
   { group: string; delimiter: string; content: string | undefined; char: string }
@@ -89,15 +88,14 @@ function groupInner(kind: "string" | "key", token: "content" | "char", text: str
  *  value. Single pass, no allocation, no regex backtracking possible.
  *
  *  This answers exactly what json.rb:41's key regex
- *  `/^(?:[^\\"]+|\\.)*"\s*:/` answers - and the old form was this port's
- *  one catastrophic-backtracking hazard: its star's alternatives overlap
- *  (`[^\\"]+` consumes 1..k chars, `\\.` also starts at a backslash), so on
- *  any string VALUE (closing quote NOT followed by `:`, i.e. the failure
- *  case) the engine enumerated every composition of the run before failing,
- *  2^(n-1) branches for an n-char run. Real deck content is full of that
- *  shape (any JSON card with a multi-char string value); card 53's 618-byte
- *  tinyMCE config spun the scanner indefinitely, while the corpus fixtures
- *  never caught it because the sanitize transform's filler is quote-free.
+ *  `/^(?:[^\\"]+|\\.)*"\s*:/` answers - and that regex is a catastrophic-
+ *  backtracking hazard: its star's alternatives overlap (`[^\\"]+` consumes
+ *  1..k chars, `\\.` also starts at a backslash), so on any string VALUE
+ *  (closing quote NOT followed by `:`, i.e. the failure case) the engine
+ *  enumerates every composition of the run before failing, 2^(n-1) branches
+ *  for an n-char run. Deck content is full of that shape (any JSON card with
+ *  a multi-char string value), and a 618-byte embedded editor config is
+ *  enough to spin the scanner indefinitely.
  *  Pin: tests/card/render/code-highlighting/
  *  scanjson-key-discrimination-linear-time-pin.test.ts
  *

@@ -8,8 +8,8 @@
 //
 // Three cooperating mechanisms:
 //
-// 1. PER-KEY CLOSURE ROUNDS (the mechanism since the 2026-09-23 read-cost
-//    fix): the closure is driven in per-level rounds from the JS side - each
+// 1. PER-KEY CLOSURE ROUNDS: the closure is driven in per-level rounds from
+//    the JS side - each
 //    round batches the three indexed query shapes (simple keys by
 //    cards_key_index seek, depth-2 junctions by their sides' key pair, deeper
 //    junctions by their sides' resolved id pair) and every fetched card's
@@ -17,15 +17,15 @@
 //    targets, until no reference remains unresolved. The previous mechanism
 //    ran the whole resolution in ONE recursive-CTE statement whose `resolved`
 //    closure was seeded from EVERY card in the deck - it composed the deck's
-//    full compound-key universe per cold render (measured: the 2,279-card
-//    targeted deck read its 2,279-row universe twice per render; the 47k-row
-//    corpus deck materialized 47,232 rows per execution, ~237-352 ms locally,
+//    full compound-key universe per cold render (measured: a 47k-row deck
+//    materialized 47,232 rows per execution, ~237-352 ms locally,
 //    with O(deck x passes) rows read on D1 - scaling with DECK size, not page
-//    size). The rounds touch only the requested keys' paths: O(page).
+//    size; a small deck still re-read its full row universe twice per
+//    render). The rounds touch only the requested keys' paths: O(page).
 //    Spans cannot nest braces (Chunk::Nest full_re [^{}]*), so the JS span
 //    scan reproduces the chunker's spans exactly (nest-syntax.ts is the
 //    semantic authority).
-// 2. The PRELUDE BATCH (2026-09-27; before this, the folds
+// 2. The PRELUDE BATCH (before it, the folds
 //    rode closure round 0): one driver.batch round trip before composition
 //    carrying the root's side priming, the root's TYPE row (the enrichment
 //    fold - enrichAndStore's type-name resolution stopped being two point
@@ -41,9 +41,9 @@
 //    transform. Junction sides resolve recursively: a depth-N chain takes
 //    O(N) rounds, each joining junction rows by their UNIQUE
 //    (left_id, right_id) pair; unknown names simply stop the rounds - the
-//    render's nest fetch decides what an unknown nest means (wave 3).
+//    render's nest fetch decides what an unknown nest means.
 //
-// All fetching is read-only (SELECT); the write path is another stream.
+// All fetching is read-only (SELECT); the write path is separate.
 
 import { DeckoName } from "../name.js";
 import {
@@ -63,8 +63,7 @@ import { referencedNames } from "./nest-syntax.js";
  *  format.ts — Ruby Card.config.max_depth, railtie.rb:17): every chain the
  *  renderer can legally walk is resolvable by the prefetch, so the depth
  *  guard fires deterministically instead of the outcome depending on
- *  whether the fallback rounds gave up first (the battery's depth-44
- *  nondeterminism, {200,500} at maxDepth 42 — collapsed by the alignment). */
+ *  whether the fallback rounds gave up first. */
 const MAX_CLOSURE_ROUNDS = 25;
 
 /** Safety bound for the layout warm-up's batched reference rounds (see
@@ -111,12 +110,12 @@ export interface PrefetchStats {
 /** The row shape the prefetch needs before composition. codename MUST ride
  *  along: the composed record is written into the FETCH cache
  *  (PrefetchContext.cacheRecord -> FetchEngine#writeToCache), and a
- *  codename-less record there poisons later fetches - the fetched record is
- *  the corpus oracle's `codename` field (card-1.110.0 lib/card/codename.rb
- *  #codename reads the cards.codename column; card-record.ts#composeCardRecord
- *  passes it through). Dropping it here is what produced the corpus:274
- *  record real-fail (expected "codename":"all", got null for "*all" whose
- *  walked-closure record had been cached without the column). */
+ *  codename-less record there poisons later fetches - Ruby's codename comes
+ *  off the cards.codename column (card-1.110.0 lib/card/codename.rb
+ *  #codename; card-record.ts#composeCardRecord
+ *  passes it through). Dropping it here cached walked-closure records
+ *  without the column, and later fetches answered a null codename
+ *  (e.g. for "*all") instead of the stored one. */
 interface RawRow {
   id: number;
   name: string | null;
@@ -145,8 +144,8 @@ interface RawRow {
   updatedAt: string | null;
   /** cards.creator_id - the Sign up core's invited?/self_signup? input
    *  (card-mod-account set/type/signup/views.rb:39-45 compares against
-   *  AnonymousID); R17 rides it through like the date columns above
-   *  (the hardcoded 0 zeroed every prewarmed record's creator). */
+   *  AnonymousID); it rides through like the date columns above
+   *  (a hardcoded 0 zeroed every prewarmed record's creator). */
   creatorId: number | null;
 }
 
@@ -177,7 +176,7 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
-  /** the batched fetch composer (V1-prefetch, 2026-10-06): cache-only record
+  /** the batched fetch composer: cache-only record
    *  write (the base flow's updateCache -> storeCard — never the render
    *  map). The type-card prime below needs it so enrichAndStore's typeId
    *  reads hit the fetch cache exactly as the base flow's own fetchById
@@ -200,7 +199,7 @@ export interface PrefetchContext {
  * through {{inclusion}} references (plus the type/side cards composition
  * needs). Returns the query-cost stats.
  *
- * The cold render's fixed cost is TWO round trips (2026-09-27):
+ * The cold render's fixed cost is TWO round trips:
  * the root fetch (the caller's fetchByName) plus THIS prelude batch -
  * one driver.batch carrying, in order:
  *
@@ -269,7 +268,7 @@ export async function prefetchInclusionClosure(
     typeRowSlot = preludeStatements.length - 1;
   }
 
-  // p20-email-views: the Abstract::TestContext ladder (card-mod-email
+  // The Abstract::TestContext ladder (card-mod-email
   // set/abstract/test_context.rb:16-18 `card.left.fetch(:test_context)
   // &.first_card`) — the sync render's context lookup is warm-map-only
   // (fetchRenderCard = renderCards.get), and the +*test context junction
@@ -283,7 +282,7 @@ export async function prefetchInclusionClosure(
   // reaches the first item card on the next round.
   let testContextSlot = -1;
   // DeckoName keys KEEP the star ("*html_message", not "html_message") —
-  // the same corpus-row truth the closureWarm gate below carries.
+  // the same row-shape truth the closureWarm gate below carries.
   const rootTagKey = root.name?.isCompound === true ? DeckoName.parse(root.name.tag).key : undefined;
   if (
     root.leftId !== undefined &&
@@ -296,11 +295,11 @@ export async function prefetchInclusionClosure(
     });
     testContextSlot = preludeStatements.length - 1;
   }
-  // p20-email-views: the EmailTemplate read_form arm of the same ladder.
+  // The EmailTemplate read_form arm of the same ladder.
   // The template's :core (= render_read_form) nests `+*test context`
   // PROGRAMMATICALLY (views.ts emailTemplateCoreBody — html.rb:2-4 appends
   // :test_context to edit_fields), and the template's own content never
-  // references it (the corpus templates nest only the EMAIL_FIELDS), so the
+  // references it (a template's content nests only the EMAIL_FIELDS), so the
   // closure's content-ref walk has no path to the junction either — the
   // parent pages rendered the junction slot as an unknown card (no id, no
   // SELF pattern class) and every field content render answered without the
@@ -318,14 +317,15 @@ export async function prefetchInclusionClosure(
     templateTestContextSlot = preludeStatements.length - 1;
   }
 
-  // p20-email-views: the EmailTemplate read_form's field-setting anchors.
+  // The EmailTemplate read_form's field-setting anchors.
   // The type-assignment walk (render.ts newCardDefaultType -> findAssigned-
   // TypeName) keys each virtual field card's module key on the TAG's
   // CODENAME (pattern/base.rb:21-29 — the anchor parts' codenames), whose
   // sync lookup is lexicon.id(key) — warm-cache-only. Nothing in a
   // template page's content references the *to/*from/... setting cards,
   // so their keys never prime and every virtual field fell back to the
-  // template type (RichText) where the oracle pins List/Phrase/PlainText.
+  // template type (RichText) instead of the assigned List/Phrase/PlainText
+  // types.
   // One statement, gated to email-template roots via an EXISTS on the
   // root's own type row's codename, so every other page's prelude carries
   // exactly the statement set it had before.
@@ -364,8 +364,8 @@ export async function prefetchInclusionClosure(
 
   const preludeSideRows: RawRow[] = [];
   const preludeTypeRows: RawRow[] = [];
-  /** The root message card's +*test context junction row (p20-email-views
-   *  prelude — see the statement's comment): composed into the cache so the
+  /** The root message card's +*test context junction row
+   *  (see the statement's comment): composed into the cache so the
    *  render's warm fetch answers, and SCANNED so the closure's content-ref
    *  walk reaches the first item card. */
   const preludeTestContextRows: RawRow[] = [];
@@ -417,8 +417,7 @@ export async function prefetchInclusionClosure(
   // the junction rows' first non-empty line, run only when a junction row
   // actually came back. A missing item row stays missing: the render's
   // fetch then answers undefined and Ruby's `with_context nil` shape (no
-  // switch) is what fires, exactly as the verification/password-reset
-  // pages' "Decko Bot+*account" arm already pins.
+  // switch) is what fires.
   const testContextItemKeys = new Set<string>();
   for (const row of preludeTestContextRows) {
     const firstItem = (row.dbContent ?? "")
@@ -497,14 +496,12 @@ function recordToRawRow(record: CardRecord): RawRow {
 }
 
 /**
- * the batched fetch composer (V1-prefetch, 2026-10-06): prime the compose
+ * the batched fetch composer: prime the compose
  * pipeline's TYPE-card reads from one chunked statement. The composer's
  * rows name their type cards by id; the per-record enrichAndStore
  * (ctx.cacheRecord) resolves each NEW typeId through retrieveFromCacheById
  * -> Lexicon.name -> idToLex and then a row read by id — up to two point
- * queries per distinct type, all for rows one statement answers. MEASURED
- * (attribution run9, post-reset render): 12 solos (5 idToLex + 6
- * row-by-id + 1) in the prefetch's own compose loops.
+ * queries per distinct type, all for rows one statement answers.
  *
  * TRASH SEMANTICS: this is the FETCH path's read, so the statement filters
  * `trash = 0` exactly like the base flow's fetchById — and an ABSENT id is
@@ -533,13 +530,11 @@ async function primeComposeTypeInputs(
     need.add(t);
   }
   if (need.size === 0) return;
-  // The members ride ONE batch as PER-ID statements in the exact recorded
+  // The members ride ONE batch as PER-ID statements in the exact
   // fetch-ladder shape (`SELECT * FROM cards WHERE id = ? AND trash = 0
-  // LIMIT 1` — the point-row-by-id plan family): a serving render's plan
-  // holds those reads (the capture render's own enrichAndStore type reads
-  // are the same statements), so the replay router serves every member and
-  // the prime costs zero live trips exactly where the base flow's own
-  // fetchById reads were served too.
+  // LIMIT 1` — the point-row-by-id plan family), so the prime's reads are
+  // statement-for-statement the reads the base flow's own fetchById
+  // ladder would have issued for the same ids.
   const CHUNK = 500;
   const ids = [...need];
   for (let i = 0; i < ids.length; i += CHUNK) {
@@ -697,8 +692,8 @@ function rowToCardsRow(row: RawRow): CardsRow {
  * search read path (render.ts#runSearch's transport-chunked adoption).
  *
  * Field fidelity is the point: unlike the closure rounds above (whose
- * RawRow round trip synthesizes a documented subset and is byte-pinned by
- * the corpus batteries), this composer passes the real row straight into
+ * RawRow round trip synthesizes a documented subset), this composer passes
+ * the real row straight into
  * composeCardRecord — updater_id, current_revision_id, references_expired
  * and every other column ride through — so a record the chunked prefetch
  * writes into the fetch cache is VALUE-IDENTICAL to the record the per-row
@@ -758,7 +753,7 @@ export async function composeAndCacheSqlRows(
   for (const row of byId.values()) {
     const name = names.get(row.id);
     if (name === undefined) continue;
-    // W1 durable coverage: the removed per-row fetchById ladder recorded
+    // Durable coverage: the removed per-row fetchById ladder recorded
     // every warmed row's id->name in the lexicon's durable map (via
     // lexicon.name(id)); the own-rows composer notes it explicitly instead
     // (db truth from the held row - see DbLexicon.noteDurableName).
@@ -845,17 +840,14 @@ async function driveClosure(
   const known = new Set<string>();
   /** Names retired for good, keyed by the same string `pending` holds.
    *  A name lands here when one of its side keys is EMPTY: `cards` carries
-   *  no row with key = '' (measured on the trial-deck mirror and the
-   *  restore-deck-synthetic snapshot — `SELECT COUNT(*) FROM cards WHERE key = ''`
+   *  no row with key = '' (`SELECT COUNT(*) FROM cards WHERE key = ''`
    *  = 0; the `key IS NULL` rows are side-less junctions that a
    *  `COLLATE NOCASE IN (...)` list never matches anyway), so the name can
    *  NEVER resolve through the row path. Before the fold such a name stayed
    *  in `pending` forever — seedKeys admits no empty key, and the round's
    *  drain removes a name only once its key reached `known` — so the loop
-   *  re-issued byte-identical statements until MAX_CLOSURE_ROUNDS ran out
-   *  (measured on /Aikido_in_Education: 17 identical rounds x 3 statements,
-   *  each returning the same already-composed junction rows). Retiring the
-   *  name changes no rendered byte: the render already answered unknown for
+   *  re-issued byte-identical statements until MAX_CLOSURE_ROUNDS ran out.
+   *  Retiring the name changes no rendered byte: the render already answers unknown for
    *  it (the unknown-card substitution), which is what the empty-padded
    *  IN-lists produced too. */
   const dead = new Set<string>();
@@ -885,8 +877,7 @@ async function driveClosure(
         // ("~861" — a TRASHED row the pointer/list item enrichment resolves
         // through the async lexicon's no-trash-filter read, lexicon.rb
         // #id_to_lex) must skip the reference, never unwind the whole
-        // prepare (the CB_role / Ellery Family +*members pages). The
-        // render's item path reports true fetch misses.
+        // prepare. The render's item path reports true fetch misses.
         let name: DeckoName;
         try {
           name = DeckoName.parse(ref.name);
@@ -902,10 +893,10 @@ async function driveClosure(
     }
   };
   collect(scanRows);
-  // Round 9: contextual collection from COMPOSED records. A row-scanned ref
+  // Contextual collection from COMPOSED records. A row-scanned ref
   // like `{{+image}}` parses as the literal key "+image" (no row carries it),
   // so every template child / plus-child nest fell out of the closure and the
-  // render's nest fetch missed the cache — the live-wire gap (children of
+  // render's nest fetch missed the cache (children of
   // type+*structure pages rendered as unknown-card empty slots even when the
   // child rows existed). Ruby absolutizes each reference against the
   // REFERENCING card at process time (chunk/reference.rb; cited in
@@ -1073,11 +1064,10 @@ async function driveClosure(
     if (sideIdPairs.length > 0) {
       // SQLITE_MAX_EXPR_DEPTH (default 1000) counts every OR arm toward the
       // expression tree: the unchunked one-statement tuple died at 1019 pairs
-      // ("Expression tree is too large (maximum depth 1000)", corpus page
-      // 20120122+CM+RVW's closure round) — and the throw killed the WHOLE
-      // folded batch, permission statements included, so the prepare render
-      // died before the read-permission state resolved and the page rendered
-      // read-denied bodies unjudged (the denial-wrapper-leak class). Chunk at
+      // ("Expression tree is too large (maximum depth 1000)") — and the throw
+      // killed the WHOLE folded batch, permission statements included, so the
+      // prepare render died before the read-permission state resolved and the
+      // page rendered read-denied bodies unjudged. Chunk at
       // 400 pairs (800 params: under the depth limit and under the classic
       // 999-variable limit). All chunks ride the SAME batch — still one round
       // trip — and small rounds keep the single-statement shape.
@@ -1182,7 +1172,7 @@ async function driveClosure(
       }
     }
     collect(closureRows); // their content references join the pending set
-    // Round 9: the composed CLOSURE records join contextually too (side rows
+    // The composed CLOSURE records join contextually too (side rows
     // stay unscanned — the reached-semantics note above; only walked rows fed
     // the frontier). Filter by id: newComposed mixes closure + side records.
     {
@@ -1192,8 +1182,8 @@ async function driveClosure(
       );
     }
     for (const nameStr of [...pending]) {
-      // Mark-resolution error tolerance (mirror round-3 cardReferenceKeys
-      // catch, render.ts:1773): a name that fails the synchronously-resolved
+      // Mark-resolution error tolerance (mirror of cardReferenceKeys'
+      // catch in render.ts): a name that fails the synchronously-resolved
       // mark parse is dropped from the closure rather than raised. This is a
       // safety net only — for a clean run nothing in `pending` is mark-
       // shaped, so the catch is never entered.
@@ -1727,12 +1717,11 @@ export async function prefetchWarmupClosure(
         // engine: the map is engine-lifetime state, the worklist is
         // per-call) was skipped by collect with the "prepared: next drain
         // scans it" contract - but that next drain never runs if we break
-        // here, and the card's own references never join the chase. First
-        // reproduction (2026-09-29 page-mechanism census):
-        // a bare view rendered before the first
-        // page render prepared the layout's *header/*main menu cards as
+        // here, and the card's own references never join the chase. The
+        // concrete failure a bare view exposed: rendered before the first
+        // page render, it prepared the layout's header/menu cards as
         // one-level template references; this break then ate the scan of
-        // *main menu, the navbar's [[*Undertakings]] chunk stayed
+        // the menu card, the navbar's nested dropdown chunks stayed
         // unprepared, and every subsequently rendered page lost the menu
         // items to the unknown-card substitution. Continue instead: the
         // next iteration's drain removes each prepared name from the

@@ -1,6 +1,7 @@
 // The engine's one wall-clock seam. Ruby reads Time.now / Date.today at
-// render time; the engine reads this instead, so a capture run can freeze
-// "now" to the instant its reference bytes were photographed. Production
+// render time; the engine reads this instead, so a deterministic host (the
+// reference harness, which pins `spec.clock`) can freeze "now" to a chosen
+// instant and get byte-identical renders across runs. Production
 // code never sets it: unset, the real clock is used, as in Ruby.
 
 let captureWallClock: Date | undefined;
@@ -10,7 +11,7 @@ export function setCaptureWallClock(instant: Date | undefined): void {
   captureWallClock = instant;
 }
 
-/** The current instant: the frozen capture instant if set, else the real clock. */
+/** The current instant: the pinned instant if one is set, else the real clock. */
 export function cardWallClockNow(): Date {
   return captureWallClock ?? new Date();
 }

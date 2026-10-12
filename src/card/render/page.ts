@@ -3,7 +3,7 @@ import { str, type ViewResult } from "./format.js";
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
 // live-serving page assembly the bare view-function renderer does not do.
 //
-// Truth source (pinned gems + the 2026-09-25 dual-lane page capture):
+// Truth source (the pinned gems):
 // - card-mod-layout set/all/process_layout.rb#show_with_page_layout:
 //     main! -> page_layout (per-card *layout rule via rule_card(:layout)
 //     -> first_name; nil -> the :default CODE layout) -> Layout.main_nest_opts
@@ -30,16 +30,13 @@ import { str, type ViewResult } from "./format.js";
 // exact prepare sequence + parse gates the bare view path exercises —
 // permission state, structure universe, search preparation, pointer/set
 // preloads), then the page assembles from the warm maps. One throwaway bare
-// render per cold page buys a minimal render.ts diff (the only render.ts
-// hunk is the renderPage method itself).
+// render per cold page keeps the integration surface minimal (render.ts
+// gains only the renderPage entry point).
 //
-// Production-vs-capture environment deltas this module pins (the five
-// production-equivalent settings): default_html_view = :content on the
-// page path only (the bare view path keeps the development default
-// :titled), deck_origin https://example.com, and carrierwave cloud
-// attachments resolving to the absolute bucket URL. The captured page
-// JSONL bytes are the contract; every template below is diff-pinned
-// against them.
+// Production-equivalent environment settings this module pins on the page
+// path: default_html_view = :content (page path only — the bare view path
+// keeps the development default :titled), deck_origin https://example.com,
+// and carrierwave cloud attachments resolving to the absolute bucket URL.
 
 import type { CardRecord } from "../fetch/card-record.js";
 import { DeckoName } from "../name.js";
@@ -72,22 +69,20 @@ import { debugFlag } from "../debug-flags.js";
 // through setDeckEnvironment); with neither, the
 // bare rooted form Ruby's requestless runner produces. The same value feeds
 // the `:url` view through the engine accessor (Ruby's `card_url` is
-// ABSOLUTE only when an origin is configured; the email-template pages pin
-// the configured shape).
+// ABSOLUTE only when an origin is configured; email templates render the
+// configured shape).
 
-/** The production `Cardio.config.default_html_view`: :content (the page
- *  capture's production-equivalent setting 5, documented at
- *  capture-dual-$1page-and-view.rb:314 and assigned at :344; every
- *  live-wire page renders implicit child nests as content-views). This is
- *  PROCESS CONFIG the capture flips around the page render — modeled by
+/** The production `Cardio.config.default_html_view`: :content (every
+ *  served page renders implicit child nests as content-views). This is
+ *  PROCESS CONFIG production sets around the page render — modeled by
  *  engine.runWithPageConfig wrapping renderPageBytes, so
  *  RenderFormat.defaultNestView reads "content" for every nest inside the
- *  page and "titled" for bare renders (the railtie default the
- *  requestless capture boot ran under). The main-view fallback below reads
- *  the same config through the engine accessor. */
+ *  page and "titled" for bare renders (the railtie default). The
+ *  main-view fallback below reads the same config through the engine
+ *  accessor. */
 
-/** The carrierwave cloud attachment URL the capture's fog storage config
- *  produced: endpoint + empty bucket + files_web_path ("files") + id/action.
+/** The carrierwave cloud attachment URL a fog storage config with an empty
+ *  bucket name produces: endpoint + files_web_path ("files") + id/action.
  *  Source contents look like "(my_bucket)/103/3649.jpg" — the paren prefix
  *  is the credential/bucket key, never emitted (set/abstract/attachment/
  *  cloud.rb + file_card_uploader.rb:88-117). */
@@ -113,8 +108,8 @@ const OUTSIDE_LAYOUT_VIEWS: ReadonlySet<string> = new Set([
 
 /** Card::Error::UserError raised by wrapper.rb#raise_wrap_error for a layout
  *  name that fetches to neither a card layout nor a built-in code layout.
- *  The class name matters: the replay handlers map it to the sentinel's
- *  "Card::Error::UserError" spelling. */
+ *  The class name matters: the engine's error handlers map it to the Ruby
+ *  sentinel spelling "Card::Error::UserError". */
 export class UnknownLayoutError extends Error {
   readonly layoutName: string;
   constructor(layoutName: string, key: string) {
@@ -126,7 +121,7 @@ export class UnknownLayoutError extends Error {
 
 /** The result of show_with_page_layout's page_layout step. */
 interface PageLayout {
-  /** The resolved layout name ("Default Layout", "ZQVT_main_layout", ...) or
+  /** The resolved layout name (e.g. "Default Layout") or
    *  ":default" for the built-in code layout fallback. */
   layoutName: string;
   /** How the layout will render (CardLayout / CodeLayout / UnknownLayout). */
@@ -156,17 +151,14 @@ interface PageLayout {
  * engine's UnsupportedViewError (Ruby: the unsupported-view UserError,
  * format/render.rb:60-64).
  *
- * `historyParams` is THE PAGE-PATH SEAM for the history views (the
- * the history seam, 2026-10-03 — edge-site-shell residual #3): the
+ * `historyParams` is THE PAGE-PATH SEAM for the history views: the
  * Card::Env.params equivalents Ruby's history views read at render time
  * (HistoryRenderParams — act_id/action_id/page/...), carried THROUGH the
  * page-path routing. It threads into the prepare render below, whose
  * RenderEngine.render seats the render-time history reader
  * (render.ts prepareHistoryRender) the sync history ViewFns read; without
- * it, a history view served through this entry rendered the no-param
- * fallback arms (and, before the edge's wire-key translation, ignored the
- * query entirely). Undefined for every other caller — every pre-existing
- * call is byte-identical.
+ * it, a history view served through this entry renders the no-param
+ * fallback arms. Undefined for every other caller.
  */
 export async function renderPageBytes(
   engine: RenderEngine,
@@ -175,10 +167,9 @@ export async function renderPageBytes(
   historyParams?: HistoryRenderParams,
   bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
-  // The page capture wraps `fmt.show(nil, {})` in the production config
-  // (capture-dual-$1page-and-view.rb:369, inside the config block at
-  // :368-370; its settings are assigned at :343-344). The engine models
-  // that with the pageConfigActive flag:
+  // The page path wraps `fmt.show(nil, {})` in the production config
+  // (the production-equivalent settings listed at the top of this file).
+  // The engine models that with the pageConfigActive flag:
   // every nest resolved inside this call (including the prepare render's)
   // reads "content"; bare renders keep the railtie "titled".
   //
@@ -190,7 +181,7 @@ export async function renderPageBytes(
   DeckoName.beginRequestScope();
   try {
     await resolveIdMarksInRequestedName(engine, cardName);
-    // (Stub decks in the edge request tests carry a partial fetcher.)
+    // (Test stubs carry a partial fetcher.)
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
     const render = () =>
@@ -198,7 +189,7 @@ export async function renderPageBytes(
         renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams, bareMainOpts),
       );
     try {
-      // (The stub engines of the edge request tests carry no unknown-card
+      // (Test stub engines carry no unknown-card
       // create-verdict pass; the real engine always does.)
       const body =
       typeof engine.renderWithUnknownCreateVerdicts === "function"
@@ -460,15 +451,14 @@ async function renderPageBytesWithPageConfigInner(
   // (card, view) render the bare path runs. Output discarded; the page pass
   // re-renders through the main! format below from warm maps.
   //
-  // The raise semantics differ between the two captures: the bare capture
-  // ran development (raise_all_rendering_errors=true — every nested view
-  // error re-raises, the view-capture sentinels), the page capture ran
-  // production (nested errors -> the quiet render-error span). A view-
-  // dispatch raise here (Date::Error, search BadQuery) must NOT fail the
-  // page: the assembly's main! render converts nested raises via
+  // The raise semantics differ between development and production:
+  // development runs raise_all_rendering_errors=true (every nested view
+  // error re-raises), production renders the quiet render-error span. A
+  // view-dispatch raise here (Date::Error, search BadQuery) must NOT fail
+  // the page: the assembly's main! render converts nested raises via
   // nestQuietErrors. Focal gate raises (pointer/set-host options chains)
-  // only fire for open/content MAIN views (2 corpus pages) — accepted
-  // collateral. A lost root (prepare died before enrichment) rethrows.
+  // only fire for open/content MAIN views — accepted collateral. A lost
+  // root (prepare died before enrichment) rethrows.
   let prepareError: Error | undefined;
   try {
     // The HistoryRenderParams thread (the page-path seam — see the
@@ -509,18 +499,18 @@ async function renderPageBytesWithPageConfigInner(
   // The chrome session's account-links data must exist before the sync
   // layout render: the *account_link navbar view (and the :core view) read
   // the prepared items synchronously. No-op for signed-out/actor-less
-  // sessions (the anonymous corpus surface never enters this path).
+  // sessions.
   await engine.prepareSessionAccountLinks();
   // The page body's [[link]] targets must be warm before the sync render:
   // renderLinkChunk's known/wanted (links.rb add_known_or_wanted_class)
   // reads the warm map, and Ruby's Card.known? is a LIVE fetch — so a cold
   // render whose link targets are not yet prepared emits wanted-card for
-  // existing cards (the Aikido 2 [[Aikido Oak Cliff]] golden pin:
-  // known-card; the cold prefetch closure walks {{nest}} references only —
-  // nest-syntax.ts referencedNames — leaving the structured template's
-  // links unwarm). The main card seeds the SAME bounded BFS the layout
-  // warm-up uses (scanWarmDeps: nest refs spine, link targets leaf), so
-  // the whole rendered content closure resolves with its link targets.
+  // existing cards (the cold prefetch closure walks {{nest}} references
+  // only — nest-syntax.ts referencedNames — leaving the structured
+  // template's links unwarm). The main card seeds the SAME bounded BFS the
+  // layout warm-up uses (scanWarmDeps: nest refs spine, link targets
+  // leaf), so the whole rendered content closure resolves with its link
+  // targets.
   const mainWarmup = await engine.warmupLayoutReferences(
     [{ name: record.name.s, context: record.name.s }],
     scanWarmDeps,
@@ -539,15 +529,14 @@ async function renderPageBytesWithPageConfigInner(
   // `<page>+*type+by name`) are now enriched but unexecuted: the prepare
   // render's prepareSearches either never reached them (relative references
   // are skipped at cardReferenceKeys' ref.relative continue — the
-  // {{_self+*referred_to_by}} class: money 18253 + six more census pages)
+  // {{_self+*referred_to_by}} class)
   // or saw them enriched only AFTER its walk (structure-content junction
   // searches applyStructureContent joins late — the {{+*type+by name}}
-  // class: Sign up 12, PlainText 22, VPX 827). The mainBody render below
+  // class). The mainBody render below
   // dispatches these nests synchronously through the card_list view, which
   // reads ONLY the pre-executed map (executeSearch →
   // searchResults.get(key) ?? []) — so they rendered search-no-results with
-  // zero queries (the 10-census-page SEARCH-EMPTY class,
-  // cache-nil-fix.md section 3). Ruby executes these inside the view
+  // zero queries. Ruby executes these inside the view
   // dispatch (card-mod-search set/abstract/0_search/views.rb view :card_list
   // → search_with_params → query.run): the Ruby request has no sync/async
   // split, so this pass IS that view-time execution, hoisted into the async
@@ -563,14 +552,13 @@ async function renderPageBytesWithPageConfigInner(
   if (mainBodySearches > 0) {
     await engine.refreshVerdicts();
   }
-  // Permission recovery (2026-09-29): a prepare render
-  // that died before the folded batch landed (the corpus proof was the cold
-  // closure batch's SqliteError "Expression tree is too large" — the 1019-
-  // pair junction OR-tuple of 20120122+CM+RVW) leaves the read-permission
+  // Permission recovery: a prepare render
+  // that died before the folded batch landed (an oversized junction
+  // OR-tuple can push SQLite past its "Expression tree is too large"
+  // limit) leaves the read-permission
   // state unresolved and every prepared card unjudged. The sync gate's
   // unjudged-allowed contract would then render the read-denied MAIN body in
-  // full where Ruby emits the denial frame (an earlier triage's 130
-  // denial-wrapper-leak pages) — denial, not byte noise. Resolve the state
+  // full where Ruby emits the denial frame. Resolve the state
   // from the standalone three-statement batch and judge the prepared map
   // BEFORE any sync render. No-op when the prepare landed (memoized state +
   // map-size guard). Deny-direction only: verdicts become Ruby's data-driven
@@ -591,12 +579,12 @@ async function renderPageBytesWithPageConfigInner(
   // closure actually dispatches the view (any prepared card's content
   // carries a `|configs` nest opt, or the main view IS configs), build it
   // here, once per engine, before the sync render. Pages that never reach
-  // :configs pay zero queries (the query-count gates stay untouched).
+  // :configs pay zero queries.
   if (mainView === "configs" || engine.renderClosureNeedsCoreAdminRuntime()) {
     await engine.ensureCoreAdminRuntime();
   }
 
-  // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof) — main-body boundary:
+  // THE LATE-SEAT STRUCTURE SWEEP — main-body boundary:
   // the prepare render's tail warms and the page surface's own seat paths after
   // it (warmupLayoutReferences, prepareNestClosureSearches) seat cards the
   // prepare render's two structure passes never saw. Process every seat of
@@ -621,16 +609,16 @@ async function renderPageBytesWithPageConfigInner(
   // view (card-mod-layout set/self/head.rb:17 `nest root.card,
   // view: :head`) fires INSIDE the main body when the page card's content
   // is a `{{:head|core}}` reference (*all+*head / X+*self+*head rule
-  // pages) and reads the page's own head bytes back — the oracle pins them
-  // byte-identical (the CodeRay <pre> content == the page <head> content
-  // on every such page). headContent is a read-only walk over warmed
-  // state, so building it before the main render is order-safe; the same
-  // bytes go into the :html_page wrapper below.
+  // pages) and reads the page's own head bytes back — on such pages the
+  // CodeRay <pre> content IS the page <head> content. headContent is a
+  // read-only walk over warmed state, so building it before the main
+  // render is order-safe; the same bytes go into the :html_page wrapper
+  // below.
   const head = await headContent(engine, record.name, rootCard);
   engine.seatPageHead(rootCard.key, head);
 
-  // render_with_layout: render! the main view with the main-nest opts (the
-  // captured data-slot JSON: view, nest_name "_main", nest_syntax, main,
+  // render_with_layout: render! the main view with the main-nest opts
+  // (view, nest_name "_main", nest_syntax, main,
   // home_view, main_view, layout). Ruby memoizes this as main.rendered
   // (wrapper.rb:15 `@rendered = yield`, then the wrapper pass at :23-27);
   // the layout body's {{_main}} nest then wraps it with wrap_main
@@ -638,7 +626,7 @@ async function renderPageBytesWithPageConfigInner(
   // it MUST come after the main render: mid-render, the root format's
   // @rendered holds whatever the last view dispatch left there — the :raw
   // view's raw source while a `{{_main}}` inside the MAIN card's own
-  // content is being chunked (D6, page 470).
+  // content is being chunked.
   const skipSync = engine.skipSyncRender?.() === true;
   const mainBody = skipSync ? "" : rootFormat.renderView(
     mainView,
@@ -653,7 +641,7 @@ async function renderPageBytesWithPageConfigInner(
           layout: layout.layoutName,
         },
     // show_with_page_layout's render! carries NO optional render opt — the
-    // main slot's captured data-slot has no "show" viz (unlike the bare
+    // main slot gets no "show" viz (unlike the bare
     // view surface where format.render pins show:[view]). null = no viz (a
     // JS default parameter would revive "show" on undefined).
     null,
@@ -665,7 +653,7 @@ async function renderPageBytesWithPageConfigInner(
   if (bareMainOpts !== undefined) return str(mainBody);
 
   // Unknown layouts raise AFTER the main render (wrap_with_wrapper ->
-  // raise_wrap_error), never before — matching the capture's sentinel order.
+  // raise_wrap_error), never before — matching Ruby's order.
   if (layout.kind === "unknown") {
     throw new UnknownLayoutError(layout.layoutName, layout.unknownKey ?? "");
   }
@@ -675,7 +663,7 @@ async function renderPageBytesWithPageConfigInner(
   // Prefetch first: the layout's nest targets (header/footer/skin cards)
   // are outside the main card's inclusion closure, and the sync nest path
   // only reads prepared cards. One warm-up render per DISTINCT target
-  // (typically *header + *footer, shared corpus-wide — later pages skip);
+  // (typically *header + *footer, shared across pages — later pages skip);
   // warm-up failures are the target's own render errors and surface
   // through the real nest as the quiet span.
   let layoutNestSeeds: WarmupRef[] = [];
@@ -710,7 +698,7 @@ async function renderPageBytesWithPageConfigInner(
       await engine.refreshVerdicts();
     }
   }
-  // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof) — layout boundary: the
+  // THE LATE-SEAT STRUCTURE SWEEP — layout boundary: the
   // layout warm-up above (warmUpLayoutNests) and its search pass seat cards
   // between the main-body render and the layout content render; process
   // them before the layout dispatch reads their content. See
@@ -733,13 +721,11 @@ async function renderPageBytesWithPageConfigInner(
   // to its modal sites through the engine's request-scope state.
   engine.pageRootIdCounter = rootFormat.exportRootIdCounter();
 
-  // show.rb: the :html_page wrapper (head + interior). Byte shape pinned by
-  // the page-surface capture: the wrapper heredoc's 6/8/10-space indentation is
-  // part of the served bytes on every captured page, and the heredoc's
-  // closing line ends with a newline — BOTH golden families (the
-  // authenticated set and the dual-lane anonymous pages) end
-  // `      </html>\n`, so the wrapper's trailing newline is part of the
-  // served bytes.
+  // show.rb: the :html_page wrapper (head + interior). Byte shape per the
+  // show.rb wrapper heredoc: the 6/8/10-space indentation is
+  // part of the served bytes, and the heredoc's
+  // closing line ends with a newline, so the wrapper's trailing newline is
+  // part of the served bytes.
   return (
     `      <!DOCTYPE HTML>\n` +
     `      <html class="h-100">\n` +
@@ -773,16 +759,16 @@ async function applyMainViewOverride(
 
 /** Prepare every card the layout body can dispatch on: the layout's nest
  *  targets, their content references, [[link]] targets, and pointer/list
- *  items (plain-text item lists the closure walk never chases — the
- *  *Undertakings dropdown items). Enrichment lands in the prepared-card
+ *  items (plain-text item lists the closure walk never chases — a navbar
+ *  dropdown's items). Enrichment lands in the prepared-card
  *  map, then one verdict refresh so the warm subtree denies exactly like
- *  the capture. Names resolve exactly like the format does: DeckoName
+ *  Ruby. Names resolve exactly like the format does: DeckoName
  *  marks (:codename) through the name environment, RELATIVE names against
  *  the REFERENCING card (format.ts resolveNestName's context is the card
  *  whose content nests the reference: layout-level nests resolve against
  *  the page card, a warmed card's own content refs against that card).
  *  Resolving every hop against the page name warmed spurious names
- *  ("*credit"'s +image warmed as "Aikido Oak Cliff+image"), the real sync
+ *  ("*credit"'s +image warmed as "<page>+image"), the real sync
  *  nest fetch missed the prepared-card map, and the cold page's footer
  *  rendered the nest empty - the junction row (*credit+*image) stores a
  *  NULL key column, so its name resolves only through the prepared/
@@ -791,7 +777,7 @@ async function applyMainViewOverride(
  *  BOUNDED + BATCHED (the cold-render burst fix — this chase used to walk
  *  nest refs, link targets, AND pointer items transitively to a fixpoint
  *  through one point-query ladder per name, preparing the whole
- *  navbar-connected site at ~5,900-7,300 driver round trips per cold
+ *  navbar-connected site at thousands of driver round trips per cold
  *  render): the reference CLASSES are unchanged — every class still
  *  expands to the same fixpoint the baseline reached, because what renders
  *  is not decidable from content syntax ([[target|label]] is an
@@ -799,13 +785,11 @@ async function applyMainViewOverride(
  *  navbar chunk walk; a pointer item renders as a full bar) — the burst is
  *  killed by BATCHING instead: prefetch.ts resolves the closure in
  *  reference-BFS rounds, ONE driver.batch per round (round trips scale
- *  with reference DEPTH, not card count), 90-param chunking for the edge
+ *  with reference DEPTH, not card count), 90-param chunking under the
  *  driver's statement ceiling, and the per-name ladder fallback only for
  *  names with no fetched row (placeholder/virtual semantics preserved
  *  byte-exact). Completeness is unchanged: every card the sync render
- *  reads from the prepared map is prepared before the render starts —
- *  pinned by the page-layout-warmup regressions and the Aikido Oak Cliff
- *  14-slot ordered comparison. */
+ *  reads from the prepared map is prepared before the render starts. */
 async function warmUpLayoutNests(
   engine: RenderEngine,
   seeds: WarmupRef[],
@@ -994,9 +978,9 @@ async function resolvePageLayout(
     };
   }
 
-  // Layout.code_layout? — the built-in registry. The corpus surface only
-  // resolves :default (the empty-rule fallback); the other built-ins
-  // (simple/pre/no_side/modal) have no captured page.
+  // Layout.code_layout? — the built-in registry. This port classifies only
+  // the :default fallback (the empty-rule case); the other built-ins
+  // (simple/pre/no_side/modal) fall through to the unknown branch.
   if (layoutName === "default") {
     return { layoutName: ":default", kind: "code-default" };
   }
@@ -1031,8 +1015,7 @@ function firstItemOfRuleContent(content: string | null | undefined): string | un
 /** The {{_main|view}} chunk of a layout card's content
  *  (CardLayout#find_main_nest_chunk, direct-chunk case). The name match is
  *  case-sensitive exactly like Ruby's main_nest? ("_MAIN" nests as a plain
- *  child — runbook: the HBQ/MoKi uppercase variants never fire the main
- *  path). */
+ *  child — only the lowercase "_main" spelling fires the main path). */
 function findMainNestChunk(
   content: string,
 ): { options: { view?: string; extra: Record<string, string> }; syntax: string } | undefined {
@@ -1049,9 +1032,7 @@ function findMainNestChunk(
 
 /** layouts.rb layout :default (the built-in code layout; body_tag wraps):
  *  header / article(main) / aside(sidebar) / footer, each a codename nest.
- *  No corpus page pins the byte indentation of this path (the empty-rule
- *  cards are outside the captured set) — the heredoc is rendered unstripped
- *  per the show.rb wrapper precedent. */
+ *  Rendered unstripped per the show.rb wrapper precedent. */
 function codeDefaultLayoutInterior(fmt: RenderFormat): string {
   const nest = (name: string, view: string): string =>
     fmt.nest({
@@ -1088,12 +1069,12 @@ export async function headContent(
   // head_views order (card-mod-format set/all/html/head.rb:1-4 basket:
   // page_title_tag, meta_tags, favicon_tag, stylesheet_tags,
   // universal_edit_button, rss_links — then the script mod's views) with the
-  // empty-string contributions the captured pages pin: the blank between
-  // meta_tags and favicon_tag (every golden, anonymous AND signed-in), and
+  // empty-string contributions the basket produces: the blank between
+  // meta_tags and favicon_tag, and
   // universal_edit_button itself, which renders "" on a perms :update
-  // denial (every anonymous golden's blank after the stylesheets) and the
-  // x-wiki link when update is allowed (every admin golden). rss_links
-  // renders NIL on the captured surface and Ruby's join drops nils
+  // denial and the
+  // x-wiki link when update is allowed. rss_links
+  // renders NIL here and Ruby's join drops nils
   // (head.rb:32 `.compact.join "\n"`) — no line at all.
   //
   // The page_title/favicon/stylesheet byte builders come from
@@ -1106,7 +1087,7 @@ export async function headContent(
   return [
     pageTitleTagBytes(read, name.s),
     (await noindex(engine, rootCard)) ? `${META_TAGS}\n<meta content='noindex' name='robots'>` : META_TAGS,
-    "", // pinned blank (mod basket head view; "" on every captured page)
+    "", // a mod basket head view renders "" here
     faviconTagBytes(read),
     stylesheetTagsBytes(read),
     await universalEditButtonTag(engine, rootCard),
@@ -1140,12 +1121,12 @@ async function noindex(engine: RenderEngine, rootCard: RenderCard): Promise<bool
 /** card-mod-format set/all/html/head.rb:46-51 view :universal_edit_button
  *  (unknown: :blank, denial: :blank, perms: :update): the update-permission
  *  gate is the VIEW's perms check (ok? :update via Auth.as_id — format.rb
- *  error.rb:27-29 ok?), denial renders :blank (the empty head entry the
- *  anonymous captures pin); the allowed branch renders
+ *  error.rb:27-29 ok?), denial renders :blank (the empty head entry); the
+ *  allowed branch renders
  *  `tag "link", rel: "alternate", type: "application/x-wiki", title:
  *  "Edit this page!", href: path(view: :edit)` — Rails' tag builder emits
  *  the self-closing form and `path(view: :edit)` is the "/<url_key>/edit"
- *  path form (golden-pinned: `<link rel="alternate"
+ *  path form (`<link rel="alternate"
  *  type="application/x-wiki" title="Edit this page!" href="/Home/edit" />`).
  *  `return if card.new?` (head.rb:47): an id-less page root renders "". */
 export async function universalEditButtonTag(
@@ -1197,7 +1178,7 @@ async function assetOutputContent(
 /** Card::Rule.global_setting(name): the codename card's db_content
  *  (rule.rb:5-9 — `Card[name]` with the codename mark).
  *
- *  Codename-less decks (edge-site-shell residual #4): Ruby's head assembly
+ *  Codename-less decks: Ruby's head assembly
  *  cannot 500 a page on an unmapped codename. `Codename.id` (codename.rb:
  *  35-41) returns nil for an unmapped codename, and the raise-capable fetch
  *  forms are caught per-view in the page assembly (nest fetches rescue
@@ -1222,8 +1203,8 @@ async function globalSettingContent(
 }
 
 /** javascript_tags: [nest(*script, :remote_script_tags), MAIN DECKO
- *  JAVASCRIPT comment, main_javascript_tag]. The remote tags are the pinned
- *  mods' manifest "remote" groups (constant bytes across the corpus). */
+ *  JAVASCRIPT comment, main_javascript_tag]. The remote tags are the mods'
+ *  manifest "remote" groups. */
 async function javascriptTags(engine: RenderEngine): Promise<string> {
   const scriptUrl = await assetOutputUrl(engine, "script");
   return [
@@ -1240,33 +1221,30 @@ async function assetOutputUrl(engine: RenderEngine, settingCodename: string): Pr
 }
 
 /** head_javascript.rb view :script_variables (javascript_tag + the CDATA
- *  wrapper); decko_script_variables order pinned: rootUrl, doubleClick,
+ *  wrapper); decko_script_variables order: rootUrl, doubleClick,
  *  cssPath, signed_in. */
 async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   const cssPath = applyDeploymentCssRevision(await assetOutputUrl(engine, "style"));
-  // decko_script_variables order pinned: rootUrl, doubleClick, cssPath,
+  // decko_script_variables order: rootUrl, doubleClick, cssPath,
   // signed_in. signed_in is the SESSION (Auth.signed_in? — Auth.current_id
   // != AnonymousID, auth/current.rb), not the read-verdict actor: the page
   // chrome session (engine.pageSession) carries it; undefined = signed out
-  // (the anonymous corpus surface's false, byte-identical).
+  // (signed_in: false).
   const signedIn = engine.pageSession?.signedIn === true;
   // decko.rootUrl is card_url("") (mod/script/set/all/head_javascript.rb:35)
   // = Env.origin + card_path("") (card/lib/card/env/location.rb:19-21 + :6-16,
   // card_path "" -> relative_url_root + "/"). Env.origin is PER RENDER
   // (card/lib/card/env/serializable.rb:20-22: Cardio.config.deck_origin ||
   // "#{protocol}#{request&.host_with_port}"), and this builder is reached on
-  // BOTH surfaces since the bare-view-surface fix (render.ts:1385 seats this
-  // same headContent for an unseated root whose content nests the head
-  // card's :core). The page surface runs it under runWithPageConfig
-  // (renderPageBytes, page.ts:130-142) with the capture's
-  // deck_origin = "https://example.com" (capture-dual-$1page-and-view
-  // .rb:343); the VIEW surface runs it with the railtie default
-  // (card/lib/cardio/railtie.rb:28 config.deck_origin = nil) and no
-  // controller (card/lib/card/env.rb:17), so origin is "" and card_url("")
-  // is the bare "/". engine.envOriginConfig() is that per-surface value
-  // (render.ts:1770-1772, render/deck-origin.ts:73-75) — reading it here
-  // is what the constant could not do. Oracle: 6588/6588 page rows carry
-  // 'https://example.com/', cards 34754 / 34758 views carry '/'.
+  // BOTH surfaces (render.ts seats this same headContent for an unseated
+  // root whose content nests the head card's :core). The page surface runs
+  // it under runWithPageConfig (renderPageBytes) with the production
+  // deck_origin = "https://example.com"; the VIEW surface runs it with the
+  // railtie default (card/lib/cardio/railtie.rb:28 config.deck_origin = nil)
+  // and no controller (card/lib/card/env.rb:17), so origin is "" and
+  // card_url("") is the bare "/". engine.envOriginConfig() is that
+  // per-surface value (render/deck-origin.ts) — reading it here is what
+  // the constant could not do.
   const rootUrl = deckoRootUrl() ?? `${engine.envOriginConfig()}/`;
   return (
     `<script>\n//<![CDATA[\n` +
@@ -1297,7 +1275,7 @@ async function scriptCallsTag(engine: RenderEngine): Promise<string> {
 /** Rails escape_javascript (action_view/helpers/javascript_helper.rb
  *  JAVASCRIPT_ESCAPE_MAP order): \\ -> \\\\, </ -> <\\/ (Rails inserts the
  *  backslash after the backslash pass), newlines -> \\n, " -> \\", ' -> \\',
- *  ` -> \\`, $ -> \\$. The captured config bytes pin the quote form. */
+ *  ` -> \\`, $ -> \\$. */
 function escapeJavascript(js: string): string {
   return js
     .replace(/\\/g, "\\\\")
@@ -1312,9 +1290,9 @@ function escapeJavascript(js: string): string {
 }
 
 /** card-mod-script set/all/head_javascript.rb:17 javascript_tags'
- *  remote_script_tags nest — the pinned mods' manifest "remote" groups in
+ *  remote_script_tags nest — the installed mods' manifest "remote" groups in
  *  the deck's *all+*script item order (format, ace editor, bootstrap).
- *  Constant for the captured deck (the CDN urls live in the gems'
+ *  Constant for a deck with a fixed mod set (the CDN urls live in the gems'
  *  manifest.yml files, not in card content). */
 const REMOTE_SCRIPT_TAGS = [
   `<!-- mod: format (remote) -->`,
@@ -1328,11 +1306,10 @@ const REMOTE_SCRIPT_TAGS = [
 ].join("\n");
 
 /** The deployment's SRI integrity attributes
- *  (deployment-follow-live-config.ts scriptIntegrityBySrc): the live head's
- *  remote CDN script tags carry integrity="..." after crossorigin and before
- *  an optional referrerpolicy (live head 12/12 pages; the vm-staging-server
- *  derived constants). UNSET = identity (the frozen capture-era tags).
- *  Exported for the deployment-config pin test. */
+ *  (deployment-follow-live-config.ts scriptIntegrityBySrc): the deployment
+ *  head's remote CDN script tags carry integrity="..." after crossorigin and
+ *  before an optional referrerpolicy. UNSET = identity (the gem-era tags
+ *  without integrity). Exported for the deployment-config test. */
 export function applyScriptIntegrity(tags: string): string {
   return tags.replace(
     /<script src="([^"]+)"([^>]*)><\/script>/g,
@@ -1349,16 +1326,14 @@ export function applyScriptIntegrity(tags: string): string {
 /** The page-path cloud attachment resolution: attachment URLs inside the
  *  assembled interior (header logo, image cores) must resolve to the
  *  absolute fog URL exactly like the head pieces; the bare view surface keeps
- *  the raw "(bucket)/..." bytes (different capture env — the view-surface
- *  contract). Runs LAST so nested view output is covered wholesale.
- *  The prefix reads the process-wide deployment asset host when set (the
- *  graded environment's setting, mirroring Ruby's process-wide storage
- *  config); unset = the capture's fog CLOUD_URL_PREFIX, byte-identical to
- *  the pre-config engine. Note the two constants' slash shapes: the fog
- *  host carries a trailing slash (empty bucket -> the double slash the
- *  oracle pins), the deployment host does not (a REAL bucket -> single
- *  slash), and each is joined to "/files/" to reproduce exactly its own
- *  pinned form. */
+ *  the raw "(bucket)/..." bytes (the view-surface contract). Runs LAST so
+ *  nested view output is covered wholesale.
+ *  The prefix reads the process-wide deployment asset host when set
+ *  (mirroring Ruby's process-wide storage config); unset = the fog
+ *  CLOUD_URL_PREFIX. Note the two constants' slash shapes: the fog
+ *  host carries a trailing slash (empty bucket -> the double slash), the
+ *  deployment host does not (a REAL bucket -> single slash), and each is
+ *  joined to "/files/" to reproduce exactly its own URL form. */
 function resolveCloudUrls(html: string): string {
   const deployment = getDeploymentCloudAssetHost();
   const prefix = deployment !== undefined

@@ -15,11 +15,11 @@ import { str } from "./format.js";
 //   base (wrap_with_nav_item link_view(class: "nav-link")).
 // - view :nav_link_in_dropdown — *dropdown divider, base (link_to_card
 //   class: "dropdown-item"). Unknown cards never dispatch here (the
-//   renderView unknown substitution runs first — the capture's blank
+//   renderView unknown substitution runs first — the blank
 //   dropdown rows).
 //
-// Byte shapes are pinned by the page-surface capture (the *all page header
-// block) and the expected-v2 view surface; the search box is the
+// Byte shapes are pinned by the tests under tests/card/render (the *all
+// page header block and the view surface); the search box is the
 // search_box.haml bytes (haml single-quoted div class).
 
 import { DeckoName } from "../name.js";
@@ -115,8 +115,8 @@ const navbarLinksView: ViewFn = (ctx) => {
  *  content-chunk walk every card without Abstract::List's item override
  *  takes: reference chunks ([[target|label]] name-links nest their target
  *  with `view`, title = the label); literal text chunks pass through
- *  verbatim (the \r\n separators between menu links are in the captured
- *  bytes). Explicit links (link.rb `^(/|https?:|mailto:)` targets) render
+ *  verbatim (the \r\n separators between menu links are in the
+ *  emitted bytes). Explicit links (link.rb `^(/|https?:|mailto:)` targets) render
  *  link_to_resource with explicit_link_opts {class: link_class} — the given
  *  class first, the resource type's class appended, then target=_blank for
  *  an external link — and navbar_link_chunk li-wraps them under :nav_item
@@ -189,20 +189,19 @@ function navDropdown(ctx: ViewContext): string {
 
 /** Abstract::List#navbar_items(view: :nav_link_in_dropdown): the pointer's
  *  items, each nested with the dropdown-item view; unknown items never
- *  dispatch (the unknown substitution renders "" — the capture's blank
+ *  dispatch (the unknown substitution renders "" — the blank
  *  menu rows).
  *
  *  Unresolvable ITEM NAMES and EMPTY renders drop from the join entirely:
  *  Ruby's item walk renders ITEM CARDS (Abstract::List#list_cards —
  *  set/abstract/list.rb, the card-mod-layout module this file ports), so a
  *  raw item string that is no card reference ("https://example.com/
- *  card/new|New Card", corpus card 38283 *Undertakings) never becomes a
+ *  card/new|New Card" on an *Undertakings card) never becomes a
  *  render and its join separator vanishes with it; the same for a render
  *  that resolves to no bytes (the engine's unknown-card substitution).
- *  live capture: ZERO `\n\n` sequences inside any captured dropdown-menu
- *  block (the *Undertakings menu renders `divider + "\n" + <denied>` —
- *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
- *  +1 on every page whose nav carries that menu). */
+ *  A kept empty row would emit `divider\n\n<denied>`, whereas the correct
+ *  bytes are `divider + "\n" + <denied>` — so no `\n\n` sequence may appear
+ *  inside any dropdown-menu block. */
 function dropdownMenuItems(ctx: ViewContext): string {
   // A Link list (Abstract::Items without Abstract::List) keeps the base
   // navbar_items: the chunk walk with the dropdown view and class
@@ -253,7 +252,7 @@ function nestResolvedName(
 }
 
 /** card-mod-search set/self/search view :search_box (search_box.haml +
- *  search_form/search_box_contents) — byte-pinned by the page capture. */
+ *  search_form/search_box_contents) — byte-pinned by the render tests. */
 const searchBoxView: ViewFn = ({ fmt }) => {
   if (fmt.card.key !== "*search") {
     // set/self/search-scoped in Ruby; other cards raise the unsupported
@@ -346,7 +345,7 @@ export function accountLinksCoreHtml(ctx: ViewContext): string {
  *
  *  The known/wanted classes are inputs (RenderEngine.prepareSessionAccountLinks
  *  resolves them while async fetches are legal); the byte shapes here are
- *  pinned against the authenticated goldens (every capture's navbar block).
+ *  pinned by the tests (every navbar block they render).
  */
 export function signedInAccountLinksInnerHtml(
   actorName: string,

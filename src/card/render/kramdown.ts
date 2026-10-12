@@ -10,13 +10,11 @@ import { highlight } from "./code-highlighting/index.js";
 
 // ---------------------------------------------------------------------------
 // kramdown 2.5.2 subset - block parsing
-// (oracle: the kramdown-capture{,2,3}.rb probe scripts re-run against
-//  the installed kramdown-2.5.2 +
-//  kramdown-syntax-coderay-1.0.1 + coderay-1.1.3, plus the view-level
-//  decko-view-capture.rb through the live decko 0.20.0 oracle app; the
-//  internals below were cross-read against the gems' own sources -
+// (cross-read against the installed kramdown-2.5.2 +
+//  kramdown-syntax-coderay-1.0.1 + coderay-1.1.3 gems' own sources -
 //  parser/kramdown.rb, list.rb, blockquote.rb, header.rb, codeblock.rb,
-//  converter/html.rb, base.rb)
+//  converter/html.rb, base.rb - and against the view-level bytes a deck
+//  actually serves)
 // ---------------------------------------------------------------------------
 
 interface KramdownState {
@@ -156,8 +154,7 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
     }
     // codeblock (codeblock.rb:19-26, CODEBLOCK_START = INDENT,
     // kramdown.rb:345) - indented runs, absorbing blank-separated indented
-    // runs (the CODEBLOCK_MATCH repetition; oracle "indented_merge": one
-    // div for "x\n\ny\n")
+    // runs (the CODEBLOCK_MATCH repetition: "x\n\ny\n" is ONE div)
     if (/^(?:\t| {4})/.test(rest)) {
       const codeblock = parseIndentedCode(rest);
       if (codeblock !== null) {
@@ -170,7 +167,7 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
     // /^~{3,}/, FENCED_CODEBLOCK_MATCH = /^((~){3,})\s*?((\S+?)(?:\?\S*)?)?
     // \s*?\n(.*?)^\1\2*\s*?\n/m): the info string is ONE token - an
     // "~~~ ruby extra" line never opens a fence (the match declines and
-    // the paragraph parser takes the line, oracle round 3). options[:lang]
+    // the paragraph parser takes the line). options[:lang]
     // = group 3 (codeblock.rb:45), the class lang = group 4 (codeblock.rb:46).
     // A failed FENCED_CODEBLOCK_MATCH consumes nothing.
     const fence = /^((~){3,})[ \t]*((\S+?)(?:\?\S*)?)?[ \t]*\n/.exec(rest);
@@ -195,8 +192,9 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
     // parse_blocks recursion (parse_blocks(el, result)); the children
     // convert at indent+2 (inner(), html.rb:66-73 + :145-146). NOT
     // boundary-gated - a "> " line right after a paragraph is consumed by
-    // that paragraph first (the greedy dispatcher order, oracle
-    // "blockquote_nested"/"list_marker_in_quote_cont").
+    // that paragraph first (the greedy dispatcher order: a "> " line right
+    // after a paragraph is eaten by that paragraph, and a list marker
+    // inside a quote stays with the quote).
     const bq = /^ {0,3}> ?/.exec(rest);
     if (bq !== null) {
       let end = 0;
@@ -245,7 +243,7 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
       continue;
     }
     // list (list.rb parse_list - the full algorithm below) - not
-    // boundary-gated either ("# H\n- a" parses the list, oracle round 2).
+    // boundary-gated either ("# H\n- a" parses the list).
     const list = parseList(rest, state);
     if (list !== null) {
       blocks.push(list.block);
@@ -262,9 +260,9 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
 
 /** codeblock.rb:19-26 parse_codeblock. CODEBLOCK_MATCH =
  *  (?: BLANK_LINE? (INDENT [ \t]*\S.*\n)+ (lazy ^[ \t]*\S.*\n)* )* :
- *  blank-separated indented runs merge into ONE codeblock (oracle
- *  "indented_merge"), UNINDENTED non-blank lines continue it lazily
- *  (oracle "indented_lazy": "    x\nplain" -> content "x plain\n") unless
+ *  blank-separated indented runs merge into ONE codeblock, UNINDENTED
+ *  non-blank lines continue it lazily
+ *  ("    x\nplain" -> content "x plain\n") unless
  *  a blank run is not followed by an indented line - that run is left
  *  unconsumed (regex backtracking drops the iteration). The gsubs run on
  *  the WHOLE match, in order (codeblock.rb:23-24): /\n( {0,3}\S)/ ->
@@ -322,8 +320,8 @@ function parseIndentedCode(rest: string): { block: KBlock; length: number } | nu
  *  becomes "language-<lang|ruby> highlighter-coderay"; the OUTER div's
  *  closing tag carries the convert indent (html.rb:121
  *  ' '*indent<div...>...highlighted...' '*indent</div>), the CodeRay
- *  wrapper's own inner lines keep their builtin indentation (oracle
- *  "blockq_code"). A lang carrying the "?opts" suffix RAISES in CodeRay
+ *  wrapper's own inner lines keep their builtin indentation (the same
+ *  inside a blockquoted code block). A lang carrying the "?opts" suffix RAISES in CodeRay
  *  (coderay.rb rescues -> nil), which sends convert_codeblock down its
  *  fallback branch (html.rb:126-141): <pre><code class="language-<g4>>
  *  with kramdown's :all escaping (ESCAPE_ALL_RE - no quote entities).
@@ -402,15 +400,16 @@ function generateId(rawText: string, state: KramdownState): string {
  *  allowance tightened per item indentation (fetch_pattern, list.rb:238-257
  *  - up to min(indentation,4)-1 spaces), so a deeper-indented marker line
  *  is CONTENT of the current item: when its indent-stripped text starts a
- *  list marker it SPLITS a new group - the nested list (list.rb:86-91,
- *  oracle "nested_list"). A lazy line that itself starts a list marker
+ *  list marker it SPLITS a new group - the nested list (list.rb:86-91).
+ *  A lazy line that itself starts a list marker
  *  after a nested list was found is RE-INDENTED into the nested group
  *  (list.rb:88-90). Blank runs land INSIDE the current group's text
  *  (list.rb:99-104), so each item's groups parse through the REAL block
  *  parser into a shared per-item tree and the per-item transparency
  *  condition (list.rb:118-127) decides tight-vs-block rendering; the last
  *  item's trailing blank is popped and re-emitted AFTER the list
- *  (list.rb:149-152, oracle "list_blank_end"/"hr_after_blank_in_list").
+ *  (list.rb:149-152 — the trailing blank leaves the list, so a rule
+ *  following it closes the list rather than joining it).
  *  convert_li (html.rb:189-201) renders a transparent-first li inline and
  *  other lis block-mode at li-children indent (+4). */
 function parseList(
@@ -963,7 +962,7 @@ const NAMED_ENTITIES: Record<string, string> = {
  *  (and numeric forms, which carry an :original) output the ORIGINAL bytes
  *  verbatim. An UNKNOWN name is not in kramdown's entity table, so the
  *  parser declines entirely (nil) and the "&" falls to convert_text's
- *  escape - "a &foobar; b" renders "a &amp;foobar; b" (oracle round 1). */
+ *  escape - "a &foobar; b" renders "a &amp;foobar; b". */
 function parseHtmlEntity(text: string, start: number): { html: string; next: number } | null {
   const match = /^&([A-Za-z][A-Za-z0-9]*|#[0-9]+|#[xX][0-9a-fA-F]+);/.exec(text.slice(start));
   if (match === null) return null;
@@ -1085,9 +1084,8 @@ export function kramdownToStashedHtml(raw: string): string {
   //   process_content renders them through the normal nest/link passes.
   //   Without the link stash kramdown's emphasis parser consumes the stars
   //   inside link marks whose card names carry them
-  //   (`[[*guide|*guide rules]]` -> `<em>` mangling; the oracle's
-  //   *all+*guide core render pins the intact link, captured 2026-09-29 in
-  //   fixtures/captured/edit-views.json).
+  //   (`[[*guide|*guide rules]]` -> `<em>` mangling; a *all+*guide core
+  //   render shows the intact link).
   type StashPiece = { kind: "text"; text: string } | { kind: "ref"; text: string };
   const merged: StashPiece[] = [];
   const REF_PATTERN =

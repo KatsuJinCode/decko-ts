@@ -4,11 +4,10 @@
  * Truth source: card-1.110.0 lib/card/query.rb and lib/card/query/**.
  * Every constant below cites the Ruby location it was copied from.
  *
- * RECONCILIATION (schema stream): the table and column names here are copied
+ * SCHEMA NOTE: the table and column names here are copied
  * from the card-1.110.0 db/schema.rb assumptions query.rb makes. The
- * concurrently-written db/schema.sqlite.sql / src/server/schema.ts must use
- * the identical names
- * schema stream") for the checklist.
+ * port's own schema (db/schema.sqlite.sql / src/server/schema.ts) must use
+ * the identical names.
  */
 
 /** tables referenced by query classes (CardQuery#table, ReferenceQuery#table, ActQuery#table, ActionQuery#table) */

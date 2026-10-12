@@ -195,9 +195,9 @@ export class PatternInstance {
   /**
    * Base#safe_key: "TYPE_PLUS_RIGHT-rich_text-child_one" style - pattern
    * code uppercased with spaces to underscores, joined to the anchor's
-   * safe_key ("*" -> "X", "+" -> "-") with a dash. Oracle:
-   * safe_set_keys "ALL ALL_PLUS TYPE-list RSTAR RULE RIGHT-Xread
-   * TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread" for the card "*all+*read".
+   * safe_key ("*" -> "X", "+" -> "-") with a dash. For the card
+   * "*all+*read" the emitted safe_set_keys is "ALL ALL_PLUS TYPE-list
+   * RSTAR RULE RIGHT-Xread TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread".
    */
   get safeKey(): string {
     const capsPart = this.spec.code.replaceAll(" ", "_").toUpperCase();
@@ -212,7 +212,7 @@ export class PatternInstance {
    * anchored -> "<anchor id>+<code>" ("605+self", "2+type"); nil when the
    * anchor card has no id (not in the database) - those keys are compacted
    * away, so rules on sets whose anchor card does not exist are unreachable
-   * (oracle-verified: new "Zz Probe New+field" lists the *right and *type
+   * (a new "<x>+field" card lists the *right and *type
    * plus right SET names but their lookup keys are nil).
    */
   get ruleLookupKey(): string | null {

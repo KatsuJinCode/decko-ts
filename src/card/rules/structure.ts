@@ -79,11 +79,11 @@ export const STRUCTURE_SETTING_NAME = "*structure";
  *
  * The recursive CTE composes the canonical name from the stored left_id /
  * right_id chain at every depth; the rule-card join rides the right_id
- * index. Junction rows in the corpus deck carry key=NULL (only simple
+ * index. Junction rows commonly carry key=NULL (only simple
  * cards carry key), so a flat CASE that walks one or two joins misses the
  * depth-3 set rows entirely — measured 24/139 *type plus right rules with
- * composed_key=NULL on the raw corpus, which short-circuits 2,573 card-
- * engine byte-diffs to db_content (every card governed by a *type plus
+ * composed_key=NULL, which short-circuits thousands of card renders to
+ * db_content (every card governed by a *type plus
  * right rule). The recursive CTE closes the gap: 139/139 compose.
  */
 export function structureRuleUniverseStatement(): SQLStatement {
@@ -97,11 +97,11 @@ export function structureRuleUniverseStatement(): SQLStatement {
 export const DEFAULT_SETTING_NAME = "*default";
 
 /**
- * The same universe shape for an ARBITRARY setting. Round 9 folds the
- * *default universe so a nest-miss child (Ruby's new_card from
+ * The same universe shape for an ARBITRARY setting, so a nest-miss child
+ * (Ruby's new_card from
  * format/nest/fetch.rb#new_card) can resolve the *default rule card's
- * type_id — the live/raw captures pin those children rendering with the
- * rule's type (raw-oracle 9625 open: the absent "+Discussion" child renders
+ * type_id — those children render with the
+ * rule's type (an absent "+Discussion" child renders
  * data-card-type-id=3 RichText from the discussion+*right+*default rule
  * card's own type). Deliberately the SAME statement shape as the structure
  * universe (one indexed right_id join + the composed-key CTE) so the
@@ -197,12 +197,12 @@ export function defaultRuleUniverseStatement(): SQLStatement {
  * The TYPE-NAME read for both template universes in ONE self-contained
  * statement: every *default/*structure rule card's type_id joined to its
  * type card's name. Rides the SAME cold prelude batch as the two universe
- * statements (the rule defaults, 2026-10-02): newCardDefaultType's
+ * statements (the rule defaults load with the universes): newCardDefaultType's
  * dup_structure leg (templating.rb:61-65 — a *structure rule card can
  * BECOME the new-card template, contributing ITS type_id) must answer the
  * winning rule card's type NAME synchronously, so the names load with the
  * universes instead of an IN-list that needs the universe rows first.
- * Folded: +1 statement, +0 round trips (the p20-email prelude-prime
+ * Folded: +1 statement, +0 round trips (the prelude-prime
  * precedent).
  */
 export function templateTypeNameStatement(): SQLStatement {
@@ -340,14 +340,12 @@ export function resolveStructuredContent(
  * is a documented remainder
  *
  * `setModuleOverride` is the set-module CODE content override (the port of
- * Ruby's singleton-class `def content` hook — the set-module override fidelity work
- * 2026-10-03; resolution = src/card/set-module-content-overrides.ts). In Ruby
+ * Ruby's singleton-class `def content` hook; resolution = src/card/set-module-content-overrides.ts). In Ruby
  * the singleton ancestors precede the Card class, so an applicable set
  * module's `def content` shadows this ENTIRE method (structured_content
- * included) for every card.content caller — the corpus record capture
- * photographs card.content, so the override must answer here first. Undefined
- * (no wired module matches) falls through unchanged, byte-identical to the
- * pre-change behavior.
+ * included) for every card.content caller — so the override must answer
+ * here first. Undefined
+ * (no wired module matches) falls through unchanged.
  *
  * `recordDbContent` is the card's own stored db_content (undefined/null
  * alike); the returned string is what RenderCard.dbContent carries for the
@@ -383,8 +381,8 @@ export function structuredCardContent(
  * `{{+image}}` therefore names `<instance>+image`, NOT the literal key
  * "+image" the un-contextualized walk produced (which matched no row,
  * landed in structureRefMisses, and rendered every template child as the
- * unknown-card empty slot even when the child row existed — the round-9
- * live-wire gap). Underscore refs stay skipped: `_left`/`_main` resolve
+ * unknown-card empty slot even when the child row existed). Underscore
+ * refs stay skipped: `_left`/`_main` resolve
  * against the render-time format context, not the name algebra alone.
  */
 export function templateReferenceNames(

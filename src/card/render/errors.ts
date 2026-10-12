@@ -1,11 +1,9 @@
 // Render-time error classes: TypeScript ports of the Ruby Card::Error
 // subclasses the html-format render pipeline raises. Each class preserves
-// its RUBY class name (`constructor.name`) so the corpus-v2 replay handler
-// (benchmarks/corpus-v2/replay-shard.bench.ts render handler — read-only
-// per the stream contract) emits the same CAPTURE_ERROR sentinel bytes the
-// Ruby capture recorded. The class name carries the colon-separator
-// because the test harness compares the literal class string, not a
-// normalized one.
+// its RUBY class name (`constructor.name`), because anything comparing a
+// raised error against Ruby's literal class string reads the colons
+// verbatim — a normalized or TS-local name would not match. The
+// defineProperty call below is what pins it.
 //
 // Truth sources:
 // - lib/card/error.rb:78     Card::Error::BadQuery < UserError
@@ -38,11 +36,10 @@ class CardErrorBadQuery extends Error {
     this.query = query;
   }
 }
-/** Literal name preservation: the corpus-v2 replay handler (and the
- *  smoke oracle replay) compares `error.constructor.name` against the
- *  Ruby class string `Card::Error::BadQuery` recorded in the capture.
- *  Without this defineProperty the harness would see the TS-local name
- *  (`CardErrorBadQuery`) and the fixture diff would fail on byte 7. */
+/** Literal name preservation: consumers compare `error.constructor.name`
+ *  against the Ruby class string `Card::Error::BadQuery`. Without this
+ *  defineProperty they would see the TS-local name (`CardErrorBadQuery`)
+ *  instead. */
 Object.defineProperty(CardErrorBadQuery, "name", { value: "Card::Error::BadQuery" });
 
 /** Public alias the render pipeline throws. The literal constructor.name
@@ -63,11 +60,10 @@ export function badQuery(query: string): Error & { query: string } {
 /** The empty-query case (cql_search.rb:36-38): the Ruby card raises
  *  `Error::BadQuery, "can't run search with empty content"` BEFORE the
  *  JSON.parse attempt, so the message is distinct from the invalid-JSON
- *  case. Empty-content raises are rare in the captured deck (the corpus
- *  capture seeds non-empty content), but the Ruby surface carries the
- *  branch and so must the port — when content === "", port parity means
- *  raising the same exception with the same message, not skipping the
- *  search silently. */
+ *  case. Empty content is uncommon in practice, but the Ruby surface
+ *  carries the branch and so must this one — when content === "", parity
+ *  means raising the same exception with the same message, not skipping
+ *  the search silently. */
 export function emptyQueryError(): Error & { query: string } {
   const err = new CardErrorBadQuery("", "can't run search with empty content");
   return err;
@@ -81,21 +77,19 @@ export const BAD_QUERY_CLASS_NAME = "Card::Error::BadQuery";
 // ----------------------------------------------------------------------------
 
 /** Ruby stdlib `Date::Error` (raised by `Date.parse` when the input is not
- *  a parseable date). The corpus sweep found Date-type cards with random
- *  non-date content that Ruby raises this on; the render pipeline surfaces
- *  the raise verbatim on the :open and :content views (corpus entries
- *  id=1135, 1138, 1211, 1218, 1222 — all type_code="date"). The TS port
- *  parity: when the card's type_code is "date" and the content is not a
- *  parseable date, throw the same class with the same literal message. */
+ *  a parseable date). Date-type cards routinely carry non-date content, and
+ *  the render pipeline surfaces the raise verbatim on the :open and :content
+ *  views. The parity contract: when the card's type_code is "date" and the
+ *  content is not a parseable date, throw the same class with the same
+ *  literal message. */
 class RubyDateError extends Error {
   constructor(message: string = "invalid date") {
     super(message);
     this.name = "Date::Error";
   }
 }
-/** Literal name preservation: same harness contract as BadQuery above —
- *  the corpus-v2 replay handler reads err.constructor.name and the
- *  captured sentinel prefix is `Date::Error`. */
+/** Literal name preservation: same contract as BadQuery above — consumers
+ *  read err.constructor.name and expect the Ruby class string. */
 Object.defineProperty(RubyDateError, "name", { value: "Date::Error" });
 
 /** Public alias the render pipeline throws. */
@@ -121,13 +115,10 @@ export const DATE_ERROR_CLASS_NAME = "Date::Error";
  *  `sub.main!`). That is a card whose content carries `{{_main}}` rendered
  *  OUTSIDE a page render — a bare `card.format.render(:content)`.
  *
- *  The frozen record has exactly this: expected-v2/view-surface shard-000000
- *  entry id 470 ("AsIn Layout", whose 469-byte dbContent is a whole layout
- *  template) records
- *  `CAPTURE_ERROR: NoMethodError: undefined method 'rendered' for nil` for
- *  BOTH its :content and :open views. The message is reproduced verbatim so
- *  the class name and message match the captured sentinel; the port raises
- *  rather than inventing bytes for a shape Ruby cannot render. */
+ *  A card whose dbContent is a whole layout template hits this on BOTH its
+ *  :content and :open views. The message is reproduced verbatim from Ruby;
+ *  this raises rather than inventing bytes for a shape Ruby cannot
+ *  render. */
 class RubyNoMethodError extends Error {
   constructor(message: string) {
     super(message);
@@ -137,7 +128,7 @@ class RubyNoMethodError extends Error {
 Object.defineProperty(RubyNoMethodError, "name", { value: "NoMethodError" });
 
 /** The `{{_main}}`-with-no-main-format raise (nesting/main.rb:12). Message
- *  and class name are the captured sentinel's, byte for byte. */
+ *  and class name are Ruby's, byte for byte. */
 export function mainNestWithoutMainError(): Error {
   return new RubyNoMethodError("undefined method `rendered' for nil");
 }
@@ -147,55 +138,44 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
 
 /** Test whether `content` is a valid date by the Ruby Date.parse contract.
  *  JS `new Date(str)` is stricter than Ruby's Date.parse (ISO 8601 and a
- *  few common formats vs. Ruby's many aliases) — for the captured deck
- *  every Date-type card carries random non-date content (e.g. "brcvtwrvz"),
- *  and both engines reject them; the corpus pins these as invalid-date
- *  cases (id=1135, 1138, 1211, 1218, 1222). When the input parses as a
- *  date by JS, JS is strictly more permissive than Ruby on a few edge
- *  cases ("0", "1" -> epoch dates), but those don't appear in the corpus;
- *  the parity test is "the same corpus entries raise on both engines",
- *  which this gate satisfies. Empty content is treated as INVALID by both
- *  Ruby Date.parse and our parity check — Date cards with empty content
- *  raise the same error in Ruby, and so do they in the port.
+ *  few common formats vs. Ruby's many aliases), and it is more permissive
+ *  on a handful of edge cases ("0", "1" parse as epoch dates in JS). The
+ *  explicit arms below close both directions: they accept the forms Ruby
+ *  accepts, and the trailing all-digit guard rejects the ones Ruby rejects.
+ *  Empty content is treated as INVALID by both Ruby Date.parse and this
+ *  check — Date cards with empty content raise the same error in Ruby, and
+ *  so do they here.
  *
- *  Ruby-compatibility expansion (recapture 2026-09-24): Ruby's Date.parse
- *  also accepts the compact form `YYYYMMDD` (e.g. "20190319" → 2019-03-19)
- *  and a few slashed numeric forms ("3/19/2019", "19/3/2019"); JS Date is
- *  stricter and treats "20190319" as NaN, raising on the recapture's
- *  20190319:render:content / :open entries (per-class-mechanisms.json
- *  handler_raised:Date::Error, 5 entries). The pre-checks below catch
- *  the compact and slashed forms Ruby accepts so the engine's
- *  prepare-phase raise skips parity with Ruby's accepted inputs.
+ *  Compact form. Ruby parses `YYYYMMDD` ("20190319" → 2019-03-19); JS Date
+ *  treats it as NaN, so the compact arm below catches it.
  *
- *  Dashed-numeric expansion (2026-09-29; every claim
- *  below verified against this machine's ruby 3.3 Date.parse): Ruby parses
- *  the dashed numeric forms `Y-M-D` with 1-4 digit years and 1-2 digit
- *  month/day — "18-12-22" → 2018-12-22, "2010-7-19" → July 19 2010,
- *  "999-1-1" → January 1, 0999 — where JS's ISO parser rejects every
- *  non-padded component ("19-03-19" is Invalid Date). Two-digit (and
- *  one-digit) years window as 00-68 → 2000+yy, 69-99 → 1900+yy
- *  ("38-12-31" → 2038, "39-01-01" → 2039, "68-05-05" → 2068,
- *  "69-1-1" → 1969). Month 0/13+ and impossible calendar days raise in
- *  Ruby ("2019-13-01", "2021-02-29", "2019-05-0" → invalid date); the
- *  UTC round-trip check below rejects the same. The an earlier pass corpus holds
- *  1,117 such date cards (shapes 99-99-99 / 9999-9-99 / 9999-9-9; the two
- *  page-surface exemplars 20190319 "19-03-19" and 20220323 "22-03-23").
+ *  Dashed numeric (every claim verified against ruby 3.3 Date.parse):
+ *  Ruby parses the dashed numeric forms `Y-M-D` with 1-4 digit years and
+ *  1-2 digit month/day — "18-12-22" → 2018-12-22, "2010-7-19" → July 19
+ *  2010, "999-1-1" → January 1, 0999 — where JS's ISO parser rejects every
+ *  non-padded component ("19-03-19" is Invalid Date). One- and two-digit
+ *  years window as 00-68 → 2000+yy, 69-99 → 1900+yy ("38-12-31" → 2038,
+ *  "39-01-01" → 2039, "68-05-05" → 2068, "69-1-1" → 1969). Month 0/13+ and
+ *  impossible calendar days raise in Ruby ("2019-13-01", "2021-02-29",
+ *  "2019-05-0" → invalid date); the UTC round-trip check below rejects the
+ *  same.
+ *
  *  Conversely Ruby REJECTS bare-year digit strings JS accepts ("2016",
- *  "1980", "1", "0" → invalid date — verified; the old JS fallback
- *  rendered year-epoch dates for them), so any remaining all-digit
- *  content that is not the 8-digit compact form raises here too.
- *  (Ruby's bare 1-3 digit heuristics — "12" → Sep 12 of the current
- *  year, "123" → day-of-year — are NOT ported: no corpus card carries
- *  those shapes, and porting them would render dates Ruby renders while
- *  the current gate raises. Honest remainder, zero graded surface.) */
+ *  "1980", "1", "0" → invalid date), so any remaining all-digit content that
+ *  is not the 8-digit compact form raises here too. Ruby's bare 1-3 digit
+ *  heuristics — "12" → Sep 12 of the current year, "123" → day-of-year — are
+ *  NOT implemented: this gate raises on them, where Ruby would render a date.
+ *  That asymmetry is deliberate and unresolved.
+ */
 /** Complete a partial date the way Ruby's Date.parse does: the string
  *  supplies the day (`ruby -rdate -e 'p Date._parse("20-0405")'` gives
  *  only :mday and a zone), and the month and year come from Date.today.
- *  Today is read from the engine's wall-clock seam (src/card/wall-clock.ts),
- *  so a capture run that freezes the clock gets the capture's month, in the
- *  DECK's configured zone (src/card/deck-time-zone.ts; this used to name
- *  America/Los_Angeles, the capture host's operating-system zone, so a deck
- *  in another zone completed the date from the wrong "today"). */
+ *  Today is read from the engine's wall-clock seam
+ *  (src/card/wall-clock.ts), so a run that freezes the clock gets that
+ *  frozen month, and it is read in the DECK's configured zone
+ *  (src/card/deck-time-zone.ts) rather than the host's — a host-local zone
+ *  would complete the date from the wrong "today" for a deck configured
+ *  elsewhere. */
 function fillFromReferenceMonth(day: number): Date | null {
   // Ruby's Date.parse completes the missing month and year from Date.today
   // in the deck's zone. Read the engine's wall-clock seam and the deck's
@@ -244,7 +224,7 @@ export function parseRubyDateContent(content: string): Date | null {
     return date;
   }
   // Ruby's "day, and possibly a zone": a SHORT day plus a 3-4 digit zone.
-  // Card 35469 (the corpus's only Date-typed row of this shape) is the only one:
+  // A rare shape — one Date-typed row of this kind is all we have seen:
   //     ruby -rdate -e 'p Date._parse("20-0405")'
   //     => {:mday=>20, :zone=>"-0405", :offset=>-14700}
   // a day with no month and no year, which Date.parse completes from
@@ -260,7 +240,7 @@ export function parseRubyDateContent(content: string): Date | null {
     if (day < 1 || day > 31) return null;
     return fillFromReferenceMonth(day);
   }
-  // Two-component dashed "A-B" (the corpus's card 13903, content "1981-10").
+  // Two-component dashed "A-B" (e.g. content "1981-10").
   //
   // GEM-VERIFIED, NOT GUESSED. Ruby's lexer puts the LEADING number in
   // :mday and the trailing one in :zone when the trailing group is two
@@ -274,10 +254,8 @@ export function parseRubyDateContent(content: string): Date | null {
   // A leading component outside 0..31 cannot be a day, so the gem has no
   // valid date and RAISES Date::Error. "1981-10" is A=1981.
   //
-  // THE DIGIT WIDTHS ARE BOTH LOAD-BEARING, and the 1,306-row
-  // two-component sweep in
-  // tmp/addressed-wave1/ruby-date-parse-conformance-table.rb (ruby 3.3.12,
-  // date gem 3.5.1) pins each of them:
+  // THE DIGIT WIDTHS ARE BOTH LOAD-BEARING, and a 1,306-row two-component
+  // sweep of the real gem (ruby 3.3.12, date gem 3.5.1) pins each of them:
   //   - a ONE-digit trailing group takes a different lexer path, merges
   //     into {:mday, :hour}, and raises for EVERY A ("2-1", "2-2", "12-2");
   //   - a TWO-digit trailing group parses iff A <= 31 — but only when A
@@ -285,11 +263,10 @@ export function parseRubyDateContent(content: string): Date | null {
   //     path unless the offset is a real 1..31 value: the gem parses
   //     "0-01" and "9-01", and raises on "0-00", "0-32" and "1-35".
   //
-  // PRE-FIX THIS BRANCH DID NOT EXIST, so "1981-10" fell through to
-  // `new Date("1981-10")`, which JS reads as an ISO year-month and accepts
-  // as 1981-10-01. The engine rendered "October 1, 1981" where the gem
-  // renders the (core view) error span — the capture's own bytes for
-  // shard-000009, card 13903 `...:page`.
+  // Without this arm, "1981-10" would fall through to `new Date("1981-10")`,
+  // which JS reads as an ISO year-month and accepts as 1981-10-01 — the
+  // engine would render "October 1, 1981" where the gem renders the core
+  // view's error span.
   const twoPart = /^(\d{1,5})-(\d{1,5})$/.exec(content);
   if (twoPart !== null) {
     const day = Number(twoPart[1]);
@@ -299,29 +276,26 @@ export function parseRubyDateContent(content: string): Date | null {
     if (day < 10 && (zone === "00" || Number(zone) > 31)) return null;
     return fillFromReferenceMonth(day);
   }
-  // fold-9 superset note (2026-10-03): the-69-wave1-refill2 independently
-  // re-derived this class as ONE coarse guard — "dashed ALL-NUMERIC with any
-  // component count other than the Y-M-D triple RAISES"
-  // (`/^\d{1,4}(-\d{1,4})+$/.test(content) && dashMatch === null -> null`,
-  // gem-verified over the corpus's 4,013 3-component rows + 2-component row
-  // 13903). That guard is NOT taken here: it also raises for the day+zone
-  // class ("20-0405") and single-digit-A real-offset shapes ("0-01", "9-01")
-  // that the gem PARSES (refill2's own card-35469 entry: Ruby 3.3 gives
-  // October 20 for "20-0405"), because its evidence base was the corpus's
-  // Date-typed rows only. The per-shape arms above were verified against a
+  // WHY PER-SHAPE ARMS AND NOT ONE COARSE GUARD. The obvious shortcut is a
+  // single rule — "dashed ALL-NUMERIC with any component count other than
+  // the Y-M-D triple RAISES" — i.e.
+  // `/^\d{1,4}(-\d{1,4})+$/.test(content) && dashMatch === null -> null`.
+  // That guard is NOT taken here: it also raises for the day+zone class
+  // ("20-0405") and the single-digit-A real-offset shapes ("0-01", "9-01")
+  // that the gem PARSES (ruby 3.3 gives October 20 for "20-0405"). It was
+  // defensible only against a sample of Date-typed rows, which does not
+  // contain those shapes. The per-shape arms above were verified against a
   // 1,306-row Date._parse sweep of the actual gem (ruby 3.3.12, date
   // 3.5.1) and cover every raise case the coarse guard catches ("1981-10"
   // via day>31, "2-1" via the merged :mday/:hour arm, "0-00"/"0-32"/"1-35"
   // via the single-digit-A offset guard) while preserving the parseable
   // classes. Superset-of-information: no raise case is lost, the
   // gem-parseable classes survive, and the completion's today-dependence
-  // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain card-35469 residual stays as refill2's
-  // recorded result recorded it.
+  // reads the wall-clock seam (fillFromReferenceMonth).
   // Slash-form dates. Ruby's slashed triples are GEM-VERIFIED (ruby 3.3,
   // date gem): the FIRST component's width picks the shape.
   //   - 4-digit first -> Y/M/D ("2019/3/19" -> 2019-03-19).
-  //   - 4-digit last  -> D/M/Y ("03/01/2021" -> 2021-01-03, the Create PM
-  //     paper slips and print+deadline oracle bytes "January 3, 2021";
+  //   - 4-digit last  -> D/M/Y ("03/01/2021" -> 2021-01-03;
   //     "19/3/2019" -> 2019-03-19) with NO month/day swap on overflow
   //     ("3/19/2019" and "25/13/2021" raise Date::Error).
   //   - both short    -> Y/M/D with the two-digit-year window on the FIRST
@@ -356,9 +330,8 @@ export function parseRubyDateContent(content: string): Date | null {
   const parsed = new Date(content);
   if (Number.isNaN(parsed.getTime())) return null;
   // Date.parse in Ruby accepts many textual formats JS does not, but the
-  // captured corpus's "invalid date" cases all carry obvious non-date
-  // strings (random alphabetic content); JS's stricter check catches
-  // every one.
+  // "invalid date" cases in practice all carry obvious non-date strings
+  // (alphabetic content); JS's stricter check catches every one.
   return parsed;
 }
 

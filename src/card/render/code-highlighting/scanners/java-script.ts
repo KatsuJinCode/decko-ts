@@ -1,8 +1,8 @@
 // CodeRay JavaScript scanner.
 //
-// Truth source: coderay-1.1.3 lib/coderay/scanners/java_script.rb (read in
-// full, 2026-10-01). The scanner is the delegate
-// html.rb:76-80 `scan_java_script` hands a <script> body to:
+// Truth source: coderay-1.1.3 lib/coderay/scanners/java_script.rb. The
+// scanner is the delegate html.rb:76-80 `scan_java_script` hands a <script>
+// body to:
 //
 //   @java_script_scanner ||= Scanners::JavaScript.new '', :keep_tokens => true
 //   @java_script_scanner.tokenize code, :tokens => encoder
@@ -11,8 +11,7 @@
 // writing (the :inline group stays open around it - html.rb:238-244), which
 // is why a JS keyword inside a layout's script body resolves through the
 // html encoder's kind-path lookup and prints
-// `<span style="color:#080;font-weight:bold">var</span>` (the
-// Classic_Layout oracle bytes).
+// `<span style="color:#080;font-weight:bold">var</span>`.
 //
 // Transcribed state machine - the branches below cite java_script.rb line
 // by line. `to_unix` normalization is NOT re-applied: the html scanner
@@ -71,7 +70,7 @@ function identKind(word: string): string {
 /** java_script.rb:51-52 KEY_CHECK_PATTERN (a quote's contents followed by
  *  `:`): the string/key discriminator. Atomic group dropped - a check
  *  needs no captures, and the JS engine's backtracking reaches the same
- *  verdict on the corpus bodies. */
+ *  verdict on every body. */
 const KEY_CHECK: Record<string, RegExp> = {
   "'": /^(?:[^\\']*(?:\\.[^\\']*)*)'\s*:/,
   '"': /^(?:[^\\"]*(?:\\.[^\\"]*)*)"\s*:/,
@@ -188,12 +187,10 @@ export function scanJavaScriptInto(enc: HtmlTokenEncoder, input: string): void {
       // java_script.rb:104-109 - operator run. ANCHORING NOTE: Ruby's
       // Scanner#scan is match_at - it only matches AT the scan position
       // (the /x regexp needs no ^). The JS exec needs the anchor on the
-      // WHOLE alternation: the first transcription anchored only the
-      // class alternative, so when the class failed the unanchored
-      // `\.(?!\d)` alternative matched the FIRST dot anywhere in the rest
-      // of the input (the `example.com.uservoice.com` dot) and advanced
-      // one byte - derailing the whole scan (the Classic_Layout probe's
-      // dotted body, bisect jobs 9-15).
+      // WHOLE alternation: anchoring only the class alternative lets the
+      // `\.(?!\d)` alternative match the FIRST dot anywhere in the rest of
+      // the input (say the dot inside `example.com.host`) and advance a
+      // single byte, which derails the whole scan from that point on.
       const op = /^(?:[-+*=<>?:;,!&^|(\[{~%]+|\.(?!\d))/.exec(rest());
       if (op !== null) {
         valueExpected = true;
@@ -371,10 +368,10 @@ export function scanJavaScriptInto(enc: HtmlTokenEncoder, input: string): void {
 }
 
 /** java_script.rb:99-102's xml_scanner delegation (xml.rb: `class XML <
- *  HTML`): the matched literal scans as HTML into the shared encoder. The
- *  corpus layout bodies never contain an XML literal, so this surface has
- *  no oracle bytes - the delegation exists so a future one CANNOT drift
- *  from the html scan (one scanner, one token stream). */
+ *  HTML`): the matched literal scans as HTML into the shared encoder. No
+ *  layout body we serve contains an XML literal today, so this surface is
+ *  untested - the delegation exists so a future one CANNOT drift from the
+ *  html scan (one scanner, one token stream). */
 function scanXmlLiteralInto(enc: HtmlTokenEncoder, literal: string): void {
   // Lazy import cycle break: html.ts imports this module for the
   // script-body delegation; requiring it back at module scope would form a
@@ -382,6 +379,6 @@ function scanXmlLiteralInto(enc: HtmlTokenEncoder, literal: string): void {
   // literal is emitted through the encoder directly with the html
   // scanner's top-level kinds (the html scanner's dispatch would produce
   // the same stream for a well-formed literal: tag/attribute tokens).
-  // KNOWN LIMIT: unexercised by the corpus.
+  // KNOWN LIMIT: no input we serve reaches this path.
   enc.textToken(literal, "plain");
 }

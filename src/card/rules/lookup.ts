@@ -28,7 +28,7 @@ import type { PatternCardInput } from "../set-patterns/types.js";
 /** The rule lookup result: the active rule card (the first hit in
  *  precedence order), or undefined if none of the candidates exist.
  *  The `candidates` field carries the full list so callers can report /
- *  reason about the search space (oracle parity for debugging). */
+ *  reason about the search space. */
 export interface RuleLookupResult {
   rule: CardRecord;
   /** Which set name won ("*all", "*type", "Joe+Admin", ...). */
@@ -166,7 +166,7 @@ export async function findRules(
  * cache.rb#lookup_key; used by the rule cache and for debugging only
  * (the live lookup walks by name, not by cache key — see rule/all.rb
  * note on codename resolution requiring the codename registry to be
- * initialized, which is wave-2+ work).
+ * initialized first).
  */
 export function ruleCacheKey(
   anchorId: number | undefined,

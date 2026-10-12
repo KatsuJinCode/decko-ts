@@ -4,32 +4,26 @@
 // are the `/:mark(.:format)` route's other arms, engine_routes.rb:22
 // `get "/:mark(.:format)" => "card#read"`).
 //
-// The bytes are the FRESH RUBY ORACLE CAPTURE:
-// fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl, captured from
-// the oracle app (corpus-v2.sqlite3 disposable copy
-// write-conformance-surfaces1.sqlite3; corpus sha256 819b8884… unchanged
-// across the run — the capture wrote nothing). The tests
-// pin the captured bytes; the gem sources cite the mechanics.
+// These are the behaviours this module preserves, each surprising enough
+// that reading the gem source alone does not make it obvious:
 //
-// Oracle truths this module preserves (each discovered by capture, not
-// from reading the gems):
 // 1. CSV `:titled` raises NoMethodError ("undefined method `each' for an
 //    instance of String") for any card whose items are not all known
-//    cards: `item_names` parses EVERY card's db_content as a newline list
-//    (Home's two content lines became two virtual cards whose :row nest
-//    renders "" — and CSV.generate_line("") raises). Only cards whose
-//    items all resolve (e.g. the List card *all+*read) render, as
-//    "Name,Type\n" + one CSV line per item's [name, type] row.
+//    cards: `item_names` parses EVERY card's db_content as a newline list,
+//    so a card whose content is prose becomes virtual (unknown) cards whose
+//    :row nest renders "" — and CSV.generate_line("") raises. Only cards
+//    whose items all resolve render, as "Name,Type\n" + one CSV line per
+//    item's [name, type] row.
 // 2. RSS `:feed` returns "RSS feeds disabled" unless Cardio.config
 //    .rss_enabled (default FALSE — lib/card/mod/format.rb:4). Enabled,
 //    the feed renders the channel + one item per raw_feed_items ([card]),
-//    and pub_date's `.to_s(:rfc822)` RAISES ArgumentError on the oracle's
-//    Rails 7.2 stack ("wrong number of arguments (given 1, expected 0)") —
-//    Builder ensure-closes the open tags and the view's rescue appends
+//    and pub_date's `.to_s(:rfc822)` RAISES ArgumentError on a Ruby 7.2
+//    stack ("wrong number of arguments (given 1, expected 0)") — the
+//    :rfc822 argument form was removed in Rails 7.0. Builder ensure-closes
+//    the open tags and the view's rescue appends
 //    `<error>\n\nERROR rendering RSS: …\n\n <backtrace></error>` AFTER
-//    `</rss>`. The port reproduces the raise shape; the backtrace lines
-//    are environment-specific (Ruby file paths in the capture) and are
-//    the accepted-and-labeled byte class here.
+//    `</rss>`. The raise shape is reproduced; the backtrace lines are
+//    environment-specific and are the accepted-and-labeled byte class here.
 // 3. JSON show defaults to :molecule, pretty-printed (2-space), keys in
 //    Ruby's insertion order; `page_details` adds url (over the atom's
 //    .json url, keeping the key position) + requested_at. A list-family
@@ -39,19 +33,17 @@
 //    NEST targets (json.rb overrides item_cards to nested_cards; the
 //    list-family block re-overrides to the parsed items).
 //
-// Not ported here (honest remainders, named):
-// - Search-type cards as csv/json items ride the claimed
-//   found_by/search execution surface (no oracle capture exists for a
-//   search card in these formats); executeSearch's
-//   pre-executed map is a page-flow artifact. A search card's content
-//   falls to the raw-string :content arm here.
+// Not implemented here (honest remainders, named):
+// - Search-type cards as csv/json items ride the found_by/search execution
+//   surface; executeSearch's pre-executed map is a page-flow artifact. A
+//   search card's content falls to the raw-string :content arm here.
 // - Relative ({{_self+…}}) nest references as json items: contextual
-//   resolution rides the claimed nest machinery; only absolute and
-//   :codename marks resolve here.
+//   resolution rides the nest machinery; only absolute and :codename marks
+//   resolve here.
 // - `?compress=true` (JSON.generate single-line) and `max_depth` params.
 // - The `structure` override arm of atom's content gate (data.rb `!
-//   card.structure`): the captured cards carry structure nil; rule-driven
-//   structure detection for these families rides the rules machinery.
+//   card.structure`): structure-driven detection for these families rides
+//   the rules machinery.
 // - The rss format's view aliases onto html-format views (:open → :titled
 //   etc.) — the feed is the only route-reachable rss shape (show defaults
 //   :feed).
@@ -81,10 +73,9 @@ export type CodenameMarkResolver = (
 ) => Promise<string | undefined>;
 
 export interface FormatShowOptions {
-  /** The URL context Card::Path renders from. Ruby's runner oracle had no
-   *  request host, so captured paths are relative ("/Home"); an HTTP
-   *  caller passes its origin and gets the absolute URLs Ruby-on-HTTP
-   *  emits. Default "" (the captured shape). */
+  /** The URL context Card::Path renders from. A caller with no request host
+   *  gets relative paths ("/Home"); an HTTP caller passes its origin and
+   *  gets the absolute URLs Ruby-on-HTTP emits. Default "". */
   urlBase?: string;
   /** Cardio.config.rss_enabled (lib/card/mod/format.rb:4 — default false).
    *  Only the rss family reads it. */
@@ -126,8 +117,8 @@ function formatCardOf(card: RenderCard): FormatCard {
     if (v instanceof Date) return Number.isNaN(v.getTime()) ? undefined : v;
     if (typeof v !== "string") return undefined;
     // SQL datetime strings ("2025-07-01 17:29:22", optional ".fff") are
-    // UTC (the seed default 2026-09-19 00:00:00.000 convention); a bare
-    // new Date() would parse them in the machine's local zone.
+    // UTC by convention; a bare new Date() would parse them in the
+    // machine's local zone.
     const d = v.includes("T")
       ? new Date(v)
       : new Date(`${v.replace(" ", "T")}${v.includes(".") ? "" : ".000"}Z`);
@@ -161,9 +152,9 @@ async function withTypeCode(
 }
 
 /** The item-name parse every card shares (collection item.rb item_names:
- *  the content read as a newline list, [[ ]] marks stripped). The csv
- *  probe: Home's two content lines became two virtual cards; the List
- *  card's "Anyone" content one item. */
+ *  the content read as a newline list, [[ ]] marks stripped). A card whose
+ *  content is two prose lines becomes two virtual cards; a one-line content
+ *  becomes one item. */
 function itemNamesOf(card: FormatCard): string[] {
   return card.dbContent
     .split(/\n+/)
@@ -176,7 +167,7 @@ function itemNamesOf(card: FormatCard): string[] {
  *  List). */
 const LIST_FAMILY_TYPE_CODES = new Set(["list", "pointer"]);
 
-/** The URI path form of a card name ("/Aikido_Oak_Cliff+Gallery" — spaces
+/** The URI path form of a card name ("/My_Page+Gallery" — spaces
  *  to underscores, the "+" joint kept). */
 function cardPath(name: string): string {
   return `/${name.replace(/ /g, "_")}`;
@@ -186,14 +177,14 @@ function cardPath(name: string): string {
 // CSV (card-mod-format set/all/csv.rb)
 // ---------------------------------------------------------------------------
 
-/** CSV.generate_line's field quoting subset (the captured rows need none
- *  of it; the quoting is the csv gem's minimal-quote default: quote only
- *  fields containing the separator, a quote, or a newline). */
+/** CSV.generate_line's field quoting subset (rows of names and type names
+ *  need none of it; the quoting is the csv gem's minimal-quote default:
+ *  quote only fields containing the separator, a quote, or a newline). */
 export function csvGenerateLine(row: unknown): string {
   if (!Array.isArray(row)) {
     // Ruby: undefined method `each' for an instance of String (NoMethodError
-    // at csv.rb generate_line — the capture's Home/show_default_titled error;
-    // Ruby 3.3's backtick-apostrophe method quoting is verbatim).
+    // at csv.rb generate_line). Ruby 3.3's backtick-apostrophe method
+    // quoting is reproduced verbatim.
     throw new Error("undefined method `each' for an instance of String");
   }
   const fields = (row as unknown[]).map((field) => {
@@ -210,24 +201,22 @@ export function csvHeader(): unknown[] {
 
 /** csv.rb:35-37 view :row — `nests.map` over the two _self nests
  *  (view :name, view :type): the ARRAY [name, type] (the array is what
- *  CSV.generate_line consumes one level up — the *all+*read capture's
- *  "Anyone,Role\n"). */
+ *  CSV.generate_line consumes one level up — e.g. "Anyone,Role\n"). */
 export function csvRow(card: FormatCard): unknown[] {
   return [card.name, card.typeName ?? ""];
 }
 
 /** One :titled body row: a KNOWN item renders :row (the [name, type]
  *  array); an UNKNOWN item's nest falls to :unknown = "" (csv.rb:44-46) —
- *  a STRING, which generate_line rejects (oracle truth 1). */
+ *  a STRING, which generate_line rejects (behaviour 1 above). */
 function csvItemRow(item: FormatCard): unknown {
   return item.unknown ? "" : csvRow(item);
 }
 
 /** csv.rb:31-33 view :body — `card.item_cards.map { |item_card| nest
- *  item_card }`: each item nested with the csv default_nest_view :titled
- *  (the List probe: render_body => ["Name,Type\n"] — the item Anyone's
- *  own titled, header only, its items empty). An unknown item renders ""
- *  (the Home probe: render_body => ["", ""]). */
+ *  item_card }`: each item nested with the csv default_nest_view :titled.
+ *  An item whose own items are empty yields a header row only; an unknown
+ *  item renders "". */
 export async function csvBody(
   engine: FormatEngineSurface,
   card: FormatCard,
@@ -258,8 +247,8 @@ async function csvItemTitled(
 /** csv.rb:20-24 view :titled — `voo.items[:view] ||= :row;
  *  (render_header + render_body).map { |row| CSV.generate_line row }.join`.
  *  With the items view pinned to :row each body row is the item's
- *  [name, type] array (the capture: "Anyone,Role\n"); any string row
- *  raises (generate_line's NoMethodError — csvGenerateLine throws it). */
+ *  [name, type] array; any string row raises (generate_line's
+ *  NoMethodError — csvGenerateLine throws it). */
 export async function csvTitled(items: FormatCard[]): Promise<string> {
   const rows: unknown[] = [csvHeader()];
   for (const item of items) rows.push(csvItemRow(item));
@@ -270,12 +259,12 @@ export async function csvTitled(items: FormatCard[]): Promise<string> {
 // RSS (card-mod-format set/all/rss.rb)
 // ---------------------------------------------------------------------------
 
-/** The default-state bytes (rss_enabled false — the config default AND the
- *  captured default-state bytes for every card). */
+/** The default-state bytes (rss_enabled false — the config default, and
+ *  the default-state bytes for every card). */
 export const RSS_DISABLED_BYTES = "RSS feeds disabled";
 
-/** Builder::XmlMarkup text escaping (xmlbase: & < > in text — the capture
- *  shows the error element's `#<…>` as `#&lt;…&gt;`). */
+/** Builder::XmlMarkup text escaping (xmlbase: & < > in text — an error
+ *  element's `#<…>` therefore emits as `#&lt;…&gt;`). */
 function xmlEscapeText(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -291,11 +280,11 @@ export function rubyTimestamp(d: Date): string {
   );
 }
 
-/** The Rails 7.2 ArgumentError pub_date raises on the oracle stack
+/** The Rails 7.2 ArgumentError pub_date raises
  *  (time_with_zone.rb to_s(:rfc822) — the :rfc822 argument form was
- *  removed in Rails 7.0). The port reproduces the RAISE (oracle truth 2):
- *  the message is the capture's verbatim inspect text; only the backtrace
- *  lines are environment-specific. */
+ *  removed in Rails 7.0). The raise is reproduced (behaviour 2 above); the
+ *  message is Ruby's verbatim inspect text and only the backtrace lines are
+ *  environment-specific. */
 const PUB_DATE_INSPECT =
   "#<ArgumentError: wrong number of arguments (given 1, expected 0)>";
 
@@ -307,8 +296,7 @@ function pubDate(): string {
 
 /** rss.rb:39-50 view :feed_item — title, description (the item's
  *  :open_content), pubDate → the raise. The emitted prefix UP TO the
- *  raise is what the capture pins:
- *  `<item><title>…</title><description>…</description>`. */
+ *  raise is `<item><title>…</title><description>…</description>`. */
 async function rssFeedItemPrefix(
   item: FormatCard,
   openContent: (item: FormatCard) => Promise<string>,
@@ -321,14 +309,14 @@ async function rssFeedItemPrefix(
 }
 
 /** rss.rb:14-31 view :feed — the instruct + rss + channel frame, the feed
- *  body, and the rescue's error element (Builder ensure-closes the open
- *  tags before the error appends — the capture's exact shape:
- *  `…</description></item></channel></rss><error>…</error>`).
+ *  body, and the rescue's error element. Builder ensure-closes the open
+ *  tags before the error appends, so the shape is
+ *  `…</description></item></channel></rss><error>…</error>`.
  *
  *  feed_body's items (rss.rb:33-38 raw_feed_items): the base default is
  *  [card], but the list-family override (card-mod-list 01_list/
- *  other_views.rb:84-85) is card.item_cards — the capture's *all+*read
- *  feed item is Anyone, not the card itself. Search-type feeds ride the
+ *  other_views.rb:84-85) is card.item_cards — so a list-family feed item
+ *  is the card's item, not the card itself. Search-type feeds ride the
  *  search_with_params override (search_views.rb:25) — the named search
  *  remainder above. */
 export async function rssFeed(
@@ -356,14 +344,13 @@ export async function rssFeed(
   const body = prefixes.join("");
   try {
     pubDate();
-    // unreachable: pubDate raises on the oracle stack (oracle truth 2)
+    // unreachable: pubDate raises on this Ruby stack (behaviour 2 above)
     return `${head}${body}</item></channel></rss>`;
   } catch (error) {
     // The rescue (rss.rb:27-30): `@xml.error "\n\nERROR rendering RSS:
     // #{e.inspect}\n\n #{e.backtrace}"` — Builder having ensure-closed
-    // </item></channel></rss> first (the capture's shape). The backtrace
-    // is the environment-specific byte class (Ruby file paths in the
-    // capture); the port emits a one-line TS label.
+    // </item></channel></rss> first. The backtrace is the
+    // environment-specific byte class; the port emits a one-line TS label.
     const message = error instanceof Error ? error.message : String(error);
     const backtraceLine =
       "format-families.ts (TypeScript port; the Ruby capture's backtrace is " +
@@ -414,9 +401,9 @@ function jsonAtom(card: FormatCard, urlBase: string): Record<string, unknown> {
  *  wrapped by page_details (url + requested_at), pretty-printed.
  *  Ruby Hash#merge keeps the ORIGINAL key position when replacing a
  *  value, so the type-nest lands at atom's `type` slot and page_details'
- *  url lands at the atom url slot (the probe's key order: id, name, type,
- *  url, [codename], content, items, links, ancestors, html_url,
- *  created_at, updated_at, requested_at). */
+ *  url lands at the atom url slot. The resulting key order is: id, name,
+ *  type, url, [codename], content, items, links, ancestors, html_url,
+ *  created_at, updated_at, requested_at. */
 function jsonMolecule(parts: {
   card: FormatCard;
   items: FormatCard[];
@@ -430,7 +417,7 @@ function jsonMolecule(parts: {
   molecule["items"] = items.map((item) => jsonAtom(item, urlBase));
   molecule["links"] = [];
   // the ancestors view nests each part with view :nucleus (data.rb:47-51) —
-  // NUCLEUS, no content (the capture's *all/*read ancestor objects).
+  // NUCLEUS, no content.
   molecule["ancestors"] = ancestors.map((a) => jsonNucleus(a, urlBase));
   molecule["html_url"] = urlBase + cardPath(card.name);
   if (typeCard !== undefined) molecule["type"] = jsonNucleus(typeCard, urlBase);
@@ -502,8 +489,7 @@ async function resolveItems(
 }
 
 /** The json item_cards override: list-family cards → the parsed items;
- *  every other card → its nest targets (json.rb's nested_cards — the
- *  Home capture's single *getting started item). */
+ *  every other card → its nest targets (json.rb's nested_cards). */
 async function resolveJsonItems(
   engine: FormatEngineSurface,
   card: FormatCard,
@@ -532,9 +518,9 @@ async function resolveJsonItems(
 
 /** Card::Name#ancestors resolved as cards (cardname-0.20.0 pieces.rb:24-26
  *  `pieces.reject { |p| p == self }` — the name's individual parts:
- *  "*all+*read" → ["*all", "*read"], the capture's exact pair; simple
- *  names have none). A fetch miss is the virtual card (Ruby's nest of a
- *  new card still renders a nucleus). */
+ *  "*all+*read" → ["*all", "*read"]; simple names have none). A fetch miss
+ *  is the virtual card (Ruby's nest of a new card still renders a
+ *  nucleus). */
 async function resolveAncestors(
   engine: FormatEngineSurface,
   card: FormatCard,

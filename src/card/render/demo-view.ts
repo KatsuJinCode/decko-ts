@@ -9,8 +9,9 @@ import { cardFormShell } from "../mod-loader/mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "../mod-loader/mods/core-mod.js";
 import { recaptchaSiteKey } from "./deployment-follow-live-config.js";
 
-/** The capture-era recaptcha site key (public: it ships in served HTML; the
- *  comment box in views.ts carries the same value). */
+/** Fallback recaptcha site key, used when the deployment configures none
+ *  (a recaptcha site key is public — it ships in served HTML; the comment
+ *  box in views.ts carries the same value). */
 const CAPTURE_RECAPTCHA_SITE_KEY = "6LSYNTHETICCAPTUREKEY000000000000000000B";
 
 /** set/all/demo.rb:23-25 demo_view - `Env.params[:demo_view] || :core`.
@@ -22,8 +23,8 @@ const DEMO_VIEW_DEFAULT = "core";
 /** set/all/demo.rb:31-35 view_select - `card_form :get, success:
  *  { view: :demo } do select_tag :demo_view, options_for_select(
  *  all_views_from_admin_config, demo_view), class: "_submit-on-select"
- *  end`. Corpus-pinned by Shark's getting-started page, which nests
- *  `{{:getting_started|demo}}`:
+ *  end`. A deck reaches this through a `{{...|demo}}` slot, and every
+ *  detail below is load-bearing:
  *  - the form class is "card-form slotter" (form.rb card_form_html_opts:
  *    add_class appends "card-form", then "slotter");
  *  - the action is the bare mark: Card::Path prefixes only create, update
@@ -32,9 +33,8 @@ const DEMO_VIEW_DEFAULT = "core";
  *  - for the anonymous reader card-mod-recaptcha's overrides add
  *    data-recaptcha="on" after the id and append recaptcha_token(:get) to
  *    the hidden tags, the script and the token input joined by output's
- *    newline. As with the comment box's capture-pinned form, the engine
- *    renders for the anonymous reader, and the key is the deployment's
- *    (capture-era fallback);
+ *    newline. The engine renders the anonymous arm, and the site key is
+ *    the deployment's, falling back to the constant above;
  *  - options_for_select marks the selected option in place and joins the
  *    options with a newline;
  *  - select_tag's class is the caller's verbatim "_submit-on-select". */
@@ -52,10 +52,9 @@ export const demoViewSelect = (ctx: ViewContext): string => {
   // card-mod-recaptcha set/all/recaptcha.rb recaptcha_on? (:16-23):
   // `!Auth.signed_in?` — the wrap (data-recaptcha="on" in the form opts,
   // recaptcha_token(:get) in the hidden tags) renders only for a signed-out
-  // session. The anonymous arm stays the capture's byte-for-byte; the
-  // signed-in arm is the recaptcha_on? false path the Shark page pins for
-  // the signed-in grades (no attribute, no script, no token input — the
-  // same gate the comment box's wrap already applies).
+  // session. A signed-in viewer therefore takes the recaptcha_on? false
+  // path: no attribute, no script, no token input — the same gate the
+  // comment box's wrap already applies.
   const signedIn =
     ctx.fmt.engine?.viewer?.signedIn === true || ctx.fmt.engine?.pageSession?.signedIn === true;
   const recaptchaAttrs: Array<[string, string]> = signedIn ? [] : [["data-recaptcha", "on"]];

@@ -41,8 +41,8 @@
  * codename registry.
  *
  * Deferred: pattern MODULE loading
- * (mod system, wave 3), the storage rule-lookup walk (next stream),
- * prototype instantiation (Card layer), permission checks (rules stream).
+ * (the mod system), the storage rule-lookup walk,
+ * prototype instantiation (Card layer), permission checks.
  */
 
 export {

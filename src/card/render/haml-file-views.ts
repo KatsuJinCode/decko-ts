@@ -23,9 +23,9 @@
 // card-mod-format set/all/haml.rb:41-47 -> :61-69 ->
 // Card::Set::Format::HamlPaths#haml_to_html (haml_paths.rb:8-14), which is
 // `Haml::Engine.new(haml).render(binding, locals)` with NO options hash.
-// haml-slice-compiler.ts reproduces those bytes; the byte truth is pinned in
-// fixtures/captured/haml-slice/ (53 live-Decko group_list cases + 102
-// measured Haml 5.2.2 cases).
+// haml-slice-compiler.ts reproduces those bytes; the suites under
+// tests/card/render/ pin them against 53 real group_list cases and 102
+// measured Haml 5.2.2 cases.
 //
 // WHAT IS NOT HERE, and why
 // ------------------------
@@ -40,8 +40,8 @@
 // (card-mod-assets set/right/group_remote.rb:25-31 puts the URL list in
 // exactly that shape, and the port reads it there too).
 // A card with no such content yields groups = [] and the view renders the
-// EMPTY STRING - which is exactly what the live oracle produces for a mod
-// with no assets (probe: the 5 Mod cards with no asset folder render a
+// EMPTY STRING - which is exactly what Ruby produces for a mod
+// with no assets (a Mod card with no asset folder renders a
 // 14-45 byte :core that contains no group_list block at all).
 //
 // The seam is named and one line wide, so the manifest reader can replace it
@@ -64,9 +64,9 @@ export const GROUP_LIST_HAML =
 
 /** The bootstrap helper group_list.haml calls
  *  (card-mod-bootstrap set/all/bootstrap/helper.rb:12-19, delegating to
- *  list_tag -> list_item_tags -> wrap_with). The bytes it produces were
- *  captured from the LIVE deck through a real Card::Format and are quoted
- *  here verbatim, because they are the byte truth and they are NOT what a
+*  list_tag -> list_item_tags -> wrap_with). The bytes it produces are
+ *  quoted
+  *  here verbatim, because they are the byte truth and they are NOT what a
  *  reader would guess:
  *
  *    two items  -> `<ul class="list-group"><li class="list-group-item">x.css</li>\n<li class="list-group-item">y.js</li></ul>`
@@ -74,8 +74,8 @@ export const GROUP_LIST_HAML =
  *    item "a&b" -> `<ul class="list-group"><li class="list-group-item">a&b</li></ul>`  (NOT escaped)
  *    item "<script>alert(1)</script>" -> passed through verbatim
  *
- *  The last two are MEASURED (fixtures/captured/haml-slice/
- *  assets-core-group-list.json, cases edge-amp / edge-tag / edge-escaped),
+ *  The last two are MEASURED (the assets-core-group-list cases
+ *  edge-amp / edge-tag / edge-escaped),
  *  not assumed: in this deck the helper does not escape its item text. */
 function listGroup(items: unknown): string {
   const list = (Array.isArray(items) ? items : [items]).filter(
@@ -97,7 +97,7 @@ export function groupsFor(ctx: ViewContext): [string, string[]][] {
 
 /** card-mod-assets set/abstract/mod_assets.rb:171-182 view :core.
  *
- *  mm-cstructural (2026-09-30): split so a caller with the groups already
+ *  SPLIT SO THE GROUPS CAN BE HANDED IN: a caller with the groups already
  *  in hand (the Mod page's Styles/Scripts sections, whose child card is a
  *  VIRTUAL card whose content is the mod gem's asset tree — a headless
  *  engine has no such tree, so core-mod.ts supplies the deck-pinned groups

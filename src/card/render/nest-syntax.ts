@@ -14,8 +14,7 @@ import { DeckoName } from "../name.js";
 // braces - [^{}]* is the whole grammar - so a global scan with that exact
 // character class reproduces Ruby's chunker for nest chunks. Other chunk
 // classes (links, URIs) are NOT chunks this renderer substitutes; their text
-// passes through verbatim, like Ruby's non-reference chunks do (deferred:
-// ).
+// passes through verbatim, exactly as Ruby leaves non-reference chunks.
 
 /** Nest chunk regex - Ruby full_re (nest.rb): /\A\{\{([^{}]*)\}\}/ unanchored. */
 const NEST_FULL_REGEXP = /\{\{([^{}]*)\}\}/g;

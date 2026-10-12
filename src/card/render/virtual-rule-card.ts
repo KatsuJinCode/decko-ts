@@ -7,7 +7,7 @@
 // runs the live permission walk on it (the rule's grants resolve through
 // the *all pattern precedence), and renders its bar.
 //
-// Round 7's port: for each setting in SETTING_GROUPS without a stored
+// The port: for each setting in SETTING_GROUPS without a stored
 // rule child, this file constructs the virtual RenderCard in memory and
 // hands it back to the renderer. The engine does NOT iterate virtual
 // children (collectRules reads STORED renderCards whose left_id equals
@@ -29,60 +29,42 @@ import { safeSetKeys } from "./set-keys.js";
  *  walk resolves it (mod/core/set/all/templating.rb#structure +
  *  #structure_rule_card: the rule card's own type_id is what the *type+
  *  *default rule template lookup yields for each setting's virtual
- *  rule card). Round-7's port stamped virtuals with the SETTING CARD's
- *  type (Setting, id 278) — that's wrong: the SETTING cards are all
- *  type=Setting universally, but the rule cards that *all+X renders in
- *  the corpus carry the setting-specific types below (verified against
- *  recapture-raw-shard-000000.jsonl `Xall-X<setting>-bar-view` slot
- *  attrs — e.g. *all+*autoname -> id=52 name=Phrase, *all+*captcha ->
+ *  rule card). Stamping virtuals with the SETTING CARD's
+ *  type (Setting, id 278) is wrong: the SETTING cards are all
+ *  type=Setting universally, but the rule cards *all+X renders carry the
+ *  setting-specific types below (each setting's *all+X virtual bar carries
+ *  a data-card-type-id/data-card-type-name pair — e.g. *all+*autoname ->
+ *  id=52 name=Phrase, *all+*captcha ->
  *  id=51 name=Toggle, *all+*read -> id=47 name=List, etc.).
  *
  *  The map covers every setting the SETTING_GROUPS list iterates;
- *  settings without a corpus *all+X virtual rule entry (default,
- *  structure, content_options, content_option_view) keep the
- *  settingCard.typeId fallback in buildVirtualRuleCard (the original
- *  pre-fix path) — those settings don't surface virtual rule cards on
- *  the corpus's set pages, so the divergence doesn't surface either.
+ *  *structure has no entry: its type is deck-specific (the
+ *  *structure+*right+*default template resolves to a deck-specific
+ *  cardtype), so buildVirtualRuleCard resolves it through the engine's
+ *  new-card type walk.
  *
- *  (R16 update: the re-measure above REPLACED that fallback story for
- *  default/content_options/content_option_view — their virtual bars DO
- *  surface corpus-wide (60-2,397 samples) and now carry corpus-pinned
- *  entries. *structure has no entry: its type is deck-specific (the
- *  *structure+*right+*default template, "Nest list" on the culture deck),
- *  so buildVirtualRuleCard resolves it through the engine's new-card type
- *  walk. Anonymous never sees that bar (*structure+*right+*read = "Anyone
- *  Signed In"); signed-in actors do.)
- *
- *  CLUSTER 2 (tiny-render-type-plus-right-rule-card): fixing the
- *  type_id/type_name divergence above closes this family. The bar-right
- *  content also picked up the wrong TYPE- class fragment (`TYPE-setting`
- *  vs the corpus's `TYPE-list`/`TYPE-pointer`/`TYPE-toggle`/...), so
+ *  The bar-right content also derives a TYPE- class fragment
+ *  (`TYPE-list`/`TYPE-pointer`/`TYPE-toggle`/...), so
  *  the `safeSetKeys` call below must read the canonical typeName, not
  *  the SETTING card's "Setting". */
 const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: string; typeCode: string }> = new Map<string, { typeId: number; typeName: string; typeCode: string }>([
   // templating
   ["autoname", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
-  // Corpus-wide re-measure (2026-09-27): the oracle's
-  // VIRTUAL rule-bar type per setting is unanimous across every set page in
-  // both surfaces (2,397-2,529 id-less bars per setting, ZERO variance —
-  // aggregated over all 48 expected-v2 shards). The type is the ensure_type
-  // chain outcome (mod/core/set/all/type.rb:58-80 ensure_type_id:
-  // type_id_from_code — each_type_assigning_module_key over the card's own
+  // The virtual rule-bar type per setting is the
+  // ensure_type chain outcome (mod/core/set/all/type.rb:58-80
+  // ensure_type_id: type_id_from_code — each_type_assigning_module_key over
+  // the card's own
   // type-assigning patterns, e.g. card-mod-layout set/right/layout.rb
   // `assign_type :pointer`, card-mod-style set/type_plus_right/set/style.rb
   // `assign_type :pointer` — then type_id_from_template, card-mod-content
-  // set/all/templating.rb:57-73 new_card_template). The four corrections
-  // below replace values the round-7 map inferred from the wrong probe (the
-  // *all+X stored rows and the setting cards themselves):
-  //   *default  2397×RichText (was Setting fallback — no entry)
-  //   *guide    2487×RichText (was Markdown 34753)
-  //   *layout   2478×Pointer  (was List 47)
-  //   *style    2529×Pointer  (was List 47)
-  // and the two additions cover settings the restriction gate lets through
-  // on list/pointer-prototype sets (SETTING_RESTRICTED_TO_TYPE) whose
-  // virtual bars the oracle pins (they had no entry — Setting fallback):
-  //   *content_options       60×List
-  //   *content_option_view   96×Phrase
+  // set/all/templating.rb:57-73 new_card_template). Each entry below states
+  // the resolved type for that setting:
+  //   *default             RichText
+  //   *guide               RichText
+  //   *layout              Pointer
+  //   *style               Pointer
+  //   *content_options     List
+  //   *content_option_view Phrase
   ["default", { typeId: 3, typeName: "RichText", typeCode: "rich_text" }],
   // permission
   ["create", { typeId: 47, typeName: "List", typeCode: "list" }],
@@ -112,16 +94,14 @@ const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: stri
 ]);
 
 /** The canonical rule card type for a setting's virtual rule card, or
- *  undefined when the setting has no corpus-derived entry (default,
- *  structure, content_options, content_option_view). The caller falls
- *  back to the SETTING card's type for the latter — the divergence
- *  only matters for settings whose *all+X virtual surfaces in the
- *  captured corpus. */
+ *  undefined when the setting has no map entry (*structure). The caller
+ *  falls back to the SETTING card's type — the divergence
+ *  only matters where the *all+X virtual surfaces. */
 function ruleTypeForSetting(settingCodename: string): { typeId: number; typeName: string; typeCode: string } | undefined {
   return RULE_TYPE_BY_SETTING.get(settingCodename);
 }
 
-/** The distinct corpus-pinned rule-card type ids the map resolves - the
+/** The distinct rule-card type ids the map resolves - the
  *  preload list render.ts#preloadSetRules walks into the render-card map
  *  (right after the setting cards) so the SYNC virtual construction can
  *  resolve the deck's own type card (deckTypeCard below). */
@@ -129,7 +109,7 @@ export const RULE_TYPE_IDS_FOR_PRELOAD: ReadonlyArray<number> = [
   ...new Set([...RULE_TYPE_BY_SETTING.values()].map((v) => v.typeId)),
 ];
 
-/** The map's corpus-pinned template type id for one setting (undefined =
+/** The map's template type id for one setting (undefined =
  *  the settingCard fallback shape) - the id the DECK type-card lookup
  *  keys on. */
 export function ruleTypeIdForSetting(settingCodename: string): number | undefined {
@@ -158,24 +138,22 @@ export interface VirtualRuleCardInputs {
    *  the card whose NAME and codename the rendered virtual must print.
    *  Ruby resolves the virtual rule card's type through the
    *  structure/template walk to an ID, then reads type_name/type_code off
-   *  the deck's card AT that id; the corpus deck names its type cards
-   *  differently from the raw deck (codename html = card 50 named "gwtx";
-   *  fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
-   *  *captcha+*right Xhead-bar and fixtures/corpus/shard-000000.jsonl
-   *  corpus:268 both read TYPE-gwtx / data-card-type-name="gwtx").
+   *  the deck's card AT that id; a deck may name its type cards
+   *  differently from the stock names this map carries (the served
+   *  *head virtuals then read that deck's own type name).
    *  Undefined (type card not preloaded / absent from the deck) keeps
    *  the map's raw-deck literal - the documented degradation, the same
    *  shape as the settingCard.typeId fallback below. */
   readonly deckTypeCard?: RenderCard;
   /** The engine's new-card type walk (RenderEngineLike.newCardDefaultType:
    *  type.rb ensure_type_id, type_id_from_code || type_id_from_template),
-   *  consulted for settings the corpus-pinned map does not cover: the
+   *  consulted for settings the map does not cover: the
    *  virtual *structure rule takes its type from the deck's
    *  *structure+*right+*default template (a deck-specific cardtype). */
   readonly newCardDefaultType?: (name: DeckoName) => { typeId: number; typeName: string } | undefined;
   /** The engine's new-card type resolution (the *default template chain,
    *  templating.rb new_card_template -> type_id_from_template) and codename
-   *  lookup. Used for a setting the corpus map does not cover: on a stock
+   *  lookup. Used for a setting the map does not cover: on a stock
    *  deck `*all+*structure` is typed by `*structure+*right+*default`
    *  (Nest list), not by the setting card's own type. */
   readonly engine?: VirtualRuleTypeEngine;
@@ -213,14 +191,14 @@ function relocateRuleType(
 /** Build the in-memory virtual rule card Ruby constructs on the fly for
  *  each SETTING when no stored child exists.
  *
- *  CLUSTER 14 (deep-read-rule-deny-on-self-or-right, ~272 entries on
- *  shard 0): the engine previously rendered `<span class="denied">` for
+ *  The engine rendering only stored children would emit
+ *  `<span class="denied">` for
  *  every setting whose set card had no stored child, because collectRules
  *  only iterates stored children. This helper closes that gap by
  *  constructing the virtual rule card Ruby builds in setting_list_item -
  *  one virtual per missing setting, handed back to nestRecord with the
  *  standard :bar view. The stored children continue to render via their
- *  stored form (the existing nestRecord path on line 584); the virtual
+ *  stored form (the existing nestRecord path); the virtual
  *  children render the live-walked bar (the same path, different card).
  *
  *  The virtual card has NO id (Ruby's Card.new with no row in the cards
@@ -228,40 +206,34 @@ function relocateRuleType(
  *  deniedVerdictsByKey map, format.ts#viewPermissionDenial + the read-
  *  permission gate's verdict resolution). Its setKeys include the RULE
  *  token, RIGHT-X<setting>, TYPE_PLUS_RIGHT-set-X<setting>, SELF-X<set>-
- *  X<setting> chain (mirrors the stored child shape; verified against
- *  the recapture-raw:*captcha+*right:render:content expected bytes for
- *  the virtual child slots).
+ *  X<setting> chain (mirrors the stored child shape).
  *
  *  Type resolution: the virtual card's TYPE in Ruby's render is resolved
- *  through a structure-rule walk (the rule's `*captcha+*right+*follow+
- *  *type+*default` lookup). The TS engine resolves the same per-setting
- *  type via the corpus-derived RULE_TYPE_BY_SETTING map at the top of
- *  this file (the *all+*<setting> virtual rule bars in
- *  tmp/raw-ground-truth/expected/recapture-raw-shard-000000.jsonl pin
- *  id=47/List for permission rules, id=51/Toggle for captcha,
- *  id=34843/Pointer for input_type, etc.). Settings without a corpus
- *  entry (default/structure/content_options/content_option_view) fall
- *  through to the SETTING card's type — those settings don't surface
- *  virtual rule bars on the corpus's set pages, so the divergence
- *  doesn't surface there either. CLUSTER 2 (tiny-render-type-plus-right-
- *  rule-card): the corpus's `data-card-type-id` / `data-card-type-name`
- *  attrs and the slot's `TYPE-<name>` class fragment both read from
- *  these values; the pre-fix `Setting`/278 stamp made every virtual
- *  rule bar mis-type. */
+ *  through a structure-rule walk (the rule's `<set>+<setting>+*type+
+ *  *default` lookup). The TS engine resolves the same per-setting
+ *  type via the RULE_TYPE_BY_SETTING map at the top of
+ *  this file (id=47/List for permission rules, id=51/Toggle for captcha,
+ *  id=34843/Pointer for input_type, etc.). Settings without a map
+ *  entry (*structure) fall
+ *  through to the SETTING card's type or the engine's new-card type walk.
+ *  The `data-card-type-id` / `data-card-type-name`
+ *  attrs and the slot's `TYPE-<name>` class fragment all read from
+ *  these values; a `Setting`/278 stamp would mis-type every virtual
+ *  rule bar. */
 export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard {
   const { setCard, settingCard, settingCodename, deckTypeCard, engine } = inputs;
   // set.name.s + "+" + the SETTING CARD'S OWN NAME. Ruby's
   // setting_list_item joins the set name with the setting card's stored
   // name (which carries the leading "*" and the STORED DISPLAY form),
-  // so the result for the input-type setting is "AAM+*self+*input type"
-  // — the space form the oracle pins in the bar's display positions
+  // so the result for the input-type setting is "<set>+*self+*input type"
+  // — the space form Ruby renders in the bar's display positions
   // (data-slot nest_name + card-title; the url_key/id attrs stay
   // underscore forms because they are key derivations). The codename
-  // join left in place 2026-09-26 is key-identical
+  // join is key-identical
   // (so all key/url-key lookups are unaffected) but NOT display-identical:
-  // recapture-raw-shard-000003 AAM+*self:content offset 36177 pins
-  // `nest_name":"AAM+*self+*input type"` + `title="AAM+*self+*input
-  // type"` where the codename form emitted "*input_type".
+  // the stored name's space form is what Ruby emits
+  // (`nest_name":"<set>+*self+*input type"` + `title="<set>+*self+*input
+  // type"`) where the codename form would emit "*input_type".
   const settingNamePart =
     settingCard.name?.s !== undefined && settingCard.name.s.startsWith("*")
       ? settingCard.name.s
@@ -271,13 +243,10 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // Type resolution: the virtual rule card's TYPE in Ruby's render is
   // resolved through the structure-rule walk (mod/core/set/all/templating
   // .rb#structure + #structure_rule_card: the *type+*default rule
-  // template lookup yields the rule card's own type_id). The corpus
-  // pins this per setting (RULE_TYPE_BY_SETTING above; verified
-  // against recapture-raw-shard-000000.jsonl). For settings without
-  // a corpus entry (default/structure/content_options/content_option
-  // _view), fall back to the SETTING card's type — the divergence
-  // doesn't surface for those because their *all+X virtual rule bars
-  // don't appear in the captured corpus.
+  // template lookup yields the rule card's own type_id). The per-setting
+  // map states the outcome (RULE_TYPE_BY_SETTING above). For settings
+  // without a map entry (*structure), fall back to the SETTING card's
+  // type or the engine's new-card type walk.
   const mapped = ruleTypeForSetting(settingCodename);
   // The map's ids are those of the deck it was measured on. On another deck
   // the type card holding the same codename has another id: when the
@@ -302,10 +271,7 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // Ruby prints the DECK's type card at the template-resolved id:
   // type_name (card.type_name) and the codename-derived type code are
   // lookups on THAT card, so the served deck's type names are what the
-  // oracle bytes carry (TYPE-gwtx / data-card-type-name="gwtx" for the
-  // *head virtuals - fixtures/corpus/shard-000000.jsonl corpus:268 and
-  // fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
-  // *captcha+*right agree). The map literals are the RAW-deck names and
+  // rendered bytes carry. The map literals are the stock names and
   // are only the fallback for a deck that does not carry the type card.
   // (A relocated type already carries this deck's own name; the caller's
   // deckTypeCard was looked up at the map's id, another card here.)
