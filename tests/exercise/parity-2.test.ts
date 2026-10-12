@@ -70,8 +70,8 @@
 // recorded on the same deck and committed beside it, with an OPEN FINDING:
 // on the synthetic deck 3 of the production grade's 7 declared Ruby crashes
 // do not reproduce, and the underlying divergence surfaces instead (the port
-// refuses to rename another user's account holder; Ruby 0.20's vacuous
-// validation allows it) -- see tests/tools/side-effects-scenario-battery.test.ts
+// refuses to rename another user's account holder; Ruby 0.20 does not
+// enforce this) -- see tests/tools/side-effects-scenario-battery.test.ts
 // in the working tree, which documents it. The private-deck run
 // (PERSIST_SRC_DECK pointing at the production oracle deck, its
 // tests/fixtures/persistence-oracle dumps) remains the stronger evidence --
