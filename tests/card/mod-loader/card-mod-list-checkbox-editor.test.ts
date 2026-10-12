@@ -44,15 +44,15 @@
 // options_hash - options_api.rb:3-19: the options card's item names PLUS the
 //   card's own selected items, uniq'd in insertion order.
 //
-// NOT ORACLE-CAPTURED, and why: no card in the pinned oracle deck carries an
+// NO RENDERED BYTES EXIST, and why: no card in the reference deck carries an
 // `*input_type` rule naming checkbox (the only input_type rule in
 // db/development.sqlite3 is the empty set card id 149 "*input type" with
 // left id 150 and an empty db_content - probed read-only through the decko
-// runner). The gem-deck capture that seeded the radio probe
+// runner). The committed probe script
 // (tests/card/mod-loader/oracle-capture-list-mod.rb) writes probe cards into
-// the SHARED oracle database; this suite was required to prove fresh captures
-// wrote nothing, so the checkbox bytes are pinned GEM-SOURCE-DERIVED (haml +
-// actionview, cited per line above) instead of capture-pinned. The pins are
+// its deck database; this suite does not rely on any recorded bytes, so the
+// checkbox bytes are pinned GEM-SOURCE-DERIVED (haml +
+// actionview, cited per line above). The pins are
 // therefore byte-exact against the sources that produce them, and are marked
 // rendered-unpinned in the surface inventory.
 
@@ -191,7 +191,7 @@ afterAll(() => {
  *  the checkbox editor - two options, "Option One" selected. unique_id
  *  (content.rb:60-70's chain-shared counter, ported as
  *  RenderFormat#uniqueId) is the render-scoped counter, so the group name
- *  is masked the way the capture scripts mask the random slot ids. */
+ *  is masked the way the suite masks the random slot ids. */
 function expectedInputBytes(groupId: string): string {
   return (
     `<input class="d0-card-content form-control" autocomplete="off" type="hidden" ` +
