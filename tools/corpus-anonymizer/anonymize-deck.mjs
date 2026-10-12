@@ -92,14 +92,46 @@ function mulberry32(seed) {
   };
 }
 
-function fnv1a32(str) {
+function fnv1a32(str, salt) {
   let h = 0x811c9dc5;
+  // The salt is XOR-folded in before any word byte, so the word's hash is
+  // only reproducible by someone who knows the tree's salt. See SALT below.
+  for (let i = 0; i < salt.length; i++) {
+    h ^= salt.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  h ^= 0x9e;
+  h = Math.imul(h, 0x01000193);
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
 }
+
+// SALT — WHY IT EXISTS.
+//
+// FNV-1a is a PUBLIC, UNSALTED function. A token is a pure function of
+// fnv1a32(word) and word.length, so anyone holding an anonymized deck can
+// invert it without any secret: take a candidate word list, compute
+// makeToken(len, fnv1a32(word)) for each candidate, and index the results by
+// token. Every hit is the original word. That is a DICTIONARY ATTACK, and it
+// needs no access to the corpus — only to the artifact this script publishes.
+//
+// The salt does not stop a determined attacker who has the salt; it stops the
+// attack that needs no secret at all, which is the one that matters for a
+// published artifact. Per-tree rather than per-word so that the same word
+// still maps to the same token everywhere (rule/set resolution depends on
+// it) and so the run stays reproducible for one tree.
+//
+// IT IS NOT A SECRET IN REPOSITORY TERMS. SALT below is a published default,
+// kept here so a fresh clone reproduces byte-identical output. What it buys is
+// the property that matters for THIS threat model: the mapping is not
+// invertible by anyone who has only the published artifact and a word list. A
+// deployment that needs the salt to be unguessable must set ANON_SALT in the
+// environment, which overrides it.
+const DEFAULT_SALT = "decko-ts-anonymizer-v2";
+const SALT = process.env.ANON_SALT || DEFAULT_SALT;
 
 // Strictly alternating consonant-vowel pattern; the resulting strings
 // use CYRILLIC letters (not Latin) so they cannot substring-match any
@@ -170,13 +202,13 @@ function buildAnonymizer({ perturbationSeed }) {
   return function anon(text) {
     if (text === null || text === undefined) return text;
     return String(text).replace(/\p{L}+/gu, (word) => {
-      const token = makeToken(word.length, fnv1a32(word));
+      const token = makeToken(word.length, fnv1a32(word, SALT));
       if (!perturbEnabled) return token;
-      const r = mulberry32(fnv1a32(word + "\u0001" + perturbationSeed))();
+      const r = mulberry32(fnv1a32(word + "\u0001" + perturbationSeed, SALT))();
       if (r < PERTURB_FRAC) {
         return makeToken(
           word.length,
-          fnv1a32(word + "\u0002pert\u0002" + perturbationSeed),
+          fnv1a32(word + "\u0002pert\u0002" + perturbationSeed, SALT),
         );
       }
       return token;
