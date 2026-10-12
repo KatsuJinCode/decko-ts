@@ -41,7 +41,7 @@ import {
 const SET_TYPE_ID = 3;
 const BASIC_TYPE_ID = 4; // the Basic cardtype row's id (Basic-typed rows)
 
-/** The deck: `*all plus+*read` -> `_left` (the corpus's delegating rule),
+/** The deck: `*all plus+*read` -> `_left` (the deck-wide delegating rule),
  *  `*all+*read` -> anyone. HostB reads through its OWN `*self` rule
  *  (Anyone) — deliberately NOT through *all plus — so a compound child
  *  resolving 40 proves the walk went through the left chain (its own first
