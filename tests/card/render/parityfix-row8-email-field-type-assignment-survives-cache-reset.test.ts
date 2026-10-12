@@ -1,6 +1,6 @@
 // parityfix-row8-email-field-type-assignment-survives-cache-reset.test.ts
-// -- 2026-10-05 lane-parityfixes-2026-10-05, BUG 3
-// (adjudicate-10-rows-lane.md row 8, `welcome email`).
+// -- the `welcome email` page's field-type assignment must survive the
+// lexicon temporary-cache reset.
 //
 // THE BUG, and why the page is sometimes right and sometimes wrong. The
 // `welcome email` page's read_form field slots are NEST MISSES:
@@ -14,8 +14,8 @@
 // findAssignedTypeName keys the walk on the anchor parts' CODENAMES
 // (PatternInstance#anchorCodenames, pattern/base.rb:40-44) -- a SYNC read of
 // DeckoName#codename, i.e. lexicon.id(key), i.e. the WARM-CACHE-ONLY mirror.
-// `*to` is corpus card 64 and has NO page reference, so its lexicon key is
-// never primed by a normal warm; the p20-email-views prelude primes it per
+// `*to` has NO page reference in the deck, so its lexicon key is
+// never primed by a normal warm; the email-views prelude primes it per
 // email-template page (render/prefetch.ts, the "email field-setting
 // anchors" statement).
 //
@@ -28,19 +28,15 @@
 // anchorCodenames nil the module key is nil, the walk returns nothing, and
 // newCardDefaultType falls through to the *default rule's RichText.
 //
-// MEASURED, both ways, on the 47,235-card raw corpus
-// (tmp/parityfixes-work/probe-assignment-walk-warmth.mjs):
-//   after boot, before any render: moduleKeys
-//     ["TypePlusRight::Basic::To","Right::To"], findAssignedTypeName "list"
-//   after rendering CM+*right:    moduleKeys [], findAssignedTypeName null
-// and the rendered page follows the walk exactly:
-//   row 8 rendered 1st/3rd : 21,686 B, data-card-type-name="List"
-//   row 8 rendered 7th     : 21,702 B, data-card-type-name="RichText"
-// which is the adjudicate lane's byte count to the byte.
+// MEASURED, both ways: with the prime present the module keys are
+// ["TypePlusRight::Basic::To","Right::To"] and findAssignedTypeName
+// answers "list"; after enough renders trip the reset the module keys
+// are [] and findAssignedTypeName answers null — and the rendered page
+// follows the walk exactly (data-card-type-name="List" vs
+// data-card-type-name="RichText").
 //
 // Ruby has no cold state on this axis: anchor_codenames reads Card::Lexicon
-// and Card::Codename off the db, so Ruby answers List for every viewer on
-// every page. The capture agrees (page-lane `welcome email`: List).
+// and Card::Codename off the db, so Ruby answers List on every page.
 //
 // THE FIX, and why it is here and not in DbLexicon.peekId. The id->name
 // direction already has a durable record for exactly this reset class
@@ -77,16 +73,16 @@ afterEach(() => {
 
 describe("set-type assignment walk vs the Temporary cache's within_key_counts reset (row 8)", () => {
   it("the sync anchor-codename read still answers after the reset wipes the prime", async () => {
-    // The corpus shape, in miniature: `*to` is a simple card (id 64 in the
-    // census deck), and the assignment the walk reads is registered for the
-    // module key its anchor produces.
+    // The deck shape, in miniature: `*to` is a simple card, and the
+    // assignment the walk reads is registered for the module key its anchor
+    // produces.
     await seedCard(storage, { id: 64, name: "*to", codename: "to", typeId: 2 });
     await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
     registerSetTypeAssignment("Right::To", "list"); // set/right/to.rb:1
 
     storage.engine.installNameEnvironment();
     await storage.engine.codenames.ensureLoaded();
-    // warm, as warmLexicon + the p20-email-views prelude prime it
+    // warm, as the email-views prelude primes it
     expect(await storage.engine.lexicon.id("*to")).toBe(64);
     expect(DeckoName.parse("*to").codename).toBe("to");
     expect(
