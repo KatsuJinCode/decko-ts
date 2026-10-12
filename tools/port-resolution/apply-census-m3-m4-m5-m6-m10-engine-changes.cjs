@@ -1,37 +1,37 @@
-// Port the serializer line's census M3, M4, M5, M6 and M10 engine changes onto
-// the fold line, one file-splice per mechanism, each with its own donor rev.
+// Apply five engine changes to the tree, one file-splice per mechanism, each
+// read from its own source revision (the revisions are named at each splice).
 //
-// Donor revs (the serializer line, lane-serializer-followup2-2026-10-03):
-//   M3  5f4b3084  tests/card/render/render-test-storage.ts   the SEEDER
-//   M4  a639ee62  src/card/mod-loader/mods/core-admin-runtime.ts + core-mod.ts
-//   M5  0377f4d3  src/card/mod-loader/mods/core-admin-runtime.ts
-//   M6  32fe3163  src/card/render/views.ts
-//   M10 735e6a45  src/card/mod-loader/mods/core-admin-runtime.ts
-//                 + tests/card/render/mod-asset-section-and-permission-inherit-core-pins.test.ts
+// WHAT EACH MECHANISM TOUCHES:
+//   m3   tests/card/render/render-test-storage.ts   the SEEDER
+//   m4   src/card/mod-loader/mods/core-admin-runtime.ts + core-mod.ts
+//   m5   src/card/mod-loader/mods/core-admin-runtime.ts
+//   m6   src/card/render/views.ts
+//   m10  src/card/mod-loader/mods/core-admin-runtime.ts
+//        + tests/card/render/mod-asset-section-and-permission-inherit-core-pins.test.ts
 //
-// SCOPE, stated honestly: M3's change is a TEST-SEEDER change, not production
+// SCOPE, stated honestly: m3's change is a TEST-SEEDER change, not production
 // engine. It alters what tests/card/render/render-test-storage.ts writes into
 // the in-test sqlite deck (a side-less compound junction row keeps its stored
-// name), so it moves test fixtures across the whole render suite. It is ported
-// because the M3 pin is corpus-derived and the corpus graph is shared, but it
+// name), so it moves test fixtures across the whole render suite. It is applied
+// because the m3 pin is corpus-derived and the corpus graph is shared, but it
 // is the one change here whose blast radius is the fixture layer rather than
 // the engine.
 //
-// M10 is TWO changes in one donor commit: the MOD_ASSET_GROUPS_SRC tinymce
+// m10 is TWO changes in one revision: the MOD_ASSET_GROUPS_SRC tinymce
 // entry, and a repair of an existing guard file
 // (mod-asset-section-and-permission-inherit-core-pins.test.ts) whose
-// assertion had gone stale when M5 landed. Both are applied; the guard repair
-// is only meaningful once M5's shades entry is in, so M5 must be applied first
-// (this script does M5 before M10).
+// assertion had gone stale when m5 landed. Both are applied; the guard repair
+// is only meaningful once m5's shades entry is in, so m5 must be applied first
+// (this script does m5 before m10).
 //
-// BYTE DISCIPLINE. views.ts carries 527 deliberate CRLF carriers and is only
-// touched by M6's single-line splice, which is asserted 527/527/0 before AND
-// after. The other three files are pure LF on the fold base (0/0/0 measured);
+// BYTE DISCIPLINE. views.ts carries 527 deliberate CRLF line endings and is only
+// touched by m6's single-line splice, which is asserted 527/527/0 before AND
+// after. The other three files are pure LF (0/0/0 measured);
 // their splices assert 0/0/0 before AND after so this script cannot silently
 // be pointed at a file whose line endings matter.
 //
-// IDEMPOTENCE. Each splice is a no-op when the donor bytes are already present,
-// and every assertion is on the donor's own text, so re-running is safe.
+// IDEMPOTENCE. Each splice is a no-op when the source bytes are already present,
+// and every assertion is on the source's own text, so re-running is safe.
 const fs = require("fs");
 const { execFileSync } = require("child_process");
 
@@ -233,11 +233,11 @@ function m3() {
       "  const nameColumn = isCompound && hasSides ? null : (opts.name ?? null);\n",
     ],
   ]);
-  // The doc block that records WHY (the 23 side-less rows and the
-  // name-composition walk). The fold doc block is the same paragraph with one
-  // clause added ("SIDE-BACKED junction rows store the key"); the donor
-  // appended a whole M3 paragraph after the R4 paragraph, so the replacement
-  // runs from the doc's first line to the end of the M3 paragraph.
+  // The doc block that records WHY (the side-less rows and the
+  // name-composition walk). The tree's doc block is the same paragraph with
+  // one clause added ("SIDE-BACKED junction rows store the key"); the source
+  // appended a further paragraph after the tree's, so the replacement
+  // runs from the doc's first line to the end of that appended paragraph.
   const MARK = "SIDE-LESS junction rows keep their stored NAME (census M3,";
   if (readText(fs.readFileSync(SEED), SEED).includes(MARK)) {
     console.log(`  ${SEED} :: seeder doc block :: already present - no-op`);
