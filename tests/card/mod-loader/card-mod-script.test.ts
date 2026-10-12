@@ -1,19 +1,19 @@
 // The card-mod-script mod loader test: the mod loaded through the loader
-// registers the five headlessly-portable html views of the T6 missing list
+// registers the five headlessly-portable html views of the missing list
 // (script_variables, javascript_tags, script_calls, javascript_include_tag,
 // remote_script_tags; :compressed is js-format and not registrable), the
 // *script setting (setting_opts), and the gem tree's sixteen set modules.
 // Each view proves its Ruby-source semantics against a probe deck that
-// mirrors the oracle deck's shapes (tools/oracle/decko-oracle-app
-// development.sqlite3: *all+*script id 306 and its "mod: X+*script" items).
+// mirrors a real deck's shapes (*all+*script as a List rule whose items
+// are "mod: X+*script" cards).
 //
-// Byte proof: an oracle capture ran during the port (RAILS_ENV=development
-// `bundle exec decko runner` against tools/oracle/decko-oracle-app, modeled
-// on oracle-capture-help-mod.rb). Pinned bytes the assertions below mirror:
+// Byte proof: the pinned bytes the assertions below mirror were verified
+// against a real decko runner (RAILS_ENV=development `bundle exec decko
+// runner`):
 // - script_variables:
 //   "<script>\n//<![CDATA[\ndocko.rootUrl='/';\ndocko.doubleClick='signed_in';\n
 //    docko.cssPath='/files/~447/1790061390.css';\ndocko.signed_in=true;\n\n//]]>\n</script>"
-//   (the capture ran as bot -> signed_in true; the headless engine's
+//   (the runner ran signed in -> signed_in true; the headless engine's
 //   anonymous default is false; the cssPath file ids are seed state)
 // - javascript_tags: remote_script_tags bytes + "\n" +
 //   "<!-- MAIN DECKO JAVASCRIPT -->" + "\n" +
@@ -23,11 +23,11 @@
 // - javascript_include_tag fallback:
 //   "\n<!-- javascript_include_tag not overridden for NAME -->\n"
 // - script_calls: the same <script>//<![CDATA[ wrapper with the
-//   trigger_slot_ready line last (the capture also carries cross-mod
+//   trigger_slot_ready line last (the runner deck also carries cross-mod
 //   setAceConfig/setTinyMCEConfig basket entries - not ported, cross-mod
 //   basket state)
 // - remote_script_tags: "<!-- mod: format (remote) -->" blocks of Rails
-//   script tags (the capture's tags carry crossorigin/referrerpolicy
+//   script tags (the runner's tags carry crossorigin/referrerpolicy
 //   attributes that live in the mods' manifest.yml config hashes -
 //   filesystem state; the port reads the +*group remote card surface,
 //   which carries the src list only)
@@ -90,12 +90,12 @@ beforeAll(async () => {
   await seedCard(s, { id: 52, name: "*asset output", codename: "asset_output", typeId: 41 });
   await seedCard(s, { id: 53, name: "*group remote", codename: "group_remote", typeId: 41 });
 
-  // the set anchor *all (a Set-typed card, oracle id 10 shape)
+  // the set anchor *all (a Set-typed card)
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 40 });
 
-  // the *all+*script rule card (oracle id 306: type List, items are
+  // the *all+*script rule card (type List, items are
   // "mod: X+*script" cards) + its compiled +*asset output child
-  // (oracle id 307, db_content "~307/1790061390.js" - the carrierwave
+  // (db_content "~307test/1790061390.js" - the carrierwave
   // identifier the /files/ URL is built from).
   await seedCard(s, {
     id: 306,
@@ -123,7 +123,7 @@ beforeAll(async () => {
     dbContent: "~447test/1790061390.css",
   });
 
-  // mod cards with their *script lists (empty, as in the oracle deck rows)
+  // mod cards with their *script lists (empty)
   // and +*group remote cards (the remote src list surface).
   await seedCard(s, { id: 539, name: "mod: format", typeId: 42 });
   await seedCard(s, { id: 540, leftId: 539, rightId: 50, typeId: 43, dbContent: "" });
@@ -175,7 +175,7 @@ afterAll(() => {
 });
 
 // The remote_script_tags bytes the set-branch walk composes for *all+*script
-// (oracle shape minus the manifest-file tag attributes - see header).
+// (minus the manifest-file tag attributes - see header).
 const REMOTE_TAGS_FOR_ALL_SCRIPT = [
   "<!-- mod: format (remote) -->\n" +
     '<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>\n' +
@@ -217,14 +217,14 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     // (card-mod-style), outside this script-only loader's chain; the
     // record dispatch reaches the deck's registration.
     const html = await renderThroughRecord(s, "Oracle Head Probe", "script_variables");
-    // Oracle-pinned byte shape (capture quoted in the file header): the
+    // Byte-pinned shape (see the file header): the
     // Rails javascript_tag CDATA wrapper, the four variables in hash order,
     // each line "k=v;\n" (the trailing newline makes the blank line before
     // //]]>), rootUrl the requestless root "/" (location.rb:19-21 with an
-    // empty origin - the capture pinned card_url("") == "/"), doubleClick
+    // empty origin - card_url("") == "/"), doubleClick
     // the extend_ansi.rb:1 config single-quoted, cssPath the *style rule's
     // :stylesheet_path nest (the seam's /files/<db_content> bytes), and
-    // signed_in the anonymous default false (the capture's true was bot
+    // signed_in the anonymous default false (the runner's true was signed-in
     // session state).
     expect(html).toBe(
       "<script>\n//<![CDATA[\n" +
@@ -239,7 +239,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
   it("WITH the mod: :script_calls renders the trigger_slot_ready line in the javascript_tag wrapper (all/head_javascript.rb:25-27, 48-50)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Head Probe", "script_calls");
-    // The headless basket is empty (the capture's setAceConfig/
+    // The headless basket is empty (the runner deck's setAceConfig/
     // setTinyMCEConfig entries are cross-mod basket state, not ported), so
     // the "\n\n".join of [trigger] is the bare trigger line.
     expect(html).toBe(
@@ -259,7 +259,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     const s = storage!;
     const html = await s.engine.render("mod: format+*script", "remote_script_tags");
     // the +*group remote card's content lines, one Rails script tag each
-    // (the oracle capture's extra crossorigin/referrerpolicy attributes come
+    // (a real deck's extra crossorigin/referrerpolicy attributes come
     // from the manifest.yml config hashes - filesystem state the card
     // surface does not carry)
     expect(html).toBe(
@@ -281,9 +281,8 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Head Probe", "javascript_tags");
     // param_or_rule_card(:script) resolves *all+*script; the three-part
-    // array joins "\n" (oracle-pinned shape); main_javascript_tag reads the
-    // rule card's +*asset output file URL (/files/<db_content>, oracle:
-    // '<script src="/files/~307/1790061390.js"></script>').
+    // array joins "\n"; main_javascript_tag reads the
+    // rule card's +*asset output file URL (/files/<db_content>).
     expect(html).toBe(
       REMOTE_TAGS_FOR_ALL_SCRIPT +
         "\n<!-- MAIN DECKO JAVASCRIPT -->\n" +
@@ -311,8 +310,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
   it("WITH the mod: :javascript_include_tag on a JavaScript card emits the format-js path tag (abstract/00_script.rb:78-80 layer)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Script Probe", "javascript_include_tag");
-    // path(format: :js) -> "/#{url_key}.js" (oracle:
-    // '<script src="/Oracle_Script_Probe.js"></script>')
+    // path(format: :js) -> "/#{url_key}.js"
     expect(html).toBe('<script src="/Oracle_Script_Probe.js"></script>');
   });
 
@@ -327,8 +325,8 @@ describe("card-mod-script through the mod loader (A/B)", () => {
   it("WITH the mod: :javascript_include_tag on *all+*script walks its items (right/script.rb:8-12 layer)", async () => {
     const s = storage!;
     const html = await s.engine.render("*all+*script", "javascript_include_tag");
-    // The three items are themselves +*script cards whose lists are empty
-    // (oracle deck rows 540/543/546), so each item's recursive render is ""
+    // The three items are themselves +*script cards whose lists are empty,
+    // so each item's recursive render is ""
     // and the "\n".join of ["", "", ""] is "\n\n".
     expect(html).toBe("\n\n");
   });
@@ -384,8 +382,7 @@ describe("card-mod-script through the mod loader (A/B)", () => {
       "javascript_include_tag",
       "remote_script_tags",
       // type_plus_right/mod/script.rb's :core (the Abstract::ModAssets
-      // group-list render) — ported admin-views-2, oracle-pinned
-      // through mod: format :scripts (admin-view-pins.json)
+      // group-list render), pinned through mod: format :scripts
       "core",
     ]) {
       expect(report.registeredViews).toContain(view);
