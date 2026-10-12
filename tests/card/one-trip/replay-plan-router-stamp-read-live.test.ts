@@ -1,5 +1,4 @@
-// THE STAMP-READ-VS-PLAN PIN (integration assembly r3, 2026-10-06 —
-// coordinator addendum to the assembly gate list).
+// THE STAMP-READ-VS-PLAN PIN.
 //
 // THE PROPERTY UNDER PIN. The freshness gate's deck_data_version stamp read
 // is per-request render-ENTRY gate state, never page data. If an armed
@@ -10,8 +9,7 @@
 //
 //   1. THE RECORDER (already pinned): isPipelineAbleRenderStatement excludes
 //      the freshness-stamp class — the shared isFreshnessStampRead shape
-//      (render-plan.ts; lineage-reconciliation commit "plans never absorb the
-//      freshness stamp read"; class was "freshness-stamp-read" pre-r5-merge),
+//      (render-plan.ts),
 //      so a recorded plan never CONTAINS the stamp read.
 //   2. THE FOLD (pinned here, test 1): replay-fold.ts's nine registered
 //      classes match only cards/closure shapes, so even a SEEDED plan that
