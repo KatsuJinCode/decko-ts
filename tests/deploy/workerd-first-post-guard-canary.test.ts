@@ -46,7 +46,6 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { build } from "esbuild";
-// @ts-expect-error — the stub plugin is an untyped .mjs tool module
 import { coffeescriptNodeBuiltinStubs } from "../../tools/vendor/coffeescript-edge-bundler-stubs.mjs";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
