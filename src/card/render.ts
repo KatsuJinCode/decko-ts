@@ -781,17 +781,17 @@ export class RenderEngine implements RenderEngineLike {
    *  re-processing the closure). Cleared on resetCaches(). */
   private structureProcessed = new Set<string>();
   /** Absolute template reference keys that missed fetch (nest targets that
-   *  are not cards — e.g. the corpus's {{xxxx}} fixtures). Never re-fetched
+   *  are not cards — e.g. placeholder names). Never re-fetched
    *  on later renders, so warm renders stay zero-query. Cleared on
    *  resetCaches(). */
   private structureRefMisses = new Set<string>();
   /** The *default rule universe (composed rule key -> the rule card's own
-   *  type_id) — round 9's new-child template machinery. Ruby resolves a
+   *  type_id) — the new-child template machinery. Ruby resolves a
    *  nest-miss child (format/nest/fetch.rb#new_card -> Card.fetch new:) to
    *  the *default rule card's TYPE (mod/core/set/all/type.rb:78-80
    *  type_id_from_template -> template&.type_id; for a new card the
    *  template IS the *default rule card, card-mod-content templating.rb
-   *  new_card_template). The raw-oracle pins the rendered shape: absent
+   *  new_card_template). The rendered shape: absent
    *  "+Discussion" children carry data-card-type-id=3 (RichText — the
    *  discussion+*right+*default rule card's type). Rides the same cold
    *  batch as the structure universe (one statement, +0 round trips).
@@ -865,9 +865,9 @@ export class RenderEngine implements RenderEngineLike {
    *  type is THAT nest's folded item type (determine_item_view_options_type
    *  folds the rendering host's item_type_name only for its own nest), and
    *  one host's fold must never answer another host's item slot — the
-   *  per-item-only keying let a pointer host that resolves Person
-   *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Ellery readable where the oracle denies.
+   *  per-item-only keying let a pointer host that resolves to a typed
+   *  collection pre-empt an untyped sibling host's verdict and render a
+   *  card readable where the permission rules deny it.
    *  Cleared on resetCaches(). */
   private pointerItemVerdicts = new Map<
     string,
@@ -1318,8 +1318,7 @@ export class RenderEngine implements RenderEngineLike {
       if (this.ruleTypeIds === undefined) {
         await this.parseRuleTypeIds(undefined, 0);
       }
-      // THE RULE SET-KEY REPAIR (oracle-pinned:
-      // fixtures/captured/search-list-views.json target 152): set keys were
+      // THE RULE SET-KEY REPAIR: set keys were
       // computed by enrichAndStore while ruleTypeIds was still undefined -
       // computeIsRule returned undefined and safeSetKeys dropped the bare
       // RULE token - and the existing-key guard (enrichAndStore's head)
@@ -1510,13 +1509,10 @@ export class RenderEngine implements RenderEngineLike {
     // CARD, i.e. the `mod: X+*style` / `mod: X+*script` row. The port
     // reads that test synchronously (core-mod.ts#childCard ->
     // fetchRenderCard, cache-only), and nothing warmed those two children,
-    // so the Styles/Scripts section was decided entirely by the deck-pinned
+    // so the Styles/Scripts section was decided entirely by the
     // MOD_ASSET_GROUPS table and a gem with a real child row but no pinned
-    // entry lost its section. `mod: shades` is exactly that: corpus row
-    // `mod: shades+*script` (id 49309) exists, MOD_ASSET_GROUPS_SRC has no
-    // `shades` key, and the capture carries the section while the engine
-    // rendered a bare `<p></p>` (recapture-raw-shard-000043 `mod: shades:page`,
-    // -28). One conditional family, same shape and same caveat as the
+    // entry lost its section. One conditional family, same shape and same
+    // caveat as the
     // bootswatch-skin warm below: a mod with neither child warms nothing.
     if (record.typeId !== undefined && this.peekCodenameById?.(record.typeId) === "mod") {
       await this.prepareItemForRender(`${name.s}+*style`);
@@ -1876,8 +1872,7 @@ export class RenderEngine implements RenderEngineLike {
     // Nothing to await here: the statement and its cache fold both ran
     // inside the cold batch above.
     // THE OPTIONS-CARD CQL PARSE BOUNDARY (the host's own item-view options
-    // chain — one of the firing paths of the capture-sentinel class; oracle
-    // probes tmp/recapture-deck/diagnose-capture-error{,2,3,4,5,6,7}.rb).
+    // chain).
     //
     // Mechanism (Ruby): rendering :open of a pointer/list card runs
     // standard_pointer_core (card-mod-list set/abstract/01_list/
@@ -1893,19 +1888,15 @@ export class RenderEngine implements RenderEngineLike {
     // chain lands on a search-type or set-type card, item_type_id is
     // Abstract::CqlSearch#item_type_id (cql_search.rb:14-18) -> cql_hash ->
     // parse_json_cql(content) -> Card::Error::BadQuery for garbage content
-    // — and the raise unwinds the whole parent render (the capture's
-    // CAPTURE_ERROR sentinel for the host).
+    // — and the raise unwinds the whole parent render.
     //
-    // Gate (pinned empirically over BOTH capture keys — recapture census
-    // tmp/recapture-deck/enumeration/options-gate-model.json, oracle probes
-    // 5-7): pointer/list hosts on :open ONLY. :closed never consults the
+    // Gate: pointer/list hosts on :open ONLY. :closed never consults the
     // options chain for plain lists (labeled/one_line_content), :content
-    // never produced a sentinel in either capture (0/46), set hosts raise
+    // never raised, set hosts raise
     // via their rules-editor chains instead (their own options card is
-    // never consulted — probe 7), and Abstract::Permission hosts
-    // (right part *read/*create/*update/*delete) recorded REAL :open bytes
-    // in both captures (original corpus: 1,537/1,537 real) while today's
-    // Ruby raises — a capture-time divergence the fixtures pin as bytes, so
+    // never consulted), and Abstract::Permission hosts
+    // (right part *read/*create/*update/*delete) rendered REAL :open bytes
+    // where newer Ruby raises — a divergence the expected bytes pin, so
     // the gate must not fire for them. Read-denied hosts render the denial
     // span before any view body runs (view/permission.rb:46-50), and
     // unknown hosts render the unknown substitution — both skip.
@@ -1923,11 +1914,8 @@ export class RenderEngine implements RenderEngineLike {
         throw failContent === "" ? emptyQueryError() : badQuery(failContent);
       }
     }
-    // THE SET-HOST RULES-EDITOR OPTIONS-CHAIN BOUNDARY (the largest
-    // remaining sentinel class — set|content=166, set|open=510 across both
-    // capture keys; recapture census
-    // tmp/recapture-deck/enumeration/set-host-options-gate-model.json,
-    // oracle probes 7-9). Set hosts' :open and :content delegate to the
+    // THE SET-HOST RULES-EDITOR OPTIONS-CHAIN BOUNDARY.
+    // Set hosts' :open and :content delegate to the
     // rules-editor accordion (card-mod-rules-0.20.0 set/type/set/
     // html_views.rb:6-11 + rule_lists.rb), which walks setting_categories
     // (per-setting rule_card lookups for content_options/help/structure/
@@ -1936,15 +1924,14 @@ export class RenderEngine implements RenderEngineLike {
     // recent_settings SET). When the walk resolves a search-type or set-
     // type rule card, the nested render hits Abstract::CqlSearch#item_type_id
     // (cql_search.rb:14-18) -> parse_json_cql(content) -> BadQuery for
-    // garbage content, unwinding the host render. The probe-7 census pins
-    // set hosts as the only class whose own options_card chain does NOT
+    // garbage content, unwinding the host render. Set hosts are the only
+    // class whose own options_card chain does NOT
     // raise — the raise originates INSIDE the rules-editor render on a
-    // NESTED rule card. :closed never rendered the rules-editor in either
-    // capture (the compact one_line_content); permission-right hosts
+    // NESTED rule card. :closed never renders the rules editor
+    // (the compact one_line_content); permission-right hosts
     // already short-circuited at the *open pointer/list gate above.
     //
-    // Gate (pinned empirically over BOTH capture keys — model output
-    // set-host-options-gate-model.json): set hosts on :open AND :content
+    // Gate: set hosts on :open AND :content
     // (both views render the rules editor via :core delegation). Walks
     // the host's per-setting rule_card candidates + the recent_settings
     // *content_options rule + the host's own options_card walk; the FIRST
@@ -2555,22 +2542,21 @@ export class RenderEngine implements RenderEngineLike {
 
   /**
    * RenderEngineLike#defaultHtmlViewConfig — the modeled
-   * `Cardio.config.default_html_view` for the CURRENT render surface (R17
-   * A-36 correction; see the pageConfigActive field doc and
+   * `Cardio.config.default_html_view` for the CURRENT render surface (see
+   * the pageConfigActive field doc and
    * format.ts#defaultNestView): "content" while a page render is active
-   * (the production config, capture-dual-$1page-and-view.rb:369),
+   * (the production config),
    * "titled" otherwise (the railtie default, mod/format.rb:2, under which
-   * the bare-render capture ran — probe-pinned by
-   * r17-nest-default-view-probe.rb: Cardio.config.default_html_view ==
-   * :titled at boot, implicit nests render titled-view).
+   * the bare render ran — Cardio.config.default_html_view ==
+   * :titled at boot, so implicit nests render titled-view).
    *
    * A deployment that SETS the config rides the follow-live seam
-   * (deploymentDefaultHtmlViewNest): the live deck configures :content on
-   * BOTH surfaces — the graded corpus's view surface carries it (children:open,
-   * recapture-raw-shard-000025: the implicit {{_self+*referred_to_by}}
-   * nest renders content-view where the railtie-default arm rendered
-   * titled-view), the same deck state the live pages' page-surface bytes
-   * prove (capture record #5, blog.html latest_news-content-view).
+   * (deploymentDefaultHtmlViewNest): the deck configures :content on
+   * BOTH surfaces — the view surface carries it (children:open,
+   * where the implicit {{_self+*referred_to_by}}
+   * nest renders content-view rather than the titled-view the railtie
+   * default produces), the same deck state the page-surface bytes
+   * prove.
    */
   defaultHtmlViewConfig(): string {
     if (this.pageConfigActive) return pageDefaultHtmlView();
@@ -2617,18 +2603,16 @@ export class RenderEngine implements RenderEngineLike {
       // The help resolver installs on the VIEW path's prepare (render()
       // below); the PAGE path bypasses render(), so install here too —
       // once per engine (the canary guard inside prepare makes the second
-      // call a no-op). Without this the graded page surface rendered every
-      // menu popover as the &nbsp; placeholder where Ruby resolved help
-      // (26 oracle pages carry real help text; the
-      // three +*variables pages pin the resolved bytes).
+      // call a no-op). Without this the page surface rendered every
+      // menu popover as the &nbsp; placeholder where Ruby resolves help.
       // Head-rule popover counts: the help resolver's
       // deck-wide Setting#count batch filters by the VIEWER's readable rule
       // set (help-popover.ts settingRuleCountsStatement — the port of the
       // Card.search read filter). An UNRESOLVED readPermission degrades that
-      // filter to the read_rule_id-IS-NULL branch, and every corpus *head
-      // rule carries a stored read_rule_id — the page surface rendered
-      // "(0 head rules)" where the oracle pins "(2 head rules)" (the
-      // *all+*head / ZQVT+*self+*head nest-miss pages). The VIEW path folds
+      // filter to the read_rule_id-IS-NULL branch, and every deck *head
+      // rule carries a stored read_rule_id — so the page surface renders
+      // "(0 head rules)" where the true count is higher.
+      // The VIEW path folds
       // the state earlier in render() (the permissionCold pass) before its
       // own install; the page path must too. Once per engine: the state is
       // memoized, render()'s permissionCold goes false, and its cold batch
@@ -3105,14 +3089,14 @@ export class RenderEngine implements RenderEngineLike {
         // walk the raw dbContent refs. Both branches must run — the template
         // refs are what a *structure rule contributes; the raw refs are the
         // closure the prefetch already walked and the render must answer to.
-        // Round 9: both branches absolutize against THIS card's name (the
+        // Both branches absolutize against THIS card's name (the
         // chunk/reference.rb referencing-card contract the Ruby port cites
         // in nest-syntax.ts's header): a template's `{{+image}}` names
         // `<instance>+image`. Without the context the walk produced the
         // literal key "+image", which matched no row, fell into
         // structureRefMisses, and every template child rendered as the
-        // unknown-card empty slot even when its row existed (the round-9
-        // live-wire gap). The prefetch's contextual collect and
+        // unknown-card empty slot even when its row existed.
+        // The prefetch's contextual collect and
         // closureWarm's cardReferenceKeys absolutize identically, so all
         // three walkers agree on one key set.
         const contentForRefs = resolved !== undefined
