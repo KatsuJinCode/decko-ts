@@ -10,8 +10,7 @@
 //     "%s/%s/%s" % [card_path(files_web_path), file_dir, full_filename]
 //     = "/files" + "~<card_id>" + "<action_id><ext>"
 //     -> /files/~<card_id>/<action_id><ext>  (the tilde mark STAYS in the
-//     url — oracle: "/files/~1347/5031.png", "/files/~447/1790661047.css";
-//     the /files routes' current grammar /files/:mark/:rev_id.:format
+//     url; the /files routes' current grammar /files/:mark/:rev_id.:format
 //     serves exactly this shape).
 // - asset_outputter.rb:20-30 update_asset_output(_live):
 //     `lock { store_output input_from_item_cards }` then
@@ -37,7 +36,7 @@ import { parseLocalAttachmentIdentifier } from "./attachment-content.js";
 
 /** The CarrierWave url for a file card's db_content identifier.
  *  local "~<card>/<action><ext>" -> "/files/~<card>/<action><ext>" (the
- *  oracle-pinned tilde-mark form); web content passes through raw (the
+ *  tilde-mark form); web content passes through raw (the
  *  uploader's `model.content` arm, file_card_uploader.rb:186-188); cloud
  *  and coded identifiers render as the raw identifier (the fog/coded
  *  surfaces have no headless byte pin — the engine's coded-file serving is
@@ -92,9 +91,9 @@ export interface StoredAssetOutput {
 
 /** Port of update_asset_output's write half (asset_outputter.rb:20-25 +
  *  36-59): ensure the `+*asset output` child exists (a File-typed card
- *  cannot be created without an upload — Ruby's own create validation, hit
- *  live in the oracle harness), then store the assembled output bytes as
- *  the child's attachment. The final read-back of db_content matches Ruby's
+ *  cannot be created without an upload — Ruby's own create validation), then
+ *  store the assembled output bytes as the child's attachment. The final
+ *  read-back of db_content matches Ruby's
  *  correct_identifier finalize event (the identifier re-derived from the
  *  stored action).
  *
