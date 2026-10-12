@@ -19,6 +19,18 @@ nothing else does ([reference-harness/SPEC.md](../reference-harness/SPEC.md)
 patch-version range measured on one operating system says nothing about a
 capture on another.
 
+That correction is measured, not assumed, and the number is the same one the
+variance README quotes. Capturing `synthetic-v1` with stock Linux Ruby of
+the same version and comparing answer by answer: **678 of the 1,752 render
+operations differ, every one of them class-token order and nothing else;
+all 2,388 semantics operations and all 16 scenarios are equal after N1; the
+classifier reports 0 UNCLASSIFIED**
+(`tools/ruby-version-variance/evidence/class-order-linux-vs-committed.json`).
+The patch-version axis is a separate measurement and a null result: Ruby
+3.2.11 against 3.3.12 on Windows is byte-identical after N1
+(`evidence/variance-3.3.12-vs-3.2.11.json`), which is why the operating
+system, not the version, is the axis this document has to account for.
+
 ---
 
 ## The four layers

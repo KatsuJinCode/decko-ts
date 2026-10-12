@@ -50,8 +50,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { expectViewWithoutMod } from "../../support/native-views.js";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 import {
   createRenderTestStorage,
   seedAction,
@@ -75,15 +76,26 @@ import cardModMarkdown from "../../../src/card/mod-loader/mods/card-mod-markdown
 import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 
+/** The captured-oracle fixtures this suite reads at module scope.
+ *
+ *  They live under `fixtures/captured/`, which is on the public candidate's
+ *  exclusion list, so on a clean clone they are ABSENT. Reading one unguarded
+ *  threw ENOENT during import — before any describe existed to skip — and the
+ *  run reported a failed suite with `no tests`, which reads as an engine
+ *  defect and is not one. The gate below turns that into a loud skip: the
+ *  suite announces what it needed and guards nothing, instead of crying wolf.
+ *  See docs/TESTING.md. */
+const CAPTURED_DIR = new URL("../../../fixtures/captured/", import.meta.url);
+const BOARD_FIXTURE_PATH = fileURLToPath(new URL("board-views.json", CAPTURED_DIR));
+const EDIT_FIXTURE_PATH = fileURLToPath(new URL("edit-views.json", CAPTURED_DIR));
+const CAPTURES_PRESENT = existsSync(BOARD_FIXTURE_PATH) && existsSync(EDIT_FIXTURE_PATH);
+
 /** The board-family fixture (fixtures/captured/board-views.json): the 8
  *  board-suite views per actor per target + the visibility probes +
- *  no_write_proof. */
-const BOARD_FIXTURE = JSON.parse(
-  readFileSync(
-    fileURLToPath(new URL("../../../fixtures/captured/board-views.json", import.meta.url)),
-    "utf8",
-  ),
-) as {
+ *  no_write_proof. Absent on a clean clone; the suite skips, see CAPTURES_PRESENT. */
+const BOARD_FIXTURE = CAPTURES_PRESENT ? JSON.parse(readFileSync(BOARD_FIXTURE_PATH, "utf8")) : undefined;
+
+type BoardFixture = {
   targets: Record<
     string,
     {
@@ -97,12 +109,13 @@ const BOARD_FIXTURE = JSON.parse(
   no_write_proof: { actions_before: number; actions_after: number; unchanged: boolean };
 };
 
-const FIXTURE = JSON.parse(
-  readFileSync(
-    fileURLToPath(new URL("../../../fixtures/captured/edit-views.json", import.meta.url)),
-    "utf8",
-  ),
-) as {
+/** Both fixtures are `undefined` when the captures are absent. The types below
+ *  are asserted non-optional because the describe that reads them is gated on
+ *  CAPTURES_PRESENT and never runs when they are missing — so the assertion is
+ *  never exercised, and the gate is what makes that true rather than luck. */
+const FIXTURE_RAW = CAPTURES_PRESENT ? JSON.parse(readFileSync(EDIT_FIXTURE_PATH, "utf8")) : undefined;
+
+const FIXTURE = FIXTURE_RAW as {
   targets: Record<
     string,
     {
@@ -455,7 +468,11 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("card-mod-edit EDIT-VIEWS lane", () => {
+describeOrSkipLoud(
+  !CAPTURES_PRESENT,
+  "tests/card/mod-loader/card-mod-edit-views.test.ts",
+  "fixtures/captured/{board-views,edit-views}.json — captured-oracle fixtures, absent on a clean clone",
+)("card-mod-edit EDIT-VIEWS lane", () => {
   it("the pinned capture is render-only: card_actions count unchanged (no-write proof)", () => {
     expect(FIXTURE.no_write_proof.unchanged).toBe(true);
     expect(FIXTURE.no_write_proof.actions_before).toBe(

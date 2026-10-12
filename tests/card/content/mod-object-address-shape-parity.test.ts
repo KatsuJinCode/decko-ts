@@ -61,6 +61,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
 import {
@@ -115,8 +116,26 @@ function loadCorpusModRecordContent(): string | undefined {
 
 const CORPUS_CONTENT = loadCorpusModRecordContent();
 
+/** The gate, named. The corpus lives under `tmp/`, which is gitignored, so on
+ *  a clean clone the shard is absent and CORPUS_CONTENT is undefined.
+ *
+ *  Only TWO of this file's nine tests need the corpus — the provenance guard
+ *  and the byte comparison (f). The other seven evaluate the port's own output
+ *  against constants declared above, and they guard real engine behaviour with
+ *  no corpus present. So the gate skips the two that cannot be evaluated and
+ *  leaves the seven running: skipping the whole describe would have turned a
+ *  clean clone's 7 passes into 7 skips and thrown away coverage for nothing.
+ *  See docs/TESTING.md. */
+const CORPUS_GATE =
+  "tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-shard-000039.jsonl — the captured corpus, absent on a clean clone (tmp/ is gitignored)";
+const corpusIt = itOrSkipLoud(
+  CORPUS_CONTENT === undefined,
+  "tests/card/content/mod-object-address-shape-parity.test.ts",
+  CORPUS_GATE,
+);
+
 describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/set/self/mod.rb:4-6)", () => {
-  it("the corpus holds the one card whose record content is a Cardio::Mod address list", () => {
+  corpusIt("the corpus holds the one card whose record content is a Cardio::Mod address list", () => {
     // Provenance guard: if the corpus ever stops carrying these bytes this file
     // has nothing to pin and must fail loudly rather than pass vacuously.
     expect(CORPUS_CONTENT, "corpus shard-000039 must carry the Mod record content").toBeDefined();
@@ -188,7 +207,7 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
     expect(modItemCodesContent().split("\n")).toHaveLength(mods.length);
   });
 
-  it("(f) every OTHER byte matches the raw corpus — address-normalized on both sides", () => {
+  corpusIt("(f) every OTHER byte matches the raw corpus — address-normalized on both sides", () => {
     expect(CORPUS_CONTENT).toBeDefined();
     const portAnswer = modItemCodesContent();
     const expected = CORPUS_CONTENT as string;
