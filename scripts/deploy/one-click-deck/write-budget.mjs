@@ -1,23 +1,22 @@
 // write-budget.mjs — the D1 free-tier write-budget gate for the one-click
 // Cloudflare deploy.
 //
-// Why this module exists: a bulk deck import written around 1.2M D1 rows in
-// a single day against the free tier's 100,000 rows-written/day — about 13
-// days of the entire daily budget — and repeated COUNT verifications read
-// through much of the 5M rows-read/day allowance. Before ANY D1 write step,
-// this module DECLARES the step's exact row count, computes it against the
-// limit, and REFUSES the step if it would cross the guard (80% of the daily
-// limit, leaving 20% headroom).
+// Why this module exists: a deck import sized in the millions of rows will
+// overrun the free tier's 100,000 rows-written/day if it is written in one
+// pass, and repeated COUNT verifications read through much of the 5M
+// rows-read/day allowance. Nothing may write before the arithmetic says the
+// step fits. Before ANY D1 write step, this module DECLARES the step's exact
+// row count, computes it against the limit, and REFUSES the step if it would
+// cross the guard (80% of the daily limit, leaving 20% headroom).
 //
 // Accounting conventions (stated, not hidden):
 // * One single-row INSERT statement = 1 row written. The fitting-scale seed
 //   is built exclusively from single-row INSERTs, so chunk row counts are
 //   exact by construction.
-// * The arithmetic counts TABLE ROWS only — the same convention as the
-//   import's own arithmetic (93,700 cards + 1,112,560 refs = 1,206,260). If D1's
-//   rows_written metric also counts index-entry writes, the 20% headroom
-//   absorbs the delta; the /_status + __metrics probe after the run is what
-//   reports the platform's own number.
+// * The arithmetic counts TABLE ROWS only. If D1's rows_written metric also
+//   counts index-entry writes, the 20% headroom absorbs the delta; the
+//   /_status + __metrics probe after the run is what reports the platform's
+//   own number.
 // * DDL (CREATE TABLE / CREATE INDEX) is counted as 0 data rows.
 // * ANALYZE writes one sqlite_stat1 row per index (35 in the current schema)
 //   plus per-table entries; estimated conservatively at 50 rows.
