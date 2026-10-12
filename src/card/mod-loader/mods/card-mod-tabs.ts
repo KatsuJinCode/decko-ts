@@ -9,9 +9,7 @@
 // coffee asset, no mod.yml (the gem relies on the name convention).
 //
 // Ported here byte-verifiably against the live decko 0.20.0 oracle
-// (fixtures/captured/tabs-mod-loader.json, captured via
-// tests/card/mod-loader/oracle-capture-tabs-mod.rb from
-// tools/oracle/decko-oracle-app; data-slot-id/data-card-id normalized, and
+// (data-slot-id/data-card-id normalized, and
 // the tab ids' root-format counter masked - see the test):
 //
 // - set/all/tabs.rb:41-43 view :tabs + :72-74 :pills (construct_tabs,
@@ -23,7 +21,7 @@
 //   query). The first chunk is the active tab; its pane content renders
 //   eagerly, the rest lazy-load through data-url.
 // - set/all/tabs.rb:29-39 the tabs helper + set/all/tabs/tab_panel.haml
-//   bytes (emission order pinned by the capture: Haml sorted single-quote
+//   bytes (emission order pinned by the oracle output: Haml sorted single-quote
 //   attrs on the two wrapper divs, Rails content_tag insertion order on
 //   the li/anchor/pane tags, one newline per emitted element, no
 //   indentation).
@@ -37,9 +35,9 @@
 //   delegates basket/session/params only) or its helper chain - the call
 //   falls through MethodDelegation#method_missing (lib/card/format/
 //   method_delegation.rb:38-46) to the ActionView instance, which does not
-//   answer :args either. Oracle: tabs-mod-loader.json "rendered" records
-//   `CAPTURE_ERROR: NoMethodError: undefined method `args' for
-//   #<Card::Format::CardActionView...>` for every static render. The port's
+//   answer :args either. Oracle: every probed static render raises
+//   `NoMethodError: undefined method `args' for
+//   #<Card::Format::CardActionView...>`. The port's
 //   views throw the parity error - bytes no decko 0.20.0 instance ever
 //   produced are NOT invented here.
 //
@@ -53,15 +51,15 @@
 //   the loader's flat view table would give the abstract :tabs to EVERY
 //   card (abstract loads after all, later registration wins), claiming a
 //   fidelity the mod does not have. Oracle: the probe card's format class
-//   has NO _view_tabs__cache (tabs-mod-loader.json probe_format_configs,
-//   all false) - the abstract module's settings are invisible off the
+//   has NO _view_tabs__cache (all probe format configs false) - the
+//   abstract module's settings are invisible off the
 //   include chain.
 // - [[link]] chunks in construct_tabs' reference walk: the engine's chunk
 //   machinery (src/card/render/nest-syntax.ts header) parses nest chunks
 //   only; a Link chunk's tab would need its options shape (card-mod-content
 //   lib/card/content/chunk/link.rb:31-33 `{title: link_text ||
 //   fully_stripped}`) which the engine does
-//   not produce. Not exercised by the capture (the probes carry nests).
+//   not produce. Not exercised by the oracle probes (they carry nests).
 // - assets/script/tab.js.coffee - asset pipeline (the client-side lazy
 //   loader: show.bs.tab pushState + $.ajax into the pane).
 // - pointer/list items referenced by PLAIN TEXT (not nests): the sync
@@ -135,7 +133,7 @@ function chunkRefChunks(card: RenderCard): RefChunk[] {
     for (const [key, value] of Object.entries(nest.options)) {
       if (typeof value === "string") options[key] = value;
       // nested :items option lists ride Ruby's hash too; they are not
-      // scalar-string representable here and no capture exercises them
+      // scalar-string representable here and no oracle probe exercises them
     }
     options["nest_name"] = nest.name;
     options["nest_syntax"] = nest.syntax;
@@ -290,7 +288,7 @@ function nestPath(fmt: ViewContext["fmt"], name: string, tabOptions: Record<stri
  *  same content.rb port). The tabs' former private WeakMap here forked
  *  that counter: on pages whose main body renders tabs, the layout
  *  chrome's own unique_id consumers (the my_card roles checkboxes) drew
- *  from a counter the tabs had never touched - the corpus pins
+ *  from a counter the tabs had never touched - the oracle pins
  *  pointer_checkbox-<actor>-Xenabled_role-3 on the [User]+*follow page
  *  (the main body's two tab ids are 1 and 2, the navbar's checkbox 3),
  *  which the fork rendered as -1. */
@@ -334,8 +332,8 @@ function tabLabelBytes(
 /** construct_tab's active-pane content: `nest(name, tab_options)` -
  *  nestRecord rides the resolved card (nest.rb#prepare_view_and_opts!:
  *  nest_name ||= card.name, home_view = the view) with the remaining
- *  chunk options on the voo (nest_syntax/title/...; the captured active
- *  pane's data-slot pins exactly view/nest_name/nest_syntax/show/
+ *  chunk options on the voo (nest_syntax/title/...; the oracle's active
+ *  pane data-slot pins exactly view/nest_name/nest_syntax/show/
  *  home_view/title). */
 function tabContentBytes(
   ctx: ViewContext,
@@ -439,8 +437,8 @@ export function tabObjects(
  *  and the anchor chain (lazy_tab.rb:24-27 -> tab.rb:65-74 -> links.rb:
  *  101-108). Attribute ORDER is Ruby's hash mechanics: button_attrib starts
  *  {} (tab.rb:48), LazyTab merges data-url FIRST (lazy_tab.rb:21, the
- *  html_safe value stays UNescaped in the attribute - capture pins the raw
- *  "&"), add_class appends class (tab.rb:33 "active" for the active tab,
+ *  html_safe value stays UNescaped in the attribute - the oracle pins the
+ *  raw "&"), add_class appends class (tab.rb:33 "active" for the active tab,
  *  lazy_tab.rb:25 "load" unless active?, tab.rb:66 "nav-link"), the merge
  *  adds role/data-bs-toggle/data-tab-name, and :path -> :href lands LAST
  *  (links.rb:102 deletes :path then assigns :href - a Ruby append). The li
@@ -460,7 +458,7 @@ function tabButton(tab: TabObject): string {
 /** LazyTab#tab_pane + Tab#tab_pane (lazy_tab.rb:33-36: the active tab's
  *  pane takes the block content; tab.rb:39-45: pane_attr {role:, id:}
  *  then add_class "tab-pane tab-pane-<name>" - the RAW name, spaces
- *  included (capture pins class="tab-pane tab-pane-Oracle Probe Child") -
+ *  included (the oracle pins the raw name, spaces and all, in the class) -
  *  and " active" when active). */
 function tabPane(tab: TabObject, blockContent: string): string {
   const cls = `tab-pane tab-pane-${tab.name}${tab.active ? " active" : ""}`;
@@ -469,7 +467,7 @@ function tabPane(tab: TabObject, blockContent: string): string {
 }
 
 /** all/tabs.rb:29-39 `tabs` (klass LazyTab via load: :lazy) rendering
- *  set/all/tabs/tab_panel.haml. The haml bytes (capture-pinned): sorted
+ *  set/all/tabs/tab_panel.haml. The haml bytes (oracle-pinned): sorted
  *  single-quote attributes on the two wrapper divs, no indentation, one
  *  newline per element; classy('nav') contributes the bare "nav" (no
  *  class_ups on this surface). Shared with the follow mod's :core - the
@@ -496,7 +494,7 @@ export function tabsPanel(
 // ---------------------------------------------------------------------------
 
 /** all/tabs.rb:41-43 view :tabs -> construct_tabs "tabs". No view settings
- *  (oracle probe_format_configs: _view_tabs__cache false - the cache:
+ *  (the oracle: _view_tabs__cache false - the cache:
  *  :never the compat surface knows belongs to the ABSTRACT module's
  *  include-scoped :tabs, not this one). */
 const tabsView: ViewFn = (ctx) => constructTabs(ctx, "tabs");
@@ -509,13 +507,13 @@ const pillsView: ViewFn = (ctx) => constructTabs(ctx, "pills");
  *  `item_view_options(args)`; no args method exists on the format chain
  *  (format.rb:36-37 delegates basket/session/params; method_delegation.rb:
  *  38-46 falls through to the ActionView instance which lacks :args), so a
- *  NON-EMPTY item list raises NoMethodError on every render. Oracle:
- *  tabs-mod-loader.json "rendered" carries CAPTURE_ERROR for the probed
- *  cards WITH items. An EMPTY item list never enters the block: the render
+ *  NON-EMPTY item list raises NoMethodError on every render. Oracle: the
+ *  probed cards WITH items carry that NoMethodError. An
+ *  EMPTY item list never enters the block: the render
  *  falls to `tabs tabs, nil, tab_type:` — the bare tabbable frame
- *  (tab_panel.haml with no tab buttons and no panes) — which the graded
- *  corpus pins on the Ada Admin rows (a User-typed card whose content
- *  carries no items: view:admin:Ada Admin:tabs_static / :pills_static). */
+ *  (tab_panel.haml with no tab buttons and no panes) — which the oracle
+ *  pins on the Ada Admin rows (a User-typed card whose content
+ *  carries no items). */
 function staticTabsParityRaise(view: string): never {
   throw new Error(
     `${view}: NoMethodError parity - undefined method 'args' for ` +
@@ -556,7 +554,7 @@ const cardModTabs: DeckoModManifest = {
   setModules: [
     {
       // card-mod-tabs-0.20.0/set/all/tabs.rb - the four html views; no
-      // view settings (probe_format_configs all false in the capture)
+      // view settings (the oracle's probe format configs all false)
       setPath: "all/tabs",
       formats: {
         html: {
