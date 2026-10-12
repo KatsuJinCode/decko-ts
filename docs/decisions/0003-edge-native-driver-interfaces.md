@@ -14,7 +14,7 @@ runtimes, where a Node-oriented package may not load at all), any provider
 quirk becomes an `if` in engine code, and the set of behaviours the engine
 actually depends on stops being written down anywhere.
 
-There is a second cost specific to this port. The acceptance criterion is byte
+There is a second cost specific to this engine. The acceptance criterion is byte
 parity, so "the same query behaves the same on every provider" is not a
 convenience — it is the measurement being valid only if the providers agree.
 
