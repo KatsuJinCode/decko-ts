@@ -526,7 +526,7 @@ async function prepareGuideRules(host: ModEngineHost): Promise<void> {
 /** The :title bytes a navbar link renders (base.rb:39-43 link_view /
  *  navbar_links.rb:33 render_title -> the html :title view). A chunk LABEL
  *  rides the nest's title option (link.rb:31-33 options title:) and the
- *  title view renders it - the corpus-pinned label shape the :link view uses
+ *  title view renders it - the same label shape the :link view uses
  *  (views.ts:589-591); without a label the real :title view dispatches. The
  *  label arm IS wrapped_title (title.rb:38-42), joint span included
  *  (format.ts#wrappedTitleInner). */
