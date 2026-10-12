@@ -23,12 +23,13 @@
 // declared + 37 mismatched), 36 of them traceable to ONE declared security
 // divergence (docs/SECURITY.md, "An account holder's name may be changed
 // only by its holder or Help Desk"): renaming another user's account
-// holder. Ruby 0.20's guard on that path is vacuous for any signed-in
-// actor -- it asks only whether the actor is the actor -- so Ruby allows
-// the rename. The port implements the check's evident intent and refuses
-// it (card-action-engine.ts assertMayRenameAccountHolder). On the
+// holder. Ruby 0.20 does not enforce the authorization check on that path,
+// so Ruby allows the rename. The port refuses unless the actor is the
+// account holder or a member of Help Desk
+// (card-action-engine.ts assertMayRenameAccountHolder). On the
 // production deck that difference never surfaces because Ruby crashes
-// mid-rename there (a crash on a nil card -- one of the 7 declared
+// mid-rename there (a second Ruby defect in the same authorization area,
+// withheld on the terms docs/SECURITY.md states -- one of the 7 declared
 // production pins); the crash depends on production deck state and does
 // not reproduce on a clean deck, so three of the seven production pins do
 // not transfer
@@ -38,9 +39,10 @@
 // run one ahead, which accounts for the remaining mismatched steps
 // (mailText/mailHtml/stored fields). The recording is committed unchanged
 // (expected/side-effects-ruby.json); this suite pins the exact current
-// verdicts under the declared mechanism -- divergence 5 of
-// docs/SECURITY.md, the operator's ruling that Ruby's vacuous manager check
-// is the defect and the port's refusal is correct -- so any engine change
+// verdicts under the declared divergence -- divergence 5 of
+// docs/SECURITY.md, the operator's ruling that Ruby's missing
+// authorization check is the defect and the port's refusal is correct --
+// so any engine change
 // here fails loudly and forces the divergence to be re-graded. Neither
 // engine's behavior changes.
 //
@@ -256,9 +258,9 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
       { step: "admin-close-own-account", fields: ["mail", "mailHtml", "mailText", "session"] },
     ]);
 
-    // The declared mechanism, spelled out: on the rename of another user's
-    // account holder, Ruby 303s and writes the rename (the vacuous manager
-    // check lets it through); the port refuses with the account-holder
+    // The declared divergence, spelled out: on the rename of another user's
+    // account holder, Ruby 303s and writes the rename; the port refuses
+    // with the account-holder
     // guard.
     const root = mismatches.find((r) => r.step === "probe-rename-other-account")!;
     expect(root.diffs.status).toEqual(["303", "422"]);
