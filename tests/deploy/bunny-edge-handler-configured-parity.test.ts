@@ -14,7 +14,7 @@
 // WHAT THIS PROVES, end to end and with no test-only injection: the served
 // deltas reach the served bytes from the ENVIRONMENT ALONE. The env carries
 // `DECKO_SERVED_DELTAS` as one JSON blob — exactly the paste an operator
-// makes (deploy/bunny-edge-trial-runbook.md section 3b) — and the handler's
+// makes (deploy/bunny-edge-deployment-runbook.md section 3b) — and the handler's
 // real boot reads it, hangs it on the Deck, and the page/error paths serve
 // that deck's chrome.
 //
