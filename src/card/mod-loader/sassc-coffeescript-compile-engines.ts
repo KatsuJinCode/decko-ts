@@ -1,84 +1,78 @@
-// The compile engines substrate: the SassC compile path, the CoffeeScript
-// compile, and the mod asset-dir walk - the leaves the carrierwave input
-// path names as deps.renderInputView seams, and the leaves the admin
-// :styles/:scripts view pins bottom out in.
+// Compile engines for the mod asset pipeline: the SassC render path, the
+// CoffeeScript compile, and the mod asset-directory walk. These are the
+// leaves the carrierwave input path names as its render-input seams, and the
+// leaves the admin :styles/:scripts views bottom out in.
 //
-// Ground truth (all oracle-capture-verified, fixtures/captured/
-// compile-engines.json, no-write proof 5018 -> 5018):
+// Ported behaviour, keyed to the upstream Ruby each function replaces:
 //
 // 1. card-mod-style set/abstract/01_css.rb:63-67 `def compress input;
-//    compress? ? compile(input) : compile(input, :nested) end` + :69-73
-//    `def compile input, _style=:compressed; SassC::Engine.new(input,
-//    style: :compressed).render end` - THE QUIRK: compile IGNORES its
-//    _style param (the FIXME on :67-68 admits it), so BOTH compress? arms
-//    emit style :compressed. Deck-proven: the jquery_ui_smoothness.css
-//    card's :compiled and :compressed oracle bytes are IDENTICAL. The port
-//    (compressCss) therefore takes no compress? flag at all.
-// 2. card-mod-style set/abstract/02_scss.rb:12-19 compile_scss - SassC
-//    style :expanded default. And :27-29 the scss :core is the UNcompiled
-//    process_content pass-through (deck-proven: render_core == source
-//    bytes) - the compile happens only in the css-format :compiled view,
-//    which Abstract::Scss overrides (:3-6) to compile_scss(:expanded).
-// 3. card-mod-script set/abstract/02_coffee_script.rb:20-22 compile_coffee -
-//    `::CoffeeScript.compile script, no_wrap: bare_compile`; bare_compile is
-//    false outside the html format (:16-18). The Ruby coffee-script 2.4.1
-//    wrapper (lib/coffee_script.rb) normalizes no_wrap: to {bare:} and calls
-//    the bundled coffee-script-source 1.12.2 JS compiler through ExecJS -
-//    the SAME compiler the npm `coffeescript@1.12.2` package ships, so the
-//    port is BYTE-EXACT on every corpus source in both arms.
-// 4. card-mod-script set/abstract/00_script.rb:9-12 the js :compressed view:
-//    `comment_with_source compress(_render_core)` where comment_with_source
-//    (:20-22) is `"// #{card.name}\n#{js}"` and compress (:25-27) is IDENTITY
-//    under compress_assets=false (the oracle deck's config; recorded in the
-//    fixture). The compress_assets=true arm is Uglifier (harmony) - no
-//    equivalent is installed in the engine and none was added; that arm
-//    throws a named error (loud, never a silent wrong-byte path).
+//    compress? ? compile(input) : compile(input, :nested) end` alongside
+//    :69-73 `def compile input, _style=:compressed; SassC::Engine.new(input,
+//    style: :compressed).render end`. The parameter is dead - compile ignores
+//    _style and always renders :compressed, as the FIXME on :67-68 admits -
+//    so both arms of the compress? ternary land on the same style and this
+//    port's compressCss needs no compress? argument.
+// 2. card-mod-style set/abstract/02_scss.rb:12-19 compile_scss defaults to
+//    SassC style :expanded. Separately, :27-29 makes the scss :core view an
+//    UNCOMPILED pass-through, so only the css-format :compiled view compiles,
+//    and Abstract::Scss (:3-6) points that view at compile_scss(:expanded).
+// 3. card-mod-script set/abstract/02_coffee_script.rb:20-22 compile_coffee,
+//    running `::CoffeeScript.compile script, no_wrap: bare_compile`, where
+//    bare_compile is false outside the html format (:16-18). The Ruby
+//    coffee-script 2.4.1 wrapper (lib/coffee_script.rb) rewrites no_wrap: to
+//    {bare:} and hands the source to the bundled coffee-script-source 1.12.2
+//    compiler through ExecJS. The npm `coffeescript@1.12.2` package ships
+//    that same compiler, which is what makes both no_wrap arms come out
+//    byte-identical here.
+// 4. card-mod-script set/abstract/00_script.rb:9-12, the js :compressed
+//    view: `comment_with_source compress(_render_core)`, where
+//    comment_with_source (:20-22) is `"// #{card.name}\n#{js}"` and compress
+//    (:25-27) is the identity function under compress_assets=false. The
+//    compress_assets=true arm is Uglifier (harmony); nothing equivalent is
+//    installed in this engine and none was added, so that arm raises a named
+//    error rather than silently returning unminified bytes.
 // 5. card-mod-assets set/abstract/asset_group.rb:15-18 item_cards ->
-//    relative_paths -> new_asset_file_card (:20-32): name = File.basename,
-//    content = the relative path, type/set-module by extension (style_group.rb
-//    new_asset_constants: .scss/.css; script_group.rb: .js.coffee checked
-//    BEFORE .js). folder_group.rb relative_paths (:9-12):
+//    relative_paths -> new_asset_file_card (:20-32): name is File.basename,
+//    content is the relative path, and type plus set-module follow from the
+//    extension (style_group.rb new_asset_constants: .scss/.css;
+//    script_group.rb: .js.coffee tested BEFORE .js, since a "x.js.coffee"
+//    path ends with both). folder_group.rb relative_paths (:9-12) is
 //    `Dir.chdir(path) { Dir.glob("**/*.{ext1,ext2}") }` - recursive,
 //    forward-slashed, hidden entries excluded, results sorted.
-//    local_manifest_group.rb relative_paths (:8-11) = manifest_group_items
+//    local_manifest_group.rb relative_paths (:8-11) is manifest_group_items
 //    (mod_assets.rb:75-77: `manifest&.dig(group_name, "items") || []`).
 //
-// DEPENDENCY DISCLOSURE (two npm adds, both declared in
-// package.json; the lockfile diff is purely additive - zero removals, zero
-// version changes to the pre-existing tree):
-// - coffeescript@1.12.2: byte-exact parity engine (same compiler as the
-//   oracle deck's coffee-script-source 1.12.2). Capture-verified 4/4
-//   sources, both no_wrap arms.
-// - sass@1.105.0 (Dart Sass): the closest maintained Sass compiler. npm has
-//   NO libsass 3.6.x binding usable on Node 24 (node-sass 9 wraps libsass
-//   3.5.5 with no Node 24 prebuilds; the @amoo-miki/node-sass
-//   9.0.0-libsass-3.6.5 fork fails its native node-gyp build). The oracle
-//   compiles through sassc 2.4.0 / libsass 3.6.4 (gem Makefile
-//   LIBSASS_VERSION). The libsass-vs-dart byte divergences are normalized in
-//   TWO layers, both oracle-verified against fixtures/captured/
-//   compile-engines.json (every pin, both styles):
-//   a. BOM: libsass strips a leading U+FEFF from the input; dart preserves
-//      it into the output (bootstrap-icons.css pin). -> the input is
-//      stripped before compiling.
-//   b. Trailing newline: libsass appends "\n" to every NON-empty render in
-//      both :compressed and :expanded; dart never does (all 10 corpus
-//      pins; the material_icons.css pin proves empty output stays empty -
-//      libsass's comment-only file renders ""). -> appended when, and only
-//      when, the compiled css is non-empty.
-//   c. EVERYTHING ELSE is normalized by the post-compile byte adapter
-//      (libsass-byte-parity-adapter.ts): dart canonicalizes numbers (leading
-//      zeros stripped/added, trailing zeros and exponents re-formatted),
-//      colors (keywords -> hex, hex shortened + lowercased), string escapes
-//      (decoded, case lost), attribute-selector quotes (stripped), calc
-//      padding (stripped), reorders nothing, and separates hoisted top-level
-//      rules with a single newline in :expanded - while libsass 3.6.4
-//      preserves the authored token text verbatim and reorders compound
-//      selectors into category order. The adapter restores the authored forms
-//      from the source (the pipeline holds it) and applies libsass's own
-//      conventions; the engine's output is byte-identical on the whole
-//      oracle-pinned corpus. The residuals that are NOT recoverable from
-//      output bytes are listed in the adapter header; none is reachable
-//      from the oracle-pinned corpus.
+// DEPENDENCY DISCLOSURE - two npm adds, both declared in package.json; the
+// lockfile diff is purely additive, with zero removals and zero version
+// changes to the pre-existing tree:
+//
+// - coffeescript@1.12.2: the byte-exact parity engine described in point 3.
+// - sass@1.105.0 (Dart Sass): the closest maintained Sass compiler available.
+//   npm carries no libsass 3.6.x binding usable on Node 24 (node-sass 9 wraps
+//   libsass 3.5.5 with no Node 24 prebuilds; the @amoo-miki/node-sass
+//   9.0.0-libsass-3.6.5 fork fails its native node-gyp build), while the Ruby
+//   engine compiles through sassc 2.4.0 / libsass 3.6.4 (gem Makefile
+//   LIBSASS_VERSION). The libsass-versus-dart byte divergences are normalized
+//   in two layers:
+//   a. BOM - libsass strips a leading U+FEFF from the input, dart carries it
+//      through into the output. The input is therefore stripped before
+//      compiling.
+//   b. Trailing newline - libsass appends "\n" to every non-empty render in
+//      both :compressed and :expanded, and dart never does. A comment-only
+//      source compiles to "" under both, so the newline is appended only
+//      when the compiled css is non-empty.
+//   c. Everything else is normalized by the post-compile byte adapter
+//      (libsass-byte-parity-adapter.ts). dart canonicalizes numbers (leading
+//      zeros stripped or added, trailing zeros and exponents re-formatted),
+//      colors (keywords to hex, hex shortened and lowercased), string escapes
+//      (decoded, case lost), attribute-selector quotes (stripped) and calc
+//      padding (stripped); it reorders nothing and separates hoisted
+//      top-level rules with a single newline in :expanded. libsass 3.6.4, by
+//      contrast, preserves the authored token text verbatim and reorders
+//      compound selectors into category order. The adapter restores the
+//      authored forms from the source (the pipeline holds it) and applies
+//      libsass's own conventions. Residuals that output bytes cannot recover
+//      are listed in the adapter header.
 
 import { readdirSync, statSync } from "node:fs";
 import { compileString, type OutputStyle } from "sass";
@@ -89,12 +83,12 @@ import { adaptDartCssToLibsassBytes } from "./libsass-byte-parity-adapter.js";
  *  02_scss.rb:12-14 default :expanded). */
 export type SasscStyle = "compressed" | "expanded" | "nested" | "compact";
 
-/** Sass compile failure - Ruby's surface raises Card::Error
- *  (css_compression_error, 01_css.rb:75-85) or Card::Error with a
- *  "SassC::SyntaxError (name:backtrace)" message (02_scss.rb:16-19). The
- *  MESSAGE BYTES diverge (dart's span format differs from libsass's); no
- *  deck-resident source exercises the failing path, so the error surface is
- *  pinned as a THROW, not as bytes (compile-engines-pin.test.ts). */
+/** Sass compile failure. Ruby's surface raises Card::Error
+ *  (css_compression_error, 01_css.rb:75-85), or Card::Error carrying a
+ *  "SassC::SyntaxError (name:backtrace)" message (02_scss.rb:16-19). The two
+ *  compilers format their error spans differently, so the message bytes are
+ *  not interchangeable; this surface is pinned as a throw rather than as
+ *  bytes (compile-engines-pin.test.ts). */
 export class SasscCompileError extends Error {
   readonly sourceName: string;
 
@@ -109,9 +103,9 @@ export class SasscCompileError extends Error {
   }
 }
 
-/** libsass appends "\n" to every non-empty render (oracle-verified on all 10
- *  corpus pins in BOTH styles); dart never emits it. material_icons.css - a
- *  comment-only file - proves the empty case stays empty (oracle ""). */
+/** libsass appends "\n" to every non-empty render, in both styles; dart
+ *  never emits it. A comment-only source compiles to "" under libsass, which
+ *  is why the empty case is passed through untouched. */
 function libsassTrailingNewline(css: string): string {
   return css === "" ? css : `${css}\n`;
 }
@@ -136,36 +130,35 @@ export function sasscRender(input: string, style: SasscStyle = "compressed"): st
 
 /** 01_css.rb:63-67 compress - the css-format compress path. The compress?
  *  config does not reach this port's signature because compile (:69-73)
- *  ignores its _style param: BOTH arms run style :compressed (the dead-param
- *  quirk, deck-proven by the identical :compiled/:compressed bytes on the
- *  smoothness card). */
+ *  ignores its _style param: BOTH arms run style :compressed, which is what
+ *  makes the :compiled and :compressed bytes identical on the same card. */
 export function compressCss(input: string): string {
   return sasscRender(input, "compressed");
 }
 
 /** 02_scss.rb:12-19 compile_scss - style :expanded default (the css-format
- *  :compiled view on Scss cards, 02_scss.rb:3-6). The error rescue's
- *  "SassC::SyntaxError (name:backtrace)" message bytes are not deck-pinned
- *  (no deck-resident failing source); failures throw SasscCompileError. */
+ *  :compiled view on Scss cards, 02_scss.rb:3-6). The rescue in Ruby's
+ *  compile_scss formats a "SassC::SyntaxError (name:backtrace)" message;
+ *  this port reports failures as SasscCompileError instead. */
 export function compileScss(scss: string, style: "expanded" | "compressed" = "expanded"): string {
   return sasscRender(scss, style);
 }
 
 /** 02_coffee_script.rb:20-22 compile_coffee - `CoffeeScript.compile script,
  *  no_wrap: bare_compile` (bare_compile false outside the html format,
- *  :16-18). BYTE-EXACT against the oracle: the npm coffeescript@1.12.2
- *  package is the same compiler the deck's coffee-script-source 1.12.2 gem
- *  ships (the Ruby wrapper maps no_wrap: to {bare:}). */
+ *  :16-18). Byte-exact: the npm coffeescript@1.12.2 package is the same
+ *  compiler the Ruby side reaches through coffee-script-source 1.12.2 (the
+ *  wrapper maps no_wrap: to {bare:}). */
 export function compileCoffeeScript(script: string, noWrap: boolean): string {
   return coffeeCompile(script, { bare: noWrap });
 }
 
 /** 00_script.rb:9-12 the js-format :compressed view = comment_with_source
- *  (20-22) over compress (_render_core) (:25-27). Under the deck's
- *  compress_assets=false the compress is IDENTITY - the byte shape the
- *  oracle deck's scripts carry. compressAssets=true is the Uglifier
- *  (harmony) arm: no equivalent is installed and none was added - this port
- *  throws rather than silently returning unminified bytes. */
+ *  (20-22) over compress (_render_core) (:25-27). Under compress_assets=false
+ *  the compress step is the identity function, so the view is the source with
+ *  a leading name comment. compressAssets=true is the Uglifier (harmony)
+ *  arm: no equivalent is installed and none was added - this port throws
+ *  rather than silently returning unminified bytes. */
 export function scriptCompressedView(
   cardName: string,
   core: string,
@@ -215,8 +208,8 @@ function listDirRecursive(base: string, prefix: string): string[] {
 
 function readdirSorted(dir: string): Array<{ name: string; isDirectory: boolean }> {
   const dirents = readDirEntries(dir);
-  // Ruby's Dir.glob sorts its results; the sort is codepoint order for the
-  // corpus' ASCII paths (JS default sort is UTF-16 code-unit order).
+  // Ruby's Dir.glob sorts its results; that sort is codepoint order for the
+  // ASCII paths this walk sees (JS default sort is UTF-16 code-unit order).
   return dirents.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
