@@ -1,27 +1,23 @@
-// External-link anchor attribute order - the census "target attribute
-// placement" mechanism (3 pages: Jordan Sample, Sign up, Archetypal Psychology;
-// receipt WORK_DIR/page-mechanism-census.md).
+// External-link anchor attribute order - the "target attribute placement"
+// divergence.
 //
 // Mechanism: Ruby renders every external resource link through
 // card-mod-format set/all/links.rb#link_to_resource (html block, :128-132)
 // -> add_resource_opts (:150-153): opts[:target] = "_blank" and the
 // resource_type class are inserted into the opts hash BEFORE super (Rails
 // link_to), and Rails' url_for inserts :href LAST - so the tag renders
-// `<a target="_blank" class="external-link" href="...">`. The oracle
-// corpus carries 798 external anchors and ALL of them are target-first
-// (full page-lane scan, 2026-09-29; zero target-last).
+// `<a target="_blank" class="external-link" href="...">`. Every external
+// anchor in the recorded surface is target-first, zero target-last.
 //
 // The engine's bare-URL autolink path already emits target-first
 // (format.ts the URI chunk scanner), but the two WIKILINK external
 // emitters (renderLinkChunk + expandWikiLinks, format.ts) emitted
-// `<a class="external-link" href="..." target="_blank">` - target LAST.
-// The census diff regions show exactly that swap
-// (phase-005 id 14795: exp `target="_blank" ` at 10884 vs act
-// ` target="_blank"` appended after href).
+// `<a class="external-link" href="..." target="_blank">` - target LAST:
+// the expected bytes carry `target="_blank" ` before the href while the
+// defect appended ` target="_blank"` after it.
 //
 // The raw authored content is wikilink syntax, not HTML
-// (corpus card 14800 "Archetypal Psychology+description":
-// `[[http://example.net|Association Building Community]]`), so the
+// (`[[http://example.net|Association Building Community]]`), so the
 // anchor shape is decided by the link renderer, not the stored bytes.
 
 import { describe, expect, it } from "vitest";
@@ -55,9 +51,8 @@ async function seedExternalLinkDeck(): Promise<RenderTestStorage> {
     typeId: 2,
     dbContent: "{{_main|titled}}",
   });
-  // The page card: both external-link shapes the census pages carry -
-  // the bare-URL autolink and the `[[url|label]]` wikilink (card 14800's
-  // raw content shape).
+  // The page card: both external-link shapes - the bare-URL autolink and
+  // the `[[url|label]]` wikilink.
   await seedCard(storage, {
     id: 14795,
     name: "External Link Probe",
