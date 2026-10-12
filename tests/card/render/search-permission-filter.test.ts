@@ -1,6 +1,5 @@
-// Search read-permission regression — the three defects the tenth-item trace
-// (REPO_DIR an internal work log) confirmed against
-// the corpus and live:
+// Search read-permission regression — three defects, each verified against
+// Ruby's semantics:
 //
 //   bug 1  PERMISSIONLESS SEARCH: runSearch passed no read filter, so LIMIT
 //          closed the window before any read check — a denied card occupied
@@ -10,21 +9,20 @@
 //          The fix rides cqlPermissionOptions into executeQuery's SQL
 //          (src/card/render.ts runSearch), so the limit counts POST-filter.
 //
-//   bug 2  JUNCTION RESULTS: readable junction results (the corpus's
-//          "Kaori Suzuki+Recommendations", id 45195) must surface in search
-//          listings. The corpus rows carry NULL name/key columns; the name
-//          composes through the lexicon (left_id/right_id) — the deck below
-//          pins that a composed junction result renders (and that a DENIED
-//          junction never does).
+//   bug 2  JUNCTION RESULTS: readable junction results must surface in
+//          search listings. Junction rows carry NULL name/key columns; the
+//          name composes through the lexicon (left_id/right_id) — the deck
+//          below pins that a composed junction result renders (and that a
+//          DENIED junction never does).
 //
 //   bug 3  FAIL-OPEN ON *TYPE PLUS RIGHT: the verdict walk's PatternCardInput
 //          omitted leftTypeName, so the *type plus right candidate anchored
 //          on the quick_type default ("RichText+<tag>") instead of the left
 //          card's real type, missed the deck's actual rule, and fell through
-//          to the *all+*read catch-all — granting anonymous a body the live
-//          deck denies (corpus 51577 "+Source Content": rule 34568 =
-//          "Source+Source Content+*type plus right+*read" -> "Anyone Signed
-//          In"). The fix passes leftTypeName (render.ts verdictPatternInput)
+//          to the *all+*read catch-all — granting anonymous a body the real
+//          deck denies (a "+Source Content"-style junction whose *type plus
+//          right read rule grants "Anyone Signed In" only). The fix passes
+//          leftTypeName (render.ts verdictPatternInput)
 //          AND fails closed when a complete deck's rule walk resolves no
 //          candidate (read-rules.ts — Ruby denies on an unresolvable walk:
 //          permissions.rb:139-146 read_rules_hash[nil]).
@@ -49,13 +47,13 @@
 //   21-24, 28-29, 34  News items (readable through 8; one DENIED through 10)
 //   25               DENIED junction News item (left 26, right 27)
 //   26/27/32         junction side cards
-//   31               READABLE junction News item (left 26, right 32) — the
-//                    45195 shape (NULL name/key, sides only)
+//   31               READABLE junction News item (left 26, right 32) —
+//                    NULL name/key, sides only
 //   33               News item with NO stored read_rule_id whose live walk
 //                    resolves rule 10 -> denied (invisible to the SQL id
 //                    list too: NULL read_rule_id)
 //   40               "Doc Alpha+Field X" junction, stored read rule 42
-//                    (*type plus right class) — the 51577 shape
+//                    (*type plus right class; bug 3's shape)
 //   41/45            "Doc Alpha" (typeId 50 "Doc") / "Field X"
 //   42               Doc+Field X+*type plus right+*read -> [[Role A]]
 //   43/44            the rule's set-anchor chain (44 = Doc+Field X,
@@ -89,7 +87,7 @@ const T = {
   epsilon: "2026-09-19 00:00:06.000", // 28
   zeta: "2026-09-19 00:00:05.000", // 29
   eta: "2026-09-19 00:00:04.000", // 34
-  readableJunction: "2026-09-19 00:00:03.000", // 31 — the 45195 shape
+  readableJunction: "2026-09-19 00:00:03.000", // 31 — the readable junction shape
 };
 
 async function seedDeck(s: RenderTestStorage): Promise<void> {
@@ -164,7 +162,7 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   for (const [id, at] of Object.entries(T)) {
     await s.counting.query(`UPDATE cards SET created_at = ? WHERE id = ?`, [at, Number(id)]);
   }
-  // The *type plus right shape (51577): a junction field whose read rule
+  // The *type plus right shape (bug 3): a junction field whose read rule
   // hangs on "<left type>+<right part>+*type plus right".
   await seedCard(s, { id: 50, name: "Doc", typeId: SET_TYPE_ID });
   await seedCard(s, { id: 41, name: "Doc Alpha", typeId: 50 });
@@ -294,7 +292,7 @@ describe("read verdict: *type plus right rule evaluated from the LEFT side's typ
 
   it("fails CLOSED when a complete deck's rule walk resolves no candidate", async () => {
     // canReadByRuleLookup's no-candidate branch, unit-tested against an
-    // empty driver (the real deck's catch-all would always resolve): a
+    // empty driver (a full deck's catch-all would always resolve): a
     // complete deck's unresolved walk denies (Ruby: permission_rule_id ->
     // nil -> read_rules_hash[nil] -> deny); a partial deck's stays the
     // documented allow (undefined).
