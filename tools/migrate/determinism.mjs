@@ -1,6 +1,6 @@
-// determinism.mjs — the M4-generate determinism proof: import the same
-// deck TWICE into two fresh target databases, then compare the result
-// and assert byte-identical content.
+// determinism.mjs — the determinism proof: import the same deck TWICE
+// into two fresh target databases, then compare the results row by row
+// and assert identical content.
 //
 // The data-faithful contract guarantees that an import of the same source
 // produces the same target. This module proves it: run the import twice
