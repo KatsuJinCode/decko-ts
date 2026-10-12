@@ -1,11 +1,11 @@
-// The census page-diff second-pass walker: given slot-normalized expected
-// and actual page bytes, trims the common prefix/suffix, then walks the
+// The page-diff second-pass walker: given slot-normalized expected and
+// actual page bytes, trims the common prefix/suffix, then walks the
 // divergent middle with a wide resync window and 24-char anchors, emitting
-// at most MAX_REGIONS regions and classifying each into the census
-// mechanism families (quote-style, whitespace-only, class-token,
+// at most MAX_REGIONS regions and classifying each into the known
+// divergence families (quote-style, whitespace-only, class-token,
 // href-name-case, d-permission-denied, double-escape, ...). Shared by the
-// census replay specs that record per-region mechanism evidence alongside
-// their byte-parity verdicts (both ported from analyze-census-pages.mjs).
+// replay specs that record per-region mechanism evidence alongside their
+// byte-parity verdicts.
 export const RESYNC_WINDOW = 2000;
 export const ANCHOR_K = 24;
 export const MAX_REGIONS = 40;
