@@ -9,14 +9,12 @@
 //   card-mod-style  set/abstract/style_group.rb:5-7   the scss group override
 //   card-mod-script set/abstract/script_group.rb:5-7  the js group override
 //
-// EVERY whole-assembly byte assertion is pinned against LIVE ORACLE computes
-// (tools/oracle/carrierwave-input-half-capture.rb + -followup.rb +
-// -probe-outputter.rb run against the booted decko-oracle-app on 2026-09-29;
-// supporting evidence in the worktree's tmp/carrierwave-input-half-*.json).
-// The oracle-computed whole bytes ride the committed fixtures in
+// EVERY whole-assembly byte assertion is pinned against the committed
+// oracle-computed fixtures in
 // fixtures/carrierwave-input-half-oracle/ (the two deck outputters assemble
-// 370KB/1MB - shas only there; the probe outputter "Oracle Cw In+*script"
-// assembles the nine fully-captured components into 15,968B - committed whole).
+// 370KB/1MB — shas only there; the probe outputter "Oracle Cw In+*script"
+// assembles the nine fully-captured components into 15,968B — committed
+// whole).
 //
 // The write half (storeAssetOutput, asset-output-write.ts) takes ASSEMBLED
 // content; this module is the assembly that feeds it.
@@ -69,11 +67,10 @@ const PROBE_WHOLE_EMPTY = readFileSync(join(FIXTURE_DIR, "probe-whole-empty.txt"
 const PROBE_WHOLE_PIPE = readFileSync(join(FIXTURE_DIR, "probe-whole-pipe.txt"), "utf8");
 
 // Recorded sha256 pins for the assemblies too large to embed (the two deck
-// outputters + the mod-level assembles; evidence:
-// tmp/carrierwave-input-half-oracle.json / -followup.json in the worktree).
-// The TS side cannot recompute these digests - the SassC / CoffeeScript /
-// mod-dir leaves are Ruby-runtime outputs (named remainder, see the module
-// doc) - so the digests ride as the record itself, not as an executable pin:
+// outputters + the mod-level assembles). The TS side cannot recompute these
+// digests — the SassC / CoffeeScript / mod-dir leaves are Ruby-runtime
+// outputs (named remainder, see the module doc) — so the digests ride as
+// the record itself, not as an executable pin:
 //   allScriptWhole             36a3d55df942e04fa205231a0c750d9f453518edda574f5bfb622dcb5dd492c7
 //   allScriptWholeEmpty        16ef5b7ac608883e6789d1fb79c54dd2ce3ebe82a3e8d22a852e7e9ae8b52637
 //   allScriptWholePipe         74d145a669412274eaa2892304b68272fda8a69356a91120f658b7182d0c8e13
@@ -106,7 +103,7 @@ function cardRef(spec: ItemSpec): AssetInputCardRef {
     name: spec.name,
     dbContent: spec.dbContent ?? "",
     setKeys: spec.setKeys ?? MOD_SCRIPT_SET_KEYS,
-    id: spec.id ?? 551, // a real row by default (oracle: mod: search+*script id 551)
+    id: spec.id ?? 551, // a real row by default
     trash: spec.trash ?? false,
   };
 }
@@ -143,7 +140,7 @@ function makeDeps(
   };
 }
 
-// the probe outputter row (oracle: id 1352, Type::List, TypePlusRight::Set::Script)
+// the probe outputter row (Type::List, TypePlusRight::Set::Script)
 const PROBE_OUTPUTTER: ItemSpec = {
   name: "Oracle Cw In+*script",
   dbContent: Object.keys(CAPTURED_PARTS).join("\n"),
@@ -159,8 +156,7 @@ describe("inputFromItemCards — the oracle-computed whole (probe outputter)", (
   it("reproduces the live input_from_item_cards bytes exactly (default joint)", async () => {
     const deps = makeDeps([PROBE_OUTPUTTER, ...NINE_ITEMS]);
     const out = await inputFromItemCards(deps, "Oracle Cw In+*script");
-    // oracle: 15,968B, sha256 685e15b6b6293338fb0e423507bcc7ea19a46470ac053a9d0beffc2c2c7bf0cf
-    // (tmp/carrierwave-input-half-probe.json input_from_item_cards)
+    // the committed fixture is 15,968B
     expect(out).toBe(PROBE_WHOLE_NEWLINE);
     expect(out.length).toBe(15968);
   });
@@ -169,7 +165,7 @@ describe("inputFromItemCards — the oracle-computed whole (probe outputter)", (
     const deps = makeDeps([PROBE_OUTPUTTER, ...NINE_ITEMS]);
     expect(await inputFromItemCards(deps, "Oracle Cw In+*script", "")).toBe(PROBE_WHOLE_EMPTY);
     expect(await inputFromItemCards(deps, "Oracle Cw In+*script", "|")).toBe(PROBE_WHOLE_PIPE);
-    // oracle sizes: 15960 / 15968 (tmp/carrierwave-input-half-probe.json)
+    // fixture sizes: 15960 / 15968
     expect(PROBE_WHOLE_EMPTY.length).toBe(15960);
     expect(PROBE_WHOLE_PIPE.length).toBe(15968);
   });
@@ -180,8 +176,7 @@ describe("inputFromItemCards — the oracle-computed whole (probe outputter)", (
 
   it("drops null components (asset_outputter.rb:33 .compact) — deps raise null", async () => {
     // a component that renders null (Ruby: a nil return) is dropped before
-    // the join; the recorded oracle proof rides all_script_join_proof
-    // (parts_compact_nil_free true, join_newline_matches true).
+    // the join. Pinned here via the deps double.
     const missing = { ...NINE_ITEMS[0] };
     const deps = makeDeps([PROBE_OUTPUTTER, ...NINE_ITEMS], {
       renderInputView: (item) => (item.name === missing.name ? null : CAPTURED_PARTS[item.name] ?? null),
@@ -208,11 +203,10 @@ describe("inputItemCards — item_cards(known_only: true).compact.reject(&:trash
   });
 
   it("drops unknown items (known_only: true)", async () => {
-    // Ruby cannot CREATE this state through the save path (validate_asset_inputs
-    // rejected the ghost live: "Content Oracle Cw Ghost is not a valid asset
-    // input card"); it arises when an item is deleted after the rule was
-    // written - which the additive oracle contract forbids. Pinned here via
-    // the deps double.
+    // Ruby cannot CREATE this state through the save path
+    // (validate_asset_inputs rejects the ghost: "Content Oracle Cw Ghost
+    // is not a valid asset input card"); it arises when an item is deleted
+    // after the rule was written. Pinned here via the deps double.
     const withGhost: ItemSpec = {
       ...PROBE_OUTPUTTER,
       dbContent: Object.keys(CAPTURED_PARTS).join("\n") + "\nOracle Cw Ghost",
@@ -253,8 +247,8 @@ describe("assetInputContent / assembleAssetInputContent — the inputter branche
   });
 
   it("a non-virtual inputter reads the +*asset input child (VirtualCache: id-less, virtual)", async () => {
-    // oracle (carrierwave-input-half-oracle.json): every +*asset input child
-    // probed id=null, virtual?=true, db_content == the left's assemble bytes
+    // every +*asset input child probes id-less, virtual, with db_content ==
+    // the left's assemble bytes
     // (right/asset_input.rb virtual_content = left.assemble_asset_input_content;
     // VirtualCache saves abort :success - the child NEVER persists a row).
     // The port's branch therefore bottoms out in the same assemble either way.
@@ -297,9 +291,9 @@ describe("assetInputContent / assembleAssetInputContent — the inputter branche
   });
 
   it("assemble renders format(input_format).render(input_view) from the set registry", async () => {
-    // the include_set options (gem-cited): yeti skin (bootswatch skin)
-    // renders css/compressed - oracle input_format "css", input_view
-    // "compressed" (carrierwave-input-half-oracle.json, yeti skin item).
+    // the include_set options (gem-cited): the yeti skin (a bootswatch
+    // skin) renders css/compressed — input_format "css", input_view
+    // "compressed".
     const skin: ItemSpec = { name: "yeti skin", setKeys: "TYPE-bootswatch_skin", id: 414 };
     const seen: string[] = [];
     const deps = makeDeps([skin], {
@@ -317,8 +311,7 @@ describe("assetInputContent / assembleAssetInputContent — the inputter branche
     // responding to asset_input_content. Ruby raises NoMethodError inside the
     // assembly map when unvalidated; the save-path event
     // validate_asset_inputs rejects the card with
-    // "Content <name> is not a valid asset input card" (rejected live,
-    // 2026-09-29, first probe-outputter run). The port's guard is
+    // "Content <name> is not a valid asset input card". The port's guard is
     // findInvalidInput; past it assetInputContent returns null.
     const plain: ItemSpec = { name: "Plain Card", setKeys: "ALL TYPE-rich_text", id: 900 };
     const overPlain: ItemSpec = {
@@ -390,9 +383,9 @@ describe("the assembly over the real engine set keys (storage-backed)", () => {
     await seedCard(s, { id: 62, name: "List", codename: "list", typeId: 5 });
     await seedCard(s, { id: 63, name: "Mod", codename: "mod", typeId: 5 });
     await seedCard(s, { id: 8, name: "*script", codename: "script", typeId: 7 });
-    // the left of the exercised item: a Mod-typed card (oracle: "mod: search"
-    // — the +*script child's set_modules include
-    // Card::Set::TypePlusRight::Mod::Script because the LEFT is Mod-typed)
+    // the left of the exercised item: a Mod-typed card
+    // ("mod: search") — the +*script child's set_modules include
+    // Card::Set::TypePlusRight::Mod::Script because the LEFT is Mod-typed
     await seedCard(s, { id: 550, name: "mod: search", typeId: 63 });
     await seedCard(s, {
       id: 551,
