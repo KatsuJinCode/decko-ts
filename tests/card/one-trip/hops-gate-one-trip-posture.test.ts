@@ -1,6 +1,6 @@
-// THE HOPS GATE'S ON POSTURE (one-trip-integration lane, 2026-10-03).
+// THE HOPS GATE'S ON POSTURE.
 //
-// hops-per-render-one-page-law.test.ts (a standing-net manifest member)
+// hops-per-render-one-page-law.test.ts
 // pins the OFF posture: the fixture page's cold render stays under the
 // law's ceiling of 14 round trips and its warm re-render under 1. THIS
 // file pins the one-trip posture of the SAME law on the SAME fixture:
@@ -11,9 +11,7 @@
 // per-engine seating memo makes the payload free on re-render).
 //
 // The fixture seeding is replicated verbatim from the hops gate's
-// seedLawFixtureDeck (that file is a manifest member owned by the
-// db-roundtrip lane; this file leaves it untouched). Not a standing-net
-// manifest member.
+// seedLawFixtureDeck; this file leaves that file untouched.
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,8 +28,8 @@ import {
 import { normalizeSlotIds } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
 
-/** The law's ceiling (hops-per-render-one-page-law.test.ts — change only
- *  with a receipt justification in that file's own discipline). */
+/** The law's ceiling (hops-per-render-one-page-law.test.ts — keep the two
+ *  files' ceilings in sync). */
 const HOPS_LAW_CEILING = 14;
 
 async function seedLawFixtureDeck(s: RenderTestStorage): Promise<void> {
@@ -122,14 +120,12 @@ describe("the hops gate's one-trip posture: 1 data fetch + residue stays under t
     storageOff.counting.reset();
     await storageOff.engine.render("law fixture page", "open");
     const offWarm = storageOff.counting.snapshot();
-    // WARM CEILING 2 (lineage-reconciliation lane, 2026-10-06): the composed
-    // engine's warm render pays the freshness stamp read (delivery
-    // contract:79, exactly ONE statement — measured) ON TOP OF the
-    // deployed-lineage warm floor of ONE id point fetch
-    // (`SELECT * FROM cards WHERE id IN (...)` — measured 1 RT warm on the
-    // pristine 41cc939c base with this very fixture; the freshness lane's
-    // own tree measured 0 warm queries because ITS engine had no such
-    // floor). 1 + 1 = 2; the law's shape (a bounded warm cost) is intact.
+    // WARM CEILING 2: the composed
+    // engine's warm render pays the freshness stamp read (exactly ONE
+    // statement — measured) ON TOP OF the warm floor of ONE id point fetch
+    // (`SELECT * FROM cards WHERE id IN (...)` — measured 1 RT warm
+    // with this very fixture). 1 + 1 = 2; the law's shape (a bounded
+    // warm cost) is intact.
     expect(offWarm.roundTrips).toBeLessThanOrEqual(2);
 
     // ---- the derived store, built from this same fixture deck ----
