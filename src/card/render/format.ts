@@ -2195,9 +2195,9 @@ export class RenderFormat {
     // view_opts[:type]` — an explicit `| type:X ` nest opt names the new
     // card's type CARD (Card.fetch name, new: { type: X }; the explicit
     // opt wins over the *default template chain, Card.new's template
-    // precedence). R17 evidence: the personal-page content/open capture (shard 40)
-    // nests `{{+agree | type:Toggle }}` — no +agree row exists in the
-    // corpus, and the oracle's +agree slot carries data-card-type-id="51"
+    // precedence). Observed on: a personal page's content/open view nests
+    // `{{+agree | type:Toggle }}` where no +agree row exists at all,
+    // and the +agree slot carries data-card-type-id="51"
     // data-card-type-name="Toggle" with the TYPE-toggle set-key chain,
     // i.e. the new card is TYPED BY THE OPT, not the *default rule.
     const explicitType =
@@ -2217,8 +2217,7 @@ export class RenderFormat {
     // and this builder would not run). The an earlier pass class pins the applied
     // form: the oracle's associative_inquiry-discussion-titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
-    // verbatim. (The Round-9 note below — "the *default CONTENT is not
-    // applied at view time" — described the OPEN surface, whose accordion
+    // verbatim. (The open view is the exception: its accordion
     // body renders the INNER :content dispatch, itself substituted to
     // :unknown by the same alter_unknown machinery — empty regardless of
     // dbContent. The titled surface reads dbContent directly.)
@@ -2261,16 +2260,15 @@ export class RenderFormat {
     // RIGHT SIDE is one of the four virtual-set settings is virtual and
     // therefore KNOWN, so alter_unknown never fires for it.
     //
-    // Live shape (corpus 6a44dfdc, page-surface shard 000000, card 105
-    // `Role+*type+*default`): the `{{+description}}` nest resolves through
+    // Shape: the `{{+description}}` nest on a `Role+*type+*default` card
+    // resolves through
     // card-mod-edit set/all/template_nest.rb:5-8 to
     // `Role+description+*type plus right` — a junction with NO row in the
-    // corpus. Ruby renders the :template_link slot for it; the oracle's
-    // class list carries RIGHT-Xtype_plu_right for that slot, which IS this
-    // membership test. The port substituted :unknown and rendered "" (the
-    // `<p></p>` the D2 finding recorded). Sibling card 88
-    // `Cardtype+*type+*default`, same nest, where the junction DOES exist
-    // (6554) and the same slot renders.
+    // deck. Ruby renders the :template_link slot for it, and that slot's
+    // class list carries RIGHT-Xtype_plu_right, which IS this
+    // membership test; substituting :unknown instead renders "" (a bare
+    // `<p></p>`). A sibling `Cardtype+*type+*default` card nests the same
+    // way, and there the junction DOES exist and the same slot renders.
     const rightName = name.rightName;
     const rightCard = rightName === undefined ? undefined : engine.fetchRenderCard(rightName.s);
     const rightCodename = rightCard?.record.codename;
@@ -2324,8 +2322,8 @@ export class RenderFormat {
     if (options.hide !== undefined) out["hide"] = options.hide;
     if (options.items !== undefined) out["items"] = options.items;
     if (options.extra["unknown"] !== undefined) out["unknown"] = options.extra["unknown"];
-    // The type opt rides the slot JSON too (the +agree oracle pin:
-    // "nest_syntax":"+agree | type:Toggle ",...,"type":"Toggle"}).
+    // The type opt rides the slot JSON too, so the slot carries
+    // "nest_syntax":"+agree | type:Toggle ",...,"type":"Toggle"}.
     if (options.extra["type"] !== undefined) out["type"] = options.extra["type"];
     // The `filter` opt: a SHARK key (nest-syntax.ts SHARK_KEYS), so it
     // PARSES into options.extra — and was then dropped here, so the view
@@ -2343,14 +2341,13 @@ export class RenderFormat {
     // (card/lib/card/setting.rb:46-55 `self.groups = %i[templating
     // permission webpage editing event other]`).
     //
-    // `Shark+Dashboard` (corpus row 34818, the card whose content is
-    // mod/defaults/data/real.yml:59-76) authors BOTH lists:
+    // A dashboard card authoring both lists is the shape that shows this:
     //   <blockquote>{{:all|bar_setting_list; filter:webpage}}</blockquote>
     //   <blockquote>{{:all|bar_setting_list; filter:permission}}</blockquote>
-    // With the opt dropped, both fell back to :all and each rendered the
-    // full 21-setting sorted list — 42 bar nests where the oracle has 4
-    // (head, layout, style, script) and 5 (create, read, update, delete,
-    // captcha). Shark:page carried +82,590; 33 of those bytes are this.
+    // With the opt dropped, both fall back to :all and each renders the
+    // full 21-setting sorted list — 42 bar nests where the filtered answer
+    // is 4 (head, layout, style, script) and 5 (create, read, update,
+    // delete, captcha).
     if (options.extra["filter"] !== undefined) out["filter"] = options.extra["filter"];
     return out;
   }
@@ -2359,29 +2356,18 @@ export class RenderFormat {
    *  Cardio.config.default_html_view; mod/format.rb:2 pins the RAILTIE
    *  default :titled).
    *
-   *  The railtie literal is only the FALLBACK: the deck's
-   *  `*all+*default html view` rule drives the effective config, and the
-   *  MECHANISM (R17 correction — the A-36 rule-driven form was a
-   *  mis-mechanism, busted by the R17 oracle probe
-   *  tmp/raw-ground-truth/scripts/r17-nest-default-view-probe.rb): Ruby's
-   *  html default_nest_view reads PROCESS CONFIG, never a deck rule —
-   *  card-mod-format set/all/html.rb:17-19 `def default_nest_view;
-   *  Cardio.config.default_html_view; end`. The pinned oracle's two capture
-   *  environments carry DIFFERENT config values, and both are byte targets:
-   *   - surface V (bare `card.format.render(view)`, the old-capture dev boot):
-   *     no override -> the railtie default :titled
-   *     (card-mod-format lib/card/mod/format.rb:2). Probe evidence:
-   *     Cardio.config.default_html_view == :titled at boot; implicit nests
-   *     render titled-view (the personal page's +agree slot, Colleagues +associations,
-   *     Source +Source Title). The decks's `*all+*default html view` rule
-   *     card (22769, content "content") is DEAD in 0.20.0 — no code reads
-   *     it; the earlier "live wire agrees content" justification conflated
-   *     the production deck's CONFIG with a deck rule.
-   *   - surface P (the page render): the capture applies the production config
-   *     `Cardio.config.default_html_view = :content`
-   *     (capture-dual-$1page-and-view.rb:369 inside the config block
-   *     whose assignment is :344, the capture's production-equivalent
-   *     setting #5) — implicit nests render content-view.
+   *  The railtie literal is only the FALLBACK, and the MECHANISM is process
+   *  config, never a deck rule: card-mod-format set/all/html.rb:17-19
+   *  `def default_nest_view; Cardio.config.default_html_view; end`. Two
+   *  deployment shapes are therefore both correct, and both are byte targets:
+   *   - an unconfigured host: no override, so the railtie default :titled
+   *     (card-mod-format lib/card/mod/format.rb:2). Implicit nests render
+   *     titled-view (a personal page's +agree slot, Colleagues
+   *     +associations, Source +Source Title). A deck's `*all+*default html
+   *     view` rule card is DEAD in 0.20.0 — no code reads it; treating it
+   *     as authoritative conflates a deployment's CONFIG with a deck rule.
+   *   - a host configuring `Cardio.config.default_html_view = :content`:
+   *     implicit nests render content-view.
    *  The engine models the process config per render surface:
    *  engine.defaultHtmlViewConfig() returns "content" while a page render
    *  is active (render.ts pageConfigActive) and "titled" otherwise. The
@@ -2398,14 +2384,13 @@ export class RenderFormat {
    *  set/all/item.rb:139-143) is `voo&.items&.[](:view)`: the nest's folded
    *  `|opt` lists (chunk/nest.rb:31-49) ride the voo of the format RENDERING
    *  the content, and an implicit nest inside that content renders the
-   *  ITEMS view, not the format default. Corpus target: message-000004's
+   *  ITEMS view, not the format default. The shape that proves it: a message's
    *  `{{+conversation|labeled|link}}` — the labeled view of the missing
    *  +conversation card renders its structure content
-   *  `<p>{{_left+conversation search}}</p>` (bench row 25861) whose implicit
+   *  `<p>{{_left+conversation search}}</p>` whose implicit
    *  nest resolves to :link (base.rb:35, perms :none -> the wanted-card
    *  anchor even on an unknown card), not :content (whose :unknown
-   *  createable gate renders "" — the graded -216 defect,
-   *  dual-$1page:message-000004:page). */
+   *  createable gate renders ""). */
   private implicitNestView(): string {
     const items = this.voo?.opts["items"];
     if (items !== null && typeof items === "object") {
@@ -2422,13 +2407,10 @@ export class RenderFormat {
    * a constant: serializable.rb:20-22 reads `Cardio.config.deck_origin`
    * first (nil at boot, cardio/railtie.rb:28) and falls back to
    * `"#{protocol}#{request&.host_with_port}"`, which is "" for a
-   * requestless runner. The value is the DECK'S CONFIGURATION:
-   * the capture script itself assigns deck_origin
-   * for the page surface (capture-dual-$1page-and-view.rb:391-400,
-   * restored at :400; the view-function surface at :277-287 runs outside
-   * that block), and the port installs it the same way — through
+   * requestless runner. The value is the DECK'S CONFIGURATION: a page
+   * surface assigns deck_origin, and this installs it the same way — through
    * setDeckEnvironment — never as an engine constant. See
-   * render/deck-origin.ts for the oracle census.
+   * render/deck-origin.ts.
    */
   envOrigin(): string {
     return this.engine.envOriginConfig?.() ?? NO_REQUEST_ORIGIN;
