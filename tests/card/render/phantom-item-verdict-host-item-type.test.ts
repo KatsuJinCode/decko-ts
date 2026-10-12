@@ -1,7 +1,6 @@
 // The unknown pointer/list item's read verdict must be computed on the
 // phantom's REAL type — the HOST's item_type_name — not the *all+*default
-// template walk's type (the p20-autolink port's Delia Rosenquist fix,
-// corpus page 18560).
+// template walk's type.
 //
 // Ruby truth (card-mod-collection-0.20.0 set/all/item.rb):
 //   * nest_item -> item_view_options folds `options[:type] =
@@ -20,16 +19,12 @@
 // The engine computed the verdict from newCardDefaultType alone, typing
 // every host-typed phantom BasicCs — and this deck's BasicCs+*type+*read
 // grants "Anyone Signed In", denying Anonymous, so the two-span denied
-// body rendered where the captured oracle renders the FULL bar body
-// (bar-body/card-title/bar-menu) for both exemplars:
-//   * 18560 Delia Rosenquist — item "Kimberly Sensei does not
-//     contribute directly to the reference deck at this time" (host
-//     +musings, item type consideration; oracle shard-000013)
-//   * 14546 Jonas Verhove+musings — same shape (shard-000010)
-// The verdict and the rendered identity were computed from DIFFERENT
-// types — the slot carried consideration (phantomIdentity, hostItemType
-// wins) while the verdict typed BasicCs. This test pins them to the same
-// precedence, both directions.
+// body rendered where Ruby renders the FULL bar body
+// (bar-body/card-title/bar-menu) for a host whose item type carries no
+// denying read rule. The verdict and the rendered identity were computed
+// from DIFFERENT types — the slot carried the host item type
+// (phantomIdentity, hostItemType wins) while the verdict typed BasicCs.
+// This test pins them to the same precedence, both directions.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -53,8 +48,8 @@ async function seedBaseDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 259, name: "Set", codename: "set", typeId: 5 });
   await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
   // The two type cards the verdict walks distinguish: consideration (the
-  // host item type, corpus id 2979) and BasicCs (the *all+*default
-  // template type, corpus id 22281).
+  // host item type) and BasicCs (the *all+*default
+  // template type).
   await seedCard(s, { id: 2979, name: "consideration", typeId: 5 });
   await seedCard(s, { id: 22281, name: "BasicCs", codename: "basic_c", typeId: 5 });
   // Settings.
@@ -99,7 +94,7 @@ async function seedBaseDeck(s: RenderTestStorage): Promise<void> {
 }
 
 /** A List host whose *content_options rule resolves the given item type
- *  (the corpus's cql JSON spec shape, e.g. rules 410/498/501) and one
+ *  (the cql JSON spec shape) and one
  *  item that does not exist in the deck. */
 async function seedTypedListHost(
   s: RenderTestStorage,
@@ -138,9 +133,8 @@ describe("unknown pointer/list item read verdict follows the HOST item type (ite
 
     const html = await storage.engine.render("typed host one", "content");
 
-    // The FULL bar.haml body — what the captured oracle pins for the
-    // consideration-typed unknown items (shard-000010 id 14546,
-    // shard-000013 id 18560): bar-body row + card-title + bar-right.
+    // The FULL bar.haml body for the
+    // consideration-typed unknown items: bar-body row + card-title + bar-right.
     expect(html).toContain("bar-body row g-0");
     expect(html).toMatch(/class="card-title" title="phantom item"/);
     // NO denied spans: the verdict must not deny via the BasicCs type rule.
@@ -159,7 +153,7 @@ describe("unknown pointer/list item read verdict follows the HOST item type (ite
 
     // The host item type is BasicCs itself, so the verdict walk hits
     // BasicCs+*type+*read = "Anyone Signed In" — Anonymous denied, the
-    // two-span denied body (the corpus's BasicCs-family pin).
+    // two-span denied body.
     expect(html).toContain('class="denied"');
     expect(html).not.toContain("bar-body row g-0");
     expect(html).toMatch(/<div class='bar [^']*TYPE-basic_c[^']*with-bar-menu/);
