@@ -1,8 +1,8 @@
 // view-dispatch-flat-record-format-scope-census.test.ts - the FLAT-RECORD
-// format-scope census: the anchored-scope port's census method
-// (view-dispatch-anchored-cross-format-collision-census.test.ts) applied to
-// the LAST format-blind dispatch surface that port recorded outside its
-// scope - the flat last-wins record (mod-loader.ts registration seam, the
+// format-scope census: the census method from
+// view-dispatch-anchored-cross-format-collision-census.test.ts applied to
+// the other format-blind dispatch surface, the flat last-wins record
+// (mod-loader.ts registration seam, the
 // `views.register` the engine's HTML_VIEWS object receives) - plus the
 // empty-setKeys (abstract pseudo-pattern) chain arm's measured spans.
 //
@@ -19,21 +19,21 @@
 // render never sees it (HtmlFormat's ancestry holds no
 // EmailTextFormat/JsonFormat/JsFormat) and subclass modules never
 // back-propagate (EmailHtmlFormat < HtmlFormat, card-mod-email lib/card/
-// format/email_html_format.rb:6). The port's flat record is the engine's
+// format/email_html_format.rb:6). The flat record is the engine's
 // HTML-VISIBLE table (render.ts `this.views = HTML_VIEWS` - the same
 // object the ModLoader constructor receives), so admitting a foreign key
 // there served that format's bytes to html renders that chain-missed -
-// measured live on four green pins before the format filter landed:
-// card-mod-email.test.ts's A/B :last_action ("edited" through the
+// the four pins that hold both directions now are card-mod-email.test.ts's
+// A/B :last_action ("edited" through the
 // email_text arm), card-mod-search.test.ts's :select2_option (json bytes),
 // card-mod-tinymce_editor.test.ts's :change_create_to_update and
 // :open_nest_editor (js bytes). Ruby raises unsupported-view for every one
 // (render.rb#view_method - the html class lacks the method); those pins
-// now hold both directions (html rejects, own format renders the same
+// hold both directions (html rejects, own format renders the same
 // bytes through its own class).
 //
-// THE CENSUS (this file): walk every ported mod manifest in the deck's
-// oracle bundle order (default-mod-deck.ts, the same registration surface
+// THE CENSUS (this file): walk every mod manifest in the composed deck
+// (default-mod-deck.ts, the same registration surface
 // mod-loader.ts's phase-2 walk feeds) and enumerate, for the NON-nonbase
 // set paths the flat seam admits (kindOfSetPath: "all" -> base,
 // "abstract" -> abstract), every (set module, view, format key) row.
@@ -48,7 +48,7 @@
 //
 // The probes below pin that measured shape: a future mod that lands a new
 // foreign-keyed all-set view (or widens any span) FAILS here and names
-// the mod/set/view/key - the re-adjudication signal for both surfaces.
+// the mod/set/view/key - the signal to re-examine both surfaces.
 
 import { describe, expect, it } from "vitest";
 import { defaultDeckSources, defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
@@ -106,33 +106,7 @@ describe("flat-record format-scope census (composed deck)", () => {
 
   it("census is non-vacuous: the composed deck registers all-set+abstract views", () => {
     // A broken walk (empty deck, wrong filter) must not read as "zero
-    // foreign rows". Measured: 147 base + 29 abstract rows. The abstract
-    // count moved 25 -> 28 when the surface-queue fold (1ab8318) landed
-    // the list mod's select/multiselect/autocomplete editor registrations
-    // (three all-set abstract-kind rows); base moved 143 -> 144 when the
-    // mod-porting wave-1 lane (2026-10-03) registered :board_act on the
-    // all-set all/history_board module (cache: never); 144/28 -> 145/29
-    // at the style family's own commit (8b56256, the abstract/style_group
-    // stylesheet_include_tag raising-arm row - the census re-bump that
-    // receipt's "net run in flight" never landed); base moved 145 -> 147
-    // when wave-1's follow family registered :subedit_notice + :follower
-    // on the all-set all/notify/base_views module (base key); abstract
-    // moved 29 -> 30 when wave-1's account family registered :account_tab
-    // on the abstract-set abstract/account_holder module; base moved
-    // 147 -> 153 when the mod-completion-100 lane (2026-10-03) registered
-    // the six census chrome views (nest_editor, modal_nest_editor,
-    // nest_content, nest_image, modal_nest_image, new_image) on the
-    // all-set reference_editor modules (html key - admitted, not foreign).
-    // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
-    // module and its four views moved to the Type::File/Type::Image sets;
-    // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
-    // 151 -> 152: All::Html::Error's :debug_server_error, registered by the
-    // same branch and measured on the integrated tree (2026-10-08).
-    // 152 -> 153: All::Html::Error's production :server_error — the
-    // semantics-part3 lane's error-page ruling (4b7b1338), measured on the
-    // merged tree (2026-10-08).
-    // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
-    // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
+    // foreign rows". Measured on this tree: 153 base + 33 abstract rows.
     expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
@@ -142,7 +116,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // seam): kind admitted, key not html/base. Ruby files each under its
     // own format class, invisible to HtmlFormat (header citations). A
     // NINTH foreign row lands here and names itself: the signal to
-    // re-adjudicate the flat seam (and, for an all-set module, to check
+    // re-examine the flat seam (and, for an all-set module, to check
     // whether the owning mod meant html).
     const foreign = flatFeeders.filter(
       (e) => e.formatKey !== "html" && e.formatKey !== "base",
@@ -224,21 +198,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // always carries ALL - registry.ts `applies: () => true`; the only
     // viewChain("") calls are the abstract-pseudo-pattern probes in
     // card-mod-content/default-mod-deck/view-dispatch-superview tests) -
-    // pinned here so a widening registration names itself. Eighteen
-    // views at the surface-queue fold; +stylesheet_include_tag at the
-    // style family's own commit (8b56256, the abstract/style_group
-    // raising-arm row, census re-bump folded here); +errors at wave-1's
-    // follow family (the type_plus_right/user/follow :errors registration
-    // joining the format mod's all-set :errors row); +new +new_buttons at wave-1's
-    // account family (the signup :new / :new_buttons registrations joining
-    // the edit mod's all-set rows of the same names); +content_formgroups
-    // at the mod-completion-100 lane (the signup :content_formgroups
-    // registration joining the edit mod's all-set row - the walk arms the
-    // lane ported into the edit mod's contentFormgroupsView); +nav_item
-    // +nav_link_in_dropdown at the edge view-registry lane (Abstract::Items'
-    // dropdown :nav_item and Self::DropdownDivider's two views joining
-    // card-mod-layout's all-set rows); +navbar_links at the semantics lane
-    // (card-mod-layout's Type::Html override joining the all-set row).
+    // pinned here so a widening registration names itself.
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
