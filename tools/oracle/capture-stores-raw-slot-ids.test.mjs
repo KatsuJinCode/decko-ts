@@ -1,6 +1,6 @@
 // Guard: no Ruby capture or probe script rewrites slot ids before storing
 // Ruby's output. The slot id's value is random per render and is masked only
-// at compare time (reference-harness/runner/normalize.mjs, N1), with its quote
+// at compare time (reference-harness/runner/normalize.mjs), with its quote
 // style kept; a capture that rewrites it (as the old rigs did, to
 // data-slot-id="RANDOMIZED") erases the quote style Ruby wrote, and an engine
 // matched to such a reference cannot be graded on it.
