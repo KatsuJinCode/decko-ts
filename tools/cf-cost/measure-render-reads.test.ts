@@ -321,7 +321,7 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
       `AFTER-IDX=${afterIdx.statsPresent ? "present" : "absent"}, ` +
       `AFTER-IDX+ANALYZE=${afterAnalyze.statsPresent ? "present" : "absent"}`);
     console.log("BEFORE plans chosen WITHOUT stats; AFTER-IDX plans chosen WITHOUT stats (indexes only); " +
-      "AFTER-IDX+ANALYZE plans chosen WITH stats. Remote validation of real rows_read: lead's D1 window.");
+      "AFTER-IDX+ANALYZE plans chosen WITH stats. Remote validation of real rows_read happens against the deployed D1 database, outside this tree.");
     console.table(table);
     for (const [phase, run] of [["BEFORE", before], ["AFTER-IDX", afterIdx], ["AFTER-IDX+ANALYZE", afterAnalyze]] as const) {
       for (const r of run.results) {
@@ -358,7 +358,7 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
       console.log(`0002 backfill ${t.index}: ${t.ms} ms, ${t.entries === null ? "entry count unavailable" : `${t.entries} index entries (rows_written-equivalent)`}`);
     }
     console.log(`dbstat entry counts usable: ${backfill.dbstatUsable}`);
-    console.log("How D1's rows_written meter attributes CREATE INDEX backfill is verifiable only in the lead's remote window; the entry arithmetic above is the SQLite-side bound.");
+    console.log("How D1's rows_written meter attributes CREATE INDEX backfill is verifiable only against the deployed D1 database; the entry arithmetic above is the SQLite-side bound.");
 
     writeFileSync(join(REPO, "tools", "cf-cost", "measure-render-reads-results.json"), JSON.stringify({
       convention: "EQP plan-shape + rows-matched upper-bound accounting, x1, D1 rows_read-aligned; NOT rows-examined telemetry",
