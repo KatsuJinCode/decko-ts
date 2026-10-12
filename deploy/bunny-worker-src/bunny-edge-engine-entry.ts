@@ -2,9 +2,8 @@
 // engine deployed as a Bunny Edge Scripting STANDALONE script.
 //
 // This is the engine counterpart of bunny-edge-entry.ts (the lightweight
-// reader that was the live release before this entry). Same platform
-// contract, read out of the same sources (see that file's header for the
-// citations):
+// reader that shipped before this entry). Same platform contract, read out of
+// the same sources (see that file's header for the citations):
 //
 //   import * as BunnySDK from "@bunny.net/edgescript-sdk";
 //   BunnySDK.net.http.serve(async (request: Request) => new Response("hi"));
@@ -29,7 +28,7 @@
 //
 // RUNTIME FACTS THIS ENTRY DEPENDS ON (verified empirically on the deployed
 // edge unless cited):
-//   - The live reader bundle already imports node:process and runs — the
+//   - The reader bundle imports node:process and runs — the
 //     Bunny runtime resolves node: imports (deploy/bunny-edge-trial-runbook.md
 //     section 5 cites the docs for env-via-process.env).
 //   - The bundled graph retains exactly these node: imports, each with a
