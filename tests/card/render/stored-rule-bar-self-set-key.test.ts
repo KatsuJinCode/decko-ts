@@ -1,12 +1,5 @@
-// Mechanism 1 of the live-wire page-render defect verdict
-// (REPO_DIR an internal work log, 2026-09-28):
-// the engine OMITS the `SELF-X<left>-X<right>` class token from STORED rule
-// cards' bar class lists. Probe evidence: `TYPE_PLUS_RIGHT-set-Xfollow_field
-// SELF-Xall-Xfollow_field` — snapshot=2, engine=0, live wire=2 (the live
-// site and the 2026-09-24 snapshot agree, the engine diverges).
-//
-// The oracle arbitrates VIRTUAL vs STORED on one page (the snapshot *all
-// page, the captured 2026-09-28 oracle bytes):
+// The engine must emit the `SELF-X<left>-X<right>` class token on STORED
+// rule cards' bar class lists (it omitted it):
 //
 //   VIRTUAL rule bar `*all+*autoname` (no data-card-id — Ruby's
 //   rule_lists.rb:96-101 `card.fetch setting, new: {}` miss):
@@ -16,8 +9,8 @@
 //     `patterns`: a NEW card drops concrete_patterns[0] = *self; the
 //     concrete table's reverse-file registration order puts *self first)
 //
-//   STORED rule bar `*all+*follow fields` (data-card-id="22730", corpus row
-//   left_id 274 + right_id 22726, junction name composed from the lexicon):
+//   STORED rule bar `*all+*follow fields` (a stored junction row, its name
+//   composed from the lexicon):
 //     class="card-slot bar-view ALL ALL_PLUS TYPE-list RSTAR RULE
 //     RIGHT-Xfollow_field TYPE_PLUS_RIGHT-set-Xfollow_field
 //     SELF-Xall-Xfollow_field _rule-item _category-all _category-recent"
@@ -26,18 +19,17 @@
 //     safe_set_keys (pattern/all.rb:40-42) emits `SELF-Xall-Xfollow_field`:
 //     Base#safe_key (pattern/base.rb:70-73) joins SELF with the anchor
 //     name's safe_key (variants.rb:19-21 key.tr("*","X").tr("+","-"));
-//     Cardname#key retains the "*" on setting parts, and the oracle deck's
-//     inflection singularizes "fields" -> "field" in the KEY, so the
+//     Cardname#key retains the "*" on setting parts, and the deck's
+//     inflection table singularizes "fields" -> "field" in the KEY, so the
 //     `*follow fields` part keys to `*follow_field`).
 //
-// This test pins the STORED shape with a minimal deck mirroring the corpus
-// rows (r16-rule-bar-and-stored-verdict-parity.test.ts's harness): the
-// set card, the setting card, and the stored junction rule row whose name
-// composes from the sides (the corpus stores junction names as NULL).
+// This test pins the STORED shape with a minimal deck: the set card, the
+// setting card, and the stored junction rule row whose name composes from
+// the sides (junction name columns stored NULL).
 //
 // The engine's VIRTUAL bars already match (no SELF — asserted here too as
 // the negative control so the fix cannot "succeed" by adding SELF to
-// virtual bars, where the oracle omits it).
+// virtual bars, where Ruby omits it).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -70,8 +62,8 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, typeId: LIST_TYPE_ID, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
   // The *recent settings card: the recent category membership is DECK DATA
-  // (setting_categories.rb:64-67), so the fixture carries the corpus's
-  // *recent settings card; the pinned bar's `_category-recent` class
+  // (setting_categories.rb:64-67), so the fixture seeds a *recent settings
+  // card; the pinned bar's `_category-recent` class
   // derives from its list (follow_fields is an item).
   await seedCard(s, {
     id: 42,
@@ -81,9 +73,9 @@ async function seedDeck(): Promise<void> {
     dbContent:
       "*read\n*structure\n*script\n*content options\n*input type\n*default\n*layout\n*help\n*thanks\n*update\n*guide\n*head\n*follow\n*style\n*content option view\n*create\n*follow fields\n*delete\n*captcha\n*table of contents\n*comment",
   });
-  // THE STORED RULE the test pins: *all+*follow fields (corpus id 22730:
-  // left_id 274 -> *all, right_id 22726 -> *follow fields, type List,
-  // junction name column NULL - the name composes from the sides).
+  // THE STORED RULE the test pins: *all+*follow fields (left_id -> *all,
+  // right_id -> *follow fields, type List, junction name column NULL - the
+  // name composes from the sides).
   await seedCard(s, { id: 51, leftId: 10, rightId: 36, typeId: LIST_TYPE_ID, dbContent: "" });
 }
 
@@ -103,8 +95,7 @@ afterAll(() => {
   storage?.close();
 });
 
-/** The bar slot's outer class attribute, verbatim from the oracle window
- *  (snapshot *all page offset 57356). */
+/** The bar slot's outer class attribute, verbatim. */
 const ORACLE_SLOT_CLASS =
   "card-slot bar-view ALL ALL_PLUS TYPE-list RSTAR RULE RIGHT-Xfollow_field " +
   "TYPE_PLUS_RIGHT-set-Xfollow_field SELF-Xall-Xfollow_field _rule-item " +
@@ -118,8 +109,8 @@ describe("stored rule bar: SELF-X set-key token (live-wire mechanism 1)", () => 
     const slotStart = html.lastIndexOf("<div", at);
     const slot = html.slice(slotStart, slotStart + 400);
     expect(slot).toContain(ORACLE_SLOT_CLASS);
-    // ... and the token appears on the inner bar element too (the oracle
-    // counts 2 occurrences on the page: slot class + bar class).
+    // ... and the token appears on the inner bar element too (2
+    // occurrences on the page: slot class + bar class).
     expect(
       (html.match(/SELF-Xall-Xfollow_field/g) ?? []).length,
     ).toBe(2);
