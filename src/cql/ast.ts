@@ -163,9 +163,8 @@ export interface ParseOptions {
   resolveCodename?: (codename: string) => number | undefined | null;
   /**
    * name -> key override standing in for Cardname#key (the built-in default,
-   * normalize.ts#defaultNameToKey, delegates to the landed card/name stream:
-   * DeckoName.parse(name).key with full singularize inflection and mark
-   * resolution — The override
+   * normalize.ts#defaultNameToKey, delegates to DeckoName.parse(name).key
+   * with full singularize inflection and mark resolution). The override
    * remains available for callers that need a different key source.
    */
   nameToKey?: (name: string) => string;
