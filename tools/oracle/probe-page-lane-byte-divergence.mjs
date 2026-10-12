@@ -1,43 +1,39 @@
 // probe-page-lane-byte-divergence.mjs -- reproduce a PAGE-LANE byte divergence
 // for named cards and dump the expected/actual pair the offline region
 // reporter consumes. The page-lane sibling of
-// probe-view-lane-byte-divergence.mjs (lane-negdelta-zero).
+// probe-view-lane-byte-divergence.mjs.
 //
 // WHAT THIS IS
 //   The grade records a page entry's FIRST byte difference and its two byte
-//   COUNTS, never the region between them. When a page entry's over-render
-//   GROWS across two canvases (e.g. `Shark:page` +74,130 -> +79,196 between
-//   cf7dc5c and 29ef88f, +5,066 of new over-render) the question "which
-//   mechanism added the bytes" cannot be answered from the counts: the first
-//   difference is at the same offset (9128) in both canvases, so it names
-//   nothing about the growth. This probe re-renders ONE page through the same
-//   boot the grade used, writes the exact `expected--*.html` / `actual--*.html`
-//   pair, and prints every divergence region with its own delta.
+//   COUNTS, never the region between them. When a page's over-render GROWS
+//   between two grade runs, the question "which mechanism added the bytes"
+//   cannot be answered from the counts: the first difference sits at the
+//   same offset in both runs, so it names nothing about the growth. This
+//   probe re-renders ONE page through the same boot the grade used, writes
+//   the exact `expected--*.html` / `actual--*.html` pair, and prints every
+//   divergence region with its own delta.
 //
 //   IT IS THE VIEW PROBE, UNCHANGED IN EVERY LOAD-BEARING RESPECT, AND IT
 //   PICKS THE SEEDING MODULE THE GRADE PICKS:
 //   - `tests/card/render/raw-corpus-seeding.js` — the COMMITTED home, the one
-//     `tools/oracle/dual-lane-direct-runner-core.ts:522` imports. NOT the
-//     `tmp/raw-ground-truth/scripts/` staging copy the view probe uses: that
-//     copy predates the full reference-graph pass and stages 3,184
-//     card_references rows where the committed home stages 556,526
-//     (runner-core.ts:502-521). Using it changed the measured Shark actual
-//     from the grade's 210,273 to 213,667 — a 3,394-byte drift that would
-//     have been misread as engine behaviour. The entry that opens by reading
-//     `tmp/raw-ground-truth/scripts/` is therefore a BUG, and the count
-//     assertion in the FAIL line below is what catches it;
+//     `tools/oracle/dual-lane-direct-runner-core.ts` imports. Staging copies
+//     of that module taken before the full reference-graph pass stage only a
+//     small fraction of the card_references rows, and the difference shifts
+//     the measured byte counts -- a drift that would be misread as engine
+//     behaviour. The FAIL line below asserts the staged row count so a probe
+//     run against a stale copy cannot pass silently;
 //   - the same `installNameEnvironment()` and `warmLexicon` over every live id;
 //   - the same comparator, `src/testing/diff.ts` compareNormalized, so the
 //     verdict matches the grade byte for byte;
 //   - the same `renderPage` call the grade's page handler makes
-//     (tools/oracle/dual-lane-direct-runner-core.ts:782).
+//     (tools/oracle/dual-lane-direct-runner-core.ts).
 //   The only difference is the render call and the shard field read
 //   (`page_html`, not `views`).
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-page-lane-byte-divergence.mjs \
-//     --shard recapture-raw-shard-000029.jsonl --names "Shark" \
-//     [--out tmp/mopup-shark-m9/probe-page]
+//     --shard SHARD_FILE.jsonl --names "PAGE_NAME" \
+//     [--out tmp/probe-page]
 //
 //   --names accepts a `|`-separated list. Exit 0 when at least one divergence
 //   reproduces, 1 when the named entries are byte-equal, 2 on a usage error.
