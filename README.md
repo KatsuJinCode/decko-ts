@@ -39,9 +39,14 @@ semantics operations; the grader also counts the scenario steps whose op is
 `render` (2) and `ask` (1), which is the whole of the difference
 ([docs/coverage-inventory.md](docs/coverage-inventory.md), "Why two counts of
 the same fixture"). The public
-harness's normalization is exactly two rules
+harness's normalization is exactly three rules
 ([SPEC.md](reference-harness/SPEC.md), "Normalisation"): the
-`data-slot-id` attribute mask and JSON key canonicalization. The corpus
+`data-slot-id` attribute mask, JSON key canonicalization, and class-token
+order inside a `class` attribute compared as a set. The third exists because
+the operating system decides that order: stock Linux Ruby and stock Windows
+Ruby emit the same class tokens in a different order, so it names what a
+capture on another operating system differs in — and, since the committed
+expected bytes were captured on Windows, it changes nothing about them. The corpus
 replay is a different instrument and takes different rules: **four**
 normalizations, and the slot-id mask is one of them (the other three are the
 accordion group hash, the Cloudflare `__CF$cv$params` challenge block and the

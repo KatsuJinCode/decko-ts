@@ -33,7 +33,7 @@ Three consequences follow from taking byte comparison seriously:
   takes the normalisations of the instrument that produced it — never a
   different instrument's. The authoritative per-instrument table is in
   [../parity-method.md](../parity-method.md), "Every instrument's
-  normalisations, in one table": the public harness's N1/N2, the oracle-replay
+  normalisations, in one table": the public harness's N1/N2/N3, the oracle-replay
   comparator's three rules, and the historical corpus's four normalizations
   plus two transforms and its 50 live-swapped expectations (two disjoint
   swap sets of 13 and 37, from the live 0.19.1-era site). Timestamps and

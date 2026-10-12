@@ -295,15 +295,21 @@ comparison into a canonical form. It went the other way: it reduced normalisatio
 to the smallest set that survives evidence.
 
 [parity-method.md](parity-method.md) holds the authoritative table, and it is
-short. The public reference harness applies exactly **two** rules: N1 masks the
-`data-slot-id` attribute *value* (quote style kept), and N2 is a JSON canonical
-form. "Everything else is compared exactly: every byte of HTML, every field of
+short. The public reference harness applies exactly **three** rules: N1 masks
+the `data-slot-id` attribute *value* (quote style kept), N2 is a JSON canonical
+form, and N3 compares the class tokens inside a `class` attribute as a set.
+"Everything else is compared exactly: every byte of HTML, every field of
 a write answer (the new card's id and every byte of mail text included), every
 column of every row (ids and timestamps as stored)."
 
-The reviewer's attribute-order and class-order examples are therefore not
-normalised away — a differently ordered attribute is a failure, which is the
-stricter reading. The evidence for the one mask that exists is recorded rather
+The reviewer's attribute-order example is therefore not normalised away — a
+differently ordered attribute is a failure, which is the stricter reading.
+Attribute order still counts; only the order of the tokens *inside* a `class`
+attribute's value does not, because Ruby's own environment decides that one:
+stock Linux Ruby and stock Windows Ruby emit the same tokens in a different
+order, measured on the same fixture and the same Decko version. The token set,
+the count and the tokens themselves still count under N3; only the order is
+canonicalised. The evidence for the one mask that exists is recorded rather
 than asserted: for `synthetic-v1`, two complete stock-oracle runs differ in
 1,351 of 4,156 items, *all* in slot ids — 9,061 of 9,061 slot ids differ and
 nothing else does — and a test checks that the recorded nondeterminism covers
