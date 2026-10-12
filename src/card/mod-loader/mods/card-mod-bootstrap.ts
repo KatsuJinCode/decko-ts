@@ -8,18 +8,13 @@ import { str } from "../../render/format.js";
 // - all of which build the modular bootstrap helper surface the set files
 // consume).
 //
-// Six views the T6 compat report lists as missing from the port
-// (tools/compat-report/mod-compat-report.json#card-mod-bootstrap-0.20.0
-// classification.metrics.htmlViewsMissingNames):
+// Six views the initial compat scan listed as missing from the port:
 //   carousel, customize_button, icons, input, one_line_content, progress_bar.
-// Of those, two were landed in this pass (input + one_line_content); the
-// remaining four (carousel + customize_button + icons + progress_bar)
-// were already ported in earlier waves; this pass pins the carousel
-// view bytes (the previous transparent shim is replaced with a real
-// implementation matching the captured bytes) and the customize_button
-// path bytes (the local path builder now emits the captured Ruby
-// bytes - leading "/", the fields/name/type/mark param order, the
-// wanted-card class). Both views also export the popoverLink helper
+// All six are ported. The carousel view is a real implementation of the
+// Ruby byte shape (an earlier transparent shim is replaced) and the
+// customize_button path builder emits the Ruby bytes - leading "/", the
+// fields/name/type/mark param order, the wanted-card class. Both views
+// also export the popoverLink helper
 // that card-mod-help set/right/help.rb requires.
 //
 // Of those, the views cleanly port-able in a headless engine are:
@@ -40,7 +35,7 @@ import { str } from "../../render/format.js";
 //   than the format's default. Ported as the same view defined on the
 //   Type-set module path; the render engine does not currently route
 //   type-specific view overrides, so this port logs the view on the type
-//   set module's setPath so a later view-override pass picks it up, and
+//   set module's setPath so a later view-override change picks it up, and
 //   keeps the byte-level behavior accessible through a direct registry
 //   lookup.
 //
@@ -59,10 +54,10 @@ import { str } from "../../render/format.js";
 //   colors.rb view body depends on engine set-scoped dispatch (the
 //   bar_middle view is scoped to *bootswatch_skin+*colors cards, not
 //   the global last-wins table the mod loader currently populates).
-//   The colors views are listed as the explicit BLOCKER for this
-//   round - see blockers in the result report. The :input + :core +
+//   The colors views are the explicit BLOCKER - they need set-pattern-
+//   scoped dispatch. The :input + :core +
 //   :bar_middle views stay passive and the registrar bookkeeping
-//   carries the colors setPath; a future round with set-pattern-
+//   carries the colors setPath; a future change with set-pattern-
 //   scoped view override dispatch can land the views.
 //
 // - carousel (set/all/bootstrap/carousel.rb:2-8) - PORTED. The Ruby
@@ -80,8 +75,7 @@ import { str } from "../../render/format.js";
 //   via add_class); control buttons keep the literal hash order
 //   (class, data-bs-target, type). The id is name.safeKey-1
 //   (unique_id = safe_key + "-" + id_counter; id_counter is
-//   per-format-instance and starts at 1). Byte shape pinned by
-//   fixtures/captured/bootstrap-views.json.
+//   per-format-instance and starts at 1).
 //
 // - customize_button (set/type/bootswatch_skin/html_views.rb:38-48)
 //   - PORTED with a local path builder. The Ruby method is
@@ -98,8 +92,7 @@ import { str } from "../../render/format.js";
 //   link_to_card adds the "wanted-card" class after the caller's
 //   literal class list (set/all/links.rb:140-144). The view is type-
 //   scoped to bootswatch_skin (mirrors the inputView type-check
-//   pattern). Byte shape pinned by fixtures/captured/bootstrap-
-//   views.json.
+//   pattern).
 //
 // The set modules whose views are NOT being ported still register
 // themselves (so the set-module basket bookkeeping Ruby keeps via
@@ -125,7 +118,7 @@ import type {
   ModSetModuleFile,
 } from "../mod-manifest.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -238,7 +231,7 @@ export function popoverLink(
     .join(" ");
 
   // helper.rb:46-57 popover_opts builds the opts hash; Rails' link_to
-  // serializes the attrs in hash-insertion order. The capture order is
+  // serializes the attrs in hash-insertion order. The emitted order is
   // tabindex (from reverse_merge!), then data-bs-toggle / data-bs-
   // trigger / data-bs-content (Rails expands the `data:` sub-hash into
   // `data-<key>` pairs in insertion order), then `class` (add_class
@@ -278,8 +271,6 @@ export function popoverLink(
  *  div.carousel-indicators with one button per item, a div.carousel-
  *  inner wrapping div.carousel-item elements (the active-index item
  *  carries class "active"), and two control buttons (prev + next).
- *  Byte shape pinned by the live oracle capture (fixtures/captured/
- *  bootstrap-views.json).
  *
  *  Attribute order is the literal Rails content_tag iteration order:
  *  - indicators: the html_opts hash starts as { "data-bs-slide-to":
@@ -287,22 +278,19 @@ export function popoverLink(
  *    "Slide #{index + 1}" } then add_class appends "active" to the
  *    END of the hash (decko's add_class writes to options[:class] =
  *    css_classes klass, options[:class] - lib/card.rb#add_class) so
- *    the captured order is data-bs-slide-to, data-bs-target, type,
+ *    the emitted order is data-bs-slide-to, data-bs-target, type,
  *    aria-label, class.
  *  - control buttons: html_opts starts as { class: "carousel-control-
  *    #{direction}", "data-bs-target": "##{@id}", type: "button" } so
- *    the captured order is class, data-bs-target, type.
+ *    the emitted order is class, data-bs-target, type.
  *  - both button classes are self-closing (`<button ... />`) per Rails
  *    7.2 content_tag's void-element emission.
  *
  *  unique_id is format/content.rb#unique_id =
  *  "#{card.name.safe_key}-#{id_counter}" where id_counter is
- *  per-format-instance (starts at 1; subsequent calls increment). The
- *  captured id is "oracle_carousel_probe-1" - the safe_key for
- *  "Oracle Carousel Probe" plus the format's first id_counter
- *  increment. Per-render format instance (render.ts#render creates
- *  fresh format), so "-1" is correct for every render in the A/B
- *  test.
+ *  per-format-instance (starts at 1; subsequent calls increment).
+ *  Per-render format instance (render.ts#render creates
+ *  fresh format), so "-1" is correct for every render.
  *
  *  The inner content of each carousel-item is what nest_item_array
  *  emits - nest_item(item, view: :core) -> format/nesting.rb#nest ->
@@ -321,8 +309,8 @@ function renderCarouselItemInner(
   // subformat pattern in format/nest.rb#prepare_subformat + nest ->
   // subformat.render(:core)). The parent is the carousel format so
   // visibility propagates; maxDepth keeps us out of infinite-nest
-  // trouble if an item recursively renders the carousel (unlikely
-  // for the captured surface).
+  // trouble if an item recursively renders the carousel (unlikely in
+  // practice).
   const sub = new RenderFormat(itemCard, ctx.fmt.engine, {
     parent: ctx.fmt,
     maxDepth: ctx.fmt.maxDepth,
@@ -371,7 +359,7 @@ const carouselView: ViewFn = (ctx) => {
 /** html_views.rb:43-48 customize_button: the literal link_to_card call
  *  composes a path through Card::Path#render +
  *  format/all/path.rb#contextualize_path (html format's card_path
- *  prepends "/"). The href the live Ruby oracle emits is:
+ *  prepends "/"). The href the Ruby oracle emits is:
  *    /card/create
  *      ?card[fields][parent]=<parent>
  *      &card[name]=<new>
@@ -382,12 +370,12 @@ const carouselView: ViewFn = (ctx) => {
  *  four params are URL-encoded (square brackets -> %5B / %5D; spaces
  *  -> + for form-encoding via Rack::Utils).
  *
- *  Param order in the captured bytes: card[fields][parent] first, then
+ *  Param order: card[fields][parent] first, then
  *  card[name], then card[type], then mark. The base format's
  *  link_to_card adds `mark:` to the path hash before delegating to
  *  link_to (card-mod-format set/all/links.rb:33-36), and the card hash's
  *  internal order through Hash#to_param iterates the nested fields
- *  before name before type - matches the captured bytes exactly. The
+ *  before name before type - the emitted order. The
  *  trailing `mark` param carries the same value as card[name] (the new
  *  card's name); Ruby's to_param writes it after the card[...] block.
  *  Cited:
@@ -421,12 +409,12 @@ function buildCustomizeButtonHref(args: {
   const encodeKey = (s: string) => encodeURIComponent(s);
   const encodeValue = (s: string) =>
     encodeURIComponent(s).replace(/%20/g, "+");
-  // Param order is the captured bytes' order: card[fields][parent],
+  // Param order: card[fields][parent],
   // card[name], card[type], mark. The `&` between params is HTML-
   // escaped to `&amp;` because the href is an HTML attribute value
   // and link_to runs the attr value through Rails' html_escape. The
   // TS port applies the same escape here so the href bytes match the
-  // oracle's captured output verbatim.
+  // Ruby output verbatim.
   const sep = "&amp;";
   const query =
     `${encodeKey("card[fields][parent]")}=${encodeValue(args.parentName)}` +
@@ -443,16 +431,15 @@ function buildCustomizeButtonHref(args: {
  *  and increment via `String#next!` until a free name is found
  *  (Card.exist? gates). Cited: html_views.rb:4-11.
  *
- *  M9 (2026-10-02) — the EXISTENCE GATE, not the walk. This function used to
+ *  THE EXISTENCE GATE, not the walk. This function used to
  *  answer `Card.exist?` from `engine.fetchRenderCard(name)`, the PREPARED
  *  RENDER-CARD MAP. That map is the prefetch nest-closure's reach, not the
  *  deck: a bootswatch skin's `<skin> customized` sibling is referenced by
  *  nothing on the skin page, so it is never seated and the gate read "free"
  *  for every skin. The oracle disagrees for exactly the skins whose customized
- *  card exists (corpus 34179 `journal skin customized`, 38274 `slate skin
- *  customized`): their pages carry `card[name]=journal+skin+customized+1` /
- *  `slate+skin+customized+1`, and the other eighteen skin pages carry the bare
- *  name.
+ *  card exists: their customize links target `<skin>+skin+customized+1`
+ *  (the first free suffixed name), while skins without a customized
+ *  sibling target the bare name.
  *
  *  The gate now reads the prepare-phase answer. `RenderEngine#cardExists`
  *  walks the same `Card.exist?` sequence ASYNC and EXACTLY (the
@@ -466,7 +453,7 @@ function buildCustomizeButtonHref(args: {
  *
  *  FALLBACK: `peekCustomizedName` is optional on RenderEngineLike. Undefined
  *  means the engine did not warm this skin (no prepare phase, or a skin
- *  nested into a render rather than being the root), and the pre-M9
+ *  nested into a render rather than being the root), and the older
  *  render-card-map walk stands. That fallback is deliberately NOT the new
  *  gate: it is page-scoped by construction, which is the bug, and it is
  *  only reachable on surfaces nothing warms. */
@@ -505,7 +492,7 @@ function newCustomizedName(ctx: ViewContext): string {
  *  ("<parent> customized") is not in the prepared render-card map, so
  *  the class is "wanted-card" - appended to the caller's class list
  *  after the literal "btn btn-sm btn-outline-primary me-2" (html_views
- *  .rb:47). The literal order the captured oracle emits is therefore
+ *  .rb:47). The emitted order is therefore
  *  "btn btn-sm btn-outline-primary me-2 wanted-card".
  *
  *  The href value's `&` chars are HTML-escaped to `&amp;` because the
@@ -556,9 +543,8 @@ function readNumericValue(ctx: ViewContext): number {
 
 /** progress_bar.rb:11-17 progress_bar *sections: a single section takes the
  *  value and emits a div.progress-bar; the array form appends sections.
- *  The captured surface (no fixture pins this view) only ever passes a
- *  single numeric value, so the array form is structurally supported but
- *  not exercised here.
+ *  The port's call sites only ever pass a single numeric value, so the
+ *  array form is structurally supported but not exercised here.
  *
  *  Ruby's body does NOT clamp the value - width: "#{value}%" passes the
  *  raw value through (bootstrap CSS ignores widths over 100%). The TS port
@@ -674,7 +660,7 @@ function iconTagMarkup(library: string, mapping: string): string {
  *  yields basket[:icons].keys; one row per all-icon-key; each cell renders
  *  the library-specific icon tag (via the <library>_icon_tag family in
  *  icon.rb) followed by the mapping name, else &nbsp;. The haml line
- *  structure is the graded corpus pin (view:admin:Home:icons): inline
+ *  structure: inline
  *  text stays on the tag line (`%th lookup key` -> <th>lookup key</th>),
  *  nested = lines each render on their own line inside the tag
  *  (`%th\n = library` -> <th>\nmaterial\n</th>), one newline per element
@@ -700,7 +686,7 @@ const iconsView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// surfaces-batch3 (2026-09-30): set/abstract/media (card-mod-bar_and_box) +
+// set/abstract/media (card-mod-bar_and_box) +
 // the bootswatch_skin/html_views bar family + :core (core.haml)
 // ---------------------------------------------------------------------------
 
@@ -712,7 +698,7 @@ const iconsView: ViewFn = (ctx) => {
 const bootswatchBarRightView: ViewFn = () => "";
 
 // ---------------------------------------------------------------------------
-// surfaces-batch3 (2026-09-30): type_plus_right/bootswatch_skin/colors.rb —
+// type_plus_right/bootswatch_skin/colors.rb —
 // the *colors right-set views (the TPR starred-anchor arm)
 // ---------------------------------------------------------------------------
 
@@ -720,10 +706,11 @@ const bootswatchBarRightView: ViewFn = () => "";
  *  byte for byte as the Ruby source writes it (the body runs from the
  *  newline after the marker to the terminator line: every line keeps its
  *  source indentation, the body ends with "</div>\n" before the
- *  "    HTML" terminator). GEM-TRANSCRIBED (no capture shard renders a
- *  skin *colors card's bar_middle — the expected-v2 accordion nests hide
- *  bar_middle per their slot opts; the literal is the gem's own fixed
- *  bytes). The :input/:core views of this file (the colorpicker editor +
+ *  "    HTML" terminator). TRANSCRIBED FROM THE GEM: the literal is the
+ *  gem's own fixed bytes (a skin *colors card's bar_middle is not
+ *  reachable through the shipped render surfaces — the accordion nests
+ *  hide bar_middle per their slot opts). The :input/:core views of this
+ *  file (the colorpicker editor +
  *  the palette haml templates, colors.rb:74-100) stay the named remainder:
  *  they need card.colors' SCSS-parse machinery + the colors/*.haml
  *  templates, an edit-surface slice. The file's `before :bar_right do
@@ -828,12 +815,13 @@ const inputView: ViewFn = (ctx) => {
 //
 // PORTED IN THE ENGINE LAYER (src/card/render/bootstrap-code-files.ts +
 // the built-in default ContentOverrideRegistry in content-overrides.ts),
-// NOT here: the grading verifier runs the bare engine - no mod loader, no
-// deck boot - so a manifest contentOverrides entry would never register
+// NOT here: the engine's own test surfaces run the bare engine - no mod
+// loader, no deck boot - so a manifest contentOverrides entry would never
+// register
 // (the setDefaultContentOverrideRegistry(loader's registry) boot REPLACE
 // semantics would also drop it for loader-less consumers the moment any
-// loader booted). The byte-level evidence (assembly order, sha pins, the
-// two oracle pages) lives in
+// loader booted). The byte-level coverage (assembly order, override
+// content) lives in
 // tests/card/render/bootstrap-code-file-pages.test.ts.
 // ---------------------------------------------------------------------------
 
@@ -842,8 +830,9 @@ const inputView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 /** The SCSS type card's identity, resolved through the engine's render-card
- *  map (the type card is named "SCSS"; corpus pins id 17436). The fallback
- *  is the corpus's row (the same pin the pointer-list phantom types use) so
+ *  map (the type card is named "SCSS"; the oracle deck seeds it at
+ *  id 17436). The fallback is that seeded row (the same fallback the
+ *  pointer-list phantom types use) so
  *  bare harnesses without the type row still render the right slot attrs. */
 function scssTypeIdentity(ctx: ViewContext): {
   typeId: number | undefined;
@@ -852,19 +841,18 @@ function scssTypeIdentity(ctx: ViewContext): {
 } {
   // The type identity of the virtual +*colors / +*variables field card is
   // the SCSS TYPE CARD's own identity: its ID (17436) and its NAME
-  // ("SCSS"). The previous form read `typeCard.typeId` / `typeCard.typeName`
-  // — the type card's OWN type (every type card is Cardtype-typed, id 5)
-  // — which rendered `TYPE-cardtype … data-card-type-id="5"
-  // data-card-type-name="Cardtype"` whenever the SCSS card had already
+  // ("SCSS"). Reading `typeCard.typeId` / `typeCard.typeName` instead
+  // returns the type card's OWN type (every type card is Cardtype-typed,
+  // id 5), which renders `TYPE-cardtype … data-card-type-id="5"
+  // data-card-type-name="Cardtype"` whenever the SCSS card has already
   // joined the render-card map (any earlier page that enriched it), and
-  // fell to the hardcoded fallback {17436, "SCSS"} only while the map was
-  // cold. That is the boot-order-dependent +32 skin-page family: first
-  // skin render byte-exact, every later skin render +32 (20 canvas pages,
-  // all exactly +32, divergence at each Xcolor/Xvariable accordion slot).
-  // The map miss arm keeps the same identity the hit arm now returns, so
-  // the resolution is render-order independent. (Oracle pins: the cerulean
-  // skin page's slots carry TYPE-scss / data-card-type-id="17436" /
-  // data-card-type-name="SCSS" on EVERY sampled skin page.)
+  // falls to the hardcoded fallback {17436, "SCSS"} only while the map is
+  // cold — a render-order-dependent divergence between the first skin
+  // render and every later one (the divergence lands on each
+  // Xcolor/Xvariable accordion slot). The map miss arm keeps the same
+  // identity the hit arm returns, so the resolution is render-order
+  // independent. The oracle's skin pages carry TYPE-scss /
+  // data-card-type-id="17436" / data-card-type-name="SCSS".
   const typeCard = ctx.fmt.engine.fetchRenderCard("SCSS");
   if (typeCard !== undefined && typeCard.id !== undefined) {
     return {
@@ -950,8 +938,9 @@ function virtualSkinFieldCard(
  *     type carries no virtual? method, type_plus_right/bootswatch_skin/
  *     stylesheets.rb is include_set Abstract::SkinField only), and the
  *     nest renders its :unknown view - the create link for an actor who may
- *     create it, and "" for one who cannot (the anonymous oracle pins the
- *     absent accordion for every theme skin). */
+ *     create it, and "" for one who cannot (an anonymous viewer lacks
+ *     create permission, so theme skins render without the stylesheets
+ *     accordion). */
 function skinFieldNest(
   ctx: ViewContext,
   field: "colors" | "variables" | "stylesheets",
@@ -968,11 +957,10 @@ function skinFieldNest(
     // The +*stylesheets child is VIRTUAL and SKIN-typed: the SkinField
     // TPR set's code assignment (TypePlusRight::BootswatchSkin::
     // Stylesheets -> skin, the set-type-assignment registry's bootstrap
-    // entry) types the nest-miss card — the admin oracle's unknown-view
+    // entry) types the nest-miss card — the unknown-view
     // slot carries the Skin attrs and the create link WITHOUT an explicit
-    // card[type] (the assignment is implicit, no |type: opt); the
-    // anonymous/member/contractor renders drop the accordion (create
-    // denied).
+    // card[type] (the assignment is implicit, no |type: opt); a viewer
+    // without create permission gets no accordion (create denied).
     return fmt.nest({
       name: `${name}+*${field}`,
       syntax: `${name}+*${field}`,
@@ -995,9 +983,9 @@ function linkToCardName(ctx: ViewContext, target: string): string {
 }
 
 /** The bootswatch skin page core, exported for the compiled-in coreView
- *  typeCode dispatch (views.ts - the signupCoreHtml pattern: the graded
- *  surface is the loader-less engine, so the type-level core body is
- *  reached from the engine layer, not a set-scoped registration). */
+ *  typeCode dispatch (views.ts - the signupCoreHtml pattern: the engine's
+ *  own :core dispatch reaches the type-level body, so it is exported for
+ *  the engine layer rather than registered as a set-scoped view). */
 export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
   return str(bootswatchCoreView(ctx));
 }
@@ -1006,13 +994,14 @@ export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
  *  (the content view delegates here, card-mod-format set/all/base.rb
  *  content -> core). Haml whitespace semantics: every template line emits
  *  its rendered output followed by "\n", static tags wrap their blocks
- *  with the close tag on its own line. The captured oracle bytes
- *  ("cerulean skin" / "journal skin customized" page dumps):
+ *  with the close tag on its own line. Byte notes, read off the oracle's
+ *  rendered skin pages:
  *
  *  - `- if current_skin?` / `%span.disabled` -> the Current skin span
  *    (single-quoted static tag, content on its own line); `- else` ->
- *    use_as_current_button + line newline. No corpus skin is the current
- *    one, so the button branch is the pinned path.
+ *    use_as_current_button + line newline. A skin is only "current" when
+ *    the *all+*style rule lists it, which no default bootswatch skin is,
+ *    so the button branch is the expected path.
  *  - `- if card.parent?` (parent_skin_card&.real?, bootswatch_skin.rb
  *    :57-59) -> "Inherit from:" + link_to_card of the +parent pointer's
  *    first item; `- else` -> customize_button + `<div class='mt-4'>` /
@@ -1021,7 +1010,7 @@ export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
  *    the three field_nests (colors, variables, stylesheets), each output
  *    followed by the template line's newline - the ABSENT stylesheets
  *    field on theme skins is what produces the double newline before the
- *    `.accordion` close in the oracle bytes. */
+ *    `.accordion` close. */
 const bootswatchCoreView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   if (fmt.card.typeCode !== "bootswatch_skin") {
@@ -1058,14 +1047,13 @@ const bootswatchCoreView: ViewFn = (ctx) => {
     // html_views.rb:38-48 customize_button (the parent-less branch) +
     // `<div class='mt-4'>` + nest image_card, view: :content, size:
     // :large. image_card = card.fetch(:image, new: {}) (card-mod-bar_and_box
-    // set/abstract/media.rb:2-4); every corpus skin carries an Image row
-    // (the bootswatch mod data files ship them), so the fetch resolves.
+    // set/abstract/media.rb:2-4); the bootswatch mod's data files ship an
+    // Image child per skin, so the fetch resolves.
     out += `${customizeButtonView(ctx)}\n`;
     // An absent +Image is nested as the NEW card the fetch builds (the
     // views.ts skin-box arm's seam): the bootswatch_skin+*image TPR rule
     // types it Image, and :content on the unknown card routes through the
-    // unknown substitution - the corpus's unknown-view slot
-    // (corpu_skin-image-unknown-view, view :content in the slot JSON).
+    // unknown substitution (the unknown view's :content).
     const imageCard =
       fmt.engine.fetchRenderCard(`${name}+Image`) ??
       fmt.unknownChildCard(`${name}+Image`);
@@ -1170,9 +1158,8 @@ const cardModBootstrap: DeckoModManifest = {
     // only, no top-level views. carousel.rb (set/all/bootstrap/carousel.rb
     // :2-8) declares `view :carousel` which depends on
     // lib/card/bootstrap/component/carousel.rb - the headless engine
-    // has no ComponentKlass. This pass registers the carousel view as
-    // a direct emitter of the captured bytes
-    // (fixtures/captured/bootstrap-views.json's carousel bytes);
+    // has no ComponentKlass. The port registers the carousel view as
+    // a direct emitter of the Ruby byte shape;
     // see card-mod-bootstrap.ts#carouselView and
     // tests/card/mod-loader/card-mod-bootstrap.test.ts#:carousel.
     passiveSetModule("all/bootstrap/accordion"),
@@ -1191,7 +1178,7 @@ const cardModBootstrap: DeckoModManifest = {
       // slot wrapping for the active-index slide). The headless engine
       // has no ComponentKlass, so the port walks rawItemStrings ->
       // each item's format.renderView("core") directly and composes
-      // the captured carousel markup (attribute order, self-closing
+      // the Ruby carousel markup (attribute order, self-closing
       // indicator buttons, control buttons).
       setPath: "all/bootstrap/carousel",
       formats: {
@@ -1226,7 +1213,7 @@ const cardModBootstrap: DeckoModManifest = {
       // (src/card/render/bootstrap-code-files.ts, seeded as the built-in
       // default ContentOverrideRegistry entry) - see the section comment
       // above. No manifest surface: a contentOverrides entry here would be
-      // dead for the loader-less verifier and dropped by the boot-replace
+      // dead for the loader-less engine and dropped by the boot-replace
       // semantics for booted decks.
       setPath: "self/bootstrap_core",
       formats: { html: { views: [] } },
@@ -1246,15 +1233,15 @@ const cardModBootstrap: DeckoModManifest = {
       // :one_line_content is registered in html_views.rb below (that
       // file's redefinition wins for type+html-format cards; both Ruby
       // bodies are the empty string). view :core (html_views.rb:15-17,
-      // template :haml -> core.haml) is NOT registered here: its graded
+      // template :haml -> core.haml) is NOT registered here: its
       // dispatch is the compiled-in coreView typeCode branch
       // (views.ts, the signupCoreHtml pattern) - the loader-less
-      // verifier never registers mod views, so a set-scoped
-      // registration would be dead surface for the grade. The builder
+      // engine never registers mod views, so a set-scoped
+      // registration would be dead surface. The builder
       // (bootswatchSkinCoreHtml below) is exported and views.ts calls
       // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
-      // use_as_current_skin (set-module event 2026-10-08) — STUB, named
+      // use_as_current_skin — STUB, named
       // remainder (type/bootswatch_skin.rb:180-184): the TRIGGERED
       // finalize body writes the *all+*style rule's content to this skin
       // and saves it (Card[:all, :style].content = name; save!) — a
@@ -1277,11 +1264,11 @@ const cardModBootstrap: DeckoModManifest = {
       // view :bar_left / :bar_right / :bar_bottom + view :core. The
       // :core view is template :haml (core.haml) - the HAML depends on
       // accordion_bar + field_nest + nest :content, a structured-content
-      // surface not in this port. :bar_left IS PORTED (the bar slots
-      // 2026-09-29, byte-shaped to an earlier V6 dump) but registered in
-      // the BASE views table (views.ts barLeftView) - the corpus grading
+      // surface not in this port. :bar_left IS PORTED (byte-shaped per
+      // the Ruby bar-slot views) but registered in
+      // the BASE views table (views.ts barLeftView) - the loader-less
       // pipeline never binds a ModLoader, so only base-table
-      // registrations dispatch on the graded surface. :customize_button
+      // registrations dispatch on that surface. :customize_button
       // ports here with a local path
       // builder (Card::Path#render + new_skin_path_args ->
       // "card/create?card[name]=...&card[type]=bootswatch_skin&
@@ -1295,7 +1282,7 @@ const cardModBootstrap: DeckoModManifest = {
             { view: "one_line_content", viewFn: oneLineContentView },
             // html_views.rb:24-26 view :customize_button, cache: :never
             { view: "customize_button", viewFn: customizeButtonView, config: { cache: "never" } },
-            // surfaces-batch3 (2026-09-30): the rest of the file's view
+            // the rest of the file's view
             // surface. :core (html_views.rb:28, template :haml = core.haml),
             // :bar_left (html_views.rb:57-63, the Abstract::Media
             // text_with_image block), :bar_right (html_views.rb:65-67, the
@@ -1309,10 +1296,10 @@ const cardModBootstrap: DeckoModManifest = {
             // no before-view hook surface; a skin's :box renders without
             // the forced box_middle viz.
             // :core and :bar_left are served by the base table's
-            // bootswatch_skin branches, which the captured skin pages pin
-            // (the field nests' names, the colors and variables
-            // accordions); skinCoreView and bootswatchBarLeftView remain the
-            // builders their own pins exercise.
+            // bootswatch_skin branches (the field nests' names, the
+            // colors and variables accordions); skinCoreView and
+            // bootswatchBarLeftView remain the builders behind those
+            // branches.
             { view: "core", viewFn: baseTableView("core") },
             { view: "bar_left", viewFn: baseTableView("bar_left") },
             { view: "bar_right", viewFn: bootswatchBarRightView },
@@ -1372,7 +1359,8 @@ const cardModBootstrap: DeckoModManifest = {
       // @theme_colors; the :core view iterates the VARIABLE_NAMES map.
       // The colors view's bytes depend on the colors.rb HAML templates
       // (colors/_colorgroup.haml, colors/_colorpicker.haml, colors/
-      // core.haml, colors/input.haml) - structural but not oracle-pinned.
+      // core.haml, colors/input.haml) - transcribed structurally, with no
+      // shipped render surface exercising them.
       // The :bar_middle view (colors.rb:103-113) is a fixed HTML literal
       // scoped to *bootswatch_skin+*colors cards - it overrides the
       // render layer's baseline bar_middle ONLY for those cards. The
@@ -1383,7 +1371,7 @@ const cardModBootstrap: DeckoModManifest = {
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",
-      // translate_variables_to_scss (set-module event 2026-10-08) — STUB,
+      // translate_variables_to_scss — STUB,
       // named remainder (colors.rb:116-119 + replace_values :121+): the
       // body translates posted color-group params into SCSS variable
       // lines inside the +*colors content (variable_values_from_params
@@ -1396,11 +1384,10 @@ const cardModBootstrap: DeckoModManifest = {
       formats: {
         html: {
           views: [
-            // colors.rb:102-122 — the fixed bar_middle literal. surfaces-
-            // batch3: the registration makes the view dispatchable for
+            // colors.rb:102-122 — the fixed bar_middle literal. The
+            // registration makes the view dispatchable for
             // *colors cards under a bootswatch_skin left (the TYPE_PLUS_RIGHT
-            // token's X-stripped anchor path), replacing the clobber concern
-            // the original comment recorded: the viewChain per-card MRO walk
+            // token's X-stripped anchor path): the viewChain per-card MRO walk
             // (not a global flat table) scopes the registration to cards
             // whose set keys carry the anchor.
             { view: "bar_middle", viewFn: colorsBarMiddleView },
