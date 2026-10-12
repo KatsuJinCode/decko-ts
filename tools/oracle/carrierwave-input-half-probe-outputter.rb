@@ -11,8 +11,8 @@
 # mod: tabs+*script (1071B), mod: recaptcha+*script (1778B).
 #
 # The rule card is UPDATED to this item list when it differs (the card was
-# created by THIS lane's first probe run - the two-item version - and the
-# update only extends this lane's own probe fixture; no pre-existing deck
+# created by this probe's own first run - the two-item version - and the
+# update only extends this probe's own fixture; no pre-existing deck
 # card is touched).
 #
 # Creates (if missing): "Oracle Cw In" (a Set card) + the rule
