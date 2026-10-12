@@ -10,12 +10,12 @@
 //   SearchNestPosture = "write-time" | "live"
 //   DEFAULT_SEARCH_NEST_POSTURE = "write-time"
 //
-// The write-time default is the research verdict's recommendation for THIS
-// deck (read-mostly, 19,482 cards, rare controlled writes): every search
+// The write-time default is the research verdict's recommendation for a
+// read-mostly deck with rare controlled writes: every search
 // nest executes once when the closure is built (or when a write invalidates
 // it) and its result rows are stored as data. The "live" posture leaves the
 // store empty and lets the render execute the CQL per render (the current
-// engine's behavior — always fresh, more round trips). NOTHING in this pass
+// engine's behavior — always fresh, more round trips). Nothing here
 // depends on the default staying: flipping the constant flips the posture
 // for builder and invalidation alike, and both postures are pinned by
 // tests/card/one-trip/search-nest-posture.test.ts.
@@ -24,7 +24,7 @@
 // execution returns (same executor, same statement bytes, same order) —
 // pinned by the posture test. Permission-filter parity is a documented
 // limitation: the write-time executor runs with the anonymous/default
-// options this pass's probes render under; a deployment whose viewers see
+// options this module's probes render under; a deployment whose viewers see
 // permission-filtered results must run the write-time execution under the
 // SERVING policy (SPEC: "the write-time execution runs under the same read
 // scope the read will serve").
@@ -85,9 +85,8 @@ export async function executeSearchNestNow(
   // 20) before reading result rows — the render never reads more than
   // limit+count rows per nest. The write-time store materializes the SAME
   // window (the clamp rides the statement exactly as runSearch applies it),
-  // so a deck-wide search stores ~21 rows, not 19,482 (measured: an
-  // unclamped store turned one Eagle-adjacent deck-wide nest into a
-  // whole-deck payload).
+  // so a deck-wide search stores ~21 rows, not every card in the deck — an
+  // unclamped store turns one deck-wide nest into a whole-deck payload.
   let statementClamped = statement as Record<string, unknown>;
   {
     const declared = (statementClamped as Record<string, unknown>)["limit"];
