@@ -56,7 +56,7 @@
 -- each one is a card_references row pointing at the Help Desk role, and
 -- the roles arrive with 0006, which runs AFTER this file.
 --
--- NOT INCLUDED, and why (also recorded in the lane receipt):
+-- NOT INCLUDED, and why:
 --   * the account read rules — see the paragraph above; they ship in 0009.
 --   * roles: `Role`, `*members`, Anyone, Anyone Signed In, Administrator,
 --     Eagle, Shark, Help Desk (real.yml:4-68). They ship in
