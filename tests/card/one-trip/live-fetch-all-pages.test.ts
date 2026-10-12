@@ -1,4 +1,4 @@
-// THE LIVE-FETCH-ALL-PAGES PINS (onetrip-build lane, retarget 2026-10-06).
+// THE LIVE-FETCH-ALL-PAGES PINS.
 //
 // THE DESIGN UNDER PIN: the LIVE batched inclusion-tree query (the seat's
 // head statement — recursive walk CTE + the V2 keyset slices) is THE render
@@ -8,20 +8,20 @@
 // (DECKO_ONE_TRIP_PLANS; default = the demo posture so every standing pin's
 // subject is unchanged). The deliverable posture — flag "0" — never reads
 // the plan table: the head carries the stamp + gate-count columns (the
-// stamp-as-column lane's work, reused verbatim) and the member id list; the
+// stamp-as-column design, reused verbatim) and the member id list; the
 // ONE chunk batch rides the V2/V3 transport; the render's remaining reads
 // ride live (the named residue classes, owners recorded in render-plan.ts's
-// registry and the lane receipt).
+// registry).
 //
 // THE TRIP SHAPE (the two measured walls): WALL 1 — the serving DB rejects
 // ATTACH, so the inline shape is the only serving shape; WALL 2 — a
 // template-scale page's single JSON row exceeds the ~5 MB single-value
 // ceiling, so the head + bounded keyset slices are the transport. The fetch
 // is therefore exactly 2 live trips (1 head + 1 slice batch) on every page
-// class — the honest floor the retarget accepts and this file pins.
+// class — the floor this file pins.
 //
-// RED-FIRST (2026-10-06): at the parent commit the flag does not exist and
-// the head carries the plan_json column unconditionally
+// RED-FIRST: without the flag the head carries the plan_json column
+// unconditionally
 // (one-trip-fetch.ts inlineHeadSql), so EVERY assertion below fails for the
 // same reason — the seat reads one_trip_render_plans on every page.
 
@@ -253,8 +253,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/live-fetch-all-pages.test.ts
       ).toBe(1);
 
       // THE STAMP-RIDES-THE-STATEMENT PIN: the head is the same statement
-      // that carries deck_data_version (spec §c — a moved version is visible
-      // in the same read, by construction).
+      // that carries deck_data_version — a moved version is visible
+      // in the same read, by construction.
       const head = live.statements.find((s) => /one_trip_edges/i.test(s.sql));
       expect(head, "the head statement exists").toBeDefined();
       expect(
