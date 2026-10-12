@@ -2,13 +2,11 @@
 // wrangler.toml `main` ships — the Deploy-to-Cloudflare button's surface)
 // and deploy/worker.ts (deploy/wrangler.toml's harness). The twins drifted
 // once already — the button shipped a blanket-500 catch while deploy/
-// worker.ts mapped missing cards 404, and the deploy button's live
-// test-deploy caught it (commit 90d5f31 on the public lineage; the audit
-// recorded result an internal work log ASSIGNMENT 2 lists
-// the full divergence inventory). This module is the part of that surface
-// BOTH entries must answer IDENTICALLY, extracted so they cannot drift
-// again; tests/deploy/worker-twins-shared-surface-parity.test.ts drives
-// both shipped entries through one fixture and pins the parity.
+// worker.ts mapped missing cards 404, and a test-deploy caught it. This
+// module is the part of that surface BOTH entries must answer IDENTICALLY,
+// extracted so they cannot drift again;
+// tests/deploy/worker-twins-shared-surface-parity.test.ts drives both
+// shipped entries through one fixture and pins the parity.
 //
 // Web-standard only (no Node APIs), like both entries.
 
@@ -17,7 +15,7 @@ import { DeckoName } from "../card/name.js";
 import type { FetchEngine } from "../card/fetch.js";
 
 // ---------------------------------------------------------------------------
-// Error -> HTTP status mapping (the Card::Error status_code table)
+// Error -> HTTP status mapping
 // ---------------------------------------------------------------------------
 
 /** The rendered-error page shape both entries answer with. */
@@ -27,23 +25,17 @@ export interface RenderErrorPage {
 }
 
 /**
- * Map an engine error MESSAGE to the HTTP status + page title, per the
- * vendored oracle's own status table (prototype/lib/card/error.rb):
+ * Map an engine error MESSAGE to the HTTP status + page title:
  *
  *   - `card not found: X`  -> 404 "Card not found"
- *     (Card::Error::NotFound, error.rb:88-89 `self.status_code = 404`)
  *   - `id doesn't exist: N` / `codename doesn't exist: X` -> 404
- *     (DeckoName.badMark's NameNotFoundError / CodenameNotFoundError —
- *     src/card/name/errors.ts maps them to Card::Error::NotFound /
- *     CodenameNotFound < NotFound, error.rb:93)
+ *     (the name layer's mark-resolution failures, which are the same
+ *     not-found condition expressed as an unusable URL mark)
  *   - `view (X) not supported ...` -> 422 "Unsupported view"
- *     (UnsupportedViewError = the Card::Error::UserError raise,
- *     src/card/render/format.ts:79-81 citing render.rb#view_method;
- *     error.rb:21 sets the Card::Error BASE status_code = 422 and
- *     UserError (:68) inherits it — only ServerError (:46-51) overrides
- *     to 500. The deploy entry's former 500 for this case was the twins'
- *     divergence; the root entry's 422 was the Ruby-correct shape.)
- *   - anything else -> 500 "Render error" (ServerError, error.rb:46-51)
+ *     (a user error: the request named a view this engine does not
+ *     implement, raised in src/card/render/format.ts:79-81. Only a
+ *     genuine server fault earns a 500.)
+ *   - anything else -> 500 "Render error"
  *
  * The discriminators are the error MESSAGES the engine throws (every
  * raise site formats through `Error` with these prefixes); entries catch
@@ -64,19 +56,17 @@ export function mapRenderError(message: string): RenderErrorPage {
 
 /**
  * decodeURIComponent that returns undefined on malformed input instead of
- * throwing. The '+' is DECKO'S JOINT (Card::Name.joint,
- * prototype/lib/cardname.rb) and must survive into the name:
- * /Demo%20Guide+Section%20One is the junction "Demo Guide+Section One"
- * whose canonical engine key is "demo_guide+section_one" (left.key +
- * joint + right.key, name.ts #key). An earlier deploy-entry revision
- * rewrote '+' to ' ' here so multi-word simple names could ride the
- * bare-plus URL form — that made junction names unreachable over HTTP in
- * EVERY form ('+' -> space; '%2B' -> '+' -> space) while the engine still
- * composes junction keys WITH the joint, so every compound GET 404'd (the
- * adversarial probe battery's headline finding, batch 01). Ruby/decko
- * addresses junctions as /A+B and multi-word simple names as /A%20B (or
- * the underscore alias form). Caught by the targeted Cloudflare test
- * 2026-09-23; reconciled to the engine-canonical key 2026-09-24.
+ * throwing. The '+' must survive into the name: it is the card-name JOINT,
+ * so /Demo%20Guide+Section%20One is the junction "Demo Guide+Section One"
+ * whose canonical engine key is "demo_guide+section_one" (left.key + joint
+ * + right.key, name.ts #key).
+ *
+ * Rewriting '+' to a space here is tempting — it lets multi-word simple
+ * names ride the bare-plus URL form — and it breaks junctions in EVERY
+ * encoding ('+' -> space; '%2B' -> '+' -> space) while the engine still
+ * composes junction keys WITH the joint. Every compound GET then 404s.
+ * Junctions are addressed as /A+B and multi-word simple names as /A%20B (or
+ * the underscore alias form); decode only, never re-interpret.
  */
 export function decodeName(raw: string): string | undefined {
   try {
@@ -87,16 +77,14 @@ export function decodeName(raw: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// History view params (Card::Env.params equivalents)
+// History view params
 // ---------------------------------------------------------------------------
 
 /**
- * view_from_params (decko-0.20.0 lib/card_controller/rest.rb:100-103):
- * `%i[view v].each { |k| return params[k] if params[k].present? }` — the
- * first NON-BLANK of the two query params, undefined when neither is
- * present. The value rides VERBATIM into the engine; the path view (the
- * action arg) never falls through to params. All worker entries share
- * this one copy.
+ * The view named by the query string: the first NON-BLANK of `view` then
+ * `v`, undefined when neither is present. The value rides VERBATIM into the
+ * engine; the path view never falls through to params. All worker entries
+ * share this one copy.
  */
 export function queryViewFromUrl(url: URL): string | undefined {
   for (const key of ["view", "v"] as const) {
@@ -107,10 +95,9 @@ export function queryViewFromUrl(url: URL): string | undefined {
 }
 
 /** The query keys the history views read (render.ts HistoryRenderParams —
- *  act.rb's act_from_context "act_id" / "action_id" and the act-list
- *  paging keys). Other views ignore them, so passing them unconditionally
- *  is the faithful shape: Rack hands the controller ALL params and the
- *  views pick. */
+ *  the act/action selectors and the act-list paging keys). Other views
+ *  ignore them, so passing them unconditionally is the faithful shape: the
+ *  views pick what they need out of the full param set. */
 const HISTORY_PARAM_KEYS = [
   "act_id",
   "action_id",
@@ -123,10 +110,9 @@ const HISTORY_PARAM_KEYS = [
 
 /**
  * Extract the history-view params from a request's query string, for the
- * render call's HistoryRenderParams argument. The root entry extracted
- * these since the history views landed; the deploy entry dropped them
- * (its render call was 2-arg, so `?act_id=` silently rendered the
- * no-param fallback). Both entries now call this and pass the result.
+ * render call's HistoryRenderParams argument. BOTH entries must call this
+ * and pass the result: an entry whose render call omits the argument makes
+ * `?act_id=` silently render the no-param fallback rather than fail.
  */
 export function historyViewParams(searchParams: URLSearchParams): Record<string, string> {
   const params: Record<string, string> = {};
@@ -148,9 +134,8 @@ interface PrimeIdRow {
   right_id: number | null;
 }
 
-/** Junction cards store NULL name columns and ride left_id/right_id (the
- *  2020 Lexicon convention, db/schema.sqlite.sql). Compose their names
- *  recursively (left-associative chain, same as DbLexicon.lexToName),
+/** Junction cards store NULL name columns and ride left_id/right_id
+ *  (db/schema.sqlite.sql). Compose their names recursively, left-associative,
  *  cycle-guarded. Returns the row list plus a name-of resolver the CQL
  *  primer (deploy entry) reuses for its key->id map. */
 export function composeJunctionNames(rows: PrimeIdRow[]): {
@@ -193,15 +178,14 @@ export function composeJunctionNames(rows: PrimeIdRow[]): {
  * deck's card rows — the boot-time composition BOTH entries run (and the
  * local engine boots with: FetchEngine#warmLexicon + installNameEnvironment).
  *
- * The sync name environment (DeckoName's mark resolution for "~<id>" and
- * ":<codename>" strings, name.ts parse -> idFromString) reads ONLY the
- * warm caches through the engine's peek adapters, so the boot has to
- * install the adapters and warm the caches BEFORE the first request:
- * without this, "/~9" answers 500 with "id doesn't exist: 9"
- * (DeckoName.badMark, the NameNotFoundError path) and "/:search_type"
- * 500s with "codename doesn't exist: search_type" — the mark URLs are
- * unusable. The lexicon warm reuses the row load above (no second full
- * scan); the codename codehash is its own small query.
+ * Mark resolution for "~<id>" and ":<codename>" strings (name.ts parse ->
+ * idFromString) is synchronous and reads ONLY the warm caches through the
+ * engine's peek adapters, so the boot has to install the adapters and warm
+ * the caches BEFORE the first request. Without this, "/~9" answers 500 with
+ * "id doesn't exist: 9" and "/:search_type" 500s with "codename doesn't
+ * exist: search_type" — every mark URL is unusable. The lexicon warm reuses
+ * the row load above (no second full scan); the codename codehash is its
+ * own small query.
  */
 export async function installDeckNameEnvironment(
   driver: SQLDatabaseDriver,
@@ -228,9 +212,8 @@ export async function installDeckNameEnvironment(
 
 /**
  * A card's stored content as the JSON surfaces may show it. A password
- * card's content is its digest, which Decko never shows to anyone, owner and
- * administrators included: card-mod-account set/right/password.rb renders
- * its content as "encrypted" (view :raw).
+ * card's content is its digest, which is never shown to anyone, owner and
+ * administrators included — it renders as "encrypted".
  */
 export function publicDbContent(record: { name?: DeckoName; dbContent?: string }): string {
   if (record.name?.rightName?.key === "*password") return "encrypted";
