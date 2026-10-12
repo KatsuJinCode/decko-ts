@@ -2,8 +2,8 @@
 // set-module `def content` hook, i.e. every answer a card's #content gives
 // from SET-MODULE CODE rather than from its DB row.
 //
-// Ruby mechanism (the set-module override fidelity work, 2026-10-03 relaunch — full
-// derivation with file:line in WORK_DIR/
+// Ruby mechanism (full derivation with file:line in
+// WORK_DIR/
 // the set-override fidelity note, "[relaunch t1] RUBY DERIVATION COMPLETE"):
 //
 // 1. Base: Card::Content::All#content = `structured_content || standard_content`
@@ -40,10 +40,10 @@
 // - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT ("#{mod}_mod",
 //   mod/core/set/self/mod.rb:4-6) and Cardio::Mod defines no #to_s
 //   (lib/cardio/mod.rb), so Ruby emits Object#to_s — "#<Cardio::Mod:0xADDR>"
-//   — with a capture-process heap address. The SHAPE is reproduced exactly
+//   — with a per-process heap address. The SHAPE is reproduced exactly
 //   (modObjectToS below: Ruby's own template, the same 16-hex-digit width,
-//   one distinct id per mod, assigned in the captured bundle order). The
-//   VALUE is a genuine per-process opaque id, because the capture's value is
+//   one distinct id per mod, assigned in the bundle order). The
+//   VALUE is a genuine per-process opaque id, because Ruby's value is
 //   a genuine per-process value: it is not comparable across languages and
 //   not across Ruby runs, and pretending otherwise would be the lie. The
 //   comparator canonicalizes it on both sides (src/testing/diff.ts
@@ -54,23 +54,23 @@
 //   row timestamp in the deck's Rails Time.zone, with %Z the zone's
 //   abbreviation at that instant. Both now come from the deck's configured
 //   zone (src/card/deck-time-zone.ts) rather
-//   than from a hard-coded capture-host zone and a Windows display-name
-//   literal; "now" still comes from the injectable capture wall clock (the
-//   corpus's graded bytes are a frozen sample of a time-varying answer).
-//   The graded deck's zone remains the default so those bytes do not move —
+   //   than from a hard-coded host zone and a Windows display-name
+   //   literal; "now" still comes from the injectable wall clock (the
+   //   reference bytes are a frozen sample of a time-varying answer).
+//   The pinned deck's zone remains the default so those bytes do not move —
 //   only the %Z LABEL changes, from the Windows display name
-//   "Pacific Standard Time" to the abbreviation Ruby prints ("PDT" for the
-//   corpus's September instants, "PST" for a winter one).
+//   "Pacific Standard Time" to the abbreviation Ruby prints ("PDT" for a
+//   September instant, "PST" for a winter one).
 //
 // Named remainders (derivation complete, NOT wired — see the recorded result):
 // - Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:44-48):
 //   CONTENT_PARTS assembly resolves a mod-style subtree ("style: mods" →
-//   18 "mod: X+*style" rule cards) whose ~222KB of deck scss at capture time
-//   rides an untraced rule-card item mechanism; wired wire would be a guess.
+//   18 "mod: X+*style" rule cards) whose ~222KB of deck scss
+   //   rides an untraced rule-card item mechanism; wiring it would be a guess.
 // - Right::GroupRemote (card-mod-assets set/right/group_remote.rb:29-31) and
 //   Right::Followers (card-mod-follow set/right/followers.rb:13-15): zero
-//   corpus presence (census: no live junction carries these tag codenames);
-//   both need machinery the corpus never exercises (manifest-group config
+//   presence (no live junction carries these tag codenames);
+//   both need machinery nothing here exercises (manifest-group config
 //   parsing / the follow-set surface).
 // - Abstract::HamlFile and Abstract::CodenameList define `def content` but
 //   have ZERO includers in the installed gems (verified); CodeFile's other
@@ -112,17 +112,17 @@ export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
 );
 
-/** The captured *now record.content bytes (the pin target), as the port now
+/** The *now record.content bytes (the pin target), as the port now
  *  renders them: the same wall clock, with %Z as the zone's ABBREVIATION at
- *  that instant. The corpus photographed the Windows display name
- *  "Pacific Standard Time" for this September (PDT) instant because the
- *  capture host was Windows; Ruby prints the abbreviation, so the port does
+ *  that instant. A Windows host prints the display name
+ *  "Pacific Standard Time" for this September (PDT) instant; Ruby prints the
+ *  abbreviation, so the port does
  *  too (see src/card/deck-time-zone.ts). */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
-/** The zone the CORPUS CAPTURE HOST rendered in — the zone its recorded
- *  bytes are in. Not the engine default (that is UTC, the deck's own setting)
- *  and not a claim about any deck: it is what reproducing the captured bytes
+/** The zone the reference bytes are in. Not the engine default (that is
+ *  UTC, the deck's own setting)
+ *  and not a claim about any deck: it is what reproducing those bytes
  *  requires, so a fixture or test that reproduces them sets it explicitly. */
 export const ORACLE_DECK_TIME_ZONE = {
   /** The IANA zone the instant arithmetic uses. */
@@ -223,7 +223,7 @@ function nextModIdentity(): bigint {
     let seed = 0n;
     for (const byte of randomBytes(8)) seed = (seed << 8n) | BigInt(byte);
     // Keep 56 bits so the printed value is exactly 16 hex digits wide, matching
-    // the corpus, and advance from there so the all-zero id is unreachable.
+    // Ruby, and advance from there so the all-zero id is unreachable.
     modIdentityMask = (1n << 56n) - 1n;
     modIdentityCursor = (seed >> 8n) & modIdentityMask;
   }
@@ -270,7 +270,7 @@ export function capturedModObjects(): readonly CardioModObject[] {
  * name, so each line is Object#to_s of a Cardio::Mod followed by "_mod".
  * to_pointer_content (config/initializers/01_core_extensions/array.rb:4-12)
  * strips one leading "[[" and one trailing "]]" — neither is present here,
- * so all 34 lines survive byte-for-byte, which is what the corpus shows.
+ * so all 34 lines survive byte-for-byte, which is what Ruby emits.
  */
 export function modItemCodesContentForMods(
   mods: readonly CardioModObject[],
