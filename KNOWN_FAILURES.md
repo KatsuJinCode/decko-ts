@@ -1,5 +1,5 @@
 # Known test failures
-| tests/card/actions/atomic-saves.test.ts | passes alone (44 of 44); failed once inside a concurrent full-suite run on the candidate gate (its first-use engine build races the shared tmp state) | 2026-10-11 |
+| `tests/card/actions/atomic-saves.test.ts` | passes alone (44 of 44); failed once inside a concurrent full-suite run on the candidate gate (its first-use engine build races the shared tmp state) | 2026-10-11 |
 
 These suites fail on a clean clone with `npx vitest run`. Each fails identically
 on the revision this release was cut from, so none comes from the release
@@ -31,7 +31,7 @@ re-derivation and no longer are:
   each time" — which was itself the tell that the failures came from this
   environment rather than from the code.
 
-## | tests/deploy/bunny-edge-session-viewer-roundtrip.test.ts | the anonymous home-site-shell golden pin is 19 bytes stale since the demo account read rules shipped (migration 0009 adds cards the shell capture predates): fixture 4528 bytes vs the pinned 4547; proven pre-existing at the round-9 base commit in a clean worktree; re-anchor queued | 2026-10-11 |
+## | `tests/deploy/bunny-edge-session-viewer-roundtrip.test.ts` | the anonymous home-site-shell golden pin is 19 bytes stale since the demo account read rules shipped (migration 0009 adds cards the shell capture predates): fixture 4528 bytes vs the pinned 4547; proven pre-existing at the round-9 base commit in a clean worktree; re-anchor queued | 2026-10-11 |
 Environment-flaky suites: red in a full run, green alone
 
 These are not in the table above, because a table row means a suite that fails
