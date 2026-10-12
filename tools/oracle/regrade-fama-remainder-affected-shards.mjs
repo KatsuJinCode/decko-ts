@@ -1,34 +1,31 @@
 // regrade-fama-remainder-affected-shards.mjs -- launch the direct driver over
-// the shards the fama-remainder lane's engine change can touch.
+// the shards the engine change can touch.
 //
 // WHY A LAUNCHER: the test queue runs a job whose --cmd begins with `node` by
 // handing the string to node itself, so a `.cmd` wrapper is loaded as an ES
 // module and dies on ERR_UNKNOWN_FILE_EXTENSION. This file is the wrapper.
 //
-// SCOPE, argued not assumed. The lane's only engine change is in
+// SCOPE, argued not assumed. The only engine change is in
 // `prepareAdminRuntime`'s mod-card step
 // (src/card/mod-loader/mods/core-admin-runtime.ts):
 //   - SELECT now also reads cards.codename, and the mod card's codename is
-//     the stored column (Ruby: card/mod/core/set/type/mod.rb:164-166
-//     `def modname; codename.to_s.gsub(/^mod_/, ""); end`) instead of a
-//     name-derived `DeckoName#key`;
+//     the stored column (Ruby derives the mod name from the codename
+//     column, stripping the mod_ prefix) instead of a name-derived
+//     `DeckoName#key`;
 //   - the `modCards.sort(by name)` is gone, so all_configs keeps the deck's
-//     `Card.search(type: :mod)` order (Ruby: all/admin.rb:19-21,40-42).
-// `modCards` has exactly ONE consumer chain: core-mod.ts `modCardsWithConfig`
-// -> `allConfigs` (grep: the only references are core-mod.ts:513,521,585).
-// `allConfigs` feeds three views, all of which are reached ONLY from a Mod-
-// typed card's set/self/mod.rb views (modGlobalSectionHtml, modRolesView)
-// and account set/type/role.rb's `view :configs` (core-mod.ts:723-729):
-//   - `Mod` -- the Mod CARDTYPE card, one page: expected-v2/page-lane/
-//     recapture-raw-shard-000039.jsonl;
+//     `Card.search(type: :mod)` order.
+// `modCards` has exactly ONE consumer chain: mods/core-mod.ts
+// `modCardsWithConfig` -> `allConfigs` (grep: the only references live in
+// src/card/mod-loader/mods/core-mod.ts). `allConfigs` feeds three views, all
+// of which are reached ONLY from a Mod-typed card's set/self/mod.rb views
+// (modGlobalSectionHtml, modRolesView) and the account set's `view :configs`:
+//   - `Mod` -- the Mod CARDTYPE card, one page: the shard listed in SHARDS
+//     below;
 //   - the role pages whose `+Dashboard` content nests `{{_L|configs}}` --
-//     corpus rows 34817 `Administrator+Dashboard`, 34818 `Shark+Dashboard`,
-//     34820 `Help Desk+Dashboard`. Those pages are expected-v2/page-lane/
-//     recapture-raw-shard-000000.jsonl (Administrator) and
-//     recapture-raw-shard-000029.jsonl (Shark, Help Desk).
+//     covered by the other two shards listed in SHARDS.
 // No other page reads modCards, so no other shard's bytes can move. The
 // `mod: <name>` pages are NOT affected: their view
-// (core-mod.ts `modCardCoreHtml`, type/mod.rb:7-19) reads the card's OWN
+// (mods/core-mod.ts `modCardCoreHtml`) reads the card's OWN
 // stored codename (`card.record.codename`), which this change leaves alone.
 //
 // Usage (from the repo root):
