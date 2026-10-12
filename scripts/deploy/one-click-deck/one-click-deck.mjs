@@ -291,8 +291,8 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
         `STATIC ASSETS via the wrangler [assets] directory ` +
         `(scripts/deploy/one-click-deck/demo-static-assets/, uploaded together ` +
         `with the worker bundle in step 6): all-style.css + all-script.js ` +
-        `(the SassC+Uglifier-compiled skin, sha256-matched to the render VM's ` +
-        `oracle-assets), decko-config.js, robots.txt. The assets layer serves ` +
+        `(the SassC+Uglifier-compiled skin, sha256-matched to the oracle's own ` +
+        `compiled skin), decko-config.js, robots.txt. The assets layer serves ` +
         `them before the worker runs: 0 D1 rows read or written.`,
       remoteCommands: () => [],
     },
@@ -398,7 +398,7 @@ function ensureConfig({ args, databaseId }) {
 # shim (same shape as deploy/wrangler.toml).
 #
 # [assets] ships the compiled skin (all-style.css + all-script.js, sha256-
-# matched to the render VM's oracle-assets) plus decko-config.js and
+# matched to the oracle's own compiled skin) plus decko-config.js and
 # robots.txt. The assets layer serves them BEFORE the worker runs, so asset
 # requests cost zero D1 reads and zero D1 writes; crawler traffic is turned
 # away by robots.txt instead of burning the read budget.

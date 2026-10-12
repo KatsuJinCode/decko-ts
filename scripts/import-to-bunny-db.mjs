@@ -90,8 +90,7 @@ if ((!DB_URL || !TOKEN) && typeof args['creds'] === 'string') {
 if (!DB_URL || !TOKEN) {
   console.error(
     'No database credentials.\n' +
-    '  Set BUNNY_DB_URL and BUNNY_DB_TOKEN in the environment, or pass --creds <path-to-file>.\n' +
-    '  (This script no longer falls back to the production-account creds file.)',
+    '  Set BUNNY_DB_URL and BUNNY_DB_TOKEN in the environment, or pass --creds <path-to-file>.',
   );
   process.exit(2);
 }

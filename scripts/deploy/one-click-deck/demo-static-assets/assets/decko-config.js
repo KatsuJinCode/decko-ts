@@ -4,7 +4,9 @@
 // page: the main JS executes first, then this config mutates the global
 // `decko` object. The ace/tinymce editor configs are deliberately absent —
 // this demo is a read-only surface with no editor views.
-decko.rootUrl = 'https://decko-one-click-demo.jpswilner.workers.dev/';
+// rootUrl is the demo deployment's own workers.dev origin; the shipped value
+// is the placeholder — point it at the deployed worker's real origin per run.
+decko.rootUrl = 'https://decko-one-click-demo.example.workers.dev/';
 decko.doubleClick = 'signed_in';
 decko.cssPath = '/assets/all-style.css';
 decko.signed_in = false;
