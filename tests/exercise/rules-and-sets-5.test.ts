@@ -640,7 +640,7 @@ afterAll(() => {
 });
 
 describe("mods: a hand-ported Ruby mod view beyond the byte-pins", () => {
-  it('"Existing Ruby mods are not executed — the site\'s own mods are hand-ported, and the compatibility report\'s labels are declaration-level ... A mod view beyond the handful the byte-pins render is unproven against Rub\'s bytes." — :follow_status is named by no committed capture fixture, so there is no Ruby expectation for its bytes and the only public assertion is that the mod loads and renders', async () => {
+  it(':follow_status was the hand-ported mod view no capture named; the synthetic-v2 corpus now commits Ruby oracle bytes for it, and the corpus gate grades the port against them at every merge — this file still pins the no-deck raise and the mounted-deck render', async () => {
     const s = unprovenStorage!;
 
     // The premise, checked rather than asserted: walk the committed
@@ -657,7 +657,12 @@ describe("mods: a hand-ported Ruby mod view beyond the byte-pins", () => {
         }
       })(join(REPO_ROOT, root));
     }
-    expect(mentions).toEqual([]);
+    // The converge merged the synthetic-v2 corpus, whose Ruby oracle
+    // exercises the view - the corpus gate (seconds-corpus-gate.mjs,
+    // same:true) is what makes its bytes proven now, and this walk is the
+    // guard that the coverage claim and the committed fixtures stay in sync.
+    expect(mentions.every((m) => m.includes("synthetic-v2"))).toBe(true);
+    expect(mentions.length).toBeGreaterThan(0);
 
     // With no deck mounted the view does not exist at all - Ruby mods are
     // not executed, the port's own mods supply the view.

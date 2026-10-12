@@ -132,7 +132,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     // which DOES carry the content (the leak the round-9 :input
     // registration closes — see the :input pins at the end of this file).
     const input = await s.engine.render(
-      "Fields Probe Member+account+password",
+      "Fields Probe Member+*account+*password",
       "input",
     );
     expect(input).toContain("fake-hash-not-a-real-password");
@@ -233,7 +233,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const input = await s.engine.render(
-      "Fields Probe Member+account+password",
+      "Fields Probe Member+*account+*password",
       "input",
     );
     // The security assertion: the stored hash is not in the bytes, and the
@@ -242,10 +242,16 @@ describe("card-mod-account field views (right/account :core + right/password raw
     expect(input).not.toContain("fake-hash-not-a-real-password");
     expect(input).not.toMatch(/\bvalue=/);
     // The gem's own bytes: bootstrap_options' " form-control" append, the
-    // caller's class/placeholder/autocomplete, Rails' type, then name+id.
+    // caller's class/placeholder/autocomplete, Rails' type, then name+id —
+    // and the haml's toggle-password affordance after the input (the
+    // live-oracle probe receipt; this file's earlier version had it as a
+    // named remainder before the probe pinned the full bytes).
     expect(input).toBe(
       '<input class="d0-card-content _pw-input form-control" placeholder="Password" ' +
-        'autocomplete="off" type="password" name="card[content]" id="card_content" />',
+        'autocomplete="off" type="password" name="card[content]" id="card_content" />\n' +
+        "<span class='_toggle-password visibility-icon _pw-text-area'>\n" +
+        '<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n' +
+        "</span>\n",
     );
   });
 
@@ -261,7 +267,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     // value. If this ever fails the way the password pin did, the :input
     // registration has widened past the password set.
     const emailInput = await s.engine.render(
-      "Fields Probe Member+account+email",
+      "Fields Probe Member+*account+*email",
       "input",
     );
     expect(emailInput).toContain("probe@example.com");

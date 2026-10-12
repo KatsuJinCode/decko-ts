@@ -36,7 +36,9 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { build } from "vite";
+import { build } from "esbuild";
+import { builtinModules } from "node:module";
+import { coffeescriptNodeBuiltinStubs } from "../../tools/vendor/coffeescript-edge-bundler-stubs.mjs";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
 import { CloudflareD1Adapter } from "../../src/server/drivers/d1.js";
@@ -73,23 +75,27 @@ interface Booted {
 let bundlePromise: Promise<string> | undefined;
 function workerBundle(): Promise<string> {
   bundlePromise ??= (async () => {
+    // The wrangler bundle shape itself: esbuild, platform neutral, the
+    // repository's real edge-bundling discipline (tools/bundle-cf-edge-engine.mjs)
+    // — node builtins stay external, and the coffeescript subtree's builtin
+    // requires resolve to the loud stub. The earlier vite/rolldown bundling
+    // emitted an eager createRequire(import.meta.url) interop shim that
+    // workerd cannot boot; wrangler's esbuild never produces one.
     const result = await build({
-      configFile: false,
-      logLevel: "warn",
-      ssr: { noExternal: true },
-      build: {
-        write: false,
-        minify: false,
-        target: "es2022",
-        ssr: true,
-        rollupOptions: {
-          input: WORKER_ENTRY,
-          output: { format: "esm", entryFileNames: "worker.mjs", inlineDynamicImports: true },
-        },
-      },
+      entryPoints: [WORKER_ENTRY],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "neutral",
+      target: "es2022",
+      external: [...builtinModules, ...builtinModules.map((n) => `node:${n}`)],
+      conditions: ["deno", "bunny", "import", "default"],
+      mainFields: ["module", "main"],
+      alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
+      plugins: [coffeescriptNodeBuiltinStubs()],
+      logLevel: "warning",
     });
-    const outputs = (Array.isArray(result) ? result : [result]) as unknown as Array<{ output: Chunk[] }>;
-    const bundle = outputs[0]?.output.find((c) => c.type === "chunk")?.code ?? "";
+    const bundle = result.outputFiles?.[0]?.text ?? "";
     expect(bundle.length, "the bundle must carry the engine, not just a stub").toBeGreaterThan(10_000);
     return bundle;
   })();
