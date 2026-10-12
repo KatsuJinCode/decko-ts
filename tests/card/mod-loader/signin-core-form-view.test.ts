@@ -1,28 +1,25 @@
-// The *signin :core view — the sign-in form — pinned byte-first against the
-// LIVE-WIRE oracle (edge-signin-form-fix lane, 2026-10-03).
+// The *signin :core view — the sign-in form — pinned byte-for-byte.
 //
-// THE BUG THIS PIN LOCKS SHUT: the port had no self/signin :core
+// THE BUG THIS PIN LOCKS SHUT: without self/signin :core
 // (card-mod-account-0.20.0 set/self/signin.rb:119-125 — card_form :update,
 // recaptcha: :off, success: signin_success, wrapping the core.haml
-// template), so GET /*signin rendered the *signin card's base RichText
-// content — EMPTY on the real deck — in the titled body. The trial edge
-// served that heading-only page and its 24h shared cache pinned it: an
-// operator clicking "Sign In" got no email field, no password field, no
-// submit. Live production example.com renders the form; the capture
-// this file pins against is production's own anonymous GET /*signin
-// (REPO_DIR an internal work log, 2026-10-03).
+// template), GET /*signin renders the *signin card's base RichText
+// content — EMPTY, since *signin stores no body content — in the titled
+// body: an operator clicking "Sign In" gets no email field, no password
+// field, no submit. The gem's :core override is what renders the form.
 //
-// What is DERIVED from the deck at render time (not capture-copied): the
-// card id in the form dom id, the subcards' type/set keys (from the render
-// cache when the prefetch holds them; the account mod's own invariants —
-// right/email.rb and right/password.rb assign_type :phrase — when it does
-// not, which is the cold-render case: fetchRenderCard is cache-only), and
-// the email field's stored content as the input value. The ONLY byte this
-// file normalizes is the per-render random data-slot-id (SecureRandom
-// hex(10), the repo-wide RANDOMIZED convention).
+// What is DERIVED at render time (not stored): the card id in the form
+// dom id, the subcards' type/set keys (from the render cache when the
+// prefetch holds them; the account mod's own invariants —
+// right/email.rb and right/password.rb assign_type :phrase — when it
+// does not, which is the cold-render case: fetchRenderCard is
+// cache-only), and the email field's stored content as the input value.
+// The ONLY byte this file normalizes is the per-render random
+// data-slot-id (SecureRandom hex(10), the repo-wide RANDOMIZED
+// convention).
 //
-// Ruby line citations in the expectations match the downloaded gem
-// (rubygems.org card-mod-account-0.20.0, extracted this lane).
+// Ruby line citations in the expectations match the
+// rubygems.org card-mod-account-0.20.0 gem.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -41,9 +38,9 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
 
-  // the codename/type anchors the set-key walk resolves through — ids as
-  // the REAL deck carries them (RichText type_id 3, Phrase type_id 52), so
-  // the derived subcard bytes and the capture agree.
+  // the codename/type anchors the set-key walk resolves through — the ids
+  // the pinned form bytes carry (RichText type_id 3, Phrase type_id 52),
+  // so the derived subcard bytes agree with the expectations below.
   await seedCard(s, { id: 3, name: "RichText", codename: "rich_text" });
   await seedCard(s, { id: 52, name: "Phrase", codename: "phrase" });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
@@ -51,8 +48,8 @@ beforeAll(async () => {
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
 
-  // *signin as the REAL deck carries it: RichText (type_id 3), EMPTY
-  // content — the deck fact that made the pre-fix render a blank body.
+  // *signin: RichText (type_id 3), EMPTY content — the seeded shape that
+  // makes a render without the mod's :core override a blank body.
   await seedCard(s, {
     id: 19957,
     name: "*signin",
@@ -68,7 +65,7 @@ beforeAll(async () => {
     id: 19958,
     leftId: 19957,
     rightId: 130,
-    typeId: 52, // Phrase — the real deck's type for both subcards
+    typeId: 52, // Phrase — the type the pinned bytes carry for both subcards
     dbContent: "",
   });
   await seedCard(s, {
@@ -94,10 +91,10 @@ function normalize(html: string): string {
   return html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
 }
 
-/** The oracle bytes: production's anonymous GET /*signin form region,
- *  transcribed verbatim from live-signin-ref.html lines 86-111 (the seeded
- *  card id IS 19957, the production card's id, so the dom id matches the
- *  capture byte-for-byte; data-slot-id is the one normalized byte). */
+/** The expected :core bytes: the sign-in form the gem's self/signin view
+ *  renders. The seeded card id IS 19957, so the derived form dom id
+ *  (edit_card_19957) matches the pinned bytes exactly; data-slot-id is the
+ *  one normalized byte. */
 const ORACLE_FORM = `<form class="card-form slotter autosave" id="edit_card_19957" recaptcha="off" action="/update/*signin" accept-charset="UTF-8" data-remote="true" method="post"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="hidden" name="_method" value="patch" autocomplete="off" /><input type="hidden" name="success[redirect]" id="success_redirect" value="true" autocomplete="off" /><input type="hidden" name="success[mark]" id="success_mark" value="*previous" autocomplete="off" /><div class='signin-fields'>
 <fieldset class="card-editor editor"><div class="form-group card-editor RIGHT-Xemail" data-card-name="*signin+*email" data-card-link-name="*signin+*email"><label for="card_subcards___email_content"><span class="card-title" title="email">email</span>
 <div id="Xsignin-Xemail-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail" data-card-name="*signin+*email" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*email" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;email&quot;,&quot;name_context&quot;:&quot;*signin&quot;}"></div></label>
@@ -169,8 +166,8 @@ describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", (
 
   it("the base :content view still renders the card's stored content (the form is a :core override, not a content rewrite)", async () => {
     // pins the blast radius: only :core (and its open_content delegation)
-    // changed — the ok_to_read test's `render("*signin","content")` class of
-    // pins keep their pre-lane meaning.
+    // changed — plain cards' :content still renders stored content, so
+    // existing content-render pins keep their meaning.
     const s = storage!;
     await seedCard(s, { id: 19960, name: "Plain Signin Body", dbContent: "stored body bytes" });
     expect(await s.engine.render("Plain Signin Body", "content")).toContain(
