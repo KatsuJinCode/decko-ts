@@ -1,6 +1,6 @@
 // The card-mod-recaptcha gem (card-mod-recaptcha-0.20.0), ported through
 // the mod loader - every set module the gem's set/ tree ships, plus the
-// one html view the gem declares (the T6 verdict's
+// one html view the gem declares (the compat report's
 // classification.metrics.htmlViewsMissingNames is EMPTY: nothing missing).
 //
 // The gem's tree (the installed
@@ -64,8 +64,8 @@
 //     with the gem's own interpreter (see the per-export comments).
 //
 // NOT ported here :
-//   - event :recaptcha (:validate, recaptcha.rb:50-55) — PORTED 2026-10-01
-//    : registered below through the
+//   - event :recaptcha (:validate, recaptcha.rb:50-55) IS ported:
+//     registered below through the
 //     mod-event seam (the add_comment pattern, card-mod-comment.ts) with
 //     the real body — the handle_recaptcha_config_errors dispatch, the
 //     captcha_used! mark, the siteverify GET and the human? verdict that
@@ -79,8 +79,8 @@
 //     write path is signed-in-only (CardActionEngineOptions.actor null =
 //     read-only, types.ts:14-16), so the guard-on arms are provable at the
 //     seam level (runModEventStage) until the anonymous-create permission
-//     surface lands; (b) the *captcha rule CANDIDATE WALK — PORTED
-//     2026-10-01: the engine resolves rule(:captcha)
+//     surface lands; (b) the *captcha rule CANDIDATE WALK — ported:
+//     the engine resolves rule(:captcha)
 //     through its own storage walk by default (ruleContentForCard,
 //     actions/rule-content-walk.ts — rule/all.rb:5-15 + 66-73 over the
 //     set-patterns port's ruleNamesForCard precedence), with the config's
@@ -98,8 +98,7 @@
 //     POST (human?, recaptchaSuccess) is ported; the POST itself is the
 //     boundary.
 //   - the format :html helper registrations hidden_form_tags (89-93) /
-//     card_form_html_opts (95-99) — PORTED 2026-10-01 (captcha-remainders
-// pass, server-side only): the override composites below
+//     card_form_html_opts (95-99) — ported, server-side only: the override composites below
 //     (recaptchaFormOn / recaptchaFormHtmlAttrs / recaptchaHiddenFormTags)
 //     and the emission seam at the card_form home (the form substrate's
 //     CardFormShellOpts.recaptchaTokenHtml — cardFormShell appends the
@@ -113,7 +112,8 @@
 //     yet, so a live render consult is reachable only once a host wires
 //     the render engine's recaptcha config + page-session actor (the same
 //     reach shape as remainder (a)). The browser recaptcha.js.coffee stays
-//     OUT of scope (the standing P6 decision gate).
+//     OUT of scope (the standing scope decision: browser script assets are
+//     not ported).
 //   - self/admin.rb's basket[:warnings] << :recaptcha_config_issues (line
 //     1) + add_recaptcha_keys_link (24-26): the warnings basket feeds the
 //     admin page machinery (no TS consumer, same call as card-mod-help's
@@ -142,7 +142,7 @@ import type {
 } from "../mod-manifest.js";
 import type { ModEventContext } from "../mod-event-dispatch.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -344,7 +344,7 @@ export function recaptchaScriptUrl(siteKey: string): string {
  *  Ruby call's own (name/value at 78, data-site-key/data-action/class at
  *  79-81); the attribute ORDER follows Rails' helper emission shape
  *  (type/name/id/value, then the options hash) - reconstructed, not
- *  oracle-captured (the corpus never renders a recaptcha form). */
+ *  oracle-verified (no oracle render covers a recaptcha form). */
 export function recaptchaTokenHtml(action: string, siteKey: string): string {
   const script = `<script src="${recaptchaScriptUrl(siteKey)}"></script>`;
   const hidden =
@@ -652,14 +652,14 @@ function fieldNest(ctx: ViewContext, field: string): string {
  *  `[field_nest(:site_key), field_nest(:secret_key)]` - the array renders
  *  through the output join (content.rb:70-72 `Array.wrap(content).flatten
  *  .compact.join "\\n"`), one newline between the two field nests (the
- *  oracle's core bytes: `</div>\\n<div id="Xrecaptcha_setting-secret_key...`,
- *  the seconds corpus's composed-mod view-gap family, 2026-10-09). No view
+ *  oracle's core bytes: `</div>\\n<div id="Xrecaptcha_setting-secret_key...`).
+ *  No view
  *  config (no unknown/cache/wrap on the Ruby `view :core` call). */
 const recaptchaSettingsCoreView: ViewFn = (ctx) =>
   [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("\n");
 
 // ---------------------------------------------------------------------------
-// event :recaptcha (set/all/recaptcha.rb:50-55) — the A9 port through the
+// event :recaptcha (set/all/recaptcha.rb:50-55) — ported through the
 // mod-event seam
 // ---------------------------------------------------------------------------
 
@@ -806,7 +806,7 @@ const cardModRecaptcha: DeckoModManifest = {
       // The portable semantics ride the exported
       // recaptchaFieldContentError / isRecaptchaSettingChild above.
       //
-      // Events (set-module event 2026-10-08) — two STUBS with named
+      // Events — two STUBS with named
       // reasons (recaptcha_setting.rb:1-9; the header's own disposition):
       // - validate_recaptcha_field (:validate, when:
       //   recaptcha_setting?) — the content-validation pure predicate IS
@@ -841,8 +841,8 @@ const cardModRecaptcha: DeckoModManifest = {
       setPath: "all/recaptcha",
       // data/real.yml:6-13 — the mod's seeded captcha toggles (*all+*captcha
       // '1' and *signup+*type+*captcha '1'): a stock deck boots with the
-      // captcha guard ON for anonymous creates, and the recorded oracle
-      // signup journey pins the armed refusal. Registered into the mod
+      // captcha guard ON for anonymous creates, and the oracle's signup
+      // journey pins the armed refusal. Registered into the mod
       // rule-seed registry (mod-rule-seeds.ts) for the form-side gate's
       // synchronous read; the validate side resolves the same answer from
       // storage, where the serving boot seeds these rows.
@@ -875,8 +875,7 @@ const cardModRecaptcha: DeckoModManifest = {
       // push (line 1: `basket[:warnings] << :recaptcha_config_issues`) +
       // admin html helpers; the portable message bytes ride
       // recaptchaConfigIssuesMessage / usingDefaults above. Oracle-pinned:
-      // the *admin :warning alert's second <li>
-      // (fixtures/captured/admin-views-2-oracle.json).
+      // the *admin :warning alert's second <li>.
       setPath: "self/admin",
       basketWarnings: ["recaptcha_config_issues"],
     },
