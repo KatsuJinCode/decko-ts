@@ -1,42 +1,35 @@
-// The attachment HTTP surface — E4.4.a's serving half plus the upload
-// endpoint. Composed per request by the host (worker, staging server,
-// tests) over the same seams the write engine exposes:
+// The attachment HTTP surface: file serving plus the upload endpoint.
+// Composed per request by the host (worker, staging server, tests) over the
+// same seams the write engine exposes.
 //
-// GET serving (the P5 surface-inventory row, decko-0.20.0
-// config/engine_routes.rb:9-13 — both shapes, `files` =
-// config.files_web_path, default "files"):
+// GET serving — both URL shapes, under `files` (the files web path):
 //   current:   GET /files/:mark/:rev_id(-:size).:format
 //   DEPRECATED GET /files/:mark(-:size)-:rev_id.:format
-// `<mark>` resolves ~<card id>, :<codename>, or the card name (uploader
-// doc, file_card_uploader.rb:114-121); :rev_id selects the ACTION whose
-// db_content change names the stored file (SelectedAction revision
-// semantics — the bytes of the revision, not always the card's current).
-// Ruby serves through card#read with format :file (set/type/file.rb
-// :66-106): Content-Type from the file, `Expires` 1 year out
-// (:93-97 set_response_headers — the files routes pass explicit_file:
-// true), disposition inline (`attachment` when the request's format is
-// literally "file", :97-101). A `-size` segment selects an image VARIANT;
-// this port serves the stored original's bytes for every variant (the
-// mini_magick resize is the named remainder — variant URLs resolve, bytes
-// pass through), so both the -medium and -original spellings resolve.
+// `<mark>` resolves ~<card id>, :<codename>, or the card name. :rev_id
+// selects the ACTION whose db_content change names the stored file — the
+// bytes of that revision, which are not always the card's current bytes.
+// The response carries the file's own Content-Type, `Expires` a year out,
+// and an inline disposition (`attachment` when the request's format is
+// literally "file"). A `-size` segment selects an image VARIANT; this
+// surface serves the stored original's bytes for every variant, so both the
+// -medium and -original spellings resolve.
 //
-// POST upload — fork-added grammar (the dedicated /:card/asset POST):
-// multipart form with a `file`/`image` part (Ruby's attachment param
-// names, card[file]/card[image], accepted) to
+// POST upload — the dedicated /:card/asset grammar: a multipart form with a
+// `file`/`image` part (the card[file]/card[image] spellings are accepted
+// too) posted to
 //   POST /:mark/asset
 // Existing file/image-typed card -> attachment UPDATE; missing mark ->
-// card CREATE typed file/image (type from the form's `type` field, else
-// the param name, else the sniffed content type). Ruby's own grammar is
-// POST /:mark => card#create; that surface belongs to
-// src/server/write-routes.ts and is deliberately not claimed here.
+// card CREATE typed file/image (type from the form's `type` field, else the
+// param name, else the sniffed content type). The POST /:mark create
+// grammar belongs to src/server/write-routes.ts and is deliberately not
+// claimed here.
 //
 // Named remainder (documented, not silently missing): per-request READ
-// permission on file GETs when the host provides no canReadCard; cloud/
-// web/coded storage serving (only ~local identifiers resolve to bytes);
-// variant RESIZE bytes; the upload-cache draft lifecycle (00_upload_cache.rb
-// — the preliminary two-step editor flow); public symlink management
-// (local.rb — a filesystem optimization the route replaces by direct
-// serving).
+// permission on file GETs when the host provides no canReadCard;
+// cloud/web/coded storage serving (only ~local identifiers resolve to
+// bytes); variant RESIZE bytes; the upload-cache draft lifecycle (the
+// preliminary two-step editor flow); public symlink management (a filesystem
+// optimization the route replaces by direct serving).
 
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
@@ -64,9 +57,9 @@ export interface FileRouteDeps {
   /** Bind the actor into a CardActionEngine (engine-for-session's
    *  createCardActionEngineForSession at the composition site). */
   createEngine: (actor: Actor | null) => CardActionEngine;
-  /** Optional read gate for file GETs (Ruby: the files route is card#read,
-   *  so the card's read rule applies per request). Not provided = serve
-   *  (the public-gallery default; disclosed remainder). */
+  /** Optional read gate for file GETs (the files route reads a card, so the
+   *  card's read rule applies per request). Not provided = serve (the
+   *  public-gallery default; disclosed remainder). */
   canReadCard?: (cardId: number) => Promise<boolean> | boolean;
 }
 
@@ -113,11 +106,11 @@ export interface ParsedFileRequest {
   format: string;
 }
 
-/** Parse the path segments after /files (engine_routes.rb:9-13):
+/** Parse the path segments after /files:
  *  2 segments = the current route (`:mark/:rev_id(-:size).:format`),
  *  1 segment = the DEPRECATED route (`:mark(-:size)-:rev_id.:format`).
- *  Both marks are [^-]+ by the route constraints, so dash-splitting is
- *  unambiguous. */
+ *  Marks never contain a dash under the route constraints, so dash-splitting
+ *  is unambiguous. */
 export function parseFileRouteSegments(segments: string[]): ParsedFileRequest | undefined {
   const decoded = segments.map((s) => decodeUriComponentSafe(s));
   if (decoded.length === 2) {
@@ -151,16 +144,16 @@ async function handleFileGet(
   request: Request,
   deps: FileRouteDeps,
 ): Promise<Response | null> {
-  // parseFileRouteSegments parses the segments AFTER /files (its contract,
-  // engine_routes.rb:9-13) — the guard above ran on the full segment list.
+  // parseFileRouteSegments parses the segments AFTER /files — the guard
+  // above ran on the full segment list.
   const parsed = parseFileRouteSegments(segments.slice(1));
   if (parsed === undefined) return fileNotFound();
   const card = await resolveMark(deps, parsed.mark);
   if (card === undefined) return fileNotFound();
 
   if (deps.canReadCard !== undefined && !(await deps.canReadCard(card.id))) {
-    // Ruby's read check on the card#read file route; 404 (not 403) so the
-    // route never confirms the existence of a hidden card's attachments.
+    // The read check on a file route; 404 (not 403) so the route never
+    // confirms the existence of a hidden card's attachments.
     return fileNotFound();
   }
 
@@ -196,8 +189,7 @@ async function handleFileGet(
   );
   if (bytes === undefined) return fileNotFound();
 
-  // Ruby serves the file's content_type (args_for_send_file, set/type/
-  // file.rb:82-87): the SanitizedFile detection order over the stored
+  // The file's content type: the detection order over the stored
   // bytes, with the action's original filename (the action comment) as
   // the by-path arm.
   const actionComment = await deps.driver
@@ -208,25 +200,24 @@ async function handleFileGet(
   const headers = new Headers();
   headers.set("Content-Type", contentType);
   headers.set("Content-Length", String(bytes.length));
-  // set_response_headers (set/type/file.rb:93-97): the files routes carry
-  // explicit_file: true, so the 1-year Expires header ships.
+  // The files routes serve explicit files, so the 1-year Expires header
+  // ships.
   headers.set("Expires", httpDateOneYearOut());
-  // disposition (:97-101): inline, except `attachment` when the request's
-  // format is literally "file". args_for_send_file's filename:
-  // card.name.safe_key + extension (:84).
+  // Inline, except `attachment` when the request's format is literally
+  // "file". The filename is the card's key plus the extension.
   headers.set(
     "Content-Disposition",
     `${parsed.format === "file" ? "attachment" : "inline"}; filename="${safeFilename(card, local.ext)}"`,
   );
-  // UPLOADED-BYTES DEFENSES (round-9 fix; both are response headers on this
+  // UPLOADED-BYTES DEFENSES: both are response headers on this
   // one construction site, so neither can be bypassed by a route that forgot
-  // them).
+  // them.
   //
   // X-Content-Type-Options: nosniff — the bytes here are whatever a user
   // uploaded, and the Content-Type is DERIVED from them
-  // (detectAttachmentContentType, the SanitizedFile order). Without nosniff
-  // the browser is free to ignore a declared type it considers wrong and
-  // sniff its own — which for an upload is the attacker choosing the parser.
+  // (detectAttachmentContentType). Without nosniff the browser is free to
+  // ignore a declared type it considers wrong and sniff its own — which for
+  // an upload is the attacker choosing the parser.
   headers.set("X-Content-Type-Options", "nosniff");
   //
   // Content-Security-Policy: sandbox — nosniff alone does NOT neutralize an
@@ -280,8 +271,8 @@ async function handleAttachmentUpload(
   const actor = deps.resolveActor ? await deps.resolveActor(request) : null;
   if (actor === null) {
     // The engine would reject with anonymous-actor; resolve first so the
-    // denial carries the same 403 shape Ruby's permission error does
-    // without touching the engine.
+    // denial carries the same 403 shape a permission error does without
+    // touching the engine.
     return jsonResponse(403, { error: "permission denied", code: "anonymous-actor" });
   }
   const engine = deps.createEngine(actor);
@@ -300,8 +291,8 @@ async function handleAttachmentUpload(
   const bytes = new Uint8Array(await file.arrayBuffer());
   const originalFilename = file.name || "upload";
   const mark = decodeUriComponentSafe(rawMark);
-  // The stored extension (FileCardUploader#extension): both the upload body's
-  // URL and the engine's identifier derive from it.
+  // The stored extension: both the upload body's URL and the engine's
+  // identifier derive from it.
   const ext = detectAttachmentExtension(originalFilename, bytes);
 
   const existing = await resolveMark(deps, mark);
@@ -324,9 +315,9 @@ async function handleAttachmentUpload(
     }
   }
 
-  // Create: the mark is the new card's name (Ruby: POST /:mark =>
-  // card#create). Type resolution: the form's `type` field, else the
-  // param name (`image`), else the sniffed content type.
+  // Create: the mark is the new card's name. Type resolution: the form's
+  // `type` field, else the param name (`image`), else the sniffed content
+  // type.
   const formType = (form.get("type") ?? form.get("card[type]") ?? "").toString().trim();
   const sniffed = detectAttachmentContentType(originalFilename, bytes, file.type);
   const typeCode =
@@ -364,10 +355,8 @@ function uploadBody(card: ResolvedMark, actionId: number | undefined, size: numb
     id: card.id,
     action_id: actionId ?? null,
     size,
-    // The render-side local URL — Ruby's url pattern
-    // /files/<mark>/<revision><ext> with the mark in the `~<card id>` form
-    // (file_card_uploader.rb doc :104-121, "Examples: ~22/33-medium.png");
-    // the deprecated route serves the same file at
+    // The render-side local URL: /files/<mark>/<revision><ext> with the mark
+    // in the `~<card id>` form; the deprecated route serves the same file at
     // /files/<name>-<action_id><ext>.
     url: actionId !== undefined ? `/files/~${card.id}/${actionId}${ext}` : null,
     storage: "local",
@@ -381,9 +370,8 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-/** Map the action engine's machine-readable rejections onto Ruby's HTTP
- *  shapes: permission failures 403, validation conflicts 422, missing
- *  marks 404. */
+/** Map the action engine's machine-readable rejections onto HTTP shapes:
+ *  permission failures 403, validation conflicts 422, missing marks 404. */
 function actionError(error: unknown): Response {
   if (error instanceof CardActionError) {
     switch (error.code) {
@@ -400,7 +388,7 @@ function actionError(error: unknown): Response {
       case "attachment-missing":
       case "protected-card":
       case "user-error":
-      case "conflict": // detect_conflict (history events.rb:19-22) - a UserError
+      case "conflict": // a detected history conflict — a user error
         return jsonResponse(422, { error: error.message, code: error.code });
     }
   }
@@ -416,8 +404,8 @@ async function typeCodeOf(deps: FileRouteDeps, typeId: number): Promise<string |
   return row?.codename ?? null;
 }
 
-/** Mark resolution for both routes (uploader doc :114-121):
- *  `~<id>` by card id, `:<codename>` by codename, else by name. */
+/** Mark resolution for both routes: `~<id>` by card id, `:<codename>` by
+ *  codename, else by name. */
 async function resolveMark(deps: FileRouteDeps, mark: string): Promise<ResolvedMark | undefined> {
   if (/^~\d+$/.test(mark)) {
     const row = await deps.driver
