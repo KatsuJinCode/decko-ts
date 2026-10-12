@@ -614,7 +614,7 @@ export class RenderEngine implements RenderEngineLike {
    *  page.ts (decko.signed_in), navbar-views.ts (the *account_links
    *  branch) and format.ts (the loud-denial copy) read this, never the
    *  read-verdict viewer (Auth.as_id). Undefined = signed-out chrome (the
-   *  corpus surface, byte-identical to the pre-session render). */
+   *  bare render surface, byte-identical to the pre-session render). */
   pageSession: ReadViewer | undefined;
   /** Render a card that does not exist as Ruby does (Card.fetch name, new:
    *  {} — the controller's load_card), instead of throwing "card not
@@ -739,7 +739,7 @@ export class RenderEngine implements RenderEngineLike {
    *  with no stored row, `existing_rule_card` is the prototype's winning
    *  stored rule for the same setting. The prototype's candidate walk and
    *  the SET card's own walk land on the same first-existing stored rule
-   *  for every anchored/anchorless set in this corpus (the prototype's
+   *  for every anchored/anchorless set in a deck (the prototype's
    *  extra SELF candidate never stores a row for the *dummy/nameless
    *  members), so the resolution runs from the set card's pattern input
    *  during preloadVirtualRuleVerdicts and the sync bar renderer reads
@@ -1586,7 +1586,7 @@ export class RenderEngine implements RenderEngineLike {
           await this.prepareItemForRender(`*all+${name.s}`);
           // the virtual-rule-card fallback (a missing *all+<setting>
           // junction, rule_help unknown:true) builds its set card from the
-          // map too — the corpus prefetches *all on every page, a bare
+          // map too — the page walk prefetches *all on every page, a bare
           // engine does not
           await this.prepareItemForRender("*all");
           // The set-class rows' rule universe: EVERY rule card whose right
@@ -1755,7 +1755,7 @@ export class RenderEngine implements RenderEngineLike {
     // composes its set name at RENDER time (`Role+*members+*type plus
     // right` for page 105's `{{+*members}}`) and nests it; Ruby resolves
     // that compound through Card::Lexicon.id's live left x right join
-    // (fetch/retrieve.rb:35-45), which finds corpus junction 45421 even
+    // (fetch/retrieve.rb:35-45), which finds the junction row even
     // though that row has a NULL key and ZERO inbound card_references —
     // so the reference-driven prepare walk never warms it and the sync
     // nest read falls back to buildUnknownNestCard's fabricated card (no
@@ -1770,10 +1770,10 @@ export class RenderEngine implements RenderEngineLike {
     // (the main pass and the help-rules re-pass), so their card.ids
     // have no entry in deniedVerdicts and isDenied() returns
     // gate-open false — the sync render path then renders every item
-    // bar at full body even when the corpus's captured bytes carry
+    // bar at full body even when the delivered bytes carry
     // the `<span class="denied">` quiet denial (the pointer/list
-    // item slots are exactly the surface where the corpus pins 229
-    // denied item bodies). Re-run the verdict pass for the newly
+    // item slots are exactly the surface where denied item bodies
+    // appear). Re-run the verdict pass for the newly
     // enriched items; the skip-if-set guard makes it a no-op for
     // every card already judged. Same defect class and same fix
     // shape as the help-rules re-pass above.
@@ -1969,8 +1969,8 @@ export class RenderEngine implements RenderEngineLike {
     // (render/page.ts:294 headContent -> seatPageHead); the BARE single-card
     // view surface did not, so the Self::Head core answered "" and the
     // inclusion-carrying head rules' CodeRay <pre> came out EMPTY where the
-    // oracle carries the page's own head block (m4verify D3: card 34754
-    // `*all+*head` views.content, pre 0 B vs the oracle's 2441 B).
+    // rendered page carries its own head block (the `*all+*head`
+    // views.content body, pre 0 B where it should be non-empty).
     //
     // The bytes are a property of the ROOT card and the same builder makes
     // them, so the two paths cannot drift: this IS page.ts's headContent, not
@@ -2709,14 +2709,13 @@ export class RenderEngine implements RenderEngineLike {
    *  are derivable here — unlike the fetch hook, whose walk computes the
    *  type and omits them. Undefined (=> the phantom stays UNKNOWN, the
    *  mini_bar substitution path) when the universe is not loaded, the
-   *  name is simple, or no *structure rule resolves. The corpus pins the
-   *  split: the compound Tracked Item/Task-typed phantoms (structure rule
-   *  2081 Tracked Item+*type+*structure / 21905 Task+*type+*structure
-   *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
-   *  @8515-8987 — and the live Task card Merchandise denies as a real
-   *  card), while the simple-named denied phantoms (the view-surface census,
-   *  133 entries — Test Person 01, Nadine Corliss, Marianne Winslow, all
-   *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
+   *  name is simple, or no *structure rule resolves. The split:
+   *  compound Tracked Item/Task-typed phantoms (whose
+   *  <Type>+*type+*structure rule exists)
+   *  render the plain quiet denial span (the real `<set's trunk>+<tag>`
+   *  where a live Task card denies),
+   *  while simple-named denied phantoms
+   *  render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
    *  Honest static-trace limit, recorded for the next reader: the gem as
@@ -2848,11 +2847,11 @@ export class RenderEngine implements RenderEngineLike {
       // prototype the supercard is `Card.new(name: "*dummy", type:
       // anchor.trunk_name)` (08_type_plus_right.rb:23-28), so the anchor is
       // `<set's trunk>+<tag>` — NOT the registry's "unknown left type ->
-      // RichText" default (registry.ts:186-192). Corpus proof: the
+      // RichText" default (registry.ts:186-192). Worked example: the
       // Search+large image+*type plus right prototype `*dummy+large image`
       // (supercard `*dummy` typed Search) walks to
-      // Search+large image+*type plus right+*structure (rule 17703,
-      // PlainText-typed) — with the RichText default the candidate misses,
+      // Search+large image+*type plus right+*structure (PlainText-typed)
+      // — with the RichText default the candidate misses,
       // the walk falls to `large image+*right+*structure` (HTML-
       // typed), and the prototype types HTML, so the *create/*update/
       // *delete walks hit HTML+*type+*<setting> where the `_left`
@@ -3120,7 +3119,7 @@ export class RenderEngine implements RenderEngineLike {
           // Mark-resolution error tolerance (mirror prefetch.ts:525-531 +
           // cardReferenceKeys:1858): a ref whose name is a codename/id
           // mark the codehash can't resolve (e.g. ":members" on a deck
-          // whose corpus anonymizer omitted the *members card) would throw
+          // whose *members card is absent) would throw
           // out of DeckoName.parse. Drop the ref instead of failing the
           // whole structure walk — the unknown-card view path renders it
           // safely, and the warm closure picks it up on a later round.
