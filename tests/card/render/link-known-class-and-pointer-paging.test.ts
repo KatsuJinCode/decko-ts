@@ -1,34 +1,29 @@
-// bar-slots lane (2026-09-29, view-fail classes V4 + V8).
+// Wikilink known/wanted classification and pointer pagination (view-fail
+// classes V4 + V8).
 //
 // V4 — wikilink anchors must classify known/wanted from LIVE card existence
 // (links.rb:140-144 add_known_or_wanted_class -> Card.known?, a live
-// fetch), not from prepared-map luck. The an earlier pass view-fail dump pins the
-// class both ways:
+// fetch), not from prepared-map luck. The pins below cover the class both
+// ways:
 //
-// - Oracle KNOWN where the engine emitted wanted-card for EXISTING cards:
+// - KNOWN where the engine emitted wanted-card for EXISTING cards:
 //   the *content options help popover's [[List]]/[[Pointer]]/[[Search]]
-//   cardtype links (10 dump entries, e.g. 000000-_layout_right_content_
-//   options-open) and card-body wikilinks to real deck cards (5 entries,
-//   e.g. 000020-Vera_Prescott-content: [[Bluevolution]] known).
-// - Oracle WANTED stays wanted: "People Green" has NO card in the deck —
-//   sage pettibone AND Vera Prescott both pin
-//   `<a class="wanted-card" href="/People_Green">` on the ORACLE side, and
-//   the engine's warm-map answer byte-matches today (format.ts R17 note).
-//   The fix must flip existence-hits only, never absence.
+//   cardtype links, and card-body wikilinks to existing cards.
+// - WANTED stays wanted: a link to a card that does not exist keeps
+//   `<a class="wanted-card" ...>` on both sides — Ruby and the engine
+//   agree on absence. The fix must flip existence-hits only, never absence.
 //
 // Ruby truth per anchor: `Card.known?(name)` = a live fetch (cache + DB),
 // identical in a fresh process and a warm one. The port's defect: the
 // known check reads ONLY the prepared render-card map, so a fresh-process
 // render emits wanted-card for existing cards whose names no {{nest}}
-// reference reaches (the instrument hazard an earlier doc measured:
-// `Aikido Oak Cliff+discussion :open` flips when the map warms).
+// reference reaches (the hazard: a page's class flips when the map warms).
 //
 // V8 — the pointer core paginates at Ruby's default_limit 20
 // (card-mod-list set/abstract/01_list/other_views.rb:3-5) with the
-// view :paging nav whenever show_paging? holds (count > 20): 8 dump
-// entries render exactly 20 items plus the nav where the engine rendered
-// the full unpaginated list (e.g. 000034-Practice_Pool_training_Notes:
-// expected 3,692B vs actual 6,913B — 27 pointer-items, no nav).
+// view :paging nav whenever show_paging? holds (count > 20): the engine
+// rendered the full unpaginated list where Ruby renders exactly 20 items
+// plus the nav.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -84,19 +79,18 @@ async function seedDeck(): Promise<void> {
 
   // --- body-wikilink surface: links to an existing card under BOTH the
   // stored casing and a case-differing authored form, plus a link to a
-  // card that does not exist (the People Green corpus shape).
-  await seedCard(s, { id: 40, name: "Roxanne Parker", typeId: RICH_TYPE_ID, dbContent: "person" });
+  // card that does not exist.
+  await seedCard(s, { id: 40, name: "Sample Person", typeId: RICH_TYPE_ID, dbContent: "person" });
   await seedCard(s, {
     id: 41,
     name: "Discussion Post",
     typeId: RICH_TYPE_ID,
-    dbContent: "See [[Roxanne Parker]] and [[roxanne parker]] plus [[Nobody At All]].",
+    dbContent: "See [[Sample Person]] and [[sample person]] plus [[Nobody At All]].",
   });
 
   // --- pagination surface (view-fail class V8): a pointer holding 27 items
-  // (oracle: Practice Pool+training+Notes, Martial Concordance+Pages,
-  // *recent settings, AI+Replacement+Documents — all render 20 items plus
-  // the paging nav) and a small pointer (the corpus:77 unpaginated pin).
+  // (every pointer over the limit renders 20 items plus the paging nav)
+  // and a small pointer (the unpaginated pin).
   const bigItems = Array.from({ length: 27 }, (_, i) => `Page ${String(i + 1).padStart(2, "0")}`);
   await seedCard(s, {
     id: 60,
@@ -123,9 +117,8 @@ afterAll(() => {
 
 describe("wikilink known/wanted class follows live card existence (links.rb:140-144)", () => {
   it("renders the *content options static help's cardtype links known-card", async () => {
-    // Oracle 000000-_layout_right_content_options-open: the popover body is
-    // HTML-escaped inside data-bs-content; every cardtype anchor carries
-    // class="known-card" with the display-case href.
+    // The popover body is HTML-escaped inside data-bs-content; every
+    // cardtype anchor carries class="known-card" with the display-case href.
     const html = await storage!.engine.render("Family+*right+*content options", "open");
     for (const cardtype of ["List", "Pointer", "Search"]) {
       expect(
@@ -140,23 +133,22 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
   });
 
   it("renders body wikilinks to an existing card known-card with the stored name's href", async () => {
-    // Oracle 000020-Vera_Prescott-content: [[Bluevolution]] known. The
-    // authored casing never leaks into the href (corpus scan: every
-    // case-differing known-card anchor hrefs the REAL name,
-    // [[narrative]] -> /Narrative); the label/title keep the authored form.
+    // The authored casing never leaks into the href (every case-differing
+    // known-card anchor hrefs the REAL name, [[narrative]] -> /Narrative);
+    // the label/title keep the authored form.
     const html = await storage!.engine.render("Discussion Post", "content");
     expect(
-      (html.match(/<a class="known-card" href="\/Roxanne_Parker">/g) ?? []).length,
-      "both casings of the [[Roxanne Parker]] link must be known-card with the stored-name href",
+      (html.match(/<a class="known-card" href="\/Sample_Person">/g) ?? []).length,
+      "both casings of the [[Sample Person]] link must be known-card with the stored-name href",
     ).toBe(2);
     // The lowercase-authored link keeps its authored label/title bytes.
-    expect(html.includes('title="roxanne parker">roxanne parker</span>')).toBe(true);
+    expect(html.includes('title="sample person">sample person</span>')).toBe(true);
   });
 
   it("keeps wanted-card for links to cards that do not exist", async () => {
-    // Oracle pins (sage pettibone + Vera Prescott): "People Green" has
-    // no card — the anchor stays wanted-card on BOTH sides. The existence
-    // fix must not flip absence.
+    // A link to a card that does not exist stays wanted-card on BOTH
+    // sides (Ruby and the engine agree on absence). The existence fix
+    // must not flip absence.
     const html = await storage!.engine.render("Discussion Post", "content");
     expect(html.includes('<a class="wanted-card" href="/Nobody_At_All">')).toBe(true);
     expect(html.includes('<a class="known-card" href="/Nobody_At_All">')).toBe(false);
@@ -165,8 +157,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
 
 describe("pointer core paginates at Ruby's default limit 20 (paging_views.rb show_paging?)", () => {
   it("renders 20 items plus the paging nav for a 27-item pointer", async () => {
-    // Oracle phase-017 000034-Practice_Pool_training_Notes-content: 20
-    // pointer-item divs, then with_paging's output-join "\n" and the
+    // 20 pointer-item divs, then with_paging's output-join "\n" and the
     // view :paging nav — « div (nil-page form), active page 1, page 2,
     // » anchor with aria-label first, the context "1 - 20 of 27".
     const html = await storage!.engine.render("Big Pages", "content");
@@ -191,9 +182,8 @@ describe("pointer core paginates at Ruby's default limit 20 (paging_views.rb sho
   });
 
   it("leaves pointers at or under the limit unpaginated", async () => {
-    // corpus:77 pin (the famfix48 trailing-newline family): a pointer at
-    // 3 items renders NO nav and the card-list wrapper keeps its trailing
-    // newline before the slot close.
+    // A pointer at or under the limit renders NO nav and the card-list
+    // wrapper keeps its trailing newline before the slot close.
     const html = await storage!.engine.render("Small Pages", "content");
     expect(html.includes("pagination paging")).toBe(false);
     expect((html.match(/<div class="pointer-item item-bar">/g) ?? []).length).toBe(3);
