@@ -1,22 +1,21 @@
 // schema-map.mjs — source-to-target column mapping for the generalized
 // migration tool.
 //
-// Each Ruby decko table that survives the import maps to the
-// decko-ts target table through a COLUMN MAP (a function that, given the
-// source column name, returns either the matching target column name or
-// undefined to mean "skip"). A column that has no source counterpart
-// (e.g. `current_revision_id`, which the corpus schema doesn't carry)
-// is filled with NULL by the importer (data-faithful: the DDL says it
-// is nullable, and 0 != NULL in decko's revision-id semantics).
+// Each source table that survives the import maps to its decko-ts
+// target table through a COLUMN MAP (a function that, given the source
+// column name, returns either the matching target column name or
+// undefined to mean "skip"). A target column with no source
+// counterpart (e.g. `current_revision_id`, which some source schemas
+// don't carry) is filled with NULL by the importer (data-faithful: the
+// DDL says it is nullable, and 0 != NULL in decko's revision-id
+// semantics).
 //
 // The mapping is intentionally permissive: it never throws on a missing
 // source column. It returns a list of "warnings" so the importer can
 // report what was filled with NULL, what was renamed, and what was
-// dropped. This is the Generalized M4 generalization: the same importer
-// code now handles the production mysqldump shape (verified on the
-// 1.2 GB the reference deck dump) AND the bench corpus-v2 shape (sanitized
-// SQLite source, columns renamed and trimmed to fit the sanitization
-// constraints — verified during the M4-generalize milestone).
+// dropped. Because the maps are the only shape-specific part, the same
+// importer code handles any source shape it is pointed at — a raw
+// mysqldump of a decko database or a sanitized SQLite export alike.
 //
 // The two operations the importer performs with these maps:
 //   * column translation: sourceCol.name -> targetCol.name (or undefined)
@@ -42,9 +41,9 @@ const TABLE_ALIASES = {
 };
 
 /** Source column -> target column (or undefined to drop). The keys here
- *  are the canonical decko target columns for `cards`. Every shape we've
- *  seen maps cleanly, including the corpus-v2 case (`content` ->
- *  `db_content` rename). */
+ *  are the canonical decko target columns for `cards`. Source shapes
+ *  differ on where the body text lives — some schemas name the column
+ *  `content`, others `db_content` — and both variants map cleanly. */
 const CARDS_COLUMN_MAP = {
   id: "id",
   name: "name",
@@ -62,7 +61,7 @@ const CARDS_COLUMN_MAP = {
   references_expired: "references_expired",
   trash: "trash",
   type_id: "type_id",
-  content: "db_content", // corpus-v2 shape (and some legacy decks)
+  content: "db_content", // schemas that name the body column "content"
   db_content: "db_content", // mysqldump shape
   // legacy / derived column variants seen across decko forks
   creator: "creator_id",
@@ -153,12 +152,13 @@ const COLUMN_MAPS = {
   },
 };
 
-/** Settings-table shape: decko cards-as-settings convention. Source
+/** Settings-table shape: decko's cards-as-settings convention. Source
  *  tables carrying system settings: `meta`, `settings`, `setting`,
  *  `card_settings`. Listed here so the importer knows what to do with
- *  them. None of these map to a decko-ts table (settings are cards;
- *  a `meta` table in the source is information about the corpus build,
- *  not application settings to migrate). */
+ *  them. None of these map to a decko-ts table (settings are cards in
+ *  decko-ts; a `meta` table in a source snapshot carries provenance
+ *  about how that snapshot was produced, not application settings to
+ *  migrate). */
 export const SETTINGS_TABLE_VARIANTS = ["meta", "settings", "setting", "card_settings"];
 
 /** Decide, given a source table name, what role it plays:
