@@ -1,8 +1,9 @@
 // The render path's rule-closure statement must run on Cloudflare D1, whose
 // SQLite refuses a compound SELECT of more than 5 terms ("too many terms in
 // compound SELECT"; measured in workerd's local D1, which this test uses).
-// At 1503be2c its `resolved` CTE had 6 terms, so every page on D1 answered
-// 500. This pins both halves: the statement runs on D1, and it returns the
+// The statement's `resolved` CTE previously had 6 terms, so every page on D1
+// answered 500. This pins both halves: the statement runs on D1, and it
+// returns the
 // same row set as the legacy reference statement on the same deck.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
