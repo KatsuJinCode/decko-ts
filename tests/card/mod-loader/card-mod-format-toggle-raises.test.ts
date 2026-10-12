@@ -9,14 +9,13 @@
 // unchecked_value="0") (actionview-7.2.3.2 form_helper.rb:1345, 2
 // required + 3 optional). `check_box :content` is the SINGLE-ARG call
 // — Ruby raises ArgumentError "wrong number of arguments (given 1,
-// expected 2..5)". The raise is observed fact, captured live from the
-// gem's own runtime (tests/card/mod-loader/
-// oracle-capture-format-remaining-views.rb plus an actionview probe run
-// from tools/oracle/decko-oracle-app).
+// expected 2..5)". The raise is verified against the gem's own runtime
+// (tests/card/mod-loader/oracle-capture-format-remaining-views.rb plus
+// an actionview probe).
 //
 // :labeled_editor is `toggle + toggle_label`. `toggle` raises first;
 // `toggle_label` would emit `<label for="content_X">X</label>`-shape
-// bytes (also live-probed), but the view as written raises before that
+// bytes (also probe-verified), but the view as written raises before that
 // half renders — `toggle` is the leftmost operand, Ruby evaluates
 // left-to-right and unwinds on the first raise.
 //
@@ -123,10 +122,9 @@ describe("card-mod-format set/type/toggle — :input + :labeled_editor raise par
     const s = storage!;
     // set/type/toggle.rb:19-21 — `toggle + toggle_label`. `toggle`
     // raises first (leftmost operand); `toggle_label` would emit
-    // `<label for="content_X">X</label>` (live-probed, see
-    // an internal work log row "labeled_editor"),
-    // but the view as written never reaches it. The parity raise is
-    // the same shape as :input's.
+    // `<label for="content_X">X</label>` (probe-verified, see the
+    // header), but the view as written never reaches it. The parity
+    // raise is the same shape as :input's.
     await expect(
       s.engine.render("Oracle Toggle Probe", "labeled_editor"),
     ).rejects.toThrow(/ArgumentError.*check_box :content/);
