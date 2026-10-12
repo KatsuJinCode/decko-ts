@@ -62,7 +62,8 @@ async function seedSkeleton(s: ActionsTestStorage, defaultTypeId: number): Promi
 
 /** Deck where the DEFAULT type (Basic) is create-protected (Editor-only)
  *  but *all+*create grants Anyone and Signup-type creates grant Anyone —
- *  the recorded corpus's shape (6580 -> Anyone over tighter siblings). */
+ *  the open-signup shape (the type rule grants Anyone over tighter
+ *  siblings). */
 async function seedBypassDeck(): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
   await seedSkeleton(s, 30);
@@ -115,7 +116,7 @@ async function seedPartialDeck(): Promise<ActionsTestStorage> {
 }
 
 /** Junction-rename deck: the update verdict reads the ASSIGNED name's
- *  anchors (Ruby: name= + reset_patterns rebuild rule_lookup_keys before
+ *  anchors (name= + reset_patterns rebuild rule_lookup_keys before
  *  the validate-stage check — name/all.rb:21-28,
  *  assign_attributes.rb:63-68, pattern/all.rb:66-68). Right A carries a
  *  looser *right+*update (Anyone) than Right B (Editor); Right C is
@@ -254,7 +255,7 @@ describe("anonred: the depth-4 horizon in createSidesAllowed skips the leftmost 
         name: "*Lock+Bb Part+Cc Part+Dd Part+Ee Part+Ff Part",
       }),
     );
-    // the depth horizon is gone (Ruby's ok_to_create_side recursion is
+    // the depth horizon is gone (ok_to_create_side recursion is
     // unbounded; part names strictly shrink): the *Lock part is checked
     // through the left trunk and *star+*create (Editor) denies
     expect(err?.code).toBe("permission-denied");
@@ -275,10 +276,10 @@ describe("anonred: the depth-4 horizon in createSidesAllowed skips the leftmost 
   });
 });
 
-describe("anonred: the rule-less / partial-seed verdict now DENIES (verdict-semantics lane)", () => {
-  // MEDIUM-2 fix (2026-10-01): these two arms were BYPASSes at ba00146 —
-  // the port allowed on `undefined` (no applicable rule -> allow). Ruby
-  // fail-closes: permitted? -> who_can -> among? on [] -> false
+describe("anonred: the rule-less / partial-seed verdict now DENIES (verdict semantics)", () => {
+  // These two arms were BYPASSes once — the engine allowed on `undefined`
+  // (no applicable rule -> allow). The permission walk fail-closes:
+  // permitted? -> who_can -> among? on [] -> false
   // (permissions.rb:100-118, :47-49; a missing rule raises,
   // :77-85). Both arms flipped to the CONTROL outcome by the fix; they
   // now double as the standing deny-on-empty pins.
@@ -315,12 +316,11 @@ describe("anonred: the rule-less / partial-seed verdict now DENIES (verdict-sema
   });
 });
 
-describe("anonred: name-changing updates are judged under the ASSIGNED name's anchors (verdict-semantics lane)", () => {
-  // MEDIUM-4 fix (2026-10-01): the rename arm below was a BYPASS at
-  // ba00146 — the permission walk read the OLD row's anchors, so a
-  // one-shot rename smuggled a card from an Anyone-ruled anchor into an
-  // Editor-locked one. Ruby rebuilds the rule lookup keys from the
-  // ASSIGNED name before the validate-stage check (name= +
+describe("anonred: name-changing updates are judged under the ASSIGNED name's anchors (verdict semantics)", () => {
+  // The rename arm below was once a BYPASS — the permission walk read the
+  // OLD row's anchors, so a one-shot rename smuggled a card from an
+  // Anyone-ruled anchor into an Editor-locked one. The rule lookup keys
+  // rebuild from the ASSIGNED name before the validate-stage check (name= +
   // assign_side_ids, name/all.rb:21-28/:76-84; refresh_set_modules ->
   // reset_patterns, assign_attributes.rb:63-68; patterns from the card,
   // pattern/all.rb:22-29/:66-68; event :check_permissions at :validate,
@@ -370,12 +370,12 @@ describe("anonred: name-changing updates are judged under the ASSIGNED name's an
 
 describe("anonred: the captcha guard never consults the draft seam", () => {
   it("BYPASS: draft:true records attacker content with ZERO captcha consult", async () => {
-    // FIXED (lane-guardfix): save_draft is a :store-stage event in Ruby
-    // (mod/core/set/all/content.rb:7-10), so the whole :validate stage —
-    // event :recaptcha included (recaptcha.rb:50-55) — has already run
-    // when the draft aborts. The draft seam now runs the same validate
-    // walk as the full save. This arm EXECUTED the attack at 8f50230
-    // (draft stored, zero siteverify calls); its assertions are flipped to
+    // FIXED: save_draft is a :store-stage event (mod/core/set/all/content.rb:7-10),
+    // so the whole :validate stage — event :recaptcha included
+    // (recaptcha.rb:50-55) — has already run when the draft aborts. The
+    // draft seam now runs the same validate walk as the full save. This arm
+    // EXECUTED the attack before the fix (draft stored, zero siteverify
+    // calls); its assertions are flipped to
     // the CONTROL outcome and now pin the fixed engine: the guarded draft
     // is refused whole.
     const s = await seedDraftDeck();
@@ -420,13 +420,13 @@ describe("anonred: fragment-seed + host hook", () => {
   });
 
   it("BYPASS: a canWrite hook that refuses EVERYONE is never consulted for the anonymous session", async () => {
-    // FIXED (lane-guardfix): assertCanWrite now consults the hook for the
+    // FIXED: assertCanWrite now consults the hook for the
     // anonymous session too, passing the anonymous codename card as the
     // hook's actor (the id the write is attributed to). canWrite is a
-    // port-only seam — Ruby's permission chain is the :check_permissions
-    // event walk alone (permissions.rb:100-157; no host hook in
-    // card-1.110.0 or the perms mod) — so the engine's contract is the
-    // only contract. This arm EXECUTED the skip at 8f50230 (create
+    // host-only seam — the upstream permission chain is the
+    // :check_permissions event walk alone (permissions.rb:100-157; no host
+    // hook in the upstream tree) — so the engine's contract is the
+    // only contract. This arm EXECUTED the skip before the fix (create
     // succeeded, hook calls = 0); its assertions are flipped to the
     // CONTROL outcome and now pin the fixed engine.
     const s = await seedBypassDeck();
@@ -449,9 +449,9 @@ describe("anonred: fragment-seed + host hook", () => {
 });
 
 describe("anonred: actor attribution", () => {
-  it("signed-out write records under the anonymous codename card even when that card is corpus-renamed", async () => {
+  it("signed-out write records under the anonymous codename card even when that card is renamed", async () => {
     const s = await seedBypassDeck();
-    // rename the anonymous card to the corpus's recorded name shape
+    // rename the anonymous card away from its canonical name
     await s.driver.query("UPDATE cards SET name = 'tkmbewlur', `key` = 'tkmbewlur' WHERE id = 11", []);
     const engine = anonEngine(s);
     const result = await engine.createCard({ name: "Attribution Probe", typeId: 12 });
@@ -463,11 +463,11 @@ describe("anonred: actor attribution", () => {
     expect(card?.updater_id).toBe(11);
   });
 
-  it("CONTROL (LOW-1 fix): a host-supplied actor NAMED *anonymous but carrying a real account id acts as THAT account", async () => {
-    // was a BYPASS at ba00146: actingIdForWrite keyed on the actor NAME,
+  it("CONTROL: a host-supplied actor NAMED *anonymous but carrying a real account id acts as THAT account", async () => {
+    // was a BYPASS: actingIdForWrite keyed on the actor NAME,
     // so any actor named "*anonymous" had its writes recorded under the
-    // Anonymous codename card and judged by the anonymous parties. Ruby
-    // keys identity on the id (`@as_id = Card.id given_user`,
+    // Anonymous codename card and judged by the anonymous parties. Identity
+    // is keyed on the id (`@as_id = Card.id given_user`,
     // auth/proxy.rb:11; signed_in? = current_id != AnonymousID,
     // auth/current.rb:43-47) — only the real Anonymous card (by id) is
     // the anonymous session now.
@@ -505,7 +505,7 @@ describe("anonred: actor attribution", () => {
 
 
 /** Left-rename deck: the *type plus right candidates of a junction read
- *  the ASSIGNED left part's TYPE (Ruby 08_type_plus_right.rb:30-32
+ *  the ASSIGNED left part's TYPE (08_type_plus_right.rb:30-32
  *  anchor_name = "#{left_type(card)}+#{card.name.tag}"; left_type =
  *  superleft&.type_name || quick_type(name.left_name),
  *  set/pattern/class_methods.rb:59-69). The left cards are typed so the
@@ -542,13 +542,13 @@ async function seedLeftRenameDeck(): Promise<ActionsTestStorage> {
   return s;
 }
 
-describe("anonred: LEFT-part renames are judged under the ASSIGNED left part's type anchor (semantics-followups lane)", () => {
-  // The verdict-semantics lane pinned the RIGHT-part rename direction
-  // only; limitation 3 left the assigned LEFT part's type resolution
-  // (patternInputFor's fetchByName arm) code-read-covered. Ruby rebuilds
-  // the patterns from the new name before the validate-stage check
-  // (name/all.rb:21-28 + :76-84; assign_attributes.rb:63-68), so the
-  // *type plus right anchor is "#{left_type}+#{tag}" of the ASSIGNED name
+describe("anonred: LEFT-part renames are judged under the ASSIGNED left part's type anchor (semantics follow-ups)", () => {
+  // The right-part rename direction was pinned first; the assigned LEFT
+  // part's type resolution (patternInputFor's fetchByName arm) was
+  // code-read-covered only. The patterns rebuild from the new name before
+  // the validate-stage check (name/all.rb:21-28 + :76-84;
+  // assign_attributes.rb:63-68), so the *type plus right anchor is
+  // "#{left_type}+#{tag}" of the ASSIGNED name
   // (08_type_plus_right.rb:30-32; class_methods.rb:59-69). Both
   // directions pinned here; each arm carries a same-anchor control so a
   // deny can never pass for deny-on-empty's reason.
