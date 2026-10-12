@@ -550,8 +550,8 @@ export class RenderEngine implements RenderEngineLike {
    *  method of the dispatched card (card-mod-search set/abstract/
    *  cql_search.rb:29-38) — never at prefetch scope — so the prepare walk
    *  records the failure and the DISPATCH boundary re-raises it, view-
-   *  gated: the capture census pins search :open/:content as CAPTURE_ERROR
-   *  (24 each) while :closed/:title are real bytes (105/105 each), i.e.
+   *  gated: the census pins search :open/:content as raising
+   *  on a subset while :closed/:title are real bytes, i.e.
    *  Ruby only parses the result-rendering views. Cleared on resetCaches(). */
   private searchFailures = new Map<string, Error>();
   /** Seated paging records by search card key — the show_paging? == true
@@ -879,14 +879,13 @@ export class RenderEngine implements RenderEngineLike {
    *  outside the pointer-item slot — keep their pre-change bytes). Cleared on
    *  resetCaches(). */
   private pointerItemGlobalVerdictDone = new Set<string>();
-  /** The modeled `Cardio.config.default_html_view` render surface (R17, A-36
-   *  correction): "content" while a PAGE render is active — the production
-   *  config value the page capture applies
-   *  (capture-dual-$1page-and-view.rb:314, the capture's
-   *  production-equivalent setting #5) — "titled" otherwise, the railtie
+  /** The modeled `Cardio.config.default_html_view` render surface: "content"
+   *  while a PAGE render is active — the production
+   *  config value a page render applies —
+   *  "titled" otherwise, the railtie
    *  default
-   *  (card-mod-format lib/card/mod/format.rb:2) under which the BARE render
-   *  capture (surface V, the old-capture dev boot) ran. Ruby reads process
+   *  (card-mod-format lib/card/mod/format.rb:2) under which a BARE render
+   *  runs. Ruby reads process
    *  config per call (html.rb:17-19), never a deck rule; a deck's
    *  `*all+*default html view` rule is dead in 0.20.0. The flag
    *  is byte-safe across interleaved renders because resolveView memoizes
@@ -2198,19 +2197,19 @@ export class RenderEngine implements RenderEngineLike {
     // cql_search.rb:29-38 for Search, Date.parse for the date cardtype's
     // content views — and only after the permission gate wrapped any denial
     // (view/permission.rb:46-50; format.ts runs viewPermissionDenial before
-    // calling this). Only the result-rendering views parse: the capture
-    // census pins search :open/:content CAPTURE_ERROR (24 each) vs
-    // :closed/:title real (105/105), date likewise. This fires for NESTED
+    // calling this). Only the result-rendering views parse: the
+    // census pins search :open/:content as raising on a subset vs
+    // :closed/:title real, date likewise. This fires for NESTED
     // dispatches too — every nest routes through this seam (format.ts
     // renderView -> engine.resolveView) — which is how pointer/list/set
-    // containers reproduce the capture's BadQuery for their search-card
+    // containers reproduce the BadQuery for their search-card
     // items. View-gated: :title/:closed/:bar never raise here.
     //
     // RULE-card asymmetry: a search-TYPE card
     // that is ALSO a rule (3-part name, right part a setting — e.g.
     // "*layout+*right+*content options") renders REAL
     // :open/:content bytes, while every raising search card is non-rule;
-    // date-typed rules still capture
+    // date-typed rules still hit
     // the Date::Error sentinel. So the Search arm skips rule cards
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
