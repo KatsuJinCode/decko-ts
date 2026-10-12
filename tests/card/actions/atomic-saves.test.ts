@@ -487,7 +487,7 @@ for (const [label, make] of Object.entries(BACKENDS)) {
       const { cardId } = await deck.engine().createCard({ name: "Past Orphan", content: "fresh" });
       expect(cardId).toBe(orphanMax + 1);
       // Its own history only: one create action, its act, no change rows
-      // (Ruby's first_create?), nothing borrowed from the orphan.
+      // (the first-create lazy backfill), nothing borrowed from the orphan.
       const actions = await raw.query<{ id: number; action_type: number }>(
         "SELECT id, action_type FROM card_actions WHERE card_id = ? ORDER BY id",
         [cardId],
