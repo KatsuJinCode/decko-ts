@@ -22,8 +22,8 @@
 //   pointer list editor (list_input haml)
 // - :select / :multiselect / :autocomplete (set/abstract/01_list/
 //   html_views.rb:56-58's loop, :72-75 + :109-112, :93-97 and :60-62) -
-//   three of the five editor views; GEM-SOURCE-DERIVED bytes (no oracle
-//   capture exists), pinned against output DERIVED BY RUNNING the on-disk
+//   three of the five editor views; GEM-SOURCE-DERIVED bytes, verified
+//   against output DERIVED BY RUNNING the on-disk
 //   actionview-7.2.3.2 gems (and haml-5.2.2 for the autocomplete template)
 //   with the exact call shapes (the select-editor suite)
 // - :input (set/abstract/01_list/html_views.rb:32-34 +
