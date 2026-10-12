@@ -1,10 +1,10 @@
 /**
- * Oracle parity: assert the TS registry reproduces the captured live-decko
- * output byte-for-byte where the capture has a port-level answer.
+ * Oracle parity: assert the TS registry reproduces the captured
+ * reference-decko output byte-for-byte where the capture has a port-level
+ * answer.
  *
- * Captures were produced by set-pattern-oracle-probe.rb (capture1) and
- * set-pattern-oracle-probe2.rb (capture2) - read-only `decko runner` scripts
- - against tools/oracle/decko-oracle-app (card-1.110.0 / decko-0.20.0,
+ * The captures are the committed set-pattern-oracle-capture.json /
+ * set-pattern-oracle-capture2.json fixtures (card-1.110.0 / decko-0.20.0,
  * local SQLite deck). Ids are deck-specific; they enter this test through
  * oracle-environment.ts (captured facts), not through hardcoded tables here.
  */
@@ -193,7 +193,8 @@ describe("oracle parity: rule names", () => {
 
   it("reproduces cache-key shapes from the captured rule cache sample", () => {
     // "all+read" -> 10 is the *all+*read rule card (id 10); the port builds
-    // the same keys (values are the storage walk's business, next stream).
+    // the same keys (the values are the storage walk's business, see
+    // tests/card/rules/rule-cache.test.ts).
     expect(capture1.rule_name_check.rule_lookup_key_sample["all+read"]).toBe(10);
     expect(capture1.rule_name_check.rule_lookup_key_sample["606+self+read"]).toBeUndefined();
     for (const key of Object.keys(capture1.rule_name_check.rule_lookup_key_sample)) {
