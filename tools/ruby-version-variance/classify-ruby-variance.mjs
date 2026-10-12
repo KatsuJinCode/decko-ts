@@ -135,8 +135,16 @@ const envA = environmentOf(a);
 const envB = environmentOf(b);
 const axis = axisBetween(envA, envB);
 
+// Run directories are recorded workspace-relative, so a report never carries
+// the absolute layout of the machine that produced it.
+const relativeToWorkspace = (p) => {
+  const abs = path.resolve(p);
+  const rel = path.relative(process.cwd(), abs);
+  return rel === "" ? "." : rel.split(path.sep).join("/");
+};
+
 const report = {
-  runs: { a: path.resolve(a), b: path.resolve(b) },
+  runs: { a: relativeToWorkspace(a), b: relativeToWorkspace(b) },
   environments: { a: envA, b: envB },
   axis,
   kinds: {},
