@@ -1,25 +1,24 @@
-# oracle-capture-admin-card-views.rb - oracle byte-capture for the two
-# set/self/admin.rb views the admin-view-pins fixture does not carry:
+# oracle-capture-admin-card-views.rb - renders the two set/self/admin.rb
+# views on *admin and records their bytes as fixture JSON:
 #   1. set/self/admin.rb view :core     (on *admin — the task table)
 #   2. set/self/admin.rb view :warning  (on *admin — the warning alert)
 #
-# Everything else the admin-views-2 lane pins comes from the already
-# committed fixtures/captured/admin-view-pins.json (captured 2026-09-29 by
-# oracle-capture-admin-view-pins.rb with its own no-write proof) — this
-# capture adds ONLY the *admin target so the two self/admin views get real
-# oracle bytes instead of derived expectations.
+# The sibling fixture fixtures/captured/admin-view-pins.json carries the
+# other admin targets (produced by oracle-capture-admin-view-pins.rb with
+# its own no-write proof) — this script adds ONLY the *admin target so the
+# two self/admin views get rendered bytes instead of derived expectations.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-admin-card-views.rb
 #
-# Records to <lane-worktree>/fixtures/captured/admin-views-2-oracle.json:
-#   1. rendered bytes for :core / :warning on *admin, captured as
+# Records to fixtures/captured/admin-views-2-oracle.json:
+#   1. rendered bytes for :core / :warning on *admin, rendered as
 #      Card::Auth.as_bot (the engine's main render actor, viewer actorId 1).
 #   2. Per-view meta (id, name, key, type, db_content, codename) for *admin.
 #   3. Source-location provenance (instance_method.source_location).
 #   4. The no-write proof: card_actions count before and after the whole
-#      capture. The capture performs ZERO card writes (renders only).
+#      run. The script performs ZERO card writes (renders only).
 #
 # Normalizations (the same masks the TS tests apply):
 #   - data-slot-id -> "RANDOMIZED" (SecureRandom.hex(10), wrap.rb:45)
