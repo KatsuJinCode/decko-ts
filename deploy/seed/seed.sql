@@ -5,7 +5,7 @@
 -- no real reference-deck content ever reaches this file or this database.
 --
 -- Apply AFTER migrations/0001-schema.sql:
---   npx wrangler d1 execute  --remote --file seed/seed.sql
+--   npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
 --
 -- Contents: 5 type/author scaffold cards, 6 plain Note cards, the depth-4
 -- compound chain Demo Guide+Section One+Detail+History (junction rows with
