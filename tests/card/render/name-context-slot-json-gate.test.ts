@@ -1,17 +1,14 @@
-// Mechanism 3 of the live-wire page-render defect verdict
-// (REPO_DIR an internal work log, 2026-09-28):
-// the engine omits the `,"name_context":"..."` member from bar data-slot JSON
-// after `"home_view":"open"` on content-page nests. Probe evidence (pos1450
-// Occupy page, pos1600 Sylvester; probe snap=3 eng=0 live=3 for the
-// `home_view":"open","name_context":...` style, eng-style `open"}` live=0):
+// Page-render defect, mechanism 3:
+// the engine omitted the `,"name_context":"..."` member from bar data-slot JSON
+// after `"home_view":"open"` on content-page nests. Ruby's emitted shape vs
+// the engine's:
 //
-//   SNAP: ...&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;open&quot;,
-//         &quot;name_context&quot;:&quot;occupy_wall_street_first_officical_statement&quot;}
-//   ENG : ...&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;open&quot;}
-//   LIVE: == SNAP
+//   RUBY:   ...&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;open&quot;,
+//           &quot;name_context&quot;:&quot;<parent key>&quot;}
+//   ENGINE: ...&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;open&quot;}
 //
-// All three wanted slots on that page (+pdf, +tags mini_bars, +discussion
-// open slot) are ID-LESS in BOTH oracles (the junctions have no rows — the
+// The wanted slots in the pinned shapes (+management mini_bar, +pdf
+// mini_bar) are ID-LESS on BOTH sides (the junctions have no rows — the
 // data-card-id attribute is absent on both sides) — the card identity is
 // identical; ONLY the name_context member differs.
 //
@@ -24,19 +21,17 @@
 // relevant_context_names (context_names.rb:26-29): the parent context is
 // filtered to the parts of THIS card's name.
 //
-// The graded capture corpus itself arbitrates the two shapes
-// (tmp/raw-ground-truth/expected-v2/page-lane/dual-lane-validation-2026-09-25.jsonl):
-//   - Conflict_Done_Well nests {{+management|closed}} DIRECTLY in the page
-//     body; the wanted (id-less) Conflict_Done_Well+management mini_bar slot
-//     CARRIES name_context "conflict_done_well".
-//   - Latest News's wanted Cora_Mortimer_...+pdf slots nest under the ITEM
-//     card (the pointer item's own content), whose format context filtered
-//     to the item's parts is EMPTY — name_context count 0 on the WHOLE page.
-// The prior engine gate (`fmt.card.unknown !== true`, pinned to a stale
-// live-v0.19.1 capture of /Aikido_2's +management) contradicts the graded
-// oracle on the first shape and is removed; the part-filter alone decides.
+// The two shapes:
+//   - SHAPE 1: the page nests {{+management|closed}} DIRECTLY in the page
+//     body; the wanted (id-less) <page>+management mini_bar slot CARRIES
+//     name_context (the page's own key).
+//   - SHAPE 2: the wanted +pdf slot nests under the ITEM card (the pointer
+//     item's own content), whose format context filtered to the item's
+//     parts is EMPTY — name_context count 0 on the WHOLE page.
+// The prior engine gate (`fmt.card.unknown !== true`) contradicted Ruby on
+// the first shape and is removed; the part-filter alone decides.
 //
-// This test pins both oracle shapes: name_context PRESENT on the direct
+// This test pins both shapes: name_context PRESENT on the direct
 // page-body wanted nest, ABSENT on the item-level wanted nest.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -79,7 +74,7 @@ async function seedDeck(): Promise<void> {
     typeId: 2,
     dbContent: "Context Probe Layout",
   });
-  // SHAPE 1 (Conflict_Done_Well): the page nests +management directly; the
+  // SHAPE 1: the page nests +management directly; the
   // +management junction has NO row (wanted).
   await seedCard(s, {
     id: 90,
@@ -87,13 +82,12 @@ async function seedDeck(): Promise<void> {
     typeId: 4,
     dbContent: "<p>{{+management|closed}}</p>",
   });
-  // SHAPE 2 (Latest News): the item surface. The page nests an ABSOLUTE
+  // SHAPE 2: the item surface. The page nests an ABSOLUTE
   // card ("Report" — its parts do NOT include the page's) whose content
   // nests a WANTED +pdf junction. The item format's context filters EMPTY
   // (relevant_context_names: the item name shares no part with the page),
   // and :open adds no context of its own — so the +pdf slot must carry NO
-  // name_context (the graded Latest News page pins name_context count 0
-  // for exactly this shape: item-template rendering, absolute item names).
+  // name_context (item-template rendering, absolute item names).
   await seedCard(s, {
     id: 91,
     name: "News Page",
@@ -124,7 +118,7 @@ describe("bar slot JSON name_context: wrap.rb gate (live-wire mechanism 3)", () 
     const html = await renderPageBytes(storage!.engine, "Context Page");
     const at = html.indexOf("context_page-management-mini_bar-view");
     expect(at).toBeGreaterThan(-1); // the wanted mini_bar renders
-    // The oracle byte (Occupy +pdf / CDW +management shape): the member
+    // The pinned byte shape: the member
     // lands AFTER home_view, as the LAST JSON key.
     expect(html).toContain(
       "&quot;home_view&quot;:&quot;open&quot;,&quot;name_context&quot;:&quot;context_page&quot;}",
