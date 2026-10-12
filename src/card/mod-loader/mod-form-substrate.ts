@@ -5,10 +5,9 @@
 // standard_save_button / create_form existed only as module-private
 // card-mod-edit.ts functions, unreachable from other mods' view bodies).
 //
-// Every emitter cites its Ruby source; the byte shapes are pinned against
-// oracle captures (fixtures/captured/form-substrate.json for the
-// quick_edit/new_image_buttons chains; fixtures/captured/edit-forms.json for
-// the edit-side buttons this substrate reproduces byte-identically).
+// Every emitter cites its Ruby source; the byte shapes are pinned by tests
+// over the quick_edit/new_image_buttons chains and over the edit-side
+// buttons this substrate reproduces byte-identically.
 //
 // Ruby mechanism notes the byte order rests on:
 // - card-1.110.0 lib/card/format/method_delegation.rb:33-69: the html format
@@ -35,9 +34,9 @@
 //   (form_helper.rb:465-475), the caller's html keys, action,
 //   accept-charset, data-remote, method], followed by the utf8 enqueuer
 //   (form_tag_helper.rb:976-979, the literal &#x2713; bytes) and the
-//   _method spoof input. decko config
-//   embed_authenticity_token_in_remote_forms = false (the captured forms
-//   carry no authenticity_token - tokens ride the meta tag).
+//   _method spoof input. The deck sets
+//   embed_authenticity_token_in_remote_forms = false, so no
+//   authenticity_token field is emitted; tokens ride the meta tag.
 // - all/form_elements.rb:16-43 success_tags/hidden_tags/process_hidden_
 //   value: the success hash deep-encodes into Rails params names
 //   (success[slot][hide]), arrays append "[]" to the base; each tag is
@@ -60,9 +59,9 @@ import type { ViewContext } from "../render/format.js";
  * defaulting to "Submitting" (form_elements.rb:62).
  *
  * orderedAttrs: the caller's attrs as [key, value] pairs in the exact hash
- * order the Ruby chain produced for the call site (the two captured shapes:
- * standard_save_button's [class, data-cy] after any caller extras, and
- * standard_save_and_close_button's [data-cy, class]).
+ * order the Ruby chain produced for the call site. standard_save_button
+ * yields [class, data-cy] after any caller extras;
+ * standard_save_and_close_button yields [data-cy, class].
  */
 export function submitButton(text: string, orderedAttrs: Array<[string, string]>): string {
   const attrs: string[] = [`name="button"`, `type="submit"`];
@@ -88,8 +87,8 @@ export function submitButton(text: string, orderedAttrs: Array<[string, string]>
  * voo&.hide?(:save_button)`; add_class "submit-button me-3
  * _update-history-pills"; text "Save"; "data-cy" "save"; then any caller
  * extras (new_image_buttons passes no_origin_update: true, which Rails
- * emits verbatim as an attribute - the captured
- * no_origin_update="true" bytes). Returns undefined when hidden (the
+ * emits verbatim as a no_origin_update="true" attribute). Returns undefined
+ * when hidden (the
  * output() join compacts it away).
  */
 export function standardSaveButtonBody(
@@ -99,9 +98,9 @@ export function standardSaveButtonBody(
   if (!ctx.voo.show("save_button")) return undefined;
   // Ruby opts order: [no_origin_update (caller), class (add_class), data-cy].
   // add_class APPENDS to an existing caller class in place (form_buttons.rb
-  // :17 mutates the caller's :class hash entry - edit_rule_buttons passes
-  // class: "_rule-submit-button" and the captured bytes carry
-  // "_rule-submit-button submit-button me-3 _update-history-pills").
+  // :17 mutates the caller's :class hash entry), so edit_rule_buttons
+  // passing class: "_rule-submit-button" emits "_rule-submit-button
+  // submit-button me-3 _update-history-pills".
   const attrs: Array<[string, string]> = [];
   let classEmitted = false;
   for (const [key, value] of callerAttrs) {
@@ -121,8 +120,7 @@ export function standardSaveButtonBody(
 
 /** all/form_buttons.rb:29-38 standard_save_and_close_button (the :edit
  *  form's second button - reverse_merge order puts data-cy BEFORE class).
- *  Pinned by the edit-forms capture; lives here so the substrate is the one
- *  home of the button byte contract. */
+ *  Lives here so the substrate is the one home of the button byte contract. */
 export function standardSaveAndCloseButton(): string {
   return submitButton("Save and Close", [
     ["data-cy", "submit-modal"],
@@ -148,7 +146,7 @@ export function buttonFormGroup(ctx: ViewContext, inner: string): string {
 /**
  * formgroup title, opts, block: `wrap_with :div, formgroup_div_args do
  * [formgroup_label(input, title, help), editor_wrap(input, &block)] end` -
- * the pair joins "\n" (the captured newline between label and editor div).
+ * the pair joins "\n".
  *
  * divArgs: formgroup_div_args (:35-40) - class "form-group #{html_class}",
  * data-card-id when real, then data-card-name / data-card-link-name when
@@ -222,8 +220,8 @@ export interface CardFormShellOpts {
    *  record, "new_card" for a new one (form_helper.rb:465-475). */
   id: string;
   /** the caller's html attrs in THEIR hash order (quick_form_opts'
-   *  "data-slot-selector" leads the edit_form's data-slot-error-selector
-   *  etc. - captured order). */
+   *  "data-slot-selector" leads the edit_form's data-slot-error-selector,
+   *  and the rest of the caller's keys follow in their own order). */
   htmlAttrs: Array<[string, string]>;
   /** the action path (card_form_url_and_action :232-240: path(action:...) -
    *  "/update/<mark>" / "/card/create"). */
@@ -301,22 +299,18 @@ export function createFormShell(
 }
 
 // ---------------------------------------------------------------------------
-// round 2 (form-substrate-2): the rule_form family's primitives - the
-// behaviors the two recorded results (rules-views-port-3.md,
-// the corresponding port note) named as the open form-parity arms. Everything here is
-// oracle-pinned by fixtures/captured/form-substrate-2.json
-// (oracle-capture-form-substrate-2.rb, no-write proof card_actions
-// 5018 -> 5018).
-// ---------------------------------------------------------------------------
+// the rule_form family's primitives - the form-parity arms the rule-form
+// port still owed. Every emitter below is pinned by the substrate tests.
+// --------------------------------------------------------------------------
 
 /** ActiveSupport array/conversions.rb:60 to_sentence with the DEFAULT
  *  connectors: words_connector ", ", two_words_connector " and ",
  *  last_word_connector ", and ". The RuleSetRadio narrower_warning message
- *  joins the accumulated @narrower_rules with it - on the capture deck the
- *  entries are ALL "" (uncapitalized_label's shadowing bug - the TS port is
- *  set-name.ts's uncapitalizedLabelForParsedSet), so the captured warnings
- *  read "for ." / "for  and ." / "for , , and ." - the to_sentence bytes over
- *  empty strings are exactly what the fixture pins. */
+ *  joins the accumulated @narrower_rules with it, and those entries can all
+ *  be empty strings (uncapitalized_label's shadowing bug - the TS port is
+ *  set-name.ts's uncapitalizedLabelForParsedSet), so the rendered warning is
+ *  a real sentence join over empty strings: "for ." / "for  and ." /
+ *  "for , , and .". Those are the bytes the substrate pins. */
 export function toSentence(items: string[]): string {
   if (items.length === 0) return "";
   if (items.length === 1) return items[0];
@@ -328,7 +322,7 @@ export function toSentence(items: string[]): string {
 /** bootstrap icon.rb:96-104 icon_tag + 120-123 material_icon_tag + 144-153
  *  universal_icon_tag: add_class "material-icons" then add_class
  *  "notranslate" - the CALLER's class key keeps its position, so the extra
- *  class comes FIRST ("text-muted notranslate material-icons", the captured
+ *  class comes FIRST ("text-muted notranslate material-icons", the
  *  RuleSetRadio label icon). The glyph resolves through icon_lookup's
  *  basket (card-mod-bootstrap's ICON_BASKET.material - the entries this
  *  substrate's consumers use are kept here; icon_lookup's fallback is the
@@ -350,8 +344,8 @@ export function iconTag(key: string, extraClass?: string): string {
  *  then reverse_merge! {path: "#", tabindex: 0, data: {bs-toggle, bs-trigger,
  *  bs-content}} = {path,tabindex,data}.merge!({class}) - insertion order
  *  path, tabindex, data, class; link_to emits the href LAST (links.rb:101-106
- *  deletes :path, appends :href). The captured bytes carry title-less shape
- *  (no data-bs-title key). */
+ *  deletes :path, appends :href). The emitted shape carries no data-bs-title
+ *  key. */
 export function popoverLink(text: string): string {
   return (
     `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"` +
@@ -366,8 +360,8 @@ export function popoverLink(text: string): string {
  *  -> actionview tags/radio_button.rb + base.rb: the caller's options in
  *  their hash order (RuleSetRadio's [checked:, warning:, class:, id:] -
  *  checked:false is CONSUMED by RadioButton's checked? logic and emits no
- *  attribute), then the tag's own [type, value, name] appended - the
- *  captured order warning?, class, id, type, value, name="card[name]". */
+ *  attribute), then the tag's own [type, value, name] appended - the order
+ *  is warning?, class, id, type, value, name="card[name]". */
 export function radioButtonTag(
   method: string,
   value: string,
@@ -384,8 +378,8 @@ export function radioButtonTag(
 }
 
 /** all/form_buttons.rb:29-38 standard_save_and_close_button, the
- *  parameterized form (the round-1 zero-arg emitter above is the :edit
- *  pin's shape): close = opts.delete(:close) || :modal; add_class
+ *  parameterized form (the zero-arg emitter above carries the :edit form's
+ *  shape): close = opts.delete(:close) || :modal; add_class
  *  "submit-button me-3 _close-on-success"; add_class "_update-origin"
  *  unless no_origin_update; reverse_merge! text/data-cy - so data-cy
  *  ("submit-#{close}") precedes the merged class, after
@@ -408,10 +402,10 @@ export function standardSaveAndCloseButtonBody(
  *  (class "_close-overlay btn-sm", data-bs-dismiss "overlay", type
  *  "button"); classes = opts.delete(:class) then add_class AFTER the merge -
  *  the caller's class APPENDS to "_close-overlay btn-sm" (edit_rule_cancel_
- *  button passes class: "btn-sm" -> the captured doubled "btn-sm btn-sm");
+ *  button passes class: "btn-sm" -> the doubled "btn-sm btn-sm");
  *  button_tag's {name, type} defaults merge FIRST (type replaced by the
  *  overlay's "button" IN PLACE), bootstrapify_button deletes :situation and
- *  appends "btn btn-#{situation}" to the class. Captured order: name, type,
+ *  appends "btn btn-#{situation}" to the class. Attribute order: name, type,
  *  class, data-bs-dismiss. */
 export function overlayCloseButton(
   text: string,
@@ -427,12 +421,12 @@ export function overlayCloseButton(
  *  delete_confirm + delete_success: add_class "slotter btn btn-outline-
  *  danger ms-auto" (IN PLACE - the caller's class keeps its lead position),
  *  "data-confirm" = the confirm string (the caller's :confirm key STAYS -
- *  symbol vs string keys coexist, the captured duplicate), path {action:
- *  :delete} (+ the caller's success {} rides it - the captured trailing "?"
+ *  symbol vs string keys coexist, so the attribute is emitted twice), path
+ *  {action: :delete} (+ the caller's success {} rides it - the trailing "?"
  *  is the empty query), remote: true -> data-remote. link_to emits
- *  caller-then-added order with href last-but-data-remote (the captured
- *  order: confirm, data-slotter-mode, class, data-confirm, href,
- *  data-remote). The caller (edit_rule_delete_button) wraps the link in
+ *  caller-then-added order with href last-but-data-remote (attribute order:
+ *  confirm, data-slotter-mode, class, data-confirm, href, data-remote).
+ *  The caller (edit_rule_delete_button) wraps the link in
  *  `<span class="rule-delete-section">`. */
 export function ruleDeleteButtonLink(opts: {
   confirm: string;
@@ -455,18 +449,17 @@ export function ruleDeleteButtonLink(opts: {
 
 /** card-mod-layout set/all/modal/modal_dialog.haml:1-18 (the wrapper :modal
  *  of card-mod-layout set/all/modal.rb:7-13) - the modal wrap machinery the
- *  rule_form family's modal_rule/rule_edit views ride. Byte contract (the
- *  form-substrate-2 capture pins BOTH arms):
+ *  rule_form family's modal_rule/rule_edit views ride. Byte contract:
  *  - the container/comment/dialog/content quartet is haml-emitted (SINGLE
  *    quoted attrs); the commented-out backdrop line renders VERBATIM as the
  *    html comment `<!-- /, "data-backdrop": "static"} -->`;
- *  - `voo.show? :modal_header` gates the whole header block (the capture's
+ *  - `voo.show? :modal_header` gates the whole header block (the
  *    hide: :modal_header arm renders none of it);
  *  - `voo.show? :modal_menu` gates the menu div inside the header;
  *  - `.modal-body` always renders; `footer.present?` gates .modal-footer
  *    (modal_rule's normalize_modal_option :footer renders :modal_footer ->
  *    the Close button; footer "" is present?-false -> no footer, the
- *    rule_edit arm, uncaptured here);
+ *    rule_edit arm);
  *  - size: modal_dialog_classes (:81-95) - no size opt = "modal-dialog
  *    modal-dialog-centered". */
 export function modalDialogWrap(opts: {
