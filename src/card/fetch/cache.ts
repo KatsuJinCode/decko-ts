@@ -112,8 +112,8 @@ export class TemporaryCache {
    * read (lexicon.rb:71-76). The port's synchronous readers (the name
    * environment's mark parse, pointer item renders) cannot read the
    * database, so an entry dropped in the middle of a request could turn
-   * into an "Error rendering" span (the trial deck's Wagneer page: id 34374
-   * dropped by the fourth reset of one request). While any hold is open the
+   * into an "Error rendering" span (a page whose cache entry was dropped by
+   * the fourth reset of one request). While any hold is open the
    * store grows past maxKeys instead of resetting; the overage resets once,
    * when the last hold is released. The cache is therefore sized per
    * request, and a reset can only ever happen between requests.

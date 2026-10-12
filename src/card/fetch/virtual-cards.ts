@@ -2,18 +2,16 @@
 // machine that lets `Card.fetch` return a card for a compound name that has
 // NO database row reachable by name.
 //
-// Why compound names are unreachable by name (the corpus-proven mechanism):
+// Why compound names are unreachable by name:
 // Ruby resolves a compound name mark through the Lexicon
 // (lib/card/fetch/retrieve.rb:43-45 `id_from_mark` -> Lexicon.id), and the
 // Lexicon's compound path (lib/card/lexicon.rb#name_to_lex) resolves
 // [id(left), id(right)] then queries `cards` by left_id/right_id — NEVER by
 // the junction's own key. A junction row whose left_id/right_id are NULL (an
 // orphan row: name+key stored, sides absent) is therefore invisible to
-// name-based fetch in Ruby. The recaptured corpus deck contains 9,739 such
-// orphan junction rows, and the 25 id:null disputed records are exactly names
-// whose rows are orphans: Ruby fetches them as VIRTUAL cards
-// (capture-disputed-corpus.rb records card.id == null), while the TS port
-// returned "card not in seeded deck".
+// name-based fetch in Ruby. Ruby fetches such a name as a VIRTUAL card
+// (card.id == null), while a port that only looks for a stored row answers
+// "card not found".
 //
 // The Ruby chain this module ports, for a compound name mark with no db row:
 //
@@ -36,12 +34,12 @@
 //    registration is right/*autoname -> :phrase, set/right/autoname.rb:1;
 //    the account/email/date/edit mods register a handful more), the type
 //    falls to `type_id_from_template` (:78-80) — the rule card's own
-//    type_id. The corpus disputed set exercises exactly this branch:
-//    `<left>+ytyovdhppytn` cards take the `ytyovdhppytn+*right+*structure`
-//    rule card's type (Basic), `X+*self` / `X+*right` cards take the
-//    `*self|*right+*right+*structure` rule card's type (Set).
+//    type_id. Both branches are live: an unknown right part takes the
+//    `<left>+<right>+*structure` rule card's type (Basic), while `X+*self`
+//    / `X+*right` take the `*self|*right+*right+*structure` rule card's type
+//    (Set).
 //
-// The lookup is wired by the storage factory (the corpus seeding), not by
+// The lookup is wired by the storage factory, not by
 // FetchEngine itself: the structure universe is a deck-wide statement the
 // engine loads lazily for renders; the fetch layer stays storage-shaped and
 // takes the resolution as an injected hook (FetchEngine.virtualCardLookup).

@@ -30,8 +30,8 @@
 // lookups go through the Lexicon (cache/card_class.rb#retrieve_from_cache_by_id).
 // Invalidation is event-driven: saves expire via Card#expire
 // (lib/card/cache/all.rb) - key versions (name + name_before_act), the
-// legacy "~id" key, view caches (render wave) and the left card of compound
-// names. There is no TTL; reset rotates the shared stamp / clears temp.
+// legacy "~id" key, view caches (not implemented yet) and the left card of
+// compound names. There is no TTL; reset rotates the shared stamp / clears temp.
 
 import { CardCache, type SharedCacheStore } from "./fetch/cache.js";
 import { DbLexicon, cacheKey as lexiconCacheKey } from "./fetch/lexicon.js";
@@ -63,8 +63,8 @@ import { getNameEnvironment, setNameEnvironment, type NameEnvironment } from "./
 export interface FetchOptions {
   /** Real cards only (Card[mark] uses this, card_class.rb:42-44). */
   skipVirtual?: boolean;
-  /** Don't load Set modules - a no-op in this port until the rules wave
-   *  lands set modules; accepted for API parity. */
+  /** Don't load Set modules - a no-op in this port while set modules
+   *  do not exist; accepted for API parity. */
   skipModules?: boolean;
   /** Return trashed card objects (fetch.rb:49-51). */
   lookInTrash?: boolean;
@@ -157,18 +157,16 @@ export class FetchEngine {
     this.cardCache.afterWriteToTempCache = (value) => {
       if (isCardValue(value)) this.writeLexiconTemp(value);
     };
-    // THE COLD-ISOLATE DEFAULT (parity-harness S3 fix, 2026-10-02; the
-    // the codename warm-up fix's 19aac91, ported to this line by the fold-11
-    // integrator): install the sync name environment unless a boot already
-    // installed one. Ruby's ":codename" mark parse cannot fail while the row
+    // THE COLD-ISOLATE DEFAULT: install the sync name environment unless a boot
+    // already installed one. Ruby's ":codename" mark parse cannot fail while the row
     // exists — the codehash loads synchronously on first use
     // (codename.rb#load_codehash). This port's substitute is the
     // process-global environment (below + installNameEnvironment) whose
     // adapters PEEK the codehash memo, and a boot that skips the explicit
     // prime left getNameEnvironment() undefined — DeckoName.idFromString
-    // then threw CodenameNotFoundError for rows that exist. On THIS line the
-    // fold-11 carrier surfaced it: the p2 request-surface pins inject raw
-    // {fetcher, render} decks with no boot, and the page head's ":title"
+    // then threw CodenameNotFoundError for rows that exist. The concrete case
+    // that forced this default: a request-surface caller that injects a raw
+    // {fetcher, render} deck with no boot, where the page head's ":title"
     // read 500'd despite the seeded codenames row. Construction-time install
     // makes the default boot safe: the adapters are warm-only peeks (inert
     // until a parse runs), and every render entry folds the codehash before
@@ -293,8 +291,8 @@ export class FetchEngine {
    *  running inside update_cache?'s evaluation (Ruby's update_cache?
    *  calls new_for_cache, which ASSIGNS @card when it instantiates a
    *  placeholder). needs_prep? (store.rb:38-42) exists to pre-compute
-   *  set-pattern modules before caching; with set modules deferred to the
-   *  rules wave every TS card is already "prepped", so that branch is
+   *  set-pattern modules before caching; with set modules deferred, every
+   *  TS card is already "prepped", so that branch is
    *  observable-behavior-equivalent to false (a cached real card and a
    *  freshly prepped one are indistinguishable without modules). */
   private async updateCache(
@@ -373,8 +371,8 @@ export class FetchEngine {
   }
 
   /** results.rb#finalize_result_card: include_set_modules unless
-   *  skip_modules? - set modules do not exist in this port yet (rules
-   *  wave); the step is an identity function here. */
+   *  skip_modules? - set modules do not exist in this port yet; the step is
+   *  an identity function here. */
   private finalizeResultCard(card: CardRecord): CardRecord {
     return card;
   }
@@ -482,7 +480,7 @@ export class FetchEngine {
 
   /** results.rb#type_change? (101-109): a nil type_id is always a type
    *  change; otherwise compare against new opts. supercard-dependent type
-   *  changes (supercard_might_change_type?, 116-120) need the rules wave. */
+   *  changes (supercard_might_change_type?, 116-120) need set modules. */
   private typeChange(card: CardRecord, newOpts: NewCardOptions): boolean {
     if (card.typeId === undefined) return true;
     return newOpts.typeId !== undefined && newOpts.typeId !== card.typeId;
@@ -614,7 +612,7 @@ export class FetchEngine {
   }
 
   /** Cache::All#expire (cache/all.rb:17-24) - the invalidation a save
-   *  triggers. expire_views is deferred to the render wave (view cache
+   *  triggers. expire_views is deferred (view cache
    *  keys do not exist yet); expire_names covers both key versions
    *  (current name + name_before_act, cache/all.rb:104-108); expire_id
    *  deletes the legacy "~id" key (cache/all.rb:92-96 - nothing writes it
@@ -622,7 +620,7 @@ export class FetchEngine {
    *  anyway); expire_left recurses into the left card of compound names
    *  (cache/all.rb:39-43). */
   expireCard(card: CardRecord): void {
-    // expire_views - render wave
+    // expire_views - view cache keys do not exist yet
     this.expireNames(card);
     this.expireId(card);
     this.expireLeft(card);
@@ -692,19 +690,19 @@ export class FetchEngine {
     // freshness gate's version-triggered one in particular) must drop it —
     // a map that survives the reset keeps answering post-write renders with
     // pre-write rows (disarmRenderPlan's documented "explicit invalidation"
-    // arm, wired 2026-10-06 by the stamp-read-vs-plan pin).
+    // arm).
     this.replayRouter.disarmRenderPlan();
   }
 
   /** Re-prime the boot-lifetime state a resetCaches() wiped (the freshness
-   *  composition, the per-viewer seat 2026-10-06). The codename registry's
+   *  composition, the per-viewer seat). The codename registry's
    *  bulk load is BOOT state (bunny-edge-deck-boot.ts and every test boot
    *  run it once, before the first render); resetCaches() clears the
    *  registry's cache and nothing re-ran the load — so every post-reset
    *  render degraded to per-lookup live name reads (measured: a
    *  version-move reset under the one-trip seat re-seats the PAGE data
-   *  correctly yet still costs 340 trips vs the 7-trip seated floor and
-   *  the 177-trip fresh ladder). The registration (installNameEnvironment)
+   *  correctly yet still costs far more trips than the seated floor and
+   *  the fresh ladder). The registration (installNameEnvironment)
    *  survives the reset — it registers THESE instances — but re-running it
    *  here keeps the post-reset engine byte-identical in shape to a fresh
    *  boot. Idempotent by the same contract the boot relies on. */
@@ -749,14 +747,14 @@ export class FetchEngine {
       // unset — signed out it answers "Anonymous" (the Anonymous card's name,
       // auth/current.rb's current lookup), and contextual.rb#user_part
       // (cardname 0.20.0 lib/cardname/contextual.rb) substitutes it for
-      // `_user`. The engine's render surface is the signed-out corpus surface
+      // `_user`. The engine's render surface is the signed-out surface
       // (render.ts: "Anonymous by default"), so the environment carries the
       // same name. UNSET was a measured divergence: the follower notification
       // pages' `{{_user|link}}` nest resolved `_user` to the literal
       // "_user", whose KEY ("user" — cardname.rb:106-117 simple_key splits
       // and drops the leading underscore, and the TS port is faithful there)
-      // collided with the real User card, rendering `by User` where the
-      // oracle renders `by Anonymous`.
+      // collided with the real User card, rendering `by User` where Ruby
+      // renders `by Anonymous`.
       session: "Anonymous",
       lexicon: {
         name(id: number): string | undefined {

@@ -47,17 +47,17 @@
 // seed names most family cards with a leading "*" (`*referred to by`), but
 // the three sort cards are plain (`by name`, `by create`, `by update`,
 // card-mod-search data/real.yml:27-32), and a deck may rename any of them
-// (one production deck's count card is `*count 1`). When the engine can
+// (the count card is routinely renamed with a numeric suffix). When the
+// engine can
 // resolve codenames, the right part matches the card that currently holds
 // each codename; without a resolver the stock seed's keys are used.
 //
 // The serialized CQL is the virtual card's db_content: the engine's search
 // dispatch (render.ts#runSearch over the card's content) reads it exactly
-// where Ruby's cql_content method would answer the hash. The corpus's
-// captured surface renders the family with ZERO results (the GIV page's
-// `{{_self+*referred to by}}` nest: nothing refers to that tag), so the
+// where Ruby's cql_content method would answer the hash. A tag nothing
+// refers to renders the family with ZERO results, so the
 // pre-executed search map is empty for it and the card_list view falls to
-// the no_search_results bytes the oracle pins
+// its no-results markup
 // (`<div class="search-no-results"></div>`); a results-carrying member of
 // this family would need the view-time CQL execution the sync view layer
 // does not have (the same sync/async seam prepareNestClosureSearches

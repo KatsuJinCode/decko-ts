@@ -102,7 +102,7 @@ export function isKnownCard(card: CardRecord): boolean {
 }
 
 /** lib/card/content/all.rb#content : db_content || (new_card? ? default_content : "").
- *  default_content comes from templates/rules (rules wave); until then both
+ *  default_content comes from templates/rules; until that is wired both
  *  branches fall back to "". */
 export function cardContent(card: CardRecord): string {
   return card.dbContent ?? "";
@@ -128,11 +128,11 @@ export function idString(card: CardRecord): string | undefined {
  * `Lexicon.lex_to_name([left_id, right_id])`, and lex_to_name joins the
  * PUBLIC Lexicon.name of each side, which answers the EMPTY name ("",
  * truthy — lexicon.rb:11-15) for a missing row; the join therefore yields
- * the "+*default"-shaped empty-part name (verified live: Lexicon.name(389)
- * = "+*default" with cards 388 absent). The fallback to the row's own
+ * the "+*default"-shaped empty-part name (a compound card over absent
+ * sides composes "+*default"). The fallback to the row's own
  * name/key columns below covers only the true nil-composition shape — a
  * NIL side id (lex [left, nil]; lexicon.rb:12 `return unless id.present?`)
- * — which this corpus holds no rows of.
+ * — which no seeded deck is expected to carry.
  */
 export async function composeCardRecord(row: CardsRow, lexicon: DbLexicon): Promise<CardRecord> {
   const trash = row.trash === 1;
@@ -180,7 +180,7 @@ export async function composeCardRecord(row: CardsRow, lexicon: DbLexicon): Prom
  * fetch/store.rb#new_for_cache (store.rb:26-28): `Card.new name: mark,
  * skip_modules: true` (+ type attrs when eager_caching?, store.rb:26) - a
  * cache placeholder for an unknown name mark. skip_modules is a no-op in
- * this port (set modules are a rules-wave concern).
+ * this port (set modules are a separate concern).
  */
 export function newCardRecord(
   mark: DeckoName,
