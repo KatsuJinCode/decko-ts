@@ -1,4 +1,4 @@
-// THE TYPESCRIPT ENGINE, semantics lane.
+// THE TYPESCRIPT ENGINE for the semantics questions.
 //
 // Reads the SAME question set the Ruby oracle answered (tools/oracle/
 // semantics-answer.rb, semantics-answer-wave2.rb) and answers every id in the
