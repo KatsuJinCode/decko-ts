@@ -4576,18 +4576,18 @@ function linkNestCardName(
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
- *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Pemberton+Menu`,
- *  `[[june jessup+musings]]` in its RichText body):
+ *  THE TWO SURFACES DIFFER ON A LINK TITLE (a `[[june jessup+musings]]`
+ *  link in a RichText Menu card's body):
  *    page surface  `<span class="card-title" title="+musings">…`
  *    view surface  `<span class="card-title" title="june jessup+musings">…`
- *  for BOTH views.content and views.open. The round-trip guard in
+ *  on BOTH the content and open views. The round-trip guard in
  *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
  *  is why the view-surface half is not "june jessup+musings" compressed
  *  either: it never gets a context to compress against, and when it does get
  *  one, `from` refuses any compression that would not absolutize back.
  *
  *  Unparseable titles keep the authored bytes — this is name algebra, and a
- *  title that is not a name is not the port's to reinterpret. */
+ *  title that is not a name is not this module's to reinterpret. */
 function linkTitleInContext(
   title: string,
   cardName: DeckoName,
@@ -4614,12 +4614,12 @@ function linkTitleInContext(
  *  `opts[:card][:name] = name` so the query renders
  *  `?card%5Bname%5D=<name>` (Hash#to_param), letting the create form
  *  prefill the intended name. Known cards and standardish names emit the
- *  bare url_key path. Oracle: mindfulness 28173 wanted-card href
+ *  bare url_key path. E.g. a wanted-card href
  *  `/mytho_psychology?card%5Bname%5D=mytho-psychology` (dash name —
  *  url_key strips non-OK4KEY bytes, so NOT standardish); the wanted
- *  [[People Green]] pin stays bare (People_Green IS standardish).
+ *  [[People Green]] case stays bare (People_Green IS standardish).
  *  Returns "" when the mark carries no query bytes (unparseable marks keep
- *  the plain-underscore fallback href, the corpus's only wanted shape). */
+ *  the plain-underscore fallback href). */
 export function wantedHrefQuerySuffix(hrefSource: string): string {
   // path.rb:107-109 name_standardish?: `name.url_key == name.tr(" ", "_")`
   // ("no name info will be lost by using url_key"). The name under test is
@@ -4629,13 +4629,12 @@ export function wantedHrefQuerySuffix(hrefSource: string): string {
   // parse: ":members" -> "*members" through the codename registry) — so
   // "Eagle+:members" tests as "Eagle+*members", whose "*" IS in OK4KEY
   // (cardname.rb:37 `OK4KEY_RE = '\p{Word}\*'`; url_key, variants.rb
-  // :8-13) — standardish, BARE href. The oracle: card 34824's authored
+  // :8-13) — standardish, BARE href. An authored
   // `[[Eagle+:members|Eagle users]]` (no `Eagle+*members` row exists) renders
-  // `/Eagle+*members` with no query (recapture-raw-shard-000029 Eagle:page,
-  // delta +36 — the pre-fix helper tested the UNRESOLVED mark form, where
-  // ":" is not OK4KEY, and appended the create query). The mindfulness
-  // exemplar keeps its query ("-" is not OK4KEY: url_key "mytho_psychology"
-  // != "mytho-psychology", entry 28173) and People_Green stays bare
+  // `/Eagle+*members` with no query: testing the UNRESOLVED mark form would
+  // see ":" (not OK4KEY) and append the create query. A dash name
+  // keeps its query ("-" is not OK4KEY: url_key "mytho_psychology"
+  // != "mytho-psychology") and People_Green stays bare
   // (path.rb's own doc example).
   try {
     const parsed = DeckoName.parse(hrefSource);
@@ -4656,25 +4655,20 @@ export function wantedHrefQuerySuffix(hrefSource: string): string {
     //
     // The href beside this was ALREADY built from the resolved url_key, so
     // the anchor came out `/Eagle+*members?card%5Bname%5D=Eagle%2B%3Amembers`
-    // where the capture has a bare `/Eagle+*members` (recapture-raw-shard-
-    // 000029 `Eagle:page`, +36 — the whole delta is that query).
+    // where the correct answer is a bare `/Eagle+*members` — the whole delta
+    // is that query.
     //
     // `parts.join(joint)` (src/card/name.ts:354-356, `nameParts.map(p => p.s)`)
     // is the same construction url_key uses (cardname/lib/cardname/variants.rb
     // :8-13 maps part_names), without the lossy key-stripping, so it IS the
     // resolved name.
     //
-    // fold-9 superset note (2026-10-03): refill2 independently derived the
-    // SAME standardish fix on its line (urlKey === name.s.replace(...),
-    // citing this same Eagle oracle, cardname.rb:37 OK4KEY_RE and
-    // links.rb:36 mark-resolution). Its side is not taken verbatim because
-    // its query arm carries the AUTHORED spelling (hrefSource) while this
-    // landed form carries the RESOLVED name, citing path.rb:89-96 (the
-    // same Cardname assigned to opts[:card][:name] that the test used) —
-    // the stricter reading; the two agree wherever no codename mark reaches
-    // the query arm in the corpus (mindfulness exemplar: no mark, identical
-    // strings). No corpus-observable behavior differs; the wave1 form is
-    // the already-pinned one on this line.
+    // WHY THE RESOLVED SPELLING AND NOT THE AUTHORED ONE. path.rb:89-96
+    // assigns the SAME Cardname to opts[:card][:name] that the standardish
+    // test used, so the query must carry that same object. A variant that
+    // carried the AUTHORED spelling (hrefSource) would agree wherever no
+    // codename mark reaches the query arm, and would differ — wrongly —
+    // exactly where one does.
     const resolved = parsed.parts.join(DeckoName.JOINT);
     if (parsed.urlKey === resolved.replace(/ /g, "_")) return "";
     // The query carries the RESOLVED name too — path.rb:89-96 assigns the
