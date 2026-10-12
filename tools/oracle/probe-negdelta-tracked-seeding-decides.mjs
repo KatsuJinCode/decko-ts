@@ -1,23 +1,22 @@
 // probe-negdelta-tracked-seeding-decides.mjs -- the decisive falsification
-// for the negative-delta page family (lane-negdelta, attempt 3).
+// for the negative-delta page family.
 //
 // WHAT THIS IS
-//   Everything else this lane measured points at the SEEDING, not the
-//   engine. The last open question is WHICH seeding the grade runs:
+//   Every earlier measurement in this family points at the SEEDING, not the
+//   engine. The last open question is WHICH seeding module a render run
+//   actually loads:
 //
-//     - the graded spec tmp/raw-ground-truth/scripts/verify-dual-lane.test.ts
-//       imports its SIBLING ./raw-corpus-seeding.js -- an UNTRACKED copy
-//       (gitignored by .gitignore:45 "tmp/") that predates the fix;
-//     - the COMMITTED home tests/card/render/raw-corpus-seeding.ts carries
-//       "THE FULL REFERENCE GRAPH PASS (the search-final lane fix)" at
-//       :699-745, which copies the corpus card_references table verbatim
-//       (id, referer_id, referee_key, referee_id, ref_type, is_present).
-//       Its own header names this exact symptom: "Without the pass the
-//       harness replays render search-no-results where the oracle lists
-//       search-result-item bars".
+//     - the tracked home tests/card/render/raw-corpus-seeding.ts carries a
+//       full reference-graph pass that copies the corpus card_references
+//       table verbatim (id, referer_id, referee_key, referee_id, ref_type,
+//       is_present); without that pass, seeded renders show
+//       search-no-results where the oracle lists search-result-item bars;
+//     - copies of the same module living outside the tracked tree predate
+//       the pass, so a run that resolves to such a copy reproduces the
+//       whole negative-delta family.
 //
-//   So the hypothesis under test is: the 145 negative-delta failures are
-//   the grade running a STALE copy of a module whose fix is already
+//   So the hypothesis under test is: the negative-delta failures are the
+//   grade running a STALE copy of a module whose fix is already
 //   committed, not an engine defect and not a missing fix.
 //
 //   This probe renders the same pages twice -- once through each seeding
@@ -30,8 +29,8 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-tracked-seeding-decides.mjs \
-//     --shard recapture-raw-shard-000008.jsonl \
-//     --names "media+HBQ+YouTube Browser" [--out tmp/negdelta-tracked-vs-stale]
+//     --shard SHARD_FILE.jsonl \
+//     --names "PAGE_NAME" [--out tmp/negdelta-tracked-vs-stale]
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
