@@ -3768,12 +3768,12 @@ export interface SettingClassWithRules {
  *  view method itself), and base-format configs inherit into html (html
  *  does not redefine titled_content/labeled_content).
  *
- *  RETIRED: the flat table's `open: true` row. It transcribed the
- *  discussion right's per-set declaration (below) as a global. The oracle
- *  pins the opposite for a List-typed `+Articles` under Research
- *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
- *  createable -> "" for the anonymous capture session): the nest emits
- *  NOTHING — an earlier class's 10 phantom `+Articles` open slots. */
+*  RETIRED: the flat table's `open: true` row. It transcribed the
+   *  discussion right's per-set declaration (below) as a global, but the
+   *  opposite holds for a List-typed `+Articles` under Research
+   *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
+   *  createable -> "" for an anonymous session): that nest emits
+   *  NOTHING. */
 interface UnknownViewDecl {
   view: string;
   /** true renders the requested view; a string names the substituted view. */
@@ -3790,8 +3790,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   //   end
   // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
   // +discussion renders its requested titled view with the *default rule's
-  // content body (an earlier class's 19 Project pages; oracle slot
-  // associative_inquiry-discussion-titled-view carries show:[titled,
+  // content body (the slot carries show:[titled,
   // comment_box] and body <p> </p> x2 = discussion+*right+*default's
   // db_content). The comment_box show flip itself is already open-coded in
   // the base views (views.ts openView/titledView rightName.key ===
@@ -3829,17 +3828,15 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // voo.nest_syntax and needs no card) rather than :unknown.
   { view: "template_nest", config: true },
   // card-mod-format set/all/html/menu.rb:29 `view :board_link, unknown: true
-  // do board_link end`. The captured `{{\_|board_link}}` nest (corpus 38250
+  // do board_link end`. A `{{\_|board_link}}` nest (on
   // `Cardtype+*type+*guide`, content+open) targets a NEW card whose name
   // `\_` keys to "" (cardname.rb:107-118 simple_key: `\` is outside
   // OK4KEY_RE `\p{Word}\*`, so `\_` gubs to `_` and splits away) - an
   // unknown card. Ruby's alter_unknown answers nil for this unknown-capable
   // view (permission.rb:38-40) and the denial check still runs; the new
   // card's read verdict denies (BasicCs+*type+*read = "Anyone Signed In",
-  // Anonymous denied) and the nest renders the 76-byte quiet denial span.
-  // LIVE-PROVEN 2026-10-03: example.com/Cardtype+*type+*guide
-  // ?view=content|open render the span at "click its ellipses icon (...)"
-  // in both the frozen capture and today's live bytes.
+  // Anonymous denied) and the nest renders the 76-byte quiet denial span
+  // at the "click its ellipses icon (...)" position in both views.
   { view: "board_link", config: true },
   // card-mod-format set/all/html/menu.rb `view :menu, denial: :blank,
   // unknown: true` (whose body answers "" for an unknown card). A signed-in
@@ -3988,7 +3985,7 @@ function normalizeView(view: string): string {
  * over format/error.rb:80-86, which returns the exception message verbatim
  * for a UserError (`unsupported_view_error_message` is the one that reaches
  * here in practice, error.rb:52-54) and otherwise the `lib_error_rendering`
- * locale line — the oracle's `Error rendering: <safe name> (<view> view)`.
+ * locale line — `Error rendering: <safe name> (<view> view)`.
  *
  * Shared by the two rescue scopes that mirror Ruby's per-`render!`
  * `wrap_and_render` (render.rb:96-100): nest()'s and the `render_<view>`
@@ -4042,11 +4039,11 @@ export const FIELD_SETTINGS: ReadonlySet<string> = new Set([
 /** set/type/set.rb:73-85 visible_setting_codenames —
  *  the setting_opts REGISTRY (Card::Setting.groups). Gem-complete census
  *  across the installed gems: exactly these 23 codenames
- *  register. *table of contents and *comment have NO set/self/*.rb in any
- *  gem — never in the groups — so the recent intersection drops them (the
- *  R16-era static RECENT_SETTINGS const carried both and is retired; the
- *  corpus-derived membership lives in the deck's *recent settings card,
- *  read live by recentSettingCodenames). */
+*  register. *table of contents and *comment have NO set/self/*.rb in any
+   *  gem — never in the groups — so the recent intersection drops them (a
+   *  static RECENT_SETTINGS list that carried both is retired; the
+   *  membership lives in the deck's *recent settings card,
+   *  read live by recentSettingCodenames). */
 export const REGISTERED_SETTING_CODENAMES: ReadonlySet<string> = new Set([
   "autoname",                                            // card-1.110.0 mod/core
   "create", "delete", "read", "update",                  // card-mod-permissions
@@ -4087,8 +4084,8 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  title: title do title.to_name.parts.join wrapped_joint end`, with
  *  `wrapped_joint` :44-46 = `wrap_with :span, (voo.joint || "+")`).
  *
- *  EVERY card-title span in the corpus is wrapped_title — the html :title
- *  view (title.rb:11-22) and, through it, `link_view`'s link text
+*  EVERY card-title span is wrapped_title — the html :title
+   *  view (title.rb:11-22) and, through it, `link_view`'s link text
  *  (set/all/base.rb:35-46 `link_to_card card.name, _render_title`) and the
  *  Link chunk (card-mod-content-0.20.0 lib/card/content/chunk/link.rb:31-33
  *  `options title: link_text || @name.to_name.fully_stripped`, :71-75
