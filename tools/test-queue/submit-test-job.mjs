@@ -1,6 +1,6 @@
 // Submit a test job to the decko local test queue and (by default) wait for the result.
 //
-// Design (operator-approved 2026-09-30): ONE shared queue. Lanes/tests never
+// Design: ONE shared queue. Lanes/tests never
 // check for each other and never sweep for running processes — they submit a
 // job, a single runner executes jobs one at a time, and identical jobs
 // (same cwd + command) are deduped so the test runs once and every submitter
@@ -15,8 +15,8 @@
 // --env (repeatable) is the env-setting channel: it is persisted in the job
 // file and injected into the job's child process by the runner, so gating a
 // test on an env var never requires shell syntax (`set X=1&&`, `X=1 cmd`)
-// inside --cmd — that syntax class is what got mangled or dropped at
-// submission time in the p20/p22 lane incidents (2026-09-30).
+// inside --cmd — that syntax class is what shells and command-string parsers
+// mangle or drop between submission and execution.
 //
 // Exit code = the job's exit code (when waiting). Result JSON is written to
 // <queue>/results/<id>.result.json and the full output to <queue>/logs/<id>.log.

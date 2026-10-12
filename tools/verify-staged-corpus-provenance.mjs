@@ -3,7 +3,7 @@
 //
 // WHY THIS EXISTS (mechanism; full write-up in
 // docs/parity-method.md): the photographed corpus and its
-// byte-variants coexist as same-size copies across pass worktrees; an
+// byte-variants coexist as same-size copies across worktrees; an
 // mtime-preserving staged copy can silently replace a worktree's
 // tmp/raw-ground-truth/deck-recapture/corpus-v2.sqlite3. Nothing else
 // checks the between-runs window -- the stageFile gate only guards
@@ -46,7 +46,8 @@
 // INTENDED CONSUMERS:
 //   - an operator or lane, before staging a capture/grade into a worktree:
 //       node tools/verify-staged-corpus-provenance.mjs --repo <dir> [--repo <dir> ...]
-//   - a grade receipt, verifying a worktree corpus against an M6 photograph:
+//   - a grade receipt, verifying a worktree corpus against an explicit
+//     photograph directory:
 //       node tools/verify-staged-corpus-provenance.mjs --repo <dir> --photograph <dir>
 //   - corpus-scale vitest seeding (see docs/parity-method.md):
 //     import verifyStagedCorpus from this module and refuse on !ok before
@@ -147,7 +148,7 @@ export function verifyStagedCorpus({ corpusFile, manifestPath, liveCorpusSha256 
   return result;
 }
 
-// Verify a list of repos (or one repo against an explicit M6 photograph dir).
+// Verify a list of repos (or one repo against an explicit photograph dir).
 // Returns { ok, exitCode, results } -- exitCode follows the family convention
 // (4 = provenance refusal) so a caller can refuse exactly like the runner.
 // NOTE: no liveCorpusSha256 passthrough here on purpose -- one preset hash

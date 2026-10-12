@@ -40,6 +40,6 @@ export function verifyStagedCorpus(opts: {
  *  its own corpus; one preset hash would be wrong for all but the first. */
 export function verifyStagedCorpora(opts: {
   repos: string[];
-  /** Check every repo's corpus against this M6 photograph dir's manifest. */
+  /** Check every repo's corpus against this photograph dir's manifest. */
   photographDir?: string | null;
 }): StagedCorporaReport;

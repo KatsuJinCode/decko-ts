@@ -7,12 +7,11 @@
 // submit-test-job.mjs so the run goes through the same one shared queue,
 // dedupe and result-recording path as every other test job.
 //
-// ENV GUARD (auditor F16, 2026-10-03): the queue runner is long-lived and
-// spawns the net from ITS OWN environment, so oracle env exported in the
-// submitting shell dies at the queue boundary; a no-env run silently becomes
-// a skip-heavy invalid net that still exits 0 (observed in the wild at the
-// fold-9 tip: 27 skipped vs the pinned 13, exit 0, three times in one day).
-// The guard in this file:
+// ENV GUARD: the queue runner is long-lived and spawns the net from ITS OWN
+// environment, so oracle env exported in the submitting shell dies at the
+// queue boundary. A no-env run therefore skips the oracle-dependent tests
+// while still exiting 0 — an invalid net that looks green. The guard in
+// this file:
 //   1. PRE-SUBMIT — refuses to submit when the manifest's envGuard.requiredEnv
 //      vars are absent from THIS shell, unless --allow-no-env is passed. The
 //      refusal names the missing vars and the exact --env invocation shape

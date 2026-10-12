@@ -1,4 +1,4 @@
-// Cloudflare Workers entry — the one-click Cloudflare demo (M2). The same
+// Cloudflare Workers entry — the one-click Cloudflare demo. The same
 // engine code runs on Node (see tests/ for the LocalSqliteDriver wiring) and
 // on Workers via this file.
 //
@@ -68,7 +68,7 @@ interface Deck {
 
 // One Deck per isolate (the Workers reuse pattern). The first request in
 // the isolate boots the engine; subsequent requests share the warm caches
-// (the #1282 promise: warm re-render issues zero queries). A FAILED boot is
+// (a warm re-render issues zero queries). A FAILED boot is
 // never cached: the next request retries (a transient D1 hiccup on first
 // hit must not poison the isolate — the deploy entry's proven pattern).
 // Cloudflare's production runtime refuses PBKDF2 above 100,000 iterations
@@ -90,13 +90,12 @@ async function bootDeck(env: Env): Promise<Deck> {
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);
   // The sync name environment (mark URLs /~<id> and /:<codename>) reads
-  // only warm caches; install + warm at boot or the marks 500 (the
-  // deploy entry's F4 pins cover the behavior; this is the shared prime).
+  // only warm caches; install + warm at boot or the marks 500.
   await installDeckNameEnvironment(driver, fetcher);
   // Virtual-card rule universe (src/card/fetch/virtual-cards.ts:44-49, the
   // storage factory's responsibility): without this hook compound names
   // that resolve only through the structure rule walk 404 even when the
-  // live deck has the rule.
+  // deck has the rule.
   const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
   fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
     contents: structureUniverseFromResults(universeResult),
@@ -224,16 +223,9 @@ const PAGE_STYLE = `
  *  renders in the SAME layout shell. The title is escaped here, at the
  *  emitter — every call site's title (200-pages, error pages) is covered;
  *  the body is HTML-by-contract and its dynamic interpolations are escaped
- *  at their own call sites.
- *
- *  deploy-surface-union (2026-10-03): the ESCAPE is the deploy lineage's
- *  5dd6ab0 fix (the one the deployed edge serves) — a parsed card name rides
- *  the title on 200-pages, so a crafted URL-path name must land as text.
- *  The lineage's root worker.ts has had this since edge-true-union; this
- *  line's copy predated it (the carried layout-page-title-escape pin
- *  exposed the gap). escapeHtml's body is verbatim
- *  12bd5236:worker.ts:144-151 (the same body the carried shim
- *  bunny-edge-lineage-worker-surface.ts serves the bunny path from). */
+ *  at their own call sites. The escape matters because a parsed card name
+ *  rides the title on 200-pages, so a crafted URL-path name must land as
+ *  text. */
 export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -323,8 +315,7 @@ export default {
           if (record === undefined || record.name === undefined) {
             return json(404, { error: "card not found", name });
           }
-          // The read gate (the deploy entry's .json gate, probe battery
-          // batch-05): Ruby's GET of a denied card renders the denial
+          // The read gate: Ruby's GET of a denied card renders the denial
           // (ok_to_read? fails, set/all/permissions.rb:139-146); the JSON
           // surface answers 403 without the protected fields. Same engine
           // verdict the HTML path judges with (RenderEngine#canReadCard).
@@ -386,9 +377,8 @@ export default {
       // The Card::Error status_code table (prototype/lib/card/error.rb),
       // shared with deploy/worker.ts via mapRenderError: NotFound -> 404,
       // the UserError raise for an unregistered view -> 422, else 500.
-      // This entry shipped a blanket 500 for missing cards until the
-      // deploy-button verification lane caught it live (the public
-      // lineage's 90d5f31); the mapping is now shared code, not a twin.
+      // This entry previously shipped a blanket 500 for missing cards;
+      // the mapping is now shared code, not a twin.
       const mapped = mapRenderError(message);
       if (parsed.format === "json") {
         // The json dispatch answers the mapped status in the staging's

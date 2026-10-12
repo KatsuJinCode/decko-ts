@@ -3,9 +3,9 @@
 What this is: the decko project's shared test-runner queue. Any lane, any
 integration merge, any verification run submits a job instead of starting
 vitest directly. A single runner executes queued jobs one at a time (up to
-`--workers N`) and returns each submitter its result. Approved by the
-operator 2026-09-30. **Entirely local — runs on this machine only; nothing
-here touches or resembles any cloud CI service.**
+`--workers N`) and returns each submitter its result. **Entirely local —
+runs on this machine only; nothing here touches or resembles any cloud CI
+service.**
 
 ## Why it exists
 
@@ -74,12 +74,12 @@ path and result JSON path are printed. `--no-wait` returns the job id only.
 `--workers 2` (on the FIRST submitter while no runner is alive) lets the
 runner execute two jobs at once; the default is one at a time.
 
-## Standing-net env guard (auditor F16, 2026-10-03)
+## Standing-net env guard
 
 `run-standing-net.mjs` refuses to produce the classic no-env accident, in
 which a net submitted without the oracle env rides the long-lived runner's
 own environment, silently skips the oracle-dependent tests (~27 skips instead
-of the pinned 13 on the fold-9 net) and still exits 0.
+of the pinned 13) and still exits 0.
 
 - **Pre-submit**: if the manifest's `envGuard.requiredEnv` vars are absent
   from the submitting shell (or not forwarded via `--env`), the submission is

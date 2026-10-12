@@ -43,7 +43,7 @@ function pidAlive(pid) {
 }
 
 // ---------------------------------------------------------------------------
-// Stale-running-job adjudication (2026-10-04, queue-repair lane).
+// Stale-running-job adjudication.
 //
 // THE WEDGE THIS REPAIRS. claimNextJob() below claims by renaming
 // pending/<id>.job.json -> running/<id>.job.json. If the runner process dies
@@ -53,9 +53,7 @@ function pidAlive(pid) {
 // scans RUNNING *and* PENDING, so any lane resubmitting an identical
 // cwd+cmd+env is handed the dead job id, and waitForResult() then polls for a
 // result file that can never be written, blocking that submitter for
-// timeoutMin + 2 minutes before failing it. Measured on this machine
-// 2026-10-04: five such strands, claimed 2026-10-02/03 by runner pids 39872,
-// 55908, 42416 and 58764, every one of them confirmed dead by tasklist.
+// timeoutMin + 2 minutes before failing it.
 //
 // THE REPAIR. This flag adjudicates a stranded job the way the runner itself
 // would have written it: a FAILED result in runJob()'s exact shape, carrying a
@@ -409,14 +407,12 @@ function runJob(job) {
   return new Promise((resolve) => {
     const startedAt = new Date().toISOString();
     const logPath = path.join(LOGS, `${job.id}.log`);
-    // APPEND, never truncate (instrument-reliability lane, 2026-10-01). The
-    // pre-fix "w" open destroyed a previous attempt's stdout whenever the same
-    // job id ran again -- the exact loss class an earlier grade suffered when
-    // its ad-hoc launcher redirected stdout with ">" and attempt 2's launch
-    // erased attempt 1's phase lines (profile-full-checker-2026-10-01.md §6).
-    // Identical pending/running jobs dedupe onto one id
-    // (submit-test-job.mjs jobKey), so id reuse is a designed occurrence and
-    // the log must accumulate. Each attempt opens with a separator block so
+    // APPEND, never truncate. Opening with "w" destroys a previous attempt's
+    // stdout whenever the same job id runs again. Identical pending/running
+    // jobs dedupe onto one id (submit-test-job.mjs jobKey), so id reuse is a
+    // designed occurrence and the log must accumulate across attempts —
+    // losing the earlier attempt's output is exactly the failure mode
+    // truncation produces. Each attempt opens with a separator block so
     // the attempts are readable apart.
     const log = fs.openSync(logPath, "a");
     fs.writeSync(
@@ -431,8 +427,9 @@ function runJob(job) {
 
     // Per-job env (--env KEY=VALUE, persisted in the job file) rides on top
     // of the runner's inherited environment. This is the env-setting channel
-    // for lanes: it needs no shell syntax in job.cmd, so nothing can strip
-    // or mangle it between submit and child (the p20/p22 incident class).
+    // for lanes: it needs no shell syntax in job.cmd, so shell quoting and
+    // command-string parsing cannot strip or mangle the value between submit
+    // and child.
     const childEnv = { ...process.env, ...(job.env ?? {}) };
 
     const shellOpener =
@@ -464,12 +461,12 @@ function runJob(job) {
       // win32: pass the command line verbatim. Node's default Windows argv
       // escaping wraps the whole cmd in quotes and rewrites every inner `"`
       // to `\"`; `cmd /d /s /c` then strips the outer pair and the child
-      // parses the leftover `\"` tokens, silently corrupting quoted payloads
-      // (proven 2026-09-30: `node -e "console.log(1)"` via this spawn path
-      // produced zero output with exit 0 — the "env-gate-stripped" incidents).
-      // Verbatim leaves job.cmd byte-exact, which is what cmd /c rest-of-line
-      // semantics want. POSIX exec passes argv verbatim already, so the shell
-      // opener above needed no change; this option is a no-op there.
+      // parses the leftover `\"` tokens, silently corrupting quoted payloads.
+      // Repro: `node -e "console.log(1)"` submitted through this spawn path
+      // produces zero output and exits 0 without this option. Verbatim leaves
+      // job.cmd byte-exact, which is what cmd /c rest-of-line semantics want.
+      // POSIX exec passes argv verbatim already, so the shell opener above
+      // needed no change; this option is a no-op there.
       windowsVerbatimArguments: process.platform === "win32",
       windowsHide: true,
       stdio: [ "ignore", log, log ],
