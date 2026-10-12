@@ -3,10 +3,7 @@
 //
 // The Ruby body is one call: `hidden_field :content, class: "d0-card-content"`.
 //
-// BYTE PARITY (re-pinned from an earlier hash-as-name pin): the GRADED
-// corpus oracle (reference-harness fixtures synthetic-v2,
-// expected/render.jsonl.gz view:admin:Topic 001+summary:hidden_content_field,
-// expected manifest oracle variant "stock") pins the FORM-BUILDER bytes —
+// BYTE PARITY: the oracle bytes pin the FORM-BUILDER bytes —
 //
 //   <input class="d0-card-content form-control" autocomplete="off"
 //          type="hidden" value="<escaped dbContent>"
@@ -16,16 +13,14 @@
 // (card-mod-edit set/all/form.rb:146-149 form -> new_form ->
 // instantiate_builder(form_prefix, card), the form-root prefix "card")
 // into FormBuilder#hidden_field(method, options) (actionview
-// form_helper.rb:2518). The same byte shape is capture-pinned on the
-// list surfaces (card-mod-list.ts hiddenContentField, from
-// fixtures/captured rules-views.json) and reused verbatim by
-// card-mod-permissions' :input literal.
+// form_helper.rb:2518). The same byte shape is pinned on the
+// list surfaces (card-mod-list.ts hiddenContentField) and reused verbatim
+// by card-mod-permissions' :input literal.
 //
-// An earlier lane pinned a probe capture whose bytes carried the options
-// hash in the name/id slots (a FormHelper#hidden_field(object_name,
-// method) mis-bind, actionview-7.2.3.2 form_helper.rb:1214). The graded
-// stock-oracle corpus contradicts that capture, and the corpus gate is
-// the arbiter — the view renders the oracle bytes and this file pins
+// An earlier pin recorded bytes carrying the options hash in the name/id
+// slots (a FormHelper#hidden_field(object_name, method) mis-bind,
+// actionview-7.2.3.2 form_helper.rb:1214). The oracle corpus contradicts
+// that recording — the view renders the oracle bytes and this file pins
 // them.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -72,7 +67,7 @@ describe("card-mod-format :hidden_content_field (set/all/content.rb:56-60)", () 
     ).rejects.toThrow(UnsupportedViewError);
   });
 
-  it("WITH the mod: renders the graded corpus bytes (the form-builder hidden field)", async () => {
+  it("WITH the mod: renders the oracle bytes (the form-builder hidden field)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModFormat }]);
     loader.load();

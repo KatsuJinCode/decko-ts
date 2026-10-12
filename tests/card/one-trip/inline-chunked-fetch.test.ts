@@ -217,8 +217,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
       expect(
         walkStatements.length,
         "the recursive discovery phase must run in EXACTLY ONE statement per seat " +
-          "(the head); at base every chunk re-runs it (WIRE-DIAGNOSIS §4: 37 " +
-          "closure walks per Aikido seat, ~18 s)",
+          "(the head); at base every chunk re-ran it — 37 " +
+          "closure walks per Aikido seat, ~18 s",
       ).toBe(1);
       expect(issued[0]!.sql, "the single discovery statement is the head").toMatch(
         /\bWITH RECURSIVE\b/,

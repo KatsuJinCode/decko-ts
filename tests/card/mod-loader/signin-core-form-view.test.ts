@@ -1,16 +1,15 @@
 // The *signin :core view — the sign-in form — pinned byte-first against the
-// LIVE-WIRE oracle (edge-signin-form-fix lane, 2026-10-03).
+// production oracle.
 //
 // THE BUG THIS PIN LOCKS SHUT: the port had no self/signin :core
 // (card-mod-account-0.20.0 set/self/signin.rb:119-125 — card_form :update,
 // recaptcha: :off, success: signin_success, wrapping the core.haml
 // template), so GET /*signin rendered the *signin card's base RichText
-// content — EMPTY on the real deck — in the titled body. The trial edge
+// content — EMPTY on the real deck — in the titled body. The deployed edge
 // served that heading-only page and its 24h shared cache pinned it: an
 // operator clicking "Sign In" got no email field, no password field, no
-// submit. Live production example.com renders the form; the capture
-// this file pins against is production's own anonymous GET /*signin
-// (REPO_DIR an internal work log, 2026-10-03).
+// submit. Live production renders the form; the capture
+// this file pins against is production's own anonymous GET /*signin.
 //
 // What is DERIVED from the deck at render time (not capture-copied): the
 // card id in the form dom id, the subcards' type/set keys (from the render
@@ -23,13 +22,13 @@
 // presence gate (wrap.rb:63-78): this render is a ROOT render — empty
 // context, NO name_context — so the capture's tail (production rendered
 // the form nested in the page, context "*signin") is not part of these
-// bytes; the synthetic-v2 corpus pins both postures (core:anonymous:*signin
-// without the key, page:anonymous:*signin with "name_context":"*signin").
+// bytes; the corpus fixtures pin both postures (the anonymous :core pin
+// without the key, the anonymous page pin with "name_context":"*signin").
 // The ONLY byte this file normalizes is the per-render random
 // data-slot-id (SecureRandom hex(10), the repo-wide RANDOMIZED convention).
 //
 // Ruby line citations in the expectations match the downloaded gem
-// (rubygems.org card-mod-account-0.20.0, extracted this lane).
+// (rubygems.org card-mod-account-0.20.0).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -102,9 +101,10 @@ function normalize(html: string): string {
 }
 
 /** The oracle bytes: production's anonymous GET /*signin form region,
- *  transcribed verbatim from live-signin-ref.html lines 86-111 (the seeded
- *  card id IS 19957, the production card's id, so the dom id matches the
- *  capture byte-for-byte; data-slot-id is the one normalized byte). */
+ *  transcribed verbatim from the production reference page's form region
+ *  (the seeded card id IS 19957, the production card's id, so the dom id
+ *  matches the capture byte-for-byte; data-slot-id is the one normalized
+ *  byte). */
 const ORACLE_FORM = `<form class="card-form slotter autosave" id="edit_card_19957" recaptcha="off" action="/update/*signin" accept-charset="UTF-8" data-remote="true" method="post"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="hidden" name="_method" value="patch" autocomplete="off" /><input type="hidden" name="success[redirect]" id="success_redirect" value="true" autocomplete="off" /><input type="hidden" name="success[mark]" id="success_mark" value="*previous" autocomplete="off" /><div class='signin-fields'>
 <fieldset class="card-editor editor"><div class="form-group card-editor RIGHT-Xemail" data-card-name="*signin+*email" data-card-link-name="*signin+*email"><label for="card_subcards___email_content"><span class="card-title" title="email">email</span>
 <div id="Xsignin-Xemail-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail" data-card-name="*signin+*email" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*email" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;email&quot;}"></div></label>
@@ -132,16 +132,16 @@ const ORACLE_FORM = `<form class="card-form slotter autosave" id="edit_card_1995
 </div>
 </form>`;
 
-describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", () => {
+describe("self/signin :core — the sign-in form", () => {
   /** The form bytes per CONTEXT posture. Ruby's help-slot payload carries
    *  "name_context" only when the render sits inside a live name context
    *  (wrap.rb:74-78; context_names.rb:22-29): a ROOT :core render has an
-   *  empty working context (the corpus oracle core:anonymous:*signin pins
+   *  empty working context (the corpus's anonymous :core oracle pins
    *  ORACLE_FORM verbatim), while the :titled body runs add_name_context
    *  before its core (html/views.rb:59 naming), so the SAME form renders
    *  with `,"name_context":"*signin"` on both help slots inside :titled —
-   *  the posture the production capture and the corpus page op
-   *  (page:anonymous:*signin) pin. */
+   *  the posture the production capture and the corpus's anonymous page
+   *  oracle pin. */
   function formFor(posture: "root" | "nested"): string {
     if (posture === "root") return ORACLE_FORM;
     const tail = `,&quot;name_context&quot;:&quot;*signin&quot;`;
@@ -154,7 +154,7 @@ describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", (
     );
   }
 
-  it("renders the live-oracle form bytes on the :core view", async () => {
+  it("renders the production oracle form bytes on the :core view", async () => {
     const s = storage!;
     const html = await s.engine.render("*signin", "core");
     expect(normalize(html)).toBe(formFor("root"));
@@ -169,7 +169,7 @@ describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", (
     // the titled wrap the layout's {{_main|titled}} chunk produces, with the
     // form (not the empty content) as the body — in the NAMED-CONTEXT
     // posture (:titled adds the name context before its body), the same
-    // posture the production capture and the corpus page op pin
+    // posture the production capture and the corpus page oracle pin
     expect(titled).toContain(
       `<div class="d0-card-body d0-card-content ALL TYPE-rich_text STAR SELF-Xsignin">` +
         `<form class="card-form slotter autosave" id="edit_card_19957"`,
@@ -200,7 +200,7 @@ describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", (
   it("the base :content view still renders the card's stored content (the form is a :core override, not a content rewrite)", async () => {
     // pins the blast radius: only :core (and its open_content delegation)
     // changed — the ok_to_read test's `render("*signin","content")` class of
-    // pins keep their pre-lane meaning.
+    // pins keep their pre-fix meaning.
     const s = storage!;
     await seedCard(s, { id: 19960, name: "Plain Signin Body", dbContent: "stored body bytes" });
     expect(await s.engine.render("Plain Signin Body", "content")).toContain(

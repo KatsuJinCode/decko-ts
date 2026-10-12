@@ -157,7 +157,7 @@ async function runValidate(saveInput: ModEventSaveInput): Promise<ModEventStageR
   );
 }
 
-describe("A9 event :recaptcha — the engine-level wiring (guard computed from the real actor)", () => {
+describe("event :recaptcha — the engine-level wiring (guard computed from the real actor)", () => {
   it("a signed-in save with keys + rule '1' skips the event (recaptcha_on? requires !signed_in?, recaptcha.rb:20)", async () => {
     const storage = await createActionsTestStorage();
     await seedStandardDeck(storage);
@@ -219,7 +219,7 @@ describe("A9 event :recaptcha — the engine-level wiring (guard computed from t
   });
 });
 
-describe("A9 event :recaptcha — the guard-on arms (seam level, the registered event the engine fires)", () => {
+describe("event :recaptcha — the guard-on arms (seam level, the registered event the engine fires)", () => {
   it("a failed verify refuses the save with the default human message", async () => {
     const g = guardOn();
     const stub = stubVerify({ success: false });

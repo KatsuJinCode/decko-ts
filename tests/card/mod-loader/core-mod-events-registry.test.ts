@@ -38,7 +38,7 @@ function declaredEvents(): Array<{ setPath: string } & ModEventRegistration> {
 }
 
 /** The 31 event names the core mod's set modules declare. */
-const RECOUNT_31 = [
+const DECLARED_EVENT_NAMES_31 = [
   "admin_tasks",
   "check_for_cards_of_type",
   "check_for_cards_of_type_when_type_changed",
@@ -75,8 +75,8 @@ const RECOUNT_31 = [
 describe("core mod event registry — all 31 Ruby events declare", () => {
   const events = declaredEvents();
 
-  it("declares exactly the recount's 31 names, no more, no fewer", () => {
-    expect(events.map((e) => e.event).sort()).toEqual([...RECOUNT_31].sort());
+  it("declares exactly those 31 names, no more, no fewer", () => {
+    expect(events.map((e) => e.event).sort()).toEqual([...DECLARED_EVENT_NAMES_31].sort());
   });
 
   it("each declares from its gem set file", () => {
@@ -141,7 +141,7 @@ describe("core mod event registry — all 31 Ruby events declare", () => {
   });
 });
 
-describe("the admin_tasks runner — the first batch, ported", () => {
+describe("the admin_tasks runner — the core mod's task surface", () => {
   it("runs the matched task's policy when params.task names a basket task", () => {
     const executed: string[] = [];
     const config = {

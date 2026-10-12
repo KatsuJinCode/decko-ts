@@ -120,7 +120,7 @@ const ALL_THIRTEEN = [
   "views",
 ] as const;
 
-describe("core mod admin surface — dispatch (the 13 coverage-doc names)", () => {
+describe("core mod admin surface — dispatch (the 13 declared views)", () => {
   it("WITHOUT the mod: :core on *admin renders the base core view, not the admin task table", async () => {
     const s = storage!;
     // without the mod, :core on *admin renders the base core view, not the
@@ -485,7 +485,7 @@ describe("core mod admin runtime — the engine-config reads the views need", ()
     expect(CORE_TASK_BASKET.delete_upload_tmp_files!.mod).toBe("carrierwave");
   });
 
-  it("exposes the warning basket (probe-1 basket_warnings minus recaptcha's)", async () => {
+  it("exposes the warning basket (every basket_warnings entry except recaptcha's)", async () => {
     const { CORE_WARNING_BASKET } = await import(
       "../../../src/card/mod-loader/mods/core-mod.js"
     );
