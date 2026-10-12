@@ -269,8 +269,7 @@ export class Voo {
   /** The view this slot's OWN optional render arg enrolled (set in
    *  processVisibility; undefined = none). Intermediate renders (bar.rb's
    *  bar_bottom -> render :content) enroll their own view; the VIEW-SURFACE
-   *  ROOT render's enrollment is the capture-harness artifact the live
-   *  serializer does not carry. */
+   *  ROOT render's enrollment is not carried by the serializer. */
   private optionalEnrolledView: string | undefined;
 
   /** The viz entries that trace to the VIEW-SURFACE ROOT slot's optional
@@ -313,7 +312,7 @@ export class Voo {
     }
     const requested = this.requestedView;
     // null = NO optional render opt (the show_with_page_layout main render —
-    // the captured slot has no "show" viz). JS default params
+    // its slot carries no "show" viz). JS default params
     // apply on undefined, so the page path passes null, not undefined.
     if (optional !== undefined && optional !== null && optional !== false && !this.viz.has(requested)) {
       this.viz.set(requested, optional === "hide" || optional === false ? "hide" : "show");
@@ -661,8 +660,8 @@ export class TooDeepError extends Error {
  * self/type/type_plus_right SET PATTERN". The distinction is load-bearing:
  * the `type` set pattern (03_type.rb, `applies: card.type_id != null`)
  * applies to essentially every typed card, so reading it here made every
- * typed nest miss virtual and grew Role+*type+*default's navbar menu by one
- * live row the capture does not carry — the pointer's
+ * typed nest miss virtual and grew a Role+*type+*default navbar menu by one
+ * spurious row — the pointer's
  * nav_link_in_dropdown items ARE nests (navbar-views.ts
  * #dropdownMenuItems), and the post-divider tail is a single
  * `\n<span class="denied">`.
@@ -830,15 +829,13 @@ export class RenderFormat {
    * form machinery and stays unported. :compact substitutes per
    * viewInCompactMode below.
    *
-   * COMPACT CENSUS (re-verified 2026-10-01
-   * on the sha-verified
-   * 6a44dfdc dump copy + the 97 expected-v2 shards): the substitution has
-   * ZERO observable on the recorded capture surface — every captured
-   * one-line render (30,037 divs) is a raw or nest-free arm
+   * COMPACT CENSUS: the substitution has
+   * ZERO observable on the rendered surface — every one-line render
+   * (30,037 divs) is a raw or nest-free arm
    * (card-mod-content set/right/default.rb:4-7 + right/structure.rb:
    * 14-16, card-mod-layout set/right/head.rb:11-13, card-mod-format
    * set/type/html.rb:10-16 chunk_list :references; closed_content: zero
-   * captured entries; the five rule bars that do render one-lines carry
+   * entries; the five rule bars that do render one-lines carry
    * literal `{{...}}` or nest-free truncated prose first-hand:
    * *all+*head `{{:head|core}}`, Role+*type+*default
    * `RichText : <p>{{+description}}</p>…`, both *guide bars truncate
@@ -897,9 +894,9 @@ export class RenderFormat {
    * fresh voo state (the child voo's visibility inherits from the
    * SUBFORMAT's undefined voo, not the caller's). The rules mod's
    * current_rule_form (rule_form.rb:41-44) renders the inner :rule_form
-   * through this boundary: the captured overlay_rule/modal_rule/rule_edit
+   * through this boundary: the overlay_rule/modal_rule/rule_edit
    * slots carry show/hide lists that do NOT leak into the inner rule_form
-   * slot's JSON (rules-views.json: overlay_rule hide [menu,help]; the
+   * slot's JSON (overlay_rule hides [menu,help]; the
    * nested rule_form slot's show list is ["rule_form"] alone), which is
    * Ruby's subformat isolation. Returns the subformat's renderView output.
    */
@@ -1377,11 +1374,7 @@ export class RenderFormat {
    *  task) = the plain STRING "You need permission to read this." inside
    *  the wrap div (golden: `<h1>Sorry!</h1>\n<div>You need permission to
    *  read this.</div>`). The signed-out branch is sign_in_or_up_links,
-   *  whose own inner div nests inside the wrap (the captured anonymous
-   *  corpus surface, byte-pinned by the dual-lane denial pages —
-   *  untouched). The authenticated goldens all render the signed-in branch
-   *  because the capture session stays the bot (Auth.current never leaves
-   *  the runner session — capture-authenticated-pages.rb:143-153). */
+   *  whose own inner div nests inside the wrap. */
   private loudDenialMessageHtml(deniedTask: string): string {
     if (this.engine.pageSession?.signedIn === true) {
       return `<div>You need permission to ${deniedTask} this.</div>`;
@@ -2214,8 +2207,8 @@ export class RenderFormat {
     // 26-28) and template = the *default rule card for a nest-miss
     // (templating.rb new_card_template — no *structure rule governs here,
     // else the fetch-level virtual resolution would have produced the card
-    // and this builder would not run). The an earlier pass class pins the applied
-    // form: the oracle's associative_inquiry-discussion-titled-view body is
+    // and this builder would not run). The applied
+    // form: a discussion titled body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
     // verbatim. (The open view is the exception: its accordion
     // body renders the INNER :content dispatch, itself substituted to
@@ -3589,8 +3582,8 @@ export interface RenderEngineLike {
   hostItemTypeName?(card: RenderCard): { typeName: string; typeId: number } | undefined;
   /** The precomputed permission verdicts for one UNKNOWN pointer/list item
    *  (the fetch-miss item lines the prepare phase's pointer walk found):
-   *  `read` = canReadByRuleLookup on the phantom's pattern input (the
-   *  oracle's radio item renders the FULL bar while a denied
+   *  `read` = canReadByRuleLookup on the phantom's pattern input (a readable
+   *  item renders the FULL bar while a denied
    *  phantom renders the two-span body - the split IS Ruby's read rule),
    *  `create` = taskVerdictForCard(:create) (the unknown/mini_unknown
    *  views' createable gate, html/error.rb:19-21). Keyed per
@@ -4576,13 +4569,13 @@ function linkNestCardName(
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
- *  THE TWO SURFACES DIFFER ON A LINK TITLE (a `[[june jessup+musings]]`
+ *  THE TWO SURFACES DIFFER ON A LINK TITLE (a `[[<author>+<topic>]]`
  *  link in a RichText Menu card's body):
- *    page surface  `<span class="card-title" title="+musings">…`
- *    view surface  `<span class="card-title" title="june jessup+musings">…`
+ *    page surface  `<span class="card-title" title="+<topic>">…`
+ *    view surface  `<span class="card-title" title="<author>+<topic>">…`
  *  on BOTH the content and open views. The round-trip guard in
  *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
- *  is why the view-surface half is not "june jessup+musings" compressed
+ *  is why the view-surface half is not compressed
  *  either: it never gets a context to compress against, and when it does get
  *  one, `from` refuses any compression that would not absolutize back.
  *
@@ -4786,10 +4779,10 @@ export function expandWikiLinks(
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
     // (context_names.rb:20-29). On the page surface, an authored
-    // `[[june jessup+musings]]` under the page card `June Pemberton+Menu`
-    // renders `title="+musings"`; the same link on the view surface keeps
-    // `title="june jessup+musings"` because nothing called add_name_context
-    // there. `Task+discussion` is the second instance
+    // `[[<author>+<topic>]]` link under that author's `+Menu` page card
+    // renders `title="+<topic>"`; the same link on the view surface keeps
+    // the full `title="<author>+<topic>"` because nothing called
+    // add_name_context there. `Task+discussion` is the second instance
     // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
     const nestCard = linkNestCardName(fetchTarget, known ? namedLink?.name : undefined);
     const nestContextNames =
@@ -4807,11 +4800,10 @@ export function expandWikiLinks(
     // "Help Desk" display "Help Desk" over href /Help_Desk, or
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
-    // `<span>+</span>` per joint —
-    // `<a class="known-card" href="/June_Pemberton+musings"><span
-    // class="card-title" title="june jessup+musings">steven
-    // goldin<span>+</span>musings</span></a>`, and the page-surface
-    // `+musings` half splits the SAME way
+    // `<span>+</span>` per joint, e.g. the anchor text
+    // `<span class="card-title" title="<author>+<topic>"><author
+    // name><span>+</span><topic></span>`, and the page-surface
+    // `+<topic>` half splits the SAME way
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
     // relativization, not the authored text.
@@ -4844,10 +4836,10 @@ export function expandWikiLinks(
  *  objectify'd (link.rb:113-122 raw.strip!) so `[[/ | {{logo}}]]` - the
  *  space between pipe and label - is Ruby's own shape (divider_index
  *  splits at the pipe; the label keeps its leading space until
- *  objectify strips it), and the classic-layout oracle pins exactly that
- *  byte shape: `[[/ | {{*logo}}]]` in the layout source renders
+ *  objectify strips it), and Ruby's own byte shape is exactly that:
+ *  `[[/ | {{*logo}}]]` in the layout source renders
  *  `<a class="internal-link" href="/">{{*logo}}</a>` INSIDE the CodeRay
- *  output (view-surface shard-000000 entry 314, content view). Returns the
+ *  output. Returns the
  *  piece's prefix (still plain-text) and the target for renderLinkChunk
  *  (which trims the target - objectify strips it too). */
 function matchLinkWrappedNestOpener(text: string): { prefix: string; target: string } | undefined {
@@ -4867,12 +4859,11 @@ function matchLinkWrappedNestOpener(text: string): { prefix: string; target: str
  *  Ruby's Link chunk (link.rb:14 `full_re /\[\[([^\]]+)\]\]/`) matches the
  *  RAW string BEFORE any nest chunking, and its target charset `[^\]]`
  *  admits braces — so the target is the RAW `"/new/{{_self|linkname}}"` and
- *  the oracle's href carries the braces verbatim
- *  (`expected-v2/view-surface recapture-raw-shard-000000.jsonl`,
- *  `Cardtype+*type+*default`, content + open: `<a class="internal-link"
- *  href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>`). The
- *  un-spanned form leaked the whole `[[…]]` wikitext; that is the -32-byte
- *  view-surface byte-diff on this card in both views.
+ *  the href carries the braces verbatim: a `Cardtype+*type+*default` card's
+ *  content and open views both render
+ *  `<a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>`. The
+ *  un-spanned form leaked the whole `[[…]]` wikitext; that is the 32-byte
+ *  view-surface difference on this card in both views.
  *
  *  SCOPE: the head charset excludes `{`/`}` as well as the bracket/pipe/newline
  *  set, so only a PLAIN target head opens the span. A `[[{{nest}}]]` form
