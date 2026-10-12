@@ -201,12 +201,10 @@
 //
 //         DECKO_WRITE_PATH=1 DECKO_FIRST_RUN=1
 //
-//   What the profile does NOT do (UPDATED, the account scope pass — this note's original
-//   text read "it does not seed an account system … the engine has no
-//   mod-seeding capability to create them", which is no longer true): the
-//   engine now HAS the boot-seed capability — src/card/auth/boot-seed.ts
-//   (bootstrapFreshDeck), the port of cardio/seed.rb + card:eat ruled IN by
-//   OPERATOR-SCOPE-RULINGS-2026-10-05.md §R-3 — and the staging server's
+//   What the profile does NOT do: the
+//   engine HAS the boot-seed capability — src/card/auth/boot-seed.ts
+//   (bootstrapFreshDeck), the port of cardio/seed.rb + card:eat — and the
+//   staging server's
 //   boot wires it right after its schema-init step, for an EMPTY deck under
 //   this same profile. What is still true: THIS module performs no seeding.
 //   The census stays honest about a deck the boot seed never ran on: a deck
