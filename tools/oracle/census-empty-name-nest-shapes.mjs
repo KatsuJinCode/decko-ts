@@ -2,8 +2,8 @@
 // renders a blank-name nest `{{}}`, and of what discriminates the shapes.
 //
 // WHY
-//   M4: the port renders `{{}}` in a way that disagrees with the oracle on
-//   some captures and not others. `census` over the sha-verified expected-v2
+//   The port renders `{{}}` in a way that disagrees with the oracle on
+//   some captures and not others. A `census` over the sha-verified expected-v2
 //   view lane reads every occurrence and classifies it:
 //
 //     RAW    the braces survive verbatim (the nest was not consumed)
