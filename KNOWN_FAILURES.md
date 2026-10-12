@@ -1,4 +1,6 @@
 # Known test failures
+| `tests/exercise/accounts-3.test.ts` | passes alone; failed once inside a concurrent candidate-gate run (shared tmp state during the auth setup race) | 2026-10-12 |
+| `tests/card/auth/first-run-setup-endpoint.test.ts` | passes alone; failed once inside a concurrent candidate-gate run, same class | 2026-10-12 |
 | `tests/card/actions/atomic-saves.test.ts` | passes alone (44 of 44); failed once inside a concurrent full-suite run on the candidate gate (its first-use engine build races the shared tmp state) | 2026-10-11 |
 
 These suites fail on a clean clone with `npx vitest run`. Each fails identically
