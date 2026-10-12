@@ -1,9 +1,9 @@
 // The WRITE path's obstructed self-side on a rename: ensureSides
-// (card-action-engine.ts) ports Ruby's prepare_obstructed_side
+// (card-action-engine.ts) implements the upstream prepare_obstructed_side
 // clear+recreate (card-1.110.0 mod/core/set/all/name_events.rb:144-150),
 // never resolving the side onto the renaming card's own row.
 //
-// Ruby ground truth, mechanism chain:
+// Ground truth, mechanism chain (upstream source):
 //   name= runs assign_side_ids at ASSIGNMENT time
 //   (lib/card/name/all.rb:21-27 -> :76-90): each side resolves through
 //   Lexicon.id right away, so a side naming the card itself gets the card's
@@ -27,9 +27,9 @@
 // filtered out — prepare_obstructed_side (:144-150) makes that side a
 // fresh card in the same act, so only the OTHER peeked sides can witness
 // an ancestry cycle (the guard's own module doc :12-17 names the direct
-// self case as the one Ruby RESTRUCTURES). These tests pin that RUBY end
-// state: the restructured junction, the fresh sides, and the lexicon/act
-// linkage the store stage must land.
+// self case as the one the upstream code RESTRUCTURES). These tests pin
+// that end state: the restructured junction, the fresh sides, and the
+// lexicon/act linkage the store stage must land.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -121,7 +121,7 @@ afterEach(() => {
   setNameEnvironment(undefined); // leave no warm env for the next file
 });
 
-describe("obstructed self-side rename write: Ruby's clear+recreate end state", () => {
+describe("obstructed self-side rename write: the clear+recreate end state", () => {
   it("OSS1 simple card onto its own child (Pod -> Crib+Pod): the right side is a FRESH Pod card, not the renamed row (name_events_spec.rb:43-45)", async () => {
     const s = await createActionsTestStorage();
     await seedVerSkeleton(s, 42);
@@ -167,7 +167,7 @@ describe("obstructed self-side rename write: Ruby's clear+recreate end state", (
     expect((await s.engine.lexicon.name(50))?.s).toBe("Crib+Pod");
 
     // The recreated side joined the rename's act (subcard semantics,
-    // subcards/all.rb:15-22; the port patches super_action_id).
+    // subcards/all.rb:15-22; the engine patches super_action_id).
     const sideAction = await s.selectOne<{ super_action_id: number | null }>(
       "SELECT super_action_id FROM card_actions WHERE card_id = ? ORDER BY id DESC LIMIT 1",
       [rightId],
@@ -203,7 +203,7 @@ describe("obstructed self-side rename write: Ruby's clear+recreate end state", (
 
     // The recreated left side is a FRESH Alpha+Beta junction: same sides as
     // the original (Alpha 60, Beta 61) and the TEMPLATE type 70
-    // (Beta+*right+*default) — Ruby's subcard resolves the new-card
+    // (Beta+*right+*default) — the subcard resolution picks up the new-card
     // template (type.rb:76-78), unlike the original row's type 42.
     const freshJunction = await s.selectOne<{ left_id: number; right_id: number; type_id: number }>(
       "SELECT left_id, right_id, type_id FROM cards WHERE id = ?",
