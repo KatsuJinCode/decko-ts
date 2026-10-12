@@ -1,5 +1,5 @@
 // first-diff-named-entries-probe.mjs -- ONE boot, first-diff EVERY named
-// residual block entry across many shards (lane mopup-longtail-bytes).
+// residual block entry across many shards.
 //
 // WHAT THIS IS
 //   tools/oracle/probe-view-lane-byte-divergence.mjs is the view-lane

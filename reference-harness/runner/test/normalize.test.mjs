@@ -256,7 +256,7 @@ describe("N6: backtrace frame lines, the host-VM stack canonical form", () => {
   const rubyFrame = (gem, line, method) =>
     `C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/${gem}:${line}:in \`${method}&#39;`;
   const v8Frame = (fn, file) =>
-    `at ${fn} (file:///C:/localProjects/decko-ts-corpusinst/src/card/render/${file})`;
+    `at ${fn} (file:///checkout/src/card/render/${file})`;
   const join = (frames) => frames.join("&lt;br&gt;\n");
 
   it("canonicalizes each frame line to one marker whichever VM produced it, preserving the count", () => {

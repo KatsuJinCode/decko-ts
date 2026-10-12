@@ -458,11 +458,11 @@ async function identityStage(limit) {
     );
     console.log("  step 2 (render all entries):");
     console.log(
-      `    node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-render-bulk --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
+      `    node tools/test-queue/submit-test-job.mjs --name rephoto-render-bulk --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
     );
     console.log("  step 3 (verdicts):");
     console.log(
-      `    node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-verdict-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs verdict" --timeout-min 1`,
+      `    node tools/test-queue/submit-test-job.mjs --name rephoto-verdict-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs verdict" --timeout-min 1`,
     );
   }
   dump.close();

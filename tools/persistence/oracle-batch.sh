@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# oracle-batch.sh -- the persistence-leftovers lane's remaining oracle work,
-# serialized into ONE lane-job launch (machine RAM budget: one heavy slot):
+# oracle-batch.sh -- the persistence oracle work that remains, serialized into
+# ONE job launch (machine RAM budget: one heavy slot):
 #
 #   1. run-pod-coded.sh   (Ruby) -> coded-storage oracle fixtures   (item 44)
 #   2. run-pod-remote.sh  (Ruby) -> sow --remote oracle fixtures    (item 45)
@@ -15,8 +15,10 @@
 set -u
 HERE="$(dirname "$(readlink -f "$0")")"
 REPO="$(dirname "$(dirname "$HERE")")"
-APP=/c/localProjects/decko-oracle-app-parity-fix
-DECK="C:/localProjects/decko-oracle-app-parity-fix/db/development.sqlite3"
+# The oracle app is a machine-local, gitignored checkout (docs/parity-method.md
+# documents its layout); ORACLE_APP overrides the checkout-relative default.
+APP="${ORACLE_APP:-$REPO/tools/oracle/decko-oracle-app}"
+DECK="$APP/db/development.sqlite3"
 FIXTURES="$REPO/tests/fixtures/pods"
 ORACLE_FIXTURES="$REPO/tests/fixtures/persistence-leftover-oracle"
 SCRATCH="$REPO/tmp/persist-left/oracle-batch"
@@ -49,7 +51,7 @@ mkdir -p "$PERSIST_FILES_DIR"
 # copy -- the copy is made here).
 IMG_DECK="$SCRATCH/image-deck.sqlite3"
 cp "$DECK" "$IMG_DECK" || exit 2
-if PERSIST_FILES_DIR="C:/localProjects/decko-ts-persist-left/tmp/persist-left/oracle-batch/image-files" \
+if PERSIST_FILES_DIR="$SCRATCH/image-files" \
    bash "$HERE/run-ruby.sh" "$APP" "$IMG_DECK" "$HERE/image-version-probe.rb" \
      "$REPO/tools/parity-side-effects/fixtures/parity-photo.png" "$IMG_OUT" \
      > "$SCRATCH/image.log" 2>&1; then

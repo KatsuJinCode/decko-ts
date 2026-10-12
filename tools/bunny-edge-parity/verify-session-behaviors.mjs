@@ -38,7 +38,9 @@ function requireEnv(name) {
 }
 const SCRIPT_ID = requireEnv("BUNNY_SCRIPT_ID");
 const RELEASE_ID = requireEnv("BUNNY_RELEASE_ID");
-const CREDS_PATH = "C:/localProjects/brandonDojoTech/library/data/creds";
+// The credentials file location is machine-local: it arrives through the
+// environment, never a built-in path.
+const CREDS_PATH = process.env.BUNNY_CREDS;
 const SEED_OUT = new URL("./throwaway-account-seed-output.json", import.meta.url);
 const OUT = new URL("./session-behavior-checks.json", import.meta.url);
 
@@ -68,6 +70,10 @@ async function get(path, cookie) {
 const DENIAL_MARKER = /class="denied">\s*(<!--[^>]*-->[^<]*)?/;
 
 async function main() {
+  if (!CREDS_PATH) {
+    console.error("REFUSAL: set BUNNY_CREDS to the credentials file path (no built-in creds location)");
+    process.exit(2);
+  }
   const seed = JSON.parse(readFileSync(SEED_OUT, "utf8"));
   const { url, token } = readCreds(CREDS_PATH);
   const ep = pipelineEndpoint(url);

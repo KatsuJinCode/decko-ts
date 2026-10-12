@@ -40,7 +40,9 @@ import { readFileSync } from "node:fs";
 import { randomBytes, createHash } from "node:crypto";
 import { query, pipelineEndpoint } from "./probe-trial-account-schema.mjs";
 
-const CREDS_PATH = "C:/localProjects/brandonDojoTech/library/data/creds";
+// The credentials file location is machine-local and arrives through the
+// environment; this script never carries a built-in creds path.
+const CREDS_PATH = process.env.BUNNY_CREDS;
 export const HOLDER_NAME = "AuthedParityProbe";
 const HOLDER_KEY = "authedparityprobe";
 const EMAIL = "authed-parity-probe@riley-dojo.invalid";
@@ -66,6 +68,10 @@ const sha256 = (s) => createHash("sha256").update(s, "utf8").digest("hex");
 const sqlDateTime = (d) => d.toISOString().replace("T", " ").slice(0, 19);
 
 async function main() {
+  if (!CREDS_PATH) {
+    console.error("REFUSAL: set BUNNY_CREDS to the credentials file path (no built-in creds location)");
+    process.exit(2);
+  }
   const { url, token } = readCreds(CREDS_PATH);
   const ep = pipelineEndpoint(url);
   const log = {};

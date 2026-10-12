@@ -18,7 +18,7 @@
 //   node tools/oracle/capture-oracle-upload-file-tree.mjs
 //     [--oracle-app <dir>] [--out <file>]
 //
-// Defaults: --oracle-app C:/localProjects/decko-ts/tools/oracle/decko-oracle-app
+// Defaults: --oracle-app <this checkout>/tools/oracle/decko-oracle-app
 //           --out      fixtures/captured/oracle-upload-file-tree.json
 
 import { createHash } from "node:crypto";
@@ -31,7 +31,7 @@ import Database from "better-sqlite3";
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 function parseArgs(argv) {
-  const args = { oracleApp: "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app" };
+  const args = { oracleApp: join(REPO_ROOT, "tools", "oracle", "decko-oracle-app") };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--oracle-app") args.oracleApp = argv[++i];
     else if (argv[i] === "--out") args.out = argv[++i];

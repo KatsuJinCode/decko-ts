@@ -11,7 +11,9 @@
 import { query, pipelineEndpoint } from "./probe-trial-account-schema.mjs";
 import { readFileSync } from "node:fs";
 
-const CREDS_PATH = "C:/localProjects/brandonDojoTech/library/data/creds";
+// The credentials file location is machine-local and arrives through the
+// environment; this script never carries a built-in creds path.
+const CREDS_PATH = process.env.BUNNY_CREDS;
 function readCreds(path) {
   const raw = readFileSync(path, "utf8");
   const get = (k) => {
@@ -22,6 +24,10 @@ function readCreds(path) {
 }
 
 async function main() {
+  if (!CREDS_PATH) {
+    console.error("REFUSAL: set BUNNY_CREDS to the credentials file path (no built-in creds location)");
+    process.exit(2);
+  }
   const { url, token } = readCreds(CREDS_PATH);
   const ep = pipelineEndpoint(url);
   const out = {};
