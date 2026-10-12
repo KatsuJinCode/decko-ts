@@ -1,35 +1,36 @@
-// probe-discussion-page-extra-bytes.mjs -- discussion-layout byte-diff
-// reproduction probe (discussion-layout-signature lane, branch lane-dlsig).
+// probe-discussion-page-extra-bytes.mjs -- single-page byte-diff instrument
+// for the discussion-card layout failure family.
 //
-// WHAT THIS IS
-//   The single-page reproduction instrument for the dominant page-lane
-//   failure family: pages whose layout resolves to a discussion card layout
-//   render MORE bytes than the Ruby oracle's page_html (the canvas grade at
-//   3ca1c09 measured 551 of 556 page failures in this family; example
-//   "BHG 1948 Ch 7 p 22 Old Fashioned Sugar Cookies and Fig Bars+discussion"
-//   first difference at byte offset 9724, expected 15824 actual 17207).
+// PURPOSE
+//   When a page's layout resolves to a discussion card layout, the rendered
+//   HTML tends to carry MORE bytes than the Ruby oracle's page_html. This is
+//   the dominant page-lane failure family, and this probe reproduces the
+//   delta for one page at a time so the divergent region can be studied
+//   byte for byte instead of inferred from a count.
 //
-//   It boots the SAME engine graph the direct runner boots (the per-worktree
-//   staging storage from tmp/raw-ground-truth/scripts/raw-corpus-seeding.ts,
-//   through tools/oracle/typescript-source-loader.mjs), renders one page-lane
-//   entry through storage.engine.renderPage (the exact handler the runner's
-//   page lane registers), and byte-diffs actual vs the shard's page_html with
-//   the same comparator the grade uses (src/testing/diff.ts compareNormalized).
+//   The boot is the SAME engine graph the direct runner uses: per-worktree
+//   staging storage built by the corpus seeding script, loaded through
+//   tools/oracle/typescript-source-loader.mjs. One page-lane entry is
+//   rendered via storage.engine.renderPage (the handler the runner's page
+//   lane registers), and the render is byte-diffed against the shard's
+//   page_html using the comparator the grader relies on
+//   (src/testing/diff.ts compareNormalized).
 //
-//   Both sides are also written RAW (expected.html / actual.html) into the
-//   output dir so the divergent region can be inspected byte for byte.
+//   Both sides of the diff are also written out RAW (expected.html /
+//   actual.html) into the output dir for direct inspection.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-discussion-page-extra-bytes.mjs \
 //     --repo REPO_ROOT/ \
-//     [--name "BHG 1948 Ch 7 p 22 Old Fashioned Sugar Cookies and Fig Bars+discussion"] \
+//     [--name "SOME_PAGE+discussion"] \
 //     [--names "A+discussion|B+discussion"] \
-//     [--shard recapture-raw-shard-000017.jsonl] [--out tmp/dlsig-probe]
+//     [--shard SHARD_FILE.jsonl] [--out OUT_DIR]
 //
-//   With no --name/--names, the FIRST page-lane line in the shard whose name
-//   ends in "+discussion" is used. Exit 0 when at least one page reproduces
-//   the byte-diff (fail verdict), 1 when none do or the run could not start
-//   (the probe is a measuring instrument, not a gate -- the report says which).
+//   Without --name/--names the probe picks the first page-lane line in the
+//   shard whose name ends in "+discussion". Exit status: 0 when at least one
+//   page reproduces the byte-diff (a fail verdict for the engine), 1 when
+//   none do or the run could not start. This is a measuring instrument, not
+//   a gate -- the printed report says which of the two happened.
 //
 // MECHANISM CHECK
 //   For every failing page the probe also runs the single-block test: remove
