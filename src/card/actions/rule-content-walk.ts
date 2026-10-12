@@ -1,10 +1,9 @@
 // The storage half of Card#rule lookup - the candidate walk that resolves a
 // setting's rule-card content for the card being saved. This is the piece
 // card-mod-recaptcha's recaptcha_on? reads as `rule(:captcha)`
-// (card-mod-recaptcha-0.20.0 set/all/recaptcha.rb:22) and the piece
-// rule-names.ts reserved as "the next stream's work" (its header: "The first
-// name that exists as a rule card in storage wins; that walk is the next
-// stream's work - this is the naming algebra only").
+// (card-mod-recaptcha-0.20.0 set/all/recaptcha.rb:22), and the storage walk
+// that rule-names.ts deliberately leaves as naming algebra only: the first
+// name that exists as a rule card in storage wins.
 //
 // Ruby mechanism, one layer at a time (card-1.110.0):
 // - lib/card/rule/all.rb:5-7  rule(setting_code):
@@ -25,8 +24,8 @@
 //     all.rb:27-29) minus the anchored patterns whose anchor card has no id.
 //
 // The port walks the SET NAMES joined to the setting name
-// (rule-names.ts#ruleNamesForCard - the same precedence order, oracle-verified
-// against live decko per that file's header) and fetches each candidate
+// (rule-names.ts#ruleNamesForCard - the same precedence order, which that
+// file's header records as checked against the reference) and fetches each candidate
 // through the engine's Card.fetch. The rule CACHE is Ruby's optimization of
 // the same walk; the candidate ORDER is the semantics, and fetch-by-name
 // misses exactly where the cache has no entry: a rule card cannot exist
