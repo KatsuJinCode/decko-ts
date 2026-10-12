@@ -3,17 +3,18 @@
 // free-tier write budget, with the arithmetic computed exactly (never
 // approximated, never discovered by writing).
 //
-// THE ARITHMETIC THIS MODULE OWNS (recomputed 2026-09-25 from the incident
-// corpus numbers, 93,700 cards + 1,112,560 refs = 1,206,260 rows):
+// THE ARITHMETIC THIS MODULE OWNS:
 //
-//   refs-per-card at corpus density = 1,112,560 / 93,700 = 11.873639...
-//   rows-per-card (card row + its share of refs)  = 12.873639...
+//   refs-per-card            = REFS_PER_CARD = 11.873639...
+//   rows-per-card (card row + its share of refs) = 12.873639...
 //
 //   The SCHEMA itself mandates only 1 row per card (the `cards` row);
 //   card_acts / card_actions / card_changes / card_revisions are write-path
 //   tables a seed never touches, and card_references density is a property
-//   of the deck, not the schema. The 85% figure from the prior plan
-//   (~6,600 cards) assumed corpus ref density on top of the card rows:
+//   of the deck, not the schema. REFS_PER_CARD is a fixed planning constant
+//   that sets that density for every deck this module sizes; it is not
+//   measured from any particular deck.
+//   An earlier sizing of 6,600 cards:
 //     6,600 cards -> 41 fixed + 6,600 = 6,641 card rows + 78,366 refs
 //     = 85,007 rows; + 50 (ANALYZE) = 85,057 = 85.06% of the day
 //     -> EXCEEDS the 80% guard, so one-click-deck refuses that size
@@ -33,38 +34,38 @@
 //   1 CQL search probe — All Scale Page Probe (Search cardtype, CQL body)
 //   N Scale Pages      — Scale Page 1x..Nx (Note), the scale dimension
 //   R stored refs      — card_references rows distributed over the Scale
-//                        Pages to match corpus density exactly (round)
+//                        Pages to match the density exactly (round)
 //
 // Output: chunk SQL files (single-row INSERTs ONLY, so chunk row counts are
 // exact by construction) at two granularities:
 //   local-5000/  — for `wrangler d1 execute --local` (workerd has no remote
 //                  DO size limit; 16 files for the default deck)
-//   remote-800/  — for the real CF pass: ~800 statements per call is the
-//                  size the 2026-09-23 incident proved survives the remote
-//                  D1 endpoint without D1_RESET_DO resets (the 5,000-stmt
-//                  fat tail failed deterministically)
+//   remote-800/  — for the real CF pass: 800 statements per call, measured as
+//                  surviving the remote D1 endpoint without needing
+//                  D1_RESET_DO resets; a 5,000-statement chunk failed
+//                  deterministically.
 // plus manifest.json carrying the exact per-file row counts and budget math.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ANALYZE_ROWS_ESTIMATE, GUARD_ROW_LIMIT, D1_FREE_DAILY_ROW_WRITES } from "./write-budget.mjs";
 
-/** Incident corpus numbers — the only density basis ever used here. */
+/** Density planning constants: the refs-per-card basis every deck size
+ *  decision in this module is made against. */
 export const CORPUS_CARDS = 93_700;
 export const CORPUS_REFS = 1_112_560;
 export const CORPUS_ROWS = CORPUS_CARDS + CORPUS_REFS; // 1,206,260
 
 export const REFS_PER_CARD = CORPUS_REFS / CORPUS_CARDS; // 11.873639...
 
-/** Cards that are NOT Scale Pages: scaffold 7 (ids 1-6 + 8; id 7 unused,
- *  mirroring the proven targeted-deck id layout) + chain 32 + pointer 1
- *  + search probe 1 = 41. */
+/** Cards that are NOT Scale Pages: scaffold 7 (ids 1-6 and 8; id 7 is
+ *  deliberately left unused) + chain 32 + pointer 1 + search probe 1 = 41. */
 export const FIXED_CARDS = 7 + 32 + 1 + 1; // 41
 export const CHAIN_DEPTH = 32;
 export const POINTER_ITEMS = 500;
 
 export const LOCAL_CHUNK_STATEMENTS = 5_000;
-export const REMOTE_CHUNK_STATEMENTS = 800; // incident-proven remote-safe size
+export const REMOTE_CHUNK_STATEMENTS = 800; // measured as safe against the remote endpoint
 
 const STAMP = "2026-09-23 00:00:00.000";
 
@@ -82,10 +83,10 @@ function scalePageName(k) {
 
 /** Canonical key of scalePageName(k) — MUST equal the engine's
  *  name -> key canonicalization (lowercase, non-alphanumerics -> "_"):
- *  "Scale Page 173x" -> "scale_page_173x". (Validation 2026-09-25 caught the
- *  earlier "scale_page_173" — every Scale Page 404'd because URL routing and
- *  CQL resolve by KEY, not name.) Ends in 'x', not 's', so the plural-stem
- *  singularization trap does not apply. */
+ *  "Scale Page 173x" -> "scale_page_173x". A key that drifts from that
+ *  canonicalization makes every Scale Page 404, because URL routing and CQL
+ *  both resolve by KEY and never by name. Ends in 'x', not 's', so the
+ *  plural-stem singularization trap does not apply. */
 function scalePageKey(k) {
   return `scale_page_${k}x`;
 }
@@ -96,7 +97,7 @@ function cardList(scalePages) {
   const card = (id, name, key, codename, typeId, dbContent) =>
     cards.push({ id, name, key, codename, typeId, dbContent });
 
-  // scaffold (ids mirror the proven deploy/seed.mjs + targeted-deck conventions)
+  // scaffold cards — the fixed id range the chain, pointer and probe sit around
   card(1, "CF Test Bot", "cf_test_bot", null, 4, "Synthetic author identity used as creator and updater on every card in this deck.");
   card(2, "Search", "search", "search_type", 3, null);
   card(3, "Cardtype", "cardtype", null, 3, null);
