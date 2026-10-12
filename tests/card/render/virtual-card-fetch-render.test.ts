@@ -1,5 +1,5 @@
-// Virtual-card fetch + render regression (the 25 id:null disputed records of
-// the corpus-v2 recapture, tmp/recapture-deck/enumeration/null-id-disputed.json).
+// Virtual-card fetch + render regression (orphan junction rows: name+key
+// stored with left_id/right_id NULL).
 //
 // Ruby mechanism under test (every claim cited in
 // src/card/fetch/virtual-cards.ts):
@@ -15,9 +15,9 @@
 //     read rule excludes — `<span class="denied"><!-- Sorry, you don't have
 //     permission (read) --></span>` — while :title (perms :none) renders.
 //
-// Seeds mirror the corpus rows the disputed set carries (orphan junction row
-// + a `*right`-anchored structure rule + a `*self` read rule granting a role
-// the anonymous viewer lacks).
+// Seeds mirror the row shapes (orphan junction row + a `*right`-anchored
+// structure rule + a `*self` read rule granting a role the anonymous viewer
+// lacks).
 
 import { describe, expect, it } from "vitest";
 import {
@@ -75,20 +75,19 @@ async function seedCorpusShapedDeck(): Promise<RenderTestStorage> {
     dbContent: "<p>{{xxxx}}</p>",
   });
   // The `*self+*right+*structure` rule (RIGHT pattern for every `+*self`
-  // name) — typed Set, the corpus's group-B winner. Its set card
+  // name) — typed Set. Its set card
   // `*self+*right` is the structural junction row the universe statement
   // composes the rule key from.
   seed({ id: 53, name: "*self+*right", leftId: 7, rightId: 6, typeId: SET_TYPE_ID });
   seed({ id: 52, name: "*self+*right+*structure", leftId: 53, rightId: 5, typeId: SET_TYPE_ID, dbContent: "crgazjzllxoccqgh" });
 
-  // The ORPHAN junction row: name+key stored, left_id/right_id NULL — the
-  // row shape the corpus carries for every id:null disputed name. Invisible
+  // The ORPHAN junction row: name+key stored, left_id/right_id NULL.
+  // Invisible
   // to name-based fetch (the Lexicon compound path), present for id fetch.
   seed({ id: 60, name: "ylfetacflzl+ytyovdhppytn", typeId: BASIC_TYPE_ID, dbContent: "<p>{{xxxx}}</p>" });
 
   // The SELF read rule over the virtual card's name. Its reference grants
-  // ANYONE (the corpus's own shape: rule 9038 content "Role_A1", reference
-  // -> the anyone card) — but for an ID-LESS card Ruby drops the SELF
+  // ANYONE — but for an ID-LESS card Ruby drops the SELF
   // candidate from rule_lookup_keys (nil anchor id), so this rule never
   // decides the verdict; the RSTAR rule below does.
   seed({
@@ -100,8 +99,7 @@ async function seedCorpusShapedDeck(): Promise<RenderTestStorage> {
   });
   await seedReference(storage, 61, 9, "anyone");
   // The `*all plus+*read` rule (RSTAR candidate) grants Role_A1 only — the
-  // rule Ruby's permission_rule_id answers for the virtual card (oracle
-  // probe: permission_rule_id(:read) = the `*all plus+*read` card, hash
+  // rule Ruby's permission_rule_id answers for the virtual card (hash
   // miss -> denied).
   seed({ id: 62, name: "*all plus+*read", rightId: 2, typeId: SET_TYPE_ID, dbContent: "Role_A1" });
   await seedReference(storage, 62, 20, "role_a1");
