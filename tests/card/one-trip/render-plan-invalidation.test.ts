@@ -62,7 +62,8 @@ interface Row {
  *  re-typed, so this suite pins the REAL trigger text rather than a
  *  reproduction of it).
  *
- *  It is installed here so this suite pins the COMPOSITION the ask asks for:
+ *  It is installed here so this suite pins the COMPOSITION of both
+ *  mechanisms:
  *  both mechanisms live on the same two tables, and neither may displace the
  *  other. Note the split-DDL hazard this avoids: this fixture is applied
  *  statement-by-statement, because the shared test DDL splitter
@@ -121,7 +122,7 @@ async function makeInlineDeck(): Promise<{ deck: SQLDatabaseDriver; ids: Record<
       if (!/already exists|UNIQUE constraint|PRIMARYKEY/i.test(message)) throw error;
     }
   }
-  // The inline store's own tables, then this lane's triggers (which need
+  // The inline store's own tables, then the invalidation triggers (which need
   // BOTH cards and one_trip_render_plans to exist).
   for (const statement of ONE_TRIP_SIDE_DDL) {
     await deck.query(statement, []);
@@ -220,7 +221,7 @@ describe("plan invalidation: a committed content write drops the plans it can fa
   });
 
   it("a NESTED edit drops the plan of the page that INCLUDES the edited card", async () => {
-    // Page A's plan is the exposure this lane exists to close: A does not
+    // Page A's plan is the exposure this mechanism exists to close: A does not
     // include C directly (its content names B), but C is in A's closure, so
     // editing C falsifies A's recorded transcript too. A's plan must not
     // survive — this is the "the including page's plan invalidated" pin.
