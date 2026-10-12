@@ -34,8 +34,8 @@
 //
 // PER-EVENT BODY REMAINDERS (the other 26): the bodies need the write
 // path, the director stage runner, or the lexicon janitors — none of which
-// a declaration can carry. Named here so the merge pass can order the
-// follow-up:
+// a declaration can carry. Named here so the follow-up work can be
+// ordered:
 //   all/autoname.rb   set_autoname — writes autoname rule content
 //                     (update_column) + pull_from_trash (write path).
 //   all/codename.rb   validate_codename (Auth.as_id permission gate),

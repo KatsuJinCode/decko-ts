@@ -4826,11 +4826,11 @@ export function expandWikiLinks(
     // and live pins internal-link for explicit targets
     // (`href="/account/signup">sign-in account`, live Riley bio), so the
     // branches resolve here identically to renderLinkChunk.
-    // (Merge pass 2: the b055982 collapsed every explicit
-    // resource to one internal-link form from the ZQVT/HBQ nav pin; the
-    // scheme-differentiated classes below carry the LATER raw-oracle pins
-    // (external-link target="_blank" — clusters.4shard.after.md #17) and
-    // the same no-card-title-span property.)
+    // (b055982 collapsed every explicit resource to one internal-link
+    // form from the ZQVT/HBQ nav pin; the scheme-differentiated classes
+    // below carry the LATER raw-oracle pins (external-link
+    // target="_blank" — clusters.4shard.after.md #17) and the same
+    // no-card-title-span property.)
     const targetTrimmed = target.trim();
     if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
       if (/^https?:/.test(targetTrimmed)) {

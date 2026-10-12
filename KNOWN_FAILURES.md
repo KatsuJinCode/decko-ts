@@ -1,7 +1,4 @@
 # Known test failures
-| `tests/exercise/accounts-3.test.ts` | passes alone; failed once inside a concurrent candidate-gate run (shared tmp state during the auth setup race) | 2026-10-12 |
-| `tests/card/auth/first-run-setup-endpoint.test.ts` | passes alone; failed once inside a concurrent candidate-gate run, same class | 2026-10-12 |
-| `tests/card/actions/atomic-saves.test.ts` | passes alone (44 of 44); failed once inside a concurrent full-suite run on the candidate gate (its first-use engine build races the shared tmp state) | 2026-10-11 |
 
 These suites fail on a clean clone with `npx vitest run`. Each fails identically
 on the revision this release was cut from, so none comes from the release
@@ -13,13 +10,23 @@ a row that passed was removed rather than left to rot. One row per suite; a
 suite that fails at import lists no assertions because none of its tests run. A
 suite that passes is not listed, whatever an older copy of this file said.
 
+The first cell of every table row is a **backticked path**, and it has to stay
+one: `scripts/release-check.mjs` reads this file with
+`/^\s*\|\s*`([^`]+)`\s*\|/`, so a row whose first cell is not backticked is not a
+row to the release gate — it is a line of prose that looks like one. Such a
+row is invisible to the classifier, which then reports the suite as a NEW
+failure instead of the accepted baseline. A row here means the suite fails on a
+clean clone *and here*; a suite that is merely flaky belongs under
+"Environment-flaky suites" below, not in this table.
+
 | Suite | Failing assertions | Prerequisite to green |
 |---|---|---|
-| `tests/card/content/mod-object-address-shape-parity.test.ts` | 2 of 9: "the corpus holds the one card whose record content is a Cardio::Mod address list" and "(f) every OTHER byte matches the raw corpus — address-normalized on both sides", both failing with `corpus shard-000039 must carry the Mod record content: expected undefined to be defined` | a corpus whose shard-000039 carries the Mod record card; the committed miniature corpus does not |
-| `tests/card/mod-loader/card-mod-edit-views.test.ts` | **Two different failures on two different trees, and only one of them is a defect.** *In the private repository* (fixture present): 4 of 12, all four against `fixtures/captured/edit-views.json` — "WITHOUT the mod: the 16 views are unsupported views" — the render resolves where the suite expects `UnsupportedViewError`; and three byte comparisons against the captured oracle — "WITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle", "WITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes", "WITH the mod: tova stand-in - the board family matches the oracle bytes". *In the public package*: **the suite does not run at all** — `fixtures/captured/` is on the exclusion list, and the fixture is read at module scope (`tests/card/mod-loader/card-mod-edit-views.test.ts:100-104`), so it fails at import with `ENOENT: no such file or directory, open 'fixtures/captured/edit-views.json'` and reports `no tests`. Reproduced 2026-10-11 by moving the fixture aside and running the suite: `Test Files 1 failed (1)`, `Tests no tests`. | **For the public package: nothing — the suite is not evidence there and its failure is a missing fixture, not an engine defect.** For the private repository: **an engine fix, not a re-record.** All three byte failures are one root cause: the engine emits a guide edit-link the capture does not have — `<span class='d-none'><a … class="edit-link" … href="/*all+*guide/rule_edit">` inside `<div class="guide-text">` — on the `:overlay_guide` view of "Oracle Basics" (tova and anonymous arms) and on the board's guide view (tova). The administrator arm passes. The gate is `prependGuideEditLink` (`src/card/mod-loader/mods/card-mod-edit.ts:1568-1569`), and it can only deny: `taskAllowed?.(guideCard, "update")` returning `false` is what suppresses the link. `RenderEngine.taskAllowed` (`src/card/render.ts:6853-6856`) returns `alwaysOk` when the actor passes everything, and otherwise a lookup in `taskVerdicts` — `undefined` for any card no prepare step has computed. The guide rule card is nested, not a render root, so the lookup misses, the deny-only gate does not fire, and the link renders for every actor; that is exactly the split the output shows. The suite seeds the stand-in on purpose (a `*guide+*right` Set card plus an `*update` rule naming Administrator, `tests/card/mod-loader/card-mod-edit-views.test.ts:436-449`) so the member and anonymous arms deny, and today they do not. **This is a signed-in-editing parity regression: the captured oracle bytes are the reference, and re-recording them would overwrite the only signed-in-editing evidence with the engine's current output.** Open. |
+| `tests/card/content/mod-object-address-shape-parity.test.ts` | **none — it SKIPS, and says so.** The corpus lives under `tmp/`, which is gitignored, so on a clean clone shard-000039 is absent. The two tests that need it (the provenance guard and the byte comparison (f)) are gated by `itOrSkipLoud` and announce `[corpus-gated] NOT RUN: … gate not satisfied: tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-shard-000039.jsonl`; the other seven check the port's own output against constants and still run. Measured: `Test Files 1 passed (1)`, `Tests 7 passed \| 2 skipped (9)`. It used to report 2 of 9 failing with `corpus shard-000039 must carry the Mod record content: expected undefined to be defined` — a missing prerequisite read as an engine defect. | a corpus whose shard-000039 carries the Mod record card makes the two gated tests run; without one they announce their skip. Nothing in this row is a defect. |
+| `tests/card/mod-loader/card-mod-edit-views.test.ts` | **Two different failures in two different trees, and only one of them is a defect.** *With the capture present*: 4 of 12, all four against `fixtures/captured/edit-views.json` — "WITHOUT the mod: the 16 views are unsupported views" — the render resolves where the suite expects `UnsupportedViewError`; and three byte comparisons against the captured oracle — "WITH the mod: the seeded member stand-in (plain member) - member verdicts split the arms like the oracle", "WITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes", "WITH the mod: the seeded member stand-in - the board family matches the oracle bytes". *Without it* (a clean clone, where `fixtures/captured/` is on the exclusion list): **the suite SKIPS, and announces the skip.** Both fixtures were read at module scope, before any describe existed, so the missing file threw ENOENT during import and the run reported a failed suite with `no tests` — a missing prerequisite read as an engine defect. The reads are now gated on the fixtures' presence (`CAPTURES_PRESENT`) and the describe is gated with `describeOrSkipLoud`. Measured by moving both fixtures aside and running the suite: `[corpus-gated] NOT RUN: suite in tests/card/mod-loader/card-mod-edit-views.test.ts — needs data or setup that a clean clone does not have. Gate not satisfied: fixtures/captured/{board-views,edit-views}.json`, then `Test Files 1 skipped (1)`, `Tests 12 skipped (12)`. | **Without the capture: nothing — the suite is not evidence there and its failure is a missing fixture, not an engine defect.** With the capture: **an engine fix, not a re-record.** All three byte failures are one root cause: the engine emits a guide edit-link the capture does not have — `<span class='d-none'><a … class="edit-link" … href="/*all+*guide/rule_edit">` inside `<div class="guide-text">` — on the `:overlay_guide` view of "Oracle Basics" (the seeded member and anonymous arms) and on the board's guide view (the seeded member arm). The administrator arm passes. The gate is `prependGuideEditLink` (`src/card/mod-loader/mods/card-mod-edit.ts:1568-1569`), and it can only deny: `taskAllowed?.(guideCard, "update")` returning `false` is what suppresses the link. `RenderEngine.taskAllowed` (`src/card/render.ts:6853-6856`) returns `alwaysOk` when the actor passes everything, and otherwise a lookup in `taskVerdicts` — `undefined` for any card no prepare step has computed. The guide rule card is nested, not a render root, so the lookup misses, the deny-only gate does not fire, and the link renders for every actor; that is exactly the split the output shows. The suite seeds the stand-in on purpose (a `*guide+*right` Set card plus an `*update` rule naming Administrator, `tests/card/mod-loader/card-mod-edit-views.test.ts:436-449`) so the member and anonymous arms deny, and today they do not. **This is a signed-in-editing parity regression: the captured oracle bytes are the reference, and re-recording them would overwrite the only signed-in-editing evidence with the engine's current output.** Open. |
 | `tests/card/mod-loader/card-mod-follow-views.test.ts` | 1 of 8: ":edit_buttons on *follow defaults is UNREACHABLE in Ruby too (self/follow_defaults.rb:49-55 — the module constant vs the singularized self-anchor token)" — expects the render to reject, as Ruby's does; the engine renders the anonymous-denial span instead | the Ruby self-anchor token behavior ported, so the view is unreachable here too; open |
 | `tools/cf-cost/measure-render-reads.test.ts` | 1 of 1: "before vs after: read accounting, byte parity, write accounting" — the 32-level chain fixture renders without its deepest content (`expected '<div id="depth_root-content-view" cla…' to contain 'The deepest content of the 32-level c…'`) | the depth-32 render fix; open |
 | `tools/oracle/verify-dual-lane.test.ts` | none — the file fails at import: `Cannot find module '../../../src/testing/replay.js' imported from tools/oracle/verify-dual-lane.test.ts`, so no test of its own runs | the test imports a module that no longer exists; rewrite it against the current replay surface or retire it; open |
+| `tests/deploy/bunny-edge-session-viewer-roundtrip.test.ts` | the anonymous home-site-shell golden pin is 19 bytes stale since the demo account read rules shipped (migration 0009 adds cards the shell capture predates): fixture 4528 bytes vs the pinned 4547; proven pre-existing at the round-9 base commit in a clean worktree | re-anchor the golden pin to the post-migration bytes; queued for the next capture |
 
 ## Rows removed on 2026-10-11, re-derived against this tree
 
@@ -33,13 +40,34 @@ re-derivation and no longer are:
   each time" — which was itself the tell that the failures came from this
   environment rather than from the code.
 
-## | `tests/deploy/bunny-edge-session-viewer-roundtrip.test.ts` | the anonymous home-site-shell golden pin is 19 bytes stale since the demo account read rules shipped (migration 0009 adds cards the shell capture predates): fixture 4528 bytes vs the pinned 4547; proven pre-existing at the round-9 base commit in a clean worktree; re-anchor queued | 2026-10-11 |
 Environment-flaky suites: red in a full run, green alone
 
 These are not in the table above, because a table row means a suite that fails
 on a clean clone and here does not. They fail under load and pass alone, and
 the distinction matters because the release gate runs stages that compete for
 the machine.
+
+- **`tests/card/actions/atomic-saves.test.ts`** — **environment-flaky.** It
+  passes alone (44 of 44) and failed once inside a concurrent full-suite run;
+  its first-use engine build races the shared `tmp` state, so it goes red when
+  the machine is busy and green when it is not. The failing subset has not been
+  characterised, so this entry is a report rather than a characterised pin: if
+  a red result names this suite, re-run it alone before believing it. If it
+  goes red alone, that is a real failure and belongs in the table above with a
+  re-run record attached.
+
+- **`tests/exercise/accounts-3.test.ts`** — **environment-flaky.** Passes
+  alone; failed once inside a concurrent candidate-gate run (shared tmp state
+  during the auth setup race), 2026-10-12. If a red result names this suite,
+  re-run it alone before believing it. If it goes red alone, that is a real
+  failure and belongs in the table above with a re-run record attached.
+
+- **`tests/card/auth/first-run-setup-endpoint.test.ts`** —
+  **environment-flaky.** Passes alone; failed once inside a concurrent
+  candidate-gate run, same class as accounts-3, 2026-10-12. If a red result
+  names this suite, re-run it alone before believing it. If it goes red alone,
+  that is a real failure and belongs in the table above with a re-run record
+  attached.
 
 - **`tests/tools/shadow/migration-parity-shadow.test.mjs`** —
   **environment-flaky.** It failed in a full-tree run (the round-7 review's

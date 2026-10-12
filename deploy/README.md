@@ -17,7 +17,8 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `sync-migrations.mjs` | regenerates `migrations/0001-schema.sql` from `db/schema.sqlite.sql` |
 | `migrations/0001-schema.sql` | the core schema, D1-ready (generated) |
 | `migrations/0002-card-text-binary-lookup-indexes.sql` | backfill of the BINARY key/codename indexes for already-provisioned databases; fresh databases never run it (not generated) |
-| `migrations/0003-demo-seed.sql` | the 4-card demo deck, generated from `db/seed.sql`; this is what the ROOT `wrangler.toml` one-click chain applies |
+| `migrations/0003-deck-data-version-stamp.sql` | the `deck_data_version` freshness stamp and its six triggers on `cards` + `card_references` (the `[ENGINE-FRESHNESS]` block of `db/schema.sqlite.sql`). **One of two 0003 files** — see the numbering note below. Idempotent (`IF NOT EXISTS` / `INSERT OR IGNATE`), so it is order-safe against a regenerated `0001` |
+| `migrations/0003-demo-seed.sql` | the 4-card demo deck, generated from `db/seed.sql`; this is what the ROOT `wrangler.toml` one-click chain applies. **The other 0003 file** — see the numbering note below |
 | `migrations/0004-demo-account-substrate.sql` | the account substrate (`*account` + its four field cards, the `User` cardtype, the Decko Bot and Anonymous actor cards, and Decko Bot's own account). Idempotent — applying it twice inserts nothing. Generated |
 | `seed-account-system.mjs` | regenerates `migrations/0004-demo-account-substrate.sql` |
 | `migrations/0006-demo-role-substrate.sql` | the role substrate (the `Role` cardtype, `*members`, and all six card-mod-account roles). Idempotent. Generated |
@@ -32,6 +33,31 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `cf-scale-deck/seed.sql` | the scale-test deck (2,279 cards + 531 refs), generated |
 | `bunny-worker-src/` | the Bunny.net edge variant of the same engine surface — the other edge, not Cloudflare |
 | `bunny-origin/` | VM origin for the Bunny path (server, nginx conf, systemd unit); internal tooling and not part of this repository's public tree |
+
+### The migration numbering, which is not a clean sequence
+
+Two gaps and one collision are deliberate. Read this before adding a migration;
+the obvious "fix" for each is a bookkeeping break on already-provisioned
+databases.
+
+- **Two `0003` files.** `0003-deck-data-version-stamp.sql` and
+  `0003-demo-seed.sql` share a number. They are ordered by filename, which is
+  the order the deploy chain applies them, and `src/server/deploy-migrations.ts`
+  (`DEPLOY_MIGRATION_ORDER`) pins that order. **Do not renumber either one** to
+  tidy the sequence: a provisioned database has already recorded `0003` as
+  applied, and changing which file that means re-runs the wrong migration.
+- **`0007` is reserved and no file carries it.** The seat-lineage provisioned
+  mirrors record the stamp backfill under the name
+  `0007-deck-data-version-stamp.sql` (an alias the migration runner accepts, see
+  `DECK_DATA_VERSION_STAMP_APPLIED_ALIASES` in
+  `src/server/deploy-migrations.ts`), so a second file numbered 0007 here would
+  make their ledgers ambiguous to read. That is why the account read rules
+  landed as **`0009`** rather than taking the free `0007`.
+- **`0005` and `0008`** are real migrations in the directory
+  (`0005-auth-sessions.sql`, `0008-cards-serving-path-indexes.sql`) and are not
+  listed in the table above, which documents the generated demo-deck chain. The
+  authoritative list is `DEPLOY_MIGRATION_ORDER`, and
+  `tests/deploy/deploy-migrations-manifest-contract.test.ts` pins it.
 
 ### Which chain is which (they are NOT interchangeable)
 

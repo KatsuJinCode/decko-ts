@@ -130,11 +130,12 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
  *    - The five view-INERT constants are what deliver the graded page work:
  *      16 of the 49 head/page entries FAIL->PASS with the serializer era
  *      frozen (the ruling's "~26" is 16 constants + 11 serializer-era credits;
- *      R1 freezes the era, so R1 as scoped delivers 16).
+ *      freezing the era therefore delivers 16).
  *
  *  So this is the smallest-blast-radius form that still arms everything the
  *  corpus is measured to demand, and it keeps the graded arm out of the view
- *  surface entirely — this pass R2 is normalizing in the canonical corpus.
+ *  surface entirely — this exclusion is the one the canonical corpus
+ *  normalises against.
  *  REVISIT ONLY IF GRADE EVIDENCE DEMANDS IT: the exclusion is a measured
  *  judgement about the corpus as it stands, not a permanent claim that the
  *  sixth field is wrong.

@@ -161,6 +161,32 @@ without its originating connection cannot be trusted, because two databases in
 one process can both start at a small integer — so a boot bundle records which
 connection read it.
 
+**What the stamp covers, and where not to over-read it.** The six triggers
+fire on `cards` and `card_references` only (`db/schema.sqlite.sql`, the
+`[ENGINE-FRESHNESS]` block), on any update to those rows and not only the
+columns the caches are built from — so a content edit is covered, and
+`tests/deploy/no-caching-synthetic.test.ts` proves it by writing `db_content`
+between two renders and reading the change back (that suite: 6 of 6 passing).
+Three surfaces sit outside the stamp, and
+[decisions/0002](decisions/0002-request-local-state-and-one-trip-rendering.md)
+("What the stamp does not cover") is the authoritative list: a write confined
+to an uncovered table (the residual case is a `card_actions`-only mutation
+that is a save's last write), a database imported without the triggers, which
+is silently unguarded and green in every check this repository ships, and the
+platform response caches `DECKO_EDGE_CACHE` / `DECKO_EDGE_GLOBAL_CACHE`. The
+engine refusing to boot when the triggers are absent is a **planned** remedy,
+recorded in that decision and not yet implemented, so today the guarantee holds
+on a deck whose migration chain has been applied in full.
+
+The render path is also not the only reader. The API routes call
+`RenderEngine#ensureFreshness` themselves before fetching
+(`deploy/worker.ts:519` for the card-record JSON, `:587` for csv/rss, `:644`
+before the CQL query's permission filter; `deploy/bunny-worker-src/
+bunny-edge-engine-request.ts:444`, `:466`, `:518` on the Bunny host), because
+they judge permissions against the same memoized readable-rule state. That
+call is the route's obligation, not the engine's: a route added without it
+filters by the pre-revocation rule set.
+
 ---
 
 ## Caches and how to invalidate them

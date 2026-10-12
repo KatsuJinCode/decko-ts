@@ -236,7 +236,7 @@ export { slotOptionsWithNameContext } from "./slot-html.js";
  *  list). Kept next to slotWrap so the two stay byte-locked.
  *  data-card-name carries slotCardname(card) UNescaped: emitAttrs escapes
  *  attribute values itself (h() here would double-escape — the unescape
- *  discipline pinned at merge pass 15). */
+ *  discipline the oracle pins carry). */
 export function modViewSlotWrap(
   ctx: ViewContext,
   view: string,
@@ -3992,10 +3992,9 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // nestRecord opts below; the denied KNOWN item's bare span emits no
   // slot wrap at all (the census above) — no slot JSON, no type field.
   // The type opt's slot-JSON surface is the readable and phantom item
-  // paths, which carry it above and below (merge pass 3: the
-  // type-opt threading retained on both slot-emitting
-  // branches; the denied-branch wrap it threaded is retired by the
-  // census).
+  // paths, which carry it above and below (the type-opt threading is
+  // retained on both slot-emitting branches; the denied-branch wrap it
+  // threaded is retired by the census).
   //
   // Item-view flow-through (mod-b-view-fixes): the :bar arm is the
   // corpus-pinned default (default_item_view, html.rb:21-23); the other

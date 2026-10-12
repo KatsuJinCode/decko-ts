@@ -21,6 +21,20 @@ Test files are workspace-relative. Fixture paths are workspace-relative.
 Gem paths are written relative to the Ruby gems directory
 (`gem environment gemdir`), e.g. `gems/card-1.110.0/lib/...`.
 
+**Corpus figures quoted in the rows below carry a caveat.** A figure like the
+graded page-lane corpus tally in R3.4.d (`5,662/6,588` at pass16, `5,939/6,588`
+at pass17) is measured on the **corpus, which is not committed** — it carries
+the ported deck's real content, so a clean clone cannot recompute it and the
+number is a quoted measurement rather than a replayable one. It is also **not
+a pure Ruby-oracle grade**: 50 of the corpus's expected entries are bytes
+fetched from the live 0.19.1-era site rather than from the 0.20.0 oracle, in
+two disjoint swap sets of 13 and 37. Both facts, the per-entry manifests and
+the provenance check are set out in
+[parity-method.md](../parity-method.md) ("The live-anchored expectations",
+"Corpus provenance"); the figures a clean clone *can* recompute are inventoried
+in [coverage-inventory.md](../coverage-inventory.md). No corpus figure is quoted
+in the README.
+
 ## 1. PERSISTENCE
 
 ### P1.1 Save classification

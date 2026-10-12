@@ -99,17 +99,16 @@ const RUBY_STEPS =
 // row delta. Step 7, re-creating a junction while its left side is trashed:
 // Ruby inserts a second junction row (possible only because the oracle deck
 // lacks the production UNIQUE (left_id, right_id) index); the port revives
-// the trashed row. Step 48, assigning a type that does not exist: Ruby loses
-// its own "not a known type" error and writes an empty act; the port refuses
-// the save. Step 67, reverting an act that renamed another card: Ruby
+// the trashed row. Step 67, reverting an act that renamed another card: Ruby
 // raises after storing the reverted rows without history; the port refuses
 // before writing. Steps 20, 22 and 31, stored HTML: Ruby's cleaner keeps a
 // javascript: link target, the port's drops it (a security difference,
-// docs/SECURITY.md). Steps 57 and 58, password storage: under the default
-// policy the port stores PBKDF2 where Ruby stores salted SHA-1 (also a
-// security difference); run with DECKO_PASSWORD_HASH=legacy-sha1, the
-// setting for a deck Ruby also serves, the probe expects Ruby's exact rows
-// there. The comparator accepts a declared step only if its delta is exactly
+// docs/SECURITY.md). Those five — 7, 20, 22, 31 and 67 — are the complete
+// declared list; deliberate-differences.json is the authority and carries no
+// other step. (This comment once also described step 48, assigning a type that
+// does not exist, and steps 57 and 58, password storage. None of the three is
+// declared any more, so they are gone rather than left as a claim nothing
+// backs.) The comparator accepts a declared step only if its delta is exactly
 // the declared one.
 // The declarations in force for this run: each deck's own file (the steps
 // 7/20/22/31/67 differences are engine behaviour, but the 67 declaration
