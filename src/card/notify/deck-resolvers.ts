@@ -1,11 +1,10 @@
 // Deck-backed resolver wiring for the follow-notify hook — the seam
-// between the save path and cards that live in THIS deck, through the
+// between the save path and cards that live in the served deck, through the
 // async fetch engine. The follower rule-algebra walk (card-mod-follow
 // set/all/follow.rb: direct/indirect follower sets) is a deferred stream;
 // the follower resolver stays host-supplied (tests use the fixed sugar).
-// The email-template half IS deck-backed here: M6's real capture
-// (fixtures/captured/follow-notification.json) proved the template lives
-// in `follower notification email` + its `*subject` / `*text message` /
+// The email-template half IS deck-backed here: the template lives in
+// `follower notification email` plus its `*subject` / `*text message` /
 // `*html message` children (card-mod-email data/real.yml:42-58 codenames).
 
 import type { FetchEngine } from "../fetch.js";
