@@ -1,13 +1,11 @@
-// Cold page render: the layout warm-up chase is BATCHED and BOUNDED
-// (warmup — the item-5 cold-render burst fix).
+// Cold page render: the layout warm-up chase is BATCHED and BOUNDED.
 //
-// Failure shape (measured on the real corpus deck, nitpicks Round 2
-// item 5): warmUpLayoutNests walked nest references, [[link]] targets and
-// pointer/list items TRANSITIVELY to a fixpoint, one point-query fetch
+// Failure shape: warmUpLayoutNests walked nest references, [[link]] targets
+// and pointer/list items TRANSITIVELY to a fixpoint, one point-query fetch
 // ladder per name (SELECT id FROM cards WHERE key = ?, junction
 // left_id+right_id probes, row-by-id type fetches), preparing the whole
-// navbar-connected site at ~5,900-7,300 driver round trips per cold render
-// — the operator's one-off ~4s first page load after every isolate boot.
+// navbar-connected site at thousands of driver round trips per cold render
+// — a multi-second first page load after every boot.
 //
 // The fix keeps the fixpoint reference classes (what renders is not
 // decidable from content syntax alone) but resolves the closure in
@@ -110,7 +108,7 @@ describe("cold layout warm-up: batched + bounded reference closure", () => {
     // Menu items render as BARS (name-bearing titles). Ruby's pointer core
     // slices the item list at default_limit 20 (card-mod-list other_views.rb
     // :3-5) and appends the view :paging nav whenever show_paging? (count >
-    // 20) — the bar-slots V8 oracle shape: items 01-20 render as bars, and
+    // 20): items 01-20 render as bars, and
     // the nav's paging-context carries the FULL chased count ("of 24"),
     // which is the breadth-reach proof (the warm-up closure saw every item).
     expect(page).toContain('title="Menu Item 01"');
@@ -123,8 +121,8 @@ describe("cold layout warm-up: batched + bounded reference closure", () => {
     // THE PIN: round trips scale with reference DEPTH (chain links), not
     // card count. The deck hangs 1 chain + 24 items + 24 menu pages + rules
     // off the layout (~50+ chased names); the old per-name ladder cost ~3
-    // point queries per chased name (~150+ round trips here, ~7k on the
-    // corpus). The batched chase pays ~one round trip per BFS round.
+    // point queries per chased name (~150+ round trips here). The batched
+    // chase pays ~one round trip per BFS round.
     const { roundTrips } = storage.counting.snapshot();
     expect(roundTrips).toBeLessThanOrEqual(60);
   });
