@@ -8,7 +8,7 @@
 //   3  *read           codename read                      - the read setting
 //   4  Basic                                              - the Basic type card
 //   5  Anyone          codename anyon...                  - the always-party
-//   6  Anonymous       codename anonym...                 - the corpus viewer
+//   6  Anonymous       codename anonym...                 - the anonymous viewer
 //   7  Role A                                             - a party Anonymous
 //                                                         does not join
 //   8  *all+*read      left 1 right 3    [[Anyone]]       - grants everyone
@@ -22,8 +22,8 @@
 //                                                         finds the *type rule
 //                                                         (10) first -> denied
 //
-// The byte oracle for every denial shape is the corpus capture
-// (fixtures/corpus/*): `<span class="denied"><!-- Sorry, you don't have
+// The byte oracle for every denial shape:
+// `<span class="denied"><!-- Sorry, you don't have
 // permission (read) --></span>`, replacing the ENTIRE view output
 // (no card-slot wrapper).
 
@@ -186,20 +186,19 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // rule universe (the structured-content stream rides the same batch,
       // appended AFTER the permission statements — the parser reads the
       // permission results by fixed index 0..2) + 1 *default rule universe
-      // (round 9: the new-child template type rides the same batch — the
+      // (the new-child template type rides the same batch — the
       // *default universe is parsed from the slot right after the
-      // *structure universe) + 1 *default_html_view rule universe (round
-      // 10: the deck's bare-nest default view folded on the same batch.
-      // R17: one fewer - the *default html view universe left the fold
-      // (A-36 correction: default_nest_view is process config,
+      // *structure universe) + 1 *default_html_view rule universe (the
+      // deck's bare-nest default view folded on the same batch;
+      // one fewer - the *default html view universe left the fold
+      // (default_nest_view is process config,
       // html.rb:17-19, never a deck rule).
-      // +1 head read-set statement (2026-09-28 async-view-handle):
+      // +1 head read-set statement:
       // card-mod-format's head views read deck-level setting cards that
       // no reference closure can reach, so the prefetch rides THIS batch
       // as a 7th folded statement. `batches` above stays 1 — the round
-      // trip, the billed axis, is unchanged. Freshness lane 2026-10-05
-      // (composed onto the deployed fold by the lineage-reconciliation
-      // lane): +1 more — the deck_data_version stamp read folds LAST on
+      // trip, the billed axis, is unchanged.
+      // +1 more — the deck_data_version stamp read folds LAST on
       // the engine's first render (baseline for the per-request freshness
       // gate). Composed batch measured 9: 3
       // permission + codehash + 2 universes + template type-name + head
@@ -215,9 +214,9 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
     await s.engine.render("Secret Thing", "open");
     s.counting.reset();
     expect(await s.engine.render("Secret Thing", "open")).toBe(quietDenial());
-    // Freshness lane 2026-10-05: the warm render's floor is the
+    // The warm render's floor is the
     // deck_data_version stamp read (one statement, one round trip — the
-    // delivery-contract:79 gate that keeps a cached denial verdict from
+    // gate that keeps a cached denial verdict from
     // outliving a committed rule change).
     expect(s.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
   });
