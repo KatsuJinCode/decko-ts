@@ -1,5 +1,5 @@
 // The render format: TypeScript port of Card::Format's view pipeline for the
-// captured html-format surface.
+// html format.
 //
 // Truth source (card-1.110.0 lib/card/format.rb + format/**, card-mod-format):
 // - format/render.rb  : render! (voo lifecycle, wrap_and_render), view_method
@@ -14,19 +14,18 @@
 //   process_visibility (requested view viz'd via the optional render opt,
 //   method_delegation.rb#render_args default :show)
 //
-// Deliberately in-scope: the machinery the four captured views exercise.
-// Landed since: the read-permission denial (view/permission.rb altered_view
-// -> src/card/permissions/), and nest MODE (format/nesting/mode.rb - see
-// RenderFormat.nestMode / withNestMode / modalNestView). Deferred
-// : view caching/stubs, edit views, mod-specific
-// view overrides. compact nest mode: the :template arm and the compact
-// arms of mode.rb (view substitution mode.rb:71-84 + the nesting.rb:52-63
-// 200-char elision) are PORTED gem-derivative with fixture-less pins
-// ; the recorded capture
-// surface exercises none of them - the nest-mode-port census (sha-verified
-// 6a44dfdc dump copy, 97 expected-v2 shards) shows every captured one-line
-// render is a raw/nest-free arm, so the compact machinery is byte-neutral
-// on the surface (see the modalNestView docblock for the census numbers).
+// In scope: the machinery the four html views exercise, plus the
+// read-permission denial (view/permission.rb altered_view -> src/card/
+// permissions/) and nest MODE (format/nesting/mode.rb - see
+// RenderFormat.nestMode / withNestMode / modalNestView).
+//
+// Deferred: view caching/stubs, edit views, mod-specific view overrides.
+// Compact nest mode: the :template arm and the compact arms of mode.rb
+// (view substitution mode.rb:71-84 + the nesting.rb:52-63 200-char
+// elision) are implemented as gem derivatives. The compact machinery is
+// byte-neutral for one-line raw nests - every such render measured is a
+// raw/nest-free arm - so it is inert in practice; see the modalNestView
+// docblock for the census numbers.
 
 import { DeckoName } from "../name.js";
 import {
@@ -153,8 +152,8 @@ export class Voo {
    *  slotOptions emits this value as `view` instead of the requested
    *  view. Used by the pointer/list item rendering: the slot id uses
    *  "mini_bar" but the data-slot's view field reads "bar" (matching
-   *  the captured corpus bytes for corpus:77 + every pointer/list
-   *  sibling). Undefined = data-slot's view equals requestedView. */
+   *  the emitted bytes for every pointer/list sibling). Undefined =
+   *  data-slot's view equals requestedView. */
   slotViewOverride: string | undefined;
   /** view/options/voo_api.rb:30-32 `define_setter` — `voo.<key> = v` writes
    *  LIVE options, while `slot_options` (:51-56) reads the NORMALIZED ones
@@ -162,22 +161,21 @@ export class Voo {
    *  body assigns mid-render is readable through the accessor and INVISIBLE
    *  in the slot JSON. Only :title has a live writer today
    *  (card-mod-rules set/type/set/html_views/template.rb:4
-   *  `voo.title = parent.voo.nest_syntax if parent`), and the oracle pins
-   *  the consequence: the :template_link slot's data-slot carries
+   *  `voo.title = parent.voo.nest_syntax if parent`), and the emitted bytes
+   *  show the consequence: the :template_link slot's data-slot carries
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
 
   /** True ONLY for the bare view-surface ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
-   *  `optional` render arg defaults to :show). The live serializer does not
-   *  carry the root render's own enrollment (the capture-harness artifact:
-   *   "root drops the
-   *  requested view"), so slotOptions drops view===viewField exactly here.
+   *  `optional` render arg defaults to :show). The root render's own
+   *  enrollment is not carried, so slotOptions drops view===viewField
+   *  exactly here.
    *  Parentless does NOT mean root: the page surface's processLayoutContent
    *  runs on the root format AFTER renderView restored this.voo, so every
    *  card-layout/body nest voo (the *footer content slot, the mod bar
-   *  items) is parentless in the port while Ruby's layout nests render with
-   *  a seated voo — and the live pages carry their own requested-view
+   *  items) is parentless here while Ruby's layout nests render with
+   *  a seated voo — and those pages carry their own requested-view
    *  enrollment (`*footer` slot show:["content"], mod bar slots
    *  show:["bar"], Anyone Signed In +description show:["lead"]). */
   readonly viewLaneRoot: boolean;
@@ -196,14 +194,12 @@ export class Voo {
     // + voo_api.rb:135-143 inherit_options_from_parent!: a child voo
     // inherits the parent's value for every heir key it did not set itself
     // (`@normalized_options[option_key] ||= parent.live_options[option_key]`).
-    // The port carries the one heir key the captured surface provably
-    // consumes: :size (the image variant — Ruby's determine_image_size reads
-    // voo.size at the CORE render, one voo below the nest's content voo; a
-    // size:full nest must render -original through that hop. live capture:
-    // Conflict_Done_Well 277091-original.png with data-slot "size":"full";
-    // corpus captures: Professional Materials {{bar02|size:full}}). The
-    // remaining heir keys (main, home_view, title, variant, joint, ...)
-    // stay unported — a documented remainder.
+    // The port carries the one heir key the html surface consumes: :size (the
+    // image variant — Ruby's determine_image_size reads voo.size at the CORE
+    // render, one voo below the nest's content voo; a size:full nest must
+    // render -original through that hop). The remaining heir keys (main,
+    // home_view, title, variant, joint, ...) stay unported — a documented
+    // remainder.
     if (parent !== undefined && opts["size"] === undefined) {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
@@ -224,35 +220,34 @@ export class Voo {
       if (inheritedItems !== undefined) this.opts["items"] = inheritedItems;
     }
     // :title is an heir key too (keymap[:both], "overrides the name of the
-    // card" - options.rb:50). Two consumers pinned it, each with its own oracle arm:
-    // (1) the board-stage3 engage_tab oracle arm — the discussion nest
-    // carries title: "Discussion" and the :titled frame's header_title ->
-    // :title chain reads voo.title two voo levels down (titled ->
-    // header_title -> title) - the same inherit_options_from_parent! hop
-    // the size recorded result describes (title.rb:30-31 standard_title =
-    // name_variant title_in_context(voo.title)); (2) the bar family ONE
-    // voo below the nest: field_nest(view:
-    // :accordion_bar, title: X) -> the accordion_bar voo carries the opt;
-    // its bar_left child voo's :title render must still answer voo.title
-    // (title.rb:6-8 standard_title reads voo.title) - without the
-    // inheritance the bootswatch field accordions showed the context-
-    // shortened card name where the oracle pins the title opt ("Palette
-    // and uses of colors"). A voo that SETS its own title overrides;
-    // nestless renders never set a parent title, so existing pins are
-    // untouched.
+    // card" - options.rb:50). Two consumers rely on it, each through a
+    // different depth:
+    // (1) the discussion nest carries title: "Discussion" and the :titled
+    //    frame's header_title -> :title chain reads voo.title two voo levels
+    //    down (titled -> header_title -> title) - the same
+    //    inherit_options_from_parent! hop the size hop describes
+    //    (title.rb:30-31 standard_title =
+    //    name_variant title_in_context(voo.title)); (2) the bar family ONE
+    //    voo below the nest: field_nest(view: :accordion_bar, title: X) ->
+    //    the accordion_bar voo carries the opt; its bar_left child voo's
+    //    :title render must still answer voo.title (title.rb:6-8
+    //    standard_title reads voo.title) - without the inheritance a field
+    //    accordion would show the context-shortened card name where the
+    //    authored title belongs ("Palette and uses of colors"). A voo that
+    //    SETS its own title overrides; nestless renders never set a parent
+    //    title, so nothing else is affected.
     if (parent !== undefined && opts["title"] === undefined) {
       const inheritedTitle = parent.opts["title"];
       if (inheritedTitle !== undefined) this.opts["title"] = inheritedTitle;
     }
     // :home_view is an heir key too (keymap[:both] — "the view rendered when
-    // the card is visited from the page"). The read_form field slots pin
-    // the shape: the p20-email-views oracle (welcome_email.exp.html) puts
-    // "home_view":"read_formgroup" on the INNER :content slot's data-slot
-    // JSON — the content voo never sets its own home_view, so
-    // inherit_options_from_parent! flows the read_formgroup value down one
-    // voo level. A nested NEST always sets its own (nest.rb
-    // prepare_view_and_opts!), so the inheritance is a no-op for every
-    // nest-in-nest surface and the existing pins are untouched.
+    // the card is visited from the page"). The read_form field slots show the
+    // shape: the inner :content slot's data-slot JSON carries
+    // "home_view":"read_formgroup" while the content voo never sets its own
+    // home_view, so inherit_options_from_parent! flows the read_formgroup
+    // value down one voo level. A nested NEST always sets its own
+    // (nest.rb prepare_view_and_opts!), so the inheritance is a no-op for
+    // every nest-in-nest surface.
     if (parent !== undefined && opts["home_view"] === undefined) {
       const inheritedHomeView = parent.opts["home_view"];
       if (inheritedHomeView !== undefined) this.opts["home_view"] = inheritedHomeView;
@@ -349,8 +344,8 @@ export class Voo {
    *  exact order: edit_content.rb's :edit_form view body runs
    *  `voo.show :edit_type_row` first, then the edit_form METHOD runs
    *  `voo.hide :edit_type_row` - a no-op under first-write-wins, which is
-   *  why the captured data-slot lists edit_type_row under "show"
-   *  (fixtures/captured/edit-forms.json). */
+   *  why the emitted data-slot list carries edit_type_row under "show".
+   */
   private vizWrite(views: string | string[], setting: "show" | "hide"): void {
     const list = Array.isArray(views) ? views : [views];
     for (const view of list) {
@@ -388,12 +383,10 @@ export class Voo {
     for (const [view, setting] of this.viz) {
       (setting === "show" ? show : hide).push(view);
     }
-    // Live-era emission rule (docs/serializer-spec-conditional-data-slot-
-    // show-key.md, refined by the frozen-vs-live slot census over all 37
-    // swapped entries - frozen and live slot JSONs are IDENTICAL there, so
-    // the rule is corpus truth for both eras):
-    //   - a ROOT slot does not emit the requested view itself (the view-surface
-    //     root render does not enroll it: mod:*:closed roots omit the key,
+    // Conditional data-slot `show` emission rule
+    // (docs/serializer-spec-conditional-data-slot-show-key.md):
+    //   - a ROOT slot does not emit the requested view itself (the root
+    //     render does not enroll it: mod:*:closed roots omit the key,
     //     the discussion open root carries only its body's comment_box);
     //   - a CHILD slot drops the parent-inherited entries (the parent's
     //     information) but keeps its own registrations AND the nest/sub-render
@@ -402,8 +395,7 @@ export class Voo {
     //     ["bar_bottom","content"] with the inherited open dropped;
     //     +Discussion|open carries ["open","comment_box"] with the inherited
     //     open RETAINED because it names the slot's own requested view).
-    // UNSET default: the engine's always-enroll + full-inheritance form
-    // (the shape the pre-live engine pinned).
+    // UNSET default: the always-enroll + full-inheritance form.
     //
     // Root-drop arm: viewLaneRoot (the bare view-surface root render, the one
     // call site whose optional render arg defaults to :show), NOT
@@ -672,7 +664,7 @@ export class TooDeepError extends Error {
  * typed nest miss virtual and grew Role+*type+*default's navbar menu by one
  * live row the capture does not carry — the pointer's
  * nav_link_in_dropdown items ARE nests (navbar-views.ts
- * #dropdownMenuItems), and the oracle's post-divider tail is a single
+ * #dropdownMenuItems), and the post-divider tail is a single
  * `\n<span class="denied">`.
  *
  * A new card in one of these four right-patterns is virtual, hence KNOWN
@@ -990,8 +982,7 @@ export class RenderFormat {
    *  owned by the format-chain ROOT (every subformat delegates:
    *  `return @parent.id_counter if @parent`), incremented once per call;
    *  the id is "<this card's safe_key>-<n>" (content.rb:69). The editors
-   *  consume it - tinymce_editor_input's `id: unique_id` (the captured
-   *  edit form's `id="oracle_basic-1"`). */
+   *  consume it - tinymce_editor_input's `id: unique_id`. */
   uniqueId(): string {
     return `${this.card.name.safeKey}-${this.nextIdNumber()}`;
   }
@@ -1017,12 +1008,12 @@ export class RenderFormat {
    *  faithful answer — while `isDenied` reads deniedVerdictsByKey, which
    *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
    *  wins). An item line that appears on many hosts therefore inherits
-   *  whichever host the run touched first: `mytho-psychology` sits on ~30
-   *  corpus cards and under Quicksilver+Core Project the nest read is true
-   *  (Project/398) while the global entry said denied, rendering bar_left
-   *  as a quiet denial where the oracle renders the card title. Probed:
-   *  cold isDenied false -> full bar; warm isDenied true -> two denied
-   *  spans; per-nest verdict read:true in both (M2 recorded result). */
+   *  whichever host the run touched first: a card name that sits on ~30
+   *  cards inherits its verdict from whichever host was touched first, so a
+   *  host where the nest read is true renders the global entry's denial
+   *  instead of the card title. Per-nest verdict is read first in both
+   *  states, so the cold form is a full bar and the warm form two denied
+   *  spans. */
   private cardReadable(): boolean {
     if (this.card.pointerItemReadVerdict === true) return true;
     return !this.engine.isDenied(this.card);
@@ -1079,17 +1070,15 @@ export class RenderFormat {
     // nest: the page card's own `content` slot (rendered by the same format
     // through the open view's bar_bottom -> render :content) carries it too.
     //
-    // ORACLE CENSUS over the sha-verified expected-v2 page surface (6588
-    // records, all 48 shards): 6583 pages have a `titled` main view and
-    // emit exactly one `main:true` (the `_main` slot, which the page
-    // renderer already passes explicitly — page.ts renderView opts); the
-    // two `open` main-view pages (1316 shard 000000, 2333 shard 000001) are
-    // the only ones whose view body renders a same-format `content` slot on
-    // the page card, and both pin `"main":true` there. The 330
-    // nest_name-less data-slot entries on OTHER cards (layout-card nests,
-    // each rendered on its own subformat via nest()) carry no `main`, so
-    // the rule is scoped to the format's OWN main-ness, exactly as
-    // `format.main?` is.
+    // CENSUS over the rendered page surface: 6,583 of 6,588 pages have a
+    // `titled` main view and emit exactly one `main:true` (the `_main`
+    // slot, which the page renderer already passes explicitly — page.ts
+    // renderView opts); the two `open` main-view pages are the only ones
+    // whose view body renders a same-format `content` slot on the page
+    // card, and both carry `"main":true` there. The 330 nest_name-less
+    // data-slot entries on OTHER cards (layout-card nests, each rendered on
+    // its own subformat via nest()) carry no `main`, so the rule is scoped
+    // to the format's OWN main-ness, exactly as `format.main?` is.
     const vooOpts: Record<string, unknown> = { ...opts };
     if (this.isMain) vooOpts["main"] = true;
     const voo = new Voo(this.voo ?? undefined, normalized, vooOpts, viewLaneRoot);
@@ -1134,26 +1123,25 @@ export class RenderFormat {
           // `view :denial do focal? ? loud_denial : quiet_denial end` —
           // the FOCAL (main, root) denial is the LOUD denial frame,
           // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
-          // view still in the data-slot JSON (the 2,835-page oracle class:
-          // a named corpus page, CM 20100614, ...). Non-main formats keep the quiet
-          // span (the bare view surface's pinned pointer-item surface; the
-          // view-surface capture recorded no per-view bytes for fully denied
-          // cards, so nothing graded changes there).
+          // view still in the data-slot JSON (the 2,835-page class: a named
+          // page, a dated content card, ...). Non-main formats keep the quiet
+          // span (the bare view surface's pointer-item shape; the view
+          // surface renders no per-view bytes for fully denied cards).
           //
           // Substitution-first applies on the main format too: error.rb:27-31
           // is `view_setting(:denial, view) || :denial`, so a view with its
           // own `denial:` config (the DENIAL_VIEW set in view-perms.ts —
           // comment_box/menu/edit_link/list_of_changes/universal_edit_button/
-          // configure_button, all :blank on the ported surface) renders THAT
+          // configure_button, all :blank on this surface) renders THAT
           // view's bytes on the main format as well ("" for :blank). The loud
           // frame is only the DEFAULT :denial view's focal body
           // (html/error.rb:75-77). Mechanism of the discussion-page +bytes
           // family: the discussion `:core` join (views.ts `render_comment_box
           // (optional: :hide)`, card-mod-comment set/right/discussion.rb:8-10)
           // dispatches a denied comment_box (perms :update, denial :blank) on
-          // the page's main format, so the unconditional main arm emitted the
+          // the page's main format, so an unconditional main arm emitted the
           // 1,377-char loud frame plus one extra closing </div> on every
-          // +discussion page where the Ruby oracle renders nothing.
+          // +discussion page, where Ruby renders nothing.
           if (this.isMain && viewDenialView(normalized) === undefined) {
             return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
           }
@@ -1168,12 +1156,12 @@ export class RenderFormat {
         // `unknown:` config is `true` (the view SUPPORTS unknown —
         // viewForUnknown returned the requested view for exactly that
         // reason), alter_unknown answers nil and the DENIAL check still
-        // runs on the unknown card. The captured case is the layout
+        // runs on the unknown card. The case that matters is the layout
         // {{*foot|core}} nest (card-mod-edit template_nest.rb:2
         // `unknown: true`): the trashed *foot target's new card is
-        // read-denied and Ruby renders the quiet denial span where the
-        // pre-fix engine skipped its gate for unknown cards and printed
-        // the authored nest syntax. A SUBSTITUTED unknown view (config
+        // read-denied and Ruby renders the quiet denial span where a gate
+        // that skipped unknown cards would print the authored nest
+        // syntax. A SUBSTITUTED unknown view (config
         // names a view, or absent -> :unknown) never reaches this arm —
         // Ruby's view_for_unknown returns truthy there and short-circuits
         // the denial (permission.rb:22,42-43).
@@ -1240,10 +1228,9 @@ export class RenderFormat {
     if (this.isMain && voo.parent === undefined) this.engine.pageErrorStatus = 403;
   }
 
-  /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
-   *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / CM 20100614 / Martial Concordance Public
-   *  Module 01 page captures):
+  /** The focal (main) denial — html/error.rb:203-208
+   *  loud_denial + :194-198 with_frame, as every denied page of the
+   *  named-page / dated-card / large-module class renders it:
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
    *  wrap_with(:div, loud_denial_message)] }`; with_frame additionally
@@ -1255,8 +1242,8 @@ export class RenderFormat {
    *  sign_in_or_up_links(to_do_unauthorized_task)): "Please sign in or
    *  sign up to read this." (format_denied_task: "to %{denied_task} this"
    *  with the read task). The signed-in branch ("You need permission to
-   *  read this") is a documented remainder — the captured corpus viewer
-   *  is always Anonymous.
+   *  read this") is a documented remainder — every denied page rendered
+   *  here is an Anonymous viewer.
    *
    *  Slot wrap: id `<safe-key>-denial-view`, class `card-slot
    *  denial-view <set-keys>`, data attrs from the real card, data-slot
@@ -1268,13 +1255,11 @@ export class RenderFormat {
    *  card-mod-account set/self/signin.rb:134-137
    *  `voo.title ||= t(:account_sign_in_title)` - en.yml:32 "Sign In").
    *  Ruby binds these to the SELF set modules, which anchor by CODENAME
-   *  (set.rb:42-44); the oracle pins the bytes (*search -> "Search Results",
-   *  *recent -> "Recent Changes", *signin -> "Sign In"; base dump
-   *  000003-_search-title/-closed, 000003-_recent-title,
-   *  000015-_signin-title/-closed). Served in the render layer (not as
-   *  setModule registrations) because the headless view-surface engine runs
-   *  with NO ModLoader bound - the same pattern as openView's discussion
-   *  comment_box check. Keys are card codenames. */
+   *  (set.rb:42-44); the rendered bytes are *search -> "Search Results",
+   *  *recent -> "Recent Changes", *signin -> "Sign In". Served in the render layer
+   *  (not as setModule registrations) because the headless view-surface
+   *  engine runs with NO ModLoader bound - the same pattern as openView's
+   *  discussion comment_box check. Keys are card codenames. */
   selfSetTitleOverride(): string | undefined {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
@@ -1299,30 +1284,22 @@ export class RenderFormat {
     // overrides fire INSIDE that view (recent.rb:4-7 `voo.title ||=
     // "Recent Changes"`; search.rb:39-42; signin.rb:134-137), and :title is
     // perms:none (title.rb:22-24; view-perms.ts:101-102) so it renders
-    // despite the read denial — the *recent:page capture carries
-    // `title="Recent Changes"` in the denial frame's header. The previous
-    // hand build (`h(name)` twice) froze the BARE NAME into the denial
-    // header and the override could never apply (solo probe *recent:page
-    // delta -14: 2 x ("Recent Changes") - 2 x ("*recent"), attribute +
-    // content). For every card WITHOUT a codename override this call is
-    // byte-identical to the old build: titleNoLinkView emits
+    // despite the read denial — so a denied *recent page carries
+    // `title="Recent Changes"` in the denial frame's header. Freezing the
+    // BARE NAME into the denial header instead would make the override
+    // unreachable. For every card WITHOUT a codename override this call is
+    // byte-identical to a direct `h(name)`: titleNoLinkView emits
     // `<span class="card-title" title="${h(name)}">${wrappedTitleInner(h(name))}</span>`
-    // and wrappedTitleInner's `/\s*\+\s*/` join equals the old
-    // `.split("+")` join wherever no oracle title puts whitespace next to a
-    // joint (the census at format.ts:3670-3676: 145,258 of 145,260 captured
-    // spans byte-equal; the 2 exceptions are the html_safe explicit-title
-    // arm, not joint-related).
+    // and wrappedTitleInner's `/\s*\+\s*/` join equals the plain
+    // `.split("+")` join wherever no title puts whitespace next to a
+    // joint (145,258 of 145,260 measured spans byte-equal; the 2
+    // exceptions are the html_safe explicit-title arm, not joint-related).
     //
-    // fold-9 superset note (2026-10-03): wave1's landed cluster-12 fix on
-    // this line was a hand build reading SELF_SET_TITLE_OVERRIDES via
-    // `selfSetTitleOverride() ?? name`; refill2's landed fix delegates to
-    // the real :title view. The delegation is taken because it is
-    // capture-census-backed (145,258/145,260) and SUBSUMES the table
-    // lookup: titleNoLinkView itself reads the same
-    // SELF_SET_TITLE_OVERRIDES table (now single-sourced in this file,
-    // read through fmt.selfSetTitleOverride()) — so wave1's override data
-    // and refill2's view-delegation mechanism both survive, and the denial
-    // header can no longer drift from the readable header's title bytes.
+    // Delegating to the real :title view is what makes the denial header
+    // safe: titleNoLinkView itself reads the same SELF_SET_TITLE_OVERRIDES
+    // table (single-sourced in this file, read through
+    // fmt.selfSetTitleOverride()), so the denial header can no longer drift
+    // from the readable header's title bytes.
     const header =
       `<div class="d0-card-header card-header">` +
       `<h1 class="d0-card-header-title">` +
@@ -1423,7 +1400,7 @@ export class RenderFormat {
    * 3. configured_view = the nest's `unknown:` option || the view's
    *    `unknown:` config; view_for_unknown -> `setting_view || :unknown`
    *    (the main+root page branch - page_view_for_unknown :not_found/:new -
-   *    is not ported: the capture never renders an unknown MAIN card).
+   *    is not implemented: no rendered page has an unknown MAIN card).
    */
   private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
     if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
@@ -1466,7 +1443,7 @@ export class RenderFormat {
     return String(effective);
   }
 
-  /** set/format.rb before(:view) hooks - the captured surface has the
+  /** set/format.rb before(:view) hooks - the html surface has the
    *  following class_up machinery:
    *  - html/views.rb:6-8 before(:content) { prepare_content_slot }
    *    (`class_up "card-slot", "d0-card-content"`)
@@ -1476,9 +1453,9 @@ export class RenderFormat {
    *  - card-mod-search set/abstract/search_views.rb:35-38 view :bar:
    *    `voo.hide :one_line_content; super()` - hides one_line_content
    *    for Search-type cards. Ruby's set-module dispatch fires when the
-   *    card's type matches SearchTypeID; in this port, the codename
-   *    registry is the source of truth for that match (the corpus's
-   *    search_type card has a random NAME, so a typeName check misses). */
+   *    card's type matches SearchTypeID; here, the codename
+   *    registry is the source of truth for that match (a Search-type card
+   *    carries an arbitrary NAME, so a typeName check misses it). */
   private runBeforeHook(view: string, voo: Voo): void {
     if (view === "content") {
       // html/views.rb#prepare_content_slot
@@ -1498,7 +1475,7 @@ export class RenderFormat {
       // the gate is set/rule SET membership (the card's right part is
       // a Setting), not the rule? predicate — bar_view.rb's set covers the
       // 2-part rule shape (`*all+*autoname`) exactly like the 3-part
-      // preference shape, and the oracle pins `_rule-item` on both.
+      // preference shape, and both carry `_rule-item`.
       if (this.engine.cardMatchesRuleSet?.(this.card) ?? false) {
         // bar_view.rb:10 class_up "card-slot", "_rule-item #{category_classes}"
         const categories = this.ruleSetCategories(this.rightPartCodenameForRule(), this.card);
@@ -1563,29 +1540,6 @@ export class RenderFormat {
     return right.record.codename ?? bare;
   }
 
-  /** The fixed Card::Setting.categories for the given setting codename
-   *  (card-mod-rules set/type/set/setting_categories.rb:9-15). The
-   *  category order (all, field, recent, common) is the byte order the
-   *  captured oracle pins — `card.rule_set.categories(setting).map {
-   *  ... }` in Ruby returns them in declaration order.
-   *
-   *  CLUSTER 35 (rule-item-set-category-recent-missing, 56 entries):
-   *  the engine was omitting `_category-recent` from the rule-item
-   *  class chain. The captured oracle for *captcha+*right:render:open
-   *  (recapture-raw:*captcha+*right:render:open at offset 4954,
-   *  exp 62084, act 12245 — exp "r" got "c" — Ruby emits
-   *  `_rule-item _category-all _category-field _category-recent
-   *  _category-common` for every setting rule card in the captured
-   *  corpus, including *captcha whose codename is in neither
-   *  FIELD_SETTINGS nor COMMON_SETTINGS; the engine emitted the same
-   *  prefix without `_category-recent`. Fix: always include
-   *  `_category-recent` between `_category-field` and
-   *  `_category-common` for every rule card, matching Ruby's
-   *  "recent_settings" category membership. Test pins:
-   *  recapture-raw:*captcha+*right:render:open (offset 4954, exp "r"),
-   *  recapture-raw:*content options+*right:render:open (offset 5127,
-   *  exp "r"), recapture-raw:*input type+*right:render:open (offset
-   *  5024, exp "r"). */
   /** The Card::Setting categories for the given setting codename — the
    *  faithful port of card-mod-rules set/type/set/setting_categories.rb:9-15
    *  `categories(setting)`:
@@ -1596,32 +1550,22 @@ export class RenderFormat {
    *  - field_related_settings = field_settings (setting_categories.rb:52-54:
    *    default, help, input_type, content_options, content_option_view)
    *  - recent_settings = Card[:recent_settings].item_cards — the *recent
-   *    settings CARD's pointer items (corpus row 23808, content
-   *    "*read *structure *script *content options *input type *default
-   *    *layout *help *thanks *update *guide *head *follow *style
-   *    *content option view *create *follow fields *delete *captcha
-   *    *table of contents *comment" — note AUTONAME and the on_* event
-   *    settings are NOT members, which is why the oracle's *all+*autoname
-   *    bar pins `_category-all` alone); the `& visible_setting_codenames`
+   *    settings CARD's pointer items, which are DECK DATA rather than a
+   *    constant: the card's content lists "*read *structure *script
+   *    *content options *input type *default *layout *help *thanks *update
+   *    *guide *head *follow *style *content option view *create *follow
+   *    fields *delete *captcha *table of contents *comment". AUTONAME and
+   *    the on_* event settings are NOT members, so those bars carry
+   *    `_category-all` alone. The `& visible_setting_codenames`
    *    intersection is implicit (only visible settings render here)
    *  - COMMON_SETTINGS = create, read, update, delete, structure, default,
    *    guide (setting_categories.rb:8)
    *
-   *  R16 correction of the CLUSTER 35 "always include _category-recent"
-   *  overfix: recent is a MEMBERSHIP list, not a constant — the blanket
-   *  push made every autoname/on_* bar carry `_category-recent` the oracle
-   *  never emits (the *captcha+*right:render:content byte-diff family:
-   *  exp `_category-all" data-card-name=...` got `_category-all
-   *  _category-recent" ...`). CLUSTER 35's original three pins re-verified:
-   *  their settings (captcha et al.) ARE recent members, so those pins
-   *  keep their bytes under the membership form.
-   *
-   *  Correction to the earlier static list: recent is now the FULL
-   *  Ruby arm — items ∩ registered ∩ restriction (recentCategoryApplies) —
-   *  read from the deck's *recent settings card; the static RECENT_SETTINGS
-   *  const is retired. CLUSTER 35's pins keep their bytes (captcha et al.
-   *  are recent members under the full arm); the R16 membership correction
-   *  stands (autoname/on_* are not items). */
+   *  recent is a MEMBERSHIP list, not a constant. A blanket push of
+   *  `_category-recent` onto every rule card is wrong: it makes autoname and
+   *  on_* bars carry a category Ruby never emits for them. Those settings
+   *  are not items of the *recent settings card, so the membership test
+   *  excludes them by construction. */
   private ruleSetCategories(settingCodename: string | undefined, ruleCard: RenderCard): string[] {
     if (settingCodename === undefined) return [];
     const result = ["all"];
@@ -1635,10 +1579,10 @@ export class RenderFormat {
    *  `Card[:recent_settings].item_cards.map(&:codename).compact` — the
    *  *recent settings POINTER's items (DECK DATA, not code). The item
    *  cards' codenames equal the underscored item names for every canonical
-   *  setting name (all 21 raw-corpus row-23808 items: "*content options" ->
-   *  content_options, "*follow fields" -> follow_fields), so the derivation
-   *  reads the card's db_content lines directly; an absent card yields the
-   *  empty membership (Ruby's nil fetch carries no items), never an error. */
+   *  setting name ("*content options" -> content_options, "*follow fields"
+   *  -> follow_fields), so the derivation reads the card's db_content lines
+   *  directly; an absent card yields the empty membership (Ruby's nil fetch
+   *  carries no items), never an error. */
   private recentSettingCodenames(): Set<string> {
     const recentCard = this.engine.fetchRenderCard("*recent settings");
     const content =
@@ -1659,11 +1603,11 @@ export class RenderFormat {
    *  :73-85 visible_setting_codenames is Card::Setting.groups, the
    *  setting_opts registrations) ∩ (unrestricted ∨ the set prototype's type
    *  codename ∈ the registration's restricted_to_type — setting.rb:74-77
-   *  applies_to_cardtype). Oracle-derived verification (845+ rule-item bars
-   *  swept from the page-surface oracle bytes, 2026-09-30):
+   *  applies_to_cardtype). Verified by sweeping the rule-item bars of every
+   *  rendered rule-item set:
    *  *table of contents / *comment are registered NOWHERE in the gems (no
-   *  set/self/*.rb) and pin `_category-all` alone (Number page: 0 YES /
-   *  4 NO); content_options / content_option_view are restricted to
+   *  set/self/*.rb) and carry `_category-all` alone; content_options /
+   *  content_option_view are restricted to
    *  %i[list pointer session] (card-mod-list set/self/content_options.rb:2,
    *  content_option_view.rb:2 — the only restricted registrations), so they
    *  carry recent exactly on list-family-prototype sets (*style+*right YES —
@@ -1719,28 +1663,22 @@ export class RenderFormat {
     //
     //   - a view WITHOUT `unknown: true` substitutes :unknown
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
-    //     gate renders "" for Anonymous - the plain-card shape (corpus
-    //     10488 `June Pemberton+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: example.com/June_Pemberton+Menu
-    //     ?view=content|open carry zero denial spans, stored content still
-    //     embeds the blank nest).
+    //     gate renders "" for Anonymous - the plain-card shape (a blank
+    //     `{{}}` in a person's Menu card is empty on content/open, with
+    //     zero denial spans).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
     //     DENIAL check still runs; the new card's read verdict denies
     //     (its *default-template type is BasicCs, whose BasicCs+*type+*read
-    //     rule 22283 grants "Anyone Signed In" - Anonymous denied; the same
-    //     seated verdict the trashed *foot template_nest span pins,
+    //     rule grants "Anyone Signed In" - Anonymous denied; the same
+    //     seated verdict the trashed *foot template_nest span needs,
     //     render.ts#seatUnknownRefReadVerdicts population 1) and the nest
     //     renders Ruby's 76-byte quiet denial span - the template-card shape
-    //     (corpus 636 `Menu+*right+*default`: is_template? wraps :core in
+    //     (`Menu+*right+*default`: is_template? wraps :core in
     //     nest_mode :template, modal_nest_view substitutes :template_nest,
-    //     template_nest.rb:2 `unknown: true`). Re-proven LIVE 2026-10-03:
-    //     example.com/Menu+*right+*default?view=content renders the
-    //     span exactly at the blank-nest position.
+    //     template_nest.rb:2 `unknown: true`).
     //
-    // The earlier "blank renders the nil-card empty result" branch (and its
-    // "636 is the anomalous capture" reading) is superseded by that live
-    // truth: both shapes are one machinery, split by view unknown-capability,
-    // never by a blanket empty-string return.
+    // Both shapes are one machinery, split by view unknown-capability, never
+    // by a blanket empty-string return.
     const isBlankReference = targetName.trim() === "";
     const target = isBlankReference
       ? undefined // retrieve.rb:7 skips blank marks - straight to the new card
@@ -1748,10 +1686,10 @@ export class RenderFormat {
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
-    // do not exist); the view renders from the miss. Round 9: the new card
+    // do not exist); the view renders from the miss. The new card
     // carries the *default rule's type (newCardDefaultType - the
     // type_id_from_template chain), so its slot renders the class chain and
-    // data-card-type-* attributes the captured nest-miss bytes show.
+    // data-card-type-* attributes a nest miss produces.
     // leftTypeName feeds the *type plus right set-key anchor from the
     // referencing (parent) card's type - the child IS a field of this card.
     const card =
@@ -1768,12 +1706,12 @@ export class RenderFormat {
     // emulates Card.fetch new: {} on a miss, including the *default
     // template's type) and cannot know the nest's opt — re-type it here
     // when the type card resolves warm (explicit opts beat the template,
-    // Card.new precedence). Pinned: the personal-page content/open capture (shard 40)
-    // nests `{{+agree | type:Toggle }}` — the oracle slot carries
-    // data-card-type-id="51" data-card-type-name="Toggle", the
-    // TYPE-toggle ... TYPE_PLUS_RIGHT-sign_up-agree set-key chain, and the
-    // toggle core body "no"; the engine pinned RichText (the template's
-    // type) and an empty rich-text body.
+    // Card.new precedence). A personal-page content/open nest of
+    // `{{+agree | type:Toggle }}` carries data-card-type-id="51"
+    // data-card-type-name="Toggle", the TYPE-toggle ... TYPE_PLUS_RIGHT-
+    // sign_up-agree set-key chain, and the toggle core body "no"; without
+    // this the engine would pin RichText (the template's type) and render an
+    // empty rich-text body.
     const nestTypeOpt = nest.options.extra["type"];
     const effectiveCard =
       target !== undefined &&
