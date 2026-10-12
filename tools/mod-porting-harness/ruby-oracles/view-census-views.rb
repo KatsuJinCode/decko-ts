@@ -14,13 +14,12 @@
 # view declaration. Regex mining cannot see the difference; a parser can.
 #
 # WHAT RUNS. Nothing but Ripper.sexp over the gem's own set/*.rb source. The
-# gem is READ. No Rails boot, no DB, no network, no live-site request.
+# gem is READ. No Rails boot, no DB, no network, no requests of any kind.
 #
-# SCOPE. Written for card-mod-format (the class that carried the manufactured
-# rows) but NOT format-specific: the defect it pins is a property of the MINER,
+# SCOPE. Written for card-mod-format (where the miner's mismatch was found)
+# but NOT format-specific: the defect it pins is a property of the MINER,
 # not of any one mod, and the same question — is this loop a view loop? — is
-# asked of every set file the harness walks. Running it over
-# card-mod-account is how the account-side rows were adjudicated.
+# asked of every set file the harness walks.
 #
 # THE ENUMERATION RULE (what Ruby actually means by "a view is declared here"):
 #   - `view :name` / `view(:name, opts)` / `view :a, :b` — a literal symbol
