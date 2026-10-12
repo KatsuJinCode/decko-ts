@@ -41,9 +41,9 @@
 //    transform. Junction sides resolve recursively: a depth-N chain takes
 //    O(N) rounds, each joining junction rows by their UNIQUE
 //    (left_id, right_id) pair; unknown names simply stop the rounds - the
-//    render's nest fetch decides what an unknown nest means (wave 3).
+//    render's nest fetch decides what an unknown nest means.
 //
-// All fetching is read-only (SELECT); the write path is another stream.
+// All fetching is read-only (SELECT); the write path is separate.
 
 import { DeckoName } from "../name.js";
 import {
