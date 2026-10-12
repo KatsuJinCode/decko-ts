@@ -1,4 +1,4 @@
-// THE PLAN-REPLAY FOLD'S EXACTNESS PIN (fold-plan-replay lane, 2026-10-06).
+// THE PLAN-REPLAY FOLD'S EXACTNESS PIN.
 //
 // WHAT IS UNDER PIN: the merged per-class statements replay-fold.ts builds
 // decompose back into EXACTLY the rows the database returns for each source
@@ -16,7 +16,7 @@
 //      than the plan has entries. A fold that were exact but did not reduce
 //      the count would pass (1) and cost a round trip's worth of nothing.
 //
-// The corpus is the committed trial-deck mirror (one-trip-fixture's
+// The deck is the committed shared deck database copy (one-trip-fixture's
 // MIRROR_COPY_PATH); the test SKIPS when it is absent, like its siblings.
 
 import { describe, expect, it } from "vitest";
@@ -29,11 +29,9 @@ import {
 } from "../../../src/card/one-trip/replay-fold.js";
 import { MIRROR_COPY_PATH, mirrorAvailable } from "./one-trip-fixture.js";
 
-/** The engine's own corpus shapes, transcribed with the binds each carries
- *  in a real render (WORK_DIR/
- *  fold-plan-replay-work/11-fold-exactness-check-report.json, Aikido +
- *  Aikido_in_Education). Each entry is one plan statement the recorder
- *  produced for those pages. */
+/** The engine's own statement shapes, transcribed with the binds each carries
+ *  in a real render of the template-scale probe pages. Each entry is one plan
+ *  statement the recorder produced for those pages. */
 const PLAN_ENTRIES: RenderPlanEntry[] = [
   // cards-key-multi: three binds (folded), two binds (ladder — SQLite's
   // two-way IN order is bind order, which the class refuses to reproduce).
