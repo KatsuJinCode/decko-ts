@@ -29,8 +29,8 @@
 //
 // Memory: rows stream source -> chunker one at a time; the only buffer
 // is one chunk's worth of rows (maxRows * ~256 bytes typical). The CLI
-// is designed to handle the 867MB anonymized corpus without holding the
-// whole file in memory.
+// is designed for hundreds-of-MB sources without holding the whole
+// file in memory.
 
 import { existsSync, statSync, mkdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -237,14 +237,13 @@ if (sourceKind === "sqlite") {
 
   const { mapRowToTarget } = await import("./schema-map.mjs");
   // Deduplicate by (table, id) when the table has an id column. Real
-  // decko data is unique on id, but the anonymized corpus-v2 seed has
-  // ~1000 duplicate card_references rows from a UNION-style sanitization
-  // that was supposed to be idempotent but was not. Skipping the
+  // decko data is unique on id, but dump files produced by lossy
+  // sanitization passes can carry duplicate rows. Skipping the
   // duplicates (keeping the first occurrence) lets the chunker write a
   // PK-clean seed; the count is reported in the validation report so
   // the operator sees what was dropped.
   //
-  // The corpus also has (left_id, right_id) duplicates in cards and
+  // Some sources also carry (left_id, right_id) duplicates and
   // duplicate codenames; the target D1 schema declares UNIQUE INDEXes
   // on both, so we null the second side on collision. The rows still
   // land; the count is reported.
@@ -286,8 +285,8 @@ if (sourceKind === "sqlite") {
       }
     }
     // cards and card_references both have a UNIQUE INDEX on key (cards_key_index
-    // COLLATE NOCASE); the corpus sanitization allowed a handful of duplicates
-    // on empty / "_r1" suffixes. When a duplicate key is seen, NULL the key
+    // COLLATE NOCASE); lossy sources can carry duplicate keys (empty keys
+    // or revision-suffixed ones). When a duplicate key is seen, NULL the key
     // on the duplicate row so the UNIQUE INDEX does not reject it; the row
     // itself still lands and the count is reported.
     const keyIdx = mapped.columns.indexOf("key");
@@ -304,8 +303,8 @@ if (sourceKind === "sqlite") {
       }
     }
     // cards UNIQUE INDEX on (left_id, right_id): NULL one side on collision.
-    // The corpus has many compound cards with the same (left_id, right_id)
-    // across revisions (e.g., live + "__r1" revisions).
+    // Some sources carry compound cards whose (left_id, right_id) repeats
+    // across revisions (e.g., a card plus its "__r1" revision).
     const leftIdx = mapped.columns.indexOf("left_id");
     const rightIdx = mapped.columns.indexOf("right_id");
     if (leftIdx >= 0 && rightIdx >= 0) {
@@ -324,7 +323,7 @@ if (sourceKind === "sqlite") {
     }
     // cards UNIQUE INDEX on codename (COLLATE NOCASE): NULL on collision.
     // SQLite considers NULL distinct from NULL in unique indexes, but
-    // '' is NOT distinct from '' (they collide). The corpus has many
+    // '' is NOT distinct from '' (they collide). Sources can carry many
     // cards with codename = '' (trash rows / un-codenamed) - we keep
     // the first one and NULL the rest so the UNIQUE INDEX can be
     // created.
@@ -360,7 +359,7 @@ if (sourceKind === "sqlite") {
   // Planner statistics, after the rows are in and after the indexes exist.
   // Without them SQLite estimates every equality alike and can pick a
   // low-selectivity index, reading far more rows than the query needs.
-  // ANALYZE writes only sqlite_stat1, never a corpus row.
+  // ANALYZE writes only sqlite_stat1 and touches no deck table.
   await stagingDriver.query("ANALYZE", []);
   if (!opts.quiet) process.stderr.write("\n");
   if (skippedDuplicates.size > 0) {
