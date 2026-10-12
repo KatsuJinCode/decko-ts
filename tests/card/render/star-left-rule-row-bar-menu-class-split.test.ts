@@ -1,30 +1,15 @@
-// page42 lane RED/GREEN pin: the bar-menu known/wanted class split for 2-part
-// star-right (rstar) rule-row names must follow the CORPUS's own pins, which
-// split by the LEFT part:
+// The bar-menu known/wanted class split for 2-part star-right (rstar)
+// rule-row names splits by the LEFT part:
 //
 //   star-left compounds ("*all+*autoname", "*all+*create", "*star+*default",
-//   ...) — a RULE-ROW name "<set-marker>+<setting>": the corpus pins the
-//   page-link class by STORED-ROW presence, 253/253 (82 known-pinned names
-//   all resolve present in the staging corpus; 171 wanted-pinned names all
-//   resolve absent — tmp/lane-page42 full-page-link census, *all:page skew
-//   diff = exactly 8 wanted/known regions on 8 absent rows).
-//   Oracle bytes (recapture-raw-shard-000000 *all:page, first-diff 11074):
-//   `<a class="full-page-link wanted-card" href="/*all+*autoname">`.
+//   ...) — a RULE-ROW name "<set-marker>+<setting>": the page-link class
+//   follows STORED-ROW presence — an absent row renders wanted-card, a
+//   present row renders known-card.
 //
 //   non-star-left compounds ("Anonymous+*created", "mod X+*script", ...) —
-//   the corpus pins known-card 97/97 including five names whose staging rows
-//   are missing (Anonymous+*created/-*edited, +*default, democracy+*referred
-//   to by, Cs Dev+*self — capture-deck rows the W5 seed family owns; the
-//   Eagle oracle recapture-raw-shard-000029 pins known on absent-in-staging
-//   rows). The class-level known fiction stays on THIS subset only, gated on
-//   the W5 seed landing.
-//
-// History: commit bb430e0e ("bar-menu class/text split, 11 Eagle") widened
-// the known-carve-out to ALL 2-part rstar names, which (a) broke the standing
-// r16-rule-bar-and-stored-verdict-parity.test.ts wanted-card pin (verified
-// RED at the fold-12 base 64572305: 1 failed | 3 passed) and (b) fails the
-// 171 star-left wanted pins — grade9-run4b page entries *all/*star/*rstar/
-// *all plus (the 175's ENGINE class this lane fixes).
+//   known-card EVEN WHEN no stored row exists: the class-level known
+//   fiction is deliberate on this subset (a content-left compound's menu
+//   must not read as a missing page).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -56,18 +41,15 @@ async function seedDeck(): Promise<void> {
   for (const [id, name, codename] of settings) {
     await seedCard(s, { id, name, codename, typeId: SETTING_TYPE_ID });
   }
-  // The stored star-left rule row: *all+*create exists (the corpus's own
-  // *all+*create row, resolved-present family) -> its bar menu pins known.
+  // The stored star-left rule row: *all+*create exists -> its bar menu
+  // pins known.
   await seedCard(s, { id: 50, leftId: 10, rightId: 24, typeId: LIST_TYPE_ID, dbContent: "{}" });
-  // The non-star-left rule-row shape the corpus pins known WITHOUT a stored
-  // row (the Anonymous+*created Eagle oracle, staging row absent): the
-  // card-name left is a plain content card.
+  // The non-star-left rule-row shape pinned known WITHOUT a stored row
+  // (Anonymous+*created): the card-name left is a plain content card.
   await seedCard(s, { id: 60, name: "Anonymous", codename: "anonymous", typeId: RICH_TYPE_ID, dbContent: "anon" });
-  // The Eagle oracle's own surface (recapture-raw-shard-000029 Eagle:page,
-  // offset ~9348): a host card nests the absent name as a bar
-  // (`<p><div id="anonymous-Xcreated-bar-view" class="card-slot bar-view
-  // ALL ALL_PLUS TYPE-search RSTAR RIGHT-Xcreated ...`). The capture deck's
-  // row was Search-typed; staging lacks it — the fiction subset.
+  // The surface: a host card nests the absent name as a bar (slot classes
+  // of the shape `card-slot bar-view ALL ALL_PLUS TYPE-search RSTAR
+  // RIGHT-Xcreated ...`). No stored row exists — the known-fiction subset.
   await seedCard(s, { id: 61, name: "Anon Host", typeId: RICH_TYPE_ID, dbContent: "{{Anonymous+*created|bar}}" });
 }
 
@@ -103,10 +85,8 @@ describe("2-part rstar bar-menu class splits by left part (corpus pins)", () => 
   });
 
   it("non-star-left absent rule row (Anonymous+*created shape) keeps the known-class fiction (W5-gated)", async () => {
-    // The Eagle oracle surface: the host card nests the absent name as a
-    // bar; its menu must stay known-card — the corpus pins known 97/97 on
-    // this subset (five staging-absent names included) until the W5 seed
-    // lands.
+    // The host card nests the absent name as a bar; its menu must stay
+    // known-card — the deliberate known-fiction on this subset.
     const html = await storage!.engine.render("Anon Host", "content");
     expect(html).toContain(`data-card-name="Anonymous+*created"`);
     expect(html).toContain("full-page-link known-card");
