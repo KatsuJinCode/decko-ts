@@ -1,9 +1,9 @@
-// Gherkin step helpers for attach.feature (decko-commons/decko
-// decko/features/attach.feature, "File Upload"). The upstream scenarios are
+// Gherkin step helpers for the attach feature ("File Upload"). The upstream
+// scenarios are
 // Capybara browser flows over the upload form; this harness drives the same
-// business behavior against the attachment write path the engine owns
+// business behaviour against the attachment write path the engine owns
 // (CardActionEngine's attachment events + LocalAttachmentStore — the same
-// machinery the /files POST route and the oracle tree-pattern test drive).
+// machinery the /files POST route drives).
 //
 // Boundary (named, consistent with the other slices): the editor's live
 // form states ("I should see file 'file.txt 9 Bytes'", "Add File...",
@@ -21,9 +21,8 @@ import { givenStandardDeck, freshWorld, closeWorld, whenGoToCard, thenSee, type 
 import { installGherkinNameEnvironment, seedCard, TYPE_IDS } from "./gherkin-storage.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
 
-/** The attachment cardtype codename cards (card-mod-carrierwave
- *  set/type/file.rb `attachment :file` codename `file`; set/type/image.rb
- *  `attachment :image` codename `image`). The oracle tree test seeds File
+/** The attachment cardtype codename cards (`attachment :file` codename
+ *  `file`; `attachment :image` codename `image`). File seeds
  *  at id 30; Image rides the same convention. */
 export const ATTACH_IDS = { file: 30, image: 31 } as const;
 
@@ -69,8 +68,8 @@ export async function closeAttachmentWorld(aw: AttachmentWorld): Promise<void> {
 }
 
 /** "When I upload the file <name>" — the upload form's submit: one save
- *  carrying the attachment (Card.create name:, type: :file, file: ...
- *  — card-mod-carrierwave's mount). Returns the stored identifier the
+ *  carrying the attachment (Card.create name:, type: :file, file: ...).
+ *  Returns the stored identifier the
  *  content column carries ("~<card_id>/<action_id><ext>",
  *  file_card_uploader.rb:164-177). */
 export async function whenUploadFile(
@@ -90,8 +89,7 @@ export async function whenUploadFile(
 }
 
 /** The on-disk bytes of a stored identifier ("~<cid>/<aid>.ext" ->
- *  <filesDir>/<cid>/<aid>.ext, set/abstract/attachment/paths.rb:10-17 +
- *  file_card_uploader/path.rb:33-39). An IMAGE card's original stores
+ *  <filesDir>/<cid>/<aid>.ext). An IMAGE card's original stores
  *  under the -original spelling (image_card_uploader.rb:44-57 —
  *  carrierwave's store_path applies full_filename), so the bare spelling
  *  falls back to <aid>-original<ext> when the bare file is absent. */
@@ -108,8 +106,7 @@ export async function storedFileBytes(aw: AttachmentWorld, identifier: string): 
 }
 
 /** The on-disk bytes of one action's stored VARIANT file — the rendition
- *  spelling "<aid>-<variant><ext>" (decko's Versions#full_filename,
- *  file_card_uploader.rb:266-283 — the version joins the basename with a
+ *  spelling "<aid>-<variant><ext>" (the version joins the basename with a
  *  dash before the extension). */
 export async function storedVariantBytes(
   aw: AttachmentWorld,
@@ -124,7 +121,7 @@ export async function storedVariantBytes(
 }
 
 /** "Then I should see 'Download <name>'" — the file card's :core view
- *  (card-mod-carrierwave set/type/file core.haml: the download anchor).
+ *  (the download anchor).
  *  Renders through the gherkin world's renderer. */
 export async function thenFileCardShowsDownload(aw: AttachmentWorld, name: string): Promise<void> {
   await whenGoToCard(aw.world, name, "core");
