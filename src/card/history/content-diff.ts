@@ -9,9 +9,8 @@
 // diffs, the act header's name/type diffs) and the legends
 // (render_added_chunk / render_deleted_chunk, diff.rb:16-21).
 //
-// Byte contracts pinned by the live-oracle capture
-// fixtures/captured/history-views.json (tools/oracle/history_capture.rb):
-// summary ellipsis/truncation ("..."), cut_with_joint
+// Byte contracts this port reproduces: summary ellipsis/truncation ("..."),
+// cut_with_joint
 // (" with inclusion {{History Probe R..."), the all-added create diff, and
 // the name diff `<ins class='diffins diff-added'> Renamed</ins>`.
 
@@ -165,7 +164,7 @@ export class DiffSummary {
    *  Ruby nil result (range start past the string) cannot occur. */
   private cutWithJoint(index: number): void {
     // Ruby 0..(remaining - joint - 1) is END-INCLUSIVE: str[0..-14] keeps
-    // length - 14 + 1 chars (the capture pins 33 kept of 46).
+    // length - 14 + 1 chars.
     const cutEndFromEnd = -(this.remainingChars - this.joint.length - 1);
     this.chunks[index]!.text =
       this.chunks[index]!.text.slice(0, this.chunks[index]!.text.length - cutEndFromEnd + 1) +

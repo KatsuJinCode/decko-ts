@@ -25,7 +25,7 @@
 //
 // This module reproduces that row behavior against the SQLDatabaseDriver
 // seam. The caller drives the per-card sequencing (subcard orchestration,
-// events like reference maintenance, cache expiry — wave 3); the writer owns
+// events like reference maintenance, cache expiry); the writer owns
 // everything from "this card's state changed" to "the storage rows exist".
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
@@ -50,8 +50,8 @@ export interface ActWriterOptions {
   /** Account responsible for this act's history rows. Ruby fills the act's
    *  actor_id from Auth.current_id at act save (act.rb:131-134 assign_actor)
    *  and the card's creator_id/updater_id from the same value
-   *  (card-mod-account set/all/account.rb:20-23, event :set_stamper). Wave 3
-   *  wires the real auth layer; until then this is the actor passthrough. */
+   *  (card-mod-account set/all/account.rb:20-23, event :set_stamper). This
+   *  is the actor passthrough. */
   actorId: number;
   /** Env.ip stand-in for card_acts.ip_address
    *  (director/class_methods.rb:27-29). */
@@ -227,7 +227,7 @@ const ALL_TRACKED_WRITE_ORDER: (keyof CardFieldState)[] = [
  * (events.rb:48-50). Which operation is the act card's own: the constructor
  * may pin `actCardId`; otherwise the FIRST operation claims act-card status
  * (the common request shape: the request starts on its act card). A
- * subcard-first orchestration (wave 3) must pass `isActCard: false` on the
+ * subcard-first orchestration must pass `isActCard: false` on the
  * subcard operations and `isActCard: true` on the act card's operation, or
  * construct the writer with `actCardId` once known.
  */
@@ -390,8 +390,8 @@ export class ActWriter {
       // and ActiveRecord skips the cards-row UPDATE entirely (no-op save).
       // finalize_act (events.rb:48-50, when: act_card?) still runs:
       // `Director.act.update! card_id: id` saves the act, so the act card's
-      // no-op save leaves an act row with no actions (the oracle deck holds
-      // such acts; remove_empty_act? is defined but never wired).
+      // no-op save leaves an act row with no actions; `remove_empty_act?` is
+      // defined upstream but never wired.
       if (this.actId === null && this.isActCardOp(input.cardId, input.isActCard)) {
         const stmts: SQLStatement[] = [];
         const actIdSelect = this.pushInsertAct(stmts, input.cardId, sqlDateTime(this.clock()));
@@ -491,8 +491,8 @@ export class ActWriter {
     }
     // integration stage, event :update_ancestor_timestamps (events.rb:1-7,
     // `Card.where(id: ids).update_all(updater_id: Auth.current_id,
-    // updated_at: Time.now)`). Ruby's cache expiry for the ancestors is
-    // wave 3.
+    // updated_at: Time.now)`). Ruby's cache expiry for the ancestors is not
+    // ported here.
     const ancestors = input.ancestorCardIds ?? [];
     if (ancestors.length > 0) {
       stmts.push({
@@ -569,7 +569,7 @@ export class ActWriter {
    *  no-op (trash_changed? false -> plain :update with no changed fields).
    *  Child cards are deleted as subcards with their own delete actions in
    *  the same act (trash.rb:46-57 delete_children) — pass each child through
-   *  updateCard with superActionId (subcard orchestration is wave 3). */
+   *  updateCard with superActionId (subcard orchestration is the caller's). */
   async trashCard(input: {
     cardId: number;
     before: CardFieldState;
@@ -775,7 +775,7 @@ export class ActWriter {
    *  (card-1.110.0 lib/card/content/all.rb:38-40); ActiveRecord's #delete
    *  skips callbacks, so the `dependent: :delete_all` on card_changes
    *  (card-mod-history lib/card/action.rb:30-33, a destroy callback) never
-   *  runs and the draft's change row stays behind, as the oracle shows. */
+   *  runs and the draft's change row stays behind, as Ruby leaves it. */
   private pushClearOwnDrafts(stmts: SQLStatement[], cardId: number): void {
     const draftPredicate = `card_actions.card_id = ?
       AND card_actions.draft = 1

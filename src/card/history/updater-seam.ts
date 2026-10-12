@@ -1,7 +1,7 @@
 // The render-time ACT-SEARCH seam: the narrow, read-only data surface the
 // card-mod-history `updated_by` view reads.
 //
-// WHY THIS EXISTS (the blocker the box_bottom / mod-a recorded result names): Ruby's
+// WHY THIS EXISTS: Ruby's
 // updated_by body is `Card.search(updater_of: { id: card.id })`
 // (card-mod-history-0.20.0 set/all/history_board.rb:10-16) - a CQL search
 // that ties the cards table through card_acts and card_actions
@@ -15,10 +15,10 @@
 //
 // NO COLUMN APPROXIMATION IS FAITHFUL, and the schema says so: cards.updater_id
 // is NOT NULL and is set at CREATE, so it names the creator on every
-// never-updated card. The oracle pins both shapes side by side: the
-// deck-updated "Oracle Basics" (id 605, TWO update actions) renders
-// `Updated by <a ...>Decko Bot</a>` and the never-updated "Home" (id 521,
-// one create action) renders the EMPTY text-muted div. The distinguishing
+// never-updated card. The two shapes differ observably: a card with TWO update
+// actions renders
+// `Updated by <a ...>Decko Bot</a>` while a card with one create action
+// renders the EMPTY text-muted div. The distinguishing
 // fact lives only in the update ACTS.
 //
 // SHAPE (why it is safe - the same four-point argument the history seam
@@ -37,12 +37,10 @@
 // 3. READ-ONLY - the single SELECT is the port of the query the gem itself
 //    runs (see updaterOf in card-mod-history.ts). The seam adds zero writes.
 // 4. PERMISSION-CHECKED LIKE EVERY READ - not by a verdict, because the gem's
-//    own query has no permission clause: the SQL printed live from the
-//    capture deck is exactly `SELECT DISTINCT c0.* FROM cards c0 JOIN
-//    card_acts cx1 ON c0.id = cx1.actor_id JOIN card_actions cn2 ON cx1.id =
-//    cn2.card_act_id JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is
-//    false WHERE (cn2.action_type = 1 AND c3.id = '605') AND c0.trash is
-//    false` - no viewable_sql, no ok?(:read). What DOES gate the data is the
+//    own query has no permission clause: it joins cards to card_acts on
+//    actor_id, card_actions on card_act_id, and the target card, filtering on
+//    `action_type = 1` (update) and non-trash rows - no viewable_sql, no
+//    ok?(:read). What DOES gate the data is the
 //    view gate that runs before any body: the render root's read verdict
 //    (view/permission.rb:46-50 #denial -> view_for_denial) means a card the
 //    viewer cannot read never reaches this view at all, and the query can
