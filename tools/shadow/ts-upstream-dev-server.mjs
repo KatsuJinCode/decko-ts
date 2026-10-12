@@ -1,4 +1,4 @@
-// tools/shadow/ts-upstream-dev-server.mjs — T5 of #1282.
+// tools/shadow/ts-upstream-dev-server.mjs
 //
 // A TINY HTTP server that exposes the decko-ts RenderEngine over a
 // Decko-like URL surface so the shadow-router has a TS upstream to
@@ -7,9 +7,9 @@
 // fixture records (docs/parity-method.md), and serves HTML renders.
 //
 // Why in-process .mjs and not a built TS bundle:
-//   - the StreamResult for M5 is "live proof against real upstreams",
-//     not "the TS HTTP server". The TS engine has no HTTP surface yet
-//     (only programmatic); this is the dev-server stand-in.
+//   - the parity checks the shadow-router runs need an HTTP-speaking
+//     TS side, and the engine itself has no HTTP surface yet (only a
+//     programmatic API); this dev server is that HTTP stand-in.
 //   - .mjs lets us load the .js-compiled engine modules directly via
 //     dynamic import — same engine the tests use, no separate dist build.
 //
@@ -116,9 +116,9 @@ const CODENAME_SEED = [
   // anchor — Decko has a Cardtype card for each type name.
 ];
 
-/** The 10 smoke-fixture seed cards verbatim from fixtures/captured/smoke.json
- *  — names, types, contents, and read-rule chain (Oracle Restricted
- *  reads as the list rule list of "Administrator", matching the oracle). */
+/** The 10 seed cards the smoke suite renders — the names, types,
+ *  contents, and read-rule chain documented in docs/parity-method.md
+ *  (Oracle Restricted reads as the list rule list of "Administrator"). */
 const SMOKE_SEED = [
   { id: 605, name: "Oracle Basics", typeId: 2,
     content: "A plain basic card for oracle capture." },
@@ -192,16 +192,14 @@ async function insertCard(driver, row, DeckoName) {
 // URL parsing (Decko convention: spaces -> '+' in the path).
 // ----------------------------------------------------------------------------
 
-/** Decode a URL mark. Decko's URL convention (verified live against
- *  the Ruby oracle at 127.0.0.1:3055 on 2026-09-21) URL-encodes
- *  spaces as %20, NOT as '+'. Rails does not apply the
- *  form-encoding '+'-space rule to PATH components (only to query
- *  strings and POST bodies), so a literal '+' in a Decko URL stays a
- *  '+'. The marker joiner for compound names is a literal '+' and
- *  must arrive as %2B (otherwise it would be confused with a literal
- *  '+' inside a name). This dev server mirrors that exactly:
- *  decodeURIComponent, no separate '+'-handling. Trailing .<format>
- *  is stripped. */
+/** Decode a URL mark. Decko URLs encode spaces as %20, not as '+':
+ *  Rails applies the form-encoding '+'-means-space rule to query
+ *  strings and POST bodies only, never to PATH components, so a
+ *  literal '+' survives in a Decko URL path. That matters because the
+ *  compound-name joiner IS a literal '+' — a client must send it
+ *  %2B-encoded, or it would be indistinguishable from the joiner.
+ *  Plain decodeURIComponent is therefore the whole decode. Any
+ *  trailing .<format> suffix is stripped. */
 function decodeMark(rawMark) {
   let s = decodeURIComponent(rawMark);
   const dotIdx = s.lastIndexOf(".");
