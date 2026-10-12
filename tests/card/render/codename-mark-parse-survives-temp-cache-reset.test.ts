@@ -1,9 +1,7 @@
-// Codename-mark parse survives a temporary-cache reset - the page-22747
-// crash class ("Default Layout", the only engine-raised page failure in the
-// q2 byte-parity sweep).
+// Codename-mark parse survives a temporary-cache reset - the "Default
+// Layout" page crash class.
 //
-// Mechanism (traced 2026-09-28, receipt
-// WORK_DIR/default-layout-codename.md):
+// Mechanism:
 // Ruby's Card::Name parse of a ":codename" mark cannot fail while the
 // codename exists: name.rb:65-82 resolves Codename.id! (the codehash - a
 // process memo the temporary cache reset never touches, codename.rb:118-127)
@@ -16,9 +14,9 @@
 // warming. The substitute fails whenever a parse runs while the lexicon's
 // temporary cache has been reset: lib/card/cache/temporary.rb
 // #within_key_counts resets the WHOLE store on a real overage, and a single
-// corpus page render crosses that boundary repeatedly (observed: 8 resets
-// during the page 22747 render; the *header subtree render writes enough to
-// wipe the *footer lexicon entry between its own parse and the next).
+// page render crosses that boundary repeatedly (the *header subtree render
+// writes enough to wipe the *footer lexicon entry between its own parse
+// and the next).
 //
 // The port's faithful substitute for the db fallback: a ":codename" mark
 // only reaches the lexicon lookup AFTER the registry confirmed the codename
@@ -40,7 +38,7 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 
-/** The page-22747 shape in miniature: a page card whose OWN content carries
+/** The crash shape in miniature: a page card whose OWN content carries
  *  codename-mark nests, so the page's main render parses `:codename` marks
  *  synchronously - the path the layout-body render only reaches after the
  *  ensureCodenameMarksResolvable re-priming on ordinary pages. */
@@ -84,7 +82,7 @@ async function seedCodenameNestDeck(): Promise<RenderTestStorage> {
     typeId: 2,
     dbContent: "the-footer-bytes",
   });
-  // The page card: codename nests in its OWN content (the 22747 shape).
+  // The page card: codename nests in its OWN content (the crash shape).
   await seedCard(storage, {
     id: 940,
     name: "Wipe Probe Page",
