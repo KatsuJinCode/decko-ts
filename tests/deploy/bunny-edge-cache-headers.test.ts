@@ -4,9 +4,8 @@
 // Scope: everything verifiable offline, no account, no network. The module is
 // pure decision logic (the entry wires it at exactly one wrap site), so these
 // tests drive the exported functions directly with constructed Response
-// objects. The armed/unarmed live behavior on the trial edge is proven
-// separately by the measurement harness (benchmarks/edge-perf/, this lane's
-// receipt) — this file pins the decision table.
+// objects. This file pins the decision table; the armed runtime behavior on a
+// live edge is a deployment concern and is not covered here.
 
 import { describe, expect, it } from "vitest";
 
