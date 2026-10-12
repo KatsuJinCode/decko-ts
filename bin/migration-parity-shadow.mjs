@@ -5,19 +5,19 @@
 //    when the comparison is clean."
 //
 // WHAT EXISTS vs WHAT THIS ADDS
-//   tools/shadow/shadow-router.mjs (T5 of #1282) is the LIVE-proxy half: a
-//   proxy that fronts a Ruby and a TypeScript upstream, plus the routing
-//   policy (mode/allowlist/blocklist/sampleRate) with deterministic
-//   FNV-1a percent sampling. This module is the CUTOVER half for other deck
-//   owners: it drives TWO engine checkouts (BASE = current, CANDIDATE =
-//   proposed) against a LOCAL MIRROR deck — zero live-site requests — and
-//   emits a cutover report with a routing-policy verdict.
+//   tools/shadow/shadow-router.mjs is the LIVE-proxy half: a proxy that
+//   fronts a Ruby and a TypeScript upstream, plus the routing policy
+//   (mode/allowlist/blocklist/sampleRate) with deterministic FNV-1a percent
+//   sampling. This module is the CUTOVER half for other deck owners: it
+//   drives TWO engine checkouts (BASE = current, CANDIDATE = proposed)
+//   against a LOCAL MIRROR deck — zero live-site requests — and emits a
+//   cutover report with a routing-policy verdict.
 //
 //   REUSED verbatim (wired, not reinvented):
 //     - loadPolicy / shouldShadow : percentage-or-name route sampling
 //     - forwardOnce               : per-request fetch machinery
 //     - appendLogEntry            : JSONL history writing
-//   NEW here (the gaps the T5 report does not close):
+//   NEW here (what the shadow proxy does not cover):
 //     - the documented two-region noise normalization (Cloudflare
 //       __CF$cv$params per-response tokens + decko data-slot-id hashes,
 //       both quote forms — see normalizeNoiseHtml)
@@ -38,14 +38,13 @@
 //   - The owner's mirror file is never opened for writing: each run copies
 //     it (sha256-bound) once per side, because the staging instrument's
 //     auth layer opens its copy read-write.
-//   - Page AND view-lane surfaces: route views from the corpus canvas
-//     fixture set (open, closed, content, title — plus the capture label
-//     unknown_view_sentinel, which maps to the executable input
-//     definitely_not_a_view) render through each checkout's own
-//     vm-staging-server.mjs at GET /<name>?view=<view> — the engine's BARE
-//     view lane (RenderEngine.render), the exact path the corpus replay
-//     grades. Limit S1 (page-surface-only) is CLOSED as of this build;
-//     remaining limits are named in the report's `limitations` array.
+//   - Page AND view-lane surfaces: the fixture view set (open, closed,
+//     content, title — plus the label unknown_view_sentinel, which maps to
+//     the executable input definitely_not_a_view) renders through each
+//     checkout's own vm-staging-server.mjs at GET /<name>?view=<view> —
+//     the engine's BARE view lane (RenderEngine.render), the path the
+//     replay harness grades. Remaining limits are named in the report's
+//     `limitations` array.
 //
 // Docs:  (shadow section). Plan:
 // deliverables/migration-parity-tool-PLAN.md (stage table, honest gaps).
@@ -81,10 +80,9 @@ export const EXIT_OK = 0;
 export const EXIT_USAGE = 2;
 
 /**
- * The 5 standard probe pages — the same set the one-trip lane pinned
- * byte-identical (an internal work log).
+ * The 5 standard probe pages.
  * Literal card names; the tool URL-encodes them for the staging server.
- * The DEFAULT sample stays the proven page set; view routes join a sample
+ * The DEFAULT sample stays this page set; view routes join a sample
  * through the targets file.
  */
 export const DEFAULT_PROBE_ROUTES = Object.freeze([
@@ -100,23 +98,20 @@ export const DEFAULT_PROBE_ROUTES = Object.freeze([
 // ===========================================================================
 
 /**
- * The valid VIEW routes: exactly the view set the corpus canvas fixtures
- * define. Verified 2026-10-03 by scan — fixtures/captured/smoke.json
- * rendered keys carry open/closed/content/title per card, and the full
- * corpus-v2 recapture across all 48 shards carries the same four views
- * (open 2,431 / content 1,060 / closed 261 / title 28 view rows, nothing
- * else). A targets line outside this set is REFUSED with a named message
- * (typo protection, the same discipline as unknown policy keys) — never
- * silently downgraded to a page.
+ * The valid VIEW routes: exactly the view set the committed canvas fixtures
+ * define — open/closed/content/title, and nothing else. A targets line
+ * outside this set is REFUSED with a named message (typo protection, the
+ * same discipline as unknown policy keys) — never silently downgraded to a
+ * page.
  */
 export const VALID_VIEW_ROUTES = Object.freeze(["open", "closed", "content", "title"]);
 
 /**
  * The capture LABEL vs EXECUTABLE INPUT convention
- * (src/testing/fixture-schema.ts): capture.rb recorded one sentinel per
- * card under the label unknown_view_sentinel, but the view it actually
- * rendered was definitely_not_a_view. A targets line may use the label;
- * the executable view is the mapping below.
+ * (src/testing/fixture-schema.ts): the reference recorder wrote one sentinel
+ * per card under the label unknown_view_sentinel, but the view it actually
+ * rendered was definitely_not_a_view. A targets line may use the label; the
+ * executable view is the mapping below.
  */
 export const UNKNOWN_VIEW_SENTINEL_LABEL = "unknown_view_sentinel";
 export const UNKNOWN_VIEW_INPUT = "definitely_not_a_view";
@@ -127,14 +122,12 @@ export function viewQueryValue(view) {
 }
 
 /**
- * The fetch headers for a VIEW route — the corpus convention from the
- * live-check-71 capture (live-check-71-fetch-reference-deck-2026-10-03.mjs):
- * views are fetched XHR-shaped (narrow Accept + X-Requested-With) while
- * pages are document navigations. The local staging instrument keys its
- * view dispatch off the ?view= query, so these headers are fidelity to the
- * capture convention, not a functional dependency. (The capture's Referer
- * header named the live origin and is intentionally omitted — the local
- * origins are per-side ports.)
+ * The fetch headers for a VIEW route: views are fetched XHR-shaped (narrow
+ * Accept + X-Requested-With) while pages are document navigations. The
+ * local staging instrument keys its view dispatch off the ?view= query, so
+ * these headers are fidelity to that convention, not a functional
+ * dependency. (A Referer header naming the recorded origin is intentionally
+ * omitted — the local origins are per-side ports.)
  */
 export const VIEW_FETCH_HEADERS = Object.freeze({
   Accept: "text/html, */*; q=0.01",
@@ -153,28 +146,27 @@ export function routeLane(route) {
 /**
  * Region 2 — decko data-slot-id. Verbatim rule from src/testing/diff.ts
  * (the tracked replay judge): data-slot-id=<quote><20 lowercase hex><quote>
- * becomes data-slot-id="RANDOMIZED". Quote style is erased (Ruby emits
- * double quotes in most views and single quotes inside search-result bars;
- * the live-check-71 lane's pass-2 fix proved nested bar slots carry
- * single-quoted ids). The 20-hex length is STRICT by design: a render
- * emitting a different-length id is a real divergence and must survive
- * normalization. Attribute PRESENCE is preserved — only the value is
+ * becomes data-slot-id="RANDOMIZED". Quote style is erased (double quotes
+ * in most views, single quotes inside search-result bars — nested bar slots
+ * do carry single-quoted ids). The 20-hex length is STRICT by design: a
+ * render emitting a different-length id is a real divergence and must
+ * survive normalization. Attribute PRESENCE is preserved — only the value is
  * rewritten. The placeholder is not hex, so normalization is idempotent.
  */
 const SLOT_ID_PATTERN = /data-slot-id=(['"])([0-9a-f]{20})\1/g;
 const RANDOMIZED_SLOT_ATTRIBUTE = 'data-slot-id="RANDOMIZED"';
 
 /**
- * Region 1 — Cloudflare per-response challenge tokens. Every page the live
- * site serves through Cloudflare carries a script block defining
- * __CF$cv$params with per-response r/t tokens (live-check-71-lane.md:
- * "a per-response token cannot be byte-equal by construction"). No
- * deterministic engine can emit it, so the comparison protocol removes the
- * whole script element containing the marker (tempered pattern: the marker
- * must occur before that element's closing tag). On the LOCAL MIRROR path
- * this region never occurs (Cloudflare injects it at the edge, not in
- * engine output) — the removal is kept so ONE documented protocol covers
- * both the local cutover run and any later captured-live reference.
+ * Region 1 — Cloudflare per-response challenge tokens. Every page served
+ * through Cloudflare carries a script block defining __CF$cv$params with
+ * per-response r/t tokens, so a per-response token cannot be byte-equal by
+ * construction. No deterministic engine can emit it, so the comparison
+ * protocol removes the whole script element containing the marker
+ * (tempered pattern: the marker must occur before that element's closing
+ * tag). On the LOCAL MIRROR path this region never occurs (Cloudflare
+ * injects it at the edge, not in engine output) — the removal is kept so
+ * ONE documented protocol covers both the local cutover run and any later
+ * recorded reference.
  */
 const CF_SCRIPT_BLOCK_PATTERN =
   /<script\b[^>]*>(?:(?!<\/script>)[\s\S])*?__CF\$cv\$params(?:(?!<\/script>)[\s\S])*?<\/script>/gi;
@@ -185,11 +177,9 @@ const CF_SCRIPT_BLOCK_PATTERN =
  *
  * LANE-BLIND BY CONSTRUCTION: the SAME two regions apply to page-lane and
  * view-lane bytes — no lane special-casing exists or is needed. The
- * close-71/live-check-71 census (live-check-71-lane.md steps 6-7) measured
- * the asymmetry that makes this safe: all 34 PAGE entries of the 71-entry
- * live fetch carried the Cloudflare block while ZERO of the 37 VIEW entries
- * did (33 views byte-exact, 4 views slot-id-norm only) — view references
- * never need region 1, and applying it to them is a measured no-op. The
+ * asymmetry that makes this safe was measured: page references carry the
+ * Cloudflare block while view references never do — view references do not
+ * need region 1, and applying it to them is a measured no-op. The
  * function stays lane-blind so a view body that DOES carry an unexpected
  * edge artifact still normalizes rather than false-diverging.
  */
@@ -208,8 +198,8 @@ const CF_CARRIER_TEST_PATTERN = new RegExp(CF_SCRIPT_BLOCK_PATTERN.source, "i");
  * Whether one rendered body carries the Cloudflare per-response block.
  * Used for the per-run NOISE-CARRIER CENSUS the report emits per lane
  * (counts.noiseCarriers.{page,view}) — the observable form of the
- * close-71 asymmetry: page-lane references carry the block (34/34 in the
- * census), view-lane references never do (0/37).
+ * asymmetry above: page-lane references carry the block, view-lane
+ * references do not.
  */
 export function cfCarrierPresent(buffer) {
   return CF_CARRIER_TEST_PATTERN.test(buffer.toString("utf8"));
@@ -422,9 +412,8 @@ export function routePath(route) {
 }
 
 /** The full FETCH URL for a route — routePath plus the view query for
- *  view-lane routes, the corpus convention
- *  ("/<Name_underscored>?view=<view>", live-check-71 fetch). Page routes
- *  carry no query (byte-identical to the proven page-surface fetches).
+ *  view-lane routes ("/<Name_underscored>?view=<view>"). Page routes
+ *  carry no query.
  *  The instrument's view dispatch keys off this query (vm-staging-server
  *  serve branch), not off the headers. */
 export function routeUrl(route) {
@@ -977,13 +966,13 @@ export async function runShadow(opts) {
   const divergenceDir = path.join(outDir, "divergences");
 
   // Spawn BOTH engines' render servers (the parallel run behind the policy).
-  // FOLD-12 UNION ADJUDICATION: the spawned instruments get
-  // DECKO_SHADOW_VIEW_LANE=1 so vm-staging-server.mjs serves its BARE view
-  // lane (raise -> CAPTURE_ERROR sentinel at 200 — this stage's
-  // byte-comparison contract). Servers NOT spawned here (the graded pins,
-  // the session-replay surface, default staging) never see the flag and
-  // keep Ruby's unsupported-view 422 — the standing-net member
-  // tests/server/edit-session-replay.test.ts pins that shape.
+  // The spawned instruments get DECKO_SHADOW_VIEW_LANE=1 so
+  // vm-staging-server.mjs serves its BARE view lane (raise -> CAPTURE_ERROR
+  // sentinel at 200 — this stage's byte-comparison contract). Servers NOT
+  // spawned here (the graded pins, the session-replay surface, default
+  // staging) never see the flag and keep Ruby's unsupported-view 422 — the
+  // standing-net member tests/server/edit-session-replay.test.ts pins that
+  // shape.
   const shadowLaneEnv = { ...process.env, DECKO_SHADOW_VIEW_LANE: "1" };
   const baseProc = spawn(process.execPath, [baseInstrument, copyBase, String(urls.basePort)], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -1011,8 +1000,8 @@ export async function runShadow(opts) {
       let storedArtifacts = 0;
       for (const route of sample.sampled) {
         const urlPath = routeUrl(route);
-        // Pages keep the proven header shape ({}); view routes carry the
-        // corpus XHR convention (live-check-71 fetch).
+        // Pages keep the plain header shape ({}); view routes carry the
+        // XHR convention.
         const fetchHeaders = route.view === "page" ? {} : VIEW_FETCH_HEADERS;
         const [b, c] = await Promise.all([
           forwardOnce({ baseUrl: urls.base, method: "GET", urlPath, headers: fetchHeaders }).catch((err) => ({ error: err })),
@@ -1048,8 +1037,7 @@ export async function runShadow(opts) {
           shaBase: sha256Hex(b.body),
           shaCandidate: sha256Hex(c.body),
           // The per-route noise-carrier census (the observable form of the
-          // close-71 asymmetry: page lanes carry the CF block, view lanes
-          // measure 0).
+          // page-versus-view asymmetry above).
           cfCarrierBase: cfCarrierPresent(b.body),
           cfCarrierCandidate: cfCarrierPresent(c.body),
         };
@@ -1203,9 +1191,8 @@ function summarizeCounts(routeRecords, strictness, requested, bothBootsOk) {
   let byteIdentical = 0;
   let noiseOnly = 0;
   // The per-lane noise-carrier census: routes whose base OR candidate bytes
-  // carry the Cloudflare block, counted per comparison lane. The close-71
-  // census measured page lanes carrying it (34/34 live pages) and view
-  // lanes never (0/37 live views) — a nonzero view count in a run is the
+  // carry the Cloudflare block, counted per comparison lane. Page lanes
+  // carry it and view lanes do not — a nonzero view count in a run is the
   // anomaly this number exists to surface.
   const noiseCarriers = { page: 0, view: 0 };
   for (const r of routeRecords) {
