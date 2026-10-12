@@ -1,29 +1,25 @@
 // generate-facts-from-corpus.mjs -- corpus facts for the rule/preference?
-// truth-table oracle (restore-w1-helppopover lane, 2026-10-03).
+// truth-table oracle.
 //
 // WHAT THIS IS: the read-only corpus half of the static-ruby oracle that pins
 // WHAT Ruby's `rule?` predicate (prototype/lib/card/rule/all.rb:33-54) admits
-// for the two families the grade-8 restore wave W1 cares about:
+// for two families:
 //
-//   OVER-ADMITTED family (the 68 grade7->8 regressions): the
-//   `mod: <x>+*style` / `mod: <x>+*script` rule rows (34 distinct names,
-//   render:closed + page each). fold-8-carried commit 8f8f9ca widened the
-//   engine's isRuleCard to "right is Setting AND left resolves", which
+//   OVER-ADMITTED family: the `mod: <x>+*style` / `mod: <x>+*script` rule
+//   rows. An engine isRuleCard reading "right is Setting AND left resolves"
 //   admits these rows; Ruby refuses them (standard_rule? false: the left
 //   `mod: <x>` is Mod-cardtype-typed, not Set; preference? false: only 2
-//   parts). Distinct names from restore-prep/inventory-table.md rows classed
-//   W1 (classified-inventory.json, parity-restore runbook §2 W1).
+//   parts). These are the rows the engine's widened predicate must NOT
+//   admit.
 //
-//   LEGITIMATELY-ADMITTED family (the 9 green guards that motivated
-//   8f8f9ca): `*all+*all+*follow`,
-//   `Don't Wait For The Study+*self+Riley Ellery+*follow`,
-//   `Make Contact+*self+Riley Ellery+*follow` (view:closed,
-//   view:open, page each). Ruby admits all three (preference? holds: trunk
+//   LEGITIMATELY-ADMITTED family: the guard rule rows listed in GUARD_NAMES
+//   below (`*all+*all+*follow` and the follow preferences whose preferer arm
+//   is User-typed). Ruby admits all of them (preference? holds: trunk
 //   Set-typed; preferer codename "all" / User-typed).
 //
 // For every target rule row it resolves, via the corpus left_id/right_id
-// walk (junction rows store NULL name -- restore-prep/query-corpus-rows.mjs
-// is the precedent), the EXACT name parts the Ruby predicate fetches:
+// walk (junction rows store NULL name), the EXACT name parts the Ruby
+// predicate fetches:
 //
 //   name.right            -> parts[last]          (fetch_type_id)
 //   name.left             -> parts[0..-2].join    (fetch_type_id)
@@ -36,7 +32,7 @@
 //
 // USAGE (from the worktree root):
 //   node tools/oracle/rule-preference-truth-table/generate-facts-from-corpus.mjs \
-//     [--db tmp/raw-ground-truth/bench-corpus-raw.sqlite3] \
+//     [--db PATH_TO_CORPUS_DB] \
 //     [--out tools/oracle/rule-preference-truth-table/corpus-facts.json]
 // READ-ONLY on the DB. Aborts non-zero if any target or fetched part is
 // absent -- a silent partial fact table would under-determine the oracle.
@@ -57,8 +53,8 @@ function argValue(flag, fallback) {
 const DB = path.resolve(argValue("--db", path.join(REPO, "tmp", "raw-ground-truth", "bench-corpus-raw.sqlite3")));
 const OUT = path.resolve(argValue("--out", path.join(HERE, "corpus-facts.json")));
 
-/** The 34 distinct over-admitted rule-row names (68 grade-8 failures =
- *  34 names x {render:closed, page}; restore-prep/inventory-table.md W1). */
+/** The over-admitted rule-row names: the `mod: <x>+*style` /
+ *  `mod: <x>+*script` rows Ruby refuses (see the header). */
 const OVER_ADMITTED_NAMES = [
   "mod: account+*style",
   "mod: api key+*style",
@@ -96,8 +92,8 @@ const OVER_ADMITTED_NAMES = [
   "mod: tinymce editor+*script",
 ];
 
-/** The 3 legitimately-admitted guard rule rows (9 green guards = 3 names x
- *  {closed, open, page}); 8f8f9ca's own receipt names them. */
+/** The legitimately-admitted guard rule rows: follow preferences Ruby
+ *  admits (trunk Set-typed; preferer codename "all" or User-typed). */
 const GUARD_NAMES = [
   "*all+*all+*follow",
   "Don't Wait For The Study+*self+Riley Ellery+*follow",
@@ -110,7 +106,7 @@ function partsOf(name) {
 
 const db = new DatabaseSync(DB, { readOnly: true });
 
-// Full row scan + junction name resolution (query-corpus-rows.mjs walk).
+// Full row scan + junction name resolution (junction rows store NULL name).
 const rows = db
   .prepare("SELECT id, name, key, codename, left_id, right_id, type_id, trash FROM cards")
   .all();
