@@ -1,11 +1,10 @@
 // generalized-import.mjs — stream a Ruby decko SQLite source database
 // into a decko-ts target SQLite database.
 //
-// M4-generate milestone (decko-commons/decko#1282): the generalized
-// any-Ruby-deck path. The source is a SQLite database file (any decko
-// version: the production mysqldump pipeline handles mysqldump format;
-// this module handles the SQLite source format the corpus-v2 and the
-// future decko 0.20+ deployments use).
+// This is the generalized any-Ruby-deck path: the source is a SQLite
+// database file rather than dump text. The mysqldump format has its own
+// pipeline (parse-dump.mjs + import.mjs); this module covers decks whose
+// source of record is a SQLite file, including newer decko deployments.
 //
 // Pipeline:
 //   1. INVENTORY  source tables (source-sqlite.mjs); classify each
@@ -158,9 +157,9 @@ export async function importFromSqlite(opts) {
       const role = classifySourceTable(sourceName, [...targetTableSet]);
       stats.schemaMappings[sourceName] = role;
       if (role === "settings") {
-        // settings tables are inventoried, not imported. They are the
-        // corpus-build metadata (corpus-v2 meta) or pre-2014 settings
-        // rows that decko-ts stores as cards already.
+        // settings tables are inventoried, not imported. They are either
+        // build-time metadata from the seed-generation tooling or legacy
+        // settings rows that decko-ts stores as cards already.
         continue;
       }
       if (role === "unknown" || !targetTableSet.has(sourceName)) {
@@ -229,9 +228,9 @@ export async function importFromSqlite(opts) {
             }
           }
           // name reconstruction for junction cards with NULL name/key
-          // (the corpus-v2 shape: every junction card carries its
-          // already-composed name in the column, so this is a no-op for
-          // corpus-v2; it fires only for sources that omit the column).
+          // (fires only for sources that omit the name column entirely;
+          // sources that carry the already-composed name make this a
+          // no-op).
           if (idx.name >= 0 && (values[idx.name] === null || values[idx.name] === "")) {
             const leftId = idx.leftId >= 0 ? values[idx.leftId] : null;
             const rightId = idx.rightId >= 0 ? values[idx.rightId] : null;
@@ -280,7 +279,7 @@ export async function importFromSqlite(opts) {
     // Planner statistics, after the rows are in and after the indexes exist.
     // Without them SQLite estimates every equality alike and can pick a
     // low-selectivity index, reading far more rows than the query needs.
-    // ANALYZE writes only sqlite_stat1, never a corpus row.
+    // ANALYZE writes only sqlite_stat1 and touches no deck table.
     await driver.query("ANALYZE", []);
     await driver.query("PRAGMA synchronous = NORMAL", []);
     await driver.query("PRAGMA wal_checkpoint(TRUNCATE)", []);
