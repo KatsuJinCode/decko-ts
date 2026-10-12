@@ -282,12 +282,12 @@ function interpolate(template: string, vars: Record<string, string | number>): s
 /** Strftime for the subset of directives the card en.yml files use:
  *   %A %B %d %e %H %I %M %p %S %Y %Z %-d %m
  *  Plus a few extras the locale might use (a/b - abbr day/month names).
- *  Locale-independent names come from toLocaleString("en-US", ...) which
- *  matches Ruby's strftime with the C locale (the captured oracle uses
- *  English day/month names). */
+ *  Locale-independent names come from toLocaleString("en-US", ...), which
+ *  matches Ruby's strftime under the C locale — the locale the card en.yml
+ *  strings are written against. */
 function formatStrftime(date: Date, fmt: string): string {
   // Locale-independent English day/month names (matching Ruby's C strftime
-  // for the captured en.yml format strings).
+  // for the en.yml format strings).
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const months = [
     "January", "February", "March", "April", "May", "June",
@@ -341,7 +341,7 @@ function formatStrftime(date: Date, fmt: string): string {
       case "Z":
         // %Z returns the timezone abbreviation; Intl.DateTimeFormat with
         // timeZoneName: "short" gives e.g. "EST" or "PST" or "UTC". The
-        // captured oracle doesn't pin a specific value (the time format is
+        // abbreviation is zone- and instant-dependent (the format is
         // locale-aware); we return the short form.
         try {
           const parts = new Intl.DateTimeFormat("en-US", {
