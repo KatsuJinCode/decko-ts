@@ -1,4 +1,4 @@
-// THE RENDERPLAN-REPLAY TRIP-PROFILE PIN (renderplan-replay lane, 2026-10-05).
+// THE RENDERPLAN-REPLAY TRIP-PROFILE PIN.
 //
 // THE MECHANISM UNDER PIN: with DECKO_ONE_TRIP=1 and DECKO_ONE_TRIP_STORE=
 // inline, the render path consults a PRE-COMPUTED RENDER PLAN (per page: the
@@ -64,9 +64,9 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 const PAGE = "Home";
 /** The trip census's floor: 1 boot batch + 2 seat + 1 replay batch. The
  *  census's original floor was 5 — its fifth member was the cold batch's
- *  live count+stamp discharge (the two statements plans never absorb). The
- *  stamp-as-column lane (2026-10-06) folded BOTH into the seat head as
- *  zero-bind columns (spec §c + §a.4): the discharge is empty, the trip is
+ *  live count+stamp discharge (the two statements plans never absorb). Both
+ *  were folded into the seat head as zero-bind columns: the discharge is
+ *  empty, the trip is
  *  gone, and the search-count rides the replay batch as an unfolded live
  *  member. */
 const FLOOR_TRIPS = 4;
@@ -86,9 +86,8 @@ function isPipelineAbleRenderStatement(sql: string): boolean {
   }
   // The freshness gate's stamp read is render-entry gate state, not page
   // data — a plan records neither it nor any per-request gate statement
-  // (lineage-reconciliation lane, 2026-10-06; mirrors render-plan.ts's
-  // production filter; class renamed "freshness-stamp-read" -> "freshness-stamp"
-  // in the r5 seat-merge adjudication — one registry entry, one shape predicate).
+  // (mirrors render-plan.ts's
+  // production filter; one registry entry, one shape predicate).
   if (family === "freshness-stamp") return false;
   return family !== "search-count" && family !== "search-cql";
 }
@@ -239,8 +238,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/renderplan-replay-trip-profi
       ).toBe(normalizeSlotIds(baselineHtml));
 
       // THE FLOOR PIN: 1 boot batch + 2 seat + 1 replay batch (the
-      // count+stamp trip died in the stamp-as-column lane; the search-count
-      // rides the replay batch as an unfolded live member).
+      // count+stamp trip died into the head's zero-bind columns; the
+      // search-count rides the replay batch as an unfolded live member).
       expect(
         replay.trips,
         `the replay-path cold render spent ${replay.trips} round trips; the census floor is ${FLOOR_TRIPS} ` +
@@ -286,9 +285,9 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/renderplan-replay-trip-profi
             .join(" | ")}`,
       ).toBe(0);
 
-      // THE FOLD-SHAPE PIN (fold-plan-replay lane): with the fold ON the
+      // THE FOLD-SHAPE PIN: with the fold ON the
       // replay batch must be STRICTLY SMALLER than the plan's entry count —
-      // the statement-count collapse is the measurement this lane exists
+      // the statement-count collapse is the measurement this pin exists
       // for, and a pin that only counted trips would not see it.
       if (process.env.DECKO_REPLAY_FOLD !== "0") {
         expect(
@@ -309,13 +308,10 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/renderplan-replay-trip-profi
       }
 
       // THE ORDER-DEPENDENT PIN: no order-dependent statement reaches the
-      // driver. HONEST HISTORY (found when the stamp-as-column lane ran this
-      // pin against the composed posture): at base this assertion expected 1
-      // and the 1 was the PERMISSION gate-count (statement 3 of
-      // readPermissionStatements), which the registry's /COUNT\(\*\)/ tail
-      // misclassifies as "search-count" — Home's search nests never fill
-      // their limit, so no real search-count exists here. The gate-count now
-      // rides the seat head as a zero-bind column (spec §a.4), so zero
+      // driver. The registry's /COUNT\(\*\)/ tail would misclassify the
+      // PERMISSION gate-count as "search-count" — Home's search nests never
+      // fill their limit, so no real search-count exists here. The gate-count
+      // rides the seat head as a zero-bind column, so zero
       // COUNT-shaped statements reach the driver; the plan-swallowing guard
       // for genuinely order-dependent shapes lives in the recorder filter
       // (ORDER_DEPENDENT_CLASSES), which this pin's local filter mirrors.
