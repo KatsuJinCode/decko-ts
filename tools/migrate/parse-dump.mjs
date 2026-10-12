@@ -1,14 +1,9 @@
 // parse-dump.mjs — streaming, quote-aware mysqldump INSERT parser.
 //
-// M4 migration tool (port-tracker stream 14, decko-commons/decko#1282).
-// Generalizes the parser proven on the 1.2 GB the reference deck production dump
-// (a private production dump (not distributed)).
-//
-// THE KEY LESSON FROM THAT MIGRATION (and the design constraint here): the
-// production dump is 1.2 GB and carries multi-row INSERT statements as
-// single physical lines up to ~3.6 MB. Naive backtracking regexes
-// (/'(?:[^'\\]|\\.)*'/-style, run over the whole line) HANG on that input.
-// Parsing must be:
+// THE DESIGN CONSTRAINT: mysqldump emits multi-row INSERT statements as
+// single physical lines that can reach multiple megabytes. Naive
+// backtracking regexes (/'(?:[^'\\]|\\.)*'/-style, run over the whole
+// line) HANG on that input. Parsing must be:
 //   1. LINEAR      — every byte is visited a bounded number of times; the
 //                    only searches are native indexOf scans plus bounded
 //                    escape-run walks. There are NO backtracking regexes.
@@ -23,8 +18,7 @@
 //                    compacted away. Memory stays bounded no matter how
 //                    long the physical line is.
 //
-// Grammar handled (mysqldump 10.13, verified against the production dump:
-// 1177 `INSERT INTO `x` VALUES` statements, 0 column-list variants):
+// Grammar handled (mysqldump 10.13 output shapes):
 //   INSERT INTO `table` VALUES (v,...),(v,...),...;
 // plus the --complete-insert variant with an explicit column list:
 //   INSERT INTO `table` (`a`,`b`) VALUES (...);
