@@ -1,5 +1,4 @@
-// dual-lane-direct-runner.mjs -- 2026-10-01 direct grade runner entry
-// (direct-runner-builder lane).
+// dual-lane-direct-runner.mjs -- direct grade runner entry.
 //
 // One worker child. Boots the engine graph once, grades the shard LIST it is
 // given, writes the same artifacts the vitest instrument writes, exits with
@@ -9,9 +8,9 @@
 // WHY A SEPARATE ENTRY POINT RATHER THAN A FLAG ON THE EXISTING DRIVER
 //   tools/dual-lane-verifier-fast.mjs is the production harness: its child
 //   shape, kill scoping, staged-spec integrity refusal, and artifact resume
-//   keys are load-bearing for the completed earlier grades. This lane
-//   was told not to modify existing production harness entry points, and the
-//   direct runner needs different scheduling anyway (a weighted queue handed
+//   keys are load-bearing for the completed earlier grades. Existing
+//   production harness entry points stay unmodified, and the direct runner
+//   needs different scheduling anyway (a weighted queue handed
 //   to a fixed worker pool, instead of a fixed phase list dispatched 2 at a
 //   time), so it lands beside the driver with its own invocation and its own
 //   artifacts directory. Nothing here is on the path the existing grades ran.
@@ -114,8 +113,7 @@ const { runDirectGrade, directRunResourceSnapshot } = await import(
 // reads the return value never runs for a run that failed -- which is exactly
 // the run whose resource profile you need. The W=8 probe measured nothing
 // because of this: 8 workers reached the gate, every one threw, and
-// `grep -c RUNNER-TIMING driver.log` returned 0 (w8-scaling-probe-lane.md
-// Limitation 1).
+// `grep -c RUNNER-TIMING driver.log` returned 0.
 //
 // One line, one format, both paths: the success and failure lines are built by
 // the same expression, so they cannot drift apart in shape. `outcome=` is the
