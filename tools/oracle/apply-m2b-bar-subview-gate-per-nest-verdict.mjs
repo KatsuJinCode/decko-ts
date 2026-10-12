@@ -1,14 +1,14 @@
-// apply-m2b-bar-subview-gate-per-nest-verdict.mjs — the second half of the M2
-// fix, applied at the byte level.
+// apply-m2b-bar-subview-gate-per-nest-verdict.mjs — the bar-subview gate
+// half of the per-nest read-verdict fix, applied at the byte level.
 //
 // After the first half (apply-m2-...mjs) the mini_bar WRAP and its slot JSON
 // render the oracle's bytes and the bar-menu renders, but `bar_left` still
 // denies:
 //
-//   expected: <div class='bar-left col-9'>\n<span class="card-title" title="mytho-psychology">mytho-psychology</span>\n</div>
+//   expected: <div class='bar-left col-9'>\n<span class="card-title" title="<item>"><item></span>\n</div>
 //   actual:   <div class='bar-left col-9'>\n<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n</div>
 //
-// Byte probe: Quicksilver+Core Project:open delta went -1605 -> +3 with the
+// Byte probe: a full-page delta flipped from -1605 to +3 with the
 // first half alone. The residual is bar_left's OWN view-permission gate —
 // format.ts renderView's `else if (effective === normalized)` arm, which runs
 // for the substituted mini_bar's CHILD views (bar_left, bar_menu have no
