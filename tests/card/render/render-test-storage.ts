@@ -1,14 +1,14 @@
 // Test storage for the render-engine tests: an in-memory better-sqlite3
 // database (the REAL LocalSqliteDriver) loaded with db/schema.sqlite.sql,
-// plus a counting driver that measures BOTH count axes the #1282 claim is
-// judged on:
+// plus a counting driver that measures BOTH count axes decko#1282 is
+// about:
 //   - statements: individual SQL statements (a batch's statements count one
 //     each)
 //   - roundTrips: driver calls (driver.batch = ONE round trip - on the edge
 //     drivers, e.g. D1, that is literally one HTTP request; this is the
 //     axis the constant-queries promise is about)
-// Lives INSIDE tests/card/render per the stream boundaries; seeded cards are
-// written DIRECTLY as rows because the write path is another stream.
+// Lives INSIDE tests/card/render. Seeded cards are written DIRECTLY as
+// rows: the save/write path is out of scope here.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -28,9 +28,9 @@ import { expireRuleResolutionCache } from "../../../src/card/permissions/read-ru
 import type { Lex } from "../../../src/card/fetch/lexicon.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the DDL carries no
- *  ";" inside literals - same splitter contract as the fetch stream's
- *  storage; see tests/card/fetch/fetch-test-storage.ts for the rationale).
- *  Trigger-aware since the deck_data_version freshness stamp
+ *  ";" inside literals - same splitter contract as
+ *  tests/card/fetch/fetch-test-storage.ts; see that file for the
+ *  rationale). Trigger-aware since the deck_data_version freshness stamp
  *  (db/schema.sqlite.sql): a CREATE TRIGGER body carries ";" before its
  *  closing "END;" — while inside a body, ";" does not terminate the
  *  statement and the body ends at the bare word END. This schema's trigger
@@ -93,7 +93,7 @@ export interface CountSnapshot {
   roundTrips: number;
 }
 
-/** The render-stream counting wrapper: tracks statements AND round trips. */
+/** The render tests' counting wrapper: tracks statements AND round trips. */
 export class CountingRenderDriver implements SQLDatabaseDriver {
   private counts: CountSnapshot = { statements: 0, roundTrips: 0 };
   readonly statements: string[] = [];
@@ -215,8 +215,8 @@ const DEFAULT_TYPE_ID = 2;
 
 export interface SeedOptions {
   id?: number;
-  /** Junction rows carry their corpus name/key too (see seedCard) — the
-   *  corpus v2 dump stores them; only callers seeding a bare junction by
+  /** Junction rows carry their name/key too (see seedCard) — the seeded
+   *  reference rows store them; only callers seeding a bare junction by
    *  sides alone omit the name. */
   name?: string;
   key?: string;
@@ -231,19 +231,18 @@ export interface SeedOptions {
   trash?: boolean;
   /** cards.read_rule_id — the DATA side of the read rule (Ruby derives it
    *  on save via the set_read_rule store event, card-mod-permissions
-   *  set/all/permissions.rb:1-5; the read-permission stream reads it at
-   *  render time). Null/unset = the engine falls back to the live rule
-   *  walk. */
+   *  set/all/permissions.rb:1-5; the permission check reads it at render
+   *  time). Null/unset = the engine falls back to the live rule walk. */
   readRuleId?: number | null;
   /** cards.read_rule_class (the set pattern tag, e.g. "*type"). */
   readRuleClass?: string | null;
-  /** cards.created_at — the corpus row's literal SQL datetime. R17: the
-   *  Sign up core view renders "signed up on #{format_date card.created_at}"
-   *  from this column (card-mod-account set/type/signup/views.rb:35-37), so
-   *  the raw-corpus seeding passes the corpus value through; unset keeps
+  /** cards.created_at — the seeded row's literal SQL datetime. The Sign up
+   *  core view renders "signed up on #{format_date card.created_at}"
+   *  from this column (card-mod-account set/type/signup/views.rb:35-37),
+   *  so callers seeding real datetimes pass them through; unset keeps
    *  the historical seed default (2026-09-19 00:00:00.000). */
   createdAt?: string;
-  /** cards.updated_at — the corpus row's literal SQL datetime (the json
+  /** cards.updated_at — the seeded row's literal SQL datetime (the json
    *  molecule's updated_at pin reads this column; unset keeps the
    *  historical seed default). */
   updatedAt?: string;
@@ -254,59 +253,36 @@ export interface SeedOptions {
   /** cards.current_revision_id — the card's last action id. The edit-form
    *  surface renders it in the conflict tracker hidden field
    *  (card.last_action_id, card-mod-edit set/all/form.rb:27-31); unset
-   *  keeps the NULL default (the edit-form oracle capture normalizes the
+   *  keeps the NULL default (the edit-form comparison normalizes the
    *  value anyway - it is seed state, not form semantics). */
   currentRevisionId?: number;
 }
 
-/** Direct INSERT (write path is another stream). Every row with a known
+/** Direct INSERT (write path is out of scope here). Every row with a known
  *  name stores its CANONICAL key; SIDE-BACKED junction rows store the key
- *  and keep name NULL (lead option (b), 2026-09-23, refined by the R4 lane
- *  proof): the *structure rule universe statement
+ *  and keep name NULL: the *structure rule universe statement
  *  (src/card/rules/structure.ts:82-86) composes 2-junction set anchors from
- *  the STORED key columns — with junction keys forced NULL the seeded
- *  universe measured 115 vs the corpus truth 139 (24 *structure rule sets
- *  unresolved, 17 of them type_plus_right). The KEY is stored and the NAME
- *  deliberately is not: DbLexicon.idToLex (src/card/fetch/lexicon.ts:127-144)
- *  branches on name presence — a named junction row yields a STRING lex
- *  whose cache entry the synchronous peekLex id-pair path
- *  ("L-<left>-<right>") never sees, breaking junction-chain resolution (the
- *  R3 records lane restored name+key together and regressed exactly the
- *  junction-heavy surfaces).
+ *  the STORED key columns, so those keys must be present. The KEY is
+ *  stored and the NAME deliberately is not for these rows:
+ *  DbLexicon.idToLex (src/card/fetch/lexicon.ts:127-144) branches on name
+ *  presence — a named junction row yields a STRING lex whose cache entry
+ *  the synchronous peekLex id-pair path ("L-<left>-<right>") never sees,
+ *  breaking junction-chain resolution.
  *
- *  SIDE-LESS junction rows keep their stored NAME (census M3,
- *  serializer-followup2 2026-10-03): the corpus carries 23 compound-named
- *  rows with left_id/right_id NULL (all 23 named compound rows in the deck
- *  — e.g. 3265 "CM 20101222+Associations", whose +tags child 3266 the
- *  live Family+*referred_to_by search renders as a result bar). For these
- *  rows the pair-lex path the R4 proof protects cannot even form (no sides
- *  -> idToLex's pair arm would write the garbage [undefined, undefined]
- *  lex it writes today), the search-item walk (render.ts runSearch ->
- *  composeAndCacheSqlRows) can compose their names from NOTHING once the
- *  name is dropped (tryComposeSqlRowName: name null -> sides null ->
- *  unresolvable -> the row's record never composes -> the item silently
- *  vanishes from every search listing), and the live capture NAMED every
- *  card. The name is the row's only lawful source; keeping it restores
- *  exactly the corpus bytes (key === name verbatim for these rows, so the
- *  canonical key column is unchanged).
- *  the *structure rule universe statement (src/card/rules/structure.ts:82-86)
- *  composes 2-junction set anchors from the STORED key columns — with
- *  junction keys forced NULL the seeded universe measured 115 vs the corpus
- *  truth 139 (24 *structure rule sets unresolved, 17 of them
- *  type_plus_right). The KEY is stored and the NAME deliberately is not:
- *  DbLexicon.idToLex (src/card/fetch/lexicon.ts:127-144) branches on
- *  name presence — a named junction row yields a STRING lex whose cache
- *  entry the synchronous peekLex id-pair path ("L-<left>-<right>") never
- *  sees, breaking junction-chain resolution (the R3 records lane restored
- *  name+key together and regressed exactly the junction-heavy surfaces).
- *  The canonical key equals the corpus's junction key for every anonymized
- *  name (key === name verbatim there, probe-verified on all 49,809 named
- *  rows); it intentionally deviates where the corpus is uncanonical
- *  ("*type plus right" -> "*type_plu_right") because the canonical spelling
- *  is what the candidate walk (resolveStructuredContent) looks up. Fetch
- *  resolution itself is unaffected: compound marks resolve through
- *  left_id/right_id (src/card/fetch/retrieve.ts:272 + the Lexicon), never
- *  through the junction row's own key column. */
+ *  SIDE-LESS junction rows keep their stored NAME: with no sides, the
+ *  pair-lex path cannot even form (idToLex's pair arm would write the
+ *  garbage [undefined, undefined] lex), and the search-item walk
+ *  (render.ts runSearch -> composeAndCacheSqlRows) can compose such a
+ *  row's name from NOTHING once the name is dropped
+ *  (tryComposeSqlRowName: name null -> sides null -> unresolvable -> the
+ *  row's record never composes -> the item silently vanishes from every
+ *  search listing). The name is the row's only source; for these rows
+ *  key === name verbatim, so the canonical key column is unchanged. The
+ *  canonical spelling is what the candidate walk (resolveStructuredContent)
+ *  looks up, so it intentionally deviates where source data spells a name
+ *  uncanonically. Fetch resolution itself is unaffected: compound marks
+ *  resolve through left_id/right_id (src/card/fetch/retrieve.ts:272 + the
+ *  Lexicon), never through the junction row's own key column. */
 export async function seedCard(
   storage: RenderTestStorage,
   opts: SeedOptions,
@@ -334,7 +310,7 @@ export async function seedCard(
       opts.leftId ?? null,
       opts.rightId ?? null,
       opts.currentRevisionId ?? null,
-      // created_at: the corpus row's literal SQL datetime when provided
+      // created_at: the seeded row's literal SQL datetime when provided
       // (the Sign up core renders "signed up on #{format_date
       // card.created_at}" from this column); the historical seed default
       // otherwise.
@@ -367,11 +343,10 @@ export async function seedCard(
   // cached earlier for this id — id_to_lex caches the miss via cache.fetch
   // (lexicon.rb:101-102; src/card/fetch/lexicon.ts cacheFetch: "a stored
   // nil is a hit") — outlives the row and answers "unknown" forever. The
-  // live trigger: render.ts#preloadSetRules fetches every corpus-pinned
-  // RULE_TYPE_IDS_FOR_PRELOAD id (virtual-rule-card.ts:126 — the deck's
-  // List=47 / Toggle=51 / HTML=50 rule-type cards) on any set-card render,
-  // and a fixture that later seeds those ids (search-permission-filter's
-  // twin junction 47 / "Doc Beta" 51) resolved through the stale nils.
+  // live trigger: render.ts#preloadSetRules fetches the
+  // RULE_TYPE_IDS_FOR_PRELOAD ids (virtual-rule-card.ts:126 — the List /
+  // Toggle / HTML rule-type cards) on any set-card render, and a fixture
+  // that later seeds one of those ids resolved through the stale nils.
   // Drop both keys (deleteFor = lexicon.rb:38-41 delete); the next async
   // read re-caches positives from the stored row — the same end state
   // Lexicon.add produces, reached by re-read because the side cards a
@@ -388,7 +363,7 @@ export async function seedCard(
 }
 
 /** Seed one card_references row (the reference graph the read-rule cache
- *  reads; the write path builds these in another stream). Mirrors the
+ *  reads; the write path builds these in the save flow). Mirrors the
  *  columns the ReadRuleCache SQL selects (src/card/permissions/read-rules.ts,
  *  lib/card/rule/read_rule_cache.rb). */
 export async function seedReference(
@@ -407,9 +382,9 @@ export async function seedReference(
 
 /** Seed one card_acts row (lib/card/act.rb:19-23 - a group of recorded
  *  actions; `card_id` is the act's PRIMARY card, which is NOT necessarily
- *  the card any of its actions touched - the deck's act 105328 has
- *  card_id 1 while carrying the create actions for both Home (521) and
- *  the Decko logo (291)). */
+ *  the card any of its actions touched - a single act can carry the create
+ *  actions of several different cards while pointing its own card_id at
+ *  none of them). */
 export async function seedAct(
   storage: RenderTestStorage,
   opts: { id?: number; cardId?: number | null; actorId?: number | null; actedAt?: string },
