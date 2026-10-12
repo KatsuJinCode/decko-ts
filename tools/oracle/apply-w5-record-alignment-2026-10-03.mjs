@@ -1,19 +1,19 @@
-// apply-w5-record-alignment-2026-10-03.mjs -- W5 RECORD-ALIGNMENT LANE's
-// REVERSIBLE, MANIFEST-BOUND corpus expectation swap: the 5 W5 record entries
+// apply-w5-record-alignment-2026-10-03.mjs -- a REVERSIBLE, MANIFEST-BOUND
+// corpus expectation swap: the 5 view-lane record entries
 // (dual-lane-view:<name>:record — *input type+*right+*content options, *alerts,
 // *now, *version, Mod) get their expectation `record.content` REBUILT FROM THE
 // LOCAL CORPUS MIRROR ROWS (bench-corpus-raw.sqlite3), under the Ruby
 // card_attributes snapshot shape (tools/oracle/capture-dual-lane-page-and-view.rb:254).
 //
-// WHY (the lane's traced mechanism): the record expectations are ActiveRecord
+// WHY (the traced mechanism): the record expectations are ActiveRecord
 // metadata snapshots photographed by the Ruby oracle at capture time. For
 // these 5 cards Ruby's `card.content` was answered by set-module CODE
 // OVERRIDES, not the row (card-mod-date set/self/now.rb wall-clock; core mod
 // set/self/version.rb Cardio::Version.release; set/self/alerts.rb literal
 // comment; set/self/mod.rb whose "#{mod}_mod" interpolation leaks
 // Object#inspect addresses — a capture-time process artifact; and the
-// content-options famA MEMBER 2 documented row transform). The mirror rows —
-// the lane's mandated truth — carry none of those values. The lane probe
+// content-options famA MEMBER 2 documented row transform). The mirror rows
+// carry none of those values. The companion probe
 // (probe-w5-record-entries-corpus-alignment-2026-10-03.mjs) PROVED content is
 // the sole diverging field on all 5 (the other 8 snapshot fields are
 // byte-identical expected-vs-handler; the graded byte deltas reconcile
@@ -23,11 +23,11 @@
 // Zero engine edits; no views.ts involvement.
 //
 // SWAP SHAPE: content-only, inside the record object — the line's other
-// fields (including the LIVE-SWAPPED views on the content-options line, the
-// 15 live-settled entries' bytes) are carried through untouched by
-// construction.
+// fields (including the separately swapped views payload on the
+// content-options line) are carried through untouched by construction.
 //
-// BYTE SAFETY (the w5-live-alignment discipline, reused verbatim): the shard
+// BYTE SAFETY (the same discipline as apply-w5-expectations-follow-live-
+// 2026-10-03.mjs): the shard
 // files are CRLF-per-line (with occasional lone-LF lines — shard 000007 has
 // 122 CRLF lines and one lone-LF line), and a parse-modify-dump write STRIPS
 // the trailing CR of every rewritten line (JSON.parse eats it). The write is
@@ -39,7 +39,7 @@
 // MODES
 //   --emit-anchor    Write the external anchor JSON (per-entry CURRENT
 //                    expected-content sha, measured from this staging, plus
-//                    the mirror row provenance) to the lane receipt dir. Run
+//                    the mirror row provenance) to the --anchor path. Run
 //                    ONCE, pre-apply; the anchor is the validate-only
 //                    pre-state reference.
 //   --validate-only  No writes. Verify every target entry's CURRENT
@@ -61,7 +61,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/apply-w5-record-alignment-2026-10-03.mjs \
 //     --repo <worktree-root> \
-//     --anchor C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-record-alignment-dispositions-2026-10-03.json \
+//     --anchor <anchor-json-path> \
 //     --mode emit-anchor|validate-only|apply|inverse
 
 import { createHash } from "node:crypto";
@@ -106,7 +106,7 @@ const targets = [
   { id: "dual-lane-view:Mod:record", shard: "recapture-raw-shard-000039.jsonl", name: "Mod", mirrorRowId: 45410 },
 ];
 
-// ---------- byte-level splice helpers (w5-live-alignment discipline) ----------
+// ---------- byte-level splice helpers (same discipline as the sibling swap script) ----------
 // Find the escaped string literal span for record.content inside a raw line:
 // anchor on `"record":`, then the FIRST `"content":` after it (the record
 // object's own content key), then walk escapes to the closing quote.
@@ -251,7 +251,7 @@ if (MODE === "apply") {
   for (const er of entryRecords) {
     if (er.beforeSha256 === er.afterSha256) fail(`${er.id} already carries the mirror bytes (already applied?)`);
   }
-  // the live-settled views guard: for every line ALSO carrying views, record
+  // the already-swapped views guard: for every line ALSO carrying views, record
   // the full-line byte budget so the post-splice line differs ONLY inside the
   // record.content span (checked after splice, below).
   mkdirSync(OUT_DIR, { recursive: true });
