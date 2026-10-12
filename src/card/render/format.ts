@@ -2496,31 +2496,31 @@ export class RenderFormat {
    *  `[[Target|label]]` and rewritten through expandWikiLinks —
    *  `<a class="known-card" href="/Url_Key"><span class="card-title"
    *  title="label">label</span></a>` for card-name targets, the
-   *  internal/external/email-link anchor for explicit targets. Pinned by
-   *  recapture-raw:*read:render:content where `[[Anyone]]` and
-   *  `[[Anyone|Anyone Signed In]]` both appear.
+   *  internal/external/email-link anchor for explicit targets. Both
+   *  `[[Anyone]]` and `[[Anyone|Anyone Signed In]]` expand this way.
    *
    *  Link-wrapped nests (`[[Target|{{nest}}]]`): the nest scanner SPLITS
    *  such a link into a text piece ending in `[[Target|`, the nest piece,
    *  and a text piece carrying `]]` — so no single text piece holds a
-   *  complete link and the plain pass leaks the raw wikitext (20 corpus
-   *  cards; blog + Latest_News). Ruby never splits: the Link chunk
+   *  complete link and the plain pass leaks the raw wikitext (any card
+   *  whose blog body wraps an item nest in a link). Ruby never splits:
+   *  the Link chunk
    *  (link.rb:14 full_re `[[([^\]]+)]]`) matches BEFORE the nest scan and
    *  re-parses its label as a nested Content (link.rb:113-122 objectify),
    *  so the expanded nest renders INSIDE the anchor. This pass restores
    *  that chunk-level shape over the split pieces: an unterminated
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
-   *  goes through renderLinkChunk. live capture:
+   *  goes through renderLinkChunk. E.g.
    *  `[[/qagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
    *  `<a class="internal-link" href="/qagn/Latest_news_items.rss">` +
-   *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
+   *  expanded feed-icon slot + `</a>`. */
   /**
    * content.rb:20-27 `content_nest` — the chunk-level dispatch every
    * `{{inclusion}}` in ANY card's content goes through (chunk/nest.rb:73
    * `@processed = format.content_nest(@options)`). The `_main` arm is part
    * of that dispatch, not a layout-only rule: `{{_main}}` in an ordinary
-   * card's content (page 470 "AsIn Layout", an Html-typed card whose body
+   * card's content (an Html-typed card whose body
    * is a whole layout template) hits main_nest and splices the main
    * format's @rendered — which at that instant is the RAW SOURCE, because
    * `process_content _render_raw` (base.rb:85-87) evaluated the :raw view
@@ -2544,11 +2544,11 @@ export class RenderFormat {
     //   - card-mod-format set/all/content.rb:5-7 the base `:default`
     //   - card-mod-format set/type/html.rb:14-16 HTML-typed cards:
     //     `:references` - wiki links + nests, NO URI chunks. This is why
-    //     the oracle never autolinks a URL inside ANY Html-typed card's
-    //     content (the *header / *credit+image SVG-comment URL
+    //     a URL inside ANY Html-typed card's content
+    //     is never autolinked (a *header / *credit+image SVG-comment URL
     //     `...Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch`
-    //     renders plain on every page; the former unconditional default
-    //     list anchored it).
+    //     renders plain on every page; anchoring it needs the
+    //     unconditional default list).
     //   - card-mod-layout set/type/layout_type.rb:5 `include_set Type::Html`
     //     carries the same :references to Layout-typed cards.
     //   - card-mod-style set/abstract/01_css.rb:15-18 (Abstract::Css,
@@ -2558,12 +2558,11 @@ export class RenderFormat {
     //     CoffeeScript): `:nest_only`.
     // :references = [EscapedLiteral, Nest, Link] (wiki links, no URI
     // chunks); :nest_only = [Nest] (nests only).
-    // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
-    // oracle leaves every bare URL inside the highlighted output verbatim
-    // (0 bare-URL autolinks in the entire an earlier pass page-surface oracle).
-    // MERGE composition: the compile-engines chunk-list dispatch
-    // kept (code-file chunk lists never run the URI autolink pass), with
-    // bar-slots V4's context arg threaded through both expansion arms so
+    // The bootstrap: the core page's CodeRay bytes pin the css/scss half -
+    // every bare URL inside the highlighted output stays verbatim.
+    // Composition: the chunk-list dispatch
+    // is kept (code-file chunk lists never run the URI autolink pass), with
+    // the bar-slot context arg threaded through both expansion arms so
     // the wikilink resolution carries this card's name context everywhere
     // the pass runs.
     const list =
@@ -2595,8 +2594,7 @@ export class RenderFormat {
           // nest text passes through verbatim. The kramdown stash restores
           // these bytes WITH the backslash (render/kramdown.ts
           // kramdownToStashedHtml) exactly so this pass consumes it.
-          // Corpus oracle: *structure+*right+*guide content
-          // (expected-v2/view-surface shard-000032 row 38251) renders
+          // Observed on *structure+*right+*guide content, which renders
           // "icon ({{}})" - the braces survive, no blank-reference denial.
           out = out.slice(0, -1);
           out += piece.text;
@@ -2680,8 +2678,8 @@ export class RenderFormat {
    *  RAW on both sides is the pinned behavior, not an omission: link.rb:14
    *  matches `[[([^\]]+)]]` over the raw string BEFORE the nest scan, so a
    *  nest inside the target stays `{{…}}` inside the href and a nest inside
-   *  the label stays `{{…}}` inside the anchor text. The oracle pins exactly
-   *  that on `Cardtype+*type+*default` (content + open):
+   *  the label stays `{{…}}` inside the anchor text. A `Cardtype+*type+*default`
+   *  card's content and open views render exactly that on both:
    *  `<a class="internal-link" href="/new/{{_self|linkname}}">add a
    *  {{_self|name}} card</a>`.
    *
