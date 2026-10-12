@@ -1171,7 +1171,7 @@ export class RenderEngine implements RenderEngineLike {
         // Appended LAST: the permission state parser reads folded results
         // by fixed index, and parseStructureContents slices past the
         // permission + codename statements to find the pair in order.
-        // (R17 removed the *default html view universe that rode slot +2:
+        // (The *default html view universe that rode slot +2 is gone:
         // Ruby's default_nest_view reads process CONFIG — html.rb:17-19 —
         // never a deck rule; the engine models it as the pageConfigActive
         // pass flag instead.)
@@ -1201,8 +1201,8 @@ export class RenderEngine implements RenderEngineLike {
           : []),
         // The freshness-stamp baseline rides LAST: the fixed-index parsers
         // above (permission by 0..n, structure by slice) read only the
-        // prefix, so appending is fold-safe (same shape as the R17 removal
-        // note). Parsed by parseDeckDataVersion right after the batch —
+        // prefix, so appending is fold-safe (the same shape as the removal
+        // note above). Parsed by parseDeckDataVersion right after the batch —
         // its index is the one below, a function of every conditional
         // above it (recomputed for the composed batch in the
         // the lineage reconciliation).
@@ -1693,7 +1693,7 @@ export class RenderEngine implements RenderEngineLike {
     // closure is what makes those three entries' verdict independent of
     // whether the process happened to render the skin as a root earlier.
     await this.warmNestedSkinImages();
-    // R17 (signup core): the Sign up cardtype's core view reads the
+    // Signup core: the Sign up cardtype's core view reads the
     // +account junction child synchronously (account_holder.rb:11-13
     // `account? = account.real?`) and its +*email child for the
     // verification_sent_line (views.rb:63-67). The trait fetch composes
@@ -1737,7 +1737,7 @@ export class RenderEngine implements RenderEngineLike {
       // help-rules re-passes above).
       await this.ensureVerdicts();
     }
-    // R17 (unknown-nest typing): an explicit `| type:X ` nest opt names the
+    // Unknown-nest typing: an explicit `| type:X ` nest opt names the
     // NEW card's type when the target is missing (nest/fetch.rb:47-48
     // new_card_args) — but buildUnknownNestCard resolves the type card
     // SYNCHRONOUSLY from the warm map, and the type card ("Toggle", the
@@ -1781,7 +1781,7 @@ export class RenderEngine implements RenderEngineLike {
     // (card.fetch(:description) -> desc.format.render_core). The subcard
     // is reachable from no reference closure (a smart_label render reads
     // no content), so the render must warm it here — the same sync-fetch
-    // gap the R17 signup-children block above closes (the same
+    // gap the signup-children block above closes (the same
     // prepareItemForRender seam). Fetch misses are tolerated: a card
     // without +description renders the bare label (content.rb:30-34
     // label_with_description's nil-description arm).
@@ -2242,7 +2242,7 @@ export class RenderEngine implements RenderEngineLike {
     //
     // Moving the gate to :core preserves the other half of the contract for
     // free: a TOP-LEVEL `format.render(:content)` of a bad-content Date card
-    // is still CAPTURE_ERROR, because the delegated core render is focal
+    // is still a parse error, because the delegated core render is focal
     // (nesting/subformat.rb:41-43 `focal?` = depth.zero?) and re-raises
     // (format/error.rb:65-73) — which is the census shape this arm was
     // originally built for.
@@ -2571,12 +2571,12 @@ export class RenderEngine implements RenderEngineLike {
    * "" when nothing is configured (railtie.rb:28 nil + a requestless
    * runner, env.rb:17-19). `card_url` (env/location.rb:19-21) is
    * `"#{Env.origin}#{card_path rel}"`, so the empty origin yields the
-   * bare rooted path. The capture photographed the two CONFIGURATION
-   * states: the page surface set deck_origin
-   * (capture-dual-$1page-and-view.rb:391-400 — 6588/6588 page rows
-   * carry its `decko.rootUrl`), the view surface rendered outside that
-   * block with a controller-less `Card::Env.reset` (:439 — 4 view rows
-   * carry `decko.rootUrl='/'`). The pass flag stays shaped here,
+   * bare rooted path. The two CONFIGURATION
+   * states in play: the page surface sets deck_origin
+   * (every page row
+   * carries its `decko.rootUrl`), the view surface renders outside that
+   * block with a controller-less `Card::Env.reset` (:439 — where
+   * `decko.rootUrl='/'`). The pass flag stays shaped here,
    * but the VALUE follows configuration, not this pass.
    */
   envOriginConfig(): string {
@@ -5457,7 +5457,7 @@ export class RenderEngine implements RenderEngineLike {
    *  whole walk (the enrichPointerListItemsClosure grew-flag shape). */
   private nestTypeOptLastSize = -1;
 
-  /** R17 (unknown-nest typing): enrich every `| type:X ` nest-opt target
+  /** Unknown-nest typing: enrich every `| type:X ` nest-opt target
    *  the prepared closure's contents name but the reference closure never
    *  reached (an OPT value is not a reference). buildUnknownNestCard
    *  resolves the type card synchronously (nest/fetch.rb:47-48
