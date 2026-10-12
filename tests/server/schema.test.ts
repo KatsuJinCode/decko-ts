@@ -4,9 +4,8 @@
 // The DDL is the wave-2 fetch layer's foundation; these tests are its
 // foundation permit.
 //
-// Ground truth: db/schema.mysql-reference.sql (verbatim production MySQL)
-// and the card-1.110.0 / decko-0.20.0 core migrations. Mapping decisions:
-// .
+// Ground truth: db/schema.mysql-reference.sql (the upstream MySQL schema,
+// kept verbatim) and the card-1.110.0 / decko-0.20.0 core migrations.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, rmSync, mkdtempSync } from "node:fs";
@@ -113,7 +112,6 @@ describe("schema.sqlite.sql vs src/server/schema.ts inventory", () => {
     // index); the four serving-path indexes below are for planners without
     // statistics; and cards_trash_index is retired ("trash" holds two values,
     // and a no-statistics planner reads the whole deck through it).
-    // Diagnosis + measurement: db/schema.sqlite.sql cards index block.
     const mysqlIndexes: Record<string, string[]> = {
       cards: [
         "cards_key_index",
