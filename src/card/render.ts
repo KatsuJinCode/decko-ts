@@ -1392,8 +1392,8 @@ export class RenderEngine implements RenderEngineLike {
     // walk (the ref walk skips empty keys)  their deck-constant verdict
     // seats under the "" key (see the method doc).
     await this.seatBlankKeyReadVerdict();
-    // THE RECOMPOSITION REFILL RESIDUAL (measured, the recomposition sweep
-    // 2026-10-06): on the first render after a committed-write reset the
+    // THE RECOMPOSITION REFILL RESIDUAL: on the first render after a
+    // committed-write reset the
     // refill runs raw (the plan is legitimately disarmed by the reset per
     // the stamp-read-vs-plan pin) and its solo tail lives in the SEAT
     // PIPELINE, not in missing priming: composeCardRecord resolves each
@@ -1708,7 +1708,7 @@ export class RenderEngine implements RenderEngineLike {
     // sync-fetch gap the pointer-item walk closes. Both calls tolerate
     // fetch misses (a card without +account stays absent; the core's
     // missing-account branch renders).
-    // mod-completion-100 (2026-10-03): the account walk's cards — signup
+    // The account walk's cards — signup
     // :content_formgroups and user :setup ride account_formgroups
     // (account_holder.rb:143-145, the DIRECT subformat render of the
     // +*account trait's content_formgroups) -> the explicit edit_structure
@@ -2207,12 +2207,11 @@ export class RenderEngine implements RenderEngineLike {
     // containers reproduce the capture's BadQuery for their search-card
     // items. View-gated: :title/:closed/:bar never raise here.
     //
-    // RULE-card asymmetry (capture census, 2026-09-23): a search-TYPE card
+    // RULE-card asymmetry: a search-TYPE card
     // that is ALSO a rule (3-part name, right part a setting — e.g.
-    // "*layout+*right+*content options", corpus:316/571/9610) captures REAL
-    // :open/:content bytes (48 *content options + 27 *structure rules, zero
-    // CAPTURE_ERROR), while every CAPTURE_ERROR search card is non-rule;
-    // date-typed rules (corpus:1135 "evog+*right+*default") still capture
+    // "*layout+*right+*content options") renders REAL
+    // :open/:content bytes, while every raising search card is non-rule;
+    // date-typed rules still capture
     // the Date::Error sentinel. So the Search arm skips rule cards
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
@@ -2220,7 +2219,7 @@ export class RenderEngine implements RenderEngineLike {
       const failed = this.searchFailures.get(card.key);
       if (failed !== undefined && !this.computeIsRuleSync(card)) throw failed;
     }
-    // THE DATE ARM MOVED TO :core (2026-10-02, open-clusters-fix). The
+    // THE DATE ARM MOVED TO :core. The
     // Search arm above keeps its {open, content} axis, but the Date arm used
     // to share it — and that put the raise ONE LEVEL TOO HIGH.
     //
@@ -2834,16 +2833,15 @@ export class RenderEngine implements RenderEngineLike {
       // template is NOT always the *default rule card — the *default-typed
       // dup's *structure rule card, when it exists (content != "_self"),
       // BECOMES the template, and ensure_type_id's type_id_from_template
-      // then answers THE STRUCTURE RULE CARD's own type_id. Corpus proof
-      // (2026-10-02): RichText+Gallery10+*type plus right's prototype
-      // *dummy+Gallery10 — *default walk hits *all plus+*default (rule
-      // 17827, RichText-typed); the RichText-typed dup carries
-      // RichText+Gallery10+*type plus right+*structure (rule 10525,
-      // HTML-typed) -> the prototype types HTML -> the *create walk hits
-      // HTML+*type+*create (rule 6553, "Shark") — the oracle's
-      // [Shark] create/delete rows for that set page.
+      // then answers THE STRUCTURE RULE CARD's own type_id. Worked example:
+      // a RichText-typed set's "*type plus right" prototype
+      // *dummy+<Set> — the *default walk hits *all plus+*default (a
+      // RichText-typed rule); the RichText-typed dup carries
+      // <Set>+*type plus right+*structure (an
+      // HTML-typed rule) -> the prototype types HTML -> the *create walk hits
+      // HTML+*type+*create, whose create/delete rows that set page renders.
       //
-      // leftTypeName (the typeprint regression fix, 2026-10-02): Ruby's dup is a
+      // leftTypeName: Ruby's dup is a
       // real `dup` of the prototype Card, so it keeps @supercard/@superleft —
       // and the *structure walk's TPR anchor reads
       // `left_type(card) = card.superleft&.type_name`
@@ -2935,11 +2933,11 @@ export class RenderEngine implements RenderEngineLike {
    * #prototype.type_id's CODENAME for a RULE card's set (the visible_settings
    * input the categories machinery filters the restricted settings by):
    * Card.fetch(subclass_for_set.prototype_args(anchor_name), new:).type_id.
-   * Delegates to views.ts #setPrototypeTypeCode — the SAME oracle-verified
+   * Delegates to views.ts #setPrototypeTypeCode — the SAME
    * port the set-page board's restricted-setting filter runs (assignment
    * layer right::<setting> / type_plus_right::<type>::<right>, template
-   * chain, SELF existing-anchor arm; grep-verified 2026-09-26 against
-   * expected-v2) — so the board enumeration and the bar categories read ONE
+   * chain, SELF existing-anchor arm)
+   * — so the board enumeration and the bar categories read ONE
    * prototype resolution, never two divergent ports. Undefined when the set
    * card is not warm or no arm resolves (the caller's restricted-setting
    * filter treats that as not-allowed, never allowed).
@@ -3005,19 +3003,18 @@ export class RenderEngine implements RenderEngineLike {
    *
    * Idempotent and incremental: cards already processed skip via
    * structureProcessed; names that already missed fetch skip via
-   * structureRefMisses (the corpus's {{xxxx}} targets are not cards — Ruby
+   * structureRefMisses (placeholder {{xxxx}} targets are not cards — Ruby
    * renders them as unknown-card views; we must not re-query them ever).
    *
-   * Raw-ref walk (2026-09-22 fix): every render card's dbContent refs are
+   * Raw-ref walk: every render card's dbContent refs are
    * walked for closure closureWarm parity, not just structured cards'
    * templates. Without this the closureWalk returned false for cards whose
-   * transitive refs (e.g. ojib -> tazcdqsapii -> {{xxxx...}}) sat on a
+   * transitive refs sat on a
    * card without an applicable *structure rule: structureProcessed
    * skipped such cards (the old `if (resolved === undefined) continue`
-   * shape) so the xxx refs never entered structureRefMisses, closureWarm
+   * shape) so the placeholder refs never entered structureRefMisses, closureWarm
    * saw them missing on every render, and the cold SQL walk re-ran —
-   * measured 4.5 s/render on ojib:closed alone (well past the 25 ms
-   * budget; warm-render-sample avg 102 ms is 60× that single entry).
+   * seconds per render, far past the render budget.
    * Walking raw refs matches Ruby's closure behavior: every ref in every
    * card's content contributes to the closure.
    *
@@ -3026,8 +3023,9 @@ export class RenderEngine implements RenderEngineLike {
    * from already-enriched state (leftTypeName read from the render-card
    * map; isRule read from the safe_set_keys "RULE" token). The previous
    * async path paid one microtask boundary per awaited fetch (4 awaits per
-   * compound card × ~37k compound cards = ~150k microtask hops; measured
-   * 26-33 s on a 47k-card deck for nothing in the result).
+   * compound card × tens of thousands of compound cards = hundreds of
+   * thousands of microtask hops, and tens of seconds of wall clock on a
+   * large deck for nothing in the result).
    */
   /** THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof, 2026-10-06): one final
    *  applyStructureContent pass immediately before a sync render dispatch.
