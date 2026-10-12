@@ -1,24 +1,24 @@
 // verify.mjs — post-import verification and the JSON migration report.
 //
-// M4 migration tool (port-tracker stream 14, decko-commons/decko#1282).
-//
-// What is verified, in order:
+// Checks run, in order:
 //   1. COUNT PARITY per table: source (counted during the import pass) vs
 //      target (SELECT COUNT(*)).
 //   2. ROW PARITY: order-independent per-table checksums (sum of per-row
-//      FNV-1a over a canonical serialization) + id extremes, computed over
-//      the source stream at import time and re-computed over the target DB
-//      via keyset pagination (portable: works through any SQLDatabaseDriver,
-//      including D1/libsql; no full-table materialization).
-//   3. JUNCTION WALK: sample compound cards (left_id NOT NULL) and resolve
-//      their names by walking the left_id/right_id junctions in SQL — the
-//      same walk the Lexicon performs (src/card/fetch/lexicon.ts).
-//   4. ENGINE CHECKS (optional, via an injected hook): spot-render N random
-//      cards through the decko-ts RenderEngine and byte-compare against
-//      Ruby-captured fixtures when fixture cards exist in the migrated
-//      deck. The hook lives in engine-bridge.ts (TypeScript — imports
-//      src/); the CLI reaches it through the vitest runner path (see
-//      migrate.mjs), tests import it directly.
+//      FNV-1a over a canonical serialization) plus id extremes, computed
+//      over the source stream at import time and re-computed over the
+//      target DB via keyset pagination (portable: works through any
+//      SQLDatabaseDriver, including D1/libsql; no full-table
+//      materialization).
+//   3. JUNCTION WALK: sample compound cards (left_id NOT NULL) and
+//      resolve their names by walking the left_id/right_id junctions in
+//      SQL — the same walk the Lexicon performs
+//      (src/card/fetch/lexicon.ts).
+//   4. ENGINE CHECKS (optional, via an injected hook): spot-render N
+//      random cards through the decko-ts RenderEngine and byte-compare
+//      against the Ruby oracle's recorded renders when fixture cards
+//      exist in the migrated deck. The hook lives in engine-bridge.ts
+//      (TypeScript — imports src/); the CLI reaches it through the
+//      vitest runner path (see migrate.mjs), tests import it directly.
 //
 // THE REPORT IS CONTENT-FREE BY CONSTRUCTION (DATA RULE): card names,
 // content, and rendered HTML never enter the report — only ids, counts,

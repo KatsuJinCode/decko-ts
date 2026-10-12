@@ -1,11 +1,10 @@
-// mod-harness.mjs — the mod porting harness (decko-mod-porting-harness lane,
-// 2026-10-02). Makes porting a Ruby Decko mod to TypeScript (or any language)
-// trivial by validating the mod's FULL BEHAVIOR SET, per the operator ruling:
-// "decko IS the mods... make porting a mod to any language trivial by
-// validating its full behavior set. Give them the tool to port their mod and
-// we port all the mods we know about."
+// mod-harness.mjs — the mod porting harness. Makes porting a Ruby Decko mod
+// to TypeScript (or any language) trivial by validating the mod's FULL
+// BEHAVIOR SET: every view, event, setting, seed, config, and basket
+// registration the mod's Ruby source declares gets enumerated, given a Ruby
+// oracle where one is producible, and checked against the port.
 //
-// Three commands' worth of leverage per mod:
+// Four commands' worth of leverage per mod:
 //   node tools/mod-porting-harness/mod-harness.mjs surface  <mod>
 //       Enumerate the mod's FULL behavior set from the Ruby gem source
 //       (cardtypes/views incl. loop-declared views, events, settings, seeds,
@@ -16,8 +15,8 @@
 //       existing-capture (fixtures/oracle-surfaces/<mod>.jsonl, referenced
 //       with sha256 provenance), static-ruby (scripts under ruby-oracles/
 //       <mod>/ run under the real interpreter, gem source extracted
-//       verbatim), live-deck (booted scratch deck — NOT exercised by the
-//       skeleton lane; reported honestly as uncaptured). Output:
+//       verbatim), live-deck (a booted scratch deck — not exercised yet;
+//       behaviors needing it are reported as uncaptured). Output:
 //       fixtures/oracle-surfaces/<mod>.harness.jsonl, one JSONL oracle per
 //       line, every line carrying provenance.
 //   node tools/mod-porting-harness/mod-harness.mjs verify   <mod>
@@ -73,10 +72,10 @@ const REGISTRY_JSON = join(HERE, "public-mod-registry.json");
 const REGISTRY_MD = join(HERE, "public-mod-registry.md");
 const COMPAT_JSON = join(REPO, "tools", "compat-report", "mod-compat-report.json");
 
-// Re-measurement 2026-10-03 (tree 0287dab) — the mod-coverage-remeasure
-// lane's authoritative view census, cited (not recomputed) for the registry.
-// Source: WORK_DIR/mod-coverage-remeasure-lane.md
-// + deliverables/mod-coverage-authoritative-2026-09-28.md (re-measure section).
+// View-census numbers the registry cites as-is (the registry references
+// this census rather than recomputing it): how many views the installed
+// gems declare, how many are byte-pinned or rendered at all, and which
+// mods miss how many views.
 const REMEASURE = {
   tree: "0287dab",
   date: "2026-10-03",
@@ -95,12 +94,10 @@ const REMEASURE = {
   },
 };
 
-// NAMED REMAINDERS (mod-porting wave-1 lane, 2026-10-03) - harness surface
-// behaviors that are NOT ports owed and NOT oversights: each carries its
-// named, evidenced reason (the wave's end condition: "the uncaptured set is
-// empty or every remainder is named"). A red-unported registration whose
-// behaviorId appears here scores "named-remainder" (never counted RED,
-// never counted validated).
+// NAMED REMAINDERS - harness surface behaviors that are NOT ports owed and
+// NOT oversights: each carries a named, evidenced reason. A red-unported
+// registration whose behaviorId appears here scores "named-remainder"
+// (never counted RED, never counted validated).
 const NAMED_REMAINDERS = {
   "card-mod-history": {
     // export.rb:14-16 view :actions - a JSON-FORMAT view. The hash shapes
@@ -108,15 +105,12 @@ const NAMED_REMAINDERS = {
     // changesHash, export.rb:18-47; tests/card/mod-loader/
     // card-mod-history.test.ts:1124-1193 pins all four shapes).
     //
-    // RE-MEASURED 2026-10-06 (r2-harness lane, base 7bc63c1c). The former
-    // reason read "the engine has no non-html render route for
-    // manifest-registered json views". THAT PREMISE IS FALSE at this
-    // lineage: deploy/worker.ts:709-717 routes GET /<card>.json into
-    // format-families' renderFormatShow. The route exists; what does not
-    // exist is any view dispatch ON it - renderFormatShow
+    // The non-html json ROUTE exists (deploy/worker.ts:709-717 routes
+    // GET /<card>.json into format-families' renderFormatShow), but it
+    // carries NO view dispatch: renderFormatShow
     // (src/card/render/format-families.ts:574) takes no view argument, so
     // Ruby's /x.json?view=actions (json.rb show -> render! :actions) has
-    // no port counterpart: the json route always serves :molecule. So the
+    // no port counterpart and the json route always serves :molecule. The
     // row is a REACHABILITY remainder, not an absent-route one.
     "view:actions":
       "json-format view; the export.rb hash shapes are ported + suite-pinned (card-mod-history.test.ts:1124-1193); RE-MEASURED 2026-10-06 - the non-html json ROUTE exists (deploy/worker.ts:709-717 -> format-families renderFormatShow) but carries NO view dispatch, so the manifest's :actions view is unreachable and the route always serves json show's :molecule",
@@ -147,9 +141,8 @@ const NAMED_REMAINDERS = {
     // gem's page renderer that no installed gem carries.
     "view:debug_server_error":
       "the BetterErrors dev-tool error page (error.rb:4-8); the better_errors gem is NOT in the frozen gem set, so the view raises NameError in the installed-gems environment - its behavior belongs to an external dev dependency, not the deck's public surface",
-    // PHANTOM ROWS - KNOWN SURFACE-MINING DEFECT (r2-harness lane,
-    // 2026-10-06). `view:remote` and `view:method` are NOT Ruby views.
-    // Gem source, card-mod-format-0.20.0/set/all/links.rb:146-152:
+    // KNOWN SURFACE-MINING DEFECT: `view:remote` and `view:method` are NOT
+    // Ruby views. Gem source, card-mod-format-0.20.0/set/all/links.rb:146-152:
     //     def interpret_data_opts_to_link_to opts
     //       %i[remote method].each do |key|
     //         next unless (val = opts.delete key)
@@ -161,33 +154,24 @@ const NAMED_REMAINDERS = {
     // unconditionally - the `view <blockvar>` look-ahead is computed but
     // never gates the push (the ternary at the push site evaluates the
     // same value on both arms), so both tokens become rows. Neither is
-    // reachable in Ruby either. Measured verdict for the two rows: FAIL,
-    // invalid row. NOT repaired in this lane: changing the census
-    // (168 -> 166 behaviors) mid-re-measure would invalidate the run the
-    // receipt records. Named here so the next census does not re-count
-    // them as ports owed.
+    // reachable in Ruby either. The rows stay named (rather than mined
+    // out of the surface) so behavior totals stay comparable across runs;
+    // a census taken after a mining fix should drop them instead of
+    // re-counting them as ports owed.
     //
     // CLASS remainders (matched by regex below): the non-html format
     // blocks (data/json/csv/rss/text/yaml/js/jsonld/css/file), their
     // validate events, the basket ops and the yml seed - none in the
-    // census's 23-view html gap. The "the engine renders the html format
-    // only" clause of the former reason is FALSIFIED at 7bc63c1c; see the
-    // re-measure note on the class entry below. Keys wrapped in <...> are
+    // census's 23-view html gap. Keys wrapped in <...> are
     // regex classes matched against the behaviorId (namedRemainderFor
-    // below).
-    // RE-MEASURED 2026-10-06 (r2-harness lane, base 7bc63c1c; the per-row
-    // verdict table is WORK_DIR/
-    // r2-harness-rerun-lane.md). The former reason read "the engine renders
-    // the html format only". THAT PREMISE IS FALSE at this lineage:
-    // deploy/worker.ts:709-734 routes GET /<card>.json, .csv and .rss into
-    // format-families' renderFormatShow
-    // (src/card/render/format-families.ts:574), and
+    // below). Reachability note for the class rows: the engine DOES serve
+    // the non-html formats - deploy/worker.ts:709-734 routes
+    // GET /<card>.json, .csv and .rss into format-families'
+    // renderFormatShow (src/card/render/format-families.ts:574), and
     // tests/card/render/format-families-oracle.test.ts byte-compares that
-    // render against the fresh Ruby capture
-    // (fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl) - 10/10
-    // green under --no-file-parallelism at this base. What the class row
-    // actually is, per the re-measure: a non-html FORMAT view whose
-    // PER-VIEW REACHABILITY is the remainder. renderFormatShow takes NO
+    // render against the Ruby oracle fixtures
+    // (fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl). The
+    // remainder is PER-VIEW REACHABILITY: renderFormatShow takes NO
     // view argument and the worker route passes none, so each format's
     // show-default view is the only served shape; ?view= / the
     // :mark/view/:view(.:format) forms are NOT honored on the non-html
@@ -202,13 +186,12 @@ const NAMED_REMAINDERS = {
     "<seed:.*>":
       "a data/yml seed card (the gem's fixture data), not deck data; no TS seed consumer exists or is needed for a running deck",
   },
-  // mod-completion-100 (2026-10-03): the six tinymce census views and the
-  // two account census views (:content_formgroups, :setup) are PORTED (the
-  // WAVE1 rows below) - their named-remainder entries are retired. The
-  // tinymce-views lane's blockers A/D were settled by the LIVE-VERIFIED
-  // static-ruby chrome oracle (the params-ABSENT arms are byte-exact
-  // substrings of the prior lane's live capture): gem source, not usage
-  // weight, is the oracle basis.
+  // The six tinymce census views and the two account census views
+  // (:content_formgroups, :setup) are PORTED (the WAVE1 rows below), so
+  // their named-remainder entries are retired. The static-ruby chrome
+  // oracle settled the tinymce blockers: its params-ABSENT arms match the
+  // previously recorded renders byte for byte, and gem source - not usage
+  // weight - is the oracle basis.
   "card-mod-account": {
     // set/type/signup/views.rb:11-13 view :content_formgroups - the body's
     // account_formgroups recursion renders the +*account subformat's
@@ -229,21 +212,19 @@ const NAMED_REMAINDERS = {
       "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
     "<seed:.*>":
       "a data/real.yml seed card (the account system's setting surfaces, the role cards, the email templates), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-    // RE-MEASURED 2026-10-06 (r2-harness lane): the "not ported, owned by the
-    // email lane" reason was FALSE at this lineage. The three templates ARE
-    // in the port - RESET/VERIFY/WELCOME_EMAIL_TEMPLATE constants read from
-    // the gem's data/real.yml at
-    // src/card/auth/account-verify-reset-flows.ts:253-306 - and their
+    // The three email-template views ARE in the port - RESET/VERIFY/
+    // WELCOME_EMAIL_TEMPLATE constants read from the gem's data/real.yml
+    // at src/card/auth/account-verify-reset-flows.ts:253-306 - and their
     // DELIVERED bytes are compared against real Ruby ActionMailer output
-    // captured by tools/oracle/mail_oracles_capture.rb:
+    // recorded by tools/oracle/mail_oracles_capture.rb:
     // tests/card/notify/six-mail-oracles.test.ts byte-compares the envelope
     // {to, from, subject, text_body, html_body} for
     // signup_verification_email, password_reset_email and welcome_email
-    // against fixtures/captured/six-oracle-mails.json (6/6 green under
-    // --no-file-parallelism at base 7bc63c1c). The remainder is the
-    // registration shape, not the bytes: the loop-declared view has no
-    // manifest registration to find - the templates are compiled-in
-    // constants, not a view surface the registration check can see.
+    // against fixtures/captured/six-oracle-mails.json (all six green).
+    // The remainder is the registration shape, not the bytes: the
+    // loop-declared view has no manifest registration to find - the
+    // templates are compiled-in constants, not a view surface the
+    // registration check can see.
     "<view:(welcome_email|verification_email|password_reset_email)>":
       "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32) - RE-MEASURED 2026-10-06: the three templates ARE ported (account-verify-reset-flows.ts:253-306, gem data/real.yml) and their delivered bytes ARE oracle-pinned (six-mail-oracles.test.ts vs six-oracle-mails.json, real Ruby ActionMailer bytes, green); the remainder is the REGISTRATION shape - a compiled-in constant, not a manifest-registered view",
     "<basket:.*>":
@@ -277,11 +258,10 @@ function namedRemainderFor(modId, behaviorId) {
   return undefined;
 }
 
-// WAVE-1 PORTING STATE (the 10-03 ruling's first porting wave) - the
-// census-missing views BY NAME and their current disposition. A view moves
-// here when it is ported + harness-verified GREEN on this lane; the row
-// cites the lane branch. Views not listed stay uncaptured by name until
-// this wave lands them or names them.
+// PORTED-VIEW STATE - the census-missing views BY NAME and their current
+// disposition. A view moves here when it is ported + harness-verified
+// GREEN; the row cites its gem source and oracle. Views not listed stay
+// uncaptured by name until they are landed here or named as remainders.
 const WAVE1 = {
   branch: "lane-mod-completion-2026-10-03",
   portedViews: {
@@ -437,9 +417,9 @@ const WAVE1 = {
     ],
   },
   namedRemainderViews: {
-    // mod-completion-100 (2026-10-03): the tinymce 6 + account 2 named
-    // remainders are PORTED (the portedViews rows above) - the census gap
-    // closes at 22 ported + the 1 impossibility-evidenced remainder.
+    // The tinymce 6 + account 2 named remainders are PORTED (the
+    // portedViews rows above); their entries are retired, leaving 22
+    // ported + the 1 impossibility-evidenced remainder.
   },
   status(modId) {
     const ported = this.portedViews[modId];
@@ -547,15 +527,15 @@ function mineViews(src, relFile) {
   // :"send_#{email}"`), for option walks (`%i[remote method].each do |key|`
   // in card-mod-format set/all/links.rb:147), and for dispatch loops
   // (`atom[view] = render(view)`). Pushing the elements of ALL of them as
-  // `view:` rows invented coverage obligations the gem never made — the
-  // ledger was chasing views that do not exist.
+  // `view:` rows would invent coverage obligations the gem never made —
+  // rows for views that do not exist.
   //
   // Both call forms are recognized: `view viewname, unknown: true`
   // (card-mod-comment set/right/discussion.rb:2) and
   // `view(viewname, unknown: true) { super() }`
   // (card-mod-api_key set/right/api_key.rb:74, card-mod-list
-  // set/abstract/01_list/html_views.rb:57). Matching only the bare form would
-  // drop eight REAL views on the fix.
+  // set/abstract/01_list/html_views.rb:57). Matching only the bare form
+  // would drop eight REAL views.
   const loopRe = /%[iwa]\[([^\]]+)\][ \t]*\.each[ \t]+do[ \t]*\|([A-Za-z0-9_]+)\|([^\n]*)/g;
   while ((m = loopRe.exec(src)) !== null) {
     const names = m[1].split(/\s+/).filter(Boolean);
@@ -945,8 +925,8 @@ function mineEngineViews() {
 function registrationChecks(surface, engineViews) {
   const manifestPath = join(MOD_LOADER_MODS, `${surface.modId}.ts`);
   const manifestSrc = existsSync(manifestPath) ? readText(manifestPath) : null;
-  // cross-mod registration sweep (wave-1 lane): a view the SURFACE mod
-  // declares can be REGISTERED by another mod's manifest (format.rb's
+  // cross-mod registration sweep: a view the SURFACE mod declares can be
+  // REGISTERED by another mod's manifest (format.rb's
   // comment_box override is registered by card-mod-comment). The seed and
   // config checks already sweep; the view check gains the same arm.
   const checks = [];
@@ -1129,7 +1109,7 @@ function verifyMod(modId) {
     // named-remainder = red-unported registration whose behaviorId carries a
     // named, evidenced reason (NAMED_REMAINDERS via namedRemainderFor -
     // exact keys then <regex> classes) — never counted RED, never
-    // counted validated (the wave's end condition: every remainder named).
+    // counted validated.
     const remainderReason = !reg?.pass ? namedRemainderFor(modId, b.id) : undefined;
     let state;
     if (remainderReason !== undefined) {
@@ -1239,11 +1219,11 @@ function buildRegistry() {
       scorecard = `${sc.totals.validated}/${sc.totals.behaviors} validated${sc.totals.red ? ` (RED ${sc.totals.red})` : ""}`;
     }
     // Public evidence: the gem is a published, LICENSE-carrying checkout
-    // under the installed gem dir (the same frozen set the license audit
-    // read). Every card-mod-* gem is public by construction.
+    // under the installed gem dir. Every card-mod-* gem is public by
+    // construction.
     const license = existsSync(join(gemPath, "LICENSE")) ? "LICENSE present" : "no LICENSE file";
     const compatStatus = c?.classification?.status ?? "unknown";
-    // harness-first status: the scorecard's RED count is the ruling's bar —
+    // harness-first status: the scorecard's RED count decides —
     // "ported" means behavior-validated, not regex-classified. The compat
     // report is the fallback for mods the harness has not run yet.
     let status;
@@ -1253,8 +1233,8 @@ function buildRegistry() {
       sc = JSON.parse(readText(scorecardPath));
     }
     if (compatStatus === "ignored") {
-      // legacy-labeled (decko-commons#1282 thread): data-only/backend-only,
-      // no set/ tree to port. The ruling's ported/unported axis: their
+      // legacy-labeled upstream: data-only/backend-only,
+      // no set/ tree to port. On the ported/unported axis their
       // behavior set is empty or backend-only, so ported-vacuous.
       status = "ported";
       statusEvidence = `legacy-labeled per upstream (#1282): ${c?.classification?.verdict ?? "no set/ tree"}; nothing to port`;

@@ -1,22 +1,22 @@
 // source-sqlite.mjs — read rows from any Ruby decko SQLite source database.
 //
-// The M4-generalize milestone (decko-commons/decko#1282): the proven
-// mysqldump pipeline (parse-dump.mjs + import.mjs + verify.mjs) is general-
-// ized so the input can be ANY Ruby decko SQLite database file. This module
-// is the SOURCE side of the generalized path: a tiny, portable row reader
-// that exposes the same { table, values, columns } shape the importer
-// expects, so the rest of the pipeline (column mapping, settings mapping,
-// name reconstruction, verify, mod-compat) needs no changes to its input
-// contract.
+// The mysqldump pipeline (parse-dump.mjs + import.mjs + verify.mjs) is
+// generalized so the input can be ANY Ruby decko SQLite database file.
+// This module is the SOURCE side of the generalized path: a tiny,
+// portable row reader that exposes the same { table, values, columns }
+// shape the importer expects, so the rest of the pipeline (column
+// mapping, settings mapping, name reconstruction, verify, mod-compat)
+// needs no changes to its input contract.
 //
-// The corpus shape varies across decko versions:
+// The source shape varies across decko versions:
 //   * core tables: cards, card_acts, card_actions, card_changes,
 //     card_references, card_revisions, card_virtuals, sessions,
 //     schema_migrations, ar_internal_metadata, transform_migrations,
-//     delayed_jobs (the 12-table truth proven by the mysqldump pipeline).
+//     delayed_jobs (the 12-table set the mysqldump pipeline is built
+//     around).
 //   * column drift: source `content` maps to target `db_content`;
-//     source lacks `current_revision_id` and `references_expired` so they
-//     default to NULL (proven on the bench corpus-v2).
+//     some sources lack `current_revision_id` and `references_expired`,
+//     so those target columns default to NULL.
 //   * settings: source carries them in a `meta(key, value)` table or
 //     `settings(name, value)` table; decko-ts stores settings as cards
 //     (the 2014 migration), so the generalized tool reports settings

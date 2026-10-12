@@ -1,4 +1,4 @@
-# account-walk-views.rb — static-ruby oracle capture for card-mod-account's
+# account-walk-views.rb — static-ruby oracle for card-mod-account's
 # census views :content_formgroups (set/type/signup/views.rb:11-13) and
 # :setup (set/type/user.rb:10-19) — the structure-driven formgroup walk and
 # the first-run setup form.
@@ -36,10 +36,9 @@
 #                      engine's (the probe renders them through the seeded
 #                      runtime).
 #   Auth.as_bot      - the permission-widening wrapper: the headless probe
-#                      seeds the read grants instead (the established basis).
-#   Card.default_accounted_type_id - the Sign Up codename card's id (the
-#                      recorded deck vocabulary; the fixture decks seed
-#                      codename "signup").
+#                      seeds the read grants instead.
+#   Card.default_accounted_type_id - the Sign Up codename card's id (decko
+#                      vocabulary; the fixture decks seed codename "signup").
 #   Card.config.action_mailer.perform_deliveries - BOTH arms rendered (the
 #                      delivery-off warning block is the deck-config arm).
 #   Card.cache / Card.search / Card.count_by_cql - the needs_setup? census
