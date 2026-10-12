@@ -78,7 +78,7 @@
 //       --floors view=7843,page=2 --report-only
 //   One shard (small-slice proof):
 //     node dual-lane-verifier-fast.mjs --repo <repo> \
-//       --files recapture-raw-shard-000047.jsonl --workers 1 \
+//       --files <shard-file>.jsonl --workers 1 \
 //       --floors view=0,page=0 --report-only
 //   Restart-safe: phases whose aggregate artifacts already parse are skipped.
 //
@@ -344,7 +344,7 @@ function buildPhases(shards, group) {
  *  - "keep":  byte-identical -> nothing to do.
  *  - "drift": tmp copy differs from the tracked instrument -> REFUSE. The
  *    verifier spec is the measuring instrument; a silently divergent copy is
- *    how measurements go wrong (M5 provenance convention: a differing
+ *    how measurements go wrong (provenance convention: a differing
  *    pre-existing destination is a refusal, never a skip or an overwrite).
  *    Remediation is named in the refusal: adopt the canonical, or run an
  *    explicit --spec for lane experiments. */
@@ -498,13 +498,12 @@ function log(line) {
 // ---------- per-phase aggregate artifacts + resume-skip ----------
 
 /** Artifact name prefix bound to the phase's SHARD LIST (sha8 of the sorted
- *  names), not just its index. instrument-reliability lane: the balanced
- *  re-pairing changed which shards a phase index holds, and a per-index name
- *  would let a re-paired schedule resume-skip against a PREVIOUS schedule's
- *  artifacts (wrong shards marked done, totals silently wrong). With the shard
- *  list in the name, old artifacts are simply never matched: the affected
- *  phases re-render. Same-generation resumes are unaffected (same shards ->
- *  same name). */
+ *  names), not just its index. The balanced re-pairing changed which shards a
+ *  phase index holds, and a per-index name would let a re-paired schedule
+ *  resume-skip against a PREVIOUS schedule's artifacts (wrong shards marked
+ *  done, totals silently wrong). With the shard list in the name, old
+ *  artifacts are simply never matched: the affected phases re-render.
+ *  Same-generation resumes are unaffected (same shards -> same name). */
 function phaseArtifactPrefix(idx, group) {
   const h = createHash("sha256").update([...group].sort().join("\n")).digest("hex").slice(0, 8);
   return `phase-${String(idx).padStart(3, "0")}-${h}`;
@@ -587,12 +586,13 @@ function listDescendants(rootPids) {
     [
       "-NoProfile",
       "-Command",
-      // pass21 lane finding: the previous format string '{0}`t{1}' is a
-      // SINGLE-quoted PowerShell string, so the backtick-t escape is NOT
-      // expanded -- every row carried a literal `t pair, the TAB regex below
-      // matched nothing, parentOf stayed empty, and this walk has returned []
-      // its whole life ("KILL-SWEEP-CLEAN" was logged unconditionally; the
-      // real killing was taskkill /T alone). [char]9 is a real TAB.
+      // The separator MUST be a real TAB: the previous format string
+      // '{0}`t{1}' was a SINGLE-quoted PowerShell string, so the backtick-t
+      // escape was NOT expanded -- every row carried a literal `t pair, the
+      // TAB regex below matched nothing, parentOf stayed empty, and this
+      // walk returned [] its whole life ("KILL-SWEEP-CLEAN" was logged
+      // unconditionally; the real killing was taskkill /T alone).
+      // [char]9 is a real TAB.
       "Get-CimInstance Win32_Process | ForEach-Object { '{0}{2}{1}' -f $_.ProcessId, $_.ParentProcessId, [char]9 }",
     ],
     { encoding: "utf8", timeout: 30_000, windowsHide: true },
@@ -763,10 +763,10 @@ function spawnPhase(idx) {
     }
 
     const t0 = Date.now();
-    // Weight-aware deadline (instrument-reliability lane): max(--deadline-min,
-    // 1.5 x the phase's recorded weight); --flat-deadline = the old
-    // flat behavior. Both the weight and the effective deadline go on the
-    // START line so every run records which rule set its deadline.
+    // Weight-aware deadline: max(--deadline-min, 1.5 x the phase's recorded
+    // weight); --flat-deadline = the old flat behavior. Both the weight and
+    // the effective deadline go on the START line so every run records which
+    // rule set its deadline.
     const weightS = phaseWeightSec(group, shardWeights);
     const deadlineSec = phaseDeadlineSec(group, shardWeights, opts.deadlineMin, {
       flat: opts.flatDeadline,
@@ -799,10 +799,10 @@ function spawnPhase(idx) {
       stalled = true;
       log(`DEADLINE breached: ${label} exceeded ${(deadlineSec / 60).toFixed(2)} min — killing ONLY this phase's child tree (pid ${pid})`);
       // SCOPED kill: this phase's recorded pid subtree and nothing else. The
-      // pre-fix killOwnTree call here swept every live sibling with it (pass21
-      // evidence: phase 7 pid 35000 and, on the resume, phase 9 pid 46744 both
-      // killed under reason=deadline:phase 6/24, their completed shard work
-      // lost, labeled AGGREGATE-MISSING).
+      // earlier global sweep that ran here killed every live sibling with it
+      // — sibling phases mid-render died under this phase's deadline reason,
+      // their completed shard work lost and their aggregates labeled
+      // AGGREGATE-MISSING. The scoping below is what rules that out.
       killPhaseTree(pid, label, `deadline:${label}`);
       liveChildren.delete(pid);
       const last = tail.length ? tail.join("\n") : "(no child output captured)";
