@@ -1,21 +1,15 @@
-// shark-over-render-fix (2026-10-02): the `filter:` nest option must reach
-// the :bar_setting_list view, or both setting lists on a role dashboard
-// render the SAME full :all list.
+// The `filter:` nest option must reach the :bar_setting_list view, or both
+// setting lists on a role dashboard render the SAME full :all list.
 //
-// THE DEFECT (measured on the real corpus, not reasoned about)
-//   `Shark:page` over-rendered +82,590 bytes (213,667 actual vs 131,077
-//   expected, first difference at offset 9128; reproduced with
-//   tools/oracle/probe-page-lane-byte-divergence.mjs against
-//   expected-v2/page-lane/recapture-raw-shard-000029.jsonl). 33 of the extra
-//   bar nests were the two rule lists on `Shark+Dashboard` (corpus row 34818,
-//   whose content is mod/defaults/data/real.yml:59-76):
+// THE DEFECT
+//   A page whose content holds the two filtered nests below rendered the
+//   full 21-setting sorted list in BOTH blocks, where the reference render
+//   shows 4 bars in the first (head, layout, style, script) and 5 in the
+//   second (create, read, update, delete, captcha):
 //     <h5>Webpage rules</h5>
 //     <blockquote>{{:all|bar_setting_list; filter:webpage}}</blockquote>
 //     <h5>Permission rules</h5>
 //     <blockquote>{{:all|bar_setting_list; filter:permission}}</blockquote>
-//   The oracle renders 4 bars in the first block (head, layout, style,
-//   script) and 5 in the second (create, read, update, delete, captcha). The
-//   engine rendered the full 21-setting sorted list in BOTH.
 //
 // THE MECHANISM
 //   Ruby: mod/rules/set/type/set/html_views/rule_lists.rb:11-14
@@ -57,7 +51,7 @@ import {
 } from "./render-test-storage.js";
 import { parseNestOptions } from "../../../src/card/render/nest-syntax.js";
 
-/** The capture deck's 21 visible settings in sorted all_settings order
+/** The 21 visible settings in sorted all_settings order
  *  (setting_registry.all_settings_sorted; the same list the sibling
  *  card-mod-rules-views.test.ts pins). */
 const ALL_SETTINGS_SORTED = [
@@ -155,10 +149,9 @@ beforeAll(async () => {
   await seedHost(HOST_ALL, "Rule Host All", "");
   s.fetcher.installNameEnvironment();
   // seat *all so the content nests below reach the view on a cold engine
-  // (the corpus boot stages 556,526 card_references rows for exactly this;
-  // see probe-page-lane-byte-divergence.mjs's header). The subject of this
-  // pin is the OPTION PLUMBING, not warm order, so the seat is a seeding
-  // detail - and every arm renders the same way.
+  // (a cold engine needs the seat before these nests resolve). The subject
+  // of this pin is the OPTION PLUMBING, not warm order, so the seat is a
+  // seeding detail - and every arm renders the same way.
   await s.engine.render("*all", "bar_setting_list");
 }, 60_000);
 
