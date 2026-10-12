@@ -1,31 +1,18 @@
 // Pins for the GRADED ARM — the deployment constants the graded environment
 // actually installs, narrowed to FIVE fields.
 //
-// WHY THIS FILE EXISTS
-//   R1 landed `LIVE_DEPLOYMENT_CONSTANTS`, a six-field preset, because the
-//   ruling named a sixth field (`defaultHtmlViewNest: "content"`) that the
-//   mandate's own list of five does not. R1 then MEASURED which of the six
-//   touches the view lane and found that the sixth is the ONLY one that does:
-//
-//     - `defaultHtmlViewNest` alone moved view-lane bytes: 28 of 78 sampled
-//       view83 entries changed normalized bytes, and per-field isolation put
-//       100% of that movement on this one field (r1-constants-arm-lane.md
-//       step 3d, `tmp/r1-constants/measure/constant-isolation.json`). It
-//       closed ZERO verdicts — all 28 were already FAIL.
-//     - the other five (`scriptIntegrityBySrc`, `mainStylesheetRevisionDigits`,
-//       `footerDeckoVersion`, `recaptchaSiteKey`, `deckoRootUrl`) moved ZERO
-//       view-lane bytes, alone or together: same sha as UNSET.
-//     - the five view-inert constants are what deliver the graded page flips:
-//       16 of the 49 head/page entries FAIL->PASS, measured under the
-//       constants alone with the serializer era frozen.
-//
-//   So the graded arm is the FIVE. `defaultHtmlViewNest` is excluded: it is the
-//   smallest-blast-radius form, the corpus does not demand it, and it is the
-//   only field that reaches into the lane R2 is concurrently normalizing.
-//   Revisit only if grade evidence demands it.
+// WHY FIVE, NOT SIX
+//   The live preset `LIVE_DEPLOYMENT_CONSTANTS` carries six fields. The
+//   sixth (`defaultHtmlViewNest: "content"`) is the only one that reaches
+//   into view rendering; the other five act purely at the page shell (SRI
+//   attributes, stylesheet revision digits, footer version, recaptcha site
+//   key, root URL). The graded arm's rendered-output contract does not
+//   require the sixth, and excluding it keeps the arm's blast radius inside
+//   the page shell instead of moving view bytes.
+//   Revisit only if the output contract changes.
 //
 // WHAT IT LOCKS
-//   1. THE R1 TYPE CAN EXPRESS THE SHRINK. `LIVE_DEPLOYMENT_CONSTANTS` is
+//   1. THE PRESET TYPE CAN EXPRESS THE SHRINK. `LIVE_DEPLOYMENT_CONSTANTS` is
 //      `Omit<DeploymentFollowLiveConfig, "serializerEra">`; every remaining
 //      field on it is optional, so an object that OMITS `defaultHtmlViewNest`
 //      is still assignable. That is what makes the shrink a type-level
@@ -34,10 +21,10 @@
 //   2. THE SHRUNK ARM IS FIVE FIELDS, and `defaultHtmlViewNest` is not one of
 //      them — by TYPE (the `@ts-expect-error` below) and by OBJECT
 //      (`Object.hasOwn` false).
-//   3. THE FIVE ARE THE R1 FIVE, byte-equal. The shrunk arm is DERIVED from
-//      `LIVE_DEPLOYMENT_CONSTANTS` by rest-destructuring, so the five values
-//      cannot drift from the six they came from. This check is what makes the
-//      derivation real rather than a copy-paste that can rot.
+//   3. THE FIVE ARE THE PRESET'S FIVE, byte-equal. The shrunk arm is DERIVED
+//      from `LIVE_DEPLOYMENT_CONSTANTS` by rest-destructuring, so the five
+//      values cannot drift from the six they came from. This check is what
+//      makes the derivation real rather than a copy-paste that can rot.
 //   4. THE SIXTH REALLY IS OFF AT RUNTIME, not merely absent from the type.
 //      `deploymentDefaultHtmlViewNest()` reads `undefined` under the shrunk
 //      arm — the discriminating half. A type-only exclusion would still let a
@@ -46,8 +33,9 @@
 //   5. THE FIVE STILL ARM: SRI lands, the compiled-CSS revision rewrites the
 //      stylesheet, footer/recaptcha/rootUrl read live.
 //   6. THE SERIALIZER ERA STAYS FROZEN under the shrunk arm, by the same two
-//      halves as R1's pin: the preset carries no `serializerEra` own-property,
-//      and the discriminating frozen-form show-key cases still hold.
+//      halves the live preset pins: the preset carries no `serializerEra`
+//      own-property, and the discriminating frozen-form show-key cases still
+//      hold.
 import { describe, expect, it, afterEach } from "vitest";
 import { Voo } from "../../../src/card/render/format.js";
 import { applyScriptIntegrity } from "../../../src/card/render/page.js";
@@ -64,14 +52,14 @@ import {
   serializerFollowsLive,
 } from "../../../src/card/render/deployment-follow-live-config.js";
 
-// The frozen capture-era remote script tags (page.ts REMOTE_SCRIPT_TAGS
-// bytes, the form the corpus pins).
+// The remote script tags in the exact byte form page.ts's
+// REMOTE_SCRIPT_TAGS emit, the form the SRI assertions run against.
 const FROZEN_JQUERY =
   `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`;
 const FROZEN_RAILS =
   `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`;
 
-// The frozen capture-era main-stylesheet attachment (the corpus's own digits).
+// A main-stylesheet URL whose revision digits match the ones the constants install.
 const FROZEN_CSS =
   "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css";
 
@@ -141,7 +129,7 @@ describe("graded arm: the preset is FIVE fields and the sixth is excluded", () =
     for (const field of GRADED_ARM_FIELDS) {
       expect(GRADED_ARM_DEPLOYMENT_CONSTANTS[field]).toEqual(LIVE_DEPLOYMENT_CONSTANTS[field]);
     }
-    // and the sixth is the one that is genuinely different from the R1 preset
+    // and the sixth is the one field where the live preset and the graded arm differ
     expect(LIVE_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBe("content");
   });
 });

@@ -1,27 +1,24 @@
-// raw-corpus-seeding.ts -- RAW ground-truth corpus seeding (committed home of
-// the census harness recipe; previously the untracked per-lane copies under
-// tmp/raw-ground-truth/scripts/ and tmp/search-cache-bisect-probe/, which this
-// module replaces).
+// raw-corpus-seeding.ts -- RAW ground-truth corpus seeding.
 //
-// Seeds the engine deck from the RAW ground-truth sqlite
-// (tmp/raw-ground-truth/bench-corpus-raw.sqlite3 -- the db the oracle's
-// expected-v2 captures rendered from), so the engine replay consumes the SAME
-// bytes ground truth was captured against. Re-exporting a const from a
+// Seeds the engine deck from the RAW ground-truth sqlite (the db the
+// expected captures were rendered from; the path contract lives in
+// src/testing/test-corpus-paths.ts), so the engine replay consumes the SAME
+// bytes the expected bytes were rendered against. Re-exporting a const from a
 // sanitized-corpus module would silently invalidate the comparison.
 //
-// Recipe (identical to the proven census copies): oracle deck inflection boot,
+// Recipe: oracle deck inflection boot,
 // *read rule universe, permission/extended codenames, SET-card reference
 // closure, SET-child grant closure, read-content walk, BFS reference frontier,
 // *structure rule enrichment, content-codename walk, idempotent card insert,
 // virtual-card lookup wiring.
 //
-// THE REFERENCE GRAPH PASS (2026-09-29, search-final lane -- the fix this
-// committed copy exists to carry): after every card is seeded, the FULL
+// THE REFERENCE GRAPH PASS (the fix this committed copy exists to carry):
+// after every card is seeded, the FULL
 // card_references graph is copied for every seeded referer, verbatim from the
-// corpus (referer_id, referee_key, referee_id, ref_type, is_present). The
-// census copies previously seeded only three partial slices (*read rule rows,
-// SET cards, SET-card children) and pushed every row through
-// seedReference's refType default, which wrote INCLUSION rows as "L" links --
+// corpus (referer_id, referee_key, referee_id, ref_type, is_present). Seeding
+// only partial slices (*read rule rows,
+// SET cards, SET-card children) pushes every row through
+// seedReference's refType default, which writes INCLUSION rows as "L" links --
 // a harness-only distortion. Production storage carries the whole table:
 //   the rows are built on the save path by refresh_references_out
 //   (mod/core/set/all/reference_events.rb:2-4 ->
@@ -32,13 +29,10 @@
 // card_references is the live deck's table at capture time), so the harness
 // copies them rather than re-deriving them through the port at seed time --
 // re-deriving would substitute the port's chunk parser for production's
-// stored truth. The `plus: {refer_to}` CQL class (census pages "David
-// Williams" / "Jordan Sample", structure rule
-// `((Person + Project(s) Participating) + *type plus right) + *structure`)
-// resolves through these rows: junction "The Myth of Peace+Participant(s)"
-// (id 810) carries the referee-583 (david_william) row the clause joins on.
-// Without the pass the harness replays render search-no-results where the
-// oracle lists search-result-item bars, even though production D1 flips.
+// stored truth. The `plus: {refer_to}` CQL class resolves through these
+// rows: a junction's participant reference row is what the clause joins on.
+// Without the pass the harness replays render search-no-results where Ruby
+// lists search-result-item bars.
 
 import path from "node:path";
 import { readFileSync } from "node:fs";
@@ -66,15 +60,13 @@ import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-
 const REPO_ROOT = path.resolve(
   fileURLToPath(new URL("../../..", import.meta.url)),
 );
-// The private raw ground-truth leg's paths are owned by the one path-contract
+// The raw ground-truth leg's paths are owned by the one path-contract
 // module (src/testing/test-corpus-paths.ts) and sourced from here, because this
 // module is what the corpus-replay tests have always imported them from.
-// Defining them locally a second time is what let the d3 and d8 probes each
-// hardcode their own absolute copy of the view-lane shard directory under a
-// per-lane worktree that no longer exists.
 //
-// RAW_CORPUS_DB stays an `export const` DECLARED HERE on purpose: the graded
-// runner loads this module and its load contract is pinned by source shape in
+// RAW_CORPUS_DB stays an `export const` DECLARED HERE on purpose: the
+// corpus-replay runner loads this module and its load contract is pinned by
+// source shape in
 // tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts
 // (`/export\s+const\s+RAW_CORPUS_DB/`). Rewriting it as a bare re-export list
 // keeps the same runtime export and breaks that pin -- which is what a first
@@ -95,16 +87,10 @@ const PERMISSION_CODENAMES = ["anyone", "anyone_signed_in", "anonymous", "read",
 const RULE_PREDICATE_CODENAMES = ["setting", "set", "user"];
 /** Extra codenames the BFS closure pulls into the deck so the engine's
  *  codehash (src/card/fetch/codename.ts#DbCodenameRegistry.codehash) answers
- *  every :codename mark the rendered content references. The
- *  per-class-mechanisms.json baseline lists distinctMissing for
- *  handler_raised:CodenameNotFoundError (52 entries across the full
- *  replay: dashboard 21, header 12, title 12, getting_started 3, footer 2,
- *  shark 1, email_template 1). The on-disk aggregate shards 0-3 reproduces
- *  dashboard 21, title 10, header 4, getting_started 2, type 1, shark 1,
- *  account 1 -- the codename-bearing cards whose content codename marks
- *  the closure previously missed. Listing them here pulls every named
- *  card into the deck at first pass; the BFS frontier then handles
- *  transitive references. */
+ *  every :codename mark the rendered content references. Without these
+ *  cards the marks raise CodenameNotFoundError; listing them here pulls
+ *  every named card into the deck at first pass, and the BFS frontier then
+ *  handles transitive references. */
 const EXTENDED_CODENAMES = [
   "dashboard",
   "getting_started",
@@ -147,10 +133,9 @@ const EXTENDED_CODENAMES = [
   "signup_success",
   "link",
 ];
-/** Cards whose content references codenames the closure must walk. The
- *  existing code covers *search / *header / *title / *footer (per the
- *  per-class-mechanisms comment); the 4-shard on-disk aggregate shows
- *  those four alone are not enough -- "dashboard" is referenced from
+/** Cards whose content references codenames the closure must walk.
+ *  *search / *header / *title / *footer alone are not enough --
+ *  "dashboard" is referenced from
  *  *account-related content, "shark" from *account's account-request
  *  template, etc. Walking every codename-bearing content-codename card
  *  broadens the surface. */
@@ -193,12 +178,10 @@ export async function createRawStructureSeededStorage(
 ): Promise<RenderTestStorage> {
   // The oracle deck's inflection table (uncountables s/this/anonymous),
   // recovered from the production-stored keys, applied before any corpus
-  // name is parsed so engine key computation matches the keys the oracle
-  // deck stored/rendered (participant_s, at_this_time, riley_s ...).
-  // Without this the 105-row key/inflection family diverges (merge
-  // finding A / view-lane class 3). Table + rationale:
-  // src/card/name/oracle-deck-inflections.ts (the deck-data census copy this
-  // replaces lived at tmp/raw-ground-truth/scripts/oracle-deck-inflection-config.ts).
+  // name is parsed so engine key computation matches the keys the deck
+  // stored/rendered.
+  // Table + rationale:
+  // src/card/name/oracle-deck-inflections.ts.
   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const storage = await createRenderTestStorage();
   const corpus = new Database(RAW_CORPUS_DB, { readonly: true });
@@ -218,7 +201,7 @@ export async function createRawStructureSeededStorage(
     ...new Set(ruleRows.map((r) => r.left_id).filter((x): x is number => x !== null)),
   ];
 
-  // *update rule universe (replays-adjudication, 2026-10-01): the
+  // *update rule universe: the
   // admin-configs machinery reads the deck's *update rules exactly the way
   // the read-rule universe above reads the *read ones — Ruby's
   // responsible-role walk (all/admin.rb:32-38 scoping_rule_card) resolves
@@ -227,12 +210,10 @@ export async function createRawStructureSeededStorage(
   // type/role.rb:12-24 view :configs groups the items under the winning
   // rule's pointer-item role codenames. Without the *update rows the
   // engine deck answers every walk from *all+*update alone and the
-  // Administrator role page renders no Configurations section where the
-  // oracle lists one (bench-corpus-raw row 6556: *star+*update =
-  // "Administrator\r\nWagneer"). Rule rows + their SET cards join the id
+  // Administrator role page renders no Configurations section where Ruby
+  // lists one. Rule rows + their SET cards join the id
   // set; the closure walks then pull the rule rows' referenced parties
-  // (the dump's card_references carries the pointer items: referer 6556 ->
-  // referee 10 administrator / referee 23743 qagneer).
+  // (the dump's card_references carries the pointer items).
   const updateId = (
     corpus
       .prepare(`SELECT id FROM cards WHERE codename = 'update' AND trash = 0`)
@@ -275,7 +256,7 @@ export async function createRawStructureSeededStorage(
   }
   for (const rule of ruleRows) ids.add(rule.id);
   for (const id of setCardIds) ids.add(id);
-  // CLUSTER 7 (read-rule-grant-vs-deny, 3 entries): capture every
+  // SET-card reference closure: capture every
   // SET-card reference whose referer is one of the *read rule set
   // cards (setCardIds). Ruby's permissions.rb#read_rule? walks the
   // SET card's references to compute the union of grants (the cards
@@ -301,8 +282,7 @@ export async function createRawStructureSeededStorage(
       if (r.referee_id !== null) ids.add(r.referee_id);
     }
   }
-  // SET-card child-card grant walk (deep-read-rule / read-rule-grant-vs-deny
-  // closure gap fix, 2026-09-25). For every *read rule in the seed, resolve
+  // SET-card child-card grant walk. For every *read rule in the seed, resolve
   // its SET card, then walk the SET card's CHILD cards (left_id = set_card.id)
   // -- these are the SET's setting rule cards (e.g. `*all+*create`,
   // `*all+*read`, `*all+*update`, `*all+*delete`, `*all+*default`). Each
@@ -342,7 +322,7 @@ export async function createRawStructureSeededStorage(
       }
     }
   }
-  // permission_denied_mismatch closure gap fix: walk the *read rule card
+  // Read-rule content closure: walk the *read rule card
   // CONTENTS for any card names referenced there. Ruby's read-rule walk
   // (permissions.rb:55-61 + 142-143) parses the rule content and pulls
   // every party / card mentioned into the resolved rule.
@@ -401,9 +381,9 @@ export async function createRawStructureSeededStorage(
         }
         if (row.type_id !== null && !rows.has(row.type_id)) need.push(row.type_id);
       }
-      // NameNotFoundError closure gap fix: walk card_references.referee_id
-      // so cards the closure references by id (e.g. *members -> user 393)
-      // reach the deck. Chunked to stay under SQLITE_MAX_VARIABLE_NUMBER.
+      // NameNotFoundError closure gap: walk card_references.referee_id
+      // so cards the closure references by id reach the deck. Chunked to
+      // stay under SQLITE_MAX_VARIABLE_NUMBER.
       const refIdKeys = [...rows.keys()];
       for (let i = 0; i < refIdKeys.length; i += 500) {
         const chunk = refIdKeys.slice(i, i + 500);
@@ -423,16 +403,16 @@ export async function createRawStructureSeededStorage(
   };
   closeClosure();
 
-  // IdList item-line walk (raise-leadview, 2026-09-29): List-type
+  // IdList item-line walk: List-type
   // cards store `~id` item LINES in content (card-mod-list
-  // set/abstract/id_list.rb storage), and the corpus's <Role>+*members rows
-  // name TRASHED member rows (861 "ANON-…", 10134 "…*trash") that carry NO
+  // set/abstract/id_list.rb storage), and <Role>+*members rows can
+  // name TRASHED member rows that carry NO
   // card_references rows at all — the reference closure above never reaches
   // them, while Ruby's db answers them anyway (lexicon.rb#id_to_lex reads
   // the row by id with NO trash filter). Ruby rendered those members (the
-  // CB_role / Ellery Family +*members oracle pages resolve the ids
-  // into denied unknown-item bars named "ANON-350cb08c081a" / "Rosalie
-  // Ellery*trash"); the engine without the rows raised
+  // role +*members pages resolve the ids
+  // into denied unknown-item bars named "ANON-…" / "…*trash"); the engine
+  // without the rows raised
   // NameNotFoundError at the sync parse (name.ts badMark, name
   // environment peek miss). Walk every seeded card's content for ~N item
   // lines and pull the named rows in — the same no-trash-filter row read
@@ -456,7 +436,7 @@ export async function createRawStructureSeededStorage(
     }
   }
 
-  // R17 (signup core, card-mod-account set/abstract/account_holder.rb:11-13):
+  // Signup core (card-mod-account set/abstract/account_holder.rb:11-13):
   // `account? = account.real?` reads the +account junction child. The corpus
   // carries the child for the Sign up cards as id-less-name junction rows
   // the rule/reference closure never reaches, so the signup core's
@@ -482,19 +462,18 @@ export async function createRawStructureSeededStorage(
     }
   }
 
-  // CAPTURE-RESTORED OVERRIDE TABLE (harness-corpus-repair lane, 2026-10-02).
-  // The oracle deck's stored bytes for some cards are unobtainable from the
-  // corpus dump: the capture-time deck held materialized bytes the dump does
-  // not carry (M8 class — card 34179 "journal skin customized" holds a
-  // 221,051-byte compiled-CSS block the corpus lacks; the envelope equalities
-  // are in an internal work log). The p21 oracle
-  // capture carries those bytes, so the restoration is capture-sourced, not
-  // hand-authored: tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs
+  // CAPTURE-RESTORED OVERRIDE TABLE.
+  // Some cards' stored bytes are unobtainable from the corpus dump: the
+  // deck held materialized bytes the dump does not carry (e.g. a
+  // customized-skin card holding a large compiled-CSS block the corpus
+  // lacks). The override table carries those bytes, restored from the
+  // reference captures, not hand-authored:
+  // tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs
   // re-derives them from the capture files, verifies every envelope equality,
   // and writes the table applied here — to the STAGED deck only, never to the
-  // sha-pinned corpus file (6a44dfdc...).
+  // sha-pinned corpus file.
   //
-  // THE SHA GATE IS LOAD-BEARING: the restored bytes are only what the oracle
+  // THE SHA GATE IS LOAD-BEARING: the restored bytes are only what Ruby
   // rendered for the corpus snapshot the captures came from. Against any other
   // corpus state this module REFUSES the run instead of silently seeding
   // foreign bytes (the same refuse-don't-fallback discipline as the runner's
@@ -551,26 +530,24 @@ export async function createRawStructureSeededStorage(
       dbContent: row.content,
       readRuleId: row.read_rule_id,
       readRuleClass: row.read_rule_class,
-      // R17: the corpus row's created_at/creator_id ride through -- the
+      // the corpus row's created_at/creator_id ride through -- the
       // Sign up core renders "signed up on #{format_date card.created_at}"
       // and invited? compares creator_id against AnonymousID
       // (card-mod-account set/type/signup/views.rb:35-45).
       createdAt: row.created_at ?? undefined,
       creatorId: row.creator_id ?? undefined,
-      // CQL-WAVE: updated_at rides through too. The staging deck previously
+      // updated_at rides through too. The staging deck previously
       // gave EVERY row the same seed default, so any `sort: "update"` CQL
       // (SqlStatement::Order ORDER_MAP["update"] -> updated_at,
       // DEFAULT_ORDER_DIRS["update"] = desc) ordered a TOTAL TIE and fell to
-      // the join emission tier -- the media+HBQ Control block rendered in
-      // List content order where the corpus expects updated_at DESC. The
-      // corpus rows carry the real capture-era timestamps; staging them is
+      // the join emission tier. The
+      // corpus rows carry the real timestamps; staging them is
       // the data half of the sort (the ORDER BY itself already works,
       // src/cql/sql.ts:455).
       updatedAt: row.updated_at ?? undefined,
     });
   }
-  // BFS frontier extension (CLUSTER 1 / read-rule-grant-vs-deny residue,
-  // handler_raised:NameNotFoundError, handler_raised:CodenameNotFoundError).
+  // BFS frontier extension.
   // The existing closeClosure walked left_id/right_id/type_id and
   // card_references.referee_id WHERE referer_id IN rows (one-direction
   // forward refs). The gap is the OTHER half of the reference graph:
@@ -578,11 +555,10 @@ export async function createRawStructureSeededStorage(
   //   - card_references.referee_key based lookup (codename resolution
   //     for :codename marks in content)
   // Each step is chunked at 500 to stay under SQLITE_MAX_VARIABLE_NUMBER
-  // (default 999; the prior round-4 trace hit a disk-I/O error on a
-  // single giant IN-list, the BFS frontier + 500-chunking is the fix).
+  // (default 999).
   // The walk runs to fixpoint; the round cap (12 here, lowered from 40
   // because each round is a chunked batch instead of a single mega-query)
-  // is sufficient for the live deck sizes the corpus ships with.
+  // is sufficient for the deck sizes the corpus ships with.
   for (let round = 0; round < 12; round++) {
     const need = new Set<number>();
     const rowIdList = [...rows.keys()];
@@ -781,13 +757,13 @@ export async function createRawStructureSeededStorage(
       readRuleClass: row.read_rule_class,
       createdAt: row.created_at ?? undefined,
       creatorId: row.creator_id ?? undefined,
-      // CQL-WAVE: see the first seedCard pass -- real updated_at so
+      // See the first seedCard pass -- real updated_at so
       // sort:"update" orders real ties, not the uniform seed default.
       updatedAt: row.updated_at ?? undefined,
     });
   }
 
-  // FULL REFERENCE GRAPH PASS (the search-final lane fix; header comment has
+  // FULL REFERENCE GRAPH PASS (the header comment has
   // the production-builder citation and the copy-not-re-derive rationale).
   // Every card_references row whose referer is a seeded card, copied
   // verbatim (id, referee_key, referee_id, ref_type, is_present -- all
@@ -799,18 +775,16 @@ export async function createRawStructureSeededStorage(
   // slices, the same slice size the production write path uses
   // (refresh-references-out.ts, Reference.insert_in_slices all.rb:61).
   //
-  // THE ID COLUMN IS LOAD-BEARING FOR ROW ORDER (refer-to-composition lane,
-  // 2026-10-01): the CQL reference tie emits `JOIN card_references cr1 ON
+  // THE ID COLUMN IS LOAD-BEARING FOR ROW ORDER: the CQL reference tie emits
+  // `JOIN card_references cr1 ON
   // c0.id = cr1.referer_id … ORDER BY c0.key` with NO tie-break (Ruby's
   // sql_statement/order.rb builds the bare ORDER BY), so the rows' order in
-  // the NULL-key tier is the cr TABLE'S PHYSICAL ROWID order — production's
-  // oracle bytes embed it (somatic's *referred_to_by listing renders
-  // referrer 27518 "Soma+description" in slot 29, after referrers with much
-  // higher ids, because its reference row was written LAST at capture time,
-  // cr.id 6296176). Inserting without the corpus id renumbers rowids in
-  // referer-chunk order and re-sorts that listing (27518 hoisted into the
-  // head-20, 29740 pushed off). Seeding the corpus ids keeps the seeded
-  // deck's rowid order byte-faithful to the captured deck.
+  // the NULL-key tier is the cr TABLE'S PHYSICAL ROWID order — the rendered
+  // reference bytes embed it (a *referred_to_by listing's slot order follows
+  // the rowid order because some reference rows were written later than
+  // others at capture time). Inserting without the corpus id renumbers rowids
+  // in referer-chunk order and re-sorts that listing. Seeding the corpus ids
+  // keeps the seeded deck's rowid order byte-faithful to the captured deck.
   {
     const refRows: CorpusReferenceRow[] = [];
     const seededIdList = [...rows.keys()];

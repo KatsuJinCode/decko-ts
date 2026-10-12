@@ -1,24 +1,23 @@
-// raw-corpus-p20-help-content-pages.ts -- the p20-help-content suite's page
-// subset: the 38 corpus pages the mm-escape-residue receipt attributed to the
-// help-content resolver gap (its residual table, "38 | help-content resolver
-// gap"). Two mechanisms:
+// raw-corpus-p20-help-content-pages.ts -- the help-content suite's page
+// subset: the pages whose render defect is the
+// help-content resolver gap. Two mechanisms:
 //
 // - setting-card (4): the Setting-type card pages (*style, *on create, *on
-//   update, *on delete) whose oracle body opens with the card-mod-rules
+//   update, *on delete) whose Ruby body opens with the card-mod-rules
 //   set/rule/editor.rb:24-28 rule_help alert ("<div class="alert alert-info
 //   rule-instruction">") and the engine rendered the bare
 //   "All X rules that apply to" h3 (the alert half of set/type/setting.rb
-//   core.haml:1-12 missing on the loader-less graded path).
+//   core.haml:1-12 missing on the loader-less path).
 //
 // - mod-child (34): the Abstract::ModAssets child cards "mod: X+*style" /
 //   "mod: X+*script" (card-mod-style set/type_plus_right/mod/style.rb,
-//   card-mod-script set/type_plus_right/mod/script.rb) whose oracle :core is
+//   card-mod-script set/type_plus_right/mod/script.rb) whose Ruby :core is
 //   the group_list haml (mod_assets.rb:171-182) and the engine rendered the
 //   List cardtype's pointer-list wrapper.
 //
-// Page ids/names/shards are the escape-family sweep's rows for the same ids
-// (raw-corpus-escape-family-pages.ts), so the shard lookup is identical.
-// helpClass separates the two mechanisms for the per-class flip counts.
+// Page ids/names/shards match raw-corpus-escape-family-pages.ts's rows for
+// the same ids, so the shard lookup is identical.
+// helpClass separates the two mechanisms for the per-class counts.
 
 export interface P20HelpContentPage {
   phase: string;

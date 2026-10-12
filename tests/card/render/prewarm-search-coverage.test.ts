@@ -1,23 +1,21 @@
-// Pin the byte-level contract of the render-perf prewarm fix (benchmarks/
-// corpus-v2/prewarm-static-deck.ts:162-236): the prewarm must discover
+// Pin the byte-level contract of the render-perf prewarm fix: the prewarm
+// must discover
 // every Search-type card in the seeded deck by the SAME codename the engine
 // gates on (card.typeCode === "search_type", the codename the type card's
 // codehash carries — src/card/render.ts:1189 sets card.typeCode =
 // peekNameForId(typeId) + render.ts:1258 + render.ts:1131). The original
 // discovery gate read the type card's NAME ("Search") instead of its
-// codename ("search_type"); corpus search-type cards carry a random-named
-// type card (deck:30 codename=search_type, name=qnzkqz) so the old
-// discovery skipped every card → searches=0 → closureWarm returned false
-// for every search-type rule card after prewarm → warm-render-sample
-// averaged 127-150ms (with a ~750ms cold-closure spike cluster, the 9
-// "*right+*structure" rule cards in the first 60) and closureWarm-coverage
-// was 47 cold cards.
+// codename ("search_type"); a deck whose search-type cards carry a
+// random-named type card (codename=search_type, name=qnzkqz) made the old
+// discovery skip every card → searches=0 → closureWarm returned false
+// for every search-type rule card after prewarm → warm renders paid cold
+// closures.
 //
-// The fix: prewarm gates on codename, not name. Since the R4 lazy-parse
+// The fix: prewarm gates on codename, not name. Since the lazy-parse
 // seam (render.ts prepareSearches) a search card whose cql parse fails is
 // recorded IN THE ENGINE (searchFailures marker + empty seat) and the walk
 // completes — the raise moved to the dispatch boundary (engine.resolveView,
-// view-gated on :open/:content per the capture census), so the prewarm's
+// view-gated on :open/:content), so the prewarm's
 // catch arm no longer feeds the render path at all. The pins below lock
 // both halves: the seat coverage (closureWarm budget-0) and the boundary
 // raise/NoRaise per view.
@@ -52,15 +50,16 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
   // ----- the discovery gate itself ---------------------------------------
 
   it("discovers Search-type cards by codename 'search_type', not by name 'Search' (corpus-shaped fixture)", async () => {
-    // Prewarm fix: the type card's NAME is "qnzkqz" (NOT "Search"),
-    // matching the bench-corpus shape; the codename is "search_type".
+    // Prewarm fix: the type card's NAME is "qnzkqz" (NOT "Search") —
+    // a deck whose search type card is not literally named "Search";
+    // the codename is "search_type".
     // The fix discovers this card via peekNameForId(typeId) which reads
     // the codehash (src/card/fetch/codename.ts:80-82). The old
     // typeRecord?.name?.s !== 'Search' gate silently skipped it.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      // The corpus-shaped type card: random name "qnzkqz",
+      // The search type card: random name "qnzkqz",
       // codename "search_type".
       await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
       // A pair of search-type cards, both with malformed content (the
@@ -100,13 +99,11 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
   // ----- the warm-closure contract the prewarm enables -------------------
 
   it("after prewarm, closureWarm returns true for every seeded search-type card (the budget-0 contract)", async () => {
-    // The render-perf harness asserts closureWarm-coverage <= 0 (zero
-    // cold cards on shard-0 after prewarm); this is the unit-level
-    // pin for that promise. The harness scans shard-0 = 1000 cards;
-    // we mirror the pattern at the fixture scale (3 search-type
+    // This is the unit-level pin for the prewarm's closureWarm-coverage
+    // promise (zero cold search-type cards after prewarm); we mirror the
+    // pattern at the fixture scale (3 search-type
     // cards of varying content validity) so a future prewarm
-    // regression lands here before it lands in the 42-second harness
-    // run.
+    // regression lands here.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
@@ -140,18 +137,16 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
     // cold render of a Search-type card with malformed content must
     // still raise BadQueryError exactly as Ruby raises
     // Card::Error::BadQuery — the perf fix MUST NOT silence the
-    // corpus's capture-error sentinel (search-bad-query-error.test.ts
+    // render-path raise (search-bad-query-error.test.ts
     // pins the same shape with a unit fixture; this pin covers the
     // prewarm boundary so the fix's catch arm cannot leak into the
     // public render path).
     //
-    // R4 lazy-parse seam: the raise moved from the prepare walk to the
+    // Lazy-parse seam: the raise moved from the prepare walk to the
     // dispatch boundary (engine.resolveView) and is VIEW-GATED — Ruby
-    // parses only the result-rendering views. Capture census over all 105
-    // corpus search-type cards: :closed/:title = real bytes 105/105 each
-    // (:closed never raises — the previous shape of this pin asserted a
-    // :closed raise, which mismatched the corpus on every search card);
-    // :open/:content = CAPTURE_ERROR on the 24 invalid-content cards.
+    // parses only the result-rendering views:
+    // :closed/:title never raise; :open/:content raise on invalid
+    // content.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
@@ -163,11 +158,11 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
         dbContent: "garbage content the parse must reject",
       });
 
-      // :closed renders real bytes (the 105/105 census shape).
+      // :closed renders real bytes (it never raises).
       const closedHtml = await storage.engine.render("search_untreated", "closed");
       expect(closedHtml).toContain("search_untreated-closed-view");
 
-      // :open raises the capture sentinel (the prewarm did not run here).
+      // :open raises BadQuery (the prewarm did not run here).
       let captured: unknown;
       try {
         await storage.engine.render("search_untreated", "open");

@@ -13,27 +13,23 @@
 // title rendered from content with a nest is an html_safe buffer: Rails'
 // tag_option escapes only its double quotes, and the nest's own markup
 // survives verbatim. A plain-text label takes the other branch and is fully
-// escaped. The corpus case that exercises this is
-// `[[_left|{{_left+image}}]]` (the `Item+short` structure's
-// `[[_left|{{_left+image}}]]` titles the raw denied-nest markup).
+// escaped. The case that exercises this is
+// `[[_left|{{_left+image}}]]` (a card whose structure rule renders
+// `[[_left|{{_left+image}}]]`, titling the raw denied-nest markup).
 //
-// WHY THIS SUITE EXISTS: that corpus case is pinned only by
-// cql-append-virtual-item-short-corpus.test.ts, which is gated behind
-// CQL_APPEND_ITEM_SHORT_REPLAY=1 and needs the key-repaired bench staged at
-// tmp/raw-ground-truth (sha 305caac1). A clean checkout skips it — verified:
-// `npx vitest run tests/card/render/cql-append-virtual-item-short-corpus.test.ts`
-// reports 1 skipped, "corpus replay was not requested". The
+// WHY THIS SUITE EXISTS: the only other pin of that case lives in an
+// env-gated replay test that a clean checkout skips, and the
 // reference-harness synthetic-v1 fixture does not carry a card with a
 // nest-in-link-label either, so nothing anyone can run covered the branch.
 //
-// Adding the card to that fixture is not possible here: its expected/ bytes
-// are the Ruby oracle's own output, re-captured through the oracle Docker
-// image (reference-harness/oracle/Dockerfile), and Docker is not installed
-// on this machine. Oracle bytes are never hand-written. This suite covers
-// the same branch from the engine's side instead.
+// Adding the card to that fixture is not possible here: its expected/
+// bytes are the reference harness's own Ruby-rendered output, produced
+// through reference-harness/oracle/Dockerfile, and Docker is not
+// installed on this machine. Harness bytes are never hand-written. This
+// suite covers the same branch from the engine's side instead.
 //
 // Storage: the render suite's in-memory core-schema storage. All seeded
-// content is SYNTHETIC, per the stream data rule. No oracle required.
+// content is SYNTHETIC.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {

@@ -1,4 +1,5 @@
-// Depth-3+ junction inclusion closure: the defect-2 regression tests.
+// Depth-3+ junction inclusion closure: regression tests for the
+// deep-junction resolution defect.
 //
 // DEFECT: the prefetcher could not resolve
 // junction (NULL-key) nest targets deeper than two parts. The original walk
@@ -12,7 +13,7 @@
 // references recursively through their sides - simple sides by the indexed
 // key column, compound sides by the UNIQUE left_id/right_id pair join once
 // the sides' rows are cached - so junction targets resolve at ANY depth.
-// (The 2026-09-23 read-cost fix replaced the whole-deck `resolved` CTE with
+// (A read-cost fix replaced the whole-deck `resolved` CTE with
 // these rounds; the mechanism under test is the same side-recursion.)
 //
 // NAMING in these fixtures: parts use digit-suffixed names (chain_c1,
@@ -86,50 +87,40 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // simple sides + the depth-2 junction (side-key pair join), round 1
       // joins the depth-3 junction by its sides' resolved ids.
       expect(storage.engine.lastRenderStats?.fallbackRounds).toBe(2);
-      // Measured shape (2026-09-27 cold-query re-pin): 1 root fetch +
+      // Measured shape: 1 root fetch +
       // the PRELUDE batch (src/card/render/prefetch.ts: the root's side
       // priming, the root's TYPE row (enrichment fold), the root's
       // set-pattern anchor priming (the rule walk's *self/*type/*all
       // lex_to_id point queries became cache entries), and the folded
       // engine statements: 3 read-permission + codename codehash +
       // structure universe + *default universe + the HEAD READ-SET
-      // statement. R17 (A-36) rides through the prelude in merge pass 9
-      // prep: default_nest_view is process config (html.rb:17-19), never a
-      // deck rule, so render.ts's fold composition no longer appends the
-      // *default html view universe statement - one fewer prelude
-      // statement than the cold-query port's own tree measured). The head
-      // read-set moved the other way, 12 -> 13 statements, on the
-      // 2026-09-28 async-view-handle: card-mod-format's head views
+      // statement. default_nest_view is process config (html.rb:17-19),
+      // never a deck rule, so render.ts's fold composition no longer
+      // appends the *default html view universe statement. The head
+      // read-set rides THIS SAME prelude batch as a 13th statement rather
+      // than as a query of its own: card-mod-format's head views
       // read deck-level setting cards that no reference closure can
-      // reach, so the prefetch rides THIS SAME prelude batch as a 13th
-      // statement rather than as a query of its own. ROUND TRIPS are
-      // unchanged at 4 - that is the cost that matters on a cold boot,
-      // and the standalone form (measured before the fold) cost one) +
+      // reach. ROUND TRIPS are
+      // unchanged at 4 - that is the cost that matters on a cold boot) +
       // round-0 batch (fetch shapes only) + round-1 batch (1
       // side-id join). The rule-lookup candidates cost ZERO point queries
       // since the prelude primes their anchors. Constant in deck size;
-      // +1 batch per chain LEVEL. (2026-09-23..09-26 shape was 8 round
-      // trips: root + 2 enrich primes + round 0 + round 1 + 3 rule-lookup
-      // candidates.) The p20-email-views port added TWO prelude
-      // statements (13 -> 15), both inside the SAME batch so round trips
-      // stay at 4: the email-template read_form's field-setting anchors
-      // (prefetch.ts emailFieldAnchorSlot, commit 76a1887 — EXISTS-gated,
+      // +1 batch per chain LEVEL. The email-template work added TWO
+      // prelude statements (13 -> 15), both inside the SAME batch so round
+      // trips stay at 4: the email-template read_form's field-setting
+      // anchors (prefetch.ts emailFieldAnchorSlot — EXISTS-gated,
       // zero rows for non-template roots) and the +*test context
       // junction priming for email-template/message roots (the read_form
       // nests the junction programmatically and no content reference
       // reaches it; same batch, same EXISTS gate shape).
       const snapshot = storage.counting.snapshot();
-      // Freshness lane 2026-10-05: +1 statement (the deck_data_version
-      // stamp read folded into the cold batch), +0 round trips.
-      // Core reds lane re-pin 2026-10-06 (4/16 -> 7/24): the wave-seating
-      // architecture landing 63048200 replaced the single round-0
-      // fetch-shapes batch with the per-wave seating ladder (chunked key
-      // IN-lists + side-key joins + resolution rounds, its own measured
-      // receipt: 5 probe pages RT 813/1150/45/771/472 -> 145/309/32/194/173,
-      // byte-identical), refined by 2f7131dd (negative-priming ask/answer
-      // fix) and b7402a9f (closure retirement of proven-unresolvables).
-      // Verified on both trees: 4/4 PASS at d19ec179 (this pin's own
-      // cause-commit), fail from 63048200 onward. The invariant the pin
+      // The freshness stamp read folded into the cold batch: +1 statement,
+      // +0 round trips. The wave-seating architecture replaced the single
+      // round-0 fetch-shapes batch with the per-wave seating ladder
+      // (chunked key IN-lists + side-key joins + resolution rounds,
+      // refined by negative-priming ask/answer handling and the closure
+      // retirement of proven-unresolvables), which re-pinned this
+      // constant (4/16 -> 7/24). The invariant the pin
       // guards is intact at the new readings: depth-3 (7/24) minus
       // depth-2 (6/23) = +1 round trip +1 statement per chain level,
       // constant in deck size; renders stay byte-correct (the html
@@ -206,34 +197,29 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       const html = await storage.engine.render("Junction Renderer", "content");
       expect(html).toContain("junction depth 2 body");
       const snapshot = storage.counting.snapshot();
-      // Measured shape (2026-09-27 cold-query re-pin, integrated with
-      // R17's A-36 correction in merge pass 9 prep): 1 root fetch +
+      // Measured shape (integrated with the default_nest_view
+      // correction): 1 root fetch +
       // the PRELUDE batch (side priming + TYPE row fold + set-pattern
       // anchor priming + the folded engine statements) + the round-0 batch
       // (fetch shapes only). The rule-lookup candidates cost ZERO point
       // queries since the prelude primes their anchors. Constant in deck
       // size; the depth-3/4 tests show the +1 batch per chain level.
-      // R17 (A-36) rides through the prelude: default_nest_view is process
-      // config (html.rb:17-19), never a deck rule, so render.ts's fold
+      // default_nest_view is process config (html.rb:17-19),
+      // never a deck rule, so render.ts's fold
       // composition no longer appends the *default html view universe
-      // statement - one fewer prelude statement than the cold-query port's
-      // own tree measured (13 -> 12). The head read-set added one back
-      // (11 -> 12) on the 2026-09-28 async-view-handle, inside the
-      // SAME prelude batch, so round trips stay at 3. (The 2026-09-23..
-      // 09-26 shape was 7 round trips / 15 statements: root + 2 enrich
-      // primes + round 0 + 3 rule-lookup candidates.) The p20-email-views
-      // port added TWO prelude statements (12 -> 14, see the depth-3 test
+      // statement (13 -> 12). The head read-set added one back
+      // (11 -> 12), inside the
+      // SAME prelude batch, so round trips stay at 3. The email-template
+      // work added TWO prelude statements (12 -> 14, see the depth-3 test
       // above): the email field-setting anchors and the +*test context
       // junction priming - same batch, round trips unchanged.
-      // Freshness lane 2026-10-05 (composed onto the deployed fold by the
-      // lineage-reconciliation lane): +1 statement (the deck_data_version
-      // stamp read folded LAST into the cold batch), +0 round trips.
-      // Core reds lane re-pin 2026-10-06 (3/15 -> 6/23): same cause as the
-      // depth-3 re-pin above — the wave-seating landing 63048200 (+
-      // 2f7131dd + b7402a9f) restructured the cold render's post-prelude
-      // batches from one fetch-shapes round into the per-wave seating
-      // ladder. +1 batch per chain level still holds (6 here vs the
-      // depth-3 case's 7).
+      // The freshness stamp read folded LAST into the cold batch: +1
+      // statement, +0 round trips. The wave-seating architecture (with
+      // the negative-priming and closure-retirement refinements)
+      // restructured the cold render's post-prelude batches from one
+      // fetch-shapes round into the per-wave seating ladder, re-pinning
+      // this constant (3/15 -> 6/23). +1 batch per chain level still
+      // holds (6 here vs the depth-3 case's 7).
       expect(snapshot.roundTrips).toBe(6);
       expect(snapshot.statements).toBe(23);
     } finally {

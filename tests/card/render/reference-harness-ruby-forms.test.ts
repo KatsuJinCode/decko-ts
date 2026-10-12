@@ -1,6 +1,6 @@
 // Two byte forms checked against stock Ruby's own output on the reference
 // harness's synthetic deck (reference-harness/fixtures/synthetic-v1, whose
-// expected/ outputs are raw stock-oracle captures; only the harness's N1 mask
+// expected/ outputs are stock Ruby's own renders; only the harness's N1 mask
 // applies, and it keeps quote style).
 //
 // 1. Bar slot ids. bar.haml passes wrap_data, slot id included, as one Haml

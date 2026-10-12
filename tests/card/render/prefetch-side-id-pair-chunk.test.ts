@@ -1,7 +1,7 @@
 // prefetch-side-id-pair-chunk.test.ts -- the cold prefetch closure's
 // junction-id-pair round must not exceed SQLite's expression-depth limit.
 //
-// THE BUG (perm-leak, 2026-09-29): prefetchInclusionClosure's round
+// THE BUG: prefetchInclusionClosure's round
 // builder (src/card/render/prefetch.ts, the sideIdPairs branch) joined a
 // round's known-sided junction targets with one OR-tuple per pair —
 // `(j.left_id = ? AND j.right_id = ?) OR ...` — unbounded in the frontier
@@ -13,8 +13,7 @@
 // never resolves, the prepare render dies, and (on the page path, which
 // catches prepare errors and continues) the sync render runs with ZERO
 // verdicts: isDenied answers false for every card and read-denied bodies
-// render in full (an earlier triage's 130 denial-wrapper-leak pages;
-// corpus proof: 20120122+CM+RVW's closure round carried 1019 id pairs).
+// render in full.
 //
 // THE FIX: chunk the id pairs into statements of 400 pairs (800 params —
 // under the depth limit and under the classic 999-variable limit), all

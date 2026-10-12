@@ -3,7 +3,7 @@
 // error span inside ITS wrap_item and the LIST COMPLETES with its
 // card-list wrapper intact.
 //
-// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
+// MECHANISM (gem source):
 //
 //   mod/list/set/abstract/01_list/html_views.rb:4-13
 //       view :core do
@@ -36,25 +36,18 @@
 // unsupported (UnsupportedViewError) propagated up through
 // pointerListCoreHtml and aborted the WHOLE core, which the parent view's
 // renderDelegated then caught — the list's wrapper divs and every earlier
-// item vanished. Corpus bytes this fixes: HDW CM 20131229 0264+tags
-// (`+tags|titled;item:taglink`, page recapture-raw-shard-000013) — the
-// engine emitted ONLY `<span class="render-error alert alert-danger">view
-// (taglink) not supported for CM</span>` in the titled body where the
-// capture carries
+// item vanished. Ruby's shape for a two-item list where item 1 is
+// read-denied and item 2's view is unsupported (IN RUBY TOO — error.rb:52-54
+// keeps UnsupportedViewError's message verbatim) carries BOTH wrapped spans
+// inside the intact card-list wrapper:
 //     <div class="card-list card-list-taglink pointer-list">
 //       <div class="pointer-item item-taglink"><span class="denied">…</span></div>
 //       <div class="pointer-item item-taglink"><span class="render-error …">
-//         view (taglink) not supported for CM</span></div>
+//         view (taglink) not supported for …</span></div>
 //     </div>
-// (item 1 is read-denied — its quiet denial span is the item gate's, not
-// this rescue's; item 2's taglink view is unsupported IN RUBY TOO — the
-// capture itself carries the identical error message, error.rb:52-54
-// keeps UnsupportedViewError's message verbatim). Solo byte probe at this
-// lane: FAIL -228 with the aborting shape, PASS byte-identical with the
-// per-item rescue (same-tree revert = file overwrite, no git).
 //
-// FIXTURE. `taglink` is unregistered in the engine's view table (as in
-// the captured deck — Ruby raised the same error), so ANY readable item
+// FIXTURE. `taglink` is unregistered in the engine's view table (Ruby
+// raises the same error), so ANY readable item
 // raises, which makes the mechanism cheap to pin: a two-item list whose
 // EVERY item raises must still render both wrapped spans plus the
 // wrapper, not a single unwrapped one.

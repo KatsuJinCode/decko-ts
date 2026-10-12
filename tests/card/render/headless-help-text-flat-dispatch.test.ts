@@ -1,9 +1,9 @@
-// THE HEADLESS DISPATCH CONTRACT for :help_text (the boardview 422 lane's
-// named follow-up, same class).
+// THE HEADLESS DISPATCH CONTRACT for :help_text (same class as the
+// board/edit defect in headless-board-edit-flat-dispatch.test.ts).
 //
 // The defect: :help_text lives in set/all/help.rb — the SAME base file as
 // :help/:lead (card-mod-help-0.20.0/set/all/help.rb:14-16, one view fn, the
-// :help_text declaration) — but the boardview lane's flat HTML_VIEWS
+// :help_text declaration) — but the existing flat HTML_VIEWS
 // registration (views.ts "help"/"guide" rows) covered only :help and
 // :guide. :help_text therefore stayed mod-only: the production worker
 // boots NO mod deck (defaultDeckLoader has no production caller;
@@ -23,7 +23,7 @@
 // compiled `setting :unknown` row the manifest's config gives the chain
 // walk (format.ts UNKNOWN_VIEW_DECLS).
 //
-// The set-scoped sibling is NOT this lane's surface: card-mod-rules
+// The set-scoped sibling is outside this file's contract: card-mod-rules
 // set/rule/board_rules_editor.rb:17-19 overrides :help_text for Rule-set
 // cards and is registered NONBASE (card-mod-rules.ts ruleHelpTextView), so
 // it is reachable only through a bound deck's chain walk — exactly as
@@ -34,8 +34,8 @@
 //
 // The assertion: ONE seeded world, TWO engines — the HEADLESS engine
 // (modLoader field pinned undefined: exactly the production worker's
-// shape) and the CHAIN engine (a loaded deck bound to the field, the
-// loader-bound path the oracle bytes rode) — must render :help_text
+// shape) and the CHAIN engine (a loaded deck bound to the field) — must
+// render :help_text
 // BYTE-IDENTICALLY. At the base revision the headless arm throws
 // UnsupportedViewError (the 422) while the chain arm renders the pinned
 // bytes; after the flat registration both arms agree.
@@ -73,7 +73,7 @@ beforeAll(async () => {
   // codename cards (the codename registry reads cards.codename; their
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
   // Same ids as tests/card/mod-loader/card-mod-help.test.ts's probe deck so
-  // the rule-card composition is the one that file's oracle bytes rode.
+  // the rule-card composition matches the one that file seeds.
   await seedCard(s, { id: 2, name: "RichText" });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
@@ -109,7 +109,7 @@ beforeAll(async () => {
   await s.fetcher.codenames.ensureLoaded();
 
   // the HEADLESS engine: the production worker's shape — no mod deck is
-  // ever bound. TWO isolations, both required (the boardview lane's file
+  // ever bound. TWO isolations, both required (the board/edit file
   // records why):
   //  - the modLoader field is pinned (not inherited) so worker file order
   //    cannot leak a loader in;
@@ -130,13 +130,14 @@ beforeAll(async () => {
     "help_text"
   ];
 
-  // the CHAIN engine: the loader-bound path the oracle :help_text bytes
-  // rode. Same subset shape as the boardview lane's file (edit carries
+  // the CHAIN engine: the loader-bound path. Same subset shape as the
+  // board/edit file (edit carries
   // the board/edit closure, help the :help_text/:help/:lead family,
   // markdown the guide :core) — NOT the full composed deck, because
   // card-mod-permissions' set-scoped :input raises for non-rule cards
   // when every mod is bound (a separate, pre-existing chain-dispatch
-  // defect outside this lane's surface; noted in the lane receipt).
+  // defect; the production path never binds a deck, so it does not
+  // affect production).
   loader = new ModLoader([
     { manifest: cardModEdit },
     { manifest: cardModHelp },
@@ -213,7 +214,7 @@ describe("headless (no-mod-deck) dispatch serves :help_text like the loaded deck
 
   it("the defect's raise site stays exact for genuinely unregistered views", async () => {
     // the flat seam closes :help_text; a view NO module registers must
-    // still raise the captured UnsupportedViewError (the 422 sentinel).
+    // still raise UnsupportedViewError — the error the worker maps to 422.
     await expect(
       headless!.render("Oracle Help Probe", "no_such_view_anywhere"),
     ).rejects.toThrowError(UnsupportedViewError);

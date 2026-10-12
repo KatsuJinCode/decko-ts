@@ -1,5 +1,5 @@
-// Regression pins for two parity defects found by the card-mod porting
-// fleets (2026-09-22) and fixed in the shared render layer:
+// Regression pins for two parity defects and their fixes in the shared
+// render layer:
 //
 // 1. nest-syntax optionStringToHash guarded on SHARK_KEYS BEFORE the :item
 //    branch, making the branch dead code — every `item:` nest option was
@@ -12,8 +12,8 @@
 //    bare `truncate` call in card-mod-rules bar_view.rb:19-21 resolves to
 //    card-mod-format content.rb:43-53 whose limit is
 //    ONE_LINE_CHARACTER_LIMIT = 60 (content.rb:1), not Rails' 50 default.
-//    No captured oracle pins these bytes (grep over fixtures/captured,
-//    2026-09-22), so the fix is gem-cited, not fixture-derived.
+//    No pinned fixture carries these bytes, so the fix is gem-cited, not
+//    fixture-derived.
 import { describe, expect, it } from "vitest";
 import { parseNestOptions, scanNests } from "../../../src/card/render/nest-syntax.js";
 import { ruleBarRightHtml } from "../../../src/card/render/rule-bar-right.js";
@@ -68,9 +68,7 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     // Rails truncate omits the omission from the budget: the TOTAL length
     // is `length` (60), so 60 chars stay untruncated and 61 become
     // 57 + "..." (card-mod-format content.rb:43-53 Rails truncate
-    // semantics; the tails oracle pin AAM+*self+*guide truncates at
-    // 58 visible chars of stripped markdown text — "…in the full" — the
-    // 57-byte text budget).
+    // semantics).
     const html = ruleBarRightHtml(base("b".repeat(61)));
     expect(html).toContain("b".repeat(57) + "...");
     expect(html).not.toContain("b".repeat(58));
@@ -79,9 +77,8 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
 });
 
 describe("rule bar one-line for list/pointer typeCode dispatches to pointer-list body", () => {
-  // Regression pin for corpus:6560 (*star+*delete, type_code=list,
-  // content "uflluwkwvaenx"). Captured bar-right bytes from
-  // fixtures/corpus/shard-000003.jsonl:366:
+  // Regression pin: a list-typed rule card's bar-right renders the compact
+  // pointer-list wrapper. Expected shape:
   //   <div class="text-muted one-line">
   //     <div class="pointer-list">
   //       <div class="pointer-item item-link">
@@ -97,8 +94,8 @@ describe("rule bar one-line for list/pointer typeCode dispatches to pointer-list
   // wraps items in `<div class="pointer-list"><div class="pointer-item
   // item-link">…</div></div>`. Without the typeCode dispatch, the base
   // branch falls through to truncatedCore(card.dbContent) and the
-  // wrapper becomes raw content (the bucket defect
-  // "card_name_leaked_as_text_replacing_text_muted_block").
+  // wrapper becomes raw content (the card name leaked as text replacing
+  // the text-muted block).
   const listRuleCard = (content: string, typeCode: "list" | "pointer" = "list"): RenderCard =>
     ({
       name: { s: "*star+*delete", rightName: { s: "*delete" } },
@@ -118,11 +115,10 @@ describe("rule bar one-line for list/pointer typeCode dispatches to pointer-list
     // the simpler "pointer-list" wrapper).
     expect(html).toContain('<div class="pointer-list">');
     // The compact-mode item form is item-link (NOT the content-view
-    // item-bar form — see fixtures/corpus/shard-000003.jsonl:366
-    // captured bytes).
+    // item-bar form).
     expect(html).toContain('<div class="pointer-item item-link">');
-    // The wanted-card link (the captured corpus:6560 item is unseeded,
-    // so the link view classifies it as wanted).
+    // The wanted-card link (the item is unseeded, so the link view
+    // classifies it as wanted).
     expect(html).toContain('<a class="wanted-card" href="/uflluwkwvaenx">');
     expect(html).toContain('<span class="card-title" title="uflluwkwvaenx">uflluwkwvaenx</span>');
     // The raw content must NOT leak as bare text into the text-muted

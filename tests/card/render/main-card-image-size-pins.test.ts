@@ -1,10 +1,8 @@
-// Pins for the main-card image size — the serializer-followup2 census
-// mechanism M6 (*favicon:page, graded delta +1).
+// Pins for the main-card image size — the *favicon:page mechanism.
 //
-// Census bytes (tmp/serializer-followup/probe-green5 expected--_favicon__page.html):
-// the live PAGE renders the favicon image at the LARGE variant
-// (`.../files/103/3649-large.jpg`); the engine renders -medium. The view
-// lane's *favicon:open capture pins -medium — BOTH are Ruby-correct:
+// The live PAGE renders the favicon image at the LARGE variant
+// (`.../files/103/3649-large.jpg`); the engine rendered -medium. A bare
+// view-lane render pins -medium — BOTH are Ruby-correct:
 //
 // card-mod-carrierwave-0.20.0 set/type/image.rb:44-57 determine_image_size:
 //   when nest_mode == :closed then closed_size (:icon)
@@ -13,7 +11,7 @@
 //   else                           default_size # -> :medium
 // A page's main card renders with main? true (:large); a bare view-lane
 // render has no main format (:medium). The engine's size pick had only
-// `voo.size ?? :medium` — the main? arm is the census fix.
+// `voo.size ?? :medium` — the main? arm is the fix.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { renderPageBytes } from "../../../src/card/render/page.js";
@@ -53,7 +51,7 @@ async function seedDeck(): Promise<RenderTestStorage> {
     typeId: 2,
     dbContent: "Favicon Probe Layout",
   });
-  // The corpus's *favicon row (id 103, Image-typed, bucket content).
+  // The *favicon row (Image-typed, bucket content).
   await seedCard(s, {
     id: 103,
     name: "*favicon",

@@ -17,20 +17,14 @@
 // that appears on many hosts therefore inherited whichever host the run
 // touched FIRST.
 //
-// Captured exemplar (expected-v2/view-lane recapture-raw-shard-000000.jsonl,
-// `Quicksilver+Core Project`, corpus card id 802, content = the single item
-// line `mytho-psychology`): that name is an item line on ~30 corpus cards.
-// Under `Quicksilver+Core Project` the phantom is Project-typed (corpus
-// type card 398) and its own read verdict is TRUE, and the oracle renders the
-// FULL bar (bar-body row / card-title / wanted-card menu). Rendered after
-// another card had folded the item denied, the global map said denied and the
-// port emitted the two-span denied body instead — the view lane entry was
-// 1,605 bytes short (probe-view-lane-byte-divergence.mjs, region 2/2,
-// `regionDeltaSum=-1605`).
+// The defect shape: one item name is an item line on MANY hosts. On a
+// host whose phantom's item type carries no denying read rule, Ruby renders
+// the FULL bar (bar-body row / card-title / wanted-card menu); rendered
+// after another host had folded the item denied, the global map said denied
+// and the port emitted the two-span denied body instead.
 //
 // BOTH ORDERINGS are pinned, so the fix cannot degenerate into "just delete
-// the global entry" (which would over-allow the denying host). Measured this
-// lane, base = 9689bf9:
+// the global entry" (which would over-allow the denying host):
 //
 //   render order      denier host       reader host
 //   ----------------  ----------------  -----------------
@@ -91,9 +85,9 @@ async function seedBaseDeck(s: RenderTestStorage): Promise<void> {
     dbContent: "Anyone",
   });
   await seedReference(s, 800, 10, "anyone", "L");
-  // BasicCs+*type+*read = "Anyone Signed In": the DENYING type rule — the
-  // oracle deck's own shape (a BasicCs-typed phantom is read-denied for the
-  // Anonymous viewer, which is the two-span denied body family).
+  // BasicCs+*type+*read = "Anyone Signed In": the DENYING type rule —
+  // the deck's own shape (a BasicCs-typed phantom is read-denied for the
+  // Anonymous viewer — the two-span denied body).
   await seedCard(s, { id: 802, name: "BasicCs+*type", leftId: 22281, rightId: 259, typeId: 259 });
   await seedCard(s, {
     id: 801,
@@ -107,7 +101,7 @@ async function seedBaseDeck(s: RenderTestStorage): Promise<void> {
 }
 
 /** A List host whose *content_options rule resolves the given item type
- *  (the corpus's cql JSON spec shape, rules 410/498/501) and whose content is
+ *  (the cql JSON spec shape) and whose content is
  *  the SHARED item line, so the two hosts contend for one item key. */
 async function seedTypedListHost(
   s: RenderTestStorage,

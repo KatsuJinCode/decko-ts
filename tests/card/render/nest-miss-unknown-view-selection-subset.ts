@@ -1,15 +1,11 @@
 /**
- * The p20-nest-selection port's page population: the 34 pages of the
- * an earlier pass c-structural class whose mechanism is the nest-selection
- * disagreement (mm-cstructural receipt §4 #2 missing-slot / #3
- * phantom-slot — WORK_DIR/mm-cstructural-lane.md).
- *
- * 19 Project pages missing the `+discussion` titled-view slot; 2 BWjournal
- * pages missing seven mini_bar slots each; 10 Research pages with a phantom
- * `+Articles` open nest; 3 outliers (2 HTML `*head` pages, 1 Pointer Notes
- * page). Every entry was verified against an earlier triage
- * ( tmp/cstruct-index/triage.json) — the slot
- * ids named here are the exact card-slot ids the two sides disagreed on.
+ * The page subset whose nest-selection disagreement this suite pins:
+ * pages missing a `+discussion` titled-view slot (Project cardtype),
+ * pages missing seven mini_bar slots each inside +body (journal
+ * cardtype), pages with a phantom `+Articles` open nest (Research
+ * cardtype), and three outliers (2 HTML `*head` pages, 1 Pointer Notes
+ * page). The slot ids named in the consuming test are the exact
+ * card-slot ids the two sides disagreed on.
  */
 export const NEST_MISS_PAGE_SUBSET: readonly string[] = [
   // missing-slot, Project cardtype (19): the +discussion titled-view

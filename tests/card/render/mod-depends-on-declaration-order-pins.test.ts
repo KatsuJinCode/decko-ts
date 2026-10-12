@@ -6,14 +6,14 @@
 // card.depends_on`, where depends_on = `card_mods { mod&.spec&.dependencies }`
 // filtered to card-mod gems and mapped to mod names.
 //
-// Reference (2026-10-06 corpus of record, captured with the installed 0.20
-// gems): all 22 mod pages with a Depends on section list it in NAME order,
+// Reference (the installed 0.20 gems): all mod pages with a Depends on
+// section list it in NAME order,
 // and the membership is the installed 0.20 gemspecs' (mod: account carries
 // integrate and edit, mod: bootstrap carries script). The gemspec files
 // declare a different order on five of them (account, bootstrap, edit,
 // email, list), so the spec the app reads hands the dependencies over
-// sorted. An earlier pin froze the live 0.19-era site's declaration order
-// and membership; the corpus of record supersedes it.
+// sorted. An earlier pin froze the older 0.19-era site's declaration order
+// and membership; the installed-gems reference supersedes it.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {

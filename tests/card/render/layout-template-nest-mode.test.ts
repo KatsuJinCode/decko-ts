@@ -1,5 +1,5 @@
 // The layout cardtype's :core view renders its body under nest mode
-// :template (lane templatenest-coderay).
+// :template.
 //
 // Ruby, card-mod-layout-0.20.0 set/type/layout_type.rb:12-18:
 //
@@ -21,11 +21,11 @@
 // `nest_syntax` is the in-bracket text the chunk captured
 // (card-mod-content lib/card/content/chunk/nest.rb:23), so for a body
 // whose nests survive the scanner unchanged the re-emission is byte-
-// identical to the input. That is the whole of the 217 KB the engine used
-// to expand here: page 22747's "Default Layout" body nests {{:header|core}},
-// {{_main|titled}} and {{:footer|content}}, and Ruby printed all three
-// back inside the CodeRay block (oracle 15,429 B) while the engine
-// rendered three fully-expanded slot divs (232,915 B).
+// identical to the input. That is the whole of the template-mode core:
+// where the engine used to expand a Default Layout body's three nests
+// ({{:header|core}}, {{_main|titled}}, {{:footer|content}}) into
+// fully-rendered slot divs, Ruby prints all three back inside the
+// CodeRay block.
 //
 // The mode is FORMAT STATE, not a view flag: format/nesting/mode.rb:17-19
 // inherits it from the parent format and with_nest_mode restores it in an
@@ -33,25 +33,21 @@
 // siblings. These tests pin the state machine itself, not just the one
 // card, so a future :edit or :compact addition has somewhere to land.
 //
-// THE `{{_main}}` EXCEPTION (adjudicated 2026-10-01,
-// nest-mode-control-adjudication). The negative control used to assert that
-// the whole 22747 body - `{{:header|core}}`, `{{_main|titled}}` and
+// THE `{{_main}}` EXCEPTION. The negative control used to assert that the
+// whole layout body - `{{:header|core}}`, `{{_main|titled}}` and
 // `{{:footer|content}}` alike - comes back nest-EXPANDED in :normal mode.
-// That was never Ruby's behavior on any surface, so the assertion was
-// passing on port behavior rather than on the oracle:
+// That was never Ruby's behavior on any surface:
 //
 //   * `{{_main}}` is diverted before the ordinary nest dispatch
 //     (content.rb:24), so it can never "expand" the way `{{:header}}` does.
 //   * It emits `main.rendered` (main.rb:12), which mid-render is the card's
 //     OWN RAW SOURCE - the splice re-prints the authored nests rather than
-//     consuming them. Oracle: page-lane shard-000000 entry 470 carries
-//     record.content verbatim inside `<div id="main">`.
+//     consuming them, wrapped in `<div id="main">`.
 //   * With no main format at all it does not even get that far: `main` is
-//     nil and main.rb:12 raises. Oracle: view-lane shard-000000 entry 470
-//     records `CAPTURE_ERROR: NoMethodError: undefined method `rendered'
-//     for nil` for both :content and :open.
+//     nil and main.rb:12 raises NoMethodError ("undefined method
+//     `rendered' for nil").
 //
-// The control is therefore split in two, one arm per captured surface.
+// The control is therefore split in two, one arm per surface.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -60,8 +56,8 @@ import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck
 import { setDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-/** The corpus card 22747 layout body, byte-for-byte (bench-corpus-raw
- *  sqlite3 `SELECT content FROM cards WHERE id = 22747`). */
+/** The Default Layout body under test, byte-for-byte: three nests a
+ *  template-mode core must re-emit unchanged. */
 const CARD_22747_BODY =
   '<body class="d-flex flex-column h-100">\n' +
   "  <header>{{:header|core}}</header>\n" +
@@ -95,13 +91,11 @@ async function seedTemplateModeDeck(): Promise<{
 }> {
   const storage = await createRenderTestStorage();
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
-  // The Layout cardtype. card 22747's type_id is 11746, the Layout type
-  // card; `type_code` is what routes a card to the CodeRay html core
-  // (code-highlighting/index.ts#langForTypeCode), but it is stamped during
-  // a render closure walk (render.ts:1566-1568), not by fetchById - so
-  // the core-view routing itself is gated by the page-level test
-  // tmp/raw-ground-truth/scripts/repro-22747-default-layout.test.ts, and
-  // these tests exercise the mode the view turns on.
+  // The Layout cardtype. `type_code` is what routes a card to the CodeRay
+  // html core (code-highlighting/index.ts#langForTypeCode), but it is
+  // stamped during a render closure walk (render.ts:1566-1568), not by
+  // fetchById - so the core-view routing itself is outside these units'
+  // reach, and these tests exercise the mode the view turns on.
   await seedCard(storage, { id: 50, name: "Layout", codename: "layout_type", typeId: 2 });
   // The three nest targets. They resolve to real cards so that a NORMAL
   // nest would expand - which is what makes the template-mode assertion
@@ -210,8 +204,9 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
     try {
       // :normal is the pre-change behavior: the chunker still finds every
       // nest, the nest still renders, and the authored `{{...}}` bytes at
-      // the OUTER level are GONE. That substitution is what made page
-      // 22747 232,915 B where Ruby emitted 15,429 B.
+      // the OUTER level are GONE. That substitution is what ballooned the
+      // rendered layout page where Ruby's template mode prints the nests
+      // back.
       //
       // `{{_main}}` is NOT an ordinary nest and never was:
       // card-1.110.0 content.rb:24 `return main_nest(opts) if
@@ -233,13 +228,8 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
       // format/wrapper.rb:15 `@rendered = yield`) lands the :raw view's
       // `structure_card&.content` (base.rb:75-77) there first. So
       // `{{_main}}` splices the card's OWN dbContent - its nests and wiki
-      // links unexpanded.
-      //
-      // ORACLE: expected-v2/page-lane recapture-raw-shard-000000.jsonl
-      // entry id 470 ("AsIn Layout", page_html 28,562 B) carries
-      // record.content VERBATIM at offset 12061, immediately bounded by
-      // `">\n      <div id="main">` before and `</div>` after, exactly
-      // once in the file. That is the byte shape asserted below.
+      // links unexpanded. The splice inside `<div id="main">` is the byte
+      // shape asserted below.
       const mainFormat = new RenderFormat(layoutFormat.card, storage.engine, { main: true });
       // The real render reaches this state THROUGH _render_raw, so the
       // test runs the call Ruby's :core view runs (the port's renderRaw
@@ -277,10 +267,7 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
       // consumed" and "the nest expanded to its target's content" are NOT
       // the same observation here, and only the first is asserted. Asserting
       // the second would be asserting a fact this fixture does not have.
-      // Consumption plus the `{{_main}}` splice is the control's subject; the
-      // expansion bytes of a real page render are routed to
-      // tmp/raw-ground-truth/scripts/repro-22747-default-layout.test.ts by
-      // the seed's own comment above.
+      // Consumption plus the `{{_main}}` splice is the control's subject.
     } finally {
       storage.close();
     }
@@ -289,8 +276,8 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
   it("throws the captured NoMethodError at {{_main}} when the format has no main - the view-lane shape", async () => {
     const { storage, layoutFormat } = await seedTemplateModeDeck();
     try {
-      // The same body on a format with NO main is Ruby's OTHER captured
-      // surface, and Ruby THROWS on it rather than producing bytes. `main`
+      // The same body on a format with NO main is Ruby's OTHER surface,
+      // and Ruby THROWS on it rather than producing bytes. `main`
       // is `if main? then self elsif !root? then parent.main end`
       // (card-1.110.0 format/nesting/subformat.rb:18-24), and the html
       // format OVERRIDES `main?` as `!@main.nil?`
@@ -299,19 +286,12 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
       // bare `card.format.render(:content)`, which never calls main!) is
       // therefore not `main?`, and being `root?` it does not walk to a
       // parent either, so the `if` falls off the end and returns NIL.
-      // main.rb:12 then evaluates `main.rendered` on nil.
-      //
-      // ORACLE: expected-v2/view-lane recapture-raw-shard-000000.jsonl
-      // entry id 470 ("AsIn Layout") records, for BOTH of its views,
-      //   CAPTURE_ERROR: NoMethodError: undefined method `rendered' for nil
-      // Checked across all 48 view-lane shards (6,588 entries): those two
-      // records are the ONLY `rendered`-for-nil sentinels in the lane, and
-      // 470 is the only Html-typed card among the 12 whose content nests
-      // `{{_main...}}` - the other 11 are all `type Layout`, whose :core
-      // runs under `with_nest_mode :template` (card-mod-layout
+      // main.rb:12 then evaluates `main.rendered` on nil. Layout-typed
+      // cards never hit this path: their :core runs under
+      // `with_nest_mode :template` (card-mod-layout
       // set/type/layout_type.rb:13-17), so content.rb:24's
-      // `@nest_mode != :template` gate never lets them reach main_nest and
-      // they render bytes. 470 alone throws.
+      // `@nest_mode != :template` gate never lets them reach main_nest
+      // and they render bytes; only an unflagged main-less format throws.
       let caught: unknown;
       try {
         layoutFormat.processContent(CARD_22747_BODY);
@@ -319,7 +299,7 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
         caught = err;
       }
       expect(caught).toBeInstanceOf(Error);
-      // Class name and message are the captured sentinel's, byte for byte
+      // Class name and message are Ruby's, byte for byte
       // - `rendered' is Ruby's own backtick-apostrophe spelling.
       expect((caught as Error).name).toBe("NoMethodError");
       expect((caught as Error).message).toBe("undefined method `rendered' for nil");
@@ -335,8 +315,8 @@ describe("layout_type :core view - the rendered body (the 217 KB)", () => {
       // nest_syntax is already tag-free by the time :template_nest prints
       // it - the re-emission is the stripped form, not the authored form.
       // The name is compound so it is not field_only (that branch is
-      // card-mod-edit's unported `nest template_link_set_name` path, named
-      // in the receipt's remainder list - this test stays off it).
+      // card-mod-edit's unported `nest template_link_set_name` path —
+      // this test stays off it).
       const body = layoutFormat.withNestMode("template", () =>
         layoutFormat.processContent("<b>{{<i>Probe+Field</i>|core}}</b>"),
       );

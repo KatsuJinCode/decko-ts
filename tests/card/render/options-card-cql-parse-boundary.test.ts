@@ -7,22 +7,18 @@
 // right_type_options || Card[:all]) resolves, pointer/list options cards
 // recurse, and a search/set-type terminal parses its content as CQL
 // (cql_search.rb:14-18 -> parse_json_cql) -> Card::Error::BadQuery unwinds
-// the whole render. The corpus capture pins this as the CAPTURE_ERROR
-// sentinel on the HOST (e.g. *home :open -> "Invalid JSON search query: fr"
-// where "fr" is *all's content, shard-000000.jsonl id=77; *all+*layout
+// the whole render. Ruby raises on the HOST render (e.g. *home :open ->
+// "Invalid JSON search query: fr" where "fr" is *all's content; *all+*layout
 // :open -> its *layout+*right+*content options rule content).
 //
-// Gate census (recapture + original corpus, both capture keys — see the
-// render.ts gate comment and tmp/recapture-deck/enumeration/
-// options-gate-model.json): :open ONLY, pointer/list hosts only,
-// Abstract::Permission hosts (right part *read/*create/*update/*delete)
-// excluded (both captures pinned 1,537/1,537 REAL :open bytes there),
-// :closed/:content never fire.
+// Gate shape (see the render.ts gate comment): :open ONLY, pointer/list
+// hosts only, Abstract::Permission hosts (right part *read/*create/*update/*delete)
+// excluded, :closed/:content never fire.
 //
 // Junction seeding note: a rule card "<set>+*content options" is a
 // junction whose trunk is the SET card ("<anchor>+*self", "<tag>+*right",
 // ...), so the seeds carry the trunk rows (left_id -> trunk, right_id ->
-// *content options) exactly like the corpus rows.
+// *content options).
 
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
@@ -59,8 +55,8 @@ async function captureError(run: () => Promise<unknown>): Promise<Error> {
 
 describe("options-card CQL parse boundary (pointer/list :open)", () => {
   it(":open of a pointer host falls back to Card[:all] (set-typed) and raises with its content", async () => {
-    // Corpus pin: *home (pointer, content "yzzw") :open ->
-    // CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: fr
+    // *home (pointer) :open raises
+    // Card::Error::BadQuery: Invalid JSON search query: fr
     // — "fr" is *all's db_content, not the host's.
     const s = await createRenderTestStorage();
     try {
@@ -76,7 +72,7 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
   });
 
   it(":open of a list host resolves a *content options rule card and raises with ITS content", async () => {
-    // Corpus pin: *all+*layout :open -> the *layout+*right+*content options
+    // *all+*layout :open raises with the *layout+*right+*content options
     // rule card's content (the right-pattern rule candidate wins the walk).
     const s = await createRenderTestStorage();
     try {
@@ -109,10 +105,10 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
   });
 
   it("recurses through pointer-typed options cards before the parse (items.rb:5-11)", async () => {
-    // Corpus pin: *style+*right+*input type :open -> options card
+    // *style+*right+*input type :open: the options card
     // "*input type+*right+*content options" is POINTER-typed (its content
     // is the radio/checkbox item list) -> item_type_id recurses into ITS
-    // options card -> *all -> "fr" (probe 5, diagnose-capture-error5.rb).
+    // options card -> *all -> "fr".
     const s = await createRenderTestStorage();
     try {
       await seedCardtypes(s);
@@ -172,10 +168,8 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
   });
 
   it(":closed and :content of a pointer host never consult the options chain", async () => {
-    // Gate census: both captures recorded ZERO sentinels for pointer/list
-    // :closed (plain lists render labeled/one_line_content) and :content
-    // (0/46 recapture entries) — Ruby's :closed/:content view bodies for
-    // plain pointers never call item_view_options.
+    // Ruby's :closed/:content view bodies for plain pointers never call
+    // item_view_options (plain lists render labeled/one_line_content).
     const s = await createRenderTestStorage();
     try {
       await seedCardtypes(s);
@@ -191,10 +185,8 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
   });
 
   it("Abstract::Permission hosts (right part a permission setting) are excluded from the gate", async () => {
-    // Both captures pinned REAL :open bytes for permission-right hosts
-    // (original corpus 1,537/1,537) even though today's Ruby raises —
-    // a capture-time divergence the fixtures pin as bytes. The gate must
-    // not fire for them (dn+*right+*read :open renders in both captures).
+    // The gate must not fire for permission-right hosts: the pinned
+    // expectation is that their :open renders rather than raising.
     const s = await createRenderTestStorage();
     try {
       await seedCardtypes(s);
@@ -250,7 +242,7 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
   it("right_type_options: a cardtype-typed right part stops the chain (virtual by-name card)", async () => {
     // options_api.rb:57-59: Card.fetch [right.name, :type, :by_name] is a
     // VIRTUAL card whose Ruby content is a CQL Hash — cql_content never
-    // parses, item_type_id returns nil, no raise (probe 5, cixvol+jzuqht).
+    // parses, item_type_id returns nil, no raise.
     const s = await createRenderTestStorage();
     try {
       await seedCardtypes(s);

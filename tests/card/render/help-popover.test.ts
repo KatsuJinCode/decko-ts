@@ -1,9 +1,9 @@
 // Menu help-popover parity units: the data-bs-content resolution the :menu
-// view needs (the class behind the shard-0 corpus failures whose expected
-// bytes carry real help text where the port hardcoded the &nbsp;
+// view needs (the resolver behind the menu popover, which must carry the
+// card's real help text where the engine used to hardcode the &nbsp;
 // placeholder).
 //
-// Ruby chain under test (citation trail):
+// Ruby chain under test:
 //   menu.rb help_link -> bootstrap helper.rb popover_opts (blank ->
 //   "&nbsp;", attribute escaping) -> card-mod-help all/help.rb help_text
 //   (rule-card branch + wrap_help_text d-none span) -> card-mod-rules
@@ -247,11 +247,11 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // the prepare rode ONE batch (rule sides + setting counts) beyond the
       // codename load it primes on the very first call
       expect(afterPrepare.roundTrips - beforePrepare.roundTrips).toBeLessThanOrEqual(2);
-      // warm re-renders cost nothing the resolver adds. Freshness lane
-      // 2026-10-05: each warm render pays exactly the deck_data_version
-      // stamp read (one statement, one round trip),
-      // so the two warm renders below add exactly +2/+2 beyond the first
-      // render's own snapshot, all of it the stamp, none of it the resolver.
+      // warm re-renders cost nothing the resolver adds. Each warm render
+      // pays exactly the deck_data_version stamp read (one statement, one
+      // round trip), so the two warm renders below add exactly +2/+2
+      // beyond the first render's own snapshot, all of it the stamp, none
+      // of it the resolver.
       expect(afterWarmRenders.roundTrips - afterFirstRender.roundTrips).toBe(2);
       expect(afterWarmRenders.statements - afterFirstRender.statements).toBe(2);
     } finally {
@@ -262,11 +262,9 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
   // Permission family mechanism: the setting_rule_count predicate must
   // honor the viewer's read_rules_hash exactly the way Ruby's
   // card-mod-rules set/type/setting.rb#count honors Card.search's read
-  // filter. The captured corpus:87/88/91/105/155/201/205/217/242/248/253/257
-  // shows '(49 default rules)' for Anonymous vs the unfiltered engine
-  // '(140 default rules)'; this test pins the read filter at the SQL
-  // shape — a rule card with read_rule_id NOT in the viewer's readable
-  // set is excluded from the count.
+  // filter. This test pins the read filter at the SQL shape — a rule
+  // card with read_rule_id NOT in the viewer's readable set is excluded
+  // from the count.
   it("setting_rule_count honors read_rules_hash: rules readable by the viewer only", async () => {
     const storage = await createRenderTestStorage();
     try {
@@ -291,9 +289,9 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       await seedCard(storage, { id: 711, leftId: 706, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "B default", readRuleId: 7000 });
       await seedCard(storage, { id: 712, leftId: 707, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "C default", readRuleId: 8000 });
       // The viewer's read-permission state (the anonymous viewer; only
-      // rule 7000 is in the readable set, mirrors Anonymous's [Anyone]
-      // party grant on the corpus). readPermission is the field the
-      // resolver reads; the engine populates it in ensureReadPermission.
+      // rule 7000 is in the readable set, mirroring an [Anyone] party
+      // grant). readPermission is the field the resolver reads; the
+      // engine populates it in ensureReadPermission.
       const engineHost = storage.engine as unknown as {
         readPermission?: {
           readableRuleIds: ReadonlySet<number>;
@@ -311,9 +309,8 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // (Ruby's Card.search default), and rule 711 IS readable (in the
       // viewer's readable set). Rule 712 is NOT. Result: 2 default
       // rules in the count, mirroring Ruby's filtered count. Without
-      // the filter the count would be 3 (the unfiltered baseline the
-      // engine produced before this fix; verified by famfix48 at
-      // corpus:87/88/91/105/155/201/205/217/242/248/253/257 + 251).
+      // the filter the count would be 3 — the unfiltered baseline the
+      // engine produced before this fix.
       const ruleHtml = await storage.engine.render("Set A+*right+*default", "closed");
       expect(helpContentOf(ruleHtml)).toContain("(2 default rules)");
     } finally {

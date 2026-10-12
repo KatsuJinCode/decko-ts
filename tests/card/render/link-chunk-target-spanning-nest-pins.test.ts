@@ -1,4 +1,4 @@
-// link-chunk target-spanning nest (viewsig lane, 2026-10-02).
+// link-chunk target-spanning nest.
 //
 // WHAT THIS PINS
 //   Ruby's Link chunk (card-mod-content lib/card/content/chunk/link.rb:14)
@@ -14,14 +14,13 @@
 //   label-side span (matchLinkWrappedNestOpener) therefore never fired and the
 //   raw `[[…]]` wikitext leaked into the render.
 //
-//   ORACLE PIN — expected-v2/view-lane recapture-raw-shard-000000.jsonl,
-//   `Cardtype+*type+*default`, BOTH the `content` and `open` views carry:
+//   PINNED BYTES — the `content` and `open` renders of a
+//   `Cardtype+*type+*default` rule card carry:
 //     <a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>
-//   That card was -32 bytes on each view at base 9689bf9 (the whole anchor
-//   missing). Note the braces are RAW on both sides — target AND label — which
+//   The braces are RAW on both sides — target AND label — which
 //   is the byte contract, not an omission of expansion.
 //
-//   Seeded test-storage cards; nothing here reads the corpus. The target is an
+//   Seeded test-storage cards only. The target is an
 //   explicit `/`-rooted resource path, so renderLinkChunk's internal-link arm
 //   needs no fetch.
 
@@ -32,11 +31,11 @@ import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck
 import { setDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-// The oracle's exact source line (Cardtype+*type+*default dbContent, the
+// The pinned source line (the
 // `[[/new/…|…]]` link inside the `add a {{_self|name}} card` paragraph).
 const LINK_SOURCE =
   "<p>[[/new/{{_self|linkname}}|add a {{_self|name}} card]]</p>";
-// The oracle's expected bytes for that line.
+// The expected bytes for that line.
 const LINK_RENDERED =
   '<p><a class="internal-link" href="/new/{{_self|linkname}}">add a {{_self|name}} card</a></p>';
 
@@ -76,8 +75,8 @@ describe("link chunk whose nest splits the TARGET (link.rb:14 full_re)", () => {
 
   it("still expands the label-side nest when pipe and [[ share one text piece", async () => {
     // The label-side span is the pre-existing path and must be untouched by
-    // the target-side addition: `[[/ | {{*logo}}]]` (classic-layout oracle,
-    // view-lane shard-000000 entry 314) keeps the nest inside the anchor.
+    // the target-side addition: `[[/ | {{*logo}}]]` keeps the nest inside
+    // the anchor.
     const { storage, fmt } = await seedLinkDeck();
     try {
       const html = fmt.processContent("[[/ | {{*logo}}]]");
@@ -124,7 +123,7 @@ describe("link chunk whose nest splits the TARGET (link.rb:14 full_re)", () => {
 //
 // processContent's piece walker above is the label/target SPLIT path. The
 // plain pass is expandWikiLinks, whose target class `[^\[\]\n|]` splits at
-// the first pipe EVEN WHEN THAT PIPE BELONGS TO A NEST — on the oracle's own
+// the first pipe EVEN WHEN THAT PIPE BELONGS TO A NEST — on the pinned
 // source line it produced target `/new/{{_self`, label
 // `linkname}}|add a {{_self|name}} card` (measured before the atom change).
 //

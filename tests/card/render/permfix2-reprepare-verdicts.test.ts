@@ -1,4 +1,4 @@
-// Pin the byte-level / parity contract for the permfix2 family kill:
+// Pin the byte-level / parity contract for the permfix2 fixes:
 //
 //   (1) HELP-RULES LATE VERDICT PASS — render.ts:305-323 re-calls
 //       ensureVerdicts after helpResolver.prepare() so the *help rule cards
@@ -6,9 +6,7 @@
 //       land in this.deniedVerdicts. Before the fix, isDenied returned
 //       false for those rule cards (the verdict cache missed) and the
 //       sync render path emitted placeholder body paragraphs instead of
-//       Ruby's `<span class="denied">` — the corpus captured this as
-//       permission_denied_sentinel_replaced_with_placeholder (+487
-//       corpus-wide, +238 slice in 489a22c).
+//       Ruby's `<span class="denied">`.
 //
 //   (2) SEARCH/DATE BROADENED PREPARE WALK — render.ts:1239-1319
 //       prepareSearches walks the closure from root via {{name}} content
@@ -16,11 +14,9 @@
 //       SEARCH_TYPE_CODE / DATE_TYPE_CODE cards that did not join the
 //       BFS queue. Ruby's card-mod-search cql_search.rb raises
 //       Card::Error::BadQuery on invalid-JSON content for ANY reachable
-//       Search card — the corpus pin id=101 (type_code=search_type,
-//       content="jjmduarnmhbvnahsoeyvmxkpec") and id=268 (set card whose
-//       :open nests the BadQuery source) were unraised before the
-//       broaden because the BFS did not reach them. The second pass
-//       invokes runSearch (BadQuery) and isValidDateContent
+//       Search card — Search cards with garbage content were unraised
+//       before the broaden because the BFS did not reach them. The second
+//       pass invokes runSearch (BadQuery) and isValidDateContent
 //       (dateError) for every Search/Date card in renderCards — Ruby
 //       semantics mirror: ok_to_read? — denial short-circuits the
 //       closed Search card, but for the readable branch the JSON.parse
@@ -35,8 +31,8 @@
 //       pinned here — it is unchanged.)
 //
 // Each "it" block below exercises one of these three seams at the
-// fixture scale, mirroring the corpus shapes so future reverts land here
-// before they land in the slice replay.
+// fixture scale, mirroring the deck shapes, so a future revert fails
+// here first.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -60,8 +56,8 @@ const ALWAYS_OK_VIEWER: ReadViewer = ANONYMOUS_VIEWER;
 
 /** A small *help-rule-shaped deck: one set card + one setting card +
  *  one *help rule card. The rule card joins renderCards when the
- *  engine renders through the help-rules prepare path; before permfix2
- *  its verdict was missing, after permfix2 ensureVerdicts fills it. */
+ *  engine renders through the help-rules prepare path; before the fix
+ *  its verdict was missing; after it, ensureVerdicts fills it. */
 async function seedHelpRuleStorage(storage: RenderTestStorage): Promise<void> {
   // Basic type card.
   await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
@@ -129,10 +125,10 @@ async function seedHelpRuleStorage(storage: RenderTestStorage): Promise<void> {
 
 describe("permfix2: help-rules late verdict pass (permission_denied family)", () => {
   it("late-enriched *help rule cards receive a verdict after helpResolver.prepare() completes", async () => {
-    // The symptom: corpus:88 (representative of permfix48
-    // permission_denied_sentinel_replaced_with_placeholder). Ruby emits
-    // `<span class="denied">` for the *all+*help rule card; the engine
-    // BEFORE permfix2 emitted placeholder body paragraphs because
+    // The symptom: the *all+*help rule card rendered placeholder body
+    // paragraphs where Ruby emits
+    // `<span class="denied">`; the engine
+    // BEFORE the fix emitted them because
     // deniedVerdicts.get(8) === undefined (not true) — isDenied returned
     // false even though Ruby denies.
     //
@@ -161,7 +157,7 @@ describe("permfix2: help-rules late verdict pass (permission_denied family)", ()
       await storage.engine.render("*all", "content");
       const engine = storage.engine as unknown as EnginePrivate;
       // The fix is the post-help-prepare ensureVerdicts re-call
-      // (render.ts:322) — before permfix2 the verdict for id=8 was
+      // (render.ts:322) — before the fix the verdict for id=8 was
       // missing because helpRules.enrichAndStore ran AFTER the verdict
       // memoization. Pin the entry directly: it must be present and
       // either true or false (any verdict), NOT undefined.
@@ -186,9 +182,9 @@ describe("permfix2: help-rules late verdict pass (permission_denied family)", ()
       await storage.engine.render("*all", "content");
       const engine = storage.engine as unknown as EnginePrivate;
       // id=8 *all+*help rule card was NOT in the initial renderCards
-      // (the BFS walks *all -> ... and ids visited before permfix2 had
+      // (the BFS walks *all -> ... and ids visited before the fix had
       // their verdicts memoized. id=8 was added by the help-rules
-      // batch). After permfix2, its verdict is finalized regardless
+      // batch). After the fix, its verdict is finalized regardless
       // of allowed/denied so the sync render path's isDenied() reads
       // a stable boolean — never the "no entry, allowed" gap that the
       // pre-fix produced.
@@ -204,16 +200,16 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
   it("a Search-type card whose content is bad JSON still raises Card::Error::BadQuery when present in renderCards (corpus:101 pin)", async () => {
     // Mirror the existing search-bad-query-error.test.ts shape but pin
     // the broadened walk contract: a Search-type card with a
-    // corpus-shaped type card (codename='search_type', name='qnzkqz')
-    // and bad-JSON content must raise on the engine regardless of
+    // search_type-codenamed type card and bad-JSON content must raise on
+    // the engine regardless of
     // whether the BFS path reaches it. The pre-fix BFS-only walk could
     // miss Search cards whose only path was via non-content dispatch.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      // Corpus-shaped type card (name='qnzkqz', codename='search_type').
+      // The search_type-codenamed type card.
       await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
-      // The Search card with bad JSON content (corpus:101 shape).
+      // The Search card with bad JSON content.
       await seedCard(storage, {
         id: 101,
         name: "wrjuvyhaoiwnvvnblfl",
@@ -230,9 +226,8 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
       // The 2nd pass of prepareSearches (render.ts:1280-1319 post-fix)
       // walks every Search card in renderCards and invokes runSearch
       // — runSearch throws Card::Error::BadQuery on invalid JSON.
-      // The exception propagates to the render caller, the replay
-      // handler converts err.constructor.name to the CAPTURE_ERROR
-      // sentinel exactly as Ruby records it.
+      // The exception propagates to the render caller, which reports
+      // the error class exactly as Ruby raises it.
       expect(captured).toBeInstanceOf(Error);
       const err = captured as Error & { query?: string };
       expect(err.constructor.name).toBe("Card::Error::BadQuery");
@@ -246,16 +241,15 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
   });
 
   it("a Date-type card whose content is malformed raises DateError (corpus:1135 shape pin)", async () => {
-    // Mirror the existing date-error.test.ts. corpus:1135 is the
-    // bucket:1135 representative (capture_error_not_raised:Date).
-    // Pre-fix BFS-only walk could miss Date cards in renderCards;
+    // Mirror the existing date-error.test.ts. Pre-fix the BFS-only walk
+    // could miss Date cards in renderCards;
     // post-fix the 2nd pass walks them all.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      // Corpus-shaped type card for Date (name='evog', codename='date').
+      // The date-codenamed type card.
       await seedCard(storage, { id: 11, name: "evog", codename: "date", typeId: 1 });
-      // A Date card with malformed content (corpus:1135 shape).
+      // A Date card with malformed content.
       await seedCard(storage, {
         id: 1135,
         name: "broken date",
@@ -272,9 +266,8 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
       expect(captured).toBeInstanceOf(Error);
       const err = captured as Error;
       // The Date error class name is the Ruby literal 'Date::Error'
-      // (Ruby's Date::Error nested module — render.ts mirrors with
-      // errors.ts DATE_ERROR_CLASS_NAME so the corpus's CAPTURE_ERROR
-      // sentinel prefix matches byte-for-byte).
+      // (Ruby's Date::Error nested module — render.ts mirrors it with
+      // errors.ts DATE_ERROR_CLASS_NAME).
       expect(err.constructor.name).toBe("Date::Error");
       expect(err.message).toBe("invalid date");
     } finally {

@@ -1,8 +1,5 @@
-// PlainText-type core escapes html entities - the census
-// "html-entity-escape" singleton (page 19562 angieup, census receipt
-// WORK_DIR/page-mechanism-census.md: the
-// +source_title content-view renders "Son, It&#39;s Okay If You
-// Don&#39;t Get Laid Tonight" in the oracle, raw apostrophes in ours).
+// PlainText-type core escapes html entities: the +source_title content
+// view rendered raw apostrophes where Ruby carries &#39;.
 //
 // Mechanism: card-mod-format set/type/plain_text.rb:6-8
 //   `view :core do process_content CGI.escapeHTML(_render_raw) end`
@@ -32,7 +29,7 @@ async function seedPlainTextDeck(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(storage, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(storage, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  // The angieup+source_title shape: a PlainText-typed card whose content
+  // The pinned shape: a PlainText-typed card whose content
   // carries apostrophes (and an ampersand for the escape-order pin).
   await seedCard(storage, {
     id: 9000,

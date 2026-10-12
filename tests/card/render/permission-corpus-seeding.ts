@@ -104,8 +104,7 @@ export async function createCorpusSeededStorage(ids: Set<number>): Promise<Rende
   }
   for (const rule of ruleRows) ids.add(rule.id);
   for (const id of setCardIds) ids.add(id);
-  // SET-card child-card grant walk (deep-read-rule / read-rule-grant-vs-deny
-  // closure gap fix, 2026-09-25). For every *read rule, resolve its SET card
+  // SET-card child-card grant walk. For every *read rule, resolve its SET card
   // (left_id), then walk the SET card's CHILD cards (left_id = set_card.id).
   // Each child's card_references name the GRANT PARTIES that setting rule
   // grants (e.g. `*all+*create` -> AnyoneSignedIn, `*all+*delete` ->
