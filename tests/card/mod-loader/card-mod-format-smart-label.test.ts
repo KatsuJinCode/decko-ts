@@ -1,6 +1,5 @@
-// The card-mod-format :smart_label view (the third named remainder - missing
-// since the mod-views-a port): card-mod-format-0.20.0 set/all/content.rb
-// :26-41 -
+// The card-mod-format :smart_label view: card-mod-format-0.20.0
+// set/all/content.rb :26-41 -
 //   view :smart_label, cache: :never, unknown: true do
 //     label_with_description render_label, label_description
 //   end
@@ -14,9 +13,9 @@
 //   end
 // render_label is the :label view (content.rb:22-24, card.label = name);
 // the popover anchor is card-mod-bootstrap's popover_link helper
-// (set/all/bootstrap/helper.rb:41-57), whose live bytes the oracle capture
-// fixtures/captured/help-popover.json pins ("rendered" - the same helper,
-// dispatching _render_core instead of the description core):
+// (set/all/bootstrap/helper.rb:41-57), whose anchor shape the sibling
+// help-popover pins cover with the same helper dispatching _render_core
+// instead of the description core:
 //   <a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"
 //    data-bs-content="..." class="ps-1 _popover_link" href="#">
 //    <i class="notranslate material-icons">help</i></a>
@@ -25,7 +24,7 @@
 //
 // A/B through the mod loader per the established suite shape.
 //
-// RED state: :smart_label is not registered - renders raise
+// WITHOUT the mod: :smart_label is not registered - renders raise
 // UnsupportedViewError.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
