@@ -1,45 +1,28 @@
-// - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT into a string;
-//   Cardio::Mod has no #to_s (lib/cardio/mod.rb), so Ruby emits Object#to_s
-//   → "#<Cardio::Mod:0xADDR>_mod" — a process-bound heap address. Since the
-//   mod-address-normalization lane (2026-10-04) the port renders that exact
-//   SHAPE with its own genuine per-process opaque id; only the VALUE is
-//   unmatched, and the comparator canonicalizes it on both sides
-//   (src/testing/diff.ts normalizeModObjectAddresses). The full pass-iff
-//   contract lives in mod-object-address-shape-parity.test.ts.// The card-level set-module content-override universe pins: the port of Ruby's
-// set-module `def content` hook at the CARD-CONTENT level (the seam the corpus
-// record path grades). Lane: set-override-fidelity 2026-10-03 (relaunch);
-// derivation = WORK_DIR/set-override-fidelity-lane.md
-// "[relaunch t1] RUBY DERIVATION COMPLETE".
+// The card-level set-module content-override universe: the `def content`
+// hook each set module installs at the CARD-CONTENT level.
 //
-// Ruby mechanism (why these answers exist): set modules are included into each
-// card's SINGLETON class (mod/core/set/all/initialize.rb:61-74), so a
-// `def content` in any applicable set module shadows the base
-// Card::Content::All#content (lib/card/content/all.rb:5-7) — the DB-row path —
-// for EVERY card.content caller. The corpus record entries photograph
-// card.content (capture-dual-lane-page-and-view.rb:254), so their expected
-// `content` bytes carry the override answers, not the rows.
+// WHY THESE ANSWERS EXIST: set modules are included into each card's SINGLETON
+// class, so a `def content` in any applicable set module shadows the base
+// Card::Content::All#content — the DB-row path — for EVERY card.content
+// caller.
 //
-// Expectation-byte provenance: tmp/raw-ground-truth/expected-v2
-// view-lane/recapture-raw-shard-000003.jsonl (*now / *version / *alerts
-// records), view-lane/recapture-raw-shard-000007.jsonl (*input type+*right+*content
-// options record) — the capture deck's own Ruby answers.
+// TWO ANSWERS ARE PINNED AS SHAPE, NOT BYTE:
+// - Self::Mod: the reference implementation interpolates a mod OBJECT into a
+//   string, and that object's class defines no #to_s, so the line is
+//   Object#to_s — "#<Cardio::Mod:0xADDR>_mod" — a process-bound heap address.
+//   The renderer emits that exact SHAPE with its own genuine per-process
+//   opaque id; only the VALUE is unmatched, and the comparator canonicalizes
+//   it on both sides (src/testing/diff.ts normalizeModObjectAddresses). The
+//   full pass-iff contract lives in
+//   mod-object-address-shape-parity.test.ts.
+// - Self::Now: the reference localizes Time.now in the deck's zone. The engine
+//   takes the instant from an injectable wall clock, and the pin freezes it to
+//   a fixed minute. %Z is the abbreviation computed from the deck's configured
+//   zone, so a September instant reads "PDT" — the abbreviation, not whatever
+//   long display name the host platform uses for it.
 //
-// Known, deliberately-loud divergences (documented in the lane receipt):
-// - Self::Mod: Ruby's item_codes interpolate a Cardio::Mod OBJECT into a
-//   string; Cardio::Mod has no #to_s (lib/cardio/mod.rb), so Ruby emits
-//   Object#to_s → "#<Cardio::Mod:0xADDR>_mod" — process-bound heap addresses
-//   that no mechanism can reproduce. The port emits "<mod name>_mod" per
-//   loaded mod (ORACLE_BUNDLE_ORDER — the captured bundle order,
-//   fixtures/captured/help-mod-loader.json). Line count (34) and the "_mod"
-//   suffix are the Ruby-derivable part; the address bytes are not.
-// - Self::Now: I18n.localize(Time.now) — the capture froze a live wall clock
-//   in the graded deck's zone (America/Los_Angeles). The port takes the
-//   instant from the injectable capture wall clock; the pin freezes it to the
-//   captured minute. The zone is the DECK's configured one and %Z is the
-//   abbreviation computed from it, so this September (PDT) instant reads
-//   "PDT" where the corpus photographed the Windows display name "Pacific
-//   Standard Time" — Ruby prints the abbreviation; that display name was the
-//   capture host's operating system leaking into the port's output.
+// Self::Version answers the card release, the same 0.20.0 the shipped mod
+// tree declares.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -76,18 +59,16 @@ function card(overrides: Partial<SetModuleContentCard>): SetModuleContentCard {
 }
 
 describe("set-module content override universe (card-level record path)", () => {
-  // These pins reproduce the CAPTURED bytes, which the capture HOST rendered
-  // in its own OS zone (fixtures/captured/date-overrides.json records that
-  // host's Time.now.zone as "Pacific Standard Time"). The engine's default is
-  // UTC — the deck's own configured zone — so reproducing the capture sets the
-  // capture zone explicitly for this file.
+  // These pins are zone-sensitive: the engine's default is UTC — the deck's
+  // own configured zone — and the expected bytes were rendered in a
+  // different zone, so this file sets the zone explicitly.
   beforeEach(() => setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE));
   afterEach(() => resetDeckTimeZone());
 
   it("Self::Now answers the capture wall clock in the deck zone (set/self/now.rb:1-3)", () => {
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
     const answer = resolveSetModuleContent(card({}));
-    // The captured record bytes (view-lane shard-000003, *now record.content):
+    // the pinned *now record content:
     expect(answer).toBe(ORACLE_CAPTURE_NOW_BYTES);
     expect(answer).toBe("Monday, September 28, 2026 03:12 PM PDT");
   });
@@ -119,17 +100,15 @@ describe("set-module content override universe (card-level record path)", () => 
     );
     expect(answer).toBeDefined();
     const lines = (answer as string).split("\n");
-    // The captured expectation carries 34 lines (the capture deck's loaded
-    // mods) — the port's bundle order is the SAME captured order
-    // (ORACLE_BUNDLE_ORDER, fixtures/captured/help-mod-loader.json).
+    // The expectation carries 34 lines — the deck's loaded
+    // mods — and the bundle order is ORACLE_BUNDLE_ORDER.
     expect(lines.length).toBe(34);
     expect(lines[0]).toMatch(/_mod$/);
     expect(lines[33]).toMatch(/_mod$/);
-    // SHAPE FIDELITY (mod-address-normalization lane, 2026-10-04): Ruby's line
-    // IS "#<Cardio::Mod:0xADDR>_mod" — Object#to_s of a Cardio::Mod that
-    // defines no #to_s (lib/cardio/mod.rb) — and the port now renders the same
-    // template with a genuine per-process opaque id. The VALUE stays
-    // unmatchable and is canonicalized at the compare seam
+    // SHAPE FIDELITY: the reference line IS "#<Cardio::Mod:0xADDR>_mod" —
+    // Object#to_s of a mod whose class defines no #to_s — and the renderer
+    // emits the same template with a genuine per-process opaque id. The VALUE
+    // stays unmatchable and is canonicalized at the compare seam
     // (normalizeModObjectAddresses); the pass-iff contract, including every
     // other byte, is pinned in mod-object-address-shape-parity.test.ts.
     expect(lines[0]).toMatch(/^#<Cardio::Mod:0x[0-9a-f]{16}>_mod$/);
@@ -143,7 +122,7 @@ describe("set-module content override universe (card-level record path)", () => 
         partCodenames: ["input_type", "right", "content_options"],
       }),
     );
-    // The captured record bytes (view-lane shard-000007, 107 bytes):
+    // the pinned record content (107 bytes):
     expect(answer).toBe(
       "radio\ncheckbox\nselect\nmultiselect\nlist\nautocomplete\ntext area\ntext field\nace editor\ncalendar\ntinymce editor",
     );
@@ -239,9 +218,9 @@ describe("set-module content override universe (card-level record path)", () => 
     expect(lines.length).toBe(34);
     // Every line is Object#to_s of the mod at that position, so the ORDER is
     // carried by capturedModObjects rather than by the bytes (Object#to_s
-    // prints the address, not the name). See the mod-address-normalization
-    // lane receipt for why the mod object carries its name alongside the
-    // per-process identity, and how the ordering is pinned.
+    // prints the address, not the name) — which is why the mod object carries
+    // its name alongside the per-process identity. The ordering is pinned in
+    // mod-object-address-shape-parity.test.ts.
     const mods = capturedModObjects();
     expect(mods.map((m) => m.name)).toEqual([...ORACLE_BUNDLE_ORDER]);
     expect(mods[0].name).toBe("core");
