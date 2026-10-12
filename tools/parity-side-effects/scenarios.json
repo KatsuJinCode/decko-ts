@@ -179,7 +179,7 @@
         }
       },
       "deliberate": {
-        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "why": "Ruby crashes mid-rename (a second Ruby defect in the same authorization area, withheld on the terms docs/SECURITY.md states) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
         "ruby": {
           "status": "500",
           "errors": "undefined method `type_id' for nil"
@@ -1073,7 +1073,7 @@
         }
       },
       "deliberate": {
-        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "why": "Ruby crashes mid-rename (a second Ruby defect in the same authorization area, withheld on the terms docs/SECURITY.md states) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
         "ruby": {
           "status": "500",
           "errors": "undefined method `type_id' for nil"
