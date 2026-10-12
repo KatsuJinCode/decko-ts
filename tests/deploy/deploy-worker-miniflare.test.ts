@@ -1,4 +1,4 @@
-// The M2 deploy acceptance: the REAL deploy/worker.ts entry, bundled the
+// The deploy acceptance: the REAL deploy/worker.ts entry, bundled the
 // way wrangler bundles it (module graph + the node:crypto -> shim alias),
 // booted under miniflare's real workerd with deploy/migrations/0001-schema.sql
 // and deploy/seed/seed.sql applied through the D1 binding, then every route
@@ -75,7 +75,7 @@ beforeAll(async () => {
   // "node:fs" through (static import in
   // src/card/render/coded-attachment-files.ts, hoisted to the bundle top by
   // vite) and workerd failed the boot with `No such module "node:fs"`.
-  // Fixed 2026-09-29: that module reaches fs through a runtime
+  // That module now reaches fs through a runtime
   // process.getBuiltinModule probe with no import statement. workerd
   // rejects any node: module unless nodejs_compat is on (deliberately not
   // set), so this assertion — not the boot — is where a future Node import
@@ -230,12 +230,12 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /~10 resolves the id mark through the primed name environment", async () => {
-    // The F4 pin: '~10' (Home's seeded id) enters DeckoName.parse's mark
+    // Pin: '~10' (Home's seeded id) enters DeckoName.parse's mark
     // resolution, which reads ONLY the process-global environment's warm
     // lexicon. Without the boot-time prime (installNameEnvironment + the
     // lexicon/codehash warm) this 500s with "id doesn't exist: 10"
     // (NameNotFoundError, name.ts badMark) — the probe battery's id-mark
-    // finding (batch 01, /~9 on the targeted deck).
+    // finding (batch 01).
     const response = await fetchPath("/~10");
     const body = await response.text();
     expect(response.status, body).toBe(200);
@@ -243,7 +243,7 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:search_type resolves the codename mark through the primed codehash", async () => {
-    // The F4 pin's codename arm: ':search_type' resolves through the
+    // The codename arm: ':search_type' resolves through the
     // environment's codename registry (peekId over the loaded codehash).
     // Unprimed, this 500s with "codename doesn't exist: search_type"
     // (CodenameNotFoundError) — the probe battery's codename-mark finding.
@@ -254,13 +254,13 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:card-name.json serves Ruby's json-format :molecule shape", async () => {
-    // The surfaces-batch1 port's R3 closure (2026-09-29): the 200 body is
+    // R3 in 6ad17162: the 200 body is
     // the json format's show default :molecule — atom + items + links +
     // ancestors + html_url + type nest + timestamps, wrapped by
-    // page_details (url + requested_at), pretty-printed — NOT the fork's
-    // former snake_case row dump. The byte pins live engine-side
-    // (tests/card/render/format-families-oracle.test.ts, fresh oracle
-    // capture fixtures/oracle-surfaces/json.jsonl).
+    // page_details (url + requested_at), pretty-printed — NOT a raw row
+    // dump. The byte pins live engine-side
+    // (tests/card/render/format-families-oracle.test.ts,
+    // fixtures/oracle-surfaces/json.jsonl).
     const response = await fetchPath("/Home.json");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("application/json");
@@ -293,22 +293,23 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:card-name.csv and /:card-name.rss serve the csv/rss format shows", async () => {
-    // The surfaces-batch1 port's P11/P10 routes (engine_routes.rb:22
-    // `get "/:mark(.:format)"`): csv defaults :titled, rss defaults :feed
+    // The csv/rss format routes (engine_routes.rb:22
+    // `get "/:mark(.:format)"`; P10/P11 in 6ad17162): csv defaults :titled,
+    // rss defaults :feed
     // with the rss_enabled config gate (default FALSE — the "RSS feeds
     // disabled" string IS the Ruby default-state bytes).
     //
-    // csv 500, not 200 (deploy-miniflare, 2026-10-02): this case
+    // csv 500, not 200: this case
     // originally wired `expect(csv.status).toBe(200)` with a loose body
     // check, but that assertion was never green in any commit — born red
     // at 6ad17162 (which added the pin and the worker's origin-prefix
     // urlBase together), then masked behind this file's beforeAll dying at
-    // the :84 node:fs bundle assertion from d85cfa56 on. The captured Ruby
-    // shape for Home's csv is the RAISE: item_names reads the content as a
+    // the :84 node:fs bundle assertion from d85cfa56 on. The Ruby shape for
+    // Home's csv is the RAISE: item_names reads the content as a
     // newline list (collection item.rb; the csv probe — unresolvable lines
     // become virtual items), so Home's single-HTML-line seeded content
     // makes CSV.generate_line raise the NoMethodError recorded for
-    // Home|show_default_titled in the fresh capture — the same raise
+    // Home|show_default_titled in the oracle capture — the same raise
     // format-families-oracle.test.ts pins engine-side. Ruby answers the
     // raise with its error page; the worker ports that as the 500 "Render
     // error" page carrying the verbatim message.
@@ -351,7 +352,7 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     expect(result.rows.map((row) => row.id).sort((a, b) => a - b)).toEqual([
       10, 11, 12, 13, 14, 15, 16, 17, 18,
     ]);
-    // The 200 body is the RESULT, not the statement (round-9 fix: the route
+    // The 200 body is the RESULT, not the statement (the route
     // used to echo the generated SQL and its bound params, handing any
     // caller the table shape, the aliasing convention, the viewer's bound
     // permission filter and every resolved id the query touched).
@@ -446,7 +447,7 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   });
 
   it("GET /:card-name.json 403s a read-denied card instead of serving db_content", async () => {
-    // The F3 pin (probe battery batch 05, denied-card-json-LEAK-CHECK): the
+    // Pin (probe battery batch 05, denied-card-json-LEAK-CHECK): the
     // record-JSON route previously served db_content for cards the HTML
     // views replace with the denial span. Seed the minimal read-rule
     // universe — the *read/*all/set codename carriers, a *self set, and a
