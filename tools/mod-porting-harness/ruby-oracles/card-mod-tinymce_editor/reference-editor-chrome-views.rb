@@ -1,5 +1,5 @@
 # reference-editor-chrome-views.rb — static-ruby oracle capture for
-# card-mod-tinymce_editor's census views :nest_editor, :modal_nest_editor,
+# card-mod-tinymce_editor's views :nest_editor, :modal_nest_editor,
 # :nest_image and :modal_nest_image (set/all/reference_editor/
 # {nest_editor,nest_image}.rb), plus the params-seam arms of :nest_content
 # and :new_image.
@@ -36,18 +36,16 @@
 #      resolve through the codename table — :all -> "*all").
 #
 # STUBS, each documented:
-#   params           - THE PARAMS SEAM (named in the lane receipt): the gem's
-#                      own example shape seeds tm_snippet_raw (the js
-#                      open_nest_editor insert:
+#   params           - THE PARAMS SEAM: the gem's own example shape seeds
+#                      tm_snippet_raw (the js open_nest_editor insert:
 #                      "{{+<name>|view: content; size: medium}}");
 #                      tinymce_id/tm_snippet_start/index are seeded with
 #                      labeled SYNTHETIC pass-through values (the byte
 #                      contract is the pass-through, not the value). The
 #                      ABSENT-params arm is ALSO rendered (NestParser.new nil
 #                      -> the default Nest struct) and CROSS-CHECKED
-#                      byte-for-byte against the LIVE deck capture
-#                      fixtures/captured/tinymce-editor-views.json
-#                      (no_write_proof: actions 4929 -> 4929).
+#                      byte-for-byte against the deck render recorded in
+#                      the JSON fixture this script loads below.
 #   card             - the probe-card double (name/type_name/
 #                      left_type_for_nest_editor_set_selection/autoname/
 #                      is_structure?); the fixture's recorded facts
@@ -58,14 +56,15 @@
 #                      unlisted optionals).
 #   nest             - THE NEST SEAM: the deep engine render (the rules
 #                      tab's nest_rules view, the image tabs' new_image/core
-#                      views). The ABSENT-params nest_editor arm has NO nest
-#                      (blank snippet name -> the placeholder div), so its
-#                      bytes compare FULLY against the live capture. The
-#                      SEEDED arms and the image editor's upload/preview
-#                      tabs emit the seam MARKER; the script SPLICES the
-#                      live capture's corresponding regions around each
-#                      marker and asserts every static-controlled segment
-#                      matches the deck's live bytes in order.
+#                      views). With params absent the nest_editor body
+#                      contains no nest call at all (blank snippet name ->
+#                      the placeholder div), so the whole render verifies
+#                      directly against the recorded deck render. Where a
+#                      nest does occur (the SEEDED arms and the image
+#                      editor's upload/preview tabs), the double emits a
+#                      seam MARKER instead; the script then verifies each
+#                      static-controlled segment of the oracle body appears,
+#                      in order, inside the recorded deck render.
 #   Card::Codename   - the codename bridge with the two entries the views
 #                      read (:all -> "*all", :by_name -> "*by name");
 #                      the composed result is cross-checked against the
@@ -193,7 +192,7 @@ class Card
   module Codename
     # the codename table, verbatim-faithful for the entries these views read;
     # the composed result is cross-checked against the fixture's recorded
-    # options_card_name fact (the live deck's codename table read)
+    # options_card_name fact
     TABLE = { all: "*all", by_name: "by name" }.freeze
 
     def self.name!(key)
@@ -452,7 +451,7 @@ class ProbeCardDouble
     type_name
   end
 
-  # the autoname census shape (the fixture fact: image01 unused -> "image01")
+  # the autoname shape (the fixture fact: image01 unused -> "image01")
   def autoname(base_name)
     base = Card::Name[base_name]
     candidate = base
@@ -608,10 +607,11 @@ class ReferenceEditorFormatDouble < RailsHelpersHost
   # --- THE SLOT-WRAP SEAM ----------------------------------------------------------
   # wrap true { nest ... } (image_find_tab/image_preview_tab,
   # nest_editor_tabs.rb:34-44): the slot wrapper's bytes carry the engine's
-  # slot_attributes machinery - data-card-id/data-slot-id are RANDOMIZED in
-  # the live capture itself - and the nested view inside is the nest seam.
-  # The whole region is the engine's; the static oracle marks it and the
-  # chrome segments around it splice-verify against the live capture.
+  # slot_attributes machinery - data-card-id/data-slot-id are RANDOMIZED per
+  # render, so no fixed oracle bytes can exist for them - and the nested view
+  # inside is the nest seam. The whole region is the engine's; the static
+  # oracle marks it and the chrome segments around it verify against the
+  # recorded deck render.
   def wrap(*_args, &_block)
     "%%WRAP_SEAM[slot]%%".html_safe
   end
@@ -660,9 +660,9 @@ class ReferenceEditorFormatDouble < RailsHelpersHost
   end
 
   # all_views (card-mod-format set/all/demo.rb:40-42) = the html-format
-  # ancestor chain's view-name union; THE RECORDED FACT is the live registry
-  # read at capture time (no_write_proof 4929->4929) - the recorded-capture
-  # constant, the style-tag-views.rb REMOTE_STYLE_TAG pattern
+  # ancestor chain's view-name union; the double serves the view list the
+  # fixture recorded (ALL_VIEWS below), the same constant-cross-check
+  # pattern the style-tag-views.rb REMOTE_STYLE_TAG check uses
   def all_views
     @recorded_all_views
   end
@@ -769,7 +769,7 @@ def build_fmt(params)
   )
 end
 
-# --- the live-capture splice check ----------------------------------------------------
+# --- the recorded-render splice check --------------------------------------------------
 LIVE = {
   "nest_editor" => FIXTURE.fetch("rendered").fetch("#{PROBE_CARD_NAME}#nest_editor"),
   "modal_nest_editor" => FIXTURE.fetch("rendered").fetch("#{PROBE_CARD_NAME}#modal_nest_editor"),
@@ -799,10 +799,11 @@ def check_against_live!(oracle_body, live, view)
   end
 end
 
-# the SEEDED arm has no live oracle (the capture is the absent-params render);
-# its verification is the DIFF against the same view's absent-params render on
-# a fresh identical double: the differing lines must be the params-derived
-# ones, and the oracle line carries their line numbers explicitly
+# the SEEDED arm has no separately recorded render (the fixture holds only
+# the absent-params render); its verification is the DIFF against the same
+# view's absent-params render on a fresh identical double: the differing
+# lines must be the params-derived ones, and the oracle line carries their
+# line numbers explicitly
 def seam_deltas!(seeded_body, absent_body, view)
   abort "#{view}: seeded render identical to absent render" if seeded_body == absent_body
   a = seeded_body.split("\n")
@@ -815,7 +816,7 @@ def seam_deltas!(seeded_body, absent_body, view)
 end
 
 # ============================================================================
-# SCENARIO 1: view :nest_editor, ABSENT-params arm (the live capture's arm)
+# SCENARIO 1: view :nest_editor, ABSENT-params arm (the fixture's recorded arm)
 # ============================================================================
 fmt1 = build_fmt({})
 body1 = fmt1.render_oracle_view(:nest_editor, :overlay)
