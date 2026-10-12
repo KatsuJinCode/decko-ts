@@ -100,7 +100,7 @@ import {
   structuredCardContent,
 } from "../../../src/card/rules/structure.js";
 import {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  RECORDED_NOW_INSTANT,
   resolveSetModuleContent,
   setCaptureWallClock,
 } from "../../../src/card/set-module-content-overrides.js";
@@ -109,7 +109,7 @@ import {
 // (dual-lane-direct-runner-core.ts module scope). Both record paths must
 // answer Self::Now with the captured instant for byte parity against the
 // corpus expectations.
-setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+setCaptureWallClock(RECORDED_NOW_INSTANT);
 import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

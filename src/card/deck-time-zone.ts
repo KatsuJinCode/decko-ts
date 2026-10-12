@@ -46,9 +46,9 @@ export const DEFAULT_DECK_TIME_ZONE = "UTC";
  *  particular host's local readings (`Time.now.zone` is an OS-local value,
  *  not a deck setting, so anything asserting against it must set this
  *  explicitly instead of inheriting a geography from the engine's default).
- *  The name is historical; see the flags on this lane's report — renaming it
- *  is a code change beyond this lane's comment-only scope. */
-export const CORPUS_CAPTURE_TIME_ZONE = "America/Los_Angeles";
+ *  The host in question is wherever the recorded reference bytes were
+ *  produced; reproducing those bytes means setting this zone on purpose. */
+export const RECORDED_HOST_TIME_ZONE = "America/Los_Angeles";
 
 let deckTimeZone: string = DEFAULT_DECK_TIME_ZONE;
 

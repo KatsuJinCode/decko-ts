@@ -94,7 +94,7 @@
 import { randomBytes } from "node:crypto";
 import { cardWallClockNow, setCaptureWallClock } from "./wall-clock.js";
 import {
-  CORPUS_CAPTURE_TIME_ZONE,
+  RECORDED_HOST_TIME_ZONE,
   formatCardDayofwkMinTz,
 } from "./deck-time-zone.js";
 
@@ -113,17 +113,16 @@ import { listInputOptionsContent, toPointerContent } from "./render/content-over
 export { listInputOptionsContent, toPointerContent };
 
 // ---------------------------------------------------------------------------
-// the capture deck environment (documented constants, deck_origin precedent)
+// the recorded-rendering environment (documented constants)
 // ---------------------------------------------------------------------------
 
 /**
- * The capture instant the corpus's Self::Now record bytes photograph:
- * "Monday, September 28, 2026 03:12 PM" (tmp/raw-ground-truth/expected-v2
- * view-surface/recapture-raw-shard-000003.jsonl, *now record.content). The
- * %I:%M format is minute-precision, so the exact second is unobservable;
- * :00 is the canonical choice. 15:12 America/Los_Angeles = 22:12:00Z.
+ * The instant the recorded Self::Now content bytes show: "Monday, September
+ * 28, 2026 03:12 PM". The %I:%M format is minute-precision, so the exact
+ * second is unobservable; :00 is the canonical choice.
+ * 15:12 America/Los_Angeles = 22:12:00Z.
  */
-export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
+export const RECORDED_NOW_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
 );
 
@@ -135,13 +134,13 @@ export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
  *  too (see src/card/deck-time-zone.ts). */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
-/** The zone the CORPUS CAPTURE HOST rendered in — the zone its recorded
- *  bytes are in. Not the engine default (that is UTC, the deck's own setting)
- *  and not a claim about any deck: it is what reproducing the captured bytes
- *  requires, so a fixture or test that reproduces them sets it explicitly. */
-export const ORACLE_DECK_TIME_ZONE = {
+/** The zone the recorded bytes were rendered in — what reproducing those
+ *  bytes requires. Not the engine default (that is UTC, the deck's own
+ *  setting) and not a claim about any deck: a fixture or test that
+ *  reproduces the recorded bytes sets it explicitly. */
+export const RECORDED_BYTES_ZONE = {
   /** The IANA zone the instant arithmetic uses. */
-  ianaTimeZone: CORPUS_CAPTURE_TIME_ZONE,
+  ianaTimeZone: RECORDED_HOST_TIME_ZONE,
   /** The abbreviation %Z renders for a September (PDT) instant in it — what
    *  Ruby's %Z produces, and what ORACLE_CAPTURE_NOW_BYTES carries. */
   zoneName: "PDT",

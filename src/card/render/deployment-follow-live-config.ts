@@ -131,19 +131,19 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
  *  exclusions are compile-enforced rather than conventional.
  *
  *  USAGE — default OFF until a deployment installs it:
- *      setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+ *      setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
  */
 const {
   // The one field this preset excludes. Bound then discarded, so the rest
   // destructures into exactly the five.
-  defaultHtmlViewNest: _excludedFromGradedArm,
-  ...gradedArmConstants
+  defaultHtmlViewNest: _excludedDefaultHtmlViewNest,
+  ...viewInertConstants
 } = LIVE_DEPLOYMENT_CONSTANTS;
 
-export const GRADED_ARM_DEPLOYMENT_CONSTANTS: Omit<
+export const VIEW_INERT_DEPLOYMENT_CONSTANTS: Omit<
   DeploymentFollowLiveConfig,
   "serializerEra" | "defaultHtmlViewNest"
-> = gradedArmConstants;
+> = viewInertConstants;
 
 export function setDeploymentFollowLiveConfig(
   next: DeploymentFollowLiveConfig | undefined,

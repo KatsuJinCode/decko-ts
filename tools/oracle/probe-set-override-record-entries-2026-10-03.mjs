@@ -49,7 +49,7 @@ const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;
 const { structureRuleUniverseStatement, structureUniverseFromResults, structuredCardContent } =
   await import(pathToFileURL(path.join(REPO_ROOT, "src", "card", "rules", "structure.js")).href);
 const {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  RECORDED_NOW_INSTANT,
   resolveSetModuleContent,
   setCaptureWallClock,
   ORACLE_BUNDLE_ORDER,
@@ -60,7 +60,7 @@ const Database = (await import("better-sqlite3")).default;
 
 // The oracle deck's pinned wall clock — the runner pins it at module scope;
 // the probe replicates that so post bytes equal the graded handler's bytes.
-setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+setCaptureWallClock(RECORDED_NOW_INSTANT);
 
 // The enumerated override-hit card set (derived by
 // census-set-module-content-overrides-2026-10-03.mjs). id -> { module, wired }.

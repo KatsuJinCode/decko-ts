@@ -26,7 +26,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  CORPUS_CAPTURE_TIME_ZONE,
+  RECORDED_HOST_TIME_ZONE,
   resetDeckTimeZone,
   setDeckTimeZone,
 } from "../../../src/card/deck-time-zone.js";
@@ -34,7 +34,7 @@ import {
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
 
 import {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  RECORDED_NOW_INSTANT,
   formatCardDayofwkMinTz,
   listInputOptionsContent,
   capturedModObjects,
@@ -62,11 +62,11 @@ describe("set-module content override universe (card-level record path)", () => 
   // These pins are zone-sensitive: the engine's default is UTC — the deck's
   // own configured zone — and the expected bytes were rendered in a
   // different zone, so this file sets the zone explicitly.
-  beforeEach(() => setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE));
+  beforeEach(() => setDeckTimeZone(RECORDED_HOST_TIME_ZONE));
   afterEach(() => resetDeckTimeZone());
 
-  it("Self::Now answers the capture wall clock in the deck zone (set/self/now.rb:1-3)", () => {
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+  it("Self::Now answers the recorded wall clock in the deck zone (set/self/now.rb:1-3)", () => {
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     const answer = resolveSetModuleContent(card({}));
     // the pinned *now record content:
     expect(answer).toBe(ORACLE_CAPTURE_NOW_BYTES);
@@ -192,7 +192,7 @@ describe("set-module content override universe (card-level record path)", () => 
   it("Self beats Type when both patterns match (set_modules include order, set/pattern/all.rb:44-46)", () => {
     // A card named "*now" typed session matches BOTH Self::Now and
     // Type::Session; the singleton include order ends with Self, so Self wins.
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     const answer = resolveSetModuleContent(
       card({
         key: "*now",
@@ -207,8 +207,8 @@ describe("set-module content override universe (card-level record path)", () => 
   });
 
   it("formatCardDayofwkMinTz applies en.yml:29's '%A, %B %d, %Y %I:%M %p %Z' in the deck zone", () => {
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
-    expect(formatCardDayofwkMinTz(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT)).toBe(
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
+    expect(formatCardDayofwkMinTz(RECORDED_NOW_INSTANT)).toBe(
       "Monday, September 28, 2026 03:12 PM PDT",
     );
   });
