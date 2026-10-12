@@ -1,13 +1,13 @@
 // The whole-deck search read path's transport chunking (render.ts#runSearch
 // + readCardRowsByIdChunked + composeAndCacheSqlRows): a Search card whose
 // CQL matches a whole deck used to cost ONE point query per result row
-// (fetchById in the item walk) — the demo's 6,233-row probe measured 12,475
-// driver round trips for one page render, far past the Workers free tier's
-// 50-per-invocation subrequest cap. The read now rides chunked IN-list
-// batches and the item walk consumes the composed records directly.
+// (fetchById in the item walk) — on a multi-thousand-row deck that is
+// thousands of driver round trips for one page render, far past the Workers
+// free tier's 50-per-invocation subrequest cap. The read now rides chunked
+// IN-list batches and the item walk consumes the composed records directly.
 //
-// This suite pins, hermetically (no corpus fixture), for result sets that
-// cross chunk boundaries:
+// This suite pins, hermetically (fully synthetic seeds), for result sets
+// that cross chunk boundaries:
 //   1. RESULT-SET IDENTITY: the rendered item count equals the CQL row
 //      count, and the rendered item ORDER equals the CQL row order
 //      (sort: name -> key ascending) — same rows, same order.
@@ -24,8 +24,8 @@
 // whole set unpaged). Without it the html search view's default limit of 20
 // (search_params.rb:38-40, the paging unit) would render the first page +
 // the paging nav, and this suite's whole-set identity assertions would read
-// a 20-item window. The default-limit page shape is pinned on the raw
-// corpus in raw-corpus-found-by-type-by-name-search.test.ts.
+// a 20-item window. The default-limit page shape is pinned in
+// raw-corpus-found-by-type-by-name-search.test.ts.
 
 import { describe, expect, it } from "vitest";
 import {
