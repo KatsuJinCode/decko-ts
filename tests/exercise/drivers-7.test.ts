@@ -1,6 +1,6 @@
 // Public synthetic exercises for four claims about the Decko TypeScript
-// engine. Everything here runs on a clean checkout: no private fixtures, no
-// corpus, no network, no hosted account.
+// engine. Everything here runs on a clean checkout: only committed code and
+// invented data, no network, no hosted account.
 //
 // DATA: invented. Every card name, body, user, attachment key and filename
 // below is synthetic text written for this file. The card ids, the SQL and
@@ -10,7 +10,7 @@
 //   - tests/server/blob-conformance.ts — the shared blob-driver conformance
 //     suite (`runBlobConformance`). Its per-case `it()` names are that
 //     module's own; the claim-named cases in this file are the ones this
-//     lane asserts.
+//     file asserts.
 //   - tests/card/render/render-test-storage.ts — `createRenderTestStorage`,
 //     the in-memory core-schema deck (db/schema.sqlite.sql over the real
 //     LocalSqliteDriver) with `seedCard` / `seedReference` and the
