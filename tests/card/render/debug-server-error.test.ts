@@ -4,10 +4,10 @@
 // DELIBERATE DIFFERENCE pinned here. Stock Ruby cannot render
 // :debug_server_error: its body names BetterErrors, which a deck built from
 // its generated Gemfile never loads, so it raises "NameError: uninitialized
-// constant Card::Set::All::Html::Error::BetterErrors" on every card
-// (tools/oracle/debug-server-error-probe.rb). The port copies neither the
-// crash nor the BetterErrors page (source, locals, backtrace, console): it
-// renders :server_error, the "Wild Card!" block a production visitor sees.
+// constant Card::Set::All::Html::Error::BetterErrors" on every card. The
+// port copies neither the crash nor the BetterErrors page (source, locals,
+// backtrace, console): it renders :server_error, the "Wild Card!" block the
+// deck serves to visitors.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
@@ -15,7 +15,7 @@ import { SERVER_ERROR_HTML } from "../../../src/card/render/debug-server-error.j
 import { RenderFormat } from "../../../src/card/render/format.js";
 import { bindModLoaderToEngine, createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-/** set/all/html/server_error.haml as the live site serves it. */
+/** set/all/html/server_error.haml, verbatim. */
 const WILD_CARD =
   "<div class='border border-danger text-center p-3'>\n" +
   "<h1>Wild Card!</h1>\n" +
