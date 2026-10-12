@@ -2128,7 +2128,7 @@ export class RenderEngine implements RenderEngineLike {
    * nested-error semantics). The full mechanism port lives in
    * src/card/render/page.ts; the preparation reuses render() so the bare
    * and page surfaces share one prepare path. Throws UnknownLayoutError (the
-   * captured "unknown layout card" UserError sentinel) for layout names
+   * "unknown layout card" UserError sentinel) for layout names
    * that resolve to no card/built-in layout.
    */
   async renderPage(cardName: string): Promise<string> {
@@ -2187,7 +2187,7 @@ export class RenderEngine implements RenderEngineLike {
    * would otherwise see a cached undefined result and reject the view.
    *
    * Returns undefined when no view applies — the caller raises the
-   * captured UnsupportedViewError UserError (format.ts:317-318).
+   * UnsupportedViewError UserError (format.ts:317-318).
    */
   resolveView(
     card: RenderCard,
@@ -2689,7 +2689,7 @@ export class RenderEngine implements RenderEngineLike {
    * templating.rb:19-48 structure_rule_card -> type.rb:78-80
    * type_id_from_template), so a nest-miss child's TYPE_PLUS_RIGHT anchor
    * reads the virtual left's template type instead of the context card's
-   * (the census page-22 defect: the oracle anchored
+   * (the defect this fixes: anchoring
    * TYPE_PLUS_RIGHT-set-by_name off the virtual set card
    * "PlainText+*type" - Set via the *type+*right+*structure rule card -
    * while the context fallback anchored cardtype-by_name off the Cardtype
@@ -2956,9 +2956,8 @@ export class RenderEngine implements RenderEngineLike {
    * 17-19 standard_content's new_card branch: `db_content ||
    * (new_card? ? default_content : "")`, default_content = template&.
    * db_content — the SAME winning rule card newCardDefaultType reads the
-   * type from). p20-nest-selection: an earlier class's 19 Project pages
-   * pin the applied form — the oracle's +discussion titled body is
-   * `discussion+*right+*default`'s `<p> </p>\r\n<p> </p>` verbatim.
+   * type from). The applied form is what the discussion titled body
+   * carries: `discussion+*right+*default`'s `<p> </p>\r\n<p> </p>` verbatim.
    * Returns undefined when the universe is not loaded or no candidate
    * exists (the caller keeps dbContent "" — Ruby's nil falls through to
    * standard_content's "" tail).
@@ -3284,7 +3283,7 @@ export class RenderEngine implements RenderEngineLike {
       // prepared map) runs without them - their rule candidates prime on a
       // later render's population instead. Answers are untouched (priming
       // only fills the cache; the findRule ladder computes the same verdicts
-      // either way - the byte oracles are the proof).
+      // either way - the byte identity is the proof).
       const candidateSettings = ["*content options", "*help", "*structure", "*default"];
       let seatCandidates = true;
       if (rootKey !== undefined && rootKey !== "") {
