@@ -4,9 +4,8 @@
 // event registries) - the port of what Ruby does once at boot when
 // Bundler's resolve order meets Cardio::Mod::Dirs (dirs.rb:51-63).
 //
-// The ORDER is not chosen: it is the captured resolve order of the live
-// Ruby deck (fixtures/captured/help-mod-loader.json "mods" - the oracle
-// Cardio::Mod::Dirs output, index 0..34):
+// The ORDER is not chosen: it is the order Bundler resolves the reference
+// deck's bundle in, which Cardio::Mod::Dirs walks, index 0..34:
 //
 //   core, collection, content, format, list, markdown, permissions, help,
 //   search, rules, edit, email, integrate, account, history, carrierwave,
@@ -14,23 +13,21 @@
 //   bootstrap, comment, date, delayed_job, follow, session, tabs, layout,
 //   recaptcha, tinymce_editor, defaults
 //
-// Three captured names carry no manifest here, deliberately:
+// Three names in that order carry no manifest here, deliberately:
 // - bar_and_box: its registrations are compiled into the engine's seed
 //   tables (PATTERN_TABLE + HTML_VIEWS - bar_and_box's views live in the
 //   seed layer). Caveat recorded for the byte-parity rounds: Ruby loads
 //   bar_and_box AFTER style, so a view both define resolves to bar_and_box
 //   in Ruby; in the TS engine the seed layer sits UNDER every mod
 //   registration, so style's registration would win that collision. No
-//   corpus fixture pins such a collision (checked at wiring time); the
-//   replay is the guard if one ever pins.
+//   fixture pins such a collision; the replay is the guard if one ever pins.
 // - delayed_job + defaults: no TS surface (the legacy delayed-job queue;
 //   the defaults meta-gem carries no registrations).
 //
-// core IS composed (no longer absent): `core: coreMod` is MANIFESTS' first
-// entry (the admin-compose composition, composed at pass14-int) - core loads at bundle
-// index 0 and is the admin surface's registration site (the seed tables'
-// "compiled-in core" equivalence above predates composition and carries no
-// admin surface).
+// core IS composed, not absent: `core: coreMod` is MANIFESTS' first entry.
+// core loads at bundle index 0 and is the admin surface's registration site
+// (the seed tables' "compiled-in core" equivalence predates that composition
+// and carries no admin surface).
 //
 // The render-path defaults are bound HERE, once, in deck-boot order -
 // never inside ModLoader.load(), so manual registry wirings (the mod
@@ -82,19 +79,17 @@ import cardModLayout from "./mods/card-mod-layout.js";
 import cardModRecaptcha, { recaptchaModEventPredicates } from "./mods/card-mod-recaptcha.js";
 import cardModTinymceEditor from "./mods/card-mod-tinymce_editor.js";
 
-/** Captured names with no manifest entry in the composed deck (see the
- *  file comment for why each is absent). core is NOT here: it is composed
- *  (MANIFESTS' first entry, the admin-compose composition) - pre-composition this list
- *  carried "core" while the seed tables only equivalenced it, which the
- *  admin-compose recorded result documented as one name too many. */
+/** Bundle-order names with no manifest entry in the composed deck (see the
+ *  file comment for why each is absent). core is NOT here: it is composed as
+ *  MANIFESTS' first entry, which replaced an earlier list that carried
+ *  "core" on the strength of the seed tables only. */
 export const COMPILED_IN_OR_ABSENT_MODS = [
   "bar_and_box",
   "delayed_job",
   "defaults",
 ] as const;
 
-/** The oracle deck's bundle order
- *  (fixtures/captured/help-mod-loader.json "mods", names by index). */
+/** The deck's bundle order, names by resolve index. */
 export const ORACLE_BUNDLE_ORDER: readonly string[] = [
   "core",
   "collection",
@@ -173,8 +168,7 @@ export function portedBundleOrder(): string[] {
   return ORACLE_BUNDLE_ORDER.filter((name) => MANIFESTS[name] !== undefined);
 }
 
-/** The 31 manifests as ModSources, in the oracle bundle order (core
- *  first - composed, the admin-compose composition). */
+/** The manifests as ModSources, in bundle order (core first). */
 export function defaultDeckSources(): ModSource[] {
   return portedBundleOrder().map((name) => ({
     manifest: MANIFESTS[name]!,
@@ -220,7 +214,7 @@ function eventOnlyDeckLoader(): ModLoader {
 }
 
 // -------------------------------------------------------------------------
-// the deck-boot MOD EVENT RUNTIME seam (E-16 compose residual)
+// the deck-boot MOD EVENT RUNTIME seam
 // -------------------------------------------------------------------------
 
 // Ruby composes the event space ONCE at boot - Cardio::Mod::Dirs#initialize
@@ -236,10 +230,10 @@ function eventOnlyDeckLoader(): ModLoader {
 /** The deck's named `when:` predicate table: the three predicate-exporting
  *  mods' tables merged in bundle order (core's skip_update_referers?,
  *  comment's comment, recaptcha's validate_recaptcha - no name collisions;
- *  the other 28 ported mods export none). Merging here - at the deck-boot
+ *  the other ported mods export none). Merging here - at the deck-boot
  *  seam - is what makes the deck runtime resolve every predicate the deck
- *  registered, instead of the single-mod subsets per-caller compositions
- *  used before E-16. */
+ *  registered, instead of the single-mod subsets a per-caller composition
+ *  would give. */
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
     ...coreModEventPredicates,
