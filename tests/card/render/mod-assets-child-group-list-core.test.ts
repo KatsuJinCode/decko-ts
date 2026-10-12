@@ -1,5 +1,5 @@
-// mod-assets-child-group-list-core.test.ts -- the p20-help-content suite's
-// pins for the Abstract::ModAssets CHILD cards' :core (the pages
+// mod-assets-child-group-list-core.test.ts -- pins for the
+// Abstract::ModAssets CHILD cards' :core (the pages
 // "mod: X+*style" / "mod: X+*script").
 //
 // Ruby chain: card-mod-style set/type_plus_right/mod/style.rb +
@@ -14,10 +14,8 @@
 // *style/*script setting card) in views.ts coreView, and the groups come
 // from the deck-pinned tables (core-admin-runtime.ts modChildAssetGroups).
 //
-// Expected bytes are the ORACLE page bytes transcribed verbatim
-// (page-lane shards 000039/000043; an internal work log
-// p20-help-content-lane.md): account.scss for mod: account+*style, the
-// eight tinymce script files (the gem's assets/script folder,
+// Expected bytes: account.scss for mod: account+*style (the parent-table
+// group), the eight tinymce script files (the gem's assets/script folder,
 // alphabetically — a folder-group mod, no manifest.yml), and the empty
 // core for mod: shades+*script (the gem ships no assets/ directory).
 
@@ -47,7 +45,7 @@ async function seedDeck(storage: Parameters<typeof seedCard>[0]): Promise<void> 
   await seedCard(storage, { id: 220, name: "mod: account", codename: "mod_account", typeId: MOD_TYPE_ID });
   await seedCard(storage, { id: 240, name: "mod: tinymce editor", codename: "mod_tinymce_editor", typeId: MOD_TYPE_ID });
   await seedCard(storage, { id: 250, name: "mod: shades", codename: "mod_shades", typeId: MOD_TYPE_ID });
-  // the children (corpus rows 45465 / 45510 / 49309: List-typed junctions)
+  // the children (List-typed junctions)
   await seedCard(storage, { id: 221, leftId: 220, rightId: 210, typeId: LIST_TYPE_ID });
   await seedCard(storage, { id: 241, leftId: 240, rightId: 230, typeId: LIST_TYPE_ID });
   await seedCard(storage, { id: 251, leftId: 250, rightId: 230, typeId: LIST_TYPE_ID });
