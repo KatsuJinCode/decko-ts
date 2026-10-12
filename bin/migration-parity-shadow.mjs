@@ -654,7 +654,7 @@ export function renderReportText(report) {
   lines.push(
     `  noise carriers (CF block, base|candidate either side): ` +
       `page ${report.counts.noiseCarriers.page}, view ${report.counts.noiseCarriers.view}` +
-      ` (close-71 census: page lanes carry it, view lanes measure 0)`,
+      ` (page lanes carry the noise, view lanes measure 0)`,
   );
   const divergentRoutes = report.routes.filter((r) => r.class !== null);
   if (divergentRoutes.length > 0) {
@@ -1150,8 +1150,8 @@ export async function runShadow(opts) {
     boots: { base: baseBoot.ok, candidate: candidateBoot.ok },
     gate,
     limitations: [
-      "S1 CLOSED in this build: view-lane routes are sampled and compared — the corpus canvas fixture views (open, closed, content, title; the capture label unknown_view_sentinel executes as definitely_not_a_view) render through each checkout's own vm-staging-server.mjs at GET /<name>?view=<view>, the engine's bare view lane (RenderEngine.render), the same surface the corpus replay grades.",
-      "View-lane raise fidelity: a view render that raises emits the corpus sentinel shape 'CAPTURE_ERROR: <error class>: <message>' with the ENGINE's own error naming — base-vs-candidate comparison stays exact, but a corpus-recaptured reference for a RAISING view records Ruby's class taxonomy and will not byte-match the engine sentinel (successful views are unaffected).",
+      "In this build, view-lane routes are sampled and compared — the corpus canvas fixture views (open, closed, content, title; the capture label unknown_view_sentinel executes as definitely_not_a_view) render through each checkout's own vm-staging-server.mjs at GET /<name>?view=<view>, the engine's bare view lane (RenderEngine.render), the same surface the corpus replay grades.",
+      "View-lane raise fidelity: a view render that raises emits the corpus sentinel shape 'CAPTURE_ERROR: <error class>: <message>' with the ENGINE's own error naming — base-vs-candidate comparison stays exact, but a reference recorded in the corpus-v2 recapture fixture for a RAISING view records Ruby's class taxonomy and will not byte-match the engine sentinel (successful views are unaffected).",
       "The comparison covers the read surface of the routes sampled; write surfaces are out of scope by design (the plan's safety posture).",
       "Classification is two-sided only when a --reference is supplied; without one, real divergences classify UNATTRIBUTED and fail the gate (safe default).",
     ],
