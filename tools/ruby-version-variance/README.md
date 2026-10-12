@@ -68,3 +68,36 @@ the class-token-order class is a finding, not a rounding error.
 - `adapter-ruby32.json`, `rebuild-ruby32-native-extensions.sh` — the Ruby 3.2
   adapter and the native-extension rebuild it needs on this machine.
 - `evidence/` — the recorded comparisons.
+
+## Reproducing the Linux capture
+
+Four scripts, in this order. They exist because the Linux capture is the
+evidence for the whole correction, and a claim that cannot be re-run is a
+claim, not a measurement. Every one of them writes nothing into the
+repository: the deck and the answers go to a work root you name, and the
+bundle is installed into a copy of `oracle/app` whose lockfile carries the
+linux platform.
+
+```bash
+# 1. The oracle's bundle for Linux, into a work root (needs ruby3.3 and build deps)
+wsl -d Ubuntu-26.04 -- bash tools/ruby-version-variance/install-linux-oracle-bundle.sh \
+  /mnt/c/<repo>/reference-harness/oracle /root/oracle-linux
+
+# 2. Build synthetic-v1's deck on Linux (a Linux deck is a DIFFERENT fixture; see above)
+wsl -d Ubuntu-26.04 -- bash tools/ruby-version-variance/build-synthetic-v1-deck-on-linux.sh \
+  /mnt/c/<repo>/reference-harness/oracle /mnt/c/<repo>/reference-harness/fixtures/synthetic-v1 \
+  /root/oracle-linux /root/oracle-linux/runs/linux-ruby33
+
+# 3. Run the harness with the oracle as the engine (needs node >= 22.5 in WSL too)
+wsl -d Ubuntu-26.04 -- bash tools/ruby-version-variance/capture-synthetic-v1-on-linux.sh \
+  /mnt/c/<repo> /root/oracle-linux
+
+# 4. Compare the answers, and see why grade.mjs will not
+wsl -d Ubuntu-26.04 -- bash tools/ruby-version-variance/grade-linux-capture-against-committed.sh \
+  /mnt/c/<repo> /root/oracle-linux
+```
+
+Docker is not installed on this machine, so the pinned `ruby:3.3.12-slim`
+image could not be used; the capture ran on Ubuntu's `ruby 3.3.8` inside WSL2
+instead. The recorded environment is in the run's `run-meta.json`, which is
+the point of recording it.
