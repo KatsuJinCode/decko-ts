@@ -5,10 +5,9 @@
 // card-mod-assets-0.20.0/): twelve set files (8 abstract, 3 right, 1 type),
 // one lib/ module (Card::Assets - boot-time asset pipeline driver), one
 // HAML template, one manifest.yml transform, and a config/locales tree.
-// The T6 verdict (tools/compat-report/mod-compat-report.json, gem ===
-// 'card-mod-assets-0.20.0', metrics.htmlViewsMissingNames) lists the two
-// html views the engine does not already cover: :javascript_include_tag
-// and :stylesheet_include_tag - both are gem-specific (the engine's
+// Two html views the engine does not already cover are in scope:
+// :javascript_include_tag and :stylesheet_include_tag - both are
+// gem-specific (the engine's
 // HTML_VIEWS surface has neither), both live in `set/right/group_remote.rb`
 // (the only set file with portable html views), and both iterate over the
 // group_remote card's URL list (`urls`) emitting one Rails asset-tag helper
@@ -36,9 +35,9 @@
 //   bytes these cards need at runtime.
 // - set/right/asset_output.rb:24-29 view :not_found + set/abstract/
 //   asset_outputter.rb:61-63 view :asset_output_url - PORTED in the
-//   the Cloudflare write seam (2026-09-28, oracle-pinned). The blockers named
-//   above moved: the attachment write (80eb1b4) landed the attachment write
-//   path (LocalAttachmentStore + engine attachment), so the url
+//   the Cloudflare write seam. The blockers named
+//   above moved: the attachment write path landed
+//   (LocalAttachmentStore + engine attachment), so the url
 //   construction and the live-write seam are real now. See the
 //   cwwrite-seam section below the manifest.
 // - The abstract / type set files (card_accessor / event / include_set
@@ -64,7 +63,7 @@ import type {
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
  *  Same shape as core-mod.ts's local helper; the per-event owner or stub
  *  reason rides the declaration's comment. */
@@ -77,8 +76,6 @@ function event(
 // ---------------------------------------------------------------------------
 // The asset OUTPUT url + the right/asset_output :not_found gate
 // (set/abstract/asset_outputter.rb:61-63, set/right/asset_output.rb:19-34).
-// Oracle-pinned by live renders of the booted oracle app and by the stock
-// synthetic-v2 capture.
 // ---------------------------------------------------------------------------
 
 /** The `+*asset output` child of a card, fetched through the engine's
@@ -101,7 +98,7 @@ function fetchAssetOutputCard(ctx: ViewContext): { dbContent: string } | undefin
  *       asset_output_card.file&.url # (:default, timestamp: false)
  *     end
  *
- * The local-identifier url is the oracle-pinned "/files/~<card>/<action><ext>"
+ * The local-identifier url is "/files/~<card>/<action><ext>"
  * (localAttachmentUrl — the tilde MARK form, FileCardUploader::Path#
  * local_url); a missing child is Ruby's `file&.url` on a new card -> nil,
  * which the caller renders as "". The right/asset_output :not_found live
@@ -126,11 +123,11 @@ function cardAssetOutputUrl(ctx: ViewContext): string {
  * context (:73 delegate_to_action_view -> CardActionView), which carries
  * no such helper — NoMethodError "undefined method `asset_output_url' for
  * #<Card::Format::CardActionView:0x...>". That raise IS the view's stock
- * behavior: the synthetic-v2 oracle pins it on
- * view:admin:*all+*script:asset_output_url (and the cwwrite lane's own
- * view_*_asset_output_url captures carry the rescued span), so the port
- * raises it; the receiver inspection address is the engine's derived
- * stand-in (rubyInspectionAddress — N5 blanks the hex on both sides).
+ * behavior: Ruby's delegation ends on the ActionView context, which carries
+ * no such helper for this view name, so the port raises it; the receiver
+ * inspection address is the engine's derived
+ * stand-in (rubyInspectionAddress — the hex is blanked to stay
+ * deterministic).
  * The CARD-level method keeps its port in cardAssetOutputUrl, which the
  * :not_found live branch calls. */
 const assetOutputUrlView: ViewFn = (ctx) => {
@@ -149,7 +146,7 @@ const assetOutputUrlView: ViewFn = (ctx) => {
  *  modules, so the set-key tokens those modules produce on the LEFT card
  *  are the membership test the headless engine can run. The `locked?` half
  *  is Abstract::Lock's cross-process file lock — a single-process engine
- *  is never locked (oracle: outputter_locked false); named remainder. */
+ *  is never locked, so that half is a named remainder (always false here). */
 function leftIsAssetOutputter(ctx: ViewContext): boolean {
   const card = ctx.fmt.card;
   if (!card.name.s.includes("+")) return false; // a right card always is
@@ -168,18 +165,18 @@ function leftIsAssetOutputter(ctx: ViewContext): boolean {
  *    root.error_status = 302
  *    outputter.update_asset_output_live
  *  The live branch's BYTES are `card_path asset_output_url` — the output
- *  url string (oracle: view_not_found_first = "/files/~447/1790661047.css";
- *  Ruby re-writes the output on every render — 1790661047 then 1790661048 —
+ *  url string. Ruby re-writes the output on every render (the emitted
+ *  file name embeds an incrementing action id), while
  *  the headless view renders the url of the output that exists; the write
  *  itself is the async storeAssetOutput seam the server composition calls,
- *  since a ViewFn is synchronous). When the rendered card IS the
+ *  since a ViewFn is synchronous. When the rendered card IS the
  *  `+*asset output` child, the url reads from the card's own db_content
  *  (the child exists by definition); from the outputter's side it reads
  *  through the card-level method port (cardAssetOutputUrl). The 302 is
  *  root-format response state (the engine has no root.error_status
  *  surface — same remainder as :bad_address). A non-outputter left
- *  delegates via super() to the chain's next :not_found (oracle
- *  not_found_super: the standard not_found shape). */
+ *  delegates via super() to the chain's next :not_found (the standard
+ *  not_found shape). */
 const assetOutputNotFoundView: ViewFn = (ctx) => {
   if (!leftIsAssetOutputter(ctx)) {
     return superView(ctx, "Right::AssetOutput", "not_found");
@@ -251,9 +248,7 @@ const stylesheetIncludeTagView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // set/abstract/mod_assets.rb - the group-card :core render (the group_list
-// haml template). Oracle-pinned: fixtures/captured/admin-view-pins.json
-// mod_format_card views :styles/:scripts (the nested +*style/+*script
-// group renders), captured 2026-09-29 with the no-write proof.
+// haml template).
 // ---------------------------------------------------------------------------
 
 /** mod_assets.rb:171-182 `format :html do view :core do ... haml
@@ -324,7 +319,7 @@ const cardModAssets: DeckoModManifest = {
       // bare engine :not_found. NOT ported from the same file:
       // followable?/ok_to_read?/history? (the read-permission and history
       // surfaces are engine-level).
-      // Event (set-module event 2026-10-08) — STUB, named remainder:
+      // Event — STUB, named remainder:
       // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
       // on: :delete, when: :codename?` loads the attachment then strips the
       // codename so the to-be-deleted card releases it; the engine's delete
@@ -352,7 +347,7 @@ const cardModAssets: DeckoModManifest = {
       // Bookkeeping entry for the abstract file itself (basket parity, the
       // pattern other mods' abstract surfaces use).
       //
-      // Events (set-module event 2026-10-08) — ENGINE-OWNED: the write
+      // Events — ENGINE-OWNED: the write
       // path's asset-event runner (src/card/actions/style-asset-events.ts)
       // executes both at their stages: update_asset_output_file via
       // attachments/asset-output-write.ts storeAssetOutput (the lock +
