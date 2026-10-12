@@ -125,8 +125,8 @@
 //                           generation; after an interrupted run, re-run with
 //                           the SAME --run-id to resume: verifier-fast skips
 //                           phases whose artifacts already parse).
-//   --staging-url <url>     staging origin for the gate (default compiled in
-//                           below)
+//   --staging-url <url>     staging origin for the gate (default below is the
+//                           placeholder origin; set the real one per run)
 //   --staging-auth <u:p>    basic auth for the direct gate; default reads env
 //                           DUAL_LANE_STAGING_AUTH. When absent, the gate goes
 //                           over ssh and curls 127.0.0.1:3100/_status on the VM.
