@@ -4,9 +4,9 @@
 //
 // EVERY table name carries the one_trip_ prefix: the store may be ATTACHed
 // to a corpus connection, and prefixed names can never collide with corpus
-// tables. The store contains ONLY derived data (SPEC A2 rule: derived
+// tables. The store contains ONLY derived data: derived
 // caches are read-scope for the serving path and write-scope for the
-// builder/invalidation path — never a truth source).
+// builder/invalidation path — never a truth source.
 
 export const ONE_TRIP_SIDE_DDL: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS one_trip_meta (
@@ -64,40 +64,39 @@ export const ONE_TRIP_SIDE_DDL: readonly string[] = [
    )`,
 ];
 
-// THE PLAN-INVALIDATION TRIGGERS (the plan invalidation, 2026-10-05).
+// THE PLAN-INVALIDATION TRIGGERS.
 //
 // A recorded render plan is a TRANSCRIPT of the statements one page's cold
 // render issued, captured at store-build time; the serve path replays it and
 // answers every matching read from the recorded result set with zero round
-// trips (one-trip-fetch.ts:264-269, render-gate.ts:135-139). The plan is
+// trips (one-trip-fetch.ts, render-gate.ts). The plan is
 // therefore true only as of the moment it was recorded. Without a binding
 // from a content write to a plan's death, an edit to an included card left
 // the page replaying a transcript of the PRE-WRITE world at full speed.
 //
-// WHY TRIGGERS AND NOT AN APPLICATION CALL. The same argument the freshness
-// change made for deck_data_version (d19ec179): a committed write is
+// WHY TRIGGERS AND NOT AN APPLICATION CALL. A committed write is
 // authoritative regardless of which stream, process or connection issued it.
 // There is no application write path to hook — invalidation.ts has no
 // production caller — so an application-level drop would be a mechanism that
-// never fires. These triggers are SEPARATE from that pass's (distinct names,
-// same tables); SQLite runs every matching AFTER trigger, so the two
+// never fires. These triggers are SEPARATE from the deck_data_version
+// freshness triggers (distinct names, same tables); SQLite runs every
+// matching AFTER trigger, so the two
 // mechanisms coexist and compose rather than displace one another.
 //
 // WHY DELETE RATHER THAN RE-RECORD. Re-recording is correct but expensive: the
 // recorder renders each page once through the whole engine in the exact
-// serving posture, and the L2 measurement recorded 896,269 ms for 38 pages
-// (~23.6 s/page) against the serving database. A write reaching N pages would
-// block for N x 23.6 s. Deleting instead returns the page to the ladder,
-// which is the PRE-PLAN posture — byte-identical output, more round trips
-// (the L2 plan-recording note §4.2). The cost of this mechanism is trips,
-// never bytes.
+// serving posture, which costs tens of seconds per page against the serving
+// database. A write reaching N pages would
+// block for N times that. Deleting instead returns the page to the ladder,
+// which is the PRE-PLAN posture — byte-identical output, more round trips.
+// The cost of this mechanism is trips, never bytes.
 //
 // WHY THE SECOND CLAUSE (the conservative one). The drop is NOT closure-only.
-// 38 of the 45 plan-bearing pages were recorded for pages the store never
-// materialized: the plan lookup is keyed by CARD ID, not by store membership
-// (the L2 plan-recording note §1), so such a page carries a plan with NO
-// one_trip_page_closure row. No reverse-closure query can name it, so a
-// closure-only drop would leave the majority of the corpus stale forever,
+// The plan lookup is keyed by CARD ID, not by store membership,
+// so a page can carry a plan with NO
+// one_trip_page_closure row — and most plan-bearing pages are of that shape.
+// No reverse-closure query can name them, so a
+// closure-only drop would leave them stale forever,
 // silently. A page that CARRIES A PLAN but has NO CLOSURE ROW cannot be
 // proven unaffected by any write, so it is dropped too. Over-invalidation is
 // the correct bias: it costs trips, and the alternative is stale bytes.
