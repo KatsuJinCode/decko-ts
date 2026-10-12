@@ -17,13 +17,11 @@
 //    (pointer/list hosts walk rule_card(:content_options) -> the Search-typed
 //    JSON spec rule -> its cql :type).
 //
-// Corpus evidence: Free Aiki Dojo+Central Places:render:open
-// (recapture-raw-shard-000024) — the host's *content options rule 501
-// is `{"type": "Place"}`; the readable items (Aikido of Berkeley et al.)
-// carry `,&quot;type&quot;:&quot;Place&quot;` in the slot JSON and the
-// unknown items (The Flight Deck, Pacific Rim International School — no
-// data-card-id) render `ALL TYPE-place` slots with
-// data-card-type-id="442" data-card-type-name="Place".
+// Reference shape: a pointer host whose *content options rule is a
+// Search-typed JSON spec naming the item type: the readable items carry
+// the type in their slot JSON and the unknown items (never seeded, so no
+// data-card-id) render `ALL TYPE-<key>` slots with the host-resolved
+// data-card-type-* attributes rather than the *all+*default fallback.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -104,8 +102,7 @@ describe("item-slot type option (nest_item item-type chain)", () => {
       );
       // Unknown item (Bob): new_unknown_item_args types the phantom with
       // the host's item type — Person attrs + the type's KEY-form class
-      // chip (oracle pin: ALL TYPE-place for the Place rule family,
-      // shard-000024) — NOT the *all+*default BasicCs fallback.
+      // chip — NOT the *all+*default BasicCs fallback.
       expect(html).toContain('id="bob-mini_bar-view"');
       expect(html).toContain("ALL TYPE-person");
       expect(html).toContain('data-card-type-id="12"');
