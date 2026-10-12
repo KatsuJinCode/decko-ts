@@ -1,9 +1,9 @@
-// divergent-16 engine lane (2026-10-02): a pointer/list host whose right
+// A pointer/list host whose right
 // setting is `*input type` renders its items through the `:name` item view,
 // so the wrapper is `card-list-name` and each item is the item CARD'S NAME
 // with no slot element and no permission denial.
 //
-// MECHANISM (ruby, read at REPO_ROOT/archive/decko-fork-study):
+// MECHANISM (ruby):
 //
 //   decko/mod/edit/set/right/input_type.rb:1-5
 //     assign_type :pointer
@@ -36,8 +36,8 @@
 // and `perms: :none` means no denial span for an unreadable item.
 //
 // The BODY is the RESOLVED card's name, not the raw item line: the items
-// come from `card.item_cards` (01_list/other_views.rb:11-14). The oracle
-// pins both directions in this family:
+// come from `card.item_cards` (01_list/other_views.rb:11-14). The pinned
+// family covers both directions:
 //
 //   `*script+*right+*input type`  dbContent `list`
 //     -> <div class="pointer-item item-name">List</div>
@@ -47,19 +47,13 @@
 //     -> <div class="pointer-item item-name">radio</div>
 //        (`radio` is absent from the deck, so its phantom name IS the line)
 //
-// ORACLE CENSUS behind the gate (all 48 expected-v2 view-lane shards, every
-// `<div class="card-list card-list-X pointer-list">` /
-// `<div class="pointer-item item-X">` occurrence): bar 1,041 / link 6,265 /
-// name 16. All sixteen `name` entries are exactly the eight
-// `*X+*Y+*input type` cards x {content, open}. Nothing else in the capture
-// renders this view, which is why the gate is a right-setting key and not
+// GATE SCOPE: the `name` item view appears ONLY on `*X+*Y+*input type`
+// cards ({content, open} views); no other surface renders this view, which
+// is why the gate is a right-setting key and not
 // a broader "list items can be plain names" branch.
 //
-// Oracle bytes are in the gitignored tree and are NOT read at test time;
-// the shapes below are transcribed from
-// tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-shard-000015.jsonl
-// (`*script+*right+*input type`, oracle card id 20601) and
-// recapture-raw-shard-000017.jsonl (`*follow+*right+*input type`, id 22723).
+// The pinned shapes are transcribed, not read from any fixture at test
+// time.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -87,8 +81,8 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 20, name: "*follow", codename: "follow", typeId: 2 });
   // The left trunks. A 3-part rule card is a JUNCTION: its left_id points at
   // its own `<left>+*right` trunk card, which is itself a junction over the
-  // left card and the right setting (the 2020 Lexicon convention, the same
-  // shape the corpus rows have — see markdown-cardtype-kramdown-core-corpus-parity
+  // left card and the right setting (the 2020 Lexicon convention — see
+  // markdown-cardtype-kramdown-core-corpus-parity
   // .test.ts:150-199).
   await seedCard(s, { id: 300, name: "*script", codename: "script", typeId: 2 });
   await seedCard(s, { id: 301, name: "*right", codename: "right", typeId: 2 });
@@ -131,7 +125,7 @@ describe("pointer/list item view: the *input type right's :name default", () => 
     // the item name with NO slot element and NO denial span.
     expect(html).toContain(`<div class="pointer-item item-name">radio</div>`);
     // Scoped to the POINTER LIST body: the HOST card's own content-view
-    // slot div legitimately wraps the whole list (the oracle pins it too).
+    // slot div legitimately wraps the whole list.
     const list = html.slice(html.indexOf(`<div class="card-list`));
     expect(list).not.toContain("item-bar");
     expect(list).not.toContain("card-slot");
