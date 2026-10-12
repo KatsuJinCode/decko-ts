@@ -1,14 +1,13 @@
-// Regression pins for the rules-editor internals parity family (2026-09-26
-// lane, dual-lane expected-v2 evidence). Three mechanisms, each cited to the
-// Ruby source it ports and to the oracle bytes that pinned it:
+// Regression pins for the rules-editor internals. Three mechanisms, each
+// cited to the Ruby source it ports:
 //
 // 1. Rule-bar one-line pointer items classify known/wanted and build the
 //    href from the url_key (card-mod-format set/all/base.rb:35-44 link_view
 //    `opts[:known] = card.known?` + links.rb:140-143
 //    add_known_or_wanted_class + cardname variants.rb #url_key href form).
-//    The pre-fix engine emitted `wanted-card` and the authored-name href
-//    for EVERY item; the raw oracle pins `known-card` + url_key href for
-//    items that resolve to cards (e.g. *all+*delete bar_right:
+//    A naive engine emits `wanted-card` and the authored-name href for
+//    EVERY item; items that resolve to cards must render `known-card` +
+//    url_key href (e.g. a *all+*read bar_right item:
 //    `<a class="known-card" href="/Administrator">`).
 // 2. The category-accordion group lis follow the registration-position
 //    order (Card::Setting.groups[group]; register_setting set_position,
@@ -16,9 +15,8 @@
 //    [structure, default, autoname] — autoname registered at position 4
 //    by the core mod (which loads first, leaving sparse nils the
 //    visible_settings reject compacts), then default/structure at
-//    position 2 (structure inserts before default). Oracle: *all
-//    templating lis are [DENIED, DENIED, *all+*autoname] (autoname LAST);
-//    fixture corpus shard-000000:119 (*input type+*right): default SECOND.
+//    position 2 (structure inserts before default): the templating lis
+//    order is [structure, default, autoname] (autoname LAST).
 // 3. The editing group's content_options/content_option_view lis are
 //    gated by restricted_to_type (card-mod-list set/self/content_options.rb:2
 //    `%i[list pointer session]`; card-mod-rules set/type/set.rb:73-81
@@ -27,9 +25,8 @@
 //    (prototype_args per set pattern + ensure_type's
 //    type_id_from_code -> type_id_from_template) resolves: *all -> no
 //    type (nameless new card) -> restricted settings rejected (editing
-//    badge 3, the 809-page oracle signature); a +*self set of a
-//    Pointer-typed card -> prototype type pointer -> all five editing
-//    settings visible (editing badge 5, the 35-page oracle signature).
+//    badge 3); a +*self set of a Pointer-typed card -> prototype type
+//    pointer -> all five editing settings visible (editing badge 5).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -88,7 +85,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 25, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 26, name: "*right", codename: "right", typeId: SETTING_TYPE_ID });
   // One stored rule: *all+*read, List-typed (the deck's read grant —
-  // the real deck's rule lists Administrator + Anyone). Pointer items
+  // its items list Administrator + Anyone). Pointer items
   // are newline-separated; the last item names a card the deck does
   // NOT contain (the wanted side of pin 1).
   await seedCard(s, {
@@ -120,8 +117,7 @@ beforeAll(async () => {
   // stored rule (*all+*read) trips preloadSetRules' haveAny skip guard, so
   // preloadAllSettingCards never runs on that path and findSettingCard
   // would miss every setting (each virtual falls through to quietDenial).
-  // One bare render per setting card loads it; the corpus pipeline gets
-  // the same effect through its full-deck seed.
+  // One bare render per setting card loads it.
   const settingNames = [
     "*read", "*create", "*update", "*delete", "*captcha", "*structure",
     "*default", "*autoname", "*help", "*input type", "*guide",
@@ -168,7 +164,7 @@ describe("category accordion group lis", () => {
     const defaultAt = body.indexOf("Xall-Xdefault-bar-view");
     const autonameAt = body.indexOf("Xall-Xautoname-bar-view");
     // All three virtual bars render (setting_list_item builds a virtual
-    // rule card per setting) and in the oracle-pinned order.
+    // rule card per setting) and in registration-position order.
     expect(structureAt).toBeGreaterThan(-1);
     expect(defaultAt).toBeGreaterThan(structureAt);
     expect(autonameAt).toBeGreaterThan(defaultAt);
@@ -177,7 +173,7 @@ describe("category accordion group lis", () => {
   it("keeps the badge the visible-setting count (rule_lists.rb:87 list.size)", async () => {
     const html = await storage!.engine.render("*all", "content");
     // templating 3, permission 5, webpage 4, editing 3, event 3, other 3 —
-    // the 809-page oracle badge signature for sets whose prototype has no
+    // the badge signature for sets whose prototype has no
     // list/pointer/session type.
     expect(html).toContain('_count badge bg-secondary ms-3">3</span>');
     expect(html).toContain('_count badge bg-secondary ms-3">5</span>');
