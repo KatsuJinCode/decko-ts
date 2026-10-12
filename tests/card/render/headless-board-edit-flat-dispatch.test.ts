@@ -1,11 +1,10 @@
-// THE HEADLESS DISPATCH CONTRACT for the board/edit surfaces (the 422 lane).
+// THE HEADLESS DISPATCH CONTRACT for the board/edit surfaces.
 //
 // The defect: signed-in GET /Latest_News/board and /Aiki/edit answer 422
-// "Unsupported view". Both views ARE ported and oracle-pinned — board
-// (card-mod-edit.ts boardView, set/all/board manifest registration, bytes
-// pinned by fixtures/captured/board-views.json) and edit (editView,
-// set/all/edit_content) — but ONLY in the mod-loader manifest. The
-// production worker boots NO mod deck (defaultDeckLoader,
+// "Unsupported view". Both views ARE ported and pinned — board
+// (card-mod-edit.ts boardView, set/all/board manifest registration) and
+// edit (editView, set/all/edit_content) — but ONLY in the mod-loader
+// manifest. The production worker boots NO mod deck (defaultDeckLoader,
 // src/card/mod-loader/default-mod-deck.ts:183, has no production caller;
 // RenderEngine's constructor captures getDefaultModLoader() at
 // src/card/render.ts:784), so dispatch falls through computeResolvedView
@@ -26,10 +25,10 @@
 // The assertion: ONE seeded world, TWO engines — the HEADLESS engine
 // (modLoader field pinned undefined: exactly the production worker's
 // shape) and the CHAIN engine (a fully loaded composed deck bound to the
-// field, the loader-bound path the oracle pins rode) — must render board
-// and edit BYTE-IDENTICALLY modulo the randomized attributes. At the base
-// revision the headless arm throws UnsupportedViewError (the 422) while
-// the chain arm renders; after the flat registration both arms agree.
+// field) — must render board and edit BYTE-IDENTICALLY modulo the
+// randomized attributes. At the base revision the headless arm throws
+// UnsupportedViewError (the 422) while the chain arm renders; after the
+// flat registration both arms agree.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -49,10 +48,9 @@ import cardModMarkdown from "../../../src/card/mod-loader/mods/card-mod-markdown
 import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 
-/** The capture's normalizations (the same rule card-mod-edit-views.test.ts
- *  applies to the oracle board bytes): the randomized attributes (slot id,
- *  select2 id, tab id counter) plus nothing else — card ids are seeded
- *  constants here. */
+/** The normalizations card-mod-edit-views.test.ts applies to board HTML:
+ *  the randomized attributes (slot id, select2 id, tab id counter) plus
+ *  nothing else — card ids are seeded constants here. */
 function normalize(html: string): string {
   return html
     .replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"')
@@ -130,15 +128,15 @@ beforeAll(async () => {
     ...HTML_VIEWS,
   };
 
-  // the CHAIN engine: the loader-bound path the oracle board pins rode —
-  // the same mod subset card-mod-edit-views.test.ts binds (edit carries
+  // the CHAIN engine: the loader-bound path — the same mod subset
+  // card-mod-edit-views.test.ts binds (edit carries
   // the board/edit closures, help the guide, markdown the guide :core,
   // history+comment the engage surface). NOT the full composed deck: with
   // every mod bound, card-mod-permissions' set-scoped view :input
   // (abstract/permission + the right/self task sets) enters the chain
   // ahead of all/editor's and raises for non-rule cards — a SEPARATE,
-  // pre-existing chain-dispatch defect outside this lane's surface (the
-  // production path never binds a deck; noted in the lane receipt).
+  // pre-existing chain-dispatch defect; the production path never binds a
+  // deck, so it does not affect production.
   loader = new ModLoader([
     { manifest: cardModEdit },
     { manifest: cardModHelp },
@@ -215,10 +213,9 @@ describe("headless (no-mod-deck) dispatch serves the board/edit surfaces like th
 
   it("anonymous still answers the board page with the update denial (the by-design shell, unchanged)", async () => {
     // board is perms :update (view-perms.ts name-keyed registry); the
-    // anonymous render is the QUIET denial span — the same shape the
-    // oracle fixture's anonymous board arm pins (card-mod-edit-views
-    // "board is perms :update - the quiet denial"). The flat registration
-    // must not move the gate.
+    // anonymous render is the QUIET denial span — the same shape
+    // card-mod-edit-views pins ("board is perms :update - the quiet
+    // denial"). The flat registration must not move the gate.
     const anon = new RenderEngine(new FetchEngine(storage!.counting));
     anon.modLoader = undefined;
     (anon as unknown as { views: Record<string, unknown> }).views = {
@@ -231,7 +228,7 @@ describe("headless (no-mod-deck) dispatch serves the board/edit surfaces like th
 
   it("the defect's raise site stays exact for genuinely unregistered views", async () => {
     // the flat seam closes board/edit; a view NO module registers must
-    // still raise the captured UnsupportedViewError (the 422 sentinel).
+    // still raise UnsupportedViewError — the error the worker maps to 422.
     await expect(
       headless!.render("Oracle Basics", "no_such_view_anywhere"),
     ).rejects.toThrowError(UnsupportedViewError);
