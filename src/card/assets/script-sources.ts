@@ -1,6 +1,7 @@
 // The script SOURCE FILES the site script is built from, vendored from the
-// Decko gems into fixtures/vendor/ (tools/oracle/vendor-script-sources.mjs
-// copies them and checks each against the sha256 the Ruby oracle read):
+// Decko gems into fixtures/vendor/ by
+// tools/oracle/vendor-script-sources.mjs, which copies each file and records
+// the sha256 it read:
 //
 //   fixtures/vendor/mod-script-assets/manifest.json + <gem>/<path>
 //       every file a mod's `+*script` card lists through its script groups

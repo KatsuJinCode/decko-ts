@@ -15,10 +15,10 @@
 // five files in the same order uglifier.rb's `source_with` joins them:
 // es5.js, split.js, source-map.js, uglify-harmony.js, uglifier.js.
 //
-// BYTE PROOF: this module's
-// uglifyHarmonyCompile reproduces the live production deck's compiled
-// *all+*script bundle leaf-for-leaf (48/49 shared leaves byte-identical; the
-// divergences are named in fixtures/captured/script-compile-oracle-leaves.json).
+// The option hash below is the one uglifier.rb builds for
+// `Uglifier.new(harmony: true)` with no caller overrides, and it is what makes
+// the emitted bytes match: mangle dictionaries and output formatting differ
+// from every published npm build, so these exact defaults matter.
 //
 // Node-only: vm + fs imports keep this out of the browser/worker bundle —
 // the engine's render surface never imports this module.

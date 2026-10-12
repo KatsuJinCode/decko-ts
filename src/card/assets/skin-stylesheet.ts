@@ -32,14 +32,14 @@
 //                    stored asset input, or its css :core when the item is no
 //                    inputter (a missing item renders the :unknown comment)
 //
-// The SassC compile is the host's seam (ScssCompiler, scss-compiler.ts): the
-// oracle compiles with LibSass 3.6.4 and only LibSass reproduces its bytes.
+// The SassC compile is the host's seam (ScssCompiler, scss-compiler.ts):
+// Ruby compiles with LibSass 3.6.4 and only LibSass reproduces its bytes.
 //
 // A Ruby behaviour this module reproduces: while a save is in progress, a
 // skin assembled for an asset input reads the cards UPDATED in that act as
-// they were before it (the oracle: changing `yeti skin+*colors` stores a
-// `yeti skin` input built from the previous colours; the card cache answers
-// the pre-act copy). Cards CREATED in the act are read as saved. `staleContent`
+// they were before it — so changing a skin's +*colors stores that skin's
+// input built from the PREVIOUS colours, because the card cache answers the
+// pre-act copy. Cards CREATED in the act are read as saved. `staleContent`
 // carries the pre-act contents.
 
 import { DeckoName } from "../name.js";
