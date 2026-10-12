@@ -17,9 +17,9 @@
 // IDENTITY only (IDENTITY_COLUMNS: what every shape filters on, plus the
 // columns the identity-projecting shapes return). Most rows a request fetches
 // are ring neighbours that only prove completeness (a left side's other
-// junctions) or are only linked, so the ring fetches them as identity rows;
-// on the 40 gate pages about 87 % of the ring's rows were never read by the
-// engine and carried 89 % of its content bytes. A statement is answered
+// junctions) or are only linked, so the ring fetches them as identity rows:
+// the great majority of the ring is never read by the engine, and carrying it
+// whole would dominate the response for nothing. A statement is answered
 // locally only when every row it returns is held with every column it
 // projects: a statement that would return an identity-only row through a
 // full projection names that row's id as missing (fullIds), and the row is
@@ -328,10 +328,9 @@ export class RequestStore {
    *
    *  Each list binds as ONE JSON parameter expanded by json_each(?), so each
    *  statement carries at most nine parameters however wide the ring is (D1
-   *  caps a statement at 100 bound parameters). The json_each rewrite was
-   *  checked row-identical, content and order, against the per-value
-   *  placeholder form on 89 real captured parameter sets (batch-shape probe,
-   *  REPO_DIR 401190c7). */
+   *  caps a statement at 100 bound parameters). The json_each form and the
+   *  per-value placeholder form are equivalent here: same rows, same columns,
+   *  same order. */
   wideningStatements(
     w: Widening,
     identityRows = true,
@@ -413,12 +412,12 @@ export class RequestStore {
       }
       // Inlined twice (the set cards, then the rules under them), so the
       // parameters follow the text order. Only the settings the page render
-      // reads through these sets are fetched (measured: *structure,
-      // *default, *content options; *read, *update, *delete, *comment,
-      // *help ... arrive as identity rows, as before). The set cards
+      // reads through these sets are fetched (*structure, *default and
+      // *content options); the read/write settings a page does not resolve
+      // through these sets stay identity rows, as before. The set cards
       // themselves arrive whole (DECKO_LIVE_RULE_SETS_SELF=filtered: a
-      // `*self` set card only when it carries one of those rules; one more
-      // trip on the deep pages for about 10 KB less).
+      // `*self` set card only when it carries one of those rules, trading a
+      // trip on the deepest pages for a large drop in bytes).
       const sets = setParts.join(" UNION ");
       const RULES = `('structure','default','content_options')`;
       const ruleOf = `SELECT c.id FROM cards c JOIN cards cr ON cr.id = c.right_id AND cr.codename IN ${RULES} WHERE c.left_id IN (${sets})`;
@@ -436,11 +435,10 @@ export class RequestStore {
     }
     // Every other junction of a left side arrives as an identity row: a
     // junction the render then reads whole (a field X+image, a rule
-    // X+*self) costs one more trip. Fetching the left sides' junctions whole
-    // (all of them, or those whose right part is a `*` setting) was measured
-    // on the 40 gate pages: 1-2 fewer trips on some pages for about 170 KB
-    // more per page, which at the real database's 2.2 s per MB costs more
-    // than the trips it saves.
+    // X+*self) costs one more trip. Fetching those junctions whole instead
+    // saves a trip here and there, but it moves far more content down every
+    // trip, and on a connection where bytes are the expensive side that
+    // trade loses.
     ctes.push(...unionCtes("fs", fullParts));
     const parts: string[] = [
       "SELECT id FROM fs",
