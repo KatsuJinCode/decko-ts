@@ -1,4 +1,4 @@
-// THE RENDER-PLAN RECORDER (the render-plan replay, 2026-10-05): the
+// THE RENDER-PLAN RECORDER: the
 // store-build-time half of the record-and-replay render. For each page the
 // store materializes, this module renders the page ONCE through the real
 // engine — the one-trip gate ON in the EXACT SERVING POSTURE
@@ -9,14 +9,13 @@
 // one_trip_render_plans IN the materialized deck (the serving store's own
 // table; the plans ride the seat's head statement from there).
 //
-// WHY AGAINST THE MATERIALIZED DECK (measured, first build): a plan
-// recorded through the ATTACHED seat posture (corpus + side file) missed
-// 1-9 follow-on batches per page at serve time — junction-pair and
+// WHY AGAINST THE MATERIALIZED DECK: a plan recorded through the ATTACHED
+// seat posture (corpus + side file) missed follow-on batches per page at
+// serve time — junction-pair and
 // COLLATE NOCASE IN-list statements whose params depend on the render's
 // mid-flight cache evolution, which differs between the recording and
-// serving postures (measured: the Aikido plan's junction read carried the
-// extra pair (5,146) the inline-posture render never asked). Recording in
-// the exact serving posture makes the plan self-consistent with what the
+// serving postures. Recording in the
+// exact serving posture makes the plan self-consistent with what the
 // serving render asks — the trip-profile pin proves it (zero covered
 // reads beyond the plan).
 //
@@ -136,19 +135,18 @@ export async function recordRenderPlansForPages(
       };
       report.pages[pageName] = page;
       if (pageId === undefined || pageId <= 0) continue;
-      // RENDER PLAN-BLIND (r5 assembly , $1 — re-recording
-      // defect): the capture render must ask the page's TRUE cold ask set,
+      // RENDER PLAN-BLIND: the capture render must ask the page's TRUE cold ask set,
       // but this deck may already carry plan rows for the page (a
       // re-record, or a partial earlier build). The seat reads the plan
       // cell from one_trip_render_plans and ARMS it; an armed plan answers
       // the render's matched reads inside the router and those answers
       // never reach the capture driver — the captured set would be the OLD
       // plan's live residue, and the "new" plan would bake that residue in
-      // (measured: a re-record over an existing plan captured 305
-      // residue-shaped statements for a page whose true cold ask set is
-      // 98 — every key the old plan served went missing from the new
-      // plan). Clearing the page's rows first makes re-recording cold, the
-      // same posture a first recording has always had.
+      // (a re-record over an existing plan captures hundreds of
+      // residue-shaped statements for a page whose true cold ask set is a
+      // fraction of that — every key the old plan served goes missing from
+      // the new plan). Clearing the page's rows first makes re-recording
+      // cold, the same posture a first recording has always had.
       await deck.query("DELETE FROM one_trip_render_plans WHERE page_id = ?", [pageId]);
       const capture = new StatementCaptureDriver(deck);
       try {
