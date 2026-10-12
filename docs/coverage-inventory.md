@@ -121,7 +121,7 @@ package does NOT measure, item 6.
   differences, 0 unexpected.** The five, as declared in
   `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`:
   steps **20, 22, 31** are the stored-HTML security choice (`docs/SECURITY.md`
-  divergence 1 — the port's cleaner drops a `javascript:` link target Ruby's
+  divergence 1 — this engine's cleaner drops a `javascript:` link target Ruby's
   keeps), and steps **7** and **67** are two upstream Ruby defects (a trashed
   junction revived before its part id resolves, which only inserts on the
   oracle deck's missing `UNIQUE (left_id, right_id)` index; and a revert of a
@@ -140,7 +140,7 @@ package does NOT measure, item 6.
   (`expected/side-effects-ruby.json`). On this clean synthetic deck the
   verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
   36 of them traceable to one root cause, now a declared security
-  divergence (`docs/SECURITY.md`, divergence 5): the port refuses to rename
+  divergence (`docs/SECURITY.md`, divergence 5): this engine refuses to rename
   another user's account holder where Ruby 0.20 does not enforce the check.
   On the production deck that difference never surfaced because Ruby crashes
   mid-rename there (a second Ruby defect one of the 7 production pins
@@ -228,7 +228,7 @@ claim quoted anywhere can be checked against the instrument behind it.
 | --- | --- | --- |
 | Hosting is effectively free ("$0 on Cloudflare's free tier") | Withdrawn as a total-cost claim. This repository holds **no cost measurements** — the Bunny deploy document says so in terms — and the page-view cost model built alongside it prices anonymous read-only views from a private deployment with provider prices read on a stated date. Cloudflare's free plan does not fit a real deck. | [deploy-bunny.md](deploy-bunny.md); [deploy-cloudflare.md](deploy-cloudflare.md) |
 | A constant number of queries regardless of depth | **Not met.** The measured law is four fixed round trips plus one per nesting level below the root, however many cards each level holds — breadth is free, depth is not. Reproduced by `tests/card/render/deep-nesting-trip-attribution.test.ts` and asserted at every depth by `tests/card/render/depth-sweep.test.ts`. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
-| Same data, no migration required | **Withdrawn.** Import reads a SQLite deck file, a `mysqldump` text dump or deck-INSERT SQL. PostgreSQL is unsupported — no adapter or dialect translator exists in the tree. While Ruby still serves the deck the port must store Ruby's own password digest, because Ruby cannot verify PBKDF2; D1's transaction semantics differ from Ruby's and SQLite's. | `tools/migrate/IMPORT_DECK_RECIPE.md`; [SECURITY.md](SECURITY.md) "Migration compatibility at a glance"; [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
+| Same data, no migration required | **Withdrawn.** Import reads a SQLite deck file, a `mysqldump` text dump or deck-INSERT SQL. PostgreSQL is unsupported — no adapter or dialect translator exists in the tree. While Ruby still serves the deck this engine must store Ruby's own password digest, because Ruby cannot verify PBKDF2; D1's transaction semantics differ from Ruby's and SQLite's. | `tools/migrate/IMPORT_DECK_RECIPE.md`; [SECURITY.md](SECURITY.md) "Migration compatibility at a glance"; [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
 | Faster responses at the edge | **Not established.** No speed run is recorded against a release candidate, and no response-time comparison is committed evidence anywhere in this repository. The published, reproducible comparison is round trips per render. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
 | One click provisions everything | **Not verified.** The button deploys one Worker and one D1 database, applies the migrations and ships a read-only four-card demo; every write verb answers `403`. No KV, no R2, no queues, no secrets in `wrangler.toml` — the Worker reads exactly the D1 binding. | [deploy-cloudflare.md](deploy-cloudflare.md); README, "Deploy to Cloudflare" |
 
