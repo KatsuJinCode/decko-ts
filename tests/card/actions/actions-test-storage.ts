@@ -1,10 +1,8 @@
 // Test storage for the action-layer tests: an in-memory better-sqlite3
 // database (via the REAL LocalSqliteDriver) loaded with db/schema.sqlite.sql,
-// a FetchEngine over it, and synthetic fixture seeds. Lives INSIDE
-// tests/card/actions per the stream boundaries. Seed cards are written
-// DIRECTLY as rows (plain INSERT) — exactly how the fetch stream seeds and
-// how the capture's oracle DB was seeded upstream; the ACTION layer under
-// test is the only code writing through the history machinery.
+// a FetchEngine over it, and synthetic fixture seeds. Seed cards are written
+// DIRECTLY as rows (plain INSERT) — the action layer under test is the only
+// code writing through the history machinery.
 //
 // All fixture content is synthetic (DATA RULE: no real reference-deck content).
 
@@ -93,9 +91,9 @@ export interface SeedOptions {
   updatedAt?: string;
 }
 
-/** Insert one cards row DIRECTLY, mirroring the Ruby write path's column
+/** Insert one cards row DIRECTLY, mirroring the write path's column
  *  conventions: simple cards carry name+key columns; compound cards carry
- *  NULL name/key with left_id/right_id (2020 Lexicon migration). */
+ *  NULL name/key with left_id/right_id. */
 export async function seedCard(storage: ActionsTestStorage, opts: SeedOptions): Promise<CardsRow> {
   const name = opts.name !== undefined && opts.name !== null ? DeckoName.parse(opts.name) : null;
   const compound = opts.leftId !== undefined && opts.leftId !== null;
@@ -188,23 +186,19 @@ export async function seedReference(
 }
 
 /** Codename/set cards + the `*all` write-task fallback rules every real
- *  decko deck bootstraps (cards_011 fixtures; the recorded corpus's
- *  *all+*create 6566 / *all+*update 6570 / *all+*delete 6572). Without
- *  them the deck is a partial seed and the write gate denies — Ruby's
- *  fail-closed default (permissions.rb:47-49, :100-118; "RULE missing.
- *  should not be possible" :77-85). The fallbacks grant [[Anyone]]: every
- *  actor passes through among?'s AnyoneID arm (account_holder.rb:31-37),
- *  so mechanics-focused tests exercise writes, not permission matrices. */
+ *  deck bootstraps. Without them the deck is a partial seed and the write
+ *  gate denies — the fail-closed default: a rule card that is missing must
+ *  not read as "permitted". The fallbacks grant [[Anyone]]: every actor
+ *  passes through the Anyone arm, so mechanics-focused tests exercise
+ *  writes, not permission matrices. */
 export const SET_TYPE_ID = 300; // above every fixture's own id band (rule-content-walk owns 60-67)
 const RULE_PARTY = "anyone";
 
 /** Seed the synthetic minimum every action test needs: the type cards
  *  (RichText/basic + Cardtype/cardtype), the `*all`/`*default` setting
- *  cards, the `*all+*default` rule card whose type_id is
- *  Card.default_type_id (mod/core/set/all/type.rb:3-5), one plain
- *  content card, and the write-rule machinery (see SET_TYPE_ID). Mirrors
- *  the seed-shape of
- *  card-1.110.0/mod/core/data/fixtures/real/cards.yml (ids 2, 3, 7, 8, 11). */
+ *  cards, the `*all+*default` rule card whose type_id is the deck's default
+ *  type id, one plain content card, and the write-rule machinery (see
+ *  SET_TYPE_ID). */
 export async function seedStandardDeck(storage: ActionsTestStorage): Promise<StandardFixture> {
   const richText = await seedCard(storage, {
     id: RICH_TEXT_ID,
@@ -225,7 +219,7 @@ export async function seedStandardDeck(storage: ActionsTestStorage): Promise<Sta
     codename: "default",
     typeId: CARDTYPE_ID,
   });
-  // cards_011 in the real seed: "*all+*default", type_id 2 (the basic type)
+  // "*all+*default", type_id 2 (the basic type)
   await seedCard(storage, { leftId: all.id, rightId: def.id, typeId: RICH_TEXT_ID });
   const joeCard = await seedCard(storage, { id: 50, name: "Pudding", dbContent: "v1" });
   // the write-rule machinery: Set codename card, *create/*update/*delete
