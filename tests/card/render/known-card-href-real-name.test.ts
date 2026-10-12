@@ -1,17 +1,15 @@
-// Known-card wikilink href carries the RESOLVED card's name - the census
-// "token-swap" singleton (page 685 mythosynth, census receipt
-// WORK_DIR/page-mechanism-census.md: sole diff
-// exp "N" vs act "n" at offset 13794 - href /Narrative vs /narrative).
+// Known-card wikilink href carries the RESOLVED card's name, not the
+// authored link text's casing: the href is built from the resolved
+// card's stored name while the label/title keep the authored form.
 //
 // Mechanism: chunk/link.rb render_name_link renders view :link on the
 // TARGET CARD (card-mod-format set/all/base.rb:35-46: `view :link` ->
 // link_view -> `link_to_card card.name, _render_title, opts`) - the href
 // is built from the RESOLVED card's name (the real stored name), while
 // the label/title keep the authored link text (_render_title via the
-// :title option). Corpus-wide oracle scan (2026-09-29, all page-lane
-// shards): every case-differing known-card anchor follows the real-name
-// href in BOTH directions - [[narrative]] hrefs /Narrative (25 anchors)
-// and [[Aikido]] hrefs /aikido when the card is stored lowercase (11).
+// :title option). Every case-differing known-card anchor follows the
+// real-name href in BOTH directions - [[narrative]] hrefs /Narrative and
+// [[Aikido]] hrefs /aikido when the card is stored lowercase.
 //
 // The engine's wikilink name branches (renderLinkChunk + expandWikiLinks)
 // built the href from the AUTHORED target's url_key, emitting /narrative.
@@ -27,7 +25,7 @@ import {
 async function seedKnownLinkDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
-  // The real card: capital-N "Narrative" (corpus id ~18716 family).
+  // The resolved card: capital-N "Narrative".
   await seedCard(storage, { id: 500, name: "Narrative", typeId: 2, dbContent: "narrative-body" });
   // A lowercase-stored card for the reverse direction ([[Aikido]] -> /aikido).
   await seedCard(storage, { id: 501, name: "aikido", typeId: 2, dbContent: "aikido-body" });
@@ -39,8 +37,8 @@ async function seedKnownLinkDeck(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(storage, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(storage, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  // The mythosynth shape: prose linking the card with authored
-  // lowercase text, plus the reverse-capitalization link.
+  // The pinned shape: prose linking the card with authored lowercase
+  // text, plus the reverse-capitalization link.
   await seedCard(storage, {
     id: 685,
     name: "Href Probe Page",
