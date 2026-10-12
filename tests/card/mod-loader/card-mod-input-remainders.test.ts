@@ -1,6 +1,5 @@
 // The view :input remainder arms (card-mod-edit-0.20.0 set/all/editor.rb) —
-// the input-remainders suite, built on the E10 seam the not-started-closure
-// port left (card-mod-ace-editor-input.test.ts):
+// built on the same seam card-mod-ace-editor-input.test.ts covers:
 //
 // 1. input_type_from_rule (editor.rb:9-11) —
 //    `card.rule(:input_type)&.gsub(/[\[\]]/, "")&.tr(" ", "_")`: the
@@ -20,8 +19,7 @@
 //    (actionview-7.2.3.2 lib/action_view/helpers/form_tag_helper.rb:309-311)
 //    is `text_field_tag(name, value, options.merge(type: :hidden,
 //    autocomplete: "off"))` — caller opts first, generated attrs after
-//    (the attribute order the captured conflict_tracker hidden field
-//    carries, fixtures/captured/edit-forms.json via form.rb:27-31).
+//    (the attribute order form.rb:27-31 emits).
 // 3. input_defined_by_card (editor.rb:18-30) — `with_card input_type do
 //    |input_card| nest input_card, view: :core end`; with_card (:25-30) is
 //    `card = Card[mark]; yield card if card` rescuing
@@ -29,13 +27,10 @@
 //    input_type string — a NAME lookup (the key "custom_input_card" finds
 //    a card named "Custom Input Card").
 //
-// All three arms are FIXTURE-LESS: the captured oracles carry no bytes for
-// them (scanned directly): fixtures/captured/edit-views.json renders
-// every :input through the rich_text/ace arms (no hidden card[content]
-// field — the only type="hidden" in the edit chains is the
-// conflict_tracker), fixtures/captured/content-inputs.json's three :input
-// captures are all the tinymce arm, and the corpus cards carry no *input
-// type rules. The bytes below are gem-source-derived, cited per test.
+// All three arms are FIXTURE-LESS: no rendered body exists for
+// them — every recorded :input render goes through the rich_text/ace arms
+// or the tinymce arm, and no seeded card carries an *input type rule. The
+// bytes below are gem-source-derived, cited per test.
 //
 // try-chain order (editor.rb:32-36): try(input_method(input_type)) ||
 // input_defined_by_card || send(input_method(default_input_type)) — a
