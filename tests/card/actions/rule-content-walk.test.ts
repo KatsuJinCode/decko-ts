@@ -1,22 +1,23 @@
-// The *captcha rule candidate walk (card-mod-recaptcha-0.20.0
-// set/all/recaptcha.rb:22 `Card::Rule.toggle(rule(:captcha))`) - the
-// captcha-remainders lane's port of the named remainder. The walk is
-// Card#rule's storage half (card-1.110.0 lib/card/rule/all.rb:5-15 + 66-73
-// over the set-patterns port's ruleNamesForCard precedence):
+// The *captcha rule candidate walk — the storage half of Card#rule: for a
+// card, try each candidate rule NAME in pattern-precedence order and take the
+// first one the rule cache answers.
 //
 //   rule(setting_code) -> rule_card(setting_code) -> rule_card_id ->
-//   rule_id_lookup(rule_cache, setting_code) - the card's rule lookup keys
-//   in PATTERN-PRECEDENCE ORDER (self > type_plus_right > right > rule >
-//   rstar > star > type > all_plus > all; registry.ts's front-insert
-//   mechanism), first key the cache answers wins.
+//   rule_id_lookup(rule_cache, setting_code) — (rule.rb, rule/all.rb:5-15
+//   and :66-73) over ruleNamesForCard's precedence.
 //
-// The port walks candidate rule NAMES (set name + "*captcha") and fetches
-// each; rule-names.ts's header oracle-verified the two forms agree
-// (candidate lists + the resolved "*all+*read" rule for a plain card).
+// The candidate names are the card's rule lookup keys in PATTERN-PRECEDENCE
+// ORDER (self > type_plus_right > right > rule > rstar > star > type >
+// all_plus > all; registry.ts's front-insert mechanism), first key the cache
+// answers wins.
 //
-// Deck fixture mirrors the gem's own seed (card-mod-recaptcha data/real.yml):
-// "*all+*captcha" = '1' and "Sign up+*type+*captcha" = '1' - the shipped
-// default that makes *captcha-on the deck default and signup captcha-on.
+// The walk here tries candidate rule NAMES (set name + "*captcha") and fetches
+// each — the name-form and candidate-list form agree on both the candidate
+// set and the resolved rule for a plain card.
+//
+// The fixture seeds *captcha plus the two rules the recaptcha mod turns on by
+// default: "*all+*captcha" = '1' and "Sign up+*type+*captcha" = '1', which is
+// what makes *captcha-on the deck default and signup captcha-on.
 
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -62,7 +63,7 @@ const CAPTCHA_CARD_ID = 66; // the "*captcha" setting card (codename captcha)
 const SIGNUP_TYPE_ID = 100; // the "Sign up" cardtype (codename signup)
 const HOME_ID = 110; // an existing plain card
 
-/** The gem's data/real.yml shape: *captcha + the two shipped '1' rules. */
+/** *captcha plus the two '1' rules the recaptcha mod defaults to. */
 async function seedCaptchaDeck(storage: ActionsTestStorage): Promise<void> {
   await seedStandardDeck(storage); // provides the codename-'set' card (SET_TYPE_ID)
   await seedCard(storage, {
@@ -81,7 +82,7 @@ async function seedCaptchaDeck(storage: ActionsTestStorage): Promise<void> {
     codename: "captcha",
     typeId: SETTING_TYPE_ID,
   });
-  // data/real.yml rows 5-6: "*all+*captcha" toggle '1' (the deck default)
+  // "*all+*captcha" toggle '1' — the deck-wide default
   const all = await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE key = '*all'");
   await seedCard(storage, {
     leftId: all!.id,
@@ -89,7 +90,7 @@ async function seedCaptchaDeck(storage: ActionsTestStorage): Promise<void> {
     typeId: TOGGLE_TYPE_ID,
     dbContent: "1",
   });
-  // data/real.yml rows 7-10: "Sign up+*type+*captcha" toggle '1'
+  // "Sign up+*type+*captcha" toggle '1'
   await seedCard(storage, {
     id: SIGNUP_TYPE_ID,
     name: "Sign up",
@@ -229,8 +230,8 @@ describe("ruleContentForCard - the rule(:captcha) candidate walk (rule/all.rb:5-
         updateInput("Sign up+*type+*captcha", signupTypeCaptcha!.id, TOGGLE_TYPE_ID),
       );
       expect(pattern.isRule).toBe(true);
-      // the type_plus_right anchor enrichment rode the live left-type fetch
-      // (class_methods.rb:59-71): the left card "Sign up+*type" is a Set
+      // the type_plus_right anchor enrichment rode the live left-type
+      // fetch: the left card "Sign up+*type" is a Set
       expect(pattern.leftTypeName).toBe("Set");
       const content = await ruleContentForCard(storage.engine, pattern, "captcha");
       expect(content).toBe("0");
@@ -338,9 +339,9 @@ describe("isPreferenceName / rule? - per-user setting cards (rule/all.rb:32-54)"
 });
 
 describe("ruleWalkPatternInput - the left type of a compound whose left is missing (quick_type)", () => {
-  // class_methods.rb#quick_type: `Card.fetch name, new: {}` - a missing or
-  // trashed left is a NEW card, typed by the new-card chain (here the
-  // deck's *all+*default rule); only a blank left answers "RichText".
+  // quick_type: a missing or trashed left is fetched `new: {}` — a NEW
+  // card, typed by the new-card chain (here the deck's *all+*default rule);
+  // only a blank left answers "RichText".
   const BASIC_CS_ID = 70;
   async function seedDefaultTypedDeck(storage: ActionsTestStorage): Promise<void> {
     await seedStandardDeck(storage);
@@ -523,7 +524,7 @@ describe("prepareRecaptchaSaveInput - the engine resolves rule(:captcha) through
         },
       });
       expect(result.cardId).toBeGreaterThan(0);
-      expect(stub.calls).toHaveLength(0); // the signed-in arm refused first (recaptcha.rb:20)
+      expect(stub.calls).toHaveLength(0); // the signed-in arm refused first
       const validate = reports.find((r) => r.stage === "validate");
       expect(validate?.skipped).toContainEqual({ event: "recaptcha", reason: "when-false" });
     } finally {
