@@ -1,8 +1,7 @@
 // The card-title span renders RELATIVE to the page's name context
-// (context_names.rb): inside the "Aikido 2" page, the +management /
+// (context_names.rb): inside a page, the +management /
 // +overview slot titles display as "+management" / "+overview", not the
-// full junction. The live-vs-served comparison (round: nitpicks
-// round) flagged exactly this on /Aikido_2 and /Archetypal_Psychology.
+// full junction.
 //
 // Mechanism (port of card-mod-format + context_names.rb):
 // - html/views.rb:55-62 view :titled wraps its header in
@@ -11,27 +10,17 @@
 // - title.rb standard_title -> title_in_context: `card.name.from(*context_names)`.
 // - wrap.rb:68-79 name_context_slot_option: the slot JSON carries the
 //   INITIAL (parent-derived, part-filtered) context as comma-joined keys,
-//   appended LAST. SUPERSEDED PIN CORRECTION (2026-09-28, live-wire
-//   mechanism-3 work): an earlier version of this test expected the WANTED
-//   +management mini_bar to carry NO name_context, pinned to the stale
-//   live-v0.19.1 capture an internal work log
-//   The graded v0.20.0 capture contradicts that byte: the SAME shape
-//   (a wanted, id-less +management mini_bar nested directly in the page
-//   body) is the Conflict_Done_Well page in
-//   tmp/raw-ground-truth/expected-v2/page-lane/
-//   dual-lane-validation-2026-09-25.jsonl — and there the slot CARRIES
-//   name_context "conflict_done_well" with no data-card-id. Today's live
-//   wire agrees (live-wire-class-tokens.md: Occupy's wanted
-//   +pdf/+tags/+discussion slots carry name_context on BOTH the v0.20.0
-//   snapshot and the 2026-09-28 live fetch; probe snap=3 live=3 eng=0).
-//   wrap.rb:74-78's only gate is initial_context_names.present? — the
-//   unknown-card gate was an overfit to the stale capture and was removed
-//   (name-context-slot-json-gate.test.ts pins both oracle shapes).
+//   appended LAST. SUPERSEDED PIN CORRECTION: an earlier version of this
+//   test expected the WANTED +management mini_bar to carry NO name_context;
+//   the reference bytes contradict that: the SAME shape (a wanted, id-less
+//   +management mini_bar nested directly in the page body) CARRIES
+//   name_context with no data-card-id, and wrap.rb:74-78's only gate is
+//   initial_context_names.present? — the unknown-card gate was an overfit
+//   and was removed (name-context-slot-json-gate.test.ts pins both shapes).
 //
-// Live bytes (an internal work log):
+// The relative-title bytes:
 //   <span class="card-title" title="+management"><span>+</span>management</span>
 //   <span class="card-title" title="+overview">...
-//   data-slot="{...&quot;home_view&quot;:&quot;titled&quot;,&quot;name_context&quot;:&quot;aikido_2&quot;}"
 
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
@@ -76,9 +65,7 @@ describe("title_in_context: relative slot titles under the page context", () => 
     // The WANTED +management nest (closed -> mini_bar substitution):
     // RELATIVE bar-left title, and the slot JSON CARRIES name_context —
     // wrap.rb:74-78's only gate is initial_context_names.present? (see the
-    // superseded-pin correction in the header: the graded oracle's
-    // Conflict_Done_Well+management wanted slot carries name_context, and
-    // today's live wire agrees on the Occupy page's wanted slots).
+    // superseded-pin correction in the header).
     expect(html).toContain('<span class="card-title" title="+management">');
     expect(html).not.toContain('title="Aikido 2+management"');
     const managementSlot = html.slice(html.indexOf("aikido_2-management-"));
@@ -99,10 +86,9 @@ describe("title_in_context: relative slot titles under the page context", () => 
 
   it("emits name_context on a known pointer/list item bar (live +Gallery shape)", async () => {
     const storage = await createRenderTestStorage();
-    // Aikido_Oak_Cliff page body nests a list host whose items are
-    // junction cards; live-wire Aikido_Oak_Cliff.html pins the item's
-    // data-slot with nest_name ABSOLUTE ("Aikido Oak Cliff+Gallery") and
-    // name_context "aikido_oak_cliff".
+    // The page body nests a list host whose items are junction cards; the
+    // item's data-slot carries nest_name ABSOLUTE ("<page>+Gallery") and
+    // the page's name_context.
     await seedCard(storage, { id: 10, name: "List", codename: "list", typeId: 2 });
     await seedCard(storage, {
       id: 97210,
@@ -135,7 +121,7 @@ describe("title_in_context: relative slot titles under the page context", () => 
     expect(html).toContain("&quot;nest_name&quot;:&quot;Aikido Oak Cliff+Gallery&quot;");
     expect(html).toContain("&quot;name_context&quot;:&quot;aikido_oak_cliff&quot;}");
     // The +Pages host slot carries the context too (authored relative
-    // nest_name, live live-wire shape).
+    // nest_name).
     expect(html).toContain("&quot;nest_name&quot;:&quot;+Pages&quot;");
   });
 });
