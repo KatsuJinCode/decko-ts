@@ -11,7 +11,8 @@
 require "json"
 require "haml"
 
-OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/haml-semantics.json"
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
+OUT = ARGV[0] || File.join(REPO_ROOT, "tmp", "haml-slice", "haml-semantics.json")
 
 def list_group items
   Array(items).map { |i| "<li class=\"list-group-item\">#{i}</li>" }.join("\n")

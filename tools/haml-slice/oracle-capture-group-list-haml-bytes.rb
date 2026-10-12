@@ -20,8 +20,13 @@
 require "json"
 require "./config/environment"
 
-OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/group-list-oracle.json"
-GL = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-assets-0.20.0/set/abstract/mod_assets/group_list.haml"
+# Output and gem-template paths resolve from the checkout (DECKO_TS_REPO_ROOT
+# when the runner exports it, this file's checkout otherwise) and from the
+# bundled gem specification — no machine paths built in.
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
+OUT = ARGV[0] || File.join(REPO_ROOT, "tmp", "haml-slice", "group-list-oracle.json")
+GL = File.join(Gem::Specification.find_by_name("card-mod-assets").gem_dir,
+               "set/abstract/mod_assets/group_list.haml")
 GL_SRC = File.read(GL)
 
 actions_before = Card::Act.count
