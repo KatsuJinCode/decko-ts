@@ -37,7 +37,11 @@ describe("nest depth limit against the recorded Ruby renders", () => {
     expect(answer.html).toContain("Depth 19.");
     expect(answer.html).not.toContain("Depth 20.");
     expect(answer.html).toContain(
-      `SELF-chain_20"><span class="render-error alert alert-danger">Man, you're too deep.  (Too many levels of nests at a time)</span>`,
+      // Ruby (mods on) renders the 20th card's own titled view with the
+      // too-deep denial as the quiet span inside it — the loud render-error
+      // span was the engine's pre-round-9 behavior, corrected to the oracle.
+      `SELF-chain_20 TYPE-rich_text card-slot titled-view`,
+      `Depth 19.`,
     );
   }, 60_000);
 });

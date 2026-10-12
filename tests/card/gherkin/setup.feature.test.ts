@@ -91,7 +91,7 @@ describe("Gherkin port: setup.feature / Shark visits site for first time", () =>
     // "Administrator" — the ported setup_first_user write: the
     // Administrators role's members list holds the new owner (see header
     // note 2 for the roles-view boundary).
-    const members = await flow.world.storage.fetcher.fetchByName("Administrators+members");
+    const members = await flow.world.storage.fetcher.fetchByName("Administrators+*members");
     expect(members?.dbContent).toContain("The Newber");
 
     // upstream: When I follow "Sign out" / And I follow "Sign in" / And I
