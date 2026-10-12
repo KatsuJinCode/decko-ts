@@ -1,17 +1,14 @@
-// The "No-cache and freshness rules" arm, as isolated
-// engine tests: the commit-edit reread semantics.
+// The "No-cache and freshness rules" acceptance arm, as isolated engine
+// tests: the commit-edit reread semantics.
 //
-// PORTED to the deployed edge lineage (lane-edge-security-2026-10-05, base
-// fe65cf60) from branch lane-b-freshness-2026-10-05 commit d19ec179
-// (decko-ts-restored), where the suite passed 8/8 against the same engine
-// design. The edge live site's leak is the SAME defect family on THIS
-// lineage: the deck engine boots once per isolate
+// WHY THIS EXISTS. The deck engine boots once per isolate
 // (deploy/bunny-worker-src/bunny-edge-engine-handler.ts getDeck's
 // deckPromise memo), so every derived cache — including cached permission
-// verdicts — lives across requests and nothing invalidated them.
+// verdicts — lives across requests, and before the freshness gate nothing
+// invalidated them: a warm runtime served pre-mutation bytes, including a
+// post-revocation permission verdict.
 //
-// Contract text under test (deliverables/DELIVERY-CONTRACT-AND-RECOVERY-PLAN-
-// 2026-10-05.md:79):
+// Contract text under test:
 //   "On isolated fixtures, commit an edit, change a nested dependency, change
 //    a rule, and revoke access. The next request on both an existing and a new
 //    runtime must reflect the committed state. Include anonymous/user
@@ -19,16 +16,13 @@
 //    failure, and unavailable authority. No stale-success response or
 //    post-revocation data leak is acceptable."
 //
-// This lane covers the four mutation kinds the ask names -- content edit,
-// nested-dependency edit, rule change, access revocation -- and measures both
-// runtime lifecycles the sentence names: an EXISTING (reused, warm) runtime
-// and a NEW (cold) runtime over the same committed database file.
+// This suite covers the four mutation kinds that sentence names -- content
+// edit, nested-dependency edit, rule change, access revocation -- and
+// measures both runtime lifecycles: an EXISTING (reused, warm) runtime and a
+// NEW (cold) runtime over the same committed database file.
 //
 // WHAT IS UNDER TEST. The engine's render path is cache-backed by design.
-// The b-freshness lane (2026-10-05, engine commit 2f81e0c0) measured the
-// gap: nothing on the request path invalidated the caches, so a warm runtime
-// served pre-mutation bytes -- including a post-revocation permission
-// verdict. THE REPAIR UNDER TEST HERE is the committed-write version stamp:
+// THE REPAIR UNDER TEST HERE is the committed-write version stamp:
 // db/schema.sqlite.sql's [ENGINE-FRESHNESS] block adds deck_data_version
 // (one row) with AFTER-INSERT/UPDATE/DELETE triggers on cards and
 // card_references, so every committed write bumps it at the storage layer --
