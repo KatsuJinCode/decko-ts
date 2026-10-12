@@ -10,12 +10,11 @@
 // and auth/permissions.rb:8-13 short-circuits on that constant
 // (`when DeckoBotID then true`). With the wrong constant the engine's
 // bot actor lost the short-circuit and was denied owner-only cards:
-// the member-view port's single read-verdict miss (The Red Book
-// considered [admin]: *self+*read grants one member; Ruby's admin reads
-// it via always_ok?, the fixed engine must too).
+// an owner-only *self+*read rule granting one member must still let the
+// admin read it via always_ok? — the fixed engine must.
 //
-// Owner-only deck shape mirrors that Red Book rule: a *self+*read rule
-// whose content references ONE member (id 583), plus the bot card under
+// Owner-only deck shape: a *self+*read rule
+// whose content references ONE member, plus the bot card under
 // Ruby's stored codename.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -65,7 +64,7 @@ beforeAll(async () => {
   await seedCard(s, { id: 3, name: "*read", codename: "read" });
   await seedCard(s, { id: 16, name: "*self", codename: "self" });
   // An owner-only read rule: "*self+*read" on one card granting the owner
-  // alone (the Red Book considered rule shape — [[Bridget Castellan]]). The
+  // alone. The
   // rule hangs off the *self SET card (left, Set-typed — the ReadRuleCache
   // join's sets.type_id filter), right_id the *read setting.
   await seedCard(s, {
@@ -116,8 +115,7 @@ describe("decko_bot codename: the admin always_ok? short-circuit (regression)", 
     // canReadByStoredRule short-circuits on alwaysOk before the readable-set
     // lookup (permissions.rb:140 -> read-rules.ts canReadByStoredRule) — the
     // owner-only rule grants the owner, never the bot, and the bot still
-    // reads: this is the exact verdict the member-view port measured as the
-    // one read-verdict miss.
+    // reads: the short-circuit must hold regardless of the rule's grants.
     expect(canReadByStoredRule(OWNER_ONLY_READ_RULE_ID, state)).toBe(true);
   });
 
@@ -125,7 +123,7 @@ describe("decko_bot codename: the admin always_ok? short-circuit (regression)", 
     const owner = await stateFor({ signedIn: true, actorId: OWNER_ID });
     expect(owner.alwaysOk).toBe(false);
     expect(canReadByStoredRule(OWNER_ONLY_READ_RULE_ID, owner)).toBe(true);
-    // A signed-in non-granted member (the member2 contrast).
+    // A signed-in non-granted member, for contrast.
     const other = await stateFor({ signedIn: true, actorId: 665 });
     expect(other.alwaysOk).toBe(false);
     expect(canReadByStoredRule(OWNER_ONLY_READ_RULE_ID, other)).toBe(false);
