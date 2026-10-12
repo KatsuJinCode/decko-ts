@@ -5,10 +5,8 @@
 // Run: npx vitest run tools/oracle/capture-frozen-clock-env.test.ts
 import { describe, expect, it } from "vitest";
 import { captureClockFromEnv } from "./dual-lane-direct-runner-core.js";
-import {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
-  formatCardDayofwkMinTz,
-} from "../../src/card/set-module-content-overrides.js";
+import { CAPTURE_WALL_CLOCK_CAPTURE_INSTANT, formatCardDayofwkMinTz } from "../../src/card/set-module-content-overrides.js";
+import { CORPUS_CAPTURE_TIME_ZONE, setDeckTimeZone } from "../../src/card/deck-time-zone.js";
 
 describe("CAPTURE_FROZEN_CLOCK", () => {
   it("keeps the older corpus's capture minute when unset", () => {
@@ -19,9 +17,16 @@ describe("CAPTURE_FROZEN_CLOCK", () => {
   it("renders *now at the corpus of record's rig epoch as the capture did", () => {
     // corpus of record, view lane shard 3, `*now` record.content
     const instant = captureClockFromEnv("2026-09-19T12:00:00Z");
-    expect(formatCardDayofwkMinTz(instant)).toBe(
-      "Saturday, September 19, 2026 05:00 AM PDT",
-    );
+    // The capture host ran Pacific time; reproducing its bytes is an explicit
+    // act now that the engine's default zone is UTC (see deck-time-zone.ts).
+    setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
+    try {
+      expect(formatCardDayofwkMinTz(instant)).toBe(
+        "Saturday, September 19, 2026 05:00 AM PDT",
+      );
+    } finally {
+      setDeckTimeZone(undefined);
+    }
   });
 
   it("refuses an instant without a zone or that does not parse", () => {
