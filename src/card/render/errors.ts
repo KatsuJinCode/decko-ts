@@ -244,7 +244,7 @@ export function parseRubyDateContent(content: string): Date | null {
     return date;
   }
   // Ruby's "day, and possibly a zone": a SHORT day plus a 3-4 digit zone.
-  // The corpus's card 35469 (`White Fragility ...+Date`) is the only one:
+  // Card 35469 (the corpus's only Date-typed row of this shape) is the only one:
   //     ruby -rdate -e 'p Date._parse("20-0405")'
   //     => {:mday=>20, :zone=>"-0405", :offset=>-14700}
   // a day with no month and no year, which Date.parse completes from
@@ -289,7 +289,7 @@ export function parseRubyDateContent(content: string): Date | null {
   // `new Date("1981-10")`, which JS reads as an ISO year-month and accepts
   // as 1981-10-01. The engine rendered "October 1, 1981" where the gem
   // renders the (core view) error span — the capture's own bytes for
-  // card 13903, shard-000009 `Stanley Pranin ...:page`.
+  // shard-000009, card 13903 `...:page`.
   const twoPart = /^(\d{1,5})-(\d{1,5})$/.exec(content);
   if (twoPart !== null) {
     const day = Number(twoPart[1]);
@@ -306,7 +306,7 @@ export function parseRubyDateContent(content: string): Date | null {
   // gem-verified over the corpus's 4,013 3-component rows + 2-component row
   // 13903). That guard is NOT taken here: it also raises for the day+zone
   // class ("20-0405") and single-digit-A real-offset shapes ("0-01", "9-01")
-  // that the gem PARSES (refill2's own White Fragility entry: Ruby 3.3 gives
+  // that the gem PARSES (refill2's own card-35469 entry: Ruby 3.3 gives
   // October 20 for "20-0405"), because its evidence base was the corpus's
   // Date-typed rows only. The per-shape arms above were verified against a
   // 1,306-row Date._parse sweep of the actual gem (ruby 3.3.12, date
@@ -315,7 +315,7 @@ export function parseRubyDateContent(content: string): Date | null {
   // via the single-digit-A offset guard) while preserving the parseable
   // classes. Superset-of-information: no raise case is lost, the
   // gem-parseable classes survive, and the completion's today-dependence
-  // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain White Fragility residual stays as refill2's
+  // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain card-35469 residual stays as refill2's
   // recorded result recorded it.
   // Slash-form dates. Ruby's slashed triples are GEM-VERIFIED (ruby 3.3,
   // date gem): the FIRST component's width picks the shape.
