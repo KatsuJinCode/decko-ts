@@ -1,46 +1,37 @@
-// selftest-staging-graded-truth-family-and-skin.mjs -- the harness-corpus-repair
-// lane's verify instrument, extended by the m8-envelope-completion lane to the
-// whole M8 skin:record class: does a FRESH staging build (the committed seeding
-// home + the capture-restored override table) reproduce the oracle's graded
-// truth for the entry classes this lane repairs?
+// selftest-staging-graded-truth-family-and-skin.mjs -- the verify instrument
+// for the staging-corpus repairs: does a FRESH staging build (the committed
+// seeding home + the capture-restored override table) reproduce the oracle's
+// graded truth for the entry classes the repairs cover?
 //
 // CHECKS (exit 0 only when all pass)
-//   1. Family content references reach staging: 21 card_references rows with
-//      referee_id 568 (corpus parity), and the Family page's own referred_to_by
-//      CQL ({"refer_to":"_left","sort":"name"}) through the runSearch-shaped
-//      executeQuery (permission options + context) returns the ORACLE's item
-//      set. The oracle Family page (expected-v2 page-lane id 568) renders
-//      FIVE search-result items (CM 20101222+Associations+tags,
-//      CM 20110109+Associations+tags, tracked item test+associations+tags,
-//      Ellery Library+Associations+tags, Schema) -- the "19 items"
-//      figure in the M5 narrative was the ref_type-L ROW census, not the
-//      oracle's rendered item count. The page-render seating itself is
-//      reported informationally: 4 of the 5 rows are junction children whose
-//      name composition runs through the lexicon cache, an engine-side path
-//      this lane does not own (render.ts runSearch `record.name === undefined`
-//      guard; the rows themselves ARE staged).
+//   1. Family content references reach staging: the corpus's card_references
+//      rows for the Family referee are present at staging parity, and the
+//      Family page's own referred_to_by CQL ({"refer_to":"_left","sort":"name"})
+//      through the runSearch-shaped executeQuery (permission options +
+//      context) returns the ORACLE's item set. The oracle Family page
+//      renders FIVE search-result items -- the larger row-count figure
+//      sometimes quoted for this page was the ref_type-L ROW census, not
+//      the oracle's rendered item count. The page-render seating itself is
+//      reported informationally: most of the rows are junction children
+//      whose name composition runs through the lexicon cache, an engine-side
+//      path outside the seeding's scope (render.ts runSearch
+//      `record.name === undefined` guard; the rows themselves ARE staged).
 //   2. EVERY row of the capture-restored override table
-//      (tests/card/render/raw-corpus-override-capture-restored-rows.json --
-//      the 20 M8 class skins + journal skin customized + the two bootstrap
-//      SCSS source siblings + litera skin + litera skin customized): the
-//      staged card's dbContent is byte-equal to the override row, and the
-//      record envelope rebuilt through the graded runner's own card-engine
-//      record handler (dual-lane-direct-runner-core.ts:708-757) is
-//      FIELD-EQUAL to that card's oracle capture record (expected-v2
-//      view-lane shard; for 34179 additionally the p21 capture file, the
-//      original proven comparison; for the LIVE-captured rows -- litera skin
-//      33872 and litera skin customized 34530 -- the LIVE raw-view captures,
-//      re-calibrated here against the oracle contents each row's provenance
-//      names before comparison: the cerulean/journal shard envelopes for the
-//      rule, and for 34530 additionally the 34179 p21 envelope, the
-//      customized-class live-stored==oracle-stored pin).
-//   3. journal skin customized+parent 1 (45365): the +parent subcard the
-//      Customize-button gate reads is present in staging with its corpus
-//      content ("journal skin").
+//      (tests/card/render/raw-corpus-override-capture-restored-rows.json):
+//      the staged card's dbContent is byte-equal to the override row, and
+//      the record envelope rebuilt through the graded runner's own
+//      card-engine record handler (dual-lane-direct-runner-core.ts:708-757)
+//      is FIELD-EQUAL to that card's oracle capture record (expected-v2
+//      view-lane shard; for one row additionally the p21 capture file, the
+//      original proven comparison; for rows whose provenance marks a live
+//      capture, the recorded raw-view captures, re-calibrated here against
+//      the oracle contents each row's provenance names before comparison).
+//   3. the customized-skin +parent subcard the Customize-button gate reads
+//      is present in staging with its corpus content.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/selftest-staging-graded-truth-family-and-skin.mjs \
-//     [--capture <p21 expected record html>] [--out tmp/harness-corpus-repair/selftest.json]
+//     [--capture <expected record html>] [--out OUT_JSON]
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
@@ -219,11 +210,11 @@ async function runnerRecordEnvelope(card) {
 
 const RECORD_FIELDS = ["name", "key", "type", "type_code", "codename", "content", "left", "right"];
 
-// ---- live-capture arm (m8-siblings-litera lane 2026-10-03) ----
-// Rows whose provenance carries liveCapture have no expected-v2 capture record;
-// their graded-truth content comes from the recorded LIVE raw-view captures.
-// The extraction rule + its calibration are re-verified here so this check does
-// not depend on the extractor's in-memory state.
+// ---- live-capture arm ----
+// Rows whose provenance carries liveCapture have no expected-v2 capture
+// record; their graded-truth content comes from the recorded raw-view
+// captures. The extraction rule + its calibration are re-verified here so
+// this check does not depend on the extractor's in-memory state.
 const LIVE_RAW_VIEW_DIR =
   "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe";
 const LIVE_RAW_WRAPPER_START = '<div id="main">';
