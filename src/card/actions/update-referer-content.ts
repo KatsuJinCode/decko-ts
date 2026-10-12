@@ -37,13 +37,13 @@
 //     @explicit_link, @name stays nil) would rebuild to "[[|text]]"/"[[]]"
 //     (referee_name returns nil, reference.rb:12), and comment nests
 //     ({{#...}} — nest.rb:20-21 never sets @name) would rebuild to
-//     "{{}}". Both are Ruby data-corruption warts, not behaviors the
-//     parity corpus asserts; the divergences are recorded here and in the
-//     task report. QueryReference chunks (CQL, chunk/query_reference.rb
-//     :86-89) ARE ported: swap_name (:86-89) replaces the name reference
-//     and rebuilds the chunk as the quoted swapped name, no absolutizing —
-//     `"#{@name}"` — which is what the harness's rename-referenced-tag step
-//     records on a saved search's "refer_to" target.
+//     "{{}}". Both are Ruby data-corruption warts: preserving the original
+//     text is the better behavior, so the divergence is deliberate and the
+//     two rebuilds are skipped. QueryReference chunks (CQL,
+//     chunk/query_reference.rb :86-89) ARE ported: swap_name (:86-89)
+//     replaces the name reference and rebuilds the chunk as the quoted
+//     swapped name, no absolutizing — `"#{@name}"` — which is what a saved
+//     search's "refer_to" target needs when its name is renamed.
 // - content_quietly= (reference_events.rb:52-58): assign the content; if
 //   the db_content column actually changed (the loop guard, :54), write the
 //   column DIRECTLY (`update_column` — no validations, no callbacks, no
