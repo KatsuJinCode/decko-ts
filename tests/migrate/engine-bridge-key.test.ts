@@ -4,7 +4,8 @@
 // A key derived under the gem's default tables differs for names containing
 // "Anonymous", "this" or a lone "s" (Anonymous -> anonymou, Participant(s) ->
 // participant_), and a card stored under such a key cannot be found by name.
-// The expected keys are the ones the Ruby deck stores for these names.
+// The expected keys are the ones the deck's own derivation produces for
+// these names.
 
 import { describe, it, expect, afterAll, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -19,12 +20,12 @@ import { dumpFile, cardsInsert } from "./synthetic-dump.js";
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 
-/** Name -> the key the Ruby deck stores for it. */
+/** Name -> the key the deck's derivation must produce. */
 const RUBY_KEYS: [string, string][] = [
   ["Anonymous", "anonymous"],
   ["Participant(s)", "participant_s"],
   ["Project(s) Participating", "project_s_participating"],
-  ["Talk Like It's Riley's Birth Day", "talk_like_it_s_riley_s_birth_day"],
+  ["Talk Like It's Your Birth Day", "talk_like_it_s_your_birth_day"],
   ["How this may be different from what you know", "how_this_may_be_different_from_what_you_know"],
   // Ordinary plurals still singularize as Ruby does.
   ["Participants", "participant"],

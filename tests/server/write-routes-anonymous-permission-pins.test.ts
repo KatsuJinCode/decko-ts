@@ -30,11 +30,10 @@
 //
 // Authority for each arm = the engine pins' own proven behavior plus the
 // route's own mapping:
-//   (a) granted anonymous create: Signup+*type+*create -> [[Anyone]] (the
-//       corpus's rule-6580 shape) lets the unsigned POST through the
-//       engine verdict; the act lands under the Anonymous card
-//       (creator_id = updater_id = card_acts.actor_id — the corpus's
-//       694/1,808/8-row shape); the plain-form success is the 303 hard
+//   (a) granted anonymous create: Signup+*type+*create -> [[Anyone]]
+//       lets the unsigned POST through the engine verdict; the act lands
+//       under the Anonymous card (creator_id = updater_id =
+//       card_acts.actor_id); the plain-form success is the 303 hard
 //       redirect with the card_url-absolute Location (response.rb:25-33,
 //       :41).
 //   (b) rule-DENIED anonymous update: *all+*update -> [[Editor]] refuses
@@ -69,7 +68,7 @@
 //       save re-stamps updater_id). No mock needed: the arms run through
 //       the wrapper's unarmed passthrough, byte-identical to production.
 //
-// Deck (mirrors the engine suites' recorded signup shape plus the route
+// Deck (mirrors the engine suites' signup shape plus the route
 // suite's *all+*default seat; ids arbitrary):
 //    1 *all codename all (Set-typed)     2  Set codename set
 //    3  *update   4  *create   5  *delete
@@ -82,7 +81,7 @@
 //   14 Anonymous User codename anonymous  (the acting card, Auth.as_card)
 //   15 Signup (the recorded signup type card)
 //   16 Signup+*type (Set-typed)
-//   17 Signup+*type+*create [[Anyone]]    (the recorded rule-6580 shape)
+//   17 Signup+*type+*create [[Anyone]]    (the anonymous-create grant)
 //   18 *captcha codename captcha          (the guard's Codename.exist? :captcha)
 //   40 Locked Wiki (the update/delete deny target)
 //   50 Open Wiki (the granted update/delete target; granted deck only)
@@ -344,8 +343,8 @@ afterEach(() => {
 
 describe("anonymous writes over the HTTP write routes (request -> route -> engine verdict -> status)", () => {
   it("(a) rule-GRANTED anonymous create via POST: 303 hard redirect, act recorded under the Anonymous card", async () => {
-    // Signup+*type+*create -> [[Anyone]] (the corpus's rule-6580 shape)
-    // admits the anonymous session through ok_to_create? — the engine pin
+    // Signup+*type+*create -> [[Anyone]] admits the anonymous session
+    // through ok_to_create? — the engine pin
     // (anonymous-create-permission.test.ts arm 1) proven over the ROUTE.
     const res = await call(fullBaseUrl, "POST", "/Anon_Signup_One", {
       form: {
@@ -364,8 +363,7 @@ describe("anonymous writes over the HTTP write routes (request -> route -> engin
     expect(record.json().dbContent).toBe("route signup body");
 
     // the act rides the Anonymous card: creator_id = updater_id (set_stamper,
-    // account.rb:20-23) and card_acts.actor_id (Auth.as_id, proxy.rb:33-35)
-    // — the corpus's 694 creator_id=15 rows are exactly this shape.
+    // account.rb:20-23) and card_acts.actor_id (Auth.as_id, proxy.rb:33-35).
     const card = await fullStorage!.counting.query<{
       creator_id: number;
       updater_id: number;
@@ -477,8 +475,8 @@ describe("granted anonymous update/delete over the routes (the denied arms (b)/(
   it("(g) rule-GRANTED anonymous delete: 303 hard redirect, the trash flip landed, updater_id = the Anonymous card", async () => {
     // ok_to_delete? = bare permit :delete (permissions.rb:155-157) — the
     // same [[Anyone]] rule grants it; the trash save is an update save and
-    // re-stamps updater_id (set_stamper) — the engine pin's corpus shape
-    // (the 8 trashed updater_id=15 rows) proven over the ROUTE.
+    // re-stamps updater_id (set_stamper) — the engine pin's shape proven
+    // over the ROUTE.
     const res = await call(grantedBaseUrl, "DELETE", "/Open_Wiki");
     expect(res.status).toBe(303); // the plain-form hard redirect (response.rb:31,41)
     // configure_successful_deletion (card-mod-session location_history.rb:12-20):

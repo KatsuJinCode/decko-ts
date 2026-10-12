@@ -165,10 +165,10 @@ describe("import paths create the indexes", () => {
   }
 });
 
-// The engine's serving statements, captured from real page renders. Each is
-// planned on an empty database built from the canonical DDL with the libsql
-// native module, whose SQLite (3.45.1) is the build Bunny Database runs. An
-// empty database has no sqlite_stat1, which is exactly Bunny's situation.
+// The serving statements this guard pins. Each is planned on an empty
+// database built from the canonical DDL with the libsql native module,
+// whose SQLite (3.45.1) is the build Bunny Database runs. An empty
+// database has no sqlite_stat1, which is exactly Bunny's situation.
 type Fixture = { label: string; sql: string; args: (string | number | null)[] };
 const FIXTURES: Fixture[] = JSON.parse(read("tests/migrate/fixtures/serving-path-statements.json"));
 const EXPECTED_INDEX: Record<string, string> = {

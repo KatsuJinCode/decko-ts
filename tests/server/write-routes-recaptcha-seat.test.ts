@@ -1,10 +1,9 @@
 // Route-level pins for the PRODUCTION recaptcha seat (src/server/
-// write-routes.ts WriteRouteContext.recaptcha) — the HTTP-level remainder
-// of the captcha-guard surface: through the test-only vi.mock seam alone,
-// the guard is provable only at the engine boundary; until WriteRouteContext
-// gained the composition seat, no live HTTP request could arm the guard.
+// write-routes.ts WriteRouteContext.recaptcha): the guard armed on live
+// HTTP requests through the production composition — the engine-boundary
+// vi.mock seam alone cannot prove the route level.
 //
-// What changed in production for this: the route context grew the
+// The production composition: the route context carries the
 // `recaptcha?: CardActionRecaptchaConfig` seat, passed through UNCHANGED to
 // createCardActionEngineForSession alongside {ipAddress, now,
 // attachmentStore, fileStorage}. Since E-16 the serving surface composes

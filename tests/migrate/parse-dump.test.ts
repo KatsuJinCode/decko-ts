@@ -1,14 +1,14 @@
 // parse-dump.test.ts — the streaming mysqldump INSERT parser.
 //
-// The core contract under test (the lesson from the 1.2 GB the reference deck
-// migration): parsing must be LINEAR, ANCHORED, QUOTE-AWARE and STREAMING.
+// The core contract under test: parsing must be LINEAR, ANCHORED,
+// QUOTE-AWARE and STREAMING — the properties that let a multi-gigabyte
+// dump be parsed without holding it in memory.
 // The sharpest expression of that contract is FEED-SIZE INVARIANCE: the
 // same dump fed whole, in 7-char slices, or one character at a time must
 // produce byte-identical rows. Every adversarial case runs at multiple
 // feed sizes.
 //
-// Ground truth: the production dump grammar (mysqldump 10.13, MySQL 8.0 —
-// verified patterns
+// Ground truth: the mysqldump 10.13 / MySQL 8.0 dump grammar and
 // MySQL's string-literal escape rules.
 
 import { describe, it, expect } from "vitest";

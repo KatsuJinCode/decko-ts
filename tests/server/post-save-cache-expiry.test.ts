@@ -112,9 +112,9 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   await runAuthMigrations(storage.counting);
   await seedRuleDeck(storage);
-  // No csrfSecret in the context: live decko arms no forgery protection,
-  // and the write path carries no HMAC CSRF posture (the captured real
-  // editing session is the oracle: token-less form posts save).
+  // No csrfSecret in the context: Ruby decko arms no forgery protection,
+  // and the write path carries no HMAC CSRF posture — token-less form
+  // posts save, matching Ruby.
   ctx = { driver: storage.counting, fetcher: storage.fetcher };
   const sessions = new SessionStore({ driver: storage.counting });
   joeToken = (await sessions.createSession(JOE_ID)).token;
@@ -148,8 +148,8 @@ describe("post-save render-cache expiry (every successful save, any response fla
     expect(JSON.parse(save?.body ?? "{}")).toMatchObject({ verb: "update" });
     expect(save?.headers.Location).toBeUndefined();
 
-    // The database took the save even in the broken state (the receipt's
-    // "correct DB, stale page" split).
+    // The database took the save even in the broken state — the
+    // "correct DB, stale page" split this seam exists to close.
     const record = await storage.fetcher.fetchByKey(DeckoName.parse("Widget").key);
     expect(record?.dbContent).toBe(V2);
 

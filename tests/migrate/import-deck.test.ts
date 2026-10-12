@@ -15,9 +15,6 @@
 //   4. content-free report - the JSON never contains card names/content
 //      (DATA RULE audit)
 //
-// The 867MB anonymized seed's full local-D1 import is run outside
-// this suite and reported in the deliverable; this suite covers the correctness
-// surface on a small fixture where the assertions are sharp.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -108,8 +105,8 @@ function writeMysqldumpFixture(dir: string): string {
 function writeSeedFixture(dir: string): string {
   // The deck-INSERT shape the M5 parser handles: explicit column lists,
   // single-statement-per-row, semicolon-terminated. Mirror the mysqldump
-  // cards shape (NOT the anonymized corpus shape - that uses 'content'
-  // not 'db_content' - the schema map must rename it during ingest).
+  // cards shape - other source shapes name the body column 'content'
+  // rather than 'db_content', and the schema map renames it during ingest.
   const lines = [];
   for (const c of FIXTURE()) {
     const cols = ["id", "name", "key", "codename", "left_id", "right_id",
