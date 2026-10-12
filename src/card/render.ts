@@ -65,6 +65,7 @@ import {
   UnsupportedViewError,
   type RenderCard,
   type RenderEngineLike,
+  type SearchBoxCompleteSeat,
   type ViewFn,
   type ViewResult,
 } from "./render/format.js";
@@ -746,7 +747,20 @@ export class RenderEngine implements RenderEngineLike {
    *  paging offset). Set at every render() entry, cleared with the history
    *  seam's per-render reset; read by the search warm's statement merge and
    *  RenderEngineLike#searchKeyword. */
-  private renderSearch: { vars?: Record<string, string>; offset?: number } | undefined;
+  private renderSearch: {
+    vars?: Record<string, string>;
+    offset?: number;
+    term?: string;
+    main?: string;
+  } | undefined;
+
+  /** The render-time search_box_complete seam bundle (card-mod-search
+   *  set/self/search.rb:70-72 view :search_box_complete): the view fn is
+   *  synchronous, so its request-term data (the goto-item search and the
+   *  exact-card fetch) seats here during the async prepare phase, keyed to
+   *  the one view that reads it, and clears at every render() entry like
+   *  the other per-render seams. */
+  private searchBoxCompleteData: SearchBoxCompleteSeat | undefined;
 
   /** The render root's key — the focal card. search_params' env arms
    *  (paging.rb:37-45 env_search_param) apply ONLY to the focal card's
@@ -1219,6 +1233,7 @@ export class RenderEngine implements RenderEngineLike {
     // act-search (updater) seam.
     this.historyReader = undefined;
     this.updaterReader = undefined;
+    this.searchBoxCompleteData = undefined;
     this.requestNewCard = params.newCard;
     this.renderSearch = params.search;
     this.renderSearchFocalKey = name.key;
@@ -1878,6 +1893,14 @@ export class RenderEngine implements RenderEngineLike {
     if (view === "edit") {
       await this.ensurePointerEditorOptions(rootCard);
     }
+    // The navbox typeahead's data (card-mod-search set/self/search.rb:70-72
+    // view :search_box_complete): the sync view fn reads the goto-item cards
+    // and the exact-term card, so they seat here, on the one view whose root
+    // renders it. No-op for every other root (the view-lane corpus ops never
+    // ask for it — the view was unported before this seam existed).
+    if (view === "search_box_complete") {
+      await this.prepareSearchBoxComplete(rootCard);
+    }
     // A junction root's OWN field rows sit in no reference closure (a
     // subcard is reachable only through its left_id), and a CODED core's
     // nests are runtime-built - the account core's labeled rows emit
@@ -2295,6 +2318,13 @@ export class RenderEngine implements RenderEngineLike {
       // render-error span (the seconds corpus's Chain/Loop ops,
       // 2026-10-09).
       nestQuietErrors: true,
+      // The route's (.:format) suffix (engine_routes.rb:19,24,51) — the
+      // request's response format rides the render params; the format
+      // inheritance in the view-chain walk scopes the dispatch to the
+      // format's own registrations (a json-format view never dispatches on
+      // an html render and vice versa, Ruby's per-format method tables).
+      // Undefined = html, every pre-existing caller's shape.
+      ...(params.format !== undefined ? { formatName: params.format } : {}),
       // THE bare view-lane root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.
@@ -8027,11 +8057,22 @@ export class RenderEngine implements RenderEngineLike {
 
   /** RenderEngineLike#searchKeyword — the request's search keyword
    *  (search_params.rb:32-34 search_keyword = term_param ||
-   *  search_vars&.dig(:keyword); the port carries the query vars through
-   *  the render params' search seam). Undefined for headless engines and
-   *  requests without query[keyword] — the :results_for_keyword header's
-   *  own present? guard. */
+   *  search_vars&.dig(:keyword); the port carries the query vars AND the
+   *  term through the render params' search seam). term_param
+   *  (search_params.rb:19-23 + search.rb:130-137 json override):
+   *  present?(params[:term]) with the "+"-prefixed term prepended by
+   *  params["main"] when present. Undefined for headless engines and
+   *  requests without term/query[keyword] — the :results_for_keyword
+   *  header's own present? guard. */
   searchKeyword(_card: RenderFormat["card"]): string | undefined {
+    const term = this.renderSearch?.term;
+    if (term !== undefined && term !== "") {
+      // search.rb:133-136: `(term =~ /^\+/) && (main = params["main"]) ?
+      // main + term : term` — the junction-tail term absolutized by the
+      // main card param.
+      const main = this.renderSearch?.main;
+      return term.startsWith("+") && main !== undefined ? main + term : term;
+    }
     const keyword = this.renderSearch?.vars?.["keyword"];
     return keyword !== undefined && keyword !== "" ? keyword : undefined;
   }
@@ -10151,6 +10192,153 @@ export class RenderEngine implements RenderEngineLike {
       this.searchResultPagingMap.set(this.searchCacheKey(card), paging);
     }
     return items;
+  }
+
+  /** card-mod-search set/self/search.rb — the :search_box_complete view's
+   *  data seat (the sync ViewFn reads it through
+   *  RenderEngineLike#searchBoxCompleteSeat).
+   *
+   *  term = search_keyword (search_params.rb:32-34, via searchKeyword —
+   *  term_param || vars.keyword). exact = Card.fetch(term, new: {})
+   *  (:102 — the REAL row when the term names one, the fabricated new card
+   *  otherwise; permission-blind like every fetch). The goto names run the
+   *  complete search (:117-119 map_goto_items -> :73-75
+   *  complete_or_match_search with start_only: match_start_only? — the
+   *  railtie default TRUE (lib/card/mod/search.rb:3
+   *  search_box_match_start_only), so the match half never fires):
+   *  complete_search(limit: AUTOCOMPLETE_LIMIT = 8, 0_search.rb:4) is
+   *  `card.search({limit: 8, sort_by: "name", return: "name",
+   *  complete: term_param.to_s})` — standardized_query_args
+   *  (cql_search.rb:70-74) merges the *search card's OWN cql UNDER those
+   *  args, and the card's "$keyword" var stays UNRESOLVED (no vars ride
+   *  Card#search — the request-var merge lives in the format layer's
+   *  search_with_params, which this view bypasses) → normalization
+   *  string_value_from_var "" → the match condition drops. ORDER BY:
+   *  sort_by ("name" -> key) shadows the card's own `sort: "relevance"`
+   *  (sorting.rb:70 `@mods[:sort_by] || @mods[:sort]` — the same
+   *  precedence sql.ts#orderDirectivesOf renders).
+   *  map_goto_items (:120-121) unshifts the exact name when the card is
+   *  known (go_to_exact_match? = exact.known?); uniq keeps it first.
+   *
+   *  The read-permission filter rides the same cqlPermissionOptions seam
+   *  runSearch uses (Ruby's Query applies the viewer's read rules at the
+   *  relation level, before the limit closes the window); the exact-card
+   *  fetch is permission-blind (Ruby's Card.fetch), so a known-but-denied
+   *  exact name still unshifts — its label view renders the denial shape
+   *  exactly as Ruby's render_goto_autocomplete_item would.
+   *
+   *  A broken *search cql does NOT throw here: Ruby's raise site is inside
+   *  the VIEW body (each_search_box_item -> map_goto_items -> complete_or_match_search
+   *  -> card.search -> parse_json_cql), where wrap_and_render rescues it to
+   *  the quiet render-error span. The seat carries the failure message; the
+   *  ViewFn raises it inside the dispatch's own rescue scope. */
+  private async prepareSearchBoxComplete(rootCard: RenderCard): Promise<void> {
+    const term = this.searchKeyword(rootCard);
+    let exact: RenderCard | undefined;
+    let exactKnown = false;
+    if (term !== undefined) {
+      // Card.fetch(term, new: {}): the real row when one exists, the
+      // fabricated new card otherwise (fetch.rb new-card idiom). The fetch
+      // is permission-blind. A VIRTUAL resolution (a virtual-family name:
+      // "X+*type+by name" et al) is neither: Ruby's exact.known? is false
+      // (no row) and exact.virtual? true, so add_autocomplete_ok? dies on
+      // its !virtual? guard (autocomplete.rb:39) and only the goto unshift
+      // could care (it doesn't — known? false). The fabricated card seats
+      // only when the name is neither row nor virtual.
+      const real = await this.fetcher.fetchByName(term, { skipVirtual: true });
+      if (real !== undefined && real.id !== undefined) {
+        exactKnown = true;
+        exact = await this.enrichAndStore(real);
+      } else if (
+        virtualSearchCqlFor(DeckoName.parse(term), this.codenameHolderKey) === undefined
+      ) {
+        const fabricated = await this.fetcher.fetchByName(term, { new: {} });
+        if (fabricated !== undefined) exact = await this.enrichAndStore(fabricated);
+      }
+    }
+    const goto: RenderCard[] = [];
+    let failure: string | undefined;
+    // cql_search.rb:29-38 parse_json_cql — the same BadQuery shapes the
+    // runSearch seat records ("" content / unparseable JSON / non-Hash parse
+    // result crashes Ruby unrescued at cql_search.rb:11 symbolize_keys —
+    // plain Error here).
+    let statement: Record<string, unknown> = {};
+    let statementBroken: string | undefined;
+    try {
+      const parsed: unknown = JSON.parse(rootCard.dbContent ?? "");
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        // The non-Hash parse result: runSearch's graded posture returns the
+        // empty list (the corpus pins [] there, not the Ruby NoMethodError
+        // crash) — the goto arm stays empty the same way.
+        statement = {};
+      } else {
+        statement = { ...(parsed as Record<string, unknown>) };
+      }
+    } catch (e) {
+      statementBroken =
+        rootCard.dbContent === ""
+          ? "can't run search with empty content"
+          : `Invalid JSON search query: ${rootCard.dbContent ?? ""}`;
+    }
+    if (statementBroken !== undefined) {
+      this.searchBoxCompleteData = {
+        term,
+        exact,
+        exactKnown,
+        goto,
+        failure: statementBroken,
+      };
+      return;
+    }
+    // name_cql(8).merge(complete_cql) (0_search/views.rb:70-73) ON TOP of
+    // the card's cql hash (cql_search.rb:71 standardized_query_args).
+    statement["limit"] = 8;
+    statement["sort_by"] = "name";
+    statement["return"] = "name";
+    statement["complete"] = term ?? "";
+    try {
+      const result = await executeQuery(this.fetcher.driver, statement, {
+        ...(await this.cqlPermissionOptions()),
+        parse: {
+          context: rootCard.name.s, // cql_search.rb:72 args[:context] ||= name
+          ensureCardId: (nameish: string) => this.fetcher.lexicon.id(nameish),
+          resolveCardId: (nameish: string) => {
+            const key = DeckoName.parse(nameish).key;
+            return this.idsByKey.get(key) ?? this.fetcher.lexicon.peekId(nameish);
+          },
+        },
+      });
+      if (!("rows" in result)) {
+        this.searchBoxCompleteData = { term, exact, exactKnown, goto, failure };
+        return;
+      }
+      // The composed records (junction names compose from their sides, the
+      // same ladder runSearch rides) + the verdict re-check the search
+      // results walk applies: the SQL filter excludes stored read_rule_id
+      // denials, live-rule-walk rows re-judge through canReadCard.
+      const records = await this.prefetchSearchResultRows(result.rows);
+      const seenKeys = new Set<string>();
+      for (const row of result.rows) {
+        const record = records.get(row.id);
+        if (record === undefined) continue;
+        if (!(await this.canReadCard(record))) continue;
+        if (record.name === undefined) continue;
+        const enriched = await this.enrichAndStore(record);
+        if (seenKeys.has(enriched.key)) continue;
+        seenKeys.add(enriched.key);
+        goto.push(enriched);
+      }
+    } catch (e) {
+      failure = e instanceof Error ? e.message : String(e);
+    }
+    this.searchBoxCompleteData = { term, exact, exactKnown, goto, failure };
+  }
+
+  /** RenderEngineLike#searchBoxCompleteSeat — the :search_box_complete
+   *  view's prepared data (undefined = this render never prepared it — the
+   *  view dispatch on a seatless render is a port defect, loud). */
+  searchBoxCompleteSeat(_card: RenderFormat["card"]): SearchBoxCompleteSeat | undefined {
+    return this.searchBoxCompleteData;
   }
 
   /** The search read path's transport-chunked prefetch (see the runSearch

@@ -168,6 +168,25 @@ export function historyViewParams(searchParams: URLSearchParams): Record<string,
   return params;
 }
 
+/**
+ * The request-term seam for a `:mark/:view(.:format)` json dispatch
+ * (search_params.rb: term_param || vars.keyword — the navbox typeahead's
+ * `?term=` and the `query[keyword]` form pair among them). Undefined when
+ * the request carries none, so the render params stay clean. Shared by the
+ * deploy entries; the staging harness carries its own copy.
+ */
+export function jsonViewSearchParams(searchParams: URLSearchParams): Record<string, unknown> | undefined {
+  const term = searchParams.get("term");
+  const main = searchParams.get("main");
+  const keyword = searchParams.get("query[keyword]");
+  if (term === null && main === null && keyword === null) return undefined;
+  return {
+    ...(term !== null ? { term } : {}),
+    ...(main !== null ? { main } : {}),
+    ...(keyword !== null ? { vars: { keyword } } : {}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Deck-boot name-environment prime
 // ---------------------------------------------------------------------------

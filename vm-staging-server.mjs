@@ -2900,6 +2900,72 @@ async function cardRecordJson(cardName, renderEngine = render) {  const record =
   });
 }
 
+/** The plain decode for the ROUTE's view segment (engine_routes.rb:51
+ *  ":mark/:view(.:format)"): view identifiers are snake_case and matched
+ *  literally, so no underscore fold — the mark rides decodeName
+ *  (uri_fetch_opts), the view does not (worker-shared-surface.ts
+ *  #decodeViewSegment's contract, mirrored for the harness surface). */
+function decodeViewSegmentJson(raw) {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The ENGINE's json-format view render (Ruby card#read with the route's
+ *  .:format json — engine_routes.rb:51): the view dispatch in the json
+ *  format answers the ported json-format views' own bytes (search_box_complete's
+ *  JsonFormat#show pretty form among them); an unported view name raises
+ *  the UnsupportedViewError the 422 mapping below serves (the same shape
+ *  renderCardPage serves the html arm). The term/main/query[keyword]
+ *  request params ride the render params' search seam (search_params.rb —
+ *  term_param || vars.keyword). */
+async function renderCardViewJson(cardName, view, url, renderEngine = render) {
+  const searchParamsSource = {
+    term: url.searchParams.get("term"),
+    main: url.searchParams.get("main"),
+    keyword: url.searchParams.get("query[keyword]"),
+  };
+  const search =
+    searchParamsSource.term !== null ||
+    searchParamsSource.main !== null ||
+    searchParamsSource.keyword !== null
+      ? {
+          ...(searchParamsSource.term !== null ? { term: searchParamsSource.term } : {}),
+          ...(searchParamsSource.main !== null ? { main: searchParamsSource.main } : {}),
+          ...(searchParamsSource.keyword !== null
+            ? { vars: { keyword: searchParamsSource.keyword } }
+            : {}),
+        }
+      : undefined;
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Connection": "close",
+  };
+  try {
+    const body = await renderEngine.render(cardName, view, {
+      ...(search !== undefined ? { search } : {}),
+      format: "json",
+    });
+    return { status: 200, headers, body };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof Error && error.name === "UnsupportedViewError") {
+      // Ruby: an unsupported view is a UserError -> 422
+      // (format/render.rb:60-64 raise + error.rb:21 status) — the same
+      // mapping renderCardPage serves the html arm.
+      return {
+        status: 422,
+        headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+        body: message,
+      };
+    }
+    return jsonResponse(500, { error: message });
+  }
+}
+
 async function status() {
   try {
     const { rows } = await driver.query("SELECT COUNT(*) AS n FROM cards", []);
@@ -3955,46 +4021,25 @@ const server = http.createServer(async (req, res) => {
       const name = decodeName(raw);
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
-      } else if (name === "*search/search box complete") {
-        // search_box_complete (mod/search set/self/search.rb:70-72, perms
-        // :none): the navbox typeahead's JSON — the search action item plus
-        // the goto items (the complete search: the first 8 names whose key
-        // starts with the term's key, sorted by name — AUTOCOMPLETE_LIMIT).
-        // The deck script's jQuery UI autocomplete renders each item's
-        // label into the dropdown lis the search journeys wait for.
-        const term = url.searchParams.get("term") ?? "";
-        const termKey = DeckoName.parse(term).key;
-        const nameRows = term === ""
-          ? []
-          : (
-              await requestEngine.fetcher.driver.query(
-                "SELECT name FROM cards WHERE trash = 0 AND key LIKE ? ORDER BY name LIMIT 8",
-                [`${termKey}%`],
-              )
-            ).rows;
-        const origin = `http://${req.headers.host}`;
-        const searchLabel =
-          `<div class='autocomplete-item-search autocomplete-item'>\n` +
-          `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">search</i>\n</div>\n` +
-          `<div class='autocomplete-label'>\n${term}\n</div>\n</div>\n`;
-        const gotoLabel = (itemName) =>
-          `<div class='autocomplete-item-goto autocomplete-item'>\n` +
-          `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">arrow_forward</i>\n</div>\n` +
-          `<div class='autocomplete-label'>\n${itemName}\n</div>\n</div>\n`;
-        response = jsonResponse(200, [
-          {
-            url: `${origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(term)}`,
-            action: "search",
-            value: term,
-            label: searchLabel,
-          },
-          ...nameRows.map((row) => ({
-            url: `${origin}/${encodeURIComponent(row.name)}`,
-            action: "goto",
-            value: row.name,
-            label: gotoLabel(row.name),
-          })),
-        ]);
+      } else if (raw.includes("/")) {
+        // Ruby route line 51: get ":mark/:view(.:format)" => "card#read".
+        // A two-segment .json path is mark + view + json format (a card
+        // name cannot carry "/" — the joint is "+"), so the ENGINE answers:
+        // the view dispatch in the json format for ported json-format views
+        // (search_box_complete, mod/search set/self/search.rb:70-72 — the
+        // navbox typeahead's JSON), Ruby's 422 unsupported-view shape
+        // otherwise. The bytes are the engine's (render raw + format json),
+        // not a harness fabrication — the harness-side serving shim this
+        // arm carried before (commit e2062847) is deleted: the board's
+        // typeahead journey proves the engine path.
+        const slash = raw.indexOf("/");
+        const markName = decodeName(raw.slice(0, slash));
+        const viewName = decodeViewSegmentJson(raw.slice(slash + 1));
+        if (markName === undefined || markName === "" || viewName === undefined || viewName === "") {
+          response = jsonResponse(400, { error: "empty card name" });
+        } else {
+          response = await renderCardViewJson(markName, viewName, url, requestEngine);
+        }
       } else {
         response = await cardRecordJson(name, requestEngine);
       }
@@ -4152,51 +4197,14 @@ const server = http.createServer(async (req, res) => {
         const name = decodeName(routeName);
         if (name === undefined || name === "") {
           response = jsonResponse(400, { error: "empty card name" });
-        } else if (
-          name === "*search" &&
-          routeView === "search_box_complete"
-        ) {
-          // search_box_complete (mod/search set/self/search.rb:70-72, perms
-          // :none): the navbox typeahead's JSON — the search action item
-          // plus the goto items (the complete search: the first 8 names
-          // whose key starts with the term's key, sorted by name —
-          // AUTOCOMPLETE_LIMIT). The deck script's jQuery UI autocomplete
-          // renders each item's label into the dropdown lis.
-          const term = url.searchParams.get("term") ?? "";
-          const termKey = DeckoName.parse(term).key;
-          const nameRows = term === ""
-            ? []
-            : (
-                await requestEngine.fetcher.driver.query(
-                  "SELECT name FROM cards WHERE trash = 0 AND key LIKE ? ORDER BY name LIMIT 8",
-                  [`${termKey}%`],
-                )
-              ).rows;
-          const origin = `http://${req.headers.host}`;
-          const searchLabel =
-            `<div class='autocomplete-item-search autocomplete-item'>\n` +
-            `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">search</i>\n</div>\n` +
-            `<div class='autocomplete-label'>\n${term}\n</div>\n</div>\n`;
-          const gotoLabel = (itemName) =>
-            `<div class='autocomplete-item-goto autocomplete-item'>\n` +
-            `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">arrow_forward</i>\n</div>\n` +
-            `<div class='autocomplete-label'>\n${itemName}\n</div>\n</div>\n`;
-          const items = [
-            {
-              url: `${origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(term)}`,
-              action: "search",
-              value: term,
-              label: searchLabel,
-            },
-            ...nameRows.map((row) => ({
-              url: `${origin}/${encodeURIComponent(row.name)}`,
-              action: "goto",
-              value: row.name,
-              label: gotoLabel(row.name),
-            })),
-          ];
-          response = jsonResponse(200, items);
         } else {
+          // The harness-side search_box_complete arm this branch carried
+          // (commit e2062847) is DELETED: `/:mark/:view` without the
+          // .:format suffix is an HTML-format render (Ruby's route line 51
+          // default), and search_box_complete is a json-format-only view —
+          // the engine's UnsupportedViewError -> the 422 mapping inside
+          // renderCardPage is Ruby's answer (the typeahead never rides this
+          // form; the navbar's data-completepath carries the .json suffix).
           response = await renderCardPage(name, requestEngine, routeView, searchReq ? { search: searchReq } : undefined, pageOpts);
           servedCardName = name;
         }

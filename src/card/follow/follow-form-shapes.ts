@@ -39,8 +39,11 @@ export function output(parts: ReadonlyArray<string | undefined | null>): string 
     .join("\n");
 }
 
-/** URI.encode_www_form_component (the Rack/URI escape to_param uses). */
-function formEscape(value: string): string {
+/** URI.encode_www_form_component (the Rack/URI escape to_param uses).
+ *  Exported for the search mod's search_box_complete url pair — the same
+ *  Rack escape the to_param query strings use (results_path's
+ *  query%5Bkeyword%5D pair). */
+export function formEscape(value: string): string {
   return encodeURIComponent(value)
     .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
     .replace(/%20/g, "+");

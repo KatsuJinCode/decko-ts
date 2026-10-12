@@ -143,20 +143,26 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     expect(anchored.length).toBeGreaterThan(0);
   });
 
-  it("the non-html anchored registrations are exactly the two json census rows", () => {
+  it("the non-html anchored registrations are exactly the three json census rows", () => {
     // Measured census pin. Ruby files each of these ONLY under
     // JsonFormat (json_format.rb:6), so their json dispatch is faithful
     // and no other format ever dispatched them (no json renderView
     // dispatch exists - the route json show is the format-families
     // layer). A THIRD non-html anchored key (or a new json row) lands
     // here and names itself: the re-adjudication signal for porting the
-    // format scoping into the anchored arms.
+    // format scoping into the anchored arms. The third row is this
+    // census's own signal firing: the typeahead-edge lane's
+    // :search_box_complete (card-mod-search set/self/search.rb:70-72,
+    // the navbox typeahead's JSON the engine now serves; its serving
+    // route is the format-families layer's json show, exactly like the
+    // two rows below).
     const foreign = anchored.filter((e) => e.formatKey !== "html");
     expect(
       foreign.map(
         (e) => `${e.mod} ${e.setPath} :${e.view} key=${e.formatKey}`,
       ),
     ).toEqual([
+      "search self/search :search_box_complete key=json",
       "carrierwave self/search :image_complete key=json",
       "api_key right/api_key :token key=json",
     ]);

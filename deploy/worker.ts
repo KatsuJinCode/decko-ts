@@ -54,6 +54,7 @@ import {
   decodeName,
   decodeViewSegment,
   historyViewParams,
+  jsonViewSearchParams,
   mapRenderError,
   queryViewFromUrl,
 } from "../src/server/worker-shared-surface.js";
@@ -709,8 +710,56 @@ export default {
 
     // GET /:card-name.json — the card's json-format show (checked before
     // the render route so "Something.json" never renders as a card name).
+    // A TWO-segment .json path is Ruby route line 51 with the format
+    // suffix — get ":mark/:view(.:format)" => "card#read" — the ENGINE's
+    // view dispatch in the json format (the navbox typeahead's
+    // search_box_complete.json among them; an unregistered view raises the
+    // UnsupportedViewError the 422 mapping serves, the same shape
+    // renderCardPage serves the html arm). The request-term seam rides the
+    // search params (search_params.rb: term_param || vars.keyword).
     if (pathname.endsWith(".json")) {
       const raw = pathname.slice(0, -".json".length).replace(/^\//, "");
+      if (raw.includes("/")) {
+        const slash = raw.indexOf("/");
+        const markName = decodeName(raw.slice(0, slash));
+        const rawView = raw.slice(slash + 1);
+        const viewName = (() => {
+          try {
+            return decodeURIComponent(rawView);
+          } catch {
+            return undefined;
+          }
+        })();
+        if (markName === undefined || markName === "" || viewName === undefined || viewName === "") {
+          return jsonResponse(400, { error: "empty card name" });
+        }
+        const deck = await getDeck(env);
+        const search = jsonViewSearchParams(new URL(request.url).searchParams);
+        try {
+          const body = await deck.render.render(markName, viewName, {
+            ...(search !== undefined ? { search } : {}),
+            format: "json",
+          });
+          return new Response(body, {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+              "Cache-Control": "no-store",
+            },
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (error instanceof Error && error.name === "UnsupportedViewError") {
+            // Ruby: an unsupported view is a UserError -> 422
+            // (format/render.rb:60-64 raise + error.rb:21 status).
+            return new Response(message, {
+              status: 422,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            });
+          }
+          return jsonResponse(500, { error: "json view render failed", message });
+        }
+      }
       const name = decodeName(raw);
       if (name === undefined || name === "") {
         return jsonResponse(400, { error: "empty card name" });

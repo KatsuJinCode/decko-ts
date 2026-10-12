@@ -135,6 +135,13 @@ const PERMS_NONE = new Set<string>([
   "script_calls",
   "script_variables",
   "navbar_links",
+  // card-mod-search set/self/search.rb:70 view :search_box_complete,
+  // perms: :none — the navbox typeahead's JSON is an every-page surface for
+  // anonymous and signed-in visitors alike (modViewPerms's config table is
+  // not yet consumed by this gate — the hardcoded table is the registry
+  // this gate reads; select2_option's identical :none config has the same
+  // latent gap, left for its own lane).
+  "search_box_complete",
 ]);
 
 /**
