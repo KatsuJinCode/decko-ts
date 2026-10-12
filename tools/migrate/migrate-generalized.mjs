@@ -1,12 +1,12 @@
-// migrate-generalized.mjs — the M4-generate CLI: Ruby decko SQLite -> decko-ts.
+// migrate-generalized.mjs — the Ruby-decko-SQLite-to-decko-ts CLI.
 //
 //   node tools/migrate/migrate-generalized.mjs --source <deck.sqlite> --out <deck.sqlite> [--verify] [--determinism] [--mod-compat]
 //
 // Pipeline:
 //   1. INVENTORY the source (source-sqlite.mjs); classify tables (schema-map.mjs).
 //   2. STREAM rows into the target (generalized-import.mjs); settings rows
-//      are NOT imported (decko-ts stores settings as cards; the source
-//      `meta` table is corpus-build metadata).
+//      are NOT imported (decko-ts stores settings as cards; a source
+//      `meta` table is build-time metadata, not deck data).
 //   3. VERIFY per-table count + checksum parity (verify.mjs).
 //   4. ROUND-TRIP REPORT: counts in vs out, per source/target table (roundtrip-report.mjs).
 //   5. (optional) DETERMINISM PROOF: import twice into two fresh DBs and
