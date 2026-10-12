@@ -7,7 +7,7 @@
 # resource ids in its fork of this repo. The database_id below is a
 # placeholder; a button deploy provisions its own database and writes the id.
 #
-# Docs (fetched 2026-10-01, workers/platform/deploy-buttons/):
+# Docs (Cloudflare, workers/platform/deploy-buttons/):
 #   "Cloudflare will read the Wrangler configuration file of your source
 #    repo to determine resource requirements ... and update the Wrangler
 #    configuration where applicable for newly created resources (e.g.
