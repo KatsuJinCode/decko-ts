@@ -3,15 +3,15 @@
 // readable, and cross-tab that against what the ORACLE rendered as the body.
 //
 // WHY
-//   M2: `mytho-psychology` (wanted card, Project/398) — the oracle renders the
-//   FULL bar body inside a `mini_bar-view` slot whose data-slot JSON is
-//   byte-identical to the denied arm's. So the decision is the BODY only.
+//   The oracle renders the FULL bar body inside a `mini_bar-view` slot even
+//   when that slot's data-card JSON is byte-identical to the denied arm's --
+//   so the decision lives in the BODY rendering alone.
 //
-//   The views.ts comment seats the decision on "name.simple? => not virtual =>
-//   two-span". The capture census falsifies that (simple names like "Nick
-//   Walker", "Everyone", "Oak Cliff" render FULL). The next question is the
-//   one the code actually branches on: does the engine's own read verdict for
-//   the phantom separate FULL from DENIED?
+//   The views.ts comment seats the decision on "name.simple? => not virtual
+//   => two-span", but the captured renders contradict it: simple item names
+//   of every shape show up with FULL bodies. The question this probe answers
+//   is the one the code actually branches on: does the engine's own read
+//   verdict for the phantom separate FULL from DENIED?
 //
 // USAGE
 //   node tools/oracle/probe-mini-bar-phantom-read-verdict.mjs [--limit 40]
