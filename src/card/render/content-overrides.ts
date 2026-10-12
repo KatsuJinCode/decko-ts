@@ -18,8 +18,8 @@
 //   src/card/render/format.ts renderRaw (format.ts:600-602). The registry
 //   here is the lookup seam the mod loader populates and the format layer
 //   consults BEFORE falling through to dbContent; cards without an override
-//   produce byte-identical output to the existing renderRaw path (the corpus
-//   suites under tests/card/render/ pin them; they MUST not change).
+//   produce byte-identical output to the existing renderRaw path (the suites
+//   under tests/card/render/ pin them; they MUST not change).
 //
 // SetPath is the path-key the mod loader already uses for view registration
 // (mod-loader/mod-registrar.ts#setPathPattern: "right/when_created" ->
@@ -81,8 +81,10 @@ export function toPointerContent(items: readonly string[]): string {
  * files append at load time: card-mod-edit set/all/editor.rb:1-2 ("text area",
  * "text field"), card-mod-ace_editor set/all/ace_editor.rb:1 ("ace editor"),
  * card-mod-date set/all/calendar.rb:1 ("calendar"), card-mod-tinymce_editor
- * set/all/tinymce_editor.rb:2 ("tinymce editor"). The order below is the
- * captured order (the record expectation in view-surface shard-000007).
+ * set/all/tinymce_editor.rb:2 ("tinymce editor"). The order below is
+ * load-bearing: the seed's six options first, then one entry per
+ * appending mod file, because the rendered pointer list reads in exactly
+ * this order.
  */
 export function listInputOptionsContent(): string {
   return toPointerContent([
@@ -125,14 +127,13 @@ export interface RegisteredContentOverride {
    *  RegisteredSetModule.modName). */
   readonly modName: string;
   readonly fn: ContentFn;
-  /** MERGE discriminator (compile-engines merge): does the set
-   *  module's `def content` carry an `assign_type` (the card's TYPE-effect
-   *  moves before the type set modules resolve — card-mod-date's
-   *  when_created family) or not (the card KEEPS its type, so the
-   *  cardtype's own view :core — the scss/css CodeRay branch — still fires,
-   *  wrapping the overridden raw; set/self/bootstrap_core.rb's bootstrap
-   *  code files). Default true (the C3 surfaces2 behavior: the override
-   *  bytes are the FINAL core); false lets the typeCode branches run with
+  /** Does the set module's `def content` also carry an `assign_type`? When
+   *  it does, the card's TYPE-effect moves before the type set modules
+   *  resolve (card-mod-date's when_created family) and the override bytes
+   *  are the FINAL core. When it does not, the card KEEPS its type, so the
+   *  cardtype's own view :core - the scss/css CodeRay branch - still fires
+   *  and wraps the overridden raw (set/self/bootstrap_core.rb's bootstrap
+   *  code files). Default true; false lets the typeCode branches run with
    *  renderRaw() reading the same registry. */
   readonly supersedesType?: boolean;
 }
@@ -194,14 +195,13 @@ export class ContentOverrideRegistry {
 const BUILT_IN_DEFAULT_REGISTRY = new ContentOverrideRegistry();
 BUILT_IN_DEFAULT_REGISTRY.register({
   // setPath anchors are the card's KEY form: decko's key algorithm
-  // singularizes ("bootstrap: functions" -> key "bootstrap_function" —
-  // the oracle deck's stored row reads "key":"bootstrap_function"), so
+  // singularizes ("bootstrap: functions" -> key "bootstrap_function"), so
   // the Self-pattern match (cardBelongsToSet: card.name.key === anchor)
   // is against the singular. The codename spelling ("bootstrap_functions")
   // does NOT match and the card renders an empty CodeRay pre.
   // supersedesType: false — set/self/bootstrap_core.rb declares ONLY
   // `def content`; the card stays SCSS-typed, so the cardtype's CodeRay
-  // core branch fires over the overridden raw (the oracle page pins).
+  // core branch fires over the overridden raw.
   setPath: "self/bootstrap_core",
   modName: "bootstrap",
   fn: bootstrapCoreContent,
@@ -239,23 +239,20 @@ BUILT_IN_DEFAULT_REGISTRY.register({
   // listInputOptionsContent, the same answer SELF_MODULE_CHAINS gives the
   // record path). Ruby's singleton-class include chain shadows db_content
   // for EVERY caller, so the pointer-list item walk renders the catalog
-  // over the stored row ("overridden" — the card-mod-edit data/real.yml
-  // seed the bench corpus row carries; the capture deck photographs the
-  // catalog, grade10 shard-000007 expectedBytes content 10699 / open
-  // 13851). supersedesType is FALSE (the bootstrap shape): the set module
-  // declares ONLY `def content` — no assign_type — so the card KEEPS its
-  // Pointer type and the core view's pointer-list arm IS the dispatch,
-  // wrapping the overridden raw (the probe measured the true-form render
-  // collapsing to the final-bytes text when this defaulted true).
+  // over the stored row. supersedesType is FALSE (the bootstrap shape): the
+  // set module declares ONLY `def content` — no assign_type — so the card
+  // KEEPS its Pointer type and the core view's pointer-list arm IS the
+  // dispatch, wrapping the overridden raw. Defaulting this to true instead
+  // collapses the render to the final-bytes text, because the type's own
+  // core branch then stops firing.
   // Engine-layer registration (NOT the manifest) per the bootstrap
   // precedent above: the grading verifier runs the bare engine, where a
   // manifest entry would never register.
   // setPath is the card's KEY form — the self arm compares card.name.key,
   // and decko keys singularize the last word ("content options" ->
-  // key "*input_type+*right+*content_option", the exact key the corpus
-  // record carries and the record entry passes on; the gem-tree path
-  // shape "self/input_type/right/content_options" drops the asterisks
-  // AND keeps the plural, so it matches neither).
+  // key "*input_type+*right+*content_option"); the gem-tree path shape
+  // "self/input_type/right/content_options" drops the asterisks AND keeps
+  // the plural, so it matches neither form.
   setPath: "self/*input_type+*right+*content_option",
   modName: "list",
   fn: () => listInputOptionsContent(),
@@ -405,8 +402,8 @@ function camelizeAnchor(anchor: string): string {
  *  override matches; format.ts renderRaw falls through to dbContent.
  *
  *  Cards without an override produce byte-identical output to the existing
- *  renderRaw path - the corpus suites under tests/card/render/ pin them
- *  and they MUST not change. */
+ *  renderRaw path - the suites under tests/card/render/ pin them and they
+ *  MUST not change. */
 /** The rendered bytes of the matched override (the registered fn), or
  *  undefined when no registration matches. */
 export function resolveContentOverride(fmt: RenderFormat): string | undefined {
