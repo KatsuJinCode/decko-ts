@@ -1,18 +1,16 @@
 // deploy/bunny-worker-src/bunny-edge-new-card-form.ts — the /new/:type arm's
-// render path (the route-gaps lane, 2026-10-05): the CREATE FORM for a new
-// card of the requested type, in the deck's full Default-Layout chrome.
+// render path: the CREATE FORM for a new card of the requested type, in the
+// deck's full Default-Layout chrome.
 //
 // THE ROUTE (why this exists): decko's engine_routes.rb:22
 // `get "new/:type" => "card#read", view: "new"` is the card-creation route
-// the deck's own chrome links as /new/Sign_up (the *account_links navbar arm
-// and the signin form's "...or sign up!" link — live-signin-ref.html), and
-// the edge answered it 404 (the measured gap in
-// an internal work log section 2.1). The lineage
-// parsePath now reports { kind: "new", typeName }; dispatchEngineRequest
-// delegates here.
+// a deck's own chrome links as /new/Sign_up (the *account_links navbar arm
+// and the signin form's "...or sign up!" link), and the edge answered it 404.
+// The lineage parsePath now reports { kind: "new", typeName };
+// dispatchEngineRequest delegates here.
 //
-// THE RUBY MECHANISM this port follows (decko 0.20.0, the corpus generator —
-// read from the installed gem this lane):
+// THE RUBY MECHANISM this port follows (decko 0.20.0, read from the
+// installed gem):
 //   - the route carries NO mark: card_class.rb:104-133 sets opts[:type] from
 //     params[:type] while implicit_mark resolves to "" (the unknown:true
 //     :new view needs no name) — the rendered card is a NEW (rowless) card
@@ -27,20 +25,17 @@
 //     viewer, :211-213, format_denied_task = "to create this");
 //   - the create verdict is the SAME algebra the render engine's view gates
 //     run (src/card/permissions/view-task-rules.ts): the deck's *create rule
-//     for the type set — on the serving deck `Sign up+*type+*create` =
-//     "Anyone" (mirror rule card 6580: self-signup is open) over the
-//     `*all+*create` = "Anyone Signed In" fallback (mirror rule 6566).
+//     for the type set, over the `*all+*create` fallback.
 //
-// FIDELITY CLASS (stated, not implied): the corpus has NO capture of any
-// /new/:type page, so nothing here is byte-oracle-pinned. The ORACLE-PINNED
-// shapes reused: the create-form shell (createFormShell — the form-substrate
-// oracle), the email/password field editors (byte-pinned to the live sign-in
-// form capture, src/card/render/signin-core-form-view.ts — the account
-// mod's shared editor partials), and the frame chrome (the captured
-// not_found frame shape). RECONSTRUCTED from the Ruby source (labeled
-// inline): the frame header title, the name formgroup, the hidden type_id,
-// the buttons block, the slot-less body region. See
-// an internal work log
+// FIDELITY CLASS (stated, not implied): there is no recorded reference for
+// any /new/:type page, so nothing here is byte-oracle-pinned. The
+// ORACLE-PINNED shapes reused: the create-form shell (createFormShell — the
+// form-substrate oracle), the email/password field editors (byte-pinned to
+// the sign-in form, src/card/render/signin-core-form-view.ts — the account
+// mod's shared editor partials), and the frame chrome (the not_found frame
+// shape). RECONSTRUCTED from the Ruby source (labeled inline): the frame
+// header title, the name formgroup, the hidden type_id, the buttons block,
+// the slot-less body region.
 
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";
@@ -74,7 +69,7 @@ export interface NewCardFormDeck {
 const MAIN_SUCCESS_ATTR = '{"redirect":true}'.replace(/"/g, "&quot;");
 
 /** The signup form's account-field editors, modeled byte-for-byte on the
- *  live sign-in form capture's shapes (signin-core-form-view.ts
+ *  recorded sign-in form's shapes (signin-core-form-view.ts
  *  signinFieldGroup — the SAME account-mod editor partials render both
  *  forms), keyed to the UNNAMED new card's subcards ("+*email" /
  *  "+*password"; the structural fallbacks are the account mod's own
@@ -115,7 +110,7 @@ function accountFieldGroup(field: "email" | "password"): string {
 }
 
 /** The new view's body region (the layout's {{_main}} substitution content):
- *  the frame (the captured not_found frame shape) around the create form —
+ *  the oracle-pinned not_found frame shape) around the create form —
  *  card-mod-edit set/all/new.rb framed_create_form -> frame_and_form :create
  *  -> [_render_new_fields] where new_fields = [new_view_hidden (empty),
  *  new_view_name (the name prompt: name blank, no autoname rule on the
@@ -168,7 +163,7 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
       },
     );
   return (
-    // The frame: the captured not_found frame shape (d0-card-frame card +
+    // The frame: the oracle-pinned not_found frame shape (d0-card-frame card +
     // header + body), titled with the new view's voo.title.
     `<div class="d0-card-frame card">` +
     `<div class="d0-card-header card-header">` +
@@ -183,7 +178,7 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
 /** The loud_denial body region (card-mod-format set/all/html/error.rb
  *  :191-213): the framed "Sorry!" + the signed-out viewer's
  *  sign-in-or-sign-up line with format_denied_task ("to %{denied_task} this"
- *  -> "to create this"). The sign-in/sign-up link bytes are the captured
+ *  -> "to create this"). The sign-in/sign-up link bytes are the
  *  not_found builder's (bunny-edge-error-page.ts buildNotFoundSlotHtml). */
 export function createDenialBodyHtml(): string {
   return (
@@ -199,7 +194,8 @@ export function createDenialBodyHtml(): string {
 /** The /new/:type arm's answer. The type mark resolves through the deck's
  *  own name-key lookup (Ruby: Card.new type: "Sign up" -> type_id 12); an
  *  unresolvable type answers the not_found page (the route arm's labeled
- *  deviation — Ruby's exact unknown-type error shape has no capture; 404 is
+ *  deviation — Ruby's exact unknown-type error shape has no recorded
+ *  reference; 404 is
  *  the reference answer class). The create verdict is the anonymous
  *  viewer's ok?(:create) on the virtual card — page_status_for_unknown's
  *  gate. Both the 200 form and the 403 denial ride the same full-chrome
