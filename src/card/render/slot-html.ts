@@ -8,9 +8,8 @@
 //   normalized options + visibility, restricted to slot keys)
 // - Rails' content_tag emits attributes in hash insertion order with double
 //   quotes; HAML templates emit attributes alphabetically sorted with single
-//   quotes. Both orderings are pinned by the captured fixtures and mirrored
-//   by the two emitters below (emitAttrs insertion order / emitHamlAttrs
-//   sorted).
+//   quotes. The two emitters below mirror the two orderings
+//   (emitAttrs insertion order / emitHamlAttrs sorted).
 
 import { randomBytes } from "node:crypto";
 
@@ -28,9 +27,8 @@ export function h(s: string): string {
  *  through, space becomes "+", everything else %XX uppercase over the
  *  character's UTF-8 BYTES, '*' -> "%2A"). Ruby strings are byte strings:
  *  CGI.escape percent-encodes each encoded byte, so "á" -> "%C3%A1" and
- *  "香" -> "%E9%A6%99" — the oracle's query bytes (Z5b exemplar:
- *  ...Amar+Bogot%C3%A1+20100920...). The previous per-CODEPOINT encoder
- *  emitted "%E1" / "%9999"-style tokens that match no oracle byte.
+ *  "香" -> "%E9%A6%99". A per-CODEPOINT encoder would instead emit
+ *  wrong single-byte tokens for non-ASCII characters.
  *  Exported here so render-side href builders (and the tabs nest path,
  *  which imports this copy) share one encoder for handle_unknown
  *  card[name] queries (card-mod-format lib/card/path.rb:84-87). */
@@ -60,12 +58,10 @@ export function htmlEscapeExceptQuotes(s: string): string {
 }
 
 /** The wiki-link card-title attribute's escape (title.rb wrapped_title):
- *  the oracle escapes &, >, <, and double quotes but leaves SINGLE quotes
- *  raw — the Nicole Le'Strix pin (page-surface shard-000010, Archetypal role
- *  playing discussion on Facebook Aug 2012, offset 10190: the wanted-card
- *  attribute reads title="Nicole Le'Strix" with the raw apostrophe where
- *  h() would emit &#39;). Same four-entity table as h() minus the
- *  apostrophe rule. */
+ *  Ruby's escape here covers &, >, <, and double quotes but leaves SINGLE
+ *  quotes raw — a card title with an apostrophe renders
+ *  title="O'Brien" with the raw apostrophe where h() would emit
+ *  &#39;. Same four-entity table as h() minus the apostrophe rule. */
 export function htmlEscapeKeepApostrophe(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -75,7 +71,7 @@ export function htmlEscapeKeepApostrophe(s: string): string {
 }
 
 /** wrap.rb wrap_data slot-id: `SecureRandom.hex(10)` - exactly 20 lowercase
- *  hex (the replay normalization's contract, docs/parity-method.md). */
+ *  hex. */
 export function newSlotId(): string {
   return randomBytes(10).toString("hex");
 }
@@ -83,14 +79,13 @@ export function newSlotId(): string {
 /** Attribute value with Rails' tag-helper escaping inside double quotes.
  *  Mirrors actionview-7.2.3.2 lib/action_view/helpers/tag_helper.rb:310-325
  *  #tag_option → ERB::Util.unwrapped_html_escape for the raw-string case
- *  (the help-popover pass that hands emitAttrs a literal `&nbsp;` rides
- *  this branch and becomes `&amp;nbsp;`, matching the dual-lane raw
- *  oracle). Callers MUST pass the raw value (Rails-content_tag parity):
- *  pre-escaping with h() and then escaping again is the double-escape
- *  defect the page-mechanism-census found in 20 of 346 clean-state
- *  sampled pages — see slotCardname's callers
+ *  (a caller handing emitAttrs a literal `&nbsp;` rides
+ *  this branch and becomes `&amp;nbsp;`, matching Ruby's raw-string
+ *  behavior). Callers MUST pass the raw value (Rails-content_tag parity):
+ *  pre-escaping with h() and then escaping again is a double-escape
+ *  defect — see slotCardname's callers
  *  (views.ts:165/2298/2590, format.ts:653, pointer-list.ts:281, mod-search,
- *  mod-edit, mod-history, mod-view-helpers) for the corrected pattern. */
+ *  mod-edit, mod-history, mod-view-helpers) for the correct pattern. */
 function attrValue(value: string): string {
   return h(value);
 }
@@ -125,9 +120,9 @@ export function emitAttrs(attrs: Record<string, string | number | undefined>): s
  *  `content_tag` ONCE, but `bar.haml` (card-mod-bar_and_box-0.20.0
  *  set/all/bar.haml:2) and `box.haml` (set/all/box.haml:2) pass the SAME
  *  `wrap_data` hash as a HAML `data:` attribute, where Haml re-escapes
- *  it — the oracle's bar/box divs carry
- *  `data-card-name='Test Person&amp;#39;s Blog+*self'` while the slot
- *  wrap carries `data-card-name="Test Person&#39;s Blog"`. One payload,
+ *  it — the Haml-emitted bar/box divs carry
+ *  `data-card-name='Example&amp;#39;s Blog+*self'` while the slot
+ *  wrap carries `data-card-name="Example&#39;s Blog"`. One payload,
  *  two escape levels, and the level is decided by which emitter crossed
  *  the attribute boundary.
  *
@@ -152,8 +147,8 @@ export function emitHamlAttrs(attrs: Record<string, string | number | undefined>
 }
 
 /** The ordered slot-option keys (view/options.rb keymap order: shark, heir,
- *  both, none, minus skip_perms = key_lists.rb#slot_keys). The captured
- *  data-slot JSON always appears in this order. */
+ *  both, none, minus skip_perms = key_lists.rb#slot_keys). The emitted
+ *  data-slot JSON follows this order. */
 const SLOT_KEYS: readonly string[] = [
   // shark
   "view", "nest_name", "nest_syntax", "wrap", "show", "hide", "unknown",
@@ -167,16 +162,16 @@ const SLOT_KEYS: readonly string[] = [
   // none (minus skip_perms)
   "main_view", "layout",
   // wrap.rb:68-71 name_context_slot_option appends name_context AFTER
-  // voo.slot_options (outside the slot_keys slice), so the captured bytes
-  // always show it last ("...&quot;home_view&quot;:...,&quot;name_context&quot;
-  // :&quot;aikido_2&quot;}"). Tail position here reproduces those bytes.
+  // voo.slot_options (outside the slot_keys slice), so it is always the
+  // JSON's last key ("...&quot;home_view&quot;:...,&quot;name_context&quot;
+  // :&quot;...&quot;}"). Tail position here reproduces that shape.
   "name_context",
 ];
 
-/** voo.slot_options JSON in the captured byte shape: keys in slot_keys
+/** voo.slot_options JSON: keys in slot_keys
  *  order, compact JSON, escaped with html_escape_except_quotes; the double
- *  quotes are then attribute-escaped by emitAttrs (the captured
- *  `data-slot="{&quot;...&quot;}"` bytes). */
+ *  quotes are then attribute-escaped by emitAttrs (the
+ *  `data-slot="{&quot;...&quot;}"` attribute shape). */
 export function slotOptionsJson(slotOptions: Record<string, unknown>): string {
   const ordered: Record<string, unknown> = {};
   for (const key of SLOT_KEYS) {
@@ -199,13 +194,13 @@ export function slotOptionsJson(slotOptions: Record<string, unknown>): string {
  *  structural (the RenderFormat/Voo members this reads) so this module
  *  keeps its zero-render-dependency posture.
  *
- *  Emission is gated on KNOWN cards from the live bytes: every wanted slot
- *  in the captures (live_Aikido_2.html +management mini_bar, the no-id
- *  slots on Latest_News/Conflict_Done_Well) lacks name_context while the
- *  known slots under the same frame carry it - Ruby's unknown-card nest
- *  format does not inherit the page's name context. The part filter drops
- *  the rest (Latest_News items "X+pdf" don't contain the latest_news part;
- *  live pins zero name_context on that page). */
+ *  Emission is gated on context presence, not on the card being known:
+ *  Ruby's nest machinery does not inherit the page's name context for
+ *  slots nested inside item templates, because the part
+ *  filter empties the parent-derived context there (an item's name does
+ *  not contain the host page's name parts), while slots nested directly
+ *  in a page body carry the context whether the nested card is known or
+ *  not. */
 export function slotOptionsWithNameContext(
   fmt: {
     initialContextNames: readonly string[];
@@ -218,14 +213,9 @@ export function slotOptionsWithNameContext(
   // initial_context_names.present?` — PRESENCE is the only gate; there is
   // NO unknown-card gate at this layer. Which nests see a context is
   // decided upstream by relevant_context_names (context_names.rb:26-29:
-  // the parent context filtered to THIS card's name parts). The prior
-  // `card.unknown !== true` gate was pinned to a stale live-v0.19.1
-  // capture of /Aikido_2's wanted +management mini_bar; the graded
-  // v0.20.0 capture contradicts it — wanted (id-less) slots nested
-  // directly in a page body CARRY name_context there
-  // (Conflict_Done_Well+management, ctx present, no data-card-id; Occupy
-  // +pdf/+tags/+discussion: the live-wire mechanism-3 probe snap=3
-  // live=3 eng=0) while the item-template shape (Latest News) stays
+  // the parent context filtered to THIS card's name parts). Wanted
+  // (id-less) slots nested directly in a page body therefore CARRY
+  // name_context, while the item-template shape stays
   // empty because the part filter empties the context, not because of
   // any unknown gate.
   //
