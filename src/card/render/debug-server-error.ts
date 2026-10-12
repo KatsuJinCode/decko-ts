@@ -12,21 +12,20 @@
 //   end
 //
 // :server_error is what a production visitor sees for a server error: the
-// deck's "Wild Card!" block (set/all/html/server_error.haml, the bytes the
-// live site serves). It names no card, no exception and no code.
+// deck's "Wild Card!" block (set/all/html/server_error.haml). It names no
+// card, no exception and no code.
 //
 // DELIBERATE DIFFERENCE for :debug_server_error. Stock Ruby cannot render
 // it: better_errors reaches a deck only through card-mod-monkey, a
 // development-group gem, so in a deck built from its generated Gemfile the
 // constant lookup raises "NameError: uninitialized constant
-// Card::Set::All::Html::Error::BetterErrors" on every card
-// (tools/oracle/debug-server-error-probe.rb). That is a crash, which the
-// port does not copy; and the page it was meant to show (source, locals,
-// the backtrace, a live console) must never reach a production visitor. The
-// port renders the :server_error view in its place, through the same
-// render! a view body's render_server_error takes, so the two cannot
-// drift: the page neither crashes nor reveals anything a visitor could not
-// already see.
+// Card::Set::All::Html::Error::BetterErrors" on every card. That is a
+// crash, and it is not copied here; and the page it was meant to show
+// (source, locals, the backtrace, an interactive console) must never reach
+// a production visitor. This module renders the :server_error view in its
+// place, through the same render! a view body's render_server_error takes,
+// so the two cannot drift: the page neither crashes nor reveals anything a
+// visitor could not already see.
 
 import type { ViewFn } from "./format.js";
 

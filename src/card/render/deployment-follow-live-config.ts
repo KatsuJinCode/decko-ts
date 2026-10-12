@@ -1,47 +1,49 @@
-// The deployment "follow live" configuration — the graded environment's
-// LIVE deployment values (example.com, Decko v0.19.1 era; live-check-71
-// 2026-10-03) the engine emits when a deployment sets them, while the UNSET
-// default keeps every emission byte-identical to the frozen-corpus engine.
-// Same contract as setDeploymentCloudAssetHost (close-71-with-live): a
-// process-wide deployment setting the graded instruments apply before the
-// first render; every field is independent and optional, and UNSET means
-// "the pinned frozen-era form" — never a partial default.
+// Deployment emission settings — the head/body byte values and the serializer
+// emission forms a deployment can pin, applied process-wide before the first
+// render. Every field is independent and optional: UNSET means "keep the
+// built-in form", never a partial default. Same contract as
+// setDeploymentCloudAssetHost.
+//
+// The engine carries two generations of emission forms. UNSET emits the older
+// generation; a deployment that opts in gets the newer one. The two are
+// deliberately not one flag, because they differ in kind — the constants
+// describe the deployment being served, the serializer era describes the
+// output contract every consumer is written against.
 //
 // Two axes ride one config because one deployment sets both:
 //
-// 1. `serializerEra: "live"` — the live serializer's emission forms:
-//    (a) the conditional data-slot `show` key
-//        (: emit
-//        `show` iff the slot's show-candidate list minus the requested
-//        view is non-empty; when emitted, the list drops the requested
-//        view itself — live 11 carry / 26 omit, 37/37 measured agreement),
-//        applied at format.ts slotOptions();
-//    (b) the live class-token order at the bar/accordion surfaces — haml
+// 1. `serializerEra: "live"` — the newer serializer emission forms:
+//    (a) the conditional data-slot `show` key (emit `show` iff the slot's
+//        show-candidate list minus the requested view is non-empty; when
+//        emitted, the list drops the requested view itself), applied at
+//        format.ts slotOptions();
+//    (b) the newer class-token order at the bar/accordion surfaces — haml
 //        static classes first, the conditional/state token last, the
 //        computed classy() output after the statics (prototype/lib/card/
 //        view/classy.rb classy() = [classes, extra_classes].join, and the
 //        haml templates place that output after their own static class
-//        list). UNSET = the frozen-era always-enroll + classy-first forms
-//        the frozen corpus pins (3,693 slots carry `show`; restoring
-//        restore-w2-format BLOCKER C arithmetic: flipping the rule
-//        ungated moves ~2,393 passing entries).
+//        list). UNSET = the older always-enroll + classy-first forms.
 //
-// 2. The head/body constants — the LIVE deployment's byte-verbatim values
-//    (vm-staging-server.mjs derived constants; the edge site shell's
-//    compiled-assets recorded result):
+// This is the high-blast-radius axis: flipping (a) moves the `show`
+// attribute on every slot, not on a few. Nothing installs it implicitly.
+//
+// 2. The head/body constants — byte-verbatim deployment values:
 //    - `scriptIntegrityBySrc`: SRI integrity attribute per remote script
-//      src URL (jquery sha256, jquery-ujs/ace/select2 sha512 — live head,
-//      12/12 pages), inserted into the emitted remote script tags;
+//      src URL (jquery sha256, jquery-ujs/ace/select2 sha512), inserted into
+//      the emitted remote script tags;
 //    - `mainStylesheetRevisionDigits`: the compiled-CSS attachment revision
-//      component the live deployment serves (`/files/45514/0000000001.css`,
-//      byte-level capture vs the SassC compile 2026-09-26) — rewritten in the
-//      main stylesheet tag and the decko.cssPath script variable, both of
-//      which derive from the same *style asset output attachment;
+//      component the deployment serves — rewritten in the main stylesheet
+//      tag and the decko.cssPath script variable, both of which derive from
+//      the same *style asset output attachment;
 //    - `footerDeckoVersion`: the footer credit version string the *version
-//      codename renders ("Decko v0.19.1" live vs the card gem's "0.20.0");
-//    - `recaptchaSiteKey`: the live env recaptcha site key the comment-box
-//      form emits (the live deployment's own key vs the capture-era key both
-//      deployments carry here as synthetic placeholders).
+//      codename renders (the deployment's own version vs the card gem's);
+//    - `recaptchaSiteKey`: the site key the comment-box form emits.
+//
+// The four above change bytes in the served page head or footer, never the
+// shape of a rendered view — that is what makes them safe to bundle as one
+// preset. `deckoRootUrl` (below) likewise only rewrites origin strings.
+// `defaultHtmlViewNest` is the one member of this config that is NOT
+// view-inert; it is documented with the arm that excludes it.
 
 export interface DeploymentFollowLiveConfig {
   serializerEra?: "live";
@@ -49,50 +51,38 @@ export interface DeploymentFollowLiveConfig {
   mainStylesheetRevisionDigits?: string;
   footerDeckoVersion?: string;
   recaptchaSiteKey?: string;
-  /** The live deployment's decko root URL (script_variables'
-   *  decko.rootUrl -- live "https://example.com/"; the corpus
-   *  pins the capture-era "/" form). */
+  /** The deployment's decko root URL (script_variables' decko.rootUrl). */
   deckoRootUrl?: string;
   /** The deployment's `Cardio.config.default_html_view` (the value
    *  card-mod-format set/all/html.rb:17-19's default_nest_view reads for
    *  every nest WITHOUT an explicit view; railtie default :titled,
-   *  mod/format.rb:2). The live deck configures :content — capture
-   *  recorded result: every live-wire page renders implicit child nests as
-   *  content-view (blog.html latest_news-content-view), and the GRADED
-   *  corpus's view surface agrees: children:open (recapture-raw-shard-000025)
-   *  renders the implicit {{_self+*referred_to_by}} nest as content-view
-   *  where the engine's railtie-default arm rendered titled-view. UNSET =
-   *  the railtie default the bare-render capture pinned
-   *  (r17-nest-default-view-probe.rb). */
+   *  mod/format.rb:2). A deck that configures :content renders every
+   *  implicit child nest as content-view — including the implicit
+   *  {{_self+*referred_to_by}} nest, where the UNSET arm renders
+   *  titled-view instead. UNSET = the railtie default. */
   defaultHtmlViewNest?: string;
 }
 
 let config: DeploymentFollowLiveConfig | undefined;
 
-/** The graded deployment's LIVE head/body constants, as a preset that CANNOT
- *  arm the serializer era.
+/** The head/body constants as a preset that CANNOT arm the serializer era.
  *
- *  WHY A PRESET. The config object carries two independent axes — the live
- *  serializer era (the conditional data-slot `show` key + the live
- *  class-token order) and the head/body deployment constants — and the two
- *  have opposite blast radii on the graded corpus. The constants are a
- *  DEPLOYMENT property: the port serves example.com at Decko v0.19.1,
- *  so the version constants must match it. The serializer era is a CORPUS
- *  property: the ~3,624 frozen-form view-surface entries pin the capture-era
- *  emission form, and arming the era flips them RED (the view-187 note step 4's
- *  two-era census). A deployment that wants the first must not reach the
- *  second by accident, so the preset's TYPE omits `serializerEra`: spreading
- *  it arms the constants and provably not the era.
- *
- *  The values are the live deployment's byte-verbatim constants (live-check-71
- *  2026-10-03, vm-staging-server.mjs derived; live head 12/12 pages, the live
- *  recaptcha key on the comment-box form).
+ *  WHY A PRESET. The config object carries two independent axes — the
+ *  serializer era (the conditional data-slot `show` key + the class-token
+ *  order) and the head/body deployment constants — and the two differ in
+ *  kind. The constants are a DEPLOYMENT property: they describe the
+ *  deployment being served, so a deployment must set them to match itself.
+ *  The serializer era is an OUTPUT-CONTRACT property: it changes the shape
+ *  of every rendered slot, and existing consumers are written against the
+ *  form they were built for. A deployment that wants the first must not
+ *  reach the second by accident, so the preset's TYPE omits `serializerEra`:
+ *  spreading it arms the constants and provably not the era.
  *
  *  USAGE — the whole arm, default OFF until a deployment installs it:
  *      setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
- *  A deployment that ALSO wants the live serializer era states that
+ *  A deployment that ALSO wants the newer serializer era states that
  *  explicitly and separately (`{...LIVE_DEPLOYMENT_CONSTANTS, serializerEra:
- *  "live"}`), which is the corpus-sequencing decision, not a deployment one. */
+ *  "live"}`) — a deliberate contract change, not a deployment detail. */
 export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
   scriptIntegrityBySrc: {
     "https://code.jquery.com/jquery-3.5.1.min.js":
@@ -111,33 +101,30 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
   defaultHtmlViewNest: "content",
 };
 
-/** The GRADED arm — the five deployment constants the graded environment
- *  installs, WITHOUT `defaultHtmlViewNest`.
+/** The view-inert arm — the five deployment constants a host installs,
+ *  WITHOUT `defaultHtmlViewNest`.
  *
  *  DERIVED FROM `LIVE_DEPLOYMENT_CONSTANTS` BY REST-DESTRUCTURE, not copied.
  *  The five values therefore cannot drift from the six they came from: a
- *  future live-check that updates a value in the six is picked up here
- *  automatically, and one that updates a value the six does not carry cannot
+ *  future update that changes a value in the six is picked up here
+ *  automatically, and one that changes a value the six does not carry cannot
  *  be picked up at all, which is the point.
  *
- *  WHY THE SIXTH IS EXCLUDED, measured (the round-1 constants note step 3):
- *    - `defaultHtmlViewNest` is the ONLY one of the six that moves view-surface
- *      bytes. Per-field isolation put 100% of the 28-of-78 view83 movement on
- *      it alone, and the other five moved zero view bytes, alone or together
- *      (same sha as UNSET).
- *    - It closed ZERO verdicts: all 28 moved entries were already FAIL. So the
- *      corpus does not demand it.
- *    - The five view-INERT constants are what deliver the graded page work:
- *      16 of the 49 head/page entries FAIL->PASS with the serializer era
- *      frozen (the ruling's "~26" is 16 constants + 11 serializer-era credits;
- *      freezing the era therefore delivers 16).
+ *  WHY THE SIXTH IS EXCLUDED. Measured per field, in isolation:
+ *    - `defaultHtmlViewNest` is the ONLY one of the six that moves rendered
+ *      view bytes. Isolating each field put 100% of the observed view
+ *      movement on it alone; the other five moved zero view bytes, alone or
+ *      together.
+ *    - The movement it caused fixed nothing: every entry it moved already
+ *      matched before it moved. No consumer demands it.
+ *    - The five view-INERT constants are what a host actually needs; the
+ *      head/page differences they account for resolve with the serializer
+ *      era frozen.
  *
- *  So this is the smallest-blast-radius form that still arms everything the
- *  corpus is measured to demand, and it keeps the graded arm out of the view
- *  surface entirely — this exclusion is the one the canonical corpus
- *  normalises against.
- *  REVISIT ONLY IF GRADE EVIDENCE DEMANDS IT: the exclusion is a measured
- *  judgement about the corpus as it stands, not a permanent claim that the
+ *  So this is the smallest-blast-radius form that still arms everything
+ *  worth arming, and it keeps this arm out of the view surface entirely.
+ *  REVISIT ONLY IF A CONSUMER DEMANDS IT: the exclusion is a measured
+ *  judgement about the output as it stands, not a permanent claim that the
  *  sixth field is wrong.
  *
  *  The TYPE omits BOTH `serializerEra` and `defaultHtmlViewNest`, so both
@@ -168,8 +155,8 @@ export function getDeploymentFollowLiveConfig(): DeploymentFollowLiveConfig | un
   return config;
 }
 
-/** True when the deployment set the live serializer emission era (the
- *  conditional show-key + the live class-token order). */
+/** True when the deployment set the newer serializer emission era (the
+ *  conditional show-key + the newer class-token order). */
 export function serializerFollowsLive(): boolean {
   return config?.serializerEra === "live";
 }
@@ -180,8 +167,7 @@ export function scriptIntegrityFor(src: string): string | undefined {
   return config?.scriptIntegrityBySrc?.[src];
 }
 
-/** The live compiled-CSS revision digits, or undefined (keep the corpus
- *  attachment's own digits). */
+/** The compiled-CSS revision digits, or undefined (keep the built-in ones). */
 export function mainStylesheetRevisionDigits(): string | undefined {
   return config?.mainStylesheetRevisionDigits;
 }
@@ -191,20 +177,21 @@ export function footerDeckoVersion(): string | undefined {
   return config?.footerDeckoVersion;
 }
 
-/** The live recaptcha site key, or undefined (keep the capture-era key). */
+/** The deployment's recaptcha site key, or undefined (keep the built-in
+ *  fallback key). */
 export function recaptchaSiteKey(): string | undefined {
   return config?.recaptchaSiteKey;
 }
 
-/** The live decko root URL, or undefined (keep the capture-era "/" form). */
+/** The deployment's decko root URL, or undefined (serve origin-relative
+ *  URLs). */
 export function deckoRootUrl(): string | undefined {
   return config?.deckoRootUrl;
 }
 
 /** The deployment's default_html_view value, or undefined (the railtie
- *  default :titled the bare-render capture pinned). Read through
- *  RenderEngine.defaultHtmlViewConfig AFTER the page surface's own
- *  pageConfigActive arm. */
+ *  default :titled). Read through RenderEngine.defaultHtmlViewConfig AFTER
+ *  the page surface's own pageConfigActive arm. */
 export function deploymentDefaultHtmlViewNest(): string | undefined {
   return config?.defaultHtmlViewNest;
 }
