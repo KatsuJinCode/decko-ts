@@ -43,9 +43,9 @@
 //   actual_email = config default (Card::Mailer.default[:from]) || template's
 //   own address; when the template carries display text that differs from the
 //   actual address, the header becomes `"#{conf_text}" <#{actual_email}>`.
-//   Live templates say from "Decko Bot" (not deliverable), so the config
-//   From (DECKO_SMTP_FROM, default no-reply@example.com) is what makes
-//   them deliverable, with "Decko Bot" preserved as the display name.
+//   Templates commonly say from "Decko Bot" (not deliverable), so the config
+//   From (DECKO_SMTP_FROM, default no-reply@deck.example) is what makes them
+//   deliverable, with "Decko Bot" preserved as the display name.
 //
 // MIME layer: minimal RFC 5322/2045 renderer — Date/From/To/Cc/Message-ID/
 // Subject/MIME-Version/Content-Type/CTE in Ruby's wire order, bodies
@@ -56,11 +56,11 @@
 // ENV CONTRACT — how credentials reach this module: process env only; no
 // credentials live in this repo.
 //
-//   DECKO_SMTP_HOST=smtp.mail-synthetic.example        # default; only override for tests
-//   DECKO_SMTP_PORT=587                       # default
+//   DECKO_SMTP_HOST=smtp.mail-synthetic.example # default; only override for tests
+//   DECKO_SMTP_PORT=587                         # default
 //   DECKO_SMTP_USER=<mailbox address the SMTP token belongs to>
-//   DECKO_SMTP_PASS=<SMTP token>              # activation gate: unset = NOOP
-//   DECKO_SMTP_FROM=no-reply@example.com # default
+//   DECKO_SMTP_PASS=<SMTP token>                # activation gate: unset = NOOP
+//   DECKO_SMTP_FROM=no-reply@deck.example       # default
 //
 // The transport connects lazily per sendMail(); failures surface as errors
 // (4xx SmtpTransientError / 5xx SmtpPermanentError) that the dispatcher logs
@@ -74,13 +74,13 @@ import { NoopTransport } from "./transport.js";
 
 /** Submission config. Mirrors Mail::SMTP's settings (see file header). */
 export interface SmtpTransportOptions {
-  /** Ruby :address. Default "smtp.mail-synthetic.example" (verified 2026-09-29). */
+  /** Ruby :address. Default "smtp.mail-synthetic.example". */
   readonly host?: string;
   /** Ruby :port. Default 587 (submission on this port; only port this provider supports). */
   readonly port?: number;
   /** Ruby :domain — the EHLO argument. Default "localhost.localdomain" (Ruby DEFAULTS). */
   readonly heloDomain?: string;
-  /** Ruby :user_name. The the provider address the SMTP token belongs to. */
+  /** Ruby :user_name. The provider address the SMTP token belongs to. */
   readonly user?: string;
   /** Ruby :password. The SMTP token (app password). NEVER logged, never
    *  committed — it reaches this code only through the environment. */

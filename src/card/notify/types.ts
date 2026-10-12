@@ -1,8 +1,8 @@
 // notify/types.ts — shared types for the notify module.
 //
-// Cross-stream contract (the save path is read-only for this stream; the
-// SavePathIntegrationHook interface is the seam the actions stream wires
-// in. "save-path hook interface"):
+// Cross-module contract (the save path is read-only here; the
+// SavePathIntegrationHook interface is the seam the actions layer wires
+// in):
 //
 //   - Each save creates one act with N actions (the act's primary card's
 //     action plus its subcard actions). The hook is invoked once per
@@ -78,14 +78,14 @@ export interface SavePathEvent {
   readonly isDeletePath?: boolean;
 }
 
-/** One act's dispatch payload (the act-level seam the gherkin-
- *  the acceptance-capability port added): Ruby's notify_followers runs ONCE per act —
- *  the event is registered on every card but current_act_card? pins the
- *  firing to the act card (card-mod-follow set/all/notify.rb:8-11 +
- *  :57-61) — and notify_followers_of walks the ACT's actions through ONE
- *  FollowerStash (:66-73 + lib/card/follower_stash.rb), so the act's
- *  followers dedupe across all its actions and each gets one mail about
- *  the act (act.card context, account.rb:18). */
+/** One act's dispatch payload (the act-level seam): Ruby's
+ *  notify_followers runs ONCE per act — the event is registered on every
+ *  card but current_act_card? pins the firing to the act card
+ *  (card-mod-follow set/all/notify.rb:8-11 + :57-61) — and
+ *  notify_followers_of walks the ACT's actions through ONE FollowerStash
+ *  (:66-73 + lib/card/follower_stash.rb), so the act's followers dedupe
+ *  across all its actions and each gets one mail about the act (act.card
+ *  context, account.rb:18). */
 export interface SavePathAct {
   /** The just-completed act's id. */
   readonly actId: number;

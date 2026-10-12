@@ -92,6 +92,5 @@ export class LoggingTransport implements NotifyTransport {
 /** Default transport the module exports. Anything that imports the
  *  notify module without wiring its own transport gets a no-op. This
  *  matches Ruby's default `config.action_mailer.perform_deliveries = false`
- *  (tools/oracle/decko-oracle-app/config/application.rb:21-25 — the
- *  oracle app boots with mail OFF). */
+ *  (the Rails app boots with mail OFF). */
 export const defaultTransport: NotifyTransport = new NoopTransport();
