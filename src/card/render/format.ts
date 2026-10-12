@@ -4700,23 +4700,21 @@ export function expandWikiLinks(
       return `[[${label !== undefined ? `${target}|${label}` : target}]]`;
     }
     // The name branch and the explicit branch share link.rb's split
-    // (renderLinkChunk carries the full citation; A-37: the plain pass
-    // used to run EVERY target through the known-card shape with the raw
-    // spaced target as href — the oracle pins the underscored url_key form
-    // (`href="/Help_Desk" title="Help Desk"`, recapture-raw shard-000000)
-    // and live pins internal-link for explicit targets
-    // (`href="/account/signup">sign-in account`, live Riley bio), so the
+    // (renderLinkChunk carries the full citation): the plain pass used to
+    // run EVERY target through the known-card shape with the raw
+    // spaced target as href, but the correct href is the underscored url_key
+    // form (`href="/Help_Desk" title="Help Desk"`), and explicit targets take
+    // internal-link (`href="/account/signup">sign-in account`) — so the
     // branches resolve here identically to renderLinkChunk.
-    // (b055982 collapsed every explicit resource to one internal-link
-    // form from the ZQVT/HBQ nav pin; the scheme-differentiated classes
-    // below carry the LATER raw-oracle pins (external-link
-    // target="_blank" — clusters.4shard.after.md #17) and the same
-    // no-card-title-span property.)
+    // The scheme-differentiated classes
+    // below carry external-link target="_blank" for https targets
+    // and the same
+    // no-card-title-span property.
     const targetTrimmed = target.trim();
     if (/^(\/|https?:|mailto:)/.test(targetTrimmed)) {
       if (/^https?:/.test(targetTrimmed)) {
         // links.rb add_resource_opts order: target, class, href (see
-        // renderLinkChunk; oracle corpus 798/798 target-first). The label
+        // renderLinkChunk; every external anchor measured is target-first). The label
         // rides html link_to's `raw(text)` - VERBATIM stored bytes (the
         // URI-autolink emitter above carries the same composition; an
         // h() here double-escaped authored entities in the label).
@@ -4744,8 +4742,8 @@ export function expandWikiLinks(
     let known = namedLink !== undefined && namedLink.unknown !== true;
     // The href carries the RESOLVED card's name (view :link on the target
     // card, base.rb:35-46 link_to_card card.name) - see renderLinkChunk;
-    // the label/title keep the authored form (oracle corpus: 25 anchors
-    // href the capitalized real name over lowercase authored text and 11
+    // the label/title keep the authored form (25 anchors href
+    // the capitalized real name over lowercase authored text and 11
     // the reverse).
     let hrefSource =
       known && namedLink?.name !== undefined ? namedLink.name.s : targetTrimmed;
@@ -4759,8 +4757,8 @@ export function expandWikiLinks(
     let href: string;
     try {
       // link_to_card's mark path (links.rb:75-80) — the name's url_key
-      // form: spaces fold to underscores, `$` folds too (live:
-      // /Martial_Concordance, /Su_tainability).
+// form: spaces fold to underscores, `$` folds too (e.g.
+/Martial_Concordance, /Su_tainability).
       href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
@@ -4770,12 +4768,12 @@ export function expandWikiLinks(
       }
     }
     // Card::Path#handle_unknown (card-mod-format path.rb:89-96) — same
-    // wanted-mark query as renderLinkChunk above (mindfulness entry 28173).
+    // wanted-mark query as renderLinkChunk above (a dash-name mark).
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
-    // a personal card's content, `[[People Green]]` renders WANTED-card (the
-    // corpus has no such row; the R17 probe shows the warm-map answer
-    // byte-matches). The earlier hardcoded known-card was the pre-fix
-    // shape (every name link claimed known).
+    // a personal card's content, `[[People Green]]` renders WANTED-card (no
+    // such row exists in the deck; the warm-map answer is the byte-match).
+    // A hardcoded known-card would be wrong (every name link would claim
+    // known).
     // link.rb#options: `title: link_text || @name.to_name.fully_stripped` —
     // with no label, the contextual parts (`_left`, `_self`, ...) and the
     // blank parts are dropped (cardname variants.rb fully_stripped), so a
@@ -4787,11 +4785,11 @@ export function expandWikiLinks(
     // card's stored name when the mark hit one (subformat.rb:57-61
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
-    // (context_names.rb:20-29). Oracle entry 10488 page surface: the authored
+    // (context_names.rb:20-29). On the page surface, an authored
     // `[[june jessup+musings]]` under the page card `June Pemberton+Menu`
     // renders `title="+musings"`; the same link on the view surface keeps
     // `title="june jessup+musings"` because nothing called add_name_context
-    // there. Entry 21923 `Task+discussion` is the second corpus instance
+    // there. `Task+discussion` is the second instance
     // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
     const nestCard = linkNestCardName(fetchTarget, known ? namedLink?.name : undefined);
     const nestContextNames =
@@ -4805,13 +4803,12 @@ export function expandWikiLinks(
     // wrapped_title (title.rb:38-44): the span's title attribute carries
     // the same bytes as the display text (voo.title — link.rb options:
     // `title: link_text || fully_stripped name`, relativized above);
-    // oracle pin: title
-    // "Help Desk" display "Help Desk" over href /Help_Desk; live pin:
-    // title/display "contributing to the administration..." over the
+    // title and display agree, e.g.
+    // "Help Desk" display "Help Desk" over href /Help_Desk, or
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
-    // `<span>+</span>` per joint — oracle entry 10488 view-surface `content`
-    // pin: `<a class="known-card" href="/June_Pemberton+musings"><span
+    // `<span>+</span>` per joint —
+    // `<a class="known-card" href="/June_Pemberton+musings"><span
     // class="card-title" title="june jessup+musings">steven
     // goldin<span>+</span>musings</span></a>`, and the page-surface
     // `+musings` half splits the SAME way
@@ -4825,12 +4822,12 @@ export function expandWikiLinks(
     // hands wrapped_title an html_safe string, the html format's `h super`
     // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
     // actionview tag_helper.rb tag_option :322's unconditional quote gsub
-    // touches the bytes. Oracle: a sample employer's position wanted-link span
+    // touches the bytes. A sample employer's position wanted-link span
     // renders `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=
     // bar&quot;>20191213+CM+Time Tracking+1400</a>"` with RAW brackets
-    // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
-    // there, and the Dungeons and Dragons +SCa rule-link span the same
-    // `&lt;/a&gt;` where the capture has `</a>`).
+    // (an h()-style escape would emit `&lt;a href=...`
+    // there, and a rule-link span the same
+    // `&lt;/a&gt;` where the correct bytes are `</a>`).
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
       `<span class="card-title" title="${titleText.replace(/"/g, "&quot;")}">` +
