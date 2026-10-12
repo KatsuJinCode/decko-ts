@@ -145,12 +145,12 @@ describe("pods (decko sow / decko eat)", () => {
           // growing), the port reports each save's outcome, and the two
           // classify a save that runs an account's events differently while
           // storing the same rows. The stored rows are compared table by
-          // table by compare-decks.mjs (recovery/parity-team/persistence.md).
+          // table by compare-decks.mjs.
           const outcomes = (r: EatReport, signinUnchanged: boolean) => ({
             items: r.items,
             skippedNotPristine: r.skippedNotPristine,
-            // the items that failed (the wording of each engine's validation
-            // message is compared by the side-effects measurements, not here)
+            // the items that failed (each engine's validation message
+            // wording is out of scope here)
             errorItems: r.errors.map((e) => e.item).filter((i) => !(signinUnchanged && i === SIGNIN_ITEM)),
           });
           expect(outcomes(report, false), `${label} vs Ruby's eat`).toEqual(outcomes(ruby, true));
