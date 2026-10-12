@@ -1556,12 +1556,11 @@ export class RenderEngine implements RenderEngineLike {
       // card_accessor TRAIT (bootswatch_skin.rb:37), so Ruby's `card.parent`
       // is `parent_skin_card` (bootswatch_skin.rb:57-59) - a CODENAME-keyed
       // subcard lookup. The deck's pointer is a Pointer junction whose right
-      // side is the card NAMED `parent 1` carrying codename `parent` (corpus
-      // 45365: left 34179 `journal skin customized` + right 45364, content
-      // "journal skin"), so `<skin>+parent` as a NAME resolves to the
-      // junction (34179, 38357) - a different card - or to nothing, and every
-      // skin page took the parent-less branch where the capture carries
-      // `Inherit from:` + a link to the parent theme (+232 B on the page).
+      // side is the card NAMED `parent 1` carrying codename `parent`, so
+      // `<skin>+parent` as a NAME resolves to a different card - or to
+      // nothing - and every
+      // skin page takes the parent-less branch where the page should carry
+      // `Inherit from:` + a link to the parent theme.
       // warmSkinParentPointer resolves the pointer the way Ruby does and
       // seats it under BOTH names; run it BEFORE warmCustomizedName so the
       // customized-name walk sees the same parent? verdict the views do.
@@ -1684,14 +1683,14 @@ export class RenderEngine implements RenderEngineLike {
     if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
-    // the earlier scan walks it — measured cold on
-    // `journal skin customized+parent 1:open`: that scan sees mapSize=10 with
-    // only `journal skin customized` in it, the pointer-item walk then grows
-    // the map to 211 with `journal skin` seated, and the bar_left nest fires
-    // `fetchRenderCard("journal skin+Image")` against a junction the scan
-    // never looked at. The bytes were then the empty image-box
-    // (`<div title="journal skin" class="image-box medium"></div>`), -86 on
-    // journal, -84 litera, -82 slate. Re-walking after the pointer/list
+    // the earlier scan walks it: on a cold render of a
+    // `<skin>+parent 1:open`, that scan sees a small map holding only
+    // the `<skin> customized` card, the pointer-item walk then grows
+    // the map with the parent skin seated, and the bar_left nest fires
+    // `fetchRenderCard("<skin>+Image")` against a junction the scan
+    // never looked at. The bytes are then the empty image-box
+    // (`<div title="<skin>" class="image-box medium"></div>`).
+    // Re-walking after the pointer/list
     // closure is what makes those three entries' verdict independent of
     // whether the process happened to render the skin as a root earlier.
     await this.warmNestedSkinImages();
@@ -4086,8 +4085,8 @@ export class RenderEngine implements RenderEngineLike {
    *  card (retrieve.rb:7 skips the blank mark; `\_` retrieves by key ""
    *  and finds no row - the deck has no empty-key card), typed by the
    *  *default template chain (type.rb:78-80 type_id_from_template ->
-   *  BasicCs on this deck, rule 28), whose read walk lands on
-   *  BasicCs+*type+*read (rule 22283, "Anyone Signed In") - Anonymous is
+   *  BasicCs on this deck), whose read walk lands on
+   *  BasicCs+*type+*read ("Anyone Signed In") - Anonymous is
    *  read-DENIED. That verdict is deck-constant for every blank-key card
    *  (the key carries no set anchors beyond the type/*all patterns), so it
    *  seats ONCE under the "" key, where isDenied's byKey map read picks it
@@ -4345,9 +4344,8 @@ export class RenderEngine implements RenderEngineLike {
    * it: the anchor fell back to "RichText+<tag>" (the quick_type default)
    * and the walk skipped past the deck's actual *type plus right read rule
    * to the *all plus / *all catch-all — the fail-open that leaked
-   * "+Source Content" bodies to anonymous (trace tenth-item-trace.md
-   * bug 3; corpus rule 34568 = "Source+Source Content+*type plus
-   * right+*read" -> "Anyone Signed In").
+   * "+Source Content" bodies to anonymous (the applicable rule is
+   * "<Type>+*type plus right+*read" -> "Anyone Signed In").
    *
    * leftTypeName resolves from the render-card map first (the prefetch
    * walk enriched the sides of every closure card — cache hit); an
@@ -5438,7 +5436,7 @@ export class RenderEngine implements RenderEngineLike {
    *  - the deck is static (the pointerListHostsDone contract). Without this
    *  memory the warm-up's drain of warm-but-unscanned pending entries (the
    *  render-state-fix order-independence fix) re-scans the whole
-   *  layout-connected closure (~6k corpus cards, pure CPU regex work) on
+   *  layout-connected closure (thousands of cards, pure CPU regex work) on
    *  EVERY warm page render. Cleared in resetCaches() (the map it describes
    *  is cleared there) and per key in expireRenderCard() (a dropped card's
    *  content refs must be re-chased if it comes back). */
@@ -5450,15 +5448,14 @@ export class RenderEngine implements RenderEngineLike {
    *  the closure skips its whole deck-sized filter sweep. */
   private renderCardsGrewSinceClosure = false;
 
-  /** Type-opt nest targets already enriched this engine lifetime (the
-   *  corpus carries exactly two distinct type-opt shapes, so the set is
+  /** Type-opt nest targets already enriched this engine lifetime (a deck
+   *  carries only a couple of distinct type-opt shapes, so the set is
    *  bounded; the sync unknown-nest builder reads the warm map). */
   private nestTypeOptTargetsDone = new Set<string>();
   /** Cards whose dbContent the type-opt sweep already scanned (keyed like
    *  pointerListHostsDone). The deck is static per engine lifetime — a
    *  re-scan could only re-parse the same chunks — and the unguarded
-   *  47k-record map walk per render measured as a verifier-grading
-   *  slowdown (R17 first run: grading phase never completed). */
+   *  whole-map walk per render is a real grading-time slowdown. */
   private nestTypeOptScanned = new Set<string>();
   /** renderCards.size at the last type-opt sweep: new stores are the only
    *  thing that can add an unscanned host, so an unchanged size skips the
@@ -5586,15 +5583,13 @@ export class RenderEngine implements RenderEngineLike {
    *  a key lookup: a junction row with a NULL key is unreachable by any
    *  key path.
    *
-   *  Gate, population and blast radius (census over corpus 6a44dfdc, the
-   *  sha-verified copy): 101 live cards sit in the `on_type_set` shape
-   *  (their trunk's tag is the `type` codename card); 40 of them carry a
-   *  `{{` in content; their 316 field-only relative nests compose 26
-   *  junctions that HAVE a row and 290 that do not. A composed name with
+   *  Gate, population and blast radius: the population is the live
+   *  cards sitting in the `on_type_set` shape
+   *  (their trunk's tag is the `type` codename card); the ones carrying a
+   *  `{{` in content compose field-only relative nests, and most of those
+   *  composed names HAVE no row. A composed name with
    *  no row warms nothing and leaves the unknown-card bytes exactly as
-   *  they are, so the flip is bounded to those 26. The D9 witness sites
-   *  are two of them (105 -> 45421, 88 -> 6554; 17770 -> 6554 is the same
-   *  junction from a sibling rule).
+   *  they are, so the flip is bounded to the resolvable ones.
    *
    *  Idempotence, same contract as enrichNestTypeOptTargets: each rule card
    *  is content-scanned once per engine lifetime, and each composed name is
@@ -5661,11 +5656,10 @@ export class RenderEngine implements RenderEngineLike {
    *  without an +Image child fetch nothing (the boxed unknown-nest bytes
    *  are name-shaped).
    *
-   *  The +Image child is a NULL-NAMED left/right junction — corpus-wide,
-   *  zero rows carry `+Image` in a name (`journal skin`'s is card 22846:
-   *  left 22794, right 19, content ":journal_skin+:image/bootstrap.png") —
-   *  so the fetch has to be by DERIVED COMPOUND name. `fetchByName` does
-   *  derive it (it returns that junction with `name` = "journal skin+Image"),
+   *  The +Image child is a NULL-NAMED left/right junction — no stored row
+   *  carries `+Image` in its name
+   *  — so the fetch has to be by DERIVED COMPOUND name. `fetchByName` does
+   *  derive it (it returns that junction with a derived name),
    *  which is why the guard below is `name !== undefined` and not a
    *  stored-name check.
    *
