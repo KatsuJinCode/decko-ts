@@ -5,21 +5,17 @@ import { str } from "../../render/format.js";
 // The gem's tree (the installed
 // card-mod-help-0.20.0/): six set files, no lib/, no set_pattern/, no
 // events. Ported here byte-verifiably: set/all/help.rb (the :help,
-// :help_text, :lead views - oracle bytes in
-// fixtures/captured/help-mod-loader.json "rendered"), set/all/guide.rb
+// :help_text, :lead views), set/all/guide.rb
 // (the :guide view - markdown :core dependency resolved by
-// card-mod-markdown.ts; no fixture-captured oracle bytes, so the
-// port-level test asserts the view dispatches and emits the
+// card-mod-markdown.ts; the gem declares no rendered reference for it,
+// so the port-level test asserts the view dispatches and emits the
 // guide-text class list, the d-none edit-link span shape, and the
 // nested guide content through the markdown :core path), set/right/help.rb
 // (the :popover view - delegates to card-mod-bootstrap's
 // popoverLink helper, helper.rb:41-44; the helper is imported as-is from
 // card-mod-bootstrap.ts (popoverLink, card-mod-bootstrap.ts:166); the
-// oracle bytes for the live :popover dispatch are captured against
-// fixtures/captured/help-popover.json "rendered" - the A/B test asserts
-// byte equality), and the
-// two setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
-// state under "setting_groups"/"setting_opts_*").
+// port-level tests assert the emitted anchor bytes), and the
+// two setting_opts files (set/self/help.rb, set/self/guide.rb).
 //
 // NOT yet ported :
 // - set/right/guide.rb - set module only defines a card-level
@@ -132,8 +128,8 @@ function wrapHelpText(ctx: ViewContext, text: string): string {
  *  wrap_help_text(help), class: classy("help-text")`. The `wrap: :slot`
  *  config wraps the view in the render pipeline's slot wrapper EVEN WHEN the
  *  body returns blank (format/render.rb:96-97 runs with_wrapper around
- *  final_render unconditionally) - the oracle pins the empty-slot-div bytes
- *  for a rule-less card. */
+ *  final_render unconditionally) - a rule-less card still renders the
+ *  empty slot div. */
 export const helpView: ViewFn = (ctx) => {
   const help = helpText(ctx);
   const body = /^\s*$/.test(help)
@@ -141,15 +137,15 @@ export const helpView: ViewFn = (ctx) => {
     // classy("help-text") — the class_ups ride the voo chain (frame.rb's
     // with_class_up "help-text", "alert alert-info" lands on the OWNING
     // voo; the child voo the delegated :help render builds reads it
-    // through deepExtraClasses — the graded setup row pins
-    // "help-text alert alert-info").
+    // through deepExtraClasses — the emitted class list is
+    // "help-text alert alert-info" when that class_up is set).
     : `<div class="${ctx.voo.classy("help-text")}">${wrapHelpText(ctx, help)}</div>`;
   return modSlotWrap(ctx, "help", body);
 };
 
 /** help.rb:14-16 view :help_text, unknown: true, cache: :never:
- *  `wrap_help_text help_text`. No wrap config -> bare bytes (oracle: ""
- *  without a rule; the d-none span + text with one).
+ *  `wrap_help_text help_text`. No wrap config -> bare bytes ("" without a
+ *  rule; the d-none span + text with one).
  *
  *  EXPORTED: the view is also the compiled-in HTML_VIEWS["help_text"]
  *  registration (render/views.ts imports this fn). Same seam and same
@@ -181,13 +177,11 @@ export const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
  *
  *  EXPORTED: the view is also the
  *  compiled-in HTML_VIEWS["lead"] registration (render/views.ts imports
- *  this fn). The graded page-surface harness runs the engine WITHOUT a bound
+ *  this fn). Several consumers run the engine WITHOUT a bound
  *  mod loader, so dispatch falls to the flat record (render.ts
- *  computeResolvedView's fallback) - without the compiled-in entry every
- *  Role page's `+:description|lead` nest emitted "view (lead) not
- *  supported" render-error alerts (pass15's 34 unsupported-view pages:
- *  17 Role pages nest it through the type template, the email-template
- *  pages through their bodies). Single source: the mod registration and
+ *  computeResolvedView's fallback) — without the compiled-in entry every
+ *  `+:description|lead` nest rendered "view (lead) not
+ *  supported" render-error alerts. Single source: the mod registration and
  *  the compiled-in entry
  *  are the SAME function, so a loader-bound engine (chain[0] = All::Help
  *  wins the chain walk) and the mod-less harness cannot drift. */
@@ -197,15 +191,15 @@ export const leadView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// set/right/help.rb - the :popover view (bytes captured; see header)
+// set/right/help.rb - the :popover view
 // ---------------------------------------------------------------------------
 
 /** help.rb:4-6 view :popover, no view config (no `unknown:`, no
  *  `cache: :never`, no `wrap:`): `popover_link _render_core`. The body
  *  delegates to card-mod-bootstrap's popover_link helper (helper.rb:
  *  41-44) - the TS implementation is the popoverLink export from
- *  card-mod-bootstrap.ts:166 (consumed as-is per this round's bootstrap
- *  ). _render_core in Ruby is the same dispatch as
+ *  card-mod-bootstrap.ts:166 (consumed as-is).
+ *  _render_core in Ruby is the same dispatch as
  *  `ctx.fmt.renderView("core")` in TS (format.ts#renderView:275-275).
  *
  *  The popoverLink anchor's bytes (helper.rb:41-57):
@@ -216,14 +210,9 @@ export const leadView: ViewFn = (ctx) => {
  *  (popoverLink:193 `if linkText === "" linkText = popoverIcon("help")`)
  *  fires because help.rb:4-6 passes no linkText arg.
  *
- *  Bytes captured against fixtures/captured/help-popover.json
- *  "rendered" (captured from live decko 0.20.0 oracle app via
- *  tests/card/mod-loader/oracle-capture-help-popover.rb). The view
- *  fires on COMPOUND names only (Right pattern is compound_only =
- *  true, mod/core/set_pattern/07_right.rb:2); the capture seeds
- *  Oracle Help Popover Probe+*help (WITH a *help rule) and Oracle Bare
- *  Popover Probe+*help (WITHOUT), and the test asserts byte equality
- *  against the captured bytes for both. */
+ *  The view fires on COMPOUND names only (Right pattern is compound_only =
+ *  true, mod/core/set_pattern/07_right.rb:2). The port-level tests assert
+ *  the emitted bytes for a card with and without a *help rule. */
 const popoverView: ViewFn = (ctx) => {
   // help.rb:5 `popover_link _render_core` -> helper.rb:41 popover_link
   // text. The renderView dispatch goes through the format's standard
@@ -291,9 +280,8 @@ function guideText(ctx: ViewContext): string {
  *  engine's optional taskAllowed hook (unified :update gate). The seam is
  *  deny-by-default (render-seam.ts: a verdict the engine has not
  *  established denies), so the d-none span wraps only on an AFFIRMATIVE
- *  update verdict — the captured fixture pins the link for the always-ok
- *  bot and its absence for the sara/anonymous arms
- *  (fixtures/captured/edit-views.json, guide_tab/overlay_guide) — exactly
+ *  update verdict — the link appears for a viewer with update permission
+ *  and is absent for one without — exactly
  *  like help.rb's `card.help_rule_card&.ok?(:read)` gate on
  *  wrap_help_text. */
 function prependGuideEditLink(ctx: ViewContext, text: string): string {
@@ -304,11 +292,10 @@ function prependGuideEditLink(ctx: ViewContext, text: string): string {
   // guide.rb:30 nests the guide card with view: :edit_link; the guide card
   // is a Rule-typed card and the Rule set overrides edit_link_view to
   // :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the
-  // link_to_view target is the RULE editor. Oracle-corrected 2026-09-29:
-  // the live capture (fixtures/captured/edit-views.json, guide_tab /
-  // overlay_guide / alert_guide arms) pins href="/*all+*guide/rule_edit" -
-  // this emitter previously answered "/<name>/edit" (the non-rule
-  // edit_link default), which no captured surface shows.
+  // link_to_view target is the RULE editor:
+  // href="/<rule card url_key>/rule_edit" (e.g. "*all+*guide" ->
+  // "/*all+*guide/rule_edit") — NOT the non-rule "/<name>/edit" default
+  // edit_link shape.
   const href = `/${guideCard.name.urlKey}/rule_edit`;
   const editLink =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip"` +
@@ -417,10 +404,8 @@ const cardModHelp: DeckoModManifest = {
       // (help.rb:4-6). The view body delegates to card-mod-bootstrap's
       // popover_link helper (helper.rb:41-44) - the TS port is the
       // popoverLink export (card-mod-bootstrap.ts:166) imported as-is at
-      // the top of this file. Bytes captured against
-      // fixtures/captured/help-popover.json "rendered" (captured via
-      // tests/card/mod-loader/oracle-capture-help-popover.rb); the
-      // A/B test asserts byte equality.
+      // the top of this file; the port-level tests assert the emitted
+      // anchor bytes.
       setPath: "right/help",
       formats: {
         html: {
