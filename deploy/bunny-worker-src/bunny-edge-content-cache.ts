@@ -4,19 +4,18 @@
 //
 // WHY L2 EXISTS (measured, not assumed): the L1 design
 // (bunny-edge-cache-headers.ts) emits `public, max-age=0, s-maxage=<TTL>` on
-// content responses when armed. Deployed and probed live
-// (2026-10-02, twice — with the flag variable added AND after a no-op
-// republish onto fresh isolates): the Bunny layer outside the script serves
-// `Cache-Control: no-cache` for script responses regardless of what the
-// script emits (it rewrote `no-store` the same way in the morning lane).
-// A no-cache response is never CDN-cached, so the header alone cannot keep
-// the script off the hot path. The runtime Cache API CAN: the script checks
-// `caches.default` before rendering and stores content responses after —
-// the script still EXECUTES on every request (the platform runs standalone
-// scripts per request by design), but a hit skips the render and its 1+
-// Bunny-DB round-trips, dropping per-execution CPU from the ~100-170 ms the
-// heavy corpus renders cost to the cost of a local cache match. That drop is
-// provable on Bunny's own counter (AverageCpuTimePerExecution, TotalCpuUsed).
+// content responses when armed. Deployed and probed on the platform, the
+// Bunny layer outside the script serves `Cache-Control: no-cache` for script
+// responses regardless of what the script emits (it rewrites `no-store` the
+// same way). A no-cache response is never CDN-cached, so the header alone
+// cannot keep the script off the hot path. The runtime Cache API CAN: the
+// script checks `caches.default` before rendering and stores content
+// responses after — the script still EXECUTES on every request (the platform
+// runs standalone scripts per request by design), but a hit skips the
+// render and its 1+ Bunny-DB round-trips, dropping per-execution CPU from
+// the ~100-170 ms the heaviest renders cost to the cost of a local cache
+// match. That drop is provable on Bunny's own counter
+// (AverageCpuTimePerExecution, TotalCpuUsed).
 //
 // CACHE KEY: the incoming request URL, verbatim (method-normalized to GET).
 // Query strings matter — the history views take act_id/page/... params, so
