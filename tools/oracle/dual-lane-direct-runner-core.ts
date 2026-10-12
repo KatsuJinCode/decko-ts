@@ -81,6 +81,7 @@ import {
   resolveSetModuleContent,
   setCaptureWallClock,
 } from "../../src/card/set-module-content-overrides.js";
+import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 
 // The capture-deck wall clock (set-override-fidelity lane 2026-10-03): the
 // corpus's graded card.content answers include wall-clock surfaces
@@ -903,6 +904,11 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     /** Lane V handler: bare view-function render, byte-identical flow to the
      *  old verifier. */
     const renderHandler = async ({ cardName, view }: { cardName: string; view: string }) => {
+      // The capture rig's VIEW lane ran development
+      // (raise_all_rendering_errors=true): real bytes, and renders that raise
+      // record as CAPTURE_ERROR sentinels. The engine's default posture is
+      // that development posture; the PAGE lane below flips to production.
+      setRaiseAllRenderingErrors(true);
       try {
         const html = await storage.engine.render(cardName, view);
         assertGradeViewerState(viewerEngine, gradeViewer);
@@ -941,6 +947,14 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
         pageEntryShard = shard;
         viewerEngine.resetRequestSession?.();
       }
+      // The capture rig's PAGE lane ran production
+      // (raise_all_rendering_errors=false): nested render errors render as
+      // the quiet render-error span INSIDE the slot wrapper (the four
+      // person-card pages' date slots pin the wrapped
+      // "Error rendering: ...+Date (core view)" panel). Without this the
+      // engine's development default re-raises nested errors and nest()'s
+      // catch emits the bare unwrapped span labelled "(content view)".
+      setRaiseAllRenderingErrors(false);
       try {
         const html = await storage.engine.renderPage(cardName);
         assertGradeViewerState(viewerEngine, gradeViewer);
