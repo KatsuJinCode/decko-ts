@@ -25,7 +25,7 @@
 // compile step that lives in card-mod-scss / card-mod-style, not ported).
 // The render_core bytes are the html format's :core view (already in
 // HTML_VIEWS); the only mod-specific shape is the envelope wrapper. The
-// port below captures the envelope WITHOUT the stylesheet bytes (the
+// port below reproduces the envelope WITHOUT the stylesheet bytes (the
 // inline `<style>` block is empty - the stylesheet lookup returns
 // blank when the SCSS format is absent, which is what Ruby's
 // `render_compiled` returns on an empty stylesheet card, and the css
