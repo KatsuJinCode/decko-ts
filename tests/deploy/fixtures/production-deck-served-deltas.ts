@@ -1,23 +1,22 @@
-// The PRODUCTION MIGRATION DECK's served-environment deltas, as the test
-// CONFIGURATION they now are.
+// Served-environment deltas for the production migration deck, packaged as
+// test configuration.
 //
-// These values used to be module constants inside the shipped edge code, so
-// every deployment of the engine served this one deck's identity. They are
-// deployment configuration now (deploy/bunny-worker-src/bunny-edge-served-
-// deltas.ts), empty by default, and the production migration deployment sets
-// them explicitly in deploy/bunny-edge-trial-runbook.md (excluded from the
-// export).
+// The edge code itself carries no deck's identity. These values once lived
+// as module constants in that code, which forced every engine deployment to
+// serve this one deck; they are read from the deployment environment now
+// (deploy/bunny-worker-src/bunny-edge-served-deltas.ts), empty by default,
+// and deploy/bunny-edge-trial-runbook.md documents how a deployment
+// supplies them.
 //
-// The suites that pin this deck's SERVED BYTES import this fixture and hand
-// it to the deck, exactly as a production deployment would hand it the same
-// values through its environment. That is the point of the change: a test
-// asserting a particular deck's chrome now says WHICH deck it configured,
-// instead of relying on every other deck inheriting it by accident.
+// The suites that pin this deck's served output import this fixture and
+// hand it to the engine through its environment, exactly as a production
+// deployment would. A test asserting a particular deck's chrome therefore
+// names the deck it configured, rather than leaning on every deck silently
+// inheriting the same identity.
 //
-// What the fixture is NOT: a default. A test that wants the stock (unset)
-// deltas imports EMPTY_SERVED_DELTAS — the state a deployment with no
-// configuration serves, which carries no version rewrite, no corpus card
-// ids and no private asset references.
+// The fixture is not a default: a test that wants the stock (unset) state
+// imports EMPTY_SERVED_DELTAS — the configuration-free state, which serves
+// no version rewrite, no foreign card ids and no outside asset references.
 
 import type { ServedEnvironmentDeltas } from "../../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
 
@@ -25,8 +24,10 @@ import type { ServedEnvironmentDeltas } from "../../../deploy/bunny-worker-src/b
 export const PRODUCTION_ASSET_HOST =
   "https://production-storage.r1.cdn.objectstore.example";
 
-/** The compiled CSS revision the production deck stores vs. the revision it
- *  serves (the corpus row stores the older one). */
+/** The two compiled-CSS revisions of the production deck: the revision its
+ *  own database records (the older one) and the revision its pages actually
+ *  serve (the newer one). The edge rewrites the recorded value to the
+ *  served one. */
 export const PRODUCTION_CSS_REVISION_FROM = "51201/1610000001.css";
 export const PRODUCTION_CSS_REVISION_TO = "51201/1610000002.css";
 
@@ -67,9 +68,9 @@ export const PRODUCTION_SCRIPT_INTEGRITY = [
  *  reads from its environment. */
 export const PRODUCTION_DECK_SERVED_DELTAS: ServedEnvironmentDeltas = {
   assetHost: PRODUCTION_ASSET_HOST,
-  // The version the production site prints, which is NOT the card gem's
-  // 0.20.0 — a live-byte receipt, so it is configuration and not something
-  // the engine derives.
+  // The footer version string this deck prints. It deliberately differs
+  // from the engine gem's own 0.20.0, and nothing in the code can derive a
+  // deployment's version string, so it arrives as configuration.
   footerVersionPin: "0.19.1",
   stylesheetRevision: {
     from: PRODUCTION_CSS_REVISION_FROM,
