@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-11T22:11:19.078Z
+Generated: 2026-10-12T01:18:02.176Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -11,7 +11,7 @@ Mods scanned: **33**
 - declared-complete:  **29**
 - partial: **2**
 - missing: **0**
-- ignored: **2** (legacy-labeled or data-only)
+- ignored: **2** (not ported, so not evaluated)
 
 **What these labels measure: declarations only.** "declared-complete" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.
 
@@ -37,8 +37,8 @@ Mods scanned: **33**
 | `card-mod-comment-0.20.0` | partial | 0/0 | 7 (covered=7) | 3 (all=1, right=2) | 0 | 12/4 | mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=4/12 |
 | `card-mod-content-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 14 (abstract=7, all=3, right=2, self=2) | 7 | 16/9 | 4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content |
 | `card-mod-date-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
-| `card-mod-defaults-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 1 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
-| `card-mod-delayed_job-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 2 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
+| `card-mod-defaults-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 1 | 0/0 | unported (not evaluated) |
+| `card-mod-delayed_job-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 2 | 0/0 | unported (not evaluated) |
 | `card-mod-edit-0.20.0` | declared-complete | 41/41 | 45 (covered=45) | 21 (all=15, right=2, self=1, type=3) | 0 | 9/4 | 41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
 | `card-mod-email-0.20.0` | declared-complete | 2/2 | 6 (covered=6) | 13 (abstract=2, all=2, right=7, type=2) | 2 | 10/4 | 2 mod-specific view(s) declared: compact_missing, email_page |
 | `card-mod-follow-0.20.0` | declared-complete | 12/12 | 17 (covered=17) | 25 (abstract=1, all=4, right=8, self=7, type=4, type_plus_right=1) | 2 | 12/6 | 12 mod-specific view(s) declared: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ... |
@@ -274,7 +274,7 @@ Mods scanned: **33**
 ### card-mod-defaults-0.20.0
 
 - **status**: `ignored`
-- **verdict**: ignored (legacy-labeled per upstream maintainer guidance)
+- **verdict**: unported (not evaluated)
 - **evidence**: no meaningful set/ tree; config-only or backend-only gem
 - **mod-loader manifest**: no
 - **byte-pinned test**: no
@@ -293,7 +293,7 @@ Mods scanned: **33**
 ### card-mod-delayed_job-0.20.0
 
 - **status**: `ignored`
-- **verdict**: ignored (legacy-labeled per upstream maintainer guidance)
+- **verdict**: unported (not evaluated)
 - **evidence**: no meaningful set/ tree; config-only or backend-only gem
 - **mod-loader manifest**: no
 - **byte-pinned test**: no
@@ -706,7 +706,7 @@ post-load live table). Status thresholds — all declaration-level:
 - **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the verification round's criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.
 - **partial**: some declarations (any html view name present, or >=50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for declared-complete.
 - **missing**: zero coverage.
-- **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.
+- **ignored**: not ported, and therefore not evaluated here - data/transform-only or backend-only gems with no set/ tree, so there is no set module or view to compare against the implemented surface.
 
 NOT measured by any label above: whether event hooks fire, whether
 non-html formats (json, css, email, rss, csv) render, and whether any
