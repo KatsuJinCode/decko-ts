@@ -17,7 +17,7 @@
 //
 // The rendered bytes are persisted to a JSON sidecar quoting concrete
 // bytes per (mod, view). That sidecar IS committed
-// (tests/card/mod-loader/lane-raises-parity-17-bytes.json) and the
+// (tests/card/mod-loader/raises-parity-expected-raises.json) and the
 // committed file is authoritative: the render bytes carry fresh
 // data-slot-id tokens on every run, so an unconditional rewrite stamped
 // a changed sidecar into the tree on every suite run, dirtying it. The
@@ -233,7 +233,7 @@ describe("17 rendered-via-basename views: do they actually render?", () => {
         "tests",
         "card",
         "mod-loader",
-        "lane-raises-parity-17-bytes.json",
+        "raises-parity-expected-raises.json",
       );
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify(results, null, 2));
