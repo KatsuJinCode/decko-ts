@@ -1,6 +1,6 @@
-// The E-16 instrument (behavior-rows lane receipt a1-behavior-rows-lane.md
-// row E-16): the serving write surface must compose the DECK's mod-event
-// runtime - the deck-boot seam (default-mod-deck.ts) - on EVERY save, the
+// The E-16 instrument: the serving write surface must compose the DECK's
+// mod-event runtime - the deck-boot seam (default-mod-deck.ts) - on EVERY
+// save, the
 // way Ruby composes once at boot and every save walks the same event space:
 // Cardio::Mod::Dirs#initialize adds core + every gem mod (card-1.110.0
 // lib/cardio/mod/dirs.rb:54-62), Loader.load_mods registers every set file
