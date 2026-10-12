@@ -1,26 +1,26 @@
-// apply-asset-host-follow-live-close-71.mjs -- the close-71-with-live lane's
-// REVERSIBLE, MANIFEST-BOUND corpus expectation transform: every expectation
-// line carrying the frozen s3 asset-host form gets the DigitalOcean Spaces
-// form live serves, so the corpus moves TOGETHER with the graded
-// environment's engine config (setDeploymentCloudAssetHost).
+// apply-asset-host-follow-live-close-71.mjs -- a REVERSIBLE, MANIFEST-BOUND
+// corpus expectation transform: every expectation line carrying the s3
+// asset-host prefix form gets the DigitalOcean Spaces form, so the corpus
+// moves TOGETHER with the engine config the graded environment sets
+// (setDeploymentCloudAssetHost).
 //
-// THE MAPPING (derived from data, never guessed -- census:
-// close-71-lane.md step 3; exactly one prefix form exists on each side):
-//   FROM (frozen):  http://s3.amazonaws.com//files/
-//   TO   (live):    https://production-storage.r1.cdn.objectstore.example/files/
+// THE MAPPING (derived from data, never guessed; exactly one prefix form
+// exists on each side):
+//   FROM (s3):      http://s3.amazonaws.com//files/
+//   TO   (Spaces):  https://production-storage.r1.cdn.objectstore.example/files/
 // Tails (<id>/<name>.<ext>) are carried through unchanged; the replacement
 // is a pure byte-level prefix substitution (it cannot touch line endings,
 // so CRLF-per-line discipline holds by construction).
 //
 // MODES
 //   --validate-only  No writes. (a) 34/34: each gen-2 page expectation for
-//                    the live-check pages equals the saved 2026-10-03 live
-//                    capture after removing ONLY the documented per-response
-//                    noise (Cloudflare __CF$cv$params r/t tokens + decko
+//                    the checked pages equals the saved page capture after
+//                    removing ONLY the documented per-response noise
+//                    (Cloudflare __CF$cv$params r/t tokens + decko
 //                    data-slot-id hashes, both quote forms); (b) prefix
-//                    census of the staging (s3-carrier lines / DO-carrier
-//                    lines); (c) pre-state sha check against the gen-2
-//                    manifest input copy.
+//                    census of the staging (s3-carrier lines /
+//                    Spaces-carrier lines); (c) pre-state sha check against
+//                    the gen-2 manifest input copy.
 //   --apply          Validate the pre-state, apply the transform to every
 //                    s3-carrier line in both lanes, write
 //                    asset-host-transform-manifest.json (per-shard
@@ -29,9 +29,9 @@
 //                    after a successful apply refuses on the pre-state hash
 //                    check (one-direction overlay tool).
 //   --inverse        Revert: validate every recorded after-sha, replace the
-//                    DO prefix back to the s3 prefix on exactly the recorded
-//                    lines, verify the result sha equals the recorded
-//                    before-sha. REFUSES anything else.
+//                    Spaces prefix back to the s3 prefix on exactly the
+//                    recorded lines, verify the result sha equals the
+//                    recorded before-sha. REFUSES anything else.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/apply-asset-host-follow-live-close-71.mjs \
@@ -122,10 +122,9 @@ for (const s of shards) {
 must(drift.length === 0, `pre-state drift vs the gen-2 manifest's shardAfter: ${drift.join(", ")}`);
 console.log(`prestate OK: 96 shards sha-match the gen-2 manifest's shardAfter`);
 
-// ---------- 34/34 validation: gen-2 expectation vs saved live capture ----------
-// Noise normalizer: the two documented per-response regions ONLY (live-check
-// lane's normalizer): CF __CF$cv$params r/t tokens; decko data-slot-id
-// hashes (both quote forms).
+// ---------- 34/34 validation: gen-2 expectation vs saved page capture ----------
+// Noise normalizer: the two documented per-response regions ONLY:
+// CF __CF$cv$params r/t tokens; decko data-slot-id hashes (both quote forms).
 function normalizeNoise(s) {
   return s
     .replace(/__CF\$cv\$params=\{r:'[0-9a-f]+',t:'[A-Za-z0-9+/=]*'\}/g, "__CF$cv$params=NOISE")
