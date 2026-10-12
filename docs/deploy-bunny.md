@@ -12,7 +12,7 @@ signed-in session.
 
 **Costs and energy.** This repository contains no cost measurements and no
 energy measurements for any deployment topology. The only cost arithmetic
-prepared alongside this port is a dated trial-scale walkthrough (scripting
+prepared alongside this engine is a dated trial-scale walkthrough (scripting
 line only, rates as published on Bunny's pricing page on 2026-10-01), which
 is internal tooling and not part of this repository; what a real deployment
 invoices depends on its request volume, CPU time per request and database

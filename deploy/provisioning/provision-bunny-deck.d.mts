@@ -92,7 +92,8 @@ export function resolveApiKey(
 ): { key: string; via: string };
 
 /** Fail-fast deck-source check: cards must carry the engine's db_content
- *  column (scrubbed-corpus shape). Throws ProvisionRefusal. */
+ *  column, or the deck imports cleanly and then fails every render.
+ *  Throws ProvisionRefusal. */
 export function assertSourceShape(
   sourcePath: string,
 ): Promise<{ cards: number; hasDbContent: boolean }>;

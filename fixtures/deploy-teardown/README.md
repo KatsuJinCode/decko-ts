@@ -13,8 +13,8 @@ Where they came from, per file (see each file's `_provenance` key):
   given response comes from), not for the field names.
 
 What they are NOT: **captures from a live Cloudflare account.** No live account
-call was made to produce them — this lane holds no account credential, and the
-lane's binding constraint is zero Cloudflare writes of any kind. The
+call was made to produce them — the work that recorded them held no account
+credential and committed to zero Cloudflare writes of any kind. The
 *identifiers* inside (uuids, service ids, timestamps, the account id) are
 **synthetic**: plausible-shaped values that exercise the parsers, not values
 read off anyone's account. A fixture that claimed to be a real capture would be

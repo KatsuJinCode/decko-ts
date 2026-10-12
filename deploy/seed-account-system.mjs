@@ -2,9 +2,9 @@
 // the ACCOUNT SUBSTRATE a fresh demo deck needs before the first-run journey can
 // run at all.
 //
-// WHY IT EXISTS (the blocker, in one paragraph). The first-run lane
-// (35e7b93, docs/operations.md) built /setup and named what it
-// cannot fix by code: the deploy deck's content chain ships no account system,
+// WHY IT EXISTS (the blocker, in one paragraph). Building /setup established
+// (docs/operations.md) what code cannot fix by itself: the deploy deck's
+// content chain ships no account system,
 // so `setupWindowState` answers `account_system_absent`, `/setup` 404s with
 // "This deck has no account system", and signin has no actor cards to
 // authenticate. The engine has no mod-seeding capability, so the substrate has
@@ -14,7 +14,7 @@
 //
 //   A. DECK BOOTSTRAP — the type skeleton, from the CORE gem
 //      (card-1.110.0). NOT card-mod-account content, and NOT invented here:
-//      `Card.default_type_id` (lib/card/director/card_class.rb; the port is
+//      `Card.default_type_id` (lib/card/director/card_class.rb; here
 //      src/card/actions/type-resolution.ts:351-356) is the type_id of the
 //      `*all+*default` rule row, and that is how ANY card the setup flow
 //      creates gets a type. A deck without the row cannot create a card at all,
@@ -28,7 +28,7 @@
 //      the `*account` right card and its four field cards (*email, *password,
 //      *salt, *status), the `User` cardtype the owner is created as, the two
 //      system-actor cards (Decko Bot, Anonymous), and Decko Bot's `+*account`
-//      junction with the three field children the port's create-time events
+//      junction with the three field children the create-time events
 //      generate for it.
 //
 //
@@ -53,7 +53,7 @@
 //          def account?; false;      end
 //
 //      So a stock Ruby deck's `+*account` census set is Decko Bot's row. Only
-//      that row ships here. (The port's own first-run FIXTURE seeds two —
+//      that row ships here. (The first-run fixture in this repo seeds two —
 //      tests/card/auth/first-run-setup.test.ts:159-160 — which is a fixture
 //      choice, not oracle truth; the census excludes both holders either way,
 //      so the journey's result is identical. Pinned by the journey test.)
@@ -96,8 +96,8 @@ const STAMP = "2026-10-02 00:00:00.000";
  * card-mod-account set/right/account/events.rb:3-5 runs
  * `set_default_salt` on every `+*account` CREATE, which calls
  * `field(:salt).generate`; set/right/salt.rb:5-7 is
- * `Digest::SHA1.hexdigest "--#{Time.zone.now}--"`. The port reproduces the same
- * derivation in src/card/auth/first-run-setup.ts:704-705
+ * `Digest::SHA1.hexdigest "--#{Time.zone.now}--"`. The same derivation is
+ * reproduced in src/card/auth/first-run-setup.ts:704-705
  * (`sha1Hex(`--${rubyTimestamp(now)}--`)`), so the same input string shape is
  * used here: Ruby Time#to_s for a UTC Time, "YYYY-MM-DD HH:MM:SS UTC".
  *
@@ -127,7 +127,7 @@ function rubyToS(when) {
 // Ruby's seed fixture uses ids 1..11 (cards_001..cards_011). Those ids are
 // TAKEN on a deploy database: 0003-demo-seed.sql is db/seed.sql verbatim and
 // uses ids 1 (Home), 2 (Hello World), 3 (the Home+Hello World junction) and 4
-// (About). Ids are deck-local and every consumer in the port resolves these
+// (About). Ids are deck-local and every consumer resolves these
 // cards BY CODENAME, never by number:
 //
 //   * the system actors — actor.ts:74-87, `actorByCodename`, and the gem's own
@@ -138,7 +138,8 @@ function rubyToS(when) {
 //
 // So the ids below are an OFFSET of Ruby's, chosen in a block no shipped row
 // occupies (100+). Reusing 1..11 would collide with 0003's Home card and make
-// this file a destructive edit to existing seed rows, which the lane forbids.
+// this file a destructive edit to existing seed rows, which this generator
+// must never be.
 // The RELATIONSHIPS are the part that carries meaning and they are exact:
 // `*all+*default` here is (1105, 1106) pointing at the `*all` and `*default`
 // cards, exactly as cards_011 is (7, 8) pointing at cards_007 and cards_008.
@@ -492,7 +493,7 @@ const header = [
   "-- each one is a card_references row pointing at the Help Desk role, and",
   "-- the roles arrive with 0006, which runs AFTER this file.",
   "--",
-  "-- NOT INCLUDED, and why (also recorded in the lane receipt):",
+  "-- NOT INCLUDED, and why:",
   "--   * the account read rules — see the paragraph above; they ship in 0009.",
   "--   * roles: `Role`, `*members`, Anyone, Anyone Signed In, Administrator,",
   "--     Eagle, Shark, Help Desk (real.yml:4-68). They ship in",

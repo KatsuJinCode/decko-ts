@@ -38,7 +38,7 @@ and exits 0 only when every step passed.
 write verb answers `403` and no card row is written. The one exception is
 sign-in: `POST /update/*signin` still dispatches while the write path is off
 and still records a session row, because a session is not a card — Ruby decko
-never gates sign-in behind a deploy flag, and neither does this port. Two
+never gates sign-in behind a deploy flag, and neither does this engine. Two
 opt-in variables turn the card write surface on; see
 [operations.md](operations.md).
 Write-enabled D1 is for evaluation and single-user use, not a supported
@@ -74,7 +74,7 @@ with the same engine; local migrations are applied with the same command plus
 | Key | Value |
 | --- | --- |
 | `main` | `worker.ts` — the TypeScript source. The bundler resolves `.js` specifiers to sibling `.ts` files, so one maintained entry point serves both the button and manual deploys. |
-| `compatibility_date` | Deliberately pinned. A newer date can change runtime behaviour, and this port's acceptance criterion is byte parity with the Ruby oracle, so bumping it is a parity decision rather than a packaging one. |
+| `compatibility_date` | Deliberately pinned. A newer date can change runtime behaviour, and this engine's acceptance criterion is byte parity with the Ruby reference, so bumping it is a parity decision rather than a packaging one. |
 | `compatibility_flags` | `nodejs_compat` |
 | `[[d1_databases]]` | `binding = "DB"`, `database_name = "decko-ts"`, and a **placeholder** `database_id` that a button deploy or a manual create replaces. `migrations_dir` points at `deploy/migrations`. |
 | `[vars]` | None active. The write-path and first-run variables are present only as commented lines. |

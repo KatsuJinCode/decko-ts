@@ -189,7 +189,7 @@ forms, NULL handling and raw-regex forms, and a rendered search view.
 
 The capture pins behavior that is specific to one server family. Different
 server engines implement different regular-expression dialects and will
-disagree on the exotic raw-regex forms. The port's contract is therefore
+disagree on the exotic raw-regex forms. This engine's contract is therefore
 "behave like the captured server, and fail loudly rather than quietly return
 the wrong rows where it cannot" — not "behave identically on every engine".
 
@@ -287,7 +287,7 @@ them must not be quoted as a pure Ruby-parity figure. **50 is the sum of two
 disjoint sets, 13 and 37** — neither a sample of the live-anchored set nor an
 upper bound on it.
 
-| Swap set | Entries | Lane split | Live fetch window (all `culturesmith.com`) | Manifest (private repo only) |
+| Swap set | Entries | Split | Live fetch window (one host) | Manifest (private repo only) |
 | --- | ---: | --- | --- | --- |
 | W5 LIVE-ALIGNMENT — `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs` | 13 | 6 view-lane, 7 page-lane | 2026-10-04T00:39:22.105Z – 00:39:51.334Z | `fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json` |
 | close-71-with-live W3 show-key — `tools/oracle/swap-37-view-expectations-live-check-close-71.mjs` | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-lane only — `open` 18, `closed` 16, `content` 3 | 2026-10-03T19:41:52.380Z – 19:43:11.260Z | `fixtures/corpus-v2/asset-host-follow-live-close-71/swap-manifest-37-view-expectations-2026-10-03.json` |
@@ -296,7 +296,7 @@ upper bound on it.
   refuses to run without: `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:86`
   fails unless the verdicts file holds exactly 13 `LIVE-DIFFERS` rows, and its
   manifest records those same 13 (applied 2026-10-04T01:04:58Z). The 37 is a
-  separate lane's set, named in that tool's own header
+  separately-recorded set, named in that tool's own header
   (`tools/oracle/swap-37-view-expectations-live-check-close-71.mjs:2-3`):
   "every W3 view-lane entry whose residual is the conditional data-slot show
   key gets TODAY'S live response body as its expectation". Its manifest records
@@ -306,12 +306,12 @@ upper bound on it.
 - **The two sets are disjoint, and that was checked rather than assumed.**
   Both manifests record the entry key per entry — `name` plus `view` — and
   comparing those keys across the two manifests returns an **empty
-  intersection**: none of the W5 lane's six view-lane keys appears among the
+  intersection**: none of the W5 set's six view-scope keys appears among the
   37. Shard identity is not decisive here (both lanes stage into separate
   directories whose shard filenames collide by number, and three shard numbers
   appear in both sets), so the key comparison is the one that settles it.
   13 + 37 therefore counts 50 distinct entries, none of them twice.
-- **Source: `culturesmith.com` live GETs, captured whole-body and stored
+- **Source: live GETs against the one host, captured whole-body and stored
   verbatim** on 2026-10-03 (37 entries) and 2026-10-04 (13 entries),
   including the documented per-response noise (Cloudflare `__CF$cv$params`
   tokens, per-render `data-slot-id` hashes).
@@ -321,12 +321,11 @@ upper bound on it.
   note, `:108` for the value `footerDeckoVersion: "0.19.1"` — against the card
   gem's `"0.20.0"`. Those 50 entries are therefore measured against an
   **older engine era's output, recorded from a site, not from a 0.20.0 Ruby
-  process**: the live deployment runs behind the version this port targets.
+  process**: the live deployment runs behind the version this engine targets.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
-- **Policy: the rule the capture tooling applies, quoted, as the recapture-era
-  policy it is.**
+- **Policy: the rule the capture tooling applies, quoted as written.**
   The 37-entry tool states it in its header
   (`tools/oracle/swap-37-view-expectations-live-check-close-71.mjs:10`):
   "Per the standing ruling (live is the only benchmark) the expectation
@@ -342,7 +341,7 @@ upper bound on it.
   further reversible overlays move live-derived truth into the corpus without
   fetching a body: the asset-host prefix transform (6,552 lines changed over
   32,948 occurrences; `tools/oracle/apply-asset-host-follow-live-close-71.mjs`)
-  and the denied-seam re-anchor (6,535 page-lane entries, one byte range each;
+  and the denied-seam re-anchor (6,535 page-scope entries, one byte range each;
   `tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs`). A fifth
   swap tool, `tools/oracle/apply-w5-record-alignment-2026-10-03.mjs`, rewrites
   5 entries' `record.content` from the **local mirror rows**
@@ -361,36 +360,38 @@ upper bound on it.
   `shard`, `line`, `liveUrl`, `liveFetchedAt`, and the before/after sha256
   pair), so any quoted figure can be recomputed with and without them.
 - **Where the manifests live, said precisely.** All four swap manifests are
-  committed in the private repository (`git ls-files fixtures/corpus-v2/`
-  lists 112 files, these among them), so every count on this page is checkable
-  there. **They are not in the public package**: `fixtures/corpus-v2/` is on
+  committed in the private repository (a `git ls-files` of that manifest
+  directory lists 112 files, these among them), so every count on this page is
+  checkable there. **They are not in the public package**: the manifest
+  directory is on
   the exclusion list, because 50 of the entries those manifests record are
   whole-body bytes fetched from the live site. In the public package these
   counts are not recomputable from the tree — they are quoted measurements
-  whose instrument is described here. The corpus staging they operate on,
-  `tmp/raw-ground-truth/expected-v2/`, is likewise not committed —
-  `.gitignore:60` ignores `tmp/` — because it carries the deck's real content.
+  whose instrument is described here. The corpus staging they operate on is
+  likewise not committed —
+  the repository ignores it outright — because it carries the deck's real content.
 - **What was deliberately not swapped, and why.** The W5 tool records its
   exclusions in its header: the 2 `LIVE-CONFIRMS` entries keep their oracle
   expectation (the entry fails for engine reasons, so live truth does not
   clear it), and the 5 `record` entries keep theirs because the live site has
   no record view surface to capture (422/403 responses, not renderings).
 - **One figure cited here cannot be checked in this repository.** The W5
-  tool's header also refers to "the recapture lane's own pattern, whose 77
-  swaps stored live bytes"
+  tool's header also refers to an earlier set of 77 swaps whose bytes came
+  from live responses
   (`tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:6`). No
-  manifest for that lane's 77 swaps is committed in this repository, and
+  manifest for that earlier set of 77 swaps is committed in this repository,
+  and
   none was found in any local checkout of it, so those entries cannot be
   enumerated or tested for overlap with the 50 above. **50 is therefore the
-  proven total, and if that lane's swaps landed in the same staging the
+  proven total, and if those swaps landed in the same staging the
   live-anchored set is larger by an unquantified amount.**
 
 ---
 
 ## Performance measurement
 
-Parity is the acceptance criterion; performance is the reason the port exists
-on an edge runtime. The two are measured separately and never traded.
+Parity is the acceptance criterion; performance is the reason this engine
+exists on an edge runtime. The two are measured separately and never traded.
 
 The comparison renders identically-named synthetic fixture decks through both
 engines: chains up to the twenty-level render cap (past it both engines

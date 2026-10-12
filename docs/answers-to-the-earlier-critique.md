@@ -214,9 +214,9 @@ exists in the tree`. The support work is tracked on the working board as
 
 Two further migration facts the critique's list did not anticipate are recorded
 in [docs/SECURITY.md](SECURITY.md) "Migration compatibility at a glance": while
-Ruby still serves the deck the port must run `DECKO_PASSWORD_HASH=legacy-sha1`
+Ruby still serves the deck this engine must run `DECKO_PASSWORD_HASH=legacy-sha1`
 because Ruby cannot verify PBKDF2, D1's transaction semantics differ from
-Ruby's and plain SQLite's, and the port adds schema Ruby has no counterpart
+Ruby's and plain SQLite's, and this engine adds schema Ruby has no counterpart
 for — an `auth_sessions` table whose sessions do not carry across engines, and
 the `deck_data_version` stamp with the six triggers that advance it.
 
@@ -609,7 +609,7 @@ So no reader has to infer it from the answers above:
 
 The issue numbers are those of the development repository, which is private;
 they are recorded so a reader with access can find the item, and no issue URL
-is printed because none of them resolves for a reader of this port.
+is printed because none of them resolves for a reader of this engine.
 
 Every claim in this document is answerable against
 [docs/coverage-inventory.md](coverage-inventory.md). Where a figure appears

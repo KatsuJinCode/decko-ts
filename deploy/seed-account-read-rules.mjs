@@ -48,11 +48,10 @@
 // mechanical:
 //   1. Each rule is a card_references row whose referee is the Help Desk ROLE
 //      card, and the roles ship in 0006 — which runs AFTER 0004. A rule row
-//      written by 0004 would name a referee that does not exist yet, and
-//      read_rule_cache.rb (the port's permission statement 2,
-//      read-rules.ts:202-214) would never join it. A rule with no party
-//      grants nobody — including the catch-all, which would then deny the
-//      whole deck.
+//      written by 0004 would name a referee that does not exist yet, and the
+//      read-rule cache statement (read-rules.ts:202-214) would never join it.
+//      A rule with no party grants nobody — including the catch-all, which
+//      would then deny the whole deck.
 //   2. 0006's own header already deferred this file by name:
 //      "`*account` right rules real.yml:82-117, 119-160 — the rules a role
 //      would be a PARTY of. 0004 shipped the `*account` field card without
@@ -204,8 +203,8 @@ function sideCardSql(card) {
 /**
  * One card_references row: the PARTY a rule card grants. This is the half of a
  * rule that decides WHO may read through it. db_content is what the rule
- * EDITOR shows; card_references is what read_rule_cache.rb reads, and what the
- * port's permission statement 2 reads:
+ * EDITOR shows; card_references is the table the read-rule cache statement
+ * actually joins (read-rules.ts:202-214):
  *
  *   SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId
  *     FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id ...
@@ -232,10 +231,10 @@ const header = [
   "-- Do not edit; edit the generator.",
   "--",
   "-- WHAT THIS IS: the read rules the demo deck's account substrate needs to be",
-  "-- SAFE TO SERVE. Generated 2026-10-11 after the round-8 adversarial review",
-  "-- reproduced, in workerd and on the demo deck with the first-run owner",
-  "-- created, that an anonymous requester could read the owner's PBKDF2 digest,",
-  "-- its salt and its email address — on the page path AND on /api/query.",
+  "-- SAFE TO SERVE. What it closes, reproduced in workerd and against a",
+  "-- deployed deck with the first-run owner created: an anonymous requester",
+  "-- could read the owner's PBKDF2 digest, its salt and its email address —",
+  "-- on the page path AND on /api/query.",
   "--",
   "-- THE MECHANISM, one missing card, two consequences:",
   "--   * a deck with no catch-all read rule has hasCatchAllReadRule=false",

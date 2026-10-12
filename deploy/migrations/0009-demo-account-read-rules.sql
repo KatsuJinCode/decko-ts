@@ -3,10 +3,10 @@
 -- Do not edit; edit the generator.
 --
 -- WHAT THIS IS: the read rules the demo deck's account substrate needs to be
--- SAFE TO SERVE. Generated after an adversarial review
--- reproduced, in workerd and on the demo deck with the first-run owner
--- created, that an anonymous requester could read the owner's PBKDF2 digest,
--- its salt and its email address — on the page path AND on /api/query.
+-- SAFE TO SERVE. What it closes, reproduced in workerd and against a
+-- deployed deck with the first-run owner created: an anonymous requester
+-- could read the owner's PBKDF2 digest, its salt and its email address —
+-- on the page path AND on /api/query.
 --
 -- THE MECHANISM, one missing card, two consequences:
 --   * a deck with no catch-all read rule has hasCatchAllReadRule=false
