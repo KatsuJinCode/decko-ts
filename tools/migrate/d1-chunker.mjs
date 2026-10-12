@@ -1,13 +1,15 @@
 // d1-chunker.mjs — emit chunked D1-ready INSERT files from any row source.
 //
-// The M5 productized importer (tools/migrate/import-deck.mjs) splits a real
-// deck's hundreds-of-MB INSERT stream into small chunk files that
-// `wrangler d1 execute --local --file <chunk>` can swallow one at a time.
-// D1's per-execute statement-count limit (the empirical ceiling is the
-// number this module lets the caller discover; the default of 1000 rows
-// per chunk is the conservative starting point) and per-statement size
-// cap (~100 KB after normalization) make a single wrangler --file call
-// unsafe for production-sized decks.
+// The productized importer (tools/migrate/import-deck.mjs) uses this
+// module to split a real deck's hundreds-of-MB INSERT stream into small
+// chunk files that `wrangler d1 execute --local --file <chunk>` can
+// swallow one at a time. Wrangler caps how much one --file call may
+// carry, both as a statement count and as a per-statement size
+// (~100 KB after normalization), so a single --file call is unsafe for
+// production-sized decks. Both limits are exposed here as caller
+// options: the 1000-row default is the conservative starting point,
+// and the working ceiling is something the caller discovers
+// empirically.
 //
 // Each chunk is a self-contained .sql file:
 //   - a header comment naming the chunk and the table set it covers,
