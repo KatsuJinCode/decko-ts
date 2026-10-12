@@ -679,6 +679,7 @@ export class CardActionEngine {
     subcards: Record<string, SubcardInput> | undefined,
     superActionId: number | null,
     finalizeQueue?: (() => Promise<void>)[],
+    deferredSubFinalizes?: DeferredReferenceFinalize[],
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
@@ -756,6 +757,7 @@ export class CardActionEngine {
               sub.subcards,
               updated?.actionId ?? superActionId,
               finalizeQueue,
+              deferredSubFinalizes,
             )),
           );
         }
@@ -796,6 +798,10 @@ export class CardActionEngine {
           },
           { isActCard: false, deferFinalize: subReferenceFinalize },
         );
+        // The stash lands HERE, before the card's own subcards recurse: the
+        // deferred events run in store order (the oracle's reference-row ids
+        // are sequential over the act's cards in store order).
+        deferredSubFinalizes?.push(subReferenceFinalize);
         // a history-less card records no action (actionId 0): it is not a
         // subaction of the act
         if (sub.history !== false) {
@@ -819,6 +825,7 @@ export class CardActionEngine {
               sub.subcards,
               sub.history === false ? superActionId : created.actionId,
               finalizeQueue,
+              deferredSubFinalizes,
             )),
           );
         }
@@ -830,7 +837,12 @@ export class CardActionEngine {
           saved,
         );
         // FINALIZE (after the store stage): the deferred reference events.
-        await this.runDeferredReferenceFinalize(subReferenceFinalize);
+        // With a collector the caller runs them — the act card's own
+        // reference events go first (reference_events.rb's order), then the
+        // subcards' in store order.
+        if (deferredSubFinalizes === undefined) {
+          await this.runDeferredReferenceFinalize(subReferenceFinalize);
+        }
       }
     }
     // delete_children (trash.rb:46-57) fires on EVERY :delete save — also on
@@ -1551,14 +1563,21 @@ export class CardActionEngine {
     // subcards.rb:1-16: the subcards ride this save's act (director/
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
-    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue);
+    const deferredSubFinalizes: DeferredReferenceFinalize[] = [];
+    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue, deferredSubFinalizes);
     await this.ensureAccountDefaults(writer, name, result.cardId, result.actionId, subResults);
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
-    // FINALIZE (after the store stage): the deferred reference events —
-    // Ruby's ordering (see the defer note above).
+    // FINALIZE (after the store stage): the act card's deferred reference
+    // events FIRST, then the subcards' in store order — reference_events.rb's
+    // definition order per card, cards in the director's store order. The
+    // synthetic-v1 oracle's create-topic-with-fields step pins the row-id
+    // sequence: the act's four reference rows precede the subcard's.
     await this.runDeferredReferenceFinalize(referenceFinalize);
+    for (const d of deferredSubFinalizes) {
+      await this.runDeferredReferenceFinalize(d);
+    }
     // II (director.rb:26): the integration phase runs after the save's
     // transaction commits (after_commit :integration_phase, director/
     // phases.rb:4), and the integrate seam runs BEFORE the notify hooks
@@ -2275,12 +2294,14 @@ export class CardActionEngine {
     // shape (the plusses in the main card's form submission). Ruby saves
     // them within the supercard's Director run (director/store.rb:37-58);
     // a no-change subcard produces no action (events.rb:34-37).
+    const deferredSubFinalizes: DeferredReferenceFinalize[] = [];
     const subResults = await this.saveSubcardsInWriter(
       writer,
       await this.composedNameOf(row),
       input.subcards,
       result?.actionId ?? null,
       finalizeQueue,
+      deferredSubFinalizes,
     );
     if (result === null && subResults.length > 0) {
       // The act card's own save was a no-op but its subcards changed: the
@@ -2845,12 +2866,22 @@ export class CardActionEngine {
     // the pre-seam behavior (update-referer-content.ts, refresh-references-
     // in.ts).
     const skipReferers = this.skipsEvent("update_referer_content");
+    // Ruby's refresh_references_out body parses `card.content`
+    // (structured_content || standard_content) — a structured card's rows
+    // rebuild from the RULE's template, never from the just-saved column
+    // value (structureReferencesContent's note; the harness's
+    // update-topic-as-member step records exactly that: db_content becomes
+    // the submitted text while the rows come back as the template's three
+    // inclusions). The registered core-mod body reads THIS record's
+    // dbContent, so it carries the structure-resolved value too.
+    const refsContentAfter = attachmentIdentifier ??
+      (await this.structureReferencesContent(row, after.db_content));
     await this.runFinalizeEvents(
       this.eventCard({
         name: nameAfter,
         id: row.id,
         key: nameChanged && newName !== undefined ? newName.key : currentKey,
-        dbContent: attachmentIdentifier ?? after.db_content,
+        dbContent: attachmentIdentifier ?? refsContentAfter,
         action: "update",
         actId: saved.actId,
         trash: false,
@@ -2866,7 +2897,7 @@ export class CardActionEngine {
               cardId: row.id,
               name: nameAfter,
               contentBefore: before.db_content,
-              contentAfter: attachmentIdentifier ?? after.db_content,
+              contentAfter: refsContentAfter,
             }),
         ],
         [

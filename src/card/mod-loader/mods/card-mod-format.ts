@@ -2195,12 +2195,19 @@ const setModules: ModSetModuleFile[] = [
         on: ["save"],
         fn: (card) => {
           const message = numberValidationMessage(card.dbContent ?? "");
-          if (message !== null)
-            // The errors view shows the attribute key before the message and
-            // titles the alert "Problems with <name>" (standard_errors +
-            // voo.title, html/error.rb:54-66) — the card name rides the
-            // error for the alert's heading.
-            throw new CardActionError("user-error", message, message, { content: message }, card.name);
+          if (message !== null) {
+            // Ruby's card.errors carries the BARE message (errors.add
+            // :content, "'x' is not numeric"); the "CONTENT: " upcase prefix
+            // is the standard_errors DISPLAY form (html/error.rb:54-66),
+            // which is the second argument's job — the errors view shows the
+            // attribute key before the message and titles the alert
+            // "Problems with <name>" (voo.title; the card name rides the
+            // error for the alert's heading). The synthetic-v1 oracle's
+            // structured errors record arbitrated the two forms at the
+            // converge: the recorded errors array holds the bare message.
+            const bare = message.replace(/^[A-Z0-9_*+ ]+: /, "");
+            throw new CardActionError("user-error", message, message, { content: bare }, card.name);
+          }
         },
       },
     ],

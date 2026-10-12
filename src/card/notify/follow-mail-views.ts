@@ -212,10 +212,17 @@ export async function followMailViews(
       const before = newName !== undefined ? await previousValue(action, "name") : undefined;
       const name = before ?? (await nameOf(action.cardId));
       const body = `${name} ${action.type}d\n${await listOfChanges(action, html)}`;
-      // The notices join DIRECTLY (base_views.rb:16-20 map.compact.join —
-      // each subedit notice carries its own trailing newline and no leading
-      // one; wrap_list's "\n#{list}\n" supplies the leading blank line).
-      items += html ? `<li>${body}</li>\n` : `${body}\n`;
+      // Text items: wrap_subedit_item (base_views.rb:113-115) contributes the
+      // LEADING newline only in the delivered bytes — the body already ends
+      // with its list's newline (wrap_list_item, :109-111), and the harness's
+      // Ruby capture pins exactly one blank line between items and after the
+      // header (the trailing wrapper newline never survives to the mail).
+      // The synthetic-v1 oracle arbitrated the two readings at the converge:
+      // the recorded bytes carry the blank line after "the following
+      // changes:", which only the leading-newline form produces.
+      items += html ? `<li>${body}</li>
+` : `
+${body}`;
     }
     if (items === "") return "";
     // Text list tail: the Ruby capture pins the section ending with a blank

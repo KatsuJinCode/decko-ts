@@ -1317,7 +1317,7 @@ export function servingModEventRuntime(): Promise<ModEventRuntime> {
 /** The serving runtime, with the host's stage-report observer attached when
  *  one is given. The shared runtime object is never mutated: an observed
  *  request gets a shallow copy carrying its own onReport. */
-async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
+export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   return {
