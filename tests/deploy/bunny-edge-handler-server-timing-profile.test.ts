@@ -1,10 +1,10 @@
-// The EDGE PROFILER lane (2026-10-05) — per-phase Server-Timing on every
-// response the Bunny edge full-engine handler produces.
+// Per-phase Server-Timing on every response the Bunny edge full-engine
+// handler produces.
 //
 // WHY: signed-in requests skip the prepared-page stores and run the full
-// statement ladder (measured 2026-10-05: home 45.4 s, member pages 504 at
-// the 59 s platform wall) while anonymous prepared pages serve in
-// 0.04-0.6 s — and NOTHING on the wire says WHERE a slow request spent its
+// statement ladder (multi-second page builds at the platform's execution
+// wall) while anonymous prepared pages serve in a fraction of a second —
+// and NOTHING on the wire says WHERE a slow request spent its
 // time. This suite pins the instrument: every response carries
 //
 //   Server-Timing: auth;dur=X, seat;dur=Y, db;dur=Z;stmt=N, render;dur=W, total;dur=T
