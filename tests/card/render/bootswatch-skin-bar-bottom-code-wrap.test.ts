@@ -1,5 +1,5 @@
-// six-skin-viewopen (2026-10-02): the Bootswatch-skin cardtype's bar_bottom
-// renders the core inside a bare <code> pair -- card-mod-bootstrap
+// The Bootswatch-skin cardtype's bar_bottom renders the core inside a bare
+// <code> pair -- card-mod-bootstrap
 // set/type/bootswatch_skin/html_views.rb:69-73:
 //
 //   view :bar_bottom do
@@ -11,21 +11,16 @@
 // `view :bar_bottom -> render :content, home_view: :content`, which wraps the
 // body in `<div id="X-content-view" class="card-slot content-view …">`.
 //
-// That one wrapper swap was the whole of the six-skin view-open residual on
-// shard-000028 at cf7dc5c -- lux +493, materia +511, minty +501, pulse +501,
-// sketchy +509, solar +501, three divergence regions each (the wrapper open
-// tag, the `</code>` vs nothing, the `</div>` vs nothing) and one shared
-// cause. Oracle bytes for `lux skin` (id 33877) as captured in
-// tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-shard-000028.jsonl
-// (read at probe time, NOT at test time -- that tree is gitignored):
-//
-//   expected  …<div class='accordion-body d0-card-body'>\n<code><a class="btn btn-sm btn-outline-primary me-2 known-card" href="/update/lux_skin?card%5Btrigger%5D=use_as_current_skin">Use as current</a>
-//   pre-fix   …<div class='accordion-body d0-card-body'>\n<div id="lux_skin-content-view" class="card-slot content-view ALL TYPE-bootswatch_skin SELF-lux_skin d0-card-content" …><a class="btn …">Use as current</a>
-//   tail      …</div>\n\n</div>\n</code>\n</div>\n</div>\n</div>\n</div>
+// That one wrapper swap was the whole of the six-skin view-open residual:
+// each skin's open view diverged in exactly three regions (the wrapper open
+// tag, the `</code>` vs nothing, the `</div>` vs nothing) with one shared
+// cause. For a non-current skin the wrapped core is the "Use as current"
+// anchor; the base path instead emits the content-view slot div around it
+// and closes with `</div>` where the skin path closes with `</code>`.
 //
 // The dispatch is the BASE bar_bottom with a typeCode gate, for the same
 // reason barLeftView's is (bootswatch-skin-bar-left-media-bytes.test.ts:11-14)
-// and coreView's is (views.ts:1186-1191): the corpus grading pipeline replays
+// and coreView's is (views.ts:1186-1191): the reference-render harness replays
 // views through a RenderEngine that never binds a ModLoader, so only
 // base-table registrations dispatch on the graded surface. The mod-layer copy
 // of this same body (card-mod-bootstrap.ts:927, registered at :1427) is
@@ -55,8 +50,8 @@ async function seedDeck(): Promise<void> {
   await seedReference(s, 50, 6, "anyone");
   // The Bootswatch skin cardtype whose codename names the set module.
   await seedCard(s, { id: 33929, name: "Bootswatch skin", codename: "bootswatch_skin", typeId: 2 });
-  // A skin card + its coded +Image child (the corpus rows: cerulean skin id
-  // 22774 type 33929; cerulean skin+Image id 22850).
+  // A skin card + its coded +Image child, mirroring the reference deck's
+  // shape for a bootswatch_skin row.
   await seedCard(s, { id: 22774, name: "cerulean skin", typeId: 33929, dbContent: "[[themeless bootstrap skin]]" });
   await seedCard(s, {
     id: 22850,
