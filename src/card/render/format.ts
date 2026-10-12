@@ -1741,23 +1741,22 @@ export class RenderFormat {
       // verbatim for authored/relative forms (card-mod-content
       // lib/card/content/chunk/nest.rb:23 keeps the authored string:
       // "+Source Title" stays relative, underscores/casing untouched —
-      // raw recapture oracle id 9625; live wire "+tag"/"+related"/
-      // "Su$tainability"/"Conflict_Done_Well+class_schedule"), codename-
-      // RESOLVED for mark forms: DeckoName.parse resolves ":codename"
-      // marks through the name environment at parse time ({{:footer}} →
-      // "*footer", the R16 page-surface pin; junction parts too — the Role
-      // template card 322's {{+:description|lead}} pins
-      // nest_name "+description" in every Role page oracle: the right
-      // part is the codename "description" → card 146's name, and the
-      // RELATIVE junction form is kept — the previous
-      // effectiveCard.name.s rewrite here emitted the ABSOLUTE form for
-      // that shape). That is Ruby's fetch.rb#new_card:31 rewrite
+      // "+tag"/"+related"/"Su$tainability"/"Conflict_Done_Well+class_schedule"),
+      // codename-RESOLVED for mark forms: DeckoName.parse resolves
+      // ":codename" marks through the name environment at parse time
+      // ({{:footer}} → "*footer"; junction parts too — a Role
+      // template's {{+:description|lead}} nests with
+      // nest_name "+description": the right part is the codename
+      // "description" → its card's name, and the RELATIVE junction form is
+      // kept — rewriting this to the effective card's absolute name here
+      // would emit the ABSOLUTE form for that shape). That is Ruby's
+      // fetch.rb#new_card:31 rewrite
       // `view_opts[:nest_name] = Card::Name[cardish].to_s` with cardish's
       // marks already resolved by the fetch: the resolved name is what
       // lands in the slot JSON. (Parse safety: resolveNestName above
       // already parsed this same string, so a throwing mark never
       // reaches this line.) The resolved name still drives data-card-name
-      // (the slot's own attribute; id 9625 shows the absolute form
+      // (the slot's own attribute, which takes the absolute form
       // there). card-mod-tabs.ts#chunkRefChunks already follows this
       // contract for its chunk walk.
       nest_name: DeckoName.parse(nest.name).s,
@@ -1838,8 +1837,8 @@ export class RenderFormat {
    *     format/error.rb:80-86 `rendering_error exception, view` interpolates
    *     the view `wrap_and_render` was called with, and html/error.rb:99-101
    *     wraps that text in the render-error span. `render_core` therefore
-   *     reports "(core view)" — the corpus bytes for card 34322
-   *     `Maturana ...+Date` and its three siblings.
+   *     reports "(core view)" — the shape a `+Date` nest with
+   *     unparseable content and its siblings emit.
    *
    * The engine raised both facts away: the dispatch seam
    * (src/card/render.ts:1579-1589, the Date::Error / Search BadQuery raise)
@@ -1852,8 +1851,8 @@ export class RenderFormat {
    * is `depth.zero?`; cardio/railtie.rb:38 sets raise_all_rendering_errors
    * false. A delegated render on a NESTED format is therefore quiet, and on
    * a depth-0 format it re-raises (error.rb:69-73 `loud_error` -> `raise e`)
-   * — which is why the corpus pins a bare `format.render(:content)` of a
-   * bad-content Date card as CAPTURE_ERROR, not as a page.
+   * — which is why a bare `format.render(:content)` of a bad-content Date
+   * card re-raises rather than rendering a page.
    *
    * UnsupportedViewError keeps its own message in both scopes
    * (error.rb:52-54 `unsupported_view_error_message`), so it is passed
@@ -1922,18 +1921,19 @@ export class RenderFormat {
    *  *default-template typed) the way the nest fetch would:
    *  `args[:type] = view_opts[:type]` — an explicit `| type:X ` opt names
    *  the new card's TYPE (the type card must resolve warm;
-   *  enrichNestTypeOptTargets pre-warms the corpus's two shapes; Card.fetch
+   *  enrichNestTypeOptTargets pre-warms both shapes; Card.fetch
    *  new: {} does NOT apply the *default template CONTENT — the fabricated
    *  record carries the template bytes and the toggle core of a truthy
-   *  template would render "yes" where the oracle renders "no" for the
-   *  empty new card); and `.merge(new_supercard_args)` — the new card is
+   *  template would render "yes" where the empty new card renders "no");
+   *  and `.merge(new_supercard_args)` — the new card is
    *  created AS A SUBCARD of the context card, so its set-pattern chain
    *  carries TYPE_PLUS_RIGHT-<supercard type>-<tag> (the safeSetKeys
    *  rebuild with leftTypeName; the fabricated record's own set keys are
-   *  parentless). Pins: the personal page's +agree slot (data-card-type-id="51",
-   *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
+   *  parentless). Observed on: a personal page's +agree slot
+   *  (data-card-type-id="51", TYPE-toggle chain, body "no"); RVW open's
+   *  +working doc 02 item slot
    *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
-   *  fabricated shape pinned rich_text). */
+   *  fabricated shape carries rich_text). */
   private withNewCardContext(target: RenderCard, nestTypeOpt?: string): RenderCard {
     const explicitType =
       nestTypeOpt !== undefined ? this.engine.fetchRenderCard(nestTypeOpt) : undefined;
@@ -1949,12 +1949,8 @@ export class RenderFormat {
     // A TOGGLE-typed fabricated record must not carry the virtual
     // resolution's *structure template: the toggle core (views.ts
     // formatToggleCore) formats any truthy string as "yes", so the carried
-    // template rendered "yes" where the oracle renders "no" — the p21
-    // Group A regression (98 entries: every Sign up person page's `+agree
-    // | type:Toggle` slot, corpus rules agree+*right+*structure 28589
-    // template / agree+*right+*default 17695 content '0', zero +agree
-    // rows; probe-proven). The
-    // oracle byte is the toggle core of the *default rule's CONTENT
+    // template rendered "yes" where the empty new card renders "no". The
+    // correct byte is the toggle core of the *default rule's CONTENT
     // (content/all.rb:17-19 standard_content's new-card branch:
     // default_content = the *default template's db_content; '0' -> "no").
     // The gate is the toggle core's own dispatch condition
@@ -1999,7 +1995,7 @@ export class RenderFormat {
    *  reads the LEFT SIDE's type off the NAME ALGEBRA (superleft.type_name),
    *  not off the nesting format's context card — the RVW open view nests
    *  "RVW+working doc 02" items from INSIDE "RVW+File Storage Area"
-   *  (RichText-typed) and the captured slot chain still reads
+   *  (RichText-typed) and the slot chain still reads
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
    *  (see the last return below). */
@@ -2014,8 +2010,8 @@ export class RenderFormat {
     // Ruby's left_type reads the LEFT CARD's type — for a left
     // that is itself virtual ("PlainText+*type" -> Set via the
     // *type+*right+*structure template) the context card's type is simply
-    // the wrong card's type (the census page-22 defect:
-    // TYPE_PLUS_RIGHT-cardtype-by_name over the oracle's
+    // the wrong card's type (the anchor would read
+    // TYPE_PLUS_RIGHT-cardtype-by_name where it must read
     // TYPE_PLUS_RIGHT-set-by_name).
     const virtualLeftType = this.engine.virtualLeftTypeName?.(leftName);
     if (virtualLeftType !== undefined) return virtualLeftType;
@@ -2050,12 +2046,11 @@ export class RenderFormat {
     // which is exactly the RVW case its own block comment describes — and
     // that case is already served by the fetchRenderCard lookup above (RVW
     // IS in the warm map). The pre-fix shape also silently papered over the
-    // census page-22 defect that the virtualLeftTypeName line exists to fix.
+    // defect the virtualLeftTypeName line exists to fix.
     //
-    // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
-    // TYPE_PLUS_RIGHT-rich_text-aikido, and
-    // Ellery+Retreats+Shoreline+20180623_0728 reads
-    // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
+    // OBSERVED SHAPES: a junction nested from a List parent reads
+    // TYPE_PLUS_RIGHT-rich_text-aikido, and a dated-image junction nested
+    // from a RichText parent reads TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
     // BRANCH (W2 restore , $1). class_methods.rb:59-71:
@@ -2074,18 +2069,18 @@ export class RenderFormat {
     // name that fetches to nothing still builds `Card.fetch name, new: {}`
     // — a NEW card whose type comes from the *default template chain
     // (type_id_from_template) — which for this deck's simple-name universe
-    // is the *all+*default template card (corpus 22281) typed BasicCs.
+    // is the *all+*default template card, typed BasicCs.
     // The unconditional "RichText" return skipped that arm and keyed every
     // absent-left junction's TYPE_PLUS_RIGHT anchor off the WRONG type:
     // the password reset / verification email surfaces nest
-    // "Decko Bot+*account" (Decko Bot absent from the corpus), and the
-    // capture's mini_bar slot chain reads TYPE_PLUS_RIGHT-basic_c-Xaccount
-    // — basic_c = BasicCs.underscore.singularize — while the port emitted
-    // TYPE_PLUS_RIGHT-rich_text-Xaccount (8 email entries, view+page).
-    // The compound-left pins above hold through this arm: quick_type on a
+    // "<bot>+*account" (that bot card is absent from the deck), and the
+    // mini_bar slot chain reads TYPE_PLUS_RIGHT-basic_c-Xaccount
+    // — basic_c = BasicCs.underscore.singularize — while an unconditional
+    // RichText would emit TYPE_PLUS_RIGHT-rich_text-Xaccount.
+    // The compound-left shapes above hold through this arm: quick_type on a
     // compound left ("Soma+tic") resolves the junction *default chain the
     // same way and lands on rich_text there. Engines without the
-    // newCardDefaultType hook keep the pre-W2 shape (the "RichText"
+    // newCardDefaultType hook keep the simple form (the "RichText"
     // literal), matching this method's other optional hooks.
     const quickType =
       this.engine.newCardDefaultType?.(leftName) ?? undefined;
@@ -2095,14 +2090,14 @@ export class RenderFormat {
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
    *  -> new_card_args): name = the resolved reference, supercard = the
    *  context card (unmodeled - no write path reads it here), no id/
-   *  content. Round 9: the *default rule's type rides along when the
+   *  content. The *default rule's type rides along when the
    *  engine resolves one (newCardDefaultType - the type_id_from_template
-   *  chain; the raw-oracle pins absent +Discussion children rendering as
+   *  chain; absent +Discussion children then render as
    *  RichText-typed slots). The type informs the set keys (TYPE /
-   *  RIGHT / TYPE_PLUS_RIGHT tokens the captured class chains show);
+   *  RIGHT / TYPE_PLUS_RIGHT tokens the class chains carry);
    *  dbContent stays "" - Ruby's *default CONTENT is NOT applied at view
-   *  time on the captured surface (the oracle's new-child open accordion
-   *  body is empty despite the rule's "<p> </p>" template bytes).
+   *  time here (a new-child open accordion body is empty despite the
+   *  rule's "<p> </p>" template bytes).
    *  The engine records the miss so the closure stays warm without
    *  re-prefetching (fetch.rb has no cache for unknown cards either). */
   /** Card.fetch(name, new: {}) for a name the deck does not carry: the new,
