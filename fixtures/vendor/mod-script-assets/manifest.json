@@ -89,7 +89,7 @@
             "file": "card-mod-list/assets/script/pointer_config.js.coffee",
             "name": "pointer_config.js.coffee",
             "type": "coffee_script",
-            "sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d"
+            "sha256": "fc78f87de0528e47b99913215c1a672d2709455acfbc05bddec190b390c826ca"
           },
           {
             "file": "card-mod-list/assets/script/pointer_list_editor.js.coffee",
@@ -167,7 +167,7 @@
             "file": "card-mod-edit/assets/script/editor.js.coffee",
             "name": "editor.js.coffee",
             "type": "coffee_script",
-            "sha256": "4c2b561ac6da3c4b68da725701d5ff9cedff392d87982db6d68cde91a7ce816b"
+            "sha256": "00cefd3d726f769bd06c9965ba0a40218950cb7ac3e0b82b64bbcf6a9d78420f"
           },
           {
             "file": "card-mod-edit/assets/script/name_editor.js.coffee",

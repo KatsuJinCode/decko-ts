@@ -41,7 +41,7 @@ $(window).ready ->
   setTimeout (-> decko.initializeEditors $('body > :not(.modal)')), 10
   # dislike the timeout, but without this forms with multiple TinyMCE editors
   # were failing to load properly
-  # I couldn't reproduce that problem described above -pk
+  # couldn't reproduce the problem described above
 
   $('body').on 'submit', '.card-form', ->
     $(this).setContentFieldsFromMap()

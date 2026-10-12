@@ -25,7 +25,7 @@ $.extend decko.editors.content,
     '._click-multiselect-editor': ->
       pointerContent @find('._select-item.selected').map( ->
         $($(this).find('[data-card-name]')[0]).data('cardName'))
-    # can't find evidence that the following is in use: #efm
+    # no evidence that the following is in use
     # '.pointer-mixed': ->
     #   element = '.pointer-checkbox-sublist input:checked,\
     #             .pointer-sublist-ul input'
