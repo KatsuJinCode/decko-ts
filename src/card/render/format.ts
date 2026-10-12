@@ -2750,11 +2750,10 @@ export class RenderFormat {
    * target=_blank), href re-rooted for the internal form (clean_resource
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
-   * nest label lands inside the anchor expanded. live capture:
+   * nest label lands inside the anchor expanded. E.g.
    * `<a class="internal-link" href="/qagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Riley bio; identical bytes in the recapture
-   * oracle).
+   * account</a>`.
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
    * card (base.rb:37-39 -> link_view -> link_to_card card.name,
@@ -2767,9 +2766,8 @@ export class RenderFormat {
     if (/^(\/|https?:|mailto:)/.test(target)) {
       if (/^https?:/.test(target)) {
         // links.rb add_resource_opts inserts target BEFORE class, and
-        // Rails' url_for inserts href LAST -> target, class, href (the
-        // oracle corpus carries 798 external anchors, all target-first;
-        // census mechanism "target attribute placement", page 14795).
+        // Rails' url_for inserts href LAST -> target, class, href (every
+        // external anchor measured is target-first).
         return `<a target="_blank" class="external-link" href="${h(target)}">${label}</a>`;
       }
       if (/^mailto:/.test(target)) {
@@ -2792,10 +2790,9 @@ export class RenderFormat {
     // view :link renders on the TARGET CARD (base.rb:35-46 link_view ->
     // link_to_card card.name, _render_title): the href carries the
     // RESOLVED card's name while the label/title keep the authored link
-    // text. Oracle corpus scan: every case-differing known-card anchor
-    // hrefs the real name in both directions ([[narrative]] -> /Narrative,
-    // [[Aikido]] -> /aikido for a lowercase-stored card) - census
-    // token-swap singleton, page 685 (exp href /Narrative).
+    // text. Every case-differing known-card anchor hrefs the real name in
+    // both directions ([[narrative]] -> /Narrative,
+    // [[Aikido]] -> /aikido for a lowercase-stored card).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
       const peeked = this.engine.peekKnownCardName?.(target);
@@ -2824,21 +2821,20 @@ export class RenderFormat {
     }
     // Card::Path#handle_unknown (card-mod-format path.rb:89-96): a wanted
     // mark whose name is not name_standardish? (path.rb:107-109) carries
-    // ?card[name]=<name> (query, path.rb:84-87) — the mindfulness oracle's
-    // href `/mytho_psychology?card%5Bname%5D=mytho-psychology` (entry 28173
-    // @12,123). Standardish wanted names (People_Green) stay bare.
+    // ?card[name]=<name> (query, path.rb:84-87) — e.g. the href
+    // `/mytho_psychology?card%5Bname%5D=mytho-psychology`. Standardish
+    // wanted names (People_Green) stay bare.
     //
     // THE COMPARISON IS AGAINST THE RESOLVED NAME, not the authored mark.
-    // Pre-fix this passed `hrefSource`, which for a codename mark is the
-    // UNRESOLVED `Eagle+:members`, and compared its `urlKey`
-    // (`Eagle+*members`) against that same unresolved string — two different
-    // spellings of one name, so the test could never be satisfied and the
-    // query fired on every codename-marked wanted link. The href beside it
-    // was already built from the resolved url_key, so the anchor rendered
-    // `/Eagle+*members?card[name]=Eagle+:members` where the capture has a
-    // bare `/Eagle+*members` (recapture-raw-shard-000029 `Eagle:page`, +36 —
-    // the whole delta is that query). Card 34824 `Eagle+description` is the
-    // authored mark: `[[Eagle+:members|Eagle users]]`.
+    // Comparing `hrefSource` instead would, for a codename mark, compare its
+    // urlKey (`Eagle+*members`) against the UNRESOLVED `Eagle+:members` —
+    // two different spellings of one name, so the test could never be
+    // satisfied and the query fired on every codename-marked wanted link.
+    // The href beside it is already built from the resolved url_key, so the
+    // anchor would render
+    // `/Eagle+*members?card[name]=Eagle+:members` where a bare
+    // `/Eagle+*members` is correct. The authored mark behind that case is
+    // `[[Eagle+:members|Eagle users]]`.
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
     // wrapped_title's title attribute goes through Rails tag_option: a
     // label rendered from content with a nest is an html_safe buffer, so
@@ -2861,7 +2857,7 @@ export class RenderFormat {
    *  :5-7) consults registered set overrides BEFORE falling through to
    *  standard_content; this renderRaw mirrors that - a registered content
    *  override whose setPath matches this card wins, otherwise dbContent
-   *  passes through unchanged (the corpus suites pin those bytes). */
+   *  passes through unchanged. */
   renderRaw(): string {
     const override = resolveContentOverride(this);
     // card-mod-date set/self/now.rb:1-3 — the *now card's `def content`
@@ -2870,7 +2866,7 @@ export class RenderFormat {
     // Self::Now chain is consulted directly: the *now card is
     // codename-anchored ("now" — set/pattern Self matching via
     // anchor_codenames) and truly virtual (dbContent ""), the one
-    // SELF_MODULE_CHAINS row the graded corpus pins (see
+    // SELF_MODULE_CHAINS row this surface needs (see
     // now-content-bytes.ts for the byte derivation and the unwired
     // remainder).
     const selfNow =
@@ -2887,13 +2883,13 @@ export class RenderFormat {
     // `view :core do process_content _render_raw end` base.rb:85-87) leaves
     // the format's @rendered holding the raw source.
     //
-    // ORDER IS THE WHOLE MECHANISM (D6, page 470 "AsIn Layout"):
+    // ORDER IS THE WHOLE MECHANISM: an Html-typed layout card
     // `process_content _render_raw` evaluates its ARGUMENT first, so by the
     // time the content chunker dispatches a `{{_main}}` piece the format's
     // @rendered is the raw source, not the view bytes — and
     // nesting/main.rb:12 `main.rendered || main_nest_render(opts)` returns
-    // it. The oracle splices the card's own 469-byte dbContent verbatim
-    // (nests and wiki links UNexpanded) inside wrap_main's <div id="main">.
+    // it. The card's own dbContent is then spliced verbatim (nests and wiki
+    // links UNexpanded) inside wrap_main's <div id="main">.
     this.rendered = raw;
     return raw;
   }
@@ -2911,11 +2907,11 @@ export class RenderFormat {
    *
    * i.e. the nearest format flagged main (process_layout.rb:19 `main!` on
    * the page's root format, or nest.rb:46 `sub.main! if view_opts[:main]`),
-   * else the walk up the parent chain, else NIL. The nil arm is the frozen
-   * record's view-surface CAPTURE_ERROR for 470
-   * (`NoMethodError: undefined method 'rendered' for nil`): a bare
-   * `card.format.render(:content)` has no main format, so `main.rendered`
-   * in main.rb:12 raises before any byte is produced.
+   * else the walk up the parent chain, else NIL. The nil arm is the
+   * `NoMethodError: undefined method 'rendered' for nil` a bare
+   * `card.format.render(:content)` produces: such a render has no main
+   * format, so `main.rendered` in main.rb:12 raises before any byte is
+   * produced.
    */
   get main(): RenderFormat | undefined {
     if (this.isMain) return this;
@@ -2948,9 +2944,8 @@ export class RenderFormat {
   mainNest(piece: { nest?: ParsedNest }): string {
     const main = this.main;
     if (main === undefined) {
-      // main.rb:12 `main.rendered` on nil — the frozen record's own
-      // behaviour for this shape (view-surface shard-000000 entry 470:
-      // CAPTURE_ERROR NoMethodError). The port raises rather than inventing
+      // main.rb:12 `main.rendered` on nil — Ruby's own
+      // behaviour for this shape. This raises rather than inventing
       // bytes; nestQuietErrors turns it into the quiet span upstream.
       throw mainNestWithoutMainError();
     }
@@ -2975,11 +2970,11 @@ export class RenderFormat {
    * main: true) }`. The fallback arm fires only when the main format exists
    * but has not rendered yet (@rendered still nil) — with the main card
    * re-nested in the main view it re-enters the same content, so Ruby's
-   * monitor_depth (error.rb:33-39, max_depth 20) is what ends it. The
-   * captured corpus never reaches it: page 470's main format has @rendered
-   * (the :raw view, above) and every layout body's `{{_main}}` reads the
-   * main-view body the page renderer assigned. Implemented faithfully
-   * anyway, with the depth guard mirroring Ruby's.
+   * monitor_depth (error.rb:33-39, max_depth 20) is what ends it. That
+   * arm is rarely reached: a layout's main format normally already has
+   * @rendered (the :raw view, above), and every layout body's `{{_main}}`
+   * reads the main-view body the page renderer assigned. It is
+   * implemented faithfully anyway, with the depth guard mirroring Ruby's.
    */
   private mainNestRender(piece: { nest?: ParsedNest }): string {
     const nest = piece.nest;
@@ -3019,18 +3014,16 @@ export class RenderFormat {
    *
    * The name resolution is the SAME resolveNestName the nest machinery runs
    * (chunk/reference.rb#referee_name: the authored mark absolutized against
-   * the referencing card), so both corpus spellings land on the head card's
-   * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
-   * (card 34758 `ZQVT+*self+*head`, oracle view-surface
-   * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
-   * the port's pre 0 B).
+   * the referencing card), so both spellings land on the head card's
+   * key: `{{:head|core}}` (on `*all+*head`) and `{{*head|core}}`
+   * (on a `*self+*head` card).
    *
    * TEMPLATE NEST MODE is the whole Layout carve-out, and it is not a
    * heuristic: `with_nest_mode :template` (card-mod-layout
    * set/type/layout_type.rb:5, the only such call in any installed gem) makes
    * every nest print back as its own literal, so a Layout body's CodeRay <pre>
-   * never runs the head card's :core. The oracle proves it on the two Layout
-   * cards that nest it — 314 `Classic Layout` and 2575 `home-layout` keep
+   * never runs the head card's :core. The two Layout cards that nest it —
+   * `Classic Layout` and `home-layout` — keep
    * `{{*head|core}}` LITERAL inside a 7750 B / 907 B pre whose `[[...]]`
    * wiki links all expand. Seating bytes for those would be cost, not parity.
    */
@@ -3099,11 +3092,10 @@ export class RenderFormat {
     // processContent chunk-list table) — NO URI chunks, which is why a
     // layout body never autolinks (the svg-comment URL
     // `...Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch`
-    // inside every corpus layout stays plain in the oracle; the former
-    // default-list URI pass anchored it, +89 bytes on 14 page-surface
-    // entries, probe job-1790846792533).
+    // inside every layout stays plain; the former
+    // default-list URI pass anchored it).
     //
-    // D10 (fixed here): the port had a SECOND, forked walk here -
+    // A second, forked walk once existed here -
     // same nest arm, but the text arm ran only the whole-piece
     // `expandWikiLinks` regex and never the Link-chunk-spans-a-Nest arm
     // that processContent runs (matchLinkWrappedNestOpener, above).
@@ -3114,15 +3106,14 @@ export class RenderFormat {
     // masks each `\{\{[^}]*\}\}` run with x's to find that pipe, and
     // `objectify` (link.rb:113-122) re-parses the label as Content when it
     // carries a nest. A layout body with a nest INSIDE a link label
-    // therefore rendered as literal `[[/ |` + nest + `]]` in the port.
-    // Oracle witness (sha-verified corpus + expected-v2, entry-scoped):
-    // layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
-    // `<div>[[/ |{{HBQ logo - admin area}}]]</div>` on page 1316 and
-    // layout 2339 on page 2333; the oracle emits
+    // therefore rendered as literal `[[/ |` + nest + `]]` on that path.
+    // Witness: layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
+    // emits `<div>[[/ |{{HBQ logo - admin area}}]]</div>` on page 1316, and
+    // layout 2339 on page 2333; both should render
     // `<a class="internal-link" href="/">` + rendered nest + `</a>`.
-    // Five captured layout cards carry the shape (314, 470, 2339, 2347,
-    // 11746); none carries an EscapedLiteral `\{\{`, so folding the two
-    // walks together is byte-identical everywhere else on the surface.
+    // Five layout cards carry the shape; none carries an EscapedLiteral
+    // `\{\{`, so folding the two walks together is byte-identical everywhere
+    // else.
     return this.processContent(content, "references");
   }
 
