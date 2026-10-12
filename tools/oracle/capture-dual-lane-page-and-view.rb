@@ -103,17 +103,17 @@
 #   round holds the original sqlite). The connection must additionally be
 #   read-only, and the script proves it (PRAGMA query_only + write probe).
 #
-# FULL RUN (from tools/oracle/decko-oracle-app):
+# FULL RUN (from tools/oracle/decko-oracle-app; <checkout> is this repo):
 #   RAILS_ENV=development \
-#   DATABASE_URL=sqlite3:C:/localProjects/decko-ts/tmp/raw-ground-truth/deck/corpus-v2.sqlite3?readonly=true \
-#   bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
+#   DATABASE_URL=sqlite3:<checkout>/tmp/raw-ground-truth/deck/corpus-v2.sqlite3?readonly=true \
+#   bundle exec decko runner <checkout>/tools/oracle/capture-dual-lane-page-and-view.rb
 #
 # SAMPLE RUN (isolated deck copy, same app):
 #   RAILS_ENV=development \
-#   DATABASE_URL=sqlite3:C:/localProjects/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3?readonly=true \
-#   DUAL_LANE_DB=C:/localProjects/decko-ts/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3 \
-#   DUAL_LANE_SAMPLE=C:/localProjects/decko-ts/tmp/raw-ground-truth/scripts/dual-lane-recapture-sample-cards.json \
-#   bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/capture-dual-lane-page-and-view.rb
+#   DATABASE_URL=sqlite3:<checkout>/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3?readonly=true \
+#   DUAL_LANE_DB=<checkout>/tmp/raw-ground-truth/deck-dual-lane-sample/corpus-v2.sqlite3 \
+#   DUAL_LANE_SAMPLE=<checkout>/tmp/raw-ground-truth/scripts/dual-lane-recapture-sample-cards.json \
+#   bundle exec decko runner <checkout>/tools/oracle/capture-dual-lane-page-and-view.rb
 
 require "json"
 require "fileutils"
