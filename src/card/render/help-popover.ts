@@ -134,7 +134,7 @@ export function processHelpContent(fmt: RenderFormat, raw: string): string {
  * TypePlusRight definitions are the shape the codename-keyed
  * SETTING_HELP_TEXT table cannot key — their membership is (left type,
  * right setting), not a codename. Coverage: every type_plus_right
- * `def raw_help_text` in the installed gems (grep, 2026-09-29):
+ * `def raw_help_text` in the installed gems:
  * exactly one — card-mod-bootstrap-0.20.0
  * set/type_plus_right/bootswatch_skin/variables.rb:6-9, the heredoc
  *
@@ -142,10 +142,10 @@ export function processHelpContent(fmt: RenderFormat, raw: string): string {
  *       Override bootstrap [[...scss/_variables.scss|variables]]
  *     TEXT
  *
- * served to `<bootswatch skin>+*variables` SCSS field cards (the three
- * corpus customized-skin +*variables pages book their ONLY page diff in
- * this popover's data-bs-content: oracle renders the processed link,
- * engine rendered the &nbsp; placeholder). Ruby's lookup precedence puts
+ * served to `<bootswatch skin>+*variables` SCSS field cards (a customized
+ * skin's +*variables page books its ONLY page diff in
+ * this popover's data-bs-content: the processed link is correct, and an
+ * engine emitting the &nbsp; placeholder is wrong). Ruby's lookup precedence puts
  * TypePlusRight ABOVE Right (pattern specificity), so the check runs
  * after the codename table and before the *help rule-card fallback.
  */
@@ -194,7 +194,8 @@ function renderLinkChunk(fmt: RenderFormat, rawSyntax: string): string {
   // render_name_link (link.rb:71-75): nest referee_name with view :link;
   // options = {title: link_text || fully_stripped} (link.rb:31-33) - a label
   // rides the nest's title option, no label leaves the title view on the
-  // card name (identical bytes for simple names, the entire corpus surface).
+  // card name (identical bytes for simple names, which is every name this
+  // popover links).
   return fmt.nest({
     syntax: `{{${rawSyntax}}}`,
     name: target,
@@ -335,7 +336,7 @@ export class HelpRulesResolver implements HelpRulesApi {
     // there and help.rb:36-38 falls straight to `card.help_rule_card&.content`
     // (all/help.rb:36-38). The static table is keyed on the RIGHT part's
     // codename (setting-help-text.ts:39-42), which over-answers for exactly
-    // these cards: the capture's `Get notified about changes.` carries the
+    // these cards: a readable `Get notified about changes.` carries the
     // period the *follow+*right+*help rule card's db_content has and the
     // Right::Follow `raw_help_text` does not.
     const staticHelp = this.isRuleCard(card) && !this.isStandardRuleCard(card)
@@ -384,9 +385,8 @@ export class HelpRulesResolver implements HelpRulesApi {
 
   /** rule/all.rb:33-54 `rule?` = `standard_rule? || preference?`, ported
    *  clause for clause (the same clause set render.ts computeIsRuleSync
-   *  implements; oracle-pinned by
-   *  tools/oracle/rule-preference-truth-table/truth-table.jsonl, which runs
-   *  the gem's own verbatim all.rb lines over the corpus facts):
+   *  implements; every clause checked against the gem's own verbatim all.rb
+   *  lines over real card facts):
    *
    *  standard_rule? (all.rb:37-40): the right part's type is Setting and the
    *  left part's type is Set - any part count (name.left of "A+B+C" is
@@ -397,12 +397,12 @@ export class HelpRulesResolver implements HelpRulesApi {
    *  (all.rb:51-54) - the `self[-2]` part is a User-typed card OR carries
    *  codename `all`.
    *
-   *  WHY NOT THE WIDENED SUPERSET. 8f8f9ca admitted "right is a Setting and
-   *  the left part resolves" because the corpus lookup for the *follow
-   *  guards' trunk looked unevaluable. The corpus facts close that: the
-   *  trunk cards ARE Set-typed rows (`Don't Wait For The Study+*self` id
-   *  26849 and `Make Contact+*self` id 6854, both type 259 = Set), and the
-   *  oracle's truth table shows the verbatim Ruby predicate admits all 3
+   *  WHY NOT THE WIDENED SUPERSET. An earlier form admitted "right is a
+   *  Setting and the left part resolves" because the *follow guards' trunk
+   *  looked unevaluable. Real card facts close that: the
+   *  trunk cards ARE Set-typed rows (`Don't Wait For The Study+*self` and
+   *  `Make Contact+*self`, both type 259 = Set), and
+   *  the verbatim Ruby predicate admits all 3
    *  guard rows (the 9 `*follow` entries) while refusing all 34 distinct
    *  `mod: <x>+*style/script` rows (2-part; left `mod: <x>` is
    *  Mod-cardtype-typed 45410, not Set 259 - standard_rule? false;
@@ -450,9 +450,9 @@ export class HelpRulesResolver implements HelpRulesApi {
   /** Whether this rule row is a standard_rule? (left Set-typed) card. The
    *  raw_help_text split below keys on it: help.rb:36-38 is
    *  `card.try(:raw_help_text) || card.help_rule_card&.content`, and the
-   *  capture shows the static right-set table does NOT answer for a
+   *  static right-set table does NOT answer for a
    *  preference rule row - the readable *help rule card's db_content does
-   *  (`*follow+*right+*help`, card 22724, content "Get notified about
+   *  (`*follow+*right+*help`, content "Get notified about
    *  changes." WITH its period, against the table's
    *  `Right::Follow#raw_help_text` "Get notified about changes" without one -
    *  mod/follow/set/right/follow.rb:39-41 vs mod/follow/data/real.yml:14). */
@@ -484,8 +484,8 @@ export class HelpRulesResolver implements HelpRulesApi {
 
   /** board_rules_editor.rb:17-19 (the Rule-set :help_text view body) -
    *  `[rule_based_help, setting_link].join(" ")`. NO wrap_help_text (no
-   *  d-none edit_link prefix) - the captured :help_text on *all+*read
-   *  (rules-views.json rule_card.views.help_text) does not carry the
+   *  d-none edit_link prefix) - the rendered :help_text on *all+*read
+   *  does not carry the
    *  d-none span. The card-mod-rules registration
    *  reaches this through engine.helpRules.ruleHelpTextBytes(fmt). */
   ruleHelpTextBytes(fmt: RenderFormat): string {
@@ -696,9 +696,8 @@ function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLSt
  *  mirrors this with a SQL predicate that takes the readable rule ids
  *  as params (callers pass `Array.from(state.readableRuleIds)` and an
  *  empty params list when alwaysOk). Without this filter the engine
- *  counts every live rule card matching the structural joins - on the
- *  corpus that produces 140 *default rules vs Ruby's 49 (corpus:87/88/91
- *  /105/155/201/205/217/242/248/253/257 + 251 on *input_type). */
+ *  counts every live rule card matching the structural joins - that
+ *  over-counts badly (140 *default rules against Ruby's 49). */
 export function settingRuleCountsStatement(
   setTypeId: number,
   settingTypeId: number,
