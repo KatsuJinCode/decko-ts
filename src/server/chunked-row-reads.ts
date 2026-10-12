@@ -1,23 +1,21 @@
 // Transport chunking for set-shaped reads — the batching pattern from
-// src/card/render/prefetch.ts (e3ae820) generalized into a
-// driver-layer primitive.
+// src/card/render/prefetch.ts generalized into a driver-layer primitive.
 //
-// THE PROBLEM IT EXISTS FOR: the engine's read paths used to issue one
-// point query per logical read (`SELECT * FROM cards WHERE id = ?`), so a
-// page whose render touches N cards paid N driver round trips. On the edge
-// drivers each round trip is one HTTP request — one D1 API subrequest — and
-// the Workers free tier cuts an invocation off at 50 subrequests. The demo's
-// whole-deck search probe (6,233 result rows, one fetchById each) measured
-// 12,475 round trips for ONE page render — unusable on the free tier. The
-// figure's record and the hermetic pin on the replacement read path live in
+// THE PROBLEM IT EXISTS FOR: a read path that issues one point query per
+// logical read (`SELECT * FROM cards WHERE id = ?`) costs N driver round
+// trips for a page whose render touches N cards. On the edge drivers each
+// round trip is one HTTP request — one D1 API subrequest — and the Workers
+// free tier cuts an invocation off at 50 subrequests, so a page that touches
+// a few thousand cards cannot render on it at all. The hermetic pin on the
+// replacement read path lives in
 // tests/card/render/search-whole-deck-chunked-reads.test.ts.
 //
 // THE MECHANISM: transport chunking, not a semantics change. The ids ride
 // IN-list statements of IDS_PER_STATEMENT bound parameters each, and the
 // statements are grouped into driver.batch calls of STATEMENTS_PER_BATCH
-// each — one subrequest per batch (docs/decisions/0003-edge-native-driver-interfaces.md: "on the edge
-// drivers a batch is literally one HTTP request"). A 6,233-id read is 125
-// statements in 7 batches: seven subrequests, same rows.
+// each — one subrequest per batch (docs/decisions/0003-edge-native-driver-interfaces.md:
+// "on the edge drivers a batch is literally one HTTP request"). A 6,233-id
+// read is 125 statements in 7 batches: seven subrequests, same rows.
 //
 // RESULT IDENTITY (the invariant): same rows, same order. The statement
 // template is the fetch ladder's own point-read SELECT widened to an IN
@@ -40,10 +38,10 @@ import type { SQLDatabaseDriver, SQLStatement } from "./driver.js";
 export const CHUNKED_READ_IDS_PER_STATEMENT = 50;
 
 /** IN-list statements per driver.batch call. Each batch is ONE round trip
- *  (one subrequest on the edge drivers), so a whole-set read costs
- *  ceil(ceil(N/50)/20) round trips — 7 for the 6,233-row probe — instead of
- *  N. Statement count per batch stays modest so a single batch's encoded
- *  request stays well inside provider request-size limits. */
+ *  (one subrequest on the edge drivers), so a whole-set read of N ids costs
+ *  ceil(ceil(N/50)/20) round trips instead of N. Statement count per batch
+ *  stays modest so a single batch's encoded request stays well inside
+ *  provider request-size limits. */
 export const CHUNKED_READ_STATEMENTS_PER_BATCH = 20;
 
 /** Split ids into fixed-size chunks (the grouping unit for IN-list
