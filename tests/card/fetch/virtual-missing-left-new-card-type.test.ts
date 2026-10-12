@@ -1,10 +1,10 @@
-// A compound fetch whose LEFT card has no row: Ruby's quick_type types that
-// left as a NEW card (set_pattern/class_methods.rb:59-71 fetches the left
+// A compound fetch whose LEFT card has no row: quick_type types that left as a
+// NEW card (set_pattern/class_methods.rb:59-71 fetches the left
 // with `new: {}`), so the virtual? candidate walk's *type plus right anchor
 // carries the left's NEW-CARD type (the *default universe's answer), not the
-// RichText fallback. The port's virtual lookup typed missing lefts as
-// untyped, so a phantom whose left's new-card type is not RichText resolved
-// the wrong *structure rule (or none).
+// RichText fallback. Typing a missing left as untyped instead would let a
+// phantom whose left's new-card type is not RichText resolve the wrong
+// *structure rule — or none.
 //
 // The typing walk reads the *default universe maps only — no fetches — so it
 // cannot re-enter the fetch hook it sits inside (a fetch here would recurse:
@@ -34,7 +34,7 @@ function structureCandidateKeys(leftTypeName: string | undefined): string[] {
 
 /** The *type plus right candidate the walk reaches when the left is typed
  *  by its new-card type ("PlainText", from the fabricated *default
- *  universe below) — the rule Ruby's anchor preference hits first. */
+ *  universe below) — the anchor the anchor-preference order hits first. */
 const PLAIN_TEXT_TPR_KEY = structureCandidateKeys("PlainText").find((k) => k.includes("type_plu_right"))!;
 
 const universe: StructureUniverseMaps = {
