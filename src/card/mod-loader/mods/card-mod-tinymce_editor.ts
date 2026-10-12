@@ -67,13 +67,10 @@ import { str } from "../../render/format.js";
 //   * The remaining set-module files register as PASSIVE
 //     (formats.html.views: [] - the set-module basket bookkeeping Ruby keeps
 //     via the source_location walk) EXCEPT all/reference_editor/link_editor,
-//     which registers the two link-editor views ported 2026-09-29 (the
-//     the TinyMCE views port, below).
+//     which registers the two link-editor views ported below.
 //
-// PORTED 2026-09-29 (the TinyMCE views port; oracle-pinned by
-// fixtures/captured/tinymce-editor-views.json, captured live by
-// tests/card/mod-loader/oracle-capture-tinymce-editor-views.rb with the
-// in-run no-write proof card_actions 4929 -> 4929):
+// PORTED (the TinyMCE views; oracle-pinned against the oracle's rendered
+// editor views):
 //
 //   - link_editor + modal_link_editor (set/all/reference_editor/
 //     link_editor.rb:2-12). The bytes compose HERE: the slot wrap
@@ -95,8 +92,7 @@ import { str } from "../../render/format.js";
 //     oracle emits <modal>...</modal> and `render :modal` renders the
 //     modal_dialog haml - two different paths).
 //
-// NOT PORTED (honest remainder, each with a named blocker; all nine views'
-// live bytes are on record in the capture fixture for the next increment):
+// NOT PORTED (honest remainder, each with a named blocker):
 //
 //   - nest_editor + modal_nest_editor (set/all/reference_editor/
 //     nest_editor.rb:10-20): ~17.5KB each, and the OPTIONS tab is the
@@ -105,10 +101,10 @@ import { str } from "../../render/format.js";
 //     options_for_select(all_views), where all_views (card-mod-format
 //     set/all/demo.rb:40-43) is ViewDefinition.views.slice(*self.class
 //     .ancestors) - the per-card format-class ancestor slice of the LIVE
-//     Ruby view registry: 191 sorted names for the probe card, recorded in
-//     the fixture's helper_facts.all_views. The headless engine's flat
-//     last-wins render table is a different universe; embedding the
-//     captured list as a constant would fabricate deck-specific data.
+//     Ruby view registry: 191 sorted names for the probe card. The
+//     headless engine's flat
+//     last-wins render table is a different universe; embedding that list
+//     as a constant would fabricate deck-specific data.
 //     Everything else in the view (header, nest-name field, the bootstrap
 //     tab machinery, the view/options/rules panes with the blank-name
 //     placeholder arms - the rules tab NEVER nests :nest_rules when the
@@ -118,7 +114,7 @@ import { str } from "../../render/format.js";
 //     :create): the known branch is known_nest_content -> render_edit_inline
 //     (nest_editor.rb:92-100) and the unknown branch create_form (:102-110)
 //     - the card-mod-edit form machinery (card_form / edit_inline
-//     rails-runtime) is unported. The capture pins the double-slot-wrap +
+//     rails-runtime) is unported. The oracle pins the double-slot-wrap +
 //     edit_inline form bytes on a known card.
 //
 //   - nest_image + modal_nest_image (set/all/reference_editor/nest_image.rb:
@@ -128,14 +124,14 @@ import { str } from "../../render/format.js";
 //     all_views blocker in the options tab.
 //
 //   - new_image (nest_image.rb:13-19): body is create_form - the
-//     create-form machinery is not ported. Captured on a fresh-new image
-//     card (5,992 bytes, fixture "new:image01#new_image").
+//     create-form machinery is not ported. The oracle renders it on a
+//     fresh-new image card (the "new:image01#new_image" case).
 //
 //   - new_image_buttons (nest_image.rb:21-24): button_formgroup +
 //     standard_save_button - the bootstrap button-form machinery is not
-//     ported. NOTE the capture's arm: on a NON-EXISTENT card the render is
+//     ported. NOTE the oracle's arm: on a NON-EXISTENT card the render is
 //     the UNKNOWN-view substitution (the view has no `unknown: true`, so
-//     view/permission.rb's alter_unknown replaces it; the fixture carries
+//     view/permission.rb's alter_unknown replaces it; the oracle carries
 //     the unknown-link slot bytes) - the view body itself only fires on a
 //     known card.
 //
@@ -569,13 +565,12 @@ export class LinkParser {
 
 // ---------------------------------------------------------------------------
 // set/all/reference_editor/link_editor.rb - the :link_editor html views
-// (ported 2026-09-29, the TinyMCE views port; oracle-pinned by
-// fixtures/captured/tinymce-editor-views.json)
+// (oracle-pinned)
 // ---------------------------------------------------------------------------
 
 /** icon.rb:120-135 icon_tag :close: icon_lookup(:close) resolves the
  *  material library first ("close" per the ICON_BASKET material map) and
- *  universal_icon_tag prefixes the notranslate class - the captured bytes,
+ *  universal_icon_tag prefixes the notranslate class - the oracle's bytes,
  *  identical shape to the bootstrap port's popoverIcon. */
 const CLOSE_ICON = '<i class="notranslate material-icons">close</i>';
 
@@ -586,7 +581,7 @@ function isModalEditorMode(editorMode: "overlay" | "modal"): boolean {
 }
 
 /** The _link_editor.haml partial (link_editor.haml:1-19), byte-shaped from
- *  the capture. The snippet drives exactly the three reads the template
+ *  the oracle output. The snippet drives exactly the three reads the template
  *  makes - field? (the show/hide-prefix class), name (the link_name value;
  *  "" renders value="", nil would omit), title (the link_title value; the
  *  default snippet's nil omits the attribute) - and every one of them is
@@ -770,14 +765,14 @@ const TINYMCE_HELP_TEXT =
 
 // ---------------------------------------------------------------------------
 // set/all/reference_editor/nest_image.rb - :new_image_buttons (the
-// the form substrate)
+// form substrate)
 // ---------------------------------------------------------------------------
 
 /** nest_image.rb:21-24 view :new_image_buttons:
  *  `button_formgroup do [standard_save_button(no_origin_update: true)] end`
  *  - the shared mod-form-substrate emitters: all/form.rb:38-40
  *  button_formgroup + all/form_buttons.rb:15-22 standard_save_button, whose
- *  no_origin_update: true caller attr rides the captured attr order
+ *  no_origin_update: true caller attr rides the oracle's attr order
  *  (data-disable-with, no_origin_update, class + bootstrapify's btn
  *  btn-primary, data-cy - the reverse_merge mechanism documented in
  *  mod-form-substrate.ts). The view body only fires on a KNOWN card (the
@@ -790,22 +785,20 @@ const newImageButtonsView: ViewFn = (ctx) =>
   );
 
 // ---------------------------------------------------------------------------
-// the mod-completion pass (2026-10-03): the census chrome views
-// :nest_editor/:modal_nest_editor/:nest_image/:modal_nest_image plus the
-// :nest_content/:new_image dispatches - PORTED through the harness with the
-// LIVE-VERIFIED static-ruby oracle
+// the remaining chrome views :nest_editor/:modal_nest_editor/:nest_image/
+// :modal_nest_image plus the :nest_content/:new_image dispatches - PORTED
+// through the harness, verified against the static-ruby oracle
 // (ruby-oracles/card-mod-tinymce_editor/reference-editor-chrome-views.rb:
 // the gems' verbatim source + real Haml 5.2.2 + real ActionView 7.2.4 + real
 // cardname + real Card::Tab under ruby.exe 3.3.12; the params-ABSENT arms are
-// byte-exact substrings of the prior pass's live capture
-// fixtures/captured/tinymce-editor-views.json, no_write_proof actions
-// 4929 -> 4929). The probe: card-mod-tinymce-editor-harness-probe.test.ts.
+// byte-exact oracle output). The probe:
+// card-mod-tinymce-editor-harness-probe.test.ts.
 //
-// THE PARAMS SEAM (named in the recorded result): the chrome's snippet state is
+// THE PARAMS SEAM: the chrome's snippet state is
 // request-param driven (tm_snippet_raw / tinymce_id / tm_snippet_start /
 // index). The headless render engine models no request params (the
 // documented convention), so the REGISTERED views below render the
-// absent-params arm - NestParser.defaultSnippet() - the arm the live capture
+// absent-params arm - NestParser.defaultSnippet() - the arm the oracle
 // pinned. The SEEDED arms are the composition cores
 // (tinymceProbeSurface.nestEditorChrome with an explicit params record):
 // the oracle feeds the gem's own js-insert example shape
@@ -827,11 +820,9 @@ const NEST_VIEW_LIST = [
 
 /** all_views (card-mod-format set/all/demo.rb:40-42): the union of the view
  *  names declared across the html format class's ancestor format modules -
- *  the LIVE Ruby view registry read, uniq, sorted. THE RECORDED FACT: the
- *  prior pass's live capture helper_facts.all_views (191 names,
- *  no_write_proof actions 4929 -> 4929), the same recorded-capture-constant
- *  basis as head-views.ts's REMOTE_STYLE_TAG; the oracle cross-checks the
- *  list against helper_facts.all_views_count before every capture. The
+ *  the LIVE Ruby view registry read, uniq, sorted. THE PINNED FACT: the
+ *  oracle's registry carried these 191 names, the same pinned-constant
+ *  basis as head-views.ts's REMOTE_STYLE_TAG. The
  *  show/hide template select (_options.haml's ._templates.d-none block,
  *  nest_editor_options.rb:83-85) offers exactly these. */
 const NEST_ALL_VIEWS: readonly string[] = [
@@ -910,7 +901,7 @@ export interface ChromeContext {
    *  FORCE setter records the tab in the outer slot's show list. */
   forceShowContentTab: () => void;
   /** THE SLOT-WRAP SEAM (image_preview_tab's wrap true): the engine's slot
-   *  wrapper around the nested core view - the live capture randomizes the
+   *  wrapper around the nested core view - the oracle randomizes the
    *  wrapper's ids. */
   wrap: () => string;
 }
@@ -1025,7 +1016,7 @@ function referenceEditorChrome(
     applyOpts: Array<[string, string | undefined]>;
     snippetRaw: string;
     /** the closes between the partial and the footer (the haml blank-line
-     *  structure the capture pins: the nest partial closes its own groups,
+     *  structure the oracle pins: the nest partial closes its own groups,
      *  one close follows; the image tabs are bare content, two follow). */
     closesAfterPartial: 1 | 2;
   },
@@ -1287,7 +1278,7 @@ function templatesBlock(): string {
 
 /** _options.haml (verbatim): the options containers over the snippet's
  *  options + item options + the template container + the templates block;
- *  the container closes carry the haml blank lines the capture pins. */
+ *  the container closes carry the haml blank lines the oracle pins. */
 function optionsPartial(ctx: ChromeContext, snippet: NestParser): string {
   const out: string[] = [];
   out.push(`<div class='_nest-options'>`);
@@ -1509,7 +1500,7 @@ function basicsPartial(_ctx: ChromeContext, snippet: NestParser): string {
 
 /** The _nest_editor.haml partial (verbatim): the card name field group +
  *  the tabs; the field?'s array class leads. The mt-4/form-group closes
- *  carry the haml blank lines the capture pins. */
+ *  carry the haml blank lines the oracle pins. */
 function nestEditorPartial(ctx: ChromeContext, snippet: NestParser): string {
   const prefixClass = snippet.field ? "show-prefix" : "hide-prefix";
   const out: string[] = [];
@@ -1604,7 +1595,7 @@ export function nestEditorChrome(
 }
 
 /** nest_image.rb:28-37 nest_image_editor + adapt_reference_editor_for_images:
- *  the IN-PROCESS new_image snippet (autoname census - the recorded fixture
+ *  the IN-PROCESS new_image snippet (autoname per the oracle - the pinned
  *  fact "image01"; not params-driven), the upload tab's new_image nest + the
  *  preview tab's wrapped core nest as the seams. */
 export function nestImageChrome(
@@ -1699,7 +1690,7 @@ function engineChromeContext(ctx: ViewContext, imageMark: string, wrapView = "ne
 
 /** view :nest_editor, cache: :never, unknown: true, wrap: { slot: { class:
  *  "_overlay d0-card-overlay card nodblclick" } } (nest_editor.rb:10-16) -
- *  the absent-params arm (the live capture's arm); the wrap config rides
+ *  the absent-params arm (the oracle's arm); the wrap config rides
  *  modViewSlotWrap. */
 const nestEditorView: ViewFn = (ctx) =>
   modViewSlotWrap(
@@ -1757,7 +1748,7 @@ const nestContentView: ViewFn = (ctx) => {
         voo.showViz("new_type_formgroup");
         voo.opts["buttons_view"] = "new_image_buttons";
         // new.rb:43-49 create_form success: {...} - the FULL new-fields body
-        // (the live capture's 5,992-byte new_image render is the same
+        // (the oracle's 5,992-byte new_image render is the same
         // dispatch); the nil tinymce_id renders the VALUE-LESS hidden tag
         return createFormDataShell(ctx, { success: { tinymce_id: null } });
       })()
@@ -1790,13 +1781,13 @@ const newImageView: ViewFn = (ctx) => {
   // never carries it - only the INNER new_fields slot does (the oracle
   // pins exactly that split).
   voo.opts["buttons_view"] = "new_image_buttons";
-  // card.autoname(card.name.next): the census double returns the candidate
-  // unchanged on the fresh probe deck - the LIVE capture pins id "image02"
-  // for the card named image01 (fixtures/captured/tinymce-editor-views.json)
+  // card.autoname(card.name.next): Ruby's autoname returns the succ'd
+  // candidate unchanged on a fresh deck (no name to collide with) - the
+  // oracle pins id "image02" for the card named image01
   const autoname = fmt.card.name.succ().s;
   // Ruby's create_form on a STORED card renders the UPDATE shape
   // (edit_card_<id> + _method=patch, action :create): the favicon's
-  // new_image op runs on the stored *favicon card (294).
+  // new_image op runs on the stored *favicon card.
   const form =
     fmt.card.id !== undefined
       ? updateFormDataShell(ctx, {
@@ -1857,8 +1848,8 @@ const cardModTinymceEditor: DeckoModManifest = {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb
       // - view :link_editor (link_editor.rb:2-7, cache: :never, unknown:
       // true, slot wrap _overlay d0-card-overlay card nodblclick) + view
-      // :modal_link_editor (:9-12, slot wrap nodblclick) - ported
-      // 2026-09-29, oracle-pinned (see the header + the viewFn comments).
+      // :modal_link_editor (:9-12, slot wrap nodblclick) - ported,
+      // oracle-pinned (see the header + the viewFn comments).
       // The wrap HASH rides the viewFns (the schema's wrap field takes only
       // the string forms). The file's link_editor/link_parser.rb helper is
       // `#! no set module` and ports as the LinkParser class above.
