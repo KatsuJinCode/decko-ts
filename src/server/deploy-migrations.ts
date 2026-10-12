@@ -5,25 +5,24 @@
 // WHY THIS EXISTS. The directory carries TWO migrations numbered 0003 —
 // 0003-deck-data-version-stamp.sql (the freshness-stamp backfill for
 // already-provisioned databases; fresh databases get the stamp from the
-// regenerated 0001) and 0003-demo-seed.sql (the generated demo deck,
-// deploy/sync-migrations.mjs:38). The seat lineage numbered the identical
-// stamp backfill 0007, so provisioned databases exist whose applied-migration
-// ledger carries "0007-deck-data-version-stamp.sql" while this directory
-// carries "0003-deck-data-version-stamp.sql" (seat-branch-merge-map.md §2).
+// regenerated 0001) and 0003-demo-seed.sql (the generated demo deck).
+// An earlier numbering of this migration used 0007, so provisioned databases
+// exist whose applied-migration ledger carries
+// "0007-deck-data-version-stamp.sql" while this directory carries
+// "0003-deck-data-version-stamp.sql".
 //
 // The deploy chain's runner is EXTERNAL: `wrangler d1 migrations apply`
-// (package.json:18, migrations_dir at wrangler.toml:104). Verified first-hand
-// at wrangler 4.148.0 --local (an internal work log
-// §1): migrations are enumerated in lexical filename order, applied
-// unrecorded files in that order, recorded in `d1_migrations` by FULL
-// FILENAME, deduped by exact filename, recorded names that no longer match a
-// file are silently ignored, and any file whose name is not recorded is
-// applied again. Therefore:
+// (package.json:18, migrations_dir at wrangler.toml:104). Its behavior,
+// confirmed first-hand at wrangler 4.148.0 --local: migrations are
+// enumerated in lexical filename order, applied unrecorded files in that
+// order, recorded in `d1_migrations` by FULL FILENAME, deduped by exact
+// filename, recorded names that no longer match a file are silently ignored,
+// and any file whose name is not recorded is applied again. Therefore:
 //
 //   1. EVERY filename below is a load-bearing bookkeeping key on provisioned
 //      databases. Renaming any migration file re-keys those ledgers and
 //      re-runs the renamed file — the collision is NOT fixed by renumbering
-//      (that was the r5 escalation's finding and it holds here).
+//      either, since a new name is a new ledger entry.
 //   2. The pair's mutual order is the lexical filename sort (stamp before
 //      seed), which the external runner applies. The manifest below declares
 //      the same order so in-repo consumers never disagree with it, and the
@@ -70,15 +69,15 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   { filename: "0004-demo-account-substrate.sql", number: "0004" },
   { filename: "0005-auth-sessions.sql", number: "0005" },
   { filename: "0006-demo-role-substrate.sql", number: "0006" },
-  // 0007 is skipped on purpose: seat-lineage databases record the stamp
-  // backfill as "0007-deck-data-version-stamp.sql" (see the alias below), and
-  // a second 0007 would make their ledgers ambiguous to read.
+  // 0007 is skipped on purpose: some ledgers record the stamp backfill as
+  // "0007-deck-data-version-stamp.sql" (see the alias below), and a second
+  // 0007 would make those ledgers ambiguous to read.
   { filename: "0008-cards-serving-path-indexes.sql", number: "0008" },
   // The demo deck's account read rules — the `*all+*read` catch-all and the
   // five `<field>+*right+*read` grants that keep an anonymous requester out
   // of somebody's password digest, salt and email address. It sorts after
   // 0006 because every one of its rows is a card_references entry whose
-  // referee is the Help Desk role, and 0006 is what creates that role: applied
+  // referee is the support role, and 0006 is what creates that role: applied
   // earlier, the references would name a referee that does not exist,
   // read_rule_cache would join nothing, and a catch-all rule granting nobody
   // would deny the whole deck. 0009 rather than 0007 because 0007 is reserved
@@ -90,11 +89,11 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
 export const DECK_DATA_VERSION_STAMP_FILENAME = "0003-deck-data-version-stamp.sql";
 
 /**
- * Ledger names that mean the stamp migration is already applied. The seat
- * lineage provisioned mirrors with the stamp numbered 0007; their recorded
- * name never matches this directory's file, and the external runner would
- * re-run the file on them on every apply. Resolution is in-repo only — this
- * module never writes any ledger.
+ * Ledger names that mean the stamp migration is already applied. Databases
+ * provisioned when the stamp was numbered 0007 recorded that name, which
+ * never matches this directory's file — so the external runner would re-run
+ * the file on them on every apply. Resolution is in-repo only; this module
+ * never writes any ledger.
  */
 export const DECK_DATA_VERSION_STAMP_APPLIED_ALIASES: readonly string[] = [
   "0007-deck-data-version-stamp.sql",
@@ -112,7 +111,7 @@ const ALIAS_TO_CANONICAL: ReadonlyMap<string, string> = new Map(
  * Resolve a database's recorded applied-migration names onto the canonical
  * manifest. `applied` holds canonical filenames (aliases folded in, deduped);
  * `unknownRecorded` holds ledger names that match neither a manifest file nor
- * a declared alias — reported, never swallowed, so census tooling can see a
+ * a declared alias — reported, never swallowed, so tooling can see a
  * diverged ledger instead of guessing.
  */
 export function canonicalAppliedFilenames(recorded: readonly string[]): {
