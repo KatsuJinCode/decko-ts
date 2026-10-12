@@ -1,6 +1,6 @@
 // List content standardization (src/card/actions/list-content.ts). The
-// expected values are the Ruby oracle's stored content for the same input
-// (tests/fixtures/persistence-oracle/step-51.json and step-52.json).
+// expected values are the historically recorded stored content for the same
+// input (tests/fixtures/persistence-oracle/step-51.json and step-52.json).
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
