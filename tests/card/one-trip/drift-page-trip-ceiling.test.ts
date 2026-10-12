@@ -1,17 +1,16 @@
-// THE DRIFT-PAGE TRIP-CEILING + EXACTNESS PINS (driftfix lane, 2026-10-06).
+// THE DRIFT-PAGE TRIP-CEILING + EXACTNESS PINS.
 //
-// THE REGRESSION UNDER PIN: on the assembled integration tree, four planned
-// demo pages that rendered at 5 trips at the fold-replay tip 518bcd9a fell to
-// 14-30 trips (D3 measurement, one-trip-per-page-work/14-measurement-report.md).
-// Mechanism (measured, driftfix attribution probes): the live render's
+// THE REGRESSION UNDER PIN: four planned
+// demo pages that previously rendered at 5 trips fell to
+// 14-30 trips on the assembled integration tree.
+// Mechanism (measured): the live render's
 // key-multi / side-key / or-chain IN-list binds depend on mid-flight cache
 // evolution; when it differs from record time the binds miss the armed
 // plan's exact (sql, params) map and those statements ride live in small
-// batches — Aikido_2 14, Aikido_in_Education 18 at 7f8173dd.
+// batches.
 //
 // PIN 1-2 — THE CEILING: each named drift page renders at <= 8 trips, cold
-// AND immediately-warm, in the composed serving posture. RED at 7f8173dd:
-// 14 (Aikido_2) and 18 (Aikido_in_Education) cold; the fix absorbs the drift
+// AND immediately-warm, in the composed serving posture. The fix absorbs the drift
 // classes into the plan's value-indexed arms.
 //
 // PIN 3 — THE EXACTNESS: for EVERY plan entry on the four drift pages, the
@@ -23,9 +22,9 @@
 // PIN 4 — BYTE IDENTITY: the composed render's slot-normalized HTML equals
 // the raw ladder's on the same page, same engine build, same deck.
 //
-// The corpus is the 45-page plan-bearing demo deck copy (the D3 harness
-// deck, freshly stamped by migration 0003). It lives outside the repo; the
-// test SKIPS when it is absent, like the corpus-mirror siblings. A missing
+// The deck is the 45-page plan-bearing demo deck copy, freshly stamped by
+// migration 0003. It lives outside the repo; the test SKIPS when it is
+// absent, like the other external-deck siblings. A missing
 // deck never turns the pin green — it skips loudly by name.
 
 import { existsSync } from "node:fs";
@@ -43,7 +42,7 @@ import {
   TripCapturingDriver,
 } from "./one-trip-fixture.js";
 
-/** The D3 harness deck: byte-identical to the serving deck except plan rows,
+/** The drift-test deck: byte-identical to the serving deck except plan rows,
  *  carrying the freshness stamp (migration 0003) and the 45 recorded plans. */
 const DRIFT_DECK =
   process.env.DRIFTFIX_DECK ??
@@ -51,7 +50,7 @@ const DRIFT_DECK =
 
 const driftDeckAvailable = (): boolean => existsSync(DRIFT_DECK);
 
-/** The four pages the D3 measurement named as the drift set. */
+/** The four drift-set pages. */
 const DRIFT_PAGES = ["Aikido 2", "Aikido in Education", "Peace Practices", "Laundry"] as const;
 
 const TRIP_CEILING = 8;
