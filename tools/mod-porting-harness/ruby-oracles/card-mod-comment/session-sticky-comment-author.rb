@@ -1,6 +1,6 @@
-# session-sticky-comment-author.rb — static-ruby oracle capture for
+# session-sticky-comment-author.rb — static-ruby oracle for
 # card-mod-comment's event :add_comment author resolution (the behavior the
-# mod-porting-harness lane demonstrates end to end).
+# porting harness demonstrates end to end).
 #
 # WHAT RUNS: the gem's own source lines, extracted VERBATIM from
 # <gem>/set/all/comment.rb by line range (1-indexed, inclusive) and
@@ -21,7 +21,7 @@
 #                    strings (whitespace-only is present? in AS too).
 #   wrap_with      - Decko's format helper (lib/card/format.rb): wraps the
 #                    yielded bytes in the tag + class. Stubbed to the div
-#                    shape the live capture (fixtures/oracle-surfaces/
+#                    shape the committed oracle (fixtures/oracle-surfaces/
 #                    comment.jsonl) shows: <div class="...">...</div>.
 #   CardDouble     - the save's card: content accessor (Ruby's self.content=),
 #                    comment accessor, format -> FormatDouble, action :update.
@@ -98,9 +98,9 @@ class FormatDouble
     @card = card
   end
 
-  # Decko's wrap_with (lib/card/format.rb) — the div shape the live capture
-  # shows for the comment signature (fixtures/oracle-surfaces/comment.jsonl:
-  # <div class="w-comment-author">...</div>).
+  # Decko's wrap_with (lib/card/format.rb) — the div shape the committed
+  # oracle shows for the comment signature (fixtures/oracle-surfaces/
+  # comment.jsonl: <div class="w-comment-author">...</div>).
   def wrap_with(tag, **opts)
     class_attr = opts[:class] ? " class=\"#{opts[:class]}\"" : ""
     "<#{tag}#{class_attr}>#{yield}</#{tag}>"
