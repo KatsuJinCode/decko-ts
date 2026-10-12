@@ -2,46 +2,42 @@
 // type-assignment walk behind virtualSidePart -> resolveTypeId must answer
 // from the db-backed data, never from the SYNC name environment
 // (fetch.ts:666 installNameEnvironment; warm-only peek adapters
-// fetch.ts:661-664), which Ruby never needs (Card::Name#codename
-// resolves through the db-backed lexicon/codename cards at Card.new time,
-// mod/core/set/all/initialize.rb:54 + mod/core/set/all/type.rb:58-66).
+// fetch.ts:661-664). The reference implementation never needs the sync
+// environment for this — Card::Name#codename resolves through the db-backed
+// lexicon/codename cards at Card.new time.
+//
 // The write path's walk is the DRIVER-BACKED one (set-type-assignment.ts
 // findAssignedTypeNameDriverBacked — Lexicon + codehash through the async
-// registries, the db-backed data Ruby answers), and resolveTypeId's
-// default fallback walks the full rule_card(:default) set-candidate chain
-// (templating.rb:52-53 -> rule/all.rb:13-15) instead of hard-coding the
-// global *all+*default card.
+// registries, the db-backed data the answer has to come from), and
+// resolveTypeId's default fallback walks the full rule_card(:default)
+// set-candidate chain (rule/all.rb:13-15) instead of hard-coding the global
+// *all+*default card.
 //
-// What each arm measures :
+// What each arm measures:
 //   T1  global *default template deck, COLD, Editor-locked chain type:
 //       the *default chain resolves *all+*default (type-resolution.ts
 //       defaultTypeId tail) through the ASYNC driver-backed registries
 //       (retrieve.ts:142-149, nameFromMarkParts), so the side still
-//       carries the chain type and the verdict matches Ruby. NOT divergent.
+//       carries the chain type and the verdict is the reference one.
 //   T2  same deck cold, Anyone-open chain type: side WRITTEN with the
-//       chain type — gate and write agree cold, bytes match Ruby.
+//       chain type — gate and write agree cold.
 //   M   mechanism pin: the SYNC findAssignedTypeName helper (render-side
 //       new-card typing, render.ts:1784) still answers through the sync
 //       env peeks — COLD-dead (undefined) and WARM-live ("phrase") for the
-//       same registration. The WRITE path no longer rides it: its walk is
-//       the driver-backed one, which is exactly why P1 flips below.
-//   P1  codename-assignment deck, COLD, Editor-locked assigned type:
-//       FLIPPED TO RUBY (was the measured divergence — cold create
-//       ALLOWED, side written the global default 42): the driver-backed
-//       walk resolves Right::All -> "phrase" cold, the side's verdict is
-//       the TYPE-CHECKED one (Phrase+*type+*create, Editor) and the write
-//       would apply the same type — cold deny, no rows, warm or cold.
+//       same registration. The WRITE path does not ride it: its walk is the
+//       driver-backed one, which is what lets the gate answer cold.
+//   P1  codename-assignment deck, COLD, Editor-locked assigned type: cold
+//       DENY, no rows. The driver-backed walk resolves Right::All ->
+//       "phrase" cold, the side's verdict is the TYPE-CHECKED one
+//       (Phrase+*type+*create, Editor) and the write applies the same type —
+//       cold deny, no rows, warm or cold.
 //   P2  same deck WARM (install + warm the two entries the walk's anchors
-//       need, exactly the composition serving boots run at boot): Ruby's
-//       deny, unchanged — parity now holds in BOTH environment states.
-//   N1  the template chain's name-scoped reach: FLIPPED TO RUBY (was
-//       ignored warm-or-cold) — resolveTypeId's fallback walks the
-//       rule_card(:default) candidates, so the *right-set *default rule
-//       (Editor-locked type 90) gates the side cold and warm alike.
-//
-// P1 and N1 pin the Ruby verdicts; before the fix they pinned the
-// contract's DIVERGENCE side (the measured over-allow), and
-//  section 3 records both states.
+//       need, exactly the composition serving boots run at boot): the same
+//       deny — parity holds in BOTH environment states.
+//   N1  the template chain's name-scoped reach: resolveTypeId's fallback
+//       walks the rule_card(:default) candidates, so the *right-set
+//       *default rule (Editor-locked type 90) gates the side cold and warm
+//       alike.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -67,9 +63,8 @@ const ANON_CARD_ID = 11;
 const EDITOR_ID = 7;
 const ANYONE_ID = 6;
 
-/** Codename + rule skeleton (the secverify suite's seedSkeleton shape):
- *  `defaultTypeId` (type-resolution.ts:95-112) is the *all+*default rule
- *  card's own type_id — Card.default_type_id (mod/core/set/all/type.rb:3-5). */
+/** Codename + rule skeleton: `defaultTypeId` (type-resolution.ts:95-112) is
+ *  the *all+*default rule card's own type_id — Card.default_type_id. */
 async function seedSkeleton(s: ActionsTestStorage, defaultTypeId: number): Promise<void> {
   await seedCard(s, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   await seedCard(s, { id: 2, name: "Set", codename: "set" });
@@ -105,9 +100,8 @@ async function seedSignupTrunk(s: ActionsTestStorage): Promise<void> {
 }
 
 /** Template deck: *all+*default's type_id IS the chain type (90 = Exotic
- *  Type), locked to Editor (protect) or open to Anyone. Ruby resolves the
- *  missing side's type through the same chain at Card.new
- *  (templating.rb:16-59 new_card_template -> rule_card :default). */
+ *  Type), locked to Editor (protect) or open to Anyone. The missing side's
+ *  type resolves through the same rule_card :default chain at Card.new. */
 async function seedTemplateDeck(protect: boolean): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
   await seedSkeleton(s, 90);
@@ -124,8 +118,8 @@ async function seedTemplateDeck(protect: boolean): Promise<ActionsTestStorage> {
 }
 
 /** Assignment deck: a *right type ASSIGNMENT maps the compound side part
- *  "Hatch+*all" to codename "phrase" (mod/core/set/right/autoname.rb:1
- *  `assign_type :phrase` shape; registration via registerSetTypeAssignment).
+ *  "Hatch+*all" to codename "phrase" (the `assign_type :phrase` shape;
+ *  registration via registerSetTypeAssignment).
  *  The GLOBAL default here is plain Rich Text (42). */
 async function seedPhraseDeck(protect: boolean): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
@@ -184,9 +178,9 @@ describe("syncenv cold fidelity: the global *default template path (cold-safe)",
     const s = await seedTemplateDeck(true);
     const engine = anonEngine(s);
     const err = await asError(engine.createCard({ name: "Paddy+Fresh Side", typeId: 12 }));
-    // Ruby: missing side's type at Card.new via rule_card(:default) ->
-    // *all+*default (type_id 90, Editor-locked) -> deny. The port's
-    // defaultTypeId resolves the rule card through the ASYNC db-backed
+    // the missing side's type at Card.new via rule_card(:default) ->
+    // *all+*default (type_id 90, Editor-locked) -> deny. defaultTypeId
+    // resolves the rule card through the ASYNC db-backed
     // registries, so the cold engine gives the same type-checked verdict.
     expect(err?.code).toBe("permission-denied");
     expect(await s.count("cards")).toBe(20); // nothing written (20 seeded incl. the Setting cardtype card)
@@ -211,13 +205,13 @@ describe("syncenv cold fidelity: the global *default template path (cold-safe)",
 
 describe("syncenv cold fidelity: the assignment walk's environment dependence", () => {
   it("M: findAssignedTypeName is dead COLD and live WARM for the same registration", async () => {
-    registerSetTypeAssignment("Right::All", "phrase"); // autoname.rb:1 shape
+    registerSetTypeAssignment("Right::All", "phrase"); // the Right::All -> phrase registration
     const s = await seedPhraseDeck(true);
     const input = { name: "Hatch+*all", isNew: true };
 
     // COLD: the *right anchor's codename resolves through DeckoName#cardId
-    // (name.ts:802-803, sync env peek) -> anchorCodenames null (instance.ts
-    // :158-166) -> moduleKey null -> filtered -> no assignment.
+    // (name.ts:802-803, sync env peek) -> no anchor codename -> moduleKey
+    // null -> filtered -> no assignment.
     forceColdEnvironment();
     expect(findAssignedTypeName(input)).toBeUndefined();
 
@@ -229,10 +223,10 @@ describe("syncenv cold fidelity: the assignment walk's environment dependence", 
 
 /** Name-scoped default deck: a *default rule on the *right SET
  *  ("*all+*right+*default", type_id 90 Editor-locked) applies to the
- *  compound side part "Hatch+*all" in Ruby — template = rule_card(:default)
- *  (templating.rb:52-53) whose rule_card_id walks ALL set candidates in
- *  precedence order (lib/card/rule/all.rb:9-14 -> rule_id_lookup). The
- *  global *all+*default here is plain Rich Text (42). */
+ *  compound side part "Hatch+*all" — template = rule_card(:default), whose
+ *  rule_card_id walks ALL set candidates in precedence order
+ *  (rule/all.rb:9-14 -> rule_id_lookup). The global *all+*default here is
+ *  plain Rich Text (42). */
 async function seedRightDefaultDeck(): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
   await seedSkeleton(s, 42);
@@ -260,16 +254,14 @@ describe("syncenv cold fidelity: the COLD divergence, flipped to Ruby (contract:
     registerSetTypeAssignment("Right::All", "phrase");
     const s = await seedPhraseDeck(true);
     const engine = anonEngine(s);
-    // Ruby (env state irrelevant, db-backed): side "Hatch+*all" resolves to
-    // Phrase (91) at Card.new -> Phrase+*type+*create (Editor) DENIES; no
-    // rows. The cold port now rides the SAME db data: the write path's walk
-    // is the driver-backed one (set-type-assignment.ts
+    // Environment state is irrelevant here — the answer is db-backed. Side
+    // "Hatch+*all" resolves to Phrase (91) at Card.new -> Phrase+*type+*create
+    // (Editor) DENIES; no rows. The cold write path rides the SAME db data:
+    // its walk is the driver-backed one (set-type-assignment.ts
     // findAssignedTypeNameDriverBacked — Lexicon card_id + Codename i2c via
     // the async registries), so Right::All resolves "phrase" with NO
     // environment installed, virtualSidePart hands the gate the typed part
-    // (type 91), and the gate denies before the writer exists. (Pre-fix
-    // this arm pinned the measured divergence: create ALLOWED, side
-    // written the global default 42 — r3 dump job-1790879690737.)
+    // (type 91), and the gate denies before the writer exists.
     const err = await asError(engine.createCard({ name: "Hatch+*all+Pod", typeId: 12 }));
     expect(err?.code).toBe("permission-denied"); // Ruby verdict, cold
     expect(await s.count("cards")).toBe(20); // nothing written (20 seeded incl. the Setting cardtype card)
@@ -295,14 +287,13 @@ describe("syncenv cold fidelity: name-scoped *default rules gate the side (rule_
   it("N1 (FLIPPED TO RUBY): a *right-set *default rule (Editor-locked type 90) gates the side — deny, no rows", async () => {
     const s = await seedRightDefaultDeck();
     const engine = anonEngine(s);
-    // RUBY: new_card_template -> rule_card(:default) walks ALL set
-    // candidates (templating.rb:52-53 -> rule/all.rb:13-15 rule_id_lookup),
+    // new_card_template -> rule_card(:default) walks ALL set
+    // candidates (rule/all.rb:13-15 rule_id_lookup),
     // first existing wins -> "*all+*right+*default" (type_id 90,
-    // Editor-locked) -> deny. The port's fallback now walks the same
+    // Editor-locked) -> deny. The fallback walks the same
     // candidates by set name (type-resolution.ts templateTypeId), so the
     // side resolves to 90 and the type-scoped create rule denies — cold
-    // AND warm. (Pre-fix this arm pinned the gap: the fallback hard-coded
-    // the global *all+*default card, side resolved 42, create allowed.)
+    // AND warm.
     const err = await asError(engine.createCard({ name: "Hatch+*all+Pod", typeId: 12 }));
     expect(err?.code).toBe("permission-denied"); // Ruby: deny via the name-scoped template
     expect(await s.count("cards")).toBe(23); // nothing written (23 seeded incl. the Setting cardtype card)
