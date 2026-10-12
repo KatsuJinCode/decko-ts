@@ -1,19 +1,14 @@
-// Route-gaps lane pin (2026-10-05): the /new/:type arm of the bunny edge
+// Pin for the /new/:type arm of the bunny edge
 // engine request core (deploy/bunny-worker-src/bunny-edge-engine-request.ts +
 // the lineage parsePath's /new/:type grammar).
 //
-// THE MEASURED GAP (manifest-completion lane,
-// an internal work log section 2.1): /new/Sign_up
-// — the signup-form route the deck's OWN chrome links twice on every page
-// (the *account_links navbar arm and the signin form's "...or sign up!"
-// link, both href="/new/Sign_up" in the live-wire capture
-// an internal work log) — answered 404 on the wire
-// (capture-log-demo-nav.jsonl seq 97, gc "miss; store=skip-404"): parsePath
-// mapped it onto the generic name+view arm, the card "new" does not exist,
-// and the render answered the full-chrome not_found page.
+// THE GAP: /new/Sign_up — the signup-form route the deck's OWN chrome links
+// twice on every page (the *account_links navbar arm and the signin form's
+// "...or sign up!" link, both href="/new/Sign_up") — answered 404:
+// parsePath mapped it onto the generic name+view arm, the card "new" does
+// not exist, and the render answered the full-chrome not_found page.
 //
-// THE RUBY REFERENCE (decko 0.20.0, the corpus generator — read from the
-// installed gem this lane):
+// THE RUBY REFERENCE (decko 0.20.0):
 //   - config/engine_routes.rb:22  `get "new/:type" => "card#read", view: "new"`
 //     fires BEFORE the generic :mark/:view route (:51) — Rails route
 //     precedence, so /new/<anything> never renders the card "new";
@@ -24,29 +19,25 @@
 //   - card-mod-format set/all/html/error.rb:81-87 page_view_for_unknown /
 //     page_status_for_unknown — an unknown MAIN card renders view :new at
 //     status 200 when the viewer may create it;
-//   - the deck's rule (trial-deck mirror, rule card 6580)
-//     `Sign up+*type+*create` = "Anyone" — the anonymous visitor MAY create
-//     Sign up cards, so /new/Sign_up is a 200 page for the deployed edge's
-//     anonymous-only viewer;
+//   - the deck's rule `Sign up+*type+*create` = "Anyone" — the anonymous
+//     visitor MAY create Sign up cards, so /new/Sign_up is a 200 page for
+//     an anonymous-only viewer;
 //   - a type whose create rule admits only signed-in members (the *all
-//     fallback, mirror rule 6566) denies anonymous: error.rb:103-104
-//     PermissionDenied -> status 403, the loud_denial frame ("Sorry!" +
-//     "Please sign in or sign up to create this.").
+//     fallback) denies anonymous: error.rb:103-104 PermissionDenied ->
+//     status 403, the loud_denial frame ("Sorry!" + "Please sign in or
+//     sign up to create this.").
 //
-// The same lane's verdicts, pinned so they cannot silently "improve" into
-// divergence: /account/signup and /recent_changes are NOT route arms on the
-// reference app — the router maps them to the cards "account" / "recent
-// changes" (underscore folded to space), neither exists in the deck, and the
+// Verdicts pinned so they cannot silently "improve" into divergence:
+// /account/signup and /recent_changes are NOT route arms on the reference
+// app — the router maps them to the cards "account" / "recent changes"
+// (underscore folded to space), neither exists in the deck, and the
 // anonymous viewer cannot create them — so the reference answers the
-// not_found page at 404, which is exactly what the edge already serves (the
-// measured 13,660/13,694 B chrome). The corpus has no capture of any
-// /new/:type page, so the form's bytes are a RECONSTRUCTION from the Ruby
-// source (new.rb, signup/views.rb, form_elements.rb) with the oracle-pinned
-// field shapes the sign-in form capture carries
+// not_found page at 404, which is exactly what the edge serves. The form's
+// bytes are a RECONSTRUCTION from the Ruby source (new.rb, signup/views.rb,
+// form_elements.rb) with the field shapes the sign-in form view pins
 // (src/card/render/signin-core-form-view.ts); the assertions below pin the
 // structural contract (frame title, form action, field names, hidden type,
-// buttons), not byte-exact fidelity — see the lane receipt for the labeled
-// reconstructions.
+// buttons), not byte-exact fidelity.
 
 import { describe, expect, it } from "vitest";
 
@@ -91,16 +82,16 @@ async function seedNewRouteDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 8, name: "Anonymous", codename: "anonymous", typeId: 7 });
   await seedCard(s, { id: 15, name: "*type", codename: "type" });
   // The type the signup journey creates: "Sign up" is a Cardtype-typed card
-  // (mirror card 12) — the /new/:type mark resolves to it.
+  // — the /new/:type mark resolves to it.
   await seedCard(s, { id: 9, name: "Cardtype", codename: "cardtype", typeId: CARDTYPE_TYPE_ID });
   await seedCard(s, {
     id: 12, name: "Sign up", codename: "signup", typeId: CARDTYPE_TYPE_ID,
   });
-  // *all+*create -> [[Anyone Signed In]] (mirror rule 6566): the fallback
+  // *all+*create -> [[Anyone Signed In]]: the fallback
   // denies anonymous for every type without a more specific rule.
   await seedCard(s, { id: 20, leftId: 1, rightId: 3, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 20, 6, "anyone_signed_in");
-  // Sign up+*type+*create -> [[Anyone]] (mirror rule 6580): self-signup is
+  // Sign up+*type+*create -> [[Anyone]]: self-signup is
   // open to the anonymous visitor.
   await seedCard(s, { id: 21, leftId: 12, rightId: 15, typeId: SET_TYPE_ID });
   await seedCard(s, { id: 22, leftId: 21, rightId: 3, dbContent: "[[Anyone]]" });
@@ -196,8 +187,8 @@ describe("bunny edge — the /new/:type arm (route-gaps lane)", () => {
       const body = await res.text();
       expect(res.status).toBe(404);
       // The type mark never resolves to a card: the not_found page (the
-      // route arm's labeled deviation — Ruby's exact unknown-type error
-      // shape has no capture; the 404 class is the reference answer class).
+      // route arm's labeled deviation — pinned at the 404 answer class, not
+      // Ruby's exact unknown-type error bytes).
       expect(body).toContain(`Could not find`);
       expect(body).toContain(`NoSuchType`);
     } finally {
@@ -211,11 +202,10 @@ describe("route-gaps verdicts — the two measured 404s are the Ruby-faithful an
   // reference router maps them onto the cards "account" / "recent changes"
   // (decko folds URL underscores to spaces), neither card exists in the
   // deck, and the anonymous viewer cannot create them — so the reference
-  // app (the corpus generator, decko 0.20.0 over this deck) answers
-  // not_found at 404, with the sign-in-or-sign-up line. The edge already
-  // serves exactly this (the measured 13,660/13,694 B chrome); these pins
-  // hold the lane's verdict so a future route "fix" cannot silently diverge
-  // from the reference.
+  // app (decko 0.20.0 over this deck) answers
+  // not_found at 404, with the sign-in-or-sign-up line. The edge serves
+  // exactly this; these pins hold that verdict so a future route "fix"
+  // cannot silently diverge from the reference.
   it("GET /account/signup -> 404 not_found chrome for the card 'account'", async () => {
     const storage = await createRenderTestStorage();
     try {
