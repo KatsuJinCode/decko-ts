@@ -339,10 +339,10 @@ const DATE_TYPE_CODE = "date";
 // independent of the type card's display name.
 
 /** The views whose Ruby view method PARSES (the lazy Search/Date raise
- *  boundary's gate — src/card/render.ts resolveView). Capture census over
- *  all 105 corpus search-type cards: :open/:content = 24 CAPTURE_ERROR +
- *  80 real each; :closed/:title = 105 real each (Ruby never parses them);
- *  date likewise (corpus:1135 :open/:content raise, :closed/:title real). */
+ *  boundary's gate — src/card/render.ts resolveView). The census over
+ *  the deck's search-type cards: :open/:content raise on a subset and
+ *  render real bytes on the rest; :closed/:title always render real bytes
+ *  (Ruby never parses them); date likewise. */
 const PARSE_DISPATCH_VIEWS = new Set(["open", "content"]);
 
 /** The search statement's own limit (cql_search.rb:85-87 card_content_limit
@@ -888,8 +888,8 @@ export class RenderEngine implements RenderEngineLike {
    *  default
    *  (card-mod-format lib/card/mod/format.rb:2) under which the BARE render
    *  capture (surface V, the old-capture dev boot) ran. Ruby reads process
-   *  config per call (html.rb:17-19), never a deck rule; the corpus's
-   *  `*all+*default html view` rule card 22769 is dead in 0.20.0. The flag
+   *  config per call (html.rb:17-19), never a deck rule; a deck's
+   *  `*all+*default html view` rule is dead in 0.20.0. The flag
    *  is byte-safe across interleaved renders because resolveView memoizes
    *  VIEW FUNCTIONS, never rendered bytes. Not cached: the flag toggles per
    *  render surface. */
@@ -1411,9 +1411,9 @@ export class RenderEngine implements RenderEngineLike {
     // refactor, recorded OPEN-BLOCKED in the warmflood sweep-cut note.md.
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
-    // before the Search card's JSON.parse (corpus:34 *children+*right+
-    // *structure + corpus:95 *edited+*right+*structure, both captured as
-    // `<span class="denied">` — NOT CAPTURE_ERROR:BadQuery). The port
+    // before the Search card's JSON.parse (a `+*structure` rule card
+    // over a host renders as
+    // `<span class="denied">` — NOT a BadQuery raise). The port
     // must respect that ordering: a denied Search card with non-JSON
     // content renders as the denial span, not BadQuery, exactly mirroring
     // Ruby's view/permission.rb:46-50 #denial -> view_for_denial, which
@@ -1427,9 +1427,9 @@ export class RenderEngine implements RenderEngineLike {
     // the codehash, so a freshly enriched card's `typeCode` is undefined
     // here on cold renders. The Search / Date gates inside prepareSearches
     // (and the Search gate inside closureWarm) match on typeCode, NOT
-    // typeName — the latter would silently miss corpus-shaped type cards
-    // whose NAME is random (corpus:1135 has the date-type card named
-    // "evog"; corpus:101 has the search-type card named "qnzkqz"). Patch
+    // typeName — the latter would silently miss type cards
+    // whose NAME carries no semantic hint (a date-type or search-type card
+    // can be named anything). Patch
     // every prepared card's typeCode from the (now-folded) codehash
     // before the prepare walk reads it.
     this.populateTypeCodes();
@@ -1544,9 +1544,9 @@ export class RenderEngine implements RenderEngineLike {
       // `<skin> customized`, `<skin> customized 1`, ... The customized
       // sibling is NOT in this page's nest closure (nothing on a skin page
       // references it), so the render-card-map-only gate could not see it -
-      // that is the M9 gap: the oracle's journal/slate skin pages carry
-      // `card[name]=...customized+1` (corpus 34179 / 38274) and the other
-      // eighteen skin pages carry the bare name. This is the async half of
+      // that is the M9 gap: the skin pages carry
+      // `card[name]=...customized+1` on the first customized sibling and
+      // the bare name elsewhere. This is the async half of
       // the seam; warmCustomizedName runs the whole walk here, where
       // queries are legal, and the synchronous customize_button view
       // reads the answer out of memory.
@@ -1822,8 +1822,8 @@ export class RenderEngine implements RenderEngineLike {
       if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
-    // A set card's rule list nested by OTHER content (Shark's getting-started
-    // Rules section: `{{:all|bar_setting_list; filter: webpage}}`) reads the
+    // A set card's rule list nested by OTHER content (a mod card's
+    // getting-started Rules section: `{{:all|bar_setting_list; filter: webpage}}`) reads the
     // same stored rule children (rule_lists.rb setting_list_item:
     // `card.fetch setting, new: {}`), so the nested set gets the same
     // preload; without it every stored `*all+*<setting>` rendered as a
@@ -2236,9 +2236,8 @@ export class RenderEngine implements RenderEngineLike {
     // Raising at the :content dispatch instead skipped the view body: the
     // `wrap` never ran, so the card-slot div was never emitted, and nest()'s
     // catch (format.ts) produced the unwrapped span labelled "(content
-    // view)". The corpus carries the wrapped form with the DELEGATED label —
-    // card 34322 `Maturana ...+Date`, 27918 `Jamie McHugh ...+Date`, 35469
-    // `White Fragility ...+Date`, 9788 `Klickstein continues+Date`:
+    // view)". The rendered surface carries the wrapped form with the DELEGATED
+    // label — every `+Date` card's slot reads:
     //   <div id="...-date-content-view" class="card-slot content-view ...">
     //   <span class="render-error alert alert-danger">Error rendering:
     //   ...+Date (core view)</span></div>
@@ -2854,11 +2853,10 @@ export class RenderEngine implements RenderEngineLike {
       // (supercard `*dummy` typed Search) walks to
       // Search+large image+*type plus right+*structure (rule 17703,
       // PlainText-typed) — with the RichText default the candidate misses,
-      // the walk falls to `large image+*right+*structure` (rule 17705,
-      // HTML-typed), and the prototype types HTML, so the *create/*update/
-      // *delete walks hit HTML+*type+*<setting> (rules 6553/6558/6562,
-      // "Shark") where the oracle renders the `_left` inherit-perm span
-      // (*all plus+*<setting>, rules 6567/6571/6573).
+      // the walk falls to `large image+*right+*structure` (HTML-
+      // typed), and the prototype types HTML, so the *create/*update/
+      // *delete walks hit HTML+*type+*<setting> where the `_left`
+      // inherit-perm span renders instead (*all plus+*<setting>).
       const structureTypes = this.structureRuleTypes;
       const structureContents = this.structureContents;
       if (structureTypes !== undefined && structureTypes.size > 0) {
@@ -4749,19 +4747,18 @@ export class RenderEngine implements RenderEngineLike {
    *  CONTEXT card and never reaches this function at all (format.ts:1601,
    *  `contextTarget ?? this.engine.fetchRenderCard(targetName)`).
    *
-   *  THE MEASURED DEFECT (parity-restore-runbook.md:184, mechanism #4,
-   *  Aiki:page): the corpus row `Aiki+references` (27199) stores its
-   *  reference in KEY case, so the structure walk's compound-ref warm
-   *  (render.ts#applyStructureContent -> fetcher.fetchByName) fetched
-   *  "aiki+*referred_to_by", MISSED (corpus: left_id 2705 + right_id 3945
-   *  -> no row) and seated a placeholder named FROM THAT MARK - the key
-   *  form. The page's own `{{_self+*referred_to_by}}` then resolved the
-   *  RIGHT name ("Aiki+*referred_to_by") and read the KEY, hitting the
+   *  THE DEFECT THIS GUARDS: a stored references row can keep
+   *  its reference in KEY case, so the structure walk's compound-ref warm
+   *  (render.ts#applyStructureContent -> fetcher.fetchByName) fetches
+   *  the KEY form, MISSES (no row carries that composed name)
+   *  and seats a placeholder named FROM THAT MARK - the key
+   *  form. The page's own `{{_self+*referred_to_by}}` then resolves the
+   *  RIGHT name and reads the KEY, hitting the
    *  key-named placeholder.
    *
    *  ONLY a fabricated, id-less placeholder is re-bound, and only onto the
    *  mark that reached it. A STORED card keeps its row's name: re-binding
-   *  one would let an authored `{{aiki}}` rename the "Aiki" card's slots
+   *  one would let an authored nest rename that card's slots
    *  (Ruby's known? path never calls assign_name for a stored card). The map
    *  entry is never mutated - a copy is returned, which is what Ruby's
    *  per-fetch `Card.new` gives for free and a shared map does not. */
