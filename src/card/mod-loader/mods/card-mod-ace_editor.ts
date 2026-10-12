@@ -23,7 +23,7 @@
 //     module still enters the basket (format :html block defines methods,
 //     no view declarations).
 //
-// NOT ported (documented remainder, see blockers in the report):
+// NOT ported (documented remainder):
 //   - basket[:list_input_options] << "ace editor" (set/all/ace_editor.rb:1)
 //     - admin form input-type menu, no TS consumer
 //   - basket[:script_calls]["setAceConfig"] = :ace_config (set/all/ace_editor.rb:2)
@@ -37,7 +37,7 @@
 //     are not view declarations themselves and render no bytes independently.
 //   - data/real.yml (*Ace JSON seed card) - deck-level seed data; the seed
 //     path enters through the standard write path, which is outside this
-//     stream.
+//     engine surface.
 //   - data/transform/20180805112548_delete_ace_help_card.rb - migration that
 //     deletes a now-superseded *Ace+*self+*help rule card and retypes *Ace
 //     as JSON. Migration surface is outside the engine.
