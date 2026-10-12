@@ -74,16 +74,16 @@ Smoke checks (replace `YOUR_SUBDOMAIN` — `npx wrangler whoami` / deploy
 output print it):
 
 ```sh
-curl -s https:///_status
+curl -s https://YOUR_SUBDOMAIN/_status
 #    {"ok":true, ... "database":{"ok":true,"card_count":15}}
 
-curl -s https:/// | grep "compound depth 4"
+curl -s https://YOUR_SUBDOMAIN/ | grep "compound depth 4"
 #    the Home card renders its inclusion chain 4 levels deep
 
-curl -s https:///Home.json
+curl -s https://YOUR_SUBDOMAIN/Home.json
 #    the Home card record as JSON
 
-curl -s -X POST https:///api/query \
+curl -s -X POST https://YOUR_SUBDOMAIN/api/query \
   -H "Content-Type: application/json" \
   -d '{"cql":{"type":"Note","sort":"name"}}'
 #    JSON rows: the nine Note cards (six plain + three junctions)
@@ -108,7 +108,7 @@ node deploy/cleanup.mjs          # prints the plan, touches nothing
 node deploy/cleanup.mjs --yes    # deletes the Worker and the D1 database
 ```
 
-Resources removed: Worker ``, D1 database ``.
+Resources removed: Worker `decko-ts-demo`, D1 database `decko-ts-demo-db`.
 That is the complete footprint — no KV, no R2, no queues, no secrets.
 
 ## Storage budget

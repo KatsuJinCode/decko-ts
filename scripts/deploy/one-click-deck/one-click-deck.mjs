@@ -405,7 +405,11 @@ function ensureConfig({ args, databaseId }) {
 
 name = "${args.workerName}"
 main = "${rel(WORKER_TS)}"
-compatibility_date = "2026-09-01"
+# 2026-08-01, the date the repository-root and deploy/ wrangler.toml files
+# pin, and for the reason recorded in the root one: a newer date can change
+# Workers runtime behaviour, and this port's acceptance criterion is
+# byte-for-byte parity with the Ruby oracle. One engine, one runtime date.
+compatibility_date = "2026-08-01"
 
 [alias]
 "node:crypto" = "${rel(CRYPTO_SHIM)}"

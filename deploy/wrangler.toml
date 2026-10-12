@@ -15,7 +15,13 @@
 
 name = "decko-ts-demo"
 main = "worker.ts"
-compatibility_date = "2026-09-01"
+# 2026-08-01 — the same date the repository-root wrangler.toml pins, and for
+# the reason recorded there: a newer date can change Workers runtime
+# behaviour, and this port's acceptance criterion is byte-for-byte parity
+# with the Ruby oracle, so bumping the date is a parity decision rather than
+# a deploy-packaging one. Two Worker configs serving the same engine on two
+# different runtime dates is a parity hazard, not a packaging choice.
+compatibility_date = "2026-08-01"
 # Deliberately NO nodejs_compat: the worker graph is Web-standard-only.
 # The one Node import in the engine graph (node:crypto in
 # src/card/render/slot-html.ts) is replaced at bundle time by the shim

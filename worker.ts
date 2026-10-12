@@ -1,6 +1,6 @@
-// Cloudflare Workers entry — the one-click Cloudflare demo (M2 in
-// ). The same engine code runs on Node (see tests/ for
-// the LocalSqliteDriver wiring) and on Workers via this file.
+// Cloudflare Workers entry — the one-click Cloudflare demo (M2). The same
+// engine code runs on Node (see tests/ for the LocalSqliteDriver wiring) and
+// on Workers via this file.
 //
 // First-time deploy recipe (one-time setup, ~2 min):
 //   1. Edit `database_id` in wrangler.toml after `wrangler d1 create`.
