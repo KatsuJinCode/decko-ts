@@ -113,7 +113,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("bar slot JSON name_context: wrap.rb gate (live-wire mechanism 3)", () => {
+describe("bar slot JSON name_context: wrap.rb gate", () => {
   it("emits name_context on the page-body WANTED +management mini_bar (CDW shape)", async () => {
     const html = await renderPageBytes(storage!.engine, "Context Page");
     const at = html.indexOf("context_page-management-mini_bar-view");

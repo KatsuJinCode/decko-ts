@@ -93,7 +93,7 @@ async function seedCodenameNestDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("codename-mark parse survives a temporary-cache reset (page 22747 class)", () => {
+describe("codename-mark parse survives a temporary-cache reset", () => {
   it("renders {{:footer|content}} after a within-key-counts-style lexicon wipe", async () => {
     const storage = await seedCodenameNestDeck();
     storage.fetcher.installNameEnvironment();

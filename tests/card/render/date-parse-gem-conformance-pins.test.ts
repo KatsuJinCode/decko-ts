@@ -97,7 +97,7 @@ describe("parseRubyDateContent is the gem's Date.parse (date.rb:6-8), measured n
     ).toEqual([]);
   });
 
-  it("the two corpus entries render the gem's own answer", () => {
+  it("the two recorded entries render the gem's own answer", () => {
     // "1981-10" — the gem raises, so the Date cardtype's `::Date.parse`
     // raises, so the delegated render's rescue produces the error span.
     expect(
@@ -138,7 +138,7 @@ describe("parseRubyDateContent is the gem's Date.parse (date.rb:6-8), measured n
     }
   });
 
-  it("the complete-date families the corpus's other 4,045 cards carry are untouched", () => {
+  it("the complete-date families on all other recorded cards are untouched", () => {
     // Guards the blast radius: the change is in the partial-date branches,
     // so every shape that was already correct must stay correct.
     for (const [input, rendered] of [

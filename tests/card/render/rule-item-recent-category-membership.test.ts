@@ -195,7 +195,7 @@ describe("rule-item _category-recent: items ∩ registered ∩ restriction", () 
     expect(slot).toContain("_category-all _category-recent");
   });
 
-  it("keeps the R16 control: no recent on the *all+*autoname bar (not a recent item)", async () => {
+  it("keeps the negative control: no recent on the *all+*autoname bar (not a recent item)", async () => {
     const html = await storage!.engine.render("Category Pin Host", "content");
     const slot = slotClassFor(html, "Xall-Xautoname");
     expect(slot).toContain("_rule-item");

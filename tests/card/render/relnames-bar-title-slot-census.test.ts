@@ -22,7 +22,7 @@ import type { RenderTestStorage } from "./render-test-storage.js";
 import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const TARGET_IDS = [217, 268, 273, 294, 300, 302, 315] as const;
-const OUT_DIR = path.join(process.cwd(), "tmp", "the work log");
+const OUT_DIR = path.join(process.cwd(), "tmp", "relnames-slot-census");
 
 let storage: RenderTestStorage | undefined;
 afterAll(() => {
@@ -169,7 +169,7 @@ describe("relnames engine bar-title slot census", () => {
           report.push(`### id=${entry.id} name=${JSON.stringify(entry.name)} view=${view} RAISED ${String(error)}`);
           continue;
         }
-        const file = path.join(OUT_DIR, `relnames-09-engine-${entry.id}-${view}.html`);
+        const file = path.join(OUT_DIR, `relnames-engine-${entry.id}-${view}.html`);
         fs.writeFileSync(file, actual);
         report.push(
           `### id=${entry.id} name=${JSON.stringify(entry.name)} view=${view} len=${actual.length} ` +
@@ -203,7 +203,7 @@ describe("relnames engine bar-title slot census", () => {
         );
       }
     }
-    const reportFile = path.join(OUT_DIR, "relnames-09-engine-slot-census.log");
+    const reportFile = path.join(OUT_DIR, "relnames-engine-slot-census.log");
     fs.writeFileSync(reportFile, report.join("\n"), "utf8");
     console.log(`relnames probe: wrote ${report.length} census lines to ${reportFile}`);
     expect(fs.existsSync(reportFile)).toBe(true);

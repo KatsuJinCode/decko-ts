@@ -83,7 +83,7 @@ function installEnv(): void {
 }
 
 describe("D9 template-link junction composition (the view/warm shared function)", () => {
-  it("composes the page-105 witness: base Role + *members + *type plus right", () => {
+  it("composes the junction witness: base Role + *members + *type plus right", () => {
     installEnv();
     // template_nest.rb:23-25 `name = name.fully_stripped; [type, name].to_name`
     const base = DeckoName.parse("Role+*type+*default").trunkName.leftName;
@@ -96,7 +96,7 @@ describe("D9 template-link junction composition (the view/warm shared function)"
     expect(templateLinkSetNameFromParts(base, nest).key).toBe("role+*member+*type_plu_right");
   });
 
-  it("composes the page-88 witness: base Cardtype + description + *type plus right", () => {
+  it("composes the cardtype witness: base Cardtype + description + *type plus right", () => {
     installEnv();
     const base = DeckoName.parse("Cardtype+*type+*default").trunkName.leftName;
     expect(base?.s).toBe("Cardtype");

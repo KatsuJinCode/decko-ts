@@ -134,7 +134,7 @@ describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:
 });
 
 describe("file :core renders the derived cloud anchor (person-page acceptance)", () => {
-  async function seedMichaelDeck(): Promise<RenderTestStorage> {
+  async function seedSamplePersonDeck(): Promise<RenderTestStorage> {
     const storage = await createRenderTestStorage();
     await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
     await seedCard(storage, { id: 3, name: "RichText", codename: "rich_text", typeId: 2 });
@@ -190,7 +190,7 @@ describe("file :core renders the derived cloud anchor (person-page acceptance)",
   }
 
   it("renders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>", async () => {
-    const storage = await seedMichaelDeck();
+    const storage = await seedSamplePersonDeck();
     const page = await renderPageBytes(storage.engine, "Sample Person");
     expect(page).toContain(
       "<a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>\n",

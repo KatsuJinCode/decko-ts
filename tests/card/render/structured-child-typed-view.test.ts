@@ -146,7 +146,7 @@ async function seedLeftDelegationDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("structured/missing children: the typed new-card view (ZQVT+legacy class)", () => {
+describe("structured/missing children: the typed new-card view (the legacy-typed set)", () => {
   it("renders the missing +legacy nest as the typed virtual child, not a denial", async () => {
     const storage = await seedStructuredChildDeck();
     try {

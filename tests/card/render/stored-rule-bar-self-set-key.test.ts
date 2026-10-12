@@ -101,7 +101,7 @@ const ORACLE_SLOT_CLASS =
   "TYPE_PLUS_RIGHT-set-Xfollow_field SELF-Xall-Xfollow_field _rule-item " +
   "_category-all _category-recent";
 
-describe("stored rule bar: SELF-X set-key token (live-wire mechanism 1)", () => {
+describe("stored rule bar: SELF-X set-key token", () => {
   it("emits SELF-Xall-Xfollow_field on the STORED *all+*follow fields bar", async () => {
     const html = await storage!.engine.render("*all", "content");
     const at = html.indexOf("Xfollow_field-bar-view");

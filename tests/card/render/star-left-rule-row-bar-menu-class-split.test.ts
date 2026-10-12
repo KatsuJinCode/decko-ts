@@ -62,8 +62,8 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("2-part rstar bar-menu class splits by left part (corpus pins)", () => {
-  it("star-left absent rule row -> wanted-card page link, create label (oracle 274 bytes)", async () => {
+describe("2-part rstar bar-menu class splits by left part", () => {
+  it("star-left absent rule row -> wanted-card page link, create label", async () => {
     const html = await storage!.engine.render("*all", "content");
     const at = html.indexOf("Xall-Xautoname-bar-view");
     expect(at).toBeGreaterThan(-1);
@@ -84,7 +84,7 @@ describe("2-part rstar bar-menu class splits by left part (corpus pins)", () => 
     expect(slot).not.toContain(`wanted-card" href="/*all+*create"`);
   });
 
-  it("non-star-left absent rule row (Anonymous+*created shape) keeps the known-class fiction (W5-gated)", async () => {
+  it("non-star-left absent rule row (Anonymous+*created shape) keeps the known-class fiction (the deliberate known-fiction subset)", async () => {
     // The host card nests the absent name as a bar; its menu must stay
     // known-card — the deliberate known-fiction on this subset.
     const html = await storage!.engine.render("Anon Host", "content");

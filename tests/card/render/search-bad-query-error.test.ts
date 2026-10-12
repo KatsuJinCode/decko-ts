@@ -176,7 +176,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   // content would never reach JSON.parse). Same class of fix as
   // date-error.test.ts.
 
-  it("rendering :open of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 corpus-shaped fixture)", async () => {
+  it("rendering :open of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (a corpus-shaped fixture)", async () => {
     // A search-type card whose type card's NAME is a random string, NOT
     // "Search", while its codename (the codehash lookup) is
     // "search_type". The prepare phase's Search gate (render.ts:1100)
@@ -215,7 +215,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
-  it("rendering :content of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 :content view)", async () => {
+  it("rendering :content of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (the :content view of a corpus-shaped fixture)", async () => {
     // The same type-card shape (non-"Search" name / "search_type"
     // codename) and content shape, but through the :content view. The
     // :content view dispatches through :core -> :card_list ->
@@ -247,7 +247,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
-  it("rendering :closed and :title of a Search-type card with non-JSON content does NOT raise (capture census: 105/105 real bytes)", async () => {
+  it("rendering :closed and :title of a Search-type card with non-JSON content does NOT raise (verified across all recorded rows)", async () => {
     // The lazy-parse seam: :closed and :title render REAL bytes without
     // parsing, while :open/:content raise on invalid content. Ruby parses
     // only the result-rendering views; the raise lives at the dispatch
@@ -279,7 +279,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
-  it("a search-TYPE rule card (right part a setting) with non-JSON content does NOT raise on :open (capture census: rule search cards render real bytes)", async () => {
+  it("a search-TYPE rule card (right part a setting) with non-JSON content does NOT raise on :open (rule search cards render real bytes)", async () => {
     // The lazy-parse seam's rule asymmetry: search-type RULE cards —
     // 3-part name, right part a setting (the "*layout+*right+*content
     // options" shape) — render REAL :open/:content bytes, while every
@@ -342,7 +342,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
 
   // ----- the raising-sentinel byte contract -------------------------------
 
-  it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:77 capture recorded", () => {
+  it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the capture recorded", () => {
     // Direct byte-equality pin: the harness composes its raising sentinel
     // as `CAPTURE_ERROR: <constructor.name>: <message>`, so the raised
     // error must compose byte-exact into that shape:

@@ -75,7 +75,7 @@ describe("URI scanner: TLD list is the gem's GENERIC+COUNTRY verbatim", () => {
     expect(expandContentLinks("see example.me today")).not.toContain("<a ");
   });
 
-  it("still autolinks the corpus's common TLDs", () => {
+  it("still autolinks the common TLDs", () => {
     for (const tld of ["com", "org", "net", "de", "jp", "eu"]) {
       const out = expandContentLinks(`see example.${tld} today`);
       expect(out).toContain(`href="http://example.${tld}"`);

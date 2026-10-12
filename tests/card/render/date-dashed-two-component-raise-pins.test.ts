@@ -31,8 +31,8 @@ import { describe, it, expect } from "vitest";
 import { parseRubyDateContent } from "../../../src/card/render/errors.js";
 import { formatDateCore } from "../../../src/card/render/views.js";
 
-describe("dashed all-numeric Date content that is not Y-M-D raises (gem-verified, rule/all run 2026-10-03)", () => {
-  it("1981-10 raises (the Stanley Pranin corpus shape)", () => {
+describe("dashed all-numeric Date content that is not Y-M-D raises (gem-verified)", () => {
+  it("1981-10 raises (a two-component dashed shape)", () => {
     expect(parseRubyDateContent("1981-10")).toBeNull();
   });
 
