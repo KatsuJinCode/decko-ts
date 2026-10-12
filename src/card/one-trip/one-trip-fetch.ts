@@ -10,7 +10,7 @@
 // ONE round trip against the corpus connection (the same driver the render
 // uses). The derived store rides along as an ATTACHed database — the
 // corpus file itself is never written (the side db holds only derived
-// data; SPEC A2).
+// data).
 //
 // Row-set contract (pinned by tests/card/one-trip/one-trip-fetch.test.ts):
 // the bundle's card set is a SUPERSET of every cards row the render reads.
@@ -37,11 +37,10 @@ export const DERIVED_STORE_ATTACH = "one_trip";
 
 /** The DECKO_ONE_TRIP_STORE sentinel for the MATERIALIZED shape: the
  *  one_trip_* tables live IN the serving database (no side file exists to
- *  attach). This is the shape the serving DB requires — observed verbatim
- *  2026-10-05 (the corresponding port note MATERIALIZED-STORE §6.1): the
- *  serving DB's SQL parser rejects ATTACH for ANY value (SQL_PARSE_ERROR),
- *  so an attached side file cannot exist there; the 98,915 derived rows sit
- *  IN the serving DB, dormant until the code reads them inline. */
+ *  attach). This is the shape the serving DB requires — its SQL parser
+ *  rejects ATTACH for ANY value (SQL_PARSE_ERROR), so an attached side
+ *  file cannot exist there; the derived rows sit IN the serving DB,
+ *  dormant until the code reads them inline. */
 export const ONE_TRIP_STORE_INLINE = "inline";
 
 /** Whether a DECKO_ONE_TRIP_STORE value names the materialized (inline)
@@ -51,12 +50,12 @@ export function isInlineStoreSpec(storeSpec: string): boolean {
   return storeSpec === ONE_TRIP_STORE_INLINE;
 }
 
-/** THE STORE-PLANS POSTURE FLAG (the retarget's live-fetch posture,
- *  2026-10-06): the stored render plans (one_trip_render_plans) are the DEMO
- *  STOP-GAP only — the deliverable is the live batched inclusion-tree query
- *  serving ALL pages with NO plan-table lookup in the critical path.
- *  Default = the demo posture (plans read, replayed, armed — every standing
- *  pin's subject unchanged); DECKO_ONE_TRIP_PLANS=0 selects the live
+/** THE STORE-PLANS POSTURE FLAG: the stored render plans
+ *  (one_trip_render_plans) are a STOP-GAP posture — the end state is the live
+ *  batched inclusion-tree query serving ALL pages with NO plan-table lookup
+ *  in the critical path.
+ *  Default = the stop-gap posture (plans read, replayed, armed — every
+ *  standing pin's subject unchanged); DECKO_ONE_TRIP_PLANS=0 selects the live
  *  posture: the head statement drops the plan column entirely, so a plan
  *  read is not merely skipped but ABSENT from the statement text — zero
  *  one_trip_render_plans reads on any page, by construction. The flag is
@@ -112,10 +111,9 @@ export function oneTripFetchSql(attachName: string = DERIVED_STORE_ATTACH): stri
   // TERMINATION INVARIANT: the recursive select carries the card ID ONLY.
   // A (id, depth) pair would defeat UNION's dedup on any cyclic graph —
   // the same id at a new depth is a new row and the walk never terminates
-  // (measured: the deck's include graph is cyclic through *all-hub rule
-  // templates, and the depth-carrying form hung past 300 s). The depth is
-  // the builder's BFS bookkeeping (one_trip_page_closure), never the
-  // fetch's.
+  // (a deck's include graph is cyclic through *all-hub rule templates, and
+  // the depth-carrying form ran past 300 s). The depth is the builder's BFS
+  // bookkeeping (one_trip_page_closure), never the fetch's.
   return `WITH RECURSIVE walk(id) AS (
   SELECT id FROM cards WHERE "key" = ? AND trash = 0
   UNION
@@ -180,46 +178,45 @@ interface BundleDocument {
 // THE INLINE FETCH (the materialized shape): discovery ONCE, keyset slices,
 // byte-equal.
 //
-// WALL 1 (MATERIALIZED-STORE §6.1): the serving DB rejects ATTACH at the
-// parser for any value, so the inline posture issues NO ATTACH and reads the
-// one_trip_* tables UNQUALIFIED on the same connection — the seam note's own
-// "drops the prefix and the ATTACH call; nothing else changes".
+// WALL 1: the serving DB rejects ATTACH at the parser for any value, so the
+// inline posture issues NO ATTACH and reads the one_trip_* tables
+// UNQUALIFIED on the same connection — the seam note's own "drops the
+// prefix and the ATTACH call; nothing else changes".
 //
-// WALL 2 (MATERIALIZED-STORE §6.3, the named remainder): even unattached, a
-// template-scale page's single-JSON-row bundle (~3,530 cards, ~5 MB) fails
+// WALL 2 (the named remainder): even unattached, a template-scale page's
+// single-JSON-row bundle (thousands of cards, megabytes of JSON) fails
 // server-side with `SQLite error: string or blob too big`, while small rows
-// are proven fine (the materialized load pushed 528 multi-row statements).
-// The inline fetch therefore returns the bundle in CHUNKS — one head
-// statement (page key + rule candidates + search results + the MATERIALIZED
-// member id list, each a small value) plus one statement per bounded slice
-// of card rows, each row the SAME per-card json_object text the single-row
-// aggregation embeds — and assembles them client-side into a document that
-// is BYTE-EQUAL to the single-row statement's (pinned on the corpus,
+// are proven fine (a materialized load pushed hundreds of multi-row
+// statements). The inline fetch therefore returns the bundle in CHUNKS — one
+// head statement (page key + rule candidates + search results + the
+// materialized member id list, each a small value) plus one statement per
+// bounded slice of card rows, each row the SAME per-card json_object text
+// the single-row aggregation embeds — and assembles them client-side into a
+// document that is BYTE-EQUAL to the single-row statement's (pinned by
 // inline-chunked-fetch.test.ts: order is the single-row DISTINCT order — id
 // ascending, the first DISTINCT column and a unique key — and every data
 // byte is SQLite-emitted, the client only joins rows with "," inside the
 // same brackets).
 //
-// V2 (2026-10-05, the WIRE-DIAGNOSIS §4 fix): discovery runs ONCE per seat.
-// The v1 chunk statements each re-ran the ENTIRE discovery phase (recursive
-// walk CTE + members CTE + DISTINCT join + ORDER BY id) before their
-// LIMIT/OFFSET slice — 37 full closure computations per Aikido seat,
-// 228-1,112 ms each, ~18 s of seat cost (probed verbatim on the live serving
-// DB). V2's head statement materializes the member id list ONCE (one small
-// sorted JSON value — Aikido's 3,530 ids are ~25 KB), and every card slice
-// is a FLAT keyset read over one window of that list (the window's ids bound
-// as one small JSON array, expanded by json_each — a plain indexed join
-// against cards, no walk CTE anywhere after statement 1). The windows tile
-// the id-ascending member list, each slice orders by c.id, so the client
-// concatenation is byte-equal to the v1 whole-set slice.
+// V2: discovery runs ONCE per seat. The v1 chunk statements each re-ran the
+// ENTIRE discovery phase (recursive walk CTE + members CTE + DISTINCT join +
+// ORDER BY id) before their LIMIT/OFFSET slice — dozens of full closure
+// computations per page render, hundreds of milliseconds each. V2's head
+// statement materializes the member id list ONCE (one small sorted JSON
+// value), and every card slice is a FLAT keyset read over one window of that
+// list (the window's ids bound as one small JSON array, expanded by
+// json_each — a plain indexed join against cards, no walk CTE anywhere after
+// statement 1). The windows tile the id-ascending member list, each slice
+// orders by c.id, so the client concatenation is byte-equal to the v1
+// whole-set slice.
 // ---------------------------------------------------------------------------
 
 /** Card rows per inline chunk. The bound keeps every response rows-small:
- *  ~1.4 KB per typical card row (~262 KB worst observed body), so a chunk
- *  stays orders of magnitude under the ~5 MB single value the serving DB
- *  rejected, while matching the proven multi-row statement shape (180-450
- *  rows per INSERT statement loaded fine). Tunable: shrink if the serving
- *  DB's true value limit proves tighter, grow if per-trip overhead dominates. */
+ *  a typical card row is around a kilobyte, so a chunk stays orders of
+ *  magnitude under the multi-megabyte single value the serving DB rejected,
+ *  while matching the proven multi-row statement shape (hundreds of rows
+ *  per INSERT statement loaded fine). Tunable: shrink if the serving DB's
+ *  true value limit proves tighter, grow if per-trip overhead dominates. */
 export const ONE_TRIP_INLINE_CARDS_PER_CHUNK = 100;
 
 /** The recursive walk + members CTEs, verbatim the single-row statement's
@@ -246,17 +243,16 @@ members(id) AS (
 /** The page's recorded render plan rides the head as one small JSON value
  *  (the render-plan replay): the plan rows live in one_trip_render_plans
  *  (written at store-build time by the recorder), read here in seq order.
- *  A typical page's plan is ~110-300 small entries — tens of KB — two
- *  orders of magnitude under the ~5 MB single-value wall (§6.3). */
+ *  A typical page's plan is a few hundred small entries — tens of KB — two
+ *  orders of magnitude under the multi-megabyte single-value wall. */
 export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
 
 /** The head statement: page key (as SQLite-emitted JSON text), the page's
  *  rule candidates and search results (small aggregates), the V2
  *  materialization of the page's WHOLE member id list as one small sorted
  *  JSON array (id ascending, so the client's windows are contiguous keyset
- *  ranges), and — the stamp-as-column change (2026-10-06, spec §c + §a.4) —
- *  two zero-bind GATE columns the render would otherwise pay live trips
- *  for:
+ *  ranges), and — the stamp-as-column change (spec §c + §a.4) — two
+ *  zero-bind GATE columns the render would otherwise pay live trips for:
  *
  *  `deck_data_version` — the deck's committed-write stamp, the freshness
  *  gate's per-render read. Read HERE it is current-at-read in the SAME
@@ -266,20 +262,20 @@ export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
  *  (`v.version ... v.id`), NOT the gate statement's text: the freshness
  *  predicates (isFreshnessStampRead — recorder, classifier, router guard)
  *  must keep matching exactly the gate's own statement and nothing else
- *  ("one shape, one predicate", review pass 5). This fetch executes on the
- *  router's BASE connection, never through the armed plan.
+ *  ("one shape, one predicate"). This fetch executes on the router's BASE
+ *  connection, never through the armed plan.
  *
  *  `permission_gate_json` — read-rules.ts statement 3 (the hasReadRules /
  *  catchAll gate counters), a zero-bind one-off, executed as a CTE of the
  *  EXACT statement text and json-aggregated into one small cell (spec
- *  §a.4's "settings count" arm). The D3 floor's fifth trip — one batch
+ *  §a.4's "settings count" arm). The batch floor's fifth trip — one batch
  *  carrying this count + the stamp, the two statements plans never absorb —
  *  drops 1 -> 0 with both columns consumed. Separate columns, never one
  *  giant row — each value rides its own small TEXT cell.
  *
- *  THE PLAN COLUMN IS POSTURE-CONDITIONAL (the live-fetch retarget,
- *  2026-10-06): `readPlans` (the demo stop-gap posture) adds the recorded
- *  render plan as one small JSON array read from one_trip_render_plans.
+ *  THE PLAN COLUMN IS POSTURE-CONDITIONAL: `readPlans` (the stop-gap
+ *  posture) adds the recorded render plan as one small JSON array read from
+ *  one_trip_render_plans.
  *  The LIVE posture (oneTripWantsStoredPlans() === false) OMITS the column
  *  AND its page-key bind — the statement text carries no plan-table
  *  reference at all, so the live posture's zero-plan-reads property is
@@ -359,7 +355,7 @@ interface InlineHeadRow {
   permission_gate_json: string | null;
   rule_candidates_json: string | null;
   search_results_json: string | null;
-  /** Present ONLY in the demo stop-gap posture (oneTripWantsStoredPlans);
+  /** Present ONLY in the stop-gap posture (oneTripWantsStoredPlans);
    *  the live posture's statement carries no plan column at all. */
   plan_json?: string | null;
   member_ids_json: string | null;
@@ -421,18 +417,17 @@ export function renderPlanFromHeadCell(
 /** Fetch the page's whole working set INLINE (the materialized shape: the
  *  one_trip_* tables in this database, no ATTACH) and return the assembled
  *  bundle DOCUMENT TEXT plus the page's recorded render plan (read from the
- *  same head statement — one round trip carries both; renderplan-replay
- *  ). Byte-equal to the single-row statement's document (pinned on the
- *  corpus). V2: discovery ONCE (the head materializes the member id list),
- *  then flat keyset slices over that list. V3: the whole seat rides the
- *  MINIMUM wire round trips on the hrana pipeline transport — 1 head query
- *  + ONE batch POST carrying every slice (the v2 seat measured 37
- *  SEQUENTIAL round trips at ~333 ms each ≈ 13.8 s on the ~300 ms-RTT
- *  serving class — wire RTT, not compute; the driver's batch() is ONE
- *  pipeline POST, BunnyDbDriver.batch → attemptPipeline). The batch is a
- *  transport change only: same slice SQL, same binds, results consumed in
- *  statement order, so the assembled document is byte-identical to the v2
- *  sequential fetch's (pinned). */
+ *  same head statement — one round trip carries both). Byte-equal to the
+ *  single-row statement's document (pinned by inline-chunked-fetch.test.ts).
+ *  V2: discovery ONCE (the head materializes the member id list), then flat
+ *  keyset slices over that list. V3: the whole seat rides the MINIMUM wire
+ *  round trips on the hrana pipeline transport — 1 head query + ONE batch
+ *  POST carrying every slice (the v2 seat paid tens of SEQUENTIAL round trips
+ *  at wire latency — RTT, not compute; the driver's batch() is ONE pipeline
+ *  POST, BunnyDbDriver.batch → attemptPipeline). The batch is a transport
+ *  change only: same slice SQL, same binds, results consumed in statement
+ *  order, so the assembled document is byte-identical to the v2 sequential
+ *  fetch's (pinned). */
 export async function fetchPageBundleInlineParts(
   driver: SQLDatabaseDriver,
   pageName: string,
@@ -545,8 +540,8 @@ export function inlineBundleFromParts(
 
 /** Fetch the page's whole working set INLINE. Chunked on the wire (WALL 2),
  *  ATTACH-free (WALL 1); consumes the SAME document shape as the attached
- *  single-row fetch, plus the page's recorded render plan (renderplan-replay
- *  $1 the gate replays it as ONE batch and arms the driver seam). */
+ *  single-row fetch, plus the page's recorded render plan (the gate replays
+ *  it as ONE batch and arms the driver seam). */
 export async function fetchPageBundleInline(
   driver: SQLDatabaseDriver,
   pageName: string,
