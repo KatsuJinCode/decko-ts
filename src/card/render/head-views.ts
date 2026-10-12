@@ -6,7 +6,7 @@
 // (`Card::Rule.global_setting(:title)`, `nest :favicon`,
 // `main_stylesheet_path` -> `asset_output_url`), but `ViewFn` is
 // synchronous (src/card/render/format.ts:291). The bytes those reads
-// produce already existed and were byte-exercised on every captured
+// produce already existed and were byte-exercised on every served
 // page inside src/card/render/page.ts (headContent -> pageTitleTag /
 // META_TAGS / faviconTag / stylesheetTags). Writing the same bodies a
 // third time, shaped as ViewFn, would have produced exactly the drift
@@ -43,8 +43,8 @@ import { attachmentUrl } from "./views.js";
 import { mainStylesheetRevisionDigits } from "./deployment-follow-live-config.js";
 import type { SQLStatement } from "../../server/driver.js";
 
-/** The carrierwave cloud attachment URL prefix the page capture's fog
- *  storage config produced: endpoint + empty bucket + files_web_path
+/** The carrierwave cloud attachment URL prefix the deployment's fog
+ *  storage config produces: endpoint + empty bucket + files_web_path
  *  ("files") + id/action (set/abstract/attachment/cloud.rb +
  *  file_card_uploader.rb:88-117). The paren prefix inside a SOURCE
  *  string is a credential and is never emitted. */
@@ -71,8 +71,8 @@ export interface HeadReadSet {
 /** The cards the prepare prefetch must warm, as `key` COLUMN values —
  *  the normalized (underscored) form the `cards.key` index carries,
  *  which is what a `WHERE key IN (...)` batch has to match. Measured
- *  over fixtures/corpus-v2/recapture: every junction-named record
- *  (5,061 of 5,061) carries a key, and a three-part junction's key is
+ *  over every junction-named record
+ *  (5,061 of 5,061): each carries a key, and a three-part junction's key is
  *  the underscored full name
  *  (`*all+*style+*asset output` -> `*all+*style+*asset_output`).
  *
@@ -97,9 +97,9 @@ export const HEAD_READ_SET_KEYS = [
   // them yet.
   "*all+*script",
   "*all+*script+*asset_output",
-  // The *recent settings card (2026-10-01):
+  // The *recent settings card:
   // setting_categories.rb:64-67 reads `Card[:recent_settings]` — the same
-  // deck-level codename fetch shape as `Card[:title]` (card 23808 carries
+  // deck-level codename fetch shape as `Card[:title]` (the card carries
   // codename recent_settings) — and the rule-item bar's `_category-recent`
   // arm (format.ts#recentSettingCodenames) reads it through the cache-only
   // fetchRenderCard. No reference closure can reach it, so it rides this
@@ -110,19 +110,17 @@ export const HEAD_READ_SET_KEYS = [
   // singularize twice, keep the original word unless idempotent), so the
   // gem computes key "*recent_setting" from BOTH "*recent settings" and
   // "*recent_settings" — the CANONICAL shape. One spelling per deck shape:
-  // the raw capture dump's key COLUMN keeps the verbatim display form
-  // ("*recent settings" — census of the dump: every populated key value
-  // equals the name verbatim, the rest are NULL, so it is a capture
-  // artifact, not cardname-canonical); decks seeded through
-  // DeckoName.parse under the recovered deck inflections
-  // (raw-corpus-seeding's rebuilt working tables, render fixtures seeding
-  // DeckoName.parse(name).key) carry the canonical "*recent_setting" —
+  // a dump written with the key COLUMN holding the verbatim display form
+  // ("*recent settings" — every populated key value there equals the name
+  // verbatim, the rest are NULL, so that form is a dump artifact, not
+  // cardname-canonical); decks seeded through
+  // DeckoName.parse carry the canonical "*recent_setting" —
   // gem-run-verified identical to Ruby's own derivation; and the
   // underscored-but-unsingularized "*recent_settings" is the defensive
   // third shape, reachable only from a deck whose inflections declare
   // "settings" uncountable (ActiveSupport uncountable("settings") flips
   // the gem run to it) or that stores underscored raw keys.
-  // (2026-10-01, gem-run + SQL-probe verified.)
+  // (gem-run + SQL-probe verified.)
   // cacheHeadViewReads seats the row under record.name.key (the SAME
   // parse), so the fetch-side lookups hit whichever shape the deck
   // carried.
@@ -175,8 +173,8 @@ export function pageTitleTagBytes(read: HeadReadSet, safeName: string): string {
 /** view :favicon_tag (head.rb:37-39): `nest :favicon, view: :link_tag`
  *  — the favicon card's attachment URL at the :small carrierwave
  *  variant. No source (no card, or a source that is not an attachment
- *  path) renders the empty string, which is what the page capture
- *  carries for a deck with no favicon. */
+ *  path) renders the empty string, which is what a deck
+ *  with no favicon carries. */
 export function faviconTagBytes(read: HeadReadSet): string {
   const src = cloudAttachmentUrl(read.faviconSource, "small");
   if (src === undefined) return "";
@@ -203,9 +201,9 @@ export function stylesheetTagsBytes(read: HeadReadSet): string {
 
 /** The deployment's compiled-CSS revision digits
  *  (deployment-follow-live-config.ts mainStylesheetRevisionDigits): the
- *  live deployment recompiled the deck stylesheet and serves the new
- *  attachment revision (/files/45514/0000000001.css, byte-level capture vs the
- *  SassC compile) where the corpus pins the capture-era digits
+ *  A deployment that recompiled the deck stylesheet serves the new
+ *  attachment revision (/files/45514/0000000001.css) where an
+ *  unconfigured host serves its own digits
  *  (9999999999). Rewrites ONLY the 10-digit revision component of a
  *  main-stylesheet attachment URL; UNSET = identity. Exported for the
  *  deployment-config pin test. */
@@ -217,7 +215,7 @@ export function applyDeploymentCssRevision(url: string): string {
 
 /** The mod-manifest CDN stylesheet for this deck's pinned gems: the
  *  Material Icons font stylesheet the mod-manifest's "remote" group
- *  emits for card-mod-style. Constant across the captured corpus, the
+ *  emits for card-mod-style. Constant for every deck, the
  *  same shape REMOTE_SCRIPT_TAGS carries for the script side. */
 export const REMOTE_STYLE_TAG =
   `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />`;
@@ -235,8 +233,8 @@ export const META_TAGS =
  * set/all/head_javascript.rb:7 appends (`basket[:head_views] +=
  * %w[javascript_tags script_variables script_calls]`). :head renders
  * this list in order and joins with "\n" (head.rb:29-31); a member that
- * renders blank contributes an empty line, which is exactly what the
- * captured pages carry for :universal_edit_button and :rss_links.
+ * renders blank contributes an empty line, which is what
+ * served pages carry for :universal_edit_button and :rss_links.
  */
 export const HEAD_VIEWS: readonly string[] = [
   "page_title_tag",
@@ -261,14 +259,14 @@ export const HEAD_VIEWS: readonly string[] = [
  *  deliberately ignores the stored identifier on retrieval
  *  (lib/carrier_wave/file_card_uploader/path.rb:28-32), with `extension`
  *  ending `.downcase` (file_card_uploader.rb:155-162) — so a stored
- *  "(my_bucket)/103/3649.JPG" serves ".../0000000004-small.jpg" and the Michael
- *  Christensen `(my_bucket)/14547/61887.abr.1.doc` serves "/14547/1.doc".
+ *  "(my_bucket)/103/3649.JPG" serves ".../0000000004-small.jpg", and a stored
+ *  "(my_bucket)/14547/61887.abr.1.doc" serves "/14547/1.doc".
  *  The stored source keeps its upload case; only the SERVED URL normalizes
- *  (the attachment-filename-case class recorded result; views.ts cloudImageUrl is
- *  the image-side twin of this fix). The derivation lives in
+ *  (views.ts cloudImageUrl is
+ *  the image-side twin of this derivation). The derivation lives in
  *  views.ts#derivedCloudAttachmentSource (shared with the :source/:core
  *  file arms), whose default host FOG_CLOUD_URL_HOST + "/files/" IS this
- *  path's capture-pinned prefix; CLOUD_URL_PREFIX stays exported as the
+ *  path's prefix; CLOUD_URL_PREFIX stays exported as the
  *  same shape's constant for readers. */
 export function cloudAttachmentUrl(
   content: string | null | undefined,
