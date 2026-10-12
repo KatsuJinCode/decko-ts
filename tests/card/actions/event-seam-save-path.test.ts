@@ -1,9 +1,9 @@
 // The ModEventFn EXECUTION SEAM wired into the save path (CardActionEngine's
 // modEvents option): the core mod's five reference-janitor events run as
 // REAL ModEventFn bodies through the dispatcher during create/rename/delete,
-// with Ruby's skip machinery alive for the first time on this save path.
+// skip conditions included.
 //
-// Sources every expectation derives from (card-1.110.0):
+// Sources every expectation derives from (upstream source, card-1.110.0):
 // - the five events: mod/core/set/all/reference_events.rb (:2-4
 //   refresh_references_out on: :save changed: :content; :6-10
 //   update_referer_content on: :update changed: :name skip: :allowed;
@@ -15,8 +15,9 @@
 //   (set/event/skip_and_trigger.rb:68-70) — the skip list drives the twin.
 // - takeover contract: when an event name is registered at the engine's
 //   modEvents runtime, the engine's built-in call site for that behavior
-//   stands down (the declaration takes over, exactly Ruby's shape where the
-//   event IS the code); unregistered names keep the built-in fallback.
+//   stands down (the declaration takes over, exactly the upstream shape
+//   where the event IS the code); unregistered names keep the built-in
+//   fallback.
 //
 // Deck expectations mirror the proven built-in suites
 // (refresh-references-in.test.ts), re-exercised through the seam.
@@ -185,7 +186,7 @@ describe("the reference janitors run THROUGH the seam (real bodies)", () => {
   });
 });
 
-describe("the skip machinery is alive on the save path (Ruby skip_event?)", () => {
+describe("the skip machinery is alive on the save path (skip_event?)", () => {
   it("a skipped rename keeps referer content, fires the skip twin, and unmaps stale rows", async () => {
     // reference_events.rb:7-10 skipped; :15-19 fires (when:
     // skip_update_referers?); :21-25's unmap arm opens
