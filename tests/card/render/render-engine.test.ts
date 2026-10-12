@@ -103,12 +103,12 @@ describe("set pattern keys (mod/core/set_pattern port)", () => {
   });
 
   // STAR/RSTAR/RULE are ANCHORLESS (card-1.110.0 lib/card/set/pattern/
-  // class_methods.rb:16 - anchorless = !respond_to?(:anchor_name); the star,
-  // rstar and rule set_pattern files define none). The captured oracle shape
-  // for "*all+*read": "ALL ALL_PLUS TYPE-list RSTAR RULE RIGHT-Xread
-  // TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread" (src/card/set-patterns/
-  // instance.ts). The pre-fix port emitted "STAR-Xtiny_mce"-style anchored
-  // fragments and omitted RULE - the corpus render real-fail class.
+  // class_methods.rb:16 - anchorless = !respond_to?(:anchor_name); the
+  // star, rstar and rule set_pattern files define none). The correct key
+  // list for "*all+*read" is therefore "ALL ALL_PLUS TYPE-list RSTAR RULE
+  // RIGHT-Xread TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread"
+  // (src/card/set-patterns/instance.ts). Key computation that anchors STAR
+  // would emit "STAR-Xtiny_mce"-style fragments and drop RULE.
   it("emits bare STAR for star-named cards (04_star.rb anchorless)", () => {
     const keys = safeSetKeys({
       name: DeckoName.parse("*tiny_mce"),
@@ -157,8 +157,9 @@ describe("set pattern keys (mod/core/set_pattern port)", () => {
   it("falls back to the RichText anchor for TYPE_PLUS_RIGHT when the left type is unknown", () => {
     // Ruby: 08_type_plus_right.rb#anchor_name "#{left_type(card)}+#{tag}"
     // where left_type = superleft&.type_name || quick_type(left_name), and
-    // quick_type fetches unknown names as NEW cards (default RichText -
-    // oracle: new "Zz Probe New+field" anchors "RichText+field").
+    // quick_type fetches unknown names as NEW cards with the default
+    // RichText type - so a never-seen left name like "Ghost Parent"
+    // anchors "RichText+field".
     const keys = safeSetKeys({
       name: DeckoName.parse("Ghost Parent+field"),
       typeId: 2,
@@ -172,17 +173,17 @@ describe("set pattern keys (mod/core/set_pattern port)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// the slot class attribute end-to-end (the corpus render real-fail class:
-// expected `... STAR SELF-...`, TS emitted `STAR-<anchor> SELF-...`)
+// the slot class attribute end-to-end (regression: the key list must carry
+// bare `... STAR SELF-...`, never `STAR-<anchor> SELF-...`)
 // ---------------------------------------------------------------------------
 
 describe("slot set-key classes through the render engine", () => {
   it("renders a star card's slot class with the bare STAR fragment", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // synthetic the reference deck-shaped cards (type card "exi" = the deck's
-      // renamed Set cardtype, codename "set"); the expected class list is
-      // the captured corpus:53 shape for a simple star card
+      // synthetic cards shaped like a deck: the type card "exi" plays the
+      // role of a renamed Set cardtype (codename "set"); the expected
+      // class list is the shape a simple star card must produce
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       await seedCard(storage, { id: 259, name: "exi", codename: "set", typeId: 2 });
       await seedCard(storage, {
@@ -250,81 +251,41 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       }
     }
 
-    // The claim (2026-09-27 cold-query lane re-pin): round trips scale with
-    // the CHAIN (one batch per unfetched inclusion level), not with the
-    // DECK - the trade for rows-read dropping from O(deck x passes) per
-    // render to O(page). Ruby's measured truth for the same chains is
-    // depth+3: 4/5/7/11. The TS curve is now depth+1 - BELOW Ruby by 2 at
-    // every depth. The 2 fixed round trips: the root fetch + the PRELUDE
-    // batch (src/card/render/prefetch.ts: the root's side priming, the
-    // root's TYPE row - the enrichment fold, the root's set-pattern anchor
-    // priming - the rule walk's *self/*type/*all lex_to_id point queries
-    // became cache entries - and the folded engine statements). The
-    // 2026-09-23..09-26 shape was 7 + max(0, depth-2) (root + 2 enrich
-    // primes + round 0 + 3 rule-lookup candidates): level-linear but ABOVE
-    // Ruby. The walk is CACHED after first render - warm renders stay
-    // at 0 (the test below).
-    // Core reds lane re-pin 2026-10-06 (round trips 2/3/5/9 -> 4/5/7/11,
-    // statements 13/14/16/20 -> 19/20/22/26): the wave-seating architecture
-    // landing 63048200 replaced the single round-0 fetch-shapes batch with
-    // the per-wave seating ladder (chunked key IN-lists, side-key joins,
-    // resolution rounds; its own measured receipt: 5 probe pages RT
-    // 813/1150/45/771/472 -> 145/309/32/194/173, byte-identical), refined
-    // by 2f7131dd (call-local negative-priming ask/answer sets) and
-    // b7402a9f (closure retirement of proven-unresolvables). Verified on
-    // both trees: the old pins pass at d19ec179 and fail from 63048200
-    // onward (where the curve first measured 5/6/8/12). The invariants the
-    // pin guards are intact at the new readings — depth-LINEARITY
-    // (depth+3, +1 batch per level, constant in deck size) and the M3
-    // gate below, which now holds at EXACT equality: the TS curve 4/5/7/11
-    // equals Ruby's measured 4/5/7/11 at every depth. Warm renders stay at
-    // zero (the test below).
+    // Round trips scale with the CHAIN (one batch per unfetched inclusion
+    // level), not with the DECK - the trade for rows-read dropping from
+    // O(deck x passes) per render to O(page). Ruby's measured cost for the
+    // same chains is depth+3 (4/5/7/11); the TS curve pinned below is
+    // equal at every depth. Of each total, 2 round trips are fixed: the
+    // root fetch and the PRELUDE batch (src/card/render/prefetch.ts -
+    // the root's side priming, the root's TYPE row for the enrichment
+    // fold, and the root's set-pattern anchor priming, which turns the
+    // rule walk's *self/*type/*all lex_to_id point queries into cache
+    // entries, plus the folded engine statements). The walk is CACHED
+    // after the first render - warm renders pay only the freshness stamp
+    // (the test below).
     expect(roundTripsByDepth).toEqual({ 1: 4, 2: 5, 4: 7, 8: 11 });
-    // Statements: the folded engine statements are constant; the rounds add
-    // one fetch statement per level. Round 9 folded the *default rule
-    // universe alongside the *structure universe so a nest-miss child
-    // resolves its *default-rule type from memory; round 10 folded the
-    // *default html view universe onto the same batch (A-36). The
-    // cold-query lane moved the folds into the prelude batch and added the
-    // type-row + anchor-priming folds (measured 10/11/13/17 on its own
-    // tree). R17's A-36 correction rides through the prelude in merge
-    // pass 9 prep: default_nest_view is process config (html.rb:17-19),
-    // never a deck rule, so render.ts's fold composition no longer
-    // appends the *default html view universe statement - one fewer
-    // prelude statement at every depth (9/10/12/16 here).
-    // The head read-set (2026-09-28 async-view-handle) added one
-    // back at every depth (10/11/13/17) — the same prelude BATCH, so the
-    // round-trip line above is untouched at 2/3/5/9. card-mod-format's
-    // head views read deck-level setting cards that no reference closure
-    // can reach; the standalone form (measured before the fold) cost a
-    // round trip too, which is why it rides the batch.
-    // 2026-09-30 an earlier pass integration re-pin (10/11/13/17 -> 12/13/15/19):
-    // the p20-email port's junction-priming prelude batch (the email
-    // field-anchor prelude statement + the +*test context junction priming
-    // — the SAME prelude batch that moved junction-depth-closure.test.ts to
-    // 15/14 at the email tip) adds two folded statements per render at
-    // every depth. Measured 12/13/15/19 at the email lane tip 345bb06
-    // (queue job-1790792364473-36227f35 — the shift pre-exists the merge,
-    // so no lane interaction) and identically at the merged tip
-    // (job-1790792062952-890df2dd). The round-trip line above is untouched
-    // (2/3/5/9, still below Ruby's 4/5/7/11); warm renders stay at zero.
-    // Freshness lane 2026-10-05 (composed onto the deployed fold by the
-    // lineage-reconciliation lane): the deck_data_version stamp read folds
-    // LAST into the cold batch (+1 statement at every depth, +0 round
-    // trips, 12/13/15/19 -> 13/14/16/20) — the delivery-contract:79
-    // freshness arm. Warm renders now pay exactly that one stamp statement.
-    // Core reds lane 2026-10-06: the wave-seating ladder adds a constant
-    // +6 folded statements at every depth (see the round-trip re-pin note
-    // above) — 19/20/22/26, still depth-constant per level (+1).
+    // Statements: the folded engine statements are constant; the rounds
+    // add one fetch statement per level, and the per-wave seating ladder
+    // contributes a constant +6 folded statements at every depth (chunked
+    // key IN-lists, side-key joins, resolution rounds). Two of the
+    // constant folds prime email junctions: the email field-anchor
+    // prelude statement and the +*test context junction priming. The
+    // folds live in the prelude batch: default_nest_view is process
+    // config (html.rb:17-19), never a deck rule, so render.ts's fold
+    // composition appends no *default html view universe statement; the
+    // head views read deck-level setting cards no reference closure can
+    // reach, so their read rides the same prelude batch instead of
+    // paying its own round trip; and the deck_data_version stamp read
+    // folds in last (+1 statement at every depth, +0 round trips). Warm
+    // renders pay exactly that one stamp statement.
     expect(statementsByDepth).toEqual({ 1: 19, 2: 20, 4: 22, 8: 26 });
     // depth 8 costs one batch per level (11 round trips) while reading
-    // O(page) rows instead of the whole deck per render - the trade this
-    // round's read-cost decision asked for - and lands AT Ruby's 11
-    // queries (pinned: TS <= Ruby at every measured depth, the M3 gate;
-    // since the wave-seating re-pin the curves are equal at every depth,
-    // not just under).
+    // O(page) rows instead of the whole deck per render - and lands AT
+    // Ruby's 11 queries (pinned: TS <= Ruby at every measured depth; in
+    // the current design the two curves are equal at every depth, not
+    // just under).
     // Statements inside a batch are folded prepare work riding ONE round
-    // trip, not round trips - the D1-billed axis stays the round-trip
+    // trip, not round trips - the costed axis stays the round-trip
     // count above.
     expect(roundTripsByDepth[8]).toBeLessThanOrEqual(RUBY_MEASURED[8]);
   });
@@ -337,10 +298,9 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       storage.counting.reset();
       const html = await storage.engine.render("chain_l1", "content");
       expect(html).toContain("level 8 end");
-      // Freshness lane 2026-10-05: the warm render pays exactly the
-      // deck_data_version stamp read (the committed
-      // state must be observable on the next request, so the warm render's
-      // floor is one statement, not zero).
+      // The warm render pays exactly the deck_data_version stamp read:
+      // the committed state must be observable on the next request, so
+      // the warm render's floor is one statement, not zero.
       expect(storage.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       storage.close();
@@ -414,9 +374,8 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       // format/nest/fetch.rb#new_card: the miss fetches a NEW unknown card;
       // the default :titled nest view substitutes :unknown
       // (view/permission.rb#alter_unknown -> html error.rb view :unknown),
-      // whose createable branch is denied for the captured deck's anonymous
-      // viewer - the nest renders the empty string (corpus oracle: shard-0
-      // entry 640 expects `<p></p>` for exactly this shape).
+      // whose createable branch is denied for an anonymous viewer - so
+      // the nest renders the empty string.
       const html = await storage.engine.render("lonely", "content");
       expect(html).toContain("<p></p>");
     } finally {
