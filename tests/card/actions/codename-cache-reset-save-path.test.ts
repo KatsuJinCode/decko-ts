@@ -1,14 +1,11 @@
-// E4.2.a: the codename cache reset on save.
+// The codename cache reset on save.
 //
-// Ruby truth: `event :reset_codename_cache, :integrate, changed: :codename`
-// runs `Card::Codename.reset_cache` (card-1.110.0 mod/core/set/all/
-// codename.rb:9-13 — :integrate stage per the gem source, corrected
-// 2026-09-30 from the earlier ":finalize, on: :save" paraphrase) — a save
-// that changes a codename clears the cached codehash, so the NEXT codename
-// lookup reloads from the db and sees the new mapping. The memo-staleness
-// contract (no db fallthrough in []/id, codename.rb:118-120) is
-// oracle-probed and replayed in
-// tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts.
+// The event `:reset_codename_cache` (card-1.110.0 mod/core/set/all/
+// codename.rb:9-13) runs at the :integrate stage when a save changes a
+// codename: it clears the cached codehash, so the NEXT codename lookup
+// reloads from the db and sees the new mapping. The memo-staleness contract
+// (no db fallthrough in []/id, codename.rb:118-120) is probed and replayed
+// in tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts.
 //
 // What this test pins: the save path wires that reset. The registry is
 // warmed FIRST (a resolved lookup proves the codehash memo is loaded), then
@@ -27,7 +24,7 @@ import {
 } from "./actions-test-storage.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 
-describe("codename cache reset on save (E4.2.a, codename.rb:9-13)", () => {
+describe("codename cache reset on save (codename.rb:9-13)", () => {
   it("a codename-setting save is visible to the next registry lookup", async () => {
     const storage = await createActionsTestStorage();
     await seedStandardDeck(storage);
