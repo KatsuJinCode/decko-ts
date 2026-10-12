@@ -423,7 +423,9 @@ describe("url + misc helpers", () => {
   });
 
   it("normalizeHostname strips a scheme DefaultHostname may already carry", () => {
-    // measured live 2026-10-03: DefaultHostname arrived as "https://<name>.bunny.run"
+    // The API's DefaultHostname field arrives with the scheme already
+    // included ("https://<name>.bunny.run"), so the helper strips any
+    // scheme prefix instead of assuming a bare host.
     expect(normalizeHostname("https://my-decko.bunny.run")).toBe("my-decko.bunny.run");
     expect(normalizeHostname("my-decko.bunny.run")).toBe("my-decko.bunny.run");
     expect(normalizeHostname("https://host.bunny.run/")).toBe("host.bunny.run");

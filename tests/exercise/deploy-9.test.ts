@@ -13,7 +13,7 @@
 // THE DATA. Nothing here is real. The card names the tests touch
 // ("Hello World") are migration 0003-demo-seed.sql's own committed synthetic
 // demo rows; every body, every account, every marker string this file writes
-// is invented here. No private fixture, no captured deck, no corpus.
+// is invented in this file.
 //
 // THE THREE CLAIMS, IN ORDER.
 //   1. read-only boundary (README.md:90-92)
@@ -146,9 +146,9 @@ async function bootWorker(vars: Record<string, string>, opts: { persistPath: str
   return { fetch, adapter, dispose: async () => { await mf.dispose(); } };
 }
 
-/** The captured oracle sign-in form's grammar
- *  (write-routes.ts:613-624): card[subcards][+*email][content] and
- *  card[subcards][+*password][content], posted to /update/*signin. */
+// The sign-in form's field grammar (write-routes.ts:613-624):
+// card[subcards][+*email][content] and
+// card[subcards][+*password][content], posted to /update/*signin.
 function signinFormBody(email: string, password: string): string {
   return new URLSearchParams({
     _method: "patch",

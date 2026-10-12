@@ -40,7 +40,8 @@ const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
 const norm = (html: string) => html.replace(SLOT, "");
 const url = (path: string) => `https://edge.test${path}`;
 
-// Cards on the mirror (read-only exploration, tmp/gate/s4/explore-rules*.mjs).
+// Card names and ids as they exist on the mirror deck; every query below
+// reads it and nothing writes it.
 const RESTRICTED = "FasTrak issue"; // BasicCs, read rule BasicCs+*type+*read = "Anyone Signed In"
 const RESTRICTED_RULE = 22283;
 const SIGNED_IN_ACTOR = 393; // a User card; Anyone Signed In includes every signed-in user
@@ -48,7 +49,7 @@ const ANYONE_ID = 8;
 const STRUCTURED = "Archetypal Psychology"; // type Process
 const STRUCTURE_RULE = 735; // Process+*type+*structure
 const SEARCH_PAGE = "File"; // Cardtype page: lists the File cards in id order
-const SEARCH_FREE_ID = 795; // unused on the mirror, below the first listed id (808)
+const SEARCH_FREE_ID = 795; // unused on the mirror, below the first id the page lists
 
 interface Env {
   dir: string;
@@ -177,11 +178,10 @@ describeOrSkipLoud(!HAVE_MIRROR, "tests/deploy/no-caching-decision-state.test.ts
     }
   }, 120_000);
 
-  // The File page lists the File cards 20 to a page, compound cards (no
-  // stored name) first in id order, starting with card 808 ("The Myth of
-  // Peace+Documents"). A new compound File card under an unused id below 808
-  // therefore lands first on the page (checked in a fresh process:
-  // tmp/gate/s4/search-diag2.mjs).
+  // The File cardtype page lists File cards twenty to a page, compound
+  // cards (no stored name) first, in id order. A new compound File card
+  // created under an unused id below the first listed compound's id
+  // therefore lands at the top of the page.
   it("a search result added between two renders is listed by the second", async () => {
     const e = env!;
     const listed = `data-card-id="${SEARCH_FREE_ID}"`;
@@ -191,7 +191,9 @@ describeOrSkipLoud(!HAVE_MIRROR, "tests/deploy/no-caching-decision-state.test.ts
     expect(e.writer.prepare("SELECT COUNT(*) AS n FROM cards WHERE id = ? OR (left_id = ? AND right_id = ?)").get(SEARCH_FREE_ID, first.left_id, right.id)).toEqual({ n: 0 });
     const before = await live(e, SEARCH_PAGE);
     const beforeDeck = await deckView(e, SEARCH_PAGE);
-    // "The Myth of Peace+pdf version", a File card governed like card 808.
+    // The inserted compound card copies the first listed card's governance
+    // — same left id, read-rule id and read-rule class — so it ranks onto
+    // the same listing page.
     e.writer.prepare(
       "INSERT INTO cards (id, name, key, left_id, right_id, type_id, db_content, trash, read_rule_id, read_rule_class, created_at, updated_at, creator_id, updater_id) VALUES (?, NULL, NULL, ?, ?, ?, '', 0, ?, ?, '2010-01-01 00:00:00', '2010-01-01 00:00:00', ?, ?)",
     ).run(SEARCH_FREE_ID, first.left_id, right.id, fileType.id, first.read_rule_id, first.read_rule_class, SIGNED_IN_ACTOR, SIGNED_IN_ACTOR);

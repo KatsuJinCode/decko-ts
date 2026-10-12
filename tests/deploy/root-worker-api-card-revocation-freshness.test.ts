@@ -124,8 +124,9 @@ const SKELETON_STATEMENTS = [
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
    VALUES (${RULE_CARD_ID}, NULL, NULL, NULL, 9211, 9201, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '[[Anyone]]')`,
-  // the rule's committed party list rides card_references (read-rules.ts,
-  // the read_rule_cache.rb port) — [[Anyone]] -> the Anyone card
+  // The rule's committed party list lives in card_references (see
+  // read-rules.ts): [[Anyone]] becomes a reference row pointing at the
+  // Anyone card.
   `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
    VALUES (${RULE_CARD_ID}, 'anyone', 9205, 'L', NULL)`,
   `UPDATE cards SET read_rule_id = ${RULE_CARD_ID}, read_rule_class = 'R' WHERE id = ${PROBE_CARD_ID}`,

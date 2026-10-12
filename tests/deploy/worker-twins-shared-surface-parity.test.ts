@@ -5,13 +5,13 @@
 // 0001-schema + demo-seed rows. Both default exports are the SHIPPED
 // modules, not re-implementations.
 //
-// Why this file exists: the twins drifted (deploy-button lane receipt,
-// defect chain) — the button's entry shipped a blanket-500 catch while
-// deploy/worker.ts mapped missing cards 404; the audit lane
-// (an internal work log, ASSIGNMENT 2) classified every
-// difference and unified the shared surface behind
-// src/server/worker-shared-surface.ts. Each pin below was RED against the
-// pre-fix twins and pins the unified behavior with its Ruby cite:
+// Why this file exists: the two worker entries once handled the same
+// failure differently — the button's entry answered errors with a
+// blanket-500 catch while deploy/worker.ts mapped a missing card to 404 —
+// so the behavior both entries share was extracted into
+// src/server/worker-shared-surface.ts and both entries now delegate to
+// it. Each pin below failed against the pre-unification entries and pins
+// the unified behavior with its Ruby cite:
 //   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
 //     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
 //   - src/card/render/format.ts:79-81 UnsupportedViewError = the UserError
@@ -104,10 +104,11 @@ beforeAll(async () => {
       await driver.query(statement, []);
     }
   }
-  // The read-denial fixture (mirror of the F3 pin's recipe in
-  // tests/deploy/deploy-worker-miniflare.test.ts): the codename carriers the
-  // permission statements' subselects need, a probe card, its *self set, and
-  // a *read rule card granting NOBODY (no card_references rows).
+  // The read-denial fixture is the same recipe
+  // tests/deploy/deploy-worker-miniflare.test.ts pins for its denied-card
+  // JSON check: the codename carriers the permission statements'
+  // subselects need, a probe card, its *self set, and a *read rule card
+  // granting NOBODY (no card_references rows).
   const T = "2026-09-20 00:00:00.000";
   const insert = (values: string): string =>
     `INSERT INTO cards (\n` +

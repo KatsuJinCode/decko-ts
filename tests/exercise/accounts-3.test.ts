@@ -1,11 +1,11 @@
 // Accounts, exercised end to end on a deck this file builds itself.
 //
 // WHAT THIS IS. Four claims from the accounts surface, proved against a
-// FRESH deck created in this test from the repo's own core schema
-// (db/schema.sqlite.sql — zero card rows) and booted by the repo's own local
-// worker (vm-staging-server.mjs). Nothing is read from a private corpus, no
-// network is touched, no hosted service is called: the whole journey is
-// 127.0.0.1 and a scratch SQLite file under the OS temp dir.
+// FRESH deck this test creates from the repo's own core schema
+// (db/schema.sqlite.sql — zero card rows) and boots with the repo's own
+// local worker (vm-staging-server.mjs). Nothing comes from outside this
+// checkout: no network is touched, no hosted service is called — the whole
+// journey is 127.0.0.1 and a scratch SQLite file under the OS temp dir.
 //
 // DATA RULE. Every identifier here is invented at run time by the repo's own
 // credential helpers (src/testing/generated-credentials.ts): a fresh email
