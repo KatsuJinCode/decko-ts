@@ -1,14 +1,13 @@
-// probe-negdelta-skin-record-mechanism.mjs -- WHY the 20 `skin:record`
-// view-lane entries render ~217 bytes where the Ruby oracle renders ~500,000.
+// probe-negdelta-skin-record-mechanism.mjs -- WHY the `skin:record` views
+// render a few hundred bytes where the Ruby oracle renders ~500,000.
 //
 // WHAT THIS IS
-//   The newest post-b8760ad graded run (artifacts-affected-rerun, 4 shards)
-//   leaves 20 `dual-lane-view:<skin> skin:record` failures at ~-500,000
-//   bytes each, plus `bootstrap: core:record` (-248,378) and
-//   `bootstrap: functions:record` (-10,989). The expected record's
-//   `content` field is 473,074 bytes of Bootstrap SCSS; the raw corpus
-//   row for the same card id holds 50 bytes of wikitext
-//   ("[[themeless bootstrap skin]]\n[[+bootswatch theme]]").
+//   The skin record views are the dominant negative-delta family: each one
+//   renders a few hundred bytes against the oracle's ~500,000. The
+//   expected record's `content` field is a large Bootstrap SCSS document,
+//   while the raw corpus row for the same card id holds only ~50 bytes of
+//   wikitext. The mechanism: the oracle's record content comes from the
+//   card's STRUCTURE RULE, not from the card's own wikitext.
 //
 //   Oracle: tools/oracle/capture-dual-lane-page-and-view.rb:262 captures
 //   `card.content`; prototype/lib/card/content/all.rb:8-10 defines
@@ -19,15 +18,15 @@
 //   (src/card/rules/structure.ts:263).
 //
 //   This probe boots the engine at the COMMITTED seeding home (the same
-//   module the graded runner loads after b8760ad), then for each named
-//   card prints: the candidate *structure rule names in precedence order,
-//   which of them exist in the seeded universe, the winning template's
-//   content length, the content the engine would emit, and whether the
-//   winning rule card is reachable in the seeded deck at all.
+//   module the graded runner loads), then for each named card prints: the
+//   candidate *structure rule names in precedence order, which of them
+//   exist in the seeded universe, the winning template's content length,
+//   the content the engine would emit, and whether the winning rule card
+//   is reachable in the seeded deck at all.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-skin-record-mechanism.mjs \
-//     --names "cerulean skin|bootstrap: core|bootstrap: functions" \
+//     --names "SKIN_CARD|THEMED_CARD" \
 //     [--out tmp/negdelta-skin-mechanism.json]
 
 import { register } from "node:module";
