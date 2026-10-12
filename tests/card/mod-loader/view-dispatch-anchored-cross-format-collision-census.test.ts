@@ -1,8 +1,8 @@
 // view-dispatch-anchored-cross-format-collision-census.test.ts - the
-// ANCHORED/nested-prefix cross-format collision census: the chainorder
-// port's same-pattern census method
-// (view-dispatch-same-pattern-collision-order.test.ts) applied to the two
-// dispatch arms that port left format-agnostic - the anchored exact-token
+// ANCHORED/nested-prefix cross-format collision census: the same-pattern
+// census method from
+// view-dispatch-same-pattern-collision-order.test.ts applied to the two
+// dispatch arms that are format-agnostic - the anchored exact-token
 // arm and the nested-prefix expansion (mod-loader.ts viewChain's
 // dash-token branch, both probing SetModuleViewTable.viewFor, a
 // FORMAT-BLIND map).
@@ -19,8 +19,8 @@
 // that ancestry never includes the HtmlFormat-keyed modules), while the
 // TS anchored arms would hand it to ANY format through the blind probe.
 //
-// THE CENSUS (this file): walk every ported mod manifest in the deck's
-// oracle bundle order (default-mod-deck.ts, the same registration surface
+// THE CENSUS (this file): walk every mod manifest in the composed deck
+// (default-mod-deck.ts, the same registration surface
 // mod-loader.ts:302-330 feeds) and enumerate, for the NONBASE set paths,
 // every (set module, view) whose registrations span MORE THAN ONE
 // manifest format key - within one module (the blind map's last-wins
@@ -30,30 +30,28 @@
 // (rss/email_html ONLY - RssFormat < HtmlFormat, rss_format.rb:6;
 // EmailHtmlFormat < Card::Format::HtmlFormat, email_html_format.rb:6)
 // SHARE the html method table in Ruby; css/js do NOT - CssFormat and
-// JsFormat subclass Format DIRECTLY (css_format.rb:6, js_format.rb:6 -
-// the css-js-format-parents survey, 2026-10-01; the earlier
-// "email_html/css/js/rss" list here parroted the port's pre-survey
-// HTML_DESCENDED_FORMATS, which the survey corrected and
-// view-dispatch-css-js-format-ancestry-census.test.ts pins). The
+// JsFormat subclass Format DIRECTLY (css_format.rb:6, js_format.rb:6;
+// view-dispatch-css-js-format-ancestry-census.test.ts pins that
+// ancestry). The
 // collision criterion stays the TEXT-lineage visibility: a key set
 // spanning {html-family} x {email_text/text-family} - or any two keys
 // whose Ruby method tables differ.
 //
-// RESULT on this codebase (measured, job-1790893922261 + the re-run):
-// 159 anchored registrations across the composed deck - 157 under "html",
+// RESULT on this codebase (measured): 159 anchored registrations across
+// the composed deck - 157 under "html",
 // 2 under "json" (carrierwave self/search :image_complete,
 // card-mod-carrierwave-0.20.0 set/self/search.rb:1-8; api_key right/
 // api_key :token, card-mod-api_key-0.20.0 set/right/api_key.rb:63-67) -
 // and ZERO cross-format collision groups: no (anchored module, view) pair
 // spans two keys, and no nested-prefix pair registers the same view in
-// different keys. Ruby's answer agrees with the port's single-key shape:
+// different keys. Ruby's answer agrees with the engine's single-key shape:
 // each of those two views lives ONLY in JsonFormat
 // (JsonFormat < DataFormat < Format, json_format.rb:6 + data_format.rb:3
-// - visible to no other format class), and the port's json dispatch of
-// them is faithful. The probes below pin that invariant: a future port
+// - visible to no other format class), and the engine's json dispatch of
+// them is faithful. The probes below pin that invariant: a future change
 // that lands a SECOND key under an already-keyed anchored (module, view)
 // - or a same-prefix module pair spanning keys - FAILS here and names
-// the mod/set/view/key: the signal to port the anchorless arm's format
+// the mod/set/view/key: the signal to bring the anchorless arm's format
 // scoping into the anchored arms.
 //
 // The residual leak shape (an anchored registration VISIBLE to a format
@@ -62,16 +60,16 @@
 // single-registration divergence, NOT a same-token collision: no pair of
 // registrations disagrees, so no dispatch on this codebase can pick the
 // wrong format's bytes BETWEEN two arms. Its reachability is bounded:
-// the ONLY non-html chain dispatch in the port is views.ts:1443 (the
+// the ONLY non-html chain dispatch in the engine is views.ts:1443 (the
 // text-message email_text :core re-entry), reachable only through a
 // codename-bearing text-message card - no loader-bound suite seeds the
 // codename (notify-save-path-wiring.test.ts:80, follower-resolver.ts
-// :179 seed *text message without one), and the corpus email sweeps bind
-// no loader (card-mod-email.ts:215-217), their flat seam carrying the
-// explicit format guard (views.ts:1518). No json/css/csv/rss renderView
+// :179 seed *text message without one), and the email render suites that
+// bind no loader (card-mod-email.ts:215-217) carry the explicit format
+// guard at their flat seam (views.ts:1518). No json/css/csv/rss renderView
 // dispatch exists at all (the route-level csv/rss/json shows are the
 // format-families layer, renderFormatShow, which bypasses viewChain).
-// See the anchored-arm comment in mod-loader.ts for the adjudication.
+// See the anchored-arm comment in mod-loader.ts for the design decision.
 
 import { describe, expect, it } from "vitest";
 import { defaultDeckSources } from "../../../src/card/mod-loader/default-mod-deck.js";
@@ -149,8 +147,8 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     // and no other format ever dispatched them (no json renderView
     // dispatch exists - the route json show is the format-families
     // layer). A THIRD non-html anchored key (or a new json row) lands
-    // here and names itself: the re-adjudication signal for porting the
-    // format scoping into the anchored arms.
+    // here and names itself: the signal to add format scoping to the
+    // anchored arms.
     const foreign = anchored.filter((e) => e.formatKey !== "html");
     expect(
       foreign.map(
@@ -209,7 +207,7 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
   it("census shape: the anchored format-key set is exactly {html, json}", () => {
     // The measured key universe (157 html + 2 json on this tree; the
     // counts ride every failure diff). A NEW key under an anchored set
-    // fails here and names itself - the same re-adjudication signal.
+    // fails here and names itself - the same signal.
     const keys = new Set(anchored.map((e) => e.formatKey));
     expect([...keys].sort()).toEqual(["html", "json"]);
   });
