@@ -4,9 +4,9 @@
 //
 //   node tools/oracle/regrade-by-shard.mjs --repo <checkout> --out <dir> [--concurrency 2] [--heap-mb 3072] [--shards 3,12]
 //
-// The checkout must stage the corpus at tmp/raw-ground-truth/expected-v2 and
-// the graded deck at tmp/raw-ground-truth/bench-corpus-raw.sqlite3, as the
-// driver expects. The verdict of each entry is the driver's
+// The checkout must stage the corpus shards in the expected-v2 layout and
+// the graded corpus database where the driver expects them. The verdict of
+// each entry is the driver's
 // (src/testing/replay.ts -> compareNormalized).
 import { spawn } from "node:child_process";
 import fs from "node:fs";
