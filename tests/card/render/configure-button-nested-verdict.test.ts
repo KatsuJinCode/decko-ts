@@ -63,9 +63,9 @@ async function deck(updateParty: "Anyone" | "Administrator"): Promise<RenderTest
     dbContent: `[[${updateParty}]]`,
   });
   await seedReference(s, 20, updateParty === "Anyone" ? 18 : 19, updateParty.toLowerCase());
-  // Ruby's deck gives the Cardtype cardtype card codename "cardtype"
-  // (bench-corpus cards.id 5), so a Cardtype-typed card's TYPE anchor is in
-  // Type::Cardtype — the codename-keyed set modules need it seeded.
+  // The Cardtype cardtype card carries the codename "cardtype", so a
+  // Cardtype-typed card's TYPE anchor is in Type::Cardtype — the
+  // codename-keyed set modules need it seeded.
   await seedCard(s, { id: 22, name: "Cardtype", codename: "cardtype", typeId: 2 });
   await seedCard(s, { id: 30, name: "Widget", typeId: 22, dbContent: "{{_|configure_button}}" });
   await seedCard(s, { id: 40, name: "Host", typeId: 2, dbContent: "before {{Widget|core}} after" });
@@ -96,9 +96,7 @@ describe("configure_button judges can_configure? on every card it renders for", 
     // configure_button renders the configure_link anchor with
     // css_classes("configure-type-link ms-3", "btn btn-secondary") and
     // link_to_card's known/wanted class — the rules-board href, the
-    // "Configure Widgets" title span. The registration's first port
-    // modelled an engine-era approximation ("cardtype-configure-button",
-    // a /configure path) that no oracle capture or gem source carries.
+    // "Configure Widgets" title span.
     expect(html).toContain('class="configure-type-link ms-3 btn btn-secondary known-card"');
     expect(html).toContain('href="/Widget/board?board%5Btab%5D=rules_tab&amp;set=Widget%2B%2Atype"');
     expect(html).toContain('>Configure Widgets</span>');
