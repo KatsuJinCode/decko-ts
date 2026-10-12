@@ -1,19 +1,16 @@
-// help-content-rule-page-setting-registry.test.ts -- the help-content suite's
-// red-first byte tests for the 38-page population the escape-family receipt
-// routed here (escape-family-lane.md residual: "Help-content resolver gaps
-// (35 mod: X+*style|script + *on create|delete|update + *style rule pages) --
-// helpRules returns empty where the oracle renders the setting's help text").
+// help-content-rule-page-setting-registry.test.ts -- byte tests for the
+// setting-help popover content served on the rule and setting pages: the
+// mod rule pages (mod: X+*style|script), the on-create/on-delete/on-update
+// rule pages, and the *style/*script setting pages, where the resolver
+// previously returned empty help text.
 //
-// Every expected data-bs-content value below is the ORACLE attribute bytes
-// copied verbatim from an earlier fail dump
-// (decko-ts-pass15-int tmp/raw-ground-truth/enumeration/view-fail-dump-full/
-// html/<page>-closed.expected.html), so a green run pins the exemplar bytes
-// exactly. At base be76583 every assertion in the first describe
-// block is RED: the registry (setting-help-text.ts) lacks the style/script/
-// on_create entries, so the engine served "&amp;nbsp;" (mod + setting-card
-// pages) or the bare count div (rule-branch pages).
+// Every expected data-bs-content value below is the exact expected
+// attribute byte string, so a green run pins the rendered popover content
+// exactly. Before the registry gained the style/script/on_create entries,
+// the engine served "&amp;nbsp;" (mod + setting-card pages) or the bare
+// count div (rule-branch pages).
 //
-// Ruby chain (installed gems, pinned in the receipt):
+// Ruby chain:
 //   menu.rb:35-37 help_link -> all/help.rb:36-38 raw_help_text =
 //   card.try(:raw_help_text) || help_rule_card&.content, where the static
 //   strings register via Card::Setting#help_text_for_setting
@@ -40,11 +37,11 @@ async function seedCodenameCards(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 12, name: "User", codename: "user", typeId: 5 });
 }
 
-/** The mod rule-card family: left part is a type-Mod card (the corpus's
- *  mod: X cards, data-card-type-name="Mod"), right part a setting card.
+/** The mod rule-card family: left part is a type-Mod card
+ *  (data-card-type-name="Mod"), right part a setting card.
  *  The left type is NOT Set, so these cards take the PLAIN help branch
- *  (all/help.rb) - no setting_link count div (the oracle exemplars carry
- *  none). Type ids here use Basic; the branch reads only left/right types. */
+ *  (all/help.rb) - no setting_link count div (the expected bytes below
+ *  carry none). Type ids here use Basic; the branch reads only left/right types. */
 async function seedModRuleFamily(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 210, name: "*style", codename: "style", typeId: SETTING_TYPE_ID });
   await seedCard(storage, { id: 220, name: "mod: account", typeId: BASIC_TYPE_ID });
@@ -62,7 +59,7 @@ async function seedModRuleFamily(storage: RenderTestStorage): Promise<void> {
  *  card -> board_rules_editor.rb:17-19's :help_text override joins
  *  [rule_based_help, setting_link].join(" "). The junction cards THEMSELVES
  *  are the counted rules (the count query joins rules.left_id to Set-typed
- *  cards), so each count is 1 like the oracle exemplars. */
+ *  cards), so each count is 1, matching the expected bytes below. */
 async function seedRuleBranchFamily(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 250, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   await seedCard(storage, { id: 210, name: "*style", codename: "style", typeId: SETTING_TYPE_ID });
@@ -150,7 +147,8 @@ describe("help-content lane: setting registry serves the rule pages' popover byt
     // :webpage, position: 5` - no help_text; the "JavaScript (or
     // CoffeeScript)..." string lives ONLY on the Right set (set/right/
     // script.rb:14-16, format-level def). The setting card's own page has no
-    // corpus exemplar, but the registry's self-absent shape must not regress.
+    // pinned expectation below, but the registry's self-absent shape must not
+    // regress.
     const storage = await createRenderTestStorage();
     try {
       await seedCodenameCards(storage);
