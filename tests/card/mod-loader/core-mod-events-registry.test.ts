@@ -1,26 +1,20 @@
 // The core mod's 31 set-module event declarations (card-1.110.0 mod/core
-// set/**): the coverage doc's events gap for this mod is 31 Ruby events vs
-// 0 TS-declared (deliverables/mod-coverage-authoritative-2026-09-28.md:91,
-// "31 admin/save events unported"). This file pins:
+// set/**). This file pins:
 //
 // 1. THE REGISTRY: all 31 events declare into the manifest with the gem's
-//    stage/trigger/changed/after/when metadata (transcribed per file; the
-//    recount's names match tests/card/mod-loader coverage: mod-coverage-
-//    recount-raw.json core.ruby.events).
+//    stage/trigger/changed/after/when metadata (transcribed per file).
 //
-// 2. THE FIRST BATCH — the events the admin views' tests exercise:
-//    event :admin_tasks (set/self/admin.rb:24-38) is the event behind the
-//    task table the admin :core view renders (its links POST
-//    action=update&task=X; the event fires on :initialize of that update).
-//    Its body's task-runner machinery is ported and exercised HERE through
-//    direct calls (the ModEventFn execution seam is unwired engine-wide —
-//    mod-event-registry.ts header — so the declaration carries a stub fn
-//    exactly like card-mod-history's six; the exported runner carries the
-//    real port).
+// 2. THE ADMIN TASKS EVENT: event :admin_tasks (set/self/admin.rb:24-38) is
+//    the event behind the task table the admin :core view renders (its
+//    links POST action=update&task=X; the event fires on :initialize of
+//    that update). Its body's task-runner machinery is exercised HERE
+//    through direct calls (the ModEventFn execution seam is unwired
+//    engine-wide — mod-event-registry.ts header — so the declaration
+//    carries a stub fn exactly like card-mod-history's six; the exported
+//    runner carries the real implementation).
 //
 // 3. THE REMAINDER, named: the other 30 declarations pin with stub bodies;
-//    per-event reasons are in the manifest source (core-mod.ts file notes)
-//    and summarized in the receipt.
+//    per-event reasons are in the manifest source (core-mod.ts file notes).
 
 import { describe, it, expect } from "vitest";
 import coreMod, {
@@ -43,8 +37,7 @@ function declaredEvents(): Array<{ setPath: string } & ModEventRegistration> {
   return out;
 }
 
-/** The recount's 31 names (an internal work log
- *  core.ruby.events), in the recount's order. */
+/** The 31 event names the core mod's set modules declare. */
 const RECOUNT_31 = [
   "admin_tasks",
   "check_for_cards_of_type",
@@ -183,7 +176,7 @@ describe("the admin_tasks runner — the first batch, ported", () => {
     // self/admin.rb:40-46 run_task_from_task_basket + :48-52 not_allowed:
     // the message carries the task's LINK TEXT (the en.yml translation),
     // the security sentence, the <br>, and the config-option sentence.
-    const task = CORE_TASK_BASKET.empty_trash!; // irreversible: true (probe-1)
+    const task = CORE_TASK_BASKET.empty_trash!; // irreversible: true (the core-admin-facts probe's basket_tasks fact)
     expect(() => runTaskFromTaskBasket("empty_trash", { empty_trash: task })).toThrow(
       PermissionDeniedError,
     );
