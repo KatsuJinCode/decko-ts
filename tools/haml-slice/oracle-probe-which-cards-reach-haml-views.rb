@@ -1,9 +1,9 @@
-# Oracle probe, part 1+2: which cards reach the two haml_file :core views, and
-# what are the exact bytes the real engine emits for them.
+# Oracle probe, parts 1+2: which cards reach the two haml_file :core views, and
+# what exact bytes the real engine emits for them.
 #
-# READ-ONLY against the shared live oracle DB. No card is created, updated or
-# destroyed. Asserts Card::Act.count is unchanged across the run (the no-write
-# discipline the edit2-lane receipt documents).
+# READ-ONLY against the shared oracle database: no card is created, updated or
+# destroyed. The no-write discipline is asserted directly — Card::Act.count
+# must come back unchanged after the run.
 #
 #   1. does any set module in the running bundle include Abstract::HamlFile
 #      (i.e. is there ANY card whose :core goes through `haml card.content`)?
