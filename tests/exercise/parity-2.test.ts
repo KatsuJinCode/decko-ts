@@ -57,25 +57,21 @@
 // synthetic fixture (invented names, example.test addresses, a frozen clock),
 // or is an id and a timestamp the captures pin.
 //
-// THE DEEPER BATTERY, PARTLY PUBLIC ON A SYNTHETIC DECK. The write-probe
-// half of the figures this file once declared out of scope -- 70 of 70 write
-// operations leaving Ruby's rows -- is exercised here on the committed
-// synthetic write-battery fixture
-// (reference-harness/fixtures/write-battery-v1): the write probe
-// (tests/tools/persist-write-probe.test.ts) runs its 70 operations against
-// that deck and diffs every operation's row delta against the Ruby oracle
-// dumps recorded on it (65 of 70 deltas match; 5 are the declared deliberate
-// differences). The third describe below asserts the committed recording
-// those published counts rest on. The scenario battery's 90-step trace is
-// recorded on the same deck and committed beside it, with an OPEN FINDING:
-// on the synthetic deck 3 of the production grade's 7 declared Ruby crashes
-// do not reproduce, and the underlying divergence surfaces instead (the port
-// refuses to rename another user's account holder; Ruby 0.20 does not
-// enforce this) -- see tests/tools/side-effects-scenario-battery.test.ts
-// in the working tree, which documents it. The private-deck run
-// (PERSIST_SRC_DECK pointing at the production oracle deck, its
-// tests/fixtures/persistence-oracle dumps) remains the stronger evidence --
-// measured on a 49,829-card deck this repository does not carry.
+// THE DEEPER BATTERY, PUBLIC ON A SYNTHETIC DECK. The write-probe half of the
+// figures this file once declared out of scope -- 70 of 70 write operations
+// leaving Ruby's rows -- is exercised here on the committed synthetic
+// write-battery fixture (reference-harness/fixtures/write-battery-v1): the
+// write probe (tests/tools/persist-write-probe.test.ts) runs its 70
+// operations against that deck and diffs every operation's row delta against
+// the Ruby oracle recordings committed on it (65 of 70 deltas match; 5 are
+// the declared deliberate differences). The third describe below asserts the
+// committed recording those published counts rest on. The scenario battery's
+// 90-step trace is recorded on the same deck and committed beside it, with an
+// OPEN FINDING: on this synthetic deck 3 of the battery's 7 declared Ruby
+// crashes do not reproduce, and the underlying divergence surfaces instead
+// (the port refuses to rename another user's account holder; Ruby 0.20 does
+// not enforce this) -- tests/tools/side-effects-scenario-battery.test.ts
+// documents it.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -750,10 +746,9 @@ describe("the committed write-battery recording behind the published write count
     });
     expect(drifted, "every pinned file hashes to its manifest value").toEqual([]);
 
-    // The write probe's Ruby truth: one recorded state per operation, and
-    // the deliberate differences each deck's recordings declare (the engine
-    // differences of tests/fixtures/persistence-oracle, re-pinned with this
-    // deck's own raw ids).
+    // The write probe's Ruby truth: one recorded state per operation, plus
+    // the deliberate differences the recording declares — every engine/Ruby
+    // divergence stated with its step number and reason rather than hidden.
     const steps = readdirSync(PERSIST_STEPS).filter((f) => /^step-\d+\.json$/.test(f));
     expect(steps.length).toBe(70);
     const declarations = JSON.parse(
@@ -763,11 +758,10 @@ describe("the committed write-battery recording behind the published write count
     expect(declarations.differences.every((d) => d.reason.length > 40)).toBe(true);
 
     // The scenario battery's Ruby truth: 90 steps on the same deck, no
-    // blocked network attempt, recorded under the drive the production grade
-    // used. The recorded trace is the clean-deck evidence the declared
-    // account-holder divergence is graded against (37 steps whose verdicts
-    // differ, one declared root cause -- docs/SECURITY.md divergence 5,
-    // pinned step by step in
+    // blocked network attempt. The recorded trace is the committed evidence
+    // the declared account-holder divergence is graded against (37 steps
+    // whose verdicts differ, one declared root cause -- docs/SECURITY.md
+    // divergence 5, pinned step by step in
     // tests/tools/side-effects-scenario-battery.test.ts).
     const ruby = JSON.parse(readFileSync(join(BATTERY_FIXTURE, "expected", "side-effects-ruby.json"), "utf8")) as {
       engine: string;
