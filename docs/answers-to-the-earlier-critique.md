@@ -609,7 +609,7 @@ So no reader has to infer it from the answers above:
 
 The issue numbers are those of the development repository, which is private;
 they are recorded so a reader with access can find the item, and no issue URL
-is printed because none of them resolves for a reader of this port.
+is printed because none of them resolves for a reader of this engine.
 
 Every claim in this document is answerable against
 [docs/coverage-inventory.md](coverage-inventory.md). Where a figure appears
