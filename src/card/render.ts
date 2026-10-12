@@ -5724,10 +5724,10 @@ export class RenderEngine implements RenderEngineLike {
    *  deck is static, so a later render's closure round must skip done
    *  hosts — without the skip, every render re-split every deck host's
    *  entire dbContent and re-ran DeckoName.parse on every item line (the
-   *  prewarm enriches all ~47k records into renderCards, so the "every
+   *  prewarm enriches every record into renderCards, so the "every
    *  host" set is the deck's whole pointer/list/search population, and
-   *  the per-render re-walk measured 5 -> 23ms median per warm entry on
-   *  the corpus harness; the per-item renderCards cache check made the
+   *  the per-render re-walk costs several times a warm entry
+   *  the per-item renderCards cache check made the
    *  lines cheap but never the parsing). The round cap is paranoia —
    *  renderCards strictly grows, so the fixpoint is reached in at most
    *  deck-size rounds; the cap keeps a pathological cycle bounded. */
@@ -5836,9 +5836,8 @@ export class RenderEngine implements RenderEngineLike {
         // never references (the +*account row's db_content is empty; the
         // fields ride the mod's VIEW, not authored nests). The sync
         // fetchRenderCard in nest() is cache-only, so without this warm the
-        // +*email nest misses and renders a PHANTOM where the oracle pins
-        // the real row's labeled view (data-card-id 19978 on
-        // Anonymous+*account). Ruby-faithful surface: exactly the two fields
+        // +*email nest misses and renders a PHANTOM where the real
+        // row's labeled view belongs. Ruby-faithful surface: exactly the two fields
         // the gem's core view nests, resolved through Card.fetch's key
         // ladder (prepareItemForRender) like every other cache-miss need.
         if (
@@ -5925,14 +5924,14 @@ export class RenderEngine implements RenderEngineLike {
    * item line of one host (the fetch misses enrichPointerListItems found).
    * The verdicts are Ruby's own gates on the phantom's pattern input:
    *  - read: canReadByRuleLookup (the *read rule walk, read-rules.ts) —
-   *    the oracle split this decides: the demo deck's "radio" item renders
-   *    the FULL mini_bar body for every actor (its *all+*read grants
-   *    Anyone) while the corpus's denied phantoms render the two-span body
+   *    the split this decides: an item whose *all+*read grants
+   *    Anyone renders the FULL mini_bar body for every actor, while a
+   *    denied phantom renders the two-span body
    *    (pointerListItemBodyForUnknown) — one mechanism, two verdicts.
    *  - create: taskVerdictForCard(:create) (view-task-rules.ts) — the
    *    unknown/mini_unknown views' createable gate (html/error.rb:19-21
-   *    `card.ok?(:create) ? yield : ""`): the demo oracle renders the
-   *    unknown-link bytes for bot only.
+   *    `card.ok?(:create) ? yield : ""`): the unknown-link bytes render
+   *    for bot only.
    * Stored per item key; the sync item path reads them query-free via
    * pointerItemVerdict. Also folded into the engine's standard verdict
    * maps (deniedVerdictsByKey / taskVerdicts) so every other consumer
