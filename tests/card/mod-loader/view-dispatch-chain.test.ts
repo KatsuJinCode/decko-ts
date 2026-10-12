@@ -89,8 +89,9 @@ describe("setKeysToModuleChain (safe_set_keys -> MRO module shortnames)", () => 
 
   it("returns the chain MOST-SPECIFIC-FIRST (the reverse of safeSetKeysForCard)", () => {
     // safeSetKeysForCard: patterns.reverse().join(" ") - general first
-    // (oracle-verified example: "ALL ALL_PLUS TYPE-list RSTAR RULE
-    //  RIGHT-Xread TYPE_PLUS_RIGHT-set-Xread SELF-Xall-Xread").
+    // (example input, the same string asserted below: "ALL ALL_PLUS
+    //  TYPE-list RSTAR RULE RIGHT-Xread TYPE_PLUS_RIGHT-set-Xread
+    //  SELF-Xall-Xread").
     // Ruby's MRO walks most-specific first, so the chain reverses again:
     // SELF -> TYPE_PLUS_RIGHT -> RIGHT -> RULE -> RSTAR -> TYPE ->
     // ALL_PLUS -> ALL.
