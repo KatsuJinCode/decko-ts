@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-11T22:11:19.078Z",
+  "generatedAt": "2026-10-12T01:18:02.176Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -1764,7 +1764,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "ignored",
-        "verdict": "ignored (legacy-labeled per upstream maintainer guidance)",
+        "verdict": "unported (not evaluated)",
         "evidence": "no meaningful set/ tree; config-only or backend-only gem",
         "metrics": {
           "htmlViewsDeclared": 0,
@@ -1825,7 +1825,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "ignored",
-        "verdict": "ignored (legacy-labeled per upstream maintainer guidance)",
+        "verdict": "unported (not evaluated)",
         "evidence": "no meaningful set/ tree; config-only or backend-only gem",
         "metrics": {
           "htmlViewsDeclared": 0,
