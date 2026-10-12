@@ -3,8 +3,8 @@
   //
   // The root tsconfig.json includes only src/, tests/ and benchmarks/, so
   // `npm run typecheck` never looked at tools/. dual-lane-direct-runner-core.ts
-  // is TypeScript and is the file the W=8 probe's three instrument gaps live in,
-  // so it needs a real gate or "tsc 0" is vacuous for it.
+  // is TypeScript under tools/, so without this dedicated gate a green tsc run
+  // says nothing about it.
   //
   // tests/schema/better-sqlite3.d.ts is listed explicitly because it is the
   // ambient `declare module "better-sqlite3"`; the root tsconfig picks it up
