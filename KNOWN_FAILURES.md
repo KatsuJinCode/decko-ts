@@ -31,7 +31,8 @@ re-derivation and no longer are:
   each time" — which was itself the tell that the failures came from this
   environment rather than from the code.
 
-## Environment-flaky suites: red in a full run, green alone
+## | tests/deploy/bunny-edge-session-viewer-roundtrip.test.ts | the anonymous home-site-shell golden pin is 19 bytes stale since the demo account read rules shipped (migration 0009 adds cards the shell capture predates): fixture 4528 bytes vs the pinned 4547; proven pre-existing at the round-9 base commit in a clean worktree; re-anchor queued | 2026-10-11 |
+Environment-flaky suites: red in a full run, green alone
 
 These are not in the table above, because a table row means a suite that fails
 on a clean clone and here does not. They fail under load and pass alone, and
