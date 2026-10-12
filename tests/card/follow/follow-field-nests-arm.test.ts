@@ -1,23 +1,19 @@
-// The *nests arm of followed_field? (the follow port's named remainder):
-// card-mod-follow-0.20.0 set/all/follow/followed_by.rb:16-31 walks the left
-// card's *follow_fields rule items and matches each item key against the
-// field card's key OR the *nests codename key - the *nests arm asks
-// nested_card? (followed_by.rb:29-31): is the field card INCLUDED in the
+// The *nests arm of followed_field? (set/all/follow/followed_by.rb:16-31):
+// the left
+// card's *follow_fields rule items are walked and each item key is matched
+// against the field card's key OR the *nests codename key — the *nests arm
+// asks nested_card? (followed_by.rb:29-31): is the field card INCLUDED in the
 // left card's content? The inclusion set is nestee_ids
-// (card-mod-history-0.20.0 set/all/history.rb:55-57 + nesting_ids
-// :98-102): card_references rows with ref_type "I" and referer_id = the
-// left card - the same reference graph src/card/actions/refresh-references-
+// (set/all/history.rb:55-57 + nesting_ids :98-102): card_references rows with
+// ref_type "I" and referer_id = the
+// left card — the same reference graph src/card/actions/refresh-references-
 // out.ts maintains on writes.
 //
 // The rule read itself follows rule_card(:follow_fields) (followed_by.rb:19
-// -> lib/card/rule/all.rb rule_card): the left card's set names in pattern
-// order - "<left>+*self+*follow fields", then "<type>+*type+*follow
+// -> prototype/lib/card/rule/all.rb rule_card): the left card's set names in
+// pattern order — "<left>+*self+*follow fields", then "<type>+*type+*follow
 // fields", then the *all fall-back the follow mod seeds with content
-// "*nests" (card-mod-follow-0.20.0 data/real.yml:42-46).
-//
-// RED state: follow-rule-walk.ts reads a literal "<left>+*follow fields"
-// name (a name Ruby's rule_card walk never reads) and answers false for
-// the *nests arm.
+// "*nests".
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -45,12 +41,12 @@ beforeAll(async () => {
   await seedCard(s, { id: 111, name: "*follow fields", codename: "follow_fields", typeId: 14 });
   await seedCard(s, { id: 112, name: "*always", codename: "always", typeId: 14 });
   await seedCard(s, { id: 113, name: "*never", codename: "never", typeId: 14 });
-  // the *nests codename card (card-mod-search-0.20.0 data/real.yml:89-90)
+  // the *nests codename card
   await seedCard(s, { id: 116, name: "*nests", codename: "nests", typeId: 14 });
 
   // users
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
-  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Fixture Actor", typeId: 3 });
 
   // --- LEFT 1: *nests rule + an inclusion row -> the arm fires -------------
   await seedCard(s, { id: 402, name: "status", typeId: 2 });
@@ -69,17 +65,17 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 420,
-    name: "Project Book+*self+Riley+*follow",
+    name: "Project Book+*self+Fixture Actor+*follow",
     leftId: 421, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 421, name: "Project Book+*self+Riley", leftId: 411, rightId: 300, typeId: 14,
+    id: 421, name: "Project Book+*self+Fixture Actor", leftId: 411, rightId: 300, typeId: 14,
   });
   await seedReference(s, 400, 401, "project_book_x_status", "I");
 
   // --- LEFT 2: *nests rule + only a LINK reference row -> the arm stays
-  // false (nestee_ids selects ref_type "I" rows only, history.rb:98-102) ---
+  // false (nestee_ids selects ref_type "I" rows only) ---
   await seedCard(s, { id: 405, name: "status two", typeId: 2 });
   await seedCard(s, { id: 403, name: "Linked Book", typeId: 2, dbContent: "linked body" });
   await seedCard(s, {
@@ -96,12 +92,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 440,
-    name: "Linked Book+*self+Riley+*follow",
+    name: "Linked Book+*self+Fixture Actor+*follow",
     leftId: 441, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 441, name: "Linked Book+*self+Riley", leftId: 431, rightId: 300, typeId: 14,
+    id: 441, name: "Linked Book+*self+Fixture Actor", leftId: 431, rightId: 300, typeId: 14,
   });
   await seedReference(s, 403, 404, "linked_book_x_status_two", "L");
 
@@ -124,16 +120,16 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 460,
-    name: "Keyed Book+*self+Riley+*follow",
+    name: "Keyed Book+*self+Fixture Actor+*follow",
     leftId: 461, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 461, name: "Keyed Book+*self+Riley", leftId: 451, rightId: 300, typeId: 14,
+    id: 461, name: "Keyed Book+*self+Fixture Actor", leftId: 451, rightId: 300, typeId: 14,
   });
 
   // --- LEFT 4: NO *self rule - the *all fall-back rule carries *nests
-  // (card-mod-follow data/real.yml:42-46) ------------------------------------
+  // --------------------------------------------------------------------
   await seedCard(s, { id: 410 + 100, name: "status four", typeId: 2 });
   await seedCard(s, { id: 409, name: "All-Ruled Book", typeId: 2, dbContent: "all body" });
   await seedCard(s, {
@@ -151,12 +147,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 480,
-    name: "All-Ruled Book+*self+Riley+*follow",
+    name: "All-Ruled Book+*self+Fixture Actor+*follow",
     leftId: 481, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 481, name: "All-Ruled Book+*self+Riley", leftId: 471, rightId: 300, typeId: 14,
+    id: 481, name: "All-Ruled Book+*self+Fixture Actor", leftId: 471, rightId: 300, typeId: 14,
   });
   await seedReference(s, 409, 501, "all_ruled_book_x_status_four", "I");
 }, 60_000);
