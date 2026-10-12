@@ -1,7 +1,7 @@
-// RENAME-GATE lane — the UPDATE path's created-sides permission walk
+// RENAME GATE — the UPDATE path's created-sides permission walk
 // (saveTaskVerdictForCard's rename clause, view-task-rules.ts).
 //
-// Ruby ground truth this suite pins: a rename onto a compound name runs
+// Upstream ground truth this suite pins: a rename onto a compound name runs
 // prepare_left_and_right (mod/core/set/all/name_events.rb:67-72) in the
 // store stage, and prepare_new_side (:137-142) adds each MISSING side as
 // a subcard of the same act. Subcards run the director's validate stage
@@ -21,10 +21,10 @@
 // Crib+*update+Fan name is DENIED when a side is Editor-locked), and the
 // RENAME path must give the sides it CREATES the same judgment —
 // saveTaskVerdictForCard's rename clause runs each created side through
-// ok?(:create), Ruby's validate-stage check_permissions
+// ok?(:create), the validate-stage check_permissions
 // (permissions.rb:22-26). This suite pins that gate direction and the
-// non-over-gate direction (legitimate renames Ruby allows must still
-// land).
+// non-over-gate direction (legitimate renames the upstream rules allow
+// must still land).
 //
 // Deck fixtures share one verdict skeleton (seedVerSkeleton, verbatim with
 // obstructed-self-side-rename-write.test.ts), so every verdict here is
@@ -251,7 +251,7 @@ describe("renamegate: renames Ruby allows must still land (no over-gate)", () =>
 // ---------------------------------------------------------------------------
 // The obstructed SELF-side arm of createSidesAllowed (view-task-rules.ts:
 // `existing.id !== selfId`): a side that EXISTS but IS the renamed card is
-// not a bystander — Ruby clears and recreates it as a fresh subcard
+// not a bystander — the rename clears and recreates it as a fresh subcard
 // (prepare_obstructed_side, name_events.rb:144-150) — so it is
 // create-checked like a missing side. The verdicts above could not isolate
 // this arm: their side fixtures all resolve the SAME template type, so a
