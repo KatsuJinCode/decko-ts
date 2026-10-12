@@ -6,12 +6,12 @@
 //
 //   sha256File                    deterministic content hashing
 //   sqliteHeaderChangeCounter     offset-24 big-endian uint32 read + non-SQLite refusal
-//   stageFile                     M5: copy verifies; pre-existing equal bytes verify;
+//   stageFile                     copy verifies; pre-existing equal bytes verify;
 //                                 pre-existing DIFFERENT bytes throw (the swapped-copy refusal)
-//   verifyManifestForGrading      M1: missing manifest / before != after /
+//   verifyManifestForGrading      missing manifest / before != after /
 //                                 grade-start hash mismatch / wrong schema all refuse;
 //                                 a binding manifest passes
-//   contentAddressedPhotographPath M6: <root>/<corpusSha8>/<runId> shape
+//   contentAddressedPhotographPath <root>/<corpusSha8>/<runId> shape
 //   runner import safety          importing capture-and-grade.mjs must not
 //                                 execute main() (entry guard)
 //
@@ -93,7 +93,7 @@ check("sha256File: deterministic and content-sensitive", () => {
   assert(sha256File(path.join(tmp, "other.bin")) !== expectedSha, "different bytes must hash differently");
 });
 
-// ---------- sqliteHeaderChangeCounter (M2) ----------
+// ---------- sqliteHeaderChangeCounter ----------
 check("sqliteHeaderChangeCounter: reads offset-24 big-endian uint32", () => {
   assert(sqliteHeaderChangeCounter(CANONICAL_CORPUS) === 0x2a, "counter must be the uint32 at offset 24");
 });
@@ -103,7 +103,7 @@ check("sqliteHeaderChangeCounter: refuses non-SQLite files loudly", () => {
   assertThrows(() => sqliteHeaderChangeCounter(notDb), "not a SQLite database");
 });
 
-// ---------- stageFile (M5) ----------
+// ---------- stageFile ----------
 check("stageFile: fresh copy is sha256-verified", () => {
   const dst = path.join(staged, "scripts", "instrument.rb");
   const r = stageFile(CANONICAL_CORPUS, dst, "smoke corpus", () => {});
@@ -123,7 +123,7 @@ check("stageFile: pre-existing DIFFERENT bytes REFUSE (the swapped-copy misfire)
   assert(sha256File(dst) === sha256File(path.join(tmp, "swapped", "corpus-v2.sqlite3")), "dst must not be modified");
 });
 
-// ---------- verifyManifestForGrading (M1) ----------
+// ---------- verifyManifestForGrading ----------
 const expectedV2 = path.join(staged, "expected-v2");
 mkdirSync(expectedV2, { recursive: true });
 const manifestPath = path.join(expectedV2, MANIFEST_FILENAME);
@@ -195,7 +195,7 @@ check("M1 gate: precomputed liveCorpusSha256 is honored (no rehash)", () => {
   assert(!bad.ok, "mismatching precomputed hash must refuse");
 });
 
-// ---------- contentAddressedPhotographPath (M6) ----------
+// ---------- contentAddressedPhotographPath ----------
 check("M6: photograph path is <root>/<corpusSha8>/<runId>", () => {
   const p = contentAddressedPhotographPath(path.join(tmp, "photos"), expectedSha, "run-1");
   const rel = path.relative(tmp, p);

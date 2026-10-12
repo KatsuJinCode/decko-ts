@@ -2,11 +2,11 @@
 // PARSER, not against a hand-kept list and not against the harness's own
 // committed artifact.
 //
-// WHY THIS EXISTS (r2-phantom-rows lane, 2026-10-06). mod-harness.mjs's
-// `mineViews` loop miner (`loopRe`) matched any `%i[a b c].each do |var|`
-// and pushed every element as a `view:` row WITHOUT gating on the
-// `view <blockvar>` look-ahead it had already computed. On card-mod-format
-// that minted two rows for set/all/links.rb:146-152:
+// WHY THIS EXISTS. mod-harness.mjs's `mineViews` loop miner (`loopRe`)
+// matched any `%i[a b c].each do |var|` and pushed every element as a
+// `view:` row WITHOUT gating on the `view <blockvar>` look-ahead it had
+// already computed. On card-mod-format that minted two rows for
+// set/all/links.rb:146-152:
 //
 //     def interpret_data_opts_to_link_to opts
 //       %i[remote method].each do |key|
@@ -20,22 +20,22 @@
 // manufactured — the coverage ledger was carrying two obligations that do not
 // exist.
 //
-// The oracle is tools/mod-porting-harness/ruby-oracles/card-mod-format/
-// format-census-views.rb: Ripper (Ruby's stdlib parser) over the gem's
-// set/*.rb. It counts a view only where a `view` CALL actually is —
-// `view :name` direct, or `view <blockvar>` inside a `%i[...].each do
-// |<blockvar>|` block. A `.each` block whose body declares no `view` call
-// declares no views, whatever the array holds. Ripper is the independence
-// that matters: the regex cannot see the difference between "an array of view
-// names" and "an array of link_to option keys", and a parser can.
+// The oracle is tools/mod-porting-harness/ruby-oracles/view-census-views.rb:
+// Ripper (Ruby's stdlib parser) over the gem's set/*.rb. It counts a view
+// only where a `view` CALL actually is — `view :name` direct, or
+// `view <blockvar>` inside a `%i[...].each do |<blockvar>|` block. A `.each`
+// block whose body declares no `view` call declares no views, whatever the
+// array holds. Ripper is the independence that matters: the regex cannot see
+// the difference between "an array of view names" and "an array of link_to
+// option keys", and a parser can.
 //
 // RED DISCIPLINE: against the unfixed miner the two manufactured names fail
 // this test and nothing else does — that failure IS the harness working. The
 // diff is asserted as a set equality, not as a count, so a compensating
 // omission could not hide behind it.
 //
-// SCOPE: card-mod-format's set/ tree, the format class named by the ask. The
-// gem is read READ-ONLY; Ruby does no Rails boot, no DB, no network.
+// SCOPE: card-mod-format's set/ tree. The gem is read READ-ONLY; Ruby does
+// no Rails boot, no DB, no network.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -100,11 +100,10 @@ function rubyCensus(): RubyCensus {
   return JSON.parse(res.stdout) as RubyCensus;
 }
 
-// GEM_DIR is the oracle machine's absolute gem path baked into this suite
+// GEM_DIR is a machine-specific absolute gem path baked into this suite
 // (and into mod-harness.mjs): on a machine without that tree the census walk
 // below throws ENOENT and the suite fails red on a host it has never
-// supported. Skip loudly instead — the fixture records a machine-specific
-// compile verification against that gem checkout.
+// supported. Skip loudly instead.
 //
 // THE GATE CHECKS THE DIRECTORY THE WALK ACTUALLY READS, NOT ITS PARENT.
 // Checking existsSync(GEM_PATH) alone was not enough: rbFiles() below walks

@@ -203,8 +203,8 @@ async function nameMap(driver: LocalSqliteDriver): Promise<Map<string, number>> 
 
 /** The stored files of the probe's cards, as the Ruby half lists them:
  *  card id, file name, and the SHA-1 of the bytes (image versions by name
- *  only; their bytes are the image encoder's, measured by the side-effects
- *  team). */
+ *  only; their bytes come from each side's own image encoder, so they are
+ *  not comparable). */
 function probeFiles(ids: number[]): Row[] {
   const out: Row[] = [];
   for (const id of [...ids].sort((a, b) => a - b)) {
@@ -878,9 +878,9 @@ describe("persistence write probe (TS half)", () => {
 
     // Compare against the Ruby oracle's dumps for the same op list
     // (tools/persistence/run-ruby-steps.sh). Each operation's own row delta
-    // must match, except the divergences recovery/parity-team/persistence.md
-    // records; a newly matching step fails here too, so the list is kept
-    // honest in both directions.
+    // must match except the declared deliberate differences
+    // (deliberate-differences.json is the authority); a newly matching step
+    // fails here too, so the list is kept honest in both directions.
     if (LEGACY_PASSWORDS) {
       const all = JSON.parse(readFileSync(DECLARATIONS, "utf8")) as { differences: Array<{ step: number }> };
       writeFileSync(

@@ -10,10 +10,10 @@
 // nothing, and denied (who_can -> [] -> among? -> false). A member the
 // update rule allows ("Anyone Signed In") could not create a junction.
 //
-// Found on the site-editing staging lane (SPEC-SITE-OWNER-READY Part A,
-// 2026-10-08): the deck's real rule shape — *all plus+*create = "_left",
-// *all+*update = "Anyone Signed In" — denied a signed-in member's junction
-// create through the public host and in this test, before the fix.
+// Found as a real denial through the public host before the fix: the
+// deck's rule shape — *all plus+*create = "_left", *all+*update = "Anyone
+// Signed In" — denied a signed-in member's junction create, and this test
+// reproduced it.
 import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -119,7 +119,8 @@ describeOrSkipLoud(
         Number((await q1("SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1", [keyOf(name)])).id);
 
       // A test account the way first-run setup builds one, joined to the
-      // deck's real Shark member list (the deck's own roles).
+      // deck's pre-existing member list (the deck's own roles), so the
+      // deck's own rules govern the probe's permissions.
       const userId = await idByKey("person");
       const emailId = await idByKey("email");
       const saltId = await idByKey("salt");

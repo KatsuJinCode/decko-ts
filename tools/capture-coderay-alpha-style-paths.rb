@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
-# Oracle capture for the alpha theme's kind-PATH style lookup
-# (lane templatenest-coderay).
+# Oracle capture for the alpha theme's kind-PATH style lookup.
 #
 # encoders/html.rb resolves a token through TWO steps:
 #

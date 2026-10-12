@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Oracle capture for lane templatenest-coderay.
+# Oracle capture for the layout-template coderay pins.
 #
 # Two mechanisms are pinned here:
 #
@@ -24,7 +24,7 @@
 #       alpha theme's TOKEN_COLORS stylesheet. Every token kind the html
 #       scanner can emit is exercised by the cases below.
 #
-# Writes fixtures/captured/coderay/*.html next to the existing captures.
+# Writes the *.html gate and divergence files beside the existing captures.
 
 require "json"
 require "fileutils"
@@ -45,10 +45,10 @@ DIVERGENCE_DIR =
 FileUtils.mkdir_p GATE_DIR
 FileUtils.mkdir_p DIVERGENCE_DIR
 
-# The corpus card 22747 "Default Layout" (type_id 11746 = Layout) - the
-# card whose cardtype is layout_type, i.e. the one `with_nest_mode
-# :template` guards. Read live from the raw ground-truth sqlite (the same
-# db the page oracle rendered from) so the capture cannot drift from it.
+# The corpus's default Layout card - the card whose cardtype is
+# layout_type, i.e. the one `with_nest_mode :template` guards. Read
+# read-only from the corpus sqlite the page oracle renders from, so the
+# capture cannot drift from it.
 def corpus_22747_content
   db = File.expand_path("../tmp/raw-ground-truth/bench-corpus-raw.sqlite3", __dir__)
   conn = SQLite3::Database.new db, readonly: true
@@ -64,7 +64,7 @@ CARD_22747_CONTENT = corpus_22747_content
 # Every branch the html scanner can reach, one per case, so the TS port's
 # kind->span table is pinned per kind rather than per shape.
 CASES = {
-  # the card 22747 layout body - attribute_name + string group delimiters
+  # the layout card's body - attribute_name + string group delimiters
   # and content, :plain between tags, and the nest marks that stay
   # literal under with_nest_mode :template.
   "layout-type-template-22747" => [CARD_22747_CONTENT, :html],

@@ -8,14 +8,14 @@
 //   3. cutover gate         — N consecutive clean runs, signature-scoped
 //   4. policy schema        — reused routing fields + refused unknown keys
 //   5. route sample         — percentage-or-name sampling; view routes from
-//                             the corpus canvas fixture set (S1 CLOSED —
-//                             unknown views still refused by name)
+//                             the corpus canvas fixture set (unknown views
+//                             still refused by name)
 //   6. reference loader     — sha-verified, duplicate-refused
 //   7. CLI subprocess       — help exit 0, missing inputs exit 2 (named),
 //                             refusal discipline, report shape on real
 //                             stub-instrument execute runs, server teardown
 //   8. view-lane e2e        — mixed-lane clean run, view-only divergence
-//                             isolation, the close-71 CF-carrier census,
+//                             isolation, the page-vs-view CF-carrier census,
 //                             gate semantics on view samples
 //
 // DATA RULE: synthetic payloads only. The stub instrument serves what the
@@ -147,20 +147,16 @@ describe('normalizeNoiseHtml — the two documented noise regions', () => {
 });
 
 // ===========================================================================
-// 1c. The view-lane noise asymmetry — the close-71 / live-check-71 census
+// 1c. The view-lane noise asymmetry — the page-vs-view CF-carrier census
 // ===========================================================================
 //
-// The census (live-check-71-lane.md steps 6-7 + verdict table, 2026-10-03
-// live fetch, 71 GETs): 34 page entries + 37 view entries. ALL 34 pages
-// carried the Cloudflare __CF$cv$params per-response block; ZERO of the 37
-// views did (33 views byte-exact, 4 views slot-id-norm only). This pin
-// encodes those receipt numbers (a DATA pin, cited — the live captures are
-// frozen artifacts, not re-fetchable here) and the behavior the asymmetry
-// licenses: the CF region exists for PAGE-lane references and is a measured
-// no-op on VIEW-lane references, while the normalizer itself stays
-// lane-blind. NOTE: the lane mission text said "42 page carriers"; no
-// receipt on disk says 42 — both close-71-lane.md and live-check-71-lane.md
-// say 34 pages / 0 views. The pins encode the receipts.
+// The census behind this pin: 34 page entries + 37 view entries, where ALL
+// 34 pages carried the Cloudflare __CF$cv$params per-response block and
+// ZERO of the 37 views did (33 views byte-exact, 4 views slot-id-norm
+// only). This pin encodes those numbers as a DATA pin and the behavior the
+// asymmetry licenses: the CF region exists for PAGE-lane references and is
+// a measured no-op on VIEW-lane references, while the normalizer itself
+// stays lane-blind.
 describe('view-lane noise asymmetry — the close-71 census (34 page carriers, 0 view carriers)', () => {
   const CENSUS_PAGES = 34;
   const CENSUS_VIEWS = 37;
@@ -892,10 +888,10 @@ describe('CLI end-to-end with the stub instrument (execute runs)', () => {
 //
 // The stub's view seam (SHADOW_STUB_VIEW_BODY / SHADOW_STUB_VIEW_CANDIDATE_BODY)
 // is keyed off the same ?view= query the real instrument's renderCardView
-// branch dispatches on. The REAL branch is proven against a real fixture deck
-// with both real instruments spawned by runShadow — the manual e2e recorded in
-// tmp/wrong-goal-hunt/shadow-viewlane-lane.md (clean run 5/5, divergent run
-// 4x ENGINE-GAP against a sha-verified reference, ports torn down).
+// branch dispatches on, so these pins exercise the tool's view-lane paths
+// without a real deck: clean runs come out byte-identical, a divergent
+// view body reports UNATTRIBUTED (or ENGINE-GAP against a sha-verified
+// reference), and both render servers are torn down afterwards.
 
 describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
   it('a mixed-lane sample runs clean end-to-end: view routes byte-identical, lanes + corpus URL forms recorded, exit 0', () => {

@@ -19,8 +19,8 @@
 // expose NO rows-examined counter (no sqlite3_stmt_scanstatus binding —
 // verified absent in better-sqlite3 13.0.3), so every rows-read number here
 // is EXPLAIN QUERY PLAN plan-shape PLUS documented upper-bound accounting —
-// NOT telemetry. The lead's remote D1 insights window is what validates them
-// against real rows_read. Accounting convention: rows-matched per plan
+// NOT telemetry. Validation against real rows_read happens outside this
+// harness, over a live deployment's metrics. Accounting convention: rows-matched per plan
 // component, x1, aligned to D1 rows_read (the live insight "key=? read
 // 2,279" equals COUNT(trash=0)=2,279 on this deck). Components: rowid PK
 // seek = 1; unique-index equality = 1; non-unique index probe = measured
@@ -63,7 +63,7 @@ const SCHEMA = readFileSync(join(REPO, "db", "schema.sqlite.sql"), "utf8");
 const CORPUS_DB = join(REPO, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
 const CORPUS_COPY = join(REPO, "tmp", "corpus-copy-for-backfill-measure.sqlite3");
 
-// The exact DDL this lane landed in db/schema.sqlite.sql (+ 0002 for already-
+// The exact DDL added to db/schema.sqlite.sql (+ 0002 for already-
 // provisioned D1 databases). BEFORE-phase = schema with these filtered out.
 const NEW_INDEX_NAMES = ["cards_key_binary_index", "cards_codename_binary_index"];
 

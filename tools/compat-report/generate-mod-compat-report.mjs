@@ -499,7 +499,7 @@ function inventoryDeckoTs() {
 }
 
 // ---------------------------------------------------------------------------
-// per-mod manifest + test pin inventory (the byte-pinned verification round)
+// per-mod manifest + test pin inventory (byte-pin verification)
 // ---------------------------------------------------------------------------
 
 // For each mod: scan the mod's manifest (mod-loader/mods/*.ts) for the
@@ -677,7 +677,7 @@ function classify(inv, surface, pins) {
   // Byte-pin evidence from the per-mod test file: the A/B pattern
   // (tests/card/mod-loader/card-mod-XYZ.test.ts) pins the rendered bytes
   // against the Ruby oracle capture. >=5 byte-pins per mod is the threshold
-  // the verification round used to call a mod "declared-complete" — below
+  // for calling a mod "declared-complete" on the byte-pin criterion — below
   // that, the manifest may exist but the views are not yet byte-pinned.
   const hasManifest = pins.manifestExists;
   const hasTest = pins.testExists;
@@ -692,7 +692,7 @@ function classify(inv, surface, pins) {
     evidence = "no html view declarations in this mod";
   }
   // Append the byte-pin evidence so the report's per-mod detail surfaces
-  // the verification round's "manifest + bytePins" tally.
+  // the "manifest + bytePins" tally.
   if (hasManifest || hasTest) {
     evidence += `; mod-loader pins: manifest=${hasManifest ? "yes" : "no"}, test=${pins.testCount} it(), byte-pins=${bytePins}`;
   }
@@ -704,7 +704,7 @@ function classify(inv, surface, pins) {
   //            it uses are implemented AND pattern-backed set modules exist
   //            (the name+pattern rubric); OR (b) the mod has a registered
   //            manifest + a byte-pinned test file with >=5 toBe(<literal>)
-  //            pins (the verification round's criterion). Both measure
+  //            pins (the byte-pin criterion). Both measure
   //            declarations: a name present in the view table, a manifest
   //            present in the loader, pins for the views they render. None of
   //            it measures executable behavior, event hooks, or non-html
@@ -904,7 +904,7 @@ function renderMd(report) {
   lines.push("`src/card/mod-loader/mods/*.ts` (the engine resolves both —");
   lines.push("HTML_VIEWS is the seed table, the mod loader's `viewsTable` is the");
   lines.push("post-load live table). Status thresholds — all declaration-level:");
-  lines.push("- **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the verification round's criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.");
+  lines.push("- **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the byte-pin criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.");
   lines.push("- **partial**: some declarations (any html view name present, or >=50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for declared-complete.");
   lines.push("- **missing**: zero coverage.");
   lines.push("- **ignored**: not ported, and therefore not evaluated here - data/transform-only or backend-only gems with no set/ tree, so there is no set module or view to compare against the implemented surface.");

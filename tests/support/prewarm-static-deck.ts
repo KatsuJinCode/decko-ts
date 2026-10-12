@@ -154,31 +154,30 @@ export async function prewarmStaticDeck(
   }
   mark("enrich", t0);
 
-  // 4. Search-typed cards: closureWarm requires searchResults to hold the
-  //    card's CQL result; prepare it once here instead of on first render.
+  // 5. Search-typed cards: closureWarm only reports warm when searchResults
+  //    already holds the card's CQL result, so run each search once here
+  //    instead of on first render.
   //
-  //    The prepare phase matches on card.typeCode === "search_type"
-  //    (src/card/render.ts render.ts:1258 inside prepareSearches +
-  //    render.ts:1131 inside closureWarm - both re-keyed from typeName to
-  //    typeCode at 1ec2761 because corpus search-type cards carry a
-  //    random-named type card ("qnzkqz" in the bench corpus) so the old
-  //    typeName === "Search" gate silently skipped them and prewarmed
-  //    searches=0). The prewarm must gate on the SAME codename the
-  //    engine gates on — reading the codehash via peekNameForId is sync
-  //    once the cold-render above folded it (fetch/codename.ts:80-82),
-  //    so this is no extra round trip.
+  //    The gate must match the engine's own gate: prepareSearches selects
+  //    cards by typeCode === "search_type" (render.ts:1258) and closureWarm
+  //    reads the same key (render.ts:1131). A name-based gate ("Search")
+  //    is wrong because a search-type card's NAME is arbitrary — only its
+  //    codename is fixed — so a name gate silently skips real search cards
+  //    and prewarms searches=0. peekNameForId is sync once the cold render
+  //    above has folded the codehash (fetch/codename.ts:80-82), so gating
+  //    on the codename costs no extra round trip.
   //
-  //    The engine's searchResult seat is a private Map<string,
-  //    RenderCard[]> (render.ts:147). Public surfaces (engine.peekSearch
-  //    etc.) are deliberately not exposed — the prewarm touches private
-  //    state via the same structural-cast pattern it already uses for
-  //    enrichAndStore + prepareSearches above. Since the R4 lazy-parse seam
-  //    (render.ts prepareSearches), a search card whose cql parse fails is
-  //    recorded IN THE ENGINE (searchFailures marker + empty seat) and the
-  //    walk completes — the raise moved to the dispatch boundary
-  //    (engine.resolveView, view-gated on :open/:content per the capture
-  //    census). prepareSearches therefore no longer throws for parse
-  //    failures; this try/catch remains only as defense against unexpected
+  //    The engine's searchResults seat is a private Map<string,
+  //    RenderCard[]> (render.ts:147) and the public surface set
+  //    (engine.peekSearch etc.) deliberately does not expose it, so the
+  //    prewarm reaches it through the same structural-cast pattern already
+  //    used for enrichAndStore + prepareSearches above. Since the
+  //    lazy-parse seam in prepareSearches, a search card whose CQL fails
+  //    to parse is recorded in the engine (searchFailures marker + empty
+  //    seat) and the walk completes — the raise moved to the dispatch
+  //    boundary (engine.resolveView, view-gated on :open/:content).
+  //    prepareSearches therefore no longer throws for parse failures;
+  //    this try/catch remains only as defense against unexpected
   //    non-parse errors aborting the whole prewarm.
   t0 = Date.now();
   const engineWithSearchResults = engine as unknown as {
@@ -189,10 +188,10 @@ export async function prewarmStaticDeck(
   for (const record of records) {
     const typeId = record.typeId;
     if (typeId === undefined) continue;
-    // Match on codename ("search_type") not name ("Search") so the
-    // bench corpus's anonymized search-type card (id=30, name "qnzkqz",
-    // codename "search_type") is prewarmed. The sync peek is meaningful
-    // only after the cold-render above folded the codehash.
+    // Match on codename ("search_type") not name ("Search"): a search-type
+    // card's name is arbitrary — the codename is the stable identifier —
+    // so a name-based gate would skip real search cards. The sync peek is
+    // meaningful only after the cold-render above folded the codehash.
     const typeCode = storage.fetcher.codenames.peekNameForId(typeId);
     if (typeCode !== "search_type") continue;
     const key = record.key;
@@ -206,9 +205,9 @@ export async function prewarmStaticDeck(
       // seat populated with [] so closureWarm treats this card as warm
       // (searchResults.has(key) === true at render.ts:1131) and the
       // warm-closure path is map lookups only, not the ~750ms cold
-      // closure walk. One [] entry per failing card; the bench corpus
-      //    has no valid Search-type content, so this catches every
-      //    prewarm call.
+      // closure walk. One [] entry per failing card; decks whose
+      // Search-type cards hold no valid CQL content hit this path on
+      // every prewarm call.
       if (!engineWithSearchResults.searchResults.has(key)) {
         engineWithSearchResults.searchResults.set(key, []);
       }

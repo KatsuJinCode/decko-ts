@@ -105,12 +105,11 @@ for (const target of TARGETS) {
   // `["to","from","cc"]` (an email field list in the notify code) — a real
   // minified import always has a non-quote character before `from`.
   // Anchor on the import/export KEYWORD, not the preceding character: data
-  // strings defeat character-class checks. The r6b bundle carried the email
-  // mod's manifest rows (`setPath:"right/from",assignsType:"list"`) and the
-  // old regex read `from` inside `"right/from"` + the following `,assignsType:`
-  // as a phantom bare import (measured 2026-10-06, blocked the r6 publish).
-  // `[^;]` bounds the match to one statement so data strings containing
-  // semicolons cannot bridge.
+  // strings defeat character-class checks. The email mod's manifest rows
+  // (`setPath:"right/from",assignsType:"list"`) once read as a phantom bare
+  // import under the old regex, and the phantom blocked a publish before the
+  // rule was fixed. `[^;]` bounds the match to one statement so data strings
+  // containing semicolons cannot bridge.
   const bareImports = [...new Set(
     [...code.matchAll(/(?:import|export)[^;]{0,400}?from\s*"([^"]+)"/g)]
       .map((m) => m[1])

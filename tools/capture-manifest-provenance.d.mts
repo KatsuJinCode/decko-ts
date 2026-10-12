@@ -1,8 +1,8 @@
-// Type declarations for capture-manifest-provenance.mjs (the M1/M2/M5/M6
-// provenance primitives for the dual-lane capture). The .mjs is the
+// Type declarations for capture-manifest-provenance.mjs (the provenance
+// primitives for the dual-lane capture: sha identity, staging verification,
+// manifest grading, content-addressed photographs). The .mjs is the
 // implementation; this file exists so tsc (NodeNext) can type imports from
-// tests and tooling. Added by the incremental-diff-grade lane (2026-09-30)
-// because its test imports this module; declaration-only, no behavior.
+// tests and tooling. Declaration-only, no behavior.
 
 export const MANIFEST_SCHEMA: string;
 export const MANIFEST_FILENAME: string;
