@@ -2,7 +2,7 @@
 // counts, the weight signal the direct driver's queues are balanced on.
 //
 // WHY THIS EXISTS
-//   The driver used to balance its W queues on PASS19_PHASE_WEIGHTS_S via
+//   The driver used to balance its W queues on PHASE_WEIGHTS_S via
 //   buildShardWeights(). That is a STATED ASSUMPTION, not a measurement:
 //   tools/dual-lane-verifier-fast.mjs:216-223 splits each recorded phase's
 //   seconds EVENLY across that phase's two shards because the profiler could

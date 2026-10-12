@@ -31,7 +31,7 @@
 //   content hashes). LPT is scale-invariant, so entries balance exactly as
 //   entries x any positive constant would.
 //
-//   This replaced PASS19_PHASE_WEIGHTS_S, which was a STATED ASSUMPTION rather
+//   This replaced PHASE_WEIGHTS_S balancing, which was a STATED ASSUMPTION rather
 //   than a measurement: the recorded per-phase DONE durations split evenly
 //   across each phase's two shards, because the profiler could not split them
 //   (the same note lives at
@@ -104,7 +104,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  PASS19_PHASE_WEIGHTS_S,
+  PHASE_WEIGHTS_S,
   defaultShardName,
   buildShardWeights,
 } from "../dual-lane-verifier-fast.mjs";
@@ -369,7 +369,7 @@ export function refineWeightedQueues(queues, weights, options = {}) {
  * ANTI-correlated with actual per-shard entries (r = -0.21 over 48 shards), so
  * LPT was balancing on a signal that pointed the wrong way.
  *
- * Fallback: buildShardWeights(PASS19_PHASE_WEIGHTS_S), for any shard the count
+ * Fallback: buildShardWeights(PHASE_WEIGHTS_S), for any shard the count
  * could not be produced for -- a shard absent from the tree, or an unreadable
  * file. The fallback is per shard, not per run: a run where 47 of 48 shards
  * count balances on 47 measurements and falls back for exactly one.
@@ -379,14 +379,14 @@ export function refineWeightedQueues(queues, weights, options = {}) {
  * whether the QUEUE numbers are seconds or counts.
  */
 function resolveWeightSignal(shards) {
-  const fallback = buildShardWeights(PASS19_PHASE_WEIGHTS_S);
+  const fallback = buildShardWeights(PHASE_WEIGHTS_S);
   let measured = { counts: new Map(), source: "unavailable", keySource: null, elapsedMs: 0 };
   try {
     measured = measureShardEntryCounts(REPO, shards);
   } catch (err) {
     process.stdout.write(
       `WEIGHT-SIGNAL entry counting threw (${err?.message ?? String(err)}); ` +
-        `falling back to PASS19_PHASE_WEIGHTS_S for every shard\n`,
+        `falling back to PHASE_WEIGHTS_S for every shard\n`,
     );
   }
 
@@ -428,7 +428,7 @@ function resolveWeightSignal(shards) {
         ? `shard entries min=${min} max=${max} mean=${(sum / counted).toFixed(0)} ` +
             `ratio=${max > 0 ? (max / Math.max(1, min)).toFixed(2) : "n/a"}x` +
             (fellBack > 0 ? `, ${fellBack} shard(s) fell back to recorded seconds` : "")
-        : "no counts available; every shard on PASS19_PHASE_WEIGHTS_S",
+        : "no counts available; every shard on PHASE_WEIGHTS_S",
   };
 }
 
