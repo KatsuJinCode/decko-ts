@@ -213,24 +213,22 @@ export async function followMailViews(
       const name = before ?? (await nameOf(action.cardId));
       const body = `${name} ${action.type}d\n${await listOfChanges(action, html)}`;
       // Text items: wrap_subedit_item (base_views.rb:113-115) contributes the
-      // LEADING newline only in the delivered bytes — the body already ends
-      // with its list's newline (wrap_list_item, :109-111), and the harness's
-      // Ruby capture pins exactly one blank line between items and after the
-      // header (the trailing wrapper newline never survives to the mail).
+      // LEADING newline only — the body already ends with its list's newline
+      // (wrap_list_item, :109-111), and the wrapper's own trailing newline
+      // never survives into the delivered mail.
       items += html ? `<li>${body}</li>\n` : `\n${body}`;
     }
     if (items === "") return "";
-    // Text list tail: the Ruby capture pins the section ending with a blank
-    // line of its own before the template's next line ("Tag 02\n" + "\n\n"),
-    // alongside the one-blank-line header and item separations.
+    // Text list tail: the section ends with a blank line of its own before the
+    // template's next line, matching the one-blank-line header and item
+    // separations above.
     const list = html ? `<ul>${items}</ul>\n` : `${items}\n\n`;
     return `\nThis update included the following changes:\n${list}`;
   };
 
-  // A delete that also renamed the act card (a closed account's holder,
-  // renamed ANON-... in its own delete action) is announced under the name
-  // the card had before the act: the act card Ruby notifies about is the
-  // object the request loaded, which never saw the rename.
+  // A delete that also renamed the act card is announced under the name the
+  // card had before the act: the act card Ruby notifies about is the object
+  // the request loaded, which never saw the rename.
   const mainRename = main !== undefined && main.cardId === input.actCardId && main.type === "delete"
     ? await changeValue(main, "name")
     : undefined;

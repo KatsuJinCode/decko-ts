@@ -16,9 +16,9 @@
 // The TS port reproduces the shape: the trigger evaluates a "who follows
 // this card?" lookup, renders one MailMessage per follower with a
 // delivery-target email, and hands each message to the transport. The
-// lookup is a function the trigger accepts (FollowerResolver); the act
-// streams own the real lookup against the rule algebra — this file
-// carries no DB driver dependency.
+// lookup is a function the trigger accepts (FollowerResolver); callers own
+// that lookup against the rule algebra — this file carries no DB driver
+// dependency.
 
 import {
   interpolateTemplate,
@@ -55,11 +55,11 @@ export interface FollowerRef {
   readonly followOption: string;
 }
 
-/** Resolves the followers of one card. The act-stream owns this against
- *  the rule algebra; for the first-mechanism test the harness supplies
- *  an inline resolver so the trigger is deterministic. Async allowed:
- *  the real resolver (follower-resolver.ts) reads the deck's rule
- *  storage. Rendering is unaffected — fire() awaits before rendering. */
+/** Resolves the followers of one card. The caller supplies this against
+ *  the rule algebra; tests supply an inline resolver so the trigger is
+ *  deterministic. Async allowed: a real resolver
+ *  (follower-resolver.ts) reads the deck's rule storage. Rendering is
+ *  unaffected — fire() awaits before rendering. */
 export type FollowerResolver = (
   cardId: number | null,
   event: SavePathEvent,
@@ -69,26 +69,23 @@ export type FollowerResolver = (
  *  `Card[:follower_notification_email]` + its `+subject` /
  *  `+text_message` / `+html_message` children, all stamped as
  *  `*content` views; the TS port treats the template as a triple of
- *  literals (the resolver may rewrite those literals from the deck —
- *  "first mechanism template"). May be
- *  async: the deck-backed resolver reads those children through the
- *  async fetch engine (test sugar stays sync). */
+ *  literals (the resolver may rewrite those literals from the deck). May
+ *  be async: a deck-backed resolver reads those children through the async
+ *  fetch engine (test sugar stays sync). */
 export type EmailTemplateResolver = () => EmailTemplate | Promise<EmailTemplate>;
 
-/** Build the follow-notify integration hook. The returned SavePathIntegrationHook
- *  is the registration the coordinator must attach to the action engine
- *  via CardActionEngineOptions.integrationHooks (the exact registration
- *  line "save-path registration
- *  line"). */
+/** Build the follow-notify integration hook. The returned
+ *  SavePathIntegrationHook is the registration the coordinator attaches to
+ *  the action engine via CardActionEngineOptions.integrationHooks. */
 export interface FollowNotifyDeps {
-  /** The "who follows the saved card?" lookup. The act streams own this
+  /** The "who follows the saved card?" lookup. The caller supplies this
    *  against the rule algebra (card-mod-follow set/all/follow.rb —
    *  direct/indirect follower walks). */
   readonly followers: FollowerResolver;
-  /** The "what is the email template" lookup. The notify-stream owns
-   *  this against the EmailTemplate type card (card-mod-email
-   *  set/type/email_template.rb — the first mechanism uses a literal
-   *  triple of strings; production wiring loads it from a card). */
+  /** The "what is the email template" lookup. The caller supplies this
+   *  against the EmailTemplate type card (card-mod-email
+   *  set/type/email_template.rb); a literal triple of strings is the
+   *  fallback, and production wiring loads it from a card. */
   readonly template: EmailTemplateResolver;
   /** Authenticated-actor resolver. Ruby does `Auth.as(left.id)` for each
    *  follower (set/right/account.rb:15-21); the port mirrors that with a
@@ -101,7 +98,7 @@ export interface FollowNotifyDeps {
   /** The per-follower nest values (follow-mail-views.ts). When present the
    *  mail is rendered as Ruby delivers it: every nest filled per format,
    *  the html part in the email document wrapper. Absent: placeholders
-   *  fall back to their bare names (the template-only mechanism). */
+   *  fall back to their bare names. */
   readonly views?: (input: {
     act: SavePathAct;
     actCardId: number;
@@ -116,8 +113,8 @@ const STAGE: SavePathIntegrationHook["stage"] = "integrate_with_delay";
 
 /** Mirrors Ruby's `notable_change?` (card-mod-follow notify.rb:16-25):
  *   !silent_change? && current_act_card? && auth != DeckoBot && followable?
- * The first-mechanism port drops `followable?` (per-card-type opt-out) — a
- * later stream adds it once the rule algebra is wired. */
+ * This port drops `followable?` (the per-card-type opt-out) — add it back
+ * once the rule algebra is wired. */
 function isNotable(event: SavePathEvent): boolean {
   if (event.silent === true) return false;
   if (event.actor.name === "*Decko Bot") return false;
@@ -127,7 +124,7 @@ function isNotable(event: SavePathEvent): boolean {
 /** One-follower delivery. Mirrors card-mod-follow notify.rb:55-58 +
  *  set/right/account.rb:1-21. The follow rule's `changes_visible?`
  *  check (set/right/account.rb:9-11) is upstream — the trigger assumes
- *  it has already been done (or the harness skipped it for tests). */
+ *  it has already been done (tests may skip it). */
 async function notifyFollower(
   ref: FollowerRef,
   template: EmailTemplate,
@@ -214,7 +211,7 @@ async function notifyFollowersOfAct(
  *
  *  The hook SKIPS the delete path (Ruby uses a separate event —
  *  notify.rb:25-26 `event :notify_followers_after_delete, :integrate,
- *  on: :delete`). A later release can wire it; this file is the SAVE
+ *  on: :delete`). That arm can be wired separately; this file is the SAVE
  *  path only. */
 export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrationHook {
   /** The per-act walk (notify_followers, set/all/notify.rb:37-41 +
