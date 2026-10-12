@@ -76,9 +76,10 @@ import cardModMarkdown from "../../../src/card/mod-loader/mods/card-mod-markdown
 import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 
-/** The captured-oracle fixtures this suite reads at module scope.
+/** The recorded fixtures this suite reads at module scope.
  *
- *  They live under `fixtures/captured/`, which is on the public candidate's
+ *  They live under the captured-fixtures directory the constants below point
+ *  at, which is on the public candidate's
  *  exclusion list, so on a clean clone they are ABSENT. Reading one unguarded
  *  threw ENOENT during import — before any describe existed to skip — and the
  *  run reported a failed suite with `no tests`, which reads as an engine

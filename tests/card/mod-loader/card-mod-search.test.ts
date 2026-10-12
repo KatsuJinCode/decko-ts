@@ -421,8 +421,8 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(abstractShortnames).toContain("Abstract::Search::Views");
     expect(abstractShortnames).toContain("Abstract::SearchViews");
     // self/* -> nonbase bucket. The only self set module the port registers
-    // is self/search (self/search.rb:48, the :results_for_keyword haml view,
-    // added by the mod-views-b port); the other self/right/type files are
+    // is self/search (self/search.rb:48, the :results_for_keyword haml
+    // view); the other self/right/type files are
     // method-only.
     expect([...basket.nonbase.values()].flat().map((m) => m.shortname)).toEqual(["Self::Search"]);
   });
@@ -436,7 +436,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(report.registeredViews).toContain("goto_autocomplete_item");
     expect(report.registeredViews).toContain("add_autocomplete_item");
     expect(report.registeredViews).toContain("select2_option");
-    // 0_search/views.rb:118 + self/search.rb:48 (mod-views-b port)
+    // 0_search/views.rb:118 + self/search.rb:48
     expect(report.registeredViews).toContain("checkbox_list");
     expect(report.registeredViews).toContain("results_for_keyword");
   });

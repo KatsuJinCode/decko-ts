@@ -12,8 +12,8 @@
 //   was rendered-unpinned: no captured byte surface reached an email
 //   template's :content view. This suite is that surface.
 //
-// Fixture: the captured email-template rows under fixtures/captured/, built
-//   by benchmarks/extract-email-template-oracle-bytes.mjs (deck opened
+// Fixture: the recorded email-template rows, built by
+//   benchmarks/extract-email-template-oracle-bytes.mjs (deck opened
 //   readonly; the cards + card_references row counts are recorded in the
 //   fixture's provenance.no_write_proof, before === after).
 
