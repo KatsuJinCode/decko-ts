@@ -1,19 +1,14 @@
-// bar-slots (2026-09-29, view-fail class Z3): the Mod cardtype's
-// bar_right is type/mod.rb's section list — the mod's present sections
-// comma-joined in the oracle-pinned order tasks < settings <
+// The Mod cardtype's bar_right is type/mod.rb's section list — the mod's
+// present sections comma-joined in Ruby's pinned order tasks < settings <
 // configurations < cardtypes < scripts < styles — where the engine used to
-// render an empty bar-right for every mod card. The expected strings are
-// an earlier dump's oracle bar-right rows verbatim (phase-019 + phase-043
-// dumps, e.g. 000039-mod_account-closed, 000039-mod_core-closed,
-// 000039-mod_carrierwave-closed, 000039-mod_recaptcha-closed,
-// 000043-mod_shades-closed, 000039-mod_defaults-closed).
+// render an empty bar-right for every mod card.
 //
 // Dispatch shape: the BASE bar_right branches on typeCode "mod"
-// (views.ts) because the corpus grading pipeline replays views through a
+// (views.ts) because the production replay path renders views through a
 // RenderEngine that never binds a ModLoader — a set-module registration
-// alone cannot dispatch on the graded surface. The section predicates live
+// alone cannot dispatch there. The section predicates live
 // in core-admin-runtime.ts (modBarRightSections: ADMIN_CONFIG presence +
-// the basket tasks + the oracle-pinned scripts/styles presence table).
+// the basket tasks + the pinned scripts/styles presence table).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -31,7 +26,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 2, name: "Setting", codename: "setting" });
   await seedCard(s, { id: 5, name: "RichText", codename: "rich_text" });
   await seedCard(s, { id: 6, name: "Anyone", codename: "anyone" });
-  // The Mod cardtype + the mod cards (codenames mod_* — the corpus shape
+  // The Mod cardtype + the mod cards (codenames mod_* — the shape
   // type/mod.rb's modname resolution reads).
   await seedCard(s, { id: 3, name: "Mod", codename: "mod", typeId: 2 });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 1, dbContent: "{}" });
@@ -65,7 +60,7 @@ async function modBarRight(mod: string): Promise<string> {
 
 describe("mod bar_right: the type/mod.rb section list", () => {
   it("renders the dumped oracle section strings", async () => {
-    // Each expected string is an earlier dump's oracle bar-right row.
+    // Each expected string is Ruby's bar-right row for that mod.
     expect(await modBarRight("core")).toBe("tasks, cardtypes");
     expect(await modBarRight("account")).toBe("cardtypes, scripts, styles");
     expect(await modBarRight("defaults")).toBe("configurations");
