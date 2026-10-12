@@ -1,6 +1,5 @@
 # board-act-view.rb — static-ruby oracle capture for card-mod-history's
-# view :board_act (set/all/history_board.rb:18-26), the one view of the
-# mod the 2026-10-03 coverage census names as missing.
+# view :board_act (set/all/history_board.rb:18-26).
 #
 # WHAT RUNS: the gems' own source lines, extracted VERBATIM by line range
 # (1-indexed, inclusive) and evaluated as the renderer/format doubles'
@@ -8,10 +7,10 @@
 # every stub is listed here:
 #
 #   content_tag       - Rails ActionView TagHelper (tag_helper.rb): the
-#                       established engine-wide stub (attributes render in
+#                       engine-wide stub (attributes render in
 #                       hash insertion order, values escaped, content not
-#                       re-escaped). The live captures pin its output on
-#                       dozens of views.
+#                       re-escaped), the same one every oracle script
+#                       here uses.
 #   output            - card-1.110.0 lib/card/format/content.rb:70-72,
 #                       extracted VERBATIM (Array.wrap + flatten + compact
 #                       + join "\n").
@@ -28,9 +27,8 @@
 #   ACTION_ICONS + icon_tag - act_listing.rb:1-6 extracted VERBATIM; the
 #                       material mapping (create_action: add_circle,
 #                       update_action: edit, delete_action: remove_circle,
-#                       draft: build) is the card-mod-bootstrap
-#                       icon.rb basket the live captures pin
-#                       (board-views.json: "edit" on the update badge).
+#                       draft: build) comes from card-mod-bootstrap's
+#                       icon.rb basket.
 #   time_ago_in_words - Rails DateHelper bucket for the frozen delta
 #                       (exactly 86_400 s -> "1 day", date_helper.rb
 #                       bucket table); the TS port pins the FULL table
@@ -39,10 +37,9 @@
 #   underscore        - Rails active_support String#underscore (board.rb's
 #                       breadcrumb_data default class).
 #   revert link bytes - actions.rb:81-90 extracted VERBATIM (the ok?
-#                       gate); the final <a> bytes are the shape the
-#                       standing net pins (fixtures/captured/
-#                       history-views.json revert hrefs + the TS port's
-#                       revertActionsLink, suite-pinned).
+#                       gate); the final <a> bytes match the TS port's
+#                       revertActionsLink in card-mod-history.ts, which
+#                       the TS suite pins.
 #   ActDouble/ActionDouble/CardDouble/NameDouble - row doubles carrying
 #                       only the fields the verbatim code reads.
 #
@@ -283,8 +280,8 @@ class FormatDouble
     draft: :draft
   }.freeze
 
-  # verbatim: act_listing.rb:83-86 action_icon (modulo the icon basket's
-  # material mapping, stubbed to the capture-proven names)
+  # verbatim: act_listing.rb:83-86 action_icon (with the icon basket's
+  # material mapping supplied by MATERIAL_BY_KEY below)
   MATERIAL_BY_KEY = {
     "create_action" => "add_circle",
     "update_action" => "edit",
@@ -297,7 +294,7 @@ class FormatDouble
     icon_tag(MATERIAL_BY_KEY.fetch(key))
   end
 
-  # icon.rb:120-129 shape - the capture-proven bytes
+  # icon.rb:120-129 shape
   def icon_tag(name, _extra_class = nil)
     %(<i class="notranslate material-icons">#{name}</i>)
   end
@@ -472,7 +469,7 @@ class RendererDouble
   end
 
   # verbatim: act_renderer.rb:134-139 autosaved_draft_link (link_to_view
-  # stubbed: the edit link shape the edit-form captures pin)
+  # stubbed to the plain edit-link shape)
   def autosaved_draft_link(opts = {})
     text = opts.delete(:text) || "autosaved draft"
     opts[:path] = { edit_draft: true }
@@ -481,9 +478,8 @@ class RendererDouble
   end
 
   # verbatim: history actions.rb:81-90 revert_actions_link (the ok? gate
-  # included); the final <a> is the standing-net-pinned shape
-  # (revertActionsLink in card-mod-history.ts; fixtures/captured/
-  # history-views.json's revert hrefs carry the same href bytes).
+  # included); the final <a> matches the TS port's revertActionsLink in
+  # card-mod-history.ts.
   def revert_actions_link(link_text, path_args, html_args = {})
     return unless card.ok? :update
 
@@ -506,11 +502,11 @@ class ActionRendererDouble
     @action = action
   end
 
-  # STUB (documented): the real ActionRenderer#render is the bs_panel
-  # container/row/ul bytes the standing net pins (card-mod-history.ts
-  # actionRendererBytes; fixtures/captured/history-views.json). This
-  # capture pins the DETAILS composition around it: the approval filter,
-  # the [0..20] slice cap, and the join - the marker is the action id.
+  # STUB (documented): the real ActionRenderer#render emits the bs_panel
+  # container/row/ul bytes that card-mod-history.ts's actionRendererBytes
+  # renders. This capture pins the DETAILS composition around it: the
+  # approval filter, the [0..20] slice cap, and the join - the marker is
+  # the action id.
   def render
     "AR(#{@action.id})"
   end
@@ -607,10 +603,10 @@ emit(behaviorId: "view:board_act",
      gemSource: "card-mod-edit set/all/board.rb:73-77",
      breadcrumb: format6.breadcrumb_data("History"))
 
-# Scenario 7: the CAPTURED board pill bytes (the live capture's history-tab
-# anchor embeds the board renderer's title bytes verbatim) + the oracle's
-# verbatim title - the script asserts the title bytes appear in the
-# captured anchor, so the oracle line pins BOTH provenances.
+# Scenario 7: the recorded board pill anchor (the JSON file this script
+# reads below) embeds the board renderer's title bytes verbatim - the
+# assertion checks that the oracle's verbatim title appears inside that
+# anchor, pinning both byte sets together.
 capture_json = JSON.parse(File.read(capture_file))
 captured_views = capture_json.fetch("targets").fetch("basic_note").fetch("views")
 pill_html = captured_views.values.map { |v| v["history_tab"] }.compact.join("\n")
