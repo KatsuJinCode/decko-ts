@@ -58,7 +58,7 @@ import { str } from "../../render/format.js";
 // - set/self/follow_fields.rb:1 setting_opts group: :other, position: 5,
 //   rule_type_editable: false. Ported.
 //
-// NOT ported (honest remainder, updated the follow read path 2026-09-29):
+// NOT ported (honest remainder, updated for the follow read path):
 // - all/follow/followed_by + follower_ids: the READ half the views need
 //   IS ported now (src/card/follow/follow-rule-walk.ts reusing the notify
 //   pass's algebra from src/card/notify/follower-resolver.ts) INCLUDING
@@ -73,14 +73,14 @@ import { str } from "../../render/format.js";
 //   (:11-14): the GEM BODY CALLS A MISSING METHOD - `follow_link_class
 //   .link_opts` fires link_opts on the FollowLink CLASS, but
 //   follow_link.rb:36 defines link_opts only as an INSTANCE method; Ruby
-//   raises NoMethodError as written. Porting the raise would pin a guess
-//   about intent (no oracle capture exists); named here, not guessed.
+//   raises NoMethodError as written. Porting the raise would encode a
+//   guess about intent; named here, not guessed.
 // - all/notify.rb events + the notify base/html views (:list_of_changes,
 //   :subedits, :followed, :unfollow_url): the notification EMAIL-template
 //   surface - the bodies read active_notice inherited from the email render
-//   context, Action.value walks, and card_url (all named by the token-runtime
-//   recorded result too); the write-path events are the notify stream's.
-//   Wave-1 (2026-10-03): :subedit_notice + :follower ARE PORTED now (the
+//   context, Action.value walks, and card_url; the write-path events are
+//   the notify stream's.
+//   :subedit_notice + :follower ARE PORTED now (the
 //   manifest's base-format registrations - subedit_notice through the
 //   history seam, follower the page arm).
 // - all/notify.rb events (silence_notifications, notify_followers_
@@ -93,9 +93,9 @@ import { str } from "../../render/format.js";
 //   notification email template (data/real.yml "follower notification
 //   email") walks active_notice inherited from the email format, which is
 //   not ported; :unfollow_url calls card_url (Rails URL helper);
-//   :followed calls Card.fetch + follow_option_card. Wave-1
-//   (2026-10-03): :subedit_notice + :follower are the manifest's base
-//   registrations now (subeditNoticeView / followerNotifyView).
+//   :followed calls Card.fetch + follow_option_card. :subedit_notice +
+//   :follower are the manifest's base registrations now
+//   (subeditNoticeView / followerNotifyView).
 // - right/account.rb send_change_notice: deliver email through
 //   follower_notification_email template + Auth.as; rails-runtime
 //   (ActionMailer, Auth.as scope).
@@ -106,7 +106,7 @@ import { str } from "../../render/format.js";
 //   methods used by the email template - not render views themselves.
 // - right/follow.rb: view :follow_status + :follow_item ARE PORTED now
 //   - the forms ride src/card/follow/follow-form-shapes.ts
-//   (the captured edit-form bytes + form_tag_helper shapes); the permit/
+//   (the edit-form bytes + form_tag_helper shapes); the permit/
 //   ok_to_update?/ok_to_create? gates (:27-33, :43-49) are write-path
 //   permission overrides, not view bodies - the read-side render gate is
 //   the engine's standard view-permission machinery.
@@ -122,21 +122,18 @@ import { str } from "../../render/format.js";
 // - self/follow_defaults.rb (DEPRECATED) views :edit_buttons (calls
 //   render_confirm_update_all + button_formgroup + 3 submit buttons -
 //   rails-runtime). The :confirm_update_all view is ported (above).
-//   2026-09-30: BOTH views are now ported (followDefaults
+//   BOTH views are now ported (followDefaults
 //   EditButtonsView below, registered at the self/follow_defaults manifest
 //   entry) - and BOTH are UNREACHABLE for their own card, in Ruby exactly
 //   as here. 09_self.rb anchors the SELF pattern on card.name, and
 //   Cardname#safe_key (cardname-0.20.0 lib/cardname/variants.rb:19) is
 //   `key.tr("*","X")` over the SINGULARIZED key, so the card
 //   "*follow defaults" carries the token SELF-Xfollow_default while this
-//   file declares the constant FollowDefaults. Live capture (benchmarks/
-//   capture-readonly-follow-defaults-and-core-shape.rb -> fixtures/
-//   captured/readonly-follow-defaults-and-core-shape.json, card_actions
-//   5018 == 5018 around every render): safe_set_keys "ALL TYPE-list STAR
-//   SELF-Xfollow_default", ancestors grep(/FollowDefault/) = [], and :core
-//   / :confirm_update_all / :edit_buttons all render the anonymous denial
-//   span. Same marker class as the api_key RIGHT-X star below - the port
-//   raises UnsupportedViewError, which is Ruby-true.
+//   file declares the constant FollowDefaults. The set-key walk therefore
+//   reads "ALL TYPE-list STAR SELF-Xfollow_default" with no FollowDefaults
+//   ancestor, and :core / :confirm_update_all / :edit_buttons all render
+//   the anonymous denial span. Same marker class as the api_key RIGHT-X
+//   star below - the port raises UnsupportedViewError, which is Ruby-true.
 // - type/cardtype.rb + type/notification_template.rb + type/set.rb +
 //   type/user.rb: methods (follow_label, follow_set_card, list_direct_
 //   followers?, directly_followed_by?, follow_rule_name) + format
@@ -148,9 +145,9 @@ import { str } from "../../render/format.js";
 // - type_plus_right/user/follow.rb: view :follow_tab + :ignore_tab ARE
 //   PORTED now - the row walk is the seam's followEditorRows
 //   (follow/follow-render-seam.ts) and the rows render the same
-//   follow_item body the right/follow set module registers. Wave-1
-//   (2026-10-03): :errors IS PORTED now (the no-errors arm registered -
-//   the reachable arm; the permission arm's pieces probe-pinned; the
+//   follow_item body the right/follow set module registers. :errors IS
+//   PORTED now (the no-errors arm registered - the reachable arm; the
+//   permission arm's pieces live in userFollowErrorsPermissionArm; the
 //   super() arm dispatches card-mod-format's all-set body). STILL NOT
 //   PORTED here: view :core (:39-43 - the signed-in arm dispatches
 //   :rule_editor through render_rule_editor - rule_editor IS ported now
@@ -201,7 +198,7 @@ import type { PatternCardInput } from "../../set-patterns/types.js";import {
 } from "../mod-manifest.js";
 import { parseSetName } from "../../set-patterns/set-name.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -319,9 +316,7 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 // ---------------------------------------------------------------------------
 // set/self/follow_defaults.rb:24-30 view :confirm_update_all.
 //
-// The corpus render (the synthetic-v2 view pin, admin) proves the view
-// REACHES its card (the wave-1 "unreachable" note was the anonymous-arm
-// capture): the body is `wrap do alert(:info) do %(...) end end` -
+// The body is `wrap do alert(:info) do %(...) end end` -
 //
 //   view :confirm_update_all do
 //     wrap do
@@ -337,7 +332,7 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 //
 // `wrap` is the slot wrap (wrap.rb:11-14 - the card-slot div with the
 // view/set-key classes and the data-slot payload, whose show list the
-// view-lane root enrollment fills); the bootstrap alert helper adds
+// root render's enrollment fills); the bootstrap alert helper adds
 // role="alert" beside the class chain; the %( ) literal keeps the source
 // whitespace verbatim (10-space h1/p indents, the 13-space continuation,
 // the 8-space line before the helper's closing tag).
@@ -354,11 +349,11 @@ const confirmUpdateAllView: ViewFn = (ctx) => {
 };
 
 // ===========================================================================
-// the follow views port (2026-09-28): the follow views whose bodies the follow-rule
+// the follow views port: the follow views whose bodies the follow-rule
 // read/walk + the form shapes + the actor-session seam render. Every body
-// below cites its gem lines; the bytes are RENDERED-UNPINNED (the capture
-// corpus carries no Ruby-oracle bytes for any follow view name - verified
-// against tmp/raw-ground-truth/expected/recapture-raw-shard-*.jsonl).
+// below cites its gem lines; the bytes derive from the gem source and the
+// TS render surface (no upstream rendered reference exists for any follow
+// view name).
 // ===========================================================================
 
 // --- shared body helpers ---------------------------------------------------
@@ -366,8 +361,8 @@ const confirmUpdateAllView: ViewFn = (ctx) => {
 /** set/type/set.rb follow_label: subclass_for_set.short_label(anchor_name)
  *  - the per-pattern short labels (labels.ts via the set-name parser: the
  *  pattern resolves through the tag card's codename). The *all set's short
- *  label is "everything" (01_all.rb) - the corpus follow_item pin's link
- *  text. Empty string when no pattern registers (the Ruby nil klass arm
+ *  label is "everything" (01_all.rb) - the follow_item link's text
+ *  for the *all set. Empty string when no pattern registers (the Ruby nil klass arm
  *  returns "" from label/short_label dispatch). */
 function setFollowLabel(ruleSetName: string): string {
   const parsed = parseSetName(ruleSetName);
@@ -381,8 +376,7 @@ function setFollowLabel(ruleSetName: string): string {
  *  {name: "*dummy+*dummy"}; 06_rule.rb:11 {name: "*all+*create"};
  *  07_right.rb:18 {name: "*dummy+<anchor>"}; 08_type_plus_right.rb:23
  *  {name: "+<anchor.tag>"}; 09_self.rb:13 {name: anchor}). The key of the
- *  unnamed prototypes is "". The corpus pin (*all rule) carries the empty
- *  string. */
+ *  unnamed prototypes is "" (the *all rule set's prototype key). */
 function setPrototypeKey(ruleSetName: string): string {
   const parsed = parseSetName(ruleSetName);
   const anchor = parsed.anchorName?.s ?? "";
@@ -429,8 +423,8 @@ function ruleSetNameOf(ruleCardName: string): string {
 
 /** right/follow.rb:23-25 add_follow_item?: `new_card? ||
  *  !include_item?(condition)`. The items are the rule card's content
- *  lines - the deck stores BARE option names (corpus truth: "Make
- *  Contact+*self+Riley Ellery+*follow" content "*always"). */
+ *  lines - the deck stores BARE option names (a "Set+User+*follow" rule
+ *  card's content is an option line like "*always"). */
 function followRuleItems(card: RenderCard): string[] {
   return card.dbContent
     .split("\n")
@@ -452,8 +446,8 @@ function followItemHiddenTags(card: RenderCard, condition: string): string {
  *  icon: button_tag type: :submit, "aria-label": "Left Align", class:
  *  "btn-sm btn-item <add|delete class>"; bootstrapify_button appends
  *  "btn btn-primary" (situation default, form.rb:33-36); icon_tag(:add |
- *  :check) is the material-icons <i>. The captured attribute order is the
- *  oracle's (follow_item pin): name="button", type, aria-label, class. */
+ *  :check) is the material-icons <i>. The attribute order:
+ *  name="button", type, aria-label, class. */
 function followItemButton(card: RenderCard, condition: string): string {
   const add =
     card.id === undefined || !followRuleItems(card).includes(condition);
@@ -477,8 +471,7 @@ function followItemButton(card: RenderCard, condition: string): string {
  *  `real? || virtual?` (card core set/all/states.rb:65-67): the by_name
  *  right joins the VirtualSearch family (virtual_search.rb:11-12 def
  *  virtual?; new?; end), so a "*all+by_name" target is virtual-known on a
- *  row miss and renders known-card (the corpus oracle's follow_status and
- *  follow_item pins, 2026-10-10). */
+ *  row miss and renders known-card. */
 function followItemLink(fmt: RenderFormat, ruleSetName: string): string {
   const target = followItemLinkTarget(ruleSetName);
   const targetName = DeckoName.parse(target);
@@ -495,11 +488,10 @@ function followItemLink(fmt: RenderFormat, ruleSetName: string): string {
  *  the :follow_item view and the User+*follow editor rows render (without
  *  the wrap; callers apply the slot wrap). card_form action: :update,
  *  success: {view: :follow_item} - the success rides the ACTION QUERY
- *  (card_form_url_and_action, the oracle's
- *  ?success%5Bview%5D=follow_item), no success hidden tag; the form class
- *  is "card-form slotter" (the captured follow_item form carries NO
- *  autosave); the body is [hidden_tags, (button), link] newline-joined
- *  (content.rb:68-70 output). */
+ *  (card_form_url_and_action, ?success%5Bview%5D=follow_item),
+ *  no success hidden tag; the form class is "card-form slotter"
+ *  (follow_item's form carries NO autosave); the body is [hidden_tags,
+ *  (button), link] newline-joined (content.rb:68-70 output). */
 function followItemFormBytes(
   fmt: RenderFormat,
   condition: string,
@@ -527,9 +519,9 @@ function followItemFormBytes(
 /** right/follow.rb:67-78 follow_item condition, button=true - the body the
  *  :follow_item view and the User+*follow editor rows render, wrapped by
  *  `wrap do ... end` - the slot div (set/all/html/wrap.rb:6-13). The wrap
- *  reads the RENDER's live voo (Ruby: the same format's @voo - the
- *  harness's view-lane root enrollment is what puts the "show" list into
- *  the data-slot payload, the corpus pins' 1990/1990 slots). */
+ *  reads the RENDER's live voo (Ruby: the same format's @voo - the root
+ *  render's enrollment is what puts the "show" list into the data-slot
+ *  payload). */
 function followItemHtml(
   ctx: ViewContext,
   condition: string,
@@ -566,10 +558,10 @@ function followBundle(ctx: ViewContext): FollowRenderBundle | undefined {
  *  follow_item FORMAT METHOD on the same format (not a subformat render),
  *  so each nested wrap reads @current_view follow_status - the nested
  *  slots' id/class/data-slot all say follow_status-view (the oracle's
- *  nested slot pins it). link_to_view adds rel nofollow + data-remote and
- *  its own "slotter" (the passed class already carries one - the captured
- *  double "slotter slotter"); set_prototype.key for the *all rule set is
- *  "" (rules.rb:73 + 01_all.rb:9). */
+ *  nested slots carry it). link_to_view adds rel nofollow + data-remote
+ *  and its own "slotter" (the passed class already carries one, so the
+ *  emitted class list is the double "slotter slotter"); set_prototype.key
+ *  for the *all rule set is "" (rules.rb:73 + 01_all.rb:9). */
 const followStatusView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const card = fmt.card;
@@ -623,11 +615,10 @@ const followItemView: ViewFn = (ctx) => {
  *  picks the class (follow_link_views.rb:2-4) - the seam's followed verdict
  *  under the SESSION actor. The bytes are the card-mod-edit port's
  *  followButton builder - the SAME FollowLink#button anchor the
- *  follow_section embed renders (the oracle pins both surfaces with
- *  identical bytes; the standalone view used to emit its own attribute
- *  order, class list and href encoding, which the pin caught). The actor
+ *  follow_section embed renders (one builder for both surfaces, so they
+ *  cannot drift). The actor
  *  arm: Ruby's Auth.current.name is "Anonymous" under no session (the
- *  follow rule mark carries it - the oracle's anonymous pin). */
+ *  follow rule mark carries it). */
 const followButtonView: ViewFn = (ctx) => {
   const bundle = followBundle(ctx);
   return followButton(
@@ -672,8 +663,8 @@ function followEditorBody(
   // or the walk's empty `yield nil` arm (follow_editor_helper.rb:45) renders
   // the literal "no entries" text INSIDE the li (haml: the -if/-else arms).
   // Haml emission: no indentation, single-quoted class attributes, one
-  // newline per synthesized line - the corpus view pins carry exactly these
-  // bytes for the empty tab ("no entries" li).
+  // newline per synthesized line (the empty tab's "no entries" li
+  // included).
   const lis = rows.map((row) => {
     const ruleCard = ctx.fmt.engine.fetchRenderCard(row.ruleCardName);
     if (ruleCard === undefined) {
@@ -695,7 +686,7 @@ function followEditorBody(
       ? `<ul class='delete-list list-group'>\n${lis.join("\n")}\n</ul>`
       : `<ul class='delete-list list-group'>\n<li class='list-group-item'>\nno entries\n</li>\n</ul>`;
   // Haml output always ends with one newline after the last synthesized tag
-  // - the corpus view pins carry the trailing byte ("</div>\n"), and inside
+  // ("</div>\n"), and inside
   // the tab pane it separates the editor from the pane's closing tag.
   return `<div class='pointer-list-editor'>\n${list}\n</div>\n`;
 }
@@ -726,7 +717,7 @@ const FOLLOW_TABS: ReadonlyArray<{ name: string; view: string }> = [
  *  tab data-urls are the mark/view paths, and the ACTIVE pane's content is
  *  the rendered :follow_tab view while the lazy pane stays empty
  *  (lazy_tab.rb:33-36). No slot wrap: the view body IS the tab panel
- *  (the oracle :core bytes open at the tabbable div). */
+ *  (the oracle's :core opens at the tabbable div). */
 const userFollowCoreView: ViewFn = (ctx) => {
   const urlKey = ctx.fmt.card.name.urlKey;
   const hash = new Map(
@@ -774,7 +765,7 @@ const followDefaultsEditButtonsView: ViewFn = (ctx) => {
 };
 
 // ===========================================================================
-// mod-porting wave1 (2026-10-03): the census's four remaining follow views.
+// the remaining follow views.
 // subedit_notice + follower live in all/notify/base_views.rb's BARE
 // `format do` block (the BASE format, filed on Card::Format itself -
 // registrar.rb:79-84) and register under the manifest's "base" key like
@@ -783,10 +774,6 @@ const followDefaultsEditButtonsView: ViewFn = (ctx) => {
 // type_plus_right/user/follow.rb's html view (which SHADOWS card-mod-
 // format's all-set :errors for User+*follow cards - set specificity, the
 // same dispatch the engine's chain walk resolves).
-//
-// Oracle: tools/mod-porting-harness/ruby-oracles/card-mod-follow/
-// follow-census-views.rb (11 scenarios, static-ruby under the real
-// interpreter); probe: card-mod-follow-harness-probe.test.ts.
 // ===========================================================================
 
 // --- set/all/notify/base_views.rb (the notify base views) -------------------
@@ -818,8 +805,8 @@ const RELEVANT_FIELDS_BY_ACTION: Record<
  *  nil unless`). The :delete arm reads the PREVIOUS value (:87-88). The
  *  :cardtype row displays the INTERPRETED value (changes.rb interpret_
  *  value: the type id's cardname - the reader's typeNameForId). The label
- *  case has NO :create arm (Ruby's nil interpolates as the empty string -
- *  the three-space row indent the oracle pins). */
+ *  case has NO :create arm (Ruby's nil interpolates as the empty string,
+ *  hence the row's three-space indent). */
 function editInfoRow(
   reader: HistoryRenderReader,
   action: HistoryActionRow,
@@ -931,7 +918,8 @@ const subeditNoticeView: ViewFn = (ctx) => {
   }
   const header = `${nameBeforeAction(reader, action, ctx.fmt.card.name.s)} ${actionType}d\n`;
   // the inner render_list_of_changes(action_id: action.id) re-fetches THE
-  // SAME action (the probe's explicit-action_id scenario pins the contract)
+  // SAME action (base_views.rb:25-31 passes action_id: action.id to the
+  // inner dispatch)
   const inner = header + listOfChangesRowsFrom(ctx, reader, action);
   // wrap_subedit_item per format: the HTML override (notify/html_views.rb:
   // 14-16) is "<li>#{yield}</li>\n", the base format's (base_views.rb:
@@ -960,21 +948,18 @@ const listOfChangesNotifyView: ViewFn = (ctx) => {
 /** base_views.rb:13-22 view :subedits, perms: :none, cache: :never:
  *  `return unless notification_act` - the NOTIFICATION ACT is the email
  *  send path's state, never set on a page render; the body answers Ruby's
- *  nil. The two render boundaries carry that nil differently and BOTH are
- *  graded: the corpus's TOP-LEVEL op records {"html":""} for this view
- *  while the nil-envelope ops (errors, rss_links, the help admin views)
- *  record {"html":null} - the views genuinely differ in Ruby, so the empty
- *  string is THIS view's own captured top-level answer, not a boundary
- *  coercion - and a nest inside processed content keeps the AUTHORED
+ *  nil. The two render boundaries carry that nil differently: at a
+ *  TOP-LEVEL render the view answers "" (Ruby's own empty-body answer for
+ *  this view), while a nest inside processed content keeps the AUTHORED
  *  SYNTAX through Chunk::Abstract#result's @text fallback -
- *  `{{_|subedits}}`, the follower-email pin. The posture reaches the view
+ *  `{{_|subedits}}`. The posture reaches the view
  *  through the chunk dispatch's authoredNestText opt (render/format.ts
  *  contentNest): inside a content nest the opt carries the chunk's @text
  *  and the view answers it verbatim; at every other boundary the opt is
- *  absent and the view answers the captured "". The composed tree's nest
- *  subformat carries no voo.parent to discriminate (the miscpins
- *  structured-form round's voo model). The actions_affecting walk and the
- *  wrap_subedits list stay the email-lane remainder behind that state. */
+ *  absent and the view answers "". The composed tree's nest
+ *  subformat carries no voo.parent to discriminate. The actions_affecting
+ *  walk and the wrap_subedits list stay unported behind that state (they
+ *  need the email send path). */
 const subeditsNotifyView: ViewFn = (ctx) => {
   const authored = ctx.voo.opts["authoredNestText"];
   return typeof authored === "string" ? authored : "";
@@ -992,11 +977,11 @@ const followerNotifyView: ViewFn = () => "follower";
 
 // --- set/right/following.rb view :rule_editor --------------------------------
 
-/** The corpus-pinned Pointer type fallback (virtual-rule-card.ts's map -
- *  id 34843 "Pointer" in the RAW corpus deck): Ruby's `Card.fetch
- *  preference_name, new: { type_id: PointerID }` new-card arm stamps the
- *  POINTER codename's id from the LIVE deck's registry (id 56 in the
- *  synthetic-v2 deck - the corpus rule_form pin's data-card-type-id). */
+/** The Pointer type fallback (virtual-rule-card.ts's map): Ruby's
+ *  `Card.fetch preference_name, new: { type_id: PointerID }` new-card arm
+ *  stamps the POINTER codename's id from the deck's registry - the same
+ *  value the virtual-rule-card fallback map carries when the Pointer card
+ *  is not warm. */
 const POINTER_TYPE = { typeId: 34843, typeName: "Pointer", typeCode: "pointer" } as const;
 
 /** The live deck's Pointer cardtype: the deck-fetched Pointer card's id when
@@ -1015,7 +1000,7 @@ function pointerTypeOf(ctx: ViewContext): {
 
 /** The TPR anchor's left type for the view's NEW rule card
  *  (pattern/class_methods.rb:59-71 left_type -> quick_type): the new
- *  card's parts are unfetched (the oracle probe's rule.left is nil), so
+ *  card's parts are unfetched (rule.left is nil on a new card), so
  *  the superleft arm answers nil and quick_type decides -
  *  Card.fetch(left_name, skip_modules: true, new: {}).type_name. The
  *  skip-modules arm excludes the set-module assign_type answers
@@ -1023,8 +1008,7 @@ function pointerTypeOf(ctx: ViewContext): {
  *  type_id_from_template (type.rb:78-80) - the applicable *default rule
  *  card's OWN type. The first existing *default candidate on the follow
  *  rule's left is the ALL-set default `*all+*default`, itself a RichText
- *  card in the corpus deck - the rule_form pin's
- *  TYPE_PLUS_RIGHT-rich_text-Xfollow set-key token. */
+ *  card - hence the TYPE_PLUS_RIGHT-rich_text-Xfollow set-key token. */
 function quickTypeLeftTypeName(ctx: ViewContext, ruleName: string): string {
   const leftName = DeckoName.parse(ruleName).leftName;
   if (leftName === undefined) return "RichText"; // Card.default_type_id's cardtype
@@ -1180,12 +1164,12 @@ const ruleEditorView: ViewFn = (ctx) => {
  *  :signin, 'sign in'}" }. The frame chrome is the established framedView
  *  composition (bootstrap class_ups + standard_frame + with_frame - the
  *  demo view's, format family); this core returns the arm's PIECES
- *  assembled over the title/classy/body triple the oracle pins.
+ *  (title/classy/body).
  *  The arm runs only on a FAILED-SAVE re-render (card.errors carries the
  *  permission denial) - the write path the headless engine does not model
  *  (RenderCard carries no error state), so the REGISTERED view body's
- *  reachable arm is the no-errors "" below; this core exists for the probe
- *  replay + the eventual write-path consumer. */
+ *  reachable arm is the no-errors "" below; this core exists for the test
+ *  seam + the eventual write-path consumer. */
 function userFollowErrorsPermissionArm(cardName: string): {
   title: string;
   classy: string;
@@ -1217,9 +1201,9 @@ const userFollowErrorsView: ViewFn = (ctx) => {
   return "";
 };
 
-/** The wave-1 follow views' PROBE SURFACE - the composition cores the
- *  harness probe (tests/card/mod-loader/card-mod-follow-harness-probe.ts
- *  .test.ts) replays the static-ruby oracle against; the same functions
+/** The follow views' TEST SEAM - the composition cores the test file
+ *  (tests/card/mod-loader/card-mod-follow-harness-probe.ts
+ *  .test.ts) exercises against the Ruby semantics; the same functions
  *  the view bodies call. */
 export const followProbeSurface = {
   /** base_views.rb:41-43 the follower fallback (the page arm). */
@@ -1227,7 +1211,7 @@ export const followProbeSurface = {
     return str(followerNotifyView({} as ViewContext));
   },
   /** base_views.rb:25-31 the subedit_notice composition over a documented
-   *  action shape (the oracle's ActionDouble analog): the probe hands the
+   *  action shape (an Action double): the test hands the
    *  header name + the changed-field rows the seam reader would return. */
   subeditNoticeFrom(input: {
     headerName: string;
@@ -1239,9 +1223,9 @@ export const followProbeSurface = {
       .join("");
     return `\n${input.headerName} ${input.actionType}d\n${rows}\n`;
   },
-  /** following.rb:32-38 the wrap + dispatch contract: the probe hands the
-   *  target/rule-context marks; the echo mirrors the oracle's rule_form
-   *  double (the rules mod's ruleFormView owns the form bytes). */
+  /** following.rb:32-38 the wrap + dispatch contract: the test hands the
+   *  target/rule-context marks; the echo documents the dispatch contract
+   *  (the rules mod's ruleFormView owns the form bytes). */
   ruleEditorDispatchFrom(input: {
     targetName: string;
     ruleContextName: string;
@@ -1384,27 +1368,27 @@ const cardModFollow: DeckoModManifest = {
       // card-mod-history set/all/history/views.rb:55-65, wins IN html).
       // Registered under the manifest's documented "base" format key
       // (mod-manifest.ts:286-288) and surfaced through the anchorless
-      // chain walk's base tail (mod-loader.ts viewChain) - the
-      // the email text remainders, 2026-10-01. The email mod's
+      // chain walk's base tail (mod-loader.ts viewChain).
+      // The email mod's
       // email_text :last_action DELEGATES to this verb
       // (email_text.rb:12 `_render_last_action_verb`; see
       // card-mod-email.ts emailTextLastActionView for the full chain
       // read). :last_action_verb is ported single-source
       // (render/views.ts#lastActionVerbNotifyView - the same fn the flat
-      // record carries). Wave-1 (2026-10-03): :subedit_notice + :follower
+      // record carries). :subedit_notice + :follower
       // join the base registrations - :subedit_notice through the history
       // seam (render.ts HISTORY_SEAM_VIEWS gates it; the REAL rows from
       // card.last_action/Action.fetch - base_views.rb:25-31), :follower
       // the page arm of `active_notice(:follower) || "follower"` (:41-43,
       // the send-path ivar is the same disclosed basis the flat record's
-      // followed/unfollow_url arms carry). Wave-2 (2026-10-10): the corpus's
-      // headless ops pin :list_of_changes (card.last_action's rows, the HTML
+      // followed/unfollow_url arms carry). :list_of_changes
+      // (card.last_action's rows, the HTML
       // <li> override) and :subedits (the nil notification_act arm, "") -
       // both join the base registrations. STILL unregistered:
       // :followed/:unfollow_url - they read the active_notice state the
       // email-delivery path sets up (rails-runtime; the flat record
-      // carries the ported bodies where they exist - the email lane's
-      // pinned page-arm contracts).
+      // carries the ported bodies where they exist - the page-arm
+      // contracts the flat record documents).
       setPath: "all/notify/base_views",
       formats: {
         base: {
@@ -1444,11 +1428,11 @@ const cardModFollow: DeckoModManifest = {
       // overrides (HTML <ul>/<li>/<li> wrappers for the notification
       // email). NOT ported: the email-template surface (write path).
       // The html VIEWS ride the same set module (the base-format views
-      // surface through the chain walk where no own-format arm exists;
-      // the corpus's headless html ops pin the html-armed bytes here -
-      // list_of_changes' action rows and subedits' nil-act arm - where the
-      // email lane's flat-record page arms (render/views.ts) answered ""
-      // and the {{_|subedits}} literal for the NEST posture they pin).
+      // surface through the chain walk where no own-format arm exists):
+      // list_of_changes' action rows and subedits' nil-act arm render
+      // here, where the flat-record page arms (render/views.ts) answered ""
+      // and the {{_|subedits}} literal is the NEST posture's
+      // authored-syntax answer.
       setPath: "all/notify/html_views",
       formats: {
         html: {
@@ -1494,7 +1478,7 @@ const cardModFollow: DeckoModManifest = {
       // both the Self set and the Right set define it; here the
       // method lives on the Right side and is not view-portable.
       setPath: "right/follow",
-      // cache_expired_for_new_preference (set-module event 2026-10-08) —
+      // cache_expired_for_new_preference —
       // STUB with an architecture reason (right/follow.rb:7-9): the body
       // is Card.follow_caches_expired (clears the FOLLOWER_IDS +
       // preference caches); the port's follower resolution
@@ -1541,11 +1525,11 @@ const cardModFollow: DeckoModManifest = {
       // rule_form), preference_name, edit_rule_success,
       // current_follow_rule_card helpers.
       // Ported: :status (the "No following preference" fallback) +
-      // :one_line_content (""). Wave-1 (2026-10-03): :rule_editor joins -
+      // :one_line_content (""). :rule_editor is ported too -
       // the wrap + preference_name + applied-string dispatch (the rules
       // mod's ruleFormView owns the form bytes; the seam's rule_editor
       // branch resolves the actor + the applied content + the warm).
-      // 2026-10-09 wave 2: :status + :rule_editor carry unknown: true -
+      // :status + :rule_editor carry unknown: true -
       // in Ruby EVERY X+*following card is virtual-known (the set
       // module's own `def virtual?; new?; end`, right/following.rb:4-6),
       // so alter_unknown never fires and the views always dispatch; the
@@ -1571,7 +1555,7 @@ const cardModFollow: DeckoModManifest = {
     {
       // card-mod-follow-0.20.0/set/right/follow_fields.rb - assign_type
       // :list + event :follow_fields_changed.
-      // Event (set-module event 2026-10-08) — STUB, same architecture
+      // Event — STUB, same architecture
       // reason as right/follow's cache_expired_for_new_preference
       // (follow_fields.rb:3-5: the body is Card.follow_caches_expired;
       // the port resolves followers fresh per call).
@@ -1629,10 +1613,10 @@ const cardModFollow: DeckoModManifest = {
       // Ported: :confirm_update_all (the alert literal) AND :edit_buttons
       // (the confirm + button_formgroup + the three buttons). Neither is
       // REACHABLE for this card - the singularized self-anchor token vs the
-      // FollowDefaults constant; the capture is cited in the honest
-      // remainder above. The port's raise is Ruby-true.
+      // FollowDefaults constant; the set-key walk is documented in the
+      // honest remainder above. The port's raise is Ruby-true.
       setPath: "self/follow_defaults",
-      // update_follow_rules (set-module event 2026-10-08) — STUB, named
+      // update_follow_rules — STUB, named
       // remainder (self/follow_defaults.rb:17-30, the card's own header
       // says DEPRECATED): the triggered body rewrites every user's follow
       // rule for the listed sets (Auth.as_bot bulk Card.search + per-user
@@ -1727,15 +1711,15 @@ const cardModFollow: DeckoModManifest = {
       // follow_editor_helper.rb helper file.
       // Ported: :one_line_content (""), :edit (render :open dispatch),
       // :follow_tab + :ignore_tab (the seam's followEditorRows walk),
-      // :core (2026-10-09 wave 2: the FOLLOW_TABS tab machinery - the
+      // :core (the FOLLOW_TABS tab machinery - the
       // card-mod-tabs `tabs` helper over the static hash, active pane
-      // rendering :follow_tab; the oracle :core bytes open at the
+      // rendering :follow_tab; the oracle's :core opens at the
       // tabbable tab-panel div, not the pointer list).
-      // Wave-1 (2026-10-03): :errors joins - the no-errors arm (the ONLY
+      // :errors is ported - the no-errors arm (the ONLY
       // arm a headless render reaches: the engine models no ActiveRecord
       // error state, so `return unless card.errors.any?` returns nil -> "")
-      // registered as the reachable arm; the permission arm's pieces are
-      // probe-pinned (userFollowErrorsPermissionArm) and the super() arm
+      // registered as the reachable arm; the permission arm's pieces live in
+      // userFollowErrorsPermissionArm and the super() arm
       // dispatches card-mod-format's all-set body (the chain definition
       // this registration shadows for User+*follow cards - set
       // specificity, Ruby-true). The remaining unported helper surface
