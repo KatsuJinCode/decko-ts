@@ -52,7 +52,7 @@
 //     net, which is run unchanged.)
 //
 // Probe cards:
-//   - *marketplace (the NEW card name the frozen deck never carries; a
+//   - *marketplace (the NEW card name no shipped deck carries; a
 //     `*` name is a Setting - the `self` pattern anchors on the card's own
 //     name, set-patterns/registry.ts:161)
 //   - Marketplace Probe (a plain card, to show the marketplace's views do
@@ -127,7 +127,7 @@ beforeAll(async () => {
   });
   await seedReference(s, 123, 122, "anyone");
 
-  // the marketplace's own card: the NEW name the frozen deck never carries.
+  // the marketplace's own card: a NEW name no shipped deck carries.
   await seedCard(s, {
     id: 400,
     name: MARKETPLACE_CARD_NAME,
@@ -141,8 +141,8 @@ beforeAll(async () => {
 
   // The deck under test: the composed default deck PLUS the marketplace mod.
   // This is the v2 seam's own input shape (ModSource[], mod-loader.ts:127-132)
-  // - the marketplace is a mod a host adds, never a member of the frozen
-  // default composition.
+  // - the marketplace is a mod a host adds, never a member of the default
+  // composition.
   loader = new ModLoader([...defaultDeckSources(), marketplaceModSource()]);
   loader.resolveOrder({
     gemMods: [...portedBundleOrder(), cardModMarketplace.name],
