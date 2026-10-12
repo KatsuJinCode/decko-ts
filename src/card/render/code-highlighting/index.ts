@@ -1,4 +1,4 @@
-// CodeRay-style syntax highlighting (Stream M1 port).
+// CodeRay-style syntax highlighting.
 //
 // The deck's HTML view wraps certain cardtypes' raw content in
 // `CodeRay.scan(_render_raw, :LANG).div`:
@@ -15,10 +15,9 @@
 //   </div>
 // and uses :css => :style (inline styles from the alpha theme).
 //
-// This module re-implements the minimum CodeRay surface to byte-match the
-// corpus captures (fixtures/captured/coderay/*.html). The scanners here
-// only cover the languages actually present in the corpus (json, css, html);
-// languages with no captured oracle fall back to passthrough.
+// This module re-implements the minimum CodeRay surface: the scanners here
+// only cover the languages the engine dispatches (json, css, html);
+// other languages fall back to passthrough.
 
 import { scanJson } from "./scanners/json.js";
 import { scanCss } from "./scanners/css.js";
@@ -55,11 +54,10 @@ export function wrapDiv(content: string): string {
  * `/\s+/m` matches the CRLF PAIR as one token. The encoder's escape table
  * (encoders/html.rb:139) maps every control code in 0x0B-0x1F to a literal
  * space, and 0x0D (`\r`) is in that range - so an un-normalized CRLF would
- * emit `" \n"` where the oracle emits `"\n"`. This was an earlier
- * "layout-whitespace" class (60 pages): the 5 CodeRay-highlighted Layout
- * cards whose bodies are stored with CRLF line endings each gained one
- * space per line inside the <pre> block, and no captured coderay fixture
- * covered CR at all, so the unit tests could not see it.
+ * emit `" \n"` where it should emit `"\n"`. This was a whole defect class
+ * (every highlighted body stored with CRLF line endings gained one space per
+ * line inside the <pre> block, and nothing in the test corpus covered CR, so
+ * the unit tests could not see it).
  *
  * `code.index(?\r)` is the guard in the Ruby original and is preserved here:
  * a body with no CR is returned unchanged (identity, no allocation).
@@ -70,9 +68,9 @@ function toUnix(code: string): string {
 
 /** Dispatch to the right scanner based on the language hint. Unknown
  *  languages fall back to a no-op wrapper (just the DIV template with
- *  the input HTML-escaped verbatim) so the corpus's non-highlighted paths
- *  still get the CodeRay DIV shape. The corpus doesn't exercise this
- *  fallback; keep it for forward-compatibility. */
+ *  the input HTML-escaped verbatim) so non-highlighted paths
+ *  still get the CodeRay DIV shape. No card exercises this
+ *  fallback today; keep it for forward-compatibility. */
 export function highlight(content: string, lang: HighlightLanguage): string {
   // scanner.rb:137 — normalize once, at the dispatch, for every language.
   const code = toUnix(content);
@@ -101,9 +99,9 @@ export const CODERAY_CARDTYPE_CODENAMES: ReadonlySet<string> = new Set([
 
 /** Map a cardtype codename to its scanner language. Returns undefined when
  *  the codename doesn't trigger CodeRay, or when the language has no
- *  captured oracle fixture (the :js scanner the script mod uses is in
- *  this category today - java_script/coffee_script cards aren't in the
- *  corpus). */
+ *  scanner yet (the :js scanner the script mod uses is in
+ *  this category — java_script/coffee_script cards are not
+ *  highlighted). */
 export function langForTypeCode(typeCode: string | undefined): HighlightLanguage | undefined {
   if (typeCode === undefined) return undefined;
   if (typeCode === "json") return "json";

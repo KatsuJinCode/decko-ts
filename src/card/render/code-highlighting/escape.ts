@@ -2,14 +2,14 @@
 //
 // Truth source: coderay-1.1.3 lib/coderay/encoders/html.rb#make_html_escape_hash.
 // Encoder.html.rb builds the table once and uses it via HTML_ESCAPE_PATTERN
-// to map every occurrence in a text_token. The corpus content has no tabs or
-// ASCII control codes, but the table has to match the upstream behavior so
-// any input the corpus seeds later (a CSS file with a tab, say) renders byte-
+// to map every occurrence in a text_token. The table has to match the
+// upstream behavior so any input the engine highlights
+// (a CSS file with a tab, say) renders byte-
 // identically.
 //
 // `tabWidth` defaults to 8 to match the upstream default (:tab_width => 8).
-// Set it to 0 (false upstream) to keep tabs verbatim - none of the corpus
-// paths do this, so the default is preserved here for parity.
+// Set it to 0 (false upstream) to keep tabs verbatim - no
+// path here does this, so the default is preserved for parity.
 
 /** Escape a string the way CodeRay's HTML encoder does, in one pass:
  *  - `&`, `"`, `>`, `<` to their entity equivalents

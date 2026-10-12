@@ -4,12 +4,12 @@
 // set/abstract/01_css.rb:37 drives it for the Css/Scss cardtypes' html
 // :core).
 //
-// The first port approximated the state machine for the corpus's
-// random-letter content (:tag runs only). The an earlier pass page triage showed
-// the approximation collapses on REAL stylesheet bytes - the deck's
-// "bootstrap: core" card renders ~380KB of vendored Bootstrap SCSS
-// through this scanner and the approximation's regex set diverged from
-// css.rb at the first hex color (#f8f9fa) and stayed diverged for 1.4MB.
+// An earlier port approximated the state machine, covering only :tag runs.
+// That approximation collapses on REAL stylesheet bytes - a
+// large vendored Bootstrap SCSS body
+// renders through this scanner and the approximation's regex set diverged
+// from css.rb at the first hex color (#f8f9fa) and stayed diverged for the
+// whole body.
 // This file now ports css.rb statement for statement:
 //
 //   RE module        css.rb:16-45   (the regex set, verbatim)
@@ -20,9 +20,9 @@
 // implements coderay-1.1.3's encoders/html.rb span assembly - the group
 // semantics (begin_group :string / :function wrap their tokens' kind
 // paths through `.string .delimiter` / `.function .content`) the flat
-// first port inlined wrong. Byte gates:
+// approximation inlined wrong. Byte gates:
 // tests/card/render/code-highlighting/coderay-byte-identity.test.ts
-// (corpus pin) + the bootstrap: core / bootstrap: functions oracle pins
+// + the bootstrap code-file page pins
 // (tests/card/render/bootstrap-code-file-pages.test.ts).
 
 import { HtmlTokenEncoder } from "../encoder.js";

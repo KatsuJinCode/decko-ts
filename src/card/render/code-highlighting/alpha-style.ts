@@ -19,7 +19,7 @@
 // `style="..."` attributes rather than class names. The normalization the
 // bytes depend on is css.rb:41 `style.to_s.strip.delete(' ').chomp(';')` -
 // every space inside a declaration is DELETED (not collapsed), and one
-// trailing semicolon is removed. That is why the oracle shows
+// trailing semicolon is removed. That is why the emitted attribute reads
 // `background-color:hsla(0,0%,0%,0.07);color:black` where the theme says
 // `background-color: hsla(0,0%,0%,0.07); color: black`.
 
