@@ -5,8 +5,8 @@
 // from db/schema.sqlite.sql). Rule cards are seeded directly as rows.
 //
 // Compound names (the rule-card norm, e.g. "*all+*read") are stored with
-// name=NULL/key=NULL and ride the junction (left_id/right_id) — see the
-// fetch stream's port notes for the 2020 Lexicon convention. We seed them
+// name=NULL/key=NULL and ride the junction (left_id/right_id) — the
+// 2020 Lexicon convention. We seed them
 // explicitly with leftId/rightId so the lookup walks the junction path
 // the engine actually uses in production.
 
