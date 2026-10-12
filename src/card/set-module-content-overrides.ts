@@ -99,15 +99,14 @@ import { listInputOptionsContent, toPointerContent } from "./render/content-over
 export { listInputOptionsContent, toPointerContent };
 
 // ---------------------------------------------------------------------------
-// the capture deck environment (documented constants, deck_origin precedent)
+// the pinned deck environment (documented constants, deck_origin precedent)
 // ---------------------------------------------------------------------------
 
 /**
- * The capture instant the corpus's Self::Now record bytes photograph:
- * "Monday, September 28, 2026 03:12 PM" (tmp/raw-ground-truth/expected-v2
- * view-surface/recapture-raw-shard-000003.jsonl, *now record.content). The
- * %I:%M format is minute-precision, so the exact second is unobservable;
- * :00 is the canonical choice. 15:12 America/Los_Angeles = 22:12:00Z.
+ * The instant a Self::Now record's bytes photograph:
+ * "Monday, September 28, 2026 03:12 PM" (15:12 in the deck's zone =
+ * 22:12:00Z). The %I:%M format is minute-precision, so the exact second is
+ * unobservable; :00 is the canonical choice.
  */
 export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
@@ -184,22 +183,20 @@ const FOOT_CONTENT = "<!-- *foot is deprecated. please remove from layout -->";
  * card-1.110.0 mod/core set/self/mod.rb:9-11 —
  * `item_codes.map(&:cardname).compact.to_pointer_content` where
  * `item_codes = Cardio.mods.map { |mod| "#{mod}_mod" }`. LOUD DIVERGENCE: the
- * port emits "<mod name>_mod" (see the module header) — the capture bytes'
- * "#<Cardio::Mod:0xADDR>" prefix is Object#to_s of a Cardio::Mod with no
+ * port emits "<mod name>_mod" (see the module header) — the "#<Cardio::Mod:0xADDR>"
+ * prefix is Object#to_s of a Cardio::Mod with no
  * #to_s, process-bound and unreproducible. The mod LIST and its order are the
- * captured bundle order (ORACLE_BUNDLE_ORDER — fixtures/captured/
- * help-mod-loader.json, the capture deck's loaded mods: 34).
+ * bundle order (ORACLE_BUNDLE_ORDER).
  */
 /**
  * Ruby Object#to_s as Cardio::Mod receives it. Ruby's default is "#<" + the
  * class name + ":0x" + the object's address in hex + ">", so shape fidelity
  * means reproducing the template, the 0x prefix, the hex width and the
- * closing bracket — NOT the value. Only the value is the capture process's;
+ * closing bracket — NOT the value. Only the value is process-bound;
  * the comparator masks that (normalizeModObjectAddresses).
  *
- * The corpus's own addresses are 16 lowercase hex digits, all 34 distinct
- * (expected-v2 view-surface and page-surface recapture-raw-shard-000039.jsonl, card
- * id 45410, record.content), so the port holds itself to that same width.
+ * The addresses on the reference deck are 16 lowercase hex digits, all 34
+ * distinct, so the port holds itself to that same width.
  */
 export const CARDIO_MOD_ADDRESS_HEX_DIGITS = 16;
 
@@ -254,7 +251,7 @@ export function modObjectToS(mod: CardioModObject): string {
   return `#<${CARDIO_MOD_CLASS_NAME}:0x${address}>`;
 }
 
-/** The 34 mods the capture deck had loaded, as port objects, in the captured
+/** The 34 mods a deck has loaded, as port objects, in the
  *  bundle order (ORACLE_BUNDLE_ORDER) — the order mod/core/set/self/mod.rb:4
  *  enumerates Cardio.mods in. Exported so the ORDER is observable from
  *  outside: the emitted bytes are all Object#to_s strings, which carry no
