@@ -1,18 +1,17 @@
-// M3 depth sweep: every depth 1..20 measured for the same axes the #1282
+// Depth sweep: every depth 1..20 measured for the same axes the #1282
 // claim is graded on. No gaps. (Ceiling aligned to the renderer's
-// RUBY_MAX_DEPTH=20 — Card.config.max_depth, railtie.rb:17; the sweep ran
-// 1..42 until 2026-09-24, when the renderer's old 42 guard was aligned to
-// the vendored prototype. Depths past 20 raise the too-deep guard.)
+// RUBY_MAX_DEPTH=20 — Card.config.max_depth, railtie.rb:17; the sweep once
+// ran 1..42 before the renderer's old 42 guard was aligned to the vendored
+// prototype. Depths past 20 raise the too-deep guard.)
 //
 // Run via: npx vitest run tests/card/render/depth-sweep.test.ts
 //
-// Reported numbers populate a JSON file under benchmarks/results/depth-sweep-ts.json
-// so the M3 report has receipts. That write is OPT-IN via
-// DEPTH_SWEEP_WRITE_ARTIFACT=1: the committed receipt is authoritative
-// (docs/parity-method.md), and an unconditional rewrite put a fresh
-// measured_at + wall-ms into the tree on every suite run, dirtying it and
-// forcing housekeeping commits between folds. The assertions below run on
-// every execution; only the receipt refresh is gated.
+// Reported numbers populate a JSON file under benchmarks/results/depth-sweep-ts.json.
+// That write is OPT-IN via DEPTH_SWEEP_WRITE_ARTIFACT=1: the committed
+// receipt is authoritative (docs/parity-method.md), and an unconditional
+// rewrite put a fresh measured_at + wall-ms into the tree on every suite
+// run, dirtying it and forcing housekeeping commits. The assertions below
+// run on every execution; only the receipt refresh is gated.
 
 import { describe, expect, it } from "vitest";
 import { writeFileSync, mkdirSync } from "node:fs";
@@ -108,74 +107,36 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // level.
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
-    // Structural shape (2026-09-27 cold-query re-pin, integrated with
-    // R17's A-36 correction in merge pass 9 prep): round trips =
-    // 2 + max(0, depth-1) and statements = 9 + max(0, depth-1) - slope 1
-    // per chain LEVEL (one batch per unfetched inclusion level), independent
-    // of deck size. The two fixed round trips: the root fetch + the PRELUDE
-    // batch (src/card/render/prefetch.ts prefetchInclusionClosure: the root's
-    // side priming, the root's TYPE row (enrichment fold - the two enrich
-    // point round trips became cache hits), the root's set-pattern anchor
-    // priming (the rule walk's *self/*type/*all lex_to_id point queries
-    // became cache entries), and the engine's permission/codename/structure
-    // folds LAST). Ruby's measured truth is depth+3 - the TS curve is now
-    // BELOW it by 2 at every depth (2026-09-23..2026-09-26 shape was
-    // 7 + max(0, depth-2): level-linear but 2-3 ABOVE Ruby; the trade for
-    // the level-linear cold path remains rows-read dropping from
-    // O(deck x passes) per render to O(page)). Warm renders stay at 0
-    // (asserted below).
-    // R17 (A-36) rides through the prelude: default_nest_view is process
-    // config (html.rb:17-19), never a deck rule, so render.ts's fold
-    // composition no longer appends the *default html view universe
-    // statement - the prelude carries one fewer statement than the
-    // cold-query port's own tree measured (10 -> 9 base). The head
-    // read-set (2026-09-28 async-view-handle) added one back to
-    // the SAME prelude batch (9 -> 10 base): card-mod-format's head
-    // views read deck-level setting cards no reference closure can
-    // reach. Round trips - the billed axis - are unchanged.
-    // 2026-09-30 an earlier pass integration re-pin (10 -> 12 base): the p20-email
-    // port's junction-priming prelude batch (the email field-anchor prelude
-    // statement + the +*test context junction priming — one batch) adds two
-    // statements at every depth. Measured 12 at depth 1 at BOTH the email
-    // port tip 345bb06 (queue job-1790792364473-36227f35 — the shift
-    // pre-exists the merge, so no cross-port interaction) and the merged tip
-    // (job-1790792062952-890df2dd). Round trips are UNTOUCHED — the batch
-    // rides the existing prelude round trip. Same re-pin the email port
-    // itself applied to junction-depth-closure.test.ts (13/12 -> 15/14).
-    // 2026-10-02 rule-defaults lane re-pin (12 -> 13 base): the template
-    // TYPE-NAME read (templateTypeNameStatement — newCardDefaultType's
+    // Structural shape: round trips = 4 + max(0, depth-1) and statements =
+    // 19 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
+    // batch per unfetched inclusion level), independent of deck size.
+    // Ruby's measured truth is depth+3, so the TS curve is below it.
+    // The four fixed round trips: RT1 the root key row, RT2 the PRELUDE
+    // batch (src/card/render/prefetch.ts prefetchInclusionClosure: the
+    // root's side priming, the root's TYPE row, the root's set-pattern
+    // anchor priming, and the engine's permission/codename/structure
+    // folds), RT3 wave round 1 (the type-card prime folded in as the batch
+    // preamble), RT4 wave round 2 (depth-3 junction candidates whose sides
+    // round 1 seated - "a junction's ids are the previous round's ANSWERS";
+    // genuinely sequential, not a fusion gap). Ruby derivation: the wave
+    // asks the rule-candidate names of the view-time settings (*content
+    // options, *help, *structure, *default) that Ruby resolves per lookup
+    // through Set#rule/rule_card (rule/all.rb) plus the prepared records'
+    // type cards (Card#type_card, type.rb:32-35) - batched here,
+    // point-by-point in Ruby's cache.
+    // The wave adds +6 statements: type-prime IN-list (1) + wave round 1
+    // (key IN-list 5 + side-key junction join 1) + wave round 2 (key
+    // IN-list 2 + junction join 1); the misses prime negative lexicon
+    // entries so the view-time ladders answer from cache exactly as Ruby's
+    // cache-negative misses do.
+    // Other prelude members: the junction-priming prelude statements
+    // (field-anchor prelude + context junction priming) and the template
+    // TYPE-NAME read (templateTypeNameStatement - newCardDefaultType's
     // dup_structure leg must resolve a *structure rule card's type NAME
-    // synchronously) rides the SAME prelude batch — +1 statement at every
-    // depth, round trips untouched (the p20-email 10 -> 12 re-pin shape).
-    // Structural shape (2026-10-03 net-reds-fixforward re-pin, after the
-    // lane's W4 fold): round trips = 4 + max(0, depth-1) and statements =
-    // 18 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
-    // batch per unfetched inclusion level, Ruby's nesting truth is depth+3,
-    // so the TS curve is 3 BELOW Ruby at depth 1 and 4 below at depth 5+).
-    // The two wave round trips above the old base are the db-roundtrip
-    // lane's enumerated justification classes, measured on the depth-1
-    // fixture (RT1 root key row, RT2 prelude batch, RT3 wave round 1 [the
-    // W2b type-card prime folded in as the batch preamble - the net-reds-
-    // fixforward W4 fold that removed the waves' third extra round trip],
-    // RT4 wave round 2 [depth-3 junction candidates whose sides round 1
-    // seated - "a junction's ids are the previous round's ANSWERS", the
-    // receipt's justification class 3; genuinely sequential, not fusion
-    // gap]). Ruby derivation: the wave asks the rule-candidate names of the
-    // view-time settings (*content options, *help, *structure, *default)
-    // that Ruby resolves per lookup through Set#rule/rule_card (rule/all.rb)
-    // plus the prepared records' type cards (Card#type_card, type.rb:32-35)
-    // - batched here, point-by-point in Ruby's cache. The +6 statements =
-    // type-prime IN-list (1) + wave round 1 (key IN-list 5 + side-key
-    // junction join 1) + wave round 2 (key IN-list 2 + junction join 1);
-    // the misses prime negative lexicon entries so the view-time ladders
-    // answer from cache exactly as Ruby's cache-negative misses do.
-    // Prior shape history: 2 + max(0, depth-1) RTs / 12 statements at the
-    // 2026-09-27 cold-query lane (the waves took depth 1 to 5/17; the fold
-    // brought 5 -> 4).
-    // Freshness lane 2026-10-05 (composed onto the deployed fold by the
-    // lineage-reconciliation lane): the deck_data_version stamp read folds
-    // LAST into the cold batch (+1 statement at every depth, +0 round
-    // trips, 18 -> 19 base) — the delivery-contract:79 freshness arm.
+    // synchronously) ride the SAME prelude round trip, so they add
+    // statements but no round trips.
+    // The deck_data_version freshness stamp folds LAST into the cold batch
+    // (+1 statement at every depth, +0 round trips).
     const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
     const expectedSts = (depth: number): number => 19 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
@@ -183,8 +144,8 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));
     }
     // Warm cache: the second render pays exactly the freshness-stamp
-    // statement (one statement, one round trip — the contract-compliant
-    // warm-render cost) and nothing else.
+    // statement (one statement, one round trip — the documented warm-render
+    // cost) and nothing else.
     expect(rows.every((r) => r.warmRoundTrips === 1 && r.warmStatements === 1)).toBe(true);
 
     if (ARTIFACT_WRITE_REQUESTED) {
