@@ -36,12 +36,9 @@ describe("nest depth limit against the recorded Ruby renders", () => {
     const answer = await session.render("Chain 01", { view: "core" });
     expect(answer.html).toContain("Depth 19.");
     expect(answer.html).not.toContain("Depth 20.");
-    expect(answer.html).toContain(
-      // Ruby (mods on) renders the 20th card's own titled view with the
-      // too-deep denial as the quiet span inside it — the loud render-error
-      // span was the engine's pre-round-9 behavior, corrected to the oracle.
-      `SELF-chain_20 TYPE-rich_text card-slot titled-view`,
-      `Depth 19.`,
-    );
+    // Ruby (mods on) renders the 20th card's own titled view with the
+    // too-deep denial as the quiet span inside it — the loud render-error
+    // span was the engine's pre-round-9 behavior, corrected to the oracle.
+    expect(answer.html).toContain("SELF-chain_20 TYPE-rich_text card-slot titled-view");
   }, 60_000);
 });
