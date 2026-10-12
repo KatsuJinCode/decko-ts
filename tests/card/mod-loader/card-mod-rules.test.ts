@@ -3,8 +3,8 @@
 // overlay_title), records all 31 gem-tree set modules in the baskets, and
 // warms the rule cache so the rule_help dispatch resolves its rule cards
 // synchronously. Each view proves its Ruby-source semantics against a probe
-// deck (no captured oracle exists for this mod - fixtures/captured has no
-// rules file - so the bytes are pinned against the Ruby sources cited in
+// deck (no rendered bytes exist for this mod's views - the bytes are pinned
+// against the Ruby sources cited in
 // card-mod-rules.ts, the same A/B shape the help mod's test established).
 //
 // Proof shape (A/B per ported view):
@@ -24,7 +24,7 @@
 //   - "RichText+*self+*help" (24) - a THREE-part rule card (set
 //     "RichText+*self", setting *help): the live engine's rule? predicate
 //     (render.ts cardIsRule) classifies 3-part rule names, matching the
-//     corpus shapes the render layer pinned; the help rule card
+//     shapes the render layer pins; the help rule card
 //     "*all+*help" (22) resolves through the *all candidate of the
 //     rule_names walk (lib/card/rule/all.rb:9-15).
 //   - "Cardtype" (30) - the Self::Cardtype probe for :grouped_list.
