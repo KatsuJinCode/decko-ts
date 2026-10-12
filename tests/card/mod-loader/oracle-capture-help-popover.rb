@@ -1,4 +1,4 @@
-# oracle-capture-help-popover.rb - oracle capture for the card-mod-help
+# oracle-capture-help-popover.rb - renders the card-mod-help
 # set/right/help.rb:4-6 view :popover (the popover_link helper dispatched
 # against _render_core for a real card).
 #
@@ -9,21 +9,21 @@
 # Records to fixtures/captured/help-popover.json:
 # 1. the set-module view registration Card::Set::Right::Help::HtmlFormat
 #    contributes for :popover (with source location proving set/right/help.rb
-#    defined it - the byte oracle pin links the live render to the gem file)
+#    defined it - the pin links the render to the gem file)
 # 2. rendered bytes for two compound probe cards' :popover views - one WITH a
 #    *help rule (Oracle Help Popover Probe+*help, with a *help rule card
 #    "Oracle Help Popover Probe+*self+*help" carrying help text) and one
 #    WITHOUT (Oracle Bare Popover Probe+*help, no rule). Right pattern is
 #    compound_only (mod/core/set_pattern/07_right.rb:2), so the popover view
 #    only fires on compound names - the simple probe names from the help
-#    fixture would raise "view not supported". The byte oracle for the TS-side
-#    A/B test pinning card-mod-help.ts#popoverView.
+#    fixture would raise "view not supported". The bytes the TS-side
+#    A/B test pins against card-mod-help.ts#popoverView.
 #
 # Determinism contract (mirrors oracle-capture-help-mod.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state (a re-run stays byte-stable).
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state (a re-run stays byte-stable).
 
 require "json"
 
@@ -152,9 +152,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
