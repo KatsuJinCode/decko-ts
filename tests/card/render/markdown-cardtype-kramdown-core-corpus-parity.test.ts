@@ -1,24 +1,15 @@
-// Markdown cardtype kramdown core — corpus parity through the LOADER-LESS
-// render engine (the corpus judge's world: verify-dual-lane.test.ts binds no
+// Markdown cardtype kramdown core — parity through the LOADER-LESS
+// render engine (the production worker's shape: it binds no
 // mod loader, so the card-mod-markdown set-module `view :core` override never
 // dispatches and coreViewBase fell through to the raw-content passthrough,
-// emitting the markdown SOURCE where the oracle kramdowns it).
+// emitting the markdown SOURCE where Ruby kramdowns it).
 //
-// Corpus population (tmp/raw-ground-truth/expected-v2/view-lane/, 6588 rows):
-// exactly 4 rows carry type_code "markdown", 8 of their 11 captured views
-// render kramdown bytes (:content + :open per card; :closed is bar-only).
-// Every byte this file pins is copied verbatim from those captured oracle
-// views (the raw ground-truth dumps this suite was sized from):
-//
-//   *all+*guide            45414  shard-000039  (the exemplar)
-//   Cardtype+*type+*guide  38250  shard-000032
-//   *structure+*right+*guide 38251 shard-000032
-//   Administrator+Dashboard 34817 shard-000032  (only its kramdown-owned
-//                                                stash-wrap shape is pinned
-//                                                here, via a synthetic nest;
-//                                                its `{{_L|configs}}` nest
-//                                                needs the admin configs
-//                                                view, a different mechanism)
+// The pinned cards are the deck's markdown-typed guide cards (*all+*guide,
+// Cardtype+*type+*guide, *structure+*right+*guide — each :content + :open
+// renders kramdown bytes; :closed is bar-only) plus the
+// Administrator+Dashboard stash-wrap shape, pinned here via a synthetic
+// nest because that card's `{{_L|configs}}` nest needs the admin configs
+// view, a different mechanism.
 //
 // Ruby path (pinned from the installed gems):
 //   card-mod-markdown-0.20.0 set/type/markdown.rb:6-13
@@ -33,26 +24,27 @@
 //    remainder, restore, process_content)
 //
 // Library-vs-handroll decision: the kramdown conversion is the EXISTING
-// hand-rolled converter (src/card/render/kramdown.ts, extracted from the
-// markdown mod 2026-09-27, byte-verified against the real local gems
+// hand-rolled converter (src/card/render/kramdown.ts, byte-verified against
+// the real local gems
 // kramdown-2.5.2 + kramdown-syntax-coderay-1.0.1 + coderay-1.1.3). No
 // markdown library was evaluated as a replacement because the byte tests
-// below (and the mod's existing oracle corpus) are matched by the handroll,
+// below are matched by the handroll,
 // and kramdown's decko-specific composition (the references stash feeding
 // decko's own nest/link chunk passes) has no library shape. The decision
-// this suite adds: the handroll is SUFFICIENT for every corpus-exercised
-// construct (ATX header + auto id, paragraphs, strong/em, tight ordered
-// list, smart quotes/apostrophes, ellipsis, wikilink/external/internal
-// links, nest stash), so the fix is the DISPATCH, not the converter.
+// this suite adds: the handroll is SUFFICIENT for every markdown
+// construct the pinned cards exercise (ATX header + auto id, paragraphs,
+// strong/em, tight ordered list, smart quotes/apostrophes, ellipsis,
+// wikilink/external/internal links, nest stash), so the fix is the
+// DISPATCH, not the converter.
 
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
 // ---------------------------------------------------------------------------
-// oracle bytes (verbatim from tmp/raw-ground-truth/expected-v2/view-lane/)
+// expected bytes (Ruby-rendered guide views)
 // ---------------------------------------------------------------------------
 
-/** *all+*guide dbContent (corpus row 45414, shard-000039). */
+/** *all+*guide dbContent. */
 const ALL_GUIDE_CONTENT =
   "#### Editing Guide\n\n" +
   "This default guide will appear in the full editor view of any card \n" +
@@ -61,9 +53,8 @@ const ALL_GUIDE_CONTENT =
   "content.\n\n" +
   "Guide content can be edited in [[*guide|*guide rules]].\n";
 
-/** *all+*guide :content inner core bytes — the captured oracle view minus the
- *  content-slot wrap (slotWrapCommon div), extracted verbatim from the
- *  capture (444 bytes). THE exemplar's deliverable bytes. */
+/** *all+*guide :content inner core bytes — the Ruby-rendered view minus the
+ *  content-slot wrap (slotWrapCommon div). THE exemplar's deliverable bytes. */
 const ALL_GUIDE_CORE =
   '<h4 id="editing-guide">Editing Guide</h4>\n\n' +
   "<p>This default guide will appear in the full editor view of any card \n" +
@@ -73,7 +64,7 @@ const ALL_GUIDE_CORE =
   '<p>Guide content can be edited in <a class="known-card" href="/*guide">' +
   '<span class="card-title" title="*guide rules">*guide rules</span></a>.</p>\n';
 
-/** Cardtype+*type+*guide dbContent (corpus row 38250, shard-000032) — the
+/** Cardtype+*type+*guide dbContent — the
  *  construct-richest markdown card: strong/em, tight ordered list, smart
  *  quotes/apostrophes, ellipsis, wikilinks with labels, an internal path
  *  link, an escaped-braces literal, and a nest. */
@@ -95,7 +86,7 @@ const CARDTYPE_GUIDE_CONTENT =
   "the type's structure rule in the cardboard of _either_ the Cardtype card _or_ of any of the cards of that type.\n\n" +
   "A Cardtype card cannot be deleted as long as there are instances of that type.";
 
-/** *structure+*right+*guide dbContent (corpus row 38251, shard-000032) —
+/** *structure+*right+*guide dbContent —
  *  external URL links (target=_blank class=external-link), smart
  *  apostrophes/quotes, and the escaped-braces literal. */
 const STRUCTURE_GUIDE_CONTENT =
@@ -114,9 +105,8 @@ const STRUCTURE_GUIDE_CONTENT =
  *  CACHE-ONLY (render.ts:1994 - "returns undefined for anything the
  *  prefetch did not prepare"; the prefetch closure chases nest-syntax
  *  references and junction parts, not plain-text links), so a synthetic
- *  deck warms each link target through the engine's own on-demand hook -
- *  the corpus judge's whole-deck seeding does this implicitly for every
- *  row. */
+ *  deck warms each link target through the engine's own on-demand hook
+ *  (a whole-deck warm does this implicitly). */
 const LINK_TARGETS = [
   "RichText",
   "List",
@@ -164,7 +154,7 @@ async function seedMarkdownDeck(storage: RenderTestStorage): Promise<void> {
     leftId: 551,
     rightId: 554,
   });
-  // the corpus markdown cards, as junctions matching the corpus rows
+  // the markdown guide cards, as 3-part junctions
   await seedCard(storage, {
     id: 45414,
     name: "*all+*guide",
@@ -189,21 +179,20 @@ async function seedMarkdownDeck(storage: RenderTestStorage): Promise<void> {
     rightId: 550,
     dbContent: STRUCTURE_GUIDE_CONTENT,
   });
-  // warm the wiki-link targets into the render cache (the corpus judge's
-  // whole-deck seeding does this implicitly; see LINK_TARGETS above)
+  // warm the wiki-link targets into the render cache (a whole-deck warm
+  // does this implicitly; see LINK_TARGETS above)
   for (const target of LINK_TARGETS) {
     await storage.engine.prepareItemForRender(target);
   }
 }
 
 // ---------------------------------------------------------------------------
-// the loader-less :core dispatch (the corpus judge's world)
+// the loader-less :core dispatch (the production worker's world)
 // ---------------------------------------------------------------------------
 
 describe("Markdown-type cards kramdown through the loader-less core (corpus parity)", () => {
   it("*all+*guide :core renders the captured oracle kramdown bytes verbatim", async () => {
-    // THE exemplar (expected-v2/view-lane/recapture-raw-shard-000039,
-    // *all+*guide :content inner). Before the dispatch fix the engine fell
+    // THE exemplar. Before the dispatch fix the engine fell
     // through to the raw passthrough and these bytes came out as the
     // markdown source ("#### Editing Guide", no <p> wrappers).
     const storage = await createRenderTestStorage();
@@ -233,10 +222,8 @@ describe("Markdown-type cards kramdown through the loader-less core (corpus pari
   });
 
   it("Cardtype+*type+*guide :core matches the captured construct bytes", async () => {
-    // Byte regions copied from the captured content view
-    // (expected-v2/view-lane/recapture-raw-shard-000032, row 38250). The
-    // {{\_|board_link}} nest region is a permission/machine surface, not a
-    // markdown surface, so the pins skip it.
+    // The {{\_|board_link}} nest region is a permission/machine surface, not
+    // a markdown surface, so the pins skip it.
     const storage = await createRenderTestStorage();
     try {
       await seedMarkdownDeck(storage);
@@ -281,8 +268,6 @@ describe("Markdown-type cards kramdown through the loader-less core (corpus pari
   });
 
   it("*structure+*right+*guide :core matches the captured construct bytes", async () => {
-    // Byte regions copied from the captured content view
-    // (expected-v2/view-lane/recapture-raw-shard-000032, row 38251).
     const storage = await createRenderTestStorage();
     try {
       await seedMarkdownDeck(storage);
@@ -294,7 +279,7 @@ describe("Markdown-type cards kramdown through the loader-less core (corpus pari
       );
       expect(core).not.toContain("[[*structure]]");
       // URL-form link target -> external-link class + target="_blank"
-      // (attribute order is the captured link-pass order: target first)
+      // (attribute order: target first)
       expect(core).toContain(
         '<a target="_blank" class="external-link" href="http://decko.org/contextual_names">contextual names</a>',
       );
@@ -311,8 +296,8 @@ describe("Markdown-type cards kramdown through the loader-less core (corpus pari
   });
 
   it("a nest inside markdown content is stashed: kramdown wraps the expansion in <p>", async () => {
-    // Administrator+Dashboard's kramdown-owned byte shape (its captured
-    // content view opens "<p><p><h3>Configurations</h3>...": the FIRST <p>
+    // Administrator+Dashboard's kramdown-owned byte shape (its content
+    // view opens "<p><p><h3>Configurations</h3>...": the FIRST <p>
     // is kramdown wrapping the stashed {{0}} reference placeholder, the
     // expansion landing inside it). The card's own {{_L|configs}} nest needs
     // the admin configs view (a different mechanism, not pinned here); this
