@@ -1,28 +1,27 @@
-// RED-first pin, PART 2 of the inline materialized-store lane (2026-10-04):
+// RED-first pin (the inline materialized store):
 // the inline fetch returns the bundle in CHUNKS that each respect the
 // serving DB's per-value limit, assembled CLIENT-SIDE into the same document
 // the single-row statement produces.
 //
-// THE WALL THIS PIN STANDS ON (observed verbatim, cold-latency-rig-lane.md
-// MATERIALIZED-STORE §6.3 — the named remainder): even with the ATTACH
+// THE WALL THIS PIN STANDS ON: even with the ATTACH
 // dropped, a template-scale page cannot fetch whole on this DB class — the
 // ~3,530-card single-JSON-row bundle (~5 MB) fails server-side with
-// `SQLite error: string or blob too big` (probed live), while a 15-card
-// page's 2.3 KB bundle fetches fine (222-429 ms). The answer: one-row-per-
-// card chunked fetch (many small rows are proven fine — the materialized
-// load pushed 528 multi-row statements), assembled client-side.
+// `SQLite error: string or blob too big`, while a 15-card
+// page's 2.3 KB bundle fetches fine. The answer: one-row-per-
+// card chunked fetch (many small rows are fine), assembled client-side.
 //
 // THE CONTRACT: the assembled document must be BYTE-EQUAL to the single-row
 // statement's document — the single-row shape is the thing the local harness
-// proves (the committed local 5/5 byte-identity proof rides it), so the
+// proves, so the
 // chunked path is pinned to reproduce it exactly, per card ROW ORDER and
-// JSON text, on real corpus pages (the light Taking_Stock and the
+// JSON text, on the probe pages (the light Taking_Stock and the
 // template-scale Aikido, which crosses several chunks).
 //
 // RED at base: fetchPageBundleInline / fetchPageBundleInlineRaw /
 // ONE_TRIP_INLINE_CARDS_PER_CHUNK do not exist yet (import failure = red).
 //
-// The corpus test skips when the mirror copy is absent (fresh clones).
+// These tests skip when the shared deck database copy is absent (fresh
+// clones).
 
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -76,16 +75,16 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
     const side = new LocalSqliteDriver({ path: sidePath });
     await buildOneTripClosure({ corpus: corpusMirror, side, pageNames: [...PROBE_PAGES] });
 
-    // 2. Materialize the INLINE shape: a writable copy of the corpus with the
+    // 2. Materialize the INLINE shape: a writable copy of the deck database with the
     //    one_trip_* tables loaded INTO it — exactly the serving DB state the
-    //    materialized-store lane produced (build, then additive load).
+    //    materialized store produces (build, then additive load).
     inlineDbPath = join(dir, "deck-inline-materialized.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, inlineDbPath);
     inlineDb = new LocalSqliteDriver({ path: inlineDbPath });
     // The freshness stamp (the seat head reads deck_data_version as a column
-    // since the stamp-as-column lane — the same row the render entry's gate
-    // reads; an unmigrated database fails loudly by the freshness lane's own
-    // convention). Applied to the working copy the way a provisioned
+    // — the same row the render entry's gate
+    // reads; an unmigrated database fails loudly by convention). Applied to
+    // the working copy the way a provisioned
     // database is; migration 0003 is additive and order-safe, and adds no
     // render bytes, so the byte-equality pins below compare like with like.
     await applyDeckDataVersionStampMigration(inlineDb);
@@ -194,10 +193,9 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
       }
     });
 
-    // THE V2 PIN (inline-fetch-v2 lane, 2026-10-05): discovery ONCE per seat.
+    // THE V2 PIN: discovery ONCE per seat.
     //
-    // The mechanism this pin kills (cold-latency-rig-lane.md WIRE-DIAGNOSIS §4,
-    // probed verbatim on the live serving DB): the v1 chunked fetch re-ran the
+    // The mechanism this pin kills: the v1 chunked fetch re-ran the
     // ENTIRE discovery phase (recursive walk CTE + members CTE + DISTINCT join
     // + ORDER BY id) inside EVERY chunk statement before its LIMIT/OFFSET
     // slice — 37 full closure computations per Aikido seat, 228-1,112 ms each
@@ -206,7 +204,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
     // is a FLAT keyset read over one window of that list (json_each expansion,
     // no walk CTE anywhere after statement 1).
     //
-    // RED at c5f7fc79: every v1 statement (head AND chunks) carries WITH
+    // RED baseline: every v1 statement (head AND chunks) carries WITH
     // RECURSIVE and the head materializes nothing — walkStatements is 1+N, not
     // 1, and no slice binds a json_each window.
     it(`runs discovery EXACTLY ONCE — one walk-CTE statement, then flat keyset slices`, async () => {
@@ -267,11 +265,10 @@ SELECT COUNT(*) AS n FROM members`,
       );
     });
 
-    // THE V3 PIN (inline-fetch-v3 lane, 2026-10-05): the seat's TRANSPORT
+    // THE V3 PIN: the seat's TRANSPORT
     // profile — minimum wire round trips.
     //
-    // The mechanism this pin kills (cold-latency-rig-lane.md INLINE-FETCH-V2
-    // §5, the seventh wire's statement trace): v2 removed the duplicated
+    // The mechanism this pin kills: v2 removed the duplicated
     // discovery COMPUTE but still sent 1 head + 36 keyset slices as 37
     // SEQUENTIAL wire round trips at ~333 ms each on the ~300 ms-RTT database
     // class ≈ 13.8 s — wire RTT, not compute (even `SELECT COUNT(*) FROM
@@ -279,14 +276,13 @@ SELECT COUNT(*) AS n FROM members`,
     // flat-fast). On that class no sequential-statement posture can reach the
     // 1,300 ms cold bar; the head + all slices must ride the driver's own
     // hrana pipeline capability — batch() is ONE pipeline POST carrying every
-    // statement (BunnyDbDriver.batch → attemptPipeline, the wire shape proven
-    // in materialized-store-work/hrana-client.mjs).
+    // statement (BunnyDbDriver.batch → attemptPipeline).
     //
     // THE PROFILE: exactly TWO round trips per seat — 1 head query (its
     // result builds the slice windows client-side; a single batch cannot
     // carry binds derived from its own first result) + ONE batch carrying ALL
-    // N keyset slices. RED at f1d7baff: the slices ride N solo query() calls
-    // — Aikido measures 37 trips (1 + 36), the mechanism number verbatim.
+    // N keyset slices. RED baseline: the slices ride N solo query() calls
+    // — Aikido measures 37 trips (1 + 36).
     it(`travels in the MINIMUM wire round trips — 1 head query + ONE pipeline batch for all slices`, async () => {
       const inlineCapture = new TripCapturingDriver(inlineDb);
       await fetchPageBundleInline(inlineCapture, pageName);
