@@ -1,6 +1,6 @@
 // The deck-wide rule lookup cache — TypeScript port of
 // card-1.110.0 lib/card/rule/cache.rb (Card::Rule::Cache), the STORAGE side
-// of the codename-form rule cache (recount statement S2.4.c).
+// of the codename-form rule cache.
 //
 // Ruby holds every deck rule in one cached hash keyed by
 // "[anchor_id, pattern_code, setting_code].compact.map(&:to_s).join('+')"
