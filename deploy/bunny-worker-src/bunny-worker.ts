@@ -1,9 +1,9 @@
-// deploy/bunny-worker-src/bunny-worker.ts — request handler for the scrubbed
-// the reference deck stored in Bunny Database, served by a Bunny Edge
-// Scripting STANDALONE script.
+// deploy/bunny-worker-src/bunny-worker.ts — request handler for the deck
+// stored in Bunny Database, served by a Bunny Edge Scripting STANDALONE
+// script.
 //
-// AUDIT 2026-10-01 against the current product docs (fetched live that day;
-// every page named here is cited again in deploy/bunny-edge-trial-runbook.md):
+// AUDIT against the current product docs (every page named here is cited
+// again in deploy/bunny-edge-trial-runbook.md):
 //
 //   https://bunny.net/docs/scripting/standalone/overview.md
 //   https://bunny.net/docs/scripting/environment-variables.md
@@ -13,8 +13,8 @@
 //   https://bunny.net/docs/database/connect/scripting.md
 //   https://bunny.net/docs/database/connect/sql-api.md
 //
-// WHAT CHANGED SINCE THE SEPT ENTRY (the Sept file is in git history at the
-// pre-lane commit; the diff is the audit's deliverable):
+// WHAT CHANGED SINCE THE EARLIER ENTRY (that file is in git history; the
+// diff is the audit's deliverable):
 //   1. The old entry exported `default { fetch(request, env) }`. That is a
 //      Workers-style module shape. A Bunny standalone script is NOT called
 //      that way: it is started with BunnySDK.net.http.serve(handler), and the
@@ -47,7 +47,7 @@
 //      package source quoted in bunny-edge-entry.ts.
 //   6. `libsql://` URLs need no rewriting: @libsql/client/web calls
 //      expandConfig(config, preferHttp=true), which maps a libsql: scheme to
-//      https: (node_modules/@libsql/core/lib-esm/config.js). The trial
+//      https: (node_modules/@libsql/core/lib-esm/config.js). A separate
 //      import script does rewrite it, but that is its own HTTP path.
 //
 // STILL THE SAME MINIMAL SCOPE (NOT THE FULL decko-ts engine): the render
@@ -78,14 +78,14 @@
 //     where a real viewer exists (the engine-based Bunny and Cloudflare
 //     entries use it); it is not a fix for an anonymous route.
 //
-// ROUTES (unchanged from the Sept entry):
+// ROUTES (unchanged from the earlier entry):
 //   GET  /               -> render the "Home" card (minimal HTML record view)
 //   GET  /_status        -> { ok, runtime, db_ok, cards_n, version }
 //   GET  /<card-name>    -> minimal HTML record view of that card (200/404)
 //   GET  /<card-name>.json -> the card record as JSON (metadata, no content)
 //   anything else        -> 404
 //
-// Deployment (dashboard-first, trial account):
+// Deployment (dashboard-first):
 //   Edge Platform > Scripting > Add Script > Standalone > Default standalone,
 //   paste deploy/dist/bunny-worker.bundle.js, set the two env secrets, Publish.
 //   See deploy/bunny-edge-trial-runbook.md.
