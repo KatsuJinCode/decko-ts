@@ -1,24 +1,26 @@
-// roundtrip-report.mjs — counts-per-table in vs out for the generalized
-// migration tool.
+// roundtrip-report.mjs — per-table row counts comparing the migration
+// source against the imported target.
 //
-// The M4-generate milestone (decko-commons/decko#1282) requires a
-// round-trip report so a human reader of the report can see, at a glance,
-// how many rows of each table lived in the source and how many landed
-// in the target. The mysqldump pipeline only checks count parity
-// per-table (verify.mjs runs SELECT COUNT(*) on each target table); this
-// module adds the SOURCE side (the importer already counts rows during
-// the streaming pass, but the result lives inside importStats.counts
-// keyed by the TARGET name, not by the source name).
+// Target-side counts alone cannot prove a faithful migration. The
+// importer counts rows while streaming, but its tallies live inside
+// importStats.counts keyed by the TARGET table name, so any source
+// table the importer skipped never shows up there; the per-table SELECT
+// COUNT(*) parity check in verify.mjs has the same blind spot. This
+// module inventories the SOURCE database directly and pairs every
+// source table with its target count, so a human reading the report
+// sees at a glance what landed and what was dropped.
 //
-// The new shape distinguishes:
-//   - source: the row count in the source SQLite database (per source
-//     table, including ones the importer skipped)
-//   - target: the row count in the target SQLite database (per target
-//     table, after the DDL is applied and the bulk load completes)
-//   - delta:  source - target, positive means rows dropped, negative
-//     means rows invented (which should never happen in the data-
-//     faithful contract; reported as an error in the report when <0)
-//   - map:    "core", "settings", or "unknown" (schema-map classify)
+// Each row carries:
+//   - source: rows present in the source SQLite database (counted per
+//     source table, including tables the importer skipped)
+//   - target: rows present in the target SQLite database (after the
+//     DDL is applied and the bulk load completes)
+//   - delta:  source - target; positive means rows were dropped,
+//     negative means rows were invented. The data-faithful contract
+//     forbids invented rows, so a negative delta is reported as an
+//     error.
+//   - map:    "core", "settings", or "unknown" (from schema-map's
+//     classification)
 
 import { inventorySource } from "./source-sqlite.mjs";
 import { classifySourceTable } from "./schema-map.mjs";
