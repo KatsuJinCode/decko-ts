@@ -502,37 +502,47 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
         body: new URLSearchParams({ "card[content]": "written from the edge" }).toString(),
       });
 
-      // 3. The deck REFUSES, and the refusal names the signed-in actor. That
-      //    is the assertion that matters here, and it is the honest one.
+      // 3. The deck ACCEPTS, because the fixture owner is an administrator.
       //
-      //    Why the deck refuses: deploy/migrations/0004-demo-account-substrate.sql
-      //    seeds the account substrate — `*account`, `*email`, `*password`,
-      //    `*salt`, `*status`, `*all`, `*default` — and NO `*create`, `*update`
-      //    or `*delete` right card. A rule cannot grant a right that does not
-      //    exist, so ok_to_create? (card-mod-permissions-0.20.0
-      //    set/all/permissions.rb:120-125, which has no signed-in clause at
-      //    all) finds nothing that allows this actor, for anyone, and the
-      //    engine raises PermissionDenied. That is Ruby-faithful, and it is
-      //    a property of the seeded DECK CONTENT, not of the write path.
+      //    Why the deck accepts: this suite's fixture owner is minted by
+      //    createOwnerAccount, and Ruby's setup_first_user puts the first
+      //    user into `roles_for_first_user` (user.rb:3) — Help Desk, Shark,
+      //    Administrators — by writing each role's `*members` SETTING
+      //    (card-mod-account set/self/role.rb:33-40). So the owner holds the
+      //    administrator role and ok_to_create? finds a rule that allows it.
+      //
+      //    THIS ASSERTION CHANGED, and the reason is a fixed bug rather than
+      //    a loosened test. The port used to write that membership to
+      //    `<role>+members` instead of `<role>+*members`. `+members` is a
+      //    different card — a plain subcard of the role named after the
+      //    codename — which no permission statement consults, so the owner
+      //    held no role at all and this create was refused. The old version
+      //    of this test asserted that 403 and its comment explained it as "a
+      //    property of the seeded DECK CONTENT, not of the write path" -
+      //    which was true of the symptom and wrong about the cause. Ruby's
+      //    owner is an administrator; the port's now is too.
       //
       //    What this proves about the wiring, which is the suite's subject:
-      //    the request left the Worker, matched the create route, carried the
-      //    D1-backed session, resolved it to the OWNER card (not Anonymous),
-      //    reached the engine's rule walk, and came back as a Ruby-shaped
-      //    403 (error.rb:103-105). Every hop of the write path is exercised.
-      //    What it does NOT prove is a successful save — see Limitations in
-      //    the receipt; the deck needs write rights seeded before a
-      //    create can succeed, and that is a deck-content decision this suite
-      //    does not make on the operator's behalf.
-      expect(created.status, await created.clone().text()).toBe(403);
-      const body = await created.text();
-      expect(body).toContain("may not create card Made On Cloudflare");
-      expect(body).toContain("owner");
+      //    the request left the Worker, matched the create route, carried
+      //    the D1-backed session, resolved it to the OWNER card (not
+      //    Anonymous), reached the engine's rule walk, and came back as
+      //    Ruby's success redirect with the row committed. That is strictly
+      //    more than the old assertion: the old comment conceded it "does
+      //    NOT prove is a successful save", and this one does. The refusal
+      //    path keeps its own pins — the anonymous write two tests down
+      //    still answers 403 with no row, and the disarmed boot still
+      //    answers 403 without reaching the engine at all.
+      expect(created.status, await created.clone().text()).toBe(303);
       const check = await booted.adapter.query<{ n: number }>(
         "SELECT COUNT(*) AS n FROM cards WHERE name = 'Made On Cloudflare'",
         [],
       );
-      expect(Number(check.rows[0].n)).toBe(0);
+      expect(Number(check.rows[0].n)).toBe(1);
+      const stored = await booted.adapter.query<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE name = 'Made On Cloudflare'",
+        [],
+      );
+      expect(stored.rows[0]?.db_content).toBe("written from the edge");
     });
 
     it("denies an anonymous write with 403 (Ruby's PermissionDenied class)", async () => {
