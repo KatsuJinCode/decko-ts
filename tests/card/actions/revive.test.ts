@@ -1,7 +1,6 @@
-// Action-layer tests — TRASH + RESURRECT (manage_trash -> pull_from_trash!):
-// creating a card whose name matches a trashed row REUSES that row's id.
-// trash.rb:23-27 (manage_trash), :57-62 (pull_from_trash!), director/
-// all.rb:19-28 (the revival save is a :create action). Synthetic fixtures.
+// Action-layer tests — trash and resurrection: creating a card whose name
+// matches a trashed row REUSES that row's id, and the revival is persisted
+// as a :create action (director/all.rb:19-28). Synthetic fixtures.
 
 import { describe, expect, it } from "vitest";
 import { actionEngine, createActionsTestStorage, seedCard, seedStandardDeck } from "./actions-test-storage.js";
@@ -29,7 +28,7 @@ describe("createCard — revival from trash", () => {
     expect(actionsBefore).toHaveLength(2); // update + delete
 
     const result = await engine.createCard({ name: "Phoenix", content: "reborn" });
-    expect(result.cardId).toBe(original.id); // pull_from_trash! reuses the id
+    expect(result.cardId).toBe(original.id); // the revival keeps the trashed row's id
 
     const card = await f.storage.selectOne<Row>("SELECT * FROM cards WHERE id = ?", [
       original.id,
@@ -37,7 +36,7 @@ describe("createCard — revival from trash", () => {
     expect(card).toMatchObject({ name: "Phoenix", key: "phoenix", trash: 0, db_content: "reborn" });
 
     // the revival is its own act; its action is action_type 0 (:create —
-    // new_card? is true via @from_trash, states.rb:6-8)
+    // the row counts as a new card because it came back out of the trash)
     const acts = await f.storage.selectAll<Row>("SELECT * FROM card_acts ORDER BY id");
     expect(acts).toHaveLength(3);
     expect(acts[2]).toMatchObject({ card_id: original.id });
@@ -51,12 +50,11 @@ describe("createCard — revival from trash", () => {
       action_type: 0,
       draft: 0,
     });
-    // store_card_changes DOES run (first_create? false — the card already
-    // has history). The revived record is new apart from its id
-    // (trash.rb:57-62), so every assigned field is dirty against a blank
-    // record: name and type_id are recorded although the trashed row held
-    // the same values (the Ruby oracle's persistence probe records fields
-    // 0-3 for a revived simple card).
+    // Field-level changes ARE recorded. first_create? is false — the card
+    // already has history — but the revived row is blank apart from its id,
+    // so every assigned field counts as dirty: name and type_id are stored
+    // even though the trashed row held the same values. A revived simple
+    // card therefore carries fields 0-3.
     const changes = await f.storage.selectAll<{ field: number; value: string | null }>(
       "SELECT field, value FROM card_changes WHERE card_action_id = ? ORDER BY field",
       [(actions[2] as { id: number }).id],
@@ -77,10 +75,9 @@ describe("createCard — revival from trash", () => {
     const original = await seedCard(f.storage, { name: "Lantern", dbContent: "glow" });
     await engine.deleteCard({ cardId: original.id });
     await engine.createCard({ name: "Lantern" });
-    // pull_from_trash! reuses only the id (trash.rb:60-62); attributes come
-    // from the NEW record — empty content, default type. set_content
-    // (content.rb:1-5) stores `standard_db_content || ""`, so the empty
-    // content is "", never NULL.
+    // Only the id is reused; every attribute comes from the NEW record —
+    // empty content, default type. set_content (content.rb:1-5) stores
+    // `standard_db_content || ""`, so the empty content is "", never NULL.
     const card = await f.storage.selectOne<Row>("SELECT * FROM cards WHERE id = ?", [
       original.id,
     ]);
