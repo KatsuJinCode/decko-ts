@@ -46,9 +46,8 @@
 #                      :modal) args - rule_form.rb:47-53 stashes them and
 #                      render_rule_form consumes them.
 #
-# The capture corpus carries no live bytes for any of these four view
-# names (recapture-raw-shard-*.jsonl sweep, the follow mod header's
-# documented basis) - these scripts' extracted source IS the oracle.
+# None of these four views has recorded page output to check against, so
+# the gem source extracted below serves directly as the oracle.
 #
 # Each JSONL line carries behaviorId "view:<name>" + gemSource ranges.
 #
