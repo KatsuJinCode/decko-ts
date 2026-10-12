@@ -1,9 +1,8 @@
 // date-parse-gem-conformance-pins.test.ts — the Date cardtype's parse is
-// the GEM's `Date.parse`, and the two corpus-visible disagreements with it
-// were in OPPOSITE directions, so nothing here is a per-string special
-// case.
+// the GEM's `Date.parse`, and the two recorded disagreements with it were
+// in OPPOSITE directions, so nothing here is a per-string special case.
 //
-// GEM SOURCE (REPO_ROOT/archive/decko-fork-study/decko/):
+// GEM SOURCE:
 //
 //   mod/date/set/type/date.rb:6-8
 //       view :core do
@@ -16,39 +15,31 @@
 // `(core view)` error span (pinned by
 // date-delegated-core-rescue-scope-pins.test.ts).
 //
-// THE GEM RUN. This machine has ruby 3.3.12 (date gem 3.5.1) at
-// C:/Ruby33-x64/bin/ruby.exe, so the conformance table is MEASURED, not
-// inferred:
+// THE GEM RUN. The conformance table next to this file is MEASURED, not
+// inferred: it was produced by running ruby 3.3.12 (date gem 3.5.1)
+// Date.parse over ~1,340 inputs — the deck's unusual contents, the compact
+// / dashed / slashed families, and a two-component dashed boundary sweep.
+// The engine agrees with the gem on every row but the four named
+// RESIDUALS below, all pre-existing.
 //
-//   ruby tmp/addressed-wave1/ruby-date-parse-conformance-table.rb \
-//     > tmp/addressed-wave1/date-parse-conformance-table.json
+// THE TWO OPPOSITE DISAGREEMENTS THIS CLOSED.
 //
-// 1,340 rows: the corpus's own unusual contents, the compact / dashed /
-// slashed families, and a 1,306-row two-component dashed boundary sweep.
-// The engine now agrees with the gem on 1,336 of them; the four it does
-// not are listed under RESIDUALS below, all pre-existing, all outside the
-// entry set this lane was asked to address.
-//
-// THE TWO ENTRIES THIS CLOSED. The graded corpus carries 4,060 Date-typed
-// cards (type_id=17 in tmp/raw-ground-truth/bench-corpus-raw.sqlite3);
-// 4,045 are complete Y-M-D. Two are not:
-//
-//   card 13903 `Stanley Pranin ...+Date`, content "1981-10"  (-123)
+//   content "1981-10":
 //     Date._parse => {:mon=>19, :mday=>81, :zone=>"-10"} — no valid
 //     :mday, so the gem RAISES. The engine fell through to
 //     `new Date("1981-10")`, which JS reads as an ISO year-month, and
-//     rendered "October 1, 1981" where the capture carries the error span.
+//     rendered "October 1, 1981" where the recorded surface carries the
+//     error span.
 //
-//   card 35469 `White Fragility ...+Date`, content "20-0405"  (+101)
+//   content "20-0405":
 //     Date._parse => {:mday=>20, :zone=>"-0405", :offset=>-14700} — a
 //     day, a zone, and NO month or year, which Date.parse completes from
 //     Date.today. The gem PARSES; the engine rejected it outright.
 //
-// Both are closed and both byte-probe PASS solo at this commit. The
-// capture-date pin behind the second one is documented, with its
-// capture-date dependence, at fillFromReferenceMonth in src/card/render/
-// errors.ts — the completion reads the engine's wall-clock seam, as Ruby
-// reads Date.today, so a capture run freezes the seam to the capture instant.
+// The Date.today dependence behind the second one is documented at
+// fillFromReferenceMonth in src/card/render/errors.ts — the completion
+// reads the engine's wall-clock seam, as Ruby reads Date.today, so a
+// replay run freezes the seam to a fixed instant.
 
 import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
@@ -107,20 +98,19 @@ describe("parseRubyDateContent is the gem's Date.parse (date.rb:6-8), measured n
   });
 
   it("the two corpus entries render the gem's own answer", () => {
-    // card 13903 — the gem raises, so the Date cardtype's `::Date.parse`
+    // "1981-10" — the gem raises, so the Date cardtype's `::Date.parse`
     // raises, so the delegated render's rescue produces the error span.
     expect(
       parseRubyDateContent("1981-10"),
-      'card 13903: Date._parse gives :mday=>81, no valid date',
+      'Date._parse gives :mday=>81, no valid date',
     ).toBeNull();
 
-    // card 35469 — the gem parses and completes the missing month and year
-    // from Date.today. With the clock frozen to the capture instant
-    // (2026-09-19T12:00:00Z) the render is "September 20, 2026", the
-    // capture's own byte.
+    // "20-0405" — the gem parses and completes the missing month and year
+    // from Date.today. With the clock frozen to a fixed instant the render
+    // is deterministic: "September 20, 2026".
     setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const white = parseRubyDateContent("20-0405");
-    expect(white, "card 35469: the gem parses it").not.toBeNull();
+    expect(white, "the gem parses it").not.toBeNull();
     expect(renderLong(white as Date)).toBe("September 20, 2026");
   });
 
