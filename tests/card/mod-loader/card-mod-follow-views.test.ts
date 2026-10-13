@@ -187,7 +187,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Brandon+*follow", "follow_tab");
+    const html = await e.render("Riley+*follow", "follow_tab");
     // Haml template bytes, corpus-adjudicated (2026-10-09, the synthetic-v2
     // oracle's follow_tab/ignore_tab pins): single-quoted class attributes,
     // no indentation, every walk row wrapped in its own li, one trailing
