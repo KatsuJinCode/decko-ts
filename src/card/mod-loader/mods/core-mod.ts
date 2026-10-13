@@ -1483,11 +1483,43 @@ async function clearReferencesEvent(
  *  :34-36) = skip_event? :update_referer_content (skip_and_trigger.rb:68-70)
  *  — the act's full skip hash names the event. The save-path composition
  *  merges this into ModEventRuntime.predicates so the skip twin's
- *  `when:` resolves. */
+ *  `when:` resolves.
+ *
+ *  The rest are core's own set-module methods, the surface Ruby's
+ *  `when_condition_applies?` reaches with `send` (set/event/all.rb:82). Each
+ *  is ported from the named source; where Ruby's body reads state the port
+ *  resolves elsewhere at save time (the engine's autoname ladder, the
+ *  template write), the predicate reads that state off the event card. */
 export const coreModEventPredicates = {
   "skip_update_referers?": (card: ModEventCard): boolean =>
     card.act?.skip?.includes("update_referer_content") === true ||
     card.act?.forceSkip?.includes("update_referer_content") === true,
+  /** autoname? (mod/core/set/all/autoname.rb:14): the card has no name yet
+   *  and the deck's autoname rule is on. The port's event card always
+   *  carries a name (the engine substitutes `~<id>` for an unnamed create),
+   *  so the blank half never holds here — an unnamed create has already
+   *  been named by the time a stage walks. */
+  "autoname?": (card: ModEventCard): boolean => card.name.startsWith("~"),
+  /** no_autoname? (autoname.rb:10) = !autoname?. Gates :validate_name /
+   *  :validate_key (name_events.rb:3/:38), which only run when the engine
+   *  did NOT autoname. */
+  "no_autoname?": (card: ModEventCard): boolean => !card.name.startsWith("~"),
+  /** draft? (mod/core/set/all/content.rb:17): `Env.params["draft"] == "true"`
+   *  — the request saved without persisting. Gates :save_draft
+   *  (content.rb:7), which the engine applies on the draft param. */
+  "draft?": (card: ModEventCard): boolean => card.params?.["draft"] === "true",
+  /** use_default_content? (content.rb:30): content was not changed and the
+   *  type's template supplies default content. Gates :set_default_content
+   *  (content.rb:13), which fills a create that assigned no content. */
+  "use_default_content?": (card: ModEventCard): boolean =>
+    !(card.changedFields ?? []).includes("db_content") &&
+    card.defaultContent !== undefined &&
+    card.defaultContent !== "",
+  /** was_cardtype? (mod/core/set/type/cardtype.rb:11): the card's type was
+   *  Cardtype before this act. Gates
+   *  :check_for_cards_of_type_when_type_changed (:19-20). Card::CardtypeID
+   *  is the seeded basic type, id 3 (auth/boot-seed.ts:134). */
+  "was_cardtype?": (card: ModEventCard): boolean => card.typeIdBeforeAct === 3,
 } as const;
 
 function event(

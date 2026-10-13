@@ -61,7 +61,7 @@ import cardModEdit from "./mods/card-mod-edit.js";
 import cardModEmail from "./mods/card-mod-email.js";
 import cardModIntegrate from "./mods/card-mod-integrate.js";
 import cardModAccount from "./mods/card-mod-account.js";
-import cardModHistory from "./mods/card-mod-history.js";
+import cardModHistory, { historyModEventPredicates } from "./mods/card-mod-history.js";
 import cardModCarrierwave from "./mods/card-mod-carrierwave.js";
 import cardModVirtual from "./mods/card-mod-virtual.js";
 import cardModAssets from "./mods/card-mod-assets.js";
@@ -227,17 +227,22 @@ function eventOnlyDeckLoader(): ModLoader {
 // builders below are the port's seam for that shape: the save-path runtime
 // over the BOOTED deck (never a private per-caller subset).
 
-/** The deck's named `when:` predicate table: the three predicate-exporting
- *  mods' tables merged in bundle order (core's skip_update_referers?,
- *  comment's comment, recaptcha's validate_recaptcha - no name collisions;
- *  the other ported mods export none). Merging here - at the deck-boot
- *  seam - is what makes the deck runtime resolve every predicate the deck
- *  registered, instead of the single-mod subsets a per-caller composition
- *  would give. */
+/** The deck's named `when:` predicate table: the predicate-exporting mods'
+ *  tables merged in bundle order (core's autoname?/draft?/no_autoname?/
+ *  use_default_content?/was_cardtype?/skip_update_referers?, comment's
+ *  comment, history's actionable?/act_card?/edit_conflict?/
+ *  finalize_action?/rollback_request?, recaptcha's validate_recaptcha - no
+ *  name collisions). Merging here - at the deck-boot seam - is what makes
+ *  the deck runtime resolve every predicate the deck registered, instead of
+ *  the single-mod subsets a per-caller composition would give. A predicate
+ *  left out is not a silent skip: `when_condition_applies?` sends the name
+ *  as a card method in Ruby and raises when nothing answers it, so the
+ *  dispatcher raises for it here too. */
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
     ...coreModEventPredicates,
     ...commentModEventPredicates,
+    ...historyModEventPredicates,
     ...recaptchaModEventPredicates,
   };
 }

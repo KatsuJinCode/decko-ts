@@ -198,6 +198,77 @@ export interface ModEventCard {
    *  (dirty.rb:8-10: name, db_content, trash, type_id, left_id, right_id,
    *  codename; DirtyNames :57-60 folds left/right changes into name). */
   readonly changedFields?: readonly string[];
+  /** codename (card/lib/card/codename.rb:5) — the card's codename column,
+   *  read by `when: :codename?` (codename.rb:10). */
+  readonly codename?: string;
+  /** type_id_before_act (card/lib/card/dirty.rb, the dirty tracker) — read
+   *  by `when: :was_cardtype?` (mod/core/set/type/cardtype.rb:11). */
+  readonly typeIdBeforeAct?: number | null;
+  /** Card::Env.params for this save (lib/card/env.rb) — the request-param
+   *  bag Ruby's predicates read as a hash (`draft`, `attachment_upload`,
+   *  `insert_item`). Undefined off a request path. */
+  readonly params?: Readonly<Record<string, unknown>>;
+  /** The type card's template default content, if any — `default_content`
+   *  in `use_default_content?` (mod/core/set/all/content.rb:30). */
+  readonly defaultContent?: string | undefined;
+  /** Auth.current_id (card/lib/card/auth/all.rb) — the signed-in account
+   *  id, for the account mod's `current_account?` /
+   *  `password_redirect?` (set/abstract/account_holder.rb:23). */
+  readonly authCurrentId?: number | null;
+  /** history? (mod/history/set/all/history.rb:6) — the card type opts out
+   *  of history when false; backs `actionable?` (events.rb:53). */
+  readonly history?: boolean;
+  /** Whether this card IS the act card (director/all.rb:42 `act_card?`). */
+  readonly isActCard?: boolean;
+  /** carrierwave storage_type — `coded?`/`local?`
+   *  (mod/carrierwave/set/abstract/attachment/01_storage_type.rb:28-33). */
+  readonly storageType?: string;
+  /** Whether this save carries an attached file, and whether it changed —
+   *  the carrierwave attachment conditions
+   *  (mod/carrierwave/set/abstract/attachment.rb:51). */
+  readonly attachmentPresent?: boolean;
+  readonly attachmentIsChanging?: boolean;
+  /** The account mod's per-act `@setup_approved` flag
+   *  (mod/account/set/type/user.rb:53) — backs `setup?` (:72). */
+  readonly setupApproved?: boolean;
+  /** The follow mod's per-act silent/notification flags
+   *  (mod/follow/set/all/notify.rb:9-38). */
+  readonly silenceNotifications?: boolean;
+  readonly silentChange?: boolean;
+  readonly followable?: boolean;
+  /** The follow mod's per-act preference-expiration marker
+   *  (mod/follow/set/all/follow/follower_ids.rb:15). */
+  readonly expirePreferences?: boolean;
+  /** history's pending-revert marker (mod/history/set/all/history/
+   *  revision.rb:29 `actions_to_revert.any?`) and the current act's
+   *  action presence (events.rb:61). */
+  readonly rollbackRequested?: boolean;
+  readonly currentAction?: boolean;
+  /** last_action_id_before_edit (mod/history/set/all/history/events.rb:66)
+   *  — the revision the editor started from; backs `edit_conflict?`. */
+  readonly lastActionIdBeforeEdit?: number | string | null;
+  /** The card is a child of the *recaptcha+*settings card
+   *  (mod/recaptcha/set/abstract/recaptcha_setting.rb:11 `left&.codename
+   *  == :recaptcha_settings`). */
+  readonly recaptchaSettingChild?: boolean;
+  /** list type constraints (mod/list/set/abstract/01_list/events.rb:35-39):
+   *  `ok_item_types.present?` and collection's `unique_items?`
+   *  (mod/collection/set/all/item_assignment.rb:1). */
+  readonly hasOkItemTypes?: boolean;
+  readonly uniqueItems?: boolean;
+  /** carrierwave attachment storage facts, read by the predicates in
+   *  set/abstract/attachment.rb and 01_storage_type.rb: the type as saved
+   *  (`current.storage_type`/`bucket`/`mod` — the storage_changed?
+   *  comparison, 01_storage_type.rb:49), whether this is a `web` storage
+   *  card (:40/:47), whether its bucket is configured read_only
+   *  (cloud.rb:118), and the attachment's own identifier content
+   *  (attachment.db_content, :40). */
+  readonly currentStorageType?: string;
+  readonly currentStorageBucket?: string;
+  readonly currentStorageMod?: string | null;
+  readonly webStorage?: boolean;
+  readonly bucketReadOnly?: boolean;
+  readonly attachmentIdentifierContent?: string | null;
   /** The act's skip/trigger state (see ModEventActState). */
   readonly act?: ModEventActState;
 }
@@ -277,6 +348,15 @@ export interface ModEventRegistration {
    *  `after: :set_read_rule`) - the event runs after the named one at the
    *  same stage; the execution seam sorts by it. */
   readonly after?: string;
+
+  /** `before: :event_name` relative ordering (signin.rb:27 `before:
+   *  :signin`, user.rb:50 `before: :check_permissions`, enabled_roles.rb:28
+   *  `before: :store_in_session`) - the event runs before the named one at
+   *  the same stage; the execution seam sorts by it. Ruby's options.rb:76
+   *  clears @stage when before:/after:/around: is given, so an event
+   *  carrying this has NO `at:` of its own and inherits the named target's
+   *  stage at dispatch. */
+  readonly before?: string;
 
   readonly priority?: number;
 

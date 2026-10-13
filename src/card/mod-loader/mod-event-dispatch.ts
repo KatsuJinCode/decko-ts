@@ -25,22 +25,25 @@
 // - trigger_condition_applies? (:86-90): trigger: "required" events run
 //   only when the act's trigger list names them.
 // - when_condition_applies? (all.rb:79-85): a named predicate resolved
-//   against the card. An unresolvable name is a DOCUMENTED DIVERGENCE:
-//   Ruby's `send` raises NoMethodError and kills the save; a port-level
-//   dispatcher cannot abort a save over a predicate its runtime has not
-//   ported, so the event is skipped and the skip lands in the stage report
-//   (reason "predicate-unresolved") where tests and hosts see it.
+//   against the card, Ruby's Symbol case being `send block` - the card
+//   method the set module defines beside its event. An unresolvable name
+//   has NO Ruby branch: it is a NoMethodError that kills the save. This
+//   raises for it, so a declaration whose predicate the runtime cannot
+//   resolve surfaces as the gap it is instead of silently dropping the
+//   event.
 // - set scoping (all.rb:26-29 set_condition_applies?): the declaring set
 //   module must be included on the card. The registry records setPath;
 //   "all/"-pattern files are included on every card. Pattern/self-scoped
 //   files consult the runtime's setMember resolver; without one they are
 //   skipped "set-not-applicable" (also report-visible).
 // - stages (lib/card/director.rb:12-28): nine stages in three phases. An
-//   event with no stage of its own but `after: X` runs in X's stage
-//   directly after X (options.rb:73-86 keeps @stage nil when after: is
-//   present — the event is a callback on X's chain, set/event/callbacks.rb).
-//   Ordering otherwise: registration order (= Ruby's definition/load
-//   order), with after: entries moved directly behind their target.
+//   event with no stage of its own but `before:`/`after:` X runs in X's
+//   stage, directly before/after X (options.rb:73-86 keeps @stage nil when
+//   before:/after:/around: is present — "after, before, or around will
+//   override stage configuration" — so the event is a callback on X's
+//   chain, set/event/callbacks.rb:14-21). Ordering otherwise: registration
+//   order (= Ruby's definition/load order), with relative-ordering entries
+//   moved next to the target they name.
 // - error isolation (lib/card.rb:163-171 rescuing_if_integration + set/
 //   event.rb:147-159): stages matching /integrate/ rescue a failing body so
 //   "one failed integration event should not harm others"; every other
@@ -202,9 +205,13 @@ export interface ModEventContext {
  *  own tables; the composition merges them into the runtime. The second
  *  argument carries the stage context (the comment mod's `when: :comment`
  *  reads its save input); existing single-argument predicates stay
- *  assignable. */
+ *  assignable.
+ *
+ *  A predicate may be async: Ruby's `send` is an ordinary method call and
+ *  several of these read the deck (rule/all.rb:33-45 resolves the rule
+ *  shape through Card.fetch_type_id), so the port awaits the result. */
 export type ModEventPredicateTable = Readonly<
-  Record<string, (card: ModEventCard, ctx?: ModEventContext) => boolean>
+  Record<string, (card: ModEventCard, ctx?: ModEventContext) => boolean | Promise<boolean>>
 >;
 
 export type ModEventSkipReason =
@@ -213,7 +220,6 @@ export type ModEventSkipReason =
   | "skip"
   | "force-skip"
   | "trigger"
-  | "predicate-unresolved"
   | "when-false"
   | "set-not-applicable";
 
@@ -307,17 +313,29 @@ function triggerConditionApplies(event: RegisteredModEvent, runtime: ModEventRun
   return runtime.trigger?.includes(event.event) ?? false;
 }
 
-/** when_condition_applies? (all.rb:79-85), the Symbol case. */
-function whenConditionApplies(
+/** when_condition_applies? (all.rb:79-85), the Symbol case: `send block`,
+ *  i.e. the predicate is a card method defined in the SAME set module as the
+ *  event. Ruby has no "predicate not found" branch - an unresolvable name
+ *  is a NoMethodError that kills the save, and that is exactly what this
+ *  raises: a declaration whose predicate the runtime cannot resolve is a
+ *  port gap, never a reason to silently drop the event. */
+async function whenConditionApplies(
   event: RegisteredModEvent,
   runtime: ModEventRuntime,
   card: ModEventCard,
   ctx?: ModEventContext,
-): { ok: boolean; reason?: ModEventSkipReason } {
+): Promise<{ ok: boolean; reason?: ModEventSkipReason }> {
   if (event.when === undefined) return { ok: true };
   const predicate = runtime.predicates?.[event.when];
-  if (predicate === undefined) return { ok: false, reason: "predicate-unresolved" };
-  return predicate(card, ctx) ? { ok: true } : { ok: false, reason: "when-false" };
+  if (predicate === undefined) {
+    throw new Error(
+      `NoMethodError: unresolvable \`when: ${event.when}\` on event '${event.event}' ` +
+        `(set '${event.setPath}', mod '${event.modName}') - Ruby's when_condition_applies? ` +
+        `sends the predicate as a card method (set/event/all.rb:82) and raises when the ` +
+        `set module defines no such method. Add the predicate to this runtime's table.`,
+    );
+  }
+  return (await predicate(card, ctx)) ? { ok: true } : { ok: false, reason: "when-false" };
 }
 
 /** set_condition_applies? (all.rb:26-29): "all/"-pattern set modules are
@@ -352,50 +370,89 @@ async function setConditionApplies(
 // ---------------------------------------------------------------------------
 
 /** The walk's candidates: events declared at this stage, plus events with
- *  no stage of their own whose after: chain roots in this stage
- *  (options.rb:76 keeps @stage nil for after:-registered events). */
+ *  no stage of their own whose before:/after: chain roots in this stage
+ *  (options.rb:76 keeps @stage nil for before:-/after:-registered events —
+ *  "after, before, or around will override stage configuration"). */
 function stageCandidates(registry: ModEventRegistry, stage: ModEventStage): RegisteredModEvent[] {
   const direct = registry.forStage(stage);
   if (direct.length === 0) return [];
   const byName = new Map(registry.all().map((e) => [e.event, e]));
   const directNames = new Set(direct.map((e) => e.event));
+  const relativeTo = (event: RegisteredModEvent): string | undefined =>
+    event.after ?? event.before;
   const rootsInStage = (event: RegisteredModEvent): boolean => {
     const seen = new Set<string>([event.event]);
     let cursor: RegisteredModEvent | undefined = event;
-    while (cursor?.after !== undefined) {
-      if (seen.has(cursor.after)) return false; // after-cycle: not runnable
-      seen.add(cursor.after);
-      cursor = byName.get(cursor.after);
+    while (cursor !== undefined) {
+      const next = relativeTo(cursor);
+      if (next === undefined) break;
+      if (seen.has(next)) return false; // before/after cycle: not runnable
+      seen.add(next);
+      cursor = byName.get(next);
       if (cursor === undefined) return false; // target never registered
     }
     return cursor !== undefined && directNames.has(cursor.event);
   };
   const inherited = registry
     .all()
-    .filter((e) => e.at === undefined && e.after !== undefined && rootsInStage(e));
+    .filter((e) => e.at === undefined && relativeTo(e) !== undefined && rootsInStage(e));
   return [...direct, ...inherited];
 }
 
-/** Walk order: registration order, with after: entries moved directly
- *  behind their target (the documented contract, mod-manifest.ts:209-212).
- *  Ruby implements this through ActiveSupport callback chains; the port
- *  applies the same rule as a stable reorder over the candidates. */
+/** Walk order: registration order (= Ruby's definition/load order), with the
+ *  relative-ordering entries pinned IMMEDIATELY next to the target they name
+ *  — an `after:` entry directly behind it, a `before:` entry directly in
+ *  front of it (the documented contract, mod-manifest.ts:209-212 plus the
+ *  `before:` twin).
+ *
+ *  Ruby gets this from ActiveSupport callback chains: every stage event
+ *  becomes an `:after` callback on `"#{stage}_stage"` (options.rb:83-86) and
+ *  every `before:`/`after:` event becomes one on the named event's OWN
+ *  callback chain (`set_callback object_method, kind, event.name, prepend:
+ *  true`, callbacks.rb:17-18), all prepended so that the `:after` chain
+ *  unwinds in registration order. An `after:`/stage entry therefore runs
+ *  immediately after its target's body and BEFORE the next stage event —
+ *  not merely somewhere later in the list. The port reproduces that
+ *  adjacency as a fixed-point reorder over the candidate list. */
 function orderCandidates(candidates: RegisteredModEvent[]): RegisteredModEvent[] {
   const list = [...candidates];
   const names = new Set(list.map((e) => e.event));
-  for (let pass = 0; pass < list.length; pass++) {
-    let moved = false;
-    for (const event of list) {
-      if (event.after === undefined || !names.has(event.after)) continue;
-      const targetIndex = list.findIndex((e) => e.event === event.after);
-      const ownIndex = list.indexOf(event);
-      if (targetIndex > ownIndex) {
-        list.splice(ownIndex, 1);
-        list.splice(targetIndex, 0, event);
-        moved = true;
-      }
+  /** The entry's relation to its target, or undefined when it is a plain
+   *  stage event (or names a target that is not a candidate here). */
+  const relationOf = (event: RegisteredModEvent): { target: string; offset: 0 | 1 } | undefined => {
+    if (event.before !== undefined && names.has(event.before)) {
+      return { target: event.before, offset: 0 };
     }
-    if (!moved) break;
+    if (event.after !== undefined && names.has(event.after)) {
+      return { target: event.after, offset: 1 };
+    }
+    return undefined;
+  };
+  const order = (): string => list.map((e) => e.event).join(",");
+  // A before: entry registered after its target, or an after: entry
+  // registered before it, both need moving; repeating converges an entry
+  // whose target is itself relative-ordered, since the target's own move
+  // carries its dependants along in a later pass.
+  for (let pass = 0; pass <= list.length; pass++) {
+    let changed = false;
+    for (const event of list) {
+      const relation = relationOf(event);
+      if (relation === undefined) continue;
+      const targetIndex = list.findIndex((e) => e.event === relation.target);
+      const ownIndex = list.indexOf(event);
+      if (ownIndex === targetIndex + relation.offset) continue;
+      const before = order();
+      list.splice(ownIndex, 1);
+      // Removing at ownIndex shifts every later index down by one, so an
+      // insertion point past the removal lands one slot earlier.
+      const insertAt = ownIndex < targetIndex + relation.offset ? targetIndex + relation.offset - 1 : targetIndex + relation.offset;
+      list.splice(insertAt, 0, event);
+      // A move that leaves the sequence identical (the entry is already
+      // adjacent, and the offsets disagreed only because of it) is not a
+      // move - otherwise the loop would never settle.
+      if (order() !== before) changed = true;
+    }
+    if (!changed) break;
   }
   return list;
 }
@@ -437,7 +494,6 @@ export async function runModEventStage(
   const fired: string[] = [];
   const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
   const failed: Array<{ event: string; error: unknown }> = [];
-  const isIntegration = stage.includes("integrate");
   const ctx: ModEventContext = {
     driver: deps.driver,
     lexicon: deps.lexicon,
@@ -472,7 +528,7 @@ export async function runModEventStage(
       skipped.push({ event: event.event, reason: "set-not-applicable" });
       continue;
     }
-    const when = whenConditionApplies(event, runtime, card, ctx);
+    const when = await whenConditionApplies(event, runtime, card, ctx);
     if (!when.ok) {
       skipped.push({ event: event.event, reason: when.reason ?? "when-false" });
       continue;
@@ -483,7 +539,12 @@ export async function runModEventStage(
       >[1], ctx);
       fired.push(event.event);
     } catch (error) {
-      if (isIntegration) {
+      // rescuing_if_integration (event.rb:148-152, card.rb:163-171): the
+      // rescue is decided when the method is DEFINED, from the event's OWN
+      // @stage - which options.rb:76 leaves nil for a before:/after:/around:
+      // event. So a relative-ordering event is never integration-rescued,
+      // even when it inherits an integrate stage at dispatch.
+      if (event.at?.includes("integrate") === true) {
         // rescuing_if_integration (card.rb:163-171): one failed integration
         // event must not harm others.
         failed.push({ event: event.event, error });

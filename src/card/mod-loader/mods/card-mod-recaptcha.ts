@@ -788,6 +788,11 @@ export const recaptchaModEventPredicates = {
       }),
     });
   },
+  /** recaptcha_setting? (set/abstract/recaptcha_setting.rb:11): the left
+   *  card is the recaptcha_settings card. Gates :validate_recaptcha_field
+   *  (:1) and :set_recaptcha_site_key (:7). */
+  recaptcha_setting?: (card: ModEventCard): boolean =>
+    card.recaptchaSettingChild === true,
 } as const;
 
 // ---------------------------------------------------------------------------

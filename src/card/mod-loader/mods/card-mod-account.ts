@@ -1533,13 +1533,12 @@ const setModules: ModSetModuleFile[] = [
     events: [
       // signin.rb:27-31 `event :send_reset_password_token, before:
       // :signin, on: :update, trigger: :required` — Ruby's before: keeps
-      // @stage nil and hangs the event on signin's callback chain (the
-      // signin event is :validate), so the surface records the resolved
-      // stage; declared FIRST so the same-stage walk order keeps it ahead
-      // of signin (the check_setup precedent, type/user below).
+      // @stage nil (options.rb:76) and hangs the event on signin's
+      // callback chain (set/event/callbacks.rb:14-21); the event's stage
+      // IS signin's (:validate), which the dispatcher resolves by name.
       engineOwnedEvent({
         event: "send_reset_password_token",
-        at: "validate",
+        before: "signin",
         on: ["update"],
         trigger: "required",
       }),
@@ -1687,7 +1686,7 @@ const setModules: ModSetModuleFile[] = [
     setPath: "type/user",
     // The first-user setup runs in auth/first-run-setup.ts.
     events: [
-      engineOwnedEvent({ event: "check_setup", at: "validate", on: ["create"], trigger: "required" }),
+      engineOwnedEvent({ event: "check_setup", before: "check_permissions", on: ["create"], trigger: "required" }),
       engineOwnedEvent({ event: "setup_first_user", at: "finalize", on: ["create"], when: "setup?" }),
       engineOwnedEvent({ event: "signin_after_setup", at: "integrate", on: ["create"], when: "setup?" }),
     ],
