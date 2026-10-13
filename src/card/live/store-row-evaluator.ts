@@ -39,7 +39,7 @@ export type CardRow = Record<string, unknown>;
 
 /** ASCII-only case fold: exactly what SQLite's built-in NOCASE collation does.
  *  `String.prototype.toLowerCase` is NOT this — it also folds Latin-1 and
- *  Greek and CJK, so a key such as "Rent_Café_Term_Of_Service" would fold
+ *  Greek and CJK, so a key carrying an accented letter would fold
  *  differently here than in a real NOCASE comparison. */
 export function foldNoCase(s: string): string {
   let out = "";

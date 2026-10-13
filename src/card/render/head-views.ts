@@ -259,7 +259,7 @@ export const HEAD_VIEWS: readonly string[] = [
  *  deliberately ignores the stored identifier on retrieval
  *  (lib/carrier_wave/file_card_uploader/path.rb:28-32), with `extension`
  *  ending `.downcase` (file_card_uploader.rb:155-162) — so a stored
- *  "(my_bucket)/103/3649.JPG" serves ".../0000000004-small.jpg", and a stored
+ *  "(my_bucket)/12/34.JPG" serves ".../0000000004-small.jpg", and a stored
  *  "(my_bucket)/14547/61887.abr.1.doc" serves "/14547/1.doc".
  *  The stored source keeps its upload case; only the SERVED URL normalizes
  *  (views.ts cloudImageUrl is
