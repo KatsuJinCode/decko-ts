@@ -1015,16 +1015,31 @@ function cardUrl(req: WriteRouteRequest, path: string): string {
   return `${req.scheme ?? "http"}://${req.host}${path}`;
 }
 
-/** The errors view's alert bytes for the *signin failure
- *  (set/self/signin.rb's authenticate_or_abort errors.add :signin — the
- *  recorded page shows the attribute key upcased, "SIGNIN:", ahead of the
- *  message): the same standard_errors shape cardErrorAlertHtml emits. */
-function signinErrorAlertHtml(message: string): string {
+/** The errors view's alert bytes for a *signin failure: the same
+ *  standard_errors shape cardErrorAlertHtml emits, with the errors
+ *  object's OWN attribute as the key. The sign-in ladder produces all
+ *  three shapes, so the key cannot be baked in:
+ *    set/self/signin.rb:56   errors.add :signin, ...   -> "SIGNIN:"
+ *    set/self/signin.rb:98   error_on :email, ...      -> "EMAIL:"
+ *    set/self/signin.rb:61   abort :failure, t(...)    -> no key at all
+ *  The keyless abort is the blank-field abort (signin.rb:46-48, the
+ *  "abort message without an errors key" its own call site documents),
+ *  and it renders the bare message — which is what the recorded
+ *  signin-blank-email page shows. standard_error_message splits the shown
+ *  key from the message at the first ": " (cardErrorAlertHtml above does
+ *  the same), so a shown string that already carries the prefix is split
+ *  here rather than rendered with the key twice. */
+function signinErrorAlertHtml(message: string, key?: string): string {
+  const text = key !== undefined && message.startsWith(`${key}: `)
+    ? message.slice(key.length + 2)
+    : message;
   return (
     `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
     `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
     `<h4 class="alert-heading error">Problems with *signin</h4>` +
-    `<p><strong>SIGNIN:</strong> ${escapeHtml(message)}</p>` +
+    (key === undefined || key === ""
+      ? `<p>${escapeHtml(text)}</p>`
+      : `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(text)}</p>`) +
     `</div>`
   );
 }
@@ -1120,13 +1135,16 @@ async function handleSigninUpdate(
 ): Promise<WriteRouteResponse> {
   const email = parsed.subcards["+*email"]?.content ?? "";
   const password = parsed.subcards["+*password"]?.content ?? "";
-  const fail = (message: string, shown: string): WriteRouteResponse =>
+  // The JSON flavor keeps the shown string verbatim (the API surface is not
+  // the alert's); the HTML flavor renders it through the errors view, which
+  // needs the errors object's own attribute as the key (signinErrorAlertHtml).
+  const fail = (message: string, shown: string, key?: string): WriteRouteResponse =>
     json
       ? errorResponse(true, new CardActionError("user-error", message, shown), false, {
           url: requestUrl(req),
           now: ctx.now?.() ?? new Date(),
         })
-      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown));
+      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown, key));
   // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
   // password form posts the email with card[trigger]; the :signin event
   // does not run.
@@ -1145,10 +1163,9 @@ async function handleSigninUpdate(
   if (!outcome.ok) {
     // authenticate_or_abort adds the ladder message under :signin
     // (signin.rb:50-58 errors.add :signin, ...): the errors view renders the
-    // attribute name upcased ("SIGNIN:") ahead of the message — the alert
-    // template below owns that prefix, so the shown bytes are the ladder
-    // message itself, unprefixed.
-    return fail(outcome.message, outcome.message);
+    // attribute name upcased ("SIGNIN:") ahead of the message — so the
+    // ladder message is the unprefixed shown bytes and the key rides along.
+    return fail(outcome.message, outcome.message, "SIGNIN");
   }
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
@@ -1182,7 +1199,7 @@ async function handleResetPasswordTrigger(
   json: boolean,
   parsed: ParsedBody,
   email: string,
-  fail: (message: string, shown: string) => WriteRouteResponse,
+  fail: (message: string, shown: string, key?: string) => WriteRouteResponse,
 ): Promise<WriteRouteResponse> {
   if (ctx.accountMail === undefined) {
     return fail("account mail is not configured on this host", "account mail is not configured on this host");
@@ -1196,7 +1213,14 @@ async function handleResetPasswordTrigger(
     },
     email,
   );
-  if (!outcome.ok) return fail(outcome.message, `EMAIL: ${outcome.message}`);
+  // reset_password_fail (signin.rb:95-100) keys the error on the ATTRIBUTE:
+  // an unknown or blank address is an error on :email, a known-but-inactive
+  // account on :account. The JSON flavor's shown string carries the same key
+  // Ruby renders, so the alert does not double-prefix it.
+  if (!outcome.ok) {
+    const key = outcome.reason === "not_active" ? "ACCOUNT" : "EMAIL";
+    return fail(outcome.message, `${key}: ${outcome.message}`, key);
+  }
   const view = parsed.success["view"];
   const path = view === undefined || view === ""
     ? `/${locationName("*signin")}`

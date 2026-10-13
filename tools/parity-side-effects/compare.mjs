@@ -99,8 +99,28 @@ function tsErrors(step) {
     const j = JSON.parse(b);
     if (j?.error?.message) return j.error.message;
   } catch { /* html */ }
-  const m = b.match(/<pre>([\s\S]*?)<\/pre>/);
-  return m ? decode(m[1]) : decode(b.replace(/<[^>]+>/g, " ")).slice(0, 160);
+  const pre = b.match(/<pre>([\s\S]*?)<\/pre>/);
+  if (pre) return decode(pre[1]);
+  // The counterpart rubyErrors' `Problems … b&w_logo` cut (:82-84) had no
+  // equivalent here, and the asymmetry was the whole defect: both engines
+  // render the SAME errors-view alert (card-mod-format set/all/html/error.rb
+  // :54-66 — the card-error-msg div, the "Problems with <card>" heading, one
+  // <p><strong>KEY:</strong> message</p> per error), but Ruby renders it
+  // inside the deck layout, where the b&w_logo footer bounds the capture,
+  // while the port's bare page has no such footer. Falling through to the
+  // 160-char tag-strip therefore kept the page's <title> ("Error
+  // (signin-failure)") and the heading in the compared value, so every alert
+  // step mismatched on a wrapper the two engines never disagreed about.
+  //
+  // The alert is cut structurally instead (the div's own </div> bounds it),
+  // and the <h4> heading is left out because Ruby's capture starts at an
+  // UPPER-ish "KEY:" token — which is precisely what skips that heading.
+  const alert = b.match(/class="[^"]*card-error-msg"[^>]*>([\s\S]*?)<\/div>/);
+  if (alert !== null) {
+    const shown = [...alert[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((p) => decode(p[1].replace(/<[^>]+>/g, " ")));
+    if (shown.length > 0) return shown.join(" ");
+  }
+  return decode(b.replace(/<[^>]+>/g, " ")).slice(0, 160);
 }
 
 const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions", "card_virtuals"];
