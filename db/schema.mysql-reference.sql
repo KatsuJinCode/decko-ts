@@ -264,6 +264,6 @@ CREATE TABLE `transform_migrations` (
 --   card-mod-delayed_job consumes delayed_jobs; the Rails session store
 --   consumes sessions; the card gem's stale site dump additionally showed
 --   a legacy `users` table (dropped in production by the 2014
---   user-data-to-cards transform) and site-custom library_* tables that
---   belong to a different (dev) database, not to the source dump.
+--   user-data-to-cards transform), plus tables belonging to a different
+--   (dev) database rather than to the source dump.
 -- ============================================================================
