@@ -78,7 +78,7 @@ account. You need no terminal, no Node install, and no Cloudflare setup first.
 What the button deploys is a **read-only four-card demo deck**; a writable deck
 takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/example/decko-ts-public)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts-public)
 
 ### What you see, step by step
 
