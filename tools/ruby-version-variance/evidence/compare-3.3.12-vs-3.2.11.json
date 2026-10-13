@@ -1,7 +1,7 @@
 {
   "runs": [
-    "C:\\localProjects\\decko-ts-r7fix-ruby\\recovery-scratch\\runs\\ruby-3.3.12",
-    "C:\\localProjects\\decko-ts-r7fix-ruby\\recovery-scratch\\runs\\ruby-3.2.11"
+    "recovery-scratch/runs/ruby-3.3.12",
+    "recovery-scratch/runs/ruby-3.2.11"
   ],
   "kinds": {
     "render": {

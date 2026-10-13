@@ -58,8 +58,8 @@ describe("attachment served-filename extension case (uploader extension.downcase
   );
 
   it("renders the img tag with the downcased extension (formatImageCore cloud branch)", () => {
-    expect(formatImageCore("(my_bucket)/1490/8871.JPG", 8871, "Iris McGinnis+Image")).toBe(
-      `<img alt="Iris McGinnis+Image" src="${cloudImageUrl("(my_bucket)/1490/8871.JPG", "medium")}" />`,
+    expect(formatImageCore("(my_bucket)/1490/8871.JPG", 8871, "Sample Card 162+Image")).toBe(
+      `<img alt="Sample Card 162+Image" src="${cloudImageUrl("(my_bucket)/1490/8871.JPG", "medium")}" />`,
     );
   });
 

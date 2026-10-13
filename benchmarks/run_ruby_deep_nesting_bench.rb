@@ -17,7 +17,7 @@
 #
 # Run from a decko app directory (Git Bash):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-deep-nesting-fixtures/benchmarks/run_ruby_deep_nesting_bench.rb
+#     $REPO_ROOT/../decko-ts-lane-deep-nesting-fixtures/benchmarks/run_ruby_deep_nesting_bench.rb
 #
 # Env knobs:
 #   BENCH_OUT         results path (default benchmarks/results/deep-nesting-fixtures-ruby.json)

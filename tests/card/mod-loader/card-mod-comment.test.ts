@@ -205,15 +205,16 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
-  it("WITH the mod: discussion :core renders the base core only - the comment_box is optional-hidden (right/discussion.rb:8-10 + voo_api.rb:154: :core never voo.show's :comment_box, so the optional :hide bails the render to nil and output()'s compact drops the member)", async () => {
+  it("WITH the mod: discussion :core dispatches to base core AND appends comment_box (right/discussion.rb:8-10)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Discussion Probe+discussion", "core");
-    // The base core runs (raw content bytes); the comment_box dispatch's
-    // optional :hide bails to nil (voo_api.rb:154 return :hide if
-    // hide_requested_view?) and output()'s compact drops the member -
-    // the corpus's discussion cores end at the content with no box and
-    // no separator.
-    expect(html).toBe("discussion junction body");
+    // The base core runs first (raw content bytes); the appended
+    // comment_box body follows immediately after (no slot wrapper around
+    // the appended bytes - it's a raw concatenation, mirroring Ruby's
+    // `output [super(), render_comment_box(optional: :hide)]`).
+    expect(html).toContain("discussion junction body");
+    expect(html).toContain('<div class="comment-box nodblclick">');
+    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
   it("WITH the mod: discussion :input falls through to base input (right/discussion.rb:12-16, non-editor branch)", async () => {

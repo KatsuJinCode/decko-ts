@@ -121,12 +121,12 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
     const storage = await createRenderTestStorage();
     try {
       await seedCodenameCards(storage);
-      // the seeded world: the basic card `Don't Wait For The Study`, its
+      // the seeded world: the basic card `Sample Card 074`, its
       // `+*self` junction (Set-typed, so preference?'s trunk clause
       // holds), a User-typed preferer card with no codename
       // ("Sample Member"), the junction to the preferer, and the `*follow`
       // rule row.
-      await seedCard(storage, { id: 26848, name: "Don't Wait For The Study", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: 26848, name: "Sample Card 074", typeId: BASIC_TYPE_ID });
       await seedCard(storage, { id: 30, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
       await seedCard(storage, {
         id: 26849, leftId: 26848, rightId: 30, typeId: SET_TYPE_ID,
@@ -155,11 +155,11 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
       // exercises the actual all.rb:53 clause, not a cold-map miss.
       await storage.engine.render("Sample Member", "closed");
       const html = await storage.engine.render(
-        "Don't Wait For The Study+*self+Sample Member+*follow",
+        "Sample Card 074+*self+Sample Member+*follow",
         "closed",
       );
       // standard_rule? false (the preferer junction's left is not Set) but
-      // preference? holds: 4 parts; trunk `Don't Wait For The Study+*self`
+      // preference? holds: 4 parts; trunk `Sample Card 074+*self`
       // IS Set-typed; the preferer card is User-typed (all.rb:53 arm 1).
       expect(helpContentOf(html)).toContain("ms-auto");
     } finally {
@@ -171,7 +171,7 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
     const storage = await createRenderTestStorage();
     try {
       await seedCodenameCards(storage);
-      await seedCard(storage, { id: 26848, name: "Don't Wait For The Study", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: 26848, name: "Sample Card 074", typeId: BASIC_TYPE_ID });
       await seedCard(storage, { id: 30, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
       // the trunk junction is Basic-typed here - NOT Set-typed;
       // Ruby's fetch_type_id(name[0..-3]) == SetID fails
@@ -198,7 +198,7 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
       // from the trunk clause, not a cold-map miss
       await storage.engine.render("Sample Member", "closed");
       const html = await storage.engine.render(
-        "Don't Wait For The Study+*self+Sample Member+*follow",
+        "Sample Card 074+*self+Sample Member+*follow",
         "closed",
       );
       expect(helpContentOf(html)).not.toContain("ms-auto");

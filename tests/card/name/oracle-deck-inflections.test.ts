@@ -8,7 +8,7 @@
  * `participant_` for "Participant(s)" (the default /s$/ singularization
  * strips the lone "s" segment), while the deck stores `participant_s` —
  * the CQL plus-join resolved through DeckoName keying then falls back to
- * Ruby's -999 sentinel and every "+Project(s) Participating" section
+ * Ruby's -999 sentinel and every "+Item(s) Listing" section
  * renders "0 results".
  *
  * These pins hold the REAL deck table (not a synthetic one — the seam
@@ -33,7 +33,7 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // the DEFAULT-engine keys — the byte shapes that make plus-joins
     // return zero rows
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_");
-    expect(DeckoName.parse("Project(s) Participating").key).toBe("project__participating");
+    expect(DeckoName.parse("Item(s) Listing").key).toBe("item__listing");
     expect(DeckoName.parse("Page's").key).toBe("page_");
   });
 
@@ -41,7 +41,7 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     // the deck-stored keys
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_s");
-    expect(DeckoName.parse("Project(s) Participating").key).toBe("project_s_participating");
+    expect(DeckoName.parse("Item(s) Listing").key).toBe("item_s_listing");
     // A trailing-s surname segment: the default Ruby rules singularize it
     // ("Sims" -> "sim"), and the deck table changes nothing outside the
     // three deck uncountables — this pin proves the table is not
@@ -49,8 +49,8 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // inflection class the rule under test handles.
     expect(DeckoName.parse("Row Sims").key).toBe("row_sim");
     expect(
-      DeckoName.parse("Row Sims+Project(s) Participating").key,
-    ).toBe("row_sim+project_s_participating");
+      DeckoName.parse("Row Sims+Item(s) Listing").key,
+    ).toBe("row_sim+item_s_listing");
     // the possessive family (Page's -> page_s)
     expect(DeckoName.parse("Page's").key).toBe("page_s");
   });

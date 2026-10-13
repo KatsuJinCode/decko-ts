@@ -18,14 +18,14 @@ import { expandWikiLinks } from "../../../src/card/render/format.js";
 describe("expandWikiLinks anchor escape contract", () => {
   it("keeps the label text raw while escaping the title attribute", () => {
     const html = expandWikiLinks(
-      '[[Process Arts+*referred_to_by|Pages tagged with "Process Arts"]]',
+      '[[Sample Card 168+*referred_to_by|Pages tagged with "Sample Card 168"]]',
       undefined,
       undefined,
       undefined,
     );
-    expect(html).toContain('title="Pages tagged with &quot;Process Arts&quot;"');
-    expect(html).toContain('>Pages tagged with "Process Arts"</span>');
-    expect(html).not.toContain("&quot;Process Arts&quot;</span>");
+    expect(html).toContain('title="Pages tagged with &quot;Sample Card 168&quot;"');
+    expect(html).toContain('>Pages tagged with "Sample Card 168"</span>');
+    expect(html).not.toContain("&quot;Sample Card 168&quot;</span>");
   });
 
   it("leaves single quotes raw in the title attribute", () => {

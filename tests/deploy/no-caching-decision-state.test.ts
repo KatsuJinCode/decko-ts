@@ -42,11 +42,11 @@ const url = (path: string) => `https://edge.test${path}`;
 
 // Card names and ids as they exist on the mirror deck; every query below
 // reads it and nothing writes it.
-const RESTRICTED = "FasTrak issue"; // BasicCs, read rule BasicCs+*type+*read = "Anyone Signed In"
+const RESTRICTED = "Sample Card 165"; // BasicCs, read rule BasicCs+*type+*read = "Anyone Signed In"
 const RESTRICTED_RULE = 22283;
 const SIGNED_IN_ACTOR = 393; // a User card; Anyone Signed In includes every signed-in user
 const ANYONE_ID = 8;
-const STRUCTURED = "Archetypal Psychology"; // type Process
+const STRUCTURED = "Sample Card 089"; // type Process
 const STRUCTURE_RULE = 735; // Process+*type+*structure
 const SEARCH_PAGE = "File"; // Cardtype page: lists the File cards in id order
 const SEARCH_FREE_ID = 795; // unused on the mirror, below the first id the page lists

@@ -1,6 +1,6 @@
 // bunny-edge-person-participating-real-deck-replay.test.ts -- renders a real
 // production deck's person page through the deployed edge's own boot
-// (bootCorpusDeckEngines) and checks the "+Project(s) Participating"
+// (bootCorpusDeckEngines) and checks the "+Item(s) Listing"
 // titled-search section against the Ruby-rendered expected page for the
 // same deck.
 //
@@ -54,7 +54,7 @@ const SHARD_PRESENT = existsSync(YARDSTICK_SHARD);
 const PERSON_PAGE_NAME = "Riley Ellery";
 
 /** The titled-search slot markers the Ruby yardstick carries for the
- *  "+Project(s) Participating" nest. */
+ *  "+Item(s) Listing" nest. */
 const SECTION_MARKERS = {
   slotClass: "TYPE_PLUS_RIGHT-person-project_s_participating",
   typeName: 'data-card-type-name="Search"',
@@ -89,7 +89,7 @@ async function loadYardstick(): Promise<string | undefined> {
   return found;
 }
 
-describe("person page +Project(s) Participating section on the REAL production deck", () => {
+describe("person page +Item(s) Listing section on the REAL production deck", () => {
   it(
     "renders the virtual titled Search section through the deployed boot",
     { timeout: 600_000 },

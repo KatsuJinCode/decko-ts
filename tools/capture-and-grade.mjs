@@ -356,7 +356,7 @@ async function main() {
   if (!VERIFIER_FAST) {
     fail(
       "dual-lane-verifier-fast.mjs not found (looked at $DUAL_LANE_VERIFIER_FAST, " +
-        `${SCRIPT_DIR}, brandonDojoTech tmp/verifier-fast) -- cannot grade without it`,
+        `${SCRIPT_DIR}, $RECEIPTS_REPO/tmp/verifier-fast) -- cannot grade without it`,
     );
   }
 

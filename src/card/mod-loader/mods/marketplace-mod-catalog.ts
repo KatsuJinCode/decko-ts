@@ -227,7 +227,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "File and image attachments: mounts CarrierWave onto the File and Image sets, wires 24 event hooks (storage-type writes, file deletes, upload-cache lifecycle, public-link symlinks, cloud bucket management), and contributes the admin task table entries the ops basket reads.",
     sourceFile: "src/card/mod-loader/mods/card-mod-carrierwave.ts",
-    sourceLine: 3,
+    sourceLine: 2,
   },
   {
     name: "virtual",

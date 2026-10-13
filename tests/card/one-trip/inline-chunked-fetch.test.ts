@@ -14,7 +14,7 @@
 // statement's document — the single-row shape is the thing the local harness
 // proves, so the
 // chunked path is pinned to reproduce it exactly, per card ROW ORDER and
-// JSON text, on the probe pages (the light Taking_Stock and the
+// JSON text, on the probe pages (the light Sample_Card_169 and the
 // template-scale Fieldwork, which crosses several chunks).
 //
 // RED at base: fetchPageBundleInline / fetchPageBundleInlineRaw /

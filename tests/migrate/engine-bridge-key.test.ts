@@ -24,7 +24,7 @@ const DDL_PATH = join(REPO_ROOT, "db", "schema.sqlite.sql");
 const RUBY_KEYS: [string, string][] = [
   ["Anonymous", "anonymous"],
   ["Participant(s)", "participant_s"],
-  ["Project(s) Participating", "project_s_participating"],
+  ["Item(s) Listing", "item_s_listing"],
   ["Talk Like It's Your Birth Day", "talk_like_it_s_your_birth_day"],
   ["How this may be different from what you know", "how_this_may_be_different_from_what_you_know"],
   // Ordinary plurals still singularize as Ruby does.

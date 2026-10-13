@@ -45,7 +45,7 @@ import { servingModEventRuntime } from "../../src/server/write-routes.js";
 
 const SRC =
   process.env.PERSIST_SRC_DECK ??
-  "C:/localProjects/decko-oracle-app-parity-fix/db/development.sqlite3";
+  "$ORACLE_APP_PARITY_FIX/db/development.sqlite3";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PERSIST_DIR = path.join(REPO, "tmp/persist-leftover");
 const OUT = path.join(PERSIST_DIR, "ts-state.json");

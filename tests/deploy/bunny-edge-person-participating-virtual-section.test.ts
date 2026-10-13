@@ -2,13 +2,13 @@
 // parity defect pinned through the REAL production boot.
 //
 // DEFECT: on the deployed edge, a person page was missing the whole
-// "+Project(s) Participating" section that Ruby renders. The junction row is
+// "+Item(s) Listing" section that Ruby renders. The junction row is
 // TRASHED in the deck, and the section is a VIRTUAL card: the depth-3
 // structure rule
-//   ((Person + Project(s) Participating) + *type plus right) + *structure
+//   ((Person + Item(s) Listing) + *type plus right) + *structure
 //   (type Search,
 //    content {"type":"project","plus":["Participant(s)",{"refer_to":"_left"}]})
-// makes every Person's "+Project(s) Participating" junction a live searcher
+// makes every Person's "+Item(s) Listing" junction a live searcher
 // over Project cards whose Participant(s) junction refers to the person.
 // Ruby renders it; the edge must too.
 //
@@ -157,17 +157,17 @@ function personPageDeckRows(): SeedRow[] {
       leftId: 294,
       rightId: 317,
       typeId: 3,
-      dbContent: "<p>{{+Project(s) Organizing|titled}}</p>\n<p>{{+Project(s) Participating|titled}}</p>",
+      dbContent: "<p>{{+Item(s) Organizing|titled}}</p>\n<p>{{+Item(s) Listing|titled}}</p>",
     },
 
     // -- the person card and its REAL child junction (the control)
     { id: 393, name: "Riley Ellery", typeId: 4, dbContent: "<p>And here we are.</p>" },
-    { id: 1638, name: "Project(s) Organizing", typeId: 2 },
-    { id: 1743, leftId: 393, rightId: 1638, typeId: 47, dbContent: "Guardians of Peace" },
+    { id: 1638, name: "Item(s) Organizing", typeId: 2 },
+    { id: 1743, leftId: 393, rightId: 1638, typeId: 47, dbContent: "Sample Card 113" },
 
     // -- the virtual Participating junction: set chain + Search rule, NO row
-    //    for the person's "+Project(s) Participating" junction itself
-    { id: 418, name: "Project(s) Participating", typeId: 2 },
+    //    for the person's "+Item(s) Listing" junction itself
+    { id: 418, name: "Item(s) Listing", typeId: 2 },
     { id: 420, leftId: 4, rightId: 418, typeId: 52 },
     { id: 421, leftId: 420, rightId: 262, typeId: 52 },
     {
@@ -187,7 +187,7 @@ function personPageDeckRows(): SeedRow[] {
   ];
 }
 
-describe("bunny edge boot renders the person page's virtual +Project(s) Participating section", () => {
+describe("bunny edge boot renders the person page's virtual +Item(s) Listing section", () => {
   it(
     "boots the corpus deck engines and renders the structured search section",
     { timeout: 120_000 },
@@ -225,14 +225,14 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
       // The CONTROL: the real-junction section renders (Ruby and the edge
       // both render it -- this keeps the pin honest when the page
       // otherwise renders).
-      expect(html).toContain("project_s_organizing-titled-view");
-      expect(html).toContain("Guardians of Peace");
+      expect(html).toContain("item_s_organizing-titled-view");
+      expect(html).toContain("Sample Card 113");
 
       // THE SECTION: the virtual junction renders as the structured
       // titled Search slot the Ruby side renders for this page.
-      expect(html).toContain("TYPE_PLUS_RIGHT-person-project_s_participating");
+      expect(html).toContain("TYPE_PLUS_RIGHT-person-item_s_listing");
       expect(html).toContain('data-card-type-name="Search"');
-      expect(html).toContain("riley_ellery-project_s_participating-titled-view");
+      expect(html).toContain("riley_ellery-item_s_listing-titled-view");
       // ... and the search finds the referring project (the CQL runs with
       // the junction's own name context, _left -> the person).
       expect(html).toContain("mythosynth");

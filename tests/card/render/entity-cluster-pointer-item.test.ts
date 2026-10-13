@@ -264,7 +264,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
         leftId: 99249,
         rightId: 99245,
         typeId: 47,
-        dbContent: "Conflict Done Well+Online Classes+SMD",
+        dbContent: "Sample Card 112+Sample Card 160+SMD",
       });
 
       const html = await storage.engine.render("Tactics Holder+Tactics", "content");

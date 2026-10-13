@@ -10,7 +10,7 @@
 // script - every card type, every permission shape, every mod) and runs in
 // seconds.
 //
-//   node C:/Users/jpswi/.zcode/tools/lane-job.mjs --lane seconds-corpus \
+//   node $ZCODE_HOME/tools/lane-job.mjs --lane seconds-corpus \
 //        --job "seconds corpus byte gate" -- \
 //        node benchmarks/seconds-corpus/seconds-corpus-gate.mjs
 //

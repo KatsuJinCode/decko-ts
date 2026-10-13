@@ -69,14 +69,14 @@ beforeAll(async () => {
   // join's sets.type_id filter), right_id the *read setting.
   await seedCard(s, {
     id: 16564,
-    name: "The Red Book considered+*self",
+    name: "Sample Card 077+*self",
     leftId: 16563,
     rightId: 16,
     typeId: 2,
   });
   await seedCard(s, {
     id: OWNER_ONLY_READ_RULE_ID,
-    name: "The Red Book considered+*self+*read",
+    name: "Sample Card 077+*self+*read",
     leftId: 16564,
     rightId: 3,
     dbContent: `[[the owner]]`,
@@ -84,7 +84,7 @@ beforeAll(async () => {
   await seedReference(s, OWNER_ONLY_READ_RULE_ID, OWNER_ID, "the_owner");
   await seedCard(s, {
     id: 16563,
-    name: "The Red Book considered",
+    name: "Sample Card 077",
     readRuleId: OWNER_ONLY_READ_RULE_ID,
   });
   await seedCard(s, { id: OWNER_ID, name: "the owner" });
