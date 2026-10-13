@@ -4,9 +4,9 @@
   "created": "2026-10-03T00:00:00.000Z",
   "provider": "bunny",
   "deck": {
-    "source_name": "bench-corpus-raw.sqlite3",
-    "source_sha256": "6a44dfdc00000000000000000000000000000000000000000000000000000944",
-    "source_bytes": 217251840,
+    "source_name": "deck.sqlite3",
+    "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "source_bytes": 200000000,
     "limit": 60,
     "tables": "cards,card_references"
   },

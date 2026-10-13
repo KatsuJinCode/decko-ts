@@ -1739,7 +1739,7 @@ export class CardActionEngine {
     // manage_trash (prepare_to_store) runs before prepare_left_and_right
     // assigns the side id (:store), so its lex query cannot find the trashed
     // junction and Ruby INSERTs a second (left_id, right_id) row. On a schema
-    // with the production UNIQUE (left_id, right_id) index that insert fails
+    // with the upstream UNIQUE (left_id, right_id) index that insert fails
     // the save; on a deck without it a duplicate junction row is left behind.
     // The port revives the trashed row instead.
     const trashed =

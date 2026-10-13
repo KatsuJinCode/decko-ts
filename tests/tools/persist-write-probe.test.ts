@@ -98,7 +98,7 @@ const RUBY_STEPS =
 // The deliberate differences, each declared with its reason and its exact
 // row delta. Step 7, re-creating a junction while its left side is trashed:
 // Ruby inserts a second junction row (possible only because the oracle deck
-// lacks the production UNIQUE (left_id, right_id) index); the port revives
+// lacks the upstream UNIQUE (left_id, right_id) index); the port revives
 // the trashed row. Step 67, reverting an act that renamed another card: Ruby
 // raises after storing the reverted rows without history; the port refuses
 // before writing. Steps 20, 22 and 31, stored HTML: Ruby's cleaner keeps a

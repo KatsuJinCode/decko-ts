@@ -1174,9 +1174,8 @@ const typeModDependsOnView: ViewFn = (ctx) => {
  *  dependsOn sorts. The gemspec files declare another order on five mods
  *  (account, bootstrap, edit, email, list); the spec the oracle app reads
  *  hands them over sorted. The live production site (an older 0.19-era
- *  state) showed the
- *  declaration order instead; the two
- *  references disagree, and the port follows the reference deck. Pin:
+ *  state) showed the declaration order instead; the two references
+ *  disagree, and the port follows the reference deck. Pin:
  *  tests/card/render/mod-depends-on-declaration-order-pins.test.ts. */
 function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
   if (spec === undefined) return undefined;
