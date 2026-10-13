@@ -113,8 +113,11 @@ takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
    system, then deploys.** It installs the repo and runs the migrations in
    `deploy/migrations/`: the core schema, a four-card demo deck, then the
    account substrate (card-mod-account's account cards plus the Decko Bot and
-   Anonymous actor cards) so the deck has an account to sign in against. Then
-   it bundles and deploys the Worker.
+   Anonymous actor cards) so the deck has an account to sign in against, then
+   `0009-demo-account-read-rules.sql` — the `*all+*read` catch-all and the
+   Help Desk grants for the account fields, which are what keep an anonymous
+   requester out of the owner's password digest, salt and email address.
+   Then it bundles and deploys the Worker.
 5. **You get a URL.** The Worker shows up in your Cloudflare dashboard under
    **Workers & Pages** with a `https://<worker-name>.<your-subdomain>.workers.dev`
    address. Open it and you are in the deck.
@@ -208,9 +211,9 @@ Doing it by hand, the paste in step 1 is yours to make — the id in
 `wrangler.toml` is a default for the button to overwrite, not a real database.
 
 `npm run deploy` applies everything in `deploy/migrations/` — schema, indexes,
-demo cards, account substrate — and then deploys. The migration command names
-the **binding** (`DB`), not the database name, so it keeps working after you
-rename the database.
+demo cards, account substrate, account read rules — and then deploys. The
+migration command names the **binding** (`DB`), not the database name, so it
+keeps working after you rename the database.
 
 ### Smoke (against a deployed Worker)
 
