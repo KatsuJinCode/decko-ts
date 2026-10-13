@@ -139,4 +139,4 @@ the machine.
   passed, 35.39 s), so **the full-run failure was not reproduced here** and is
   recorded as a report to investigate, not as an observed failure. Re-run it
   alone before believing a red result from this file.
-|  | 1: the full reset journey over HTTP — the post-reset location must end  | proven pre-existing by hand-reverting the era changes and rebuilding (identical failure); the reset link shape carries the query-form  the suites pin while this endpoint answers path-style | owner: the reset-flow shape reconciliation |
+| `tests/card/auth/reset-flow-endpoint.test.ts` | 1: the full reset journey over HTTP — the post-reset location must end `/edit` | proven pre-existing by hand-reverting the era changes and rebuilding (identical failure); the reset link shape carries the query-form `?view=edit` the suites pin while this endpoint answers path-style | owner: the reset-flow shape reconciliation |
