@@ -15,7 +15,7 @@
 // proves, so the
 // chunked path is pinned to reproduce it exactly, per card ROW ORDER and
 // JSON text, on the probe pages (the light Taking_Stock and the
-// template-scale Aikido, which crosses several chunks).
+// template-scale Fieldwork, which crosses several chunks).
 //
 // RED at base: fetchPageBundleInline / fetchPageBundleInlineRaw /
 // ONE_TRIP_INLINE_CARDS_PER_CHUNK do not exist yet (import failure = red).
@@ -53,10 +53,10 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 
-// The two pin pages: the lightest probe (Taking_Stock) and the
-// template-scale probe (Aikido, ~3,530 closure members locally — the page
+// The two pin pages: the lightest probe (Sample_Card_169) and the
+// template-scale probe (Fieldwork, ~3,530 closure members locally — the page
 // class whose single-row bundle trips the serving DB's value limit).
-const PIN_PAGES = ["Taking_Stock", "Aikido"] as const;
+const PIN_PAGES = ["Sample_Card_169", "Fieldwork"] as const;
 
 describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts", "hasMirror")("inline chunked fetch: byte-equal to the single-row bundle", () => {
   let dir = "";
@@ -198,7 +198,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
     // The mechanism this pin kills: the v1 chunked fetch re-ran the
     // ENTIRE discovery phase (recursive walk CTE + members CTE + DISTINCT join
     // + ORDER BY id) inside EVERY chunk statement before its LIMIT/OFFSET
-    // slice — 37 full closure computations per Aikido seat, 228-1,112 ms each
+    // slice — 37 full closure computations per Fieldwork seat, 228-1,112 ms each
     // (~18 s of seat cost). The v2 shape: the head statement materializes the
     // member id list ONCE (one small sorted JSON value), and every card slice
     // is a FLAT keyset read over one window of that list (json_each expansion,
@@ -218,7 +218,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-chunked-fetch.test.ts
         walkStatements.length,
         "the recursive discovery phase must run in EXACTLY ONE statement per seat " +
           "(the head); at base every chunk re-ran it — 37 " +
-          "closure walks per Aikido seat, ~18 s",
+          "closure walks per Fieldwork seat, ~18 s",
       ).toBe(1);
       expect(issued[0]!.sql, "the single discovery statement is the head").toMatch(
         /\bWITH RECURSIVE\b/,
@@ -282,7 +282,7 @@ SELECT COUNT(*) AS n FROM members`,
     // result builds the slice windows client-side; a single batch cannot
     // carry binds derived from its own first result) + ONE batch carrying ALL
     // N keyset slices. RED baseline: the slices ride N solo query() calls
-    // — Aikido measures 37 trips (1 + 36).
+    // — Fieldwork measures 37 trips (1 + 36).
     it(`travels in the MINIMUM wire round trips — 1 head query + ONE pipeline batch for all slices`, async () => {
       const inlineCapture = new TripCapturingDriver(inlineDb);
       await fetchPageBundleInline(inlineCapture, pageName);
@@ -291,13 +291,13 @@ SELECT COUNT(*) AS n FROM members`,
 
       // PIN 1 — the whole seat is TWO wire trips regardless of slice count:
       // the head query + one batch. At base the slices ride solo query()
-      // calls: 1 + N trips (Aikido: 37 = 1 + 36 sequential executes at
+      // calls: 1 + N trips (Fieldwork: 37 = 1 + 36 sequential executes at
       // ~333 ms each ≈ 13.8 s of pure wire RTT — INLINE-FETCH-V2 §5).
       expect(
         inlineCapture.trips,
         `the seat must ride exactly 2 wire round trips (1 head query + 1 batch ` +
           `carrying all ${sliceCount} slices); at base the slices are sequential ` +
-          `query() calls (Aikido: 37 trips ≈ 13 s at ~333 ms/trip on the ` +
+          `query() calls (Fieldwork: 37 trips ≈ 13 s at ~333 ms/trip on the ` +
           `~300 ms-RTT serving class)`,
       ).toBe(2);
 

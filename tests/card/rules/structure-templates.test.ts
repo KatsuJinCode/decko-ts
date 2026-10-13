@@ -125,13 +125,13 @@ describe("templateReferenceNames", () => {
   });
 
   it("round 9: with a context name, plus-shaped refs absolutize against the instance", () => {
-    const ctx = DeckoName.parse("Aikido Oak Cliff");
+    const ctx = DeckoName.parse("Sample Card 128");
     // The chunk/reference.rb referencing-card contract: {{+image}} names
     // <instance>+image — the key the closure walkers must prepare; keeping
     // the literal "+image" matches no row and renders every template child
     // as the unknown-card empty slot.
     expect(templateReferenceNames("<p>{{+image|size:large}}</p>", ctx)).toEqual([
-      "Aikido Oak Cliff+image",
+      "Sample Card 128+image",
     ]);
     // Already-absolute refs pass through the name algebra unchanged.
     expect(templateReferenceNames("{{Some Page}}", ctx)).toEqual(["Some Page"]);

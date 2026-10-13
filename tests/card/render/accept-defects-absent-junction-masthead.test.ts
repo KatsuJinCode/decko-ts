@@ -3,7 +3,7 @@
 // REQUESTED name, not the canonical key string.
 //
 // Recorded defect (deployed edge + tip bundle, workerd): /Dream_Team+Associations
-// rendered <title>dream_team+association - Culturesmith</title> and a masthead
+// rendered <title>dream_team+association - Example Site</title> and a masthead
 // keyed "dream_team+association" where the oracle (body
 // 0ab20bb1cea138bf0d72545f, 403, 13,377 B) renders "Dream Team+Associations"
 // in both. Two seams, both Ruby-cited:
@@ -26,7 +26,7 @@
 //
 // Red evidence (pre-fix): the serving-boot bisect rendered the key-form title
 // for BOTH name forms (tmp bisect captures, title
-// "dream_team+association - Culturesmith", 13,136 B); the bundle run recorded
+// "dream_team+association - Example Site", 13,136 B); the bundle run recorded
 // the same for /Dream_Team+Associations (13,759 B, slot-masked identical to
 // the deployed edge's sweep body).
 import { readFileSync } from "node:fs";

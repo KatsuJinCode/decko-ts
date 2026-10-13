@@ -125,7 +125,7 @@ describe("decko.rootUrl follows the deck's configured origin (head_javascript.rb
       // The negative half: no hard-coded private origin remains in the
       // engine — a deck configured with its own origin never renders
       // another deck's.
-      expect(page).not.toContain("https://culturesmith.com");
+      expect(page).not.toContain("https://example.org");
     } finally {
       resetDeckEnvironmentForViewLane();
     }
@@ -145,7 +145,7 @@ describe("decko.rootUrl follows the deck's configured origin (head_javascript.rb
     expect(rootCard).toBeDefined();
     const head = await headContent(s.engine, DeckoName.parse("Origin Probe"), rootCard!);
     expect(rootUrlLine(head)).toBe(VIEW_ROOT_URL);
-    expect(head).not.toContain("https://culturesmith.com");
+    expect(head).not.toContain("https://example.org");
   });
 
   it("the CAPTURE's page-lane configuration reproduces the graded page bytes (the :391-400 assignment through the same seam)", async () => {

@@ -196,7 +196,7 @@ async function insertReference(
  *   - the head read-set returns its `*head` / `*style` members;
  *   - the template type-name fold returns at least one row (a `*default`
  *     rule card carrying a type), which is the shape its JOIN is written for;
- *   - `Aikido`, the page the pins render. */
+ *   - `Fieldwork`, the page the pins render. */
 async function seedBootDeck(rt: BootDeck, body: string): Promise<void> {
   // The schema carries the content stamp (db/schema.sqlite.sql's
   // [ENGINE-FRESHNESS] block: deck_data_version + the six bump triggers), so
@@ -233,7 +233,7 @@ async function seedBootDeck(rt: BootDeck, body: string): Promise<void> {
 
   await insertCard(rt, {
     id: 20,
-    name: "Aikido",
+    name: "Fieldwork",
     typeId: BASIC_TYPE_ID,
     dbContent: body,
     readRuleId: 8,
@@ -318,7 +318,7 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
    *  and not a running total. The read-set comes back WITH the html, because
    *  the next boot on this deck resets the counter again. */
   async function boot(
-    card = "Aikido",
+    card = "Fieldwork",
     view = "content",
   ): Promise<{ html: string; reads: BootReadSet }> {
     deck!.counting.reset();
@@ -467,13 +467,13 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     // A cold-boot engine for the reference bytes: reset the cache, so this
     // engine has to read the head read-set from storage like any first boot.
     resetBootCache();
-    const coldOpen = await boot("Aikido", "open");
-    const coldTitle = (await boot("Aikido", "title")).html;
+    const coldOpen = await boot("Fieldwork", "open");
+    const coldTitle = (await boot("Fieldwork", "title")).html;
 
     // ...and the next engine, served the bundle.
-    await boot("Aikido", "open");
-    const warmOpen = await boot("Aikido", "open");
-    const warmTitle = (await boot("Aikido", "title")).html;
+    await boot("Fieldwork", "open");
+    const warmOpen = await boot("Fieldwork", "open");
+    const warmTitle = (await boot("Fieldwork", "title")).html;
     const coldHtml = coldOpen.html;
     const warmHtml = warmOpen.html;
     const coldReads = coldOpen.reads;
@@ -515,7 +515,7 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     async function coldFetcherBoot(): Promise<{ html: string; reads: BootReadSet }> {
       const fetcher = new FetchEngine(deck!.counting);
       deck!.counting.reset();
-      const html = await new RenderEngine(fetcher).render("Aikido", "content");
+      const html = await new RenderEngine(fetcher).render("Fieldwork", "content");
       return { html, reads: classifyBootReads(deck!) };
     }
 

@@ -51,7 +51,7 @@ const DRIFT_DECK = process.env.DRIFT_DECK ?? "";
 const driftDeckAvailable = (): boolean => existsSync(DRIFT_DECK);
 
 /** The four drift-set pages. */
-const DRIFT_PAGES = ["Aikido 2", "Aikido in Education", "Peace Practices", "Laundry"] as const;
+const DRIFT_PAGES = ["Fieldwork 2", "Sample Card 108", "Sample Card 140", "Laundry"] as const;
 
 const TRIP_CEILING = 8;
 
@@ -115,16 +115,16 @@ function rowsEqual(a: unknown[], b: unknown[]): boolean {
 }
 
 describe("drift-page trip ceiling", () => {
-  it("Aikido_2 renders at <= 8 trips cold and warm in the composed posture", async () => {
+  it("Fieldwork_2 renders at <= 8 trips cold and warm in the composed posture", async () => {
     if (!driftDeckAvailable()) return; // deck absent: skip by name, never fail green
-    const { trips } = await renderPosture("Aikido 2", true);
-    expect(trips[0], `Aikido_2 cold trips ${trips[0]} (the pre-fix baseline was 14)`).toBeLessThanOrEqual(TRIP_CEILING);
-    expect(trips[1], `Aikido_2 warm trips ${trips[1]}`).toBeLessThanOrEqual(TRIP_CEILING);
+    const { trips } = await renderPosture("Fieldwork 2", true);
+    expect(trips[0], `Fieldwork_2 cold trips ${trips[0]} (the pre-fix baseline was 14)`).toBeLessThanOrEqual(TRIP_CEILING);
+    expect(trips[1], `Fieldwork_2 warm trips ${trips[1]}`).toBeLessThanOrEqual(TRIP_CEILING);
   }, 180_000);
 
-  it("Aikido_in_Education renders at <= 8 trips cold and warm in the composed posture", async () => {
+  it("Sample_Card_108 renders at <= 8 trips cold and warm in the composed posture", async () => {
     if (!driftDeckAvailable()) return;
-    const { trips } = await renderPosture("Aikido in Education", true);
+    const { trips } = await renderPosture("Sample Card 108", true);
     expect(trips[0], `AIE cold trips ${trips[0]} (the pre-fix baseline was 18)`).toBeLessThanOrEqual(TRIP_CEILING);
     expect(trips[1], `AIE warm trips ${trips[1]}`).toBeLessThanOrEqual(TRIP_CEILING);
   }, 180_000);
