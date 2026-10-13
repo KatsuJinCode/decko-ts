@@ -76,8 +76,8 @@
     "expected/persist-steps/step-68.json": "ddc4fdef9b22c115e5ae0366a5fa33186f0ad9219b6df8048830ae82be1529db",
     "expected/persist-steps/step-69.json": "5f5ef317b564aac68cef25396e5dbd8bf0bf4e54166b4702e229e3813499ee6a",
     "expected/persist-steps/step-70.json": "6e6eecd7aa66a894deb5982657f015bbe89dbea7da93c88afaee85570c722037",
-    "expected/persist-steps/ruby-outside-delta.json": "2c6aee933039ca5f67ee28b899b9ad089b202c37b2199f1683eec34f6dd62e52",
-    "expected/persist-steps/deliberate-differences.json": "97a4bc4cbf3f21e8b30e5eb7bc7e607d84af8e3e9cbdbe6adb3037382ed8ca68",
+    "expected/persist-steps/ruby-outside-delta.json": "db9c00e6f11fd90e8787e7187c39a29dd085649d1739469e7d9fe99cc759c64b",
+    "expected/persist-steps/deliberate-differences.json": "6c81d6bc80cea48e2d993d2e9a0b74d4829d53ac824f02e0a31fc8acc0ef77fe",
     "expected/side-effects-ruby.json": "ec96ef4453d7c9516d862797dbedc1a92d268044755f5094ab83286ce3329bb5"
   },
   "provenance": {
