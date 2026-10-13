@@ -26,7 +26,7 @@ import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-st
 import { scratchDir } from "../../support/scratch-dir.mjs";
 
 /** The 5 probe pages. */
-export const PROBE_PAGES = ["Home", "Aikido", "About", "Eagle", "Taking_Stock"] as const;
+export const PROBE_PAGES = ["Home", "Fieldwork", "About", "Eagle", "Sample_Card_169"] as const;
 
 export const MIRROR_COPY_PATH = fileURLToPath(
   new URL("../../../benchmarks/one-trip-render/trial-deck-mirror-readonly-copy.sqlite3", import.meta.url),
