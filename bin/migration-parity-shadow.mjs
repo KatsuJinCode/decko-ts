@@ -87,10 +87,10 @@ export const EXIT_USAGE = 2;
  */
 export const DEFAULT_PROBE_ROUTES = Object.freeze([
   { name: "Home", view: "page" },
-  { name: "Aikido", view: "page" },
+  { name: "Fieldwork", view: "page" },
   { name: "About", view: "page" },
   { name: "Eagle", view: "page" },
-  { name: "Taking_Stock", view: "page" },
+  { name: "Sample_Card_169", view: "page" },
 ]);
 
 // ===========================================================================
@@ -1245,7 +1245,7 @@ export function shadowUsage(exitCode = EXIT_OK) {
     "                            /<name>?view=<view> through each checkout's own staging",
     "                            instrument), plus the capture label unknown_view_sentinel",
     "                            (executes as definitely_not_a_view). Default: the 5 standard",
-    "                            probe pages (Home, Aikido, About, Eagle, Taking_Stock)",
+    "                            probe pages (Home, Fieldwork, About, Eagle, Sample_Card_169)",
     "  --reference <file>        Reference JSONL: {route, sha256, bodyFile} lines — enables",
     "                            two-sided classification (ENGINE-GAP vs CONTENT-CHANGED)",
     "  --strictness <level>      byte | normalized (default normalized — the documented",
