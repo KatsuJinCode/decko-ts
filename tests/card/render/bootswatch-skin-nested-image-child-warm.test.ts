@@ -54,7 +54,7 @@ import {
 /** The skin, its coded image junction, and a pointer host that names the
  *  skin: a skin row, an Image-typed left/right junction under it, and a
  *  Pointer-typed host whose db_content names the skin. */
-const HOST = "journal skin customized";
+const HOST = "meridian skin customized";
 const SKIN = "journal skin";
 const IMAGE = `${SKIN}+Image`;
 const CODED_SRC = "/files/:journal_skin+:image/bootstrap-small.png";

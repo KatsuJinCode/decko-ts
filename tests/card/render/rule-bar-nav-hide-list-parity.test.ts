@@ -95,7 +95,7 @@ async function seedDeck(): Promise<void> {
     [64, 26, "1", "captcha"],
     [65, 27, "{{:head|core}}", "head"],
     [66, 28, "Default Layout", "layout"],
-    [67, 29, "slate skin customized", "style"],
+    [67, 29, "quartz skin customized", "style"],
     [68, 30, "mod scripts", "script"],
     [69, 33, "Editing Guide", "guide"],
     [70, 36, "*nests", "follow_fields"],

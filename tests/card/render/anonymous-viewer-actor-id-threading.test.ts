@@ -29,8 +29,8 @@ describe("ensureReadPermission threads the anonymous actor id into parties", () 
       // The codename cards the party math reads (statement 1 selects
       // codename IN (... 'anyone', ..., 'anonymous', ...)). Ids mirror the
       // classic decko bootstrap (AnyoneID=8, AnonymousID=15).
-      await seedCard(storage, { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 });
-      await seedCard(storage, { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+      await seedCard(storage, { id: 8, name: "kmrtqd", codename: "anyone", typeId: 2 });
+      await seedCard(storage, { id: 15, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
       // A readable root so the render pipeline runs end to end.
       await seedCard(storage, { id: 100, name: "Home", typeId: 2, dbContent: "hello" });
 

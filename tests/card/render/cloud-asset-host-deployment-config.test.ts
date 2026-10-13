@@ -41,8 +41,8 @@ describe("deployment cloud asset host", () => {
       `${FOG_PREFIX}14547/1.doc`,
     );
     // The favicon/image-variant path (head-views cloudAttachmentUrl, :small).
-    expect(cloudAttachmentUrl("(my_bucket)/103/3649.JPG", "small")).toBe(
-      `${FOG_PREFIX}103/3649-small.jpg`,
+    expect(cloudAttachmentUrl("(my_bucket)/12/34.JPG", "small")).toBe(
+      `${FOG_PREFIX}12/34-small.jpg`,
     );
     expect(FOG_CLOUD_URL_HOST).toBe("http://s3.amazonaws.com/");
   });
@@ -52,8 +52,8 @@ describe("deployment cloud asset host", () => {
     expect(derivedCloudAttachmentSource("(my_bucket)/14547/61887.abr.1.doc")).toBe(
       `${DO_PREFIX}14547/1.doc`,
     );
-    expect(cloudAttachmentUrl("(my_bucket)/103/3649.JPG", "small")).toBe(
-      `${DO_PREFIX}103/3649-small.jpg`,
+    expect(cloudAttachmentUrl("(my_bucket)/12/34.JPG", "small")).toBe(
+      `${DO_PREFIX}12/34-small.jpg`,
     );
     // The css/js mod-asset emission path rides the same helper through
     // cloudAttachmentUrl: the deck's compiled asset output content
@@ -67,10 +67,10 @@ describe("deployment cloud asset host", () => {
     setDeploymentCloudAssetHost(SPACES_HOST);
     expect(
       derivedCloudAttachmentSource(
-        "(my_bucket)/103/3649.jpg",
+        "(my_bucket)/12/34.jpg",
         "https://edge-specific-host.example",
       ),
-    ).toBe("https://edge-specific-host.example/files/103/3649.jpg");
+    ).toBe("https://edge-specific-host.example/files/12/34.jpg");
   });
 
   it("unset restores the fog form exactly", () => {

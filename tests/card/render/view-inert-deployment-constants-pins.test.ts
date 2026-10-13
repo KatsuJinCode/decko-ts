@@ -89,13 +89,13 @@ describe("view-inert preset: the live preset type CAN express five-without-the-s
     // being expressible without a type change.
     const handBuiltFive: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
       mainStylesheetRevisionDigits: "0000000001",
-      footerDeckoVersion: "0.19.1",
+      footerDeckoVersion: "0.0.0-synthetic",
       recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
       deckoRootUrl: "https://example.org/",
     };
     expect(Object.hasOwn(handBuiltFive, "defaultHtmlViewNest")).toBe(false);
     setDeploymentFollowLiveConfig(handBuiltFive);
-    expect(footerDeckoVersion()).toBe("0.19.1");
+    expect(footerDeckoVersion()).toBe("0.0.0-synthetic");
     expect(deploymentDefaultHtmlViewNest()).toBeUndefined();
   });
 
@@ -172,7 +172,7 @@ describe("view-inert preset: the FIVE constants still arm", () => {
 
   it("footer version, recaptcha key and rootUrl read live", () => {
     setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
-    expect(footerDeckoVersion()).toBe("0.19.1");
+    expect(footerDeckoVersion()).toBe("0.0.0-synthetic");
     expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://example.org/");
   });
