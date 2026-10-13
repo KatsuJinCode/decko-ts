@@ -51,16 +51,16 @@ beforeAll(async () => {
   await seedCard(s, { id: 145, name: "*disabled roles", codename: "disabled_roles", typeId: 14 });
 
   // users + content cards
-  await seedCard(s, { id: 300, name: "Brandon", typeId: 3 });
-  // a deletion candidate: a card whose LEFT is Brandon (the closure search:
-  // left: id, not: {right: :account}) - "Brandon+Notebook"
+  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  // a deletion candidate: a card whose LEFT is Riley (the closure search:
+  // left: id, not: {right: :account}) - "Riley+Notebook"
   await seedCard(s, { id: 201, name: "Notebook" });
   await seedCard(s, {
-    id: 200, name: "Brandon+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
+    id: 200, name: "Riley+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
   });
-  // the +*account right card of Brandon
+  // the +*account right card of Riley
   await seedCard(s, {
-    id: 320, name: "Brandon+*account", leftId: 300, rightId: 142, typeId: 14,
+    id: 320, name: "Riley+*account", leftId: 300, rightId: 142, typeId: 14,
   });
   // a role card (Role-typed) for the link_with_checkbox probe
   await seedCard(s, { id: 400, name: "Helper", typeId: 6 });
@@ -149,7 +149,7 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     // view:admin:Ada Admin+*account:closure). The haml below line 25 (the
     // warning, the deletion list, the confirmed delete link) never renders
     // in stock Ruby; the loud test posture re-raises to the caller.
-    await expect(e.render("Brandon+*account", "closure")).rejects.toThrow(
+    await expect(e.render("Riley+*account", "closure")).rejects.toThrow(
       "private method `closure_deletions' called for #<Card:0x",
     );
     e.pageSession = undefined;
