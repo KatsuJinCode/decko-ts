@@ -45,7 +45,7 @@
 // Artifacts: tools/cf-cost/measure-render-reads-results.json (numbers only;
 // no corpus content — the data rule is absolute).
 
-import { readFileSync, rmSync, copyFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, copyFileSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,7 +85,12 @@ class CountingDriver extends LocalSqliteDriver {
 const BATTERY: { label: string; card: string; expect: string }[] = [
   { label: "home", card: "Home", expect: "Cloudflare targeted-test deck home" },
   { label: "point-read (Scale Page 173x)", card: "Scale Page 173x", expect: "Scale page 173." },
-  { label: "depth-32 chain (Depth Root)", card: "Depth Root", expect: "The deepest content of the 32-level chain." },
+  // The seeded chain runs 32 levels; Ruby's subformat limit (max_depth 20,
+  // card-1.110.0 format/error.rb:33-40, pinned by nest-depth-limit.test.ts)
+  // ends rendering mid-chain, and under load the exact cut varies — so the
+  // assertion anchors on the root's own bytes, which always render, while the
+  // deep levels still exercise the nesting in the read accounting.
+  { label: "depth-32 chain (Depth Root)", card: "Depth Root", expect: "Depth level 0 nests its child:" },
   { label: "500-item pointer (Big Pointer)", card: "Big Pointer", expect: "Scale Page 500x" },
   { label: "CQL list (All Scale Page Probe)", card: "All Scale Page Probe", expect: "Scale Page" },
   { label: "denied (Restricted Page 7)", card: "Restricted Page 7", expect: "denied" },
@@ -346,18 +351,27 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
       expect(afterAnalyze.results[i].statements).toBe(before.results[i].statements);
     }
 
-    // ADDENDUM (2): write-side accounting — 0002 backfill at corpus scale
-    const backfill = await measureBackfillOnCorpusCopy();
+    // ADDENDUM (2): write-side accounting — 0002 backfill at corpus scale.
+    // The corpus sqlite is machine-local (never committed — the public package
+    // excludes it), so this addendum runs only where the operator supplied the
+    // corpus; a clean clone runs the full read-side battery and reports the
+    // skip loudly rather than failing on an absent file.
+    const corpusDeckPresent = existsSync(CORPUS_DB);
+    const backfill = corpusDeckPresent ? await measureBackfillOnCorpusCopy() : null;
     const importDeltaTargeted = 2 * before.sizes.cards;
-    const importDeltaCorpus = 2 * backfill.cards;
     console.log("\n=== WRITE-SIDE ACCOUNTING (rows_written, SQLite entry arithmetic) ===");
     console.log(`targeted deck import: cards=${before.sizes.cards} -> ongoing +${importDeltaTargeted} index entries (2/card)`);
-    console.log(`corpus deck (bench-corpus-v2 copy): cards=${backfill.cards} refs=${backfill.refs}`);
-    console.log(`corpus import path (d1-chunker INSERTs): +${importDeltaCorpus} index entries (2/card, NULL keys included)`);
-    for (const t of backfill.timings) {
-      console.log(`0002 backfill ${t.index}: ${t.ms} ms, ${t.entries === null ? "entry count unavailable" : `${t.entries} index entries (rows_written-equivalent)`}`);
+    if (backfill) {
+      const importDeltaCorpus = 2 * backfill.cards;
+      console.log(`corpus deck (bench-corpus-v2 copy): cards=${backfill.cards} refs=${backfill.refs}`);
+      console.log(`corpus import path (d1-chunker INSERTs): +${importDeltaCorpus} index entries (2/card, NULL keys included)`);
+      for (const timing of backfill.timings) {
+        console.log(`0002 backfill ${timing.index}: ${timing.ms} ms, ${timing.entries === null ? "entry count unavailable" : `${timing.entries} index entries (rows_written-equivalent)`}`);
+      }
+      console.log(`dbstat entry counts usable: ${backfill.dbstatUsable}`);
+    } else {
+      console.log("corpus deck absent (machine-local, not committed): backfill accounting skipped");
     }
-    console.log(`dbstat entry counts usable: ${backfill.dbstatUsable}`);
     console.log("How D1's rows_written meter attributes CREATE INDEX backfill is verifiable only against the deployed D1 database; the entry arithmetic above is the SQLite-side bound.");
 
     writeFileSync(join(REPO, "tools", "cf-cost", "measure-render-reads-results.json"), JSON.stringify({
@@ -378,6 +392,6 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
     for (const f of ["cf-cost-before.sqlite3", "cf-cost-after-idx.sqlite3", "cf-cost-after-analyze.sqlite3"]) {
       rmSync(join(REPO, "tmp", f), { force: true });
     }
-    rmSync(CORPUS_COPY, { force: true });
+    if (corpusDeckPresent) rmSync(CORPUS_COPY, { force: true });
   }, 600_000);
 });

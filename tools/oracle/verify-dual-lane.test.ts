@@ -90,27 +90,27 @@ import {
   replayEntries,
   formatReplayFailure,
   type ReplayEntry,
-} from "../../../src/testing/replay.js";
-import { UnsupportedViewError } from "../../../src/card/render.js";
-import type { CapturedCardRecord } from "../../../src/testing/fixture-schema.js";
-import type { CardRecordWithoutId } from "../../../src/testing/fixture-schema.js";
+} from "../../src/testing/replay.js";
+import { UnsupportedViewError } from "../../src/card/render.js";
+import type { CapturedCardRecord } from "../../src/testing/fixture-schema.js";
+import type { CardRecordWithoutId } from "../../src/testing/fixture-schema.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
   structuredCardContent,
-} from "../../../src/card/rules/structure.js";
+} from "../../src/card/rules/structure.js";
 import {
   RECORDED_NOW_INSTANT,
   resolveSetModuleContent,
   setCaptureWallClock,
-} from "../../../src/card/set-module-content-overrides.js";
+} from "../../src/card/set-module-content-overrides.js";
 
 // The capture-deck wall clock — the same pin the graded runner applies
 // (dual-lane-direct-runner-core.ts module scope). Both record paths must
 // answer Self::Now with the captured instant for byte parity against the
 // corpus expectations.
 setCaptureWallClock(RECORDED_NOW_INSTANT);
-import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
+import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "../../tests/card/render/raw-corpus-seeding.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
