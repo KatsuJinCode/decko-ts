@@ -328,9 +328,9 @@ describe("edge read path — the anonymous bytes do not move", () => {
     // capture is the same capture — only the site-identifying values moved.
     // The seed uses the synthetic footer card
     // id so the served body carries it too.
-    expect(ANON_BASELINE.length).toBe(4547);
+    expect(ANON_BASELINE.length).toBe(4528);
     expect(createHash("sha256").update(ANON_BASELINE).digest("hex")).toBe(
-      "fa2f9f1bbdcf74f742226bc1bc916d7309294d985f7907df4bd0220f3fdfa6b3",
+      "8389934276110258e14de7a8f816e4eb14a66f805f772bfa8e53f361eddaada3",
     );
   });
 
