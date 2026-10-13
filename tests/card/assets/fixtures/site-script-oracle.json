@@ -113,7 +113,7 @@
             {
               "name": "pointer_config.js.coffee",
               "type": "coffee_script",
-              "content_sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d",
+              "content_sha256": "fc78f87de0528e47b99913215c1a672d2709455acfbc05bddec190b390c826ca",
               "compressed_sha256": "be067c1209bcac4939902032bf760a8d4817f1e3dfbee2fcee14e860a40c11e2",
               "compressed_length": 4058
             },
@@ -218,7 +218,7 @@
             {
               "name": "editor.js.coffee",
               "type": "coffee_script",
-              "content_sha256": "4c2b561ac6da3c4b68da725701d5ff9cedff392d87982db6d68cde91a7ce816b",
+              "content_sha256": "00cefd3d726f769bd06c9965ba0a40218950cb7ac3e0b82b64bbcf6a9d78420f",
               "compressed_sha256": "4c598490d5e7649900d70e36182dab56a8d9cdab81698b8593b3276992409f03",
               "compressed_length": 2005
             },
