@@ -25,7 +25,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  CORPUS_CAPTURE_TIME_ZONE,
+  RECORDED_HOST_TIME_ZONE,
   DEFAULT_DECK_TIME_ZONE,
   deckTimeZoneName,
   formatCardDayofwkMinTz,
@@ -35,7 +35,7 @@ import {
 } from "../../../src/card/deck-time-zone.js";
 import { nowCardContent } from "../../../src/card/render/now-content-bytes.js";
 import {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  RECORDED_NOW_INSTANT,
   ORACLE_CAPTURE_NOW_BYTES,
   resolveSetModuleContent,
   setCaptureWallClock,
@@ -59,13 +59,13 @@ function nowCard(): SetModuleContentCard {
   };
 }
 
-describe("deck time zone — the DECK's zone, not the capture host's", () => {
+describe("deck time zone — the DECK's zone, not the recording host's", () => {
   it("a deck configured for UTC renders in UTC with the UTC label", () => {
     setDeckTimeZone("UTC");
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     // 2026-09-28T22:12Z is 15:12 Pacific but 22:12 UTC — the two hours the
     // old hard-coded zone got wrong for any non-Pacific deck.
-    expect(formatCardDayofwkMinTz(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT)).toBe(
+    expect(formatCardDayofwkMinTz(RECORDED_NOW_INSTANT)).toBe(
       "Monday, September 28, 2026 10:12 PM UTC",
     );
     // …and the Self::Now content path reads the SAME setting, not its own.
@@ -77,14 +77,14 @@ describe("deck time zone — the DECK's zone, not the capture host's", () => {
     setDeckTimeZone("Europe/Berlin");
     // Berlin has no IANA short abbreviation in en-US, so the label is the
     // GMT offset — which is still COMPUTED from the zone, not hard-coded.
-    expect(formatCardDayofwkMinTz(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT)).toBe(
+    expect(formatCardDayofwkMinTz(RECORDED_NOW_INSTANT)).toBe(
       "Tuesday, September 29, 2026 12:12 AM GMT+2",
     );
   });
 
   it("the Self::Now card and the record path agree in a non-default zone", () => {
     setDeckTimeZone("Asia/Tokyo");
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     expect(resolveSetModuleContent(nowCard())).toBe(nowCardContent());
     expect(nowCardContent()).toContain("GMT+9");
   });
@@ -114,29 +114,29 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
     const january = new Date("2026-01-15T22:12:00Z");
     // The recorded-zone constant, named explicitly — the engine default is
     // UTC.
-    expect(zoneAbbreviation(september, CORPUS_CAPTURE_TIME_ZONE)).toBe("PDT");
-    expect(zoneAbbreviation(january, CORPUS_CAPTURE_TIME_ZONE)).toBe("PST");
-    setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
+    expect(zoneAbbreviation(september, RECORDED_HOST_TIME_ZONE)).toBe("PDT");
+    expect(zoneAbbreviation(january, RECORDED_HOST_TIME_ZONE)).toBe("PST");
+    setDeckTimeZone(RECORDED_HOST_TIME_ZONE);
     expect(formatCardDayofwkMinTz(september)).toContain(" PDT");
     expect(formatCardDayofwkMinTz(january)).toContain(" PST");
   });
 
   it("no rendering path emits the Windows display name any more", () => {
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     expect(nowCardContent()).not.toContain("Pacific");
-    expect(formatCardDayofwkMinTz(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT)).not.toContain("Pacific ");
+    expect(formatCardDayofwkMinTz(RECORDED_NOW_INSTANT)).not.toContain("Pacific ");
     // …and in January too, where "PST" is the correct abbreviation.
     setCaptureWallClock(new Date("2026-01-15T22:12:00Z"));
     expect(nowCardContent()).not.toContain("Pacific Standard Time");
   });
 
-  it("the graded bytes keep their arithmetic and change only the label", () => {
+  it("the recorded bytes keep their arithmetic and change only the label", () => {
     // The recorded bytes read "...03:12 PM Pacific Standard Time". Same
     // instant, same wall clock; %Z is now what Ruby prints for it.
-    // Reproducing them means SETTING the recorded machine's zone — it is
+    // Reproducing them means SETTING the recording machine's zone — it is
     // not the engine's default (the deck's own Time.zone.name is "UTC").
-    setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+    setDeckTimeZone(RECORDED_HOST_TIME_ZONE);
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     expect(nowCardContent()).toBe(ORACLE_CAPTURE_NOW_BYTES);
     expect(ORACLE_CAPTURE_NOW_BYTES).toBe("Monday, September 28, 2026 03:12 PM PDT");
   });
@@ -149,11 +149,11 @@ describe("deck time zone — configuration is explicit and fails loudly", () => 
     // default is the former.
     expect(deckTimeZoneName()).toBe(DEFAULT_DECK_TIME_ZONE);
     expect(deckTimeZoneName()).toBe("UTC");
-    expect(deckTimeZoneName()).not.toBe(CORPUS_CAPTURE_TIME_ZONE);
+    expect(deckTimeZoneName()).not.toBe(RECORDED_HOST_TIME_ZONE);
   });
 
-  it("an unconfigured engine renders UTC, not the capture host's geography", () => {
-    setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+  it("an unconfigured engine renders UTC, not the recording host's geography", () => {
+    setCaptureWallClock(RECORDED_NOW_INSTANT);
     expect(nowCardContent()).toBe("Monday, September 28, 2026 10:12 PM UTC");
   });
 

@@ -112,7 +112,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("rule bar title shortening: name_context (live-wire mechanism 2)", () => {
+describe("rule bar title shortening: name_context", () => {
   it("renders title=\"+*default\" on the *home+*self page's default rule bar", async () => {
     const html = await renderPageBytes(storage!.engine, "*home+*self");
     const at = html.indexOf("Xhome-Xself-Xdefault-bar-view");

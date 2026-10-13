@@ -203,7 +203,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("search read-permission: denied cards filtered BEFORE the limit (trace bug 1)", () => {
+describe("search read-permission: denied cards filtered BEFORE the limit", () => {
   it("limit 3 returns the three NEWEST READABLE items — the denied rank-2 card never occupies a slot", async () => {
     const html = await storage!.engine.render("news search three", "content");
     // The pre-fix window was ranks {1,2,3} = Alpha, Secret, Gamma (Secret
@@ -243,7 +243,7 @@ describe("search read-permission: denied cards filtered BEFORE the limit (trace 
     expect(html).not.toContain("mystery body");
   });
 
-  it("limit 9 reaches past the denied rows — the 45195 shape (readable junction) renders", async () => {
+  it("limit 9 reaches past the denied rows — the readable junction renders", async () => {
     // 9 items ordered create-desc over the readable set: Alpha, Gamma,
     // Delta, Epsilon, Zeta, Eta, junction 31 (the denied 22/25 and 33 fall
     // out BEFORE the limit, so rank 8 — outside the pre-fix window — is
@@ -262,7 +262,7 @@ describe("search read-permission: denied cards filtered BEFORE the limit (trace 
   });
 });
 
-describe("read verdict: *type plus right rule evaluated from the LEFT side's type (trace bug 3)", () => {
+describe("read verdict: *type plus right rule evaluated from the LEFT side's type", () => {
   it("denies the junction whose *type plus right read rule grants Role A only", async () => {
     // The stored rule (42) does not grant anonymous; the live walk must
     // resolve the SAME rule through the correctly-anchored candidate

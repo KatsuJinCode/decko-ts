@@ -17,21 +17,21 @@
 //                     deltas, actions, mail, files, image variants,
 //                     virtuals, session identity)
 //
-// THE DECLARED DIVERGENCE THIS SUITE PINS. The published production-deck
-// grade is 90 of 90 steps (83 pass + 7 declared deliberate). On the clean
-// synthetic deck the recorded verdicts differ at 37 steps (49 pass + 4
+// THE DECLARED DIVERGENCE THIS SUITE PINS. The grade recorded on the
+// reference deck is 90 of 90 steps (83 pass + 7 declared deliberate). On the
+// clean synthetic deck the recorded verdicts differ at 37 steps (49 pass + 4
 // declared + 37 mismatched), 36 of them traceable to ONE declared security
 // divergence (docs/SECURITY.md, "An account holder's name may be changed
 // only by its holder or Help Desk"): renaming another user's account
 // holder. Ruby 0.20 does not enforce the authorization check on that path,
 // so Ruby allows the rename. The port refuses unless the actor is the
 // account holder or a member of Help Desk
-// (card-action-engine.ts assertMayRenameAccountHolder). On the
-// production deck that difference never surfaces because Ruby crashes
+// (card-action-engine.ts assertMayRenameAccountHolder). On the reference
+// deck that difference never surfaces because Ruby crashes
 // mid-rename there (a second Ruby defect in the same authorization area,
 // withheld on the terms docs/SECURITY.md states -- one of the 7 declared
-// production pins); the crash depends on production deck state and does
-// not reproduce on a clean deck, so three of the seven production pins do
+// pins); the crash depends on reference-deck state and does
+// not reproduce on a clean deck, so three of the seven declared pins do
 // not transfer
 // (probe-rename-other-account, admin-rename-account-holder,
 // admin-close-own-account), and Ruby's successful renames cascade: its
@@ -160,7 +160,7 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
     }
   }
 
-  it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 49 steps pass, the 4 steps whose production pins still hold are declared, and the 37 steps of the declared account-holder-rename divergence (docs/SECURITY.md 5) are pinned step by step", () => {
+  it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 49 steps pass, the 4 steps whose reference-deck pins still hold are declared, and the 37 steps of the declared account-holder-rename divergence (docs/SECURITY.md 5) are pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([

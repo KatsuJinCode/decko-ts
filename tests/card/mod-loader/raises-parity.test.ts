@@ -17,7 +17,7 @@
 //
 // The rendered bytes are persisted to a JSON sidecar quoting concrete
 // bytes per (mod, view). That sidecar IS committed
-// (tests/card/mod-loader/lane-raises-parity-17-bytes.json) and the
+// (tests/card/mod-loader/raises-parity-expected-raises.json) and the
 // committed file is authoritative: the render bytes carry fresh
 // data-slot-id tokens on every run, so an unconditional rewrite stamped
 // a changed sidecar into the tree on every suite run, dirtying it. The
@@ -49,7 +49,7 @@ import cardModSearch from "../../../src/card/mod-loader/mods/card-mod-search.js"
 import cardModStyle from "../../../src/card/mod-loader/mods/card-mod-style.js";
 
 // Sidecar refresh is opt-in (see header): the render/raise assertions below
-// run on every execution; lane-raises-parity-17-bytes.json is rewritten only
+// run on every execution; raises-parity-expected-raises.json is rewritten only
 // when WRITE_BASENAME_VIEW_ARTIFACT=1.
 const ARTIFACT_WRITE_REQUESTED = process.env.WRITE_BASENAME_VIEW_ARTIFACT === "1";
 
@@ -216,7 +216,7 @@ describe("17 rendered-via-basename views: do they actually render?", () => {
 
   it("captures the byte evidence to the committed JSON sidecar", async () => {
     // The sidecar IS committed
-    // (tests/card/mod-loader/lane-raises-parity-17-bytes.json) and the
+    // (tests/card/mod-loader/raises-parity-expected-raises.json) and the
     // committed file is authoritative. The render bytes carry fresh
     // data-slot-id tokens on every run, so an unconditional rewrite
     // dirtied the tree on every suite run. Refresh is opt-in via
@@ -233,7 +233,7 @@ describe("17 rendered-via-basename views: do they actually render?", () => {
         "tests",
         "card",
         "mod-loader",
-        "lane-raises-parity-17-bytes.json",
+        "raises-parity-expected-raises.json",
       );
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, JSON.stringify(results, null, 2));

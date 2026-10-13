@@ -39,7 +39,7 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 
-describeOrSkipLoud(!hasMirror, "tests/card/one-trip/one-trip-fetch.test.ts", "hasMirror")("one-trip fetch (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/one-trip-fetch.test.ts", "hasMirror")("one-trip fetch (local deck mirror)", () => {
   let sidePath = "";
   let corpusDriver: SQLDatabaseDriver;
   const baselines = new Map<string, Awaited<ReturnType<typeof captureBaselineRender>>>();

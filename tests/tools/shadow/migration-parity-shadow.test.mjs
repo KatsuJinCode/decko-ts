@@ -8,13 +8,13 @@
 //   3. cutover gate         — N consecutive clean runs, signature-scoped
 //   4. policy schema        — reused routing fields + refused unknown keys
 //   5. route sample         — percentage-or-name sampling; view routes from
-//                             the corpus canvas fixture set (unknown views
+//                             the canvas fixture set (unknown views
 //                             still refused by name)
 //   6. reference loader     — sha-verified, duplicate-refused
 //   7. CLI subprocess       — help exit 0, missing inputs exit 2 (named),
 //                             refusal discipline, report shape on real
 //                             stub-instrument execute runs, server teardown
-//   8. view-lane e2e        — mixed-lane clean run, view-only divergence
+//   8. view-surface e2e     — mixed-surface clean run, view-only divergence
 //                             isolation, the page-vs-view CF-carrier census,
 //                             gate semantics on view samples
 //
@@ -100,7 +100,7 @@ describe('normalizeNoiseHtml — the two documented noise regions', () => {
     expect(out).not.toContain(hexOf(20, 'a'));
   });
 
-  it('normalizes single-quoted slot ids too (live-check-71 pass-2 finding)', () => {
+  it('normalizes single-quoted slot ids too (the single-quote shape)', () => {
     const single = "data-slot-id='" + hexOf(20, 'b') + "'";
     const out = normalizeNoiseHtml('<span ' + single + '>');
     expect(out).toContain('data-slot-id=' + DQ + 'RANDOMIZED' + DQ);
@@ -147,17 +147,17 @@ describe('normalizeNoiseHtml — the two documented noise regions', () => {
 });
 
 // ===========================================================================
-// 1c. The view-lane noise asymmetry — the page-vs-view CF-carrier census
+// 1c. The view-surface noise asymmetry — the page-vs-view CF-carrier census
 // ===========================================================================
 //
 // The census behind this pin: 34 page entries + 37 view entries, where ALL
 // 34 pages carried the Cloudflare __CF$cv$params per-response block and
 // ZERO of the 37 views did (33 views byte-exact, 4 views slot-id-norm
 // only). This pin encodes those numbers as a DATA pin and the behavior the
-// asymmetry licenses: the CF region exists for PAGE-lane references and is
-// a measured no-op on VIEW-lane references, while the normalizer itself
-// stays lane-blind.
-describe('view-lane noise asymmetry — the close-71 census (34 page carriers, 0 view carriers)', () => {
+// asymmetry licenses: the CF region exists for PAGE references and is
+// a measured no-op on VIEW references, while the normalizer itself
+// stays surface-blind.
+describe('view-surface noise asymmetry — the recorded census (34 page carriers, 0 view carriers)', () => {
   const CENSUS_PAGES = 34;
   const CENSUS_VIEWS = 37;
   const CENSUS_PAGE_CF_CARRIERS = 34; // all 34 pages carry the block
@@ -382,7 +382,7 @@ describe('route sampling — percentage-or-name through shouldShadow (reused)', 
     expect(() => parseTargetsFile('a\tb\tc')).toThrow(/line 1.*2 columns/);
   });
 
-  it('view routes: the corpus canvas fixture views are ACCEPTED (S1 closed)', () => {
+  it('view routes: the canvas fixture views are ACCEPTED', () => {
     const routes = parseTargetsFile('Home\topen\nAikido\tclosed\nAbout\tcontent\nEagle\ttitle');
     expect(routes.map(routeKey)).toEqual([
       'Home|open',
@@ -582,7 +582,7 @@ describe('CLI — help, refusals, policy check', () => {
     expect(r.stderr).toMatch(/unknown shadow argument: --definitely-not-a-flag/);
   });
 
-  it('a targets file with an UNKNOWN view is refused by name (exit 2); the canvas fixture views plan (S1 closed)', () => {
+  it('a targets file with an UNKNOWN view is refused by name (exit 2); the canvas fixture views plan', () => {
     const dir = scratch('cli-view');
     mkdirSync(join(dir, 'cand'), { recursive: true });
     writeFileSync(join(dir, 'm.sqlite'), 'synthetic-mirror-bytes');

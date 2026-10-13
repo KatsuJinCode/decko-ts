@@ -1,7 +1,7 @@
-// Pins for the view-lane BAR-slot root-context seat (or rather its absence):
+// Pins for the BAR-slot root-context seat (or rather its absence):
 // the reference behavior is that every view=bar slot nested under the
-// view-lane root card carries NO name_context and renders its title
-// ABSOLUTE, while every NON-bar slot on the same view-lane render (+tags
+// requestless-surface root card carries NO name_context and renders its title
+// ABSOLUTE, while every NON-bar slot on the same render (+tags
 // mini_bar view=closed, +Description view=content, the +Articles
 // view=open slot, the root :open slot itself) also carries no name_context.
 //
@@ -60,13 +60,13 @@ async function seedDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("view-lane bar slots carry no fitted root-context seat (Guns:open shape)", () => {
+describe("requestless-surface bar slots carry no fitted root-context seat (the starred-root item-bar shape)", () => {
   it(
-    "item bars under the view-lane root carry no name_context and render absolute titles",
+    "item bars under the requestless root carry no name_context and render absolute titles",
     async () => {
       // CORRECTION: the seat this pin used to require had no Ruby
       // grounding — the 0.20 accordion :open chain adds no name context —
-      // and the reference behavior carries name_context on no view-lane
+      // and the reference behavior carries name_context on no
       // pointer-item or search-result bars outside the titled
       // +*referred_to_by results. The seat is removed.
       const s = await seedDeck();

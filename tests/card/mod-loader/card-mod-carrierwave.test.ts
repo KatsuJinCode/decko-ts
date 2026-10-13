@@ -173,7 +173,7 @@ describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
 });
 
 describe("image :core (set/type/image/html_views.rb:5-11)", () => {
-  it("emits <img alt=NAME src=URL /> for a web image (Rails image_tag order, the captured shape)", () => {
+  it("emits <img alt=NAME src=URL /> for a web image (Rails image_tag order)", () => {
     const html = imageHtmlCoreView(makeCtx("https://example.com/img.png", { name: "MyImage" }));
     expect(html).toBe('<img alt="MyImage" src="https://example.com/img.png" />');
   });
@@ -236,7 +236,7 @@ describe("image :preview (set/type/image/html_views.rb:36-43)", () => {
       '<div class="attachment-preview" id="MyImg-preview"><img alt="MyImg" src="https://example.com/img.png" /></div>',
     );
   });
-  it("returns empty when the underlying :core is empty (blank-src short-circuit, corpus:79 *logo shape)", () => {
+  it("returns empty when the underlying :core is empty (blank-src short-circuit)", () => {
     // :preview wraps whatever :core returns. For a blank src the underlying
     // :core returns "" (file.rb:34-45 handle_source short-circuit), so
     // :preview also returns "" rather than wrapping a stale comment.
@@ -428,7 +428,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
   // inversion went stale: it contradicted the Ruby original (html_views.rb:
   // 13-34 blank-src arm renders empty). The assertions are kept as a
   // positive pin.
-  it("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
+  it("renders a blank-src image card's :core as empty body", async () => {
     const s = storage!;
     // The image type card needs a codename so the render engine resolves
     // typeCode === "image" via peekNameForId (render.ts:610 + 834).

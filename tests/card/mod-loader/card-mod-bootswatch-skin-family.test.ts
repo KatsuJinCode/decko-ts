@@ -84,7 +84,7 @@ afterAll(() => {
 });
 
 describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
-  it("WITHOUT the mod: the flat arm is the bar-slots lane's base-table skin family", async () => {
+  it("WITHOUT the mod: the flat arm is the base-table skin family", async () => {
     const s = storage!;
     // The family lives on the BASE table
     // (tests/card/render/bootswatch-skin-bar-left-media-bytes.test.ts;
@@ -110,7 +110,7 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     expect(bareBarBottom.startsWith("<code>")).toBe(true);
   });
 
-  it("WITH the mod: :closed carries the captured media block in bar_left", async () => {
+  it("WITH the mod: :closed carries the mod's media block in bar_left", async () => {
     const s = storage!;
     await installLoader();
     // warm the +Image field through the engine's enrichment hook (the
@@ -134,7 +134,7 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     expect(html).not.toContain("card-title my-0 ms-2");
   });
 
-  it("WITH the mod: :core renders the captured skin-configuration skeleton", async () => {
+  it("WITH the mod: :core renders the mod's skin-configuration skeleton", async () => {
     const s = storage!;
     await installLoader();
     await s.engine.prepareItemForRender(`${SKIN}+Image`);

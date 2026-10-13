@@ -59,11 +59,11 @@ const ID = {
   self: 110,
   type: 111,
   joeUser: 11,
-  tova: 12,
+  sampleUser: 12,
   joeAccount: 209,
   joeEmail: 309,
-  saraAccount: 212,
-  saraEmail: 312,
+  sampleUserAccount: 212,
+  sampleUserEmail: 312,
   richTextTypeSet: 440,
   watchedSelfSet: 460,
   otherSelfSet: 470,
@@ -96,7 +96,7 @@ async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixt
   // the path card-mod-follow set/right/account.rb:3's card_accessor :email
   // defines on the +*account card).
   await seedCard(storage, { id: ID.joeUser, name: "Joe User", typeId: ID.user });
-  await seedCard(storage, { id: ID.tova, name: "Sample User", typeId: ID.user });
+  await seedCard(storage, { id: ID.sampleUser, name: "Sample User", typeId: ID.user });
   await seedCard(storage, { id: ID.joeAccount, leftId: ID.joeUser, rightId: ID.account });
   await seedCard(storage, {
     id: ID.joeEmail,
@@ -104,10 +104,10 @@ async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixt
     rightId: ID.email,
     dbContent: "joe@example.com",
   });
-  await seedCard(storage, { id: ID.saraAccount, leftId: ID.tova, rightId: ID.account });
+  await seedCard(storage, { id: ID.sampleUserAccount, leftId: ID.sampleUser, rightId: ID.account });
   await seedCard(storage, {
-    id: ID.saraEmail,
-    leftId: ID.saraAccount,
+    id: ID.sampleUserEmail,
+    leftId: ID.sampleUserAccount,
     rightId: ID.email,
     dbContent: "sample-user@example.com",
   });
@@ -381,12 +381,12 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
     const { storage, f } = await freshDeck();
     // Make Sample User the creator of Watched Card (seedCard writes creator_id 1).
     await storage.driver.query("UPDATE cards SET creator_id = ? WHERE id = ?", [
-      ID.tova,
+      ID.sampleUser,
       ID.watchedCard,
     ]);
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
-      userId: ID.tova,
+      userId: ID.sampleUser,
       content: "*created",
       joinId: 480,
       prefId: 481,
@@ -406,7 +406,7 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
       makeEvent(2, "anonymous", ID.watchedCard),
     );
     expect(before).toHaveLength(1);
-    expect(before[0]?.followerId).toBe(ID.tova);
+    expect(before[0]?.followerId).toBe(ID.sampleUser);
     expect(before[0]?.followOption).toBe("*created");
 
     // Joe performs a real update through the engine — he is now an
@@ -421,7 +421,7 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
     );
     expect(after).toHaveLength(2);
     const byUser = new Map(after.map((r) => [r.followerId, r.followOption]));
-    expect(byUser.get(ID.tova)).toBe("*created");
+    expect(byUser.get(ID.sampleUser)).toBe("*created");
     expect(byUser.get(ID.joeUser)).toBe("*edited");
     storage.close();
   });
@@ -433,7 +433,7 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     // Sample User follows Watched Card+*self with *always.
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
-      userId: ID.tova,
+      userId: ID.sampleUser,
       content: "*always",
       joinId: 480,
       prefId: 481,
@@ -462,14 +462,14 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     // `follower == act.actor` (set/all/notify.rb:51).
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
-      userId: ID.tova,
+      userId: ID.sampleUser,
       content: "*always",
       joinId: 480,
       prefId: 481,
     });
     const transport = new CaptureTransport();
     const engine = new CardActionEngine(f.engine, {
-      actor: { id: ID.tova, name: "Sample User" },
+      actor: { id: ID.sampleUser, name: "Sample User" },
       notifyTransport: transport,
     });
     await engine.updateCard({ cardId: ID.watchedCard, content: "self-edit" });
@@ -481,15 +481,15 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     const refs = await resolveFollowers(
       f.engine,
       ID.watchedCard,
-      makeEvent(ID.tova, "Sample User", ID.watchedCard),
+      makeEvent(ID.sampleUser, "Sample User", ID.watchedCard),
     );
     expect(refs).toHaveLength(1);
-    expect(refs[0]?.followerId).toBe(ID.tova);
+    expect(refs[0]?.followerId).toBe(ID.sampleUser);
 
     // ... while the default resolver applies the notify-layer exclusion:
     const defaulted = await defaultFollowerResolver(f.engine)(
       ID.watchedCard,
-      makeEvent(ID.tova, "Sample User", ID.watchedCard),
+      makeEvent(ID.sampleUser, "Sample User", ID.watchedCard),
     );
     expect(defaulted).toEqual([]);
     storage.close();

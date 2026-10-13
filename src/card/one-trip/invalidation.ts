@@ -179,7 +179,7 @@ export async function recomputeClosuresForPages(inputs: {
       // REFUSES SELECTs.
       if (/^\s*(select|with)/i.test(sql)) {
         throw new Error(
-          "A2 VIOLATION GUARD: the invalidation recompute attempted to READ the derived store",
+          "INVARIANT VIOLATION: the invalidation recompute attempted to READ the derived store, which its write-only contract forbids",
         );
       }
       await inputs.side.execute(sql, params);

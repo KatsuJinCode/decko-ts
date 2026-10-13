@@ -50,7 +50,7 @@ interface PostureMeasurement {
   onBytes: number;
 }
 
-describeOrSkipLoud(!hasMirror, "tests/card/one-trip/integration-posture.test.ts", "hasMirror")("one-trip wired render path: OFF vs ON postures (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/integration-posture.test.ts", "hasMirror")("one-trip wired render path: OFF vs ON postures (local deck mirror)", () => {
   let sideDir = "";
   let sidePath = "";
   // The engine decks render through the COMPOSED engine, whose freshness
@@ -71,7 +71,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/integration-posture.test.ts"
     const side = new LocalSqliteDriver({ path: sidePath });
     await buildOneTripClosure({ corpus, side, pageNames: [...PROBE_PAGES] });
     // The stamp migration for the engine decks (see stampedDeckPath above).
-    stampedDeckPath = join(sideDir, "trial-deck-stamped.sqlite3");
+    stampedDeckPath = join(sideDir, "mirror-copy-stamped.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, stampedDeckPath);
     const stampedLoad = new LocalSqliteDriver({ path: stampedDeckPath });
     await applyDeckDataVersionStampMigration(stampedLoad);

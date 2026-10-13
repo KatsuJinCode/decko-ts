@@ -37,7 +37,7 @@ afterAll(() => {
 });
 
 describe("default-mod-deck: oracle bundle order", () => {
-  it("carries the captured resolve order (34 names, 3 without manifests)", () => {
+  it("carries the recorded resolve order (34 names, 3 without manifests)", () => {
     expect(ORACLE_BUNDLE_ORDER).toHaveLength(34);
     expect(ORACLE_BUNDLE_ORDER[0]).toBe("core");
     // the recorded order's tail: recaptcha, tinymce_editor, defaults (indexes 31-33)
@@ -52,7 +52,7 @@ describe("default-mod-deck: oracle bundle order", () => {
     }
   });
 
-  it("restricts to exactly the 31 ported mods, preserving capture order", () => {
+  it("restricts to exactly the 31 ported mods, preserving the recorded order", () => {
     const order = portedBundleOrder();
     expect(order).toHaveLength(31);
     // head: core (index 0, composed) + collection..help at indexes 1-7

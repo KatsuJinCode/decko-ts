@@ -88,7 +88,7 @@ const ORIGINS = [
 const DECK_KEYED_NAMES = [
   { name: "Anonymous", deckKey: "anonymous", defaultKey: "anonymou" },
   { name: "SCarol", deckKey: "s_carol", defaultKey: "_carol" },
-  { name: "Riley's", deckKey: "riley_s", defaultKey: "riley_" },
+  { name: "Sample's", deckKey: "sample_s", defaultKey: "sample_" },
   { name: "delete this", deckKey: "delete_this", defaultKey: "delete_thi" },
 ] as const;
 

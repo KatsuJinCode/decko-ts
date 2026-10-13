@@ -120,7 +120,7 @@ const GEM_TREE_PRESENT = existsSync(join(GEM_PATH, "set"));
 describeOrSkipLoud(
   !GEM_TREE_PRESENT,
   "tests/tools/mod-porting-harness/format-census-view-set.test.ts",
-  `the recorded gem tree is present at ${join(GEM_PATH, "set").replaceAll("\\", "/")} — the fixture records a machine-specific compile verification: the view census is mined from the oracle machine's card-mod-format checkout at an absolute path, absent here`,
+  `the recorded gem tree is present at ${join(GEM_PATH, "set").replaceAll("\\", "/")} — the fixture records a machine-specific compile verification: the view census was mined from a local card-mod-format gem checkout that this tree does not carry`,
 )("card-mod-format view census == Ruby's view set", () => {
   const ruby = rubyCensus();
   const setFiles = rbFiles(join(GEM_PATH, "set"));

@@ -281,7 +281,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
     ).toBe(true);
     expect(
       trips,
-      `PIN 1 FIXTURE GUARD: the fresh seated render must cost ≤ 12 trips (measured floor at the calibration tree: 7); got ${trips}. ` +
+      `PIN 1 FIXTURE GUARD: the fresh seated render must cost ≤ 12 trips (measured floor: 7); got ${trips}. ` +
         "A RED here is fixture accident — pins 2 and 3 must not be interpreted.",
     ).toBeLessThanOrEqual(12);
   }, 300_000);
@@ -310,7 +310,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
 
     expect(
       r1b.trips,
-      `PIN 3: the warm no-bump re-render must cost ≤ 25 trips (measured flood at the calibration tree: 398); got ${r1b.trips}. ` +
+      `PIN 3: the warm no-bump re-render must cost ≤ 25 trips (measured flood: 398); got ${r1b.trips}. ` +
         "The flood mechanism: the warm walk diverges — each render resolves more names than the last (design doc F1).",
     ).toBeLessThanOrEqual(25);
     expect(
@@ -353,7 +353,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
 
     expect(
       r2.trips,
-      `PIN 2: the post-bump recomposition render must cost ≤ 25 trips (measured flood at the calibration tree: 341); got ${r2.trips}. ` +
+      `PIN 2: the post-bump recomposition render must cost ≤ 25 trips (measured flood: 341); got ${r2.trips}. ` +
         "The flood mechanism (design doc F2/F3): resetCaches() wipes the lexicon and the render-card map but NOT the wave's engine-lifetime ask memory — the wave muzzles itself over wiped answers and the walk falls to solo point reads the plan cannot answer.",
     ).toBeLessThanOrEqual(25);
     expect(
@@ -363,7 +363,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
     ).toBeLessThanOrEqual(12);
   }, 600_000);
 
-  it("logs the lane's measurement lines", async () => {
+  it("logs the measurement lines", async () => {
     // Measured values printed for the run log; vitest prints stdout verbatim.
     for (const m of measurements) {
       console.log(

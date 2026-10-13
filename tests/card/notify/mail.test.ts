@@ -67,7 +67,7 @@ describe("interpolateTemplate (real-oracle semantics)", () => {
     ).toBe("Sample User :: Sample User Following :: always");
   });
 
-  it("drops the {{ }} braces and renders the placeholder name verbatim when the key is NOT resolved (matches the captured fixture)", () => {
+  it("drops the {{ }} braces and renders the placeholder name verbatim when the key is NOT resolved (matches the recorded fixture)", () => {
     // In a deck where those inclusions do not resolve to cards, Ruby
     // emits the literal names, braces
     // stripped, literal text preserved.
@@ -92,7 +92,7 @@ describe("interpolateTemplate (real-oracle semantics)", () => {
   });
 });
 
-describe("renderMail (first-mechanism email — bytes match the captured fixture)", () => {
+describe("renderMail (the email bytes match the recorded fixture)", () => {
   const mail = renderMail(TEMPLATE, NOTICE);
 
   it("to is the literal from the template", () => {

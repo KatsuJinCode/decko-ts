@@ -854,7 +854,7 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
  *  throw site's explicit attribute map wins; otherwise the shown
  *  "KEY: message" lines are read back (Ruby upcases the attribute symbol
  *  for display; attributes are lower-case symbols). */
-export function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
+export function jsonErrorsViewHash(error: CardActionError, signedIn: boolean): Record<string, string> {
   if (error.errorsByAttribute !== undefined) return { ...error.errorsByAttribute };
   // A denial without the rule walk's wording (the host write hook, a deck
   // without the anonymous card): still Ruby's :permission_denied key.
@@ -872,7 +872,7 @@ export function rubyErrorsHash(error: CardActionError, signedIn: boolean): Recor
 }
 
 /** Time#utc.to_s: "YYYY-MM-DD HH:MM:SS UTC". */
-function rubyUtcString(d: Date): string {
+function formatUtcTimestamp(d: Date): string {
   return `${d.toISOString().slice(0, 19).replace("T", " ")} UTC`;
 }
 
@@ -894,11 +894,11 @@ function errorResponse(
     // plus url and requested_at, pretty-generated.
     const payload: Record<string, unknown> = {
       error_status: status,
-      errors: rubyErrorsHash(error, signedIn),
+      errors: jsonErrorsViewHash(error, signedIn),
     };
     if (meta !== undefined) {
       payload["url"] = meta.url;
-      payload["requested_at"] = rubyUtcString(meta.now);
+      payload["requested_at"] = formatUtcTimestamp(meta.now);
     }
     return {
       status,

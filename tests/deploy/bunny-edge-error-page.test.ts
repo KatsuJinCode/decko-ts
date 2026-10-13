@@ -223,7 +223,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
   // other half: with no configuration, the same seeded deck serves no other
   // deck's card ids, no private asset URLs and no version pin belonging to
   // any other deck.
-  it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no corpus ids to look up)", async () => {
+  it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no recorded page ids to look up)", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);
@@ -248,7 +248,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
     }
   });
 
-  it("an UNCONFIGURED deck's 500 renders no corpus ids and no version pin", async () => {
+  it("an UNCONFIGURED deck's 500 renders no recorded page ids and no version pin", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);

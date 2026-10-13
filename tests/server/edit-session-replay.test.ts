@@ -26,9 +26,12 @@ import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
-const DEFAULT_CAPTURES =
-  "CAPTURE_DIR/edit-session";
-const CAPTURES_DIR = process.env.DECKO_TS_EDIT_SESSION_CAPTURES ?? DEFAULT_CAPTURES;
+// The recorded edit-session captures directory: machine-local recorded
+// bytes, supplied via DECKO_TS_EDIT_SESSION_CAPTURES. The default is the
+// repo-local scratch location; the suite skips loudly when the manifest is
+// absent.
+const CAPTURES_DIR =
+  process.env.DECKO_TS_EDIT_SESSION_CAPTURES ?? path.join(REPO_ROOT, "tmp", "edit-session-captures");
 const MANIFEST_PATH = path.join(CAPTURES_DIR, "manifest.json");
 
 // The source app's development.sqlite3, resolved relative to this file so
@@ -412,7 +415,7 @@ describeIfFixture(
       sessionCookie = cookieHeader.split(";")[0];
     });
 
-    it("step-03 shape: ?view=edit renders the live edit-form page (LIVE: 200, 23,628B)", async () => {
+    it("step-03 shape: ?view=edit renders the edit-form page (recorded run: 200, 23,628B)", async () => {
       // The edit view chain (:edit -> :edit_form -> :input) is registered by
       // the edit-forms mod; the deck-boot wiring (defaultDeckLoader in
       // vm-staging-server.mjs) is what makes mod-registered views visible to
@@ -472,7 +475,7 @@ describeIfFixture(
       expect(res.body).toContain("Session Replay Probe G 2026-09-28");
     });
 
-    it("the main script asset URL serves the COMPILED bundle with the tinymce editor entrypoints (tinymce-assets lane)", { timeout: 900_000 }, async () => {
+    it("the main script asset URL serves the COMPILED bundle with the tinymce editor entrypoints", { timeout: 900_000 }, async () => {
       // Ruby serves /files/~<id>/<rev>.js from the *all+*script+*asset
       // output file card's stored bytes — the compiled form of the
       // *all+*script manifest (asset_outputter.rb:20-25; the script
@@ -558,7 +561,7 @@ describeIfFixture(
       expect(res.body).not.toContain("revision one");
     });
 
-    it("step-06 shape: ?view=history renders the live history page (LIVE: 200, 23,174B)", async () => {
+    it("step-06 shape: ?view=history renders the history page (recorded run: 200, 23,174B)", async () => {
       // The :history view is registered by the history mod
       // (card-mod-history.ts, views.rb:4-9) and reaches the serving surface
       // through the same deck-boot wiring as step-03.

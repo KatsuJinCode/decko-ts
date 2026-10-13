@@ -1,13 +1,13 @@
-// Pins for the GRADED ARM — the deployment constants the graded environment
-// actually installs, narrowed to FIVE fields.
+// Pins for the VIEW-INERT PRESET — the deployment constants a host installs,
+// narrowed to FIVE fields.
 //
 // WHY FIVE, NOT SIX
 //   The live preset `LIVE_DEPLOYMENT_CONSTANTS` carries six fields. The
 //   sixth (`defaultHtmlViewNest: "content"`) is the only one that reaches
 //   into view rendering; the other five act purely at the page shell (SRI
 //   attributes, stylesheet revision digits, footer version, recaptcha site
-//   key, root URL). The graded arm's rendered-output contract does not
-//   require the sixth, and excluding it keeps the arm's blast radius inside
+//   key, root URL). The view-inert preset's rendered-output contract does not
+//   require the sixth, and excluding it keeps the preset's blast radius inside
 //   the page shell instead of moving view bytes.
 //   Revisit only if the output contract changes.
 //
@@ -41,7 +41,7 @@ import { Voo } from "../../../src/card/render/format.js";
 import { applyScriptIntegrity } from "../../../src/card/render/page.js";
 import { applyDeploymentCssRevision } from "../../../src/card/render/head-views.js";
 import {
-  GRADED_ARM_DEPLOYMENT_CONSTANTS,
+  VIEW_INERT_DEPLOYMENT_CONSTANTS,
   LIVE_DEPLOYMENT_CONSTANTS,
   type DeploymentFollowLiveConfig,
   deckoRootUrl,
@@ -63,9 +63,10 @@ const FROZEN_RAILS =
 const FROZEN_CSS =
   "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css";
 
-/** The five fields the graded arm installs. Named here, not in the test bodies,
- *  so a sixth addition to the arm has to edit this list to stay green. */
-const GRADED_ARM_FIELDS = [
+/** The five fields the view-inert preset installs. Named here, not in the test
+ *  bodies, so a sixth addition to the preset has to edit this list to stay
+ *  green. */
+const VIEW_INERT_FIELDS = [
   "scriptIntegrityBySrc",
   "mainStylesheetRevisionDigits",
   "footerDeckoVersion",
@@ -77,15 +78,15 @@ afterEach(() => {
   setDeploymentFollowLiveConfig(undefined);
 });
 
-describe("graded arm: the R1 type CAN express five-without-the-sixth", () => {
-  it("a hand-built five-field object is assignable to the R1 preset type", () => {
+describe("view-inert preset: the live preset type CAN express five-without-the-sixth", () => {
+  it("a hand-built five-field object is assignable to the live preset type", () => {
     // This is the confirmation the shrink rests on, pinned so it cannot rot
     // silently. `LIVE_DEPLOYMENT_CONSTANTS` is typed
     // `Omit<DeploymentFollowLiveConfig, "serializerEra">`, and on that type
     // `defaultHtmlViewNest` is OPTIONAL — so an object that never mentions it
-    // is still a valid value of the R1 type. If a future change made any of
-    // the six required, this line stops compiling and the shrink stops being
-    // expressible without a type change.
+    // is still a valid value of the live preset type. If a future change made
+    // any of the six required, this line stops compiling and the shrink stops
+    // being expressible without a type change.
     const handBuiltFive: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
       mainStylesheetRevisionDigits: "0000000001",
       footerDeckoVersion: "0.19.1",
@@ -98,57 +99,57 @@ describe("graded arm: the R1 type CAN express five-without-the-sixth", () => {
     expect(deploymentDefaultHtmlViewNest()).toBeUndefined();
   });
 
-  it("the shrunk arm is itself a valid value of the R1 type", () => {
-    const asR1Type: Omit<DeploymentFollowLiveConfig, "serializerEra"> =
-      GRADED_ARM_DEPLOYMENT_CONSTANTS;
-    expect(asR1Type.mainStylesheetRevisionDigits).toBe("0000000001");
+  it("the shrunk preset is itself a valid value of the live preset type", () => {
+    const asLivePresetType: Omit<DeploymentFollowLiveConfig, "serializerEra"> =
+      VIEW_INERT_DEPLOYMENT_CONSTANTS;
+    expect(asLivePresetType.mainStylesheetRevisionDigits).toBe("0000000001");
   });
 });
 
-describe("graded arm: the preset is FIVE fields and the sixth is excluded", () => {
+describe("view-inert preset: the preset is FIVE fields and the sixth is excluded", () => {
   it("its TYPE omits defaultHtmlViewNest as well as serializerEra", () => {
-    // @ts-expect-error -- defaultHtmlViewNest is deliberately absent from the graded arm's type
-    expect(GRADED_ARM_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBeUndefined();
-    // @ts-expect-error -- serializerEra is deliberately absent from the graded arm's type
-    expect(GRADED_ARM_DEPLOYMENT_CONSTANTS.serializerEra).toBeUndefined();
+    // @ts-expect-error -- defaultHtmlViewNest is deliberately absent from the view-inert preset's type
+    expect(VIEW_INERT_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBeUndefined();
+    // @ts-expect-error -- serializerEra is deliberately absent from the view-inert preset's type
+    expect(VIEW_INERT_DEPLOYMENT_CONSTANTS.serializerEra).toBeUndefined();
   });
 
   it("its OBJECT carries exactly the five fields and no sixth", () => {
-    expect(Object.keys(GRADED_ARM_DEPLOYMENT_CONSTANTS).sort()).toEqual(
-      [...GRADED_ARM_FIELDS].sort(),
+    expect(Object.keys(VIEW_INERT_DEPLOYMENT_CONSTANTS).sort()).toEqual(
+      [...VIEW_INERT_FIELDS].sort(),
     );
-    expect(Object.hasOwn(GRADED_ARM_DEPLOYMENT_CONSTANTS, "defaultHtmlViewNest")).toBe(false);
-    expect(Object.hasOwn(GRADED_ARM_DEPLOYMENT_CONSTANTS, "serializerEra")).toBe(false);
+    expect(Object.hasOwn(VIEW_INERT_DEPLOYMENT_CONSTANTS, "defaultHtmlViewNest")).toBe(false);
+    expect(Object.hasOwn(VIEW_INERT_DEPLOYMENT_CONSTANTS, "serializerEra")).toBe(false);
   });
 
-  it("the five are the R1 five, byte-equal (derived, not copied)", () => {
+  it("the five are the live preset's five, byte-equal (derived, not copied)", () => {
     // The shrink is a rest-destructure of LIVE_DEPLOYMENT_CONSTANTS, so the
     // five values cannot silently drift from the six they came from. If a
-    // future live-check updates a value in the six, this fails until the
+    // future update changes a value in the six, this fails until the
     // derived five follows — which it does automatically, by construction.
-    for (const field of GRADED_ARM_FIELDS) {
-      expect(GRADED_ARM_DEPLOYMENT_CONSTANTS[field]).toEqual(LIVE_DEPLOYMENT_CONSTANTS[field]);
+    for (const field of VIEW_INERT_FIELDS) {
+      expect(VIEW_INERT_DEPLOYMENT_CONSTANTS[field]).toEqual(LIVE_DEPLOYMENT_CONSTANTS[field]);
     }
-    // and the sixth is the one field where the live preset and the graded arm differ
+    // and the sixth is the one field where the live preset and the view-inert preset differ
     expect(LIVE_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBe("content");
   });
 });
 
-describe("graded arm: the sixth is OFF AT RUNTIME under the installed arm", () => {
+describe("view-inert preset: the sixth is OFF AT RUNTIME under the installed preset", () => {
   it("deploymentDefaultHtmlViewNest() reads undefined", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(deploymentDefaultHtmlViewNest()).toBeUndefined();
   });
 
-  it("and stays undefined for a deployment that spreads the arm", () => {
-    setDeploymentFollowLiveConfig({ ...GRADED_ARM_DEPLOYMENT_CONSTANTS });
+  it("and stays undefined for a deployment that spreads the preset", () => {
+    setDeploymentFollowLiveConfig({ ...VIEW_INERT_DEPLOYMENT_CONSTANTS });
     expect(deploymentDefaultHtmlViewNest()).toBeUndefined();
   });
 });
 
-describe("graded arm: the FIVE constants still arm", () => {
+describe("view-inert preset: the FIVE constants still arm", () => {
   it("SRI lands after crossorigin, before referrerpolicy", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(applyScriptIntegrity(`${FROZEN_JQUERY}\n${FROZEN_RAILS}`)).toBe(
       `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="></script>\n` +
         `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" integrity="sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==" referrerpolicy="no-referrer"></script>`,
@@ -156,7 +157,7 @@ describe("graded arm: the FIVE constants still arm", () => {
   });
 
   it("the compiled-CSS revision rewrites the stylesheet, never the .js asset", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
       "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
     );
@@ -170,14 +171,14 @@ describe("graded arm: the FIVE constants still arm", () => {
   });
 
   it("footer version, recaptcha key and rootUrl read live", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://culturesmith.com/");
   });
 
   it("the 4-entry SRI map, one per remote CDN script src", () => {
-    expect(Object.keys(GRADED_ARM_DEPLOYMENT_CONSTANTS.scriptIntegrityBySrc ?? {})).toEqual([
+    expect(Object.keys(VIEW_INERT_DEPLOYMENT_CONSTANTS.scriptIntegrityBySrc ?? {})).toEqual([
       "https://code.jquery.com/jquery-3.5.1.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js",
       "https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js",
@@ -186,14 +187,14 @@ describe("graded arm: the FIVE constants still arm", () => {
   });
 });
 
-describe("graded arm: the serializer era stays FROZEN", () => {
-  it("serializerFollowsLive() is false under the graded arm", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+describe("view-inert preset: the serializer era stays FROZEN", () => {
+  it("serializerFollowsLive() is false under the view-inert preset", () => {
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(serializerFollowsLive()).toBe(false);
   });
 
   it("a plain closed root STILL always-enrolls its requested view", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     const closed = new Voo(undefined, "closed", {}, true);
     closed.processVisibility("show");
     closed.hide("bar_middle");
@@ -205,7 +206,7 @@ describe("graded arm: the serializer era stays FROZEN", () => {
   });
 
   it("a discussion open root STILL carries its own requested view in the show list", () => {
-    setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
+    setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     const open = new Voo(undefined, "open", {}, true);
     open.processVisibility("show");
     open.setViz("comment_box", "show");

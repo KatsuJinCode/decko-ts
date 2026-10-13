@@ -141,7 +141,7 @@ describe("relative-name absolutization via DeckoName.absolute (contextual.rb#abs
       expect(nameCondition({ name: "_right" }, { context: "A+B+C" })).toMatchObject({ values: ["c"] });
     });
 
-    it("_N ordinal resolves by part position [oracle: ordinal_part(2, A+B+C) => 'B', private probe]", () => {
+    it("_N ordinal resolves by part position [oracle: ordinal_part(2, A+B+C) => 'B']", () => {
       expect(nameCondition({ name: "_2" }, { context: "A+B+C" })).toMatchObject({ values: ["b"] });
     });
 
@@ -152,7 +152,7 @@ describe("relative-name absolutization via DeckoName.absolute (contextual.rb#abs
       expect(nameCondition({ name: "_4" }, { context: "A+B+C" })).toMatchObject({ values: ["a+b+c"] });
     });
 
-    it("_L*R partmaps navigate ordinals [oracle: partmap_part(_LR) => 'B', partmap_part(_LLR) => 'A', private probes]", () => {
+    it("_L*R partmaps navigate ordinals [oracle: partmap_part(_LR) => 'B', partmap_part(_LLR) => 'A']", () => {
       expect(nameCondition({ name: "_LR" }, { context: "A+B+C" })).toMatchObject({ values: ["b"] });
       expect(nameCondition({ name: "_LLR" }, { context: "A+B+C" })).toMatchObject({ values: ["a"] });
     });

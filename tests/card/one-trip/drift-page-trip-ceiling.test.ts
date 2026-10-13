@@ -43,10 +43,10 @@ import {
 } from "./one-trip-fixture.js";
 
 /** The drift-test deck: byte-identical to the serving deck except plan rows,
- *  carrying the freshness stamp (migration 0003) and the 45 recorded plans. */
-const DRIFT_DECK =
-  process.env.DRIFTFIX_DECK ??
-  "WORK_DIR/one-trip-per-page-work/decks/arch-demo-45p-freshness-stamped.sqlite3";
+ *  carrying the freshness stamp (migration 0003) and the 45 recorded plans.
+ *  Supplied via the DRIFT_DECK environment variable; the suite skips by name
+ *  when it is unset or the deck file is absent. */
+const DRIFT_DECK = process.env.DRIFT_DECK ?? "";
 
 const driftDeckAvailable = (): boolean => existsSync(DRIFT_DECK);
 
@@ -114,18 +114,18 @@ function rowsEqual(a: unknown[], b: unknown[]): boolean {
   return a.every((row, i) => JSON.stringify(row) === JSON.stringify(b[i]));
 }
 
-describe("drift-page trip ceiling (driftfix lane)", () => {
+describe("drift-page trip ceiling", () => {
   it("Aikido_2 renders at <= 8 trips cold and warm in the composed posture", async () => {
     if (!driftDeckAvailable()) return; // deck absent: skip by name, never fail green
     const { trips } = await renderPosture("Aikido 2", true);
-    expect(trips[0], `Aikido_2 cold trips ${trips[0]} (RED baseline at 7f8173dd: 14)`).toBeLessThanOrEqual(TRIP_CEILING);
+    expect(trips[0], `Aikido_2 cold trips ${trips[0]} (the pre-fix baseline was 14)`).toBeLessThanOrEqual(TRIP_CEILING);
     expect(trips[1], `Aikido_2 warm trips ${trips[1]}`).toBeLessThanOrEqual(TRIP_CEILING);
   }, 180_000);
 
   it("Aikido_in_Education renders at <= 8 trips cold and warm in the composed posture", async () => {
     if (!driftDeckAvailable()) return;
     const { trips } = await renderPosture("Aikido in Education", true);
-    expect(trips[0], `AIE cold trips ${trips[0]} (RED baseline at 7f8173dd: 18)`).toBeLessThanOrEqual(TRIP_CEILING);
+    expect(trips[0], `AIE cold trips ${trips[0]} (the pre-fix baseline was 18)`).toBeLessThanOrEqual(TRIP_CEILING);
     expect(trips[1], `AIE warm trips ${trips[1]}`).toBeLessThanOrEqual(TRIP_CEILING);
   }, 180_000);
 

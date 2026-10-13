@@ -118,19 +118,19 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("toggle-typed fabricated new-card content (corpus rule pair 28589/17695)", () => {
+describe("toggle-typed fabricated new-card content (the toggle rule pair)", () => {
   it("renders the *default rule's '0' as the toggle core 'no', never the *structure template's truthy 'yes'", async () => {
     const storage = await seedCorpusRuleShapedDeck();
     try {
       const html = await storage.engine.render("Sample Member", "content");
       // The fabricated +agree record is typed by the nest's type opt (the
-      // R17 chain) -- pins that the test exercises the fabricated-record
+      // type-opt chain) -- pins that the test exercises the fabricated-record
       // path, not an accidentally known-card path.
       expect(html).toContain('data-card-type-id="51" data-card-type-name="Toggle"');
       expect(html).toContain("TYPE-toggle RIGHT-agree TYPE_PLUS_RIGHT-sign_up-agree");
-      // The graded byte: the toggle core body "no" (*default rule content
+      // The pinned byte: the toggle core body "no" (*default rule content
       // '0') -- the d0-card-body div the titled nest embeds, the same region
-      // the graded content/open pairs diff on.
+      // the recorded content/open pairs diff on.
       expect(html).toContain('">no</div>');
       expect(html).not.toContain('">yes</div>');
     } finally {

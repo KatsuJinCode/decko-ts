@@ -17,7 +17,7 @@
 //   replace_references' update_column below then rewrites the row behind
 //   that cache with no expire — the referer's next render serves the
 //   pre-rename content (the rename-referers oracle freezes exactly this
-//   staleness: Note 001's page shows the old name as a wanted link while
+//   staleness: a recorded page shows the old name as a wanted link while
 //   its reference rows are already rewritten). The engine passes its
 //   FetchEngine fetch as deps.fetchRefererCard; staleness clears the way
 //   Ruby's clears it — the next legitimate write to the referer expires
@@ -25,8 +25,8 @@
 // - replace_references (reference_events.rb:48-50):
 //   `self.content_quietly = swap_names(old_name, new_name) unless structure`
 //   — the `structure` gate skips cards whose content is inherited from a
-//   structure rule; rule-based content is a later stream in this port and
-//   no structure cards exist yet, so the gate is always false here.
+//   structure rule; the port does not implement structure-rule content yet
+//   and no structure cards exist, so the gate is always false here.
 // - swap_names (all.rb:65-71): parse the content, swap EVERY Reference
 //   chunk (not just rows matching the old name), re-serialize:
 //   - Link#swap_name (card-mod-content-0.20.0 lib/card/content/chunk/
@@ -84,8 +84,8 @@
 //   (skip: :update_referer_content), referers keep their content but their
 //   rows are rebuilt so partial references stay correctly tracked
 //   (all.rb's "P" rows). The TS save path has no skip machinery yet, so
-//   the engine never calls it; it is exported here for the skip stream
-//   and tested directly.
+//   the engine never calls it; it is exported for when that machinery
+//   arrives and is tested directly.
 
 import { DeckoName } from "../name.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";

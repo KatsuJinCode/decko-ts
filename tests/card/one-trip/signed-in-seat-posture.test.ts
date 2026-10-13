@@ -378,7 +378,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.
     expect(trips2).toBeLessThan(trips1 * 2);
   }, 300_000);
 
-  it("logs the lane's measurement lines", async () => {
+  it("logs the measurement lines", async () => {
     // Measured values printed for the run log; vitest prints stdout verbatim.
     for (const m of measurements) {
       console.log(

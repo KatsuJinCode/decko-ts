@@ -247,9 +247,9 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     expect(html).toBe(`<h5 class="title fw-bold">help</h5>`);
   });
 
-  it("WITH the mod: :one_line_content IS now live-registered (the increment-2 lane's masking fix: rule/bar_view nonbase registration in viewChains; RichText+*self+*help dispatches the rule variant - byte-correct path delegated to ruleBarRightHtml)", async () => {
+  it("WITH the mod: :one_line_content IS now live-registered (the rule/bar_view nonbase registration in viewChains; RichText+*self+*help dispatches the rule variant - byte-correct path delegated to ruleBarRightHtml)", async () => {
     const s = storage!;
-    // The increment-2 port registers :one_line_content under setPath
+    // The port registers :one_line_content under setPath
     // "rule/bar_view" (kind "nonbase") - the viewChains-only path that
     // card-mod-rules.ts:1399 documents. The chain walker (mod-loader.ts:
     // 452) dispatches for RULE-token cards; for cards without a RULE

@@ -23,7 +23,7 @@ import {
   signedInAccountLinksInnerHtml,
 } from "../../../src/card/render/navbar-views.js";
 
-describe("R21 — :my_card and :edit_inline are registered layout views", () => {
+describe(":my_card and :edit_inline are registered layout views", () => {
   it("self/account_links registers my_card; right/enabled_roles registers edit_inline", () => {
     const loader = new ModLoader([{ manifest: cardModLayout }]);
     loader.resolveOrder({ gemMods: ["layout"] });
@@ -58,7 +58,7 @@ describe("R21 — :my_card and :edit_inline are registered layout views", () => 
   });
 });
 
-describe("R21 — the account_dropdown composer bytes (the views' shared builder)", () => {
+describe("the account_dropdown composer bytes (the views' shared builder)", () => {
   const KNOWN = { actor: true, accountSettings: true, signin: true };
 
   it("myCardDropdownInnerHtml is the raw btn-group (no navbar <li>)", () => {
@@ -90,7 +90,7 @@ describe("R21 — the account_dropdown composer bytes (the views' shared builder
     );
   });
 
-  it("the wanted-card arms render wanted classes (the fixture-deck arm)", () => {
+  it("the wanted-card arms render wanted classes (the unseeded-deck arm)", () => {
     const dropdown = myCardDropdownInnerHtml(
       "Joe User",
       { actor: true, accountSettings: false, signin: false },

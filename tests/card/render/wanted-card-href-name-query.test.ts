@@ -48,7 +48,7 @@ async function seedWantedHrefDeck(pageContent: string): Promise<RenderTestStorag
 }
 
 describe("wanted-card hrefs carry the card[name] create-prefill query for non-standardish names", () => {
-  it("renders the mindfulness oracle anchor bytes verbatim (dash name, card absent)", async () => {
+  it("renders the reference anchor bytes verbatim (dash name, card absent)", async () => {
     const storage = await seedWantedHrefDeck(
       "illuminate the traditions and [[mytho-psychology]] studied to understand",
     );

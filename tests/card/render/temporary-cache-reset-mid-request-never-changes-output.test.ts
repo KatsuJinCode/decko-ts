@@ -45,7 +45,7 @@ import {
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const MEMBER_ONE = { id: 23595, name: "Sample Member One" };
 const MEMBER_TWO = { id: 34374, name: "Sample Member Two" };
-const QAGNEER_ID = 34370;
+const SAMPLE_PAGE_ID = 34370;
 const MEMBERS_TAG_ID = 908;
 
 async function storageWithCap(maxTemporaryCacheKeys: number): Promise<RenderTestStorage> {
@@ -61,7 +61,7 @@ async function storageWithCap(maxTemporaryCacheKeys: number): Promise<RenderTest
 /** The sample page shape: the layout trio + cardtypes every page render
  *  resolves, the page, its `+*members` pointer with `~id` item lines, and
  *  the two member cards. */
-async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
+async function seedSamplePageDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   await seedCard(s, { id: 5, name: "List", codename: "list", typeId: 5 });
   await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
@@ -74,11 +74,11 @@ async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(s, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(s, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  await seedCard(s, { id: QAGNEER_ID, name: "Sample Page", typeId: 2, dbContent: "{{+*members}}" });
+  await seedCard(s, { id: SAMPLE_PAGE_ID, name: "Sample Page", typeId: 2, dbContent: "{{+*members}}" });
   await seedCard(s, { id: MEMBERS_TAG_ID, name: "*members", codename: "members", typeId: 2 });
   await seedCard(s, {
     id: 34371,
-    leftId: QAGNEER_ID,
+    leftId: SAMPLE_PAGE_ID,
     rightId: MEMBERS_TAG_ID,
     name: "Sample Page+*members",
     typeId: 5,
@@ -91,7 +91,7 @@ async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
 /** Only the per-render random slot id differs between two renders. */
 const masked = (html: string) => html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="X"');
 
-async function renderWagneer(
+async function renderSamplePage(
   maxTemporaryCacheKeys: number,
   opts: { withoutDurableRecord?: boolean } = {},
 ): Promise<{ html: string; resets: number }> {
@@ -104,7 +104,7 @@ async function renderWagneer(
   ]);
   loader.load();
   bindModLoaderToEngine(s, loader);
-  await seedWagneerDeck(s);
+  await seedSamplePageDeck(s);
   s.fetcher.installNameEnvironment();
   if (opts.withoutDurableRecord) {
     // An engine reading only the live cache for some seated entries:
@@ -128,22 +128,22 @@ afterEach(() => {
 
 describe("a Temporary-cache reset in the middle of a request never changes the page (sample page)", () => {
   it("renders the member bars, byte-identical to an engine whose cache never fills", async () => {
-    const roomy = await renderWagneer(1_000_000);
+    const roomy = await renderSamplePage(1_000_000);
     expect(roomy.html).toContain(`data-card-name="${MEMBER_TWO.name}"`);
     expect(roomy.html).toContain(`data-card-name="${MEMBER_ONE.name}"`);
     expect(roomy.html).not.toContain("Error rendering");
 
     // A cap of 4 keys: Ruby's reset rule (temporary.rb#within_key_counts)
     // would empty the store dozens of times during this one request.
-    const tight = await renderWagneer(4);
+    const tight = await renderSamplePage(4);
     expect(tight.html).not.toContain("Error rendering");
     expect(tight.html).toContain(`data-card-name="${MEMBER_TWO.name}"`);
     expect(masked(tight.html)).toBe(masked(roomy.html));
   });
 
   it("the page does not depend on the durable record: the cache alone must hold for the request", async () => {
-    const roomy = await renderWagneer(1_000_000);
-    const tight = await renderWagneer(4, { withoutDurableRecord: true });
+    const roomy = await renderSamplePage(1_000_000);
+    const tight = await renderSamplePage(4, { withoutDurableRecord: true });
     expect(tight.html).not.toContain("Error rendering");
     expect(tight.html).toContain(`data-card-name="${MEMBER_TWO.name}"`);
     expect(masked(tight.html)).toBe(masked(roomy.html));
@@ -152,8 +152,8 @@ describe("a Temporary-cache reset in the middle of a request never changes the p
   it("the request hold defers the reset to the request's end instead of dropping it", async () => {
     // The render's own explicit cache resets (the freshness stamp's first
     // observation) fire under any cap; a roomy cache never overflows.
-    const roomy = await renderWagneer(1_000_000);
-    const tight = await renderWagneer(4);
+    const roomy = await renderSamplePage(1_000_000);
+    const tight = await renderSamplePage(4);
     // Under a 4-key cap the overflow fires on nearly every write, yet no
     // overflow reset ran inside the request: exactly one, deferred to the
     // moment the request released its hold.

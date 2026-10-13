@@ -76,7 +76,7 @@ import {
   structuredCardContent,
 } from "../../src/card/rules/structure.js";
 import {
-  CAPTURE_WALL_CLOCK_CAPTURE_INSTANT,
+  RECORDED_NOW_INSTANT,
   resolveSetModuleContent,
   setCaptureWallClock,
 } from "../../src/card/set-module-content-overrides.js";
@@ -98,7 +98,7 @@ import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 // invocation.frozenClock). The default is the older corpus's capture minute,
 // which is right only for that older corpus.
 export function captureClockFromEnv(raw: string | undefined): Date {
-  if (raw === undefined || raw === "") return CAPTURE_WALL_CLOCK_CAPTURE_INSTANT;
+  if (raw === undefined || raw === "") return RECORDED_NOW_INSTANT;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) {
     throw new Error(`CAPTURE_FROZEN_CLOCK must be an ISO-8601 instant with a zone, got ${JSON.stringify(raw)}`);
   }

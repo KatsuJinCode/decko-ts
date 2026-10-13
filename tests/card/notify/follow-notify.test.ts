@@ -60,7 +60,7 @@ const TEMPLATE = {
 // key does not resolve to a real card, the literal name is rendered
 // with `{{` and `}}` stripped).
 
-describe("notify/follow-notify (first-mechanism port)", () => {
+describe("notify/follow-notify", () => {
   let transport: CaptureTransport;
 
   beforeEach(() => {

@@ -525,9 +525,12 @@ describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
 const LIVE = process.env.DECKO_LIVE_TRIAL_DB === "1";
 
 /** Read a named key out of the creds file. Returns the VALUE; the caller
- *  must never log it. Absent key -> undefined, and the test skips. */
+ *  must never log it. Absent key -> undefined, and the test skips. The
+ *  creds file location is machine-specific and supplied via
+ *  DECKO_TRIAL_CREDS; with the variable unset the live block skips. */
 function trialSecret(key: string): string | undefined {
-  const file = process.env.DECKO_TRIAL_CREDS ?? "C:/localProjects/brandonDojoTech/library/data/creds";
+  const file = process.env.DECKO_TRIAL_CREDS ?? "";
+  if (file === "") return undefined;
   let text: string;
   try {
     text = readFileSync(file, "utf8");

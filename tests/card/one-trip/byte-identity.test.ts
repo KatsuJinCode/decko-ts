@@ -61,7 +61,7 @@ interface PageMeasurement {
   residueClasses: Record<string, number>;
 }
 
-describeOrSkipLoud(!hasMirror, "tests/card/one-trip/byte-identity.test.ts", "hasMirror")("one-trip byte-identity acceptance (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/byte-identity.test.ts", "hasMirror")("one-trip byte-identity acceptance (local deck mirror)", () => {
   let sidePath = "";
   let corpusDriver: SQLDatabaseDriver;
   const measurements: PageMeasurement[] = [];

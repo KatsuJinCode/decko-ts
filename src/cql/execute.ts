@@ -513,7 +513,7 @@ async function resolveFoundByCondition(
 ): Promise<ConditionNode[]> {
   if (depth > FOUNDBY_MAX_DEPTH) {
     throw new CqlBadQuery(
-      `found_by nesting exceeds ${FOUNDBY_MAX_DEPTH} levels (Ruby has no cap; ` +
+      `found_by nesting exceeds ${FOUNDBY_MAX_DEPTH} levels (the oracle implementation has no cap; ` +
         "the port refuses runaway found_by chains instead of overflowing the stack)",
     );
   }

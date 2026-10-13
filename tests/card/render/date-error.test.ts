@@ -146,7 +146,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
   // the parity: a future revert to typeName would leave such cards
   // silently unvalidated.
 
-  it("rendering :open of a Date-type card whose type card name is NOT 'Date' still raises DateError (corpus:1135 corpus-shaped fixture)", async () => {
+  it("rendering :open of a Date-type card whose type card name is NOT 'Date' still raises DateError (a corpus-shaped fixture)", async () => {
     // The type card's NAME is the random string "evog", but its codename
     // (the codehash lookup the engine uses) is "date". A typeName gate
     // skips it; a typeCode gate fires.
@@ -185,7 +185,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     }
   });
 
-  it("rendering :content of a Date-type card whose type card name is NOT 'Date' still raises DateError (corpus:1211 corpus-shaped fixture)", async () => {
+  it("rendering :content of a Date-type card whose type card name is NOT 'Date' still raises DateError (a corpus-shaped fixture)", async () => {
     // Same type-card shape, different content — the gate keys on the
     // codename regardless of the content bytes.
     const storage = await createRenderTestStorage();
@@ -212,7 +212,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     }
   });
 
-  it("rendering :closed and :title of a Date-type card with non-date content does NOT raise (corpus:1135 corpus shape)", async () => {
+  it("rendering :closed and :title of a Date-type card with non-date content does NOT raise (the corpus shape)", async () => {
     // Lazy-parse seam: Ruby's Date.parse fires only inside the dispatched
     // content views (:open/:content), never for :closed/:title. An eager
     // prepare-phase raise fired on every view; the raise now lives at the
@@ -253,7 +253,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
 
   // ----- the replay sentinel contract --------------------------------------
 
-  it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:1135 capture recorded", () => {
+  it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the capture recorded", () => {
     // Direct byte-equality pin: the sentinel for a raising :open view is
     //   CAPTURE_ERROR: Date::Error: invalid date
     const err = dateError();

@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 import { swapBarSlotToMiniBar } from "../../../src/card/render/views.js";
 
 describe("swapBarSlotToMiniBar structural guard (regex-free, bounded)", () => {
-  it("swaps the OUTERMOST slot for an alphanumeric name (the v2 corpus surface)", () => {
+  it("swaps the OUTERMOST slot for an alphanumeric name", () => {
     const html =
       '<div id="yzzw-bar-view" class="card-slot bar-view ALL"><div class="pointer-item">x</div></div>';
     const out = swapBarSlotToMiniBar(html, "yzzw");

@@ -22,8 +22,11 @@ import { bootDeck } from "../../src/card/pods/deck.js";
 import { sowYaml, type SowOptions } from "../../src/card/pods/sow.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+// The deck pods are eaten into. Supplied via PODS_BASE_DECK; the default is
+// the repo-local persistence workspace (tmp/ is not committed), and the
+// suite skips loudly when the file is absent.
 const BASE =
-  process.env.PODS_BASE_DECK ?? "C:/localProjects/decko-oracle-app-parity-fix/db/development.sqlite3";
+  process.env.PODS_BASE_DECK ?? path.join(REPO, "tmp/persist/oracle-base-deck.sqlite3");
 const FIXTURES = path.join(REPO, "tests/fixtures/pods");
 const WORK = path.join(REPO, "tmp/persist/pod-features");
 const BOT = { id: 1, name: "Decko Bot" };

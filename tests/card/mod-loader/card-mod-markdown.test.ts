@@ -233,7 +233,7 @@ afterAll(() => {
 });
 
 describe("card-mod-markdown through the mod loader (A/B)", () => {
-  it("WITHOUT the mod: the base core itself carries the markdown dispatch (kramdown-lane seam)", async () => {
+  it("WITHOUT the mod: the base core itself carries the markdown dispatch (the kramdown seam)", async () => {
     // The loader-less base core no longer raw-passes Markdown-typed cards:
     // coreViewBase dispatches typeCode "markdown" through the same
     // kramdownToStashedHtml + processContent composition the set module

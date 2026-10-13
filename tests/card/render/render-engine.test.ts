@@ -208,7 +208,7 @@ describe("slot set-key classes through the render engine", () => {
 // ---------------------------------------------------------------------------
 
 describe("view dispatch", () => {
-  it("raises the unsupported-view UserError with the captured message shape", () => {
+  it("raises the unsupported-view UserError with the recorded message shape", () => {
     const error = new UnsupportedViewError("definitely_not_a_view", "Oracle Basics");
     expect(error.message).toBe("view (definitely_not_a_view) not supported for Oracle Basics");
   });

@@ -107,7 +107,7 @@ async function seedDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("setting-group applies gate (census M2, Message editing-group shape)", () => {
+describe("setting-group applies gate (the Message editing-group shape)", () => {
   it(
     "the editing group counts 3 (help, input_type, guide) — the Search-typed structure template keeps the pair out",
     async () => {

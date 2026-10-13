@@ -1,7 +1,7 @@
 // The card-mod-permissions port: structural + behavioral tests for the
 // manifest registrations, the setting_opts table, the boot-time role warm,
-// and the three headlessly-portable html view bodies the T6 verdict lists
-// as missing (tools/compat-report/mod-compat-report.json
+// and the three headlessly-portable html view bodies the compat report
+// lists as missing (tools/compat-report/mod-compat-report.json
 // #card-mod-permissions-0.20.0 classification.metrics.htmlViewsMissingNames:
 // ["input", "one_line_content", "pointer_core"]).
 //
@@ -272,7 +272,7 @@ describe("card-mod-permissions manifest structure", () => {
     ]);
   });
 
-  it("registers exactly the three views the T6 verdict lists as missing", () => {
+  it("registers exactly the three abstract/permission views the mod manifest declares", () => {
     const abstract = (cardModPermissions.setModules ?? []).find(
       (m) => m.setPath === "abstract/permission",
     );

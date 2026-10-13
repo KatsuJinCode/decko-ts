@@ -1,5 +1,5 @@
-// The read-permission layer: rule resolution for an actor (the Anonymous
-// corpus viewer by default, signed-in session actors via ReadViewer) plus
+// The read-permission layer: rule resolution for an actor (the anonymous
+// viewer by default, signed-in session actors via ReadViewer) plus
 // the denial markup contract.
 
 export {

@@ -50,8 +50,8 @@ async function seedDeck(storage: Parameters<typeof seedCard>[0]): Promise<void> 
   await seedCard(storage, { id: 270, name: "*ruleless", typeId: SETTING_TYPE_ID });
 }
 
-describe("p20-help-content: the setting card page's rule_help alert", () => {
-  it("*style core opens with the registry help text in the alert (oracle 17450)", async () => {
+describe("the setting card page's rule_help alert", () => {
+  it("*style core opens with the registry help text in the alert", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedDeck(storage);
@@ -106,7 +106,7 @@ describe("p20-help-content: the setting card page's rule_help alert", () => {
     }
   });
 
-  it("*on create with NO junction row renders the registry text over the VIRTUAL rule card (oracle 21757)", async () => {
+  it("*on create with NO junction row renders the registry text over the VIRTUAL rule card", async () => {
     // There is no stored *all+*on create row, yet the page opens with
     // "Configure events to be executed when card is created" —
     // rule_help is unknown: true (editor.rb:24), so the nest renders the
