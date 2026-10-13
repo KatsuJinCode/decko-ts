@@ -207,18 +207,19 @@ function expectedInputBytes(safeKey: string): string {
  *  (haml `class: "pointer-checkbox-button #{'_submit-on-change' if
  *  submit_on_change}"` with submit_on_change nil - the Ruby DOM capture:
  *  `class="pointer-checkbox-button " checked="checked"`), and the input
- *  is not self-closed (check_box_tag's `tag :input`). */
+ *  is self-closed with the trailing " />" (tag :input's Rails 7.2.3.2
+ *  default - the graded bytes; the bare ">" is the earlier capture). */
 function expectedCheckboxEditorBytes(safeKey: string): string {
   return (
     `<div class='pointer-checkbox-list'>\n` +
     `<div class='pointer-checkbox'>\n` +
     `<input type="checkbox" name="pointer_checkbox-${safeKey}-1" id="pointer-checkbox-option_one" ` +
-    `value="Option One" class="pointer-checkbox-button " checked="checked">\n` +
+    `value="Option One" class="pointer-checkbox-button " checked="checked" />\n` +
     `<label class="form-check-label" for="pointer-checkbox-option_one">Option One</label>\n` +
     `</div>\n` +
     `<div class='pointer-checkbox'>\n` +
     `<input type="checkbox" name="pointer_checkbox-${safeKey}-2" id="pointer-checkbox-option_two" ` +
-    `value="Option Two" class="pointer-checkbox-button ">\n` +
+    `value="Option Two" class="pointer-checkbox-button " />\n` +
     `<label class="form-check-label" for="pointer-checkbox-option_two">Option Two</label>\n` +
     `</div>\n` +
     `</div>\n`
@@ -256,8 +257,8 @@ describe("card-mod-list: the :checkbox editor (html_views.rb:50-52, :60-62)", ()
 
   it("the selected item is the checked one and the ids are the option names' keys", async () => {
     const html = await storage!.engine.render("Oracle Checkbox Probe", "checkbox");
-    expect(html).toContain('id="pointer-checkbox-option_one" value="Option One" class="pointer-checkbox-button " checked="checked">');
-    expect(html).toContain('id="pointer-checkbox-option_two" value="Option Two" class="pointer-checkbox-button ">');
+    expect(html).toContain('id="pointer-checkbox-option_one" value="Option One" class="pointer-checkbox-button " checked="checked" />');
+    expect(html).toContain('id="pointer-checkbox-option_two" value="Option Two" class="pointer-checkbox-button " />');
   });
 
   it("options_hash unions the card's own selected items into the option list (options_api.rb:3-19)", async () => {
@@ -269,7 +270,7 @@ describe("card-mod-list: the :checkbox editor (html_views.rb:50-52, :60-62)", ()
       (m) => m[1],
     );
     expect(order).toEqual(["Option One", "Option Three"]);
-    expect(html).toContain('value="Option Three" class="pointer-checkbox-button " checked="checked">');
+    expect(html).toContain('value="Option Three" class="pointer-checkbox-button " checked="checked" />');
   });
 
   it("an option whose card EXISTS takes the nest :smart_label arm (options_api.rb:79-85), which this minimal-loader engine reports as an unsupported view", async () => {
@@ -290,7 +291,7 @@ describe("card-mod-list: the :checkbox editor (html_views.rb:50-52, :60-62)", ()
     // chain's last arm is Card[:all]; the seed deck's *all has no items, so
     // the union arm supplies the card's own selected "Option One" alone.
     const html = await storage!.engine.render("Oracle Checkbox Orphan", "checkbox");
-    expect(html).toContain('value="Option One" class="pointer-checkbox-button " checked="checked">');
+    expect(html).toContain('value="Option One" class="pointer-checkbox-button " checked="checked" />');
     expect(html).not.toContain('value="Option Two"');
   });
 
