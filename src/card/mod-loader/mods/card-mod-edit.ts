@@ -2119,7 +2119,20 @@ function guideText(ctx: ViewContext): string {
  *  the guide card is Rule-typed and the Rule set overrides edit_link_view
  *  to :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the
  *  link target is the RULE editor: the href is
- *  "/*all+*guide/rule_edit" (path mark keeps the star name verbatim).
+ *  "/*all+*guide/rule_edit" (the path mark keeps the star name verbatim -
+ *  url_key preserves `*`, name.ts:69's NOT_OK_FOR_KEY keeps it outside the
+ *  stripped class).
+ *
+ *  The href is built from url_key, not the raw name: Ruby's link_to
+ *  resolves the card's url_key (variants.rb #url_key), which underscores
+ *  spaces and drops characters outside Ruby's word class. The two differ
+ *  for any guide rule card whose set side needs it - "*all+*guide" on a
+ *  "My Board" set is "/My_Board+*all+*guide/rule_edit" in Ruby and
+ *  "/My Board+*all+*guide/rule_edit" from the raw name. card-mod-help's
+ *  copy of this helper (card-mod-help.ts:299) already reads url_key;
+ *  this one did not, so the two ports of one Ruby method disagreed on
+ *  exactly the surface the guide edit link is.
+ *
  *  The taskAllowed gate mirrors card-mod-help.ts#prependGuideEditLink and
  *  reads the seam's deny-by-default posture (render-seam.ts: a verdict the
  *  engine has not established denies): the link wraps only on an
@@ -2133,7 +2146,7 @@ function prependGuideEditLink(ctx: ViewContext, text: string): string {
   const editLink =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip"` +
     ` data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg"` +
-    ` href="/${guideCard.name.s}/rule_edit" data-remote="true"><i class="notranslate material-icons">edit</i> </a>`;
+    ` href="/${guideCard.name.urlKey}/rule_edit" data-remote="true"><i class="notranslate material-icons">edit</i> </a>`;
   return `<span class='d-none'>${editLink}</span>${text}`;
 }
 
