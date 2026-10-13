@@ -4,7 +4,7 @@
   {
    "step": 7,
    "title": "Re-creating a compound card while one of its parts is trashed",
-   "reason": "Ruby looks for a trashed junction to revive before it has resolved the revived part's id, finds none, and inserts a second cards row for the same (left_id, right_id) pair. That insert only succeeds on the oracle deck, whose schema carries no UNIQUE (left_id, right_id) index on cards; on a schema that enforces that uniqueness, as the TypeScript engine's own schema does (db/schema.sqlite.sql), the same Ruby save fails. The TypeScript engine revives the existing trashed junction row instead (recording the revival's name, type, content, trash and part changes), which keeps one row per name and violates no uniqueness constraint.",
+   "reason": "Ruby looks for a trashed junction to revive before it has resolved the revived part's id, finds none, and inserts a second cards row for the same (left_id, right_id) pair. That insert only succeeds on the oracle deck, which lacks the production schema's UNIQUE (left_id, right_id) index; on the production schema the same Ruby save fails. The TypeScript engine revives the existing trashed junction row instead (recording the revival's name, type, content, trash and part changes), which keeps one row per name and is valid on the production schema.",
    "deltaFaults": [
     {
      "table": "cards",
@@ -114,7 +114,7 @@
   {
    "step": 20,
    "title": "Stored HTML: a javascript: link target is dropped (update with unsafe HTML)",
-   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby stores the javascript: link target of the probe's unsafe HTML as-is; the TypeScript engine's stored-HTML cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
    "deltaFaults": [
     {
      "table": "cards",
@@ -137,7 +137,7 @@
   {
    "step": 22,
    "title": "Stored HTML: a javascript: link target is dropped (PlainText create with HTML)",
-   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby stores the javascript: link target of the probe's unsafe HTML as-is; the TypeScript engine's stored-HTML cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
    "deltaFaults": [
     {
      "table": "cards",
@@ -152,7 +152,7 @@
   {
    "step": 31,
    "title": "Stored HTML: the reverted content is the step 22 content, without the javascript: target",
-   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby stores the javascript: link target of the probe's unsafe HTML as-is; the TypeScript engine's stored-HTML cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+   "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
    "deltaFaults": [
     {
      "table": "cards",

@@ -1909,17 +1909,14 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
-  let box: string | null;
+  let box = "";
   try {
-    // the HIDDEN arm (voo_api.rb:154's :hide bail) answers NIL — output()'s
-    // compact DROPS it, separator included (the corpus's 21-byte discussion
-    // cores end at the content, no trailing newline); the denial blank and
-    // the rendered form are Ruby-truthy strings and keep the separator.
-    box = ctx.fmt.renderView("comment_box", {}, "hide") as string | null;
+    const result = ctx.fmt.renderView("comment_box", {}, "hide");
+    box = String(result ?? "");
   } catch {
     box = ""; // comment mod not registered: the :update-denied blank
   }
-  return box === null ? base : base + "\n" + box;
+  return base + "\n" + box;
 };
 
 /**

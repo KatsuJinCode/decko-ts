@@ -54,7 +54,6 @@
 //   the format comment_author's two arms (commentWithSignature /
 //   commentSignature / commentAuthorFor below).
 
-import { str, type ViewResult } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
@@ -64,11 +63,9 @@ import type { ModEventContext, ModEventSaveInput } from "../mod-event-dispatch.j
 /** card-1.110.0 lib/card/format/content.rb:70-72 - Ruby's output():
  *  Array.wrap(content).flatten.compact.join "\n" (nils drop; empty strings
  *  are Ruby-truthy and stay). The comment_buttons array rides this. */
-function output(parts: (ViewResult | undefined)[]): string {
-  // Ruby's join is to_s over the compacted array (content.rb:70-73).
+function output(parts: (string | undefined | null)[]): string {
   return parts
-    .filter((part): part is Exclude<ViewResult, null> => part !== undefined && part !== null)
-    .map(str)
+    .filter((part): part is string => part !== undefined && part !== null)
     .join("\n");
 }
 
@@ -220,7 +217,7 @@ const commentBoxView: ViewFn = (ctx) =>
   *  renders; the :core view never sets it, so its child voo's optional
   *  :hide bails the box render to nil (voo_api.rb:154). */
 const discussionOpenView: ViewFn = (ctx) => {
-  ctx.voo.showViz("comment_box");
+  ctx.voo.show("comment_box");
   return callBaseView(ctx, BASE_OPEN, "open");
 };
 
@@ -230,19 +227,19 @@ const discussionOpenView: ViewFn = (ctx) => {
  *  port preserves the semantic shape - show comment_box and emit empty
  *  bytes when no base view exists. */
 const discussionOpenContentView: ViewFn = (ctx) => {
-  ctx.voo.showViz("comment_box");
+  ctx.voo.show("comment_box");
   return callBaseView(ctx, BASE_INPUT ?? HTML_VIEWS["content"], "open_content");
 };
 
 /** discussion.rb:1-6 view :titled, unknown: true. */
 const discussionTitledView: ViewFn = (ctx) => {
-  ctx.voo.showViz("comment_box");
+  ctx.voo.show("comment_box");
   return callBaseView(ctx, BASE_TITLED, "titled");
 };
 
 /** discussion.rb:1-6 view :titled_content, unknown: true. */
 const discussionTitledContentView: ViewFn = (ctx) => {
-  ctx.voo.showViz("comment_box");
+  ctx.voo.show("comment_box");
   return callBaseView(ctx, BASE_TITLED_CONTENT, "titled_content");
 };
 
@@ -309,8 +306,11 @@ const discussionInputView: ViewFn = (ctx) => {
  *  diagnosable from the test output rather than silently swallowed
  *  (discussionCoreView and discussionInputView both dispatch through
  *  here and surface the throw). */
-function callBaseView(ctx: ViewContext, base: ViewFn | undefined, name: string): ViewResult {
-  if (base !== undefined) return base(ctx);
+function callBaseView(ctx: ViewContext, base: ViewFn | undefined, name: string): string {
+  if (base !== undefined) {
+    const result = base(ctx);
+    return String(result ?? "");
+  }
   throw new Error(`base view missing for discussion super() call: ${name}`);
 }
 

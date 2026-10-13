@@ -87,6 +87,54 @@
       "added": [],
       "removed": []
     },
+    "private_table_1": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_2": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_3": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_4": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_5": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_6": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_7": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "private_table_8": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
     "schema_migrations": {
       "probeRows": 0,
       "changed": {},
