@@ -28,7 +28,7 @@ import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
 import {
   deckoBotAccountEmail,
   observedModEventRuntime,
-  rubyErrorsHash,
+  jsonErrorsViewHash,
 } from "../../../src/server/write-routes.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
 import { findRule } from "../../../src/card/rules/lookup.js";
@@ -432,11 +432,11 @@ async function opWrite(req: Req): Promise<Json> {
     } else if (e.code === "recaptcha") {
       errors = [{ field: "recaptcha", message: e.message }];
     } else if (e instanceof CardActionError) {
-      // The JSON errors view's own reading (write-routes rubyErrorsHash):
+      // The JSON errors view's own reading (write-routes jsonErrorsViewHash):
       // the shown "KEY: message" lines read back as {attribute => message}
       // ("NAME: must be unique; ..." -> {name: "must be unique; ..."},
       // "CONTENT: 'x' is not numeric" -> {content: "'x' is not numeric"}).
-      const hash = rubyErrorsHash(e, true);
+      const hash = jsonErrorsViewHash(e, true);
       const entries = Object.entries(hash);
       if (entries.length > 0) {
         errors = entries.map(([field, message]) => ({ field, message }));
