@@ -2,9 +2,9 @@
 // card by its LEFT card's type (the nest-fetch semantics the captures pin),
 // never through the Card.new structure hop.
 //
-// Ruby shape (paired corpus, mythicity-research page, member 2303): the
+// Ruby shape (paired corpus, research-project page, member 2303): the
 // page renders the Research-typed card's type structure, whose content
-// nests {{+gallery10}}. The nest miss "Myth Tag+gallery10" is typed by the
+// nests {{+gallery_set}}. The nest miss "Myth Label+gallery_set" is typed by the
 // LEFT's type ("Research"), whose *type+*structure rule card is
 // RichText-typed — type_id_from_template answers that rule card's own type
 // (templating.rb:52-59 + type.rb:58-66) — so the miss card is RichText,
@@ -14,7 +14,7 @@
 //
 // The regression this pins: seating the miss through newCardDefaultType
 // WITHOUT the left's type name anchors the *type plus right candidate on
-// the registry's RichText fallback, finds a RichText+gallery10+*type plus
+// the registry's RichText fallback, finds a RichText+gallery_set+*type plus
 // right+*structure rule that IS HTML-typed, seats HTML, and the
 // HTML+*type+*create "Shark" rule denies a member the capture permits.
 
@@ -65,15 +65,15 @@ describe("unknown nest-miss create gate types the miss by its left's type", () =
     await seedCard(s, { id: 33, leftId: 20, rightId: 12, dbContent: "_left" });
     // *all+*default: typed RichText, empty content (the corpus's card 28).
     await seedCard(s, { id: 35, leftId: 10, rightId: 16, typeId: 2, dbContent: "" });
-    await seedCard(s, { id: 21, name: "gallery10", typeId: 2 });
-    await seedCard(s, { id: 42, name: "RichText+gallery10", typeId: 13 });
-    await seedCard(s, { id: 43, name: "RichText+gallery10+*type plus right", typeId: 13 });
-    await seedCard(s, { id: 40, name: "RichText+gallery10+*type plus right+*structure", typeId: 7, dbContent: "<table><tr><td>gallery</td></tr></table>" });
+    await seedCard(s, { id: 21, name: "gallery_set", typeId: 2 });
+    await seedCard(s, { id: 42, name: "RichText+gallery_set", typeId: 13 });
+    await seedCard(s, { id: 43, name: "RichText+gallery_set+*type plus right", typeId: 13 });
+    await seedCard(s, { id: 40, name: "RichText+gallery_set+*type plus right+*structure", typeId: 7, dbContent: "<table><tr><td>gallery</td></tr></table>" });
     await seedCard(s, { id: 41, name: "HTML+*type+*create", typeId: 6, dbContent: "[[Shark]]" });
     await seedReference(s, 41, 6, "shark");
     await seedCard(s, { id: 50, name: "Member", typeId: 2 });
-    await seedCard(s, { id: 70, name: "Myth Tag", typeId: 8, dbContent: "{{+gallery10}}" });
-    await seedCard(s, { id: 51, name: "Research+*type+*structure", typeId: 2, dbContent: "{{+gallery10}}" });
+    await seedCard(s, { id: 70, name: "Myth Label", typeId: 8, dbContent: "{{+gallery_set}}" });
+    await seedCard(s, { id: 51, name: "Research+*type+*structure", typeId: 2, dbContent: "{{+gallery_set}}" });
     s.fetcher.installNameEnvironment();
     await s.fetcher.codenames.ensureLoaded();
   });
@@ -85,9 +85,9 @@ describe("unknown nest-miss create gate types the miss by its left's type", () =
   it("renders the create link the capture renders for a signed-in member", async () => {
     const engine = new RenderEngine(new FetchEngine(storage!.counting));
     engine.viewer = { signedIn: true, actorId: 50 };
-    const html = await engine.render("Myth Tag", "core");
-    expect(html).toContain('id="myth_tag-gallery10-unknown-view"');
+    const html = await engine.render("Myth Label", "core");
+    expect(html).toContain('id="myth_label-gallery_set-unknown-view"');
     expect(html).toContain("unknown-link");
-    expect(html).toContain("/Myth_Tag+gallery10/new_in_modal");
+    expect(html).toContain("/Myth_Label+gallery_set/new_in_modal");
   });
 });

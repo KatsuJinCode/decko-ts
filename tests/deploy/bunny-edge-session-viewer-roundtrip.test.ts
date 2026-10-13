@@ -187,8 +187,8 @@ function onlyInsideSlotIdRuns(a: string, b: string, offsets: number[]): boolean 
  *  are codename-mark fetches (the same minimal shell boot
  *  tests/deploy/bunny-edge-page-shell.test.ts pins). */
 async function seedMinimal(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: RULES.anyone, name: "csvqdo", codename: "anyone", typeId: 2 });
-  await seedCard(storage, { id: RULES.anonymous, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+  await seedCard(storage, { id: RULES.anyone, name: "kmrtqd", codename: "anyone", typeId: 2 });
+  await seedCard(storage, { id: RULES.anonymous, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
   // The viewer universe's codename cards, at the ids seedViewerSensitive
   // uses — this file's FIRST storage owns the process-global name
   // environment (fetch.ts:155-175), so its codehash memo is what the later
@@ -224,8 +224,8 @@ async function seedMinimal(storage: RenderTestStorage): Promise<void> {
  *  the signed-in actor is not. That is the smallest honest demonstration
  *  that the VIEWER decides the bytes. */
 async function seedViewerSensitive(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: RULES.anyone, name: "csvqdo", codename: "anyone", typeId: 2 });
-  await seedCard(storage, { id: RULES.anonymous, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+  await seedCard(storage, { id: RULES.anyone, name: "kmrtqd", codename: "anyone", typeId: 2 });
+  await seedCard(storage, { id: RULES.anonymous, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
   await seedCard(storage, {
     id: RULES.anyoneSignedIn,
     name: "ejbanygvcy",
@@ -328,9 +328,9 @@ describe("edge read path — the anonymous bytes do not move", () => {
     // capture is the same capture — only the site-identifying values moved.
     // The seed uses the synthetic footer card
     // id so the served body carries it too.
-    expect(ANON_BASELINE.length).toBe(4528);
+    expect(ANON_BASELINE.length).toBe(4537);
     expect(createHash("sha256").update(ANON_BASELINE).digest("hex")).toBe(
-      "8389934276110258e14de7a8f816e4eb14a66f805f772bfa8e53f361eddaada3",
+      "f196d3fe09ead938af4fefcd93356a96eb97f7dcedf3d5f055eb207b1ffcc7a7",
     );
   });
 
@@ -633,8 +633,8 @@ async function seedSyntheticAccount(driver: BunnyDbDriver): Promise<void> {
   await insertCompoundCard(driver, 9304, `${HOLDER.name}+*account+*status`, JUNCTION_ID, IDS.status, "active");
   // The read-rule universe, so the same sign-in the roundtrip uses also has
   // a card whose readable bytes the viewer decides.
-  await insertCodenameCard(driver, RULES.anyone, "anyone", "csvqdo");
-  await insertCodenameCard(driver, RULES.anonymous, "anonymous", "tkmbewlur");
+  await insertCodenameCard(driver, RULES.anyone, "anyone", "kmrtqd");
+  await insertCodenameCard(driver, RULES.anonymous, "anonymous", "vqhrbnl");
   await insertCodenameCard(driver, RULES.anyoneSignedIn, "anyone_signed_in", "ejbanygvcy");
   await insertCodenameCard(driver, RULES.read, "read", "edfruv");
   await insertCodenameCard(driver, RULES.set, "set", "nwnrbgfkxr");

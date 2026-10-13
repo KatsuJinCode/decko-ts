@@ -209,7 +209,7 @@ export class Voo {
     // voo.size at the CORE render, one voo below the nest's content voo; a
     // size:full nest must render -original through that hop. live capture:
     // Sample_Card_112 277091-original.png with data-slot "size":"full";
-    // corpus captures: Professional Materials {{bar02|size:full}}). The
+    // corpus captures: a documentation set's page {{bar|size:full}}). The
     // remaining heir keys (main, home_view, title, variant, joint, ...)
     // stay unported — a documented remainder.
     if (parent !== undefined && opts["size"] === undefined) {
@@ -239,7 +239,7 @@ export class Voo {
     // item_view_options[:view] (item.rb:157-162) — without the inheritance
     // every internally-dispatched card_list rendered the html
     // default_item_view :bar regardless of the nest's `item:<view>` opt
-    // (blog/Latest_News `Latest news item|item:titled` served bar items).
+    // (a blog set's news-list nest served bar items).
     // Collection nests without an item opt carry items === undefined and
     // inherit nothing; a view body that SETS its own items overrides.
     if (parent !== undefined && opts["items"] === undefined) {
@@ -1143,9 +1143,9 @@ export class RenderFormat {
    *  faithful answer — while `isDenied` reads deniedVerdictsByKey, which
    *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
    *  wins). An item line that appears on many hosts therefore inherits
-   *  whichever host the run touched first: `mytho-psychology` sits on ~30
-   *  corpus cards and under Quicksilver+Core Project the nest read is true
-   *  (Project/398) while the global entry said denied, rendering bar_left
+   *  whichever host the run touched first: one item name sits on ~30
+   *  corpus cards, and under a Project-typed host the nest read is true
+   *  while the global entry said denied, rendering bar_left
    *  as a quiet denial where the oracle renders the card title. Probed:
    *  cold isDenied false -> full bar; warm isDenied true -> two denied
    *  spans; per-nest verdict read:true in both (M2 recorded result). */
@@ -1903,10 +1903,9 @@ export class RenderFormat {
     //
     //   - a view WITHOUT `unknown: true` substitutes :unknown
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
-    //     gate renders "" for Anonymous - the plain-card shape (corpus
-    //     10488 `June Pemberton+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: example.com/June_Pemberton+Menu
-    //     ?view=content|open carry zero denial spans, stored content still
+    //     gate renders "" for Anonymous - the plain-card shape (a corpus
+    //     person-named menu card whose stored content is a blank `{{}}`:
+    //     empty on content/open, zero denial spans, stored content still
     //     embeds the blank nest).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
     //     DENIAL check still runs; the new card's read verdict denies
@@ -1992,8 +1991,8 @@ export class RenderFormat {
       // verbatim for authored/relative forms (card-mod-content
       // lib/card/content/chunk/nest.rb:23 keeps the authored string:
       // "+Source Title" stays relative, underscores/casing untouched —
-      // raw recapture oracle id 9625; live wire "+tag"/"+related"/
-      // "Su$tainability"/"Sample_Card_112+class_schedule"), codename-
+      // raw recapture oracle id 9625; live wire "+tag"/"+related" and
+      // authored relative names carrying a `$`), codename-
       // RESOLVED for mark forms: DeckoName.parse resolves ":codename"
       // marks through the name environment at parse time ({{:footer}} →
       // "*footer", the R16 page-surface pin; junction parts too — the Role
@@ -2123,8 +2122,8 @@ export class RenderFormat {
    *     format/error.rb:80-86 `rendering_error exception, view` interpolates
    *     the view `wrap_and_render` was called with, and html/error.rb:99-101
    *     wraps that text in the render-error span. `render_core` therefore
-   *     reports "(core view)" — the corpus bytes for card 34322
-   *     `Maturana ...+Date` and its three siblings.
+   *     reports "(core view)" — the corpus bytes for the four Date
+   *     cards whose content refuses to render.
    *
    * The engine raised both facts away: the dispatch seam
    * (src/card/render.ts:1579-1589, the Date::Error / Search BadQuery raise)
@@ -2290,8 +2289,9 @@ export class RenderFormat {
     // The gate is the toggle core's own dispatch condition
     // (typeCode "toggle" / typeName "Toggle") because the hazard is
     // precisely a truthy carried template feeding formatToggleCore —
-    // non-toggle types keep the template (the BWjournal +Body structured
-    // virtual bodies; structured-child-typed-view.test.ts guards them).
+    // non-toggle types keep the template (a journal set's +Body
+    // structured virtual bodies; structured-child-typed-view.test.ts
+    // guards them).
     // No *default rule / unloaded universe degrades to "" — the toggle
     // core of "" is "no" (formatToggleCore), matching standard_content's
     // empty tail.
@@ -2309,7 +2309,7 @@ export class RenderFormat {
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
       // *structure rule; fetch.ts:388-395 sets dbContent = the rule
       // template). Wiping it here rendered every structured virtual nest
-      // (an earlier class's BWjournal +Body titled slot) with an empty
+      // (an earlier class's journal +Body titled slot) with an empty
       // body — the seven mini_bar children of Body+*right+*structure
       // vanished with the template. A genuine new-card emulation carries
       // dbContent "" so this keeps byte-identity for it too. Toggle-typed
@@ -2394,10 +2394,10 @@ export class RenderFormat {
     // IS in the warm map). The pre-fix shape also silently papered over the
     // census page-22 defect that the virtualLeftTypeName line exists to fix.
     //
-    // ORACLE PINS — Soma+tic+fieldwork nested from Soma+tags (a List) reads
-    // TYPE_PLUS_RIGHT-rich_text-fieldwork, and
-    // Ellery+Retreats+Shoreline+20180623_0728 reads
-    // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
+    // ORACLE PINS — a typed+"right" nest folded from a List host reads
+    // TYPE_PLUS_RIGHT-rich_text-<its own last part>, and a four-part
+    // person+retreats+place+timestamp compound reads
+    // TYPE_PLUS_RIGHT-rich_text-<the timestamp>.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
     // BRANCH (W2 restore , $1). class_methods.rb:59-71:
@@ -2553,7 +2553,7 @@ export class RenderFormat {
     // (templating.rb new_card_template — no *structure rule governs here,
     // else the fetch-level virtual resolution would have produced the card
     // and this builder would not run). The an earlier pass class pins the applied
-    // form: the oracle's associative_inquiry-discussion-titled-view body is
+    // form: the oracle's discussion-page titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
     // verbatim. (The Round-9 note below — "the *default CONTENT is not
     // applied at view time" — described the OPEN surface, whose accordion
@@ -2671,7 +2671,7 @@ export class RenderFormat {
    *  never reached the voo, so item_view_options (item.rb:157-162) could
    *  not answer and every collection list hardcoded the html
    *  default_item_view :bar. The search card_list consumes it (the
-   *  `Latest news item|item:titled` nest renders titled items) and the
+   *  news-list nest renders titled items) and the
    *  slot JSON carries it (live blog recorded result: "items":{"view":"titled"}
    *  after home_view — audit A-25). */
   private nestOptionEntries(options: NestOptions): Record<string, unknown> {
@@ -2756,14 +2756,14 @@ export class RenderFormat {
    *  set/all/item.rb:139-143) is `voo&.items&.[](:view)`: the nest's folded
    *  `|opt` lists (chunk/nest.rb:31-49) ride the voo of the format RENDERING
    *  the content, and an implicit nest inside that content renders the
-   *  ITEMS view, not the format default. Corpus target: message-000004's
-   *  `{{+conversation|labeled|link}}` — the labeled view of the missing
-   *  +conversation card renders its structure content
+   *  ITEMS view, not the format default. Corpus target: a numbered
+   *  conversation card's `{{+conversation|labeled|link}}` — the labeled
+   *  view of the missing +conversation card renders its structure content
    *  `<p>{{_left+conversation search}}</p>` (bench row 25861) whose implicit
    *  nest resolves to :link (base.rb:35, perms :none -> the wanted-card
    *  anchor even on an unknown card), not :content (whose :unknown
    *  createable gate renders "" — the graded -216 defect,
-   *  dual-$1page:message-000004:page). */
+   *  dual-$1page:<that id>:page). */
   private implicitNestView(): string {
     const items = this.voo?.opts["items"];
     if (items !== null && typeof items === "object") {
@@ -2880,7 +2880,7 @@ export class RenderFormat {
    *  such a link into a text piece ending in `[[Target|`, the nest piece,
    *  and a text piece carrying `]]` — so no single text piece holds a
    *  complete link and the plain pass leaks the raw wikitext (20 corpus
-   *  cards; blog + Latest_News). Ruby never splits: the Link chunk
+   *  cards; a blog set's news list). Ruby never splits: the Link chunk
    *  (link.rb:14 full_re `[[([^\]]+)]]`) matches BEFORE the nest scan and
    *  re-parses its label as a nested Content (link.rb:113-122 objectify),
    *  so the expanded nest renders INSIDE the anchor. This pass restores
@@ -2888,9 +2888,9 @@ export class RenderFormat {
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
    *  goes through renderLinkChunk. live capture:
-   *  `[[/qagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
-   *  `<a class="internal-link" href="/qagn/Latest_news_items.rss">` +
-   *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
+   *  `[[/<deck>/<feed>.rss|{{feed icon|...}}]]` ->
+   *  `<a class="internal-link" href="/<deck>/<feed>.rss">` +
+   *  expanded feed-icon slot + `</a>` (live-wire blog page). */
   /**
    * content.rb:20-27 `content_nest` — the chunk-level dispatch every
    * `{{inclusion}}` in ANY card's content goes through (chunk/nest.rb:73
@@ -3133,9 +3133,9 @@ export class RenderFormat {
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
    * nest label lands inside the anchor expanded. live capture:
-   * `<a class="internal-link" href="/qagn/Latest_news_items.rss">…` (feed
+   * `<a class="internal-link" href="/<deck>/<feed>.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Riley bio; identical bytes in the recapture
+   * account</a>` (a person's bio page; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -3176,7 +3176,7 @@ export class RenderFormat {
     // RESOLVED card's name while the label/title keep the authored link
     // text. Oracle corpus scan: every case-differing known-card anchor
     // hrefs the real name in both directions ([[narrative]] -> /Narrative,
-    // [[Fieldwork]] -> /fieldwork for a lowercase-stored card) - census
+    // [[<authored title case>]] -> /<lowercase> for a lowercase-stored card) - census
     // token-swap singleton, page 685 (exp href /Narrative).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
@@ -4091,7 +4091,7 @@ export interface RenderEngineLike {
    *  "+Discussion" nest children carry data-card-type-id=3 RichText (the
    *  discussion+*right+*default rule card's own type) and absent "+tags"
    *  closed children carry TYPE-list (raw-oracle 9625/13421/14382 open
-   *  views; live blog.html/Latest_News.html render the same shape).
+   *  views; a live blog page's news list renders the same shape).
    *  Optional; engines without it build type-less unknown cards (the
    *  pre-round-9 shape). */
   newCardDefaultType?(
@@ -4338,7 +4338,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
   // +discussion renders its requested titled view with the *default rule's
   // content body (an earlier class's 19 Project pages; oracle slot
-  // associative_inquiry-discussion-titled-view carries show:[titled,
+  // discussion-page titled-view carries show:[titled,
   // comment_box] and body <p> </p> x2 = discussion+*right+*default's
   // db_content). The comment_box show flip itself is already open-coded in
   // the base views (views.ts openView/titledView rightName.key ===
@@ -4864,12 +4864,13 @@ const WIKI_LINK_REGEXP =
 // shards), so the scanner skips matches between < and >.
 //
 // TRAILING WORD BOUNDARY (host + email classes; the
-// ms.paula fix, page 11251): Ruby's prefix_re carries a `\b` after the
+// trailing-word-boundary fix): Ruby's prefix_re carries a `\b` after the
 // pattern for BOTH classes -- HostUri: `(?:(?!#{REJECTED_PREFIX_RE})#{HOST})\b`
 // (uri.rb:123-127) and EmailUri: `(?:(?!#{REJECTED_PREFIX_RE})#{EMAIL})\b`
 // (uri.rb:83-90). Without it the engine autolinked `ms.pa` INSIDE
-// `ms.paula` (label `ms.` + TLD `pa`, the trailing `ula` left plain) where
-// the oracle leaves the whole string plain: `a`->`u` is word->word, so
+// a `ms.`-label host-prefixed string (label `ms.` + TLD `pa`, the trailing
+// characters left plain) where
+// the oracle leaves the whole string plain: the last letter moves word->word, so
 // Ruby's `\b` fails the prefix match and no chunk registers. The Uri
 // (scheme) class carries NO `\b` in Ruby (uri.rb:38-42) and the scheme
 // regexp below has none either.
@@ -4955,8 +4956,8 @@ interface UriMatch {
  *     attribute). A context-rejected candidate CONSUMES its whole span -
  *     the span becomes plain interval text and scanning resumes at its
  *     end, so nothing inside it (the www.youtube.com host inside the
- *     rejected https:// URI of the What Do We Need To Know?+discussion
- *     oracle) is ever reconsidered. The former engine guard that skipped
+ *     rejected https:// URI on a discussion page's oracle) is ever
+ *     reconsidered. The former engine guard that skipped
  *     "URIs inside HTML tags" was a corpus approximation of exactly this
  *     mechanism and is gone: the rejected-prefix rule IS Ruby's rule. */
 function findUriMatch(text: string, from: number): UriMatch | undefined {
@@ -5338,13 +5339,14 @@ function linkNestCardName(
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
- *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Pemberton+Menu`,
- *  `[[june jessup+musings]]` in its RichText body):
+ *  FROZEN ORACLE (the two halves of D7: a page card whose name is a
+ *  two-part person-name compound, wikilinked relatively as its own last
+ *  part in the card's RichText body):
  *    page surface  `<span class="card-title" title="+musings">…`
- *    view surface  `<span class="card-title" title="june jessup+musings">…`
+ *    view surface  `<span class="card-title" title="<full two-part name>+musings">…`
  *  for BOTH views.content and views.open. The round-trip guard in
  *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
- *  is why the view-surface half is not "june jessup+musings" compressed
+ *  is why the view-surface half is not the full two-part name compressed
  *  either: it never gets a context to compress against, and when it does get
  *  one, `from` refuses any compression that would not absolutize back.
  *
@@ -5473,7 +5475,7 @@ export function expandWikiLinks(
     // spaced target as href — the oracle pins the underscored url_key form
     // (`href="/Help_Desk" title="Help Desk"`, recapture-raw shard-000000)
     // and live pins internal-link for explicit targets
-    // (`href="/account/signup">sign-in account`, live Riley bio), so the
+    // (`href="/account/signup">sign-in account`, a live bio page), so the
     // branches resolve here identically to renderLinkChunk.
     // (b055982 collapsed every explicit resource to one internal-link
     // form from the ZQVT/HBQ nav pin; the scheme-differentiated classes
@@ -5538,8 +5540,8 @@ export function expandWikiLinks(
     let href: string;
     try {
       // link_to_card's mark path (links.rb:75-80) — the name's url_key
-      // form: spaces fold to underscores, `$` folds too (live:
-      // /Martial_Concordance, /Su_tainability).
+      // form: spaces fold to underscores, `$` folds too (a live card whose
+      // name carries both).
       href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
@@ -5566,11 +5568,11 @@ export function expandWikiLinks(
     // card's stored name when the mark hit one (subformat.rb:57-61
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
-    // (context_names.rb:20-29). Oracle entry 10488 page surface: the authored
-    // `[[june jessup+musings]]` under the page card `June Pemberton+Menu`
-    // renders `title="+musings"`; the same link on the view surface keeps
-    // `title="june jessup+musings"` because nothing called add_name_context
-    // there. Entry 21923 `Task+discussion` is the second corpus instance
+    // (context_names.rb:20-29). Oracle page surface: the authored
+    // `[[<last part>+musings]]` under a page card whose name is a two-part
+    // person-name compound renders `title="+musings"`; the same link on
+    // the view surface keeps the full two-part name because nothing called add_name_context
+    // there. A set's own +*discussion page is the second corpus instance
     // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
     const nestCard = linkNestCardName(fetchTarget, known ? namedLink?.name : undefined);
     const nestContextNames =
@@ -5589,10 +5591,10 @@ export function expandWikiLinks(
     // title/display "contributing to the administration..." over the
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
-    // `<span>+</span>` per joint — oracle entry 10488 view-surface `content`
-    // pin: `<a class="known-card" href="/June_Pemberton+musings"><span
-    // class="card-title" title="june jessup+musings">steven
-    // goldin<span>+</span>musings</span></a>`, and the page-surface
+    // `<span>+</span>` per joint — the oracle's view-surface `content`
+    // pin: `<a class="known-card" href="/<given name>+musings"><span
+    // class="card-title" title="<given name> <surname>">steven
+    // <surname><span>+</span>musings</span></a>`, and the page-surface
     // `+musings` half splits the SAME way
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
@@ -5604,9 +5606,9 @@ export function expandWikiLinks(
     // hands wrapped_title an html_safe string, the html format's `h super`
     // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
     // actionview tag_helper.rb tag_option :322's unconditional quote gsub
-    // touches the bytes. Oracle: a sample employer's position wanted-link span
-    // renders `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=
-    // bar&quot;>20191213+CM+Time Tracking+1400</a>"` with RAW brackets
+    // touches the bytes. Oracle: a dated card's wanted-link span
+    // renders `title="<a href=&quot;/<date>+<set>+<setting>+<n>?view=
+    // bar&quot;>the same name</a>"` with RAW brackets
     // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
     // there, and the Sample Card 100 +SCa rule-link span the same
     // `&lt;/a&gt;` where the capture has `</a>`).

@@ -9,7 +9,7 @@
 // resolved name only feeds the fetch and the slot's data-card-name).
 //
 // Observed nest_name values are authored bytes — "+tag", "+related",
-// "+Source Title", "+Organizer(s)", "_main", "Su$tainability" (dollar
+// "+Source Title", "+Organizer(s)", "_main", "Sust$ainability" (dollar
 // intact), authored-underscore junction names — never the absolutized
 // forms the engine emitted before this fix.
 //

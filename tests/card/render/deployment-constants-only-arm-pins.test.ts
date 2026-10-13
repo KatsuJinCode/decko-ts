@@ -32,7 +32,7 @@
 //   2. THE PRESET ARMS THE CONSTANTS: SRI lands after crossorigin/before
 //      referrerpolicy on the 4 CDN scripts; the compiled-CSS revision
 //      rewrites the 10-digit main-stylesheet component (and leaves the .js
-//      asset revision alone); footer 0.19.1; the recaptcha key; the rootUrl;
+//      asset revision alone); the footer version pin; the recaptcha key; the rootUrl;
 //      default_html_view content.
 //   3. THE SERIALIZER STAYS FROZEN under that arm — the discriminating
 //      half: `serializerFollowsLive()` is false, a plain closed root still
@@ -104,7 +104,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the preset carries the live SRI map, css revision, footer, recaptcha key and rootUrl", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(LIVE_DEPLOYMENT_CONSTANTS.mainStylesheetRevisionDigits).toBe("0000000001");
-    expect(LIVE_DEPLOYMENT_CONSTANTS.footerDeckoVersion).toBe("0.19.1");
+    expect(LIVE_DEPLOYMENT_CONSTANTS.footerDeckoVersion).toBe("0.0.0-synthetic");
     expect(LIVE_DEPLOYMENT_CONSTANTS.recaptchaSiteKey).toBe(
       "6LSYNTHETICLIVEKEY00000000000000000000AA",
     );
@@ -143,7 +143,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
 
   it("footer version, recaptcha key, rootUrl and default_html_view read live", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
-    expect(footerDeckoVersion()).toBe("0.19.1");
+    expect(footerDeckoVersion()).toBe("0.0.0-synthetic");
     expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://example.org/");
     expect(deploymentDefaultHtmlViewNest()).toBe("content");
@@ -211,6 +211,6 @@ describe("deployment constants-only arm: the split is type-level", () => {
     // The arm a deployment actually installs: constants only, no era key.
     setDeploymentFollowLiveConfig({ ...LIVE_DEPLOYMENT_CONSTANTS });
     expect(serializerFollowsLive()).toBe(false);
-    expect(footerDeckoVersion()).toBe("0.19.1");
+    expect(footerDeckoVersion()).toBe("0.0.0-synthetic");
   });
 });

@@ -2,12 +2,12 @@
 // One case per shape rule:
 //
 //   R1 query percent-encoding encodes UTF-8 BYTES, not codepoints
-//      (Bogot%C3%A1 over %E1 / codepoint-hex).
+//      (an accented letter over %E1 / codepoint-hex).
 //   R2 phantom/unknown pointer-item bar body: data-card-link-name carries
 //      the name's url_key form (whitespace runs -> one underscore, case
 //      preserved); data-card-name carries the raw stored name
-//      (link 'Test_Person_01' / name 'Test Person 01'; link
-//      '6th_Kyu_Requirements' over raw '6th Kyu  Requirements' with a
+//      (link 'Sample_Person_01' / name 'Sample Person 01'; link
+//      '6th_Dan_Requirements' over raw '6th Dan  Requirements' with a
 //      DOUBLE space).
 //   R3 property spot-checks over the name->key/url shapers: spaces,
 //      caps, accents, CJK, ampersands, asterisks.
@@ -37,34 +37,34 @@ describe("name-key/url shape: query percent-encoding (R1, Z5b exemplar bytes)", 
   it("reproduces the Z5b exemplar's full card[name] query byte-for-byte", () => {
     // The full card[name] query form of a compound name carrying accents,
     // spaces, hyphens, digits, and junction parts.
-    const name = "Bill - Michael - Facil Clase Centro Amar Bogotá 20100920+*self+*default";
+    const name = "Ana - Bruno - Clase Verde Café Zürich 20100920+*self+*default";
     expect(cgiEscape(name)).toBe(
-      "Bill+-+Michael+-+Facil+Clase+Centro+Amar+Bogot%C3%A1+20100920%2B%2Aself%2B%2Adefault",
+      "Ana+-+Bruno+-+Clase+Verde+Caf%C3%A9+Z%C3%BCrich+20100920%2B%2Aself%2B%2Adefault",
     );
   });
 });
 
 describe("name-key/url shape: phantom item bar body attrs (R2, V12+Z4 exemplar bytes)", () => {
-  it("Banana+Person item: link-name url_key form, card-name raw (Test_Person_01)", () => {
-    const body = pointerListItemBodyForUnknown("Test Person 01");
-    expect(body).toContain("data-card-link-name='Test_Person_01'");
-    expect(body).toContain("data-card-name='Test Person 01'");
+  it("Person item: link-name url_key form, card-name raw (Sample_Person_01)", () => {
+    const body = pointerListItemBodyForUnknown("Sample Person 01");
+    expect(body).toContain("data-card-link-name='Sample_Person_01'");
+    expect(body).toContain("data-card-name='Sample Person 01'");
   });
 
   it("Testing Requirements item: whitespace run folds to ONE underscore, raw name keeps the double space", () => {
-    const body = pointerListItemBodyForUnknown("6th Kyu  Requirements");
-    expect(body).toContain("data-card-link-name='6th_Kyu_Requirements'");
-    expect(body).toContain("data-card-name='6th Kyu  Requirements'");
+    const body = pointerListItemBodyForUnknown("6th Dan  Requirements");
+    expect(body).toContain("data-card-link-name='6th_Dan_Requirements'");
+    expect(body).toContain("data-card-name='6th Dan  Requirements'");
   });
 
   it("identity-override arm (known-denied rendering through the phantom body) keeps the same link-name rule", () => {
-    const body = pointerListItemBodyForUnknown("SHODAN Requirements", {
+    const body = pointerListItemBodyForUnknown("Aldrin Requirements", {
       setKeys: "ALL TYPE-basic_c",
       typeName: "BasicCs",
       typeId: 22281,
     });
-    expect(body).toContain("data-card-link-name='SHODAN_Requirements'");
-    expect(body).toContain("data-card-name='SHODAN Requirements'");
+    expect(body).toContain("data-card-link-name='Aldrin_Requirements'");
+    expect(body).toContain("data-card-name='Aldrin Requirements'");
   });
 
   it("url_key folds the apostrophe to an underscore; the bar-shaped name takes Haml's SECOND escape", () => {
@@ -102,10 +102,10 @@ describe("name-key/url shape: phantom item bar body attrs (R2, V12+Z4 exemplar b
 describe("name-key/url shape: name shaper property spot-checks (R3)", () => {
   const cases: Array<[string, string, string]> = [
     // [input, expected key, expected urlKey]
-    ["Test Person 01", "test_person_01", "Test_Person_01"],
-    ["6th Kyu  Requirements", "6th_kyu_requirement", "6th_Kyu_Requirements"],
+    ["Sample Person 01", "sample_person_01", "Sample_Person_01"],
+    ["6th Dan  Requirements", "6th_dan_requirement", "6th_Dan_Requirements"],
     ["Log Entry", "log_entry", "Log_Entry"],
-    ["Bogotá Meetup", "bogotá_meetup", "Bogotá_Meetup"],
+    ["Café Meetup", "café_meetup", "Café_Meetup"],
     ["香り Log", "香り_log", "香り_Log"],
     ["A & B", "a_b", "A_B"],
     // key singularizes each piece (stable_key): "plus" -> "plu";
