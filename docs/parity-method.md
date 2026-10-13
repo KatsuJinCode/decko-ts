@@ -117,7 +117,7 @@ instrument is named first and its rules second.
 | --- | --- | --- |
 | **Public reference harness** (N1/N2/N3) | **3**: N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does; N3 is a canonical form — inside a real `class` attribute the class tokens are compared as a **set** (both sides sorted; the token set, the count and the tokens themselves all still count, only the order is canonicalised). Nothing else. | `reference-harness/runner/normalize.mjs:26` (`SLOT_ID`), `:56` (`normalizeHtml`/N1+N3), `:205` (`sortClassTokens`/N3), `:225` (`stable`/N2). Spec: `reference-harness/SPEC.md` §4. |
 | **Oracle-replay comparator** | **3** replay-legitimate normalizations, applied to **both** sides by `normalizeForReplay` in this order: (1) `data-slot-id` → `RANDOMIZED`; (2) accordion group hash → `HASH`; (3) `Cardio::Mod` object address → `ADDRESS`. | `src/testing/diff.ts:225` (`normalizeForReplay`, the compare seam); the three rules at `:1-20` (rule 1), `:90` (`ACCORDION_GROUP_HASH_PATTERN`), `:201` (`MOD_OBJECT_ADDRESS_PATTERN`). |
-| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: `tools/oracle/apply-asset-host-follow-live-close-71.mjs` (asset host) and `tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs` (denied seam). Live swap: the "live-anchored expectations" subsection above, manifests under `fixtures/corpus-v2/w5-live-alignment-2026-10-03/` and `fixtures/corpus-v2/asset-host-follow-live-close-71/`. |
+| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: two one-shot instruments, run once, recorded in the private swap manifests (the asset-host prefix; the denied-seam blank-line re-anchor). Live swap: the "live-anchored expectations" subsection above; the swap manifests are committed in the private repository only. |
 
 Two consequences worth stating plainly, because they are where the older
 prose went wrong:
@@ -278,7 +278,7 @@ differ, or the manifest is missing or unparseable while a corpus is staged),
 unbound (a corpus is present that was never photographed here — reported, not
 refused, because nothing recorded can be contradicted) and absent.
 
-### The live-anchored expectations (dated 2026-10-03 and 2026-10-04)
+### The live-anchored expectations
 
 **The corpus grade is not purely oracle-against-oracle. Fifty of its
 expectations are bytes fetched from the live site, not from the 0.20.0
@@ -289,15 +289,14 @@ upper bound on it.
 
 | Swap set | Entries | Split | Live fetch window (one host) | Manifest (private repo only) |
 | --- | ---: | --- | --- | --- |
-| W5 LIVE-ALIGNMENT — `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs` | 13 | 6 view-level, 7 page-level | 2026-10-04T00:39:22.105Z – 00:39:51.334Z | `fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json` |
-| close-71-with-live W3 show-key — `tools/oracle/swap-37-view-expectations-live-check-close-71.mjs` | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | 2026-10-03T19:41:52.380Z – 19:43:11.260Z | `fixtures/corpus-v2/asset-host-follow-live-close-71/swap-manifest-37-view-expectations-2026-10-03.json` |
+| The 13-entry view/page swap | 13 | 6 view-level, 7 page-level | one fetch window | private repository only |
+| The 37-entry show-key swap | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | one fetch window | private repository only |
 
-- **Why the two counts are what they are.** The 13 is the number the W5 tool
-  refuses to run without: `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:86`
-  fails unless the verdicts file holds exactly 13 `LIVE-DIFFERS` rows, and its
-  manifest records those same 13 (applied 2026-10-04T01:04:58Z). The 37 is a
-  separately-recorded set, named in that tool's own header
-  (`tools/oracle/swap-37-view-expectations-live-check-close-71.mjs:2-3`):
+- **Why the two counts are what they are.** The 13 is the number the swap
+  instrument for that set refuses to run without: it fails unless the verdicts
+  file holds exactly 13 `LIVE-DIFFERS` rows, and its manifest records those
+  same 13. The 37 is a separately-recorded set, named in that instrument's own
+  header:
   "every W3 view-lane entry whose residual is the conditional data-slot show
   key gets TODAY'S live response body as its expectation". Its manifest records
   37 entries, of which 4 were already byte-equal to the live body when the
@@ -312,7 +311,7 @@ upper bound on it.
   appear in both sets), so the key comparison is the one that settles it.
   13 + 37 therefore counts 50 distinct entries, none of them twice.
 - **Source: live GETs against the one host, captured whole-body and stored
-  verbatim** on 2026-10-03 (37 entries) and 2026-10-04 (13 entries),
+  verbatim** (37 entries in one fetch window, 13 in another),
   including the documented per-response noise (Cloudflare `__CF$cv$params`
   tokens, per-render `data-slot-id` hashes).
 - **Era: the live 0.19.1 serializer, which is an *older* engine era than the
@@ -326,8 +325,7 @@ upper bound on it.
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
 - **Policy: the rule the capture tooling applies, quoted as written.**
-  The 37-entry tool states it in its header
-  (`tools/oracle/swap-37-view-expectations-live-check-close-71.mjs:10`):
+  The 37-entry instrument states it in its header:
   "Per the standing ruling (live is the only benchmark) the expectation
   becomes today's live bytes." That is the policy this subsection documents,
   and the W5 tool adopted the same one ("live truth wins where the live
@@ -340,12 +338,10 @@ upper bound on it.
 - **The live-*derived* transforms beside them carry no live page bytes.** Two
   further reversible overlays move live-derived truth into the corpus without
   fetching a body: the asset-host prefix transform (6,552 lines changed over
-  32,948 occurrences; `tools/oracle/apply-asset-host-follow-live-close-71.mjs`)
-  and the denied-seam re-anchor (6,535 page-scope entries, one byte range each;
-  `tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs`). A fifth
-  swap tool, `tools/oracle/apply-w5-record-alignment-2026-10-03.mjs`, rewrites
+  32,948 occurrences) and the denied-seam re-anchor (6,535 page-scope entries,
+  one byte range each). A fifth swap instrument rewrites
   5 entries' `record.content` from the **local mirror rows**
-  (`bench-corpus-raw.sqlite3`), not from live — so it is not one of the 50.
+  (the private corpus staging deck), not from live — so it is not one of the 50.
 - **What it means for the historical figure.** A share of the historical
   corpus's expected bytes — the 50 entries listed above — comes from the live
   0.19.1 site rather than from the 0.20.0 oracle. For those entries a replay
@@ -375,10 +371,9 @@ upper bound on it.
   expectation (the entry fails for engine reasons, so live truth does not
   clear it), and the 5 `record` entries keep theirs because the live site has
   no record view surface to capture (422/403 responses, not renderings).
-- **One figure cited here cannot be checked in this repository.** The W5
-  tool's header also refers to an earlier set of 77 swaps whose bytes came
-  from live responses
-  (`tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:6`). No
+- **One figure cited here cannot be checked in this repository.** The
+  13-entry instrument's header also refers to an earlier set of 77 swaps whose
+  bytes came from live responses. No
   manifest for that earlier set of 77 swaps is committed in this repository,
   and
   none was found in any local checkout of it, so those entries cannot be
