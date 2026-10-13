@@ -103,7 +103,7 @@ async function seedDeck(): Promise<void> {
   await seedReference(s, 50, 6, "anyone");
 
   // -- case 1: a NEW left (no stored row for the left name) -----------------
-  // `soma base+tags` is List-typed and nests `tic+aikido`; the target card
+  // `soma base+tags` is List-typed and nests `tic+fieldwork`; the target card
   // is not a stored row, so its own left `tic` is a new card too.
   await seedCard(s, { id: 300, name: "soma base", typeId: T_RICH });
   await seedCard(s, { id: 301, name: "tags", typeId: T_RICH });
@@ -113,7 +113,7 @@ async function seedDeck(): Promise<void> {
     leftId: 300,
     rightId: 301,
     typeId: T_LIST,
-    dbContent: "{{tic+aikido|bar}}",
+    dbContent: "{{tic+fieldwork|bar}}",
   });
 
   // -- case 2: a STORED left, RichText ---------------------------------------
@@ -161,13 +161,13 @@ describe("left_type's last fallback is Card's DEFAULT type, not the context card
     const html = await storage!.engine.render("soma base+tags", "content");
     expect(html, "the anchored slot must render").toMatch(/card-slot/);
     // The `bar` view's own name suffix is part of the tag:
-    // TYPE_PLUS_RIGHT-rich_text-aikido_bar.
+    // TYPE_PLUS_RIGHT-rich_text-fieldwork_bar.
     expect(html, "quick_type's new-card default is RichText").toContain(
-      "TYPE_PLUS_RIGHT-rich_text-aikido_bar",
+      "TYPE_PLUS_RIGHT-rich_text-fieldwork_bar",
     );
     // The pre-fix fragment. Asserted absent so a regression back to the
     // context fallback is a named failure, not a silent one.
-    expect(html).not.toContain("TYPE_PLUS_RIGHT-list-aikido_bar");
+    expect(html).not.toContain("TYPE_PLUS_RIGHT-list-fieldwork_bar");
   });
 
   it("a STORED left keeps its OWN type (the RVW shape), not the default", async () => {
