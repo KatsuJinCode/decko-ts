@@ -1223,19 +1223,6 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
-      // voo_api.rb:154 process_live_options: `return :hide if
-      // hide_requested_view?` (optional? && hide?(requested_view)) — the
-      // render bails with nothing when the caller marked the REQUESTED
-      // view hidden via the optional render opt (the discussion core's
-      // render_comment_box optional: :hide — the :core view never shows
-      // :comment_box, so the box contributes nothing on every :core
-      // render, all actors; the open-family views voo.show it and keep
-      // the form).
-      if (optional !== undefined && optional !== null && voo.viz.get(normalized) === "hide") {
-        // view.rb:69 bare return — NIL, which output()'s compact drops (the
-        // discussion join loses its separator too).
-        return null;
-      }
       // view/permission.rb #altered_view (:19-23): the unknown branch ran
       // above; for KNOWN cards the view-permission gate replaces the view
       // before any hook or body runs. Task resolution (view_perms, :13-15),
