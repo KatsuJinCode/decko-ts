@@ -239,7 +239,7 @@ the capture scripts record when their own machinery threw) says nothing about
 the site: it is reported as an oracle capture fault and not graded. A recorded
 upstream failure - the oracle raised while serving, and its capture holds the
 error record - is the upstream behavior the port must reproduce: the engine's
-answer must be the same failure under N7 (the class's host naming
+answer must be the same failure under N8 (the class's host naming
 canonicalized) with the message byte-exact, and a match is counted as a
 **reproduced upstream failure**, its own success category (the operator's
 ruling: where the original is broken and the copy breaks the same way, that
@@ -280,29 +280,59 @@ above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
 
 ## 4. Normalisation
 
-Two kinds of rule, applied to both sides before comparison, and nothing else:
+Two instruments normalise, and each has its own namespace so that one
+instrument's rule names never read as another's:
 
-1. **N1.** `data-slot-id="<hex>"` becomes `data-slot-id="SLOT"`: slot ids are
-   random per render in every engine.
-2. **N2.** `0x` followed by 8 to 16 hex digits becomes `0xADDR`: a
-   host-language object address printed into an error message.
-3. **N3.** In a write result, the new card is compared by name (its id is a
-   row id, compared by persistence), and mail text loses trailing spaces per
-   line, CRLF line ends and surrounding blank lines.
-4. **N4.** In a row delta, rows the step created get symbolic ids (a card by
-   its full name, any other row by table and creation order) and every column
-   pointing at them is rewritten the same way; timestamps are compared as
-   instants. Rows that existed before the step keep their ids, because both
-   engines start from the same deck file.
-5. **N5.** JSON object key order never counts; array order always does.
-6. **N6.** `127.0.0.1:<port>` becomes `127.0.0.1:PORT`: each engine server
-   answers on a fresh per-journey port, so an absolute URL the deck itself
-   builds (a mail body's card link) carries a port that is random per run on
-   both engines. The host and scheme stay exact.
-The seconds-corpus instrument (section 4's later subsections) carries its
-own rule namespace — its N3 (the collapse-id canonical form) and its N5
-(the dawn-pass plan) are THAT instrument's rules, not the journeys
-comparator's N1-N6 above. The two vocabularies coexist:
+- **`N1`-`N8`** — the **corpus instrument**: `runner/normalize.mjs`, which
+  grades this harness's op results and is the instrument every figure in a
+  grade report names. These are the rules the committed expected outputs are
+  compared under, and `normalize.mjs:1-18` is their prose form.
+- **`B1`-`B5`** — the **browser-journeys instrument**: `browser/lib/observe.mjs`,
+  which normalises what a user sees when a journey runs against a live page,
+  plus the two forms `browser/compare-journeys.mjs` applies at compare time.
+  It is a different instrument on a different recording shape (a page
+  observation rather than an op result), so its rules carry the `B` prefix.
+
+A `B` rule and an `N` rule that look alike are not the same rule. Where the
+journeys comparator borrows one of the harness's forms it names the borrowed
+rule at the call site rather than renumbering it.
+
+### 4.1 The browser-journeys instrument's rules (`B1`-`B5`, plus two at compare time)
+
+`observe.mjs` normalises each observation as it is captured, so both engines'
+observations are in the same canonical form before anything is compared:
+
+1. **B1.** Text is the page's rendered text (`innerText`), whitespace collapsed.
+2. **B2.** Relative times ("3 minutes ago") and calendar dates become `<time>`:
+   one engine may run on a pinned clock and the other on the wall clock.
+3. **B3.** Structure is the element tree of the main area as tag plus sorted
+   classes; ids, data attributes and inline styles are left out, and the
+   classes Decko draws at random per render are masked to `RAND`.
+4. **B4.** Fields are the visible form controls of the page by name and type.
+5. **B5.** The URL is compared as path and query, decoded, without the host;
+   the server's own address inside text becomes `<origin>`.
+
+`compare-journeys.mjs` then applies exactly two more forms, both borrowed
+rather than renumbered:
+
+- **`stable`** from `runner/normalize.mjs` — the harness's **N2**: JSON object
+  key order never counts and array order always does, and the per-journey
+  server port in an absolute URL the deck itself builds is compared as
+  `127.0.0.1:PORT`.
+- **`canonicalizeDebugPage`** — the harness's **N6** at journey grade: a
+  debug-exceptions page's backtrace frames collapse to one marker line, and
+  the frame count is recorded rather than compared.
+
+### 4.2 The corpus instrument's rules (`N1`-`N8`)
+
+These are the rules a grade report names in its `normalization` field, and
+they are the ones the committed expected outputs were captured under. A grade
+over `synthetic-v1` applies **N1, N2 and N3** and reports exactly those three;
+N4 through N8 exist because the seconds-corpus fixture carries capture-host
+values this fixture does not, and they are applied when a comparison reaches
+them. Nothing outside that list is normalised.
+
+Two kinds of rule:
 
 - A **mask** erases a value. It is allowed only for a field shown to vary
   between two complete runs of the same oracle on the same fixture, and only
@@ -364,6 +394,22 @@ comparator's N1-N6 above. The two vocabularies coexist:
    side only, or a different sentence shape still fails. Absolute dates
    (`2026-09-19`) are NOT spans and stay exact — a date view is an encoding
    the engine must get right, not clock noise.
+6. **N6 (canonical form over the host VM's stack identity).** In rendered
+   HTML, inside a render-error span's debug-page title, every backtrace
+   frame line within the div that follows the message paragraph — the
+   `<br>
+`-separated lines Ruby's `exception.backtrace * "<br>
+"` embeds —
+   becomes the single placeholder `N6#frame`. The two sides run different
+   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
+   boot-inclusive — dozens of frames from the capture process's startup
+   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
+   line's text is the host VM's identity — language, paths, boot history —
+   in the same class as N7's capture-host content below; nothing in the
+   oracle's semantics lives in it. The frame COUNT becomes the checkable
+   invariant: the `<br>`-separated structure inside the div stays compared,
+   so a side emitting a different number of its own frames still fails, as
+   do the heading, the error message and every byte outside the div.
 7. **N7 (canonical form over capture-host content).** In rendered HTML,
    inside a render-error span's `title` attribute that begins with the Ruby
    debug page marker (`&lt;h3&gt;Error message (visible to admin only)
@@ -375,22 +421,8 @@ comparator's N1-N6 above. The two vocabularies coexist:
    token ends at its `:line:` separator. Every byte outside such a title,
    and the error message inside it, still count. (Written when the engine
    did not raise where the oracle raises; the raise posture has since made
-   the engine emit the same debug page, and N6 below now carries the frame
+   the engine emit the same debug page, and N6 above now carries the frame
    layer.)
-6. **N6 (canonical form over the host VM's stack identity).** In rendered
-   HTML, inside a render-error span's debug-page title, every backtrace
-   frame line within the div that follows the message paragraph — the
-   `<br>\n`-separated lines Ruby's `exception.backtrace * "<br>\n"` embeds —
-   becomes the single placeholder `N6#frame`. The two sides run different
-   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
-   boot-inclusive — dozens of frames from the capture process's startup
-   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
-   line's text is the host VM's identity — language, paths, boot history —
-   in the same class as N7's capture-host content; nothing in the oracle's
-   semantics lives in it. The frame COUNT becomes the checkable invariant:
-   the `<br>`-separated structure inside the div stays compared, so a side
-   emitting a different number of its own frames still fails, as do the
-   heading, the error message and every byte outside the div.
 8. **N8 (canonical form over the host language's class naming).** On an
    operation whose recorded result IS the failure (section 3, "What the
    grader compares"), the error record's class name canonicalizes to its
@@ -420,7 +452,7 @@ N3: two stock-oracle processes run over every op of that fixture that
 carries the token (30 of 2,557, 84 tokens; the capture commands are in
 `benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
 in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
-(0 unexplained). N4 and N5 are canonical forms over values that do NOT vary
+(0 unexplained). N5 and N7 are canonical forms over values that do NOT vary
 between two runs of the oracle on one machine — the frozen clock and the
 capture host's filesystem are constant within a capture — so their evidence
 shape is different: the committed capture bytes themselves carry the
@@ -428,9 +460,9 @@ volatility (the oracle's frozen-clock spans, the capture host's absolute
 paths in the debug pages), and the measurement is over oracle-vs-engine
 pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
 relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
-whose only divergence was the span grade identical after N4 and no
+whose only divergence was the span grade identical after N5 and no
 identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
-addresses) and at its original commit N5 closed no op — the six debug rows
+addresses) and at its original commit N7 closed no op — the six debug rows
 were structural then (the engine did not raise where the oracle raises);
 the raise posture closed that layer and N6 above now carries the frame
 layer. Full procedure,

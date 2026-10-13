@@ -39,14 +39,30 @@ semantics operations; the grader also counts the scenario steps whose op is
 `render` (2) and `ask` (1), which is the whole of the difference
 ([docs/coverage-inventory.md](docs/coverage-inventory.md), "Why two counts of
 the same fixture"). The public
-harness's normalization is exactly three rules
-([SPEC.md](reference-harness/SPEC.md), "Normalisation"): the
-`data-slot-id` attribute mask, JSON key canonicalization, and class-token
-order inside a `class` attribute compared as a set. The third exists because
-the operating system decides that order: stock Linux Ruby and stock Windows
-Ruby emit the same class tokens in a different order, so it names what a
-capture on another operating system differs in — and, since the committed
-expected bytes were captured on Windows, it changes nothing about them. The corpus
+harness's normalization is **N1, N2 and N3** — the three rules a grade report
+names in its `normalization` field
+([SPEC.md](reference-harness/SPEC.md), §4.2; `runner/normalize.mjs`): N1 masks
+the `data-slot-id` attribute value, N2 canonicalizes JSON key order, and N3
+compares class-token order inside a `class` attribute as a set. The
+instrument defines eight rules in total (N1–N8); N4–N8 exist for the
+seconds-corpus fixture's capture-host values and are applied when a comparison
+reaches them, which on `synthetic-v1` none does. The browser journeys are a
+different instrument with their own rules (`B1`–`B5` in
+`browser/lib/observe.mjs`) — the two namespaces are distinct, and the journeys
+comparator names the two harness forms it borrows rather than renumbering them.
+
+**The expected outputs were captured on Windows** (`ruby 3.3.12
+[x64-mingw-ucrt]`). That matters because Ruby's own operating system decides
+the class-token order: stock Linux Ruby and stock Windows Ruby emit the same
+tokens in a different order, and N3 is the rule that absorbs that difference
+across platforms. Measured on this fixture, a stock Linux capture of the same
+version differs at 678 of the 1,752 render operations, every one of them
+class-token order and nothing else
+([docs/parity-method.md](docs/parity-method.md)). Because the committed bytes
+came from Windows, N3 changes nothing about them; it is what lets a capture
+from another operating system be graded against the same fixture.
+
+The corpus
 replay is a different instrument and takes different rules: **four**
 normalizations, and the slot-id mask is one of them (the other three are the
 accordion group hash, the Cloudflare `__CF$cv$params` challenge block and the
@@ -97,15 +113,20 @@ takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
    system, then deploys.** It installs the repo and runs the migrations in
    `deploy/migrations/`: the core schema, a four-card demo deck, then the
    account substrate (card-mod-account's account cards plus the Decko Bot and
-   Anonymous actor cards) so the deck has an account to sign in against. Then
-   it bundles and deploys the Worker.
+   Anonymous actor cards) so the deck has an account to sign in against, then
+   `0009-demo-account-read-rules.sql` — the `*all+*read` catch-all and the
+   Help Desk grants for the account fields, which are what keep an anonymous
+   requester out of the owner's password digest, salt and email address.
+   Then it bundles and deploys the Worker.
 5. **You get a URL.** The Worker shows up in your Cloudflare dashboard under
    **Workers & Pages** with a `https://<worker-name>.<your-subdomain>.workers.dev`
    address. Open it and you are in the deck.
 
 Nothing above needs a Cloudflare API token typed into the repo. There are no
-secrets in `wrangler.toml` — the deployed Worker reads exactly one thing from
-its environment, the D1 binding.
+secrets in `wrangler.toml`: the only *binding* the deployed Worker reads from
+its environment is the D1 one. It also reads the two plain `[vars]` flags
+described next (`DECKO_WRITE_PATH` and `DECKO_FIRST_RUN`), which are not
+secrets and which a deploy from the button leaves unset.
 
 ### What you get: a browse-only demo deck
 
@@ -190,9 +211,9 @@ Doing it by hand, the paste in step 1 is yours to make — the id in
 `wrangler.toml` is a default for the button to overwrite, not a real database.
 
 `npm run deploy` applies everything in `deploy/migrations/` — schema, indexes,
-demo cards, account substrate — and then deploys. The migration command names
-the **binding** (`DB`), not the database name, so it keeps working after you
-rename the database.
+demo cards, account substrate, account read rules — and then deploys. The
+migration command names the **binding** (`DB`), not the database name, so it
+keeps working after you rename the database.
 
 ### Smoke (against a deployed Worker)
 

@@ -5176,21 +5176,34 @@ export class RenderEngine implements RenderEngineLike {
   /**
    * The right-part card ids the account substrate hangs its secrets on:
    * card-mod-account-0.20.0 data/real.yml:82 (`*account`), :121 (`*email`),
-   * :132 (`*password`), :143 (`*salt`), :150 (`*status`). A junction whose
-   * right part is one of these IS a row of somebody's account: the email
-   * address, the PBKDF2 digest, the digest salt.
+   * :132 (`*password`), :143 (`*salt`), :150 (`*status`), plus `*api_key`.
+   * A junction whose right part is one of these IS a row of somebody's
+   * account: the email address, the PBKDF2 digest, the digest salt, the
+   * bearer key that authenticates as the account.
+   *
+   * `api_key` is the one from a different gem — card-mod-api_key-0.20.0
+   * set/right/api_key.rb:1, `include_set Abstract::AccountField` — but it is
+   * the same kind of row by that include alone: the same abstract set as
+   * `*email`, `*password` and `*salt`, hanging off the same `*account`
+   * junction, and its content is a credential (`authenticate_api_key`
+   * compares it, `generate_api_key` stores a fresh one, set/right/api_key.rb
+   * :25-31). Reading it is an account takeover exactly as reading the digest
+   * is, so it belongs in this list on the account-field argument and not on
+   * card-mod-account's.
    *
    * Resolved by CODENAME the way every other account codename is resolved in
    * this port (signin.ts resolveAccountCodenameIds, first-run-setup.ts
    * resolveCodenameCardId) — never by a hardcoded id — and absent codenames
    * are skipped rather than defaulted, so a deck without the account system
-   * (the 0001..0003 chain) gets an empty set and no exclusion clause. */
+   * (the 0001..0003 chain) gets an empty set and no exclusion clause. A deck
+   * WITHOUT card-mod-api_key has no `api_key` codename, and is unaffected. */
   private static readonly ACCOUNT_RIGHT_CODENAMES = [
     "account",
     "email",
     "password",
     "salt",
     "status",
+    "api_key",
   ] as const;
 
   private accountRightIds: number[] | undefined;

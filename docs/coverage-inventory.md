@@ -121,8 +121,9 @@ package does NOT measure, item 6.
   differences, 0 unexpected.** The five, as declared in
   `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`:
   steps **20, 22, 31** are the stored-HTML security choice (`docs/SECURITY.md`
-  divergence 1 — this engine's cleaner drops a `javascript:` link target Ruby's
-  keeps), and steps **7** and **67** are two upstream Ruby defects (a trashed
+  divergence 1 — the port's cleaner stores something different where Ruby's
+  would be acted on by a browser; the difference itself is withheld), and steps
+  **7** and **67** are two upstream Ruby defects (a trashed
   junction revived before its part id resolves, which only inserts on the
   oracle deck's missing `UNIQUE (left_id, right_id)` index; and a revert of a
   rename that stores rows and then raises). Password storage is **not** among
@@ -140,13 +141,13 @@ package does NOT measure, item 6.
   (`expected/side-effects-ruby.json`). On this clean synthetic deck the
   verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
   36 of them traceable to one root cause, now a declared security
-  divergence (`docs/SECURITY.md`, divergence 5): this engine refuses to rename
-  another user's account holder where Ruby 0.20 does not enforce the check.
-  On the production deck that difference never surfaced because Ruby crashes
-  mid-rename there (a second Ruby defect one of the 7 production pins
-  declares, described on the same terms in `docs/SECURITY.md`); the crash does
-  not reproduce on a clean deck, so three of the seven production pins do not
-  transfer. The divergence is declared, not adjusted away; the exact
+  divergence (`docs/SECURITY.md`, divergence 5). That entry names what this
+  engine refuses and withholds what Ruby does instead.
+  On the production deck that difference never surfaced, because a second
+  Ruby flaw (the one of the three named under "Reporting a vulnerability"
+  above) intervenes there — one of the 7 production pins declares it, and it
+  does not reproduce on a clean deck, so three of the seven production pins
+  do not transfer. The divergence is declared, not adjusted away; the exact
   verdicts stay pinned step by step, and the production-deck figures remain
   the measured 83 + 7 of 90.
 - **The pod import/export round-trips remain private**:
@@ -230,7 +231,7 @@ claim quoted anywhere can be checked against the instrument behind it.
 | A constant number of queries regardless of depth | **Not met.** The measured law is four fixed round trips plus one per nesting level below the root, however many cards each level holds — breadth is free, depth is not. Reproduced by `tests/card/render/deep-nesting-trip-attribution.test.ts` and asserted at every depth by `tests/card/render/depth-sweep.test.ts`. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
 | Same data, no migration required | **Withdrawn.** Import reads a SQLite deck file, a `mysqldump` text dump or deck-INSERT SQL. PostgreSQL is unsupported — no adapter or dialect translator exists in the tree. While Ruby still serves the deck this engine must store Ruby's own password digest, because Ruby cannot verify PBKDF2; D1's transaction semantics differ from Ruby's and SQLite's. | `tools/migrate/IMPORT_DECK_RECIPE.md`; [SECURITY.md](SECURITY.md) "Migration compatibility at a glance"; [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
 | Faster responses at the edge | **Not established.** No speed run is recorded against a release candidate, and no response-time comparison is committed evidence anywhere in this repository. The published, reproducible comparison is round trips per render. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
-| One click provisions everything | **Not verified.** The button deploys one Worker and one D1 database, applies the migrations and ships a read-only four-card demo; every write verb answers `403`. No KV, no R2, no queues, no secrets in `wrangler.toml` — the Worker reads exactly the D1 binding. | [deploy-cloudflare.md](deploy-cloudflare.md); README, "Deploy to Cloudflare" |
+| One click provisions everything | **Not verified.** The button deploys one Worker and one D1 database, applies the migrations and ships a read-only four-card demo: every card write answers `403`, and `POST /update/*signin` is the one verb that still dispatches while the write path is unset, because a session row is not a card write. No KV, no R2, no queues, no secrets in `wrangler.toml` — the only binding the Worker reads is the D1 one, and the two `[vars]` flags are plain non-secret values the button leaves unset. | [deploy-cloudflare.md](deploy-cloudflare.md); README, "Deploy to Cloudflare" |
 
 Two further promises are covered by the sections above rather than by an
 instrument: the mod story is the compatibility report's declaration-level

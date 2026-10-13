@@ -18,7 +18,7 @@
 // See reference-harness/SPEC.md, "Fixture identity" and "The Ruby oracle".
 
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
@@ -28,8 +28,25 @@ export const EXPECTED_MANIFEST_FORMAT = "decko-reference-expected-manifest/1";
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
+/** SQLite's write-ahead-log sidecars, beside a WAL-mode deck. Any sqlite
+ *  handle on such a database — a read-only one included — creates them, and a
+ *  clean close removes them again; they are residue of a reader having had the
+ *  file open, never fixture content. The runner stages a private copy of the
+ *  deck before opening it (run.mjs, stageDeck), so nothing it does leaves them
+ *  here; a person who has browsed the committed deck in a SQLite browser will.
+ *
+ *  They are excluded from the fixture identity, and an EMPTY `-wal` is
+ *  excluded silently. A `-wal` that still holds bytes does carry state the
+ *  manifest's copy of `deck.sqlite3` does not, so it is reported rather than
+ *  ignored — with the main file stale behind it, the bytes a reader sees are
+ *  not the bytes that were pinned. */
+export function isDeckSidecar(name) {
+  return /-shm$/.test(name) || /-wal$/.test(name);
+}
+
 /** Paths (forward slashes, relative to the fixture) of every fixture input:
- *  everything except the manifest itself and expected-output directories. */
+ *  everything except the manifest itself, expected-output directories and
+ *  SQLite's journal sidecars (see isDeckSidecar). */
 export function fixtureInputPaths(fixtureDir) {
   const out = [];
   const walk = (rel) => {
@@ -38,7 +55,10 @@ export function fixtureInputPaths(fixtureDir) {
       const child = rel ? `${rel}/${entry.name}` : entry.name;
       if (!rel && (entry.name === "MANIFEST.json" || entry.name === "expected" || entry.name.startsWith("expected-"))) continue;
       if (entry.isDirectory()) walk(child);
-      else if (entry.isFile()) out.push(child);
+      else if (entry.isFile()) {
+        if (isDeckSidecar(entry.name)) continue;
+        out.push(child);
+      }
     }
   };
   walk("");
@@ -79,7 +99,32 @@ export function verifyFixture(fixtureDir) {
     else if (now.files[rel] !== hash) problems.push(`fixture file changed since its manifest: ${rel}`);
   }
   for (const rel of Object.keys(now.files)) if (!(rel in listed)) problems.push(`fixture file not in its manifest: ${rel}`);
+  problems.push(...sidecarProblems(fixtureDir));
   return { digest: manifest.digest ?? null, problems };
+}
+
+/** A `-wal` left beside the deck with bytes still in it means the main file is
+ *  behind a reader's, so the deck on disk is not the deck the manifest pins.
+ *  An empty `-wal`, and the `-shm` beside either, are what a clean reader
+ *  leaves behind and are not worth refusing a grade over. */
+function sidecarProblems(fixtureDir) {
+  const problems = [];
+  const walk = (rel) => {
+    const abs = path.join(fixtureDir, rel);
+    for (const entry of readdirSync(abs, { withFileTypes: true })) {
+      const child = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(child);
+        continue;
+      }
+      if (!entry.isFile() || !/-wal$/.test(entry.name)) continue;
+      if (statSync(path.join(abs, entry.name)).size > 0) {
+        problems.push(`fixture has an uncheckpointed journal beside the deck: ${child} (open it with SQLite and close it cleanly, or remove it, before grading)`);
+      }
+    }
+  };
+  walk("");
+  return problems;
 }
 
 /** sha256 of a stored file and of its uncompressed content. */
