@@ -371,10 +371,10 @@ describe('loadShadowPolicy — schema discipline', () => {
 
 describe('route sampling — percentage-or-name through shouldShadow (reused)', () => {
   it('parseTargetsFile: name-only lines default to view=page; comments and blanks skipped', () => {
-    const routes = parseTargetsFile('# c\n\nHome\nAikido\t\n');
+    const routes = parseTargetsFile('# c\n\nHome\nFieldwork\t\n');
     expect(routes).toEqual([
       { name: 'Home', view: 'page' },
-      { name: 'Aikido', view: 'page' },
+      { name: 'Fieldwork', view: 'page' },
     ]);
   });
 
@@ -383,10 +383,10 @@ describe('route sampling — percentage-or-name through shouldShadow (reused)', 
   });
 
   it('view routes: the canvas fixture views are ACCEPTED', () => {
-    const routes = parseTargetsFile('Home\topen\nAikido\tclosed\nAbout\tcontent\nEagle\ttitle');
+    const routes = parseTargetsFile('Home\topen\nFieldwork\tclosed\nAbout\tcontent\nEagle\ttitle');
     expect(routes.map(routeKey)).toEqual([
       'Home|open',
-      'Aikido|closed',
+      'Fieldwork|closed',
       'About|content',
       'Eagle|title',
     ]);
@@ -409,10 +409,10 @@ describe('route sampling — percentage-or-name through shouldShadow (reused)', 
     for (const r of DEFAULT_PROBE_ROUTES) expect(r.view).toBe('page');
     expect(DEFAULT_PROBE_ROUTES.map(routeKey)).toEqual([
       'Home|page',
-      'Aikido|page',
+      'Fieldwork|page',
       'About|page',
       'Eagle|page',
-      'Taking_Stock|page',
+      'Sample_Card_169|page',
     ]);
   });
 
@@ -896,7 +896,7 @@ describe('CLI end-to-end with the stub instrument (execute runs)', () => {
 describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
   it('a mixed-lane sample runs clean end-to-end: view routes byte-identical, lanes + corpus URL forms recorded, exit 0', () => {
     const targets = scratch('view-targets-clean');
-    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nAikido\tcontent\nEagle\t\n');
+    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nFieldwork\tcontent\nEagle\t\n');
     const { r, out } = executeShadow(
       'e2e-view-clean',
       ['--targets', join(targets, 'views.tsv')],
@@ -911,7 +911,7 @@ describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
     expect(byKey.get('Home|open').lane).toBe('view');
     expect(byKey.get('Home|open').path).toBe('/Home?view=open');
     expect(byKey.get('Home|open').outcome).toBe('byte-identical');
-    expect(byKey.get('Aikido|content').outcome).toBe('byte-identical');
+    expect(byKey.get('Fieldwork|content').outcome).toBe('byte-identical');
     expect(byKey.get('Eagle|page').path).toBe('/Eagle');
     expect(byKey.get('Eagle|page').lane).toBe('page');
   });
@@ -962,7 +962,7 @@ describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
 
   it('gate semantics are identical on view samples: N-consecutive streak in the same out dir, signature-scoped across lanes', () => {
     const targets = scratch('view-targets-gate');
-    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nAikido\tcontent\n');
+    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nFieldwork\tcontent\n');
     const pageTargets = scratch('page-targets-gate');
     writeFileSync(join(pageTargets, 'pages.tsv'), 'Home\n');
     const env = { SHADOW_STUB_BODY: '<html>same</html>', SHADOW_STUB_VIEW_BODY: '<div class="open-view">same</div>' };
