@@ -1161,11 +1161,17 @@ async function handleSigninUpdate(
   const sessions = new SessionStore({ driver: ctx.driver });
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
-    // authenticate_or_abort adds the ladder message under :signin
-    // (signin.rb:50-58 errors.add :signin, ...): the errors view renders the
+    // The recorded Ruby ladder splits by failure class: the blank-field
+    // validations (account_email_missing / account_password_missing) render
+    // the bare message with no attribute key, while the auth failures
+    // (account_error_unknown_email, account_error_wrong_password) render the
     // attribute name upcased ("SIGNIN:") ahead of the message — so the
-    // ladder message is the unprefixed shown bytes and the key rides along.
-    return fail(outcome.message, outcome.message, "SIGNIN");
+    // ladder message is the unprefixed shown bytes and the key rides along
+    // only for the keyed class. Verified against the write-battery's captured
+    // Ruby alerts (signin-blank-email, signin-blank-password,
+    // signin-unknown, signin-wrong-password).
+    const keyed = outcome.reason !== "email_missing" && outcome.reason !== "password_missing";
+    return fail(outcome.message, outcome.message, keyed ? "SIGNIN" : undefined);
   }
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
