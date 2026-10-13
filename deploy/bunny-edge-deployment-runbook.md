@@ -102,12 +102,13 @@ you'll need").
    ```bash
    BUNNY_DB_URL='libsql://<id>-<db-name>.lite.bunnydb.net/' \
    BUNNY_DB_TOKEN='<token>' \
-   node scripts/import-to-bunny-db.mjs --limit 200 --tables cards,card_references
+   node scripts/import-to-bunny-db.mjs --source <deck.sqlite> --limit 200 --tables cards,card_references
    ```
 
    Flags (all verified by a local dry run, §7):
    `--limit N` caps rows **per table**; `--tables a,b` restricts the table set;
-   `--source PATH` picks a different source sqlite; `--creds PATH` reads a
+   `--source PATH` names the source sqlite (required — there is no default);
+   `--creds PATH` reads a
    KEY=VALUE file; `--chunk-size N` (max 500) rows per pipeline POST;
    `--schema-only` / `--data-only` / `--dry-run`.
    The endpoint is `<url>/v2/pipeline` with `Authorization: Bearer <token>` —

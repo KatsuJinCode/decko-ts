@@ -76,9 +76,9 @@ license is recorded at `fixtures/vendor/LICENSE.txt`, not here.
 ## How these files were produced
 
 Both bundles are build output: SassC compiles the Sass, Uglifier minifies the
-concatenated scripts (`one-click-deck.mjs` step 7 describes the result as
-"the SassC+Uglifier-compiled skin, sha256-matched to the render VM's
-oracle-assets"). They are committed because the one-click deploy must ship
+concatenated scripts, and `one-click-deck.mjs` step 7 uploads the result as
+the deploy's `[assets]` directory. They are committed because the one-click
+deploy must ship
 without a Sass toolchain, and because the deploy's write budget does not
 allow compiling them at deploy time.
 

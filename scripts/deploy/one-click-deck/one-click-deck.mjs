@@ -258,7 +258,7 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
       executeOnly: false,
       describe: () =>
         `Exact: ${plan.cardRows} single-row card INSERTs + ${plan.refRows} single-row ref INSERTs ` +
-        `= ${plan.seedRows} rows. Ref density = corpus ratio 1,112,560/93,700 = ` +
+        `= ${plan.seedRows} rows. Ref density = the module's planning basis, 1,112,560 refs / 93,700 cards = ` +
         `${plan.refsPerCard.toFixed(6)} refs/card. Chunked at ${REMOTE_CHUNK_STATEMENTS} statements ` +
         `(the chunk size verified against the remote D1 endpoint's per-request limits).`,
       remoteCommands: () => [
@@ -291,8 +291,8 @@ function buildSteps({ plan, remoteChunkCount, workerName, dbName }) {
         `STATIC ASSETS via the wrangler [assets] directory ` +
         `(scripts/deploy/one-click-deck/demo-static-assets/, uploaded together ` +
         `with the worker bundle in step 6): all-style.css + all-script.js ` +
-        `(the SassC+Uglifier-compiled skin, sha256-matched to the render VM's ` +
-        `oracle-assets), decko-config.js, robots.txt. The assets layer serves ` +
+        `(the SassC+Uglifier-compiled skin), decko-config.js, robots.txt. ` +
+        `The assets layer serves ` +
         `them before the worker runs: 0 D1 rows read or written.`,
       remoteCommands: () => [],
     },
@@ -397,11 +397,11 @@ function ensureConfig({ args, databaseId }) {
 # in the engine graph (node:crypto) is replaced at bundle time by the [alias]
 # shim (same shape as deploy/wrangler.toml).
 #
-# [assets] ships the compiled skin (all-style.css + all-script.js, sha256-
-# matched to the render VM's oracle-assets) plus decko-config.js and
-# robots.txt. The assets layer serves them BEFORE the worker runs, so asset
-# requests cost zero D1 reads and zero D1 writes; crawler traffic is turned
-# away by robots.txt instead of burning the read budget.
+# [assets] ships the compiled skin (all-style.css + all-script.js) plus
+# decko-config.js and robots.txt. The assets layer serves them BEFORE the
+# worker runs, so asset requests cost zero D1 reads and zero D1 writes;
+# crawler traffic is turned away by robots.txt instead of burning the read
+# budget.
 
 name = "${args.workerName}"
 main = "${rel(WORKER_TS)}"
