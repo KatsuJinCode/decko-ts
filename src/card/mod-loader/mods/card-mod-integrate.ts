@@ -3,9 +3,7 @@
 //
 // The gem's tree (the installed
 // card-mod-integrate-0.20.0/): eight set files, no lib/, no haml, no html
-// views (the T6 verdict, tools/compat-report/mod-compat-report.json entry
-// gem === "card-mod-integrate-0.20.0": htmlViewsDeclared 0,
-// htmlViewsMissingNames [], patternsUsed = patternsImplemented =
+// views (htmlViewsDeclared 0, patternsUsed = patternsImplemented =
 // [all, right, self], setModules 8). The mod configures integration
 // events: when a card is created/updated/deleted, the items of its
 // "<set>+*on <action>" rule card are resolved and each receives #deliver

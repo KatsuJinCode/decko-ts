@@ -4,9 +4,7 @@
 // The gem's tree (the installed
 // card-mod-collection-0.20.0/): six set files (3 abstract, 3 all), one
 // lib/ class (Card::PagingLinks - pure data structure, no Rails), and one
-// HAML template. The T6 verdict (tools/compat-report/mod-compat-report.json,
-// gem === 'card-mod-collection-0.20.0', metrics.htmlViewsMissingNames)
-// lists exactly three views the engine does not already cover:
+// HAML template. Exactly three views the engine does not already cover:
 //   count, paging, paging_urls.
 //
 // Ported here:

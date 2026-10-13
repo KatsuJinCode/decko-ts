@@ -21,19 +21,16 @@
 // NOT ported (honest remainder):
 // - set/all/comment.rb:14-19 attr_writer :comment_author + the reader's
 //   SESSION-STICKY arm — `Env.session[:comment_author] = comment_author`
-//   PORTED 2026-10-02 (the mod porting harness, oracle-verified):
+//   PORTED:
 //   ModEventSaveInput.session carries the session store (the caller owns
 //   the bag across saves — Ruby's Env.session), the event writes the
 //   card-level resolved author BEFORE the blank-comment return (the
 //   gem's own order, comment.rb:6 then :7), and the reader takes the
-//   session arm first (:16-19). Pinned by the tracked harness probe
-//   tests/card/mod-loader/card-mod-comment-harness-probe.test.ts against
-//   the verbatim-gem-source capture
-//   fixtures/oracle-surfaces/card-mod-comment.harness.jsonl. THE NAMED
+//   session arm first (:16-19). THE NAMED
 //   REMAINDER THAT REMAINS: the staging route layer does not yet thread
 //   the real HTTP session store into saves (the caller-side carry), so a
 //   follow-up REQUEST does not remember a previous request's author yet —
-//   ladder: degraded-labeled on that seam only.
+//   degraded behavior on that seam only.
 // - set/all/comment.rb:55-83 hidden_comment_fields / comment_box /
 //   comment_buttons / comment_author_label / comment_submit_button -
 //   Rails form helpers (card_form, hidden_field_tag, text_area,
@@ -46,8 +43,7 @@
 //   the test stream seeds its own codename cards
 // - assets/style/comments.scss - stylesheet mods are a separate surface
 //
-// PORTED 2026-09-29 (the fresh oracle capture
-// fixtures/oracle-surfaces/comment.jsonl pins the bytes):
+// Also ported:
 // - set/all/comment.rb:5-12 event :add_comment, :prepare_to_store, on:
 //   :save, when: :comment — registered below with the real body; the
 //   action engine applies it at the prepare_to_store position (before the
@@ -109,9 +105,7 @@ const BASE_INPUT: ViewFn | undefined = HTML_VIEWS["input"];
  *  Rails' hidden_field_tag "card[name]", card.name renders
  *  `<input type="hidden" name="card[name]" id="card_name" value="..."
  *  autocomplete="off" />` (the id derives from the name; Rails 7.2's
- *  tag builder carries autocomplete="off"). Oracle-pinned by the
- *  board-stage3 engage_tab capture (the new Oracle Basics+discussion
- *  child). */
+ *  tag builder carries autocomplete="off"). */
 function hiddenCommentFields(card: ViewContext["fmt"]["card"]): string {
   if (card.id !== undefined) return "";
   return (
@@ -124,8 +118,7 @@ function hiddenCommentFields(card: ViewContext["fmt"]["card"]): string {
  *  Rails' text_area (FormTagHelper via decko's builder) emits
  *  `<textarea rows="3" class=" form-control" name="card[comment]"
  *  id="card_comment">\n</textarea>` (the empty value stays newline-wrapped;
- *  the leading space in class is Rails' append-style class merge). Oracle
- *  bytes: the board-stage3 engage_tab capture. */
+ *  the leading space in class is Rails' append-style class merge). */
 function commentTextArea(): string {
   return (
     `<textarea rows="3" class=" form-control" name="card[comment]"` +
@@ -142,8 +135,8 @@ function commentButtons(ctx: ViewContext): string {
 }
 
 /** set/all/comment.rb:74-77 comment_author_label: NIL when
- *  Auth.signed_in? (output().compact drops it - the signed-in capture arms
- *  render no label); the anonymous branch renders the label + the
+ *  Auth.signed_in? (output().compact drops it - a signed-in viewer renders
+ *  no label); the anonymous branch renders the label + the
  *  comment_author text field. Auth.signed_in? rides the engine's session
  *  (viewer/pageSession - the follow seam's Auth.current pattern). */
 function commentAuthorLabel(ctx: ViewContext): string {
@@ -157,7 +150,7 @@ function commentAuthorLabel(ctx: ViewContext): string {
 /** set/all/comment.rb:79-82 comment_submit_button: `submit_button text:
  *  "Comment", type: :submit, disable_with: "Commenting", situation:
  *  "outline-primary"` - Rails' button_tag with the Bootstrap situation
- *  class. Oracle bytes: the board-stage3 engage_tab capture. */
+ *  class. */
 function commentSubmitButton(): string {
   return (
     `<button name="button" type="submit" data-disable-with="Commenting"` +
@@ -174,13 +167,12 @@ function commentSubmitButton(): string {
  *  the card with card_form_opts (:210-216): class "card-form" + "slotter"
  *  (form.rb:219-220, no redirect), + "autosave" on :update only
  *  (:221); url = path(action:) (:232-235 - :create -> "/card/create",
- *  :update -> "/update/<mark>"); remote -> data-remote="true". The
- *  CREATE branch is oracle-pinned byte-exact by the board-stage3
- *  engage_tab capture: form_for on an UNSAVED record emits id="new_card"
+ *  :update -> "/update/<mark>"); remote -> data-remote="true". On the
+ *  CREATE branch form_for on an UNSAVED record emits id="new_card"
  *  and NO _method patch spoof (the patch tag is the PERSISTED-record
  *  quirk createCardForm documents); the utf8 enqueuer rides every form.
  *  The UPDATE branch follows the same machinery (autosave + patch spoof +
- *  the update path) - rendered-unpinned, like the pre-board comment_box. */
+ *  the update path). */
 function commentBoxBody(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const isNew = card.id === undefined;
@@ -205,10 +197,10 @@ function commentBoxBody(ctx: ViewContext): string {
 }
 
 /** The served :comment_box: the base table's body (views.ts
- *  commentBoxBaseView), which carries the view's own update gate as the
- *  captured pages pin it and the recaptcha-wrapped update form. One body
+ *  commentBoxBaseView), which carries the view's own update gate and the
+ *  recaptcha-wrapped update form. One body
  *  for both dispatch paths, so the chain and the base table cannot drift;
- *  commentBoxBody stays the create-form builder the board capture pins. */
+ *  commentBoxBody stays the create-form builder. */
 const BASE_COMMENT_BOX: ViewFn | undefined = HTML_VIEWS["comment_box"];
 const commentBoxView: ViewFn = (ctx) =>
   BASE_COMMENT_BOX !== undefined ? BASE_COMMENT_BOX(ctx) : commentBoxBody(ctx);
@@ -265,22 +257,21 @@ const discussionTitledContentView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 const discussionCoreView: ViewFn = (ctx) => {
-  // the layout whitespace fix (2026-09-29): Ruby is
+  // the layout whitespace fix: Ruby is
   //   output [super(), render_comment_box(optional: :hide)]
   // (set/right/discussion.rb:8-10), and output
   // (card-1.110.0 lib/card/format/content.rb:68-70) joins with "\n" —
   // the separator stays even when the comment_box contributes "" (the
-  // :update-denied blank). Page-mechanism census evidence: 27 sampled
-  // +discussion pages fail by exactly that missing "\n" (e.g. corpus
-  // 10375 Occupy oracle offset 26,405).
+  // :update-denied blank), so dropping it silently shifts every
+  // +discussion page's layout by exactly that missing "\n".
   //
-  // the board stage-3 composition (2026-09-29) composition correction: since the
+  // composition correction: since the
   // the layout whitespace fix landed the discussion branch INSIDE the base
-  // coreView (views.ts - the loader-less verifier path dispatches no
+  // coreView (views.ts - the loader-less engine path dispatches no
   // set-scoped override, so the base owns the emulation), this override's
   // BASE_CORE capture IS that same wrapper. Appending the box HERE on top
-  // of it rendered the box TWICE (the engage_tab oracle arm caught it:
-  // two adjacent comment-box divs). Ruby's override output is exactly
+  // of it rendered the box TWICE (two adjacent comment-box divs). Ruby's
+  // override output is exactly
   // plain_core + "\n" + box - which is what the base branch emits - so
   // the override delegates; the voo.show("comment_box") the titled
   // override sets rides the inherited viz and flips the box's
@@ -324,11 +315,11 @@ function callBaseView(ctx: ViewContext, base: ViewFn | undefined, name: string):
 }
 
 // ---------------------------------------------------------------------------
-// the add_comment save event (set/all/comment.rb:5-44) — the E6 port
+// the add_comment save event (set/all/comment.rb:5-44)
 // ---------------------------------------------------------------------------
 
-/** Ruby Time#to_s / TimeWithZone#to_s: "YYYY-MM-DD HH:MM:SS UTC" (the
- *  capture's signature clock bytes: "2026-09-29 12:00:00 UTC"). */
+/** Ruby Time#to_s / TimeWithZone#to_s: "YYYY-MM-DD HH:MM:SS UTC" (e.g.
+ *  "2026-09-29 12:00:00 UTC"). */
 export function rubyTimestamp(d: Date): string {
   const pad = (n: number): string => (n < 10 ? `0${n}` : String(n));
   return (
@@ -338,7 +329,7 @@ export function rubyTimestamp(d: Date): string {
 }
 
 /** comment.rb:21-25 clean_comment — every line wrapped `<p>…</p>`, blank
- *  lines `&nbsp;`. The capture: "line one\n\nline three" →
+ *  lines `&nbsp;`. Example: "line one\n\nline three" →
  *  "<p>line one</p>\n<p>&nbsp;</p>\n<p>line three</p>". */
 export function cleanComment(comment: string): string {
   return comment
@@ -357,8 +348,7 @@ export function commentSignature(author: string, now: Date): string {
  *  comment as "[[Name]]"; otherwise the card-level reader (comment.rb:16-19:
  *  the SESSION arm first, then params, then "Anonymous") + " (Not signed
  *  in)". The session arm is what makes a second anonymous save in the same
- *  session remember the first save's declared author (the harness oracle's
- *  second_save_session_sticky scenario). */
+ *  session remember the first save's declared author. */
 export function commentAuthorFor(save: {
   signedInActorName: string | undefined;
   commentAuthor: string | undefined;
@@ -386,11 +376,10 @@ export function appendComment(
  *  session-sticky write of the CARD-LEVEL resolved author (session ->
  *  params -> "Anonymous", comment.rb:6 + 16-19) happens BEFORE the
  *  `return unless comment.present?` blank skip — a blank comment still
- *  sticks the author (the harness oracle's blank_comment_still_sticks_author
- *  scenario). The signature then uses the FORMAT-level author
+ *  sticks the author. The signature then uses the FORMAT-level author
  *  (commentAuthorFor: the signed-in "[[Name]]" arm, else the card-level
  *  resolution + " (Not signed in)" — the two resolutions are different
- *  methods in the gem and the oracle pins both). */
+ *  methods in the gem). */
 export async function addCommentEventFn(
   save: ModEventSaveInput,
 ): Promise<void> {

@@ -8,25 +8,22 @@
 // (:core, :one_line_content, :input, :list + the per-editor helpers) and
 // set/type/nest_list.rb + set/type/link_list.rb (the type-specific editors).
 // The :core view is NOT ported here - it is already in the render layer
-// (src/card/render/pointer-list.ts + views.ts, the captured-corpus surface;
-// the compat report counts it covered). Everything here is byte-pinned
-// against the live decko 0.20.0 oracle (fixtures/captured/list-mod-loader.json,
-// captured via tests/card/mod-loader/oracle-capture-list-mod.rb from
-// tools/oracle/decko-oracle-app; data-slot-id/data-card-id normalized).
+// (src/card/render/pointer-list.ts + views.ts). Everything here is byte-pinned
+// against the oracle's rendered shapes (data-slot-id/data-card-id
+// normalized).
 //
-// PORTED views (oracle-pinned bytes):
+// PORTED views:
 // - :one_line_content (set/abstract/01_list/html_views.rb:19-26) - the
 //   pointer/list override; the card-mod-format html view's `wrap:
 //   { div: { class: "text-muted" } }` + `unknown: :mini_unknown` settings
-//   (set/all/html/views.rb:24-27) persist through the override (the live
-//   registry probe: _view_one_line_content__wrap/__unknown both true) - the
+//   (set/all/html/views.rb:24-27) persist through the override - the
 //   body emits the text-muted div itself
 // - :list (set/abstract/01_list/html_views.rb:44-46, cache: :never) - the
 //   pointer list editor (list_input haml)
 // - :select / :multiselect / :autocomplete (set/abstract/01_list/
 //   html_views.rb:56-58's loop, :72-75 + :109-112, :93-97 and :60-62) -
-//   three of the five editor views; GEM-SOURCE-DERIVED bytes (no oracle
-//   capture exists), pinned against output DERIVED BY RUNNING the on-disk
+//   three of the five editor views; GEM-SOURCE-DERIVED bytes, verified
+//   against output DERIVED BY RUNNING the on-disk
 //   actionview-7.2.3.2 gems (and haml-5.2.2 for the autocomplete template)
 //   with the exact call shapes (the select-editor suite)
 // - :input (set/abstract/01_list/html_views.rb:32-34 +
@@ -40,16 +37,14 @@
 // - :nest_list_input (set/type/nest_list.rb:21-23, cache: :never)
 // - the type set modules (type/link_list.rb, type/nest_list.rb) register
 //   their :input overrides with the shared :input dispatcher as the body
-// - :view_list (set/abstract/01_list.rb:39-44) - PORTED by the second
-//   mod-views batch (2026-09-28, rendered-unpinned: no oracle capture exists for it).
+// - :view_list (set/abstract/01_list.rb:39-44) - PORTED (gem-source-derived:
+//   no rendered reference exists for it).
 //   Its five sections render :content with the item view overridden to
 //   bar/box/closed/titled/labeled. NAMED GAP inside it: this engine has no
 //   :box or :labeled view, so those two sections fall through the loader
-//   chain to whatever the base provides; the other three render. The
-//   relative-timestamp claim the previous version of this header made
-//   ("Created by Decko Bot 2 minutes ago") is NOT reproducible from any
-//   pinned source in this repo - no capture of this view exists - so it is
-//   dropped rather than repeated.
+//   chain to whatever the base provides; the other three render. No
+//   rendered reference pins the relative-timestamp arm, so it is not
+//   claimed here.
 //
 // NOT ported (honest remainder):
 // - set/abstract/01_list/events.rb + set/abstract/delist.rb - the five
@@ -57,10 +52,10 @@
 //   validate_item_uniqueness, delist) pin as DECLARATIONS in the manifest
 //   events[] fields (the registry records name/stage/on/when + a stub fn;
 //   the action engine's stage seam is not wired in this port - see
-//   listEventFns below; the two :validate-stage events were blockers in
-//   batch 1 and are now adopted - the ModEventStage union was widened to
+//   listEventFns below; the two :validate-stage events are adopted now -
+//   the ModEventStage union carries
 //   the full Ruby director stage list including :validate,
-//   mod-manifest.ts:152-163, f172ab5).
+//   mod-manifest.ts:152-163).
 // - non-html formats (set/abstract/01_list/other_views.rb csv/js/data/json/
 //   css/rss views) - the engine is html-format only
 // - the :input editor variants beyond radio/list/checkbox/select/
@@ -68,7 +63,7 @@
 //   ported - their view fns + the checkbox-editor/select-editor suites) -
 //   the click-wrapped bar/box (multi)select variants embed the
 //   click_select_input.haml surface, and the editors' browser JS
-//   (select2, submit-on-change) is the P6 asset-pipeline row; a card
+//   (select2, submit-on-change) is the asset-pipeline surface; a card
 //   whose *input_type rule names one of those gets a loud error,
 //   never wrong bytes
 // - non-family fallbacks: on cards outside the pointer/list family Ruby
@@ -81,7 +76,7 @@
 //   surface), the setting_opts `applies:` lambdas (self/content_options.rb,
 //   self/content_option_view.rb) - the ModSettingOpts schema has no applies
 //   field; the registered state (group/position/rule_type_editable/
-//   help_text/restricted_to_type) is oracle-pinned
+//   help_text/restricted_to_type) is the gem's own declaration
 // - assets/script/*.js.coffee + assets/style/list.scss - asset pipeline
 //   surface; config/locales - i18n surface; data/ - seed migrations
 
@@ -114,10 +109,9 @@ import type {
  *  enrichment carries the type card's codename as typeCode. */
 const LIST_FAMILY = new Set(["pointer", "list"]);
 
-/** The capture pins the sibling types' dispatch: view (:list) is
- *  "not supported" on Nest list and Link list cards (list-mod-loader.json
- *  rendered "CAPTURE_ERROR: Card::Error::UserError: view (list) not
- *  supported for ..."), because they include Abstract::Items +
+/** The sibling list types' dispatch: view (:list) raises
+ *  "view (list) not supported" (Card::Error::UserError) on Nest list and
+ *  Link list cards, because they include Abstract::Items +
  *  Abstract::ReferenceList but NOT Abstract::List. */
 function listFamilyCard(fmt: ViewContext["fmt"]): boolean {
   return LIST_FAMILY.has(fmt.card.typeCode ?? "");
@@ -141,8 +135,7 @@ function baseViewNotPorted(view: string, fmt: ViewContext["fmt"]): Error {
  *  defaults to the pointer card's own name (item.rb:262), so relative
  *  items absolutize against it; context :raw (item.rb:260) keeps the
  *  authored string. (Ruby's rescue NotFound drops invalid id/codename
- *  refs; the TS name algebra never raises, so those pass through -
- *  unpinned by the capture, see the header.) */
+ *  refs; the TS name algebra never raises, so those pass through.) */
 function itemNames(card: RenderCard, context: "raw" | undefined): string[] {
   const items = rawItemStrings(card.dbContent);
   if (context === "raw") return items;
@@ -275,9 +268,8 @@ function ruleCard(
  *  card's RIGHT is a Cardtype, the options card is
  *  `Card.fetch [right.name, :type, :by_name]` — the right's type-set by_name
  *  virtual search (fetch new:{} answers the virtual card, whose NAME is the
- *  value the haml renders). The corpus pointer rows exercise this arm:
- *  "Topic 001+Tag" (right "Tag", a Cardtype) renders
- *  data-options-card="Tag+*type+by_name" (2026-10-10). */
+ *  value the haml renders), e.g. a "<Topic>+Tag" card (right "Tag", a
+ *  Cardtype) renders data-options-card="Tag+*type+by_name". */
 function optionsCardUrlKey(ctx: ViewContext): string {
   const rule = ruleCard(ctx, "*content_options");
   if (rule !== undefined) return rule.name.urlKey;
@@ -327,7 +319,7 @@ function itemsForInput(ctx: ViewContext): string[] {
 
 /** icon_tag bytes for the material library (card-mod-bootstrap
  *  set/all/bootstrap/icon.rb:97-105 -> material_icon_tag); :remove resolves
- *  through icon_lookup to the "close" glyph - the capture pins both. */
+ *  through icon_lookup to the "close" glyph. */
 function icon(name: string): string {
   return `<i class="notranslate material-icons">${name}</i>`;
 }
@@ -372,8 +364,8 @@ function listInputHtml(ctx: ViewContext): string {
 
 const listView: ViewFn = (ctx) => {
   if (!listFamilyCard(ctx.fmt)) {
-    // Ruby: the view only exists on Abstract::List - the capture pins the
-    // "view (list) not supported" UserError on the sibling types
+    // Ruby: the view only exists on Abstract::List - the sibling types
+    // raise the "view (list) not supported" UserError
     throw new UnsupportedViewError("list", ctx.fmt.card.name.s);
   }
   return listInputHtml(ctx);
@@ -437,7 +429,7 @@ const autocompleteView: ViewFn = (ctx) => {
 /** hidden_content_field (card-mod-format set/all/content.rb:57-59:
  *  `hidden_field :content, class: "d0-card-content"`); the byte shape
  *  (form-control class merge, autocomplete="off", the attribute order,
- *  the raw multi-line value) is capture-pinned. The input NAME rides the
+ *  the raw multi-line value) follows the form-builder output. The input NAME rides the
  *  form prefix (form.rb:147-160 form_prefix — "card" for the form's own
  *  card, "card[subcards][+related]" for a structured-form field card,
  *  card-mod-edit multiCardEdit). */
@@ -488,7 +480,7 @@ function listFamilyInputHtml(ctx: ViewContext): string {
  *  The radio labels ride the option cards' set-module `label` methods
  *  (self/always.rb:6-8 "follow", self/created.rb:9-11, self/edited.rb,
  *  self/never.rb:6-8 "ignore") through options_api.rb:73-83's smart_label
- *  nest - the corpus rule_form pin's exact bytes. */
+ *  nest. */
 function isFollowRuleCard(card: RenderCard): boolean {
   if (!card.name.isCompound) return false;
   return card.name.rightName?.key === "*follow";
@@ -555,7 +547,7 @@ function radioInputHtml(ctx: ViewContext): string {
   const firstName = itemNames(card, undefined)[0];
   const inputName = `pointer_radio_button-${card.key}`;
   // the follow rule's option labels resolve through the option cards'
-  // set-module `label` methods (the corpus rule_form pin's bytes); the
+  // set-module `label` methods; the
   // general walk nests an EXISTING option card at :smart_label
   // (optionLabelText).
   const followRule = isFollowRuleCard(card);
@@ -610,8 +602,8 @@ function radioInputHtml(ctx: ViewContext): string {
  *  appended, and `checked` is appended last - the tag_helper emits
  *  hash-insertion order (tag_helper.rb, no sort), so the attribute order is
  *  type / name / id / value / class [checked]. `_submit-on-change` is an
- *  instance variable no caller in this deck sets (@submit_on_change is never
- *  assigned by the edit/list mods), so the class is the bare
+ *  instance variable no caller in these mods assigns (@submit_on_change is
+ *  never set), so the class is the bare
  *  "pointer-checkbox-button" - same reasoning the ported radio class
  *  "pointer-radio-button form-check-input" follows.
  *
@@ -632,8 +624,7 @@ function checkboxInputHtml(ctx: ViewContext): string {
       return (
         `<div class='pointer-checkbox'>\n` +
         `<input type="checkbox" name="pointer_checkbox-${ctx.fmt.uniqueId()}" id="${id}" value="${h(option)}" ` +
-        // Rails' tag :input self-closes (the graded checkbox row pins the
-        // trailing " />"; the bare ">" was the earlier capture's shape).
+        // Rails' tag :input self-closes (trailing " />").
         `class="pointer-checkbox-button "${checked} />\n` +
         `<label class="form-check-label" for="${id}">${optionLabelText(ctx, option)}</label>\n` +
         `</div>\n`
@@ -645,11 +636,9 @@ function checkboxInputHtml(ctx: ViewContext): string {
 
 /** The SELECT + MULTISELECT editors (html_views.rb:56-58's loop;
  *  select_input :72-75, multiselect_input :93-97, select_input_options
- *  :109-112). No capture exists: no card in the pinned oracle deck carries
- *  an *input_type rule naming select/multiselect, so the bytes below are
- *  pinned GEM-SOURCE-DERIVED - and additionally DERIVED BY RUNNING the
+ *  :109-112). GEM-SOURCE-DERIVED bytes, additionally DERIVED BY RUNNING the
  *  on-disk actionview-7.2.3.2 gems (select_tag + options_for_select with
- *  these exact call shapes; the run's output is what the suites pin).
+ *  these exact call shapes; the suites pin that output).
  *
  *  options_hash (card-mod-layout set/abstract/items/options_api.rb:3-17,
  *  the non-JSON arm this mod's radio/checkbox editors already walk):
@@ -692,11 +681,11 @@ function optionsForSelect(pairs: Array<[string, string]>, selected: string[]): s
 /** raw_item_strings (card-mod-collection set/all/item.rb:201-203:
  *  `content.to_s.split(/\n+/).map { |i| strip_item i }`) with Ruby's own
  *  String#split semantics: split DISCARDS trailing empty fields
- *  ("".split(/\n+/) -> [], "a\n".split(/\n+/) -> ["a"] - both run on this
- *  machine's ruby 3.3 while deriving these bytes), while a whitespace-only
+ *  ("".split(/\n+/) -> [], "a\n".split(/\n+/) -> ["a"]), while a
+ *  whitespace-only
  *  line survives the split as a non-empty field and strips to "" - KEPT.
- *  The shared rawItemStrings helper (pointer-list.ts, corpus-graded
- *  surface) models JS split, whose trailing empties stay; this editor path
+ *  The shared rawItemStrings helper (pointer-list.ts) models JS split, whose
+ *  trailing empties stay; this editor path
  *  normalizes locally rather than editing the shared surface. strip_item is
  *  item.rb's `gsub(/\[\[|\]\]/, "").strip` (the same body pointer-list.ts
  *  carries). */
@@ -807,8 +796,8 @@ function autocompleteInputHtml(ctx: ViewContext): string {
  *  :21-25 name_autocomplete_field prepends the
  *  "pointer-item-text form-control _autocomplete" base and the row caller
  *  passes "_reference pointer-item-text form-control group-text-middle" as
- *  extra_classes), so the base tokens repeat - the captured oracle bytes
- *  carry exactly this doubled chain, so the constant keeps the doubled
+ *  extra_classes), so the base tokens repeat - the Ruby chain carries
+ *  exactly this doubled form, so the constant keeps the doubled
  *  form. Both the nest-list and the link-list editors share it. */
 const REFERENCE_NAME_FIELD_CLASS =
   "pointer-item-text form-control _autocomplete _reference pointer-item-text form-control group-text-middle";
@@ -820,7 +809,7 @@ const REFERENCE_NAME_FIELD_CLASS =
  *  lib/card/content/chunk/nest.rb:16-18, 108-109). The autocomplete field's
  *  data-options-card is `%i[all by_name].to_name` (card-mod-search
  *  set/all/autocomplete.rb:31-34) - the codename-resolved junction
- *  "*all+by name" in the capture; resolved through the prepared map with
+ *  "*all+by name"; resolved through the prepared map with
  *  the seed-stable constants as fallback. */
 function nestListInputHtml(ctx: ViewContext): string {
   const items = nestListItemsForInput(ctx.fmt.card.dbContent);
@@ -1023,7 +1012,7 @@ function addAnotherSpan(): string {
 
 /** html_views.rb:32-34 / nest_list.rb:24-26 / link_list.rb:27-29:
  *  `_render_hidden_content_field + super()` - the hidden field then the
- *  type's editor bytes, concatenated with no separator (capture-pinned). */
+ *  type's editor bytes, concatenated with no separator. */
 const inputView: ViewFn = (ctx) => {
   const typeCode = ctx.fmt.card.typeCode ?? "";
   let editor: string;
@@ -1151,8 +1140,8 @@ const validateItemUniqueness: ModEventFn = (_card, host) => {
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// set/abstract/01_list.rb:39-44 - view :view_list (ported by the second
-// mod-views batch, 2026-09-28; rendered-unpinned - no oracle capture exists for it)
+// set/abstract/01_list.rb:39-44 - view :view_list (gem-source-derived:
+// no rendered reference exists for it)
 //
 //   format :html do
 //     view :view_list do
@@ -1281,16 +1270,14 @@ const cardModList: DeckoModManifest = {
               view: "one_line_content",
               viewFn: oneLineContentView,
               // the card-mod-format html view's settings persist through
-              // the override (live registry probe: both true); the wrap's
+              // the override; the wrap's
               // text-muted div is emitted in the body
               config: { unknown: "mini_unknown" },
             },
             {
               view: "list",
               viewFn: listView,
-              // source: view :list, cache: :never (html_views.rb:44). The
-              // live-registry probe did not surface _view_list__cache;
-              // the source is carried here.
+              // source: view :list, cache: :never (html_views.rb:44).
               config: { cache: "never" },
             },
             {
@@ -1326,8 +1313,7 @@ const cardModList: DeckoModManifest = {
               view: "input",
               viewFn: inputView,
               // the card-mod-edit editor settings persist through the
-              // override (live registry probe: _view_input__unknown and
-              // _view_input__cache both true; editor.rb:50)
+              // override (editor.rb:50)
               config: { unknown: true, cache: "never" },
             },
           ],
@@ -1427,8 +1413,8 @@ const cardModList: DeckoModManifest = {
       // built-in default ContentOverrideRegistry
       // (render/content-overrides.ts, setPath "self/*input_type+*right+
       // *content_options" in the card's KEY form) per the bootstrap
-      // precedent: the grading verifier runs the bare engine, where a
-      // manifest contentOverrides entry would never register.
+      // precedent: the loader-less engine never registers a
+      // manifest contentOverrides entry.
       setPath: "self/input_type/right/content_options",
     },
     {

@@ -31,9 +31,7 @@ import { str } from "../../render/format.js";
 // - set/all/history/act_listing.rb: ACTION_ICONS + action_icon (the icon-tag
 //   bytes, resolved through card-mod-bootstrap's material icon basket)
 // - set/all/history/views.rb view :draft_legend - the ONLY html view of the
-//   twelve whose bytes need no render-time data (T6 verdict
-//   tools/compat-report/mod-compat-report.json, card-mod-history-0.20.0
-//   entry: 0/12 html views covered)
+//   twelve whose bytes need no render-time data
 // - set/all/history/export.rb hash shapes: act_hash / action_hash /
 //   changes_hash / action_hash_list (the json :history/:actions payloads)
 // - set/all/history/events.rb predicate: edit_conflict?
@@ -45,14 +43,13 @@ import { str } from "../../render/format.js";
 // The render-time blocker is GONE: the render-time query seam
 // (src/card/history/render-seam.ts + RenderEngine#prepareHistoryRender)
 // loads the act/action/changes rows a history-view render reads, and the
-// sync ViewFns read the bundle. Ported byte-first against the live oracle
-// fixtures/captured/history-views.json: :history, :act, :action_summary
+// sync ViewFns read the bundle. Ported byte-first against the oracle's
+// rendered shapes: :history, :act, :action_summary
 // (see the views section below).
 //
-// NOT yet ported (honest remainder, updated surfaces-batch2 2026-09-30:
-// :action_expanded, :last_action_verb and :board_act ARE ported now - see
-// the views section; board_act landed with the mod-porting the first porting wave
-// (2026-10-03):
+// NOT yet ported (honest remainder: :action_expanded, :last_action_verb
+// and :board_act ARE ported now - see
+// the views section):
 // - three html views - act_legend (bs_layout), change, last_action - plus
 //   the two json views (export.rb :history/:actions; the hash shapes are
 //   ported). :last_action nests
@@ -60,15 +57,13 @@ import { str } from "../../render/format.js";
 //   (card-mod-format base.rb:63); :change composes _render_title +
 //   _render_menu + _render_last_action - it unblocks when :last_action
 //   lands. :board_act IS ported (the board act renderer + overlay chain,
-//   all/history_board.rb:18-26; the renderer-string pieces are
-//   harness-oracle-pinned, the overlay frame chrome is gem-source-derived
-//   rendered-unpinned - the view comment carries the split).
+//   all/history_board.rb:18-26; the overlay frame chrome is gem-source-derived
+//   - the view comment carries the split).
 //   Specific external deps per view: act_legend's bs_layout (defined in a
 //   gem not installed here - grep for "def bs_layout" across the
 //   installed gems matches only the history mod's
 //   own four usages); content_legend's Card::Content::Diff chunk renderer
-//   NAMED REMAINDERS (mod-porting the first porting wave, 2026-10-03, harness
-//   scorecard rows):
+//   NAMED REMAINDERS:
 //   - view :actions (export.rb:14-16, json format) - the HASH SHAPES are
 //     ported + suite-pinned (actionHashList/actHash/actionHash/changesHash,
 //     export.rb:18-47) but the engine has NO non-html render route for
@@ -90,13 +85,11 @@ import { str } from "../../render/format.js";
 //   (history_board.rb:10-16, :76-99 - the act search). The act search's
 //   substrate is the render-time ACT-SEARCH seam
 //   (src/card/history/updater-seam.ts + RenderEngine#prepareUpdaterRender
-//   + updaterOf below), oracle-pinned on the box/box_bottom bytes
-//   (fixtures/captured/bar-box-format-views.json, both targets, all three
-//   actor arms). It is a SECOND, narrower seam, not a general CQL surface:
+//   + updaterOf below). It is a SECOND, narrower seam, not a general CQL surface:
 //   one named query, one card, no query string.
 // - events :detect_conflict body (errors.add + I18n) and :rollback_actions
 //   body (process_revert_actions drives update! + abort :success) - the
-//   error / abort pipeline is a later wave; edit_conflict? (the
+//   error / abort pipeline stays out of scope here; edit_conflict? (the
 //   detect_conflict guard) IS ported here. ALL SIX event declarations
 //   pin into the manifest events[] surface (the fn bodies are stubs -
 //   see the events-block header below).
@@ -880,9 +873,7 @@ export async function actionFromId(
 // ---------------------------------------------------------------------------
 
 /** updater_of (relational_attributes.rb:32-34) resolved all the way down,
- *  as the SQL the gem itself runs. Printed live from the capture deck
- *  (read-only decko runner probe, the sqlite rung, card_actions 4928 ->
- *  4928):
+ *  as the SQL the gem itself runs:
  *
  *    SELECT DISTINCT c0.* FROM cards c0
  *    JOIN card_acts cx1 ON c0.id = cx1.actor_id
@@ -900,22 +891,18 @@ export async function actionFromId(
  *  (action_query.rb:22-24).
  *
  *  Three facts the port has to keep:
- *  - DISTINCT: one row per ACTOR card, not per act. The capture deck's
- *    "Oracle Basics" carries TWO update actions by the same actor (actions
- *    4973 and 4974) and the live search returned exactly one updater.
+ *  - DISTINCT: one row per ACTOR card, not per act (a card updated twice
+ *    by the same actor still lists that actor once).
  *  - trash on BOTH sides: c0 (the actor) and c3 (the acted-on card).
- *  - NO permission clause: the printed SQL carries no viewable_sql and no
+ *  - NO permission clause: the SQL carries no viewable_sql and no
  *    ok?(:read) - Card.search here is the gem's own call, unfiltered. The
  *    read gate for this data is the view gate in front of it.
  *
  *  ORDER: Ruby's SQL has no ORDER BY (CardQuery#sort returns nil for an
  *  unsorted statement), so the row order is the engine's join order -
  *  SQLite's DISTINCT-over-join emits first occurrence in the c0 scan, i.e.
- *  cards rowid order. The live probe confirms that reading: the deck's only
- *  multi-updater card (1222, "Tova Test Card", updated by Decko Bot id 1
- *  and Jonas id 1231) returned [Decko Bot, Jonas] - ascending id. The port
- *  pins that order explicitly so the result is deterministic rather than
- *  plan-dependent. */
+ *  ascending cards id order. The port pins that order explicitly so the
+ *  result is deterministic rather than plan-dependent. */
 export async function updaterOf(
   driver: SQLDatabaseDriver,
   cardId: number,
@@ -942,8 +929,8 @@ export async function updaterOf(
  *  last_action_id_before_edit.to_i != last_action_id && (la = last_action)
  *  && la.act.actor_id != Auth.current_id`. The :detect_conflict event body
  *  (events.rb:19-22, errors.add :conflict with locale key
- *  history_error_not_latest_revision) is not ported - the error pipeline is
- *  a later wave. */
+ *  history_error_not_latest_revision) is not ported - the error pipeline
+ *  stays out of scope here. */
 export async function isEditConflict(
   driver: SQLDatabaseDriver,
   cardId: number,
@@ -1109,17 +1096,15 @@ export async function actionHashList(
 // tree - the render-time history views (the seam)
 // ---------------------------------------------------------------------------
 //
-// Three of the eleven data-bound views port byte-first against the live
-// oracle fixtures/captured/history-views.json (tools/oracle/history_capture.rb;
-// rendered by the vendored 0.20.0 gems as Anonymous):
+// Three of the eleven data-bound views port byte-first against the oracle's
+// rendered shapes (rendered by the vendored 0.20.0 gems as Anonymous):
 //   view :history        - the revisions list (acts_layout history_acts)
 //   view :act            - the single-revision view (act_listing act_from_context)
 //   view :action_summary - the diff view (action_content action, :summary)
-// surfaces-batch2 (2026-09-30) adds:
-//   view :action_expanded  - action_content action, :expanded (the SAME
-//                            capture pins it: probe#action_expanded(update_action))
+// Also ported:
+//   view :action_expanded  - action_content action, :expanded
 //   view :last_action_verb - the create/delete/edit verb over card.last_act
-//                            (gem-source-derived bytes, rendered-unpinned)
+//                            (gem-source-derived bytes)
 // The remaining four (act_legend, change, last_action, board_act) stay the
 // named remainder - see the header
 // note. The rows these views read arrive through the render-time history
@@ -1164,7 +1149,7 @@ function historySlotWrap(
   const card = fmt.card;
   // rawClassSuffix appends VERBATIM (bypassing classy's token dedupe) — for
   // the wrap_with-rendered frames whose class attribute carries duplicates
-  // (the board_act overlay's doubled _overlay, the graded row).
+  // (the board_act overlay's doubled _overlay).
   const classes =
     `${voo.classy(["card-slot", `${view}-view`, card.setKeys])}${rawClassSuffix !== "" ? ` ${rawClassSuffix}` : ""}`
       .split(" ")
@@ -1193,7 +1178,7 @@ function historySlotWrap(
 }
 
 /** Builder-style div: non-empty content is preceded by a literal newline
- *  (the Card::Bootstrap Builder add_content shape the capture pins:
+ *  (the Card::Bootstrap Builder add_content shape:
  *  `<div class="float-end">\n{diff}</div>`, `<div>\n{name}</div>`, and the
  *  empty `<div class="float-end"></div>`). */
 function builderDiv(content: string, klass?: string): string {
@@ -1208,22 +1193,15 @@ function historyIcon(name: string): string {
 
 /** Rails DateHelper#time_ago_in_words (distance_of_time_in_words from now,
  *  include_seconds: false): the buckets the history bytes carry. The
- *  capture NORMALIZES this phrase (wall-clock dependent -> TIME_AGO), so
- *  the bucket word list is shape-faithful, not byte-pinned.
+ *  bucket word list is shape-faithful (wall-clock dependent phrasing).
  *
  *  The "now" default is the ENGINE's clock seam (cardWallClockNow), not
- *  the process clock: Ruby reads Time.now at render time, and the capture
- *  harness freezes that instant (deck.json clock -> setCaptureWallClock).
- *  The *recent corpus oracle pins the real phrase ("less than a minute
- *  ago" - every fixture act's acted_at sits AT the frozen clock); a wall
- *  -clock default answered "21 days ago" there. Production is unchanged:
- *  unset, cardWallClockNow IS the real clock. */
+ *  the process clock: Ruby reads Time.now at render time, and the engine's
+ *  clock seam stands in as "now" so renders are deterministic.
+ *  Production is unchanged: unset, cardWallClockNow IS the real clock. */
 export function timeAgoInWords(from: Date, to: Date = cardWallClockNow()): string {
   // DELEGATED to the byte-exact Rails port (render/text-helpers.ts - the
-  // full date_helper.rb:95-165 bucket table, locale pluralization). This
-  // helper was a shape-faithful copy whose capture normalized the phrase;
-  // the creator_credit pins the REAL bytes ("about 1 year",
-  // fixtures/captured/board-views.json), so the shared port wins.
+  // full date_helper.rb:95-165 bucket table, locale pluralization).
   return sharedTimeAgoInWords(from, to);
 }
 
@@ -1268,8 +1246,8 @@ export function actSummaryBadge(reader: HistoryRenderReader, actions: HistoryAct
 }
 
 /** actions.rb:81-89 revert_actions_link - the "revert to this" bytes. The
- *  query params render in the alphabetical order Rails url_for emits
- *  (the capture pins the exact order and %5B%5D encodings). */
+ *  query params render in the alphabetical order Rails url_for emits, with
+ *  %5B%5D bracket encodings. */
 function revertActionsLink(ctx: ViewContext, actionIds: number[]): string {
   const url = ctx.fmt.urlKey();
   const revertParams = actionIds.map((id) => `revert_actions%5B%5D=${id}`).join("&amp;");
@@ -1314,9 +1292,9 @@ function relativeTitle(ctx: ViewContext, actCardName: string): string {
  *  _render_blank end`: for a governed card the raw view reads the RULE
  *  card's content and the raw_view assignment (differ.rb:69-74
  *  `card.db_content = ...`) is INERT - the synthesized sole-create value
- *  "" never reaches the bytes (Topic 001 rides Topic+*type+*structure; the
- *  corpus oracle pins the template verbatim inside the diffins block, and
- *  BOTH arms of an update diff render the template, whose blank diff is
+ *  "" never reaches the bytes (a governed card's raw view renders its
+ *  structure template, and BOTH arms of an update diff render the
+ *  template, whose blank diff is
  *  Ruby's own "<i>empty</i>"). Ungoverned cards keep the dbContent
  *  passthrough (RenderFormat.renderRaw on a shadow card). */
 function rawViewBytes(
@@ -1456,21 +1434,17 @@ function actionContentBytes(
   //   content_changes(action, view_type); return "<i>empty</i>" unless
   //   diff.present?` - present? is Rails String#present? (non-blank), so a
   // diff object whose rendered string is blank answers "<i>empty</i>" on
-  // BOTH view kinds. The corpus *recent oracle pins the summary arm
-  // (action 1032, an update whose content diff summary is blank ->
-  // <i>empty</i>); the expanded arm rides the same content_diff call.
+  // BOTH view kinds; the expanded arm rides the same content_diff call.
   // The PRE-WRAP FAMILIES evaluate the guard on the WRAPPED string: the
   // Abstract::Css and Abstract::Script format :html blocks (01_css.rb
   // :42-44, 00_script.rb:68-70 - actionDiffPrewrapped above) override
   // content_changes as `wrap_with(:pre) { super }`, so a blank diff answers
   // "<pre></pre>" - present! - and "<i>empty</i>" stays reachable only
   // through the new_content? false short-circuit (the guard never sees a
-  // blank string). Oracle: the Corpus Skin act's summaries on the *recent
-  // pages (action 1027 "<pre><ins>...</ins></pre>", the empty
-  // +*colors/+*variables creates "<pre></pre>", the Corpus Script create
-  // 1018 "<pre><ins>...</ins></pre>") against the RichText control
-  // (action 1032 "<i>empty</i>") and the SCSS update without a content
-  // change (action 994 "<i>empty</i>" - short-circuited).
+  // blank string): a css-family act's summary reads
+  // "<pre><ins>...</ins></pre>" (or "<pre></pre>" for an empty create),
+  // while an ungoverned update with a blank diff summary reads
+  // "<i>empty</i>".
   const rawDiff =
     dobj === undefined ? null : viewKind === "summary" ? dobj.summary : dobj.complete;
   const diff = actionDiffPrewrapped(ctx.fmt.card)
@@ -1506,8 +1480,7 @@ function fieldNameDiffObject(
 
 /** action_renderer.rb:96-108 name_changes: the action carries a name change
  *  -> Diff.complete(old_name, new_name); otherwise old_name - the last name
- *  value BEFORE this action, title-in-context - stands alone (the capture
- *  pins the content-update act showing the pre-action name verbatim). */
+ *  value BEFORE this action, title-in-context - stands alone. */
 function nameChangesBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1520,15 +1493,15 @@ function nameChangesBytes(
     return oldName === null ? "" : h(oldName);
   }
   const newName = titleInContext(ctx.fmt, String(value));
-  // the Diff output is html-safe (the capture pins the raw <ins>/<del>
-  // bytes); its :raw branch escapes the words themselves
+  // the Diff output is html-safe (raw <ins>/<del> bytes); its :raw branch
+  // escapes the words themselves
   return ContentDiff.complete(oldName, newName);
 }
 
 /** action_renderer.rb:84-88 content_diff - the DELETE raw branch stays the
  *  named remainder; every other action renders the nested :action_summary
  *  slot on the action's card (a subformat render - no nest_name in the
- *  slot JSON, the capture pins). */
+ *  slot JSON). */
 function nestedActionSummary(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1542,7 +1515,7 @@ function nestedActionSummary(
 
 /** action_renderer.rb:29-56 ActionRenderer#render - the container/row/ul/li
  *  bytes with the bs_panel heading/body. The leading "\n" is the Builder
- *  add_content separator the capture pins. actionListClass is the
+ *  add_content separator. actionListClass is the
  *  classy("action-list") value - board_act's class_up "action-list",
  *  "my-3" (history_board.rb:22) makes it "action-list my-3"; the default
  *  is the plain class every other caller renders. actCardName is the name
@@ -1553,11 +1526,9 @@ function nestedActionSummary(
  *  view :board_act (history_board.rb:24-25) call act_listing DIRECTLY on
  *  the view's format - and name_diff's compound branch
  *  relativizes against THAT card (action_renderer.rb:63-65
- *  `@action.card.name.from @format.card.name`). Oracle: the *recent pages
- *  render the Corpus Skin act's subcard actions as "+*colors" /
- *  "Cohort Welcome+*subject" as "+*subject" while the same items'
- *  self-acts keep the full name; the capture probe#act(child_act) pins
- *  the child's action relative to the PAGE card. */
+ *  `@action.card.name.from @format.card.name`): a subcard action's name
+ *  renders relative to the PAGE card (e.g. "+*colors"), while the same
+ *  item's self-acts keep the full name. */
 function actionRendererBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1621,8 +1592,7 @@ function actionFromContext(
     vooActionId !== undefined && vooActionId !== null ? String(vooActionId) : reader.params.actionId;
   if (param !== undefined && param !== "") {
     // Action.fetch (actions.rb:36): any loaded action resolves - the
-    // nested action_summary renders ids on OTHER cards of the act (the
-    // capture pins child/tag action ids under the probe's format). The
+    // nested action_summary renders ids on OTHER cards of the act. The
     // on-self restriction (selected.rb action_if_on_self) is a different
     // method this view does not call.
     return /^\d+$/.test(param) ? reader.actionById(Number(param)) : undefined;
@@ -1682,7 +1652,7 @@ function accordionItemBytes(args: {
 
 /** ActRenderer#header - the bs_layout row xs [8,4] (title+badge col, then
  *  the subtitle col). The leading "\n" is the Builder add_content
- *  separator the capture pins. */
+ *  separator. */
 function actHeaderInner(args: { title: string; badge: string; subtitle: string }): string {
   const col1 =
     `<div class="col-8">\n${args.title}` +
@@ -1693,8 +1663,8 @@ function actHeaderInner(args: { title: string; badge: string; subtitle: string }
 }
 
 /** relative_act_renderer.rb:22-34 act_links -> rollback_or_edit_link: the
- *  autosaved-draft edit link for draft acts (byte-shape per the gem, no
- *  capture pin), else the revert link when the act is NOT the card's
+ *  autosaved-draft edit link for draft acts (byte-shape per the gem), else
+ *  the revert link when the act is NOT the card's
  *  current act and the update gate passes. */
 function relativeActSubheader(
   ctx: ViewContext,
@@ -1762,8 +1732,8 @@ const historyView: ViewFn = (ctx) => {
   }
   // acts_layout (act_listing.rb:20-26): the legend row (draft_legend shown
   // - relative_history passes :show), then row(12) wrapping the act
-  // accordion (a BLOCK row - no column wrap; the capture pins it).
-  // surfaces-batch3: the row composition moved to actLegendRowBytes() —
+  // accordion (a BLOCK row - no column wrap). The row composition lives in
+  // actLegendRowBytes() —
   // the :act_legend view renders the SAME bytes (one composition, two
   // surfaces; byte-identical to this view's previous inline shape).
   const legendRow = actLegendRowBytes();
@@ -1780,7 +1750,7 @@ const historyView: ViewFn = (ctx) => {
 
 /** view :act (views.rb:11-13) - the single-revision view; act_listing with
  *  the ABSOLUTE renderer (params[:act_context] || :absolute). NO slot wrap
- *  (the view body is the accordion item alone - the capture pins it). */
+ *  (the view body is the accordion item alone). */
 const actView: ViewFn = (ctx) => {
   const reader = historyReader(ctx);
   const act = actFromContext(ctx, reader);
@@ -1796,8 +1766,8 @@ const actView: ViewFn = (ctx) => {
     headerInner,
     subheader: absoluteActLinks(actCard.name),
     // views.rb:15-17 view :act calls act_listing DIRECTLY on the VIEW's
-    // format (no act_list swap - the capture probe#act(child_act) pins the
-    // child action's name relative to the PAGE card)
+    // format (no act_list swap - the child action's name renders relative
+    // to the PAGE card)
     body: actDetailsBytes(ctx, reader, actions, ctx.fmt.card.name.s),
     collapseId: `act-id-${act.id}`,
   });
@@ -1807,17 +1777,11 @@ const actView: ViewFn = (ctx) => {
 // --- + the BoardActRenderer chain (lib/card/act/act_renderer/ ---------------
 // --- board_act_renderer.rb over the relative/base renderers) ----------------
 //
-// Oracle: fixtures/oracle-surfaces/card-mod-history.harness.jsonl (the
-// static-ruby capture tools/mod-porting-harness/ruby-oracles/
-// card-mod-history/board-act-view.rb - 8 scenarios; the title bytes are
-// CROSS-CHECKED in that script against the live capture
-// fixtures/captured/board-views.json's history-tab pill anchor). The
-// renderer-string bytes (title / overlay_title / details cap / opts /
-// breadcrumb / action-list class up) are oracle-pinned; the overlay FRAME
-// chrome (the d0-card-frame div + the overlay header/menu links) is
-// gem-source-derived rendered-unpinned - the same disclosed basis as
-// last_action_verb's allowed arm (no live capture renders ?view=board_act;
-// the harness's named live-deck limit). The frame machinery follows
+// The renderer-string bytes (title / overlay_title / details cap / opts /
+// breadcrumb / action-list class up) follow the Ruby renderer chain; the
+// overlay FRAME chrome (the d0-card-frame div + the overlay header/menu
+// links) is gem-source-derived (no live render path exists for
+// ?view=board_act). The frame machinery follows
 // card-mod-edit.ts's framedView composition minus the bootstrap
 // standard_frame class_ups (the overlay path calls with_frame directly, so
 // "card"/"card-header"/"card-body card-text" NEVER fire on it).
@@ -1838,8 +1802,8 @@ function actListingOptsFromParams(
 
 /** board_act_renderer.rb:11-13 left_title - the seq number, the actor NAME
  *  (plain, unlinked - unlike actor_and_ago's link), and the edited-ago
- *  phrase. Ruby's String#join does NOT escape; the oracle + the captured
- *  pill pin "Decko Bot" unescaped. */
+ *  phrase. Ruby's String#join does NOT escape, so the actor name renders
+ *  unescaped. */
 function boardLeftTitle(
   reader: HistoryRenderReader,
   act: HistoryActRow,
@@ -1852,14 +1816,12 @@ function boardLeftTitle(
   return boardLeftTitleFrom(actorName, editedAgo, actSeq);
 }
 
-/** board_act_renderer.rb:11-13's composition core - the oracle's
- *  time_ago_in_words stub makes the phrase an INPUT (frozen delta ->
- *  "1 day"); the live view computes it through the shared
- *  timeAgoInWords table above this call. */
+/** board_act_renderer.rb:11-13's composition core - the edited-ago phrase
+ *  is an INPUT here so the composition is testable; the live view computes
+ *  it through the shared timeAgoInWords table above this call. */
 function boardLeftTitleFrom(actorName: string, editedAgo: string, actSeq: string | undefined): string {
   // Ruby interpolates nil as "" — a param-less board_act render carries no
-  // act_seq and the left title reads "# Decko Bot" (the graded row), not
-  // "#undefined".
+  // act_seq and the left title reads "# <actor>" (not "#undefined").
   return `#${actSeq ?? ""} ${actorName} <small>${editedAgo}</small>`;
 }
 
@@ -1872,11 +1834,10 @@ function actIsDraft(reader: HistoryRenderReader, act: HistoryActRow): boolean {
 }
 
 /** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link
- *  draft arm's "continue editing" anchor. GEM-SOURCE-DERIVED RENDERED-
- *  UNPINNED (the path is {edit_draft: true}, add_class "navbar-link", the
+ *  draft arm's "continue editing" anchor (gem-source-derived: the path is
+ *  {edit_draft: true}, add_class "navbar-link", the
  *  link_to_view :edit slotterification lands only when a real edit link
-  * renders - the oracle's double and this body carry the same disclosed
-  * shape). */
+ *  renders). */
 function boardAutosavedDraftLink(ctx: ViewContext): string {
   return `<a class="navbar-link" href="/${h(ctx.fmt.urlKey())}?edit_draft=true">continue editing</a>`;
 }
@@ -1906,7 +1867,7 @@ function boardRollbackOrEditLink(
  *  (wrap_with :div block form, no class). The subtitle is the relative
  *  renderer's (:16-20) - "" unless the act is on another card, then
  *  `<small>act on #{relative_title}</small>` (unescaped, as Ruby renders
- *  it; the oracle pins "act on child"). */
+ *  it). */
 function boardOverlayTitle(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1926,13 +1887,12 @@ function boardOverlayTitle(
 }
 
 /** relative_act_renderer.rb:12-14 relative_title + :16-20 subtitle's
- *  composition core (the oracle replays it with the same two names). */
+ *  composition core. */
 function boardSubtitleFrom(actCardName: string, rootCardName: string): string {
   return `<small>act on ${DeckoName.parse(actCardName).from(rootCardName)}</small>`;
 }
 
-/** board_act_renderer.rb:35-41's composition core - the compact + join.
- *  The oracle replays the four pieces with its documented row doubles. */
+/** board_act_renderer.rb:35-41's composition core - the compact + join. */
 function boardOverlayTitleFrom(
   left: string,
   summary: string,
@@ -1956,8 +1916,8 @@ const OVERLAY_MENU_LINK_CLASS = "text-muted p-1 ms-1";
  *  class), the new-window card link (icon basket material: new_window ->
  *  close_fullscreen; link_to_card's known-card append lands after the
  *  menu-link class), and the close anchor (path "#", data-bs-dismiss
- *  overlay). GEM-SOURCE-DERIVED RENDERED-UNPINNED (the help text is the
- *  card's help rule - card-dependent, no live capture renders this menu). */
+ *  overlay). GEM-SOURCE-DERIVED (the help text is the
+ *  card's help rule - card-dependent). */
 function boardOverlayMenu(ctx: ViewContext): string {
   const { fmt } = ctx;
   const rawHelp = fmt.menuHelpContentBytes();
@@ -1981,7 +1941,7 @@ function boardOverlayMenu(ctx: ViewContext): string {
     // close_overlay_link (overlay.rb:56-58): overlay_menu_link :close,
     // path: "#", "data-bs-dismiss": "overlay" — the merged opts order puts
     // the close opts' data-bs-dismiss BEFORE the appended class, and the
-    // href last (the graded row's order).
+    // href last (the merged-opts order).
     `<a data-bs-dismiss="overlay" class="${OVERLAY_MENU_LINK_CLASS}" href="#">${historyIcon("close")}</a>`;
   return `<div class="overlay-menu">${helpLink}\n${newWindowLink}\n${closeLink}</div>`;
 }
@@ -2001,16 +1961,16 @@ const boardActView: ViewFn = (ctx) => {
   if (actCard === undefined) return ""; // BoardActRenderer#render: "" unless @act_card
   const actions = reader.actionsAffecting(act.id, reader.rootCardId!);
   // history_board.rb:22 class_up "action-list", "my-3" (single_use: the
-  // details' <ul classy> consumes it once - the oracle pins
-  // "action-list my-3" as the consumed value)
+  // details' <ul classy> consumes it once, so the class list reads
+  // "action-list my-3")
   const actionListClass = "action-list my-3";
   // :23 wrap_with_overlay title: ar.overlay_title, slot: breadcrumb_data("History")
   voo.hide("menu"); // wrapper :6 voo.hide! :menu
   voo.hide("help"); // with_frame's voo.hide :help
   // wrapper :4's class_up + overlay_framer's second class_up — BOTH append
   // to "card-slot", and the overlay frame renders through wrap_with
-  // (content_tag), whose class attribute carries duplicates verbatim (the
-  // graded row pins _overlay d0-card-overlay bg-body _overlay). The classy
+  // (content_tag), whose class attribute carries duplicates verbatim
+  // (_overlay d0-card-overlay bg-body _overlay). The classy
   // dedupe models Haml's class-attribute merge — these tokens ride the
   // historySlotWrap's rawClassSuffix, bypassing it.
   voo.classUp("d0-card-header", "bg-body"); // overlay_header :57
@@ -2054,14 +2014,14 @@ function boardActDetails(
   return actDetailsBytes(ctx, reader, actions, actCardName, actionListClass);
 }
 
-/** The board_act pieces' PROBE SURFACE - the composition cores the harness
- *  probe (tests/card/mod-loader/card-mod-history-harness-probe.test.ts)
- *  replays the static-ruby oracle against. The cores are the SAME functions
+/** The board_act pieces' TEST SEAM - the composition cores the test file
+ *  (tests/card/mod-loader/card-mod-history-harness-probe.test.ts)
+ *  exercises against the Ruby renderer chain. The cores are the SAME functions
  *  the view body calls (boardLeftTitleFrom / boardOverlayTitleFrom /
  *  boardSubtitleFrom / actListingOptsFromParams / actDetailsBytes'
- *  approved+slice selection) - the oracle's documented clock stub makes the
- *  edited-ago phrase an input, so the probe hands the oracle's frozen "1
- *  day" where the live view computes the shared timeAgoInWords table. */
+ *  approved+slice selection) - the edited-ago phrase is an input so tests
+ *  can fix the clock where the live view computes the shared timeAgoInWords
+ *  table. */
 export const boardProbeSurface = {
   /** act_listing.rb:29-32 with a params bag. */
   actListingOptsFromParams(
@@ -2096,8 +2056,7 @@ export const boardProbeSurface = {
     return DeckoName.parse(actCardName).from(rootCardName);
   },
   /** act_renderer.rb:54-58,91-94's SELECTION - the approved actions the
-   *  details render, capped at 21 (the oracle's AR(id) markers encode
-   *  exactly this id sequence). */
+   *  details render, capped at 21. */
   boardDetailSelectionForProbe(
     approvedActions: { id: number }[],
   ): number[] {
@@ -2111,7 +2070,7 @@ export const boardProbeSurface = {
     };
   },
   /** history_board.rb:22's class up - the classy("action-list") value the
-   *  details' <ul> consumes (the oracle pins the consumed string). */
+   *  details' <ul> consumes. */
   actionListClass(): string {
     return "action-list my-3";
   },
@@ -2137,11 +2096,8 @@ const actionSummaryView: ViewFn = (ctx) => {
  *  (actions.rb:46-48 read through actionContentBytes' toggleShown - expanded
  *  always shows the collapse anchor, pointing back at :action_summary) and
  *  the diff arm is the ContentDiff's COMPLETE form (the <del>/<ins> full
- *  diff, "<i>empty</i>" when no diff object). Oracle-pinned:
- *  fixtures/captured/history-views.json probe#action_expanded(update_action)
- *  (the expand_less toggle + the complete diff inside the standard history
- *  slot wrap). Ported by surfaces-batch2, 2026-09-30 - the header's "one
- *  viewKind argument away" note. */
+ *  diff, "<i>empty</i>" when no diff object): the expand_less toggle plus
+ *  the complete diff inside the standard history slot wrap. */
 const actionExpandedView: ViewFn = (ctx) => {
   const reader = historyReader(ctx);
   const action = actionFromContext(ctx, reader);
@@ -2168,23 +2124,21 @@ const actionExpandedView: ViewFn = (ctx) => {
  *  content_tag emits attributes in Rails 7.2 hash-insertion order
  *  (actionview-7.2.3.2 tag_helper.rb:261-265 each_pair, NO sort): the
  *  caller's class first, rel, href, data-remote last.
- *  RENDERED-UNPINNED for this arm: no oracle capture renders the ALLOWED
- *  body (the capture shards carry no render of the name) - the byte shape
- *  is gem-source-derived, the same disclosed basis as the account-form
- *  pins. Ported by surfaces-batch2, 2026-09-30.
+ *  GEM-SOURCE-DERIVED for this arm: the byte shape derives from the
+ *  helper chain above.
  *
- *  the role views port (2026-09-30) — TWO notes this body earned:
- *  1. The DENIED arm IS captured. The four notification templates'
- *  `{{_|last_action_verb}}` marks render on the notification's CONTEXT
- *  card, which the anonymous capture cannot read, so perms.rb:46-48 +
+ *  TWO notes this body carries:
+ *  1. The DENIED arm. A notification template's `{{_|last_action_verb}}`
+ *  marks render on the notification's CONTEXT card, which an anonymous
+ *  reader cannot read, so perms.rb:46-48 +
  *  error.rb:27-31 substitute the denial view BEFORE this body runs
- *  (`follower notification email+*html message` pins
+ *  (`follower notification email+*html message` renders
  *  `<span class="denied"><!-- Sorry, you don't have permission (read)
  *  --></span>` inside the template's own anchor). This body therefore
- *  serves the captured bytes only through the gate, never directly.
+ *  serves those bytes only through the gate, never directly.
  *  2. The FLAT HTML_VIEWS entry for this name points at card-mod-follow's
  *  notify variant instead (render/views.ts#lastActionVerbNotifyView): the
- *  loader-less graded surface installs no history seam, so the flat entry
+ *  loader-less surface installs no history seam, so the flat entry
  *  cannot carry THIS body (it would hit historyReader's engine-wiring
  *  assertion, whose error the nest rescue would print into the page).
  *  This registration stays the set-scoped one for the history surface,
@@ -2208,17 +2162,15 @@ const lastActionVerbView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// surfaces-batch3 (2026-09-30): the act_legend / last_action / change ladder
-// (views.rb:15-23 / :46-53 / :36-43). board_act stays the named remainder
-// (the board act renderer + overlay chain).
+// the act_legend / last_action / change ladder
+// (views.rb:15-23 / :46-53 / :36-43).
 // ---------------------------------------------------------------------------
 
 /** views.rb:15-23 view :act_legend — the bs_layout row:
  *  `bs_layout do row md: [12, 12], lg: [7, 5], class: "pb-3" do
  *  col action_legend; col content_legend, class: "text-end" end end`.
  *  The bs_layout DSL (card-mod-bootstrap set/all/bootstrap/wrapper.rb)
- *  expands to the exact bytes the LIVE ORACLE CAPTURE pins — the legend row
- *  inside probe#history (fixtures/captured/history-views.json): the row div
+ *  expands to: the row div
  *  carries the row class, col 1 "col-md-12 col-lg-7", col 2
  *  "col-md-12 col-lg-5 text-end", one newline between the containers. The
  *  legend halves are the ported helpers actionLegendHtml(true) +
@@ -2233,12 +2185,11 @@ function actLegendRowBytes(): string {
 }
 
 /** views.rb:15-23 view :act_legend — the legend row alone (see
- *  actLegendRowBytes for the composition + capture cite). The standalone
+ *  actLegendRowBytes for the composition). The standalone
  *  view output carries ONE leading newline ahead of the row div (the
- *  bs_layout DSL's part-join emission - the corpus oracle pins
- *  `{"html":"\n<div class=\"row pb-3\">...`); the :history composition
+ *  bs_layout DSL's part-join emission); the :history composition
  *  (acts_layout's `html _render_act_legend` part between the frame's own
- *  newlines) pins the row WITHOUT it, so the shared helper stays bare and
+ *  newlines) carries the row WITHOUT it, so the shared helper stays bare and
  *  only the view adds the seam. */
 const actLegendView: ViewFn = () => `\n${actLegendRowBytes()}`;
 
@@ -2250,11 +2201,10 @@ const actLegendView: ViewFn = () => `\n${actLegendRowBytes()}`;
  *  date_view = time_ago_in_words — no variant); card.acted_at is
  *  last.rb:1-2 `last_act.acted_at`. The actor nest renders :link — for a
  *  known actor the nest's link-view bytes carry the card-title span
- *  wrapper (links.rb known-card anchor; the corpus oracle pins
- *  `<span class="card-title" title="Decko Bot">Decko Bot</span>` inside
+ *  wrapper (links.rb known-card anchor:
+ *  `<span class="card-title" title="<name>"><name></span>` inside
  *  the anchor - a DIFFERENT shape from act_renderer's link_to_card
- *  subtitle anchor, which actorAndAgo emits bare and the :act header pins
- *  bare); the nil-card arm renders the bare id, last.rb:65-67
+ *  subtitle anchor, which actorAndAgo emits bare); the nil-card arm renders the bare id, last.rb:65-67
  *  last_actor = last_act.actor. */
 const lastActionView: ViewFn = (ctx) => {
   const reader = historyReader(ctx);
@@ -2287,7 +2237,7 @@ const changeView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   // Ruby's `voo.show :title_link` is the SETTER form (visibility.rb show! -
   // vizWrite, first write wins): it RECORDS, and the slot JSON's show list
-  // carries it (the corpus :change slot reads show:["change","title_link"],
+  // carries it (show:["change","title_link"],
   // hide:["menu"]). The query form (show?) decides the title arm below.
   voo.showViz("title_link");
   voo.hide("menu");
@@ -2300,7 +2250,7 @@ const changeView: ViewFn = (ctx) => {
   const lastAction = fmt.renderView("last_action");
   // output() compacts the array before the newline join (content.rb:73-77
   // Array.wrap(content).flatten.compact): the hidden menu and the headless
-  // empty :last_action render nothing - the corpus :change bytes end at the
+  // empty :last_action render nothing, so the output ends at the
   // title link, no trailing separator.
   return historySlotWrap(
     ctx,
@@ -2341,8 +2291,8 @@ const historyEventNotImplemented: ModEventFn = () => {};
 // its html :core is NOT a CQL search at all ("FIXME: this should not be a
 // CQL search card", self/recent.rb:9-12 sets cql_content to {}) - it is the
 // deck-wide recent-acts feed through acts_layout(:absolute). Served from
-// the render layer's SELF-Xrecent branch (views.ts) on the corpus grading
-// surface, which has no set-module dispatch.
+// the render layer's SELF-Xrecent branch (views.ts), which has no
+// set-module dispatch.
 // ---------------------------------------------------------------------------
 
 /** self/recent.rb:1 ACTS_PER_PAGE - the *recent core sets @acts_per_page
@@ -2394,15 +2344,13 @@ export async function recentActs(driver: SQLDatabaseDriver): Promise<HistoryActR
  *  acts_layout (act_listing.rb:18-27): the legend row, then row(12) with
  *  the act accordion (paging stays unported - act_listing.rb:25 is
  *  commented out in the gem). The leading blank lines are the bs_layout
- *  wrapper's bytes (the oracle core opens "\n\n<div class=\"row pb-3\">").
+ *  wrapper's bytes (the core output opens "\n\n<div class=\"row pb-3\">").
  *  Each item is the ABSOLUTE renderer (act_renderer.rb AbsoluteActRenderer
  *  < base): title = the act card's name, subtitle = actor_and_ago, the
  *  act_links subheader, the approved-actions details - the exact pieces
  *  view :act composes (actView above); clean_acts
  *  (act_listing.rb:59-63) drops acts whose primary card row is gone -
- *  the reader's cardInfo answers undefined for those. The corpus's
- *  capture clock freezes every acted_at AT the clock, so
- *  time_ago_in_words answers "less than a minute" on both sides. */
+ *  the reader's cardInfo answers undefined for those. */
 export function recentChangesCoreBytes(
   fmt: RenderFormat,
   reader: HistoryRenderReader,
@@ -2431,18 +2379,17 @@ export function recentChangesCoreBytes(
     );
   }
   const actRow = `<div class="row">\n<div class="accordion">${items.join("")}</div></div>`;
-  // The LEGEND: the *recent oracle bytes pin the THREE-icon action legend
-  // ("created | updated | deleted" - no draft arm) while the :act_legend
-  // harness capture (actLegendRowBytes, the :history surface) pins the
+  // The LEGEND: the *recent core renders the THREE-icon action legend
+  // ("created | updated | deleted" - no draft arm) while :act_legend
+  // (actLegendRowBytes, the :history surface) renders the
   // draft arm PRESENT. Ruby: action_legend (actions.rb:91-98) appends
   // _render_draft_legend `if voo.show?(:draft_legend)` - show? is the
   // DEFAULT-true !hide? (visibility.rb:23-25), so the arm's absence on
   // THIS render is the acts_layout render opt
   // (`_render_act_legend(draft_legend: :draft_legend)`,
   // act_listing.rb:21) landing the opt in the voo where the general
-  // viz-normalization path does not show it. The committed oracle bytes
-  // decide the adjudication either way; the :history surface keeps its
-  // own pinned bytes (actLegendRowBytes stays showDraftLegend=true).
+  // viz-normalization path does not show it. The :history surface keeps
+  // its own bytes (actLegendRowBytes stays showDraftLegend=true).
   const legendRow =
     `<div class="row pb-3">\n<div class="col-md-12 col-lg-7">\n${actionLegendHtml(false)}</div>` +
     `\n<div class="col-md-12 col-lg-5 text-end">\n${contentLegendHtml()}</div></div>`;
@@ -2586,9 +2533,9 @@ const cardModHistory: DeckoModManifest = {
       // views: :draft_legend (headless) plus the seam-backed views
       // (:history / :act / :action_summary / :action_expanded /
       // :last_action_verb / :act_legend / :last_action / :change — the
-      // render-time query seam, src/card/history/render-seam.ts;
-      // surfaces-batch3 added the ladder trio). board_act is ported on the
-      // all/history_board set below (the mod-porting the first porting wave).
+      // render-time query seam, src/card/history/render-seam.ts).
+      // board_act is ported on the
+      // all/history_board set below.
       setPath: "all/history/views",
       formats: {
         html: {
@@ -2608,13 +2555,11 @@ const cardModHistory: DeckoModManifest = {
     },
     {
       // card-mod-history-0.20.0/set/all/history_board.rb - the board
-      // views. :board_act IS ported (the mod-porting the first porting wave
-      // 2026-10-03; the BoardActRenderer chain + the overlay frame, with
-      // the oracle pieces pinned by the harness capture and the frame
-      // chrome gem-source-derived rendered-unpinned - see the view's
+      // views. :board_act IS ported (the BoardActRenderer chain + the
+      // overlay frame; the renderer-string bytes follow the Ruby chain and
+      // the frame chrome is gem-source-derived - see the view's
       // comment). :creator_credit and :updated_by are ported in the FLAT
-      // registry (src/card/render/views.ts, the same level the first mod batch
-      // used for creator_credit).
+      // registry (src/card/render/views.ts).
       setPath: "all/history_board",
       formats: {
         html: {
