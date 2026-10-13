@@ -1722,7 +1722,7 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 //   /files/103/0000000004-small.jpg  (favicon)
 // Both return 200 image/jpeg on the Spaces host; SPACES_HOST is the .cdn.
 // host form the served pages actually name.
-const SITE_TITLE_DEFAULT = "Culturesmith";
+const SITE_TITLE_DEFAULT = "Example Site";
 let siteTitleLoaded = null;
 async function ensureBootValues() {
   if (siteTitleLoaded !== null) return siteTitleLoaded;
@@ -2176,7 +2176,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
     `<script src="${escapeHtml(jsUrl)}"></script>\n` +
     `<script>\n` +
     `//<![CDATA[\n` +
-    `decko.rootUrl='https://culturesmith.com/';\n` +
+    `decko.rootUrl='https://example.org/';\n` +
     `decko.doubleClick='signed_in';\n` +
     `decko.cssPath='${escapeHtml(cssUrl)}';\n` +
     `decko.signed_in=false;\n` +

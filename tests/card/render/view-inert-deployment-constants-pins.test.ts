@@ -91,7 +91,7 @@ describe("view-inert preset: the live preset type CAN express five-without-the-s
       mainStylesheetRevisionDigits: "0000000001",
       footerDeckoVersion: "0.19.1",
       recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
-      deckoRootUrl: "https://culturesmith.com/",
+      deckoRootUrl: "https://example.org/",
     };
     expect(Object.hasOwn(handBuiltFive, "defaultHtmlViewNest")).toBe(false);
     setDeploymentFollowLiveConfig(handBuiltFive);
@@ -174,7 +174,7 @@ describe("view-inert preset: the FIVE constants still arm", () => {
     setDeploymentFollowLiveConfig(VIEW_INERT_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
-    expect(deckoRootUrl()).toBe("https://culturesmith.com/");
+    expect(deckoRootUrl()).toBe("https://example.org/");
   });
 
   it("the 4-entry SRI map, one per remote CDN script src", () => {

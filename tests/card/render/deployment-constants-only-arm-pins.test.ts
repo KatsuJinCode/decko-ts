@@ -108,7 +108,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
     expect(LIVE_DEPLOYMENT_CONSTANTS.recaptchaSiteKey).toBe(
       "6LSYNTHETICLIVEKEY00000000000000000000AA",
     );
-    expect(LIVE_DEPLOYMENT_CONSTANTS.deckoRootUrl).toBe("https://culturesmith.com/");
+    expect(LIVE_DEPLOYMENT_CONSTANTS.deckoRootUrl).toBe("https://example.org/");
     expect(LIVE_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBe("content");
     // the 4-entry SRI map, one per remote CDN script src
     expect(Object.keys(LIVE_DEPLOYMENT_CONSTANTS.scriptIntegrityBySrc ?? {})).toEqual([
@@ -145,7 +145,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
-    expect(deckoRootUrl()).toBe("https://culturesmith.com/");
+    expect(deckoRootUrl()).toBe("https://example.org/");
     expect(deploymentDefaultHtmlViewNest()).toBe("content");
   });
 });
