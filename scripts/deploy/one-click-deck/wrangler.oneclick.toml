@@ -16,6 +16,10 @@
 
 name = "decko-one-click-demo"
 main = "../../../deploy/worker.ts"
+# 2026-08-01, the date the repository-root and deploy/ wrangler.toml files
+# pin, and for the reason recorded in the root one: a newer date can change
+# Workers runtime behaviour, and this port's acceptance criterion is
+# byte-for-byte parity with the Ruby oracle. One engine, one runtime date.
 compatibility_date = "2026-08-01"
 
 [alias]
