@@ -19,9 +19,11 @@
 # printed by `npx wrangler d1 create decko-ts`. No infrastructure id from any
 # existing deployment ships in this file.
 #
-# NO SECRETS LIVE IN THIS FILE, and the deploy needs none: the Worker reads
-# exactly one thing from `env`, the D1 binding. There is no [vars] secret, no
-# .dev.vars, no token — so a fork of this repo carries nothing sensitive.
+# NO SECRETS LIVE IN THIS FILE, and the deploy needs none: the only BINDING the
+# Worker reads from `env` is the D1 one below. There is no [vars] secret, no
+# .dev.vars, no token — so a fork of this repo carries nothing sensitive. The
+# two [vars] further down are plain non-secret flags, and a deploy from the
+# button sets neither.
 #
 # For local dev / preview with miniflare (no account, no deploy):
 #   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
@@ -125,9 +127,14 @@ migrations_dir = "deploy/migrations"
 #
 #   DECKO_WRITE_PATH = "1"
 #       Sign-in (GET /_signin plus the POST /update/*signin) and card
-#       create/update/delete. Sign-in rides this same flag because signing in
-#       mints a session row in D1. With it unset, every non-GET/HEAD verb
-#       answers 403 and the engine is never called.
+#       create/update/delete. Signing in mints a session row in D1, which is
+#       not a card write, so the flag does NOT gate it: with DECKO_WRITE_PATH
+#       unset a POST /update/*signin still dispatches and still records that
+#       row. What the unset flag does gate is every card write — create,
+#       update and delete — and the /_signin page; those answer 403 and no card
+#       row is written. "Read-only" means NO CARD WRITES, not that the engine
+#       is never called. src/server/cloudflare-write-routes.ts states this
+#       posture at the top of the file and pins it.
 #
 #   DECKO_FIRST_RUN = "1"
 #       The first-run window at /setup: GET renders the create-owner form,

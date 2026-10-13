@@ -120,8 +120,10 @@ takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
    address. Open it and you are in the deck.
 
 Nothing above needs a Cloudflare API token typed into the repo. There are no
-secrets in `wrangler.toml` — the deployed Worker reads exactly one thing from
-its environment, the D1 binding.
+secrets in `wrangler.toml`: the only *binding* the deployed Worker reads from
+its environment is the D1 one. It also reads the two plain `[vars]` flags
+described next (`DECKO_WRITE_PATH` and `DECKO_FIRST_RUN`), which are not
+secrets and which a deploy from the button leaves unset.
 
 ### What you get: a browse-only demo deck
 

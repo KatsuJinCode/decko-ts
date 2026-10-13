@@ -185,8 +185,10 @@ deck" ([coverage-inventory.md](coverage-inventory.md)).
 **Accepted, and the claim was narrowed to what the button actually does.**
 [coverage-inventory.md](coverage-inventory.md) records it as **not verified**:
 "the button deploys one Worker and one D1 database, applies the migrations and
-ships a read-only four-card demo; every write verb answers `403`. No KV, no R2,
-no queues, no secrets in `wrangler.toml`." The README's own "Deploy to
+ships a read-only four-card demo: every card write answers `403`, and
+`POST /update/*signin` is the one verb that still dispatches while the write
+path is unset, because a session row is not a card write. No KV, no R2, no
+queues, no secrets in `wrangler.toml`." The README's own "Deploy to
 Cloudflare" section describes the same five steps and then labels the result
 "What you get: a browse-only demo deck" with the four cards enumerated.
 
