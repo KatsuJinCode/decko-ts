@@ -354,7 +354,7 @@ const imageHtmlContentChangesView: ViewFn = (ctx) => {
   // surface - the headless port emits the structural pair from the
   // card's current :core bytes: a blank core renders "", otherwise the
   // core appears twice, once standing in for each side of the pair.
-  const core = ctx.fmt.renderView("core");
+  const core = str(ctx.fmt.renderView("core"));
   if (core === "") return "";
   return core + core;
 };

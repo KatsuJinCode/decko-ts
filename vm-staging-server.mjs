@@ -757,16 +757,8 @@ async function handleAccountFlowLink(flow) {
   if (flow.trigger === "reset_password") {
     const outcome = await confirmPasswordReset(accountFlowCtx(), flow.accountMark, flow.token);
     if (outcome.ok) {
-      // Ruby's success redirect for `success << {id: name, view: :edit}`
-      // (account-verify-reset-flows events.rb:102): the card's EDIT ACTION
-      // path (/Mira_Member+*account/edit), not the ?view= query form — the
-      // recorded oracle journey pins the /edit address on the reset link
-      // page.
-      const target = `/${encodeURIComponent(
-        outcome.redirectTo.name.replace(/ /g, "_"),
-      )}/edit`;
       return withSessionCookie(
-        { status: 302, headers: { Location: target, "Cache-Control": "no-store" }, body: "" },
+        redirect(outcome.redirectTo.name, outcome.redirectTo.view),
         outcome.session.token,
       );
     }
