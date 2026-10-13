@@ -152,7 +152,7 @@ function textMessage(over: Partial<MailMessage> = {}): MailMessage {
   return {
     to: "jane@example.net",
     from: "Decko Bot",
-    subject: "reset password for Culturesmith",
+    subject: "reset password for Example Site",
     textBody: "Hello Jane,\n\nUse this link to reset your password.\n",
     tags: { trigger: "password_reset" },
     ...over,
@@ -239,7 +239,7 @@ describe("SmtpTransport wire conversation", () => {
     expect(names).toEqual(["Date", "From", "To", "Message-ID", "Subject", "MIME-Version", "Content-Type", "Content-Transfer-Encoding"]);
     expect(headerBlock).toContain('From: "Decko Bot" <no-reply@deck.example>');
     expect(headerBlock).toContain("To: jane@example.net");
-    expect(headerBlock).toContain("Subject: reset password for Culturesmith");
+    expect(headerBlock).toContain("Subject: reset password for Example Site");
     expect(headerBlock).toContain("Content-Type: text/plain; charset=utf-8");
     // Message-ID references the envelope domain.
     expect(headerBlock).toMatch(/Message-ID: <[^@]+@deck.example>/);
