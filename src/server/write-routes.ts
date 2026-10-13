@@ -1698,13 +1698,11 @@ async function dispatchWriteRequest(
         });
       }
       // signout_upon_delete (card-mod-account set/right/account/events.rb
-      // :49-51, :integrate, when: current_account?): closing your own
-      // account signs you out. Ruby's event body names a constant that does
-      // not exist (Card::Set::Right::Self::Signin); the integrate stage
-      // rescues the NameError into the act (card.rb:163-171) and the closed
-      // account stays signed in for the rest of the session. The port
-      // matches that stored outcome: no session is revoked here, and the
-      // delete response carries no Set-Cookie.
+      // :49-51, :integrate, when: current_account?): the intent is to sign
+      // the session out when its own account is closed. The recorded
+      // outcome is that the session survives the close, so that is what
+      // the port does: no session is revoked here, and the delete
+      // response carries no Set-Cookie.
       result = await engine.deleteCard({
         cardId: existing.id,
         // params[:recaptcha_token] — the event :recaptcha input rides every

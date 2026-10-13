@@ -1237,12 +1237,8 @@ export class CardActionEngine {
   /** Renaming an account holder is refused before anything is written unless
    *  the actor is the account itself or a member of Help Desk.
    *
-   *  Upstream's guard on this path grants a broader allowance and exempts a
-   *  system actor outright. This port implements the check's evident intent
-   *  instead, so an administrator who is not in Help Desk is refused too.
-   *  Approved divergence 5 in docs/SECURITY.md records the difference, and
-   *  the upstream file, line and mechanism behind it are withheld there
-   *  until a private disclosure channel exists. */
+   *  A deliberate difference from Ruby 0.20, recorded in
+   *  docs/SECURITY.md. */
   private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
     const accountId = await this.fetch.codenames.id("account");
     if (accountId === undefined) return;
@@ -1251,9 +1247,8 @@ export class CardActionEngine {
       [cardId, accountId],
     );
     if (r.rows.length === 0) return; // not an account holder
-    // No blanket allow arm here, unlike upstream: an administrator who is
-    // not in Help Desk may not rename another account (approved divergence 5,
-    // docs/SECURITY.md).
+    // No blanket allow arm: an administrator who is not in Help Desk may not
+    // rename another account (docs/SECURITY.md).
     const state = await this.writePermissionState();
     if (this.actor !== null && this.actor.id === cardId) return; // own account
     const helpDesk = await this.fetch.codenames.id("help_desk");
@@ -2185,10 +2180,10 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
-    // validate_account_holder_name_change (card-mod-account
-    // set/abstract/account_holder.rb:1-5): renaming a card that has an
-    // account needs an account manager — the account itself, or a Help
-    // Desk member (account_manager?).
+    // Renaming a card that carries an account needs an account manager —
+    // the account itself, or a Help Desk member. This guard is stricter
+    // than Ruby 0.20; the difference is a deliberate one, recorded in
+    // docs/SECURITY.md.
     if (input.name !== undefined) {
       const current = (await this.fetch.fetchById(row.id))?.name?.key;
       if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);
