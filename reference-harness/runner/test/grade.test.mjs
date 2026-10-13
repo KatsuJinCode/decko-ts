@@ -253,6 +253,43 @@ describe("fixture identity binds the results to the graded fixture", () => {
     assert.equal(grade(dir).verdict, "invalid");
   });
 
+  // A committed deck is in WAL mode, so ANY sqlite handle on it — a
+  // read-only one included — leaves -shm/-wal beside it, and the first
+  // person to browse a committed deck before running the harness used to be
+  // handed "NOT A GRADE". Residue is not fixture content; an UNCHECKPOINTED
+  // journal is, because the main file is behind it.
+  it("journal sidecars a reader left beside the deck do not stop a grade", () => {
+    const t = scratch();
+    try {
+      const c = makeCapturedFixture(t.dir);
+      const actual = path.join(t.dir, "actual");
+      assert.equal(runFake(c.fixture, actual).status, 0);
+      const deck = path.join(c.fixture, "deck", "deck.sqlite3");
+      writeFileSync(`${deck}-wal`, Buffer.alloc(0));
+      writeFileSync(`${deck}-shm`, Buffer.alloc(32768));
+      const report = gradeRun({ fixture: c.fixture, actual });
+      assert.equal(report.verdict, "pass");
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("an uncheckpointed journal beside the deck is not a grade", () => {
+    const t = scratch();
+    try {
+      const c = makeCapturedFixture(t.dir);
+      const actual = path.join(t.dir, "actual");
+      assert.equal(runFake(c.fixture, actual).status, 0);
+      const deck = path.join(c.fixture, "deck", "deck.sqlite3");
+      writeFileSync(`${deck}-wal`, Buffer.alloc(512, 1));
+      const report = gradeRun({ fixture: c.fixture, actual });
+      assert.equal(report.verdict, "invalid");
+      assert.ok(report.problems.some((p) => p.includes("uncheckpointed journal")));
+    } finally {
+      t.cleanup();
+    }
+  });
+
   it("expected outputs captured on another fixture digest are not a grade", () => {
     const t = scratch();
     try {
