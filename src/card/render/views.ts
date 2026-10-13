@@ -360,8 +360,8 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // `title&.html_safe` arm, the link chunk's always-set title opt,
   // chunk/link.rb:31-33) or derived (standardTitle's h()'d name), carries
   // ONLY the quote escape; the explicit arm's markup brackets stay RAW.
-  // Oracle: a sample employer's position wanted-link span renders
-  // `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=bar&quot;>..."`
+  // Oracle: a dated card's wanted-link span renders
+  // `title="<a href=&quot;/<date>+<set>+<setting>+<n>?view=bar&quot;>..."`
   // (Ruby probe tmp/perm/ruby-link-probe.rb, link_census) and the
   // sample organisation anchor renders `title="...Fringe &amp; Benefit..."`
   // verbatim-single-escaped from the stored name bytes. The previous
@@ -4162,10 +4162,10 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // divs and every earlier item. The item subformat is never focal
   // (depth >= 1, subformat.rb:41-43), so the rescue is always the quiet
   // span (error.rb:65-73), labelled with the ITEM view (error.rb:80-86).
-  // Corpus bytes: HDW CM 20131229 0264+tags `titled;item:taglink` —
+  // Corpus bytes: a dated card's +tags nest, `titled;item:taglink` —
   // item 1 read-denied (the quiet denial span, unchanged), item 2
   // `<div class="pointer-item item-taglink"><span class="render-error
-  // alert alert-danger">view (taglink) not supported for CM</span></div>`
+  // alert alert-danger">view (taglink) not supported for <that type></span></div>`
   // inside `<div class="card-list card-list-taglink pointer-list">`.
   // UnsupportedViewError keeps its own message in the span
   // (quietRenderError; error.rb:52-54) — the capture's exact bytes.
