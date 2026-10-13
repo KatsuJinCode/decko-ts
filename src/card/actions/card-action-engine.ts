@@ -3318,12 +3318,45 @@ export class CardActionEngine {
     // SET trash; tools/persistence/revert-trace.rb) — the row flips with NO
     // action and NO change rows. The port writes the row directly.
     const revivals: { row: CardsRow; rev: Revision }[] = [];
+    // Another card this revert RENAMES back. Ruby's rollback_actions builds
+    // one subcard hash carrying both `name` and `trash`, so one nested save
+    // assigns both (process_subcards -> subcard(name).name= / .trash=,
+    // subcards.rb); the port writes the revival row first and then renames
+    // it as a subcard, which lands the same row values (updated_at is the
+    // same stamp either way).
+    const renames: number[] = [];
     for (const { row: other, rev } of others.values()) {
+      const otherName = await this.composedNameOf(other);
+      // A revision that renames the other card back. Ruby assigns the whole
+      // revision in ONE nested save (process_subcards -> subcard(name).name=,
+      // subcards.rb), so `name` and `trash` land together; the revival arm
+      // below only sees the trash half and the rename rides the subcard
+      // hash. Reading this revision as a plain revival would leave the card
+      // under its post-rename name — the shape the persistence probe's step
+      // 67 caught.
+      const renamesCard =
+        otherName !== undefined &&
+        ((rev.name !== undefined && rev.name !== otherName.s) ||
+          (rev.left_id !== undefined && rev.left_id !== other.left_id) ||
+          (rev.right_id !== undefined && rev.right_id !== other.right_id));
+      if (renamesCard) {
+        if (other.trash === 1) {
+          // The trash half of the revision. Ruby applies it in the same save
+          // as the rename (one subcard hash, both keys); the port writes the
+          // row here and lets the subcard save carry the name.
+          await driver.query("UPDATE cards SET trash = 0, updated_at = ? WHERE id = ?", [
+            sqlDateTime(this.clock()),
+            other.id,
+          ]);
+        }
+        subcards[otherName.s] = { name: rev.name ?? otherName.s };
+        renames.push(other.id);
+        continue;
+      }
       if (rev.trash === false && other.trash === 1) {
         revivals.push({ row: other, rev });
         continue;
       }
-      const otherName = await this.composedNameOf(other);
       // A revision that trashes the other card (revision_before_action of
       // its create: { trash: true }) becomes a trashing subcard, a :delete
       // action under this card's action, as in Ruby. An already trashed
@@ -3332,20 +3365,10 @@ export class CardActionEngine {
         if (other.trash === 0) subcards[otherName.s] = { trash: true };
         continue;
       }
-      // Renaming another card back: Ruby's request raises "stage finalize
-      // was skipped" after storing the reverted rows without history (a
-      // Ruby defect, recorded in the persistence report); the port refuses
-      // it before writing anything.
-      const unsupported =
-        otherName === undefined ||
-        other.trash === 1 ||
-        (rev.name !== undefined && rev.name !== other.name) ||
-        (rev.left_id !== undefined && rev.left_id !== other.left_id) ||
-        (rev.right_id !== undefined && rev.right_id !== other.right_id);
-      if (unsupported) {
+      if (otherName === undefined || other.trash === 1) {
         throw new CardActionError(
           "revert-unsupported",
-          `reverting another card's rename or trash state in the same request is not supported (card ${other.id})`,
+          `reverting another card's trash state with further changes is not supported (card ${other.id})`,
         );
       }
       subcards[otherName.s] = {
