@@ -2407,8 +2407,8 @@ export class RenderFormat {
     // IS in the warm map). The pre-fix shape also silently papered over the
     // census page-22 defect that the virtualLeftTypeName line exists to fix.
     //
-    // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
-    // TYPE_PLUS_RIGHT-rich_text-aikido, and
+    // ORACLE PINS — Soma+tic+fieldwork nested from Soma+tags (a List) reads
+    // TYPE_PLUS_RIGHT-rich_text-fieldwork, and
     // Ellery+Retreats+Shoreline+20180623_0728 reads
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
@@ -3189,7 +3189,7 @@ export class RenderFormat {
     // RESOLVED card's name while the label/title keep the authored link
     // text. Oracle corpus scan: every case-differing known-card anchor
     // hrefs the real name in both directions ([[narrative]] -> /Narrative,
-    // [[Aikido]] -> /aikido for a lowercase-stored card) - census
+    // [[Fieldwork]] -> /fieldwork for a lowercase-stored card) - census
     // token-swap singleton, page 685 (exp href /Narrative).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
@@ -3534,7 +3534,7 @@ export class RenderFormat {
     // carries a nest. A layout body with a nest INSIDE a link label
     // therefore rendered as literal `[[/ |` + nest + `]]` in the port.
     // Oracle witness (sha-verified corpus + expected-v2, entry-scoped):
-    // layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
+    // layout card 2347 `Sample Card 027`
     // `<div>[[/ |{{HBQ logo - admin area}}]]</div>` on page 1316 and
     // layout 2339 on page 2333; the oracle emits
     // `<a class="internal-link" href="/">` + rendered nest + `</a>`.
@@ -3549,7 +3549,7 @@ export class RenderFormat {
    *  (`title.from(*context_names)` - DeckoName#from strips the leading
    *  parts the context supplies and round-trip-verifies the compression),
    *  HTML-escaped (the html-format override h()s the result). In the page's
-   *  own context a junction slot ("Aikido 2+management" under the Aikido 2
+   *  own context a junction slot ("Fieldwork 2+management" under the Fieldwork 2
    *  page) displays as the relative "+management"; the same card rendered
    *  out of context keeps the full name.
    *
