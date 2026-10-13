@@ -62,14 +62,14 @@ describe("the account_dropdown composer bytes (the views' shared builder)", () =
   const KNOWN = { actor: true, accountSettings: true, signin: true };
 
   it("myCardDropdownInnerHtml is the raw btn-group (no navbar <li>)", () => {
-    const dropdown = myCardDropdownInnerHtml("Decko Bot 1", KNOWN, []);
+    const dropdown = myCardDropdownInnerHtml("Decko Bot", KNOWN, []);
     expect(dropdown.startsWith('<div class="btn-group">')).toBe(true);
     expect(dropdown.endsWith("</ul></div>")).toBe(true);
     expect(dropdown).toContain(
-      '<a id="my-card-link" class="nav-link my-card known-card" href="/Decko_Bot_1">Decko Bot 1</a>',
+      '<a id="my-card-link" class="nav-link my-card known-card" href="/Decko_Bot">Decko Bot</a>',
     );
     expect(dropdown).toContain(
-      '<li><a class="dropdown-item known-card" href="/Decko_Bot_1+*account_settings">Account</a></li>',
+      '<li><a class="dropdown-item known-card" href="/Decko_Bot+*account_settings">Account</a></li>',
     );
     expect(dropdown).toContain(
       '<li><a class="dropdown-item known-card" href="/delete/*signin">Sign out</a></li>',
@@ -79,8 +79,8 @@ describe("the account_dropdown composer bytes (the views' shared builder)", () =
   });
 
   it("signedInAccountLinksInnerHtml wraps the SAME dropdown in the navbar <li>", () => {
-    const inner = signedInAccountLinksInnerHtml("Decko Bot 1", KNOWN);
-    const dropdown = myCardDropdownInnerHtml("Decko Bot 1", KNOWN, []);
+    const inner = signedInAccountLinksInnerHtml("Decko Bot", KNOWN);
+    const dropdown = myCardDropdownInnerHtml("Decko Bot", KNOWN, []);
     // the li-wrapped my-card block is exactly <li class="nav-item"> + dropdown + </li>
     expect(inner).toContain(`<li class="nav-item">${dropdown}</li>`);
     // and the refactor changed nothing about the golden bytes

@@ -338,7 +338,7 @@ export function accountLinksCoreHtml(ctx: ViewContext): string {
  *  - the Account item's mark is [Auth.current, :account_settings]
  *    (account_dropdown.rb:21) — Card::Name[[a, :sym]] composes the junction
  *    with the codename-resolved setting name (name.rb:77 Codename.name!);
- *    its href is the NAME path form ("/Decko_Bot_1+*account_settings").
+ *    its href is the NAME path form ("/<account>+*account_settings").
  *  - sign_out (account_links.rb view :sign_out + the Account dropdown item):
  *    link_to_card :signin, "Sign out", path: {action: :delete} — the
  *    "/delete/*signin" action path.

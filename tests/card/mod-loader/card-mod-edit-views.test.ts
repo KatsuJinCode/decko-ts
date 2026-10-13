@@ -238,7 +238,7 @@ beforeAll(async () => {
   // ---- the shared edit-surface world (mirrors card-mod-edit-forms.test.ts)
   // The bot card's name matches the recorded fixtures ("Decko Bot" - the
   // creator_credit/act-pill bytes carry that name; the alternate
-  // "Decko Bot 1" spelling is the edit-forms harness's).
+  // the signed-in account spelling is the edit-forms harness's).
   await seedCard(s, { id: 2, name: "RichText", typeId: 9 });
   await seedCard(s, { id: 7, name: "Editor" });
   await seedCard(s, { id: 8, name: "*type", codename: "type", typeId: 14 });

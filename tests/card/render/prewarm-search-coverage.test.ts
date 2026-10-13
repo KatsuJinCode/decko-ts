@@ -6,7 +6,7 @@
 // peekNameForId(typeId) + render.ts:1258 + render.ts:1131). The original
 // discovery gate read the type card's NAME ("Search") instead of its
 // codename ("search_type"); a deck whose search-type cards carry a
-// random-named type card (codename=search_type, name=qnzkqz) made the old
+// random-named type card (codename=search_type, name=ztpmqk) made the old
 // discovery skip every card → searches=0 → closureWarm returned false
 // for every search-type rule card after prewarm → warm renders paid cold
 // closures.
@@ -50,7 +50,7 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
   // ----- the discovery gate itself ---------------------------------------
 
   it("discovers Search-type cards by codename 'search_type', not by name 'Search' (corpus-shaped fixture)", async () => {
-    // Prewarm fix: the type card's NAME is "qnzkqz" (NOT "Search") —
+    // Prewarm fix: the type card's NAME is "ztpmqk" (NOT "Search") —
     // a deck whose search type card is not literally named "Search";
     // the codename is "search_type".
     // The fix discovers this card via peekNameForId(typeId) which reads
@@ -59,9 +59,9 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      // The search type card: random name "qnzkqz",
+      // The search type card: random name "ztpmqk",
       // codename "search_type".
-      await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
+      await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
       // A pair of search-type cards, both with malformed content (the
       // prewarm's try/catch will catch runSearch throws here).
       const failing: PrewarmFailingSeed[] = [
@@ -107,7 +107,7 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
+      await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
       const failing: PrewarmFailingSeed[] = [
         { id: 20, name: "search a", dbContent: "", key: "search_a" },
         { id: 21, name: "search b", dbContent: "x", key: "search_b" },
@@ -150,7 +150,7 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
+      await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
       await seedCard(storage, {
         id: 50,
         name: "search untreated",

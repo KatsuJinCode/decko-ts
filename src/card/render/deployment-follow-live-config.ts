@@ -95,7 +95,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
       "sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==",
   },
   mainStylesheetRevisionDigits: "0000000001",
-  footerDeckoVersion: "0.19.1",
+  footerDeckoVersion: "0.0.0-synthetic",
   recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
   deckoRootUrl: "https://example.org/",
   defaultHtmlViewNest: "content",

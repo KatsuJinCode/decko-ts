@@ -60,44 +60,44 @@ beforeAll(async () => {
   });
 
   // ---- deck A: the SUFFIXED shapes (the existence gap itself) ---------------
-  // "journal skin" + its customized sibling, stored in lowercase.
+  // "meridian skin" + its customized sibling, stored in lowercase.
   await seedCard(s, {
     id: 1100,
-    name: "journal skin",
+    name: "meridian skin",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "journal scss",
   });
   await seedCard(s, {
     id: 1101,
-    name: "journal skin customized",
+    name: "meridian skin customized",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "journal scss v2",
   });
-  // "slate skin" + its customized sibling.
+  // "quartz skin" + its customized sibling.
   await seedCard(s, {
     id: 1102,
-    name: "slate skin",
+    name: "quartz skin",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "slate scss",
   });
   await seedCard(s, {
     id: 1103,
-    name: "slate skin customized",
+    name: "quartz skin customized",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "slate scss v2",
   });
-  // "litera skin" + its customized sibling. No rendered body exists for
+  // "cobalt skin" + its customized sibling. No rendered body exists for
   // this skin, so the port's answer here is pinned from the rule rather
   // than against bytes.
   await seedCard(s, {
     id: 1104,
-    name: "litera skin",
+    name: "cobalt skin",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "litera scss",
   });
   await seedCard(s, {
     id: 1105,
-    name: "litera skin customized",
+    name: "cobalt skin customized",
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "litera scss v2",
   });
@@ -207,19 +207,19 @@ describe("Card.exist? drives new_customized_name (card-mod-bootstrap)", () => {
   // The page-scoped map gate answered "free" for all of these before the
   // existence query landed.
   // -------------------------------------------------------------------------
-  it("suffixes the journal skin whose customized card exists", async () => {
-    const html = await renderCustomizeButton("journal skin");
-    expect(proposedName(html)).toBe("journal skin customized 1");
+  it("suffixes the meridian skin whose customized card exists", async () => {
+    const html = await renderCustomizeButton("meridian skin");
+    expect(proposedName(html)).toBe("meridian skin customized 1");
   });
 
-  it("suffixes the slate skin whose customized card exists", async () => {
-    const html = await renderCustomizeButton("slate skin");
-    expect(proposedName(html)).toBe("slate skin customized 1");
+  it("suffixes the quartz skin whose customized card exists", async () => {
+    const html = await renderCustomizeButton("quartz skin");
+    expect(proposedName(html)).toBe("quartz skin customized 1");
   });
 
-  it("suffixes the litera skin whose customized card exists even when the reference deck never captured one", async () => {
-    const html = await renderCustomizeButton("litera skin");
-    expect(proposedName(html)).toBe("litera skin customized 1");
+  it("suffixes the cobalt skin whose customized card exists even when the reference deck never captured one", async () => {
+    const html = await renderCustomizeButton("cobalt skin");
+    expect(proposedName(html)).toBe("cobalt skin customized 1");
   });
 
   it("keeps walking the numeric suffix past a collided candidate (html_views.rb:8-9 String#next!)", async () => {
@@ -281,7 +281,7 @@ describe("RenderEngine#cardExists is an EXACT stored-name query", () => {
   it("answers true for a stored name that is byte-equal to the query", async () => {
     const s = storage;
     if (s === undefined) throw new Error("storage not seeded");
-    expect(await s.engine.cardExists("journal skin customized")).toBe(true);
+    expect(await s.engine.cardExists("meridian skin customized")).toBe(true);
   });
 
   it("answers false for a case-folded twin of a stored name (the exactness pin)", async () => {
