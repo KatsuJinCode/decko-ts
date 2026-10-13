@@ -32,7 +32,7 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `wrangler.scale.toml` | the separate scale-test Worker + D1 binding (`decko-ts-scale-test`); carries a placeholder `database_id` |
 | `cf-scale-deck/seed.sql` | the scale-test deck (2,279 cards + 531 refs), generated |
 | `bunny-worker-src/` | the Bunny.net edge variant of the same engine surface — the other edge, not Cloudflare |
-| `bunny-origin/` | the VM origin for the Bunny path (server, nginx confs, systemd unit) |
+| `bunny-origin/` | the VM origin for the Bunny path (server, nginx conf templates, systemd unit) |
 
 ### The migration numbering, which is not a clean sequence
 
