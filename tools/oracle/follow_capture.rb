@@ -8,7 +8,7 @@
 # bundle exec decko setup`):
 #
 #   RAILS_ENV=development bundle exec rails runner \
-#     C:/localProjects/decko-ts/tools/oracle/follow_capture.rb
+#     <checkout>/tools/oracle/follow_capture.rb
 #
 # Output: fixtures/captured/follow-notification.json
 #
@@ -51,7 +51,9 @@
 require "json"
 require "fileutils"
 
-REPO_ROOT = "C:/localProjects/decko-ts"
+# Repo root resolves from this checkout (or the DECKO_TS_REPO_ROOT the runner
+# exports) — no machine path built in.
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
 OUT_DIR = File.join(REPO_ROOT, "fixtures", "captured")
 OUT_PATH = File.join(OUT_DIR, "follow-notification.json")
 

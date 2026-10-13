@@ -63,7 +63,7 @@ function makeScene(name, { ageMin = 600, attemptHeader = true, ownerPid = 39872 
     key: "722bdc6cd5bc9433",
     name: `stranded-${name}`,
     cwd: path.join(root, "worktree-that-is-gone"),
-    cmd: "node tools/oracle/probe.mjs --shard shard-000009.jsonl",
+    cmd: "node tools/test-queue/run-standing-net.mjs --receipt standing-net-receipt.json",
     env: {},
     timeoutMin: 6,
     submittedAt: "2026-10-02T10:59:09.385Z",

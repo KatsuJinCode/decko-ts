@@ -18,17 +18,20 @@
 
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 
+// defaults resolve inside this checkout; a path may also be passed as argv[2]
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const DBS = (
   process.argv[2]
     ? [process.argv[2]]
     : [
-        "C:/localProjects/decko-ts/tmp/raw-ground-truth/bench-corpus-raw.sqlite3",
-        "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3",
+        join(REPO_ROOT, "tmp", "raw-ground-truth", "bench-corpus-raw.sqlite3"),
+        join(REPO_ROOT, "tools", "oracle", "decko-oracle-app", "db", "development.sqlite3"),
       ]
 );
 

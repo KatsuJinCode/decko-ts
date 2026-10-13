@@ -27,17 +27,12 @@ import {
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // Default locations for the stage-1 and stage-4 instruments, which are not yet
-// productized into this repository (PLAN.md G2/G4). Both are resolved against
-// THIS checkout rather than from an absolute path, so they stay correct wherever
-// the repository is checked out. Each stays overridable through its PARITY_*
-// env var (see parseArgs), so an instrument chosen deliberately elsewhere is
-// still reachable.
-const LANE_WORKTREE_DEFAULT = path.join(
-  REPO,
-  "fixtures",
-  "corpus-v2",
-  "live-recapture-2026-10-02",
-);
+// Default locations for the stage-1 and stage-4 instruments, which are not
+// productized into this repository (PLAN.md G2/G4). The defaults name the
+// canonical file names only — they resolve inside THIS checkout wherever it
+// sits, validation reports them not-found until an instrument is supplied,
+// and each stays overridable through its PARITY_* env var (see parseArgs).
+const INSTRUMENTS_DIR = path.join(REPO, "fixtures", "corpus-v2");
 const LANE_DRIVER_DEFAULT = path.join(REPO, "tools", "oracle", "dual-lane-direct-driver.mjs");
 
 function usage(exitCode = EXIT_OK) {
@@ -78,19 +73,19 @@ function usage(exitCode = EXIT_OK) {
     "",
     "Options:",
     "  --run-dir <dir>           Existing run dir (required with --report-only)",
-    "  --capture-instrument <path>  Capture driver override (default: proven lane tooling, see docs)",
-    "  --classifier <path>       Three-way analyzer override (default: proven lane tooling)",
-    "  --direct-driver <path>    Grading driver override (default: proven lane tooling)",
+    "  --capture-instrument <path>  Capture driver override (not bundled; supply a path or PARITY_CAPTURE_INSTRUMENT)",
+    "  --classifier <path>       Three-way analyzer override (not bundled; supply a path or PARITY_CLASSIFIER)",
+    "  --direct-driver <path>    Grading driver override (default: tools/oracle/dual-lane-direct-driver.mjs)",
     "  --staging-port <n>        Port for the render staging server (default 3100)",
     "  --workers <n>             Render/grade workers (default 8)",
     "  --help, -h                This help",
     "",
     "Examples:",
     "  node bin/migration-parity-tool.mjs run --site wikirate --targets wikirate-targets.tsv \\",
-    "      --dump wikirate-dump.sql --out runs/wikirate-2026-10-03 --dry-run",
+    "      --dump wikirate-dump.sql --out runs/wikirate-run-1 --dry-run",
     "  node bin/migration-parity-tool.mjs run --site wikirate --targets t.tsv \\",
     "      --source deck.sqlite --out runs/wr --capture-only",
-    "  node bin/migration-parity-tool.mjs run --report-only --run-dir runs/wikirate-2026-10-03",
+    "  node bin/migration-parity-tool.mjs run --report-only --run-dir runs/wikirate-run-1",
     "",
   ];
   console.log(lines.join("\n"));
@@ -115,8 +110,8 @@ function parseArgs(argv) {
     captureOnly: false,
     reportOnly: false,
     dryRun: false,
-    captureInstrument: process.env.PARITY_CAPTURE_INSTRUMENT || path.join(LANE_WORKTREE_DEFAULT, "capture-live-pages-culturesmith-2026-10-02.mjs"),
-    classifier: process.env.PARITY_CLASSIFIER || path.join(LANE_WORKTREE_DEFAULT, "analyze-live-oracle-three-way.mjs"),
+    captureInstrument: process.env.PARITY_CAPTURE_INSTRUMENT || path.join(INSTRUMENTS_DIR, "capture-live-pages.mjs"),
+    classifier: process.env.PARITY_CLASSIFIER || path.join(INSTRUMENTS_DIR, "analyze-live-oracle-three-way.mjs"),
     directDriver: process.env.PARITY_DIRECT_DRIVER || LANE_DRIVER_DEFAULT,
     stagingPort: 3100,
     workers: 8,

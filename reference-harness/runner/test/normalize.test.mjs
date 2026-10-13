@@ -50,7 +50,7 @@ describe("N1: slot ids, the one mask", () => {
   });
 });
 
-describe("N1 masks only a real attribute token (finding 6)", () => {
+describe("N1 masks only a real attribute token", () => {
   it("text in element content is never masked, whatever precedes it", () => {
     assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Example data-slot-id="${other}"</p>`), "a preceding word is not attribute position");
     assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Other data-slot-id="${slot}"</p>`), "the visible text itself still counts");
@@ -256,7 +256,7 @@ describe("N6: backtrace frame lines, the host-VM stack canonical form", () => {
   const rubyFrame = (gem, line, method) =>
     `C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/${gem}:${line}:in \`${method}&#39;`;
   const v8Frame = (fn, file) =>
-    `at ${fn} (file:///C:/localProjects/decko-ts-corpusinst/src/card/render/${file})`;
+    `at ${fn} (file:///checkout/src/card/render/${file})`;
   const join = (frames) => frames.join("&lt;br&gt;\n");
 
   it("canonicalizes each frame line to one marker whichever VM produced it, preserving the count", () => {

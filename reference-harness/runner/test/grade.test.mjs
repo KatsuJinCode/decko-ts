@@ -51,7 +51,7 @@ describe("positive control", () => {
   });
 });
 
-describe("mutations during reads (finding 12)", () => {
+describe("reads that wrote (the read_writes grade)", () => {
   it("rows written by a read session fail the grade even when every answer matches", () => {
     const dir = path.join(tmp.dir, "read-writes");
     assert.equal(runFake(fixture, dir, { mode: "read-writes" }).status, 0);
@@ -96,7 +96,7 @@ describe("mutations during reads (finding 12)", () => {
   });
 });
 
-describe("write steps' other tables (finding 5)", () => {
+describe("write steps' other tables (the other_tables grade)", () => {
   /** Sets a write step's `other_tables` delta on top of what the run recorded. */
   const injectOtherTables = (dir, tables) => {
     const file = path.join(dir, "scenarios.jsonl");
@@ -164,7 +164,7 @@ describe("write steps' other tables (finding 5)", () => {
   });
 });
 
-describe("missing or incomplete metadata (finding 12)", () => {
+describe("missing or incomplete metadata is not a grade", () => {
   it("no run-meta.json is not a grade, exit 2", () => {
     const dir = copyGood();
     rmSync(metaOf(dir));
@@ -209,7 +209,7 @@ describe("missing or incomplete metadata (finding 12)", () => {
   });
 });
 
-describe("fixture identity (finding 12)", () => {
+describe("fixture identity binds the results to the graded fixture", () => {
   it("results recorded on another fixture digest are not a grade", () => {
     const dir = copyGood();
     const meta = readJson(metaOf(dir));
@@ -287,7 +287,7 @@ describe("fixture identity (finding 12)", () => {
   });
 });
 
-describe("incomplete runs (finding 12)", () => {
+describe("incomplete runs are refused, not graded", () => {
   it("an adapter that dies mid-run leaves a run the grader refuses", () => {
     const dir = path.join(tmp.dir, "crash");
     const r = runFake(fixture, dir, { mode: "crash-after:2" });
@@ -356,7 +356,7 @@ describe("incomplete runs (finding 12)", () => {
   });
 });
 
-describe("stock and patched oracle expectations (finding 13)", () => {
+describe("stock and patched oracle expectations are validated against their manifests", () => {
   it("the stock oracle's outputs name their variant and list no patches", () => {
     const m = readJson(path.join(expected, "MANIFEST.json"));
     assert.equal(m.oracle.variant, "stock");

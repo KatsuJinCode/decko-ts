@@ -32,7 +32,10 @@
 
 require "json"
 
-REPO_ROOT = "C:/localProjects/decko-ts-lane-row8-parity"
+# The repo root comes from the environment (the oracle-app runner exports
+# DECKO_TS_REPO_ROOT) and falls back to this file's checkout — no machine
+# path is built in.
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "search-oracle-battery.json")
 
 def deep_sort(obj)
@@ -122,7 +125,7 @@ Card::Auth.as_bot do
       "ruby" => RUBY_VERSION,
       "card" => "1.110.0",
       "decko" => "0.20.0",
-      "app" => "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+      "app" => "the local oracle app copy (dev sqlite)",
       "engine" => "Card.search(**query, return: \"name\") — the real CQL interpreter"
     },
     "normalization" =>

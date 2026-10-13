@@ -30,7 +30,10 @@ import {
 } from "./deck-source.mjs";
 import { buildPlan, insertStatements, rowWriteCost, utcDay, remainingToday, unitFits, normaliseCheckpoint, recordUsage, manifest } from "./trickle-lib.mjs";
 
-export const DEFAULT_FIXED_PAGES = ["/", "/About", "/Aikido_Oak_Cliff", "/Archetypal_Psychology", "/Conflict_Done_Well", "/Latest_News/board"];
+// Pages pinned in every plan run: only the deck's root-level pages by
+// default. Operators pass their own pinned pages with --fixed (trickle.mjs,
+// closure.mjs); no deck-specific page names are built in.
+export const DEFAULT_FIXED_PAGES = ["/", "/About"];
 
 const readJson = (p, d = undefined) => (existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : d);
 function writeJsonAtomic(p, v) {

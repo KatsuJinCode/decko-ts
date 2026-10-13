@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-10-03T21:43:56.326Z",
-  "ruling": "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
-  "reMeasureCite": "mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
+  "coverage": "every public mod ported, behavior-validated; private mods are the only exclusion",
+  "reMeasureCite": "view census at tree 0287dab: 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
   "totals": {
     "mods": 35,
     "ported": 35,
@@ -28,7 +28,7 @@
       "harnessScorecard": "6/99 validated",
       "reMeasureMissingViews": 6,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "new",
@@ -218,7 +218,7 @@
       "gem": "card-mod-defaults-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "legacy-labeled per upstream (#1282): ignored (legacy-labeled per upstream maintainer guidance); nothing to port",
+      "statusEvidence": "legacy-labeled upstream: ignored (legacy-labeled per upstream maintainer guidance); nothing to port",
       "compatStatus": "ignored",
       "manifest": false,
       "harnessScorecard": "not harness-validated yet",
@@ -232,7 +232,7 @@
       "gem": "card-mod-delayed_job-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "legacy-labeled per upstream (#1282): ignored (legacy-labeled per upstream maintainer guidance); nothing to port",
+      "statusEvidence": "legacy-labeled upstream: ignored (legacy-labeled per upstream maintainer guidance); nothing to port",
       "compatStatus": "ignored",
       "manifest": false,
       "harnessScorecard": "not harness-validated yet",
@@ -280,13 +280,13 @@
       "harnessScorecard": "4/96 validated",
       "reMeasureMissingViews": 4,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "subedit_notice",
             "source": "set/all/notify/base_views.rb:25-31 (the BASE format block)",
             "oracle": "static-ruby x11 scenarios (follow-census-views.rb; the changed-field rows ride the render-time history seam)",
-            "status": "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the email lane's page arm - the divergence named in the view comment)"
+            "status": "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the page-render arm - the divergence named in the view comment)"
           },
           {
             "view": "follower",
@@ -324,7 +324,7 @@
       "harnessScorecard": "1/168 validated",
       "reMeasureMissingViews": 2,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "demo",
@@ -370,7 +370,7 @@
       "harnessScorecard": "1/26 validated",
       "reMeasureMissingViews": 1,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "board_act",
@@ -536,12 +536,12 @@
       "harnessScorecard": "5/34 validated",
       "reMeasureMissingViews": 4,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "remote_include_tags",
             "source": "set/type_plus_right/mod/style.rb:26-32",
-            "oracle": "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the captured corpus constant REMOTE_STYLE_TAG)",
+            "oracle": "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the REMOTE_STYLE_TAG constant as captured in the corpus fixture)",
             "status": "ported, verify GREEN (harness capture + probe)"
           },
           {
@@ -594,24 +594,24 @@
       "harnessScorecard": "7/16 validated",
       "reMeasureMissingViews": 6,
       "wave1": {
-        "branch": "lane-mod-completion-2026-10-03",
+        "branch": "mod-completion port, wave 1",
         "portedViews": [
           {
             "view": "nest_editor",
             "source": "set/all/reference_editor/nest_editor.rb:10-16",
-            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the live capture fixtures/captured/tinymce-editor-views.json, no_write_proof actions 4929->4929; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured fixture fixtures/captured/tinymce-editor-views.json, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
             "status": "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)"
           },
           {
             "view": "modal_nest_editor",
             "source": "set/all/reference_editor/nest_editor.rb:17-20",
-            "oracle": "static-ruby byte-PRODUCING (same script; the modal arm live-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
+            "oracle": "static-ruby byte-PRODUCING (same script; the modal arm byte-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
             "status": "ported, verify GREEN (harness capture + probe, byte-exact both arms)"
           },
           {
             "view": "nest_image",
             "source": "set/all/reference_editor/nest_image.rb:2-6",
-            "oracle": "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the live capture; the upload/preview nest regions are the engine seams)",
+            "oracle": "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the captured fixture; the upload/preview nest regions are the engine seams)",
             "status": "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)"
           },
           {
@@ -623,14 +623,14 @@
           {
             "view": "nest_content",
             "source": "set/all/reference_editor/nest_editor.rb:22-27",
-            "oracle": "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the live bytes; the seeded pass-through arm)",
+            "oracle": "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the captured fixture bytes; the seeded pass-through arm)",
             "status": "ported, verify GREEN (harness capture + probe; the known arm rides withNestMode(:edit) + renderView(edit_inline), the unknown arm rides createFormDataShell - the edit mod real create_form)"
           },
           {
             "view": "new_image",
             "source": "set/all/reference_editor/nest_image.rb:13-19",
             "oracle": "static-ruby contract lines (the success chain incl. autoname(name.next) over the REAL cardname - image01.next = image02 per the fixture fact; the nil-value tinymce_id tag)",
-            "status": "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the live capture form tag + success tags pinned)"
+            "status": "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the captured fixture's form tag + success tags pinned)"
           }
         ],
         "namedRemainderViews": [],

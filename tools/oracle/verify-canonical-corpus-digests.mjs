@@ -96,7 +96,7 @@ for (const lane of lanes) {
 if (benchPath) {
   const d = sha256File(benchPath);
   console.log(`\n### bench-corpus-raw.sqlite3 (${fs.statSync(benchPath).size} bytes)`);
-  console.log(`  ${d === BENCH_PIN ? "GRADE-9-PIN-MATCH" : "MISMATCH      "} ${d}`);
+  console.log(`  ${d === BENCH_PIN ? "PIN-MATCH        " : "MISMATCH      "} ${d}`);
   console.log(`  pin of record: ${BENCH_PIN}`);
 }
 

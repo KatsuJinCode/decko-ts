@@ -125,8 +125,8 @@
 //                           generation; after an interrupted run, re-run with
 //                           the SAME --run-id to resume: verifier-fast skips
 //                           phases whose artifacts already parse).
-//   --staging-url <url>     staging origin for the gate (default compiled in
-//                           below)
+//   --staging-url <url>     staging origin for the gate (default below is the
+//                           placeholder origin; set the real one per run)
 //   --staging-auth <u:p>    basic auth for the direct gate; default reads env
 //                           DUAL_LANE_STAGING_AUTH. When absent, the gate goes
 //                           over ssh and curls 127.0.0.1:3100/_status on the VM.
@@ -173,10 +173,11 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // this file (its tracked home once merged), then the working location it
 // lives in today.
 function resolveVerifierFast() {
+  // The sibling module is the tracked home; DUAL_LANE_VERIFIER_FAST points
+  // at a nonstandard layout. No machine-local fallback path is built in.
   const candidates = [
     process.env.DUAL_LANE_VERIFIER_FAST,
     path.join(SCRIPT_DIR, "dual-lane-verifier-fast.mjs"),
-    "C:\\localProjects\\brandonDojoTech\\tmp\\verifier-fast\\dual-lane-verifier-fast.mjs",
   ].filter(Boolean);
   for (const c of candidates) {
     if (existsSync(c)) return c;
@@ -211,9 +212,10 @@ function parseArgs(argv) {
     photographRoot: null,
     photographs: null,
     runId: null,
-    stagingUrl: "https://170.9.231.182/staging",
+    stagingUrl: "https://staging.example.org/staging",
     stagingAuth: process.env.DUAL_LANE_STAGING_AUTH ?? null,
-    oracleRepo: "C:\\localProjects\\decko-ts",
+    // default: this checkout, which carries tools/oracle/ itself
+    oracleRepo: path.resolve(SCRIPT_DIR, ".."),
     quiet: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -311,8 +313,9 @@ async function main() {
   if (process.platform !== "win32") {
     console.error(
       "PLATFORM-OPS: capture-and-grade has no linux branch -- it drives the " +
-        "machine-local Windows Ruby oracle app (bundle exec decko), the oci-agents " +
-        "ssh key, and verifier-fast's taskkill-based kill. Implement a linux branch " +
+        "machine-local Windows Ruby oracle app (bundle exec decko), the " +
+        "environment-configured staging ssh key, and verifier-fast's " +
+        "taskkill-based kill. Implement a linux branch " +
         "in this file before running it there.",
     );
     process.exit(1);
@@ -381,14 +384,20 @@ async function main() {
   // ---------- staging gate ----------
 
   function stagingGateViaSsh() {
-    const key = "C:/Users/jpswi/.ssh/oci-agents";
+    // The staging VM's ssh details are deployment facts, not tree constants:
+    // they arrive through the environment and the gate refuses to guess them.
+    const key = process.env.DUAL_LANE_STAGING_SSH_KEY;
+    const target = process.env.DUAL_LANE_STAGING_SSH_TARGET;
+    if (!key || !target) {
+      return { ok: false, error: "ssh gate needs DUAL_LANE_STAGING_SSH_KEY and DUAL_LANE_STAGING_SSH_TARGET (no deployment host or key path is built in)" };
+    }
     const r = spawnSync(
       "ssh",
       [
         "-i", key,
         "-o", "ConnectTimeout=10",
         "-o", "StrictHostKeyChecking=accept-new",
-        "ubuntu@170.9.231.182",
+        target,
         "curl -s --max-time 10 http://127.0.0.1:3100/_status",
       ],
       { encoding: "utf8", timeout: 30_000, windowsHide: true },

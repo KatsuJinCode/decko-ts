@@ -740,7 +740,7 @@ end
 
 # --- the recorded frozen-gem-registry fact -----------------------------------------
 fixture_path = File.join(repo_root, "fixtures", "captured", "tinymce-editor-views.json")
-abort "live capture fixture not found: #{fixture_path}" unless File.file?(fixture_path)
+abort "captured fixture not found: #{fixture_path}" unless File.file?(fixture_path)
 FIXTURE = JSON.parse(File.read(fixture_path))
 HELPER_FACTS = FIXTURE.fetch("helper_facts")
 ALL_VIEWS = HELPER_FACTS.fetch("all_views")
@@ -785,7 +785,7 @@ def check_against_live!(oracle_body, live, view)
 
     first_diff = (0...[oracle_body.length, live.length].min).find { |i| oracle_body[i] != live[i] } ||
                  [oracle_body.length, live.length].min
-    abort "#{view}: static body (#{oracle_body.length}b) is NOT a substring of the live capture (#{live.length}b); " \
+    abort "#{view}: static body (#{oracle_body.length}b) is NOT a substring of the captured fixture (#{live.length}b); " \
           "first divergence at #{first_diff}:\n  static: #{oracle_body[[first_diff - 100, 0].max, 200].inspect}\n" \
           "  live:   #{live[[first_diff - 100, 0].max, 200].inspect}"
   end
@@ -827,7 +827,7 @@ emit(behaviorId: "view:nest_editor",
      gemSource: "set/all/reference_editor/nest_editor.rb:10-16 + reference_editor.haml + _nest_editor.haml + nest_editor_tabs.rb + nest_editor_options.rb (verbatim gem methods + templates under real Haml 5.2.2 + real ActionView 7.2.4 + real cardname; blank-name arms render the placeholders, no nest seam)",
      paramsSeam: "tm_snippet_raw ABSENT -> NestParser.new nil -> the default Nest struct (name '', field? true, options [], raw '{{+ }}'); tinymce_id ABSENT -> data-tinymce-id dropped by the tag renderer",
      bytes: body1,
-     liveCrossCheck: "substring-verified against fixtures/captured/tinymce-editor-views.json rendered['#{PROBE_CARD_NAME}#nest_editor'] (#{LIVE.fetch('nest_editor').length} bytes, no_write_proof actions 4929->4929)")
+     liveCrossCheck: "substring-verified against fixtures/captured/tinymce-editor-views.json rendered['#{PROBE_CARD_NAME}#nest_editor'] (#{LIVE.fetch('nest_editor').length} bytes; the fixture carries the no-write proof, card_actions 4929 unchanged)")
 
 # ============================================================================
 # SCENARIO 2: view :nest_editor, SEEDED-params arm (the named params seam)
@@ -859,7 +859,7 @@ emit(behaviorId: "view:modal_nest_editor",
      gemSource: "nest_editor.rb:17-20 + 60-63 (modal_nest_editor = wrap_with :modal { nest_editor :modal }, wrap.rb:128-131 content_tag(:modal)) + reference_editor.rb:14-16 (modal_tm_snippet_editor?)",
      paramsSeam: "tm_snippet_raw/tinymce_id ABSENT (the default-struct arm)",
      bytes: body3,
-     liveCrossCheck: "substring-verified against the live modal_nest_editor capture")
+     liveCrossCheck: "substring-verified against the captured modal_nest_editor fixture")
 
 fmt3b = build_fmt(tm_snippet_raw: SEEDED_SNIPPET_RAW, tinymce_id: SEEDED_TINYMCE_ID)
 body3b = fmt3b.render_oracle_view(:modal_nest_editor)
@@ -886,7 +886,7 @@ emit(behaviorId: "view:nest_image",
      autonameFact: { autoname: "image01", next: fmt4.card.name_next_of("image01").to_s },
      bytes: body4,
      nestSeams: ["image01|view: new_image", "image01|view: core"],
-     liveCrossCheck: "every static segment verified in-order against the live nest_image capture")
+     liveCrossCheck: "every static segment verified in-order against the captured nest_image fixture")
 
 fmt5 = build_fmt({})
 body5 = fmt5.render_oracle_view(:modal_nest_image)
@@ -898,7 +898,7 @@ emit(behaviorId: "view:modal_nest_image",
      paramsSeam: "as nest_image (the in-process snippet; the modal mode flips the footer copy + data-bs-dismiss)",
      bytes: body5,
      nestSeams: ["image01|view: new_image", "image01|view: core"],
-     liveCrossCheck: "every static segment verified in-order against the live modal_nest_image capture")
+     liveCrossCheck: "every static segment verified in-order against the captured modal_nest_image fixture")
 
 # ============================================================================
 # SCENARIO 7: :nest_content's contract lines (both arms, params seam named)

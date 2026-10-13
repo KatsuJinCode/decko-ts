@@ -50,18 +50,24 @@
 //
 // Stdout ceiling: < 20 KB. Summaries and counts only.
 //
-// Inputs (constants; no env vars — first CLI arg overrides the
-// anonymized deck path):
+// Inputs (defaults resolve inside this checkout; the first CLI arg overrides
+// the anonymized deck path):
 //   CORPUS_PATH    — the corpus deck under verification
 //   ANON_PATH      — the anonymized deck to verify (default below)
 
 import Database from "better-sqlite3";
 import process from "node:process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const CORPUS_PATH =
-  "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
-const DEFAULT_ANON_PATH =
-  "C:/localProjects/decko-ts/benchmarks/corpus-v2-anonymized/anon-corpus-v2.sqlite3";
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const CORPUS_PATH = join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
+const DEFAULT_ANON_PATH = join(
+  REPO_ROOT,
+  "benchmarks",
+  "corpus-v2-anonymized",
+  "anon-corpus-v2.sqlite3",
+);
 
 // --- Privacy discipline: never print original corpus content. ----------
 const VOCAB_MIN_LEN = 4;

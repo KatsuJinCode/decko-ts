@@ -27,6 +27,7 @@
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { readFile as rf } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const EDGE = "https://decko-edge-synthetic.bunny.run";
 // The deployment target is operator input, never committed to the public
@@ -42,7 +43,8 @@ function requireEnv(name) {
 const SCRIPT_ID = requireEnv("BUNNY_SCRIPT_ID");
 const RELEASE_ID = requireEnv("BUNNY_RELEASE_ID");
 const SEED_OUT = new URL("./throwaway-account-seed-output.json", import.meta.url);
-const ORACLE_ROOT = "C:/localProjects/decko-ts-lane-postfix-canvas/tmp/raw-ground-truth/expected-v2";
+// the oracle capture tree lives inside this checkout's gitignored capture area
+const ORACLE_ROOT = fileURLToPath(new URL("../../tmp/raw-ground-truth/expected-v2", import.meta.url));
 const OUT = new URL("./authed-parity-sample.json", import.meta.url);
 
 // ---------------------------------------------------------------------------

@@ -264,7 +264,7 @@ const DIRECT_RUNNER_DEPS_REL = [
 // own DONE lines during a completed FULL grade of the default 48-shard set
 // (sum 8258.2s = 137.6 worker-minutes). Phase i of
 // the DEFAULT sorted pairing holds shards 2i and 2i+1.
-const PASS19_PHASE_WEIGHTS_S = [
+const PHASE_WEIGHTS_S = [
   63.2, 59.6, 145.1, 245.9, 708.0, 1182.7, 643.4, 221.6, 221.9, 243.0, // P1-P10
   267.4, 194.1, 347.3, 209.6, 257.8, 300.7, 268.6, 193.8, 319.6, 372.4, // P11-P20
   431.5, 505.2, 509.2, 346.6, // P21-P24
@@ -328,7 +328,7 @@ const BALANCED_PHASE_PLAN = [
 function buildPhases(shards, group) {
   const isFullDefaultSet =
     group === 2 &&
-    shards.length === PASS19_PHASE_WEIGHTS_S.length * 2 &&
+    shards.length === PHASE_WEIGHTS_S.length * 2 &&
     [...shards].sort().every((n, i) => n === defaultShardName(i));
   if (!isFullDefaultSet) {
     const phases = [];
@@ -432,7 +432,7 @@ function prepareRunState() {
   shards = discoverShards();
   if (shards.length === 0) fail(`no shard files found under ${EXPECTED_V2}`);
 
-  shardWeights = buildShardWeights(PASS19_PHASE_WEIGHTS_S);
+  shardWeights = buildShardWeights(PHASE_WEIGHTS_S);
   phases = buildPhases(shards, opts.group);
 }
 
@@ -993,7 +993,7 @@ export {
   killOwnTree,
   killPhaseTree,
   recordLiveChild,
-  PASS19_PHASE_WEIGHTS_S,
+  PHASE_WEIGHTS_S,
   BALANCED_PHASE_PLAN,
   DEADLINE_WEIGHT_MULTIPLIER,
   defaultShardName,

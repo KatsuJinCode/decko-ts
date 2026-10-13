@@ -19,7 +19,8 @@ require "json"
 require "./config/environment"
 require "haml"
 
-OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/oracle-probe-cards.json"
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
+OUT = ARGV[0] || File.join(REPO_ROOT, "tmp", "haml-slice", "oracle-probe-cards.json")
 result = { "haml_version" => Haml::VERSION, "card_version" => Card::VersionID }
 actions_before = Card::Act.count
 result["actions_before"] = actions_before

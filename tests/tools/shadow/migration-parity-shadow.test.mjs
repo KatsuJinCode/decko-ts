@@ -711,7 +711,7 @@ describe('CLI end-to-end with the stub instrument (execute runs)', () => {
     for (const field of ['base', 'candidate', 'mirror', 'policy', 'sample', 'routes', 'counts', 'limitations']) {
       expect(report).toHaveProperty(field);
     }
-    expect(report.limitations.join(' ')).toMatch(/S1 CLOSED in this build/);
+    expect(report.limitations.join(' ')).toMatch(/view-lane routes are sampled and compared/);
     const history = readFileSync(join(out, 'shadow-run-history.jsonl'), 'utf8').trim().split('\n');
     expect(history.length).toBe(1);
     expect(JSON.parse(history[0]).clean).toBe(true);

@@ -246,7 +246,7 @@ export function generateSeedFiles({ scalePages, outDir }) {
 
   const manifest = {
     generator: "scripts/deploy/one-click-deck/seed-fitting-scale.mjs",
-    dataRule: "synthetic content only; no real member data ever (milestone data rule)",
+    dataRule: "synthetic content only; no real member data ever",
     deck: {
       scalePages,
       chainDepth: CHAIN_DEPTH,
@@ -264,13 +264,13 @@ export function generateSeedFiles({ scalePages, outDir }) {
       projectedWithAnalyze: plan.projectedWithAnalyze,
       percentOfDailyLimit: plan.percentOfDailyLimit,
       headroomRows: plan.headroomRows,
-      convention: "table rows only (same convention as the 2026-09-23 incident arithmetic)",
+      convention: "table rows only",
     },
     corpusBasis: {
       cards: CORPUS_CARDS,
       refs: CORPUS_REFS,
       totalRows: CORPUS_ROWS,
-      note: "the 2026-09-23 incident import; density basis for the ref distribution",
+      note: "measured density basis for the ref distribution",
     },
     chunks: {
       local: { dir: localDir, statementsPerChunk: LOCAL_CHUNK_STATEMENTS, fileCount: localFiles.length, rows: plan.seedRows },

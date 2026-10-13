@@ -295,7 +295,7 @@ try {
     receiptPath,
     JSON.stringify(
       {
-        what: "standing-net env-guard receipt (F16): presence flags and verdict only; no env values",
+        what: "standing-net env-guard receipt: presence flags and verdict only; no env values",
         id: result.id ?? null,
         at: new Date().toISOString(),
         envFingerprint: guard.requiredEnv.map((v) => ({

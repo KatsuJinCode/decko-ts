@@ -26,10 +26,10 @@
 #
 # Run (from the oracle app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-row8-parity/tools/oracle/mail_oracles_capture.rb
+#     <checkout>/tools/oracle/mail_oracles_capture.rb
 #
-# Output: fixtures/captured/six-oracle-mails.json (repo root of the
-# decko-ts-lane-row8-parity worktree).
+# Output: fixtures/captured/six-oracle-mails.json (repo root of this
+# checkout).
 #
 # Determinism contract:
 #   - delivery_method :test on BOTH ActionMailer::Base AND Card::Mailer
@@ -59,10 +59,13 @@
 require "json"
 require "yaml"
 
-REPO_ROOT = "C:/localProjects/decko-ts-lane-row8-parity"
+# The repo root and the two gem trees resolve from the checkout (or the
+# DECKO_TS_REPO_ROOT the runner exports) and the bundled gem specifications —
+# no machine paths built in.
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "six-oracle-mails.json")
-FOLLOW_GEM = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-follow-0.20.0"
-ACCOUNT_GEM = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-account-0.20.0"
+FOLLOW_GEM = Gem::Specification.find_by_name("card-mod-follow").gem_dir
+ACCOUNT_GEM = Gem::Specification.find_by_name("card-mod-account").gem_dir
 
 def deep_sort(obj)
   case obj
@@ -532,7 +535,7 @@ payload = {
     "ruby" => RUBY_VERSION,
     "card" => "1.110.0",
     "decko" => "0.20.0",
-    "app" => "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+    "app" => "the local oracle app copy (dev sqlite)",
     "delivery" => "ActionMailer test delivery (Card::Mailer + ActionMailer::Base both :test); no SMTP, no network"
   },
   "mailer_defaults" => {

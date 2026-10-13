@@ -35,7 +35,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   BALANCED_PHASE_PLAN,
-  PASS19_PHASE_WEIGHTS_S,
+  PHASE_WEIGHTS_S,
   buildPhases,
   buildShardWeights,
   defaultShardName,
@@ -47,15 +47,15 @@ import {
 import { scratchDir } from "../tests/support/scratch-dir.mjs";
 
 const DEFAULT_48 = Array.from({ length: 48 }, (_, i) => defaultShardName(i));
-const WEIGHTS = buildShardWeights(PASS19_PHASE_WEIGHTS_S);
-const TOTAL_S = PASS19_PHASE_WEIGHTS_S.reduce((a, b) => a + b, 0);
+const WEIGHTS = buildShardWeights(PHASE_WEIGHTS_S);
+const TOTAL_S = PHASE_WEIGHTS_S.reduce((a, b) => a + b, 0);
 
 describe("instrument-reliability: weight math", () => {
-  it("even-split shard weights reconstruct every recorded pass-19 phase duration", () => {
-    expect(PASS19_PHASE_WEIGHTS_S).toHaveLength(24);
+  it("even-split shard weights reconstruct every recorded phase duration", () => {
+    expect(PHASE_WEIGHTS_S).toHaveLength(24);
     for (let p = 0; p < 24; p++) {
       const pair = [defaultShardName(2 * p), defaultShardName(2 * p + 1)];
-      expect(phaseWeightSec(pair, WEIGHTS)).toBeCloseTo(PASS19_PHASE_WEIGHTS_S[p], 6);
+      expect(phaseWeightSec(pair, WEIGHTS)).toBeCloseTo(PHASE_WEIGHTS_S[p], 6);
     }
   });
 
@@ -132,7 +132,7 @@ describe("instrument-reliability: balanced pairing", () => {
   it("max phase weight drops 1182.7s -> 621.15s and no phase carries 31% of compute (max 7.52%)", () => {
     const weights = phases.map((p) => phaseWeightSec(p, WEIGHTS));
     expect(Math.max(...weights)).toBeCloseTo(621.15, 6); // [10,2] = 591.35 + 29.8
-    const oldMax = Math.max(...PASS19_PHASE_WEIGHTS_S);
+    const oldMax = Math.max(...PHASE_WEIGHTS_S);
     expect(oldMax).toBeCloseTo(1182.7, 6);
     const maxShare = Math.max(...weights) / TOTAL_S;
     expect(maxShare).toBeLessThan(0.31);
@@ -140,7 +140,7 @@ describe("instrument-reliability: balanced pairing", () => {
     // top-3 clump: 30.7% (P5+P6+P7) -> 21.2%
     const top3 = [...weights].sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0);
     expect(top3 / TOTAL_S).toBeCloseTo(0.2121, 3);
-    expect(top3).toBeLessThan(PASS19_PHASE_WEIGHTS_S.slice(4, 7).reduce((a, b) => a + b, 0));
+    expect(top3).toBeLessThan(PHASE_WEIGHTS_S.slice(4, 7).reduce((a, b) => a + b, 0));
   });
 
   it("every re-paired phase stays inside the flat 1200s deadline floor (1.93x headroom on the heaviest)", () => {

@@ -78,7 +78,6 @@ const COMPAT_JSON = join(REPO, "tools", "compat-report", "mod-compat-report.json
 // mods miss how many views.
 const REMEASURE = {
   tree: "0287dab",
-  date: "2026-10-03",
   declaredViews: 377,
   bytePinned: 174,
   renderAtAll: 354,
@@ -113,7 +112,7 @@ const NAMED_REMAINDERS = {
     // no port counterpart and the json route always serves :molecule. The
     // row is a REACHABILITY remainder, not an absent-route one.
     "view:actions":
-      "json-format view; the export.rb hash shapes are ported + suite-pinned (card-mod-history.test.ts:1124-1193); RE-MEASURED 2026-10-06 - the non-html json ROUTE exists (deploy/worker.ts:709-717 -> format-families renderFormatShow) but carries NO view dispatch, so the manifest's :actions view is unreachable and the route always serves json show's :molecule",
+      "json-format view; the export.rb hash shapes are ported + suite-pinned (card-mod-history.test.ts:1124-1193); the non-html json ROUTE exists (deploy/worker.ts:709-717 -> format-families renderFormatShow) but carries NO view dispatch, so the manifest's :actions view is unreachable and the route always serves json show's :molecule",
     // data/test.yml seed cards - the gem's OWN test-suite fixtures
     // (`decko seed` TEST data consumed by the gem's specs), not deck data.
     "seed:First":
@@ -178,7 +177,7 @@ const NAMED_REMAINDERS = {
     // routes. Two class rows here are additionally PHANTOM (see the
     // links.rb:147 note above).
     "<view:(import|body|row|pod|nucleus|atom|molecule|ancestors|cast|items|links|test|format_unsupported|style|source|status|page|remote|method|feed|feed_body|feed_title|feed_item|feed_item_description|feed_description)>":
-      "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - RE-MEASURED 2026-10-06: the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
+      "a NON-HTML format-block view (the data/json/csv/rss/jsonld/css/file format classes the surface mines) - the engine DOES serve the non-html formats (deploy/worker.ts .json/.csv/.rss -> format-families renderFormatShow, oracle-pinned green), so this is NOT an absent-route remainder; it is the per-view REACHABILITY remainder - renderFormatShow carries no view argument, so only each format's show-default view is served and ?view= is not honored on the non-html routes",
     "<event:(validate_json|validate_number)>":
       "a non-html format's validate event (the json/number write-path validation the engine's write route does not reach yet - the same non-html render/write route class)",
     "<basket:.*>":
@@ -226,7 +225,7 @@ const NAMED_REMAINDERS = {
     // templates are compiled-in constants, not a view surface the
     // registration check can see.
     "<view:(welcome_email|verification_email|password_reset_email)>":
-      "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32) - RE-MEASURED 2026-10-06: the three templates ARE ported (account-verify-reset-flows.ts:253-306, gem data/real.yml) and their delivered bytes ARE oracle-pinned (six-mail-oracles.test.ts vs six-oracle-mails.json, real Ruby ActionMailer bytes, green); the remainder is the REGISTRATION shape - a compiled-in constant, not a manifest-registered view",
+      "a loop-declared EMAIL-TEMPLATE view (right/account/events.rb:32) - the three templates ARE ported (account-verify-reset-flows.ts:253-306, gem data/real.yml) and their delivered bytes ARE oracle-pinned (six-mail-oracles.test.ts vs six-oracle-mails.json, real Ruby ActionMailer bytes, green); the remainder is the REGISTRATION shape - a compiled-in constant, not a manifest-registered view",
     "<basket:.*>":
       "a basket registration (non_createable_types / roles_for_first_user) with no TS consumer seam yet - the runtime-basket seam is the named remainder (the same class the style/format tables carry)",
   },
@@ -263,7 +262,7 @@ function namedRemainderFor(modId, behaviorId) {
 // GREEN; the row cites its gem source and oracle. Views not listed stay
 // uncaptured by name until they are landed here or named as remainders.
 const WAVE1 = {
-  branch: "lane-mod-completion-2026-10-03",
+  branch: "mod-completion port, wave 1",
   portedViews: {
     "card-mod-history": [
       {
@@ -277,7 +276,7 @@ const WAVE1 = {
       {
         view: "remote_include_tags",
         source: "set/type_plus_right/mod/style.rb:26-32",
-        oracle: "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the captured corpus constant REMOTE_STYLE_TAG)",
+        oracle: "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the REMOTE_STYLE_TAG constant as captured in the corpus fixture)",
         status: "ported, verify GREEN (harness capture + probe)",
       },
       {
@@ -342,7 +341,7 @@ const WAVE1 = {
         view: "subedit_notice",
         source: "set/all/notify/base_views.rb:25-31 (the BASE format block)",
         oracle: "static-ruby x11 scenarios (follow-census-views.rb; the changed-field rows ride the render-time history seam)",
-        status: "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the email lane's page arm - the divergence named in the view comment)",
+        status: "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the page-render arm - the divergence named in the view comment)",
       },
       {
         view: "follower",
@@ -381,19 +380,19 @@ const WAVE1 = {
       {
         view: "nest_editor",
         source: "set/all/reference_editor/nest_editor.rb:10-16",
-        oracle: "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the live capture fixtures/captured/tinymce-editor-views.json, no_write_proof actions 4929->4929; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+        oracle: "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured fixture fixtures/captured/tinymce-editor-views.json, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
         status: "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)",
       },
       {
         view: "modal_nest_editor",
         source: "set/all/reference_editor/nest_editor.rb:17-20",
-        oracle: "static-ruby byte-PRODUCING (same script; the modal arm live-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
+        oracle: "static-ruby byte-PRODUCING (same script; the modal arm byte-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
         status: "ported, verify GREEN (harness capture + probe, byte-exact both arms)",
       },
       {
         view: "nest_image",
         source: "set/all/reference_editor/nest_image.rb:2-6",
-        oracle: "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the live capture; the upload/preview nest regions are the engine seams)",
+        oracle: "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the captured fixture; the upload/preview nest regions are the engine seams)",
         status: "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)",
       },
       {
@@ -405,14 +404,14 @@ const WAVE1 = {
       {
         view: "nest_content",
         source: "set/all/reference_editor/nest_editor.rb:22-27",
-        oracle: "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the live bytes; the seeded pass-through arm)",
+        oracle: "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the captured fixture bytes; the seeded pass-through arm)",
         status: "ported, verify GREEN (harness capture + probe; the known arm rides withNestMode(:edit) + renderView(edit_inline), the unknown arm rides createFormDataShell - the edit mod real create_form)",
       },
       {
         view: "new_image",
         source: "set/all/reference_editor/nest_image.rb:13-19",
         oracle: "static-ruby contract lines (the success chain incl. autoname(name.next) over the REAL cardname - image01.next = image02 per the fixture fact; the nil-value tinymce_id tag)",
-        status: "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the live capture form tag + success tags pinned)",
+        status: "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the captured fixture's form tag + success tags pinned)",
       },
     ],
   },
@@ -795,7 +794,7 @@ function surfaceMarkdown(s) {
     L.push("## Settings");
     L.push("");
     for (const st of settingBehaviors) {
-      L.push(`- \`*${st.name}\`${st.rawHelpText ? ` — help text: "${st.rawHelpText}"` : " — help text requires live capture"}`);
+      L.push(`- \`*${st.name}\`${st.rawHelpText ? ` — help text: "${st.rawHelpText}"` : " — help text needs a running-deck capture"}`);
     }
     L.push("");
   }
@@ -838,7 +837,7 @@ function captureMod(modId, gemName, gemPath) {
       sourceFile: relative(REPO, existingPath).replaceAll("\\", "/"),
       sha256: sha256(text),
       lines: text.trim() ? text.trim().split("\n").length : 0,
-      provenance: "prior lane's live/oracle capture; see the repo history of that file for its capture deck + discipline",
+      provenance: "a previously recorded capture committed in this repository; see that file's repo history for its capture discipline",
     });
   }
 
@@ -896,7 +895,7 @@ function captureMod(modId, gemName, gemPath) {
     const covered = new Set(lines.map((l) => l.behaviorId).filter(Boolean));
     uncaptured = surface.behaviors
       .filter((b) => !covered.has(b.id))
-      .map((b) => ({ behaviorId: b.id, kind: b.kind, source: b.source, captureStrategy: "none (live-deck capture not exercised by this lane)" }));
+      .map((b) => ({ behaviorId: b.id, kind: b.kind, source: b.source, captureStrategy: "none (no capture strategy exercised for this behavior)" }));
   }
 
   const outPath = join(ORACLE_DIR, `${modId}.harness.jsonl`);
@@ -1237,7 +1236,7 @@ function buildRegistry() {
       // no set/ tree to port. On the ported/unported axis their
       // behavior set is empty or backend-only, so ported-vacuous.
       status = "ported";
-      statusEvidence = `legacy-labeled per upstream (#1282): ${c?.classification?.verdict ?? "no set/ tree"}; nothing to port`;
+      statusEvidence = `legacy-labeled upstream: ${c?.classification?.verdict ?? "no set/ tree"}; nothing to port`;
     } else if (sc !== null && sc.totals.red > 0) {
       status = "unported";
       statusEvidence = `harness scorecard: ${sc.totals.red} RED behavior(s) of ${sc.totals.behaviors} (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
@@ -1293,8 +1292,8 @@ function buildRegistry() {
 
   const json = {
     generatedAt: new Date().toISOString(),
-    ruling: "every PUBLIC mod ported, behavior-validated; private mods are the only exclusion",
-    reMeasureCite: `mod-coverage-remeasure 2026-10-03 (tree ${REMEASURE.tree}): ${REMEASURE.declaredViews} declared views / ${REMEASURE.bytePinned} byte-pinned / ${REMEASURE.renderAtAll} render-at-all / ${REMEASURE.missingViews} missing; ${REMEASURE.modsZeroMissing} mods with zero missing views`,
+    coverage: "every public mod ported, behavior-validated; private mods are the only exclusion",
+    reMeasureCite: `view census at tree ${REMEASURE.tree}: ${REMEASURE.declaredViews} declared views / ${REMEASURE.bytePinned} byte-pinned / ${REMEASURE.renderAtAll} render-at-all / ${REMEASURE.missingViews} missing; ${REMEASURE.modsZeroMissing} mods with zero missing views`,
     totals: { mods: rows.length, ported, unported, privateUnknown },
     mods: rows,
   };
@@ -1305,7 +1304,7 @@ function buildRegistry() {
   L.push("");
   L.push(`Generated ${json.generatedAt} by tools/mod-porting-harness/mod-harness.mjs registry`);
   L.push("");
-  L.push(`Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).`);
+  L.push(`Every public mod is ported and behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).`);
   L.push("");
   L.push(`**${ported} ported / ${unported} unported / ${privateUnknown} private-unknown** across ${rows.length} mods.`);
   L.push("");
@@ -1330,7 +1329,7 @@ function buildRegistry() {
   L.push("");
   L.push("## Private-unknown evidence policy");
   L.push("");
-  L.push("A mod is marked `private-unknown` only with evidence that its source is site-private (not published). The installed `card-mod-*` gem set is public by construction (published gems with LICENSE files — the same frozen set the license audit read), so no row carries private-unknown here. The TS-only marketplace row cites its no-gem status.");
+  L.push("A mod is marked `private-unknown` only with evidence that its source is site-private (not published). The installed `card-mod-*` gem set is public by construction (published gems with LICENSE files), so no row carries private-unknown here. The TS-only marketplace row cites its no-gem status.");
   L.push("");
   writeOut(REGISTRY_MD, L.join("\n"));
   return json;
@@ -1364,7 +1363,7 @@ function main() {
     const res = captureMod(modId, gemName, gemPath);
     process.stdout.write(`${modId}: ${res.total} oracle lines -> ${res.outPath}\n`);
     if (res.uncaptured.length) {
-      process.stdout.write(`${modId}: ${res.uncaptured.length} behavior(s) UNCAPTURED (live-deck strategy not exercised by this lane):\n`);
+      process.stdout.write(`${modId}: ${res.uncaptured.length} behavior(s) UNCAPTURED (no capture strategy exercised for this behavior):\n`);
       for (const u of res.uncaptured) process.stdout.write(`  - ${u.behaviorId} (${u.kind})\n`);
     }
   } else if (cmd === "verify") {

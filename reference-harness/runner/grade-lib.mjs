@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { EXPECTED_MANIFEST_FORMAT, resultFiles, storedFileHashes, verifyFixture } from "./manifest.mjs";
 import { normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
@@ -269,11 +270,19 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0 && otherTables.fail === 0;
   const verdict = problems.length > 0 ? "invalid" : partial.length > 0 ? (allowPartial ? "partial" : "invalid") : allPass ? "pass" : "fail";
   if (!allowPartial) problems.push(...partial.map((p) => `incomplete: ${p}`));
+  // Report paths are workspace-relative: a report records where a run sat
+  // relative to the repository, never the absolute layout of the machine that
+  // produced it. Directories outside the workspace keep a truthful ../-form.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const workspaceRelative = (dir) => {
+    const rel = path.relative(repoRoot, dir);
+    return (rel === "" ? "." : rel).split(path.sep).join("/");
+  };
   return {
     fixture: path.basename(fixtureDir),
     fixture_digest: digest,
-    actual: actualDir,
-    expected: expectedDir,
+    actual: workspaceRelative(actualDir),
+    expected: workspaceRelative(expectedDir),
     oracle,
     engine: meta ? firstEngine(actRuns) : null,
     adapter_checkout: actRuns.render?.adapter_checkout ?? actRuns.scenarios?.adapter_checkout ?? null,

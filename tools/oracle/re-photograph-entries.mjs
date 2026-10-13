@@ -120,9 +120,11 @@ const ENTRIES = [
     oracleShard: "recapture-raw-shard-000013.jsonl",
   },
   {
-    key: "michael-christensen-page",
+    key: "attachment-key-page-entry",
     finding: "attachment-key",
-    name: "Jonas Verhove",
+    // name is composed from the dump's junction rows in the identity stage,
+    // so the shipped source never hard-codes a corpus card label here.
+    name: null,
     id: 14542,
     lane: "page",
     view: "page_html",
@@ -443,7 +445,7 @@ async function identityStage(limit) {
   console.log("");
   console.log("RENDER STAGE (sub-minute, through the machine test queue only):");
   console.log(
-    `  node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-render --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
+    `  node tools/test-queue/submit-test-job.mjs --name rephoto-render --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
   );
   if (limit !== 0) {
     console.log("");
@@ -452,15 +454,15 @@ async function identityStage(limit) {
     );
     console.log("  step 1 (rewrite the entries artifact at full scope):");
     console.log(
-      `    node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-identity-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs identity --limit 0" --timeout-min 1`,
+      `    node tools/test-queue/submit-test-job.mjs --name rephoto-identity-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs identity --limit 0" --timeout-min 1`,
     );
     console.log("  step 2 (render all entries):");
     console.log(
-      `    node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-render-bulk --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
+      `    node tools/test-queue/submit-test-job.mjs --name rephoto-render-bulk --cwd ${REPO_ROOT} --cmd "set REPHOTO_ENTRIES_RENDER=1&& npx vitest run tests/card/render/re-photograph-entry-replay.test.ts" --timeout-min 3`,
     );
     console.log("  step 3 (verdicts):");
     console.log(
-      `    node C:/localProjects/decko-ts/tools/test-queue/submit-test-job.mjs --name rephoto-verdict-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs verdict" --timeout-min 1`,
+      `    node tools/test-queue/submit-test-job.mjs --name rephoto-verdict-bulk --cwd ${REPO_ROOT} --cmd "node tools/oracle/re-photograph-entries.mjs verdict" --timeout-min 1`,
     );
   }
   dump.close();

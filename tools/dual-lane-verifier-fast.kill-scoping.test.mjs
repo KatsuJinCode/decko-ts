@@ -104,7 +104,7 @@ describeOrSkipLoud(
   process.platform !== "win32",
   "tools/dual-lane-verifier-fast.kill-scoping.test.mjs",
   "process.platform === 'win32' — the kill machinery under test is win32-only (taskkill/tasklist/powershell snapshot) and loud-refuses on other hosts (PLATFORM-OPS gate in prepareRunState)",
-)("dual-lane-verifier-fast kill scoping (pass21 sweep defect guard)", () => {
+)("dual-lane-verifier-fast kill scoping (sweep defect guard)", () => {
   it("deadline-scoped killPhaseTree kills ONLY its own phase tree; the sibling tree survives untouched", async () => {
     const target = spawnPhaseShapedTree();
     const sibling = spawnPhaseShapedTree();
