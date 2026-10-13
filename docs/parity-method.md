@@ -289,8 +289,8 @@ upper bound on it.
 
 | Swap set | Entries | Split | Live fetch window (one host) | Manifest (private repo only) |
 | --- | ---: | --- | --- | --- |
-| W5 LIVE-ALIGNMENT — `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs` | 13 | 6 view-lane, 7 page-lane | 2026-10-04T00:39:22.105Z – 00:39:51.334Z | `fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json` |
-| close-71-with-live W3 show-key — `tools/oracle/swap-37-view-expectations-live-check-close-71.mjs` | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-lane only — `open` 18, `closed` 16, `content` 3 | 2026-10-03T19:41:52.380Z – 19:43:11.260Z | `fixtures/corpus-v2/asset-host-follow-live-close-71/swap-manifest-37-view-expectations-2026-10-03.json` |
+| W5 LIVE-ALIGNMENT — `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs` | 13 | 6 view-level, 7 page-level | 2026-10-04T00:39:22.105Z – 00:39:51.334Z | `fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json` |
+| close-71-with-live W3 show-key — `tools/oracle/swap-37-view-expectations-live-check-close-71.mjs` | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | 2026-10-03T19:41:52.380Z – 19:43:11.260Z | `fixtures/corpus-v2/asset-host-follow-live-close-71/swap-manifest-37-view-expectations-2026-10-03.json` |
 
 - **Why the two counts are what they are.** The 13 is the number the W5 tool
   refuses to run without: `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:86`
@@ -307,7 +307,7 @@ upper bound on it.
   Both manifests record the entry key per entry — `name` plus `view` — and
   comparing those keys across the two manifests returns an **empty
   intersection**: none of the W5 set's six view-scope keys appears among the
-  37. Shard identity is not decisive here (both lanes stage into separate
+  37. Shard identity is not decisive here (both sets stage into separate
   directories whose shard filenames collide by number, and three shard numbers
   appear in both sets), so the key comparison is the one that settles it.
   13 + 37 therefore counts 50 distinct entries, none of them twice.

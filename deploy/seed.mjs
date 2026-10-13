@@ -1,7 +1,7 @@
 // seed.mjs — generate deploy/seed/seed.sql, the SYNTHETIC demo deck for the
 // one-click deploy.
 //
-// DATA RULE (absolute, from the milestone tracker): no real production-deck content
+// DATA RULE (absolute): no real production-deck content
 // content anywhere in the deploy path. Every string below is invented for
 // this demo; the file is checked to stay under 1 MB (D1 free tier is 5 GB
 // total; this seed is a rounding error).

@@ -17,7 +17,7 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `sync-migrations.mjs` | regenerates `migrations/0001-schema.sql` from `db/schema.sqlite.sql` |
 | `migrations/0001-schema.sql` | the core schema, D1-ready (generated) |
 | `migrations/0002-card-text-binary-lookup-indexes.sql` | backfill of the BINARY key/codename indexes for already-provisioned databases; fresh databases never run it (not generated) |
-| `migrations/0003-deck-data-version-stamp.sql` | the `deck_data_version` freshness stamp and its six triggers on `cards` + `card_references` (the `[ENGINE-FRESHNESS]` block of `db/schema.sqlite.sql`). **One of two 0003 files** — see the numbering note below. Idempotent (`IF NOT EXISTS` / `INSERT OR IGNATE`), so it is order-safe against a regenerated `0001` |
+| `migrations/0003-deck-data-version-stamp.sql` | the `deck_data_version` freshness stamp and its six triggers on `cards` + `card_references` (the `[ENGINE-FRESHNESS]` block of `db/schema.sqlite.sql`). **One of two 0003 files** — see the numbering note below. Idempotent (`IF NOT EXISTS` / `INSERT OR IGNORE`), so it is order-safe against a regenerated `0001` |
 | `migrations/0003-demo-seed.sql` | the 4-card demo deck, generated from `db/seed.sql`; this is what the ROOT `wrangler.toml` one-click chain applies. **The other 0003 file** — see the numbering note below |
 | `migrations/0004-demo-account-substrate.sql` | the account substrate (`*account` + its four field cards, the `User` cardtype, the Decko Bot and Anonymous actor cards, and Decko Bot's own account). Idempotent — applying it twice inserts nothing. Generated |
 | `seed-account-system.mjs` | regenerates `migrations/0004-demo-account-substrate.sql` |
@@ -144,11 +144,11 @@ That is the complete footprint — no KV, no R2, no queues, no secrets.
 ## Storage budget
 
 D1 on the free plan: **5 GB of storage per account**, in databases of
-**500 MB each** (Cloudflare's published D1 limits, checked 2026-10-02 at
+**500 MB each** (Cloudflare's published D1 limits at
 `developers.cloudflare.com/d1/platform/limits/`). This deploy writes the
 schema DDL plus an **8 KB** seed — effectively zero against either ceiling.
 The demo deck is synthetic and always will be: no real member content is
-deployed to Cloudflare, ever (milestone data rule). **R2 is not used at
+deployed to Cloudflare, ever. **R2 is not used at
 all** — the engine stores everything in SQL, and this deploy binds no
 object storage, so there are no file uploads and no assets bucket.
 
