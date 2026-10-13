@@ -5,7 +5,7 @@
 // as module constants in that code, which forced every engine deployment to
 // serve this one deck; they are read from the deployment environment now
 // (deploy/bunny-worker-src/bunny-edge-served-deltas.ts), empty by default,
-// and deploy/bunny-edge-trial-runbook.md documents how a deployment
+// and deploy/bunny-edge-deployment-runbook.md documents how a deployment
 // supplies them.
 //
 // The suites that pin this deck's served output import this fixture and

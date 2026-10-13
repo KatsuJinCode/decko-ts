@@ -52,11 +52,11 @@ import { ANALYZE_ROWS_ESTIMATE, GUARD_ROW_LIMIT, D1_FREE_DAILY_ROW_WRITES } from
 
 /** Density planning constants: the refs-per-card basis every deck size
  *  decision in this module is made against. */
-export const CORPUS_CARDS = 93_700;
-export const CORPUS_REFS = 1_112_560;
-export const CORPUS_ROWS = CORPUS_CARDS + CORPUS_REFS; // 1,206,260
+export const DENSITY_BASIS_CARDS = 93_700;
+export const DENSITY_BASIS_REFS = 1_112_560;
+export const DENSITY_BASIS_ROWS = DENSITY_BASIS_CARDS + DENSITY_BASIS_REFS; // 1,206,260
 
-export const REFS_PER_CARD = CORPUS_REFS / CORPUS_CARDS; // 11.873639...
+export const REFS_PER_CARD = DENSITY_BASIS_REFS / DENSITY_BASIS_CARDS; // 11.873639...
 
 /** Cards that are NOT Scale Pages: scaffold 7 (ids 1-6 and 8; id 7 is
  *  deliberately left unused) + chain 32 + pointer 1 + search probe 1 = 41. */
@@ -198,7 +198,7 @@ export function planSeed({ scalePages }) {
     reason: ok
       ? null
       : `fitting-scale seed of ${scalePages} Scale Pages writes ${seedRows} rows ` +
-          `(${cards} cards + ${refRows} refs at corpus density ${REFS_PER_CARD.toFixed(6)}/card), ` +
+          `(${cards} cards + ${refRows} refs at the planned ${REFS_PER_CARD.toFixed(6)} refs/card density), ` +
           `+${ANALYZE_ROWS_ESTIMATE} ANALYZE = ${projectedWithAnalyze} rows = ` +
           `${((projectedWithAnalyze / D1_FREE_DAILY_ROW_WRITES) * 100).toFixed(2)}% of the ` +
           `${D1_FREE_DAILY_ROW_WRITES}/day free-tier budget — past the ${GUARD_ROW_LIMIT} guard. ` +
@@ -264,13 +264,6 @@ export function generateSeedFiles({ scalePages, outDir }) {
       projectedWithAnalyze: plan.projectedWithAnalyze,
       percentOfDailyLimit: plan.percentOfDailyLimit,
       headroomRows: plan.headroomRows,
-      convention: "table rows only",
-    },
-    corpusBasis: {
-      cards: CORPUS_CARDS,
-      refs: CORPUS_REFS,
-      totalRows: CORPUS_ROWS,
-      note: "measured density basis for the ref distribution",
     },
     chunks: {
       local: { dir: localDir, statementsPerChunk: LOCAL_CHUNK_STATEMENTS, fileCount: localFiles.length, rows: plan.seedRows },

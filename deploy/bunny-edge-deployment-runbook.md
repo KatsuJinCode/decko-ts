@@ -1,18 +1,15 @@
-# Bunny Edge trial runbook — decko-ts on a fresh trial account
+# Bunny Edge deployment runbook — decko-ts on a fresh Bunny account
 
-**Status:** everything below the "OPERATOR GATE" line is runnable by the
-operator. Nothing in this document has been executed against bunny.net by the
-agent; the real deploy is gated on a trial account existing AND the operator
-pasting the key.
+**Status:** a from-scratch deployment guide. Every step below runs against a
+bunny.net account you create for the purpose; no step touches an existing
+deployment. The account you need is Bunny's free trial (§2), and the only
+secret involved is that account's own API key.
 
 **Target architecture:** Bunny Database (libSQL over HTTP) + a Bunny Edge
 Scripting **Standalone** script acting as the pull-zone origin. No VM, no
 origin server, no container.
 
-**Every docs page cited here was fetched live on 2026-10-01** and is named with
-its URL at each use. The three local build/test commands in "Pre-flight" were
-run in this lane on 2026-10-01; the numbers are in
-`tmp/wrong-goal-hunt/bunny-edge-trial-prep-lane.md`.
+Every bunny.net docs page cited here is named with its URL at each use.
 
 ---
 
@@ -28,7 +25,7 @@ run in this lane on 2026-10-01; the numbers are in
 
 ---
 
-## 1. Pre-flight (no account needed — already done in this lane)
+## 1. Pre-flight (no account needed)
 
 ```bash
 npm run bundle:bunny-worker        # -> deploy/dist/bunny-worker.bundle.js  (~71 KB)
@@ -49,8 +46,7 @@ Trial sign-up: <https://dash.bunny.net/auth/register>
 you'll need").
 
 1. **Edge Platform > Scripting > Add Script.**
-   Source: <https://bunny.net/docs/scripting/quickstart.md>, step 1
-   (fetched 2026-10-01).
+   Source: <https://bunny.net/docs/scripting/quickstart.md>, step 1.
 2. **Deploy and edit on Bunny.net** (not GitHub — the GitHub path is §6).
    Source: <https://bunny.net/docs/scripting/github-integration.md>, step 3.
 3. **Script Name:** `decko-trial`.
@@ -79,16 +75,14 @@ you'll need").
 1. In the dashboard sidebar click **Add > Database**, name it `decko-trial`,
    and pick a region mode. **Single region** is the cheapest and the most
    predictable for a trial.
-   Source: <https://bunny.net/docs/database/quickstart.md>, steps 1–4
-   (fetched 2026-10-01).
+   Source: <https://bunny.net/docs/database/quickstart.md>, steps 1–4.
 2. On the database's **Access** page, generate a token. Choose **Full Access**
    (read/write) — the import writes; the edge script only needs read, but
    Bunny issues one token and simplicity wins at trial scale.
    Source: database/quickstart.md step 5; database/connect/authorization.md.
 3. On that same page click **Add Secrets to Edge Script** and select
    `decko-trial`. Bunny writes the credentials into the script as environment
-   variables. Source: database/connect/scripting.md steps 3–5
-   (fetched 2026-10-01).
+   variables. Source: database/connect/scripting.md steps 3–5.
 4. **Names only — never values — and do not put them in this repo:**
 
    | Variable | Value |
@@ -108,28 +102,26 @@ you'll need").
    ```bash
    BUNNY_DB_URL='libsql://<id>-<db-name>.lite.bunnydb.net/' \
    BUNNY_DB_TOKEN='<token>' \
-   node scripts/import-to-bunny-db.mjs --limit 200 --tables cards,card_references
+   node scripts/import-to-bunny-db.mjs --source <deck.sqlite> --limit 200 --tables cards,card_references
    ```
 
    Flags (all verified by a local dry run, §7):
    `--limit N` caps rows **per table**; `--tables a,b` restricts the table set;
-   `--source PATH` picks a different source sqlite; `--creds PATH` reads a
+   `--source PATH` names the source sqlite (required — there is no default);
+   `--creds PATH` reads a
    KEY=VALUE file; `--chunk-size N` (max 500) rows per pipeline POST;
    `--schema-only` / `--data-only` / `--dry-run`.
    The endpoint is `<url>/v2/pipeline` with `Authorization: Bearer <token>` —
-   <https://bunny.net/docs/database/connect/sql-api.md> (fetched 2026-10-01).
+   <https://bunny.net/docs/database/connect/sql-api.md>.
 
-   **Source file caveat:** the script's default source,
-   `tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3`, **does not exist on
-   this machine** as of 2026-10-01. Pass `--source` explicitly. A corpus that
-   does exist and has the right schema (`cards` with 49,829 rows, plus
-   `card_references`, `auth_sessions`, `auth_migrations`, `meta`) is
-   `C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3`.
+   **Source file:** the import needs an explicit `--source` sqlite file with
+   the deck schema (`cards` plus `card_references`, `auth_sessions`,
+   `auth_migrations`, `meta`); the script has no default source path.
 
-   **Credentials caveat:** the script no longer falls back to the
-   production-account creds file. If you get no credentials, it exits 2 and
+   **Credentials caveat:** the script reads credentials only from the
+   environment or `--creds`. If you get no credentials, it exits 2 and
    says so. That is deliberate — a trial import must not be able to silently
-   write to Riley's account.
+   write to an account it was not pointed at.
 
 6. Check the row landed: the database dashboard, or
    `GET https://<script-hostname>/_status` once published (§4).
@@ -154,8 +146,9 @@ fall back to their minimal stubs (the documented "never 500 a second time"
 contract). That is the correct posture for any deployment that is not the
 original reference deck, and it is what a new operator gets for free.
 
-**To reproduce the reference deck's served bytes**, set `DECKO_SERVED_DELTAS`
-to the JSON blob below (one variable, one paste). Each field can equally be
+**To serve a deck's real identity instead of the stock bytes**, set
+`DECKO_SERVED_DELTAS`
+to a JSON blob of the shape below (one variable, one paste). Each field can equally be
 set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
 `DECKO_SERVED_ASSET_HOST`,
 `DECKO_SERVED_FOOTER_VERSION_PIN`, `DECKO_SERVED_STYLESHEET_FROM` /
@@ -168,9 +161,10 @@ set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
 `DECKO_SERVED_PHANTOM_TYPE_ID` / `_NAME` / `_KEY`. Where both forms are
 present the JSON wins field-by-field.
 
-The values below are the reference deck's own. They are reproduced in
-`tests/deploy/fixtures/production-deck-served-deltas.ts`, which is what the
-deploy suites configure when they assert that deck's served bytes.
+The values below are a filled-in example in the anonymized family this
+repository uses for a reference deck's identity; the machine-readable copy
+the deploy suites configure when they assert that deck's served bytes is
+`tests/deploy/fixtures/production-deck-served-deltas.ts`.
 
 ```json
 {
@@ -191,15 +185,15 @@ deploy suites configure when they assert that deck's served bytes.
   "mainJsUrl": "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
   "logoUrl": "https://production-storage.r1.cdn.objectstore.example/files/79/0000000003-small.jpg",
   "faviconUrl": "https://production-storage.r1.cdn.objectstore.example/files/103/0000000004-small.jpg",
-  "siteTitleDefault": "Culturesmith",
-  "rootUrl": "https://culturesmith.com/",
-  "deckOrigin": "https://culturesmith.com",
+  "siteTitleDefault": "Example Site",
+  "rootUrl": "https://www.example.org/",
+  "deckOrigin": "https://www.example.org",
   "headScripts": [
     "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\" integrity=\"sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=\"></script>",
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==\" referrerpolicy=\"no-referrer\"></script>",
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw==\"></script>",
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==\" referrerpolicy=\"no-referrer\"></script>",
-    "<script src=\"https://kit.fontawesome.com/1366963381.js\" crossorigin=\"anonymous\"></script>"
+    "<script src=\"https://kit.fontawesome.com/<your-kit-id>.js\" crossorigin=\"anonymous\"></script>"
   ],
   "phantomType": { "typeId": 22281, "typeName": "BasicCs", "typeKey": "basic_c" }
 }
@@ -222,8 +216,8 @@ URL). `configured: false` means the deployment is serving stock bytes.
 | `GET https://<script-hostname>/Home.json` | `200` JSON, the card record |
 | any non-GET | `405` |
 
-The routes are unchanged from the Sept entry
-(`deploy/bunny-worker-src/bunny-worker.ts`, route comment) and are covered by
+The routes are the ones `deploy/bunny-worker-src/bunny-worker.ts` defines
+(see its route comment) and are covered by
 `tests/deploy/bunny-edge-worker.test.ts`.
 
 **Caching:** a standalone script is the origin, so it runs **only on a cache
@@ -240,7 +234,7 @@ on request volume.
 
 ## 5. Runtime facts this entry depends on
 
-| Fact | Source (fetched 2026-10-01) |
+| Fact | Source |
 |---|---|
 | Standalone scripts are started with `BunnySDK.net.http.serve(handler)`; the handler gets only a `Request` — there is **no** second `env` argument. | scripting/standalone/overview.md, "The serve function" + "Handler" |
 | Environment values and secrets are read via `process.env` or `Deno.env`. | scripting/environment-variables.md, "Using environment variables"; scripting/secrets.md, "Using environment secrets" |
@@ -264,7 +258,7 @@ check (Edge Platform > Scripting > `decko-trial` > Logs).
    script type, then **Add Script**. Bunny creates a repository from a
    template with a deploy workflow that publishes straight away.
    Source: <https://bunny.net/docs/scripting/github-integration.md>, steps
-   3–11 (fetched 2026-10-01).
+   3–11.
 2. To use **an existing** repository instead, follow that page's "Using an
    existing repository": pick the project preset, then set the install command,
    build command and **entry file** to:
@@ -274,9 +268,10 @@ check (Edge Platform > Scripting > `decko-trial` > Logs).
 3. Env secrets set on the script are not in the repo; they stay in the
    dashboard. Do not commit the database token.
 4. Automated deploys from GitHub Actions are a recurring unattended trigger.
-   Per the machine's circuit-breaker rule, any workflow that fires without a
-   human needs Julian's explicit approval **and** a circuit-breaker job
-   before it is enabled. The GitHub-connect deploy runs on Bunny's side, not
+   Any workflow that fires without a human in the loop should have an owner's
+   explicit approval **and** a circuit-breaker job (a workflow that fails
+   disables itself) before it is enabled. The GitHub-connect deploy runs on
+   Bunny's side, not
    in this repo's Actions, but the same caution applies to any workflow file
    Bunny writes into the connected repository.
 
@@ -288,7 +283,7 @@ will not know the database name. The build is the only moving part.
 
 ## 7. Cost math at trial scale
 
-From <https://bunny.net/docs/scripting/pricing.md> (fetched 2026-10-01):
+From <https://bunny.net/docs/scripting/pricing.md>:
 
 | Component | Rate | Increment |
 |---|---|---|
@@ -327,7 +322,7 @@ $34.00. To stay at the floor, stay under 1,000,000 requests a month — roughly
 the scripting line (same page). The database is billed on its own schedule —
 <https://bunny.net/docs/database/limits.md> caps a database at 1 GB and an
 account at 50 databases during public preview, but the per-database price is
-not on the pages fetched on 2026-10-01. **Read the trial's actual invoice
+not on the documented pricing pages. **Read the trial's actual invoice
 numbers on the dashboard before seeding anything large.**
 
 Live check after publishing: Edge Platform > Scripting > `decko-trial` shows
@@ -341,7 +336,7 @@ requests served and CPU used (quickstart.md step 3; the API exposes the same as
 ## 8. API variant of the same deploy (optional; needs the account API key)
 
 Base URL `https://api.bunny.net`, auth header **`AccessKey`**
-(<https://bunny.net/docs/scripting/api-reference.md>, fetched 2026-10-01).
+(<https://bunny.net/docs/scripting/api-reference.md>).
 Request bodies from
 <https://bunny.net/docs/api-reference/scripting/openapi.json>:
 
@@ -356,14 +351,13 @@ GET  /compute/script/{id}                 -> DefaultHostname (the URL to hit)
 GET  /compute/script/{id}/statistics      -> TotalRequestsServed / TotalCpuUsed / TotalMonthlyCost
 ```
 
-The Sept entry's header comment had the `code`/`publish` paths and the
-`{Code: ...}` body right; it had no auth header. `publish` takes an optional
+`publish` takes an optional
 `Note`, so `{}` is valid. `AddEdgeScriptVariableModel.DefaultValue` is capped at
 256 characters by the schema, and env var values at 2 KB by limits.md — a
 database URL and a token both fit.
 
-**This lane made no account writes.** Every call above is documentation for the
-operator to run.
+**No step above writes to an account by itself.** Every call is documentation
+for you to run.
 
 ---
 
@@ -386,9 +380,9 @@ operator to run.
 1. **`Bunny.v1.serve` is undocumented.** §5. If the paste-and-publish path
    does not start a server, this is the suspect, and the SDK tarball is where
    the contract was read.
-2. **The default import source file does not exist on this machine** (§3 step
+2. **The import has no default source file** (§3 step
    5). The trial seed needs an explicit `--source`.
-3. **The database price is not in the pages fetched on 2026-10-01.** The
+3. **The database price is not in Bunny's published pricing pages.** The
    $0.22 figure is the *scripting* line only.
 4. **Cache behaviour is untested here.** `no-store` means every request
    re-runs the script, which is correct for a trial but is also the lever that

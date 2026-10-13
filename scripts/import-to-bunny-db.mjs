@@ -7,12 +7,13 @@
 // USAGE (TRIAL / SMALL SCALE — this is the path to use first):
 //   BUNNY_DB_URL=libsql://<id>-<name>.lite.bunnydb.net/ \
 //   BUNNY_DB_TOKEN=<jwt> \
-//   node scripts/import-to-bunny-db.mjs --limit 200
+//   node scripts/import-to-bunny-db.mjs --source <deck.sqlite> --limit 200
 //
 //   --limit N        import at most N rows PER TABLE (small-scale seed; the
 //                    whole-deck import is the default only when omitted)
 //   --tables a,b     only these tables (default: every non-sqlite table)
-//   --source PATH    source sqlite file
+//   --source PATH    source sqlite file (required — the script has no
+//                    built-in source path)
 //   --creds PATH     KEY=VALUE file to read BUNNY_DB_URL / BUNNY_DB_TOKEN from
 //   --chunk-size N   rows per pipeline POST (max 500)
 //   --schema-only    create tables, import no rows
@@ -90,7 +91,8 @@ if ((!DB_URL || !TOKEN) && typeof args['creds'] === 'string') {
 if (!DB_URL || !TOKEN) {
   console.error(
     'No database credentials.\n' +
-    '  Set BUNNY_DB_URL and BUNNY_DB_TOKEN in the environment, or pass --creds <path-to-file>.',
+    '  Set BUNNY_DB_URL and BUNNY_DB_TOKEN in the environment, or pass --creds <path-to-file>.\n' +
+    '  Credentials are read from nowhere else: the script never falls back to a stored file.',
   );
   process.exit(2);
 }
@@ -101,10 +103,15 @@ console.log(`target: ${DB_URL.replace(/\/\/[^@]*@/, '//<redacted>@')}`);
 const httpBase = DB_URL.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '');
 const PIPELINE_URL = `${httpBase}/v2/pipeline`;
 
-const SOURCE_DB = resolve(
-  repoRoot,
-  typeof args['source'] === 'string' ? String(args['source']) : 'tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3',
-);
+if (typeof args['source'] !== 'string') {
+  console.error(
+    'No --source given.\n' +
+    '  The import reads a deck sqlite file you point it at; there is no built-in\n' +
+    '  source path. Pass the file explicitly:  --source <deck.sqlite>',
+  );
+  process.exit(2);
+}
+const SOURCE_DB = resolve(repoRoot, String(args['source']));
 if (!existsSync(SOURCE_DB)) {
   console.error(`source database not found: ${SOURCE_DB}`);
   process.exit(2);

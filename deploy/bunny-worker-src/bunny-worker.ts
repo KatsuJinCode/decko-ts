@@ -3,7 +3,7 @@
 // script.
 //
 // AUDIT against the current product docs (every page named here is cited
-// again in deploy/bunny-edge-trial-runbook.md):
+// again in deploy/bunny-edge-deployment-runbook.md):
 //
 //   https://bunny.net/docs/scripting/standalone/overview.md
 //   https://bunny.net/docs/scripting/environment-variables.md
@@ -88,7 +88,7 @@
 // Deployment (dashboard-first):
 //   Edge Platform > Scripting > Add Script > Standalone > Default standalone,
 //   paste deploy/dist/bunny-worker.bundle.js, set the two env secrets, Publish.
-//   See deploy/bunny-edge-trial-runbook.md.
+//   See deploy/bunny-edge-deployment-runbook.md.
 
 import { createClient } from "@libsql/client/web";
 

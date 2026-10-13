@@ -7,7 +7,7 @@
 // replaced by a throwing spy to prove nothing sneaks out.
 //
 // The real deployment is operator-gated (trial account + pasted API key); the
-// runbook for it is deploy/bunny-edge-trial-runbook.md.
+// runbook for it is deploy/bunny-edge-deployment-runbook.md.
 
 import { describe, expect, it } from "vitest";
 

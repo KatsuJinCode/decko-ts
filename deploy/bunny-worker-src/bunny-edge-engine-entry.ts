@@ -30,7 +30,7 @@
 // RUNTIME FACTS THIS ENTRY DEPENDS ON (verified empirically on the deployed
 // edge unless cited):
 //   - The reader bundle imports node:process and runs — the
-//     Bunny runtime resolves node: imports (deploy/bunny-edge-trial-runbook.md
+//     Bunny runtime resolves node: imports (deploy/bunny-edge-deployment-runbook.md
 //     section 5 cites the docs for env-via-process.env).
 //   - The bundled graph retains exactly these node: imports, each with a
 //     stated dependency: node:crypto (request-time randomBytes in
