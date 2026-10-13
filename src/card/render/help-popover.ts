@@ -404,7 +404,7 @@ export class HelpRulesResolver implements HelpRulesApi {
    *  WHY NOT THE WIDENED SUPERSET. 8f8f9ca admitted "right is a Setting and
    *  the left part resolves" because the corpus lookup for the *follow
    *  guards' trunk looked unevaluable. The corpus facts close that: the
-   *  trunk cards ARE Set-typed rows (`Don't Wait For The Study+*self` id
+   *  trunk cards ARE Set-typed rows (`Sample Card 074+*self` id
    *  26849 and `Make Contact+*self` id 6854, both type 259 = Set), and the
    *  oracle's truth table shows the verbatim Ruby predicate admits all 3
    *  guard rows (the 9 `*follow` entries) while refusing all 34 distinct

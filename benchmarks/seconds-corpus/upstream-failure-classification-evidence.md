@@ -1,6 +1,6 @@
 # Upstream-failure classification — the oracle's own failures, the reproduced-failure category, and the honest split
 
-Lane: upstream-failure-classification. Worktree `C:\localProjects\decko-ts-failclass`,
+Lane: upstream-failure-classification. Worktree `$REPO_ROOT/../decko-ts-failclass`,
 branch `upstream-failure-classification-2026-10-10`, base = integration tip
 `3c23e1f7`, pushed at tip `858884fc`. The engine's `src/` tree carries zero
 diffs (`git diff --stat 3c23e1f7..858884fc -- src/` is empty) — the lane is

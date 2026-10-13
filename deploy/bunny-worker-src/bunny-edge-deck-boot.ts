@@ -27,7 +27,7 @@
 //      by FetchEngine itself". A deck may carry such junctions TRASHED with
 //      empty content while a depth-3 structure rule makes them live searcher
 //      cards. Ruby renders the section; without the hook the fetch answers
-//      "unknown", the {{+Project(s) Participating|titled}} nest renders the
+//      "unknown", the {{+Item(s) Listing|titled}} nest renders the
 //      missing-child arm, and the whole section vanishes from every person
 //      page.
 //

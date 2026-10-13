@@ -19,7 +19,7 @@
 // warm entries.
 //
 // This test seeds the participating-section page shape in miniature (a
-// person + Project(s) Participating -> a project, whose +Participant(s)
+// person + Item(s) Listing -> a project, whose +Participant(s)
 // junction part links the person) plus enough filler cards that
 // warmLexicon's writes blow past the 10k cap and reset the mirror exactly
 // like a production deck does.
@@ -53,21 +53,21 @@ async function seedDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
   await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
   await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2 });
-  await seedCard(storage, { id: 580, name: "The Myth of Peace", typeId: 398 });
+  await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398 });
   await seedCard(storage, {
     id: 810,
-    name: "The Myth of Peace+Participant(s)",
+    name: "Sample Card 121+Participant(s)",
     leftId: 580,
     rightId: 406,
     typeId: 2,
   });
   await seedReference(storage, 810, 583, "casey_morgan", "L");
-  // the search card: the "Casey Morgan+Project(s) Participating"
+  // the search card: the "Casey Morgan+Item(s) Listing"
   // junction page card - its structure-rule CQL content, stored directly.
-  await seedCard(storage, { id: 418, name: "Project(s) Participating", typeId: 2 });
+  await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2 });
   await seedCard(storage, {
     id: 704,
-    name: "Casey Morgan+Project(s) Participating",
+    name: "Casey Morgan+Item(s) Listing",
     leftId: 583,
     rightId: 418,
     typeId: 98,
@@ -107,7 +107,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(temp.read("L-casey_morgan")).toBeUndefined();
 
       const html = await storage.engine.render(
-        "Casey Morgan+Project(s) Participating",
+        "Casey Morgan+Item(s) Listing",
         "content",
       );
       // Ruby does NOT render the empty arm for this page: the card_list
@@ -120,7 +120,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(items!.length).toBeGreaterThan(0);
       // the actual result: the linked project (the one whose
       // +Participant(s) part links the person)
-      expect(html).toContain('data-card-name="The Myth of Peace"');
+      expect(html).toContain('data-card-name="Sample Card 121"');
     } finally {
       storage.close();
     }
@@ -137,19 +137,19 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
       await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
       await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2 });
-      await seedCard(storage, { id: 580, name: "The Myth of Peace", typeId: 398 });
+      await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398 });
       await seedCard(storage, {
         id: 810,
-        name: "The Myth of Peace+Participant(s)",
+        name: "Sample Card 121+Participant(s)",
         leftId: 580,
         rightId: 406,
         typeId: 2,
       });
       await seedReference(storage, 810, 583, "casey_morgan", "L");
-      await seedCard(storage, { id: 418, name: "Project(s) Participating", typeId: 2 });
+      await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2 });
       await seedCard(storage, {
         id: 704,
-        name: "Casey Morgan+Project(s) Participating",
+        name: "Casey Morgan+Item(s) Listing",
         leftId: 583,
         rightId: 418,
         typeId: 98,
@@ -159,11 +159,11 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(storage.fetcher.lexicon.cache.temp.read("L-project")).toBeUndefined();
 
       const html = await storage.engine.render(
-        "Casey Morgan+Project(s) Participating",
+        "Casey Morgan+Item(s) Listing",
         "content",
       );
       expect(html).not.toContain('<div class="search-no-results"></div>');
-      expect(html).toContain('data-card-name="The Myth of Peace"');
+      expect(html).toContain('data-card-name="Sample Card 121"');
     } finally {
       storage.close();
     }

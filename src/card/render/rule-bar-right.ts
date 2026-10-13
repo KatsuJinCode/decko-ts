@@ -245,7 +245,7 @@ function ruleOneLineContent(
     // the "N items" one-line INCLUDING 0 — card-mod-list
     // set/abstract/01_list/html_views.rb:99-105 short_content →
     // short_content_items has no lower bound, and the oracle pins "0 items"
-    // on the Doctor Myth+*self+*layout rule row (phase-002 dump) where the
+    // on the Sample Card 189+*self+*layout rule row (phase-002 dump) where the
     // old `> 1` gate fell through to the empty first-name path.
     if (items.length !== 1) {
       return `${items.length} items`;
@@ -255,9 +255,9 @@ function ruleOneLineContent(
     // (item.rb:15-22 -> clean_item_name item.rb:258-268:
     // `context ||= context_card.name; item.absolute_name context`), so the
     // single-item form is the RESOLVED name, not the raw string. Oracle:
-    // the *on create page's rule 21805 ("#<Card[set:259]Tracked Item+*type
+    // the *on create page's rule 21805 ("Sample Card 065+*type
     // +*on create", List-typed, content "_left+email config") renders its
-    // bar-right one-line as "#<Card[set:259]Tracked Item+*type+email
+    // bar-right one-line as "Sample Card 065+*type+email
     // config" — the item's `_left` resolved against the rule card's own
     // left — where the raw dbContent form dropped the resolution.
     // Absolute items are their own absolutization, so the captured

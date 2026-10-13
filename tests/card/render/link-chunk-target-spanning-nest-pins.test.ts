@@ -168,12 +168,12 @@ describe("WIKI_LINK_REGEXP target atom admits a whole nest", () => {
       'title="Nicole Le\'Strix"',
     );
     const tagged = expandWikiLinks(
-      '[[Process Arts+*referred_to_by|Pages tagged with "Process Arts"]]',
+      '[[Sample Card 168+*referred_to_by|Pages tagged with "Sample Card 168"]]',
       undefined,
       undefined,
       undefined,
     );
-    expect(tagged).toContain('title="Pages tagged with &quot;Process Arts&quot;"');
-    expect(tagged).toContain('>Pages tagged with "Process Arts"</span>');
+    expect(tagged).toContain('title="Pages tagged with &quot;Sample Card 168&quot;"');
+    expect(tagged).toContain('>Pages tagged with "Sample Card 168"</span>');
   });
 });

@@ -17,7 +17,7 @@
 // folded batch's decomposed rows equal the ladder's own execution of that
 // entry — same rows, same order, 0 mismatches (the giant fold's discipline,
 // now over the drift pages, whose entry mix exposes the 2-pair OR-chain
-// order artifact Peace_Practices carries).
+// order artifact Sample_Card_140 carries).
 //
 // PIN 4 — BYTE IDENTITY: the composed render's slot-normalized HTML equals
 // the raw ladder's on the same page, same engine build, same deck.

@@ -1,8 +1,8 @@
 {
   "fixture": "synthetic-v1",
   "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
-  "actual": "C:\\localProjects\\decko-ts-r7fix-grade\\tmp\\grade-mods-on",
-  "expected": "C:\\localProjects\\decko-ts-r7fix-grade\\reference-harness\\fixtures\\synthetic-v1\\expected",
+  "actual": "tmp/grade-mods-on",
+  "expected": "reference-harness/fixtures/synthetic-v1/expected",
   "oracle": {
     "variant": "stock",
     "patches": [],

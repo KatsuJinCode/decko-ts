@@ -54,7 +54,7 @@ process.env.DECKO_DECK_PROFILE = "stock";
 // Ruby oracle app serves from public/mod/<mod> (decko setup links each mod's
 // public directory). run-all forwards its --decko checkout here; a direct run
 // falls back to the machine's decko checkout when it carries mod/.
-const DECKO_CHECKOUT_WITH_MODS = "C:/localProjects/decko-ruby-perf";
+const DECKO_CHECKOUT_WITH_MODS = process.env.DECKO_RUBY_PERF ?? "$REPO_ROOT/../decko-ruby-perf";
 process.env.DECKO_MOD_PUBLIC_DIR ??= existsSync(path.join(DECKO_CHECKOUT_WITH_MODS, "mod"))
   ? DECKO_CHECKOUT_WITH_MODS
   : path.join(repo, "reference-harness", "oracle", "app", "public");

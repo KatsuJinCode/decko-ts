@@ -467,7 +467,7 @@ describe("bunny edge page shell — the /files attachment route", () => {
     try {
       await seedCard(storage, {
         id: 2175,
-        name: "Aikido photo",
+        name: "Sample Card 128 photo",
         typeId: 19,
         dbContent: "(my_bucket)/2175/13244.jpg",
       });

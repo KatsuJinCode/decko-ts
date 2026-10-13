@@ -57,7 +57,7 @@
 // catch produced the unwrapped span labelled "(content view)". Corpus bytes
 // it did not match: card 34322 `Maturana ...+Date` (-938), 27918 `Jamie
 // McHugh ...+Date` (-908), 35469 `White Fragility ...+Date` (-606),
-// 9788 `Klickstein continues+Date` (-1727).
+// 9788 `Sample Card 098+Date` (-1727).
 //
 // THE LOUD HALF IS NOT WEAKENED. format/error.rb:65-67
 //   `loud_error?` = `focal? || Card.config.raise_all_rendering_errors`;

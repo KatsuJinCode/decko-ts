@@ -208,7 +208,7 @@ function slotId(card: RenderCard, view: string): string {
  *  the discussion-only gate below preserves both sides. Test pin:
  *  recapture-raw:News Item+discussion:render:open (offset 3187, exp
  *  3222, act 3221 — `\n` between `</p>` and the content-view slot's
- *  closing `</div>`); recapture-raw:Not really monothiests+discussion:
+ *  closing `</div>`); recapture-raw:Sample Card 080+discussion:
  *  render:open (offset 3490, exp 3525, act 3524). */
 /** card-mod-format-0.20.0 set/all/html/wrap.rb:50-53 #slot_cardname:
  *      name = card.name
@@ -216,8 +216,8 @@ function slotId(card: RenderCard, view: string): string {
  *  An UNSAVED COMPOUND card (Ruby new?, our isNewCard on the record —
  *  buildUnknownNestCard sets isNew: true; fetched real cards are never
  *  new) DISPLAYS its url_key form: case retained, underscores for
- *  spaces ("Conflict Done Well+management" renders as
- *  "Conflict_Done_Well+management"). Saved cards and simple names
+ *  spaces ("Sample Card 112+management" renders as
+ *  "Sample_Card_112+management"). Saved cards and simple names
  *  display name.s unchanged. This is display-only — the key/id algebra
  *  is untouched. */
 function slotCardname(card: RenderCard): string {
@@ -298,7 +298,7 @@ function slotWrap(
   // (wrap.rb method_wrap) closes the slot IMMEDIATELY after the inner:
   // the live-oracle recapture pins the rendered-box shape with the box
   // close ADJACENT to the slot close (recapture-raw-shard-000005
-  // Klickstein_continues:page), no separator. The rule fired exactly when
+  // Sample_Card_098:page), no separator. The rule fired exactly when
   // the box now renders and duplicated the join's separator by one byte.
   return `<div${attrs}>${inner}</div>`;
 }
@@ -1738,7 +1738,7 @@ export function templateLinkSetNameFromParts(
  *  +discussion core and caught the unregistered view into the pre-recapture
  *  "" blank). The LIVE-ORACLE recapture refutes that blank: the anonymous
  *  session carries the FULL form on +discussion cores —
- *  recapture-raw-shard-000005 Klickstein_continues:page pins the 1,083-byte
+ *  recapture-raw-shard-000005 Sample_Card_098:page pins the 1,083-byte
  *  update-case form byte-for-byte (id edit_card_9789, data-recaptcha="on",
  *  the recaptcha script + token hidden, the form-control author field with
  *  value="Anonymous").
@@ -1782,7 +1782,7 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   const card = fmt.card;
   // comment.rb:46-48 `view :comment_box, denial: :blank, unknown: true,
   // perms: :update` — the view's OWN permission gate, and the corpus pins
-  // its input: Klickstein_continues+discussion (card 9789) renders the
+  // its input: Sample_Card_098+discussion (card 9789) renders the
   // full form (recapture-raw-shard-000005) because its *self set (card
   // 9813) carries the *update rule row granting "Anyone" (cards:
   // left_id 9813, right_id = the *update setting, content "Anyone" —
@@ -1790,7 +1790,7 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // MNv ITM's +discussion (card 21110) carries no *update rule on any of
   // its sets (the corpus has NO other *update rows) and its capture has
   // NO form (recapture-raw-shard-000016) — the perms check fails and the
-  // configured :blank denial renders. Perennial Wisdom Tradition (32453)
+  // configured :blank denial renders. Sample Card 068 (32453)
   // and Work Week (43122) pin the same blank: read rule *all plus, NO
   // self set, NO *update rule anywhere, no form in the capture — while
   // the generic task-verdict walk answers update TRUE for them (its
@@ -1812,7 +1812,7 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
     // stays blank, the graded corpus byte for every anonymous capture
     // (the deck's *all+*create rule is "Anyone Signed In"; rendering the
     // form to a signed-out visitor on an uncomputed verdict was tried and
-    // flipped the r200 pool page Earth House Center away from the graded
+    // flipped the r200 pool page Sample Card 117 away from the graded
     // reference). Pinning the seat-time computation is the recorded
     // remainder.
     if (fmt.engine.taskAllowed?.(card, "create") !== true) return "";
@@ -2708,7 +2708,7 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *   - `:<codename>/...` (coded) -> `/files/:<codename>/<mod>.<ext>`
  *     (both localStorageUrl — FileCardUploader#local_url)
  *  The label/quote shape is oracle-pinned by the RAW corpus's quote-style
- *  exemplars (Werkshop Museum `Download +Documents`, Damon K Fairhurst
+ *  exemplars (Sample Card 138 `Download +Documents`, Damon K Fairhurst
  *  `Download +description+bio`, ... — the earlier `<a href="SRC">SRC</a>`
  *  body was the anonymized corpus's empty-arm inference, never an oracle
  *  capture). The polymorphic carrierwave :core in the mod loader dispatches
@@ -4707,11 +4707,11 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
     label !== undefined
       ? // The ATTR carries ONLY the quote escape (actionview-7.2.4
         // tag_helper.rb tag_option :322 — see titleNoLinkView's doc block);
-        // the TEXT is verbatim. Oracle: the Process Arts +*referred_to_by
+        // the TEXT is verbatim. Oracle: the Sample Card 168 +*referred_to_by
         // anchor (page-surface shard-000000, offset 12658) renders
-        // title="Pages tagged with &quot;Process Arts&quot;" with the RAW
-        // quotes in the span text — `>Pages tagged with "Process Arts"<` —
-        // and the +bytes family (Process Arts +10) was exactly the
+        // title="Pages tagged with &quot;Sample Card 168&quot;" with the RAW
+        // quotes in the span text — `>Pages tagged with "Sample Card 168"<` —
+        // and the +bytes family (Sample Card 168 +10) was exactly the
         // double-escaped text. title.rb:39-42 wrapped_title splits joints
         // only; it never html-escapes. The markup-bracket case (a sample
         // employer's wanted [[...]] link, the wanted name carrying a raw
@@ -5342,7 +5342,7 @@ const titledView: ViewFn = ({ fmt, voo }) => {
   // `voo.show :comment_box` before super(). The openView twin above
   // already open-codes it; without the same hook here the engine omits
   // comment_box from the titled slot's show list. live capture
-  // (Conflict_Done_Well.html `+discussion|titled` slot):
+  // (Sample_Card_112.html `+discussion|titled` slot):
   // show:["titled","comment_box"]. (:open_content/:titled_content are
   // omitted deliberately: their ported bodies carry no slotOptions wrap,
   // so a show flag there is unobservable — only :open and :titled emit
@@ -5919,7 +5919,7 @@ const labeledContentView: ViewFn = (ctx) => ctx.fmt.renderDelegated("core");
  *  20-23), so the verdict must shape the RENDERED BODY, not the view
  *  choice. The corpus pins those bytes in two independent captures: the
  *  pointer-item census (229/229 mini_bar slots wrap read-denied items,
- *  renderPointerListItem's survey) and the BW Oversight+ARCHETYPALLY nest
+ *  renderPointerListItem's survey) and the Sample Card 167+ARCHETYPALLY nest
  *  capture (mixed18 expected: every phantom leaf's mini_bar slot wraps a
  *  bar div carrying TWO quiet denial spans and NO bar machinery —
  *  `class='bar <set-keys> with-bar-menu nodblclick d-flex _card-link'
@@ -5942,7 +5942,7 @@ const miniBarView: ViewFn = (ctx) => {
     // open) use only mini_bar_cols (2-col), so bar_middle IS hidden") BEFORE
     // the denied bar_middle content is swapped for the quiet-denial spans.
     // The slot JSON of every denied mini_bar therefore carries hide
-    // ["bar_middle"]: the BW Oversight+ARCHETYPALLY oracle page pins 6 bars
+    // ["bar_middle"]: the Sample Card 167+ARCHETYPALLY oracle page pins 6 bars
     // / 6 hides, and the short-circuit below previously skipped the hide
     // (2026-10-01: the page's whole residual diff
     // was 210 units = 5 x 42 chars of `,&quot;hide&quot;:[&quot;bar_middle&quot;]`).
@@ -5953,7 +5953,7 @@ const miniBarView: ViewFn = (ctx) => {
       ctx.fmt,
       "mini_bar",
       // slot_cardname (wrap.rb:50-54): url_key only for a NEW COMPOUND
-      // card (the BW Oversight phantom leaves); a simple unknown name
+      // card (the Sample Card 167 phantom leaves); a simple unknown name
       // ("user design") keeps its display form.
       pointerListItemBodyForUnknown(slotCardname(ctx.fmt.card), {
         ...(ctx.fmt.card.setKeys !== undefined ? { setKeys: ctx.fmt.card.setKeys } : {}),

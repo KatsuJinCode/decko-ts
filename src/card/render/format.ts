@@ -208,7 +208,7 @@ export class Voo {
     // consumes: :size (the image variant — Ruby's determine_image_size reads
     // voo.size at the CORE render, one voo below the nest's content voo; a
     // size:full nest must render -original through that hop. live capture:
-    // Conflict_Done_Well 277091-original.png with data-slot "size":"full";
+    // Sample_Card_112 277091-original.png with data-slot "size":"full";
     // corpus captures: Professional Materials {{bar02|size:full}}). The
     // remaining heir keys (main, home_view, title, variant, joint, ...)
     // stay unported — a documented remainder.
@@ -1993,7 +1993,7 @@ export class RenderFormat {
       // lib/card/content/chunk/nest.rb:23 keeps the authored string:
       // "+Source Title" stays relative, underscores/casing untouched —
       // raw recapture oracle id 9625; live wire "+tag"/"+related"/
-      // "Su$tainability"/"Conflict_Done_Well+class_schedule"), codename-
+      // "Su$tainability"/"Sample_Card_112+class_schedule"), codename-
       // RESOLVED for mark forms: DeckoName.parse resolves ":codename"
       // marks through the name environment at parse time ({{:footer}} →
       // "*footer", the R16 page-surface pin; junction parts too — the Role
@@ -2329,7 +2329,7 @@ export class RenderFormat {
   /** The TYPE_PLUS_RIGHT anchor for a NEW compound card: Ruby's pattern
    *  reads the LEFT SIDE's type off the NAME ALGEBRA (superleft.type_name),
    *  not off the nesting format's context card — the RVW open view nests
-   *  "RVW+working doc 02" items from INSIDE "RVW+File Storage Area"
+   *  "RVW+working doc 02" items from INSIDE "RVW+Sample Card 127"
    *  (RichText-typed) and the captured slot chain still reads
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
@@ -2896,7 +2896,7 @@ export class RenderFormat {
    * `{{inclusion}}` in ANY card's content goes through (chunk/nest.rb:73
    * `@processed = format.content_nest(@options)`). The `_main` arm is part
    * of that dispatch, not a layout-only rule: `{{_main}}` in an ordinary
-   * card's content (page 470 "AsIn Layout", an Html-typed card whose body
+   * card's content (page 470 "Sample Card 185", an Html-typed card whose body
    * is a whole layout template) hits main_nest and splices the main
    * format's @rendered — which at that instant is the RAW SOURCE, because
    * `process_content _render_raw` (base.rb:85-87) evaluated the :raw view
@@ -3289,7 +3289,7 @@ export class RenderFormat {
     // `view :core do process_content _render_raw end` base.rb:85-87) leaves
     // the format's @rendered holding the raw source.
     //
-    // ORDER IS THE WHOLE MECHANISM (D6, page 470 "AsIn Layout"):
+    // ORDER IS THE WHOLE MECHANISM (D6, page 470 "Sample Card 185"):
     // `process_content _render_raw` evaluates its ARGUMENT first, so by the
     // time the content chunker dispatches a `{{_main}}` piece the format's
     // @rendered is the raw source, not the view bytes — and
@@ -4810,7 +4810,7 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  inner content is byte-equal to this function's output; the 2 exceptions
  *  are the `html_safe` explicit-title arm (title.rb:32-36: authored
  *  entities survive UNESCAPED in the inner — title `Pages tagged with
- *  &quot;Process Arts&quot;` over inner `Pages tagged with "Process Arts"`),
+ *  &quot;Sample Card 168&quot;` over inner `Pages tagged with "Sample Card 168"`),
  *  not joint-related. No oracle title puts whitespace next to a joint, so
  *  the `\s*` consumption is unobserved but faithful. */
 export function wrappedTitleInner(title: string): string {
@@ -5608,7 +5608,7 @@ export function expandWikiLinks(
     // renders `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=
     // bar&quot;>20191213+CM+Time Tracking+1400</a>"` with RAW brackets
     // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
-    // there, and the Dungeons and Dragons +SCa rule-link span the same
+    // there, and the Sample Card 100 +SCa rule-link span the same
     // `&lt;/a&gt;` where the capture has `</a>`).
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +

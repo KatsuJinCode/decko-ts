@@ -101,7 +101,7 @@ tool's own output.
 
 ## Commands
 
-    node C:/Users/jpswi/.zcode/tools/lane-job.mjs --lane corpus-inst --wait \
+    node $ZCODE_HOME/tools/lane-job.mjs --lane corpus-inst --wait \
          --job "corpus gate" -- \
          node benchmarks/seconds-corpus/seconds-corpus-gate.mjs --keep --work <dir>
 

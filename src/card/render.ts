@@ -1643,7 +1643,7 @@ export class RenderEngine implements RenderEngineLike {
     // on a POSITIVE update verdict, and the generic task warm above is
     // view-gated (viewRequiresTask) - warm the discussion cards here (the
     // page lane runs the same warm at page.ts; census M8: the graded
-    // Kayla_Feder_20230902+discussion:open pair renders the
+    // Sample_Card_099+discussion:open pair renders the
     // inherited-grant form on THIS lane).
     await this.ensureDiscussionUpdateVerdicts({ cardName, view });
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
@@ -2058,8 +2058,8 @@ export class RenderEngine implements RenderEngineLike {
     // `account? = account.real?`) and its +*email child for the
     // verification_sent_line (views.rb:63-67). The trait fetch composes
     // the STAR name — oracle probe r17-junction-fetch-probe.rb:
-    // card.account -> id 46002 name "ronald joseph+*account" (right 100 =
-    // *account), Card.fetch("ronald joseph+account") is nil, and the tag
+    // card.account -> id 46002 name "Sample Card 164+*account" (right 100 =
+    // *account), Card.fetch("Sample Card 164+account") is nil, and the tag
     // card "account" does not exist. Neither child is reachable from the
     // reference closure (the signup content names only its template
     // nests), so they enrich here, in the async prepare phase — the same
@@ -2639,7 +2639,7 @@ export class RenderEngine implements RenderEngineLike {
     // catch (format.ts) produced the unwrapped span labelled "(content
     // view)". The corpus carries the wrapped form with the DELEGATED label —
     // card 34322 `Maturana ...+Date`, 27918 `Jamie McHugh ...+Date`, 35469
-    // `White Fragility ...+Date`, 9788 `Klickstein continues+Date`:
+    // `White Fragility ...+Date`, 9788 `Sample Card 098+Date`:
     //   <div id="...-date-content-view" class="card-slot content-view ...">
     //   <span class="render-error alert alert-danger">Error rendering:
     //   ...+Date (core view)</span></div>
@@ -4393,7 +4393,7 @@ export class RenderEngine implements RenderEngineLike {
    *     22283, "Anyone Signed In") and Anonymous is denied → the quiet
    *     denial span inside the highlighted layout source (the oracle-pinned
    *     class).
-   *  2. COMPOUND names (the {{+field}} phantom family — BW Oversight's
+   *  2. COMPOUND names (the {{+field}} phantom family — Sample Card 167's
    *     {{+Human|closed}} leaves): the verdict is the LIVE RECURSIVE _left
    *     walk (card-mod-permissions set/all/permissions.rb:55-71, read
    *     verbatim: `permission_rule_id` -> `rule(action).match?(
@@ -4406,7 +4406,7 @@ export class RenderEngine implements RenderEngineLike {
    *     render), so seating the computed verdict reproduces Ruby for BOTH
    *     directions at once: BW's leaves deny through 6569 "_left" -> left
    *     11201 (EXISTS — the prior recorded result's absent-left claim is
-   *     falsified) -> BW Oversight+*self+*read 10577 (role list, no
+   *     falsified) -> Sample Card 167+*self+*read 10577 (role list, no
    *     Anonymous); CDW_Host+management allows through its 6568-chain
    *     left. (The whole-population fear is answered by
    *     evidence, not scope: the walk's verdict IS Ruby's; the earlier
@@ -4544,7 +4544,7 @@ export class RenderEngine implements RenderEngineLike {
       // *all+*update "Anyone Signed In"). leftTypeName is the same
       // quick_type(left) input seatAbsentRoot passes. (The unknown-view
       // family this closes: the 69 member page rows + Guns /
-      // Perennial Wisdom Tradition / Work Week — the 21c92f3e fix's
+      // Sample Card 068 / Work Week — the 21c92f3e fix's
       // dispatch, which never reached the integration line.)
       let leftTypeName: string | undefined;
       if (name.isCompound && name.leftName !== undefined) {
@@ -5286,18 +5286,18 @@ export class RenderEngine implements RenderEngineLike {
    *  `contextTarget ?? this.engine.fetchRenderCard(targetName)`).
    *
    *  THE MEASURED DEFECT (parity-restore-runbook.md:184, mechanism #4,
-   *  Aiki:page): the corpus row `Aiki+references` (27199) stores its
+   *  Field:page): the corpus row `Field+references` (27199) stores its
    *  reference in KEY case, so the structure walk's compound-ref warm
    *  (render.ts#applyStructureContent -> fetcher.fetchByName) fetched
    *  "aiki+*referred_to_by", MISSED (corpus: left_id 2705 + right_id 3945
    *  -> no row) and seated a placeholder named FROM THAT MARK - the key
    *  form. The page's own `{{_self+*referred_to_by}}` then resolved the
-   *  RIGHT name ("Aiki+*referred_to_by") and read the KEY, hitting the
+   *  RIGHT name ("Field+*referred_to_by") and read the KEY, hitting the
    *  key-named placeholder.
    *
    *  ONLY a fabricated, id-less placeholder is re-bound, and only onto the
    *  mark that reached it. A STORED card keeps its row's name: re-binding
-   *  one would let an authored `{{aiki}}` rename the "Aiki" card's slots
+   *  one would let an authored `{{aiki}}` rename the "Field" card's slots
    *  (Ruby's known? path never calls assign_name for a stored card). The map
    *  entry is never mutated - a copy is returned, which is what Ruby's
    *  per-fetch `Card.new` gives for free and a shared map does not. */
@@ -7907,7 +7907,7 @@ export class RenderEngine implements RenderEngineLike {
    *  viewRequiresTask gate (the comment form renders inside :open /
    *  :content bodies whose top view never requests task verdicts, so the
    *  generic warm skips them entirely). Corpus input: the *update rule
-   *  row on the discussion's own *self set (Klickstein_continues+
+   *  row on the discussion's own *self set (Sample_Card_098+
    *  discussion: left_id 9813's *update row, content "Anyone") is what
    *  the anonymous viewer's update rides - the same algebra
    *  allTaskVerdictsForCard already walks. */
@@ -8725,7 +8725,7 @@ export class RenderEngine implements RenderEngineLike {
       if (card.name.rightName?.key !== hostKey) continue;
       // Ruby's cql runs under the viewer's read rules — a read-denied
       // rule never reaches the row list (corpus 21805
-      // "#<Card[set:259]Tracked Item+*type+*on create": its *read is
+      // "Sample Card 065+*type+*on create": its *read is
       // "Anyone Signed In" (rule 22283), so the oracle's *on create page
       // shows ONE *type-class bar although the row exists).
       if (this.isDenied(card)) continue;
@@ -10133,7 +10133,7 @@ export class RenderEngine implements RenderEngineLike {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Riley_Ellery +Project(s) Participating "0
+          // (2026-09-25 Riley_Ellery +Item(s) Listing "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

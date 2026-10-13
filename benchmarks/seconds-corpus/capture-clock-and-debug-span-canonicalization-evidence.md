@@ -84,7 +84,7 @@ NOT only the clock, and N4 must not hide it:
 backtrace inside the quiet error span's `title` attribute. The committed
 oracle bytes carry this machine's frames verbatim — `C:/Ruby33-x64/...`
 gem paths, the capture-time harness checkout path
-(`C:/localProjects/decko-ts-corpus/reference-harness/oracle/adapter.rb`),
+(`$REPO_ROOT/../decko-ts-corpus/reference-harness/oracle/adapter.rb`),
 `script/decko`, and where an object lands in the message, its heap
 address. Those bytes are the capturing machine's filesystem, not oracle
 semantics: a capture from any other host (or after moving the checkout)
@@ -113,7 +113,7 @@ demand the capture machine's filesystem; the pins stay until then.
 
 The gate run regenerates both measurements:
 
-    node C:/Users/jpswi/.zcode/tools/lane-job.mjs --lane corpus-inst --wait \
+    node $ZCODE_HOME/tools/lane-job.mjs --lane corpus-inst --wait \
          --job "corpus gate" -- \
          node benchmarks/seconds-corpus/seconds-corpus-gate.mjs --keep --work <dir>
 
