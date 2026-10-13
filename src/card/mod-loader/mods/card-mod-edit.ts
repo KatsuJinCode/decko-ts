@@ -2692,8 +2692,8 @@ const editInFormView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   // form.rb:26-30 view :edit_in_form: reset_form (per-render form state);
   // @in_multi_card_editor = true; edit_slot — whose CASE order puts
-  // multi_card_editor? FIRST: a structured card (Topic 001, the
-  // row — Topic+*type+*structure) renders multi_card_edit(true), its
+  // multi_card_editor? FIRST: a structured card (a card carrying a
+  // Topic+*type+*structure-style rule) renders multi_card_edit(true), its
   // template's authored nests in NORMAL nest mode (the titled slot the
   // oracle pins); the formgroup below is the in_multi_card_editor arm
   // (a non-structured card's :edit_in_form render).
@@ -2725,8 +2725,8 @@ const editInFormView: ViewFn = (ctx) => {
  *  nest field, args }` - read_field_configs (:9-11) = edit_field_configs
  *  (card-mod-content set/all/chunk.rb:55-62): the explicit-edit-fields arm
  *  is voo.edit_structure (unset in the engine); the implicit arm walks the
- *  content's nest chunks. A nest-FREE card (the "Oracle Basics"
- *  arm) answers [] -> output "". A nest-BEARING card renders the nested
+ *  content's nest chunks. A nest-FREE card (content with no nests) answers
+ *  [] -> output "". A nest-BEARING card renders the nested
  *  read_formgroups through the nest machinery with home_view opts - the
  *  rails-runtime remainder (the port answers "" there, disclosed). The nest scan is a
  *  byte-level guard ({{...}} chunks with the {{# comment form removed),
@@ -2737,7 +2737,7 @@ function contentHasRealNest(fmt: ViewContext["fmt"]): boolean {
 }
 
 // Both arms of the Ruby map answer "": a nest-free card's
-// read_field_configs is [] (the "Oracle Basics" arm), and the
+// read_field_configs is [] (content with no nests), and the
 // nest-bearing arm renders the nested read_formgroups through the nest
 // machinery - the rails-runtime remainder,
 // disclosed in the comment above.
@@ -2777,7 +2777,7 @@ function structureLink(): string {
  *  virtual-dropped. Under nest_mode :edit every nest substitutes to the
  *  target's :edit_in_form (mode.rb:64-68) — the Search Page row
  *  renders the All Topics field formgroup. Nest-free cards answer
- *  structure_link (the "Oracle Basics" arm). */
+ *  structure_link (a card with no structure rule renders the root link). */
 const editNestsView: ViewFn = (ctx) =>
   framedView(ctx, "edit_nests", () =>
     ctx.fmt.withNestMode("edit", () => {
@@ -3109,8 +3109,8 @@ function showDiscussionTab(ctx: ViewContext): boolean {
   // tab_visibility.rb:36-50: discussion_card answers NIL for a new card
   // and for a card that IS a discussion card (compound && tag ==
   // discussion), and show_discussion? is that card's ok?(update when the
-  // phantom is new, else read). The discussion row
-  // Topic 001+discussion:engage_tab carries the discussion-card arm: the
+  // phantom is new, else read). The engage_tab row for a
+  // discussion-tagged card carries the discussion-card arm: the
   // card's own tag IS discussion, so discussion_section contributes
   // nothing and the tab ends at the follow section.
   const { fmt } = ctx;
@@ -3289,8 +3289,8 @@ export const relatedTabView: ViewFn = ({ fmt }) => {
   ]);
   // related_by_type_items (related_section.rb:31-33): the absolute
   // "<Type>+*type+by_name" mark. The pill's data-cy keys on the CARD'S OWN
-  // TYPE ("Topic cards" -> topic_card-pill; the Topic 001 row carries
-  // topic_card on the Topic 001 card — the hardcoded rich_text_card
+  // TYPE ("Topic cards" -> topic_card-pill; the row carries
+  // topic_card for the Topic-typed card — the hardcoded rich_text_card
   // fallback was the RichText label only).
   const typeName = fmt.card.typeName ?? "";
   // Rails' underscore (ActiveSupport Inflector.underscore): CamelCase runs
@@ -3383,7 +3383,7 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
       // last_action_verb's mechanism - a family act (+summary, +tags)
       // carries no action on the render root, and the earlier lookup
       // defaulted every non-root pill to the edit icon where the oracle
-      // carries add_circle for all four Topic 001 pills.
+      // carries add_circle for all four of the act's pills.
       const summary =
         reader === undefined
           ? ""
@@ -3446,8 +3446,8 @@ export function followButton(
   const option = start ? "always" : "never";
   const hover = start ? "" : ` data-hover-text="unfollow"`;
   // Rails' query-value encoding (CGI.escape): spaces render "+" and a
-  // literal "+" renders "%2B" — "Topic 001+discussion" lands as
-  // "Topic+001%2Bdiscussion" (the mark's %2B; the
+  // literal "+" renders "%2B" — a "My Topic+discussion" mark lands as
+  // "My+Topic%2Bdiscussion" (the mark's %2B; the
   // previous space-only rewrite left the junction plus raw).
   const successMark = cardName.replace(/ /g, "\u0000").replace(/\+/g, "%2B").replace(/\u0000/g, "+");
   const href =
@@ -3571,7 +3571,7 @@ export const engageTabView: ViewFn = (ctx) => {
         // show: :comment_box, hide: [:menu]) - nesting.rb:27-31 builds the
         // ABSOLUTE field name (card.name.field) and the capitalized title;
         // nest fetch.rb#new_card then sets view_opts[:nest_name] to the
-        // cardish name (the resolved "Oracle Basics+discussion" the
+        // cardish name (the resolved "<card>+discussion" the
         // slot carries). Programmatic nest: no nest_syntax in the
         // slot JSON, and the opts stay FLAT (show/hide ride the voo's
         // first-touch viz: hide menu first, then show comment_box, then
@@ -3766,8 +3766,8 @@ const editRulesView: ViewFn = (ctx) => {
   const setRecord = fmt.engine.fetchRenderCard(setName);
   // The base keys: the set card "X+*self" is a TYPE_PLUS_RIGHT-set member
   // whose left-type token derives from the FORM CARD's own type (the
-  // Topic 001 row carries topic-Xself — Topic-typed left; the
-  // Basics fixture carries rich_text-Xself — RichText-typed left). The Set
+  // Topic-typed row carries topic-Xself — Topic-typed left; the
+  // RichText-typed fixture carries rich_text-Xself — RichText-typed left). The Set
   // type identity ("5"/"Set") stays the deck's Set type card row.
   const leftTypeCode =
     fmt.card.typeCode ??
@@ -3791,8 +3791,8 @@ const editRulesView: ViewFn = (ctx) => {
     (setRecord !== undefined && setRecord.id !== undefined
       ? ` data-card-id="${setRecord.id}"`
       : "") +
-    // data-card-name carries the card's NAME (the row:
-    // "Topic 001+*self"); the link-name stays the url key.
+    // data-card-name carries the card's NAME (the self-set junction name,
+    // e.g. "<card>+*self"); the link-name stays the url key.
     ` data-card-name="${h(setName)}"` +
     // the deck's Set type card (id 5) - deck data
     ` data-card-type-id="5" data-card-type-name="Set"` +
