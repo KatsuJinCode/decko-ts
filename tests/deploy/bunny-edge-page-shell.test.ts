@@ -143,7 +143,7 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
   it("pins the footer version the production site prints", () => {
     expect(
       applyServedEnvironmentDeltas(`<a href="/:latest">Decko v</a>`, DELTAS).trimEnd(),
-    ).toBe(`<a href="/:latest">Decko v0.19.1</a>`);
+    ).toBe(`<a href="/:latest">Decko v0.0.0-synthetic</a>`);
   });
 
   it("pins the footer version through the literal form a *credit embeds", () => {
@@ -152,7 +152,7 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
     // shape, so the configured pin rewrites the literal form too.
     expect(
       applyServedEnvironmentDeltas(`<a href="http://decko.org">Decko v0.20.0</a>`, DELTAS).trimEnd(),
-    ).toBe(`<a href="http://decko.org">Decko v0.19.1</a>`);
+    ).toBe(`<a href="http://decko.org">Decko v0.0.0-synthetic</a>`);
   });
 
   it("a partially-configured deployment applies only what it configured", () => {
@@ -302,8 +302,8 @@ describe("bunny edge page shell — the /files/ helpers", () => {
 async function seedShellDeck(storage: RenderTestStorage): Promise<void> {
   // The read-rule party math (AnyoneID=8, AnonymousID=15) — the same
   // minimal anonymous boot the error-mapping pin uses.
-  await seedCard(storage, { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 });
-  await seedCard(storage, { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+  await seedCard(storage, { id: 8, name: "kmrtqd", codename: "anyone", typeId: 2 });
+  await seedCard(storage, { id: 15, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
   // The page head's global settings (page.ts headReadSet -> Card[:codename]).
   await seedCard(storage, { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" });
   await seedCard(storage, {
@@ -399,7 +399,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       expect(body).toContain(`<nav class="navbar navbar-expand-lg">`);
       // Footer version pin: the deployment configured the version its site
       // prints, and the deck's bare form is compensated to it.
-      expect(body).toContain(`>Decko v0.19.1</a>`);
+      expect(body).toContain(`>Decko v0.0.0-synthetic</a>`);
       expect(body).not.toContain(`>Decko v</a>`);
       // The main card's content.
       expect(body).toContain("hello");
@@ -438,7 +438,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       expect(body).not.toContain("integrity=");
       // No version rewrite: the deck's own footer bytes stand as seeded.
       expect(body).toContain(`>Decko v</a>`);
-      expect(body).not.toContain(`>Decko v0.19.1</a>`);
+      expect(body).not.toContain(`>Decko v0.0.0-synthetic</a>`);
     } finally {
       storage.close();
     }

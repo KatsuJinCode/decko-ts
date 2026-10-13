@@ -1529,7 +1529,6 @@ async function dispatchWriteRequest(
         declaredContentType: attachmentInput.contentType,
       };
 
-  let signOutAfterDelete: { sessions: SessionStore; token: string } | undefined;
   try {
     let result: ActionResult | null;
     let name: string;
@@ -1699,23 +1698,11 @@ async function dispatchWriteRequest(
         });
       }
       // signout_upon_delete (card-mod-account set/right/account/events.rb
-      // :49-51, :integrate, when: current_account?): closing your own
-      // account signs you out. Ruby's event names a constant that does not
-      // exist (Card::Set::Right::Self::Signin), the integrate stage swallows
-      // the NameError, and the closed account stays signed in; the port signs
-      // out as the event intends (a deliberate difference).
-      const accountCodenameId = await ctx.fetcher.codenames.id("account");
-      if (
-        sessionToken !== null &&
-        accountCodenameId !== undefined &&
-        existing.rightId === accountCodenameId &&
-        existing.leftId !== null &&
-        existing.leftId !== undefined
-      ) {
-        const sessions = new SessionStore({ driver: ctx.driver });
-        const actor = await sessions.lookupSession(sessionToken);
-        if (actor !== null && actor.id === existing.leftId) signOutAfterDelete = { sessions, token: sessionToken };
-      }
+      // :49-51, :integrate, when: current_account?): the intent is to sign
+      // the session out when its own account is closed. The recorded
+      // outcome is that the session survives the close, so that is what
+      // the port does: no session is revoked here, and the delete
+      // response carries no Set-Cookie.
       result = await engine.deleteCard({
         cardId: existing.id,
         // params[:recaptcha_token] — the event :recaptcha input rides every
@@ -1865,12 +1852,6 @@ async function dispatchWriteRequest(
       ? previousLocation(visit)
       : successTargetPath(parsed, name, visit);
     const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
-    if (signOutAfterDelete !== undefined) {
-      await signOutAfterDelete.sessions.revokeSession(signOutAfterDelete.token);
-      delete visit.history;
-      visit.cards = {};
-      return { ...response, headers: { ...response.headers, "Set-Cookie": clearedSessionCookieHeader() } };
-    }
     return response;
   } catch (error) {
     if (error instanceof CardActionError) {

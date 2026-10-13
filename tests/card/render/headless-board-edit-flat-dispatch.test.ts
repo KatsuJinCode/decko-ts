@@ -1,6 +1,6 @@
 // THE HEADLESS DISPATCH CONTRACT for the board/edit surfaces.
 //
-// The defect: signed-in GET /Latest_News/board and /Aiki/edit answer 422
+// The defect: signed-in GET /<set>/board and /<two-part-set>/edit answer 422
 // "Unsupported view". Both views ARE ported and pinned — board
 // (card-mod-edit.ts boardView, set/all/board manifest registration) and
 // edit (editView, set/all/edit_content) — but ONLY in the mod-loader

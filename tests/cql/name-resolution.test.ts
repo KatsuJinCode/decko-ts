@@ -41,7 +41,7 @@ const NAME_BATTERY: Array<[string, number | undefined]> = [
   ["child_one", 607], // simple part card (right:/plus: shapes)
   ["Search", 98], // type restrict
   ["Cardtype", 3],
-  ["Decko Bot", 1], // created_by restrict (card id 1 in the capture deck)
+  ["Decko Bot", 1], // created_by restrict -- the seed account, card id 1
   ["Oracle Junction+child_one", 608], // compound: left/right id walk
   ["*to+*right+*content options", 157], // 3-part junction (recursive walk)
   ["*recent settings+*self", 484],

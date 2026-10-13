@@ -366,6 +366,22 @@ function rememberRevId(res) {
 }
 
 const scenarios = JSON.parse(readFileSync(join(here, "scenarios.json"), "utf8"));
+// The withheld step set (tools/parity-side-effects/withheld/scenarios.json)
+// is NOT part of this public run. It drives the same deck in the same order,
+// so running it here would corrupt the shared sequence; it is a standalone
+// set with its own recordings, run only after disclosure. A release package
+// excludes it, and the repository forbids silent skips, so its absence is
+// announced loudly and by name.
+const withheldPath = join(here, "withheld", "scenarios.json");
+let withheldSteps = [];
+try {
+  withheldSteps = JSON.parse(readFileSync(withheldPath, "utf8")).steps ?? [];
+} catch {
+  withheldSteps = [];
+}
+process.stderr.write(
+  `[withheld until disclosure] NOT RUN: ${withheldSteps.length} steps (${withheldPath})\n`,
+);
 const steps = [];
 for (const s of scenarios.steps) {
   stepSeconds++;

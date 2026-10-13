@@ -416,8 +416,8 @@ export class FetchEngine {
     // run assign_name on the SAME object a page request may already hold —
     // the page's record mutated from its requested name to the canonical key
     // string mid-render (the acceptance's compound-masthead rows: the masthead
-    // and <title> rendered "dream_team+association" where the oracle renders
-    // the requested "Dream Team+Associations"). Dup here: every caller owns
+    // and <title> rendered the canonical key form of a compound name where
+    // the oracle renders the requested name). Dup here: every caller owns
     // its copy; the cache entry stays what the last store wrote.
     let effective: CardRecord = { ...card };
     if (newOpts !== undefined) {

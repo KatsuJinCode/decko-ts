@@ -62,7 +62,7 @@ async function freshWithHook(): Promise<{
     }),
   ];
   const engine = new CardActionEngine(f.storage.engine, {
-    actor: { id: 7, name: "Jonas" },
+    actor: { id: 7, name: "Dana" },
     integrationHooks: hooks,
     notifyTransport: transport,
   });
@@ -103,7 +103,7 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
     })();
     const transport = new CaptureTransport();
     const engine = new CardActionEngine(f.storage.engine, {
-      actor: { id: 7, name: "Jonas" },
+      actor: { id: 7, name: "Dana" },
       notifyTransport: transport,
     });
     const created = await engine.createCard({ name: "Plain Card", content: "x" });

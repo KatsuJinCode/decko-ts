@@ -65,7 +65,7 @@ async function seedRuleBranchFamily(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 210, name: "*style", codename: "style", typeId: SETTING_TYPE_ID });
   await seedCard(storage, {
     id: 251, leftId: 250, rightId: 210, typeId: SETTING_TYPE_ID,
-    dbContent: "slate skin customized",
+    dbContent: "quartz skin customized",
   });
   await seedCard(storage, { id: 260, name: "Sign up", typeId: BASIC_TYPE_ID });
   await seedCard(storage, { id: 261, name: "*type", codename: "type", typeId: SETTING_TYPE_ID });

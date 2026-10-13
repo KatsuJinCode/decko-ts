@@ -169,28 +169,6 @@
       }
     },
     {
-      "name": "probe-rename-other-account",
-      "mod": "account",
-      "method": "put",
-      "path": "/Parity_Follower",
-      "params": {
-        "card": {
-          "name": "Parity Follower Renamed"
-        }
-      },
-      "deliberate": {
-        "why": "Ruby crashes mid-rename (a second Ruby defect in the same authorization area, withheld on the terms docs/SECURITY.md states) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
-        "ruby": {
-          "status": "500",
-          "errors": "undefined method `type_id' for nil"
-        },
-        "ts": {
-          "status": "422",
-          "errors": "NAME: cannot rename Account Holder"
-        }
-      }
-    },
-    {
       "name": "signed-in-read-home",
       "mod": "session",
       "method": "get",
@@ -1063,28 +1041,6 @@
       }
     },
     {
-      "name": "admin-rename-account-holder",
-      "mod": "account",
-      "method": "put",
-      "path": "/Parity_Follower",
-      "params": {
-        "card": {
-          "name": "Parity Follower Two"
-        }
-      },
-      "deliberate": {
-        "why": "Ruby crashes mid-rename (a second Ruby defect in the same authorization area, withheld on the terms docs/SECURITY.md states) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
-        "ruby": {
-          "status": "500",
-          "errors": "undefined method `type_id' for nil"
-        },
-        "ts": {
-          "status": "422",
-          "errors": "NAME: cannot rename Account Holder"
-        }
-      }
-    },
-    {
       "name": "admin-signout",
       "mod": "account",
       "method": "delete",
@@ -1153,16 +1109,7 @@
       "name": "admin-close-own-account",
       "mod": "account",
       "method": "delete",
-      "path": "/Parity_Admin+*account",
-      "deliberate": {
-        "why": "Ruby's signout_upon_delete names a constant that does not exist (Card::Set::Right::Self::Signin); the integrate stage swallows the NameError and the closed account stays signed in. The port signs the account out, as the event intends (a crash, and a closed account that can keep writing).",
-        "ruby": {
-          "session": "ANON-<hex>"
-        },
-        "ts": {
-          "session": "anonymous"
-        }
-      }
+      "path": "/Parity_Admin+*account"
     },
     {
       "name": "after-admin-close-write",
@@ -1173,31 +1120,6 @@
         "card": {
           "name": "Parity After Admin Close"
         }
-      },
-      "deliberate": {
-        "why": "Follows from the previous step: in Ruby the closed account is still signed in and can create cards; in the port the visitor is anonymous and is refused.",
-        "ruby": {
-          "status": "303",
-          "errors": "",
-          "session": "ANON-<hex>"
-        },
-        "ts": {
-          "status": "403",
-          "errors": "Sorry! Please sign in or sign up to do that.",
-          "session": "anonymous"
-        },
-        "absentIn": "ts",
-        "consequences": [
-          "location",
-          "writes",
-          "actions",
-          "stamps",
-          "stored",
-          "mail",
-          "mailText",
-          "mailHtml",
-          "files"
-        ]
       }
     }
   ]
