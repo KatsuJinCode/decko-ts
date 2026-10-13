@@ -1,42 +1,38 @@
-// Card::Content.clean! — the HTML restriction every save applies to stored
-// content (card-1.110.0 lib/card/content/clean.rb), called from
+// The HTML restriction every save applies to stored content. Port of
+// Card::Content.clean! (card-1.110.0 lib/card/content/clean.rb), called from
 // prepare_db_content when the card's clean_html? is true
 // (mod/core/set/all/content.rb:44-49).
 //
-// SECURITY DIVERGENCE FROM RUBY (docs/SECURITY.md, "Stored HTML").
-// Ruby's cleaner finds tags with one regular expression and attribute values
-// with another, then writes each kept value back between quotes without
-// escaping it, and never looks at what a URL points to. That lets stored
-// content carry script: `javascript:` links survive, `<img src=x"onerror=...>`
-// is rebuilt as a live event handler, an unterminated quote or an unclosed tag
-// at the end of the content runs into the surrounding page, and removing a
-// comment can splice two harmless fragments into a new tag. The port keeps
-// Ruby's tag and attribute allowlists and Ruby's output bytes wherever those
-// bytes are safe, and replaces everything else:
+// SECURITY DIVERGENCE FROM RUBY (docs/SECURITY.md, "Stored HTML is sanitised
+// safely"). This is one of the three Ruby flaws the public material withholds:
+// because of the nature of the security concern, it will not be disclosed here
+// until a private channel is established to disclose it responsibly. What the
+// upstream cleaner accepts, and how it reaches that answer, are not described
+// in this file or anywhere else in this repository; the entry in SECURITY.md
+// that governs the port's behaviour on it is the whole of the public account.
 //
-//   1. Tags are found exactly as Ruby finds them (`<(\/*)(\w+)([^>]*)>`), so a
-//      tag Ruby drops is dropped here too and replaced by the same space.
-//   2. For each allowed tag, the original attributes are parsed with the
-//      WHATWG HTML tokenizer's attribute rules (the rules a browser applies)
-//      and the allowed ones kept, in Ruby's order and quote style, values
-//      escaped, unsafe URLs and styles dropped. Ruby's own output for the tag
-//      is computed too; when a browser reads exactly those same attributes
-//      from Ruby's bytes, Ruby's bytes are stored unchanged, otherwise the
-//      rebuilt tag is. So the port never stores what Ruby would store unless
-//      it means what the author wrote and is safe, and cleaning is stable:
-//      cleaning cleaned content changes nothing.
-//   3. Comments are removed as Ruby removes them (`<!--.*?-->`, one line), but
-//      only where the comment starts and ends in text, never inside a tag's
-//      attribute value.
-//   4. In the text between tags, a `<` that would start markup the cleaner did
-//      not produce (an unclosed tag, a tag spliced together by comment removal,
-//      an unterminated comment or declaration, a `<` that ends the content or
-//      precedes an inclusion) is written as `&lt;`, which a browser displays
-//      identically.
+// What this port stores, in four steps:
 //
-// Ordinary content is therefore stored byte for byte as Ruby stores it; only
-// content whose Ruby cleaning would be unsafe or malformed differs. The
-// regression suite is tests/card/actions/content-clean-security.test.ts.
+//   1. Tags are found with Ruby's own tag expression (`<(\/*)(\w+)([^>]*)>`),
+//      so the same tags are kept and dropped. A dropped tag becomes the same
+//      single space it becomes upstream.
+//   2. For each allowed tag, the attributes are read with the WHATWG HTML
+//      tokenizer's rules — the rules a browser applies — and the allowed ones
+//      kept in Ruby's order and quote style, with their values escaped and any
+//      URL or CSS value a browser would act on dropped. Upstream's own output
+//      for the tag is computed too, and stored unchanged whenever a browser
+//      reads exactly the same attributes from it; otherwise the rebuilt tag
+//      is. So cleaning is stable: cleaning cleaned content changes nothing.
+//   3. Comments are removed one line at a time, but only where the comment
+//      opens and closes in text, never inside a tag's attribute value.
+//   4. In the text between tags, a `<` that would open markup this pass did
+//      not produce is written as `&lt;`, which a browser displays identically.
+//
+// Ordinary content is stored byte for byte as upstream stores it; only content
+// whose stored form a browser would act on differs. The regression suite is
+// tests/card/actions/content-clean-security.test.ts, and rubyCleanContent
+// below is the upstream algorithm kept intact so the suite can measure where
+// the two differ.
 //
 // The port keeps Ruby's regex semantics where JavaScript's differ:
 // - `^` in Ruby always matches at any line start, so the patterns that use
@@ -576,15 +572,16 @@ function cleanSpaces(input: string): string {
   return input.replace(/(?:^|\b) ((?:&nbsp;)+)/gm, "$1 ");
 }
 
-/** Card::Content.clean! with the deck's default configuration, made safe
+/** The port's cleaner: Card::Content.clean!'s allowlists, attribute
+ *  reading and comment removal with the safety checks above
  *  (see the module header). */
 export function cleanContent(input: string): string {
   return cleanSpaces(escapeStrayMarkup(removeComments(tagPieces(input))));
 }
 
-/** Ruby's cleaner exactly as card-1.110.0 runs it, unsafe output included.
- *  Kept for the parity harness and the regression suite, which measure
- *  where the port's output differs; never used to store content. */
+/** Card::Content.clean! exactly as card-1.110.0 runs it, ported verbatim.
+ *  Kept for the parity harness and the regression suite, which measure where
+ *  the port's output differs; never used to store content. */
 export function rubyCleanContent(input: string): string {
   const tagged = input
     .replace(TAG_RE, (_raw, slash: string, name: string, attrs: string) => {

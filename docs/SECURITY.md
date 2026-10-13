@@ -2,10 +2,14 @@
 
 decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are two classes of exception to that parity rule, and only two:
+There are six exceptions to that parity rule, listed below, in three classes:
 
-1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials), the port does not copy it.
-2. **Crashes.** Where Ruby fails with an internal error, the port gives the error Ruby intended.
+1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials, forge a request under a visitor's session), the port does not copy it. Divergences 1, 3 and 5.
+2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 2 and 4.
+3. **Crashes and the rule-less-deck case.** Where Ruby fails with an internal error, the port gives the error Ruby intended; and where Ruby denies a deck that carries no permission data at all, the port renders it, because the alternative denies every card of every deck that never ran setup. Divergence 6.
+
+The count is six entries, and the classes are a way of grouping them, not a claim that
+only two kinds of exception exist.
 
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
@@ -22,10 +26,17 @@ advisory filed against a repository you do not hold is not a second channel: the
 email fallback. Include the request or content that triggers the problem and what you
 observed. Because of the nature of a security concern, a flaw that exists in Ruby Decko is
 not disclosed here until a private channel is established to disclose it
-responsibly. Three Ruby Decko security flaws are withheld on those terms, each marked where
-it is material: the account-holder name-change guard, the crash that its absence leads to on
-a production deck, and the stored-HTML cleaner. None of them names its upstream file, line or
-mechanism here.
+responsibly. Three Ruby Decko flaws are withheld on those terms, each marked where it is
+material:
+
+1. the account-holder name-change authorization gap;
+2. the crash that follows from it on a production deck;
+3. the stored-HTML sanitiser gap.
+
+None of the three is described anywhere in this repository beyond the name above
+and the entry that governs the port's own behaviour on it: no upstream file, line,
+guard name, request shape or payload, and no explanation of what Ruby does with
+it. The entries below say what the port does, not what Ruby accepts.
 
 ## Deployment obligations the port does not meet for you
 
@@ -64,9 +75,9 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 | | |
 |---|---|
-| **Ruby** | Ruby Decko 0.20.0 does not sanitise stored HTML safely: content stored by a user who may edit a RichText card is served back to every reader of that card with markup the browser will execute, where the port's cleaner refuses to store it. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. Because of the nature of this security concern, it will not be disclosed here until a private channel is established to disclose it responsibly; the mechanism, the affected upstream files and their line numbers are withheld until that disclosure can happen responsibly. |
+| **Ruby** | Ruby Decko 0.20.0 does not apply the port's cleaner, and a RichText card stored under it can hold markup another reader's browser will act on. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. Because of the nature of this security concern, it will not be disclosed here until a private channel is established to disclose it responsibly; what Ruby accepts, how it reaches that answer, and the affected upstream files and their line numbers are withheld until that disclosure can happen responsibly. |
 | **Port** | The same tag and attribute allowlists, and the same tag-finding expression, so the same tags are kept and dropped. Attributes are read with the HTML tokenizer's rules; URL attributes (`href`, `src`, `cite`) must be relative or use a non-script scheme (`http`, `https`, `mailto`, `tel`, `sms`, `ftp`, `skype`, `callto`, `webcal`, `irc`, `ircs`, `xmpp`, `geo`, `news`, `nntp`, `feed`), plus `data:image/*` for `img src` with SVG excluded; `style` values may not contain `expression()`, `behavior:`, `-moz-binding`, `@import` or a script URL; values are escaped; comments are removed only where they lie in text; a stray `<` that would open markup is written as `&lt;`. When a browser reads exactly the same attributes from Ruby's output as the port keeps, Ruby's bytes are stored unchanged. |
-| **Why** | Any user who may edit a RichText card could otherwise store script that runs for every reader. |
+| **Why** | Without it, one user's edit to a RichText card could store script that runs for every reader of that card. |
 | **Compatibility** | Ordinary content is stored byte for byte as Ruby stores it. Measured over the stored HTML of a real 19,000-card deck, 7,208 of 7,354 HTML-bearing cards clean identically. The other 146 are cards whose stored bytes Ruby cleans into markup that is malformed, misparses an attribute, or names a scheme the port refuses; which of those a card is follows from the withheld Ruby behaviour, so the count is reported without the shapes that identify it. Existing content changes only when it is saved again. |
 | **Configuration** | None. Card types that Ruby does not clean (HTML, layout, email template, script and style types, `+*html_message`) are not cleaned by the port either; editing those types should be limited to trusted roles, as in Ruby. |
 | **Tests** | `tests/card/actions/content-clean-security.test.ts`: a corpus built from the OWASP XSS Filter Evasion Cheat Sheet and the cleaner's own edge cases, checked by an independent browser-tokenizer verifier, alone and followed by page markup; 4,000 random hostile mixtures; ordinary content byte-identical to Ruby. The persistence oracle declares the resulting row differences (`tests/fixtures/persistence-oracle/deliberate-differences.json`, steps 20, 22 and 31). |
@@ -108,10 +119,10 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 | | |
 |---|---|
-| **Ruby** | Ruby Decko 0.20.0 does not enforce the authorization check on an account holder's name change: a signed-in actor who may update the card can rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. Because of the nature of this security concern, it will not be disclosed here until a private channel is established to disclose it responsibly; the mechanism, the affected upstream files and their line numbers are withheld until that disclosure can happen responsibly. |
+| **Ruby** | Ruby Decko 0.20.0 does not enforce the authorization check the port enforces here, so a rename a card's own author may perform is one Ruby does not refuse for somebody else's account. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. Because of the nature of this security concern, it will not be disclosed here until a private channel is established to disclose it responsibly; what Ruby fails to refuse, how it reaches that answer, and the affected upstream files and their line numbers are withheld until that disclosure can happen responsibly. |
 | **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1051`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Those two cases are the whole allowance — administrators are not among them, and the check has no always-allow arm. |
-| **Why** | Renaming another user's account holder acts against that user: it takes over the name their session, notification mail and references answer to, and Ruby's missing guard leaves it to the deck's ordinary update rule, which on a default deck any signed-in user passes. |
-| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck Ruby's rename succeeds and cascades — its later notification mails name the renamed follow rule, and its action ids run one ahead — so the difference reaches **36 of the 90** side-effects battery steps. The battery mismatches at 37 steps in all, and the 37th is **not** this divergence: `admin-close-own-account` is a separate closure-mail difference, still under investigation (see the Tests row, and `docs/coverage-inventory.md`, which carries the same 36/1 split). On production decks Ruby crashes mid-rename before the divergence can show (a second Ruby defect, in the same authorization area, withheld here on the same terms as the one above), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). The crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
+| **Why** | Renaming another user's account holder acts against that user: it changes the name their session, their notification mail and the references pointing at them answer to, without their involvement. |
+| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck the rename Ruby accepts cascades into the rows and the notification mail written after it, so the difference reaches **36 of the 90** side-effects battery steps. The battery mismatches at 37 steps in all, and the 37th is **not** this divergence: `admin-close-own-account` is a separate closure-mail difference, still under investigation (see the Tests row, and `docs/coverage-inventory.md`, which carries the same 36/1 split). On production decks a second Ruby flaw intervenes before the divergence can show (the crash named second under "Reporting a vulnerability"; withheld here on the same terms as the one above), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). That crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
 | **Configuration** | None. |
 | **Tests** | `tests/tools/side-effects-scenario-battery.test.ts`: the 90-step battery on the committed synthetic deck (`reference-harness/fixtures/write-battery-v1`) pins the exact clean-deck verdicts — 49 pass, 4 declared, 37 mismatched. **36 of those 37 trace to this divergence** (two rename refusals, `probe-rename-other-account` and `admin-rename-account-holder`, and 34 cascade steps, which differ on `mailText`/`mailHtml` and the action-id sequence). **The 37th, `admin-close-own-account`, does not**: it differs on `mail`, `mailHtml`, `mailText` and `session`, and is a closure-mail difference still under investigation, not an account-holder-rename consequence. The suite's own header records the same 36/1 split. Any engine change at any of the 37 fails the suite. |
 

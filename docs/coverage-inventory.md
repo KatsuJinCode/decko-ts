@@ -121,8 +121,9 @@ package does NOT measure, item 6.
   differences, 0 unexpected.** The five, as declared in
   `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`:
   steps **20, 22, 31** are the stored-HTML security choice (`docs/SECURITY.md`
-  divergence 1 — this engine's cleaner drops a `javascript:` link target Ruby's
-  keeps), and steps **7** and **67** are two upstream Ruby defects (a trashed
+  divergence 1 — the port's cleaner stores something different where Ruby's
+  would be acted on by a browser; the difference itself is withheld), and steps
+  **7** and **67** are two upstream Ruby defects (a trashed
   junction revived before its part id resolves, which only inserts on the
   oracle deck's missing `UNIQUE (left_id, right_id)` index; and a revert of a
   rename that stores rows and then raises). Password storage is **not** among
@@ -140,13 +141,13 @@ package does NOT measure, item 6.
   (`expected/side-effects-ruby.json`). On this clean synthetic deck the
   verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
   36 of them traceable to one root cause, now a declared security
-  divergence (`docs/SECURITY.md`, divergence 5): this engine refuses to rename
-  another user's account holder where Ruby 0.20 does not enforce the check.
-  On the production deck that difference never surfaced because Ruby crashes
-  mid-rename there (a second Ruby defect one of the 7 production pins
-  declares, described on the same terms in `docs/SECURITY.md`); the crash does
-  not reproduce on a clean deck, so three of the seven production pins do not
-  transfer. The divergence is declared, not adjusted away; the exact
+  divergence (`docs/SECURITY.md`, divergence 5). That entry names what this
+  engine refuses and withholds what Ruby does instead.
+  On the production deck that difference never surfaced, because a second
+  Ruby flaw (the one of the three named under "Reporting a vulnerability"
+  above) intervenes there — one of the 7 production pins declares it, and it
+  does not reproduce on a clean deck, so three of the seven production pins
+  do not transfer. The divergence is declared, not adjusted away; the exact
   verdicts stay pinned step by step, and the production-deck figures remain
   the measured 83 + 7 of 90.
 - **The pod import/export round-trips remain private**:
