@@ -211,40 +211,53 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     e.pageSession = undefined;
   });
 
-  it(":edit_buttons on *follow defaults is UNREACHABLE in Ruby too (self/follow_defaults.rb:49-55 — the module constant vs the singularized self-anchor token)", async () => {
-    await loadMod();
-    const s = storage!;
-    // mm-I-R: this pin was RED and is now a NEGATIVE pin, because
-    // Ruby cannot reach the view either — the set module's constant and
-    // the card's self-anchor token never meet.
-    //
-    // 09_self.rb: `def anchor_name card = card.name` (card-1.110.0
-    // mod/core/set_pattern/09_self.rb) anchors the SELF pattern on the
-    // card NAME, and Cardname#safe_key is `key.tr("*","X")`
-    // (cardname-0.20.0 lib/cardname/variants.rb:19) over the SINGULARIZED
-    // key. So the card "*follow defaults" produces the token
-    // SELF-Xfollow_default, while set/self/follow_defaults.rb declares the
-    // constant FollowDefaults. Live capture (benchmarks/
-    // capture-readonly-follow-defaults-and-core-shape.rb → fixtures/
-    // captured/readonly-follow-defaults-and-core-shape.json, card_actions
-    // 5018 == 5018 around every render, the oracle app's development deck
-    // with the real card at id 467):
-    //   safe_set_keys                 = "ALL TYPE-list STAR SELF-Xfollow_default"
-    //   ancestors grep(/FollowDefault/) = []
-    //   :core / :confirm_update_all / :edit_buttons all render the
-    //     anonymous-denial span, not the buttons.
-    // The port matches that: the module is registered (the basket pin
-    // covers set/self/follow_defaults), it is simply unreachable for its
-    // own card, so the dispatch raises UnsupportedViewError.
-    await expect(s.engine.render("*follow defaults", "edit_buttons")).rejects.toThrow(
-      UnsupportedViewError,
-    );
-    await expect(
-      s.engine.render("*follow defaults", "confirm_update_all"),
-    ).rejects.toThrow(UnsupportedViewError);
-  });
+  // RETIRED 2026-10-13 (mm-I-R): the negative pin that stood here asserted
+  // that ":edit_buttons on *follow defaults is UNREACHABLE in Ruby too" and
+  // that the dispatch raises UnsupportedViewError. It asserted the OPPOSITE
+  // of the recorded Ruby render, and it is retired rather than satisfied.
+  //
+  // THE RECEIPT — the stock oracle DISPATCHES the view for this card.
+  // reference-harness/fixtures/synthetic-v2/expected/render.jsonl.gz carries
+  //   view:admin:*follow defaults:confirm_update_all
+  // for card id 467 with class "ALL TYPE-list STAR SELF-Xfollow_default",
+  // captured by adapter "decko-ruby" (card 1.110.0 / decko 0.20.0, stock,
+  // unpatched, 2026-10-09): the alert-info div "Are you sure you want to
+  // change the default follow rules?". card-mod-follow.test.ts:200 pins the
+  // same dispatch green, under the note that the corpus render disproves the
+  // wave-1 "unreachable" reading for this view.
+  //
+  // WHY THE WAVE-1 CAPTURE COULD NOT SETTLE IT — the receipt it produced is
+  // a PRE-DISPATCH reading. benchmarks/
+  // capture-readonly-follow-defaults-and-core-shape.rb:92-97 reads
+  // `fd.singleton_class.ancestors ... grep(/FollowDefault/)` inside the probe
+  // hash literal whose render calls (:98-101) come AFTER it, so the singleton
+  // is measured before any view resolution; Ruby includes the set modules
+  // into the format singleton DURING dispatch (card-1.110.0
+  // lib/card/format.rb:57-68 — `card.set_format_modules(klass).each do |m|
+  // singleton_class.send :include, m; end`), which is why the empty
+  // `included_modules_matching_follow_defaults` list in fixtures/captured/
+  // readonly-follow-defaults-and-core-shape.json coexists with a dispatch.
+  // That same capture's confirm_update_all came back as the anonymous denial
+  // span (`<span class="denied">...`), i.e. the PERMISSION layer answering a
+  // view the method table already carried — not a missing view. The corpus
+  // render is the receipt; the ancestor grep was never one.
+  //
+  // THE MECHANISM THAT MAKES THE MODULE REACHABLE: the SELF token keys to
+  // the anchor's CODENAME, as Ruby's Pattern::Base#module_key does (set/
+  // pattern/base.rb:21-29 + class_methods.rb:45-50). The token
+  // SELF-Xfollow_default carries the singularized name key, rubySelfToken
+  // (src/card/render/set-keys-to-modules.ts:151-163) resolves it to the
+  // codename follow_defaults, and the registered shortname for setPath
+  // "self/follow_defaults" is Self::FollowDefaults (mod-registrar.ts:120-122),
+  // so the chain walk answers both of the module's views. The wave-1 reading
+  // took the singularized name spelling for the module key, which is the
+  // lookup the codename resolution replaced.
+  //
+  // Nothing is pinned here in its place: the corpus carries no edit_buttons
+  // bytes for this card (0 hits, and the module's confirm_update_all bytes
+  // are pinned in the sibling suite that owns the oracle receipt).
 
-  it("set/self/follow_defaults stays REGISTERED even though the card can't reach it (see the negative pin above)", async () => {
+  it("set/self/follow_defaults stays REGISTERED, and the card reaches it (see the retirement note above)", async () => {
     await loadMod();
     const basket = loader!.setModules();
     const registered = basket.allNonbase().map((m) => m.shortname);
