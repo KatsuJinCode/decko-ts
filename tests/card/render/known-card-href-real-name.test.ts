@@ -9,7 +9,7 @@
 // the label/title keep the authored link text (_render_title via the
 // :title option). Every case-differing known-card anchor follows the
 // real-name href in BOTH directions - [[narrative]] hrefs /Narrative and
-// [[Aikido]] hrefs /aikido when the card is stored lowercase.
+// [[Fieldwork]] hrefs /fieldwork when the card is stored lowercase.
 //
 // The engine's wikilink name branches (renderLinkChunk + expandWikiLinks)
 // built the href from the AUTHORED target's url_key, emitting /narrative.
@@ -27,8 +27,8 @@ async function seedKnownLinkDeck(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   // The resolved card: capital-N "Narrative".
   await seedCard(storage, { id: 500, name: "Narrative", typeId: 2, dbContent: "narrative-body" });
-  // A lowercase-stored card for the reverse direction ([[Aikido]] -> /aikido).
-  await seedCard(storage, { id: 501, name: "aikido", typeId: 2, dbContent: "aikido-body" });
+  // A lowercase-stored card for the reverse direction ([[Fieldwork]] -> /fieldwork).
+  await seedCard(storage, { id: 501, name: "fieldwork", typeId: 2, dbContent: "fieldwork-body" });
   await seedCard(storage, { id: 900, name: "*all", codename: "all", typeId: 2 });
   await seedCard(storage, { id: 901, name: "*layout", codename: "layout", typeId: 2 });
   await seedCard(storage, { id: 904, name: "*title", codename: "title", typeId: 2 });
@@ -43,14 +43,14 @@ async function seedKnownLinkDeck(): Promise<RenderTestStorage> {
     id: 685,
     name: "Href Probe Page",
     typeId: 2,
-    dbContent: "the consequences of [[narrative]] and [[Aikido]] here",
+    dbContent: "the consequences of [[narrative]] and [[Fieldwork]] here",
   });
   await storage.fetcher.codenames.ensureLoaded();
   return storage;
 }
 
 describe("known-card wikilink hrefs the resolved card's name, label keeps the authored form", () => {
-  it("renders href=/Narrative for [[narrative]] and href=/aikido for [[Aikido]]", async () => {
+  it("renders href=/Narrative for [[narrative]] and href=/fieldwork for [[Fieldwork]]", async () => {
     const storage = await seedKnownLinkDeck();
     storage.fetcher.installNameEnvironment();
     const page = await renderPageBytes(storage.engine, "Href Probe Page");
@@ -58,7 +58,7 @@ describe("known-card wikilink hrefs the resolved card's name, label keeps the au
       '<a class="known-card" href="/Narrative"><span class="card-title" title="narrative">narrative</span></a>',
     );
     expect(page).toContain(
-      '<a class="known-card" href="/aikido"><span class="card-title" title="Aikido">Aikido</span></a>',
+      '<a class="known-card" href="/fieldwork"><span class="card-title" title="Fieldwork">Fieldwork</span></a>',
     );
   });
 });
