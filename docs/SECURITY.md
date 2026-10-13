@@ -8,9 +8,6 @@ There are six exceptions to that parity rule, listed below, in three classes:
 2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 2 and 4.
 3. **Crashes and the rule-less-deck case.** Where Ruby fails with an internal error, the port gives the error Ruby intended; and where Ruby denies a deck that carries no permission data at all, the port renders it, because the alternative denies every card of every deck that never ran setup. Divergence 6.
 
-The count is six entries, and the classes are a way of grouping them, not a claim that
-only two kinds of exception exist.
-
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
 1. **Transaction and save differences on adapters without interactive transactions** — listed and pinned by [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md).
