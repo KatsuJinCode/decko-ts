@@ -1,4 +1,4 @@
-// launch.mjs — one-command orchestrator for the M2 deploy.
+// launch.mjs — one-command orchestrator for the demo deploy.
 //
 // What it does
 // ============
@@ -140,7 +140,7 @@ const REMOTE_PLAN = [
   },
   {
     id: "seed-apply",
-    title: `Chunked seed import (${relativeToRepo(SEED_FILE)}) via the importer lane's chunker`,
+    title: `Chunked seed import (${relativeToRepo(SEED_FILE)}) via the migration importer's chunker`,
     command: "npx",
     args: ["wrangler", "d1", "execute", DATABASE_NAME, "--remote", "--file", "seed/seed.sql"],
     chunked: true,
@@ -188,7 +188,7 @@ function printPlan(plan, label) {
   console.log(`  worker:   ${WORKER_NAME}`);
   console.log(`  database: ${DATABASE_NAME}`);
   console.log(`  schema:   ${relativeToRepo(MIGRATIONS_FILE)}`);
-  console.log(`  seed:     ${relativeToRepo(SEED_FILE)} (chunked via the importer lane's splitter)`);
+  console.log(`  seed:     ${relativeToRepo(SEED_FILE)} (chunked via the migration importer's splitter)`);
   console.log(`  log dir:  ${relativeToRepo(LOG_ROOT)}`);
   console.log("");
   for (let i = 0; i < plan.length; i++) {

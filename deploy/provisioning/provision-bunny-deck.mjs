@@ -40,7 +40,7 @@
 //   * Use a protected resource name (DECKO_PROTECTED_RESOURCE_NAMES or
 //     --protect) in any mode.
 //   * A database slug longer than 16 characters — Bunny's create endpoint
-//     answers HTTP 500 (not 4xx) past that length (measured 2026-10-02).
+//     answers HTTP 500 (not 4xx) past that length.
 //   * --execute without the written-confirmation flag; --teardown without
 //     --yes plus the exact name.
 //   * Arming the write surface (payload.edge.write_path) without
@@ -258,7 +258,7 @@ export function validatePayload(raw, { protectedNames = protectedResourceNames()
     }
   }
   if (typeof bunny.db_name === "string" && bunny.db_name.length > DB_SLUG_MAX) {
-    errors.push(`bunny.db_name is ${bunny.db_name.length} chars; Bunny's create endpoint 500s past ${DB_SLUG_MAX} (measured 2026-10-02)`);
+    errors.push(`bunny.db_name is ${bunny.db_name.length} chars; Bunny's create endpoint 500s past ${DB_SLUG_MAX}`);
   }
   if (typeof bunny.storage_region !== "string" || !/^[a-z]{2}-[a-z]+-?[0-9]*$/.test(bunny.storage_region ?? "")) {
     errors.push('bunny.storage_region must be a Bunny storage region id like "eu-west-1"');
@@ -554,8 +554,9 @@ export async function assertSourceShape(sourcePath) {
     if (!cols.includes("db_content")) {
       throw new ProvisionRefusal(REFUSAL.SOURCE_WRONG_SHAPE,
         `deck source ${sourcePath} has cards columns [${cols.join(", ")}] — no db_content. ` +
-        `The engine's substrate shape needs the scrubbed-corpus schema (cards.db_content); ` +
-        `a raw Corpus sqlite renders 500s after import (measured 2026-10-03). ` +
+        `The engine's substrate shape needs card content in the cards table (cards.db_content); ` +
+        `a deck whose content lives outside that column imports without complaint and then ` +
+        `fails every render. ` +
         `Point --source at a deck in the engine's substrate shape.`);
     }
     const cards = db.prepare("SELECT COUNT(*) AS n FROM cards").get().n;
@@ -603,7 +604,7 @@ export function hostSuffixOfDbUrl(url) {
 }
 
 /** EdgeScriptModel.DefaultHostname sometimes carries the scheme already
- *  (measured 2026-10-03: "https://<name>.bunny.run") and sometimes arrives
+ *  ("https://<name>.bunny.run") and sometimes arrives
  *  bare — normalize to a bare hostname so the status poll never fetches
  *  "https://https://...". */
 export function normalizeHostname(hostname) {
@@ -713,7 +714,7 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
   let createdDbId = null;
   let scriptCreated = false;
   try {
-    // 1. database group — live API (measured 2026-10-03) answers 200 with the
+    // 1. database group — the live API answers 200 with the
     // group NESTED under a "group" key; the fetched spec showed a flat object,
     // so accept both shapes.
     const groupRes = await api.call("POST", "/database/v1/groups", {
