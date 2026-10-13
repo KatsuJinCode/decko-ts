@@ -1,7 +1,7 @@
 {
   "fixture": "synthetic-v1",
   "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
-  "actual": "tmp/grade-r10-results",
+  "actual": "tmp/grade-r10b-results",
   "expected": "reference-harness/fixtures/synthetic-v1/expected",
   "oracle": {
     "variant": "stock",
@@ -17,7 +17,7 @@
     }
   },
   "adapter_checkout": {
-    "commit": "009f067c62397fbd41d0c70b8dff4cb26e177b8c",
+    "commit": "fb47435db15435b80d0724400c08947f374329c5",
     "dirty": false
   },
   "verdict": "pass",
@@ -1090,5 +1090,5 @@
     "persistence": [],
     "side_effects": []
   },
-  "graded_at": "2026-10-13T05:13:05.490Z"
+  "graded_at": "2026-10-13T15:39:17.959Z"
 }
