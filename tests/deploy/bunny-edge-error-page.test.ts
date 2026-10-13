@@ -107,8 +107,8 @@ function deckWithRenderDelay(storage: RenderTestStorage, ms: number) {
  *  *all+*layout -> Default Layout, *header, *footer): the chrome builder
  *  resolves exactly these rows when it assembles an error page. */
 async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 });
-  await seedCard(storage, { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+  await seedCard(storage, { id: 8, name: "kmrtqd", codename: "anyone", typeId: 2 });
+  await seedCard(storage, { id: 15, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
   await seedCard(storage, { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" });
   await seedCard(storage, { id: 103, name: "*favicon", codename: "favicon", typeId: 19, dbContent: "(my_bucket)/103/3649.jpg" });
   await seedCard(storage, { id: 400, name: "*ace", codename: "ace", typeId: 52, dbContent: "{}" });
@@ -164,7 +164,7 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       expect(body).toContain(`href="/new/Sign_up">sign up</a>`);
       // The *footer nest: the Xfooter content-view wrapper + the version pin.
       expect(body).toContain(`<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content"`);
-      expect(body).toContain(`Decko v0.19.1</a>`);
+      expect(body).toContain(`Decko v0.0.0-synthetic</a>`);
       // The trailing newline the reference bytes carry.
       expect(body.endsWith(`</html>\n`)).toBe(true);
     } finally {
@@ -241,7 +241,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       // And nothing from another deck's chrome leaked into it.
       expect(body).not.toContain("22281");
       expect(body).not.toContain("basic_c");
-      expect(body).not.toContain("Decko v0.19.1");
+      expect(body).not.toContain("Decko v0.0.0-synthetic");
       expect(body).not.toContain(PRODUCTION_ASSET_HOST);
     } finally {
       storage.close();
@@ -270,7 +270,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       const body = await res.text();
       expect(body).not.toContain("22281");
       expect(body).not.toContain("basic_c");
-      expect(body).not.toContain("Decko v0.19.1");
+      expect(body).not.toContain("Decko v0.0.0-synthetic");
       expect(body).not.toContain(PRODUCTION_ASSET_HOST);
       expect(body).not.toContain("source-deck");
     } finally {
@@ -289,7 +289,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       const body = await res.text();
       expect(body).toContain(`data-card-type-id="72281"`);
       expect(body).toContain(`TYPE-basic_c`);
-      expect(body).toContain(`Decko v0.19.1`);
+      expect(body).toContain(`Decko v0.0.0-synthetic`);
       expect(body).toContain(PRODUCTION_ASSET_HOST);
     } finally {
       storage.close();
@@ -323,7 +323,7 @@ describe("bunny edge — full-chrome server_error page (staging builder shape)",
       );
       expect(body).not.toContain("engine exploded");
       expect(body).toContain(`<header><nav class="navbar navbar-expand-lg">`);
-      expect(body).toContain(`Decko v0.19.1</a>`);
+      expect(body).toContain(`Decko v0.0.0-synthetic</a>`);
       expect(body.endsWith(`</html>\n`)).toBe(true);
     } finally {
       storage.close();
@@ -409,7 +409,7 @@ describe("bunny edge — budget-exceeded 503 in the full chrome", () => {
       expect(body).toContain(`<title>Slow render</title>`);
       expect(body).toContain(`retrying in a few seconds`);
       expect(body).toContain(`<header><nav class="navbar navbar-expand-lg">`);
-      expect(body).toContain(`Decko v0.19.1</a>`);
+      expect(body).toContain(`Decko v0.0.0-synthetic</a>`);
       expect(body).not.toContain(`<meta content='noindex' name='robots'>`);
     } finally {
       storage.close();

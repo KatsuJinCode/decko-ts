@@ -166,7 +166,7 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // and the configured asset host.
     expect(body).toContain(`TYPE-basic_c`);
     expect(body).toContain(`data-card-type-id="72281"`);
-    expect(body).toContain(`Decko v0.19.1`);
+    expect(body).toContain(`Decko v0.0.0-synthetic`);
     expect(body).toContain(PRODUCTION_DECK_SERVED_DELTAS.assetHost!);
   });
 
@@ -184,6 +184,6 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // private URL, and /_status is exposed.
     const raw = JSON.stringify(status);
     expect(raw).not.toContain("production-storage");
-    expect(raw).not.toContain("0.19.1");
+    expect(raw).not.toContain("0.0.0-synthetic");
   });
 });
