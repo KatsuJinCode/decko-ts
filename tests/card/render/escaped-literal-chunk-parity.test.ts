@@ -184,6 +184,46 @@ describe("Chunk::EscapedLiteral on a Markdown-typed card (markdown.rb:16-18)", (
   });
 });
 
+// :text_without_nests (set/all/text.rb:15-17) = to_text nestless_content.
+// The expected bytes below were produced by a transcription of the Ruby
+// pipeline (text.rb:4-17, content.rb:69-71 strip_nests, escaped_literal.rb:
+// 21-23 interpret, html_format.rb:20-22 and markdown.rb:16-18 escape_literal,
+// text.rb:4-6 to_text = HTMLEntities.decode strip_tags) run under Ruby 3.3.12,
+// never from the port's output.
+describe("text_without_nests keeps the escaped chunk's rendered bytes (text.rb:8-13)", () => {
+  async function renderText(content: string, typeId: number): Promise<string> {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: BASIC_TYPE_ID, name: "Basic", codename: "basic", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: MARKDOWN_TYPE_ID, name: "Markdown", codename: "markdown", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: 93, name: "Text Probe", typeId, dbContent: content });
+      storage.fetcher.installNameEnvironment();
+      await storage.fetcher.warmLexicon([BASIC_TYPE_ID, MARKDOWN_TYPE_ID, 93]);
+      return await storage.engine.render("Text Probe", "text_without_nests");
+    } finally {
+      storage.close();
+    }
+  }
+
+  it("an HtmlFormat escaped brace reads back bare: the span is stripped, the nest is dropped", async () => {
+    expect(await renderText("hide \\{{Foo}} and {{Bar}}", BASIC_TYPE_ID)).toBe("hide {{Foo}} and ");
+  });
+
+  it("an HtmlFormat escaped bracket reads back bare", async () => {
+    expect(await renderText("see \\[[Foo]] now", BASIC_TYPE_ID)).toBe("see [[Foo]] now");
+  });
+
+  it("an HtmlFormat escaped comment nest is not a comment: its braces read back bare", async () => {
+    expect(await renderText("hide \\{{#draft}} and {{#visible}}", BASIC_TYPE_ID)).toBe(
+      "hide {{#draft}} and ",
+    );
+  });
+
+  it("a Markdown card's identity escape reads back the same braces", async () => {
+    expect(await renderText("icon (\\{{}}) done", MARKDOWN_TYPE_ID)).toBe("icon ({{}}) done");
+  });
+});
+
 describe("EscapedLiteral is not registered on the :nest_only list (chunk.rb:88)", () => {
   it("leaves the backslash as text and still chunks the braces as a Nest", async () => {
     const { storage, html } = await seedDeck();
