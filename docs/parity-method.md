@@ -13,8 +13,10 @@ that says "Ruby" means that version. It also means that **environment**: the
 committed expected outputs were captured on Windows (`ruby 3.3.12
 [x64-mingw-ucrt]`), and Ruby's own operating system decides some output bytes
 — the class-token order inside a `class` attribute is the one that moves.
-Three normalisations absorb what an environment legitimately changes, and
-nothing else does ([reference-harness/SPEC.md](../reference-harness/SPEC.md)
+The corpus instrument compares through a normalisation ladder of eight
+named rules (N1-N8, the mask and canonical forms of
+[reference-harness/SPEC.md](../reference-harness/SPEC.md) section 4), which absorbs what an
+environment legitimately changes, and nothing else does ([reference-harness/SPEC.md](../reference-harness/SPEC.md)
 §4, [tools/ruby-version-variance/README.md](../tools/ruby-version-variance/README.md)). A Ruby
 patch-version range measured on one operating system says nothing about a
 capture on another.
