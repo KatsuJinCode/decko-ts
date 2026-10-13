@@ -7,7 +7,7 @@
 //      pre-config engine (the Ruby default).
 //   2. DEPLOYMENT OVERRIDE: setDeploymentCloudAssetHost(SPACES_HOST) flips
 //      every emission site that has no per-engine imageCdnHost to the
-//      DigitalOcean Spaces form (`https://<spaces host>/files/<id>/<leaf>`).
+//      object-store host form (`https://<asset host>/files/<id>/<leaf>`).
 //      The per-engine imageCdnHost keeps precedence where a caller passes
 //      it, so the edge deployment's existing per-engine setting still wins
 //      at the sites that read it.

@@ -17,8 +17,8 @@ import { cgiEscape } from "../../../src/card/render/slot-html.js";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
 import { DeckoName } from "../../../src/card/name.js";
 
-describe("name-key/url shape: query percent-encoding (R1, Z5b exemplar bytes)", () => {
-  it("encodes Latin-1-supplement characters as UTF-8 octet pairs (oracle Bogot%C3%A1)", () => {
+describe("name-key/url shape: query percent-encoding", () => {
+  it("encodes Latin-1-supplement characters as UTF-8 octet pairs", () => {
     expect(cgiEscape("Bogotá")).toBe("Bogot%C3%A1");
   });
 
@@ -34,12 +34,12 @@ describe("name-key/url shape: query percent-encoding (R1, Z5b exemplar bytes)", 
     expect(cgiEscape("+")).toBe("%2B");
   });
 
-  it("reproduces the Z5b exemplar's full card[name] query byte-for-byte", () => {
+  it("encodes a full card[name] query byte-for-byte", () => {
     // The full card[name] query form of a compound name carrying accents,
     // spaces, hyphens, digits, and junction parts.
-    const name = "Ana - Bruno - Clase Verde Café Zürich 20100920+*self+*default";
+    const name = "Sample Group - Workshop Notes - Café Zürich 20200101+*self+*default";
     expect(cgiEscape(name)).toBe(
-      "Ana+-+Bruno+-+Clase+Verde+Caf%C3%A9+Z%C3%BCrich+20100920%2B%2Aself%2B%2Adefault",
+      "Sample+Group+-+Workshop+Notes+-+Caf%C3%A9+Z%C3%BCrich+20200101%2B%2Aself%2B%2Adefault",
     );
   });
 });

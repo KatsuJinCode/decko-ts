@@ -2611,11 +2611,11 @@ export class RenderEngine implements RenderEngineLike {
     //
     // RULE-card asymmetry (capture census, 2026-09-23): a search-TYPE card
     // that is ALSO a rule (3-part name, right part a setting — e.g.
-    // "*layout+*right+*content options", corpus:316/571/9610) captures REAL
-    // :open/:content bytes (48 *content options + 27 *structure rules, zero
-    // CAPTURE_ERROR), while every CAPTURE_ERROR search card is non-rule;
-    // date-typed rules (corpus:1135 "evog+*right+*default") still capture
-    // the Date::Error sentinel. So the Search arm skips rule cards
+    // "*layout+*right+*content options") captures REAL :open/:content bytes
+    // (48 *content options + 27 *structure rules, zero CAPTURE_ERROR), while
+    // every CAPTURE_ERROR search card is non-rule; date-typed rules (a
+    // `<date type>+*right+*default` card) still capture the Date::Error
+    // sentinel. So the Search arm skips rule cards
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
     if (card.typeCode === SEARCH_TYPE_CODE && PARSE_DISPATCH_VIEWS.has(view)) {
@@ -7806,9 +7806,9 @@ export class RenderEngine implements RenderEngineLike {
    *  The pattern input rides through structurePatternInputForSync so the
    *  verdict walk's type_plus_right candidate anchors on the SAME
    *  leftTypeName the structure walk sees (class_methods.rb:58-72
-   *  left_type: the LEFT card's type — cd-smalls' 7 Very Rosie +discussion
-   *  pages: `image+discussion+*type plus right+*update` rule 16985
-   *  ("Anyone") wins where the type-less input anchored rich_text and
+   *  left_type: the LEFT card's type — on an Image card's +discussion
+   *  page, an `image+discussion+*type plus right+*update` rule granting
+   *  "Anyone" wins, where the type-less input anchored rich_text and
    *  denied). */
   async updateVerdictForCard(card: RenderCard): Promise<boolean | undefined> {
     if (this.readPermission?.alwaysOk) return true;

@@ -66,7 +66,7 @@ describe("VirtualSearch family table (card-mod-search-0.20.0 set/right/*.rb)", (
     // A compound name with a family right -> the cql serialization.
     expect(
       virtualSearchCqlFor(
-        DeckoName.parse("the_god_of_intimate_violence+*referred_to_by"),
+        DeckoName.parse("sample_topic+*referred_to_by"),
       ),
     ).toBe('{"refer_to":"_left","sort_by":"name"}');
     // Simple names never match (the Right set needs a left part).

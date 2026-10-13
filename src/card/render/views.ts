@@ -1330,9 +1330,9 @@ const coreViewBase: ViewFn = (ctx) => {
     return settingCoreHtml(ctx);
   }
   // Match by codename (card-mod-date type card's codehash has codename
-  // "date"); see coreView Search-gate comment for the parallel. The
-  // corpus date cards (id=1135 "evog+*right+*default", etc.) have type
-  // cards whose CARD NAME is "evog" — the typeName === "Date" gate
+  // "date"); see coreView Search-gate comment for the parallel. A deck can
+  // give its date type card any name (Decko keys the type by codename, not
+  // by name) — the typeName === "Date" gate
   // silently skipped them, so this branch never ran and the engine
   // emitted an empty content body instead of the formatDateCore output
   // (or, on the prepare phase's invalid content, the Date::Error raise
@@ -5592,9 +5592,9 @@ function barDivHtml(ctx: ViewContext): string {
     // then re-escapes it: attribute_builder.rb:51-59 has no html_safe?
     // branch, so the same payload escapes ONCE through content_tag (the
     // slot wrap) and TWICE here. The oracle's own bar divs pin the
-    // two-level form — recapture-raw-shard-000004 id 8460 (a personal
-    // blog's +*self): `data-card-name='<Person>&#39;s Blog+*self+*layout'`,
-    // and id 12195 (media+HBQ+youtube videos) pins five such bars.
+    // two-level form — a personal blog's +*self page:
+    // `data-card-name='<Person>&#39;s Blog+*self+*layout'`, and a media
+    // listing page pins five such bars.
     // Do NOT drop this h() thinking it is the double-escape: the
     // double-escape is the Haml pass, which emitHamlAttrs owns.
     "data-card-name": h(slotCardname(card)),

@@ -5029,10 +5029,10 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
     // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
     // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
-    // parser) rendered as verbatim @text — reproduced the depth-psychology
-    // oracle's plain-text `[mailto:reader@sample-site.example]`
+    // parser) rendered as verbatim @text — reproduced one captured page's
+    // plain-text `[mailto:reader@sample-site.example]`
     // but destabilized the +*referred_to_by search-result family (44
-    // pages per actor: the Archetypal referer list rendered a different
+    // pages per actor: one referer list rendered a different
     // result SET with the gate present and the capture's own set with it
     // disabled, isolate bisect probes probe-iso2/iso4), through an
     // interaction this pass could not trace inside its box. The item is
@@ -5593,7 +5593,7 @@ export function expandWikiLinks(
     // (wrappedTitleInner): a junction link's anchor text carries
     // `<span>+</span>` per joint — the oracle's view-surface `content`
     // pin: `<a class="known-card" href="/<given name>+musings"><span
-    // class="card-title" title="<given name> <surname>">steven
+    // class="card-title" title="<given name> <surname>"><given name>
     // <surname><span>+</span>musings</span></a>`, and the page-surface
     // `+musings` half splits the SAME way
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
