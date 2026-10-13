@@ -114,3 +114,4 @@ the machine.
   passed, 35.39 s), so **the full-run failure was not reproduced here** and is
   recorded as a report to investigate, not as an observed failure. Re-run it
   alone before believing a red result from this file.
+| `tests/tools/side-effects-scenario-battery.test.ts` | 1: the 90-step trace run — the engine's declared-divergence set reads 2 of the recorded 4 on this machine | the 90-step Ruby trace and its declared-divergence table predate the oracle-arbitrated write-path convergence (d1e9658c lineage, certified by the v1 grade's six ledgers); the battery's own hybrid state (converged engine, pre-convergence trace) is unsound by construction and needs a re-record against the converged engine, not an engine change — the round-9 candidate passes it because its engine predates the convergence fixes | owner: the battery re-record lane; the v1 write-battery grade remains the write-path instrument of record |
