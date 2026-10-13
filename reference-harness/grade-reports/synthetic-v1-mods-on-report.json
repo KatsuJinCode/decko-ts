@@ -1,7 +1,7 @@
 {
   "fixture": "synthetic-v1",
   "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
-  "actual": "tmp/grade-mods-on",
+  "actual": "tmp/grade-r10-results",
   "expected": "reference-harness/fixtures/synthetic-v1/expected",
   "oracle": {
     "variant": "stock",
@@ -17,18 +17,24 @@
     }
   },
   "adapter_checkout": {
-    "commit": "35037c2e40869b7588fd7a4b5bd89ff026fec832",
+    "commit": "009f067c62397fbd41d0c70b8dff4cb26e177b8c",
     "dirty": false
   },
   "verdict": "pass",
   "problems": [],
   "partial": [],
   "warnings": [],
+  "normalization": [
+    "N1",
+    "N2",
+    "N3"
+  ],
   "summary": {
     "rendering": {
       "graded": 1754,
       "pass": 1754,
       "fail": 0,
+      "reproduced_upstream_failures": 0,
       "oracle_errors": 0,
       "missing": 0,
       "groups": {
@@ -67,6 +73,7 @@
       "graded": 2389,
       "pass": 2389,
       "fail": 0,
+      "reproduced_upstream_failures": 0,
       "oracle_errors": 0,
       "missing": 0,
       "groups": {
@@ -105,6 +112,7 @@
       "graded": 16,
       "pass": 16,
       "fail": 0,
+      "reproduced_upstream_failures": 0,
       "oracle_errors": 0,
       "missing": 0,
       "groups": {
@@ -127,6 +135,7 @@
       "graded": 19,
       "pass": 19,
       "fail": 0,
+      "reproduced_upstream_failures": 0,
       "oracle_errors": 0,
       "missing": 0,
       "groups": {
@@ -1075,5 +1084,11 @@
     "persistence": [],
     "side_effects": []
   },
-  "graded_at": "2026-10-11T18:29:52.617Z"
+  "reproduced": {
+    "rendering": [],
+    "semantics": [],
+    "persistence": [],
+    "side_effects": []
+  },
+  "graded_at": "2026-10-13T05:13:05.490Z"
 }
