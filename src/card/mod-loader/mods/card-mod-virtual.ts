@@ -43,7 +43,7 @@
 //   abort marker and the caller plays it. The Virtual side effects (the
 //   card_virtuals writes) run for real and are proven against storage.
 // - event execution wiring: the mod's events[] ARE pinned on the manifest
-//   below (saving_miracle - the LANDED+WIDENED events surface in
+//   below (the events surface in
 //   mod-manifest.ts ModSetModuleFile.events). The fn bodies are
 //   documented stubs - the Ruby body needs the SQL driver (card_virtuals
 //   INSERT/UPDATE/DELETE), the VirtualRecordCache (the Card::Cache[Virtual]
@@ -51,7 +51,7 @@
 //   surfaces ride the current ModEngineHost (the body receives only
 //   ModEventCard + ModEngineHost - see mod-manifest.ts:172-184). Stubs
 //   cite the Ruby body lines and name the seam each one would call into;
-//   the real wired bodies belong to a later wave that grows the host
+//   the real wired bodies belong to a later change that grows the host
 //   shape (or moves the events into the write path's stage seam where
 //   driver + clock are in scope).
 
@@ -452,7 +452,7 @@ export async function virtualUpdatedAt(
 /** virtual_cache.rb:21-24 event :save_virtual_content, :prepare_to_store,
  *  on: :save - body: `Virtual.save self; abort :success`. The Virtual side
  *  effect runs for real; the abort marker is returned for the caller to
- *  play (the save-unwind pipeline is a later wave - see the header). */
+ *  play (the save-unwind pipeline is a later change - see the header). */
 export async function saveVirtualContent(
   driver: SQLDatabaseDriver,
   card: CardRecord,
@@ -479,7 +479,7 @@ export async function deleteVirtualContent(
 }
 
 /** virtual_cache.rb:21,26 - the two event declarations, pinned as data for
- *  a coordinator-level events surface (mirrors the manifest events[] on
+ *  an engine-level events surface (mirrors the manifest events[] on
  *  abstract/virtual_cache below, same pattern as card-mod-integrate's
  *  OBSERVER_EVENT_DECLARATIONS). Read-only citation record. */
 export const VIRTUAL_EVENT_DECLARATIONS = [
@@ -506,7 +506,7 @@ export const VIRTUAL_EVENT_DECLARATIONS = [
 //      cache lives at the mod-process level, not the engine level),
 //   3. Date clock (sqlDateTime - the port's deterministic fake clock,
 //      supplied by the caller / the write-path writer, not by the host).
-// The real bodies belong to a later wave that widens ModEngineHost (or
+// The real bodies belong to a later change that widens ModEngineHost (or
 // moves these events into the action engine's stage seam where driver +
 // clock are in scope - card-mod-history.ts:1038-1065 documents the same
 // shape). Each stub names the seam in its comment.
@@ -593,7 +593,7 @@ const cardModVirtual: DeckoModManifest = {
       // card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb - the card
       // methods, predicates and delete delegates are exported above; the
       // two events ride manifest events[] below (mod-manifest.ts
-      // ModSetModuleFile.events surface, LANDED+WIDENED in f172ab5).
+      // ModSetModuleFile.events surface).
       // VIRTUAL_EVENT_DECLARATIONS is the matching citation record.
       setPath: "abstract/virtual_cache",
       events: [

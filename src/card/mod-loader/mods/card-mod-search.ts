@@ -59,9 +59,8 @@ import type { ViewResult } from "../../render/format.js";
 //   methods), set/self/recent.rb, set/type/cardtype.rb,
 //   set/type/search_type.rb
 //
-// Ported by the second mod-views batch (2026-09-28), all rendered-unpinned (no
-// oracle capture exists for any of them - the raw-ground-truth tree holds
-// whole-PAGE captures only):
+// Ported without per-view oracle pins (the oracle's ground truth holds
+// whole-PAGE renders only):
 //   - checkbox_list       (0_search/views.rb:118-124 + checkbox_item.haml)
 //   - results_for_keyword (self/search.rb:48 + results_for_keyword.haml)
 // The two SET-OVERRIDE views the coverage doc also lists as missing are NOT
@@ -74,8 +73,8 @@ import type { ViewResult } from "../../render/format.js";
 //   - bar  (search_views.rb:35-37) - `voo.hide :one_line_content; super()` -
 //     the base is card-mod-bar_and_box set/all/bar.rb's :bar.
 //   - title (self/search.rb:39-42) - `voo.title ||= t(:search_results_title);
-//     super()` - the base is card-mod-format set/all/title.rb's :title,
-//     byte-pinned in fixtures/captured/smoke.json; replacing it would move
+//     super()` - the base is card-mod-format set/all/title.rb's :title;
+//     replacing it would move
 //     every card's title onto the search string.
 // Both bodies are ported-and-exported the way permissionCoreView is (see
 // searchBarOverrideView below, exported unregistered). The :title override
@@ -106,8 +105,8 @@ import type {
 /** Ruby dispatches the Abstract::SearchViews / Abstract::Search format
  *  methods by SearchTypeID (virtual_search.rb:7-9 assigns_type :search_type).
  *  In this port the codename registry is the source of truth for that match
- *  (the corpus's search_type card has a random NAME, so a typeName check
- *  misses - same shape as format.ts:377). */
+ *  (the reference deck's search_type card has a non-"Search" NAME, so a
+ *  typeName check alone misses - same shape as format.ts:377). */
 function searchTypeCard(fmt: RenderFormat): boolean {
   if (fmt.card.typeName === "Search") return true;
   const typeId = fmt.card.record.typeId;
@@ -533,15 +532,15 @@ const searchCountView: ViewFn = (ctx) => {
 //   returns the result Array; a count cql returns the Integer): `.class`
 //   answers, then `.message` RAISES NoMethodError - "undefined method
 //   `message' for an instance of Array" (Ruby 3.3's receiver phrasing).
-//   That is the REPRODUCED UPSTREAM FAILURE ruling: the oracle's answer for
-//   the corpus op view:admin:All Topics:search_error is the quiet
+//   That is the reproduced-upstream-failure decision: the oracle's answer
+//   for a search_error render of a valid non-count query is the quiet
 //   render-error span carrying that debug page (0_search/views.rb:7 raise
-//   site, 51 boot-inclusive Ruby frames in the committed capture at
-//   reference-harness/fixtures/synthetic-v2/expected, re-verified live on
-//   the capture host), so the port raises the same failure with the same
+//   site, 51 boot-inclusive Ruby frames, pinned in
+//   reference-harness/fixtures/synthetic-v2/expected), so the port raises
+//   the same failure with the same
 //   message and the declared frame structure (rubyBacktraceError; the
-//   engine's own V8 stack cannot carry Ruby's boot-inclusive depth - the
-//   N6 receipt's frame-count port-work statement). The view's own
+//   engine's own V8 stack cannot carry Ruby's boot-inclusive depth, hence
+//   the fixed frame count). The view's own
 //   interpolation bytes never exist in either engine.
 //
 // A deck the warm never ran on still has no warmed result to dispatch on;
@@ -590,8 +589,8 @@ const searchErrorView: ViewFn = (ctx) => {
 const oneLineContentView: ViewFn = ({ fmt }) => {
   // Ruby scopes this view to Search cards (Abstract::SearchViews); the base
   // one_line_content other cards get (card-mod-format set/all/base.rb:97,
-  // with_nest_mode(:compact)) is deferred in this engine (compact nest mode,
-  // ) - not supported here.
+  // with_nest_mode(:compact)) is deferred in this engine - compact nest
+  // mode is not supported here.
   if (!searchTypeCard(fmt)) {
     throw new UnsupportedViewError("one_line_content", fmt.card.name.s);
   }
@@ -616,7 +615,7 @@ const oneLineContentView: ViewFn = ({ fmt }) => {
  *  a Rails helper string (html_safe, unescaped), the label a plain name
  *  (escaped). Haml merges the hash class BEFORE the literal one
  *  (`class: "autocomplete-item-#{type}"` on `.autocomplete-item` renders
- *  `autocomplete-item-<type> autocomplete-item`, the corpus oracle bytes)
+ *  `autocomplete-item-<type> autocomplete-item`, the oracle bytes)
  *  and emits the template's lines flush-left (no pretty indentation). */
 function autocompleteItem(type: string, icon: string, label: string): string {
   return (
@@ -866,14 +865,13 @@ const searchBoxCompleteView: ViewFn = (ctx) => {
  *  (2) the subformat's own voo is empty EXCEPT slot_options' view field:
  *   wrap.rb:64-68 slot_options reads `view: @current_view` which is nil on
  *   the fresh format, and the JSON keeps the explicit null
- *   (`{"view":null}`; oracle-pinned in search-list-views.json target 275:
- *   data-slot="{&quot;view&quot;:null}" on every item slot). The first port
- *   emitted "{}".
+ *   (`{"view":null}`; oracle-pinned: data-slot="{&quot;view&quot;:null}" on
+ *   every item slot).
  *  (3) checkbox_item.haml:1 is `//- id = "#{card.key}-_-#{item_card.key}"`
  *   - the `//` HTML-comment marker, so the line RENDERS as
  *   `<!-- /- id = "<key>-_-<item key>" -->` followed by the template's
- *   newline (oracle-pinned verbatim on all four items of target 275). The
- *   first port dropped it, reading the line as a silent `-` comment.
+ *   newline (oracle-pinned verbatim on all four items); reading the line
+ *   as a silent `-` comment would drop bytes Ruby keeps.
  *  The `unique_id` local the haml binds stays dead code (the assignment
  *  lives inside the comment). */
 function checkboxItem(fmt: RenderFormat, item: RenderCard): string {
@@ -902,12 +900,12 @@ function checkboxItem(fmt: RenderFormat, item: RenderCard): string {
   // the html format's default_item_view :bar (card-mod-format
   // set/all/html.rb:21-23) - with size nil (the subformat's voo.size).
   // The rendered lines are FLUSH-LEFT (oracle-pinned: no haml indentation
-  // survives into the captured bytes - every line of the item template sits
+  // survives into the oracle bytes - every line of the item template sits
   // at column 0). The nest opts carry the HOST's item type
   // (item.rb:157-162 determine_item_view_options_type folds
-  // `options[:type] = card.item_type_name` into every item nest - oracle
-  // target 275: the item slot JSON ends "type":"Role"; the first port's
-  // size:null opt was wrong on both axes - the subformat's voo.size is nil
+  // `options[:type] = card.item_type_name` into every item nest - the
+  // oracle: the item slot JSON ends "type":"Role"; size:null is
+  // wrong on both axes - the subformat's voo.size is nil
   // and nil never serializes into the slot JSON, while the type opt does).
   const hostItemType = fmt.engine.hostItemTypeName?.(fmt.card);
   const nest = fmt.nestRecord(item, "bar", {
@@ -931,7 +929,7 @@ function checkboxItem(fmt: RenderFormat, item: RenderCard): string {
  *  to `sanitize_to_id(name)` - name.tr(" ", "_") (ActionView SanitizeToId):
  *  spaces become underscores, every other character passes (oracle-pinned:
  *  the "Help Desk" item renders id="Help_Desk" with the space in `name`).
- *  The first port emitted id == name, correct only for space-free names. */
+ *  Emitting id == name is correct only for space-free names. */
 function checkBoxTag(
   name: string,
   value: string,
@@ -956,8 +954,8 @@ const checkboxListView: ViewFn = (ctx) => {
   const items = fmt.engine.executeSearch(fmt);
   if (items.length === 0) return fmt.renderView("no_search_results");
   const rendered = items.map((item) => checkboxItem(fmt, item));
-  // The wrap_with :div block form's captured bytes end "</div>\n" (oracle
-  // target 275 tail: "</div></div>\n"); the empty arm's no_search_results
+  // The wrap_with :div block form's oracle bytes end "</div>\n"
+  // ("</div></div>\n" tail); the empty arm's no_search_results
   // div (37B) carries no trailing newline - the newline belongs to the
   // wrapper, not the no-results view.
   return `<div class="_search-checkbox-list pe-2">${rendered.join("\n")}</div>\n`;
@@ -989,14 +987,13 @@ const resultsForKeywordView: ViewFn = (ctx) => {
   // set/self/search.rb is the SELF set (Card::Set::Self::Search): the set
   // of the card literally named "*search" (the Self pattern's anchor; a
   // card matches iff its key equals the anchor's key "*search" - deck keys
-  // keep the star, fixture target 100: key "*search"). The first port
-  // gated on searchTypeCard (the search TYPE set) instead, so every
-  // Search-typed card dispatched the view through the flat-table fallback
-  // and returned bytes where Ruby raises. Oracle-pinned
-  // (fixtures/captured/search-list-views.json, capture b1069e5): the view
-  // renders "" on *search itself and RAISES Card::Error::UserError "view
-  // (results_for_keyword) not supported for ..." on every other
-  // Search-typed card (targets 275 + 304, all three actors).
+  // keep the star, fixture target 100: key "*search"). Gating on
+  // searchTypeCard (the search TYPE set) instead would let every
+  // Search-typed card dispatch the view through the flat-table fallback
+  // and return bytes where Ruby raises. Oracle-pinned:
+  // the view renders "" on *search itself and RAISES Card::Error::UserError
+  // "view (results_for_keyword) not supported for ..." on every other
+  // Search-typed card.
   if (fmt.card.key !== "*search") {
     throw new UnsupportedViewError("results_for_keyword", fmt.card.name.s);
   }
@@ -1021,8 +1018,8 @@ const resultsForKeywordView: ViewFn = (ctx) => {
 //   registered here: this grading surface (the headless view-surface engine)
 //   runs with NO ModLoader bound, so a setModule registration never
 //   dispatches. The bytes are served by the render layer's
-//   SELF_SET_TITLE_OVERRIDES branch (views.ts, the rule tooltips
-//   2026-09-29) instead - the same headless pattern as openView's
+//   SELF_SET_TITLE_OVERRIDES branch (views.ts)
+//   instead - the same headless pattern as openView's
 //   discussion comment_box check. set/self/recent.rb:4-7 (:title,
 //   "Recent Changes") takes the same path.
 // ---------------------------------------------------------------------------
@@ -1030,7 +1027,7 @@ const resultsForKeywordView: ViewFn = (ctx) => {
 /** search_views.rb:35-37. The body is the base bar view with the one-line
  *  content hidden first; the engine reaches the base by name through the
  *  loader chain, so the exported form performs the hide and delegates -
- *  the shape the coordinator's set-scoped dispatch pass registers. */
+ *  the shape a set-scoped dispatch layer registers. */
 export const searchBarOverrideView: ViewFn = (ctx) => {
   ctx.voo?.hide("one_line_content");
   return ctx.fmt.renderView("bar");

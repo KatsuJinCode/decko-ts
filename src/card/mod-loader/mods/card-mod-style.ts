@@ -6,7 +6,7 @@ import type { ViewResult } from "../../render/format.js";
 // The gem's tree (the installed
 // card-mod-style-0.20.0/): sixteen set files across four patterns (7
 // abstract, 2 self, 5 type, 2 type_plus_right), no lib/, no set_pattern/,
-// three validate/delete events, no mod.yml. The T6 verdict
+// three validate/delete events, no mod.yml. The compat report
 // (tools/compat-report/mod-compat-report.json, gem ===
 // 'card-mod-style-0.20.0', metrics.htmlViewsMissingNames) lists twelve
 // missing html views: box, box_bottom, box_middle, compiled, compressed,
@@ -43,10 +43,10 @@ import type { ViewResult } from "../../render/format.js";
 // today because the engine has no base box-family views. That fallback
 // matches the engine's pre-registration behavior byte for byte (the
 // render path raises UnsupportedViewError for unregistered views,
-// render.rb#view_method). KNOWN SEAM: the capture is module-load time,
-// so when a base mod (card-mod-bar_and_box's set/all/box.rb) lands, the
-// coordinator must wire its module import BEFORE this one for the
-// non-Skin fallback to reach it.
+// render.rb#view_method). KNOWN SEAM: the pre-registration entry is read
+// at module-load time, so when a base mod (card-mod-bar_and_box's
+// set/all/box.rb) lands, its module import must be wired BEFORE this one
+// for the non-Skin fallback to reach it.
 //
 // NOT ported (honest remainder, one word per view, details below):
 // - view :box (skin_box.rb:2-7) - SUPER: the body ends in `super()`,
@@ -75,17 +75,17 @@ import type { ViewResult } from "../../render/format.js";
 //   (card-mod-format.ts:437) - a second registration would shadow it
 //   globally (last-wins), breaking the html view for every card.
 // - views :remote_include_tags (type_plus_right/mod/style.rb:26-32) /
-//   :remote_style_tags (self/style_mods.rb:9-13) - BOTH PORTED now (the
-//   mod-porting the first porting wave 2026-10-03): remote_include_tags reads the
+//   :remote_style_tags (self/style_mods.rb:9-13) - BOTH PORTED now:
+//   remote_include_tags reads the
 //   deck-stored +*group remote child (the same card-surface read the
 //   script mod's port established - the deck-card route, not the
-//   manifest.yml read); the tag bytes are CAPTURE-proven (the corpus
+//   manifest.yml read); the tag bytes are oracle-proven (the page
 //   head's REMOTE_STYLE_TAG constant, cross-checked by the harness
 //   oracle). remote_style_tags nests :remote_include_tags per item.
 // - views :stylesheet_include_tag (style_group.rb:38-40,
 //   type_plus_right/mod/style.rb:20-24) / :stylesheet_path
-//   (type_plus_right/set/style.rb:28-34) - ALL THREE ARMS dispositioned
-//   (the first porting wave): the mod/style arm PORTED (the item nest); the
+//   (type_plus_right/set/style.rb:28-34) - ALL THREE ARMS dispositioned:
+//   the mod/style arm PORTED (the item nest); the
 //   abstract arm REGISTERED AS THE RAISING arm (its bare helper is
 //   defined in no installed gem - the Ruby body raises NoMethodError and
 //   the engine's quiet rescue emits the standard bytes); :stylesheet_path
@@ -119,7 +119,7 @@ import type { ViewResult } from "../../render/format.js";
 //   CSS/SCSS/Skin cardtype descriptions, the *style setting's
 //   input_type/content_options/content_option_view rules) - deck-level
 //   seed data; the seed path enters through the standard write path,
-//   exactly like the help mod's probe deck.
+//   exactly like the help mod's seeds.
 // - config/locales/de.yml, config/admin.yml (settings/cardtypes admin
 //   lists), assets/style/jquery_ui_decko.scss + public/jquery-ui-smoothness/
 //   (the jQuery UI theme assets) - admin/locale/asset-pipeline surfaces
@@ -147,7 +147,7 @@ import type {
  *  Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:30
  *  includes the same abstract). Ruby dispatches by the card's set - the
  *  type id - so the guard reads the enriched typeCode first (the type
- *  card's codename, corpus-proof against type renames) and the type NAME
+ *  card's codename, robust against type renames) and the type NAME
  *  second (a deck whose Skin cardtype card lost its codename still
  *  dispatches to Type::Skin in Ruby). */
 function isInSkinBoxSet(ctx: ViewContext): boolean {
@@ -462,8 +462,8 @@ function modStyleModname(ctx: ViewContext): string {
  *  (mod_assets.rb:31-64 local_group_cards: the manifest.yml groups in
  *  file order, or the single "local" FOLDER group whose items are the
  *  directory listing; mod_assets.rb:167-169 puts the remote group FIRST
- *  when group_remote_card.urls is present). Filesystem state the oracle
- *  capture pinned through the live render — the mirror transcribes it
+ *  when group_remote_card.urls is present). Filesystem state pinned
+ *  through the oracle's live render — the mirror transcribes it
  *  exactly as ADMIN_CONFIG transcribes config/admin.yml.
  *
  *  card-mod-format-0.20.0 has assets/style/ but NO manifest.yml -> the
@@ -490,9 +490,9 @@ const MOD_STYLE_GROUPS: Record<
     ],
   ],
   // card-mod-style-0.20.0 assets/style/ ships jquery_ui_decko.scss (the
-  // gem tree); the oracle capture host's folder ALSO carried
+  // gem tree); the oracle host's folder ALSO carried
   // jquery_ui_smoothness.css (the compiled jquery-ui theme beside it).
-  // Same capture-pinned-filesystem-state rule as the format entry: the
+  // Same pinned-filesystem-state rule as the format entry: the
   // synthetic-v2 oracle's mod: style+*style :core pins this exact pair in
   // this order (the "group: local" folder group, no manifest.yml in the
   // gem's assets/style tree).
@@ -501,8 +501,8 @@ const MOD_STYLE_GROUPS: Record<
 
 // ---------------------------------------------------------------------------
 // set/type_plus_right/mod/style.rb + set/self/style_mods.rb +
-// set/type_plus_right/set/style.rb - the census-missing style views
-// (the mod-porting the first porting wave, 2026-10-03)
+// set/type_plus_right/set/style.rb - the style views the compat report
+// lists as missing
 // ---------------------------------------------------------------------------
 
 /** The card's item NAMES from db_content (one per line, [[...]] stripped -
@@ -539,10 +539,10 @@ function styleGroupRemoteLines(ctx: ViewContext): string[] {
   // The +*group remote cards are VIRTUAL: Ruby synthesizes them at boot
   // from each mod's assets/style/manifest.yml "remote" group
   // (mod_assets.rb manifest_group_items dig("remote","items")) — the
-  // corpus deck stores no rows. The pinned manifests key by the mod
-  // card's left name; the capture deck's mods carry exactly one remote
-  // style group: bootstrap's Material Icons stylesheet (the head's
-  // REMOTE_STYLE_TAG constant, head-views.ts). The aggregate card
+  // reference deck stores no rows. The pinned manifests key by the mod
+  // card's left name; the oracle deck's mods carry exactly one remote
+  // style group: bootstrap's Material Icons stylesheet (the page
+  // head's REMOTE_STYLE_TAG constant, head-views.ts). The aggregate card
   // (style: mods) unions every mod's remote group, which this table's
   // union answers through its per-mod entries.
   const MOD_REMOTE_STYLE_SRCS: Record<string, string[]> = {
@@ -559,11 +559,11 @@ function styleGroupRemoteLines(ctx: ViewContext): string[] {
 /** type_plus_right/mod/style.rb:26-32 view :remote_include_tags -
  *  map_remote_items (mod_assets.rb:167-169 -> the group remote list) each
  *  `tag "link", href: src, media: "all", rel: "stylesheet",
- *  type: "text/css"`. The tag bytes are CAPTURE-proven: the deck's pinned
- *  gems render exactly the corpus head's constant (REMOTE_STYLE_TAG,
+ *  type: "text/css"`. The tag bytes are oracle-proven: the deck's pinned
+ *  gems render exactly the page head's constant (REMOTE_STYLE_TAG,
  *  src/card/render/head-views.ts) - self-closing " />", attrs href/media/
- *  rel/type in the caller's order. Oracle-pinned by the harness capture
- *  (style-tag-views.rb, whose tag bytes cross-check that constant). */
+ *  rel/type in the caller's order. Pinned by the harness's Ruby oracle
+ *  (style-tag-views.rb), whose tag bytes cross-check that constant. */
 const remoteIncludeTagsView: ViewFn = (ctx) => {
   return styleGroupRemoteLines(ctx)
     .map(
@@ -633,7 +633,7 @@ const setStylesheetPathView: ViewFn = (ctx) => {
   return styleAssetOutputUrl(ctx);
 };
 
-/** The wave-1 style views' PROBE SURFACE - the composition cores the
+/** The style views' PROBE SURFACE - the composition cores the
  *  harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts)
  *  replays the static-ruby oracle against; the same functions the view
  *  bodies call. */
@@ -747,7 +747,7 @@ const cardModStyle: DeckoModManifest = {
       // (:9-15, scss-format), valid_file_extensions (:17-19),
       // new_asset_constants + the scss/css type constants (:21-35), html
       // view :stylesheet_include_tag (:37-41). The view IS registered
-      // (the first porting wave) as the RAISING arm: its bare
+      // as the RAISING arm: its bare
       // stylesheet_include_tag helper is defined in no installed gem, so
       // the Ruby body raises NoMethodError and the engine's quiet rescue
       // emits the standard bytes - the throw reproduces exactly that.
@@ -780,9 +780,9 @@ const cardModStyle: DeckoModManifest = {
       // `def dependent_asset_inputters; Card::Assets.active_theme_cards;
       // end` (:4-6) - the boot-time asset pipeline's theme walk (Rails
       // Card::Assets, card-mod-assets lib/). :remote_style_tags (:8-14)
-      // IS ported (the mod-porting the first porting wave 2026-10-03; the item nest
+      // IS ported (the item nest
       // + present-filter + output join, oracle-pinned by the harness
-      // capture + probe).
+      // oracle + probe).
       setPath: "self/style_mods",
       formats: {
         html: {
@@ -907,10 +907,10 @@ const cardModStyle: DeckoModManifest = {
       // module is where the +*style card's chain lands, so the group-list
       // render registers HERE (chain-scoped: only "mod: X+*style" cards
       // dispatch it; the flat table is untouched - kind nonbase).
-      // Oracle-pinned byte-for-byte: mod: format :styles nests it
-      // (fixtures/captured/admin-view-pins.json). :stylesheet_include_tag
-      // (:20-24) and :remote_include_tags (:26-32) ARE ported (the
-      // mod-porting the first porting wave 2026-10-03: the item nest composition and
+      // Oracle-pinned byte-for-byte: mod: format :styles nests it.
+      // :stylesheet_include_tag
+      // (:20-24) and :remote_include_tags (:26-32) ARE ported (the item
+      // nest composition and
       // the group-remote link tags, oracle-pinned; the abstract arm the
       // nest reaches throws the Ruby body's NoMethodError - the helper is
       // undefined in the gem universe - and the engine's quiet rescue
@@ -935,7 +935,7 @@ const cardModStyle: DeckoModManifest = {
       // :stylesheet_path (:27-34), input_type/default_item_view (:36-42),
       // themes/selectable_themes (:46-55), joined_items_content (:58-60,
       // the item-content join the scss validator reads). Constants
-      // exported above. :stylesheet_path IS ported (the first porting wave: the
+      // exported above. :stylesheet_path IS ported (the
       // headless params absence computes the else arm -
       // card.asset_output_url - the assets suites' pinned
       // localAttachmentUrl shape; the params[:debug] arm is the named

@@ -4,7 +4,7 @@
 // The gem's tree (the installed
 // card-mod-script-0.20.0/): sixteen set files (7 abstract, 1 all, 1 right,
 // 1 self, 4 type, 2 type_plus_right), two lib/ modules, two config/
-// initializers, and data/real.yml. The T6 verdict
+// initializers, and data/real.yml. The compat report
 // (tools/compat-report/mod-compat-report.json, gem ===
 // 'card-mod-script-0.20.0', classification.metrics.htmlViewsMissingNames)
 // lists six missing html views: compressed, javascript_include_tag,
@@ -21,30 +21,28 @@
 //   script.rb:12-23 rule-card walk, type_plus_right/mod/script.rb:18-26
 //   mod-remote walk; other cards raise UnsupportedViewError like Ruby)
 //
-// ORACLE PIN: an oracle capture ran during this port against the decko
-// oracle app (tools/oracle/decko-oracle-app, RAILS_ENV=development
-// `bundle exec decko runner`, modeled on
-// tests/card/mod-loader/oracle-capture-help-mod.rb; capture script + JSON in
-// %TEMP%, values quoted inline below). Pinned facts used in this file:
+// ORACLE PIN: the byte facts below are pinned against the decko oracle
+// app (RAILS_ENV=development `bundle exec decko runner`); values quoted
+// inline are its rendered bytes. Pinned facts used in this file:
 // - script_variables bytes:
 //   "<script>\n//<![CDATA[\ndocko.rootUrl='/';\ndocko.doubleClick='signed_in';"
-//   + "\ndocko.cssPath='/files/~447/1790061390.css';\ndocko.signed_in=true;\n"
+//   + "\ndocko.cssPath='/files/<id>/<digest>.css';\ndocko.signed_in=true;\n"
 //   + "\n//]]>\n</script>" (runner ran as bot -> signed_in true; the
 //   headless engine's anonymous default is false)
-// - script_calls wrapper + trailing trigger_slot_ready line (the captured
+// - script_calls wrapper + trailing trigger_slot_ready line (the oracle's
 //   content additionally carries two cross-mod basket entries,
 //   setAceConfig/setTinyMCEConfig, added by card-mod-ace_editor and
 //   card-mod-tinymce_editor through basket[:script_calls] - not ported, see
 //   below)
 // - javascript_tags join shape: remote_script_tags bytes + "\n" +
 //   "<!-- MAIN DECKO JAVASCRIPT -->" + "\n" + main tag
-// - main tag: '<script src="/files/~307/1790061390.js"></script>'
+// - main tag: '<script src="/files/<id>/<digest>.js"></script>'
 // - javascript_include_tag fallback bytes:
 //   "\n<!-- javascript_include_tag not overridden for NAME -->\n"
-// - script-family bytes: '<script src="/Oracle_Script_Probe.js"></script>'
+// - script-family bytes: '<script src="/<url_key>.js"></script>'
 //   (path(format: :js) -> "/#{url_key}.js")
 // - remote_script_tags mod-branch bytes: one Rails script tag per remote
-//   item, joined "\n"; the captured tags carry crossorigin/referrerpolicy
+//   item, joined "\n"; the oracle's tags carry crossorigin/referrerpolicy
 //   attributes that come from the mods' manifest.yml config hashes (a
 //   filesystem surface - see below)
 // - Card.config.double_click == :signed_in (lib/card/mod/script.rb:1,
@@ -66,12 +64,11 @@
 //   dispatch (views.ts core branch, renderRaw -> highlight(:js) ->
 //   processContent with the family's :nest_only chunk list). The byte-port
 //   runs on the code-highlighting module's java_script scanner (the same
-//   state machine the html scanner delegates <script> bodies to); the
-//   pre-2026-10 "not headlessly reproducible" verdict was overturned when
-//   that module landed. coffee_script's html :core is NOT this file's
+//   state machine the html scanner delegates <script> bodies to).
+//   coffee_script's html :core is NOT this file's
 //   highlight path (Abstract::CoffeeScript's base-format view :core compiles
-//   first - 02_coffee_script.rb:23-25); it stays unported, unexercised by
-//   the corpus.
+//   first - 02_coffee_script.rb:23-25); it stays unported (no render
+//   surface exercises it headlessly).
 // - lib/cardio/utils/ansi2_html.rb: consumed only by the
 //   validate_javascript_syntax error message (type/java_script.rb:8) - no
 //   reachable consumer headlessly.
@@ -79,7 +76,7 @@
 //   card-method layers of the abstract modules (compress?, bare_compile,
 //   valid_file_extensions, new_asset_constants, subpath, ...): card
 //   behavior the manifest format does not carry (no events/methods field).
-// - basket[:script_calls] entries (all/head_javascript.rb:5): the captured
+// - basket[:script_calls] entries (all/head_javascript.rb:5): the oracle
 //   deck carries setAceConfig/setTinyMCEConfig entries added by OTHER mods
 //   at load time. The headless port reads an empty basket -> only
 //   trigger_slot_ready renders. Cross-mod basket population has no manifest
@@ -145,11 +142,11 @@ function paramOrRuleCard(ctx: ViewContext, settingCodename: string) {
 /** card-mod-assets set/abstract/asset_outputter.rb:78-82 asset_output_url:
  *  `asset_output_card.file&.url`. The file card (card_accessor :asset_output,
  *  asset_outputter.rb:4) stores the carrierwave identifier in db_content
- *  (oracle deck: card 307 "*all+*script+*asset output" db_content
- *  "~307/1790061390.js") and the local file store serves it under /files/
+ *  (oracle deck: the "*all+*script+*asset output" card's db_content is
+ *  "<id>/<digest>.js") and the local file store serves it under /files/
  *  (card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:111) -
- *  the captured URLs ("/files/~307/1790061390.js",
- *  "/files/~447/1790061390.css") are exactly that composition. Undefined
+ *  the oracle's URLs ("/files/<id>/<digest>.js") are exactly that
+ *  composition. Undefined
  *  when the output card is absent (Ruby: file nil -> url nil). */
 function assetOutputUrl(ctx: ViewContext, cardName: string): string | undefined {
   const outputCard = ctx.fmt.engine.fetchRenderCard(`${cardName}+*asset output`);
@@ -205,8 +202,8 @@ function javascriptTag(content: string): string {
 /** head_javascript.rb:33-40 decko_script_variables, in the fixed hash order:
  *  rootUrl / doubleClick / cssPath / signed_in.
  *  - decko.rootUrl: card_url("") (head_javascript.rb:35). location.rb:19-21
- *    card_url = Env.origin + card_path(rel); the oracle captured origin ""
- *    -> "/". The engine has no request origin - the port emits the same
+ *    card_url = Env.origin + card_path(rel); the oracle's requestless
+ *    origin is "" -> "/". The engine has no request origin - the port emits the same
  *    requestless-root bytes.
  *  - decko.doubleClick: Card.config.double_click, set to :signed_in by this
  *    gem's lib/card/mod/script.rb:1 (the Railtie config line);
@@ -217,19 +214,19 @@ function javascriptTag(content: string): string {
  *    :stylesheet_path view is card-mod-style's (set/type_plus_right/set/
  *    style.rb:28-34 -> card.asset_output_url), so the bytes come from the
  *    live view registry - rendered here through the real nest so the
- *    composition with card-mod-style produces the captured
+ *    composition with card-mod-style produces the oracle's
  *    "/files/..." bytes. A deck with no *style rule is an unpinned Ruby
  *    state (nest of nil); the port omits the line (documented divergence,
  *    never exercised by real decks, which always seed *style rules).
  *  - decko.signed_in: Auth.signed_in? (card-1.110.0 lib/card/auth/
  *    current.rb:45-47, current_id != AnonymousID). The engine has no auth
- *    surface - the anonymous default false. (The oracle capture ran as bot:
+ *    surface - the anonymous default false. (The oracle runner ran as bot:
  *    true.) */
 function deckoScriptVariables(ctx: ViewContext): string {
   const lines: string[] = [];
   // card_url("") = Env.origin + card_path("": the VIEW lane runs the
-  // railtie default (deck_origin nil) UNLESS the harness set the deck
-  // origin (the corpus's deck.example) — engine.envOriginConfig() is the
+  // railtie default (deck_origin nil) UNLESS the host config set the deck
+  // origin — engine.envOriginConfig() is the
   // per-surface value (the page path's scriptVariablesTag precedent).
   const rootUrl = deckoRootUrl() ?? `${ctx.fmt.engine.envOriginConfig?.() ?? ""}/`;
   lines.push(`decko.rootUrl='${rootUrl}';`);
@@ -241,8 +238,8 @@ function deckoScriptVariables(ctx: ViewContext): string {
   }
   // Auth.signed_in? (auth/current.rb) — the PAGE CHROME session
   // (engine.pageSession), not the read-verdict actor; undefined = signed
-  // out (the anonymous surface's false, byte-identical). The corpus's
-  // admin ops carry the signed-in session -> true.
+  // out (the anonymous surface's false, byte-identical). Signed-in
+  // sessions render true.
   lines.push(`decko.signed_in=${ctx.fmt.engine.pageSession?.signedIn === true};`);
   return lines.join("\n") + "\n";
 }
@@ -277,12 +274,6 @@ const javascriptTagsView: ViewFn = (ctx) => {
   return parts.join("\n");
 };
 
-/** head_javascript.rb:25-27 view :script_calls, unknown: true, perms: :none:
- *  javascript_tag { (script_configs << trigger_slot_ready).join "\n\n" }.
- *  script_configs (:69-73) maps basket[:script_calls] - entries other mods
- *  push at load time (oracle deck: setAceConfig, setTinyMCEConfig). The
- *  headless basket is empty -> only the trigger line, joined as the single
- *  element. */
 /** Rails escape_javascript (action_view/helpers/javascript_helper.rb
  *  JAVASCRIPT_ESCAPE_MAP order): \\ -> \\\\, </ -> <\\/, newlines -> \\n,
  *  " -> \\", ' -> \\', \` -> \\`, $ -> \\$.
@@ -306,8 +297,8 @@ function escapeJavascript(js: string): string {
  *  content; tinymce_editor pushes setTinyMCEConfig over *tiny_mce — then
  *  trigger_slot_ready, joined "\n\n" inside the CDATA script. The configs
  *  are the two setting cards' contents through escape_javascript (the
- *  sync card-surface read; the corpus's *ace / *tiny_mce rows hold the
- *  captured config JSONs). */
+ *  sync card-surface read; the *ace / *tiny_mce cards hold the config
+ *  JSONs). */
 const scriptCallsView: ViewFn = (ctx) => {
   const ace = ctx.fmt.engine.fetchRenderCard("*Ace")?.dbContent ?? "";
   const tinymce = ctx.fmt.engine.fetchRenderCard("*tinyMCE")?.dbContent ?? "";
@@ -328,7 +319,7 @@ const scriptCallsView: ViewFn = (ctx) => {
  *     CoffeeScript cardtypes' include chain): javascript_include_tag
  *     path(format: :js) -> "<script src=\"/#{url_key}.js\"></script>"
  *     (card-mod-format set/all/path.rb:68-73 html paths are site-root
- *     relative; oracle: '/Oracle_Script_Probe.js').
+ *     relative).
  *  3. all/head_javascript.rb:29-31 (All::HeadJavaScript, the base):
  *     "\n<!-- javascript_include_tag not overridden for #{card.name} -->\n".
  *  All three carry cache: :never; the all-layer adds unknown: true. */
@@ -388,13 +379,13 @@ function remoteScriptTagsOfRuleCard(ctx: ViewContext): string {
  *  list one per line (card-mod-assets set/right/group_remote.rb:25-31), so
  *  the port reads the card surface the way card-mod-assets.ts:73-77 does;
  *  each src becomes Rails' javascript_include_tag bytes
- *  `<script src="..."></script>` (the captured tags' extra attributes come
+ *  `<script src="..."></script>` (the oracle's tags' extra attributes come
  *  from the manifest config hashes - filesystem state, see the header).
  *  No group remote card or empty list -> "". */
 /** The mods' manifest.yml "remote" groups (mod_assets.rb
- *  manifest_group_items, dig("remote","items")) in the capture's tag bytes:
+ *  manifest_group_items, dig("remote","items")) in the oracle's tag bytes:
  *  the tag attributes are each manifest item's config hash minus integrity
- *  (the capture's script tags carry crossorigin / referrerpolicy only).
+ *  (the oracle's script tags carry crossorigin / referrerpolicy only).
  *  Keyed by the mod card's left name — the same data page.ts's
  *  REMOTE_SCRIPT_TAGS pins for the page head, this table serves the view
  *  lane's per-mod blocks. */
@@ -428,10 +419,10 @@ function remoteScriptTagsOfModCard(ctx: ViewContext): string {
   // The +*group remote cards are VIRTUAL: Ruby synthesizes them at boot
   // from each mod's assets/script/manifest.yml "remote" group
   // (mod_assets.rb manifest_group_items dig("remote","items")) — the
-  // corpus deck stores no rows. The pinned manifests (format: jquery +
+  // reference deck stores no rows. The pinned manifests (format: jquery +
   // jquery-ujs; ace editor: ace; bootstrap: select2 + fontawesome-kit)
   // are static CDN state; the tag attributes are the manifest config
-  // hashes minus integrity (the capture's tags carry crossorigin /
+  // hashes minus integrity (the oracle's tags carry crossorigin /
   // referrerpolicy only).
   const pinned = MOD_REMOTE_SCRIPT_TAGS[card.name.leftName?.s ?? ""];
   return pinned === undefined ? "" : pinned.join("\n");
@@ -569,7 +560,7 @@ function modScriptModname(ctx: ViewContext): string {
  *  File.basename of each manifest path (asset_group.rb:22-30
  *  new_asset_file_card), which is why "jquery/jquery-ui.min.js" renders
  *  "jquery-ui.min.js" and the ../../vendor paths lose their directories.
- *  Filesystem state the oracle capture pinned through the live render —
+ *  Filesystem state pinned through the oracle's live render —
  *  the mirror transcribes it exactly as ADMIN_CONFIG transcribes
  *  config/admin.yml.
  *
@@ -889,26 +880,25 @@ const cardModScript: DeckoModManifest = {
     // ModAssets): the remote_script_tags mod layer + the :core group-list
     // render.
     //
-    // 2026-09-29: this module now CARRIES the view. Ruby
+    // This module CARRIES the view. Ruby
     // defines view :remote_script_tags in BOTH gem files
     // (type_plus_right/set/script.rb:12-16 on Set+*script AND
     // type_plus_right/mod/script.rb:18-26 on Mod+*script - both non-nested
-    // files, so each is its own Ruby module); the old merged registration
-    // (one entry on the set path "because the flat registry keeps one entry
-    // per view name") stopped answering for Mod+*script cards once the
-    // chainFor narrowing (26ef575) keyed dispatch off the
+    // files, so each is its own Ruby module); a merged registration on one
+    // set path stops answering for Mod+*script cards once the
+    // chainFor narrowing keyed dispatch off the
     // card's own TYPE_PLUS_RIGHT token, which names THIS module for a
     // "mod: X+*script" card. The viewFn keeps the per-layer dispatch
     // (leftTypeCode set -> rule-card walk, mod -> group-remote src list)
     // and still raises for cards outside the two patterns.
     //
-    // the second admin-views port: view :core joins the module — Ruby hosts it on
+    // view :core joins the module — Ruby hosts it on
     // the INCLUDED Abstract::ModAssets (card-mod-assets
     // set/abstract/mod_assets.rb:171-182, the group_list haml); this set
     // module is where the +*script card's chain lands, so the render
     // registers HERE (chain-scoped, kind nonbase — the flat table is
     // untouched). Oracle-pinned byte-for-byte: mod: format :scripts nests
-    // it (fixtures/captured/admin-view-pins.json).
+    // it.
     {
       setPath: "type_plus_right/mod/script",
       formats: {

@@ -38,7 +38,7 @@
 // card says so in one line next to both. What is NOT permitted is a number
 // here that is not traceable to the cited header line.
 //
-// The v1 boundary (product ruling, 2026-10-01): the marketplace is ITSELF a
+// The v1 boundary: the marketplace is ITSELF a
 // mod and v1 catalogs the BUILT-IN mods only. Runtime installation of NEW
 // third-party code is V2. The loader's ModSource[] seam
 // (mod-loader.ts:127-132, 201-204) is where V2 lands - `new ModLoader([...])`
