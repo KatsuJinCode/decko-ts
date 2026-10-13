@@ -4014,8 +4014,8 @@ function settingCodenameForRule(fmt: RenderFormat, rule: RenderCard): string | u
  *     (42 slots, e.g. id 45410 "yol" content view -> items
  *     awheasxlcszvy-bar-view with data-card-id and the bar-left
  *     card-title body); the live wire pins the same shape
- *     (an internal work log the Aikido Oak Cliff+related
- *     list renders `id="aikido_oak_cliff-gallery-bar-view"`
+ *     (an internal work log the Sample Card 128+related
+ *     list renders `id="sample_card_128-gallery-bar-view"`
  *     class="card-slot bar-view ..." with the full bar — never
  *     mini_bar). The prior unconditional swap produced mini_bar for
  *     these readable items and failed both oracle families. */
@@ -4122,7 +4122,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // "Sample Organisation+Pages" open) vs 270 mini_bar slots
   // carrying denial bodies — and EVERY one of those 270 is an
   // ABSENT-ROW item the phantom path above already covers (Test Person
-  // 01 / Aikido as Peace Practice, the anonymizer-renamed BasicCs
+  // 01 / Fieldwork as Peace Practice, the anonymizer-renamed BasicCs
   // family). Ruby's bar view declares `unknown: :mini_bar`
   // (card-mod-bar_and_box set/all/bar.rb:9) — the mini_bar slot is the
   // UNKNOWN-card substitution, never the readable-card denial shape;
@@ -5358,8 +5358,8 @@ const titledView: ViewFn = ({ fmt, voo }) => {
   // FIRST, then adds the card's own name parts to the format's working
   // context - the titled card's own title renders in the pre-context
   // (full name) while every nest inside its body relativizes against the
-  // added parts (live: /Aikido_2's +management bar and +overview header
-  // render "+management"/"+overview" under the Aikido 2 page).
+  // added parts (live: /Fieldwork_2's +management bar and +overview header
+  // render "+management"/"+overview" under the Fieldwork 2 page).
   const header = headerHtml({ fmt, voo });
   fmt.addNameContext();
   const core = fmt.renderView("titled_content");
