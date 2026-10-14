@@ -62,6 +62,7 @@ import cardModEmail from "./mods/card-mod-email.js";
 import cardModIntegrate from "./mods/card-mod-integrate.js";
 import cardModAccount from "./mods/card-mod-account.js";
 import cardModHistory, { historyModEventPredicates } from "./mods/card-mod-history.js";
+import { registerDeckModEventCardStateSources } from "./mod-event-state-sources.js";
 import cardModCarrierwave from "./mods/card-mod-carrierwave.js";
 import cardModVirtual from "./mods/card-mod-virtual.js";
 import cardModAssets from "./mods/card-mod-assets.js";
@@ -261,6 +262,11 @@ export function defaultDeckEventRuntime(host?: ModEngineHost): ModEventRuntime {
   // node host) keeps rendering that way after its first save: the events
   // come from a loader of their own, never bound as the process default.
   const loader = getDefaultModLoader() ?? eventOnlyDeckLoader();
+  // The other half of `when:` support: the state sources that populate the
+  // event card with what the predicates read (mod-event-card-state.ts).
+  // Registered here, beside the predicate tables, so a mod's two halves are
+  // wired in one place.
+  registerDeckModEventCardStateSources();
   return {
     registry: loader.eventRegistry(),
     predicates: defaultDeckEventPredicates(),

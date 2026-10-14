@@ -196,6 +196,10 @@ import {
   type ModEventRecaptchaVerify,
 } from "../mod-loader/mod-event-dispatch.js";
 import {
+  populateModEventCardState,
+  type ModEventCardStateContext,
+} from "../mod-loader/mod-event-card-state.js";
+import {
   recaptchaSiteverifyGet,
   RECAPTCHA_CARDIO_CONFIG_DEFAULTS,
 } from "../mod-loader/mods/card-mod-recaptcha.js";
@@ -337,6 +341,12 @@ export interface CardActionEngineOptions {
    *  one without the core mod) behaves exactly as before. ABSENT (every
    *  pre-existing caller) -> no dispatch at all, byte-identical behavior. */
   modEvents?: ModEventRuntime;
+
+  /** Card::Env.params for the request this engine serves (env.rb). Read by
+   *  the mod-event state sources (mod-loader/mod-event-card-state.ts) so
+   *  `when:` predicates that consult request params (`draft`,
+   *  `insert_item`, `attachment_upload`) see the same bag Ruby does. */
+  params?: Readonly<Record<string, unknown>>;
   /** The recaptcha config port (Cardio.config.recaptcha_* — the seven keys
    *  card-mod-recaptcha lib/card/mod/recaptcha.rb:1-10 initializes).
    *  ABSENT = no keys configured = recaptcha_keys? false = the guard is
@@ -446,6 +456,12 @@ export class CardActionEngine {
    *  sibling cards skip). Ruby's lifetime is the request; the engine's is
    *  the instance ("construct per request"). */
   private captchaUsedThisRequest = false;
+  /** Card::Env.params for the save (lib/card/env.rb) — the request-param
+   *  bag Ruby's `when:` predicates read (`draft`, `insert_item`,
+   *  `attachment_upload`). Undefined on an engine built for a non-request
+   *  save; a predicate that needs it then reads false, which is what Ruby
+   *  does for a param the request did not carry. */
+  private readonly saveParams: Readonly<Record<string, unknown>> | undefined;
 
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
@@ -466,6 +482,7 @@ export class CardActionEngine {
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
+    this.saveParams = options.params;
   }
 
   /** How many saves are running on this engine right now: 1 inside a
@@ -3845,20 +3862,39 @@ export class CardActionEngine {
     };
   }
 
+  /** The save-scoped context the mod-event state sources populate against
+   *  (mod-loader/mod-event-card-state.ts): Ruby's `Env.params` and
+   *  `Auth.current_id` reach a predicate through the card's own accessors,
+   *  and this is where the port supplies them. */
+  private eventStateContext(): ModEventCardStateContext {
+    return {
+      ...(this.saveParams !== undefined ? { params: this.saveParams } : {}),
+      authCurrentId: this.actor?.id ?? null,
+      isActCard: true,
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+    };
+  }
+
   /** Dispatch one director stage for this save (no dispatch without a
    *  runtime). The deps pair is the same one the built-in janitors take.
    *  The pending add_comment save input (if this save carries one) rides
-   *  the ctx so the `when: :comment` predicate sees it. */
-  private dispatchEventStage(
+   *  the ctx so the `when: :comment` predicate sees it.
+   *
+   *  The card is POPULATED first (mod-loader/mod-event-card-state.ts): the
+   *  per-mod state sources contribute what Ruby's `when:` predicates read
+   *  off the acting card, which the structural snapshot does not carry. */
+  private async dispatchEventStage(
     stage: ModEventStage,
     card: ModEventCard,
   ): Promise<ModEventStageReport | undefined> {
     const runtime = this.modEvents;
-    if (runtime === undefined) return Promise.resolve(undefined);
+    if (runtime === undefined) return undefined;
+    const populated = await populateModEventCardState(card, this.eventStateContext());
     return runModEventStage(
       this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
       stage,
-      card,
+      populated,
       {
         driver: this.fetch.driver,
         lexicon: this.fetch.lexicon,

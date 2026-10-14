@@ -1494,16 +1494,18 @@ export const coreModEventPredicates = {
   "skip_update_referers?": (card: ModEventCard): boolean =>
     card.act?.skip?.includes("update_referer_content") === true ||
     card.act?.forceSkip?.includes("update_referer_content") === true,
-  /** autoname? (mod/core/set/all/autoname.rb:14): the card has no name yet
-   *  and the deck's autoname rule is on. The port's event card always
-   *  carries a name (the engine substitutes `~<id>` for an unnamed create),
-   *  so the blank half never holds here — an unnamed create has already
-   *  been named by the time a stage walks. */
-  "autoname?": (card: ModEventCard): boolean => card.name.startsWith("~"),
+  /** autoname? (mod/core/set/all/autoname.rb:14): `name.blank? &&
+   *  rule(:autoname).present?`. The engine does not port set_autoname's
+   *  ladder (autoname.rb:1-8) — a create that arrives without a name is
+   *  lexed to `~<id>` rather than named from the deck's autoname rule — so
+   *  the blank half of the condition never holds and the event does not
+   *  fire. False states that; it does not infer an autoname from the `~`
+   *  placeholder, which is the engine's own naming, not Ruby's. */
+  "autoname?": (): boolean => false,
   /** no_autoname? (autoname.rb:10) = !autoname?. Gates :validate_name /
-   *  :validate_key (name_events.rb:3/:38), which only run when the engine
-   *  did NOT autoname. */
-  "no_autoname?": (card: ModEventCard): boolean => !card.name.startsWith("~"),
+   *  :validate_key (name_events.rb:3/:38), which run whenever the deck did
+   *  NOT autoname — the ordinary named create and every update. */
+  "no_autoname?": (): boolean => true,
   /** draft? (mod/core/set/all/content.rb:17): `Env.params["draft"] == "true"`
    *  — the request saved without persisting. Gates :save_draft
    *  (content.rb:7), which the engine applies on the draft param. */
