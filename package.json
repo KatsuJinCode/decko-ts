@@ -48,7 +48,9 @@
   },
   "dependencies": {
     "@cf-wasm/photon": "0.4.0",
+    "@electric-sql/pglite": "^0.5.10",
     "coffeescript": "^1.12.2",
+    "pg": "^8.23.1",
     "sass": "1.105.0"
   }
 }
