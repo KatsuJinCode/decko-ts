@@ -88,8 +88,10 @@ const PLAIN_TYPE_ID = 2;
  *      NULL and is filtered out of every search result for every viewer
  *      (render.ts cqlPermissionOptions: "there is no rule-less allowance
  *      here, and there never should have been one"), so an unstamped result
- *      row is invisible to the engine-side search while the mod's count warm
- *      (which runs with always_ok? true) still counts it. A real deck stores
+ *      row is invisible to the engine-side search. The mod's count warm keeps
+ *      counts per stored rule (NULL rows apart) and each view applies the
+ *      viewer's read scope to them (card-mod-search-read-scope.test.ts), so an
+ *      unstamped row is counted for always-ok viewers only. A real deck stores
  *      the id on every row; the deck below does the same.
  *
  *  Returns the catch-all rule card's id, the value readRuleId takes. A deck

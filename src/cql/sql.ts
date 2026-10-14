@@ -35,6 +35,14 @@ export interface SqlOptions {
   alwaysOk?: boolean;
   readRuleIds?: number[];
   /**
+   * Count-returning root only: select `count` per `read_rule_id` (GROUP BY the
+   * stored rule, NULL rows in their own group). Every group carries the
+   * unfiltered rows of one rule, so a viewer's count is the sum over the rules
+   * its `read_rule_id IN (...)` admits — the same count Card::Query returns for
+   * that viewer (where.rb:79-84), computed once without the viewer.
+   */
+  countByReadRule?: boolean;
+  /**
    * REGEXP-on-edge mode ("The REGEXP decision"
    * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
    * OMITTED from the generated SQL and re-applied by the executor in JS
@@ -148,7 +156,11 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   const orderDirectives = full ? orderDirectivesOf(query, ctx) : [];
 
   // SqlStatement#fields
-  const parts: string[] = [fullField(alias, query.mods.return)];
+  const groupByRule =
+    isRoot && query.mods.return === "count" && ctx.options.countByReadRule === true;
+  const parts: string[] = groupByRule
+    ? [`${alias}.read_rule_id AS read_rule_id`, fullField(alias, query.mods.return)]
+    : [fullField(alias, query.mods.return)];
   for (const directive of orderDirectives) parts.push(directive.field);
   // Post-filter mode: make sure the filter's columns are selected even when
   // the return mod selects only its own (see MATCH_HELPER_PREFIX).
@@ -165,7 +177,11 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   const fromSql = `FROM ${query.table} ${alias}`;
   const joinsSql = renderJoins(query, ctx);
   const whereSql = renderWhere(query, ctx);
-  const groupSql = full && query.mods.group ? `GROUP BY ${safeSql(query.mods.group)}` : "";
+  const groupSql = groupByRule
+    ? `GROUP BY ${alias}.read_rule_id`
+    : full && query.mods.group
+      ? `GROUP BY ${safeSql(query.mods.group)}`
+      : "";
   const orderSql =
     orderDirectives.length > 0
       ? `ORDER BY ${orderDirectives.map((d) => (d.dir ? `${d.field} ${d.dir}` : d.field)).join(", ")}`

@@ -141,7 +141,11 @@ function numberWithDelimiter(count: number): string {
 // (the same pattern as mod-loader.ts#setDefaultModLoader). Tests that use
 // several engines read counts only from the engine whose warm ran last
 // unless card keys are disjoint.
-const searchCounts = new Map<string, number>();
+// Card key -> the count per stored read rule (NULL rows under null). The warm
+// runs once per engine with no viewer; each view applies the viewer's read
+// scope to these groups (warmedCount), which is Card::Query's relation-level
+// filter (where.rb:79-84) split by rule rather than re-run per viewer.
+const searchCounts = new Map<string, Map<number | null, number>>();
 /** Card key -> the Ruby reason no count could be computed (BadQuery shapes
  *  from cql_search.rb:29-38 / query/card_query/found_by.rb:23-25). */
 const searchCountFailures = new Map<string, string>();
@@ -374,7 +378,7 @@ async function prepareSearchCounts(host: ModEngineHost): Promise<void> {
         resolveCardId: (nameish: string) => nameToId.get(DeckoName.parse(nameish).key),
       });
       root.mods.return = "count"; // the count path ignores limit/order
-      statements.push(generateSql(root));
+      statements.push(generateSql(root, { countByReadRule: true }));
       entries.push({ key });
     } catch {
       // e.g. sql.ts:215 found_by refusal - Ruby would compute the count;
@@ -385,10 +389,16 @@ async function prepareSearchCounts(host: ModEngineHost): Promise<void> {
   if (statements.length === 0) return;
   const countResults = await host.batch(statements);
   for (let i = 0; i < entries.length; i++) {
-    const result = countResults[i] as { rows: { count: number | null }[] } | undefined;
-    const raw = result?.rows?.[0]?.count;
-    const count = raw === undefined || raw === null ? 0 : Number(raw);
-    searchCounts.set(entries[i]!.key, Number.isNaN(count) ? 0 : count);
+    const result = countResults[i] as
+      | { rows: { read_rule_id: number | null; count: number | null }[] }
+      | undefined;
+    const byRule = new Map<number | null, number>();
+    for (const row of result?.rows ?? []) {
+      const rule = row.read_rule_id === null || row.read_rule_id === undefined ? null : Number(row.read_rule_id);
+      const n = row.count === null || row.count === undefined ? 0 : Number(row.count);
+      byRule.set(rule, (byRule.get(rule) ?? 0) + (Number.isNaN(n) ? 0 : n));
+    }
+    searchCounts.set(entries[i]!.key, byRule);
   }
 }
 
@@ -400,8 +410,20 @@ function warmedCount(
   const key = ctx.fmt.card.key;
   const failure = searchCountFailures.get(key);
   if (failure !== undefined) return { failure };
-  const count = searchCounts.get(key);
-  return count === undefined ? undefined : { count };
+  const byRule = searchCounts.get(key);
+  if (byRule === undefined) return undefined;
+  // The viewer's read scope, as cqlPermissionOptions answers it. Always-ok
+  // (Auth.always_ok?) takes every group; otherwise the groups whose rule the
+  // viewer reads through. A NULL rule is never admitted by IN (...), and the
+  // empty rule list renders Ruby's IN (1) sentinel (where.rb:79-84).
+  const scope = ctx.fmt.engine.cqlReadScope?.();
+  if (scope === undefined) return undefined; // read state not folded: no viewer to count for
+  const admitted = scope.readRuleIds.length > 0 ? scope.readRuleIds : [1];
+  let count = 0;
+  for (const [rule, n] of byRule) {
+    if (scope.alwaysOk || (rule !== null && admitted.includes(rule))) count += n;
+  }
+  return { count };
 }
 
 // ---------------------------------------------------------------------------

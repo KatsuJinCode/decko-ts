@@ -3839,6 +3839,9 @@ export interface RenderEngineLike {
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean;
+  /** The viewer's CQL read scope (cqlPermissionOptions, synchronous): what a
+   *  count view applies per rule group. Undefined before the read state folds. */
+  cqlReadScope?(): { alwaysOk: boolean; readRuleIds: number[] } | undefined;
   /** ok_to_<task>? for the NON-read view tasks (ok_to_update?/create?/
    *  delete?, card-mod-permissions set/all/permissions.rb:148-157) —
    *  precomputed like isDenied, same undefined-means-unverifiable contract

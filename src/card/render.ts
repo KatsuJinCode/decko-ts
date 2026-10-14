@@ -5307,6 +5307,17 @@ export class RenderEngine implements RenderEngineLike {
    *  (ACCOUNT_RIGHT_CODENAMES below). Both halves existed because the read
    *  path failed open on the same deck; with the read path denying, the
    *  deck is filtered like every other deck and neither is reachable. */
+  /** The viewer's read scope, synchronously, for views that cannot await. The
+   *  read state is folded in render()'s prelude before any view runs (the same
+   *  state isDenied reads); undefined before that fold. Same answer as
+   *  cqlPermissionOptions once the state exists. */
+  cqlReadScope(): { alwaysOk: boolean; readRuleIds: number[] } | undefined {
+    const state = this.readPermission;
+    if (state === undefined) return undefined;
+    if (state.alwaysOk) return { alwaysOk: true, readRuleIds: [] };
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
+  }
+
   async cqlPermissionOptions(): Promise<{
     alwaysOk: boolean;
     readRuleIds: number[];
