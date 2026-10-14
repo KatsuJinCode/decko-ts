@@ -38,8 +38,9 @@ import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.
 import { resolvePointerItemName, rawItemStrings } from "./render/pointer-list.js";
 import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
-import { ruleCacheStatement, type RuleCacheRow } from "./rules/rule-cache.js";
-import { ruleCacheKeyFromRow } from "./set-patterns/rule-names.js";
+import { ruleCacheStatement, ruleIdLookup, type RuleCacheRow } from "./rules/rule-cache.js";
+import { ruleLookupKeysForCard } from "./set-patterns/card-patterns.js";
+import { ruleCacheKeyFromRow, settingCardNameForCode } from "./set-patterns/rule-names.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
@@ -440,6 +441,23 @@ const CORE_REACHING_VIEWS: ReadonlySet<string> = new Set([
   "labeled",
   "closed",
 ]);
+
+/**
+ * One value of the deck-wide rule cache: an entry of
+ * Card::Rule::Cache#lookup_hash, whose stored value is the rule id
+ * (card-1.110.0 lib/card/rule/cache.rb:47 `hash[key] =
+ * row["rule_id"].to_i`). `ruleId` is what Ruby keeps; `patternCode`,
+ * `settingCode` and `anchorName` are the SET identity the key itself was
+ * built from (cache.rb:50-62 `lookup_key`), held so the winning rule card's
+ * NAME can be composed without a second lookup and so Set#label needs no
+ * second rule walk.
+ */
+interface RuleCacheEntry {
+  ruleId: number;
+  patternCode: string;
+  settingCode: string;
+  anchorName: string | undefined;
+}
 
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
@@ -2718,6 +2736,16 @@ export class RenderEngine implements RenderEngineLike {
     this.deckDataVersion = version;
   }
 
+  /** Ruby's Card::Rule.clear_rule_cache (rule.rb:37-39 -> Cache.clear,
+   *  cache.rb:36-38): the deck-wide rule lookup hash is dropped so the next
+   *  rule walk reloads it. A committed rule write reaches here through the
+   *  save seam; fixture seams that insert rule rows call it directly. */
+  expireRuleCache(): void {
+    this.ruleCacheSetLabels = undefined;
+    this.ruleCacheSetLabelsLoad = undefined;
+    this.ruleCacheAddressable = true;
+  }
+
   /** Drop every derived cache (the fetch engine's caches + the render-side
    *  maps). Mirrors FetchEngine#resetCaches for whole-engine resets. */
   resetCaches(): void {
@@ -2726,8 +2754,7 @@ export class RenderEngine implements RenderEngineLike {
     this.idsByKey.clear();
     // Ruby's clear_rule_cache: a write invalidates the deck-wide rule
     // lookup hash (the set-label winner map included).
-    this.ruleCacheSetLabels = undefined;
-    this.ruleCacheSetLabelsLoad = undefined;
+    this.expireRuleCache();
     this.resetDerivedRenderState();
   }
 
@@ -3299,21 +3326,48 @@ export class RenderEngine implements RenderEngineLike {
    * rule_card_id -> rule_id_lookup) needs a sync answer no render-warmed
    * fetch can give (a stored rule no earlier render happened to seat).
    * Values carry the winning rule's SET identity (cache.rb's pattern_code
-   * + the anchor name) so Set#label composes without a second lookup.
+   * + the anchor name) so Set#label composes without a second lookup, plus
+   * the rule id cache.rb's lookup_hash stores (cache.rb:47), so a rule
+   * lookup can answer with `Card.fetch rule_id` the way
+   * Rule::All#rule_card does (rule/all.rb:19-21) instead of walking rule
+   * card NAMES.
+   *
+   * A deck with no Set/Setting TYPE card yields an EMPTY map and marks the
+   * cache unusable (`ruleCacheAddressable`): cache.rb's SQL binds the
+   * deck's Set/Setting type ids (cache.rb:17-18 `#{SetID}` /
+   * `#{SettingID}`), the constants Ruby generates from the codename table
+   * at boot (codename.rb:107-110 generate_id_constants), so on such a deck
+   * Ruby has no rule cache to read at all and rule_card cannot answer
+   * through it either. Callers fall back to the name walk there rather
+   * than reporting "no rule applies" - the absence of the deck's type
+   * cards is not evidence that a rule is missing.
    * Cleared on resetCaches() (Ruby's clear_rule_cache).
    */
   private ruleCacheSetLabels:
-    | Map<string, { patternCode: string; anchorName: string | undefined }>
+    | Map<string, RuleCacheEntry>
     | undefined;
   private ruleCacheSetLabelsLoad: Promise<void> | undefined;
+  /** false when the deck has no Set/Setting TYPE card, so the cache SQL of
+   *  cache.rb:17-18 has no type ids to bind and rule_card cannot be
+   *  answered through the cache. Cleared beside the cache itself. */
+  private ruleCacheAddressable = true;
 
   async ensureRuleCacheSetLabels(): Promise<void> {
     if (this.ruleCacheSetLabels !== undefined) return;
     this.ruleCacheSetLabelsLoad ??= (async () => {
+      // Ruby's SetID/SettingID are GENERATED CONSTANTS
+      // (codename.rb:107-110 generate_id_constants), resolved at boot. The
+      // port peeks them out of the codename registry, which the render
+      // prepare warms before this runs - so a miss here means the DECK has
+      // no such type card, not that the registry is cold. No load is forced
+      // here: a rule lookup must not add a round trip to a render that never
+      // had one (the constant-query pins in render-engine.test.ts and
+      // depth-sweep.test.ts measure exactly that).
       const setTypeId = this.peekIdByCodename("set");
       const settingTypeId = this.peekIdByCodename("setting");
       if (setTypeId === undefined || settingTypeId === undefined) {
         this.ruleCacheSetLabels = new Map();
+        this.ruleCacheAddressable = false;
         return;
       }
       const statement = ruleCacheStatement(setTypeId, settingTypeId);
@@ -3330,10 +3384,7 @@ export class RenderEngine implements RenderEngineLike {
         if (anchorNames.has(anchorId)) continue;
         anchorNames.set(anchorId, (await this.fetcher.lexicon.name(anchorId))?.s);
       }
-      const hash = new Map<
-        string,
-        { patternCode: string; anchorName: string | undefined }
-      >();
+      const hash = new Map<string, RuleCacheEntry>();
       for (const row of result.rows) {
         const anchorId = row.anchor_id === null ? null : Number(row.anchor_id);
         // cache.rb pattern_code: the anchorless arm reads the set row's
@@ -3346,7 +3397,9 @@ export class RenderEngine implements RenderEngineLike {
         hash.set(
           ruleCacheKeyFromRow(anchorId, patternCode, settingCode),
           {
+            ruleId: Number(row.rule_id),
             patternCode,
+            settingCode,
             anchorName:
               anchorId === null ? undefined : anchorNames.get(anchorId),
           },
@@ -3378,6 +3431,74 @@ export class RenderEngine implements RenderEngineLike {
       if (winner !== undefined) return winner;
     }
     return undefined;
+  }
+
+  /**
+   * Rule::All#rule_card (rule/all.rb:19-21) with the storage walk Ruby
+   * actually performs: `Card.fetch rule_card_id(setting_code)`, where
+   * `rule_card_id` is `rule_id_lookup Card::Rule.rule_cache, setting_code`
+   * (rule/all.rb:23-27). Three Ruby facts make this differ from a walk of
+   * rule card NAMES:
+   *
+   * 1. THE KEY IS THE ANCHOR'S CARD ID. Base#rule_lookup_key
+   *    (set/pattern/base.rb:75-80) returns nil for an anchored pattern whose
+   *    anchor card has no id, and Rule::All#rule_lookup_keys compacts those
+   *    away (set/pattern/all.rb) - so a rule hanging on a set whose anchor
+   *    card does not exist is UNREACHABLE in Ruby. A name walk reaches it by
+   *    spelling the anchor's name out of the lexicon.
+   * 2. ROWS WITHOUT A CODENAME ARE SKIPPED (cache.rb:44,47 `next unless`):
+   *    a rule whose setting card or whose set-pattern card carries no
+   *    codename is never in the cache, so Ruby answers nil where a name walk
+   *    still finds the card.
+   * 3. ROWS THE SQL EXCLUDES ARE SKIPPED (cache.rb:20-23): trashed rule, set
+   *    or setting, and a *follow rule with empty db_content.
+   *
+   * The reverse direction matters too: a legacy junction row that stores a
+   * compound SET name with no side ids cannot be composed through the
+   * lexicon, so a name walk cannot spell it - while the id-keyed cache still
+   * reaches it. The cache value carries the winning SET's identity, so the
+   * rule card's name is composed here from the same parts Ruby reads
+   * (`anchor + *pattern_code + *setting_code`).
+   *
+   * The cache is the same deck-wide hash ensureRuleCacheSetLabels loads
+   * (Cache.read, cache.rb:28-29) and resetCaches drops (Cache.clear,
+   * rule.rb:37-39), so an engine that has not yet run the render prepare
+   * loads it here rather than answering a name-walk verdict.
+   *
+   * On a deck with no Set/Setting TYPE card the cache has nothing to bind
+   * (see ruleCacheAddressable) and the name walk answers instead: that deck
+   * has no rule cards of the kind cache.rb selects either, so both walks
+   * agree, and the name walk additionally reaches the rows a synthetic
+   * fixture seeds without the type cards Ruby requires.
+   */
+  async ruleCardForSetting(
+    card: PatternCardInput,
+    settingCode: string,
+  ): Promise<CardRecord | undefined> {
+    await this.ensureRuleCacheSetLabels();
+    if (!this.ruleCacheAddressable) {
+      const byName = await findRule(this.fetcher, card, settingCardNameForCode(settingCode));
+      return byName?.rule;
+    }
+    const hash = this.ruleCacheSetLabels;
+    if (hash === undefined) return undefined;
+    const winner = ruleIdLookup(hash, ruleLookupKeysForCard(card), settingCode);
+    if (winner === undefined) return undefined;
+    const rule = await this.fetcher.fetchById(winner.ruleId);
+    if (rule === undefined) return undefined;
+    if (rule.name !== undefined) return rule;
+    // A junction row the lexicon cannot compose (no side ids). Ruby reaches
+    // this row by id and its Card::Name reads the stored name straight off
+    // the card; the port rebuilds the same name from the cache key's parts,
+    // which are the anchor's name and the pattern/setting codenames.
+    if (winner.anchorName === undefined) {
+      const name = DeckoName.parse(`*${winner.patternCode}+*${winner.settingCode}`);
+      return { ...rule, name, key: name.key };
+    }
+    const name = DeckoName.parse(
+      `${winner.anchorName}+*${winner.patternCode}+*${winner.settingCode}`,
+    );
+    return { ...rule, name, key: name.key };
   }
 
   /**
@@ -7633,15 +7754,33 @@ export class RenderEngine implements RenderEngineLike {
     }
     const actorName: string = actor.name.s;
     const accountSettingsName = `${actorName}+*account settings`;
-    const accountSettingsReal =
-      (await this.fetcher.fetchByKey(DeckoName.parse(accountSettingsName).key, {
-        skipVirtual: true,
-      })) !== undefined;
+    const accountSettingsRecord = await this.fetcher.fetchByKey(
+      DeckoName.parse(accountSettingsName).key,
+      { skipVirtual: true },
+    );
+    const accountSettingsReal = accountSettingsRecord !== undefined;
+    // card.type_name (Base#anchor_name's `*type` anchor reads the TYPE's
+    // card name; class_methods.rb#quick_type has the same shape).
+    const accountSettingsTypeName =
+      accountSettingsRecord?.typeId !== undefined
+        ? await this.fetcher.codenames.nameForId(accountSettingsRecord.typeId)
+        : undefined;
     // virtual?: a compound card is known when a *structure rule applies to
-    // it (states.rb:63-67) — findRule walks the same pattern candidates
-    // Ruby's rule lookup does.
+    // it (states.rb:63-67) — rule_card(:structure) over the rule cache
+    // (rule/all.rb:19-27), the same walk Ruby does. The real row above
+    // carries the id Ruby's Base#rule_lookup_key needs for the anchored
+    // lookup keys; an absent card contributes none, exactly as
+    // pattern/base.rb:75-80's nil arm does.
     const accountSettingsVirtual =
-      (await findRule(this.fetcher, { name: accountSettingsName }, "*structure")) !== undefined;
+      (await this.ruleCardForSetting(
+        {
+          name: DeckoName.parse(accountSettingsName),
+          id: accountSettingsRecord?.id,
+          typeId: accountSettingsRecord?.typeId,
+          typeName: accountSettingsTypeName,
+        },
+        "structure",
+      )) !== undefined;
     // The sign-out mark is the SYMBOL :signin (account_dropdown.rb:22) —
     // Card::Name[:symbol] resolves through the codename registry
     // (name.rb:77 Codename.name!), so known? is the codename card's
@@ -8825,9 +8964,14 @@ export class RenderEngine implements RenderEngineLike {
     const cached = this.optionsCardCache.get(card.key);
     if (this.optionsCardCache.has(card.key)) return cached;
     let resolved: RenderCard | undefined;
-    const rule = await findRule(this.fetcher, this.structurePatternInputForSync(card), "*content options");
-    if (rule !== undefined && rule.rule.name !== undefined) {
-      resolved = await this.enrichAndStore(rule.rule);
+    const rule = await this.ruleCardForSetting(
+      this.structurePatternInputForSync(card),
+      // the *content_options setting card's codename (cache.rb keys on
+      // the codename, not the card name)
+      "content_options",
+    );
+    if (rule !== undefined && rule.name !== undefined) {
+      resolved = await this.enrichAndStore(rule);
     }
     if (resolved === undefined && card.name.isCompound) {
       // right_type_options: right part is a cardtype -> the by-name
@@ -8890,27 +9034,31 @@ export class RenderEngine implements RenderEngineLike {
       return this.setHostChainCache.get(host.key);
     }
 
-    const settings = ["*content options", "*help", "*structure", "*default"];
+    // SETTING CODES, not setting card names: Rule::Cache keys on the
+    // codename (cache.rb:66 `Card::Codename[setting_id]`), and each of
+    // these is the codename of the setting card Ruby reads here
+    // (*content options, *help, *structure, *default).
+    const settings = ["content_options", "help", "structure", "default"];
 
-    for (const settingName of settings) {
-      // Walk the host's rule-card candidates for this setting, through the
-      // shared ruleNamesForCard algebra. Each
-      // candidate, when it resolves to a real card, gets parsed DIRECTLY
-      // if it's a search-type rule (the rules editor's nested render
-      // triggers Abstract::CqlSearch#item_type_id on the rule itself,
-      // NOT on the rule's options_card chain). Set-typed rules are
+    for (const settingCode of settings) {
+      // Walk the host's rule-cache lookup keys for this setting: the same
+      // keys Ruby walks (Rule::All#rule_card_id -> rule_id_lookup over
+      // Set::Pattern::All#rule_lookup_keys), answering with the stored rule
+      // id. Each candidate, when it resolves to a real card, gets parsed
+      // DIRECTLY if it's a search-type rule (the rules editor's nested
+      // render triggers Abstract::CqlSearch#item_type_id on the rule
+      // itself, NOT on the rule's options_card chain). Set-typed rules are
       // skipped: the recapture's 676 set-host sentinels all carry
       // search-type terminals (jjmd, kwnd), never the *all "fr"
       // fallback. The first rule whose content parses-failure raises
       // with that content; pointer/list rules recurse into THEIR
       // options chain (rare in practice).
-      const rule = await findRule(
-        this.fetcher,
+      const rule = await this.ruleCardForSetting(
         this.structurePatternInputForSync(host),
-        settingName,
+        settingCode,
       );
-      if (rule !== undefined && rule.rule.name !== undefined) {
-        const ruleCard = await this.enrichAndStore(rule.rule);
+      if (rule !== undefined && rule.name !== undefined) {
+        const ruleCard = await this.enrichAndStore(rule);
         if (ruleCard !== undefined) {
           const fail = this.ruleCardParseFailure(ruleCard);
           if (fail !== undefined) {

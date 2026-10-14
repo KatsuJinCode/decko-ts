@@ -923,12 +923,26 @@ async function resolvePageLayout(
   engine: RenderEngine,
   record: CardRecord,
 ): Promise<PageLayout> {
-  // card.rule_card(:layout) — the ordered set-pattern candidate walk, first
-  // EXISTING rule card wins (its content may still be empty -> first_name
-  // nil -> the :default code layout; the walk does not continue).
-  const rule = await findRule(engine.fetcher, { name: record.name }, "*layout");
+  // card.rule_card(:layout) (rule/all.rb:19-21): the rule CACHE walk —
+  // rule_card_id -> rule_id_lookup over the card's rule lookup keys, keyed
+  // by the anchor's CARD id (pattern/base.rb:75-80). The first lookup key
+  // the cache answers wins; its content may still be empty -> first_name
+  // nil -> the :default code layout (the walk does not continue).
+  const rule = await engine.ruleCardForSetting(
+    {
+      name: record.name,
+      id: record.id,
+      typeId: record.typeId,
+      typeName:
+        record.typeId !== undefined
+          ? await engine.fetcher.codenames.nameForId(record.typeId)
+          : undefined,
+      ...(record.isNew === true ? { isNew: true } : {}),
+    },
+    "layout",
+  );
   const layoutName =
-    rule === undefined ? undefined : firstItemOfRuleContent(rule.rule.dbContent);
+    rule === undefined ? undefined : firstItemOfRuleContent(rule.dbContent);
   if (layoutName === undefined || layoutName === "") {
     return { layoutName: ":default", kind: "code-default" };
   }
