@@ -21,8 +21,8 @@
 // the two account-holder rename steps live in the withheld set
 // (tools/parity-side-effects/withheld/scenarios.json, excluded from every
 // release package) and are announced on stderr when they are not run. On the
-// clean synthetic deck the recorded verdicts are 75 pass + 2 declared +
-// 11 mismatched (88 steps). The Ruby recording is committed
+// clean synthetic deck the recorded verdicts are 83 pass + 4 declared +
+// 1 mismatched (88 steps). The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
 // verdicts, so any engine change here fails loudly. Neither engine's
@@ -190,7 +190,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 75 steps pass, the 2 steps whose reference-deck pins hold are declared, and the 11 remaining mismatches are pinned step by step", () => {
+  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose reference-deck pins hold are declared, and the 1 remaining mismatch is pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -243,15 +243,21 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     // restoring a File/Image revision with a 500; the port restores it and
     // answers 303), and its pin's expected status now matches the port's
     // recorded status, so it reads as the documented deliberate difference.
+    // admin-deny-signup is declared as a knock-on of that step: the 500 Ruby
+    // answers there renders the server_error view, which saves the page into
+    // the location history, so the deny's *previous redirect resolves to it.
+    // Before the recording ran under production error handling this step
+    // compared equal, because the developer page never ran that save.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
+      "admin-deny-signup",
       "anon-update-skin-colors",
       "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 84,
-      deliberate: 3,
+      pass: 83,
+      deliberate: 4,
       total: 88,
     });
 

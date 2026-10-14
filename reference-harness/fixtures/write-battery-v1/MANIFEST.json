@@ -75,7 +75,7 @@
     "expected/persist-steps/step-70.json": "e84e593d9d3814c334ed5a00b65585210c32e11405679b0e3053cc301558620d",
     "expected/persist-steps/ruby-outside-delta.json": "06d9b73de83a008cf467736f193a018ff44630b1d3209bb67275f9c2bd765964",
     "expected/persist-steps/deliberate-differences.json": "483139cf2f5ea6fa845d8559915239a6709145be855d62538b91412a2aebbf0b",
-    "expected/side-effects-ruby.json": "4d8202da731bf98a9877c0a75e0b75668797d9954c2ce7dc07a9373b42c4e49b"
+    "expected/side-effects-ruby.json": "cb071e5df8837b82baf909577aaa6bba6f8491a96c241a7c971c137afbebeaee"
   },
   "provenance": {
     "deck_builder": "bash reference-harness/oracle/build-deck.sh reference-harness/fixtures/write-battery-v1 (stock decko setup seed, deck.json applied under the fixture clock, assets pre-compiled), then tools/parity-side-effects/ruby/seed.rb eats the mods' declared data into the copy (the seed's template cards ship without the account and email mods' data)",
