@@ -44,7 +44,7 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -123,6 +123,32 @@ function verifyManifestFiles(rels: string[]): string[] {
   return problems;
 }
 
+/** Every .ts/.mts source tsc would compile, newest first-included mtime. */
+function newestSourceMtime(dir: string): number {
+  let newest = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      newest = Math.max(newest, newestSourceMtime(p));
+    } else if (entry.isFile() && /\.m?ts$/.test(entry.name)) {
+      newest = Math.max(newest, statSync(p).mtimeMs);
+    }
+  }
+  return newest;
+}
+
+/** Whether the built engine is older than the sources it was built from.
+ *  ts-drive.mjs loads dist/src/**, so a dist left over from an earlier
+ *  commit drives the OLD engine and reports its verdicts as this suite's —
+ *  a parity suite silently measuring the wrong build is worse than no run.
+ *  `npm run typecheck` is --noEmit and leaves dist untouched, which is
+ *  exactly how a stale dist survives into a battery run. */
+function distIsStale(): boolean {
+  if (!existsSync(DIST_ENGINE)) return true;
+  const built = statSync(DIST_ENGINE).mtimeMs;
+  return newestSourceMtime(join(REPO, "src")) > built;
+}
+
 describe("side-effects scenario battery (88 public steps, committed synthetic deck)", () => {
   // The committed inputs (deck, Ruby trace) must exist — their absence is a
   // broken checkout. The build artifacts are NOT committed (like
@@ -131,10 +157,12 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
   // (typescript is a devDependency), and the LibSass compiler from the
   // vendored MIT-licensed LibSass 3.6.4 source (tools/libsass/libsass),
   // which needs a C++11 compiler on PATH (g++/gcc, per build-native.mjs).
+  // The engine is also rebuilt whenever dist/ is older than src/, so a
+  // dist left over from another commit cannot drive this suite.
   const missing: string[] = [];
   if (!existsSync(DECK)) missing.push(`${DECK} (committed fixture deck)`);
   if (!existsSync(RUBY_TRACE)) missing.push(`${RUBY_TRACE} (committed Ruby trace)`);
-  if (missing.length === 0 && !existsSync(DIST_ENGINE)) {
+  if (missing.length === 0 && distIsStale()) {
     const tsc = spawnSync(process.execPath, [join(REPO, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], {
       cwd: REPO, encoding: "utf8", timeout: 900_000, windowsHide: true,
     });
