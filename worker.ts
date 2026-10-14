@@ -22,6 +22,13 @@
 // tests/deploy/worker-twins-shared-surface-parity.test.ts.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
+import {
+  cloudflareAfterResponse,
+  handleDelayedJobQueueBatch,
+  type QueueProducer,
+  type WaitUntilContext,
+} from "./src/card/delayed-job/delayed-job.js";
+import { delayingFromEnv, hostDelayedJobs } from "./src/card/delayed-job/host.js";
 import { FetchEngine } from "./src/card/fetch.js";
 import {
   CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
@@ -59,6 +66,25 @@ interface Env {
   DECKO_FIRST_RUN?: string;
   /** "1" turns the card write path on. Both unset = the read-only deploy. */
   DECKO_WRITE_PATH?: string;
+  /** Cardio.config.delaying: "true" queues integrate_with_delay events as
+   *  delayed_jobs rows in D1 (card-mod-delayed_job). Unset = Ruby's default,
+   *  the events run in the request. */
+  DECKO_DELAYING?: string;
+  /** The Queues producer binding ([[queues.producers]] in wrangler.toml).
+   *  Absent: the worker runs under ctx.waitUntil instead. */
+  DELAYED_JOBS?: QueueProducer;
+}
+
+/** The delayed-job wiring for one request (the ExecutionContext is
+ *  per-request; the rows live in D1, so nothing is kept between requests). */
+function workersDelayedJobs(env: Env, deck: Deck, ctx: WaitUntilContext | undefined) {
+  return hostDelayedJobs({
+    driver: new CloudflareD1Adapter(env.DB),
+    fetcher: deck.fetcher,
+    delaying: delayingFromEnv(env.DECKO_DELAYING) && ctx !== undefined,
+    afterResponse: cloudflareAfterResponse(ctx ?? { waitUntil: () => {} }, env.DELAYED_JOBS),
+    workerName: "cloudflare-worker",
+  });
 }
 
 interface Deck {
@@ -250,7 +276,13 @@ export function layoutPage(title: string, body: string): string {
 // ---------------------------------------------------------------------------
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  /** The Queues consumer: one delayed_job work-off pass per batch. */
+  async queue(batch: { messages: readonly { ack(): void }[] }, env: Env): Promise<void> {
+    const deck = await getDeck(env);
+    await handleDelayedJobQueueBatch(batch, workersDelayedJobs(env, deck, undefined).worker);
+  },
+
+  async fetch(request: Request, env: Env, ctx?: WaitUntilContext): Promise<Response> {
     const url = new URL(request.url);
 
     // The WRITE surface — sign-in, the /setup first-run window, and card
@@ -267,7 +299,14 @@ export default {
       const surfaceDeck = await getDeck(env);
       const inbound = await readWorkersRequest(request);
       const writeResult = await handleWorkersWriteSurface(
-        { fetcher: surfaceDeck.fetcher, renderEngine: surfaceDeck.render },
+        {
+          fetcher: surfaceDeck.fetcher,
+          renderEngine: surfaceDeck.render,
+          ...((): { delayedJobs?: NonNullable<ReturnType<typeof workersDelayedJobs>["config"]> } => {
+            const config = workersDelayedJobs(env, surfaceDeck, ctx).config;
+            return config === undefined ? {} : { delayedJobs: config };
+          })(),
+        },
         inbound,
         env,
       );

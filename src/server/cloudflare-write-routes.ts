@@ -76,6 +76,7 @@
 // answered as a read. It now answers 403 unless the operator opts in. No GET
 // or HEAD response changes; this only removes the method-blind conflation.
 
+import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./drivers/d1.js";
@@ -137,6 +138,9 @@ export interface WorkersWriteContext {
   /** Overrides the D1 adapter the surface would build from env.DB. Tests
    *  pass the LocalSqliteDriver here; the Worker never does. */
   readonly driver?: SQLDatabaseDriver;
+  /** card-mod-delayed_job: when the deploy sets DECKO_DELAYING, the
+   *  integrate_with_delay events of each save are queued (worker.ts). */
+  readonly delayedJobs?: DelayedJobsConfig;
 }
 
 /** One inbound request, normalized off the Web Request. Same field names and
@@ -461,6 +465,7 @@ async function mountWrite(
       // and script saves compile here instead of being refused.
       scssCompiler: edgeScssCompiler,
       coffeeCompiler: edgeCoffeeCompiler,
+      ...(ctx.delayedJobs === undefined ? {} : { delayedJobs: ctx.delayedJobs }),
       // attachmentStore is deliberately ABSENT: a Workers deployment binds no
       // R2 bucket, so there is no storage seam to pass. An upload therefore
       // fails with the engine's programming-error rejection rather than
@@ -595,7 +600,7 @@ export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
  *  nothing with the host's read adapter and warms nothing. DB is optional in
  *  the env bag this takes: a flags-only host supplies ctx.driver, and
  *  neither being present is the write path's own named error. */
-function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
+export function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
   if (ctx.driver !== undefined) return ctx.driver;
   if (env.DB === undefined) {
     throw new Error(

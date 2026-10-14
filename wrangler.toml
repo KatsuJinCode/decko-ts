@@ -159,6 +159,29 @@ migrations_dir = "deploy/migrations"
 # sensitive.
 # DECKO_WRITE_PATH = "0"
 # DECKO_FIRST_RUN = "0"
+#
+# DECKO_DELAYING is Ruby's Cardio.config.delaying (card-mod-delayed_job). On,
+# a save's integrate_with_delay events (the follower notice) are written as
+# delayed_jobs rows in D1 and performed after the response: the request sends
+# a message on the DELAYED_JOBS queue below and this Worker's queue() handler
+# works the table off. Without the queue binding the Worker runs them under
+# ctx.waitUntil instead. Set it to "false" to run them inside the request, as
+# a Decko deck does with the mod's default config. It only matters when
+# DECKO_WRITE_PATH is on. See docs/delayed-jobs.md.
+DECKO_DELAYING = "true"
+
+# The delayed-job queue. Cloudflare Queues is available on the Workers Free
+# plan; a deploy provisions the queue by this name. The message only says
+# "work the table off": the job itself is the D1 row, so a lost or repeated
+# message never loses or repeats a job.
+[[queues.producers]]
+binding = "DELAYED_JOBS"
+queue = "decko-ts-delayed-jobs"
+
+[[queues.consumers]]
+queue = "decko-ts-delayed-jobs"
+max_batch_size = 10
+max_batch_timeout = 5
 
 # Optional: bind a R2 bucket for asset hosting if/when the demo grows
 # attachments. The engine never reads from R2 directly — adapters only.
