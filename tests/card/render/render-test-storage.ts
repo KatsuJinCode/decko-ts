@@ -150,32 +150,43 @@ export interface RenderTestStorage {
    *  supersedes the stock card (see seedCard) and the entry is removed. Undefined
    *  on a deck built with `bootstrapReadRules: false`. */
   bootstrap?: StockCard[];
+  /** The stock `*all+*read` rule card's id while it stands. Dropped with its
+   *  parents when a deck's own rule occupies the same sides. */
+  bootstrapRule?: number;
 }
 
-/** One card of the stock read substrate: the codename and key the schema makes
- *  unique, and the id every reference to it names. */
+/** One card of the stock read substrate: the unique columns it occupies
+ *  (codename, key, or a junction's side pair) and the id every reference to it
+ *  names. The schema makes all three unique
+ *  (`cards_codename_index`, `cards_key_index`, and the side pair), and a real
+ *  deck has exactly one of each — so a suite that seeds its own takes the
+ *  place over. */
 interface StockCard {
   readonly id: number;
-  readonly codename: string;
-  readonly key: string;
+  readonly codename?: string;
+  readonly key?: string;
+  readonly leftId?: number;
+  readonly rightId?: number;
 }
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
-/** The ids the bootstrap read substrate occupies. Chosen ABOVE the range the
- *  seeded decks hand out (tests seed 1..~100), so a suite that layers its own
- *  permission cards on this deck keeps its own ids and its own semantics: the
+/** The ids the bootstrap read substrate occupies. Chosen ABOVE every id the
+ *  seeded decks hand out — hand-written decks use 1..~100, and the corpus
+ *  decks reach 919,066 (fixtures/test-corpus) with the party codenames
+ *  themselves in the 900,000s — so a suite that layers its own permission
+ *  cards on this deck keeps its own ids and its own semantics: the
  *  bootstrap's `all` / `read` / `set` codename cards then sit ABOVE the
  *  suite's, and every codename lookup — statements 1..3 of
  *  readPermissionStatements — resolves `ORDER BY id LIMIT 1` to the SUITE's
  *  card, exactly as if the bootstrap were not there. */
 export const BOOTSTRAP_READ_SUBSTRATE_IDS = {
-  all: 900_001,
-  set: 900_002,
-  read: 900_003,
-  anyone: 900_004,
-  anonymous: 900_005,
-  rule: 900_006,
+  all: 10_000_001,
+  set: 10_000_002,
+  read: 10_000_003,
+  anyone: 10_000_004,
+  anonymous: 10_000_005,
+  rule: 10_000_006,
 } as const;
 
 /** The stock Decko read substrate: `*all+*read` -> `[[Anyone]]`, the rule
@@ -268,6 +279,10 @@ async function seedBootstrapReadSubstrate(storage: RenderTestStorage): Promise<S
     { id: ids.read, codename: "read", key: "*read" },
     { id: ids.anyone, codename: "anyone", key: "anyone" },
     { id: ids.anonymous, codename: "anonymous", key: "anonymous" },
+    // The rule card is a junction, so what it occupies is its SIDE PAIR, not
+    // a codename or key: a suite seeding its own `*all+*read` is seeding the
+    // deck's one such row and the stock one steps aside.
+    { id: ids.rule, leftId: ids.all, rightId: ids.read },
   ];
 }
 
@@ -287,16 +302,39 @@ async function releaseStockCard(
 ): Promise<number | undefined> {
   const stock = storage.bootstrap;
   if (stock === undefined) return undefined;
+  // A junction's stock sides are NOT the ones the suite is about to name: the
+  // suite takes the `*all` and `*read` codenames over first, which repoints
+  // the stock rule onto ITS cards, so by the time the suite seeds its own
+  // rule the stock row's sides are the suite's. Read them back rather than
+  // matching the ids the bootstrap was built with.
+  let junctionStock: { index: number; leftId: number | null; rightId: number | null } | undefined;
+  if (opts.leftId !== undefined && opts.rightId !== undefined) {
+    const junctionIndex = stock.findIndex((card) => card.leftId !== undefined && card.rightId !== undefined);
+    if (junctionIndex >= 0) {
+      const rows = await storage.counting.query<{ left_id: number | null; right_id: number | null }>(
+        `SELECT left_id, right_id FROM cards WHERE id = ?`,
+        [stock[junctionIndex]!.id],
+      );
+      junctionStock = { index: junctionIndex, leftId: rows.rows[0]?.left_id ?? null, rightId: rows.rows[0]?.right_id ?? null };
+    }
+  }
   const index = stock.findIndex(
     (card) =>
       (opts.codename !== undefined && opts.codename !== null && card.codename === opts.codename) ||
       (typeof opts.key === "string" && card.key === opts.key) ||
-      (typeof opts.name === "string" && opts.key === undefined && DeckoName.parse(opts.name).key === card.key),
+      (typeof opts.name === "string" && opts.key === undefined && card.key !== undefined && DeckoName.parse(opts.name).key === card.key) ||
+      (junctionStock !== undefined &&
+        junctionStock.index === stock.indexOf(card) &&
+        junctionStock.leftId === opts.leftId &&
+        junctionStock.rightId === opts.rightId),
   );
   if (index < 0) return undefined;
   const [displaced] = stock.splice(index, 1);
+  // Clear every unique column the displaced card occupies: a named card
+  // holds a codename and a key, a junction holds its side pair. The ROW stays
+  // until repointStockReferences has moved what names it.
   await storage.counting.query(
-    `UPDATE cards SET codename = NULL, key = NULL WHERE id = ?`,
+    `UPDATE cards SET codename = NULL, key = NULL, left_id = NULL, right_id = NULL WHERE id = ?`,
     [displaced!.id],
   );
   return displaced!.id;
@@ -304,12 +342,47 @@ async function releaseStockCard(
 
 /** Move every reference to a displaced stock card onto the card that replaced
  *  it, then remove the stock row. Runs after the suite's row is inserted, so
- *  its id is known. */
+ *  its id is known.
+ *
+ *  A repoint that would land a row on sides another row already occupies is
+ *  NOT applied — the whole stock subtree goes instead. That is not a loss: the
+ *  corpus decks carry their own `*all+*read`, and taking their `*all` and
+ *  `*read` over moves the stock rule onto the sides their own rule already
+ *  occupies, so that deck already has the rule the stock one stood in for.
+ *  The check is made BEFORE any write, so nothing is left half-moved. */
 async function repointStockReferences(
   storage: RenderTestStorage,
   stockId: number,
   replacementId: number,
 ): Promise<void> {
+  const drop = async (): Promise<void> => {
+    await storage.counting.query(`DELETE FROM cards WHERE id = ?`, [stockId]);
+    if (storage.bootstrapRule !== undefined) {
+      await storage.counting.query(`DELETE FROM cards WHERE id = ?`, [storage.bootstrapRule]);
+      storage.bootstrapRule = undefined;
+    }
+    storage.fetcher.lexicon.deleteFor(stockId, undefined);
+  };
+  // Every row that names the displaced card on either side would move onto the
+  // replacement's id; check each one's target pair for an occupant first.
+  const dependents = await storage.counting.query<{ id: number; left_id: number | null; right_id: number | null }>(
+    `SELECT id, left_id, right_id FROM cards
+     WHERE (left_id = ? OR right_id = ?) AND id <> ?`,
+    [stockId, stockId, stockId],
+  );
+  for (const row of dependents.rows) {
+    const newLeft = row.left_id === stockId ? replacementId : row.left_id;
+    const newRight = row.right_id === stockId ? replacementId : row.right_id;
+    if (newLeft === null || newRight === null) continue;
+    const occupant = await storage.counting.query<{ id: number }>(
+      `SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND id <> ?`,
+      [newLeft, newRight, row.id],
+    );
+    if (occupant.rows.length > 0) {
+      await drop();
+      return;
+    }
+  }
   await storage.counting.query(`UPDATE cards SET left_id = ? WHERE left_id = ?`, [replacementId, stockId]);
   await storage.counting.query(`UPDATE cards SET right_id = ? WHERE right_id = ?`, [replacementId, stockId]);
   await storage.counting.query(`UPDATE cards SET type_id = ? WHERE type_id = ?`, [replacementId, stockId]);
@@ -345,6 +418,7 @@ export async function createRenderTestStorage(
   };
   if (opts.bootstrapReadRules !== false) {
     storage.bootstrap = await seedBootstrapReadSubstrate(storage);
+    storage.bootstrapRule = BOOTSTRAP_READ_SUBSTRATE_IDS.rule;
   }
   expireRuleResolutionCache(fetcher.driver);
   storage.engine = new RenderEngine(fetcher);
@@ -534,6 +608,24 @@ export async function seedCard(
     );
     const replacementId = opts.id ?? inserted.rows[0]?.id;
     if (typeof replacementId === "number") {
+      // A suite's `*all` is the deck's catch-all SET card, and a set card is
+      // typed with the deck's Set TYPE card — that type is what the read-rule
+      // cache join filters on (`sets.type_id = SetID`). When the suite brings
+      // its own `*all` but no `set`, the stock Set TYPE card is still this
+      // deck's, so the takeover carries its id across; the suite's own type
+      // convention is not a Set type and would silently drop the catch-all
+      // out of read_rules_hash. When the suite brings its own `set` too, both
+      // cards are its own and this does not apply.
+      if (
+        opts.codename === "all" &&
+        storage.bootstrap !== undefined &&
+        storage.bootstrap.some((card) => card.codename === "set")
+      ) {
+        await storage.counting.query(
+          `UPDATE cards SET type_id = ? WHERE id = ?`,
+          [BOOTSTRAP_READ_SUBSTRATE_IDS.set, replacementId],
+        );
+      }
       await repointStockReferences(storage, displacedStockId, replacementId);
     }
   }
