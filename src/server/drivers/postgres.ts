@@ -324,7 +324,10 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
     if (t.kind === "param") {
       const n = t.text.length > 1 ? Number(t.text.slice(1)) : ++paramCount;
       if (t.text.length > 1) paramCount = Math.max(paramCount, n);
-      out.push({ kind: "other", text: `$${n}` });
+      // The right side of a NOCASE equality folds too: `lower(x) = lower($n)`.
+      const p = prev(out, out.length - 1);
+      const folded = out[p]?.text === "=" && out[prev(out, p - 1)]?.text.startsWith("lower(");
+      out.push({ kind: "other", text: folded ? `lower($${n})` : `$${n}` });
       continue;
     }
     if (t.kind === "word") {
@@ -444,6 +447,38 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
             }
           }
           out.push({ kind: "word", text: "INTEGER" });
+          continue;
+        }
+        if (["TEXT", "VARCHAR", "CHAR", "CHARACTER", "NVARCHAR", "CLOB"].includes(u)) {
+          // SQLite does not enforce a declared length; neither does TEXT.
+          out.push({ kind: "word", text: "TEXT" });
+          const paren = next(tokens, i + 1);
+          if (tokens[paren]?.text === "(") {
+            let k = paren;
+            while (k < tokens.length && tokens[k]!.text !== ")") k++;
+            i = k;
+          } else if (u === "CHARACTER" && isWord(tokens[paren], "VARYING")) i = paren;
+          continue;
+        }
+        if (u === "DATETIME" || u === "TIMESTAMP" || u === "DATE" || u === "TIME") {
+          // SQLite (and ActiveRecord on SQLite) store times as TEXT; the
+          // stored text is kept byte for byte.
+          out.push({ kind: "word", text: "TEXT" });
+          const paren = next(tokens, i + 1);
+          if (tokens[paren]?.text === "(") {
+            let k = paren;
+            while (k < tokens.length && tokens[k]!.text !== ")") k++;
+            i = k;
+          }
+          continue;
+        }
+        if (u === "BOOLEAN") {
+          // stored as 0/1, as ActiveRecord writes booleans on SQLite
+          out.push({ kind: "word", text: "INTEGER" });
+          continue;
+        }
+        if (u === "FLOAT" || u === "DOUBLE") {
+          out.push({ kind: "word", text: "DOUBLE PRECISION" });
           continue;
         }
         if (u === "REAL") {
@@ -709,4 +744,19 @@ function mergeRecursiveArms(text: string): string {
   }
   for (const [a, b, replacement] of edits.reverse()) out = out.slice(0, a) + replacement + out.slice(b);
   return out;
+}
+
+/** node-postgres returns 64-bit integers (COUNT(*), BIGINT columns) and
+ *  NUMERIC as strings; the engine expects numbers, as SQLite returns them.
+ *  Call once with `pg.types` before connecting a `pg.Client`. Values beyond
+ *  Number.MAX_SAFE_INTEGER are refused rather than rounded. PGlite needs
+ *  no setup. */
+export function configurePgTypes(types: { setTypeParser(oid: number, parse: (value: string) => unknown): void }): void {
+  const toNumber = (value: string): number => {
+    const n = Number(value);
+    if (!Number.isSafeInteger(n) && /^-?\d+$/.test(value)) throw new RangeError(`integer ${value} exceeds the safe range`);
+    return n;
+  };
+  types.setTypeParser(20, toNumber); // int8
+  types.setTypeParser(1700, (value) => Number(value)); // numeric
 }

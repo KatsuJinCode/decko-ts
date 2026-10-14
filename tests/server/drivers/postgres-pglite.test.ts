@@ -29,7 +29,7 @@ describe("translateSqliteToPostgres", () => {
   });
   it("folds a NOCASE comparison to lower() on the column", () => {
     expect(translateSqliteToPostgres(`SELECT id FROM cards c WHERE c."key" COLLATE NOCASE = ?`).sql).toBe(
-      `SELECT id FROM cards c WHERE lower(c."key") = $1`,
+      `SELECT id FROM cards c WHERE lower(c."key") = lower($1)`,
     );
   });
   it("skips PRAGMA", () => {
