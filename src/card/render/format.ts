@@ -4981,27 +4981,63 @@ interface UriMatch {
  *     reconsidered. The former engine guard that skipped
  *     "URIs inside HTML tags" was a corpus approximation of exactly this
  *     mechanism and is gone: the rejected-prefix rule IS Ruby's rule. */
-function findUriMatch(text: string, from: number): UriMatch | undefined {
-  const prefixes: Array<[RegExp, "scheme" | "host" | "email", string]> = [
-    [URI_SCHEME_REGEXP, "scheme", ""],
-    [URI_HOST_REGEXP, "host", "http://"],
-    [URI_EMAIL_REGEXP, "email", "mailto:"],
-  ];
+const URI_PREFIXES: ReadonlyArray<[RegExp, "scheme" | "host" | "email", string]> = [
+  [URI_SCHEME_REGEXP, "scheme", ""],
+  [URI_HOST_REGEXP, "host", "http://"],
+  [URI_EMAIL_REGEXP, "email", "mailto:"],
+];
+
+/** Per-text memo of each prefix regexp's next match start. A global
+ *  regexp's leftmost match from lastIndex p is the leftmost match at or
+ *  after any later position q <= that match's start, and the match found
+ *  at a given start index does not depend on where the scan began; so a
+ *  remembered start that is still >= the current position is the answer,
+ *  and a remembered "no match" stays "no match" for every later position.
+ *  Without the memo each candidate rescanned the whole remaining text with
+ *  all three regexps, which is quadratic on long prose with many
+ *  near-candidates (a 16 KB card body spent ~20 ms here). Output is
+ *  unchanged: the same matches are selected in the same order. */
+interface UriPrefixMemo {
+  /** next match start per prefix, -1 = none at/after `from`; undefined = not scanned. */
+  starts: Array<number | undefined>;
+  /** the position each remembered start was scanned from. */
+  from: number[];
+}
+
+function newUriPrefixMemo(): UriPrefixMemo {
+  return { starts: [undefined, undefined, undefined], from: [0, 0, 0] };
+}
+
+function nextPrefixStart(text: string, index: number, pos: number, memo: UriPrefixMemo): number {
+  const known = memo.starts[index];
+  if (known !== undefined && memo.from[index]! <= pos && (known === -1 || known >= pos)) {
+    return known;
+  }
+  const regexp = URI_PREFIXES[index]![0];
+  regexp.lastIndex = pos;
+  const m = regexp.exec(text);
+  regexp.lastIndex = 0;
+  // m.index is ABSOLUTE (lastIndex seeded the scan): no pos offset.
+  const start = m === null ? -1 : m.index;
+  memo.starts[index] = start;
+  memo.from[index] = pos;
+  return start;
+}
+
+function findUriMatch(text: string, from: number, memo: UriPrefixMemo = newUriPrefixMemo()): UriMatch | undefined {
+  const prefixes = URI_PREFIXES;
   let pos = from;
   for (;;) {
     // PREFIX SELECTION: the earliest prefix match across the three classes
     // (registration order Uri, HostUri, EmailUri breaks ties).
     let bestStart = -1;
     let bestKind: "scheme" | "host" | "email" | undefined;
-    for (const [regexp, kind] of prefixes) {
-      regexp.lastIndex = pos;
-      const m = regexp.exec(text);
-      // m.index is ABSOLUTE (lastIndex seeded the scan): no pos offset.
-      if (m !== null && (bestStart === -1 || m.index < bestStart)) {
-        bestStart = m.index;
-        bestKind = kind;
+    for (let index = 0; index < prefixes.length; index++) {
+      const start = nextPrefixStart(text, index, pos, memo);
+      if (start !== -1 && (bestStart === -1 || start < bestStart)) {
+        bestStart = start;
+        bestKind = prefixes[index]![1];
       }
-      regexp.lastIndex = 0;
     }
     if (bestStart === -1 || bestKind === undefined) return undefined;
     const prepend = prefixes.find(([_, kind]) => kind === bestKind)![2];
@@ -5260,9 +5296,10 @@ export function expandContentLinks(
   if (!/[:.@]/.test(text)) return expandWikiLinks(text, engine, context, titleContextNames);
   let out = "";
   let pos = 0;
+  const uriMemo = newUriPrefixMemo();
   for (;;) {
     const rest = text.slice(pos);
-    const uri = findUriMatch(text, pos);
+    const uri = findUriMatch(text, pos, uriMemo);
     WIKI_LINK_REGEXP.lastIndex = 0;
     const wiki = WIKI_LINK_REGEXP.exec(rest);
     const wikiStart = wiki === null ? Infinity : pos + wiki.index;

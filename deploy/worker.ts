@@ -256,10 +256,24 @@ async function primeCqlNameResolver(
   const byId = new Map<number, IdRow>();
   const idToName = new Map<number, string>();
   const keyToId = new Map<string, number>();
+  // Each stored name is otherwise parsed three times during the boot (here,
+  // in the composed-key loop and in the lexicon warm). A string with no
+  // id/codename mark parses to the same name whenever it is parsed (the
+  // rule DeckoName.parse's own request memo uses), so those are parsed once.
+  const parsedNames = new Map<string, DeckoName>();
+  const parseOnce = (text: string): DeckoName => {
+    if (text.includes("~") || text.includes(":")) return DeckoName.parse(text);
+    let parsed = parsedNames.get(text);
+    if (parsed === undefined) {
+      parsed = DeckoName.parse(text);
+      parsedNames.set(text, parsed);
+    }
+    return parsed;
+  };
   for (const row of rows) {
     byId.set(row.id, row);
     if (row.name !== null && row.name !== "") {
-      const name = DeckoName.parse(row.name);
+      const name = parseOnce(row.name);
       idToName.set(row.id, name.s);
       keyToId.set(name.key, row.id);
     }
@@ -289,7 +303,7 @@ async function primeCqlNameResolver(
   };
   for (const row of rows) {
     const name = composedName(row.id);
-    if (name !== undefined) keyToId.set(DeckoName.parse(name).key, row.id);
+    if (name !== undefined) keyToId.set(parseOnce(name).key, row.id);
   }
   // The sync name environment (DeckoName's mark resolution for "~<id>" and
   // ":<codename>" strings, name.ts parse -> idFromString) reads ONLY the
@@ -308,9 +322,9 @@ async function primeCqlNameResolver(
     if (row.left_id !== null && row.right_id !== null) {
       const joined = composedName(row.id);
       if (joined === undefined) continue;
-      fetcher.lexicon.write(row.id, DeckoName.parse(joined), [row.left_id, row.right_id]);
+      fetcher.lexicon.write(row.id, parseOnce(joined), [row.left_id, row.right_id]);
     } else if (row.name !== null && row.name !== "") {
-      const name = DeckoName.parse(row.name);
+      const name = parseOnce(row.name);
       fetcher.lexicon.write(row.id, name, row.name);
     }
   }
