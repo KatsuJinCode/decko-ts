@@ -77,8 +77,20 @@ function rubyErrors(step) {
   // A server error (the development exception page): the exception's
   // message only, as the port shows it.
   const ex = text.match(/Exception caught \S+ in \S+ (.*?) Extracted source/);
-  // (a Ruby object's address, which varies per run, is dropped)
-  if (step.status >= 500 && ex) return ex[1].trim().replace(/#<Card:0x[0-9a-f]+>/g, "#<Card>");
+  // (a Ruby object's address, which varies per run, is dropped). The
+  // inspect form depends on the Ruby version and on how much of the
+  // record was loaded: older rubies print `#<Card:0x00007f...>` (address
+  // only, with a closing bracket), card-1.110.0 prints
+  // `#<Card#637[basic:2](Parity Probe Card){set_mods_loaded>` — id, type
+  // cache, name and loaded-set, and no closing bracket. Address, id and
+  // state all drift between runs and between the recorded trace and a
+  // fresh recording, so the whole inspect header reduces to the bare
+  // `#<Card` the other form already produces.
+  if (step.status >= 500 && ex) {
+    return ex[1]
+      .trim()
+      .replace(/#<Card(?::0x[0-9a-f]+|#[0-9]+)?(?:\[[^\]]*\])?(?:\([^>]*?\))?(?:\{[^}]*\})?>*/g, "#<Card>");
+  }
   const m = text.match(/Problems(?: with .*?)?\s((?:[A-Z_*+ ]+:.*?)+?)\s*b&w_logo/) ??
             text.match(/Problems(?: with .*?)?\s(.*?)\s*b&w_logo/);
   if (m) return m[1].trim();
