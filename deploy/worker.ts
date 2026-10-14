@@ -504,7 +504,7 @@ async function renderCardPage(
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // The Card::Error status_code table (prototype/lib/card/error.rb),
+    // The Card::Error status_code table (card 1.110.0 lib/card/error.rb),
     // SHARED with the root entry via mapRenderError: NotFound -> 404, the
     // UserError raise for an unregistered view -> 422 (error.rb:21 — the
     // base status_code this entry's former 500 contradicted), else 500.
@@ -539,7 +539,7 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
   // default :molecule —
   // atom + items + links + ancestors + html_url + type nest + timestamps,
   // wrapped by page_details (url + requested_at), pretty-printed. The
-  // engine-side byte pins are tests/card/render/format-families-oracle.test.ts.
+  // engine-side byte pins are the format-families-oracle suite (not in the public package).
   // The former engine-record shape (snake_case row dump) diverged from that
   // molecule; the record row remains available over /api/query.
   //
@@ -573,7 +573,7 @@ function formatEngineSurface(deck: Deck): FormatEngineSurface {
 /** The `/:mark.csv` and `/:mark.rss` route arms (engine_routes.rb:22
  *  `get "/:mark(.:format)" => "card#read"`; the format families are
  *  byte-pinned in
- *  tests/card/render/format-families-oracle.test.ts). */
+ *  the format-families-oracle suite (not in the public package)). */
 async function cardFormatShow(
   deck: Deck,
   cardName: string,
@@ -650,7 +650,6 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
       parse: { resolveCardId: deck.resolveCardId },
       alwaysOk: permission.alwaysOk,
       readRuleIds: permission.readRuleIds,
-      excludedRightIds: permission.excludedRightIds,
     });
     // THE SQL LEAVES. The 200 body is the result and the result ONLY. The
     // generator's statement text used to ride alongside it, which handed an

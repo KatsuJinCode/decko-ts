@@ -13,7 +13,7 @@
 --
 -- Hand-converted from the MySQL schema recorded in
 -- db/schema.mysql-reference.sql and cross-checked against the card-1.110.0 /
--- decko-0.20.0 core migrations. Full reasoning in docs/schema-notes.md.
+-- decko-0.20.0 core migrations. The full reasoning is not included in this tree.
 --
 -- MAPPING DECISIONS (summary; see schema-notes.md for justification):
 -- * datetime  -> TEXT, UTC, in ActiveRecord-on-SQLite's form: "YYYY-MM-DD HH:MM:SS",

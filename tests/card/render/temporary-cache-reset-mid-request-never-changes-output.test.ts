@@ -38,6 +38,7 @@ import {
   bindModLoaderToEngine,
   CountingRenderDriver,
   seedCard,
+  seedReference,
   splitSqlStatements,
   type RenderTestStorage,
 } from "./render-test-storage.js";
@@ -67,6 +68,15 @@ async function seedSamplePageDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
   await seedCard(s, { id: 259, name: "Set", codename: "set", typeId: 5 });
   await seedCard(s, { id: 900, name: "*all", codename: "all", typeId: 259 });
+  // The stock read substrate (render-test-storage.ts seedBootstrapReadSubstrate),
+  // written over this deck's own *all: a real deck carries `*all+*read ->
+  // [[Anyone]]` (card/auth/setup.rb:44), and without it every card denies
+  // (set/all/permissions.rb:139-146). This deck builds its own driver, so it
+  // seeds the rows itself, after its own codenames exist.
+  await seedCard(s, { id: 902, name: "*read", codename: "read", typeId: 2 });
+  await seedCard(s, { id: 903, name: "Anyone", codename: "anyone", typeId: 2 });
+  await seedCard(s, { id: 912, leftId: 900, rightId: 902, typeId: 2, dbContent: "[[Anyone]]" });
+  await seedReference(s, 912, 903, "anyone");
   await seedCard(s, { id: 901, name: "*layout", codename: "layout", typeId: 2 });
   await seedCard(s, { id: 904, name: "*title", codename: "title", typeId: 2 });
   await seedCard(s, { id: 905, name: "*favicon", codename: "favicon", typeId: 2 });

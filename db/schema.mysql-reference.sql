@@ -14,11 +14,11 @@
 -- CREATE TABLE -- are omitted as dump plumbing, not schema; everything from
 -- `CREATE TABLE` through the closing `) ENGINE=...;` line is untouched).
 -- The `-- Source: dump lines NNNN-MMMM` comment on each block makes any
--- block re-derivable with the sed recipe in docs/schema-notes.md.
+-- block re-derivable with the sed recipe (not included in this tree).
 --
 -- TABLE CLASSIFICATION (cross-checked against the installed gems
 -- card-1.110.0 core migrations in mod/core/data/schema/ and decko-0.20.0;
--- see docs/schema-notes.md for the full audit):
+-- the full audit is not included in this tree):
 --   [CORE]        card-engine data model (cards + history + references)
 --   [ENGINE-JOBS] delayed_jobs — created by a core engine migration
 --                 (mod/core/data/schema/20170908114442_create_delayed_jobs.rb);

@@ -9,13 +9,17 @@
 --
 -- Contents: 5 type/author scaffold cards, 6 plain Note cards, the depth-4
 -- compound chain Demo Guide+Section One+Detail+History (junction rows with
--- NULL name/key columns per the 2020 Lexicon convention), and the 'All
--- Notes' search card whose db_content is a CQL statement.
+-- NULL name/key columns per the 2020 Lexicon convention), the 'Note Index'
+-- search card whose db_content is a CQL statement, and the stock read
+-- substrate every Ruby deck carries (cards_010): *all+*read -> [[Anyone]],
+-- with Set/Setting/Role typed so the read-rule cache join admits it, every
+-- row stamped with the rule (set_read_rule, permissions.rb:1-5), and one
+-- card_references row naming Anyone (the rule's party).
 --
--- Deliberately EMPTY tables (read-only demo; history is write-path, and no
--- demo card carries rules or references bookkeeping): card_acts,
--- card_actions, card_changes, card_references, card_revisions,
--- card_virtuals, delayed_jobs, sessions, schema_migrations,
+-- Deliberately EMPTY tables (read-only demo; history is write-path; the one
+-- card_references row below is the catch-all's party, the only reference a
+-- read-only deck needs): card_acts, card_actions, card_changes,
+-- card_revisions, card_virtuals, delayed_jobs, sessions, schema_migrations,
 -- ar_internal_metadata, transform_migrations.
 -- ============================================================================
 -- id 1: the demo author card (creator_id/updater_id everywhere)
@@ -27,7 +31,7 @@ INSERT INTO cards (
   1, 'Demo Bot', 'demo_bot', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 4, 'Synthetic author identity used as creator and updater on every card in this demo deck.'
+  '*all', 30, NULL, 0, 4, 'Synthetic author identity used as creator and updater on every card in this demo deck.'
 );
 
 -- id 2: the Search cardtype (codename matches the oracle fixtures)
@@ -39,7 +43,7 @@ INSERT INTO cards (
   2, 'Search', 'search', 'search_type',
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 3, NULL
+  '*all', 30, NULL, 0, 3, NULL
 );
 
 -- id 3: the Cardtype cardtype (self-typed)
@@ -51,7 +55,7 @@ INSERT INTO cards (
   3, 'Cardtype', 'cardtype', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 3, NULL
+  '*all', 30, NULL, 0, 3, NULL
 );
 
 -- id 4: the User cardtype
@@ -63,7 +67,7 @@ INSERT INTO cards (
   4, 'User', 'user', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 3, NULL
+  '*all', 30, NULL, 0, 3, NULL
 );
 
 -- id 5: the demo content cardtype; CQL type:'Note' resolves here
@@ -75,7 +79,7 @@ INSERT INTO cards (
   5, 'Note', 'note', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 3, NULL
+  '*all', 30, NULL, 0, 3, NULL
 );
 
 -- id 10: the card GET / renders
@@ -87,7 +91,7 @@ INSERT INTO cards (
   10, 'Home', 'home', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Welcome to the decko-ts synthetic demo deck on Cloudflare Workers.</p><p>{{Demo Guide}}</p>'
+  '*all', 30, NULL, 0, 5, '<p>Welcome to the decko-ts synthetic demo deck on Cloudflare Workers.</p><p>{{Demo Guide}}</p>'
 );
 
 -- id 11: second plain card
@@ -99,7 +103,7 @@ INSERT INTO cards (
   11, 'About', 'about', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>This deck contains only synthetic demo content. No real member data is ever deployed here.</p>'
+  '*all', 30, NULL, 0, 5, '<p>This deck contains only synthetic demo content. No real member data is ever deployed here.</p>'
 );
 
 -- id 12: root of the depth-4 compound chain
@@ -111,7 +115,7 @@ INSERT INTO cards (
   12, 'Demo Guide', 'demo_guide', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Guide intro. The sections below are compound cards:</p>{{Demo Guide+Section One}}'
+  '*all', 30, NULL, 0, 5, '<p>Guide intro. The sections below are compound cards:</p>{{Demo Guide+Section One}}'
 );
 
 -- id 13: right part of junction id 16
@@ -123,7 +127,7 @@ INSERT INTO cards (
   13, 'Section One', 'section_one', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Section One body text (a simple Note card).</p>'
+  '*all', 30, NULL, 0, 5, '<p>Section One body text (a simple Note card).</p>'
 );
 
 -- id 14: third inclusion level; right part of junction id 17 (named without a trailing s: the canonical key stems plurals)
@@ -135,7 +139,7 @@ INSERT INTO cards (
   14, 'Detail', 'detail', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Detail body text.</p>{{History}}'
+  '*all', 30, NULL, 0, 5, '<p>Detail body text.</p>{{History}}'
 );
 
 -- id 15: fourth inclusion level; right part of junction id 18
@@ -147,7 +151,7 @@ INSERT INTO cards (
   15, 'History', 'history', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>History body text — the fourth inclusion level of the demo chain.</p>'
+  '*all', 30, NULL, 0, 5, '<p>History body text — the fourth inclusion level of the demo chain.</p>'
 );
 
 -- id 16: 'Demo Guide+Section One' (compound depth 2)
@@ -159,7 +163,7 @@ INSERT INTO cards (
   16, NULL, NULL, NULL,
   12, 13, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Section One rendered as a compound card.</p>{{Detail}}'
+  '*all', 30, NULL, 0, 5, '<p>Section One rendered as a compound card.</p>{{Detail}}'
 );
 
 -- id 17: 'Demo Guide+Section One+Detail' (compound depth 3)
@@ -171,7 +175,7 @@ INSERT INTO cards (
   17, NULL, NULL, NULL,
   16, 14, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>Detail rendered at compound depth 3 of the demo chain.</p>'
+  '*all', 30, NULL, 0, 5, '<p>Detail rendered at compound depth 3 of the demo chain.</p>'
 );
 
 -- id 18: 'Demo Guide+Section One+Detail+History' (compound depth 4 — deepest)
@@ -183,7 +187,7 @@ INSERT INTO cards (
   18, NULL, NULL, NULL,
   17, 15, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 5, '<p>History body at compound depth 4 — the deepest node of the demo chain.</p>'
+  '*all', 30, NULL, 0, 5, '<p>History body at compound depth 4 — the deepest node of the demo chain.</p>'
 );
 
 -- id 20: the demo search card (CQL-hittable set of every Note)
@@ -195,5 +199,105 @@ INSERT INTO cards (
   20, 'Note Index', 'note_index', NULL,
   NULL, NULL, NULL,
   '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
-  NULL, NULL, NULL, 0, 2, '{"type":"Note","sort":"name"}'
+  '*all', 30, NULL, 0, 2, '{"type":"Note","sort":"name"}'
 );
+
+-- id 6: the Role cardtype (cards_020), the type of the two party cards below
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  6, 'Role', 'role', 'role',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 3, NULL
+);
+
+-- id 7: the Set TYPE card (codename 'set' = the deck's SetID); the read-rule cache join filters rule rows' left cards on sets.type_id = SetID (read-rules.ts)
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  7, 'Set', 'set', 'set',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 3, NULL
+);
+
+-- id 8: the Setting TYPE card (cards_009)
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  8, 'Setting', 'setting', 'setting',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 3, NULL
+);
+
+-- id 25: the *all set card (the catch-all's left side), typed Set (type 7) as a set card is — the read-rule join's sets.type_id = SetID filter needs it
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  25, '*all', '*all', 'all',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 7, NULL
+);
+
+-- id 26: the *read setting card (the catch-all's right side), typed Setting (type 8) as a setting card is
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  26, '*read', '*read', 'read',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 8, NULL
+);
+
+-- id 27: the party the catch-all grants (real.yml:20-26), typed Role; the reference below is what puts the rule in read_rules_hash
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  27, 'Anyone', 'anyone', 'anyone',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 6, NULL
+);
+
+-- id 28: the anonymous viewer's own card; key given explicitly because DeckoName singularizes the name to 'anonymou'. Typed Cardtype, as Ruby's setup seed types it (mod/core data/fixtures/real/cards.yml cards_016) — the actor card is not content, so it does not join a `type: "Note"` search
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  28, 'Anonymous', 'anonymou', 'anonymous',
+  NULL, NULL, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 3, NULL
+);
+
+-- id 30: *all+*read, the catch-all read rule (a junction: NULL name/key, sides only, per the 2020 Lexicon migration), typed Set as the set card it is
+INSERT INTO cards (
+  id, name, key, codename, left_id, right_id, current_revision_id,
+  created_at, updated_at, creator_id, updater_id,
+  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content
+) VALUES (
+  30, NULL, NULL, NULL,
+  25, 26, NULL,
+  '2026-09-20 00:00:00.000', '2026-09-20 00:00:00.000', 1, 1,
+  '*all', 30, NULL, 0, 7, '[[Anyone]]'
+);
+
+-- *all+*read grants Anyone: the reference that makes the catch-all readable
+INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+VALUES (30, '', 27, 'L', 1);

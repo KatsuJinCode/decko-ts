@@ -3,17 +3,17 @@
   "steps": [
     {
       "step": 20,
-      "label": "update with unsafe html",
+      "label": "withheld",
       "why": "Withheld: stores the probe's unsafe markup on an existing card and records what Ruby's content cleaner keeps."
     },
     {
       "step": 22,
-      "label": "create plain text with html",
+      "label": "withheld",
       "why": "Withheld: creates a card whose content is the probe's unsafe markup, the second arm of the same gap."
     },
     {
       "step": 31,
-      "label": "revert to previous of a create (trashes it)",
+      "label": "withheld",
       "why": "Withheld: reverts the step 22 create, so its recorded revert content is the withheld step 22 content."
     }
   ]

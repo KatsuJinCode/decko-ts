@@ -32,6 +32,7 @@ import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.j
 import {
   createRenderTestStorage,
   seedCard,
+  seedReference,
   type RenderTestStorage,
 } from "./render-test-storage.js";
 
@@ -79,7 +80,7 @@ async function seedCardtypeByNameDeck(): Promise<RenderTestStorage> {
     dbContent: "<p>{{+*type+by_name}}</p>",
   });
   // Layout trio + the titled-chrome codenames.
-  await seedCard(storage, { id: 900, name: "*all", codename: "all", typeId: 2 });
+  await seedCard(storage, { id: 900, name: "*all", codename: "all", typeId: 25 });
   await seedCard(storage, { id: 901, name: "*layout", codename: "layout", typeId: 2 });
   await seedCard(storage, { id: 904, name: "*title", codename: "title", typeId: 2 });
   await seedCard(storage, { id: 905, name: "*favicon", codename: "favicon", typeId: 2 });
@@ -87,6 +88,20 @@ async function seedCardtypeByNameDeck(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(storage, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(storage, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
+  // The catch-all read rule every real deck bootstraps (card/auth/setup.rb:44):
+  // `*all+*read` -> [[Anyone]]. Seeded LAST, after the `all`/`set` codename
+  // takeovers have finished, because seedCard writes the stock substrate's
+  // displaced ids into the deck: taking over `*all` repoints the stock rule
+  // (10000006) onto THIS deck's *all, takes over `*read` repoints it onto this
+  // deck's *read, and takes over `set` repoints the stock *all card's TYPE
+  // onto this deck's Set TYPE card. This deck's own *all is typed Set (25),
+  // as a set card is (the read-rule cache join filters
+  // `sets.type_id = SetID`, read_rule_cache.rb ->
+  // src/card/permissions/read-rules.ts), so that repointed row is this deck's
+  // own catch-all read rule; only its *read side and its Anyone reference
+  // follow.
+  await seedCard(storage, { id: 908, name: "*read", codename: "read", typeId: 2 });
+  await seedReference(storage, 10000006, 10000004, "anyone");
   await storage.fetcher.codenames.ensureLoaded();
   // A full corpus storage factory wires the virtual-card hook over the
   // loaded structure universe; the bare test

@@ -10,7 +10,7 @@
 // out.ts maintains on writes.
 //
 // The rule read itself follows rule_card(:follow_fields) (followed_by.rb:19
-// -> prototype/lib/card/rule/all.rb rule_card): the left card's set names in
+// -> card 1.110.0 lib/card/rule/all.rb rule_card): the left card's set names in
 // pattern order — "<left>+*self+*follow fields", then "<type>+*type+*follow
 // fields", then the *all fall-back the follow mod seeds with content
 // "*nests".

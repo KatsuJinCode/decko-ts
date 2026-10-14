@@ -41,8 +41,10 @@ const BASIC_TYPE_ID = 4;
 
 let storage: RenderTestStorage | undefined;
 /** Twin deck WITHOUT read rules - same three content cards, no permission
- *  data. The query-shape pins compare the two cold renders (the folded
- *  permission statements must add statements, never round trips). */
+ *  data, and no bootstrap either (the shared helper seeds the stock
+ *  *all+*read catch-all; this deck exists to pin what Ruby does without one,
+ *  which is deny). The query-shape pins compare the two cold renders (the
+ *  folded permission statements must add statements, never round trips). */
 let ruleless: RenderTestStorage | undefined;
 
 async function seedPermissionDeck(s: RenderTestStorage): Promise<void> {
@@ -100,7 +102,7 @@ async function seedRulelessDeck(s: RenderTestStorage): Promise<void> {
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   await seedPermissionDeck(storage);
-  ruleless = await createRenderTestStorage();
+  ruleless = await createRenderTestStorage({ bootstrapReadRules: false });
   await seedRulelessDeck(ruleless);
 }, 60_000);
 
@@ -158,16 +160,21 @@ describe("read permission: the Anonymous viewer", () => {
     expect(await s.engine.render("Mystery Thing", "content")).toBe(quietDenial());
   });
 
-  it("renders rule-less decks in full (the documented synthetic-seed divergence)", async () => {
+  it("denies every card of a deck with no read rule at all, the way Ruby does", async () => {
     const s = ruleless!;
-    // Ruby on a deck without *any* read rule denies (read_rules_hash is
-    // empty); every real deck bootstraps *all+*read (card/auth/setup.rb:44),
-    // so the port treats the rule-less seed as "no permission data" and
-    // renders. This is what keeps every existing rule-less render test
-    // meaningful.
+    // Ruby: `permission_rule_id :read` composes the candidate rule names and
+    // returns nil when none of them names a rule card in the deck; then
+    // `Auth.as_card.read_rules_hash[nil]` is nil and ok_to_read? falls
+    // through to `deny_because you_cant "read this"`
+    // (set/all/permissions.rb:139-146). The port answers the same way, so a
+    // rule-less deck renders nothing.
+    //
+    // This deck is built with `bootstrapReadRules: false` because the shared
+    // render-test helper seeds the `*all+*read` catch-all stock Decko seeds
+    // (card/auth/setup.rb:44); a rule-less deck has to be asked for.
     const html = await s.engine.render("Readable Thing", "content");
-    expect(html).toContain("readable body");
-    expect(html).not.toContain('class="denied"');
+    expect(html).toBe(quietDenial());
+    expect(html).not.toContain("readable body");
   });
 });
 
@@ -200,10 +207,15 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // trip, the billed axis, is unchanged.
       // +1 more — the deck_data_version stamp read folds LAST on
       // the engine's first render (baseline for the per-request freshness
-      // gate). Composed batch measured 9: 3
+      // gate).
+      // +1 more — the rule-closure walk (read-rules.ts
+      // ruleClosureWalkStatement) rides this batch as its last member. The
+      // blank-key read verdict, seated on every cold render, is what needs
+      // it; folded here it costs statements, not round trips. Composed
+      // batch measured 10: 3
       // permission + codehash + 2 universes + template type-name + head
-      // read-set + stamp.
-      expect(stats?.additionalResults?.length).toBe(9);
+      // read-set + stamp + rule-closure walk.
+      expect(stats?.additionalResults?.length).toBe(10);
     } finally {
       cold.close();
     }

@@ -360,18 +360,77 @@ describe("B freshness 3: a committed rule change reaches the governed page", () 
   const OLD_TEMPLATE = "old structure template";
   const NEW_TEMPLATE = "new structure template";
 
+  // The stock read substrate: the read rule every real deck carries. Ruby
+  // bootstraps it at setup (card/auth/setup.rb:44), and without it
+  // ok_to_read? denies every card (card-mod-permissions
+  // set/all/permissions.rb:139-146: read_rules_hash[nil] is nil), so the
+  // governed page would render the denial span and no rule template at all.
+  // Ids follow the stock substrate in tests/card/render/render-test-storage.ts
+  // (BOOTSTRAP_READ_SUBSTRATE_IDS); the scenario's own ids (1 *all, 2
+  // *structure, 3 the rule) sit below them and take over the `*all` codename
+  // exactly as seedBootstrapReadSubstrate's releaseStockCard does for a
+  // suite-seeded card.
+  const SUBSTRATE_IDS = {
+    set: 10_000_002,
+    read: 10_000_003,
+    anyone: 10_000_004,
+    anonymous: 10_000_005,
+    readRule: 10_000_006,
+  } as const;
+  // The Stock Set TYPE card's ids (readRuleCache's `sets.type_id = SetID`
+  // filter; render-test-storage.ts seedBootstrapReadSubstrate).
+  const STOCK_SET_TYPE_ID = 10_000_002;
+  // The deck's Set TYPE card — this scenario's own (the stock one was
+  // displaced by the `*all` takeover below).
+  const DECK_SET_TYPE_ID = 100;
+  // Plain type cards the deck needs by id: *structure is a Rule-typed
+  // setting (RULE_TYPE_BY_SETTING / virtual-rule-card.ts: the *structure
+  // rule card's type is the deck's Rule card) and the governed card is a
+  // plain type card.
+  const RULE_TYPE_ID = 101;
+  const BASIC_TYPE_ID = 102;
+
   let warm: FileRuntime | undefined;
 
   beforeAll(async () => {
     warm = openRuntime();
     await applySchema(warm);
-    await insertCard(warm, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
-    await insertCard(warm, { id: 2, name: "*structure", codename: "structure" });
+    // Set TYPE card first: `*all` is a SET card, and a set card is typed
+    // with the deck's Set type card (the read-rule cache join filters
+    // `sets.type_id = SetID`, so a non-Set type drops the rule out of
+    // read_rules_hash and every card of the deck denies). The stock Set
+    // TYPE card above keeps that id alive on this deck too — the same
+    // takeover seedCard performs — so both values name a Set type card.
+    await insertCard(warm, { id: DECK_SET_TYPE_ID, name: "Set", codename: "set", typeId: SET_TYPE_ID });
+    await insertCard(warm, {
+      id: 1, name: "*all", codename: "all", typeId: DECK_SET_TYPE_ID,
+      readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all",
+    });
+    await insertCard(warm, {
+      id: 2, name: "*structure", codename: "structure", typeId: RULE_TYPE_ID,
+      readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all",
+    });
     await insertCard(warm, {
       id: 3, leftId: 1, rightId: 2,
       dbContent: OLD_TEMPLATE,
     });
-    await insertCard(warm, { id: 40, name: "Governed Card", dbContent: "governed body" });
+    // The stock substrate rows, minus the `*all` codename card the deck's
+    // own `*all` above displaced:
+    await insertCard(warm, { id: SUBSTRATE_IDS.read, name: "*read", codename: "read", readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all" });
+    await insertCard(warm, { id: SUBSTRATE_IDS.anyone, name: "Anyone", codename: "anyone", readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all" });
+    await insertCard(warm, { id: SUBSTRATE_IDS.anonymous, name: "Anonymous", codename: "anonymous", readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all" });
+    // The stock `*all+*read -> [[Anyone]]` rule, on THIS deck's `*all`/`*read`
+    // (the sides the repoint would have moved it to), plus the reference row
+    // that puts it in read_rules_hash for Anyone (read_rule_cache.rb's join).
+    await insertCard(warm, {
+      id: SUBSTRATE_IDS.readRule, leftId: 1, rightId: SUBSTRATE_IDS.read,
+      dbContent: "[[Anyone]]", readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all",
+    });
+    await insertReference(warm, SUBSTRATE_IDS.readRule, SUBSTRATE_IDS.anyone, "anyone");
+    await insertCard(warm, {
+      id: 40, name: "Governed Card", typeId: BASIC_TYPE_ID, dbContent: "governed body",
+      readRuleId: SUBSTRATE_IDS.readRule, readRuleClass: "*all",
+    });
     expect(await warm.engine.render("Governed Card", "open")).toContain(OLD_TEMPLATE);
     // Commit the rule change: the SAME rule id, different template text.
     await warm.query(

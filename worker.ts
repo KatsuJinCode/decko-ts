@@ -72,7 +72,7 @@ interface Deck {
 // data-version stamp on every request (a single-row SELECT) and resets the
 // retained state if it has moved since the last render, which is what stops
 // a warm isolate from serving anything older than the last committed write
-// (src/card/render.ts; docs/ARCHITECTURE.md, "What is request-local, and
+// (src/card/render.ts; ARCHITECTURE.md, "What is request-local, and
 // what is retained"). A FAILED boot is
 // never cached: the next request retries (a transient D1 hiccup on first
 // hit must not poison the isolate — the deploy entry's proven pattern).
@@ -379,7 +379,7 @@ export default {
       return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      // The Card::Error status_code table (prototype/lib/card/error.rb),
+      // The Card::Error status_code table (card 1.110.0 lib/card/error.rb),
       // shared with deploy/worker.ts via mapRenderError: NotFound -> 404,
       // the UserError raise for an unregistered view -> 422, else 500.
       // This entry previously shipped a blanket 500 for missing cards;

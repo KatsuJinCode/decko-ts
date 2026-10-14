@@ -118,14 +118,23 @@ export interface ReadPermissionState {
    *  ok_to_read? returns before the read_rules_hash lookup
    *  (set/all/permissions.rb:140). */
   readonly alwaysOk: boolean;
-  /** False when the deck has NO live read rule cards: Ruby decks bootstrap
-   *  *all+*read, so this only occurs in synthetic/rule-less seeds; there
-   *  the stored-id fallback is skipped (no rule can resolve anyway) and
-   *  cards read as allowed — the documented rule-less-seed divergence. */
+  /** False when the deck has NO live read rule cards. Ruby has no such
+   *  branch: on a deck with no read rule cards `read_rules_hash` is empty,
+   *  `permission_rule_id :read` resolves to nil, and
+   *  `Auth.as_card.read_rules_hash[nil]` is nil, so `ok_to_read?` denies
+   *  (permissions.rb:139-146). The flag exists only so the walk can skip
+   *  the queries it does not need: with no rule card in the deck, no
+   *  candidate can resolve, and the verdict is DENY without asking
+   *  (canReadByRuleLookupDepth). */
   readonly hasReadRules: boolean;
-  /** True only when the bootstrap *all+*read rule is among the deck's read
-   *  rules — the completeness proof for the live-walk fallback (a seed
-   *  without it is a fragment; see canReadByRuleLookup). */
+  /** True when the bootstrap *all+*read rule is among the deck's read
+   *  rules. Ruby never tests this: `permission_rule_id :read` walks the
+   *  candidate names and takes the first rule card that EXISTS, whether or
+   *  not a catch-all is present, so the walk runs on any deck carrying read
+   *  rules and the verdict is the membership check on whatever it resolves.
+   *  The flag is reported by the same gate statement and consumed only by
+   *  diagnostics and the CQL posture (RenderEngine#cqlPermissionOptions);
+   *  it does not gate the read verdict. */
   readonly hasCatchAllReadRule: boolean;
   /** The party ids the readable set was computed from. */
   readonly parties: number[];
@@ -170,8 +179,12 @@ export function permissionGateCountJsonArm(): string {
 /**
  * The permission statements, ready for a driver.batch fold.
  *
- * Statement 1 (parties): the codename cards the party math needs — the
- * port of the boot-time AnonymousID/AnyoneID constants
+ * Statement 1 (parties): the codename cards the party math needs, ordered by
+ * id so the party map is deterministic when a deck carries more than one row
+ * for a codename (a test seed layered over a bootstrap, or a replayed shard).
+ * Ruby's `const_get_or_set` yields the first card saved under a codename,
+ * which is the lowest id.
+ * The port of the boot-time AnonymousID/AnyoneID constants
  * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`),
  * plus the two codenames the signed-in path compares against
  * (administrator: the always_ok? role; decko_bot: the always_ok? actor —
@@ -192,11 +205,13 @@ export function permissionGateCountJsonArm(): string {
 export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
   const statements: SQLStatement[] = [
     {
+      // key and left_id ride along so the signed-out viewer's own key comes
+      // from this batch (actorKeyFromResults) instead of a point fetch.
       sql:
-        `SELECT id, codename FROM cards WHERE codename IN ` +
+        `SELECT id, codename, key, left_id FROM cards WHERE codename IN ` +
         `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}', ` +
         `'${ADMINISTRATOR_CODENAME}', '${DECKOBOT_CODENAME}') ` +
-        `AND trash = 0`,
+        `AND trash = 0 ORDER BY id`,
       params: [],
     },
     {
@@ -326,9 +341,13 @@ export function readPermissionStateFromViewerResults(
     ? ((results[3]?.rows ?? []) as Array<{ roleId: number }>)
     : [];
 
+  // Statement 1 arrives ORDER BY id, so the FIRST row for a codename is the
+  // lowest id — which is the card Ruby's `const_get_or_set` would have
+  // returned (lib/card/codename.rb:108). First wins, later duplicates for
+  // the same codename are ignored rather than overwriting it.
   const byCodename = new Map<string, number>();
   for (const row of codenameRows) {
-    if (row.codename !== null) byCodename.set(row.codename, row.id);
+    if (row.codename !== null && !byCodename.has(row.codename)) byCodename.set(row.codename, row.id);
   }
   const anyone = byCodename.get(ANYONE_CODENAME);
   const anyoneSignedIn = byCodename.get(ANYONE_SIGNED_IN_CODENAME);
@@ -383,6 +402,32 @@ export function readPermissionStateFromViewerResults(
 export function anonymousIdFromResults(results: SQLQueryResult[]): number | undefined {
   const codenameRows = (results[0]?.rows ?? []) as Array<{ id: number; codename: string | null }>;
   return codenameRows.find((row) => row.codename === ANONYMOUS_CODENAME)?.id;
+}
+
+/**
+ * The actor card's canonical key, answered from the permission batch when
+ * that batch carries the actor's row (statement 1 projects key and left_id
+ * for the codename cards, so the signed-out viewer's card is always present).
+ *
+ * A card with no left_id keys by its stored `key` column, which is exactly
+ * what composeCardRecord (fetch/card-record.ts) yields for it; a compound
+ * card's key is composed from its sides, so it is NOT answered here. Returns
+ * undefined when the batch does not carry a simple actor row — the caller
+ * then reads the card by id, as before.
+ */
+export function actorKeyFromResults(
+  results: SQLQueryResult[],
+  actorId: number | undefined,
+): { key: string | undefined } | undefined {
+  if (actorId === undefined) return undefined;
+  const codenameRows = (results[0]?.rows ?? []) as Array<{
+    id: number;
+    key: string | null;
+    left_id: number | null;
+  }>;
+  const row = codenameRows.find((candidate) => candidate.id === actorId);
+  if (row === undefined || (row.left_id !== null && row.left_id !== undefined)) return undefined;
+  return { key: row.key ?? undefined };
 }
 
 /**
@@ -454,15 +499,16 @@ const LEFT_DELEGATION_MAX_DEPTH = 16;
  * (readableRuleIds.has(rule.id) — read_rules_hash[read_rule_id],
  * permissions.rb:143).
  *
- * Returns undefined when the deck carries NO read rule cards at all
- * (`hasReadRules: false`): every real deck bootstraps *all+*read
- * (card/auth/setup.rb:44), so this is the rule-less-seed case only, and
- * the caller treats it as ALLOWED. That is a deliberate divergence —
- * Ruby on a
- * rule-less deck denies; matching that would deny every card of every
- * rule-less test deck.
- * A COMPLETE deck's walk that resolves NO candidate returns false (fail
- * closed): see the tail.
+ * The rule-less deck DENIES, exactly as Ruby does. `ok_to_read?`
+ * (permissions.rb:139-146) has no allowance for a deck that carries no
+ * read rule card: `permission_rule_id :read` composes the candidate names
+ * and returns nil when none of them names a rule card in the deck, then
+ * `Auth.as_card.read_rules_hash[nil]` is nil and the check falls through
+ * to `deny_because you_cant "read this"`. The port answers the same way:
+ * no rule card in the deck means no candidate resolves, and an unresolved
+ * walk is a DENY (see the tail). The `hasReadRules` gate exists so the
+ * walk can skip queries it does not need — with no rule card in the deck
+ * no candidate can resolve, so the denial is reached without the walk.
  */
 export async function canReadByRuleLookup(
   fetcher: FetchEngine,
@@ -479,7 +525,11 @@ async function canReadByRuleLookupDepth(
   depth: number,
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
-  if (!state.hasReadRules || !state.hasCatchAllReadRule) return undefined;
+  // No read rule card in the deck: `permission_rule_id :read` resolves to
+  // nil and `read_rules_hash[nil]` denies (permissions.rb:139-146), so the
+  // walk below could only re-derive that answer at the cost of its queries.
+  // DENY, not "no opinion".
+  if (!state.hasReadRules) return false;
   // pattern/all.rb#patterns: a NEW card's pattern list drops the first
   // concrete pattern (SELF) — and rule_lookup_keys then nils every anchored
   // candidate whose anchor card has no id. The virtual cards (id ===
@@ -497,12 +547,18 @@ async function canReadByRuleLookupDepth(
   // RENDER path, so the rule-closure walk: every candidate here is a
   // pattern name joined to *read, which the scoped walk resolves exactly
   // (resolveRuleRowsByRuleKeys carries the equivalence measurement).
+  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
+  // The winning rule's content is read only by the _left delegation below,
+  // which applies to COMPOUND card names alone (the `cardName.isCompound`
+  // test in the loop). A simple or blank-key card therefore never needs the
+  // content, so it is not fetched: the blank-key verdict (seated on every
+  // cold render, render.ts seatBlankKeyReadVerdict) pays no content round
+  // trip. A compound card asks for it as before.
   const resolved = await resolveRuleRowsByRuleKeys(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),
-    true,
+    cardName?.isCompound === true,
   );
-  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
   for (const name of candidates) {
     const key = DeckoName.parse(name).key;
     const rule = resolved.get(key);
@@ -525,24 +581,23 @@ async function canReadByRuleLookupDepth(
     }
     return state.readableRuleIds.has(rule.id);
   }
-  // No candidate resolved. In a COMPLETE deck (hasReadRules &&
-  // hasCatchAllReadRule) this is an unevaluatable rule walk, not an
-  // unruled card: the catch-all is structurally present (hasCatchAllReadRule)
-  // AND among the candidates (the *all pattern applies to every card), so a
-  // miss means the composed-key closure could not resolve the deck's own
-  // rule graph for this card. Ruby's walk cannot resolve here either —
-  // permission_rule_id -> nil -> ok_to_read? denies
-  // (set/all/permissions.rb:139-146 read_rules_hash[nil]) — so the port
-  // FAILS CLOSED (deny). The fail-open this replaced leaked card bodies
-  // through the catch-all whenever a more specific rule candidate could not
-  // be evaluated: a *type plus right read rule granting "Anyone Signed In"
-  // never reached the verdict, the walk fell
-  // through to *all+*read, and anonymous was granted.
-  // Partial decks (per-shard replay seeds) simply lack the card's
-  // applicable rule card, and fabricating a denial from missing data would
-  // mis-deny cards the full deck renders — there the port still allows
-  // .
-  return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
+  // No candidate resolved. Ruby cannot resolve here either:
+  // `permission_rule_id :read` composes the candidate names and returns nil
+  // when none of them names a live rule card, then
+  // `Auth.as_card.read_rules_hash[nil]` is nil and ok_to_read? falls through
+  // to `deny_because you_cant "read this"`
+  // (set/all/permissions.rb:139-146). So the port FAILS CLOSED (deny) on
+  // every deck. Ruby draws no distinction between a deck whose rule graph
+  // could not be evaluated and one that simply carries no matching rule —
+  // both are a nil read_rule_id — and neither is an occasion to allow. The
+  // fail-open this replaced leaked card bodies through the catch-all
+  // whenever a more specific rule candidate could not be evaluated: a
+  // *type plus right read rule granting "Anyone Signed In" never reached
+  // the verdict, the walk fell through to *all+*read, and anonymous was
+  // granted. Partial decks (per-shard replay seeds) answer the same way
+  // here, because a rule card the shard does not carry is exactly the
+  // `permission_rule_id -> nil` case Ruby denies.
+  return false;
 }
 
 /** permissions.rb:66-72 left_permission_rule_id:
@@ -873,7 +928,7 @@ const RULE_SUFFIX_LAST_CHARS = [
  * mirror of a ~19k-card deck the legacy walk builds roughly 11k `resolved`
  * rows (enumerating about 14k join candidates) to keep ~1.5k; this one builds
  * a third as many rows from fewer candidates, and takes about half the time.
- * benchmarks/poc-live-batch/check-rule-closure-rewrite.mjs asserts the two
+ * a check script that is not in this tree asserts the two
  * return the same row set on a deck and on randomly perturbed copies of it.
  *
  * WHY THE PRUNING IS EXACT. Call a string rule-shaped (T) when it is
@@ -906,6 +961,12 @@ const RULE_SUFFIX_LAST_CHARS = [
  *
  * Row ORDER is not part of the contract (the legacy statement has no
  * ORDER BY either); the check script reports whether it matched.
+ *
+ * The projection carries each card's db_content alongside its composed key,
+ * so the rule card whose content the _left delegation inspects needs no
+ * second read (resolveRowsAgainst would otherwise ask for it in a query of
+ * its own). The legacy walk above omits the column; the row SETS (key, id)
+ * are what the two walks must agree on, and consumers read those.
  *
  * AT MOST FIVE TERMS PER COMPOUND SELECT. Cloudflare D1 runs SQLite with
  * the compound-SELECT limit at 5 (measured in workerd's local D1: 5 terms
@@ -954,30 +1015,30 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `  UNION\n` +
   `  SELECT parent, child FROM tl\n` +
   `),\n` +
-  `resolved(id, ckey) AS (\n` +
-  `  SELECT c.id, c."key" FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
+  `resolved(id, ckey, content) AS (\n` +
+  `  SELECT c.id, c."key", c.db_content FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
   `  UNION\n` +
-  `  SELECT c.id, c."key" FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
+  `  SELECT c.id, c."key", c.db_content FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
   `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
   `  UNION\n` +
-  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key", j.db_content FROM resolved l\n` +
   `    JOIN dtl ON dtl.child = l.id\n` +
   `    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n` +
   `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
   `  UNION\n` +
-  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
   `    JOIN dr ON dr.child = r.id\n` +
   `    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n` +
   `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
   `  UNION\n` +
-  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
   `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
   `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
   `    WHERE ${endsInRuleSuffix(`('+' || r.ckey)`)}\n` +
   `)\n` +
-  `SELECT rs.ckey, rs.id FROM resolved rs\n` +
+  `SELECT rs.ckey, rs.id, rs.content FROM resolved rs\n` +
   `WHERE ${endsInRuleSuffix("rs.ckey")}`;
 
 /** The statement the render path's rule-closure walk runs. */
@@ -1050,6 +1111,47 @@ export async function resolveRuleRowsByRuleKeys(
   withContent: boolean,
 ): Promise<Map<string, ResolvedRuleRow>> {
   return resolveRowsAgainst(driver, keys, withContent, "ruleClosure");
+}
+
+/**
+ * The rule-closure walk as a batch member, for a caller that already has a
+ * batch in hand (the render's cold prepare batch). The walk depends only on
+ * the deck and the four setting names, never on another statement's result,
+ * so it rides that batch at no extra round trip; primeRuleClosureUniverse
+ * then seats its rows as the memo resolveRowsAgainst would have built.
+ *
+ * Returns undefined when this driver generation already holds the closure
+ * (nothing to fold). The walk statement is the same one resolveRowsAgainst
+ * issues on its own, so the memo built either way is identical.
+ */
+export function ruleClosureWalkStatement(driver: SQLDatabaseDriver): SQLStatement | undefined {
+  const cache = ruleResolutionCaches.get(driver);
+  if (cache !== undefined && universeFor(cache, "ruleClosure") !== undefined) return undefined;
+  return { sql: ruleClosureStatement(), params: [...TASK_RULE_SETTING_NAMES] };
+}
+
+/**
+ * Seat the rule-closure memo from the rows of a ruleClosureWalkStatement
+ * result that an earlier batch carried. A memo already present is kept (the
+ * first build wins, as in resolveRowsAgainst).
+ */
+export function primeRuleClosureUniverse(driver: SQLDatabaseDriver, result: SQLQueryResult): void {
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  if (universeFor(cache, "ruleClosure") !== undefined) return;
+  const universe = new Map<string, number>();
+  for (const row of (result.rows ?? []) as Array<{
+    ckey: string;
+    id: number;
+    content?: string | null;
+  }>) {
+    universe.set(row.ckey, row.id);
+    if (row.content !== undefined) cache.contentById.set(row.id, row.content);
+  }
+  setUniverseFor(cache, "ruleClosure", universe);
 }
 
 /** Which walk backs a resolution: the whole deck's composed-key universe, or

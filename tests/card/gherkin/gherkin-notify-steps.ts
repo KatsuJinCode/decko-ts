@@ -25,7 +25,8 @@ import { installGherkinNameEnvironment, seedCard, TYPE_IDS } from "./gherkin-sto
 export const NOTIFY_IDS = {
   setting: 410, // the Setting cardtype (codename setting), typed itself
   set: 300, // reused: seedStandardDeck seeds the codename "set" card at 300
-  allFollowFieldsRule: 310, // the *all+*follow fields default rule row
+  allFollowFieldsRule: 312, // the *all+*follow fields default rule row (310/311
+  // are seedStandardDeck's *read setting and *all+*read rule)
   user: 420, // the User cardtype (codename user)
   book: 421, // the Book cardtype (the feature's cardtype)
   phrase: 4, // reused: the Phrase codename card (scenario 5's PlainText structure)

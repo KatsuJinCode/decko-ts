@@ -38,6 +38,7 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import {
   seedCard,
+  seedStockReadSubstrate,
   splitSqlStatements,
   type RenderTestStorage,
 } from "./render-test-storage.js";
@@ -101,13 +102,17 @@ async function bootRecordingStorage(): Promise<{
     },
   };
   const fetcher = new FetchEngine(counting);
+  const storage: RenderTestStorage = {
+    engine: new RenderEngine(fetcher),
+    fetcher,
+    counting: counting as unknown as RenderTestStorage["counting"],
+    close: () => driver.close(),
+  };
+  // The stock read substrate: this deck is built here rather than by the
+  // factory, and without the catch-all read rule every card of it denies.
+  await seedStockReadSubstrate(storage);
   return {
-    storage: {
-      engine: new RenderEngine(fetcher),
-      fetcher,
-      counting: counting as unknown as RenderTestStorage["counting"],
-      close: () => driver.close(),
-    },
+    storage,
     recorded,
     counts: () => ({ statements, roundTrips }),
   };
@@ -157,9 +162,13 @@ describe("prefetch closure: empty-sided compound names fold", () => {
         expect(prefetch?.fallbackRounds ?? 0).toBeLessThanOrEqual(6);
 
         // INVARIANT 3 (the statement budget, measured not guessed): base
-        // measures 38 round trips / 80 statements on this deck.
-        expect(after.roundTrips).toBeLessThanOrEqual(20);
-        expect(after.statements).toBeLessThanOrEqual(45);
+        // measures 38 round trips / 80 statements on this deck. The budget
+        // is the measured cost on a deck carrying the stock `*all+*read`
+        // rule card (createRenderTestStorage seeds it; Ruby denies a deck
+        // without one), whose read permission rides the prelude batch:
+        // 25 round trips here, closure rounds included.
+        expect(after.roundTrips).toBeLessThanOrEqual(25);
+        expect(after.statements).toBeLessThanOrEqual(46);
       } finally {
         storage.close();
       }

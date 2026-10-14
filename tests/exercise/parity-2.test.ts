@@ -22,7 +22,7 @@
 //   2. The csv / rss / json format families, rendered through the engine and
 //      byte-compared with the committed Ruby captures in
 //      fixtures/oracle-surfaces/. Pattern-matched on
-//      tests/card/render/format-families-oracle.test.ts, which pins the same
+//      the format-families-oracle suite (not in the public package), which pins the same
 //      four captures.
 //
 // WHAT THE FORMAT CASE COMPARES, precisely. Twelve captures across the four
@@ -62,8 +62,8 @@
 // write-battery fixture (reference-harness/fixtures/write-battery-v1) and
 // diffs every operation's row delta against the Ruby oracle recordings
 // committed on it: of the 67 public operations, 65 match and 2 are declared
-// deliberate differences. The scenario battery's 88 public steps are recorded
-// on the same deck and committed beside it, with 5 declared deliberate
+// deliberate differences. The scenario battery's 87 public steps are recorded
+// on the same deck and committed beside it, with 4 declared deliberate
 // differences and no open mismatch (tests/tools/side-effects-scenario-battery.test.ts). The third
 // describe below asserts the committed recording those published counts rest
 // on.
@@ -722,7 +722,7 @@ describe("the committed write-battery recording behind the published write count
   const BATTERY_MANIFEST = join(BATTERY_FIXTURE, "MANIFEST.json");
   const PERSIST_STEPS = join(BATTERY_FIXTURE, "expected", "persist-steps");
 
-  it("holds one committed synthetic deck with the public 67-step Ruby probe recording and an 88-step Ruby scenario trace on it, integrity-gated by its manifest, with the 2 public probe differences declared", () => {
+  it("holds one committed synthetic deck with the public 67-step Ruby probe recording and an 87-step Ruby scenario trace on it, integrity-gated by its manifest, with the 2 public probe differences declared", () => {
     // Integrity: the fixture's own manifest pins the sha256 of the deck and
     // of both recordings, exactly as the reference-harness fixtures do.
     expect(existsSync(BATTERY_MANIFEST), "the fixture has a MANIFEST.json").toBe(true);
@@ -773,13 +773,16 @@ describe("the committed write-battery recording behind the published write count
     expect({ engine: ruby.engine, blocked: ruby.network_blocked, steps: ruby.steps.length }).toEqual({
       engine: "ruby-decko",
       blocked: [],
-      steps: 88,
+      steps: 87,
     });
     const battery = JSON.parse(readFileSync(join(REPO, "tools", "parity-side-effects", "scenarios.json"), "utf8")) as {
       steps: { name: string; deliberate?: unknown }[];
     };
+    // The public list is the 87 steps the withheld set does not claim; the
+    // withheld steps are announced as NOT RUN by the battery, not listed here.
+    expect(battery.steps.length).toBe(87);
     const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
-    expect(pins.length).toBe(5);
+    expect(pins.length).toBe(4);
 
     // The provenance: how the recordings were made, in the manifest itself.
     const provenance = manifest.provenance as Record<string, string> | undefined;

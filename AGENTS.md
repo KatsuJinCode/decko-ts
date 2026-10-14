@@ -1,7 +1,7 @@
 # Decko Core agent rules
 
 This repository is the Decko Core implementation workspace. Read
-`docs/core/README.md` and `docs/core/governance.md` before changing scope or
+the project contract and publication gates (not part of this package) before changing scope or
 publishing anything.
 
 - The project covers a runtime-independent Decko behavioral contract, first-class Ruby and TypeScript implementations, DSL and nonlegacy mods. PostgreSQL is parallel work; applicable optimizations must be evaluated for both runtimes.

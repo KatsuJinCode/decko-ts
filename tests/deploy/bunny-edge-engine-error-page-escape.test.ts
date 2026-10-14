@@ -31,8 +31,7 @@
 //
 // No vi.mock is needed here: the request core import chain does not pull
 // @bunny.net/edgescript-sdk (only the old entry's top-level
-// BunnySDK.net.http.serve(...) did; the ambient shim lives at
-// src/types/bunny-edgescript-sdk.d.ts).
+// BunnySDK.net.http.serve(...) did).
 
 import { describe, expect, it } from "vitest";
 

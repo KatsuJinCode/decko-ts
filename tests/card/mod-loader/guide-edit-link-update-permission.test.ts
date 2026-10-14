@@ -108,7 +108,10 @@ beforeAll(async () => {
   // the Markdown cardtype (52), so the guide rule card's :core nest
   // resolves through the markdown type rather than plain RichText
   await seedCard(s, { id: 52, name: "Markdown", typeId: 9 });
-  await seedCard(s, { id: 121, name: "Administrator" });
+  // Role: Ruby's seed types Administrator as a Role, and Role is a Cardtype.
+  await seedCard(s, { id: 127, name: "Cardtype", codename: "cardtype", typeId: 127 });
+  await seedCard(s, { id: 126, name: "Role", codename: "role", typeId: 127 });
+  await seedCard(s, { id: 121, name: "Administrator", codename: "administrator", typeId: 126 });
 
   // The guide RULE card IS "*all+*guide" itself - the junction the
   // *guide candidate walk lands on, Markdown-typed so its :core nest goes

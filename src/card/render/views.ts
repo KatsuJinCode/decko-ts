@@ -3,7 +3,7 @@ import { str, type ViewResult } from "./format.js";
 // captured fixtures exercise (:open, :closed, :content, :title and the
 // internal views they delegate to). Every view cites its Ruby source; the
 // byte shapes (attribute order, quoting, whitespace) are pinned by
-// fixtures/captured/smoke.json - HAML templates emit sorted single-quoted
+// the captured smoke oracle, not in the public package - HAML templates emit sorted single-quoted
 // attributes, Rails helpers emit insertion-order double-quoted attributes,
 // and the fixtures record which is which.
 //
@@ -103,8 +103,8 @@ import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
 import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
 // The board/edit flat seam (the 422 surface): the loader-bound board bytes the
-// oracle pins (fixtures/captured/board-views.json) and the edit bytes
-// (fixtures/captured/edit-forms.json) rode chain dispatch — a set/all/*
+// oracle pins (the captured board-views oracle, not in the public package) and the edit bytes
+// (the captured edit-forms oracle, not in the public package) rode chain dispatch — a set/all/*
 // module's views are Ruby's BASE format class (set/format.rb:133-144
 // all_set? branch + registrar.rb:79-84 process_base_format_modules), so the
 // mod-less production engine (no ModLoader is ever bound in the worker) must
@@ -1505,7 +1505,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // set-scoped mod registration would be dead surface there). The 21
   // Bootswatch-skin pages of an earlier sass-css-compile class are
   // byte-pinned through it
-  // (tests/card/render/bootstrap-code-file-pages.test.ts).
+  // (the bootstrap-code-file-pages suite (not in the public package)).
   if (fmt.card.typeCode === "bootswatch_skin" || fmt.card.typeName === "Bootswatch skin") {
     return bootswatchSkinCoreHtml(ctx);
   }
@@ -1604,7 +1604,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // reads the SAME seat the dispatched card_list would read —
   // executeSearch opens ONLY fmt.card.key (render.ts:5246-5248), so the
   // stub fmt below is the exact read surface. Pin:
-  // tests/card/render/mod-cardtype-page-pointer-arm-corpus-parity.test.ts.
+  // the mod-cardtype-page-pointer-arm-corpus-parity suite (not in the public package).
   if (fmt.card.name.key === "mod") {
     const searchKey = DeckoName.parse("+*type+by name")
       .absoluteName(DeckoName.parse(fmt.card.name.s)).key;
@@ -5997,8 +5997,7 @@ const miniBarView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // card-mod-bar_and_box-0.20.0 — the thirteen views the mod declares that this
-// engine had no implementation for (the coverage doc's MISSING bucket:
-// deliverables/mod-coverage-authoritative-2026-09-28.md:62).
+// engine had no implementation for (the coverage doc's MISSING bucket is not in this tree).
 //
 // Ruby sources, verbatim:
 //   set/all/bar.rb:30-31  view :bar_menu, :bar_body  (template: :haml, no wrap)
@@ -6527,7 +6526,7 @@ const homePathView: ViewFn = ({ fmt }) => {
  *  here (home_path's gate, same set). Deliberately UNCHANGED:
  *  the capture MASKS the host on this view (the page
  *  and view captures carry a bare "/" for the deck root — pinned by
- *  tests/card/mod-loader/card-mod-format-remaining-views.test.ts's
+ *  the card-mod-format-remaining-views suite (not in the public package)'s
  *  `home_url is the deck-root path` case), so unlike the `:url` view
  *  (whose absolute form the email-template pages pin in full) the masked
  *  root stays a path. */
@@ -7021,7 +7020,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // perms directive rides the name-keyed registry in
   // permissions/view-perms.ts, which already carries board -> update). The
   // loader-bound arm of these bytes is oracle-pinned
-  // (fixtures/captured/board-views.json); the headless arm renders the SAME
+  // (the captured board-views oracle, not in the public package); the headless arm renders the SAME
   // fn (tests/card/render/headless-board-edit-flat-dispatch.test.ts pins
   // the two arms byte-equal).
   board: boardView,

@@ -43,7 +43,7 @@
 
 import { describe, it, expect, afterAll } from "vitest";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
-import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
+import { createRenderTestStorage, seedCard, seedReference, type RenderTestStorage } from "./render-test-storage.js";
 import { CONFIGURED_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/configured-deck-served-deltas.js";
 
 /** The cardtype cards the codename registry needs for typeCode gates. */
@@ -51,6 +51,9 @@ async function seedCardtypes(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   await seedCard(s, { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 });
   await seedCard(s, { id: 30, name: "Search", codename: "search_type", typeId: 5 });
+  // Role: the type Ruby's seed gives Administrator (decko setup: Administrator
+  // is typed Role, Anyone and Anyone Signed In likewise).
+  await seedCard(s, { id: 31, name: "Role", codename: "role", typeId: 5 });
   await seedCard(s, { id: 47, name: "List", codename: "list", typeId: 5 });
   await seedCard(s, { id: 259, name: "Set", codename: "set", typeId: 5 });
   await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
@@ -237,6 +240,18 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
         dbContent: "<p>Due: {{+due date}}</p>",
       });
       await seedCard(storage, { id: 709, name: "*structure", typeId: 2 });
+      // The read restriction on the item's type (Tracked Item+*type+*read),
+      // the rule the item's candidate walk reaches BEFORE the catch-all
+      // (set/all/permissions.rb: the first candidate that names a live rule
+      // decides). It grants only the Administrator role, which the anonymous
+      // viewer does not hold, so the item is read-DENIED (the denial this
+      // test pins), while the deck's catch-all *all+*read still grants Anyone
+      // everything else. Without it the catch-all would make the item
+      // readable and the bar would render in full.
+      await seedCard(storage, { id: 2082, name: "Tracked Item+*type+*read", leftId: 2080, rightId: 704, typeId: 47, dbContent: "Administrator" });
+      await seedCard(storage, { id: 19, name: "Administrator", codename: "administrator", typeId: 31 });
+      await seedReference(storage, 2082, 19, "administrator");
+
       // The host list card with a *content options rule typing its items
       // Tracked Item (the host is COMPOUND with right part "Plans", so
       // the rule walk's RIGHT-pattern candidate finds the rule) and one

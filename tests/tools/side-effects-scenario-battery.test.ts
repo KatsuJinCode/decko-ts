@@ -9,7 +9,7 @@
 // inputs:
 //
 //   node tools/parity-side-effects/ts-drive.mjs <deck.sqlite3> <work>
-//        > ts.json     (the TypeScript engine driven through the same 90
+//        > ts.json     (the TypeScript engine driven through the 87
 //                       HTTP-shaped steps tools/parity-side-effects/
 //                       scenarios.json lists, trace written to stdout)
 //   node tools/parity-side-effects/compare.mjs <ruby.json> ts.json report
@@ -17,15 +17,16 @@
 //                     deltas, actions, mail, files, image variants,
 //                     virtuals, session identity)
 //
-// THE DIVERGENCES THIS SUITE PINS. The public scenario list is 88 steps:
-// the two steps whose divergence is withheld until disclosure live in the
-// withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
+// THE DIVERGENCES THIS SUITE PINS. The public scenario list is 87 steps:
+// the three steps whose declared difference is withheld until disclosure live
+// in the withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
 // from every release package) and are announced on stderr when they are not
 // run. On the clean synthetic deck the recorded verdicts are 83 pass +
-// 5 declared + 0 mismatched (88 steps), and the assertions below name every
+// 4 declared + 0 mismatched (87 steps), and the assertions below name every
 // one of them. The Ruby recording is committed
-// (expected/side-effects-ruby.json) over the same public list, re-recorded
-// whenever the public list changes; this suite pins the exact current
+// (expected/side-effects-ruby.json) over the same public list: re-recorded
+// when the public list changes, or, for a withheld step, cut from the
+// full-list recording with every public verdict unchanged; this suite pins the exact current
 // verdicts, so any engine change here fails loudly.
 //
 // THE RECORDING'S ENVIRONMENT. The trace was recorded by
@@ -167,7 +168,7 @@ function distIsStale(): boolean {
   return newestSourceMtime(join(REPO, "src")) > built;
 }
 
-describe("side-effects scenario battery (88 public steps, committed synthetic deck)", () => {
+describe("side-effects scenario battery (87 public steps, committed synthetic deck)", () => {
   // The committed inputs (deck, Ruby trace) must exist — their absence is a
   // broken checkout. The build artifacts are NOT committed (like
   // node_modules) and are built here on first use, so the suite runs on a
@@ -208,7 +209,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 5 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
+  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -223,7 +224,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     const tsFile = join(work, "ts.json");
     const reportFile = join(work, "compare-report.json");
 
-    // The TypeScript half: the engine through the same 90-step operation
+    // The TypeScript half: the engine through the same 87-step public operation
     // list, from a copy of the committed deck. Its stdout is the trace.
     const drive = runNode([TS_DRIVE, DECK, join(work, "ts-work")], CHILD_ENV);
     if (drive.status !== 0) {
@@ -234,7 +235,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     expect({ engine: ts.engine, blocked: ts.network_blocked, steps: ts.steps.length }).toEqual({
       engine: "decko-ts",
       blocked: [],
-      steps: 88,
+      steps: 87,
     });
 
     // The verdict: the committed Ruby trace against the trace just produced.
@@ -245,7 +246,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     expect({ engine: ruby.engine, blocked: ruby.network_blocked, steps: ruby.steps.length }).toEqual({
       engine: "ruby-decko",
       blocked: [],
-      steps: 88,
+      steps: 87,
     });
 
     // The withheld step set (tools/parity-side-effects/withheld/scenarios.json)
@@ -275,14 +276,13 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
       "admin-deny-signup",
-      "anon-update-skin-colors",
       "get-home",
       "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
       pass: 83,
-      deliberate: 5,
-      total: 88,
+      deliberate: 4,
+      total: 87,
     });
 
     // Every mismatched step and the fields it differs on, pinned step by step.

@@ -2,17 +2,16 @@
 
 decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are seven exceptions to that parity rule, listed below, in three classes:
+There are six exceptions to that parity rule. Three are listed below, in two classes; the other three are withheld until a private channel exists to disclose them responsibly.
 
-1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials, forge a request under a visitor's session, write to the deck's storage without permission), the port does not copy it. Divergences 1, 3, 5 and 7.
-2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 2 and 4.
-3. **Crashes and the rule-less-deck case.** Where Ruby fails with an internal error, the port gives the error Ruby intended; and where Ruby denies a deck that carries no permission data at all, the port renders it, because the alternative denies every card of every deck that never ran setup. Divergence 6.
+1. **Security holes.** Where Ruby's behaviour lets one user act against another, the port does not copy it. Divergence 2.
+2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 1 and 3.
 
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
 1. **Transaction and save differences on adapters without interactive transactions** — listed and pinned by [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md).
 2. **Differences that exist only on the oracle schema Ruby actually runs on.** These are declared step by step, with their reasons, in `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`, and they are differences between the port and the throwaway oracle deck rather than between the port and Decko. Step 7 is the one of that kind: Ruby inserts a second `cards` row for a compound name whose junction is trashed, and that insert only succeeds on the oracle deck, which lacks the upstream schema's `UNIQUE (left_id, right_id)` index; the same Ruby save fails on a schema carrying that index. The port revives the existing trashed junction row instead, recording the revival's name, type, content, trash and part changes, which keeps one row per name and is valid on the production schema.
-3. **Row-level differences the persistence oracle declares**, in the same file. Divergence 1 below ("Stored HTML is sanitised safely") accounts for the stored-HTML entries of the withheld set, which are withheld until disclosure and not described here; the remainder concern Ruby's own bugs, which are reproduced on purpose.
+3. **Row-level differences the persistence oracle declares**, in the same file. Some of them belong to approved divergences that are withheld until disclosure; the remainder concern Ruby's own bugs, which are reproduced on purpose.
 
 ## Reporting a vulnerability
 
@@ -23,17 +22,11 @@ advisory filed against a repository you do not hold is not a second channel: the
 email fallback. Include the request or content that triggers the problem and what you
 observed. Because of the nature of a security concern, a flaw that exists in Ruby Decko is
 not disclosed here until a private channel is established to disclose it
-responsibly. Three Ruby Decko flaws are withheld on those terms, each marked where it is
-material:
-
-1. the account-holder name-change authorization gap;
-2. the crash that follows from it on a production deck;
-3. the stored-HTML sanitiser gap.
-
-None of the three is described anywhere in this repository beyond the name above
-and the entry that governs the port's own behaviour on it: no upstream file, line,
-guard name, request shape or payload, and no explanation of what Ruby does with
-it. The entries below say what the port does, not what Ruby accepts.
+responsibly. Five Ruby Decko flaws are withheld on those terms, in areas of Ruby Decko this
+repository does not describe. Nothing about them is described in this file or in any other
+shipped file: no upstream file, line, guard name, request shape or payload, and no explanation
+of what Ruby does with any of them. Where a rule the port enforces is material to one of
+them, the port's own behaviour on it is stated below.
 
 ## Deployment obligations the port does not meet for you
 
@@ -58,7 +51,7 @@ default, and a deployment that is publicly reachable should not inherit it silen
   engine offers no hook of its own for this, so there is nothing to switch on here — it has to
   happen at the edge.
 - **The one built-in lever is the cost of an attempt.** `DECKO_PASSWORD_PBKDF2_ITERATIONS`
-  (approved divergence 2 above) sets how expensive each guess is. Raising it makes online
+  (approved divergence 1 above) sets how expensive each guess is. Raising it makes online
   guessing slower in proportion, and it is the only in-process control the port offers. It is
   bounded by the runtime: Cloudflare's production Workers runtime refuses PBKDF2 above 100,000
   iterations, so a Workers deployment cannot push the cost arbitrarily high and must rely on
@@ -68,18 +61,9 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 ## Approved divergences
 
-### 1. Stored HTML is sanitised safely
+Three further approved divergences exist, are pinned by withheld tests, and are not described here until the disclosure described under "Reporting a vulnerability".
 
-| | |
-|---|---|
-| **Ruby** | Ruby Decko 0.20.0 differs from the port here deliberately, for a security reason that is withheld until a private channel is established to disclose it responsibly. Nothing about what Ruby accepts is described in this repository. |
-| **Port** | The same tag and attribute allowlists, and the same tag-finding expression, so the same tags are kept and dropped. Attributes are read with the HTML tokenizer's rules; URL attributes (`href`, `src`, `cite`) must be relative or use a non-script scheme (`http`, `https`, `mailto`, `tel`, `sms`, `ftp`, `skype`, `callto`, `webcal`, `irc`, `ircs`, `xmpp`, `geo`, `news`, `nntp`, `feed`), plus `data:image/*` for `img src` with SVG excluded; `style` values may not contain `expression()`, `behavior:`, `-moz-binding`, `@import` or a script URL; values are escaped; comments are removed only where they lie in text; a stray `<` that would open markup is written as `&lt;`. When a browser reads exactly the same attributes from Ruby's output as the port keeps, Ruby's bytes are stored unchanged. |
-| **Why** | Without it, one user's edit to a RichText card could store script that runs for every reader of that card. |
-| **Compatibility** | Ordinary content is stored byte for byte as Ruby stores it. Measured over the stored HTML of a real 19,000-card deck, 7,208 of 7,354 HTML-bearing cards clean identically. The other 146 are cards whose stored form differs under the two cleaners; which of those a card is follows from the withheld Ruby behaviour, so the count is reported without the shapes that identify it. Existing content changes only when it is saved again. |
-| **Configuration** | None. Card types that Ruby does not clean (HTML, layout, email template, script and style types, `+*html_message`) are not cleaned by the port either; editing those types should be limited to trusted roles, as in Ruby. |
-| **Tests** | `tests/card/actions/content-clean-security.test.ts`: a corpus built from the OWASP XSS Filter Evasion Cheat Sheet and the cleaner's own edge cases, checked by an independent browser-tokenizer verifier, alone and followed by page markup; 4,000 random hostile mixtures; ordinary content stable under a second pass and leaving nothing a browser acts on. The comparisons with the upstream cleaner's own output, on hostile markup and on ordinary content, and the write-probe set that declares the resulting row differences, are withheld until disclosure (`tests/withheld/` and `reference-harness/fixtures/write-battery-v1/withheld/`); when that directory is absent, `tests/card/actions/content-clean.test.ts` prints a `[withheld until disclosure] NOT RUN` line for them. |
-
-### 2. Passwords: new ones are stored with PBKDF2
+### 1. Passwords: new ones are stored with PBKDF2
 
 | | |
 |---|---|
@@ -89,9 +73,9 @@ default, and a deployment that is publicly reachable should not inherit it silen
 | **Compatibility** | **Ruby cannot verify a PBKDF2 hash.** If Ruby Decko and the port serve the same deck (for example during a migration), an account whose password was set or upgraded by the port can no longer sign in through Ruby. Such sites set `DECKO_PASSWORD_HASH=legacy-sha1`: new passwords are then stored as Ruby's digest and nothing is upgraded. Switch to the default once Ruby no longer serves the deck; accounts upgrade as their owners sign in. |
 | **Cloudflare Workers** | Cloudflare's production runtime refuses PBKDF2 above **100,000** iterations (cloudflare/workerd issue 1346; local `workerd` does not enforce it). On Workers the default is therefore 100,000, below OWASP's figure; it rises automatically (at the owners' next sign-in) if the deck later moves to a host without that limit. A hash created elsewhere with more iterations cannot be checked on Workers: the sign-in fails with a message saying so, not "Wrong password", and a password reset on Workers fixes it. |
 | **Configuration** | `DECKO_PASSWORD_HASH`: `pbkdf2` (default) or `legacy-sha1`. `DECKO_PASSWORD_PBKDF2_ITERATIONS`: a whole number, at least 100,000 and at most the runtime's limit. An invalid value makes password saves and sign-in fail with a message naming the setting; reads are unaffected. |
-| **Tests** | `tests/card/auth/password-hash.test.ts` (legacy and PBKDF2 both verify; the RFC 7914 PBKDF2 test vector; independent recomputation with `node:crypto`; upgrade decisions; the Workers limit; configuration errors), `tests/card/auth/signin.test.ts` ("password upgrade at sign-in"), `tests/card/auth/first-run-setup.test.ts`. The persistence probe passes under both password policies; its declared differences (`tests/fixtures/persistence-oracle/deliberate-differences.json`) concern Ruby bug reproduction and the stored-HTML divergence above, not password hashing. |
+| **Tests** | `tests/card/auth/password-hash.test.ts` (legacy and PBKDF2 both verify; the RFC 7914 PBKDF2 test vector; independent recomputation with `node:crypto`; upgrade decisions; the Workers limit; configuration errors), `tests/card/auth/signin.test.ts` ("password upgrade at sign-in"), `tests/card/auth/first-run-setup.test.ts`. The persistence probe passes under both password policies; its declared differences (withheld until disclosure) concern Ruby bug reproduction, not password hashing. |
 
-### 3. Cross-site requests: writes and sign-in must come from the deck's own pages
+### 2. Cross-site requests: writes and sign-in must come from the deck's own pages
 
 | | |
 |---|---|
@@ -100,9 +84,9 @@ default, and a deployment that is publicly reachable should not inherit it silen
 | **Why** | Forged edits and login CSRF act with, or against, a visitor's identity without their knowledge. Checking the origin needs no token, so no page's bytes change. |
 | **Compatibility** | Same-origin forms, the editor, and token-authenticated API calls are unaffected. A site that posts from another origin it controls (an external editor) lists it in `DECKO_TRUSTED_ORIGINS`. Hosts are compared by host and port, not scheme, so a TLS-terminating proxy does not cause false refusals. |
 | **Configuration** | `DECKO_ORIGIN_CHECK=off` restores Ruby's behaviour. `DECKO_TRUSTED_ORIGINS`: comma-separated `scheme://host[:port]` origins. |
-| **Tests** | `tests/server/write-routes-origin.test.ts` (cross-site Origin, `null` Origin, `Sec-Fetch-Site`, foreign Referer and a foreign port are refused with the card unchanged; a cross-site sign-in mints no session, including on the edge hosts' sign-in-only path; same-origin, Referer-only and header-less requests, trusted origins and the off switch pass), `tests/card/auth/first-run-setup.test.ts` (a cross-site setup POST creates no account), `tests/deploy/bunny-edge-signin-session-roundtrip.test.ts` (the Bunny edge reads both settings from its own environment). The Node host's cross-site reset, password and sign-in posts are covered by `tests/card/auth/reset-flow-endpoint.test.ts` (13 tests, `npx vitest run tests/card/auth/reset-flow-endpoint.test.ts`). That suite is **development evidence, not part of the published package**: it opens `fixtures/test-corpus/` at module load, and `docs/TESTING.md` §1 records that fixture as not redistributed. With the fixture present the suite runs; in a clean clone of the published package it is not there, and the suite does not run. |
+| **Tests** | `tests/server/write-routes-origin.test.ts` (cross-site Origin, `null` Origin, `Sec-Fetch-Site`, foreign Referer and a foreign port are refused with the card unchanged; a cross-site sign-in mints no session, including on the edge hosts' sign-in-only path; same-origin, Referer-only and header-less requests, trusted origins and the off switch pass), `tests/card/auth/first-run-setup.test.ts` (a cross-site setup POST creates no account), `tests/deploy/bunny-edge-signin-session-roundtrip.test.ts` (the Bunny edge reads both settings from its own environment). The Node host's cross-site reset, password and sign-in posts are covered by the reset-flow endpoint suite (13 tests). That suite is **development evidence, not part of the published package**: it opens `fixtures/test-corpus/` at module load, and `docs/TESTING.md` §1 records that fixture as not redistributed. With the fixture present the suite runs; in a clean clone of the published package it is not there, and the suite does not run. |
 
-### 4. Secrets are compared in constant time
+### 3. Secrets are compared in constant time
 
 | | |
 |---|---|
@@ -111,39 +95,6 @@ default, and a deployment that is publicly reachable should not inherit it silen
 | **Why** | A timing difference can leak a secret one character at a time to a patient remote attacker. |
 | **Compatibility** | None: the results are identical, only the timing differs. |
 | **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison, including the padded-prefix case the length check exists for (`[1,2,3]` against `[1,2,3,0,0,0]`, and `"x"` against `"x\0"` through the string path); `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
-
-### 5. An account holder's name may be changed only by its holder or Help Desk
-
-| | |
-|---|---|
-| **Ruby** | Ruby Decko 0.20.0 differs from the port here deliberately, for a security reason that is withheld until a private channel is established to disclose it responsibly. Nothing about what Ruby accepts is described in this repository. |
-| **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1051`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Those two cases are the whole allowance — administrators are not among them, and the check has no always-allow arm. |
-| **Why** | Renaming another user's account holder acts against that user: it changes the name their session, their notification mail and the references pointing at them answer to, without their involvement. |
-| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. |
-| **Configuration** | None. |
-| **Tests** | The scenario-battery steps that exercise this rename are withheld from the public package until the disclosure described under "Reporting a vulnerability"; when they are absent, `tests/tools/side-effects-scenario-battery.test.ts` prints a `[withheld until disclosure] NOT RUN` line for them. The public battery's other 88 steps run without them. |
-
-### 6. A deck with no read rules renders in full, where Ruby denies
-
-| | |
-|---|---|
-| **Ruby** | On a deck whose `read_rules_hash` holds no rule at all, `permission_rule_id` resolves to `nil` and `ok_to_read?` denies (`set/all/permissions.rb:139-146`). A deck with no read rules therefore renders nothing. |
-| **Port** | The port treats a deck carrying **no read rules at all** as carrying no permission data and renders it. `canReadByRuleLookupDepth` (`src/card/permissions/read-rules.ts`) returns `undefined` — "no opinion", so the walk continues and the card is readable — both on the early return when the deck has no read rules or no `*all+*read` catch-all, and on the terminal return when no rule candidate resolves. The CQL path carries the same allowance with one narrowing: `RenderEngine.cqlPermissionOptions` (`src/card/render.ts`) answers `alwaysOk: true` for a rule-less deck, but with `excludedRightIds` set to the account-field rows, so `/api/query`-shaped statements still refuse to serve `*password`, `*salt`, `*email`, `*status` and `*api_key` — the six codenames on `ACCOUNT_RIGHT_CODENAMES`. `api_key` is card-mod-api_key's account field rather than card-mod-account's, and it is on the list because it is `include_set Abstract::AccountField` like the rest and its content authenticates as the account. |
-| **Why it is not simply closed** | Every real deck bootstraps `*all+*read` (`card/auth/setup.rb:44`, as cited by the test that pins the allowance), so the allowance only reaches decks that never ran setup: synthetic seeds, replay fixtures, and bare test decks. Failing closed there denies **every** card, because there is no rule to match, which turns those fixtures into decks that render nothing. Measured on this tree by flipping both returns in `read-rules.ts` to fail closed: the permissions suite costs exactly one test, `tests/card/permissions/read-permission.test.ts` "renders rule-less decks in full (the documented synthetic-seed divergence)" — the pin for this entry — but the render and CQL suites lose far more, because their fixtures are largely rule-less seeds: **78 of 247 files fail** across `tests/card/render/` and `tests/card/cql/`. The reference-harness grade is unaffected either way (its fixture carries the catch-all). So this is a real port-faithfulness gap and a large, deliberate change, not a one-line correction. |
-| **The demo deck's safety rests on migration 0009** | **The demo deck's protection from this divergence rests entirely on `deploy/migrations/0009-demo-account-read-rules.sql`, not on the engine.** It is what takes the demo deck out of the allowance's blast radius: the `*all+*read` catch-all plus the five `<field>+*right+*read` grants that `real.yml` gives the Help Desk role. Without it the demo deck serves an anonymous requester the owner's password digest, salt and email address — which is exactly the leak the scoped `excludedRightIds` allowance was added to close, and which the catch-all then closes properly. It sorts after `0006-demo-role-substrate.sql` because every row is a `card_references` entry whose referee is the Help Desk role card, and 0006 is what creates that role. A deploy that applies the chain but skips 0009 has a demo deck with accounts and no read rules, which is the one shape where this divergence is a live exposure. |
-| **What a real deck must do** | Bootstrap `*all+*read`. Run `decko`'s own setup (`card/auth/setup.rb`), or apply `deploy/migrations/0009-demo-account-read-rules.sql`, or create any read rule the closure walk can resolve. The moment a deck resolves at least one read rule the port takes the ordinary fail-closed path, and `hasReadRules && hasCatchAllReadRule` is the condition under which a rule walk that cannot be evaluated denies rather than allows. A deck that has read rules but no `*all+*read` catch-all is **not** protected by this allowance's narrowing — it is still in the allowance — so the catch-all is the part that matters, not merely having some rules. |
-| **Tests** | `tests/card/permissions/read-permission.test.ts` — the rule-less render pin above, plus the denial tests that hold the fail-closed arm (`denies the nest, never the host`, `resolves cards without a stored read_rule_id through the live rule walk`). `tests/deploy/demo-account-anonymous-exposure.test.ts` covers the `/api/query` account-field exclusion on the demo deck. `tests/card/render/account-field-cql-exclusion.test.ts` pins the exclusion list itself on a rule-less deck — every account-field codename including `api_key` is excluded, and a right that is not an account field is not. `tests/deploy/deploy-migrations-manifest-contract.test.ts` pins the migration list. |
-
-### 7. An upload is refused before it is stored
-
-| | |
-|---|---|
-| **Ruby** | A two-step (preliminary) upload is answered at the `:prepare_to_validate` stage (`card-mod-carrierwave set/abstract/attachment/00_upload_cache.rb:8-25`), one stage before `check_permissions` runs at `:validate` (`mod/permissions/set/all/permissions.rb:22-26`). The event stores the file and files a draft action, then ends the act with `abort :success`, which does not roll back (`card/mod/core/set/all/result.rb:63-71`). So an actor with no permission on the card still gets the file into the deck's storage and leaves draft `card_actions`, `card_changes` and `card_acts` rows behind. |
-| **Port** | The port checks `ok_to_update?` / `ok_to_create?` before anything is stored (`src/card/actions/card-action-engine.ts`), and a refused upload writes no file and no rows. A permitted two-step upload behaves as Ruby's does: the bytes are stored and the draft action is filed. |
-| **Why** | Storing a file for an actor who may not change the card lets anyone who can reach the upload route write to the deck's storage. |
-| **Compatibility** | Only refused uploads differ: Ruby answers them with the preview and leaves the file and draft rows; the port answers with its permission error and leaves nothing. |
-| **Configuration** | None. |
-| **Tests** | The upload permission suites added with this entry pin a denied update (403, no file, draft, change or act), a denied create (403, upload cache empty), a granted update and a granted create, and an ordinary one-step upload denial. |
 
 ## Migration tooling
 
@@ -157,7 +108,7 @@ default, and a deployment that is publicly reachable should not inherit it silen
   port's default PBKDF2 hashes. While Ruby Decko still serves the same deck,
   the port must run with `DECKO_PASSWORD_HASH=legacy-sha1`; an account whose
   password the port already set or upgraded cannot sign in through Ruby until
-  its password is set again. Full detail: approved divergence 2 above.
+  its password is set again. Full detail: approved divergence 1 above.
 - **Transaction semantics:** on Cloudflare D1 a save is atomic through a
   compensating journal rather than `BEGIN`/`COMMIT`, other connections can
   read a save's rows before it commits, and rolled-back ids are not reused —

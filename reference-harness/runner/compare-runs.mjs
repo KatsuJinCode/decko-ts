@@ -32,19 +32,19 @@ const slotValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(slotValues);
   return [];
 };
-/** Every collapse id N3 matches in any string of a recorded line, in order. */
+/** Every collapse id N4 matches in any string of a recorded line, in order. */
 const collapseValues = (value) => {
   if (typeof value === "string") return [...value.matchAll(COLLAPSE_ID)].map((m) => m[0]);
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(collapseValues);
   return [];
 };
-/** Every relative-time span N4 matches in any string of a recorded line, in order. */
+/** Every relative-time span N5 matches in any string of a recorded line, in order. */
 const relativeTimeValues = (value) => {
   if (typeof value === "string") return [...value.matchAll(RELATIVE_TIME)].map((m) => m[0]);
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(relativeTimeValues);
   return [];
 };
-/** Every capture-host path or heap address N5 matches inside a debug-page
+/** Every capture-host path or heap address N7 matches inside a debug-page
  *  title in any string of a recorded line, in order. */
 const debugTitle = (s) => {
   const out = [];
@@ -78,14 +78,14 @@ const frameLineValues = (value) => {
 const maskAccounting = (result, nameA, nameB) => {
   const counts = (line) => ({
     N1: slotValues(line),
-    N3: collapseValues(line),
-    N4: relativeTimeValues(line),
-    N5: captureHostValues(line),
+    N4: collapseValues(line),
+    N5: relativeTimeValues(line),
     N6: frameLineValues(line),
+    N7: captureHostValues(line),
   });
   const a = counts(nameA);
   const b = counts(nameB);
-  for (const rule of ["N1", "N3", "N4", "N5", "N6"]) {
+  for (const rule of ["N1", "N4", "N5", "N6", "N7"]) {
     result.masks[rule].matched_pairs += Math.min(a[rule].length, b[rule].length);
     a[rule].forEach((v, i) => {
       if (b[rule][i] !== undefined && b[rule][i] !== v) result.masks[rule].differing_pairs++;
@@ -98,10 +98,10 @@ const result = {
   kinds: {},
   masks: {
     N1: { matched_pairs: 0, differing_pairs: 0 },
-    N3: { matched_pairs: 0, differing_pairs: 0 },
     N4: { matched_pairs: 0, differing_pairs: 0 },
     N5: { matched_pairs: 0, differing_pairs: 0 },
     N6: { matched_pairs: 0, differing_pairs: 0 },
+    N7: { matched_pairs: 0, differing_pairs: 0 },
   },
   unexplained: [],
 };
@@ -118,8 +118,8 @@ for (const kind of ["render", "semantics", "scenarios"]) {
       continue;
     }
     maskAccounting(result, x, y);
-    // Masked as the grader masks: render HTML by N1+N3+N4+N5+N6, an error
-    // record's class by N7 (any kind records failures), everything else raw.
+    // Masked as the grader masks: render HTML by N1+N4+N5+N6+N7, an error
+    // record's class by N8 (any kind records failures), everything else raw.
     const withError = (line) => (line.error !== undefined ? { ...line, error: normalizeErrorRecord(line.error) } : line);
     const norm = (line) =>
       withError(
@@ -146,10 +146,10 @@ const pairLine = (rule, label) => {
   return `${rule} ${label}: ${m.differing_pairs} of ${m.matched_pairs} paired values differ between the runs`;
 };
 console.log(pairLine("N1", "slot ids"));
-console.log(pairLine("N3", "collapse ids"));
-console.log(pairLine("N4", "relative-time spans"));
-console.log(pairLine("N5", "capture-host tokens in debug titles"));
+console.log(pairLine("N4", "collapse ids"));
+console.log(pairLine("N5", "relative-time spans"));
 console.log(pairLine("N6", "backtrace frame lines"));
+console.log(pairLine("N7", "capture-host tokens in debug titles"));
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
 process.exit(result.unexplained.length ? 1 : 0);

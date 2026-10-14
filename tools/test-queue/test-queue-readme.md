@@ -54,7 +54,7 @@ node tools/test-queue/submit-test-job.mjs \
 node tools/test-queue/submit-test-job.mjs \
   --name "env-gated probe" \
   --cwd REPO_ROOT/decko-ts \
-  --cmd "npx vitest run tests/some-probe.test.ts" \
+  --cmd "npx vitest run tests/card/fetch/cache.test.ts" \
   --env MY_PROBE=1 --env OTHER_SETTING=abc
 ```
 
@@ -73,6 +73,16 @@ Exit code = the job's exit code; last 4KB of output is printed; the full log
 path and result JSON path are printed. `--no-wait` returns the job id only.
 `--workers 2` (on the FIRST submitter while no runner is alive) lets the
 runner execute two jobs at once; the default is one at a time.
+
+## Standing-net members not redistributed
+
+A listed member of `tests/standing-net.json` that is absent from the worktree
+is NOT RUN: the runner prints `[not redistributed] NOT RUN <file>`, submits
+the members that are present, and reports the run as PARTIAL. A partial run
+exits 0 and is never reported as a pass, because the skip pin describes the
+full net. `STANDING_NET_REQUIRE_ALL=1` refuses a partial net with exit 6
+before anything is submitted. The behaviour is pinned by
+`standing-net-not-redistributed.test.mjs`.
 
 ## Standing-net env guard
 

@@ -24,10 +24,56 @@ import { describe, expect, it } from "vitest";
 import {
   createRenderTestStorage,
   seedCard,
+  seedReference,
+  type RenderTestStorage,
 } from "./render-test-storage.js";
 import { prewarmStaticDeck } from "../../support/prewarm-static-deck.js";
 import type { RenderCard } from "../../../src/card/render.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
+
+/** Seed the deck's own read substrate, deck-ACCURATELY typed.
+ *
+ *  This suite's deck is corpus-shaped: card 1 is the Basic type card and
+ *  card 2 is the SEARCH type card (random name "ztpmqk", codename
+ *  "search_type"), which is also this fixture's default type id. A real
+ *  Decko deck's read substrate is never Search-typed — Set and Setting are
+ *  Cardtype cards, the party cards carry their own type, and the
+ *  `*all+*read` rule junction carries the junction type (captured corpus
+ *  rows of the captured test corpus (not redistributed) — codename "set" type_id
+ *  = the cardtype card, `*all+*read` type_id = the junction type, neither of
+ *  them the Search type). The shared bootstrap seeds those rows with the
+ *  deck's DEFAULT type id, which here IS the Search type card, so the
+ *  prewarm's gate on typeCode "search_type" legitimately discovered five
+ *  substrate rows as search cards and the count pin read 7 instead of 2.
+ *
+ *  Seeding the deck's own copies takes the codenames and the rule's sides
+ *  over from the bootstrap rows (render-test-storage's releaseStockCard /
+ *  repointStockReferences), leaving the deck exactly the shape a real deck
+ *  has: one `*all` SET card, the `*read` setting, the Anyone/Anonymous
+ *  parties, and `*all+*read` -> [[Anyone]] (card/auth/setup.rb:44). */
+async function seedTypedReadSubstrate(storage: RenderTestStorage, cardtypeId: number): Promise<void> {
+  // Set (cardtype-typed), then *all typed WITH it — the read-rule cache join
+  // filters on `sets.type_id = <the Set card's id>` (read_rule_cache.rb), so
+  // *all's type must be this deck's own Set card.
+  await seedCard(storage, { id: 60, name: "Set", codename: "set", typeId: cardtypeId });
+  await seedCard(storage, { id: 61, name: "*all", codename: "all", typeId: 60 });
+  await seedCard(storage, { id: 62, name: "*read", codename: "read", typeId: cardtypeId });
+  await seedCard(storage, { id: 63, name: "Anyone", codename: "anyone", typeId: cardtypeId });
+  await seedCard(storage, { id: 64, name: "Anonymous", codename: "anonymous", typeId: cardtypeId });
+  // the rule card: a junction (NULL name/key, sides only - the 2020 Lexicon
+  // migration) whose db_content names the party, plus the card_references row
+  // that puts it in read_rules_hash (read_rule_cache.rb's join).
+  await seedCard(storage, {
+    id: 65,
+    leftId: 61,
+    rightId: 62,
+    typeId: cardtypeId,
+    dbContent: "[[Anyone]]",
+    readRuleId: 65,
+    readRuleClass: "*all",
+  });
+  await seedReference(storage, 65, 63, "anyone");
+}
 
 interface EnginePrewarmSeam {
   searchResults: Map<string, RenderCard[]>;
@@ -62,6 +108,11 @@ describe("prewarm-static-deck: Search-type coverage (post-1ec2761 parity fix)", 
       // The search type card: random name "ztpmqk",
       // codename "search_type".
       await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
+      // the Cardtype card this deck types its Set/Setting/party/rule cards
+      // with, plus the deck's own read substrate (see seedTypedReadSubstrate:
+      // none of it is Search-typed, as in a real deck).
+      await seedCard(storage, { id: 3, name: "Cardtype", codename: "cardtype", typeId: 1 });
+      await seedTypedReadSubstrate(storage, 3);
       // A pair of search-type cards, both with malformed content (the
       // prewarm's try/catch will catch runSearch throws here).
       const failing: PrewarmFailingSeed[] = [

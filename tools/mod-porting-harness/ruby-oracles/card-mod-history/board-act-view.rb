@@ -619,7 +619,7 @@ raise "oracle title bytes not in the captured anchor" unless anchor.include?(tit
 emit(behaviorId: "view:board_act",
      kind: "view-fragment",
      scenario: "board_link_title_capture_crosscheck",
-     gemSource: "board_act_renderer.rb:6-17 (title/left_title/right_title) cross-checked against fixtures/captured/board-views.json (targets.basic_note board tab pill anchor)",
+     gemSource: "board_act_renderer.rb:6-17 (title/left_title/right_title) cross-checked against the captured board-views oracle, not in the public package (targets.basic_note board tab pill anchor)",
      title: title7,
      capturedAnchor: anchor)
 

@@ -1203,8 +1203,7 @@ const userFollowErrorsView: ViewFn = (ctx) => {
 };
 
 /** The follow views' TEST SEAM - the composition cores the test file
- *  (tests/card/mod-loader/card-mod-follow-harness-probe.ts
- *  .test.ts) exercises against the Ruby semantics; the same functions
+ *  (the follow harness probe suite, not in the public package) exercises against the Ruby semantics; the same functions
  *  the view bodies call. */
 export const followProbeSurface = {
   /** base_views.rb:41-43 the follower fallback (the page arm). */

@@ -60,7 +60,7 @@ persistence and atomic saves
 ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)),
 blob and SQL drivers
 ([decisions/0003](decisions/0003-edge-native-driver-interfaces.md)), and
-authentication and permissions among the five approved divergences.
+authentication and permissions among the six approved divergences.
 
 ## 2. "Ruby is part of the extension model — the biggest missing architectural issue"
 
@@ -266,8 +266,8 @@ resulting card and the `mail` sent, and every sign-in's answer carries
 Two honesty notes belong here, because the critique asked for the boundary and
 the repository states it elsewhere:
 
-- The side-effects battery on the committed clean deck is **83 of its 88 public
-  steps matching**, 5 declared deliberate differences and none open, with 2 more
+- The side-effects battery on the committed clean deck is **83 of its 87 public
+  steps matching**, 4 declared deliberate differences and none open, with 3 more
   steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). It is not
   presented as a clean sweep.
 - The corpus figure is not purely oracle-against-oracle: fifty of its
@@ -333,7 +333,7 @@ row delta against the Ruby oracle's: of the 67 public operations, 65 are
 identical and 2 are declared deliberate differences, and 3 more are withheld
 until disclosure ([coverage-inventory.md](coverage-inventory.md), "The public
 batteries, accounted"). The 90-step scenario battery does the same for
-verdicts: of 88 public steps, 83 match, 5 are declared and none is open, with 2
+verdicts: of 87 public steps, 83 match, 4 are declared and none is open, with 3
 withheld.
 
 The deeper evidence is named but is explicitly **not** public: the production-deck
@@ -391,7 +391,7 @@ Ruby Decko … Its acceptance criterion is exact parity with Ruby Decko in
 rendering, persistence, semantics and side effects, **including Ruby's
 defects**, so that an existing deck behaves the same on either engine — except
 where a difference is declared below." Reproducing observable behaviour is the
-claim; being the same system is not, and the five approved divergences are the
+claim; being the same system is not, and the six approved divergences are the
 explicit list of where behaviour deliberately differs.
 
 No hosting-modernization claim is made either: the performance evidence is

@@ -10,7 +10,7 @@
 // byte-compatible npm package exists (npm `uglify-js` is the 3.x line; the
 // vendored build is the 2.x-line harmony branch whose mangle dictionary and
 // output bytes differ). The engine is therefore VENDORED VERBATIM in
-// `vendor/uglifier-uglifier-4.2.1/` (see that directory's
+// `vendor/uglifier-4.2.1-uglify-harmony/` (see that directory's
 // PROVENANCE-AND-LICENSE.md) and executed in a Node `vm` sandbox, the same
 // five files in the same order uglifier.rb's `source_with` joins them:
 // es5.js, split.js, source-map.js, uglify-harmony.js, uglifier.js.

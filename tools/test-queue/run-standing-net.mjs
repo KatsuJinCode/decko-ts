@@ -2,8 +2,11 @@
 //
 // The canonical file list lives in tests/standing-net.json (checked in). This
 // script is the only supported way to run the net: it reads the manifest,
-// verifies every listed file exists in THIS worktree (a stale manifest is a
-// loud failure, never a silently-shrinking net), and delegates to
+// checks every listed file in THIS worktree. A listed file that is absent is
+// NOT RUN: it prints `[not redistributed] NOT RUN <file>`, the run covers the
+// members that are present, and the run is reported as PARTIAL — never as a
+// pass (see the verdict below). STANDING_NET_REQUIRE_ALL=1 makes any absent
+// member a failure. The run is delegated to
 // submit-test-job.mjs so the run goes through the same one shared queue,
 // dedupe and result-recording path as every other test job.
 //
@@ -41,7 +44,8 @@
 // post-run skip-pin check — WARNING: this produces a skip-heavy INVALID net
 // (oracle-dependent tests skip silently); use only when you know you want it.
 // Exit code = the queue job's exit code, or 4 (pre-submit env refusal) /
-// 5 (post-run skip-pin violation) from the guards above.
+// 5 (post-run skip-pin violation) / 6 (STANDING_NET_REQUIRE_ALL=1 with an
+// absent member) from the guards above. A PARTIAL run exits 0 and says so.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -146,17 +150,24 @@ if (
   process.exit(2);
 }
 
-// Anti-drift gate: the net is the manifest, exactly. A file listed here that
-// is missing from this worktree means the manifest is stale relative to this
-// tip — fail and say which entries, instead of quietly running a shrunk net.
-const missing = manifest.files.filter((f) => !fs.existsSync(path.join(cwd, f)));
-if (missing.length > 0) {
+// Members that are not redistributed with this repository are NOT RUN, loudly
+// and counted separately. A run that omits any member is PARTIAL and is never
+// reported as a pass: the envGuard.expectedSkips pin describes the full net.
+const notRedistributed = manifest.files.filter((f) => !fs.existsSync(path.join(cwd, f)));
+const members = manifest.files.filter((f) => fs.existsSync(path.join(cwd, f)));
+for (const f of notRedistributed) console.error(`[not redistributed] NOT RUN ${f}`);
+const requireAll = process.env.STANDING_NET_REQUIRE_ALL === "1";
+if (notRedistributed.length > 0 && requireAll) {
   console.error(
-    `run-standing-net: manifest is STALE for ${cwd} — ${missing.length} of ${manifest.files.length} files missing:`,
+    `run-standing-net: STANDING_NET_REQUIRE_ALL=1 — ${notRedistributed.length} of ${manifest.files.length} listed members are NOT RUN in ${cwd}; refusing to submit a partial net.`,
   );
-  for (const f of missing) console.error(`  - ${f}`);
-  console.error("Reconcile tests/standing-net.json at this tip before running the net.");
-  process.exit(3);
+  process.exit(6);
+}
+if (members.length === 0) {
+  console.error(
+    `run-standing-net: NOT RUN — none of the ${manifest.files.length} listed members is present in ${cwd}; nothing was submitted. This is not a pass.`,
+  );
+  process.exit(0);
 }
 
 // PRE-SUBMIT GUARD + FINGERPRINT. Presence only — never values. A var counts
@@ -196,7 +207,7 @@ if (absentVars.length > 0) {
   );
 }
 
-const cmd = `npx vitest run ${manifest.files.join(" ")} ${(manifest.vitestArgs ?? []).join(" ")}`.trim();
+const cmd = `npx vitest run ${members.join(" ")} ${(manifest.vitestArgs ?? []).join(" ")}`.trim();
 const submitArgs = [
   path.join("tools", "test-queue", "submit-test-job.mjs"),
   "--name",
@@ -213,7 +224,7 @@ for (const { key, value } of envPairs) {
 }
 
 console.error(
-  `run-standing-net: submitting ${manifest.files.length}-file standing net (${manifest.provenance?.reconciledAtCommit ?? "unversioned provenance"}) as queue job for ${cwd}`,
+  `run-standing-net: submitting ${members.length} of ${manifest.files.length} listed standing-net members (${manifest.provenance?.reconciledAtCommit ?? "unversioned provenance"}) as queue job for ${cwd}`,
 );
 // stdout is piped (not inherited) so the RESULT_JSON line can be read for the
 // post-run guard; it is re-emitted below, with any forwarded --env values
@@ -278,6 +289,7 @@ if (result.logPath && fs.existsSync(result.logPath)) {
 
 let verdict;
 if (jobExit !== 0) verdict = "job-failed";
+else if (notRedistributed.length > 0) verdict = "partial-not-redistributed";
 else if (allowNoEnv) verdict = "accepted-with-allow-no-env";
 else if (measuredSkips === null) verdict = "unparseable-summary";
 else if (measuredSkips === guard.expectedSkips) verdict = "pass";
@@ -308,6 +320,9 @@ try {
         jobExitCode: result.exitCode ?? null,
         measuredSkips,
         pinnedExpectedSkips: guard.expectedSkips,
+        listedMembers: manifest.files.length,
+        ranMembers: members.length,
+        notRedistributedNotRun: notRedistributed,
         verdict,
         logPath: result.logPath ?? null,
       },
@@ -326,6 +341,12 @@ if (verdict === "job-failed") {
     `run-standing-net: standing-net JOB FAILED (exit ${jobExit}); the env-guard skip check does not apply to failed jobs. Log: ${result.logPath ?? "?"}`,
   );
   process.exit(jobExit);
+}
+if (verdict === "partial-not-redistributed") {
+  console.error(
+    `run-standing-net: PARTIAL — ran ${members.length} of ${manifest.files.length} listed members (job exit 0); ${notRedistributed.length} NOT RUN [not redistributed]. Not a pass: the envGuard.expectedSkips pin describes the full net and is not checked here. Receipt: ${receiptPath}`,
+  );
+  process.exit(0);
 }
 if (verdict === "accepted-with-allow-no-env") {
   console.error(

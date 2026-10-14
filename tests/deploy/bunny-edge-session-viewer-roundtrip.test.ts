@@ -14,7 +14,7 @@
 //
 //   2. ANONYMOUS BYTE IDENTITY — a request with no cookie produces body
 //      bytes BYTE-FOR-BYTE equal to the checked-in baseline fixture
-//      (fixtures/edge-anonymous-read-baseline-home-site-shell.html, the
+//      (tests/deploy/fixtures/edge-anonymous-read-baseline-home-site-shell.html, the
 //      full page shell the edge serves). A cookie
 //      that does NOT resolve — unknown, revoked, malformed — produces those
 //      same bytes, because all four degrade cases land on the anonymous
@@ -46,7 +46,7 @@
 //     (DECKO_LIVE_TRIAL_DB=1) covers the real Hrana wire for session rows;
 //     this suite did not run it and makes no claim about it.
 //
-// DATA: synthetic. Credentials from src/testing/generated-credentials.js.
+// DATA: synthetic. Credentials from src/testing/generated-credentials.ts.
 // No real deck content, no real account, no live service.
 
 import { readFileSync } from "node:fs";
@@ -129,6 +129,10 @@ const RULES = {
   catchAllRule: 25,
   homeRule: 26,
   home: 100,
+  /** seedMinimal's own catch-all rule id (the viewer-sensitive deck below
+   *  uses catchAllRule for the same card; the two decks are separate
+   *  databases, so the ids do not have to agree). */
+  catchAll: 100006,
   /** The signed-in account card the viewer tests render under. */
   actor: 9100,
 } as const;
@@ -213,8 +217,39 @@ async function seedMinimal(storage: RenderTestStorage): Promise<void> {
   // engine wins"), its codename adapter peeking THIS deck's codehash memo —
   // so the ids here are what every later deck's ":mark" parses resolve
   // through, and they must match the second deck's rows.
-  await seedCard(storage, { id: RULES.all, name: "*all", codename: "all", typeId: 52 });
+  //
+  // *all is Set-typed with this deck's Set TYPE card (RULES.set), as a set
+  // card is (the viewer-sensitive deck below types it the same way): the
+  // read-rule cache join filters on `sets.type_id = SetID`
+  // (read-rules.ts, statement 2), so a `*all` typed with anything else
+  // drops the stock `*all+*read -> Anyone` rule out of read_rules_hash and
+  // this deck denies the anonymous viewer every card — including the Home
+  // page this suite's byte-identity pin renders.
+  await seedCard(storage, { id: RULES.all, name: "*all", codename: "all", typeId: RULES.set });
   await seedCard(storage, { id: 601, name: "*layout", codename: "layout", typeId: 52 });
+  // This deck's own `*all+*read` catch-all -> Anyone, named and referenced
+  // the way the capture deck carries it (the stock substrate's row is
+  // side-backed and key-less, and this deck replaces `*all` and `*read`
+  // with anonymized names). Two readers need it:
+  //   - the ReadRuleCache join reads it from card_references, so the
+  //     Anyone reference is what puts it in the anonymous viewer's set;
+  //   - the rule-closure walk resolves candidates by their composed KEY
+  //     (`resolveRuleIdsByRuleKeys`), so the stored name is what makes
+  //     `*all+*read` a resolvable candidate for every card with no stored
+  //     read_rule_id (Home among them).
+  // Without it the anonymous viewer is denied every card and /Home answers
+  // 403. It lands AFTER the `*all`/`*read` cards, so those two take the
+  // stock substrate's unique columns over first (the stock rule is then a
+  // second row on the same sides and seedCard drops it).
+  await seedCard(storage, {
+    id: RULES.catchAll,
+    name: "*all+*read",
+    leftId: RULES.all,
+    rightId: RULES.read,
+    typeId: 2,
+    dbContent: "[[Anyone]]",
+  });
+  await seedReference(storage, RULES.catchAll, RULES.anyone, "anyone");
   await seedCard(storage, { id: 22746, name: "*all+*layout", leftId: RULES.all, rightId: 601, typeId: 52, dbContent: "Default Layout" });
   await seedCard(storage, { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>` });

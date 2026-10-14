@@ -4,7 +4,7 @@
 //   tests/fixtures/pods/psych-stress.yml / .json — tools/persistence/psych-stress.rb:
 //     ~100 strings covering every quoting, escaping and wrapping rule, dumped
 //     by Psych 5.1.2 as pod-shaped hashes.
-//   tests/fixtures/pods/oracle-deck-after-probe.ruby.yml — a Ruby-sown deck
+//   the oracle deck pod — a Ruby-sown deck
 //     pod (674 cards) produced by `decko sow -c '{}'` plus the persistence
 //     op list, through
 //     tools/persistence/pod-sow.rb.
@@ -52,13 +52,14 @@ describe("pod YAML: Psych's bytes", () => {
     expect((last.get(sym("fields")) as YamlMap).get("plain key")).toBe("v");
   });
 
-  // The oracle deck's pod is a private-deck artifact (it carries the withheld
-  // stored-HTML row), excluded from a release package. Absent, the test says so
-  // and skips, the repository's [corpus-gated] convention, instead of failing.
+  // The oracle deck's pod is a private-deck artifact (it carries rows that a
+  // release package withholds), excluded from a release package. Absent, the
+  // test says so and skips, the repository's [corpus-gated] convention,
+  // instead of failing.
   itOrSkipLoud(
     !existsSync(path.join(FIXTURES, "oracle-deck-after-probe.ruby.yml")),
     "tests/card/pods/pod-yaml.test.ts",
-    "tests/fixtures/pods/oracle-deck-after-probe.ruby.yml (a Ruby-sown deck pod; excluded from release packages)",
+    "the oracle deck pod (a Ruby-sown deck pod; excluded from release packages)",
   )("round-trips the oracle deck's pod byte for byte", () => {
     const text = read("oracle-deck-after-probe.ruby.yml");
     const loaded = loadYaml(text) as YamlMap[];

@@ -16,7 +16,7 @@
 // request, which beforeAll guarantees.
 //
 // Ruby truth under test (same cites as the twin parity suites):
-//   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
+//   - card 1.110.0 lib/card/error.rb:21 Card::Error base status_code = 422
 //     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
 //   - src/card/name/errors.ts the mark errors are the NotFound family
 //   - the shared surface: src/server/worker-shared-surface.ts mapRenderError
@@ -123,6 +123,18 @@ beforeAll(async () => {
       await driver.query(statement, []);
     }
   }
+  // The seed deck's stock read substrate (deploy/seed.mjs), which the shell
+  // rows below sit on: *all (id 25, codename 'all', typed Set id 7), *read
+  // (26, codename 'read'), Set (7, codename 'set'), Role (6), Anyone (27,
+  // codename 'anyone'), Anonymous (28), and the catch-all rule card 30
+  // granting Anyone. A deck with no catch-all read rule denies every card, as
+  // Ruby does, so the shell's *all+*layout rule hangs off the seed's own
+  // `*all` rather than a second `*all` row.
+  const SEED_ALL_ID = 25;
+  const SEED_CATCH_ALL_READ_RULE_ID = 30;
+  // *layout is typed Setting, as every setting card is: the rule cache joins
+  // rules to Set-typed sets and Setting-typed settings (rule_cache.rb).
+  const SEED_SETTING_TYPE_ID = 8;
   // The page shell's rows: the wired serving path is the engine's OWN page
   // assembly (renderPageBytes — the per-card *layout rule, the
   // *header/*footer nests, the html_page head), whose layout machinery
@@ -132,7 +144,7 @@ beforeAll(async () => {
   // boundary: body-mark parses in format.ts resolveNestName are outside the
   // head-guard's scope), and Ruby answers an error page for such a deck the
   // same way (wrap_and_render -> rescue_view). The row set mirrors
-  // tests/deploy/bunny-edge-error-page.ts seedShellHeadDeck (the page-head
+  // tests/deploy/bunny-edge-engine-request-error-mapping.test.ts seedShellHeadDeck (the page-head
   // codename cards, *all+*layout -> Default Layout with a body, *header,
   // *footer) over the demo schema.
   const T = "2026-09-20 00:00:00.000";
@@ -143,18 +155,17 @@ beforeAll(async () => {
     `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
     `) VALUES (\n${values}\n)`;
   for (const statement of [
-    insert(`22746, '*all', '*all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22747, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22748, NULL, NULL, NULL, 22746, 22747, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Default Layout'`),
-    insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
-    insert(`22750, '*header', '*header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
-    insert(`22751, '*footer', '*footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
-    insert(`22752, '*title', '*title', 'title', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Test Site'`),
-    insert(`22753, '*favicon', '*favicon', 'favicon', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '(my_bucket)/103/3649.jpg'`),
-    insert(`22754, '*ace', '*ace', 'ace', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
-    insert(`22755, '*tiny_mce', '*tiny_mce', 'tiny_mce', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
-    insert(`22756, 'Html', 'html', 'html', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22757, 'Basic', 'basic', 'basic', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22747, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, ${SEED_SETTING_TYPE_ID}, NULL`),
+    insert(`22748, NULL, NULL, NULL, ${SEED_ALL_ID}, 22747, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, 'Default Layout'`),
+    insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
+    insert(`22750, '*header', '*header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
+    insert(`22751, '*footer', '*footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
+    insert(`22752, '*title', '*title', 'title', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, 'Test Site'`),
+    insert(`22753, '*favicon', '*favicon', 'favicon', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '(my_bucket)/103/3649.jpg'`),
+    insert(`22754, '*ace', '*ace', 'ace', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '{}'`),
+    insert(`22755, '*tiny_mce', '*tiny_mce', 'tiny_mce', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '{}'`),
+    insert(`22756, 'Html', 'html', 'html', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, NULL`),
+    insert(`22757, 'Basic', 'basic', 'basic', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, NULL`),
   ]) {
     await driver.query(statement, []);
   }

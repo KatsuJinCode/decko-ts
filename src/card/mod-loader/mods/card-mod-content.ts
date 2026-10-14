@@ -77,7 +77,7 @@
 //   virtual walk), template/new_card_template/dup_structure
 //   (actions/type-resolution.ts — both new-card template legs; the
 //   structure leg's coverage:
-//   tests/card/rules/structure-governance-census-probe.test.ts)
+//   the structure-governance-census-probe suite (not in the public package))
 // - set/abstract/lock.rb methods (lock/lock_cache_key/locked?/lock!/
 //   unlock!): cache-machinery (Card.cache, not ported)
 // - set/abstract/00_sources.rb methods (source_paths/find_file/

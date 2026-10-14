@@ -10,7 +10,7 @@
 //     with the field_nest composition (structurally pinned below). The
 //     field-nest TARGETS (+site key / +secret key children) are proved to
 //     resolve and render :titled against the live engine.
-//   - STRUCTURAL (tests/card/mod-loader/card-mod-api_key.test.ts pattern):
+//   - STRUCTURAL (the card-mod-api_key suite (not in the public package) pattern):
 //     the :core view body is called with a recording ViewContext stub,
 //     pinning the exact nest calls field_nest makes (nesting.rb:27-31:
 //     field child name, the capitalize title variant, NO view option).

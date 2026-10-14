@@ -29,10 +29,21 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+
+/** Every card of a real deck carries its resolved *read rule id: Ruby's
+ *  set_read_rule store event writes cards.read_rule_id on save
+ *  (card-mod-permissions set/all/permissions.rb:1-5; the port's transcription
+ *  is src/card/mod-loader/mods/card-mod-permissions.ts:611-612). The search's
+ *  permission filter rides that column (cql/sql.ts implicitConditions'
+ *  `read_rule_id IN (...)` — Ruby's Where#permission_conditions, applied at
+ *  the relation level BEFORE the result window closes), so a NULL column
+ *  makes the whole result set empty. */
+const READ_RULE = { readRuleId: BOOTSTRAP_READ_SUBSTRATE_IDS.rule, readRuleClass: "*all" };
 
 /** Seed the deck for one whole-deck search scenario and warm the CQL name
  *  resolver the way the render walk does (a warm-up render enriches the
@@ -42,19 +53,19 @@ async function seedWholeDeckSearchDeck(
   storage: RenderTestStorage,
   opts: { itemCount: number; junctions: boolean },
 ): Promise<void> {
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 3, name: "Cardtype", codename: "cardtype", typeId: 3 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 3 });
-  await seedCard(storage, { id: 70, name: "Chunk Note", typeId: 3 });
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 3, name: "Cardtype", codename: "cardtype", typeId: 3, ...READ_RULE });
+  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 3, ...READ_RULE });
+  await seedCard(storage, { id: 70, name: "Chunk Note", typeId: 3, ...READ_RULE });
 
   const names: string[] = [];
   if (opts.junctions) {
-    await seedCard(storage, { id: 71, name: "Chunk Parent", typeId: 2, dbContent: "parent" });
+    await seedCard(storage, { id: 71, name: "Chunk Parent", typeId: 2, dbContent: "parent", ...READ_RULE });
     for (let i = 1; i <= opts.itemCount; i++) {
       const label = String(i).padStart(3, "0");
       const childId = 9000 + i;
       const junctionId = 8000 + i;
-      await seedCard(storage, { id: childId, name: `chunk child ${label}`, typeId: 2, dbContent: `child ${label}` });
+      await seedCard(storage, { id: childId, name: `chunk child ${label}`, typeId: 2, dbContent: `child ${label}`, ...READ_RULE });
       await seedCard(storage, {
         id: junctionId,
         name: `Chunk Parent+junction ${label}`,
@@ -62,6 +73,7 @@ async function seedWholeDeckSearchDeck(
         rightId: childId,
         typeId: 2,
         dbContent: `junction ${label}`,
+        ...READ_RULE,
       });
       names.push(`Chunk Parent+junction ${label}`);
     }
@@ -70,6 +82,7 @@ async function seedWholeDeckSearchDeck(
       name: "Whole Deck Junction Probe",
       typeId: 98,
       dbContent: '{"left":"Chunk Parent","sort":"name","limit":0}',
+      ...READ_RULE,
     });
     // Warm-up: enrich the parent (the search card's left operand) into
     // idsByKey so the CQL resolves it — the search card's own JSON content
@@ -83,6 +96,7 @@ async function seedWholeDeckSearchDeck(
         name: `chunk item ${label}`,
         typeId: 70,
         dbContent: `item ${label} content`,
+        ...READ_RULE,
       });
       names.push(`chunk item ${label}`);
     }
@@ -91,6 +105,7 @@ async function seedWholeDeckSearchDeck(
       name: "Whole Deck Probe",
       typeId: 98,
       dbContent: '{"type":"Chunk Note","sort":"name","limit":0}',
+      ...READ_RULE,
     });
     await storage.engine.render("chunk item 001", "content");
   }

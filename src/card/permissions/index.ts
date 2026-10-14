@@ -3,16 +3,19 @@
 // the denial markup contract.
 
 export {
+  actorKeyFromResults,
   ANONYMOUS_VIEWER,
   anonymousIdFromResults,
   canReadByRuleLookup,
   canReadByStoredRule,
   PERMISSION_GATE_COUNT_STATEMENT_INDEX,
   permissionGateCountJsonArm,
+  primeRuleClosureUniverse,
   readPermissionStateFromResults,
   readPermissionStateFromViewerResults,
   readPermissionStatements,
   resolveAnonymousReadPermission,
+  ruleClosureWalkStatement,
   type ReadPermissionState,
   type ReadViewer,
 } from "./read-rules.js";

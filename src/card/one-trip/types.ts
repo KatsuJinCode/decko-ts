@@ -1,5 +1,5 @@
 // The one-trip layer's PORTABILITY SURFACE — the named seams that keep the
-// language-neutral algorithm (deliverables/one-trip-PORTABILITY.md)
+// language-neutral algorithm
 // separable from THIS engine's specifics.
 //
 // WHY THIS FILE EXISTS (the upstreamability requirement): these

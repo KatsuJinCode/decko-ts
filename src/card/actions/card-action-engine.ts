@@ -1266,10 +1266,7 @@ export class CardActionEngine {
   }
 
   /** Renaming an account holder is refused before anything is written unless
-   *  the actor is the account itself or a member of Help Desk.
-   *
-   *  A deliberate difference from Ruby 0.20, recorded in
-   *  docs/SECURITY.md. */
+   *  the actor is the account itself or a member of Help Desk. */
   private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
     const accountId = await this.fetch.codenames.id("account");
     if (accountId === undefined) return;
@@ -1279,7 +1276,7 @@ export class CardActionEngine {
     );
     if (r.rows.length === 0) return; // not an account holder
     // No blanket allow arm: an administrator who is not in Help Desk may not
-    // rename another account (docs/SECURITY.md).
+    // rename another account.
     const state = await this.writePermissionState();
     if (this.actor !== null && this.actor.id === cardId) return; // own account
     const helpDesk = await this.fetch.codenames.id("help_desk");
@@ -1295,11 +1292,10 @@ export class CardActionEngine {
    *  new Bootswatch skin adds its +*variables and +*colors fields (SCSS),
    *  and each is permission-checked as its own create; a denied field
    *  rejects the whole save (shown as "+*VARIABLES: permission_denied
-   *  You don't have permission to create <skin>+*variables"). +*colors
-   *  checks only when the skin has a real parent skin
-   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?:
-   *  `left.parent? && super`); a new skin has none. The fields' own
-   *  creation on an allowed save is not ported. */
+   *  You don't have permission to create <skin>+*variables"). On a new
+   *  skin only +*variables is checked here, as Ruby's create path does
+   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?). The
+   *  fields' own creation on an allowed save is not ported. */
   private async checkSkinFieldPermissions(name: DeckoName, typeId: number): Promise<void> {
     const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
     if (skinTypeId === undefined || typeId !== skinTypeId) return;
@@ -2231,9 +2227,7 @@ export class CardActionEngine {
     }
     this.setActiveSaveAttributes(input);
     // Renaming a card that carries an account needs an account manager —
-    // the account itself, or a Help Desk member. This guard is stricter
-    // than Ruby 0.20; the difference is a deliberate one, recorded in
-    // docs/SECURITY.md.
+    // the account itself, or a Help Desk member.
     if (input.name !== undefined) {
       const current = (await this.fetch.fetchById(row.id))?.name?.key;
       if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);
@@ -4061,7 +4055,7 @@ export class CardActionEngine {
    * post-persist walk then sees when-false via commentApplied.
    *
    * The reference pins the appended bytes
-   * (fixtures/oracle-surfaces/card-mod-comment.harness.jsonl):
+   * (card-mod-comment.harness.jsonl (not in the public package)):
    * "content\n<hr>\n<p>lines…</p>\n<div
    * class="w-comment-author">AUTHOR.....YYYY-MM-DD HH:MM:SS UTC</div>".
    */

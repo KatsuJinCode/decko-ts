@@ -303,9 +303,11 @@ export interface ViewPermsGateInput {
    *  card.new_card?`. Ruby new_card? = not in the database; the port's
    *  equivalent for prepared render cards is id === undefined. */
   readonly isNewCard?: boolean;
-  /** format/error.rb:5-8 ok? — undefined means "cannot be verified"
-   *  (the port's rule-less/partial-deck divergence, same contract as
-   *  canReadByRuleLookup in read-rules.ts). */
+  /** format/error.rb:5-8 ok? — undefined means "cannot be verified", so
+   *  the caller treats it as denied (the same contract the read side
+   *  follows: canReadByRuleLookup returns false rather than undefined when a
+   *  walk cannot resolve, because permission_rule_id resolving nil is what
+   *  Ruby denies on, permissions.rb:139-146). */
   readonly taskAllowed: (task: CrudTask) => boolean | undefined;
   /** THIS render's format class name ("html" default). The denial VIEW's
    *  body is format-dependent: the html override is

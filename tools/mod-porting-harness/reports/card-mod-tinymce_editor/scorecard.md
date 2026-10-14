@@ -4,7 +4,7 @@ Behaviors validated: **7 / 16** (standing-net: 9, named-remainder: 0, RED: 0, un
 
 State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.
 
-Probe suite: 42 passed / 0 failed (tests/card/mod-loader/card-mod-tinymce_editor.test.ts, tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts)
+Probe suite: 42 passed / 0 failed (tests/card/mod-loader/card-mod-tinymce_editor.test.ts, the card-mod-tinymce-editor-views suite (not in the public package))
 
 | behavior | kind | state | ts registration | captured | evidence |
 |---|---|---|---|---|---|

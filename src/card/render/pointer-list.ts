@@ -398,7 +398,7 @@ function itemWrap(name: string, inner: string, itemView: string = POINTER_LIST_I
  *  template walk answers nil and the new card carries no type at all — no
  *  TYPE- chip, no data-card-type-id, no data-card-type-name. The engine's
  *  buildUnknownNestCard leaves typeId/typeName undefined for the same reason
- *  (prototype/lib/card/format/nest/fetch.rb#new_card: phantom cards carry no
+ *  (card 1.110.0 lib/card/format/nest/fetch.rb#new_card: phantom cards carry no
  *  inferred type from `supercard`). */
 export type { PhantomItemType } from "./format.js";
 

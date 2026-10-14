@@ -1,10 +1,10 @@
 # run_ruby_deep_nesting_bench.rb -- the DEEP-NEXTING fixture battery of the
 # #1282 scaling proof, Ruby side (live rerun on the same-named BenchDN decks
-# the TS sweep measures: benchmarks/results/deep-nesting-fixtures-ts.json,
+# the TS sweep measures (its results file is not in the public package),
 # tests/card/render/deep-nesting-fixture-sweep.test.ts).
 #
 # Adapted from run_ruby_bench.rb (the 2026-09-19 parity recording harness,
-# benchmarks/results/ruby-nesting-r1-r2.json) with the same measurement
+# the recorded results file, not in the public package) with the same measurement
 # discipline: ActiveSupport::Notifications query counting (SCHEMA separated),
 # cold (Card.cache.reset) vs warm renders, medians over RENDER_N, full
 # environment block, seed ONLY the bench prefix, cleanup to zero remaining.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # RETIRED AS THE STANDARD GATE (2026-10-09): the per-change byte gate is the
-# seconds corpus (benchmarks/seconds-corpus/seconds-corpus-gate.mjs). This
+# corpus grade (reference-harness/runner/grade.mjs over fixtures/synthetic-v2). This
 # script still drives gate.py over an explicit page set for real-deck bundle
 # measurements, but gate.py refuses the retired 40-page default, so pass the
 # pages via GATE_PAGES (semicolon-separated).
@@ -10,7 +10,7 @@ BUNDLE=$1; MODE=$2; REF=$3; OUT=$4; RES=$5; LANES=${6:-2}; SLICE=${7:-5}; shift 
 EXTRA="$*"
 PAGES_ARG="${GATE_PAGES:-}"
 if [ -z "$PAGES_ARG" ]; then
-  echo "run-gate.sh: the 40-page gate list is retired; set GATE_PAGES (the standard gate is benchmarks/seconds-corpus/seconds-corpus-gate.mjs)" >&2
+  echo "run-gate.sh: the 40-page gate list is retired; set GATE_PAGES (the standard gate is reference-harness/runner/grade.mjs over fixtures/synthetic-v2)" >&2
   exit 2
 fi
 N=$(python benchmarks/speed-ship/gate.py pages --pages "$PAGES_ARG" | wc -l)

@@ -13,7 +13,7 @@
 //   - Edge runtimes: libsassWasmCompiler (src/server/libsass-wasm.ts), the
 //     same sources built to a WebAssembly module (tools/libsass/build-wasm.mjs,
 //     vendored under vendor/libsass-wasm/). Both produce LibSass's bytes; the
-//     edge byte-identity is pinned by tests/server/libsass-wasm.test.ts.
+//     edge byte-identity pin is not in this tree.
 
 export type ScssOutputStyle = "nested" | "expanded" | "compact" | "compressed";
 

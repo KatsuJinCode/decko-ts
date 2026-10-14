@@ -1,12 +1,12 @@
 """Speed-ship byte-identity and trip gate.
 
 RETIRED AS THE PER-CHANGE BYTE GATE (2026-10-09): the standard gate is the
-seconds corpus - benchmarks/seconds-corpus/seconds-corpus-gate.mjs, which
-renders fixtures/synthetic-v2 through the composed engine and byte-compares
-every page against the committed Ruby oracle outputs. That instrument is
-exhaustive over code paths (every view the composed deck serves, every card
-type, every permission shape, every mod), oracle-backed rather than
-self-referential, and runs in seconds. This script's arbitrary 40-page
+corpus grade - reference-harness/runner/run.mjs and grade.mjs over
+fixtures/synthetic-v2, which renders every page through the composed engine
+and byte-compares it against the committed Ruby oracle outputs. That
+instrument is exhaustive over code paths (every view the composed deck serves,
+every card type, every permission shape, every mod) and oracle-backed rather
+than self-referential. This script's arbitrary 40-page
 real-deck list (WRITEUP rounds 5-9 below) remains only for explicit
 --pages measurements of a bundle against the real deck mirror.
 
@@ -115,7 +115,7 @@ def main():
         # The 40-page list is retired as a gate default: a gate run without
         # explicit pages would silently measure an arbitrary slice again.
         print(json.dumps({"retired": "the per-change byte gate is the seconds corpus",
-                          "gate": "node benchmarks/seconds-corpus/seconds-corpus-gate.mjs",
+                          "gate": "node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v2",
                           "this_script": "pass --pages 'A;B;...' for an explicit real-deck measurement"}))
         sys.exit(2)
     ps = a.pages.split(";") if a.pages else pages()

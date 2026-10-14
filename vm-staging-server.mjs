@@ -1546,7 +1546,7 @@ function jsonResponse(status, body) {
 }
 
 /** decodeURIComponent that 400s on malformed input instead of throwing.
- *  '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb) and
+ *  '+' is DECKO'S JOINT (Card::Name.joint, card 1.110.0 lib/cardname.rb) and
  *  must survive into the name — see deploy/worker.ts#decodeName.
  *  Underscores decode to spaces BEFORE the fetch — card_class.rb:126-131
  *  uri_fetch_opts `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`: same
@@ -2320,7 +2320,7 @@ async function substituteHeaderTokens(headerHtml, boot) {
 //   `<meta content='noindex' name='robots'>` in the head and the title
 //   "<Name> - <site title>" in the URL display form (underscores become
 //   spaces). Decko mechanism: format/error.rb page_view_for_unknown →
-//   :not_found with root.error_status = 404 (prototype/lib/card/format/
+//   :not_found with root.error_status = 404 (card 1.110.0 lib/card/format/
 //   error.rb:49-55), so the response status stays 404.
 //
 //   server_error — for a page whose render raises (non fetch miss).

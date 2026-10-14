@@ -373,9 +373,12 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
         sum: 2389,
       });
       // Both places the 2,388 figure is published, still saying 2,388.
-      // Line 70 (was 66) after the Rendering section gained the live-swap
-      // caveat above it; the pin follows the doc's reflow.
-      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 49, 53, 95]);
+      // The lines are [20, 50, 54, 96] after the doc's reflow (the "Cite the
+      // figure that names its instrument" sentence joined the paragraph
+      // above it). The pin follows the doc's reflow; it is a line-number
+      // pin, not a figure check — the text assertion below is the one that
+      // says WHICH sentences carry the figure.
+      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 50, 54, 96]);
       expect(e.coverageLines.filter(({ text }) => text.includes('2,388')).every(({ text }) => { const plain = text.split('**').join(''); return plain.includes('2,388 semantics operations') || plain.includes('holds 2,388 lines') || plain.includes('Cite the figure that names its instrument'); })).toBe(true);
     });
 

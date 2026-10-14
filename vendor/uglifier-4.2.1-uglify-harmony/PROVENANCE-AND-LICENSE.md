@@ -46,10 +46,10 @@ production deck's compiled `*all+*script` bundle leaf-for-leaf — 48 of the 49
 shared leaves byte-identical, 1 leaf (jquery.iframe-transport.js) identical
 code with a 1-byte trailing-newline difference, 4 leaves from a live-only
 custom production mod absent from every local source surface. Pins:
-`fixtures/captured/script-compile-oracle-leaves.json`,
-`fixtures/captured/all-script-assembled-input.js` (the assembled input, sha256
+the captured script-compile-oracle-leaves, not in the public package,
+the captured all-script-assembled input, not in the public package (the assembled input, sha256
 36a3d55df942e04fa205231a0c750d9f453518edda574f5bfb622dcb5dd492c7), and the
-compiled-bundle sha in `tests/card/mod-loader/compiled-script-bundle.test.ts`.
+compiled-bundle sha in the compiled-script-bundle suite (not in the public package).
 
 Consumers: `src/card/assets/uglify-harmony-compile-engine.ts` (the vm loader)
 and `src/card/assets/compiled-script-bundle.ts` (the compile contract). Node

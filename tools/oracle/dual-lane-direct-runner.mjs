@@ -2,7 +2,7 @@
 //
 // One worker child. Boots the engine graph once, grades the shard LIST it is
 // given, writes the same artifacts the vitest instrument writes, exits with
-// the same codes. The vitest spec (tools/oracle/verify-dual-lane.test.ts)
+// the same codes. The vitest spec (the verify-dual-lane suite (not in the public package))
 // stays in the tree untouched as the parity oracle.
 //
 // WHY A SEPARATE ENTRY POINT RATHER THAN A FLAG ON THE EXISTING DRIVER

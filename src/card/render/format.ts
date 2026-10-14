@@ -374,7 +374,7 @@ export class Voo {
    *  `voo.show :edit_type_row` first, then the edit_form METHOD runs
    *  `voo.hide :edit_type_row` - a no-op under first-write-wins, which is
    *  why the captured data-slot lists edit_type_row under "show"
-   *  (fixtures/captured/edit-forms.json). */
+   *  (the captured edit-forms oracle, not in the public package). */
   private vizWrite(views: string | string[], setting: "show" | "hide"): void {
     const list = Array.isArray(views) ? views : [views];
     for (const view of list) {
@@ -678,8 +678,8 @@ export interface RenderFormatOptions {
    *  the bare view surface keeps the development loud behavior. */
   nestQuietErrors?: boolean;
   /** maximum nest depth — Ruby Card.config.max_depth = 20
-   *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
-   *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
+   *  (card 1.110.0 lib/cardio/railtie.rb:17; monitor_depth,
+   *  card 1.110.0 lib/card/format/error.rb:32-38). An earlier revision carried
    *  decko's old 42 default; the vendored prototype pins 20 and the
    *  adversarial probe battery graded the divergence (self-inclusion,
    *  cycle-two, nest-of-cycle all 500 at the old guard where Ruby renders
@@ -711,7 +711,7 @@ export interface RenderFormatOptions {
   isViewLaneRoot?: boolean;
 }
 
-/** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
+/** Card.config.max_depth (card 1.110.0 lib/cardio/railtie.rb:17). */
 export const RUBY_MAX_DEPTH = 20;
 
 /** The UserError monitor_depth raises (card-1.110.0 format/error.rb:33-40)
@@ -3839,6 +3839,9 @@ export interface RenderEngineLike {
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
   isDenied(card: RenderCard): boolean;
+  /** The viewer's CQL read scope (cqlPermissionOptions, synchronous): what a
+   *  count view applies per rule group. Undefined before the read state folds. */
+  cqlReadScope?(): { alwaysOk: boolean; readRuleIds: number[] } | undefined;
   /** ok_to_<task>? for the NON-read view tasks (ok_to_update?/create?/
    *  delete?, card-mod-permissions set/all/permissions.rb:148-157) —
    *  precomputed like isDenied, same undefined-means-unverifiable contract
@@ -4568,7 +4571,7 @@ function normalizeView(view: string): string {
  * declares the oracle's measured boot-inclusive depth (the committed capture
  * at reference-harness/fixtures/synthetic-v2/expected, re-verified live on
  * the capture host), and the debug page renders that many frame lines. The
- * lines' text is host-VM identity in N5's/N6's class — canonicalized away on
+ * lines' text is host-VM identity in N6's/N7's class — canonicalized away on
  * both sides — so the emitted lines are canonical placeholders, not a
  * replay of the capture's frames (the raise-posture receipt's rule).
  */
@@ -4614,7 +4617,7 @@ function showAllErrors(fmt: RenderFormat | undefined): boolean {
  * more when backtrace_link builds the title attribute (Rails' content_tag
  * html_escape), which is why the capture's embedded quotes read &amp;#39;.
  * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
- * the instrument's N5 canonicalization blanks the machine-specific path
+ * the instrument's N7 canonicalization blanks the machine-specific path
  * tokens on both sides and N6 replaces each frame line with its marker, so
  * the compared residual is the frame COUNT - the engine's V8 stack depth
  * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
@@ -4652,7 +4655,7 @@ function backtraceLink(card: RenderCard, error: unknown): string {
 
 /** The hex object-address token Ruby's NoMethodError/NameError messages
  *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
- *  The engine has no heap addresses; the instrument's N5 canonicalization
+ *  The engine has no heap addresses; the instrument's N7 canonicalization
  *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
  *  port derives a stable pseudo-address from the object's id — the
  *  inspection token stays shape-true (0x + a hex run) without pretending

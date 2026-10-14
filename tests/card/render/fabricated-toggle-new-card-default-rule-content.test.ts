@@ -45,35 +45,31 @@ const ANON_ID = 8;
 
 async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
-  const seed = (opts: SeedOptions) => seedCard(storage, opts);
+  const seed = (opts: SeedOptions): Promise<void> => seedCard(storage, opts);
 
   // Anchor + type cards (ids mirror the byte-formatting-parity suite's deck
   // where the two decks share rows: Set=1, *structure=5, *right=6, RichText=4,
   // Basic=9, *all=10, Sign up=12, *read=20, *default=21, Toggle=51).
-  seed({ id: 1, name: "Set", codename: "set", typeId: 1 });
-  seed({ id: 4, name: "RichText", codename: "rich_text" });
-  seed({ id: 5, name: "*structure", codename: "structure", typeId: 2 });
-  seed({ id: 6, name: "*right", codename: "right", typeId: 2 });
-  seed({ id: 7, name: "anyone", codename: "anyone" });
-  seed({ id: 8, name: "Anonymous", codename: "anonymous" });
-  seed({ id: 9, name: "Basic", codename: "basic" });
-  seed({ id: 10, name: "*all", codename: "all", typeId: 1 });
-  seed({ id: 12, name: "Sign up", codename: "signup" });
-  seed({ id: 20, name: "*read", codename: "read", typeId: 2 });
-  seed({ id: 21, name: "*default", codename: "default", typeId: 2 });
-  seed({ id: 51, name: "Toggle", codename: "toggle" });
-
-  // The bootstrap read rule: *all+*read -> anyone.
-  seed({ id: 30, name: "*all+*read", leftId: 10, rightId: 20, typeId: 2, dbContent: "anyone" });
-  await seedReference(storage, 30, 7, "anyone");
+  await seed({ id: 1, name: "Set", codename: "set", typeId: 1 });
+  await seed({ id: 4, name: "RichText", codename: "rich_text" });
+  await seed({ id: 5, name: "*structure", codename: "structure", typeId: 2 });
+  await seed({ id: 6, name: "*right", codename: "right", typeId: 2 });
+  await seed({ id: 7, name: "anyone", codename: "anyone" });
+  await seed({ id: 8, name: "Anonymous", codename: "anonymous" });
+  await seed({ id: 9, name: "Basic", codename: "basic" });
+  await seed({ id: 10, name: "*all", codename: "all", typeId: 1 });
+  await seed({ id: 12, name: "Sign up", codename: "signup" });
+  await seed({ id: 20, name: "*read", codename: "read", typeId: 2 });
+  await seed({ id: 21, name: "*default", codename: "default", typeId: 2 });
+  await seed({ id: 51, name: "Toggle", codename: "toggle" });
 
   // The rule chain under `agree+*right`: BOTH rules a new `X+agree` child
   // resolves under.
-  seed({ id: 17692, name: "agree", typeId: 9 });
-  seed({ id: 17693, name: "agree+*right", leftId: 17692, rightId: 6, typeId: 1 });
+  await seed({ id: 17692, name: "agree", typeId: 9 });
+  await seed({ id: 17693, name: "agree+*right", leftId: 17692, rightId: 6, typeId: 1 });
   // The *default rule card -- Toggle-typed (the type new cards
   // under it inherit), content "0".
-  seed({
+  await seed({
     id: 17695,
     name: "agree+*right+*default",
     leftId: 17693,
@@ -82,7 +78,7 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
     dbContent: "0",
   });
   // The *structure rule card -- RichText-typed, the truthy template.
-  seed({
+  await seed({
     id: 28589,
     name: "agree+*right+*structure",
     leftId: 17693,
@@ -90,13 +86,27 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
     typeId: 4,
     dbContent: "<p>{{Intellectual Property+Statement}}</p>",
   });
+  // The catch-all read rule every real deck bootstraps (card/auth/setup.rb:44):
+  // `*all+*read` -> [[Anyone]]. The reference rides the STOCK rule row (10_000_006)
+  // rather than a row of this suite's own, and is seeded HERE — after every
+  // codename takeover above, and last — because seedCard writes the stock
+  // substrate's displaced ids into the deck: taking over `set` repoints the
+  // stock *all card's TYPE onto this deck's Set TYPE card (1), taking over
+  // `all` repoints the stock rule onto this deck's *all (10), and taking over
+  // `read` repoints it onto this deck's *read (20). This deck's *all is typed
+  // with its Set TYPE card (1), as a set card is — that type is what the
+  // read-rule cache join filters on (`sets.type_id = SetID`,
+  // read_rule_cache.rb -> src/card/permissions/read-rules.ts) — so that
+  // repointed row IS this deck's own catch-all read rule. The `*structure`
+  // takeover above is what drops the stock row, so the reference follows it.
+  await seedReference(storage, 10000006, 7, "anyone");
 
   // The Sign up host (self-signed-up), nesting +agree typed by the opt.
   // NO `<host>+agree` row -- the shaped deck carries zero +agree cards,
   // which is what makes the record fabricated. (Bare surface: the implicit
   // nest view is :titled, whose d0-card-body embeds the toggle core -- the
   // diff region's shape.)
-  seed({
+  await seed({
     id: 29677,
     name: "Sample Member",
     typeId: 12,
@@ -114,7 +124,7 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
     ruleTypeIds: structureRuleTypesFromResults(result[0]),
   });
   await storage.fetcher.installNameEnvironment();
-  await storage.fetcher.warmLexicon([1, 4, 5, 6, 7, 8, 9, 10, 12, 20, 21, 51, 30, 17692, 17693, 17695, 28589, 29677]);
+  await storage.fetcher.warmLexicon([1, 4, 5, 6, 7, 8, 9, 10, 12, 20, 21, 51, 17692, 17693, 17695, 28589, 29677, 29678]);
   return storage;
 }
 

@@ -31,6 +31,34 @@ const WORKER_ENTRY = `${REPO_ROOT}deploy/worker.ts`;
 const CRYPTO_SHIM = `${REPO_ROOT}deploy/shims/node-crypto-shim.ts`;
 const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
 const SEED = `${REPO_ROOT}deploy/seed/seed.sql`;
+const PROBE_STAMP = "2026-09-20 00:00:00.000";
+
+/** One INSERT INTO cards with the deck's column list and the probe stamp
+ *  (the same shape the denied-card fixture below uses). */
+function probeInsert(values: string): string {
+  return (
+    `INSERT INTO cards (\n` +
+    `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
+    `  created_at, updated_at, creator_id, updater_id,\n` +
+    `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
+    `) VALUES (\n${values}\n)`
+  );
+}
+
+/** The denied-card fixture: the codename carriers the permission statements'
+ *  subselects need, a probe card, its *self set, and a *read rule card that
+ *  grants NOBODY (no card_references rows). The seed deck already carries the
+ *  same carriers (deploy/seed.mjs), so this builds the same shape at ids
+ *  above it rather than re-coding them, and rides on it rather than replacing
+ *  it — a deck with no catch-all read rule denies every card, as Ruby does,
+ *  and every other test in this file reads the seed's own cards. */
+const DENIED_CARD_FIXTURE: readonly string[] = [
+  probeInsert(`9010, 'Probe Restricted', 'probe_restricted', NULL, NULL, NULL, NULL, '${PROBE_STAMP}', '${PROBE_STAMP}', 1, 1, NULL, NULL, NULL, 0, 5, 'Restricted secret body'`),
+  probeInsert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${PROBE_STAMP}', '${PROBE_STAMP}', 1, 1, NULL, NULL, NULL, 0, 7, NULL`),
+  probeInsert(`9012, NULL, NULL, NULL, 9011, 9001, NULL, '${PROBE_STAMP}', '${PROBE_STAMP}', 1, 1, NULL, NULL, NULL, 0, 5, NULL`),
+  // the rule grants nobody: deliberately NO card_references rows for 9012
+  `UPDATE cards SET read_rule_id = 9012, read_rule_class = 'R' WHERE id = 9010`,
+];
 
 interface Chunk {
   type: string;
@@ -134,6 +162,9 @@ beforeAll(async () => {
   await adapter.batch(
     splitSqlStatements(readFileSync(SEED, "utf8")).map((sql) => ({ sql, params: [] })),
   );
+  for (const statement of DENIED_CARD_FIXTURE) {
+    await adapter.query(statement, []);
+  }
 }, 180_000);
 
 afterAll(async () => {
@@ -182,7 +213,10 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     expect(body.ok).toBe(true);
     expect(body.engine).toBe("decko-ts");
     expect(body.database.ok).toBe(true);
-    expect(body.database.card_count).toBe(15);
+    // the seed's card count (deploy/seed.mjs; the synthetic content cards plus
+    // the stock read substrate every Ruby deck bootstraps) plus the three
+    // denied-card fixture rows applied in beforeAll
+    expect(body.database.card_count).toBe(26);
   });
 
   it("GET / renders the Home card with the inclusion chain four levels deep", async () => {
@@ -259,8 +293,8 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     // ancestors + html_url + type nest + timestamps, wrapped by
     // page_details (url + requested_at), pretty-printed — NOT a raw row
     // dump. The byte pins live engine-side
-    // (tests/card/render/format-families-oracle.test.ts,
-    // fixtures/oracle-surfaces/json.jsonl).
+    // (the format-families-oracle suite (not in the public package),
+    // json.jsonl (not in the public package)).
     const response = await fetchPath("/Home.json");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("application/json");
@@ -449,33 +483,10 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
   it("GET /:card-name.json 403s a read-denied card instead of serving db_content", async () => {
     // Pin (probe battery batch 05, denied-card-json-LEAK-CHECK): the
     // record-JSON route previously served db_content for cards the HTML
-    // views replace with the denial span. Seed the minimal read-rule
-    // universe — the *read/*all/set codename carriers, a *self set, and a
-    // *read rule card granting NOBODY (no card_references rows) — then a
-    // card carrying that rule id. canReadByStoredRule: the rule id is not
-    // in the anonymous viewer's readable set -> denied.
-    const T = "2026-09-20 00:00:00.000";
-    const insert = (values: string): string =>
-      `INSERT INTO cards (\n` +
-      `  id, name, key, codename, left_id, right_id, current_revision_id,\n` +
-      `  created_at, updated_at, creator_id, updater_id,\n` +
-      `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
-      `) VALUES (\n${values}\n)`;
-    for (const statement of [
-      // the codename carriers the permission statements' subselects need
-      insert(`9001, '*read', 'read', 'read', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-      insert(`9002, '*all', 'all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-      insert(`9003, 'Set', 'set', 'set', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-      insert(`9004, '*self', 'self', 'self', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-      // the denied card (a plain Note) + its *self set + the *read rule card
-      insert(`9010, 'Probe Restricted', 'probe_restricted', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, 'Restricted secret body'`),
-      insert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 9003, NULL`),
-      insert(`9012, NULL, NULL, NULL, 9011, 9001, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL`),
-      // the rule grants nobody: deliberately NO card_references rows for 9012
-      `UPDATE cards SET read_rule_id = 9012, read_rule_class = 'R' WHERE id = 9010`,
-    ]) {
-      await adapter!.query(statement, []);
-    }
+    // views replace with the denial span. The fixture is applied in
+    // beforeAll (DENIED_CARD_FIXTURE): a card carrying a *read rule that
+    // grants NOBODY (no card_references rows). canReadByStoredRule: the rule
+    // id is not in the anonymous viewer's readable set -> denied.
 
     // The HTML view keeps Ruby's denial shape: 200 + the denial span, body
     // never in the bytes (view/permission.rb:46-50 -> the quiet span).

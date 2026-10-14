@@ -15,8 +15,8 @@
 // seeded under the identical name by
 // benchmarks/run_ruby_deep_nesting_bench.rb (BenchDN prefix, the
 // run_ruby_bench.rb name formats), so both engines measure the same decks.
-// Ruby-side truth lives in benchmarks/results/deep-nesting-fixtures-ruby.json
-// (live rerun of these fixtures) and benchmarks/results/ruby-nesting-r1-r2.json
+// Ruby-side truth lives in the Ruby deep-nesting results file (not in the public package)
+// (live rerun of these fixtures) and the recorded Ruby results file (not in the public package)
 // (the parity recording: chains depth+3 queries open / depth+2
 // content, fans fanout+4, warm 0 queries everywhere, depth 32 recorded the
 // Card::Error::UserError "Man, you're too deep" cap).
@@ -29,7 +29,7 @@
 // Run via enumerated manifest only (never a bare `vitest run`):
 //   npx vitest run tests/card/render/deep-nesting-fixture-sweep.test.ts
 //
-// Reported numbers populate benchmarks/results/deep-nesting-fixtures-ts.json
+// Reported numbers populate the TS results file (not in the public package)
 // (a benchmark result carries a full environment block or it is not
 // quotable). A test run writes its copy outside the checkout
 // (tests/support/report-output.ts); refresh the committed copy with

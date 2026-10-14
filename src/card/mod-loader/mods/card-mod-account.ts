@@ -74,7 +74,7 @@ import { str } from "../../render/format.js";
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
 //   src/card/auth/token.ts is a byte-parity port of
 //   card-1.110.0/lib/card/auth/token.rb, developed against the real jwt gem's
-//   own output (fixtures/captured/auth-token.json) — that pin is development
+//   own output (the captured auth-token oracle, not in the public package) — that pin is development
 //   evidence, excluded from the public package with its fixture and suite,
 //   not a check a clean clone can run — and the signing secret
 //   is injected as RenderEngine.tokenConfig, pinned in
@@ -512,7 +512,7 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
  *  deletion list, the close button) never renders in stock Ruby, so the
  *  port raises from the same point; the inspection address is the engine's
  *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
- *  N5 blanks the hex on both sides). The deletion WALK itself stays ported
+ *  N7 blanks the hex on both sides). The deletion WALK itself stays ported
  *  in accountFollowBundle (the follow surface reads it); close_account's
  *  own internal call (:77) is in-object and never hits the visibility
  *  boundary. */
@@ -1275,7 +1275,6 @@ const setModules: ModSetModuleFile[] = [
     // over the verbatim item walks (the pill composition the oracle pins;
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
-    // card-action-engine.ts assertMayRenameAccountHolder.
     events: [
       engineOwnedEvent({
         event: "validate_account_holder_name_change",

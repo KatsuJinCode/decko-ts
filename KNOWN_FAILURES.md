@@ -26,7 +26,7 @@ believing it; if it fails alone, it is a real failure and belongs in the table.
   temporary state with concurrent suites.
 - `tests/exercise/accounts-3.test.ts`,
   `tests/card/auth/first-run-setup-endpoint.test.ts` and
-  `tests/card/auth/reset-flow-endpoint.test.ts` — each boots a local server
+  the reset-flow endpoint suite (not in the public package) — each boots a local server
   and races the shared temporary directory during auth setup. (On
   2026-10-14 the reset-flow suite failed one check inside a full run and
   passed all 14 alone.)

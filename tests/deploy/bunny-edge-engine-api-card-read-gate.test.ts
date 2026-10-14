@@ -10,7 +10,7 @@
 // without one. A denial answers 403 with no content fields.
 //
 // Driven through the REAL handler over the in-memory sqlite deck
-// (tests/card/render/render-test-storage.js), so the pin covers the full
+// (tests/card/render/render-test-storage.ts), so the pin covers the full
 // production chain: resolveAnonymousReadPermission's statements, the stored
 // read_rule_id lookup, the walk (including its *type candidate, which needs
 // the type NAME the gate fetches by typeId), and the response shapes.

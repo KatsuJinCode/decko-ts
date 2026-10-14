@@ -38,12 +38,25 @@ import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./ren
  *  ":codename" nests (the body's mark handling is a separate render
  *  concern, not this pin's). */
 async function seedCodenamelessDeck(): Promise<RenderTestStorage> {
-  const storage = await createRenderTestStorage();
+  // No bootstrap: the stock read substrate IS five codename cards, and this
+  // suite's whole subject is a deck that has none. Asking for the bootstrap
+  // would put the codenames back and test nothing.
+  // The stock read substrate IS codename cards (all/set/read/anyone/
+// anonymous), and this suite is about the ones the HEAD reads - title,
+// favicon, ace, tiny_mce, layout - which the deck below does not carry.
+// Seeding the bootstrap puts back the read permission the body needs and
+// none of the codenames the head looks up, so the page's subject is intact.
+const storage = await createRenderTestStorage();
   // The Basic cardtype - its "basic" codename is the layout classification's
   // structural read (card_layout? type check), not a head read.
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   // The *all+*layout rule -> the layout card (by name, no codename).
-  await seedCard(storage, { id: 900, name: "*all", typeId: 2 });
+  // *all is TYPED SET (typeId 1, this deck's Set codename card): the
+  // read-rule cache join filters rule rows' left cards on sets.type_id =
+  // SetID, so a catch-all left untyped never reaches read_rules_hash and
+  // every card of the deck denies — the state a real deck is not in.
+  await seedCard(storage, { id: 1, name: "Set", codename: "set", typeId: 2 });
+  await seedCard(storage, { id: 900, name: "*all", typeId: 1 });
   await seedCard(storage, { id: 901, name: "*layout", typeId: 2 });
   await seedCard(storage, {
     id: 910,

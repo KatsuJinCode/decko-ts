@@ -5,14 +5,14 @@
 // The expected rows below follow the reference implementation's rules:
 //   - the refresh event fires on :finalize, on: :save, changed: :content
 //   - updating references out = delete + create
-//     (prototype/lib/card/reference/all.rb:47-50); rows are
+//     (card 1.110.0 lib/card/reference/all.rb:47-50); rows are
 //     {referer_id, referee_key, referee_id, ref_type} (all.rb:105-110;
 //     is_present is not written and stays NULL)
 //   - ref_type codes: "L" link, "I" inclusion
-//     (prototype/lib/card/content/chunk/abstract.rb:30-32), "P" partial
+//     (card 1.110.0 lib/card/content/chunk/abstract.rb:30-32), "P" partial
 //     (all.rb:10)
 //   - referee_key canonicalization = Cardname#key
-//     (prototype/lib/cardname.rb:96-112 generate_key: downcase, underscores,
+//     (card 1.110.0 lib/cardname.rb:96-112 generate_key: downcase, underscores,
 //     folded non-word runs); referee names are absolutized against the
 //     REFERER's name, and self-references are dropped (all.rb:93)
 //   - referee_id = Lexicon.id(name) — existing cards resolve (simple names
@@ -25,7 +25,7 @@
 //     and `{{#comment}}` nests carry NO reference
 //   - delete runs :clear_references: the referer's rows are deleted
 //     (delete_references_out) and the deleted id is unmapped from other
-//     cards' rows (unmap_referees, prototype/lib/card/reference.rb:31-33)
+//     cards' rows (unmap_referees, card 1.110.0 lib/card/reference.rb:31-33)
 
 import { describe, expect, it } from "vitest";
 import {
@@ -275,7 +275,7 @@ describe("card_references write path (refresh_references_out port)", () => {
     await seedStandardDeck(storage);
     const engine = actionEngine(storage);
 
-    // fixtures/write-conformance/08-touch-name-reference.jsonl: referer
+    // 08-touch-name-reference.jsonl (not in the public package): referer
     // created naming "WCC Referer+child" before that junction exists.
     const referer = await engine.createCard({
       name: "WCC Referer",

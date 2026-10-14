@@ -51,7 +51,9 @@ async function deck(updateParty: "Anyone" | "Administrator"): Promise<RenderTest
   await seedCard(s, { id: 15, name: "Anonymous", codename: "anonymous", typeId: 2 });
   await seedCard(s, { id: 16, name: "*read", codename: "read", typeId: 14 });
   await seedCard(s, { id: 18, name: "Anyone", codename: "anyone", typeId: 2 });
-  await seedCard(s, { id: 19, name: "Administrator", codename: "administrator", typeId: 2 });
+  // Role: the type Ruby's seed gives Administrator (Role is a Cardtype, card 22).
+  await seedCard(s, { id: 23, name: "Role", codename: "role", typeId: 22 });
+  await seedCard(s, { id: 19, name: "Administrator", codename: "administrator", typeId: 23 });
   await seedCard(s, { id: 17, name: "*all+*read", leftId: 10, rightId: 16, typeId: 14, dbContent: "[[Anyone]]" });
   await seedReference(s, 17, 18, "anyone");
   await seedCard(s, {

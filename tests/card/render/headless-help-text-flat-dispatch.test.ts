@@ -72,7 +72,7 @@ beforeAll(async () => {
 
   // codename cards (the codename registry reads cards.codename; their
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
-  // Same ids as tests/card/mod-loader/card-mod-help.test.ts's probe deck so
+  // Same ids as the card-mod-help suite (not in the public package)'s probe deck so
   // the rule-card composition matches the one that file seeds.
   await seedCard(s, { id: 2, name: "RichText" });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
@@ -84,7 +84,7 @@ beforeAll(async () => {
   // The set card "Oracle Help Probe+*self" (junction: probe + *self) and
   // the rule card "Oracle Help Probe+*self+*help" (junction: set card +
   // *help), seeded at the PROBE's own anchor exactly as
-  // tests/card/mod-loader/card-mod-help.test.ts seeds them: help.rb:1-4
+  // the card-mod-help suite (not in the public package) seeds them: help.rb:1-4
   // help_rule_card walks the card's set names joined to "*help"
   // (lib/card/rule/all.rb:9-15), so a probe-anchored rule card resolves
   // for the ruled probe ONLY - which is what keeps "Oracle Bare Probe"

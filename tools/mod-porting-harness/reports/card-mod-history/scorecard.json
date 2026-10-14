@@ -12,9 +12,9 @@
   },
   "probeSuite": {
     "files": [
-      "tests/card/mod-loader/card-mod-history-harness-probe.test.ts",
+      "the card-mod-history-harness-probe suite (not in the public package)",
       "tests/card/mod-loader/card-mod-history.test.ts",
-      "tests/card/mod-loader/card-mod-history-views.test.ts"
+      "the card-mod-history-views suite (not in the public package)"
     ],
     "ran": true,
     "detail": "59 passed / 0 failed",

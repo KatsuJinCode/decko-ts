@@ -4,8 +4,8 @@ Implementation workspace for the runtime-independent Decko project, with
 TypeScript as the current implementation and first-class Ruby support as the
 architectural direction.
 
-Read the [project contract](docs/core/README.md) and the
-[commit and publication gates](docs/core/governance.md). These govern
+Read the project contract (not part of this package) and the
+commit and publication gates (not part of this package). These govern
 future work and supersede conflicting TS-only direction in older notes.
 
 ## TypeScript implementation history
@@ -44,9 +44,12 @@ names in its `normalization` field
 ([SPEC.md](reference-harness/SPEC.md), §4.2; `runner/normalize.mjs`): N1 masks
 the `data-slot-id` attribute value, N2 canonicalizes JSON key order, and N3
 compares class-token order inside a `class` attribute as a set. The
-instrument defines eight rules in total (N1–N8); N4–N8 exist for the
-seconds-corpus fixture's capture-host values and are applied when a comparison
-reaches them, which on `synthetic-v1` none does. The browser journeys are a
+instrument defines eight rules in total (N1–N8); N4–N8 exist for values that
+`synthetic-v2` carries and `synthetic-v1` does not (collapse ids, relative
+times, capture-host content in debug pages, and error class names), and they
+are applied when a comparison reaches them, which on `synthetic-v1` none does.
+The evidence for each is in
+[NORMALIZATION-EVIDENCE.md](reference-harness/NORMALIZATION-EVIDENCE.md). The browser journeys are a
 different instrument with their own rules (`B1`–`B5` in
 `browser/lib/observe.mjs`) — the two namespaces are distinct, and the journeys
 comparator names the two harness forms it borrows rather than renumbering them.
@@ -369,23 +372,23 @@ refused with a reason, never deleted.
 
 ## Test status
 
-The standing verification net (`tests/standing-net.json`, 68 manifest
-files), run via `node tools/test-queue/run-standing-net.mjs` on
-2026-10-01:
+The standing verification net (`tests/standing-net.json`, 125 manifest
+files) runs via `node tools/test-queue/run-standing-net.mjs`. The full-suite
+result for this tree is recorded in [KNOWN_FAILURES.md](KNOWN_FAILURES.md).
 
-```
-Test Files  66 passed | 2 skipped (68)
-     Tests  696 passed | 4 expected fail | 12 skipped (712)
-```
+Members of the net that are not redistributed with this repository print
+`[not redistributed] NOT RUN <file>` and are not run. The runner reports them
+separately, labels the run PARTIAL, and never counts them as passed.
+`STANDING_NET_REQUIRE_ALL=1` makes any such member a failure instead.
 
-This is the tree's one standing total; per-stream counts in
-`docs/port-tracker.md` are historical landing-time records, not a
+This is the tree's one standing total; per-stream counts are
+historical landing-time records, not a
 current measure. What each parity instrument measures, and what the
 public package does not measure, is inventoried in
 [docs/coverage-inventory.md](docs/coverage-inventory.md). All four render-perf
 budgets are green solo (warm
 4.8ms/entry vs 25 budget, 0 cold cards; receipt
-`benchmarks/results/perf/render-perf.json`).
+the render-perf results file (not in the public package)).
 
 `npm test` runs the card-engine suite (the largest tree); the full tree
 runs with `npx vitest run`. The freshness proof that a committed write is
@@ -400,7 +403,10 @@ reproducible with `tests/card/render/deep-nesting-trip-attribution.test.ts`):
 a cold render costs four fixed round trips plus one per nesting level below
 the root, however many cards each level holds — breadth costs nothing extra
 (a 200-card fan is 5 round trips) — while Ruby sends one query per card at
-every depth. The `#1282` constant-per-depth claim is not met; the
+every depth. That holds on a deck that carries its `*all+*read` rule card,
+which every real deck does: the read permission's one-time setup rides the
+prelude batch, so it costs statements and no round trips. The `#1282`
+constant-per-depth claim is not met; the
 depth-sweep test (`tests/card/render/depth-sweep.test.ts`) asserts the same
 slope at every depth up to the renderer's 20-level ceiling.
 
@@ -411,13 +417,12 @@ slope at every depth up to the renderer's 20-level ceiling.
   `npx vitest run`). Both must pass before any commit lands.
 - Ruby truth lives in the installed gems on the build machine (Ruby 3.3,
   card-1.110.0, decko-0.20.0) and, for the production schema, the
-  private production deck's mysqldump (identity withheld; see the data
-  rule in `docs/port-tracker.md`).
+  private production deck's mysqldump (identity withheld).
 - Data rule: real production-deck content never leaves the build machine.
   Sanitized, content-free structural artifacts (the corpus, the anonymized
   scale deck) are the only derivatives that exist anywhere else.
 - Nothing from this repo goes to decko-commons upstream without the
-  project owner's explicit approval (see `docs/core/governance.md`).
+  project owner's explicit approval (see the publication gates, which are not part of this package).
 
 ## Migration status
 
@@ -445,5 +450,4 @@ a declaration-level label, not a behavior claim; per-mod detail in
 `tools/compat-report/mod-compat-report.md`, contract boundary in
 `docs/decisions/0004-mods-compiled-into-the-view-registry.md`),
 the PostgreSQL read rung, the one-command migration launch path, and the
-publication hygiene pass (in progress: `tools/hygiene/`). See
-`docs/port-tracker.md` for the wave plan + per-stream notes.
+publication hygiene pass (in progress: `tools/hygiene/`).

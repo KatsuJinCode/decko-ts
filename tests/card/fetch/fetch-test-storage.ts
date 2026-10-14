@@ -167,7 +167,7 @@ export interface SeedCardOptions {
  * Insert one card row DIRECTLY (plain INSERT — these suites exercise the read
  * path). Column conventions follow the write path as the schema
  * records them (db/schema.sqlite.sql comments +
- * prototype/lib/card/name/all.rb#name= / #key=): simple cards store
+ * card 1.110.0 lib/card/name/all.rb#name= / #key=): simple cards store
  * name + key columns; compound cards store NULL
  * name/key columns with left_id/right_id (the 2020 migration convention).
  * Side ids default to a lookup of already-seeded part rows by key - the

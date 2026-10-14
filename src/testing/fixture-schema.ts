@@ -1,5 +1,5 @@
 // Types + load-time validation for the recorded fixtures
-// (fixtures/captured/smoke.json, fixtures/captured/cql-basic.json).
+// (the captured smoke oracle, not in the public package, the captured cql-basic oracle, not in the public package).
 //
 // The schema is derived from the committed fixture bytes and the recorder
 // that wrote them. It is exact: unknown keys and wrong-typed values fail

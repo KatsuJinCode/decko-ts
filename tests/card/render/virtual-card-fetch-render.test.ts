@@ -38,7 +38,10 @@ const BASIC_TYPE_ID = 3;
 const SET_TYPE_ID = 4;
 
 async function seedCorpusShapedDeck(): Promise<RenderTestStorage> {
-  const storage = await createRenderTestStorage();
+  // This deck writes its own read substrate (*all, *read, the *all+*read rule,
+  // Anonymous and Anyone), so the stock substrate stays off: its codename rows
+  // would collide with these during the displacement seam.
+  const storage = await createRenderTestStorage({ bootstrapReadRules: false });
   const seed = (opts: SeedOptions) => seedCard(storage, opts);
 
   // Codename cards the permission math and type codes read.
