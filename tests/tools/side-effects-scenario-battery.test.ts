@@ -26,7 +26,24 @@
 // one of them. The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
-// verdicts, so any engine change here fails loudly. Neither engine's
+// verdicts, so any engine change here fails loudly.
+//
+// THE RECORDING'S ENVIRONMENT. The trace was recorded by
+// ruby/drive.rb with only two production-style settings applied
+// (rescue_all_in_controller, consider_all_requests_local; the file's own
+// comment at drive.rb:86-116 says so and declines the rest). The rest of
+// the boot is the DEVELOPMENT environment: asset_refresh :eager
+// (card-1.110.0 config/environments/development.rb:10) and
+// compress_assets false (:11), against the railtie defaults a deployed site
+// runs: :cautious (lib/cardio/railtie.rb:34) and true (:35). A deployed
+// deck therefore serves minified script bundles (00_script.rb:25-27
+// Uglifier) where this trace carries the unminified form. This driver runs
+// the port's deployed-config path (:cautious, the same trigger the Node
+// staging host runs), which produces this trace's verdicts under both
+// asset_refresh settings; re-recording under RAILS_ENV=production is what
+// would close the compress_assets gap.
+//
+// Neither engine's
 // behavior changes in this suite; the errors field is compared through
 // compare.mjs's own extractors, which must agree about what an error page
 // is (both engines render the same card-mod-format alert).

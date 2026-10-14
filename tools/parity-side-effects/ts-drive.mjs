@@ -166,6 +166,13 @@ const readEngine = new CardActionEngine(fetcher, {
   scssCompiler,
   coffeeCompiler,
 });
+// A deployed Decko runs :cautious (card-1.110.0 lib/cardio/railtie.rb:34).
+const { createReadAssetRefresh } = await import(dist("card/actions/asset-read-refresh.js"));
+const readAssetRefresh = createReadAssetRefresh({
+  mode: "cautious",
+  sharedCache: true,
+  refresh: () => readEngine.refreshReadAssetInputs(),
+});
 renderEngine.renderAbsentCards = true;
 
 
@@ -398,7 +405,9 @@ async function readPage(path) {
     { known, html: !json, ajax: false, codename: rec?.codename ?? null }));
   if (!known) return { status: 404, headers: {}, body: "" };
   const cardName = mark === "" ? "Home" : mark;
-  await readEngine.refreshReadAssetInputs();
+  // The host's read-time refresh (the same factory the Node staging host
+  // runs before every page render, vm-staging-server.mjs), not a direct call.
+  await readAssetRefresh.beforeRead({ explicitFile: false });
   const body = await renderPageBytes(renderEngine, cardName);
   return { status: 200, headers: {}, body };
 }
