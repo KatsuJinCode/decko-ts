@@ -202,9 +202,7 @@ export async function quickTypeName(
 /** standard_rule? (rule/all.rb:37-40): `Card.fetch_type_id(name.right) ==
  *  SettingID && Card.fetch_type_id(name.left) == SetID` - the *rule
  *  pattern's applies? operand. The Set/Setting ids resolve through the
- *  deck's codename registry; either codename missing -> false (the
- *  rule-less-seed divergence, the same allow contract set-read-rule.ts
- *  documents). */
+ *  deck's codename registry; either codename missing -> false. */
 export async function isStandardRuleName(
   fetch: FetchEngine,
   name: DeckoName,

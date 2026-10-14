@@ -60,7 +60,7 @@ persistence and atomic saves
 ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)),
 blob and SQL drivers
 ([decisions/0003](decisions/0003-edge-native-driver-interfaces.md)), and
-authentication and permissions among the five approved divergences.
+authentication and permissions among the six approved divergences.
 
 ## 2. "Ruby is part of the extension model — the biggest missing architectural issue"
 
@@ -391,7 +391,7 @@ Ruby Decko … Its acceptance criterion is exact parity with Ruby Decko in
 rendering, persistence, semantics and side effects, **including Ruby's
 defects**, so that an existing deck behaves the same on either engine — except
 where a difference is declared below." Reproducing observable behaviour is the
-claim; being the same system is not, and the five approved divergences are the
+claim; being the same system is not, and the six approved divergences are the
 explicit list of where behaviour deliberately differs.
 
 No hosting-modernization claim is made either: the performance evidence is

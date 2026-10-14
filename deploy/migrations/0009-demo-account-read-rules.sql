@@ -10,16 +10,14 @@
 --
 -- THE MECHANISM, one missing card, two consequences:
 --   * a deck with no catch-all read rule has hasCatchAllReadRule=false
---     (the structural catchAll count, read-rules.ts:226-231), and
---     canReadByRuleLookupDepth (:480) returns undefined for that state —
---     which the caller reads as ALLOWED, the documented rule-less-deck
---     divergence. An unruled +*password / +*salt field rendered.
---   * the same predicate switched the CQL permission filter off wholesale
---     (RenderEngine#cqlPermissionOptions), so /api/query returned every row.
+--     (the structural catchAll count, read-rules.ts:226-231). The port denies
+--     every card of that deck, as Ruby does (permissions.rb:139-146).
+--   * the CQL permission filter reads the same rule set
+--     (RenderEngine#cqlPermissionOptions), so /api/query returns no rows.
 --
 -- THE RULES ARE THE GEM'S OWN, transcribed field for field from
 -- card-mod-account-0.20.0/data/real.yml. Each of the five field cards
--- declares `:fields: :right: :fields: :read: [:help_desk]`, which the
+-- declares `:fields: :right: :fields: :read: [:help_desk]`, which Wagn's
 -- real.yml loader materializes as `<field>+*right+*read` with content
 -- [[Help Desk]]:
 --   * `*account`  real.yml:82-94    * `*password`  real.yml:132-142

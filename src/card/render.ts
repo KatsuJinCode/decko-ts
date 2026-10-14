@@ -5249,8 +5249,9 @@ export class RenderEngine implements RenderEngineLike {
    *  (deploy/worker.ts cardRecordJson). The full ok_to_read? port — the mod
    *  set-module overrides first (cardReadAllowed -> read-override.ts), then
    *  the stored read_rule_id (canReadByStoredRule, permissions.rb:142-143),
-   *  then the live rule walk (canReadByRuleLookup, permissions.rb:55-61;
-   *  undefined = rule-less deck: allowed, the documented divergence).
+   *  then the live rule walk (canReadByRuleLookup, permissions.rb:55-61).
+   *  A deck with no read rule card has nothing for the walk to resolve, so
+   *  canReadByRuleLookup answers false there (permissions.rb:139-146).
    *  `typeName` is optional — the *type pattern's anchor name; callers that
    *  already hold the type record pass it, others let the lookup resolve.
    *  Verdicts memoize into the same deniedVerdicts map ensureVerdicts uses,
