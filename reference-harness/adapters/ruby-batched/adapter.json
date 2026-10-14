@@ -1,0 +1,5 @@
+{
+  "name": "decko-ruby-batched",
+  "description": "Ruby Decko (decko 0.20.0, card 1.110.0) with card-mod-batched-nests from ruby/ in this repository: the oracle app and adapter, run under app/Gemfile.batched. Graded against the same fixtures and the same oracle captures as stock Ruby and the TypeScript engine.",
+  "command": ["bash", "../../oracle/run-adapter.sh", "batched"]
+}
