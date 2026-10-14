@@ -278,9 +278,14 @@ CREATE UNIQUE INDEX "unique_schema_migrations_cards" ON "transform_migrations" (
 -- ----------------------------------------------------------------------------
 -- [ENGINE-FRESHNESS] deck_data_version — the committed-write version stamp.
 --
--- ONE row (id = 1), bumped by the AFTER triggers below on the two tables the
--- render engine's derived caches are built from (cards + card_references —
--- the entire read surface of the fetch/rule/permission caches). The render
+-- ONE row (id = 1), bumped by the AFTER triggers below on every table a card
+-- write changes (cards, card_acts, card_actions, card_changes,
+-- card_references, card_virtuals), so a write that touches only
+-- card_actions — a reserved action, a re-parented child action, a cleared
+-- draft — moves the stamp too. The same statements, IF NOT EXISTS, are
+-- installed on any deck that lacks them by src/server/freshness-stamp.ts
+-- (open paths) and tools/migrate/import.mjs installFreshnessStamp (import
+-- paths); deploy/migrations/0010 adds the wider set to provisioned D1. The render
 -- path reads the stamp ONCE per request (one PK point SELECT,
 -- src/card/render.ts DECK_DATA_VERSION_STATEMENT) and clears its derived
 -- caches when the value moved, so a warm runtime serves the committed state
@@ -324,5 +329,41 @@ CREATE TRIGGER "card_references_bump_deck_data_version_upd" AFTER UPDATE ON "car
   UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
 END;
 CREATE TRIGGER "card_references_bump_deck_data_version_del" AFTER DELETE ON "card_references" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_acts_bump_deck_data_version_ins" AFTER INSERT ON "card_acts" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_acts_bump_deck_data_version_upd" AFTER UPDATE ON "card_acts" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_acts_bump_deck_data_version_del" AFTER DELETE ON "card_acts" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_actions_bump_deck_data_version_ins" AFTER INSERT ON "card_actions" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_actions_bump_deck_data_version_upd" AFTER UPDATE ON "card_actions" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_actions_bump_deck_data_version_del" AFTER DELETE ON "card_actions" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_changes_bump_deck_data_version_ins" AFTER INSERT ON "card_changes" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_changes_bump_deck_data_version_upd" AFTER UPDATE ON "card_changes" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_changes_bump_deck_data_version_del" AFTER DELETE ON "card_changes" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_virtuals_bump_deck_data_version_ins" AFTER INSERT ON "card_virtuals" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_virtuals_bump_deck_data_version_upd" AFTER UPDATE ON "card_virtuals" BEGIN
+  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
+END;
+CREATE TRIGGER "card_virtuals_bump_deck_data_version_del" AFTER DELETE ON "card_virtuals" BEGIN
   UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
 END;

@@ -19,6 +19,7 @@ import {
 } from "../rules/structure.js";
 import { createVirtualCardLookup } from "../fetch/virtual-cards.js";
 import { registerSqliteRegexpFunction } from "../../cql/sqlite-regexp.js";
+import { ensureFreshnessStamp } from "../../server/freshness-stamp.js";
 
 type Row = Record<string, unknown>;
 
@@ -40,6 +41,9 @@ export async function bootDeck(
   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const driver = new LocalSqliteDriver({ path: dbPath, readonly: opts.readonly ?? false });
   registerSqliteRegexpFunction(driver);
+  // A writable open installs the freshness stamp on a deck that lacks any
+  // part of it (a Ruby-built deck has none), so every later write moves it.
+  if (!(opts.readonly ?? false)) await ensureFreshnessStamp(driver);
   const fetcher = new FetchEngine(driver);
   const { rows } = await driver.query("SELECT id, name, left_id, right_id FROM cards", []);
   const byId = new Map<number, Row>();

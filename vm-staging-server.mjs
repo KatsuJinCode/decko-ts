@@ -107,6 +107,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
+import { ensureFreshnessStamp } from "./dist/src/server/freshness-stamp.js";
 import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
 // The serving posture for nested render errors: Cardio's stock boot is QUIET
@@ -590,6 +591,10 @@ setRenderRecaptchaConfig(recaptchaConfig);
 // migrations its own way) — this Node origin passes its own repo-root
 // db/migrations explicitly.
 await runAuthMigrations(authDriver, { migrationsDir: path.join(HERE, "db", "migrations") });
+// The freshness stamp on every card table, installed on a deck that lacks
+// any part of it (src/server/freshness-stamp.ts). Idempotent, and it writes
+// nothing when the stamp is whole.
+await ensureFreshnessStamp(authDriver);
 
 // ---------------------------------------------------------------------------
 // Boot-seed: a FRESH deck seeds itself at boot.
