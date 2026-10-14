@@ -227,6 +227,9 @@ import {
   PERMISSION_GATE_COUNT_STATEMENT_INDEX,
   canReadByStoredRule,
   canReadByRuleLookup,
+  ruleClosureWalkStatement,
+  primeRuleClosureUniverse,
+  actorKeyFromResults,
   ANONYMOUS_VIEWER,
   anonymousIdFromResults,
   type ReadViewer,
@@ -1314,6 +1317,9 @@ export class RenderEngine implements RenderEngineLike {
     // batch below — +1 statement, +0 round trips. Every later render reads
     // it standalone at the render entry (see the gate at render() top).
     const stampCold = this.deckDataVersion === undefined;
+    // The rule-closure walk folds into the cold batch when this driver
+    // generation has not built it yet (see the cold slots below).
+    const ruleWalkCold = ruleClosureWalkStatement(this.fetcher.driver);
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       // THE BOOT READ-SET, OR THE CONTENT-VERSION CACHE'S COPY OF IT.
@@ -1392,6 +1398,12 @@ export class RenderEngine implements RenderEngineLike {
         ...(stampCold
           ? [{ sql: DECK_DATA_VERSION_STATEMENT, params: [] as unknown[] }]
           : []),
+        // The rule-closure walk (the render's blank-key read verdict needs it
+        // on every cold render; read-rules.ts resolveRowsAgainst). It depends
+        // only on the deck, so it rides THIS batch as the last member: the
+        // verdicts that follow find the memo already seated and pay no walk
+        // round trip. Absent when the driver generation already holds it.
+        ...(ruleWalkCold !== undefined ? [ruleWalkCold] : []),
       ];
       const coldStatements = coldSlots.filter(
         (slot): slot is SQLStatement => !isCachedColdSlot(slot),
@@ -1424,6 +1436,11 @@ export class RenderEngine implements RenderEngineLike {
         foldedResults = coldSlots.map((slot) =>
           isCachedColdSlot(slot) ? slot.cachedResult : (executed as SQLQueryResult[])[cursor++],
         );
+      }
+      // The folded rule-closure walk seats the memo the blank-key verdict and
+      // every later rule lookup read (its slot is the batch's last member).
+      if (ruleWalkCold !== undefined) {
+        primeRuleClosureUniverse(this.fetcher.driver, foldedResults[coldSlots.length - 1]!);
       }
       // The rule ids must be memoized BEFORE enrichment: enrichAndStore
       // computes set keys (the RULE pattern's applies?) synchronously from
@@ -3841,6 +3858,19 @@ export class RenderEngine implements RenderEngineLike {
       for (const id of typeIds) this.typeCardsPrimed.add(id);
       const ids = [...typeIds];
       const typeStatements: SQLStatement[] = [];
+      // The Set TYPE card joins the primed type cards for the same reason
+      // the rest do: every rule card the walk seats is a Set card, and its
+      // enrichAndStore set-key computation reads the Set card's type NAME.
+      // One batch member; the card is fetched once per engine, not per rule.
+      // The row only needs priming once, so the statement is issued on the
+      // first type prime only; later ones carry the cards that changed.
+      if (!this.setTypeCardPrimed) {
+        this.setTypeCardPrimed = true;
+        typeStatements.push({
+          sql: `SELECT * FROM cards WHERE codename = 'set' AND trash = 0`,
+          params: [],
+        });
+      }
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         const placeholders = chunk.map(() => "?").join(", ");
@@ -4943,6 +4973,17 @@ export class RenderEngine implements RenderEngineLike {
         : { signedIn: false, actorId: anonymousIdFromResults(results) };
     this.readPermission = readPermissionStateFromViewerResults(results, viewer);
     this.readViewer = viewer;
+    // The viewer's own canonical key, answered from this batch when its card
+    // row rides it (the anonymous codename row always does): resolveViewerKey
+    // then reads no card by id. A row the batch does not carry is left to
+    // the point read, exactly as before.
+    if (!this.readViewerKeyResolved) {
+      const known = actorKeyFromResults(results, viewer.actorId);
+      if (known !== undefined) {
+        this.readViewerKey = known.key;
+        this.readViewerKeyResolved = true;
+      }
+    }
     return this.readPermission;
   }
 
@@ -6107,6 +6148,12 @@ export class RenderEngine implements RenderEngineLike {
    *  (the candidates of a page's prepared set are deterministic in the
    *  deck-static-per-engine contract). */
   private ruleCandidatesPrimedFor = new Set<string>();
+  /** The Set TYPE card's row has been fetched into the cache by the
+   *  priming pass (primePreparedCardDerivedState). Every rule card the walk
+   *  seats is a Set card; its enrichAndStore set-key computation reads the
+   *  Set card's type name, and the fetch cache answers it. One row per
+   *  engine, not one read per rule card. */
+  private setTypeCardPrimed = false;
   /** Templated-nests rule cards whose content the junction warm already
    *  scanned. The gate that keeps this pass off the other ~47k deck cards
    *  is `isTemplatedNestsName` (the `*default` / `*structure` right tag),

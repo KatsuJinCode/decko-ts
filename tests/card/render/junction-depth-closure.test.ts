@@ -120,13 +120,16 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // (chunked key IN-lists + side-key joins + resolution rounds,
       // refined by negative-priming ask/answer handling and the closure
       // retirement of proven-unresolvables), which re-pinned this
-      // constant (4/16 -> 7/24). The invariant the pin
-      // guards is intact at the new readings: depth-3 (7/24) minus
-      // depth-2 (6/23) = +1 round trip +1 statement per chain level,
-      // constant in deck size; renders stay byte-correct (the html
-      // assertions above are untouched and pass).
+      // constant. The deck here carries the stock `*all+*read` rule card
+      // (createRenderTestStorage seeds it; Ruby has no rule-less reading
+      // deck), and the read permission's one-time setup rides the prelude
+      // batch, so it adds statements and no round trips: 7 round trips /
+      // 26 statements. The invariant the pin guards is intact at these
+      // readings: depth-3 (7/26) minus depth-2 (6/25) = +1 round trip
+      // +1 statement per chain level, constant in deck size; renders stay
+      // byte-correct (the html assertions above are untouched and pass).
       expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(24); // wave-seating ladder, see above
+      expect(snapshot.statements).toBe(26); // wave-seating ladder, see above
     } finally {
       storage.close();
     }
@@ -218,10 +221,13 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // the negative-priming and closure-retirement refinements)
       // restructured the cold render's post-prelude batches from one
       // fetch-shapes round into the per-wave seating ladder, re-pinning
-      // this constant (3/15 -> 6/23). +1 batch per chain level still
-      // holds (6 here vs the depth-3 case's 7).
+      // this constant. As in the depth-3 case above, this deck carries the
+      // stock `*all+*read` rule card and the read permission's setup rides
+      // the prelude batch: 6 round trips / 25 statements.
+      // +1 batch per chain level still holds (6 here vs the depth-3
+      // case's 7).
       expect(snapshot.roundTrips).toBe(6);
-      expect(snapshot.statements).toBe(23);
+      expect(snapshot.statements).toBe(25);
     } finally {
       storage.close();
     }

@@ -196,7 +196,11 @@ pinned by `tests/card/render/deep-nesting-trip-attribution.test.ts`): a cold
 render costs four fixed round trips plus one per level of nesting below the
 root, however many cards each level holds — breadth costs nothing extra, so a
 fan of 200 cards is 5 round trips. Ruby sends one query per card at every
-depth. It is a performance path, not a semantic one: the page must be
+depth. The fixed four hold on a deck that carries its `*all+*read` rule
+card (what every real deck does): the read permission's one-time setup —
+the rule-closure walk, the rule card's content and the viewer's key — is
+folded into the prelude batch, so it costs statements, not round trips.
+It is a performance path, not a semantic one: the page must be
 byte-identical with and without it, and the tests compare both.
 
 ---

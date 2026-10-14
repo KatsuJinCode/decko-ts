@@ -207,10 +207,15 @@ describe("read permission query shape (decko-commons/decko#1282)", () => {
       // trip, the billed axis, is unchanged.
       // +1 more — the deck_data_version stamp read folds LAST on
       // the engine's first render (baseline for the per-request freshness
-      // gate). Composed batch measured 9: 3
+      // gate).
+      // +1 more — the rule-closure walk (read-rules.ts
+      // ruleClosureWalkStatement) rides this batch as its last member. The
+      // blank-key read verdict, seated on every cold render, is what needs
+      // it; folded here it costs statements, not round trips. Composed
+      // batch measured 10: 3
       // permission + codehash + 2 universes + template type-name + head
-      // read-set + stamp.
-      expect(stats?.additionalResults?.length).toBe(9);
+      // read-set + stamp + rule-closure walk.
+      expect(stats?.additionalResults?.length).toBe(10);
     } finally {
       cold.close();
     }
