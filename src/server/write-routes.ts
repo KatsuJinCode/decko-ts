@@ -111,6 +111,7 @@ import {
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
@@ -228,6 +229,10 @@ export interface WriteRouteContext {
    *  Absent = the computed default (the request origin + the Decko Bot
    *  account's email looked up from the deck). */
   followMail?: { origin: string; deckoBotEmail: string };
+  /** card-mod-delayed_job: when delaying, integrate_with_delay events are
+   *  queued as delayed_jobs rows instead of running in the request
+   *  (card/delayed-job/delayed-job.ts). Omitted: they run in line. */
+  delayedJobs?: DelayedJobsConfig;
   /** The visitor session's previous location — `session[:history]`'s last
    *  entry (card/lib/card/env/location_history.rb:29-31 previous_location),
    *  the `*previous` success-mark resolution (mark.rb:12-14 hard_redirects
@@ -1533,6 +1538,7 @@ async function dispatchWriteRequest(
       deckoBotEmail: ctx.accountMail?.deckoBotEmail ?? (await deckoBotAccountEmail(ctx.driver)),
     },
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
+    ...(ctx.delayedJobs === undefined ? {} : { delayedJobs: ctx.delayedJobs }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the

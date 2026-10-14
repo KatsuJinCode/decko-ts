@@ -119,8 +119,9 @@ export interface SavePathAct {
  *  the act card's own event — the dispatch's actor/silent values are
  *  act-level, so the first event carries them). */
 export interface SavePathIntegrationHook {
-  /** Which Ruby stage this hook replaces. Used only for diagnostics;
-   *  the engine doesn't schedule by stage (no delayed-job queue here). */
+  /** Which Ruby stage this hook replaces. An integrate_with_delay hook
+   *  runs in line unless the engine is delaying (Cardio.config.delaying),
+   *  in which case it is queued as a delayed job (card/delayed-job). */
   readonly stage: "integrate" | "integrate_with_delay";
   /** Card-level guard. Returns true to fire, false to skip. Replaces
    *  `when: :notable_change?` (card-mod-follow notify.rb:16). */
@@ -133,6 +134,13 @@ export interface SavePathIntegrationHook {
   readonly fireAct?: (act: SavePathAct, ctx: NotifyContext) => Promise<void>;
   /** Optional name for debug + capture diagnostics. */
   readonly name?: string;
+  /** The Ruby event name (`event :<name>, :integrate_with_delay`). A
+   *  delayed job's queue is named after its event (delayed_event.rb
+   *  set_delayed_job_args); falls back to `name`. */
+  readonly event?: string;
+  /** The event's `priority:` option (delayed_event.rb#priority, default
+   *  10) — the delayed_jobs row's priority. */
+  readonly priority?: number;
 }
 
 /** Per-fire context handed to the hook. Carries the transport + a small

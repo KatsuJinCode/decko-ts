@@ -213,6 +213,11 @@ import type {
   ModEventStage,
 } from "../mod-loader/mod-manifest.js";
 import { isEditConflict } from "../mod-loader/mods/card-mod-history.js";
+import {
+  DEFAULT_DELAYED_EVENT_PRIORITY,
+  type DelayedEventJob,
+  type DelayedJobsConfig,
+} from "../delayed-job/delayed-job.js";
 import { expireRuleResolutionCache } from "../permissions/read-rules.js";
 
 /** A card's reference FINALIZE events, stashed by createInWriter when the
@@ -303,6 +308,13 @@ export interface CardActionEngineOptions {
    *  links and unfollow URL, and the From rule). Without them the mail
    *  carries the template with its nests unfilled. */
   followMail?: { origin: string; deckoBotEmail: string };
+  /** card-mod-delayed_job (Cardio.config.delaying). Omitted or delaying
+   *  false: integrate_with_delay hooks run in line, as Ruby runs them with
+   *  the mod's default config. Delaying true: each applicable
+   *  integrate_with_delay hook becomes one delayed job on `queue`
+   *  (delayed_event.rb define_event_delaying_method), performed later by
+   *  performDelayedJob. */
+  delayedJobs?: DelayedJobsConfig;
   /** The attachment storage seam (E4.4.a — card-mod-carrierwave's
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
@@ -425,6 +437,7 @@ export class CardActionEngine {
   readonly actor: Actor | null;
   private readonly clock: () => Date;
   private readonly ipAddress: string | null;
+  private readonly delayedJobs: DelayedJobsConfig | undefined;
   private readonly canWrite: CanWriteHook | undefined;
   private readonly integrationHooks: SavePathIntegrationHook[] | undefined;
   private readonly followerResolver: FollowerResolver | undefined;
@@ -477,6 +490,7 @@ export class CardActionEngine {
     this.actor = options.actor;
     this.clock = options.now ?? (() => new Date());
     this.ipAddress = options.ipAddress ?? null;
+    this.delayedJobs = options.delayedJobs;
     this.canWrite = options.canWrite;
     this.integrationHooks = options.integrationHooks;
     this.followerResolver = options.followerResolver;
@@ -677,14 +691,107 @@ export class CardActionEngine {
           savePathEventFromAction({ ...sub, actId: result.actId, subactions: [] }, actor, result.actId, false),
         )
       : expandActionResultToSavePathEvents(result, actor, opts.withinOtherAct === true);
+    const actCardName = result.name?.s ?? null;
+    // Cardio.config.delaying: the integrate_with_delay stage schedules each
+    // applicable event as a job instead of running it (event/all.rb#schedule
+    // -> <event>_with_delay -> IntegrateWithDelayJob.perform_later). The
+    // event's conditions are evaluated now, at scheduling time.
+    let inline = hooks;
+    if (this.delayedJobs?.delaying === true) {
+      inline = hooks.filter((h) => h.stage !== "integrate_with_delay");
+      const first = events[0];
+      for (const hook of hooks) {
+        if (hook.stage !== "integrate_with_delay" || first === undefined) continue;
+        if (!hook.notable(first)) continue;
+        await this.delayedJobs.queue.enqueue(
+          this.delayedEventJob(hook, { actId: result.actId, actor, silent: false, events, actCardName }, result.cardId),
+        );
+      }
+    }
+    if (inline.length === 0) return;
     await runIntegrationHooks({
       actId: result.actId,
       actor,
       silent: false,
       events,
-      actCardName: result.name?.s ?? null,
-      hooks,
+      actCardName,
+      hooks: inline,
       context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
+    });
+  }
+
+  /** perform_delayed_job_args (delayed_event.rb:99-106) for one hook. */
+  private delayedEventJob(
+    hook: SavePathIntegrationHook,
+    act: DelayedEventJob["act"],
+    cardId: number,
+  ): DelayedEventJob {
+    const event = hook.event ?? hook.name ?? "integrate_with_delay";
+    let protocol: string | null = null;
+    let host: string | null = null;
+    if (this.followMail !== undefined) {
+      try {
+        const url = new URL(this.followMail.origin);
+        protocol = `${url.protocol}//`;
+        host = url.hostname;
+      } catch {
+        // origin not a URL: protocol/host stay nil, as for a request-less Env
+      }
+    }
+    return {
+      queue: event,
+      priority: hook.priority ?? DEFAULT_DELAYED_EVENT_PRIORITY,
+      actId: act.actId,
+      cardId,
+      methodName: `${event}_without_callbacks`,
+      env: {
+        main_name: act.actCardName ?? null,
+        params: { ...(this.saveParams ?? {}) },
+        ip: this.ipAddress,
+        protocol,
+        host,
+        origin: this.followMail?.origin ?? null,
+        ajax: null,
+        html: true,
+        decko_bot_email: this.followMail?.deckoBotEmail ?? null,
+      },
+      auth: { as_id: null, current_id: act.actor.id },
+      act,
+    };
+  }
+
+  /**
+   * IntegrateWithDelayJob#perform (delayed_event.rb:57-81) for a job this
+   * engine's hooks scheduled: Director.contextualize_delayed_event restores
+   * the act, env and auth, then the event's simple method runs. The hook is
+   * found by its event name (the job's queue). A missing hook or a hook
+   * failure throws, so the worker records the row as failed
+   * (handle_perform re-raises after Card::Error.report).
+   */
+  async performDelayedJob(job: DelayedEventJob): Promise<void> {
+    const hooks = this.integrationHooks ?? [
+      buildFollowNotifyHook(
+        defaultFollowNotifyDeps(this.fetch, {
+          followers: this.followerResolver,
+          ...(this.followMail === undefined ? {} : { mail: this.followMail }),
+        }),
+      ),
+    ];
+    const hook = hooks.find((h) => (h.event ?? h.name) === job.queue);
+    if (hook === undefined) {
+      throw new Error(`undefined method '${job.methodName}' for an instance of Card`);
+    }
+    await runIntegrationHooks({
+      actId: job.act.actId,
+      actor: job.act.actor,
+      silent: job.act.silent,
+      events: job.act.events,
+      actCardName: job.act.actCardName ?? null,
+      hooks: [hook],
+      context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
+      onError: (err) => {
+        throw err;
+      },
     });
   }
 
