@@ -9,6 +9,8 @@ import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { openSameDatabase } from "../../../src/server/same-database.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { getDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
@@ -93,7 +95,15 @@ console.log = (...args: unknown[]) => process.stderr.write(args.map(String).join
 console.info = console.log;
 console.warn = console.log;
 
-const driver = new LocalSqliteDriver({ path: process.env.HARNESS_DECK!, readonly: false });
+// HARNESS_MYSQL_DATABASE points the adapter at a MySQL / MariaDB copy of the
+// deck instead of the SQLite file (tools/same-database/load-deck-into-mysql.mjs
+// builds one); the SQLite file stays the default.
+const driver: SQLDatabaseDriver = process.env.HARNESS_MYSQL_DATABASE
+  ? await MysqlDriver.connect({
+      database: process.env.HARNESS_MYSQL_DATABASE,
+      port: Number(process.env.HARNESS_MYSQL_PORT ?? 3306),
+    })
+  : new LocalSqliteDriver({ path: process.env.HARNESS_DECK!, readonly: false });
 // The deck is the database Ruby built, opened as it is: the port's own
 // objects (freshness stamp, session table, lookup indexes) are added
 // additively, the same way every Node host opens a deck (same-database.ts).
