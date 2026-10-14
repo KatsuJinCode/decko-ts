@@ -10,6 +10,7 @@ import {
   scanNests,
 } from "../../../src/card/render/nest-syntax.js";
 import { safeSetKeys } from "../../../src/card/render/set-keys.js";
+import { coldRoundTripLaw } from "./round-trip-law.js";
 import { UnsupportedViewError } from "../../../src/card/render.js";
 import { DeckoName } from "../../../src/card/name.js";
 import {
@@ -255,7 +256,9 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // level), not with the DECK - the trade for rows-read dropping from
     // O(deck x passes) per render to O(page). Ruby's measured cost for the
     // same chains is depth+3 (4/5/7/11); the TS curve pinned below is
-    // equal at every depth. Of each total, 2 round trips are fixed: the
+    // depth+2, one below Ruby's at every depth (the cold round-trip law,
+    // round-trip-law.ts: three fixed trips plus one per level below the
+    // root). Of each total, 2 round trips are fixed before the wave: the
     // root fetch and the PRELUDE batch (src/card/render/prefetch.ts -
     // the root's side priming, the root's TYPE row for the enrichment
     // fold, and the root's set-pattern anchor priming, which turns the
@@ -263,11 +266,17 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // entries, plus the folded engine statements). The walk is CACHED
     // after the first render - warm renders pay only the freshness stamp
     // (the test below).
-    expect(roundTripsByDepth).toEqual({ 1: 4, 2: 5, 4: 7, 8: 11 });
+    expect(roundTripsByDepth).toEqual({
+      1: coldRoundTripLaw(0),
+      2: coldRoundTripLaw(1),
+      4: coldRoundTripLaw(3),
+      8: coldRoundTripLaw(7),
+    });
     // Statements: the folded engine statements are constant; the rounds
-    // add one fetch statement per level, and the per-wave seating ladder
-    // contributes a constant +6 folded statements at every depth (chunked
-    // key IN-lists, side-key joins, resolution rounds). Two of the
+    // add one fetch statement per level, and the wave's one round
+    // contributes its folded statements (chunked key IN-lists, the
+    // side-key join and the depth-3 key join; depth 8 brings enough *self
+    // rule candidates for the key join to need a second statement). Two of the
     // constant folds prime email junctions: the email field-anchor
     // prelude statement and the +*test context junction priming. The
     // folds live in the prelude batch: default_nest_view is process
@@ -283,12 +292,13 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // and the Set TYPE card's row folded into the wave preamble — rides
     // those two batches: statements, not round trips. Warm
     // renders pay exactly that one stamp statement.
-    expect(statementsByDepth).toEqual({ 1: 21, 2: 22, 4: 24, 8: 28 });
-    // depth 8 costs one batch per level (11 round trips) while reading
-    // O(page) rows instead of the whole deck per render - and lands AT
-    // Ruby's 11 queries (pinned: TS <= Ruby at every measured depth; in
-    // the current design the two curves are equal at every depth, not
-    // just under).
+    // The prelude also carries the stored nest index's closure statement
+    // (+1 statement at every depth, +0 round trips). This deck writes no
+    // reference rows, so its closure levels are walked one round trip each.
+    expect(statementsByDepth).toEqual({ 1: 21, 2: 22, 4: 24, 8: 29 });
+    // depth 8 costs one batch per level (10 round trips) while reading
+    // O(page) rows instead of the whole deck per render - one below
+    // Ruby's 11 queries (pinned: TS <= Ruby at every measured depth).
     // Statements inside a batch are folded prepare work riding ONE round
     // trip, not round trips - the costed axis stays the round-trip
     // count above.

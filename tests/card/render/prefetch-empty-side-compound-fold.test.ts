@@ -166,9 +166,13 @@ describe("prefetch closure: empty-sided compound names fold", () => {
         // is the measured cost on a deck carrying the stock `*all+*read`
         // rule card (createRenderTestStorage seeds it; Ruby denies a deck
         // without one), whose read permission rides the prelude batch:
-        // 25 round trips here, closure rounds included.
-        expect(after.roundTrips).toBeLessThanOrEqual(25);
-        expect(after.statements).toBeLessThanOrEqual(46);
+        // 24 round trips and 47 statements here, closure rounds included.
+        // The wave's depth-3 key join asks a rule's parent in the round that
+        // asks its junction: one statement more than the id-pair ask the
+        // round after, and one round trip fewer.
+        expect(after.roundTrips).toBeLessThanOrEqual(24);
+        // Plus one: the stored nest index's closure statement rides the prelude batch: +1 statement, +0 round trips.
+        expect(after.statements).toBeLessThanOrEqual(48);
       } finally {
         storage.close();
       }

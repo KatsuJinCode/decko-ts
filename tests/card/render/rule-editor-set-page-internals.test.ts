@@ -98,7 +98,10 @@ async function seedDeck(): Promise<void> {
   // The known item targets: Administrator (a plain card) + Anyone (the
   // role the read grant admits) + Anonymous (the default viewer's party
   // id — statement 1 of the permission batch resolves it by codename).
-  await seedCard(s, { id: 40, name: "Administrator", dbContent: "admin body" });
+  // Role: the type Ruby's seed gives Administrator (Role is a Cardtype).
+  await seedCard(s, { id: 43, name: "Cardtype", codename: "cardtype", typeId: 43 });
+  await seedCard(s, { id: 44, name: "Role", codename: "role", typeId: 43 });
+  await seedCard(s, { id: 40, name: "Administrator", codename: "administrator", typeId: 44, dbContent: "admin body" });
   await seedCard(s, { id: 41, name: "Anyone", codename: "anyone" });
   await seedCard(s, { id: 42, name: "Anonymous", codename: "anonymous" });
   // The read-rule walk resolves the rule's items through card_references
