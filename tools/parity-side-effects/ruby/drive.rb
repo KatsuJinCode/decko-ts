@@ -223,45 +223,13 @@ ActionMailer::Base.deliveries.clear
 
 $conn = ActiveRecord::Base.connection
 
-# ---- portable paths. A recorded backtrace or message that names this
-# machine's directories (the BUNDLE_PATH the gems were installed under, the
-# app root, the work directory, the checkout the drive itself runs from)
-# would put absolute paths in a file that ships, so every path-bearing string
-# the trace records is rewritten to the part that is stable: the gem name and
-# version, or a marker. The gem root comes from Bundler, not from a hard-coded
-# path; the checkout root is the directory two levels above this file's
-# tools/parity-side-effects/ruby. Roots are matched with their separators
-# normalised, because Windows records backslash paths and POSIX records
-# forward ones, and longest first so the checkout wins over the app inside it.
-GEM_ROOT = ENV["BUNDLE_PATH"] || File.join(Gem.dir, "gems")
-CHECKOUT_ROOT = File.expand_path("../../..", __dir__)
-PORTABLE_ROOTS = [
-  [File.expand_path(GEM_ROOT).tr("\\", "/"), "<gem-root>"],
-  [File.expand_path(APP_ROOT).tr("\\", "/"), "<app>"],
-  [File.expand_path(WORK_DIR).tr("\\", "/"), "<work>"],
-  [File.expand_path(DECK_SRC).tr("\\", "/"), "<deck>"],
-  [CHECKOUT_ROOT.tr("\\", "/"), "<checkout>"],
-].sort_by { |root, _| -root.length }.freeze
-# Any drive-letter path left after the roots above is still this machine's
-# directory tree (a cache, a temp dir, a gem outside BUNDLE_PATH). The letter
-# is dropped so no absolute path reaches the recording.
-DRIVE_ROOT = %r{\b[A-Za-z]:/}
-
-def portable_paths(str)
-  out = str.to_s.tr("\\", "/")
-  PORTABLE_ROOTS.each { |root, marker| out = out.gsub(root, marker) }
-  out.gsub(DRIVE_ROOT, "<path>/")
-end
-
-def portable_backtrace(backtrace, keep)
-  Array(backtrace).grep_v(%r{/(actionpack|activesupport|rack)-}).first(keep).map { |l| portable_paths(l) }
-end
-
 # ---- event trace: every event body (`<event>_without_callbacks`, defined
 # by Card::Set::Event#define_simple_method) logs [card name, event] when it
 # runs. The wrapper is prepended to each set module that defines events.
+# The trace records event names and the step's observable outcome only. Exception
+# messages and backtraces are not recorded: they name this machine's paths, and
+# the committed trace carries no text rewritten from them either.
 $EVENTS = []
-$SWALLOWED = []
 $TRACE = false
 MODULE_NAME = Module.instance_method(:name)
 ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start_with?("Card::Set::") }.each do |mod|
@@ -274,14 +242,6 @@ ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start
       ev = mn.to_s.sub(/_without_callbacks\z/, "")
       define_method(mn) do |*a, **k, &b|
         $EVENTS << [name.to_s, ev] if $TRACE
-        # The integrate stages swallow exceptions (result.rb
-        # notable_exception_raised logs and continues); record what was
-        # swallowed so a missing side effect can be traced to its cause.
-        if $TRACE && ev == "notable_exception_raised" && (err = Card::Error.current)
-          $SWALLOWED << { card: name.to_s, error: err.class.name,
-                          message: portable_paths(err.message)[0, 300],
-                          backtrace: portable_backtrace(err.backtrace, 8) }
-        end
         super(*a, **k, &b)
       end
     end
@@ -421,17 +381,16 @@ def step(name)
   files_before = files_list
   virtuals_before = virtuals_snapshot
   $EVENTS.clear
-  $SWALLOWED.clear
   $TRACE = true
   $status = nil
   $headers = {}
   $body = ""
-  extra = nil
   begin
     yield
-  rescue StandardError => e
-    extra = { raised: e.class.name, error: portable_paths(e.message)[0, 300],
-              backtrace: portable_backtrace(e.backtrace.grep_v(/actionpack|activesupport|rack/), 6) }
+  rescue StandardError
+    # A step that raises outside the HTTP response is recorded by what it did
+    # (its status, body and writes), not by the exception: the trace carries no
+    # exception text. The run continues to the next step.
   ensure
     $TRACE = false
   end
@@ -441,7 +400,7 @@ def step(name)
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
     files: files_list - files_before, virtuals: virtuals_delta(virtuals_before, virtuals_snapshot),
-    mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
+    mail: drain_mail,
     signed_in_as: session_user, session_cards: session_cards
   }
 end

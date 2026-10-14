@@ -84,8 +84,8 @@ recorded in `MANIFEST.json`'s `provenance`.
    The drive runs the oracle with production error handling (rescue_all in
    the controller, no developer exception page), as a deployed Decko site
    does, so a failed step records the public "Wild Card!" page and no
-   backtrace. It also rewrites every path a recorded message or backtrace
-   names to a stable marker, so the committed trace carries no machine path.
+   backtrace. The trace records no exception messages or backtraces at all,
+   so it carries no machine path.
 
 4. Record the 70 write operations (one `decko runner` process per step):
 
