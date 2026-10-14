@@ -157,6 +157,7 @@ export function summariseGrade(repo, gradeReport, extra = null) {
   const failed = new Set((gradeReport.failures?.rendering ?? []).map((f) => f.id));
   const reproduced = new Set((gradeReport.reproduced?.rendering ?? []).map((f) => f.id));
   const cards = deckCardIndex(join(fixtureDir, "deck", "deck.sqlite3"));
+  partKeyIndex = new Set([...cards.byKey.keys()].filter((k) => !k.includes("+")));
   const ops = {};
   const opFiles = extra
     ? [{ path: extra.ops, withheld: false }]
@@ -179,6 +180,7 @@ export function summariseGrade(repo, gradeReport, extra = null) {
       };
     }
   }
+  partKeyIndex = null;
   const graded = Object.keys(ops).length;
   const fail = Object.values(ops).filter((o) => o.result === "differs").length;
   return {
@@ -203,7 +205,19 @@ export function summariseGrade(repo, gradeReport, extra = null) {
 
 // Decko's name key, close enough for the fixture decks' names: each part
 // lower-cased, runs of other characters folded to "_".
-const partKey = (p) => p.trim().toLowerCase().replace(/[^a-z0-9*]+/g, "_").replace(/^_+|_+$/g, "");
+// Decko also singularizes each word (`*follow defaults` keys as
+// `*follow_default`); the plain "-s" rule below covers the fixture decks'
+// names, and lookups fall back to it only when the unsingularized key
+// misses.
+const plainPartKey = (p) => p.trim().toLowerCase().replace(/[^a-z0-9*]+/g, "_").replace(/^_+|_+$/g, "");
+const singular = (k) => k.split("_").map((w) => (/[^s]s$/.test(w) && w.length > 3 ? w.slice(0, -1) : w)).join("_");
+let partKeyIndex = null; // set while summarising one deck
+const partKey = (p) => {
+  const k = plainPartKey(p);
+  if (!partKeyIndex || partKeyIndex.has(k)) return k;
+  const s = singular(k);
+  return partKeyIndex.has(s) ? s : k;
+};
 const nameKey = (n) => n.split("+").map(partKey).join("+");
 
 // A compound card's row stores no name and no key (left_id/right_id only);

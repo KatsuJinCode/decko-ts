@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T23:28:43.524Z",
+  "generatedAt": "2026-10-14T23:37:21.846Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -2873,14 +2873,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -2889,8 +2885,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -2905,8 +2899,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -4299,14 +4291,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -4315,8 +4303,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -4331,8 +4317,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -4554,13 +4538,13 @@
         }
       },
       "behaviour": {
-        "status": "behaviour-complete",
+        "status": "behaviour-incomplete",
         "summary": {
           "views": 21,
-          "views_graded_identical": 19,
+          "views_graded_identical": 18,
           "views_graded_differs": 0,
           "views_pinned": 2,
-          "views_unexercised": 0,
+          "views_unexercised": 1,
           "events": 0,
           "events_named": 0,
           "events_unexercised": 0
@@ -4634,10 +4618,7 @@
             "view": "bar_bottom",
             "alias": null,
             "set": "set/all/bar.rb",
-            "evidence": "graded-identical",
-            "ops": [
-              "synthetic-v2#view:admin:Corpus Skin:bar_bottom"
-            ]
+            "evidence": "unexercised"
           },
           {
             "format": "html",
@@ -4903,9 +4884,9 @@
         "status": "behaviour-incomplete",
         "summary": {
           "views": 14,
-          "views_graded_identical": 5,
+          "views_graded_identical": 7,
           "views_graded_differs": 1,
-          "views_pinned": 7,
+          "views_pinned": 5,
           "views_unexercised": 1,
           "events": 6,
           "events_named": 6,
@@ -4923,6 +4904,7 @@
             "set": "set/type/bootswatch_skin/html_views.rb",
             "evidence": "graded-identical",
             "ops": [
+              "synthetic-v2#view:admin:Corpus Skin:bar_bottom",
               "synthetic-v2 + extra-ops#view:admin:cerulean skin:bar_bottom"
             ]
           },
@@ -4981,9 +4963,10 @@
             "view": "core",
             "alias": null,
             "set": "set/type/bootswatch_skin/html_views.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#core:admin:Corpus Skin",
+              "synthetic-v2#core:anonymous:Corpus Skin"
             ]
           },
           {
@@ -4991,9 +4974,9 @@
             "view": "customize_button",
             "alias": null,
             "set": "set/type/bootswatch_skin/html_views.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:admin:Corpus Skin:customize_button"
             ]
           },
           {
@@ -7519,14 +7502,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -7535,8 +7514,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -7551,8 +7528,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -8945,14 +8920,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -8961,8 +8932,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -8977,8 +8946,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -9521,8 +9488,8 @@
         "status": "behaviour-incomplete",
         "summary": {
           "views": 43,
-          "views_graded_identical": 41,
-          "views_graded_differs": 2,
+          "views_graded_identical": 42,
+          "views_graded_differs": 1,
           "views_pinned": 0,
           "views_unexercised": 0,
           "events": 0,
@@ -9613,13 +9580,9 @@
             "view": "edit_buttons",
             "alias": null,
             "set": "set/all/editing.rb",
-            "evidence": "graded-differs",
+            "evidence": "graded-identical",
             "ops": [
-              "synthetic-v2#view:admin:Note 001:edit_buttons",
-              "synthetic-v2 + extra-ops#view:admin:*follow defaults:edit_buttons"
-            ],
-            "differing_ops": [
-              "synthetic-v2 + extra-ops#view:admin:*follow defaults:edit_buttons"
+              "synthetic-v2#view:admin:Note 001:edit_buttons"
             ]
           },
           {
@@ -11585,14 +11548,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -11601,8 +11560,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -11617,8 +11574,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -11827,10 +11782,10 @@
         "status": "behaviour-incomplete",
         "summary": {
           "views": 24,
-          "views_graded_identical": 15,
-          "views_graded_differs": 0,
-          "views_pinned": 7,
-          "views_unexercised": 2,
+          "views_graded_identical": 16,
+          "views_graded_differs": 1,
+          "views_pinned": 6,
+          "views_unexercised": 1,
           "events": 10,
           "events_named": 3,
           "events_unexercised": 7
@@ -11916,9 +11871,9 @@
             "view": "confirm_update_all",
             "alias": null,
             "set": "set/self/follow_defaults.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-follow.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:admin:*follow defaults:confirm_update_all"
             ]
           },
           {
@@ -11957,7 +11912,13 @@
             "view": "edit_buttons",
             "alias": null,
             "set": "set/self/follow_defaults.rb",
-            "evidence": "unexercised"
+            "evidence": "graded-differs",
+            "ops": [
+              "synthetic-v2 + extra-ops#view:admin:*follow defaults:edit_buttons"
+            ],
+            "differing_ops": [
+              "synthetic-v2 + extra-ops#view:admin:*follow defaults:edit_buttons"
+            ]
           },
           {
             "format": "html",
@@ -13693,14 +13654,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -13709,8 +13666,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -13725,8 +13680,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -16161,12 +16114,12 @@
         }
       },
       "behaviour": {
-        "status": "behaviour-complete",
+        "status": "behaviour-incomplete",
         "summary": {
           "views": 32,
-          "views_graded_identical": 17,
-          "views_graded_differs": 0,
-          "views_pinned": 15,
+          "views_graded_identical": 22,
+          "views_graded_differs": 1,
+          "views_pinned": 9,
           "views_unexercised": 0,
           "events": 3,
           "events_named": 3,
@@ -16212,9 +16165,10 @@
             "view": "core",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#core:admin:*account links",
+              "synthetic-v2#core:anonymous:*account links"
             ]
           },
           {
@@ -16235,6 +16189,8 @@
             "set": "set/type/layout_type.rb",
             "evidence": "graded-identical",
             "ops": [
+              "synthetic-v2#core:admin:Corpus Layout",
+              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Home Layout",
               "synthetic-v2#core:anonymous:Home Layout",
               "synthetic-v2#core:admin:Left Sidebar Layout",
@@ -16278,9 +16234,9 @@
             "view": "invite",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:admin:*account links:invite"
             ]
           },
           {
@@ -16340,9 +16296,10 @@
             "view": "my_card",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout-mycard-views.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:admin:*account links:my_card",
+              "synthetic-v2#view:anonymous:*account links:my_card"
             ]
           },
           {
@@ -16480,9 +16437,12 @@
             "view": "sign_in",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+            "evidence": "graded-differs",
+            "ops": [
+              "synthetic-v2#view:anonymous:*account links:sign_in"
+            ],
+            "differing_ops": [
+              "synthetic-v2#view:anonymous:*account links:sign_in"
             ]
           },
           {
@@ -16490,9 +16450,9 @@
             "view": "sign_out",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:anonymous:*account links:sign_out"
             ]
           },
           {
@@ -16500,9 +16460,9 @@
             "view": "sign_up",
             "alias": null,
             "set": "set/self/account_links.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:anonymous:*account links:sign_up"
             ]
           }
         ],
@@ -18024,14 +17984,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -18040,8 +17996,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -18056,8 +18010,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -19511,14 +19463,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -19527,8 +19475,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -19543,8 +19489,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -21355,14 +21299,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -21371,8 +21311,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -21387,8 +21325,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -21619,9 +21555,9 @@
         "status": "behaviour-complete",
         "summary": {
           "views": 1,
-          "views_graded_identical": 0,
+          "views_graded_identical": 1,
           "views_graded_differs": 0,
-          "views_pinned": 1,
+          "views_pinned": 0,
           "views_unexercised": 0,
           "events": 3,
           "events_named": 3,
@@ -21638,9 +21574,10 @@
             "view": "core",
             "alias": null,
             "set": "set/self/recaptcha_settings.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-recaptcha.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#core:admin:*recaptcha settings",
+              "synthetic-v2#core:anonymous:*recaptcha settings"
             ]
           }
         ],
@@ -23831,14 +23768,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -23847,8 +23780,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -23863,8 +23794,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -25257,14 +25186,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -25273,8 +25198,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -25289,8 +25212,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -26961,14 +26882,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -26977,8 +26894,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -26993,8 +26908,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -28508,14 +28421,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -28524,8 +28433,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -28540,8 +28447,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -30497,14 +30402,10 @@
               "synthetic-v2#core:anonymous:Corpus Script",
               "synthetic-v2#core:admin:Corpus Style",
               "synthetic-v2#core:anonymous:Corpus Style",
-              "synthetic-v2#core:admin:Corpus Layout",
-              "synthetic-v2#core:anonymous:Corpus Layout",
               "synthetic-v2#core:admin:Corpus Header",
               "synthetic-v2#core:anonymous:Corpus Header",
               "synthetic-v2#core:admin:Corpus Footer",
               "synthetic-v2#core:anonymous:Corpus Footer",
-              "synthetic-v2#core:admin:Corpus Skin",
-              "synthetic-v2#core:anonymous:Corpus Skin",
               "synthetic-v2#core:admin:mod: script+*script",
               "synthetic-v2#core:anonymous:mod: script+*script",
               "synthetic-v2#core:admin:mod: style+*style",
@@ -30513,8 +30414,6 @@
               "synthetic-v2#core:anonymous:*title",
               "synthetic-v2#core:admin:*admin",
               "synthetic-v2#core:anonymous:*admin",
-              "synthetic-v2#core:admin:*account links",
-              "synthetic-v2#core:anonymous:*account links",
               "synthetic-v2#core:admin:*enabled roles",
               "synthetic-v2#core:anonymous:*enabled roles",
               "synthetic-v2#core:admin:*home",
@@ -30529,8 +30428,6 @@
               "synthetic-v2#core:anonymous:*main menu",
               "synthetic-v2#core:admin:*follow defaults",
               "synthetic-v2#core:anonymous:*follow defaults",
-              "synthetic-v2#core:admin:*recaptcha settings",
-              "synthetic-v2#core:anonymous:*recaptcha settings",
               "synthetic-v2#core:admin:Administrator",
               "synthetic-v2#core:anonymous:Administrator",
               "synthetic-v2#core:admin:Anyone Signed In",
@@ -30589,9 +30486,9 @@
             "view": "customize_button",
             "alias": null,
             "set": "set/abstract/skin_box.rb",
-            "evidence": "graded-identical",
-            "ops": [
-              "synthetic-v2#view:admin:Corpus Skin:customize_button"
+            "evidence": "pinned",
+            "tests": [
+              "tests/card/mod-loader/card-mod-style.test.ts"
             ]
           },
           {
@@ -30609,9 +30506,9 @@
             "view": "remote_style_tags",
             "alias": null,
             "set": "set/self/style_mods.rb",
-            "evidence": "pinned",
-            "tests": [
-              "tests/card/mod-loader/card-mod-style.test.ts"
+            "evidence": "graded-identical",
+            "ops": [
+              "synthetic-v2#view:admin:style: mods:remote_style_tags"
             ]
           },
           {
