@@ -18,11 +18,12 @@
 //                     virtuals, session identity)
 //
 // THE DIVERGENCES THIS SUITE PINS. The public scenario list is 88 steps:
-// the two account-holder rename steps live in the withheld set
-// (tools/parity-side-effects/withheld/scenarios.json, excluded from every
-// release package) and are announced on stderr when they are not run. On the
-// clean synthetic deck the recorded verdicts are 83 pass + 4 declared +
-// 1 mismatched (88 steps). The Ruby recording is committed
+// the two steps whose divergence is withheld until disclosure live in the
+// withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
+// from every release package) and are announced on stderr when they are not
+// run. On the clean synthetic deck the recorded verdicts are 83 pass +
+// 4 declared + 1 mismatched (88 steps), and the assertions below name every
+// one of them. The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
 // verdicts, so any engine change here fails loudly. Neither engine's

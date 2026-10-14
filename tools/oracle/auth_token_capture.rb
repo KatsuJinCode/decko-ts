@@ -22,8 +22,9 @@
 #
 # The module bodies below are copied verbatim from the gem; only the two
 # globals above are substituted. Diff this file against the gem before
-# trusting a byte: the gem lives at
-#   C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/card/auth/token.rb
+# trusting a byte: the source is the card gem's card/auth/token.rb, whose
+# path is whatever `gem which card/auth/token` prints on the machine that
+# has the gem installed (GEM_HOME, or the interpreter's default gem dir).
 
 require "jwt"
 require "json"

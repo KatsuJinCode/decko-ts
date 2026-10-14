@@ -81,7 +81,10 @@ import {
   seedReference,
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
-import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
+import {
+  CONFIGURED_DECK_SERVED_DELTAS,
+  CONFIGURED_FOOTER_CARD_ID,
+} from "./fixtures/configured-deck-served-deltas.js";
 import { setDeckEnvironment } from "../../src/card/render/deck-origin.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
 
@@ -215,7 +218,7 @@ async function seedMinimal(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 22746, name: "*all+*layout", leftId: RULES.all, rightId: 601, typeId: 52, dbContent: "Default Layout" });
   await seedCard(storage, { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>` });
-  await seedCard(storage, { id: 72749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
+  await seedCard(storage, { id: CONFIGURED_FOOTER_CARD_ID, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
   await seedCard(storage, { id: RULES.home, name: "Home", typeId: 2, dbContent: "hello" });
 }
 
@@ -290,7 +293,7 @@ async function seedViewerSensitive(storage: RenderTestStorage): Promise<void> {
   });
   await seedCard(storage, { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>` });
-  await seedCard(storage, { id: 72749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
+  await seedCard(storage, { id: CONFIGURED_FOOTER_CARD_ID, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
 }
 
 // ---------------------------------------------------------------------------
@@ -308,7 +311,7 @@ describe("edge read path — the anonymous bytes do not move", () => {
     // gone). This suite boots its deck by hand — bypassing bootDeck's
     // served-deltas wiring — so it installs the configuration its own
     // servedDeltas fixture carries, exactly as bootDeck would.
-    setDeckEnvironment({ origin: PRODUCTION_DECK_SERVED_DELTAS.deckOrigin });
+    setDeckEnvironment({ origin: CONFIGURED_DECK_SERVED_DELTAS.deckOrigin });
   });
   afterAll(() => {
     // Process-global config: leave the requestless state behind.
@@ -323,14 +326,16 @@ describe("edge read path — the anonymous bytes do not move", () => {
     // (edge-anonymous-read-baseline-home.html) pinned before the shell
     // upgrade.
     //
-    // The byte count and digest were re-anchored when the deployment's asset
-    // host, root URL and footer card id became synthetic placeholders. The
-    // capture is the same capture — only the site-identifying values moved.
-    // The seed uses the synthetic footer card
-    // id so the served body carries it too.
-    expect(ANON_BASELINE.length).toBe(4537);
+    // The byte count and digest were re-anchored when the deck's identity became
+    // synthetic: its asset host, root URL and footer card id are the
+    // configured deck's placeholder values, and the seed uses that same
+    // footer card id so the served body carries it too. The capture is the
+    // same capture over the same deck shape — only the site-identifying
+    // values moved, so the fixture was re-rendered through the live read path
+    // rather than hand-edited.
+    expect(ANON_BASELINE.length).toBe(4511);
     expect(createHash("sha256").update(ANON_BASELINE).digest("hex")).toBe(
-      "f196d3fe09ead938af4fefcd93356a96eb97f7dcedf3d5f055eb207b1ffcc7a7",
+      "71ad5e1835b5a91ac85b332790aff79f71945b4d908ddf694d96f947b3529d08",
     );
   });
 
@@ -338,7 +343,7 @@ describe("edge read path — the anonymous bytes do not move", () => {
     const res = await handleEngineRequest(edgeGet("/Home"), {
       fetcher: storage.fetcher,
       render: storage.engine,
-      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+      servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -410,7 +415,7 @@ describe("edge read path — the anonymous bytes do not move", () => {
 // for everything that is about the SESSION rather than about rule keys.
 describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an anonymous one", () => {
   let storage: RenderTestStorage;
-  let anonDeck: { fetcher: FetchEngine; render: RenderEngine; servedDeltas?: typeof PRODUCTION_DECK_SERVED_DELTAS };
+  let anonDeck: { fetcher: FetchEngine; render: RenderEngine; servedDeltas?: typeof CONFIGURED_DECK_SERVED_DELTAS };
 
   beforeAll(async () => {
     storage = await createRenderTestStorage();
@@ -418,7 +423,7 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
     anonDeck = {
       fetcher: storage.fetcher,
       render: storage.engine,
-      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+      servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
     };
   });
   afterAll(() => storage.close());

@@ -39,6 +39,7 @@
 // rule-bar-right's one-line walk stays on dbContent.
 
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { listInputOptionsContent } from "../../../src/card/set-module-content-overrides.js";
 import {
@@ -48,7 +49,11 @@ import {
 import type { RenderFormat } from "../../../src/card/render/format.js";
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
-const GEMS = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems";
+/** The installed card-mod-* gem trees, from GEM_HOME — the same portable
+ *  reference tools/compat-report records. Unset (a clean clone) the suite
+ *  skips loudly below, which is why nothing here is machine-specific. */
+const GEMS = process.env.GEM_HOME === undefined ? "" : join(process.env.GEM_HOME, "gems");
+const GEMS_GATE = "GEM_HOME is set and ${GEM_HOME}/gems/card-mod-list-0.20.0 exists";
 
 /** The gem trees carry CRLF on some files; the shape assertions below are
  *  written against LF. */
@@ -88,7 +93,11 @@ const BASKET_SOURCES: Array<{ file: string; line: string }> = [
 const CATALOG_OVERRIDE_FILE =
   "card-mod-list-0.20.0/set/self/input_type/right/content_options.rb";
 
-describeOrSkipLoud(!(existsSync(`${GEMS}/card-mod-list-0.20.0`)), "tests/card/render/content-options-catalog-render-path-pins.test.ts", "existsSync(`${GEMS}/card-mod-list-0.20.0`)")(
+describeOrSkipLoud(
+  !existsSync(`${GEMS}/card-mod-list-0.20.0`),
+  "tests/card/render/content-options-catalog-render-path-pins.test.ts",
+  GEMS_GATE,
+)(
   "the gem-side 11-item catalog (basket assembly)",
   () => {
     it("every basket op the mods declare is present, and they assemble to 11", () => {

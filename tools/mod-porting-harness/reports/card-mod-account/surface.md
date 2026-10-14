@@ -39,36 +39,7 @@ What this mod does (mined from the Ruby gem source, READ-ONLY):
 
 ## Events
 
-- `validate_account_holder_name_change` , :validate, on: :update, changed: :name do — card-mod-account-0.20.0/set/abstract/account_holder.rb:1
-- `generate_token` do — card-mod-account-0.20.0/set/all/account.rb:16
-- `set_stamper` , :prepare_to_validate do — card-mod-account-0.20.0/set/all/account.rb:20
-- `set_default_salt` , :prepare_to_validate, on: :create do — card-mod-account-0.20.0/set/right/account/events.rb:3
-- `set_default_status` , :prepare_to_validate, on: :create do — card-mod-account-0.20.0/set/right/account/events.rb:7
-- `reset_password` , :prepare_to_validate, on: :update, trigger: :required do — card-mod-account-0.20.0/set/right/account/events.rb:15
-- `verify_and_activate` , :prepare_to_validate, on: :update, trigger: :required do — card-mod-account-0.20.0/set/right/account/events.rb:19
-- `password_redirect` , :finalize, on: :update, when: :password_redirect? do — card-mod-account-0.20.0/set/right/account/events.rb:26
-- `activate_account` do — card-mod-account-0.20.0/set/right/account/events.rb:40
-- `delete_account` , :prepare_to_validate, on: :delete do — card-mod-account-0.20.0/set/right/account/events.rb:45
-- `signout_upon_delete` , :integrate, on: :delete, when: :current_account? do — card-mod-account-0.20.0/set/right/account/events.rb:49
-- `validate_email` , :validate, on: :save do — card-mod-account-0.20.0/set/right/email.rb:7
-- `validate_unique_email` , after: :validate_email, on: :save do — card-mod-account-0.20.0/set/right/email.rb:16
-- `downcase_email` , :prepare_to_validate, on: :save do — card-mod-account-0.20.0/set/right/email.rb:29
-- `encrypt_password` , :store, on: :save, changed: :content do — card-mod-account-0.20.0/set/right/password.rb:21
-- `validate_password_length` , :validate, on: :save do — card-mod-account-0.20.0/set/right/password.rb:30
-- `validate_password_chars` , :validate, on: :save do — card-mod-account-0.20.0/set/right/password.rb:37
-- `validate_password_present` , :prepare_to_validate, on: :update do — card-mod-account-0.20.0/set/right/password.rb:49
-- `signin` , :validate, on: :update do — card-mod-account-0.20.0/set/self/signin.rb:10
-- `signin_success` , after: :signin do — card-mod-account-0.20.0/set/self/signin.rb:15
-- `signout` , :validate, on: :delete do — card-mod-account-0.20.0/set/self/signin.rb:19
-- `send_reset_password_token` , before: :signin, on: :update, trigger: :required do — card-mod-account-0.20.0/set/self/signin.rb:27
-- `auto_approve_with_verification` , :validate, on: :create, when: :can_approve? do — card-mod-account-0.20.0/set/type/signup.rb:20
-- `approve_with_verification` , :validate, on: :update, trigger: :required do — card-mod-account-0.20.0/set/type/signup.rb:24
-- `approve_without_verification` , :validate, on: :update, trigger: :required do — card-mod-account-0.20.0/set/type/signup.rb:28
-- `act_as_current_for_integrate_stage` , :integrate, on: :create do — card-mod-account-0.20.0/set/type/signup.rb:36
-- `check_setup` , before: :check_permissions, on: :create, trigger: :required do — card-mod-account-0.20.0/set/type/user.rb:50
-- `setup_first_user` , :finalize, on: :create, when: :setup? do — card-mod-account-0.20.0/set/type/user.rb:59
-- `signin_after_setup` , :integrate, on: :create, when: :setup? do — card-mod-account-0.20.0/set/type/user.rb:66
-- `update_role_cache` , :finalize do — card-mod-account-0.20.0/set/type_plus_right/role/members.rb:5
+- 30 event hook(s) declared. Their names are not listed here (see the header's "what this measures" note).
 
 ## Seed cards
 

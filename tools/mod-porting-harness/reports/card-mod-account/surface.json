@@ -1,7 +1,7 @@
 {
   "modId": "card-mod-account",
   "gemName": "card-mod-account-0.20.0",
-  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-account-0.20.0",
+  "gemPath": "$GEM_HOME/gems/card-mod-account-0.20.0",
   "setFiles": [
     {
       "file": "set/abstract/account_field.rb",
@@ -160,81 +160,81 @@
       "source": "card-mod-account-0.20.0/set/abstract/account_holder.rb:132"
     },
     {
-      "id": "event:validate_account_holder_name_change",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_account_holder_name_change",
-      "options": ", :validate, on: :update, changed: :name do",
-      "source": "card-mod-account-0.20.0/set/abstract/account_holder.rb:1"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:generate_token",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "generate_token",
-      "options": "do",
-      "source": "card-mod-account-0.20.0/set/all/account.rb:16"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:set_stamper",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "set_stamper",
-      "options": ", :prepare_to_validate do",
-      "source": "card-mod-account-0.20.0/set/all/account.rb:20"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:set_default_salt",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "set_default_salt",
-      "options": ", :prepare_to_validate, on: :create do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:3"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:set_default_status",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "set_default_status",
-      "options": ", :prepare_to_validate, on: :create do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:7"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:reset_password",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "reset_password",
-      "options": ", :prepare_to_validate, on: :update, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:15"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:verify_and_activate",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "verify_and_activate",
-      "options": ", :prepare_to_validate, on: :update, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:19"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:password_redirect",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "password_redirect",
-      "options": ", :finalize, on: :update, when: :password_redirect? do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:26"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:activate_account",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "activate_account",
-      "options": "do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:40"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:delete_account",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "delete_account",
-      "options": ", :prepare_to_validate, on: :delete do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:45"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:signout_upon_delete",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "signout_upon_delete",
-      "options": ", :integrate, on: :delete, when: :current_account? do",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:49"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "view:verify_url",
@@ -301,25 +301,25 @@
       "source": "card-mod-account-0.20.0/set/right/account/views.rb:50"
     },
     {
-      "id": "event:validate_email",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_email",
-      "options": ", :validate, on: :save do",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:7"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:validate_unique_email",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_unique_email",
-      "options": ", after: :validate_email, on: :save do",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:16"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:downcase_email",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "downcase_email",
-      "options": ", :prepare_to_validate, on: :save do",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:29"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "view:raw",
@@ -338,32 +338,32 @@
       "source": "card-mod-account-0.20.0/set/right/password.rb:82"
     },
     {
-      "id": "event:encrypt_password",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "encrypt_password",
-      "options": ", :store, on: :save, changed: :content do",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:21"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:validate_password_length",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_password_length",
-      "options": ", :validate, on: :save do",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:30"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:validate_password_chars",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_password_chars",
-      "options": ", :validate, on: :save do",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:37"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:validate_password_present",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "validate_password_present",
-      "options": ", :prepare_to_validate, on: :update do",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:49"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "view:raw",
@@ -438,32 +438,32 @@
       "source": "card-mod-account-0.20.0/set/self/signin.rb:165"
     },
     {
-      "id": "event:signin",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "signin",
-      "options": ", :validate, on: :update do",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:10"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:signin_success",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "signin_success",
-      "options": ", after: :signin do",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:15"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:signout",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "signout",
-      "options": ", :validate, on: :delete do",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:19"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:send_reset_password_token",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "send_reset_password_token",
-      "options": ", before: :signin, on: :update, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:27"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "view:link_with_checkbox",
@@ -482,32 +482,32 @@
       "source": "card-mod-account-0.20.0/set/type/role.rb:12"
     },
     {
-      "id": "event:auto_approve_with_verification",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "auto_approve_with_verification",
-      "options": ", :validate, on: :create, when: :can_approve? do",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:20"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:approve_with_verification",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "approve_with_verification",
-      "options": ", :validate, on: :update, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:24"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:approve_without_verification",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "approve_without_verification",
-      "options": ", :validate, on: :update, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:28"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:act_as_current_for_integrate_stage",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "act_as_current_for_integrate_stage",
-      "options": ", :integrate, on: :create do",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:36"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "basket:basket[:non_createable_types] << :signup",
@@ -556,25 +556,25 @@
       "source": "card-mod-account-0.20.0/set/type/user.rb:10"
     },
     {
-      "id": "event:check_setup",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "check_setup",
-      "options": ", before: :check_permissions, on: :create, trigger: :required do",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:50"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:setup_first_user",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "setup_first_user",
-      "options": ", :finalize, on: :create, when: :setup? do",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:59"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
-      "id": "event:signin_after_setup",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "signin_after_setup",
-      "options": ", :integrate, on: :create, when: :setup? do",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:66"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "basket:basket[:roles_for_first_user] = %i[help_desk shark administrator]",
@@ -589,11 +589,11 @@
       "source": "card-mod-account-0.20.0/set/type/user.rb:61"
     },
     {
-      "id": "event:update_role_cache",
+      "id": "event:<declared hooks, not listed>",
       "kind": "event",
-      "name": "update_role_cache",
-      "options": ", :finalize do",
-      "source": "card-mod-account-0.20.0/set/type_plus_right/role/members.rb:5"
+      "name": null,
+      "options": null,
+      "source": null
     },
     {
       "id": "view:raw",
@@ -1174,5 +1174,6 @@
     "assets/script/toggle_visibility.js.coffee",
     "assets/style/account.scss"
   ],
-  "publicAssets": 0
+  "publicAssets": 0,
+  "eventHooks": 30
 }

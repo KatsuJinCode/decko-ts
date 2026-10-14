@@ -18,11 +18,12 @@
 // real boot reads it, hangs it on the Deck, and the page/error paths serve
 // that deck's chrome.
 //
-// The deck here is the deploy seed plus the page-shell rows, with layout-rule
-// anchors 274/255 so the CONFIGURED anchors in the deltas resolve it (the
-// production deck's own anchor ids). That is the shape the configured error
-// chrome needs; the unconfigured suite's identical seed has no anchors it
-// could look up, which is exactly why it falls back to the minimal stub.
+// The deck here is the deploy seed plus the page-shell rows, whose *all and
+// *layout rows carry the layout-rule anchor ids the deltas configure, so the
+// configured error chrome resolves this deck's Default Layout through them.
+// That is the shape the configured error chrome needs; the unconfigured
+// suite's identical seed has no anchors it could look up, which is exactly
+// why it falls back to the minimal stub.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -30,7 +31,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
-import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
+import {
+  CONFIGURED_ALL_CARD_ID,
+  CONFIGURED_DECK_SERVED_DELTAS,
+  CONFIGURED_LAYOUT_POINTER_ID,
+  CONFIGURED_NOT_FOUND_TYPE_ID,
+} from "./fixtures/configured-deck-served-deltas.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
@@ -46,7 +52,7 @@ const CREDENTIAL_ENV = {
  *  stock (empty) deltas and fall back to the minimal stub. */
 const CONFIGURED_ENV = {
   ...CREDENTIAL_ENV,
-  DECKO_SERVED_DELTAS: JSON.stringify(PRODUCTION_DECK_SERVED_DELTAS),
+  DECKO_SERVED_DELTAS: JSON.stringify(CONFIGURED_DECK_SERVED_DELTAS),
 };
 
 /** Translate BunnyDbDriver's Hrana-v2 pipeline POSTs into local sqlite
@@ -110,9 +116,9 @@ beforeAll(async () => {
     }
   }
   // The page shell's rows over the deploy seed, with the CONFIGURED layout
-  // anchors (274 = *all, 255 = *layout — the production deck's own ids, the
-  // ones the deltas configure) so the error chrome can resolve this deck's
-  // Default Layout through its configured rule anchors.
+  // anchors — *all and *layout carry the exact ids the deltas configure, so
+  // the error chrome resolves this deck's Default Layout through its
+  // configured rule anchors rather than falling back to a name lookup.
   const T = "2026-09-20 00:00:00.000";
   const insert = (values: string): string =>
     `INSERT OR IGNORE INTO cards (\n` +
@@ -121,9 +127,9 @@ beforeAll(async () => {
     `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
     `) VALUES (\n${values}\n)`;
   for (const statement of [
-    insert(`274, '*all', '*all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`255, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22748, NULL, NULL, NULL, 274, 255, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Default Layout'`),
+    insert(`${CONFIGURED_ALL_CARD_ID}, '*all', '*all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`${CONFIGURED_LAYOUT_POINTER_ID}, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22748, NULL, NULL, NULL, ${CONFIGURED_ALL_CARD_ID}, ${CONFIGURED_LAYOUT_POINTER_ID}, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Default Layout'`),
     insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
     insert(`22750, '*header', '*header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
     insert(`22751, '*footer', '*footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
@@ -165,9 +171,9 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // type's class chip and type attrs, the configured footer version pin,
     // and the configured asset host.
     expect(body).toContain(`TYPE-basic_c`);
-    expect(body).toContain(`data-card-type-id="72281"`);
+    expect(body).toContain(`data-card-type-id="${CONFIGURED_NOT_FOUND_TYPE_ID}"`);
     expect(body).toContain(`Decko v0.0.0-synthetic`);
-    expect(body).toContain(PRODUCTION_DECK_SERVED_DELTAS.assetHost!);
+    expect(body).toContain(CONFIGURED_DECK_SERVED_DELTAS.assetHost!);
   });
 
   it("/_status reports the deployment's configured identity without leaking its values", async () => {
@@ -183,7 +189,7 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // …and the report carries NAMES only: a configured value can be a
     // private URL, and /_status is exposed.
     const raw = JSON.stringify(status);
-    expect(raw).not.toContain("production-storage");
+    expect(raw).not.toContain(new URL(CONFIGURED_DECK_SERVED_DELTAS.assetHost!).hostname);
     expect(raw).not.toContain("0.0.0-synthetic");
   });
 });

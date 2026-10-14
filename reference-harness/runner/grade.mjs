@@ -58,6 +58,7 @@ if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 2) + "\
 if (report.oracle?.variant && report.oracle.variant !== "stock") {
   console.log(`PATCHED ORACLE "${report.oracle.variant}": graded against expectations that differ from stock Decko (${report.oracle.patches.map((p) => p.id ?? p).join(", ")})`);
 }
+if (report.withheld) console.log(report.withheld.line);
 for (const p of report.problems) console.log(`problem: ${p}`);
 for (const w of report.warnings) console.log(`warning: ${w}`);
 if (report.verdict === "invalid") {

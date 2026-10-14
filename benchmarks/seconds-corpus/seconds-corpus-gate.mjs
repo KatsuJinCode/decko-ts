@@ -21,13 +21,15 @@
 // pinned true divergences, and every reproduced upstream failure in the
 // ledger still reproduces. The report carries both counts: the reproduced
 // upstream failures (the oracle's own recorded failures the engine
-// reproduces failure-for-failure - successes of the port, the operator's
-// ruling) and the true divergences (remaining port work).
+// reproduces failure-for-failure - successes of the port, because a
+// faithful port breaks where the original breaks) and the true
+// divergences (remaining port work).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withheldLine, withheldStatus } from "../../reference-harness/runner/manifest.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fixture = path.join(repo, "reference-harness/fixtures/synthetic-v2");
@@ -64,6 +66,12 @@ const ledgerFile = path.join(repo, "benchmarks/seconds-corpus/pinned-divergences
 const ledger = existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : { pins: [], reproduced_upstream_failures: [] };
 const pins = new Map((ledger.pins ?? []).map((p) => [p.op, p]));
 const reproducedLedger = new Map((ledger.reproduced_upstream_failures ?? []).map((p) => [p.op, p]));
+
+// The fixture's withheld set (reference-harness/runner/manifest.mjs): its
+// operations run and are graded when it is present; absent, the run and the
+// grade leave them out and this line says so.
+const withheld = withheldStatus(fixture);
+if (withheld) console.log(withheldLine(withheld, path.relative(repo, withheld.dir)));
 
 const hidden = { windowsHide: true };
 const wallStart = Date.now();

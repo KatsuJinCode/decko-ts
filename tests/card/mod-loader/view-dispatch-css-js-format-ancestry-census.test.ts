@@ -4,9 +4,9 @@
 // census that makes the correction byte-neutral on this codebase.
 //
 // THE SURVEY (every format class in the loaded gems, parent at file:line —
-// full-disk grep over C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card*, one
-// `class XFormat < Y` sweep; card-mod-content-0.20.0 and
-// card-mod-follow-0.20.0 define none):
+// a `class XFormat < Y` sweep over the card* gem trees under the local
+// interpreter's gem path (GEM_HOME, or its default gem dir); card-mod-content
+// -0.20.0 and card-mod-follow-0.20.0 define none):
 //
 //   Card::Format        (base)        card-1.110.0 lib/card/format.rb:16
 //   HtmlFormat          < Format      card-mod-format-0.20.0 .../html_format.rb:6   register :html :7

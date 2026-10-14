@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-14T05:14:22.364Z
+Generated: 2026-10-14T10:53:56.081Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -74,8 +74,8 @@ Mods scanned: **33**
 - **all html views declared**: account_tab, closed_account, closure, configs, content_formgroups, core, edit, edit_buttons, link_with_checkbox, new, new_buttons, one_line_content, open, open_content, raw, reset_password_days, reset_password_success, reset_password_url, setup, title, token_days, token_expiry, verify_days, verify_url
 - **non-html views**: email_html:closure, email_html:core, email_html:reset_password_days, email_html:reset_password_url, email_html:token_days, email_html:token_expiry, email_html:verify_days, email_html:verify_url
 - **view aliases**: :verify_days -> :token_days, :reset_password_days -> :token_days
-- **event hooks**: 30 (:validate_account_holder_name_change, :generate_token, :set_stamper, :set_default_salt, :set_default_status, :reset_password, ...)
-- **before hooks**: 0 ()
+- **event hooks**: 30 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AccountField, AccountHolder, IdList, List
 - **Cardio config keys**: account_password_length, account_password_requirements
 - **haml templates**: 6
@@ -93,8 +93,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -112,8 +112,8 @@ Mods scanned: **33**
 - **all html views declared**: api_key, buttons, core, current, generate_button, token, token_link
 - **non-html views**: json:buttons, json:core, json:current, json:generate_button, json:token, json:token_link
 - **view aliases**: (none)
-- **event hooks**: 2 (:generate_api_key, :validate_api_key)
-- **before hooks**: 0 ()
+- **event hooks**: 2 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AccountField
 - **Cardio config keys**: (none)
 - **haml templates**: 2
@@ -131,8 +131,8 @@ Mods scanned: **33**
 - **all html views declared**: core, javascript_include_tag, stylesheet_include_tag
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 5 (:asset_input_changed, :asset_input_changed_on_delete, :update_asset_output_file, :validate_asset_inputs, :remove_codename)
-- **before hooks**: 0 ()
+- **event hooks**: 5 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: CodeFile, Items, List, Lock, ManifestGroup, ReadOnly, Sources, VirtualCache
 - **Cardio config keys**: (none)
 - **haml templates**: 1
@@ -150,8 +150,8 @@ Mods scanned: **33**
 - **all html views declared**: accordion_bar, bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, bar_right, boxed, boxed_link, closed, closed_bar, expanded_bar, full_bar, mini_bar, open, open_bar
 - **non-html views**: (none)
 - **view aliases**: :closed_bar -> :closed, :accordion_bar -> :closed, :open_bar -> :open, :expanded_bar -> :open
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 5
@@ -169,8 +169,8 @@ Mods scanned: **33**
 - **all html views declared**: bar_bottom, bar_left, bar_middle, bar_right, carousel, core, customize_button, icons, input, one_line_content, progress_bar
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 6 (:update_skin_asset_input, :initialize_because_of_type_change, :copy_theme, :validate_theme_template, :use_as_current_skin, :translate_variables_to_scss)
-- **before hooks**: 0 ()
+- **event hooks**: 6 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AssetInputter, BootstrapCodeFile, Media, Scss, SkinBox, SkinField
 - **Cardio config keys**: icon_libraries
 - **haml templates**: 11
@@ -188,8 +188,8 @@ Mods scanned: **33**
 - **all html views declared**: content, content_changes, core, full_width, input, link_tag, preview_editor, source
 - **non-html views**: json:content, json:core, json:image_complete, json:inline, json:input, json:one_line_content, json:preview_editor, json:source, file:content, file:core, file:inline, file:input, file:one_line_content, file:preview_editor, file:source, email_html:content, email_html:core, email_html:inline, email_html:one_line_content, email_html:source, css:content, css:core, css:inline, css:one_line_content, css:source
 - **view aliases**: (none)
-- **event hooks**: 24 (:prepare_attachment, :assign_attachment_on_create, :assign_attachment_on_update, :delete_cached_upload_file_on_create, :clear_draft_files, :delete_cached_upload_file_on_update, ...)
-- **before hooks**: 0 ()
+- **event hooks**: 24 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: file_buckets, file_default_bucket, file_storage, files_web_path
 - **haml templates**: 3
@@ -207,8 +207,8 @@ Mods scanned: **33**
 - **all html views declared**: count, paging, paging_urls
 - **non-html views**: json:paging, json:paging_urls, jsonld:paging, jsonld:paging_urls
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 1
@@ -226,8 +226,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 1 (:add_comment)
-- **before hooks**: 0 ()
+- **event hooks**: 1 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: Permission
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -245,8 +245,8 @@ Mods scanned: **33**
 - **all html views declared**: bar_middle, core, file_size, input, one_line_content
 - **non-html views**: rss:one_line_content
 - **view aliases**: (none)
-- **event hooks**: 3 (:update_structurees_references, :reset_cache_to_use_new_structure, :update_structurees_type)
-- **before hooks**: 0 ()
+- **event hooks**: 3 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: CodeContent, Sources, TemplatedNests
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -264,8 +264,8 @@ Mods scanned: **33**
 - **all html views declared**: core
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -283,8 +283,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -302,8 +302,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: delaying
 - **haml templates**: 0
@@ -321,8 +321,8 @@ Mods scanned: **33**
 - **all html views declared**: board, board_type_formgroup, cardboard, conflict_tracker, content_formgroup, content_formgroups, edit, edit_buttons, edit_form, edit_in_form, edit_inline, edit_inline_buttons, edit_name, edit_name_row, edit_nests, edit_row, edit_rules, edit_structure, edit_type, edit_type_form, edit_type_row, engage_tab, follow_section, guide_tab, history_tab, input, just_deleted, name_form, name_formgroup, new, new_buttons, new_fields, new_in_modal, new_in_modal_buttons, new_type_formgroup, overlay_guide, read_form, read_formgroup, related_tab, rules_tab, simple_new, type_formgroup
 - **non-html views**: (none)
 - **view aliases**: :cardboard -> :board
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 5
@@ -340,8 +340,8 @@ Mods scanned: **33**
 - **all html views declared**: compact_missing, content, core, email_page, unknown
 - **non-html views**: email_text:compact_missing, email_text:last_action, email_text:unknown, email_html:compact_missing, email_html:core, email_html:email_page, email_html:unknown
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: EmailField, TestContext
 - **Cardio config keys**: (none)
 - **haml templates**: 1
@@ -359,8 +359,8 @@ Mods scanned: **33**
 - **all html views declared**: confirm_update_all, core, edit, edit_buttons, errors, follow_button, follow_item, follow_status, follow_tab, ignore_tab, one_line_content, rule_editor, status
 - **non-html views**: json:follow_button, json:follow_status
 - **view aliases**: (none)
-- **event hooks**: 10 (:cache_expired_for_type_change, :expire_preferences_cache, :silence_notifications, :notify_followers_after_save, :stash_followers, :notify_followers_after_delete, ...)
-- **before hooks**: 0 ()
+- **event hooks**: 10 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: FollowOption, List
 - **Cardio config keys**: (none)
 - **haml templates**: 2
@@ -378,8 +378,8 @@ Mods scanned: **33**
 - **all html views declared**: add_button, add_link, add_url, admin, bar_right, board_link, closed_content, compact_missing, configure_button, configure_link, conflict, content, content_panel, content_with_title, core, debug_server_error, demo, denial, edit_button, edit_link, errors, favicon_tag, flash, full_page_link, head, header, header_title, help_link, hidden_content_field, input, label, labeled, labeled_editor, menu, menu_block, meta_tags, mini_unknown, not_found, one_line_content, page_title, page_title_tag, raw_one_line_content, rss_links, server_error, short_content, smart_label, stylesheet_tags, title, title_link, title_no_link, titled, type, type_info, universal_edit_button, unknown, url_link, view_list
 - **non-html views**: jsonld:bad_address, jsonld:compact_missing, jsonld:denial, jsonld:errors, jsonld:format_unsupported, jsonld:items, jsonld:not_found, jsonld:server_error, jsonld:test, jsonld:unknown, css:content, css:import, css:titled, css:unknown, css:url, csv:body, csv:header, csv:row, csv:titled, csv:unknown, data:ancestors, data:atom, data:cast, data:content, data:core, data:items, data:links, data:molecule, data:nucleus, data:pod, json:bad_address, json:compact_missing, json:denial, json:errors, json:format_unsupported, json:not_found, json:page, json:server_error, json:status, json:test, json:unknown, file:core, file:style, js:source, rss:closed, rss:comment_box, rss:content, rss:feed, rss:feed_body, rss:feed_description, rss:feed_item, rss:feed_item_description, rss:feed_title, rss:menu, rss:open, rss:open_content, text:core, text:text_without_nests, yaml:core
 - **view aliases**: :open -> :titled, :closed -> :labeled, :closed_content -> :one_line_content, :server_error -> :errors, :denial -> :errors, :not_found -> :errors, :server_error -> :errors, :open -> :titled, ...(3 more)
-- **event hooks**: 2 (:validate_json, :validate_number)
-- **before hooks**: 0 ()
+- **event hooks**: 2 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: default_html_view, rss_enabled
 - **haml templates**: 6
@@ -397,8 +397,8 @@ Mods scanned: **33**
 - **all html views declared**: guide, help, help_text, lead, popover
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: TemplatedNests
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -416,8 +416,8 @@ Mods scanned: **33**
 - **all html views declared**: act, act_legend, action_expanded, action_summary, board_act, change, creator_credit, draft_legend, history, last_action, last_action_verb, updated_by
 - **non-html views**: json:actions, json:history
 - **view aliases**: (none)
-- **event hooks**: 6 (:update_ancestor_timestamps, :assign_action, :detect_conflict, :finalize_action, :rollback_actions, :finalize_act)
-- **before hooks**: 0 ()
+- **event hooks**: 6 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: acts_per_page
 - **haml templates**: 0
@@ -435,8 +435,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 1 (:cache_delete_card_events)
-- **before hooks**: 0 ()
+- **event hooks**: 1 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -454,8 +454,8 @@ Mods scanned: **33**
 - **all html views declared**: bar_bottom, close_modal_link, core, edit_inline, head_content, input, invite, modal, modal_footer, modal_link, modal_menu, modal_title, my_card, nav_item, nav_link_in_dropdown, navbar_links, one_line_content, overlay_header, overlay_help_link, overlay_menu, overlay_title, pop_out_modal_link, sign_in, sign_out, sign_up
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 3 (:validate_role_enabling, :clear_roles_cache, :update_layout_registry)
-- **before hooks**: 0 ()
+- **event hooks**: 3 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AccountDropdown, Items, Type::Html
 - **Cardio config keys**: (none)
 - **haml templates**: 3
@@ -473,8 +473,8 @@ Mods scanned: **33**
 - **all html views declared**: core, input, list, nest_list_input, one_line_content, view_list
 - **non-html views**: csv:content, csv:core, csv:links, csv:titled, js:content, js:core, js:links, js:titled, data:content, data:core, data:links, data:titled, json:content, json:core, json:links, json:titled, css:content, css:core, css:links, css:titled, rss:content, rss:core, rss:links, rss:titled
 - **view aliases**: (none)
-- **event hooks**: 5 (:add_and_drop_items, :insert_item_event, :validate_item_type, :validate_item_uniqueness, :delist)
-- **before hooks**: 0 ()
+- **event hooks**: 5 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: Items, List, Paging, ReferenceList
 - **Cardio config keys**: (none)
 - **haml templates**: 8
@@ -492,8 +492,8 @@ Mods scanned: **33**
 - **all html views declared**: core
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -511,8 +511,8 @@ Mods scanned: **33**
 - **all html views declared**: core, input, one_line_content, pointer_core
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 7 (:set_read_rule, :set_field_read_rules, :update_read_rule, :check_permissions, :update_rule_cache, :expire_related, ...)
-- **before hooks**: 0 ()
+- **event hooks**: 7 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: Permission
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -530,8 +530,8 @@ Mods scanned: **33**
 - **all html views declared**: core
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 3 (:validate_recaptcha_field, :set_recaptcha_site_key, :recaptcha)
-- **before hooks**: 0 ()
+- **event hooks**: 3 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: RecaptchaSetting
 - **Cardio config keys**: recaptcha_minimum_score, recaptcha_private_key, recaptcha_proxy, recaptcha_public_key, recaptcha_secret_key, recaptcha_site_key, recaptcha_verify_url
 - **haml templates**: 0
@@ -549,8 +549,8 @@ Mods scanned: **33**
 - **all html views declared**: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, bar_setting_list, board_rules_tab, card_select, core, filtered_accordion_rule_list, grouped_list, help_text, input, modal_nest_rules, modal_pill_setting_list, modal_rule, nest_rules, one_line_content, overlay_rule, overlay_rule_list_link, overlay_title, pill_setting_list, quick_edit, quick_edit_setting_list, quick_edit_success, raw_one_line_content, rule_board_link, rule_edit, rule_form, rule_form_card_editor, rule_help, rule_nest_editor_link, set_label, template_link
 - **non-html views**: data:core, data:one_line_content, data:rule_help, json:core, json:one_line_content, json:rule_help
 - **view aliases**: (none)
-- **event hooks**: 1 (:save_recently_edited_settings)
-- **before hooks**: 0 ()
+- **event hooks**: 1 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: List, Type::SearchType, VirtualSet
 - **Cardio config keys**: (none)
 - **haml templates**: 4
@@ -568,8 +568,8 @@ Mods scanned: **33**
 - **all html views declared**: compressed, core, javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables
 - **non-html views**: js:compressed, js:core, js:javascript_include_tag
 - **view aliases**: (none)
-- **event hooks**: 2 (:validate_coffeescript_syntax, :validate_javascript_syntax)
-- **before hooks**: 0 ()
+- **event hooks**: 2 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AssetFile, AssetGroup, AssetInputter, AssetOutputter, AssetScript, CoffeeScript, FolderGroup, JavaScript, LocalManifestGroup, ModAssets, Script, ScriptGroup
 - **Cardio config keys**: double_click
 - **haml templates**: 0
@@ -587,8 +587,8 @@ Mods scanned: **33**
 - **all html views declared**: add_autocomplete_item, bar, body, card_list, checkbox_list, complete, core, count, feed_body, feed_item_description, goto_autocomplete_item, molecule, name_complete, name_match, no_search_results, one_line_content, results_for_keyword, search_box, search_box_complete, search_count, search_error, select2_option, title
 - **non-html views**: json:add_autocomplete_item, json:body, json:card_list, json:checkbox_list, json:complete, json:core, json:goto_autocomplete_item, json:molecule, json:name_complete, json:name_match, json:no_search_results, json:results_for_keyword, json:search_box, json:search_box_complete, json:search_count, json:search_error, json:select2_option, json:title, rss:bar, rss:core, rss:feed_body, rss:feed_item_description, rss:one_line_content, rss:title, data:body, data:card_list, data:checkbox_list, data:molecule, data:name_complete, data:name_match, data:no_search_results, data:search_count, data:search_error, csv:body, csv:card_list, csv:checkbox_list, csv:molecule, csv:name_complete, csv:name_match, csv:no_search_results, csv:search_count, csv:search_error
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: CodeContent, CqlSearch, Items, Paging, Search, SearchViews, Type::Json, VirtualSearch
 - **Cardio config keys**: paging_limit, search_box_match_start_only
 - **haml templates**: 5
@@ -606,8 +606,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 4 (:discard_deleted_locations, :save_current_location, :store_in_session, :delete_in_session)
-- **before hooks**: 0 ()
+- **event hooks**: 4 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: Pointer
 - **Cardio config keys**: allow_anonymous_cookies
 - **haml templates**: 0
@@ -625,8 +625,8 @@ Mods scanned: **33**
 - **all html views declared**: box, box_bottom, box_middle, compiled, compressed, core, customize_button, import, labeled, remote_include_tags, remote_style_tags, stylesheet_include_tag, stylesheet_path
 - **non-html views**: css:compiled, css:compressed, css:concat, css:core, css:import, css:labeled, scss:compiled, scss:core, scss:labeled, scss:stylesheet_include_tag
 - **view aliases**: (none)
-- **event hooks**: 3 (:validate_css, :validate_scss_syntax, :no_deletion_if_used)
-- **before hooks**: 0 ()
+- **event hooks**: 3 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: AssetFile, AssetGroup, AssetInputter, AssetOutputter, AssetStyle, Css, FolderGroup, List, LocalManifestGroup, ModAssets, Scss, SkinBox, StyleGroup
 - **Cardio config keys**: (none)
 - **haml templates**: 2
@@ -644,8 +644,8 @@ Mods scanned: **33**
 - **all html views declared**: pills, pills_static, tabs, tabs_static
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: BsBadge
 - **Cardio config keys**: (none)
 - **haml templates**: 2
@@ -663,8 +663,8 @@ Mods scanned: **33**
 - **all html views declared**: change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, nest_editor, nest_image, new_image, new_image_buttons, open_nest_editor
 - **non-html views**: js:change_create_to_update, js:modal_nest_image, js:nest_image, js:new_image, js:new_image_buttons, js:open_nest_editor
 - **view aliases**: (none)
-- **event hooks**: 0 ()
-- **before hooks**: 0 ()
+- **event hooks**: 0 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 10
@@ -682,8 +682,8 @@ Mods scanned: **33**
 - **all html views declared**: (none)
 - **non-html views**: (none)
 - **view aliases**: (none)
-- **event hooks**: 2 (:save_virtual_content, :delete_virtual_content)
-- **before hooks**: 0 ()
+- **event hooks**: 2 (counted, not listed: this report does not measure whether a hook fires)
+- **before hooks**: 0 (counted, not listed, for the same reason)
 - **include_set refs**: (none)
 - **Cardio config keys**: (none)
 - **haml templates**: 0
@@ -694,7 +694,7 @@ Mods scanned: **33**
 Per gem, walk `set/**/*.rb` and `lib/**/*.rb`, mine via regex:
 - `view :name` and `view :name, :target` (aliases)
 - `format :name do ... end` (which views live inside which format)
-- `def name` (set-module methods), `event :name` (event hooks), `before :view` (before-hooks), `include_set Abstract::Foo`
+- `def name` (set-module methods), `event :name` and `before :view` (counted only; the names are not emitted), `include_set Abstract::Foo`
 - `Cardio::Railtie.config.tap { |c| c.key = ... }` (config keys)
 
 Compare against decko-ts `src/card/set-patterns/registry.ts` PATTERN_TABLE
@@ -708,7 +708,8 @@ post-load live table). Status thresholds — all declaration-level:
 - **missing**: zero coverage.
 - **ignored**: not ported, and therefore not evaluated here - data/transform-only or backend-only gems with no set/ tree, so there is no set module or view to compare against the implemented surface.
 
-NOT measured by any label above: whether event hooks fire, whether
+NOT measured by any label above: whether event hooks fire (they are
+counted, never listed), whether
 non-html formats (json, css, email, rss, csv) render, and whether any
 renderer beyond the byte-pinned views matches Ruby's bytes. See
 `docs/coverage-inventory.md` for where byte-level evidence actually

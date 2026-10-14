@@ -22,7 +22,7 @@ import { gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { removeScratchDir, scratchDir } from "../../support/scratch-dir.mjs";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
-import { PRODUCTION_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/production-deck-served-deltas.js";
+import { CONFIGURED_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/configured-deck-served-deltas.js";
 // @ts-expect-error: plain JavaScript module of the harness, no type declarations
 import { normalizeHtml, sameJson } from "../../../reference-harness/runner/normalize.mjs";
 
@@ -131,7 +131,7 @@ describe("the denied item bar uses the same Haml form", () => {
     const html = pointerListItemBodyForUnknown(
       "Unknown Item",
       undefined,
-      PRODUCTION_PHANTOM_ITEM_TYPE,
+      CONFIGURED_PHANTOM_ITEM_TYPE,
     );
     expect(html).toMatch(/ data-card-type-name='[^']*' data-slot-id='[0-9a-f]{20}'>\n/);
     expect(html).not.toContain('data-slot-id="');

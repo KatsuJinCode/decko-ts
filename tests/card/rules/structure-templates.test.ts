@@ -124,7 +124,7 @@ describe("templateReferenceNames", () => {
     ]);
   });
 
-  it("round 9: with a context name, plus-shaped refs absolutize against the instance", () => {
+  it("with a context name, plus-shaped refs absolutize against the instance", () => {
     const ctx = DeckoName.parse("Sample Card 128");
     // The chunk/reference.rb referencing-card contract: {{+image}} names
     // <instance>+image — the key the closure walkers must prepare; keeping
@@ -379,7 +379,7 @@ describe("RenderEngine structured content", () => {
     expect(DeckoName.parse("Page+*type+*structure").key).toBe("page+*type+*structure");
   });
 
-  it("round 9, +thing arm: a NON-discussion nest-miss child's :open substitutes :unknown (createable denies on a rule-less deck)", async () => {
+  it("+thing arm: a NON-discussion nest-miss child's :open substitutes :unknown (createable denies on a rule-less deck)", async () => {
     // Ruby dispatch for an UNKNOWN child whose set chain declares no
     // unknown-capable :open:
     //  - `view :open` (card 0.20 mod/bar_and_box set/all/bar.rb:44
@@ -431,7 +431,7 @@ describe("RenderEngine structured content", () => {
     }
   });
 
-  it("round 9, +discussion arm: a nest-miss child renders the *default rule's type on the open view (RIGHT-discussion unknown:true)", async () => {
+  it("+discussion arm: a nest-miss child renders the *default rule's type on the open view (RIGHT-discussion unknown:true)", async () => {
     // The new-card template type chain: format/nest/fetch.rb#new_card ->
     // Card.fetch new: -> type_id_from_template -> template&.type_id, where
     // the template for a NEW card is the *default rule card (templating.rb

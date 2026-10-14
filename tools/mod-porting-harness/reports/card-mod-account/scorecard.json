@@ -1,12 +1,13 @@
 {
   "mod": "card-mod-account",
   "gem": "card-mod-account-0.20.0",
-  "generatedAt": "2026-10-06T18:17:01.547Z",
+  "generatedAt": "2026-10-14T11:17:17.602Z",
   "totals": {
     "behaviors": 96,
+    "eventHooks": 30,
     "validated": 6,
-    "standingNet": 40,
-    "namedRemainder": 50,
+    "standingNet": 71,
+    "namedRemainder": 19,
     "red": 0,
     "uncaptured": 0
   },
@@ -41,116 +42,6 @@
       "evidence": "card-mod-account.ts registers view \"account_tab\""
     },
     {
-      "behaviorId": "event:validate_account_holder_name_change",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/abstract/account_holder.rb:1",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_account_holder_name_change\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:generate_token",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/all/account.rb:16",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"generate_token\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:set_stamper",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/all/account.rb:20",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"set_stamper\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:set_default_salt",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:3",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"set_default_salt\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:set_default_status",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:7",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"set_default_status\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:reset_password",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:15",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"reset_password\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:verify_and_activate",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:19",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"verify_and_activate\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:password_redirect",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:26",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"password_redirect\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:activate_account",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:40",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"activate_account\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:delete_account",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:45",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"delete_account\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:signout_upon_delete",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/account/events.rb:49",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"signout_upon_delete\" registration in card-mod-account.ts"
-    },
-    {
       "behaviorId": "view:verify_url",
       "kind": "view",
       "source": "card-mod-account-0.20.0/set/right/account/views.rb:2",
@@ -158,7 +49,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "view \"verify_url\" registered (engine HTML_VIEWS)"
+      "evidence": "view \"verify_url\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:reset_password_url",
@@ -168,7 +59,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "view \"reset_password_url\" registered (engine HTML_VIEWS)"
+      "evidence": "view \"reset_password_url\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:token_expiry",
@@ -231,36 +122,6 @@
       "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
     },
     {
-      "behaviorId": "event:validate_email",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:7",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_email\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:validate_unique_email",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:16",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_unique_email\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:downcase_email",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/email.rb:29",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"downcase_email\" registration in card-mod-account.ts"
-    },
-    {
       "behaviorId": "view:raw",
       "kind": "view",
       "source": "card-mod-account-0.20.0/set/right/password.rb:53",
@@ -279,46 +140,6 @@
       "state": "registered-standing-net",
       "remainderReason": null,
       "evidence": "view \"core\" registered (engine HTML_VIEWS + manifest)"
-    },
-    {
-      "behaviorId": "event:encrypt_password",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:21",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"encrypt_password\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:validate_password_length",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:30",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_password_length\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:validate_password_chars",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:37",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_password_chars\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:validate_password_present",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/right/password.rb:49",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"validate_password_present\" registration in card-mod-account.ts"
     },
     {
       "behaviorId": "view:raw",
@@ -398,7 +219,7 @@
       "captured": "static-ruby",
       "state": "green",
       "remainderReason": null,
-      "evidence": "card-mod-account.ts registers view \"edit\""
+      "evidence": "view \"edit\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:edit_buttons",
@@ -408,47 +229,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "card-mod-account.ts registers view \"edit_buttons\""
-    },
-    {
-      "behaviorId": "event:signin",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:10",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"signin\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:signin_success",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:15",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"signin_success\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:signout",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:19",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"signout\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:send_reset_password_token",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/self/signin.rb:27",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"send_reset_password_token\" registration in card-mod-account.ts"
+      "evidence": "view \"edit_buttons\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:link_with_checkbox",
@@ -471,46 +252,6 @@
       "evidence": "view \"configs\" registered (engine HTML_VIEWS + manifest)"
     },
     {
-      "behaviorId": "event:auto_approve_with_verification",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:20",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"auto_approve_with_verification\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:approve_with_verification",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:24",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"approve_with_verification\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:approve_without_verification",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:28",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"approve_without_verification\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:act_as_current_for_integrate_stage",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/signup.rb:36",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"act_as_current_for_integrate_stage\" registration in card-mod-account.ts"
-    },
-    {
       "behaviorId": "basket:basket[:non_createable_types] << :signup",
       "kind": "basket-op",
       "source": "card-mod-account-0.20.0/set/type/signup.rb:3",
@@ -528,7 +269,7 @@
       "captured": "static-ruby",
       "state": "green",
       "remainderReason": null,
-      "evidence": "card-mod-account.ts registers view \"new\""
+      "evidence": "view \"new\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:content_formgroups",
@@ -538,7 +279,7 @@
       "captured": "static-ruby",
       "state": "green",
       "remainderReason": null,
-      "evidence": "card-mod-account.ts registers view \"content_formgroups\""
+      "evidence": "view \"content_formgroups\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:new_buttons",
@@ -548,7 +289,7 @@
       "captured": "static-ruby",
       "state": "green",
       "remainderReason": null,
-      "evidence": "card-mod-account.ts registers view \"new_buttons\""
+      "evidence": "view \"new_buttons\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:core",
@@ -571,36 +312,6 @@
       "evidence": "card-mod-account.ts registers view \"setup\""
     },
     {
-      "behaviorId": "event:check_setup",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:50",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"check_setup\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:setup_first_user",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:59",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"setup_first_user\" registration in card-mod-account.ts"
-    },
-    {
-      "behaviorId": "event:signin_after_setup",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type/user.rb:66",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"signin_after_setup\" registration in card-mod-account.ts"
-    },
-    {
       "behaviorId": "basket:basket[:roles_for_first_user] = %i[help_desk shark administrator]",
       "kind": "basket-op",
       "source": "card-mod-account-0.20.0/set/type/user.rb:3",
@@ -619,16 +330,6 @@
       "state": "named-remainder",
       "remainderReason": "a basket registration (non_createable_types / roles_for_first_user) with no TS consumer seam yet - the runtime-basket seam is the named remainder (the same class the style/format tables carry)",
       "evidence": "no TS literal \"basket[:roles_for_first_user].map(&:cardname).each do |role|\" (no consumer seam yet)"
-    },
-    {
-      "behaviorId": "event:update_role_cache",
-      "kind": "event",
-      "source": "card-mod-account-0.20.0/set/type_plus_right/role/members.rb:5",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the account validate/store/integrate phases over Auth, SecureRandom, tokens + the password ladder; the authenticate pair is ported in src/card/auth/signin.ts and the verify/reset flows in account-verify-reset-flows.ts) - the headless render engine has no save path, not a census-gap view",
-      "evidence": "no event \"update_role_cache\" registration in card-mod-account.ts"
     },
     {
       "behaviorId": "view:raw",
@@ -724,11 +425,11 @@
       "behaviorId": "seed:anonymous",
       "kind": "seed",
       "source": "card-mod-account-0.20.0/data/real.yml",
-      "registration": "no",
+      "registration": "yes",
       "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a data/real.yml seed card (the account system's setting surfaces, the role cards, the email templates), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"anonymous\""
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-script.ts"
     },
     {
       "behaviorId": "seed:",
@@ -878,7 +579,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "src/card/mod-loader/mods/card-mod-layout.ts"
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
     },
     {
       "behaviorId": "seed:roles",
@@ -979,6 +680,17 @@
       "state": "registered-standing-net",
       "remainderReason": null,
       "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    },
+    {
+      "behaviorId": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "source": "",
+      "registration": "",
+      "captured": null,
+      "state": "",
+      "remainderReason": null,
+      "evidence": "30 event hook(s) declared by the gem: 30 registered-standing-net",
+      "aggregate": true
     }
   ]
 }

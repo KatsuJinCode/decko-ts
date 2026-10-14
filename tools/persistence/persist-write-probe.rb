@@ -113,11 +113,9 @@ else
   warn "[withheld until disclosure] NOT RUN: #{WITHHELD_STEP_NUMBERS.length} steps (#{WITHHELD_STEPS_FILE})"
 end
 
-# Markup Card::Content.clean! must rewrite: an event handler attribute, a
-# script element, a script-capable link target, and allowed markup that must
-# survive. Only the withheld steps use it, so it lives in the withheld set
-# (withheld/unsafe-html.txt, the same bytes the TypeScript half reads) and the
-# public source carries no copy.
+# Content only the withheld steps use. It lives in the withheld set
+# (withheld/unsafe-html.txt, the same bytes the TypeScript half reads), so the
+# public source carries no copy of it and no description of it.
 UNSAFE_HTML_FILE = File.join(WITHHELD_DIR, "unsafe-html.txt")
 UNSAFE_HTML = File.exist?(UNSAFE_HTML_FILE) ? File.read(UNSAFE_HTML_FILE).strip : ""
 # The new content step 32 gives an existing, nested deck card.
