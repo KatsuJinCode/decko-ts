@@ -224,7 +224,7 @@ function urlsFor(ctx: ViewContext): string[] {
  *  with no extension-based source lookup). One tag per URL, joined by a
  *  single newline. The `cache: :never` config (view_opts.rb's VIEW_SETTINGS
  *  list) carries through to ModViewConfigTable; the runtime cache layer
- *  consults it via the coordinator's render-pipeline integration. */
+ *  consults it via the render path's view-config consultation. */
 const javascriptIncludeTagView: ViewFn = (ctx) => {
   const urls = urlsFor(ctx);
   return urls.map((path) => `<script src="${path}"></script>`).join("\n");

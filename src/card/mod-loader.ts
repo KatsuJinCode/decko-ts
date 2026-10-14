@@ -1107,7 +1107,7 @@ export class ModLoader {
   }
 
   /** The mod-contributed view-config table (format.ts consults it via the
-   *  coordinator patch; direct callers: tests, tooling). */
+   *  render path; direct callers: tests, tooling). */
   viewConfigFor(view: string): ModViewConfigTableEntry | undefined {
     return this.viewConfigs.configFor(view);
   }
@@ -1219,7 +1219,7 @@ export type ModViewConfigTableEntry = ReturnType<ModViewConfigTable["configFor"]
 // -------------------------------------------------------------------------
 
 // The render layer (format.ts) keeps its html view configs as private
-// consts; until the coordinator's patch makes it consult mod configs
+// consts; until the render path is made to consult mod configs
 //, these accessors expose the
 // loaded mod view configs through one process-wide default instance so the
 // eventual patch is three lookup lines.

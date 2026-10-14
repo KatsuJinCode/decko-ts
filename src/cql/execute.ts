@@ -34,6 +34,8 @@ import {
   generateSql,
   collectMatchPostFilters,
   hasNestedRegexpMatch,
+  isRegexpMatchCondition,
+  MATCH_HELPER_PREFIX,
   type SqlOptions,
 } from "./sql.js";
 import { absolutizeName, escapeRegexpCharacters } from "./normalize.js";
@@ -205,15 +207,17 @@ export function collectCardNameValues(value: unknown, out: Set<string> = new Set
  * driver to the DECIDED post-filter path (see
  * docs/decisions/0005-cql-match-semantics.md): the match conditions are
  * stripped from the SQL
- * (SqlOptions.matchPostFilter), the superset is fetched capped at
- * POSTFILTER_ROW_CAP, rows are filtered in JS with the same compile logic
+ * (SqlOptions.matchPostFilter), the COMPLETE match-free candidate set is
+ * fetched (no cap — a bounded superset would silently under-report on a
+ * large deck), rows are filtered in JS with the same compile logic
  * as sqlite-regexp.ts, and the statement's limit/offset apply AFTER the
- * filter. Match shapes inside SUBSELECTS cannot post-filter (a JS row
- * filter cannot re-apply subselect membership) and refuse loudly as
- * CqlBadQuery. `found_by` conditions resolve to id-set constraints before
- * generation (resolveFoundByConditions); any foundBy node that still
- * reaches the generator is an unhandled shape and refuses loudly there
- * (sql.ts's foundBy case).
+ * filter over the already-ordered set. Match shapes inside SUBSELECTS, and
+ * a match combined with GROUP BY, cannot post-filter (a JS row filter
+ * cannot re-apply subselect membership, nor filter before a grouping) and
+ * refuse loudly as CqlBadQuery. `found_by` conditions resolve to id-set
+ * constraints before generation (resolveFoundByConditions); any foundBy node
+ * that still reaches the generator is an unhandled shape and refuses loudly
+ * there (sql.ts's foundBy case).
  */
 export async function executeQuery(
   driver: SQLDatabaseDriver,
@@ -227,27 +231,39 @@ export async function executeQuery(
     return executeCountNode(driver, root, options);
   }
   const filters = collectMatchPostFilters(root);
+  const postFilter = options.matchPostFilter === true || regexpBrokenDrivers.has(driver);
   if (filters.length > 0) {
-    if (hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
-    if (options.matchPostFilter === true || regexpBrokenDrivers.has(driver)) {
-      return executeRowsPostFiltered(driver, root, options, filters);
+    if (!postFilter) {
+      const { sql, params } = generateSql(root, options);
+      try {
+        const result = await driver.query<CardsRow>(sql, params);
+        return { sql, params, rows: result.rows };
+      } catch (error) {
+        if (!isMissingRegexpError(error)) throw error;
+        // The edge-driver signature: mark the driver so later match queries
+        // skip the failed attempt, and fall through to the post-filter.
+        regexpBrokenDrivers.set(driver, true);
+      }
     }
-    const { sql, params } = generateSql(root, options);
-    try {
-      const result = await driver.query<CardsRow>(sql, params);
-      return { sql, params, rows: result.rows };
-    } catch (error) {
-      if (!isMissingRegexpError(error)) throw error;
-      // The edge-driver signature: mark the driver so later match queries
-      // skip the failed attempt, and fall through to the post-filter.
-      regexpBrokenDrivers.set(driver, true);
-    }
-  } else {
-    const { sql, params } = generateSql(root, options);
+    return executeRowsPostFiltered(driver, root, options, filters);
+  }
+  // No regexp match at the root, but one may sit below it. A driver that
+  // cannot host the UDF cannot express that in SQL at all, and the JS
+  // filter cannot re-apply a subselect's membership — say so by name
+  // instead of surfacing the driver's raw "no such function: REGEXP".
+  if (postFilter && hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
+  const { sql, params } = generateSql(root, options);
+  try {
     const result = await driver.query<CardsRow>(sql, params);
     return { sql, params, rows: result.rows };
+  } catch (error) {
+    if (!isMissingRegexpError(error)) throw error;
+    // The only REGEXP a match-free root can carry sits in a subquery, so
+    // this is the unpost-filterable shape. Memoize the driver (later queries
+    // refuse without the round trip) and name the refusal.
+    regexpBrokenDrivers.set(driver, true);
+    throw nestedMatchRefusal();
   }
-  return executeRowsPostFiltered(driver, root, options, filters);
 }
 
 /** Drivers that failed a REGEXP statement with the UDF-missing error. The
@@ -266,18 +282,65 @@ function nestedMatchRefusal(): CqlBadQuery {
   );
 }
 
-/** The post-filtered row path: match-free SQL capped at POSTFILTER_ROW_CAP,
- *  JS filter, then the statement's own limit/offset in JS. */
+/** The post-filtered row path: the COMPLETE match-free candidate set
+ *  (no LIMIT — a capped superset would silently under-report on a large
+ *  deck, which is the divergence this path exists to remove), the JS
+ *  filter, then the statement's own limit/offset in JS over the filtered,
+ *  already-ordered set. That is the same window Ruby gets from
+ *  `WHERE field REGEXP ? ... ORDER BY ... LIMIT n OFFSET m`. */
 async function executeRowsPostFiltered(
   driver: SQLDatabaseDriver,
   root: QueryNode,
   options: CqlExecuteOptions,
   filters: ConditionNode[],
 ): Promise<CqlExecutionResult<CardsRow>> {
+  if (hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
+  if (hasRootGroup(root)) throw groupedMatchRefusal();
   const { sql, params } = generateSql(root, { ...options, matchPostFilter: true });
   const result = await driver.query<CardsRow>(sql, params);
-  const filtered = applyMatchFilters(result.rows, filters);
+  let filtered = applyMatchFilters(result.rows, filters);
+  filtered = stripMatchHelpers(filtered, sql.startsWith("SELECT DISTINCT"));
   return { sql, params, rows: applyPostFilterLimitOffset(filtered, root.mods) };
+}
+
+/** Remove the helper columns the post-filter select added for a non-card
+ *  return (MATCH_HELPER_PREFIX). SELECT DISTINCT would have collapsed
+ *  duplicate rows over the original columns only, so when the statement is
+ *  DISTINCT the stripped rows are de-duplicated again, first occurrence kept
+ *  (the ordering is preserved). */
+function stripMatchHelpers(rows: CardsRow[], distinct: boolean): CardsRow[] {
+  const first = rows[0] as unknown as Record<string, unknown> | undefined;
+  if (first === undefined) return rows;
+  const helpers = Object.keys(first).filter((key) => key.startsWith(MATCH_HELPER_PREFIX));
+  if (helpers.length === 0) return rows;
+  const seen = new Set<string>();
+  const out: CardsRow[] = [];
+  for (const row of rows) {
+    const copy = { ...(row as unknown as Record<string, unknown>) };
+    for (const key of helpers) delete copy[key];
+    if (distinct) {
+      const signature = JSON.stringify(copy);
+      if (seen.has(signature)) continue;
+      seen.add(signature);
+    }
+    out.push(copy as unknown as CardsRow);
+  }
+  return out;
+}
+
+/** A GROUP BY the JS post-filter cannot honour. Ruby filters rows FIRST
+ *  (`WHERE field REGEXP ?`) and groups the survivors; the post-filter drops
+ *  the predicate from the SQL, so the grouping would run over unfiltered
+ *  rows and the filter would then compare a grouped row's arbitrary
+ *  representative value against the pattern. Wrong rows, silently. */
+function hasRootGroup(root: QueryNode): boolean {
+  return root.mods.group !== undefined && root.mods.group !== "";
+}
+
+function groupedMatchRefusal(): CqlBadQuery {
+  return new CqlBadQuery(
+    "match with group requires the REGEXP UDF (unavailable on this driver) — the JS post-filter cannot filter before a GROUP BY; see docs/decisions/0005-cql-match-semantics.md",
+  );
 }
 
 /** Evaluate the collected match conditions against one row — the JS half of
@@ -288,7 +351,12 @@ async function executeRowsPostFiltered(
 function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
   switch (condition.kind) {
     case "match": {
-      const value = (row as unknown as Record<string, unknown>)[condition.field];
+      if (!isRegexpMatchCondition(condition)) {
+        // the `=term`-on-name equality (SQL: key = ?), evaluated here only
+        // when it shares an OR group with a dropped regexp match
+        return columnValue(row, "key") === condition.termKey;
+      }
+      const value = columnValue(row, condition.field);
       if (value === null || value === undefined) return false; // SQL NULL propagation
       const pattern =
         condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
@@ -305,8 +373,20 @@ function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
       return condition.conj === "or" ? results.some(Boolean) : results.every(Boolean);
     }
     default:
-      return true;
+      // a non-match sibling inside a dropped group cannot be re-applied in
+      // JS: refuse rather than guess (the parser only builds match groups)
+      throw new CqlBadQuery(
+        "match combined with another condition kind in one group requires the REGEXP UDF (unavailable on this driver); see docs/decisions/0005-cql-match-semantics.md",
+      );
   }
+}
+
+/** A column of the fetched row: the helper alias when the select added one
+ *  (non-card return), else the column itself. */
+function columnValue(row: CardsRow, column: string): unknown {
+  const record = row as unknown as Record<string, unknown>;
+  const helper = MATCH_HELPER_PREFIX + column;
+  return helper in record ? record[helper] : record[column];
 }
 
 function applyMatchFilters(rows: CardsRow[], filters: ConditionNode[]): CardsRow[] {
@@ -324,10 +404,10 @@ function applyPostFilterLimitOffset(
 ): CardsRow[] {
   const limit = toIntOrZero(mods.limit);
   const offset = toIntOrZero(mods.offset);
-  let out = rows;
-  if (offset > 0) out = out.slice(offset);
-  if (limit > 0) out = out.slice(0, limit);
-  return out;
+  // SqlStatement#limit_and_offset (sql_statement.rb:96-103): OFFSET renders
+  // only together with a positive LIMIT; an offset alone is ignored.
+  if (limit <= 0) return rows;
+  return rows.slice(offset > 0 ? offset : 0, (offset > 0 ? offset : 0) + limit);
 }
 
 function toIntOrZero(value: string | undefined): number {
@@ -359,20 +439,26 @@ async function executeCountNode(
   options: CqlExecuteOptions = {},
 ): Promise<CqlCountResult> {
   const filters = collectMatchPostFilters(root);
+  const postFilter = options.matchPostFilter === true || regexpBrokenDrivers.has(driver);
   if (filters.length > 0) {
-    if (hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
-    if (options.matchPostFilter === true || regexpBrokenDrivers.has(driver)) {
-      return executeCountPostFiltered(driver, root, options, filters);
-    }
-    try {
-      return await countSql(driver, root, options);
-    } catch (error) {
-      if (!isMissingRegexpError(error)) throw error;
-      regexpBrokenDrivers.set(driver, true);
+    if (!postFilter) {
+      try {
+        return await countSql(driver, root, options);
+      } catch (error) {
+        if (!isMissingRegexpError(error)) throw error;
+        regexpBrokenDrivers.set(driver, true);
+      }
     }
     return executeCountPostFiltered(driver, root, options, filters);
   }
-  return countSql(driver, root, options);
+  if (postFilter && hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
+  try {
+    return await countSql(driver, root, options);
+  } catch (error) {
+    if (!isMissingRegexpError(error)) throw error;
+    regexpBrokenDrivers.set(driver, true);
+    throw nestedMatchRefusal();
+  }
 }
 
 /** The plain count select (the count SQL cannot express the JS filter half,
@@ -393,23 +479,27 @@ async function countSql(
 }
 
 /** Post-filtered count: the count aggregate cannot apply a JS filter, so the
- *  row select runs instead (return mod dropped for generation — that also
- *  re-enables the capped LIMIT the post-filter mode renders — the rows are
- *  filtered in JS and counted). The reported sql/params are the statement
- *  that ACTUALLY ran. Cap caveat: matches beyond POSTFILTER_ROW_CAP superset
- *  rows are missed, the documented post-filter divergence. */
+ *  row select runs instead (return mod dropped for generation — which also
+ *  makes the query FULL, so the post-filter mode renders it without any
+ *  LIMIT and the complete candidate set is fetched; the rows are filtered in
+ *  JS and counted). The reported sql/params are the statement that ACTUALLY
+ *  ran. */
 async function executeCountPostFiltered(
   driver: SQLDatabaseDriver,
   root: QueryNode,
   options: CqlExecuteOptions,
   filters: ConditionNode[],
 ): Promise<CqlCountResult> {
+  if (hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
+  if (hasRootGroup(root)) throw groupedMatchRefusal();
   const savedReturn = root.mods.return;
   root.mods.return = undefined;
   try {
     const { sql, params } = generateSql(root, { ...options, matchPostFilter: true });
     const result = await driver.query<CardsRow>(sql, params);
-    const count = applyMatchFilters(result.rows, filters).length;
+    // count(distinct cards.id): the row select can repeat a card (DISTINCT
+    // over its order columns), the count must not
+    const count = new Set(applyMatchFilters(result.rows, filters).map((row) => row.id)).size;
     return { sql, params, count };
   } finally {
     root.mods.return = savedReturn;

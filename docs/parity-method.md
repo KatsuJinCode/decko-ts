@@ -83,8 +83,8 @@ Three fixture sets live under `fixtures/captured/`. **None of them is in the
 public package**: `fixtures/captured/` is on the exclusion list
 (`tools/public-candidate/exclusions.txt`), because these are captured oracles
 rather than from-scratch synthetic material. They are development evidence —
-they record what Ruby produced, and the suites that read them run in the
-private repository. The public package's replayable evidence is the
+they record what Ruby produced, and the suites that read them run only where
+that material is present. The public package's replayable evidence is the
 reference-harness fixture (`reference-harness/fixtures/synthetic-v1`), which
 is deliberately kept.
 
@@ -126,7 +126,7 @@ instrument is named first and its rules second.
 | **Public reference harness** (N1/N2/N3) | The instrument defines **8** rules (N1–N8); a grade over `synthetic-v1` applies and reports **3** of them. N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does; N3 is a canonical form — inside a real `class` attribute the class tokens are compared as a **set** (both sides sorted; the token set, the count and the tokens themselves all still count, only the order is canonicalised). N4–N8 are canonical forms over capture-host values the seconds-corpus fixture carries and this one does not. Nothing outside N1–N8 is normalised. | `reference-harness/runner/normalize.mjs:78` (`SLOT_ID`, N1), `:220` (`normalizeHtml`, N1+N3), `:394` (`sortClassTokens`, N3), `:416` (`stable`, N2), `:47` (`canonicalErrorClass`, N8); the module header at `:1-18` states all eight. Applied by `runner/grade-lib.mjs:229` and `:293`. Spec: `reference-harness/SPEC.md` §4.2. |
 | **Browser journeys** (B1–B5) | **5** capture-time rules in `observe.mjs` (rendered text with whitespace collapsed; relative times and dates → `<time>`; structure as tag plus sorted classes with Decko's random classes masked to `RAND`; fields by name and type; URL as decoded path and query with the server's own address → `<origin>`), plus **2** borrowed forms at compare time: `stable` (N2) and `canonicalizeDebugPage` (N6 at journey grade, frame count recorded rather than compared). | `reference-harness/browser/lib/observe.mjs:1-13` (B1–B5), `:56-90` (the normalizers); `browser/compare-journeys.mjs:37` (`stable`), `:51` (`canonicalizeDebugPage`), `:132-133` (both applied to each side). Spec: `reference-harness/SPEC.md` §4.1. |
 | **Oracle-replay comparator** | **3** replay-legitimate normalizations, applied to **both** sides by `normalizeForReplay` in this order: (1) `data-slot-id` → `RANDOMIZED`; (2) accordion group hash → `HASH`; (3) `Cardio::Mod` object address → `ADDRESS`. | `src/testing/diff.ts:225` (`normalizeForReplay`, the compare seam); the three rules at `:1-20` (rule 1), `:90` (`ACCORDION_GROUP_HASH_PATTERN`), `:201` (`MOD_OBJECT_ADDRESS_PATTERN`). |
-| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: two one-shot instruments, run once, recorded in the private swap manifests (the asset-host prefix; the denied-seam blank-line re-anchor). Live swap: the "live-anchored expectations" subsection above; the swap manifests are committed in the private repository only. |
+| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: two one-shot instruments, run once, recorded in the swap manifests (the asset-host prefix; the denied-seam blank-line re-anchor). Live swap: the "live-anchored expectations" subsection above; the swap manifests are not part of the published package. |
 
 Two consequences worth stating plainly, because they are where the older
 prose went wrong:
@@ -296,17 +296,17 @@ them must not be quoted as a pure Ruby-parity figure. **50 is the sum of two
 disjoint sets, 13 and 37** — neither a sample of the live-anchored set nor an
 upper bound on it.
 
-| Swap set | Entries | Split | Live fetch window (one host) | Manifest (private repo only) |
+| Swap set | Entries | Split | Live fetch window (one host) | Manifest |
 | --- | ---: | --- | --- | --- |
-| The 13-entry view/page swap | 13 | 6 view-level, 7 page-level | one fetch window | private repository only |
-| The 37-entry show-key swap | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | one fetch window | private repository only |
+| The 13-entry view/page swap | 13 | 6 view-level, 7 page-level | one fetch window | not in the published package |
+| The 37-entry show-key swap | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | one fetch window | not in the published package |
 
 - **Why the two counts are what they are.** The 13 is the number the swap
   instrument for that set refuses to run without: it fails unless the verdicts
   file holds exactly 13 `LIVE-DIFFERS` rows, and its manifest records those
   same 13. The 37 is a separately-recorded set, named in that instrument's own
   header:
-  "every W3 view-lane entry whose residual is the conditional data-slot show
+  "every view-lane entry whose residual is the conditional data-slot show
   key gets TODAY'S live response body as its expectation". Its manifest records
   37 entries, of which 4 were already byte-equal to the live body when the
   swap ran — provenance recorded, no line changed — so 46 of the 50 entries
@@ -314,7 +314,7 @@ upper bound on it.
 - **The two sets are disjoint, and that was checked rather than assumed.**
   Both manifests record the entry key per entry — `name` plus `view` — and
   comparing those keys across the two manifests returns an **empty
-  intersection**: none of the W5 set's six view-scope keys appears among the
+  intersection**: none of the other set's six view-scope keys appears among the
   37. Shard identity is not decisive here (both sets stage into separate
   directories whose shard filenames collide by number, and three shard numbers
   appear in both sets), so the key comparison is the one that settles it.
@@ -333,24 +333,20 @@ upper bound on it.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
-- **Policy: the rule the capture tooling applies, quoted as written.**
-  The 37-entry instrument states it in its header:
-  "Per the standing ruling (live is the only benchmark) the expectation
-  becomes today's live bytes." That is the policy this subsection documents,
-  and the W5 tool adopted the same one ("live truth wins where the live
-  capture holds the page"). The ruling is the substance; the framing this
-  bullet used to carry around it — that a ruling is what made the policy — is
-  process, not a measurement claim, and the policy stands without it. It is
-  not a claim that live outranks the oracle everywhere — each tool is a
-  one-direction overlay that refuses on state drift and records an inverse
+- **Policy: the rule the capture tooling applies.** Where a live capture
+  holds a page, the expectation becomes today's live bytes; the other swap
+  instrument adopted the same one ("live truth wins where the live capture
+  holds the page"). This is the policy this subsection documents. It is not a
+  claim that live outranks the oracle everywhere — each overlay is a
+  one-direction swap that refuses on state drift and records an inverse
   manifest, so the frozen originals stay recoverable as history.
 - **The live-*derived* transforms beside them carry no live page bytes.** Two
   further reversible overlays move live-derived truth into the corpus without
   fetching a body: the asset-host prefix transform (6,552 lines changed over
   32,948 occurrences) and the denied-seam re-anchor (6,535 page-scope entries,
   one byte range each). A fifth swap instrument rewrites
-  5 entries' `record.content` from the **local mirror rows**
-  (the private corpus staging deck), not from live — so it is not one of the 50.
+  5 entries' `record.content` from the **local mirror rows** (the corpus
+  staging deck), not from live — so it is not one of the 50.
 - **What it means for the historical figure.** A share of the historical
   corpus's expected bytes — the 50 entries listed above — comes from the live
   0.19.1 site rather than from the 0.20.0 oracle. For those entries a replay
@@ -364,18 +360,17 @@ upper bound on it.
   manifests name their entries per-entry (`id` or `name` + `view`, `lane`,
   `shard`, `line`, `liveUrl`, `liveFetchedAt`, and the before/after sha256
   pair), so any quoted figure can be recomputed with and without them.
-- **Where the manifests live, said precisely.** All four swap manifests are
-  committed in the private repository (a `git ls-files` of that manifest
-  directory lists 112 files, these among them), so every count on this page is
-  checkable there. **They are not in the public package**: the manifest
-  directory is on
+- **Where the manifests live, said precisely.** All four swap manifests were
+  committed alongside the capture work, so every count on this page was
+  checkable at the time. **They are not in the published package**: the
+  manifest directory is on
   the exclusion list, because 50 of the entries those manifests record are
-  whole-body bytes fetched from the live site. In the public package these
+  whole-body bytes fetched from the live site. In the package these
   counts are not recomputable from the tree — they are quoted measurements
   whose instrument is described here. The corpus staging they operate on is
   likewise not committed —
   the repository ignores it outright — because it carries the deck's real content.
-- **What was deliberately not swapped, and why.** The W5 tool records its
+- **What was deliberately not swapped, and why.** The instrument records its
   exclusions in its header: the 2 `LIVE-CONFIRMS` entries keep their oracle
   expectation (the entry fails for engine reasons, so live truth does not
   clear it), and the 5 `record` entries keep theirs because the live site has
@@ -470,16 +465,16 @@ npm test                       # the engine suite against the miniature corpus
 
 **Provenance of the expected outputs, and why the tree is the artifact.** The
 `MANIFEST.json` beside them records the oracle checkout they were captured
-against: commit `28f0278139c373237fafb1cd04a35bd7a41d12e3` (the
-results-format-2 capture of 2026-10-08), which supersedes the 2026-10-07
-capture taken at `7826664f`
+against: a results-format-2 capture dated 2026-10-08, which supersedes an
+earlier 2026-10-07 capture
 (`reference-harness/fixtures/synthetic-v1/expected/MANIFEST.json`, under
-`provenance.supersedes`). Those are **development-tree commits, not published
-history**: the published history is squashed, and neither hash is reachable
-from the default branch (verified — `git merge-base --is-ancestor` against
-`origin/main` exits 1 for both, while both sit on this integration line). A
-reader who clones the repository will not find them as ancestors of anything
-they check out, so `git show 28f0278` is not a route to the expected bytes.
+`provenance.supersedes`). The commit identifier in that record names a
+**revision of the capture checkout, not a revision of this repository**: the
+published history of this project is squashed, so that identifier is not an
+ancestor of anything a reader checks out, and resolving it with `git show` is
+not a route to the expected bytes. The date and the format version are the
+parts that carry information for a reader; the hash is a receipt for whoever
+needs to compare against the original capture checkout.
 **The committed tree is the artifact.** The manifest's own guard is the
 operative one: the grader refuses expected outputs whose files do not match
 their manifest (`reference-harness/SPEC.md` §3, refusal 5), so what is

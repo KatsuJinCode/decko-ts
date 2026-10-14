@@ -4,8 +4,8 @@ Implementation workspace for the runtime-independent Decko project, with
 TypeScript as the current implementation and first-class Ruby support as the
 architectural direction.
 
-Read the [project contract and work board](docs/core/README.md) and
-[commit, push and publication gates](docs/core/governance.md). These govern
+Read the [project contract](docs/core/README.md) and the
+[commit and publication gates](docs/core/governance.md). These govern
 future work and supersede conflicting TS-only direction in older notes.
 
 ## TypeScript implementation history
