@@ -38,6 +38,7 @@ import type { CardRecord } from "../fetch/card-record.js";
 import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
 import {
   scanNests,
+  interpretEscapedLiteral,
   type ContentPiece,
   type NestOptions,
   type ParsedNest,
@@ -1931,7 +1932,7 @@ export class RenderFormat {
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
-    // do not exist); the view renders from the miss. Round 9: the new card
+    // do not exist); the view renders from the miss. The new card
     // carries the *default rule's type (newCardDefaultType - the
     // type_id_from_template chain), so its slot renders the class chain and
     // data-card-type-* attributes the captured nest-miss bytes show.
@@ -2400,7 +2401,7 @@ export class RenderFormat {
     // TYPE_PLUS_RIGHT-rich_text-<the timestamp>.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
-    // BRANCH (W2 restore , $1). class_methods.rb:59-71:
+    // BRANCH (the restored `$1` capture). class_methods.rb:59-71:
     //
     //     def quick_type name
     //       if name.present?
@@ -2427,7 +2428,7 @@ export class RenderFormat {
     // The compound-left pins above hold through this arm: quick_type on a
     // compound left ("Soma+tic") resolves the junction *default chain the
     // same way and lands on rich_text there. Engines without the
-    // newCardDefaultType hook keep the pre-W2 shape (the "RichText"
+    // newCardDefaultType hook keep the type-less shape (the "RichText"
     // literal), matching this method's other optional hooks.
     const quickType =
       this.engine.newCardDefaultType?.(leftName) ?? undefined;
@@ -2437,7 +2438,7 @@ export class RenderFormat {
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
    *  -> new_card_args): name = the resolved reference, supercard = the
    *  context card (unmodeled - no write path reads it here), no id/
-   *  content. Round 9: the *default rule's type rides along when the
+   *  content. The *default rule's type rides along when the
    *  engine resolves one (newCardDefaultType - the type_id_from_template
    *  chain; the raw-oracle pins absent +Discussion children rendering as
    *  RichText-typed slots). The type informs the set keys (TYPE /
@@ -2555,7 +2556,7 @@ export class RenderFormat {
     // and this builder would not run). The an earlier pass class pins the applied
     // form: the oracle's discussion-page titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
-    // verbatim. (The Round-9 note below — "the *default CONTENT is not
+    // verbatim. (The note below — "the *default CONTENT is not
     // applied at view time" — described the OPEN surface, whose accordion
     // body renders the INNER :content dispatch, itself substituted to
     // :unknown by the same alter_unknown machinery — empty regardless of
@@ -2960,27 +2961,32 @@ export class RenderFormat {
     let i = 0;
     while (i < pieces.length) {
       const piece = pieces[i]!;
+      if (piece.kind === "escaped") {
+        // Chunk::EscapedLiteral (card-mod-content
+        // lib/card/content/chunk/escaped_literal.rb): the backslash is the
+        // chunk's idx_char, so a `\{{` / `\[[` prefix claims the region
+        // BEFORE Chunk::Nest does and it never becomes a nest. The chunk's
+        // own bytes are its authored text with the escape consumed and the
+        // escaped character handed to the format's escape_literal - see
+        // interpretEscapedLiteral and escapeLiteralForCard.
+        //
+        // chunk.rb:84-88 registers EscapedLiteral in :default and :references
+        // only. A :nest_only card (JavaScript, CoffeeScript) never consults
+        // the class at all: the backslash is ordinary text and the braces
+        // behind it still chunk as a Nest (parser.rb:52-54 falls through one
+        // character at a time), so the region renders as the literal
+        // backslash plus whatever the nest resolves to.
+        out +=
+          list === "nest_only"
+            ? "\\" + this.processContent(piece.text.slice(1), list)
+            : interpretEscapedLiteral(piece.text, (literal) =>
+                escapeLiteralForCard(this.card, literal),
+              );
+        i += 1;
+        continue;
+      }
       if (piece.kind === "nest") {
-        if (out.endsWith("\\")) {
-          // Chunk::EscapedLiteral (card-mod-content
-          // chunk/escaped_literal.rb): a backslash immediately before the
-          // braces is the escape prefix (prefix_re \\(?:\[\[|\{\{; the
-          // backslash is an idx_char, so the chunk claims the region
-          // before Chunk::Nest ever sees it) - the braces render as the
-          // LITERAL {{...}} bytes, not a nest. interpret
-          // (escaped_literal.rb:22) replaces \X with
-          // format.escape_literal(X); the markdown format's escape_literal
-          // is the identity (markdown.rb:16-18, byte-identical to the base
-          // Format#escape_literal), so the backslash is consumed and the
-          // nest text passes through verbatim. The kramdown stash restores
-          // these bytes WITH the backslash (render/kramdown.ts
-          // kramdownToStashedHtml) exactly so this pass consumes it.
-          // Corpus oracle: *structure+*right+*guide content
-          // (expected-v2/view-surface shard-000032 row 38251) renders
-          // "icon ({{}})" - the braces survive, no blank-reference denial.
-          out = out.slice(0, -1);
-          out += piece.text;
-        } else if (piece.nest !== undefined) {
+        if (piece.nest !== undefined) {
           out += this.contentNest(piece);
         }
         i += 1;
@@ -4073,7 +4079,7 @@ export interface RenderEngineLike {
    *  `show: [:full_name]` for the anchorless cases, where Ruby
    *  collapses the per-pattern group into a single full-name row).
    *  Optional; engines without it fall through to the raw-content
-   *  dump (the pre-round-8 shape, the 3,612-line *read oracle ->
+   *  dump (the untyped shape, the 3,612-line *read oracle ->
    *  empty content-view gap). */
   setClassesWithRules?(host: RenderCard): SettingClassWithRules[];
   /** THE SELF/HEAD CORE SEAM read (render.ts preparedHeadBytesFor): the
@@ -4081,7 +4087,7 @@ export interface RenderEngineLike {
    *  the render is not a *head surface (or the engine predates the seam —
    *  the stub harnesses). Optional like every engine hook here. */
   preparedHeadBytesFor?(rootKey: string): string | undefined;
-  /** Round 9 (the new-child template type): the *default rule card's type
+  /** The new-child template type: the *default rule card's type
    *  for a nest-miss child NAME — the port of Ruby's new-card type
    *  resolution. Chain: format/nest/fetch.rb#new_card -> Card.fetch new:
    *  -> mod/core/set/all/type.rb:78-80 type_id_from_template ->
@@ -4093,7 +4099,7 @@ export interface RenderEngineLike {
    *  closed children carry TYPE-list (raw-oracle 9625/13421/14382 open
    *  views; a live blog page's news list renders the same shape).
    *  Optional; engines without it build type-less unknown cards (the
-   *  pre-round-9 shape). */
+   *  type-less shape). */
   newCardDefaultType?(
     name: DeckoName,
     leftTypeName?: string,
@@ -4798,11 +4804,9 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  The joint span carries NO class in the corpus: `classy("joint")`
  *  (card-1.110.0 lib/card/view/classy.rb:50-53) joins "joint" with the
  *  extra classes, but the frozen record carries 102,508 bare `<span>+</span>`
- *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The two
- *  `<span class="joint">+</span>` emitters in the port — card-mod-tabs.ts:326
- *  and the rules `jointClass` override at src/card/rules/apply.ts:128-132 —
- *  are a separate divergence; apply.ts rewrites the bare form, which is the
- *  oracle shape.)
+ *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The one other
+ *  `<span class="joint">+</span>` emitter in the port — card-mod-tabs.ts:326 —
+ *  is a separate divergence.)
  *
  *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-surface + 48 view-surface,
  *  sha-verified copies): 145,260 `card-title` spans, 61,309 of them
@@ -5133,6 +5137,38 @@ export function rubyChunkListForCardType(
     default:
       return "default";
   }
+}
+
+/** Chunk::EscapedLiteral#interpret (card-mod-content
+ *  lib/card/content/chunk/escaped_literal.rb:21-23) renders the escaped
+ *  character through the card's Format#escape_literal, and Ruby's two
+ *  answers are NOT the same bytes:
+ *
+ *  - HtmlFormat#escape_literal (mod/format/lib/card/format/html_format.rb:
+ *    20-22) wraps it: `<span>{</span>`, so `\{{Foo}}` renders
+ *    `<span>{</span>{Foo}}` - the region is inert (no nest) and the brace is
+ *    visible, which is the whole point of writing a backslash. The gem's own
+ *    spec pins exactly this
+ *    (mod/content/spec/card/content/chunk/escaped_literal_spec.rb:4-12):
+ *    `render_content('write this: \{{cardname}}')` equals
+ *    `"write this: <span>{</span>{cardname}}"`, and the `[[` twin equals
+ *    `"write this: <span>[</span>[text]]"`.
+ *  - Type::Markdown::HtmlFormat#escape_literal
+ *    (mod/markdown/set/type/markdown.rb:16-18) is the identity, byte-identical
+ *    to the base Format#escape_literal (card/lib/card/format.rb:90-92), so
+ *    the backslash is consumed and the braces ride out as `{{Foo}}`.
+ *
+ *  `define_on_format` (card/lib/card/set/format.rb:118-131) puts each of
+ *  these on a set module (`Card::Set::Type::Markdown::HtmlFormat`), so the
+ *  answer is per-CARDTYPE - which is why the card's own typeName picks it,
+ *  the same test card-mod-markdown's :core view uses. */
+export function escapeLiteralForCard(
+  card: { typeName?: string },
+  literal: string,
+): string {
+  return card.typeName === "Markdown"
+    ? literal
+    : `<span>${literal}</span>`;
 }
 
 /** The codename resolver virtualSearchCqlFor takes, built on the engine's

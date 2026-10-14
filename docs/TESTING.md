@@ -31,15 +31,14 @@ npm test
 The parity claim is verified by replaying captured Ruby output. There are two
 tiers of corpus, and the difference matters when you read a test result.
 
-### 1. The miniature corpus (private repository — NOT in the public package)
+### 1. The miniature corpus (not redistributed)
 
 `fixtures/test-corpus/` holds a self-contained sqlite database and captured
-shards. **It is on the public candidate's exclusion list**, so a clean clone of
-the published package does not have it, and the suites that read it do not run
-there — they fail at import rather than skip, because a corpus-consuming suite
-opens the fixture at module load. This is stated here because the fixture was
-previously described as committed and always available; in the package it is
-development material.
+shards. **It is not part of the published package**, so a clean clone does not
+have it, and the suites that read it do not run there — they fail at import
+rather than skip, because a corpus-consuming suite opens the fixture at module
+load. This is stated here because the fixture was previously described as
+committed and always available; in the package it is development material.
 
 ### 2. The rich corpus (NOT shipped either)
 
@@ -110,9 +109,9 @@ skipped, naming the file and the gate it needed.
 
 ## Supplying the rich corpus
 
-This section applies to the **private repository**, which is where these
-fixtures exist. In the public package none of the paths below ship, so this is
-not a recipe for a clean clone of the published package.
+This section describes the fixtures as the engine was developed against them.
+None of the paths below ship, so this is not a recipe for a clean clone of the
+published package.
 
 To run the full parity replay you need, outside the repository:
 

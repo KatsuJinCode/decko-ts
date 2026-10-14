@@ -12,7 +12,7 @@
 // (whenCreatedContentFn / whenLastEditedContentFn / nowContentFn) +
 // a dateContentOverrideEntries aggregate + a wireDateContentOverrides
 // installer. The set-module content overrides are the surface this pass
-// is responsible for; the mod-loader-stream's coordinator owns the
+// is responsible for; the mod loader owns the
 // `contentOverrides` manifest field that lets the loader consume these
 // exports (the set-module exports landed the per-set content-override registry seam +
 // the format.ts#renderRaw:605-609 consultation - see content-overrides.ts).
@@ -326,7 +326,7 @@ export const dateContentOverrideEntries: readonly RegisteredContentOverride[] = 
 
 /** Register the mod's three content overrides as the process-wide default
  *  registry's contents. The mod loader calls this from its SetLoader
- *  phase once the coordinator's manifest-field seam is in place; tests
+ *  phase once the manifest-field seam is in place; tests
  *  call it directly from beforeAll to exercise the surface.
  *
  *  Replaces any existing default registry (content-overrides.ts:

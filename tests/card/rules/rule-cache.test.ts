@@ -22,7 +22,7 @@
 // codename-relevant rows with the sample's own ids, so the built hash must
 // contain every sample pair verbatim.
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -287,5 +287,114 @@ describe("runtime walk over the built cache (rule/all.rb#rule_id_lookup)", () =>
       if (hit !== undefined) break;
     }
     expect(hit).toBeUndefined();
+  });
+});
+
+// The RUNTIME half, and the three places where it differs from walking
+// rule card NAMES. Ruby reads rules through the cache exclusively:
+// Card::Rule::All#rule_card_id is `rule_id_lookup Card::Rule.rule_cache,
+// setting_code` (card-1.110.0 lib/card/rule/all.rb:23-27) and
+// #rule_card fetches that id (:19-21). There is no name-based fallback in
+// Ruby, so each divergence below is one where a name walk answers and Ruby
+// does not — the port must answer Ruby's way.
+describe("Rule::Cache runtime half (rule/all.rb#rule_card_id)", () => {
+  let s: RenderTestStorage;
+
+  beforeEach(async () => {
+    s = await createRenderTestStorage();
+    // The registry cards cache.rb's SQL binds (lib/card/rule/cache.rb:17-18
+    // `#{SetID}` / `#{SettingID}`, generated from the codename table at boot —
+    // codename.rb:107-110 generate_id_constants).
+    await seedCard(s, { id: SET_TYPE_ID, name: "*set", codename: "set" });
+    await seedCard(s, { id: SETTING_TYPE_ID, name: "*setting", codename: "setting" });
+    await seedCard(s, { id: 7, name: "*all", codename: "all", typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 27, name: "*self", codename: "self", typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 9, name: "*read", codename: "read", typeId: SETTING_TYPE_ID });
+    // The render prepare warms the registry before any rule walk (Ruby's
+    // SetID/SettingID are generated at boot, codename.rb:107-110); the
+    // cache SQL's type-id binds are peeks, so they need it loaded.
+    await s.fetcher.codenames.ensureLoaded();
+  });
+
+  afterEach(() => s.close());
+
+  it("finds a *self rule whose set row the name walk cannot compose (no side ids)", async () => {
+    // Ruby keys every rule by IDS: a card's *self rule is keyed
+    // "<card id>+self+<setting>" whatever its NAME
+    // (cache.rb:50-56 + lib/card/set/pattern/base.rb:75-80). A legacy
+    // junction that stores its compound name with no side ids therefore
+    // stays reachable by id, while Card::Name cannot compose it from the
+    // lexicon.
+    await seedCard(s, { id: 46, name: "Anchor 46", typeId: 2 });
+    // a *self set junction whose stored NAME is not the composed one
+    await seedCard(s, { id: 47, name: "composed_name", leftId: 46, rightId: 27, typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 48, name: "composed_name+*read", leftId: 47, rightId: 9, typeId: SETTING_TYPE_ID });
+    const found = await s.engine.ruleCardForSetting(
+      { name: "Anchor 46" as never, id: 46, typeId: 2, typeName: "RichText" },
+      "read",
+    );
+    expect(found?.id).toBe(48);
+  });
+
+  it("does NOT reach a rule whose setting card carries no codename (cache.rb:44)", async () => {
+    // cache.rb#lookup_key returns false when setting_code is nil
+    // (`return false unless (setting_code = setting_code(row))`, :51) and
+    // lookup_hash skips those rows (:44) — the rule is not in the cache at
+    // all, so rule_card cannot answer with it, whatever its name.
+    await seedCard(s, { id: 46, name: "Anchor 46", typeId: 2 });
+    await seedCard(s, { id: 13, name: "*custom setting", typeId: SETTING_TYPE_ID }); // no codename
+    await seedCard(s, { id: 47, name: "Anchor 46+*self", leftId: 46, rightId: 27, typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 48, name: "Anchor 46+*self+*custom setting", leftId: 47, rightId: 13, typeId: SETTING_TYPE_ID });
+    const found = await s.engine.ruleCardForSetting(
+      { name: "Anchor 46" as never, id: 46, typeId: 2, typeName: "RichText" },
+      "custom_setting",
+    );
+    expect(found).toBeUndefined();
+  });
+
+  it("does NOT reach a rule whose anchored set-pattern card carries no codename (cache.rb:59-62 + :44)", async () => {
+    // pattern_code is Card::Codename[set_tag_id] (cache.rb:59-62); an
+    // uncoded tag yields nil, the row is skipped (:44-47), and the rule is
+    // unreachable through the cache.
+    await seedCard(s, { id: 46, name: "Anchor 46", typeId: 2 });
+    await seedCard(s, { id: 14, name: "*uncoded tag", typeId: SET_TYPE_ID }); // no codename
+    await seedCard(s, { id: 47, name: "Anchor 46+*uncoded tag", leftId: 46, rightId: 14, typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 48, name: "Anchor 46+*uncoded tag+*read", leftId: 47, rightId: 9, typeId: SETTING_TYPE_ID });
+    // The *all arm still answers: the rule cache holds "all+read" and the
+    // walk falls through to it, which is what Ruby does too
+    // (rule/all.rb:66-74 walks every key).
+    await seedCard(s, { id: 275, name: "the all read rule", leftId: 7, rightId: 9, typeId: SETTING_TYPE_ID });
+    const found = await s.engine.ruleCardForSetting(
+      { name: "Anchor 46" as never, id: 46, typeId: 2, typeName: "RichText" },
+      "read",
+    );
+    expect(found?.id).toBe(275);
+  });
+
+  it("does NOT reach a trashed rule, set or setting (cache.rb:20-22)", async () => {
+    await seedCard(s, { id: 46, name: "Anchor 46", typeId: 2 });
+    await seedCard(s, { id: 47, name: "Anchor 46+*self", leftId: 46, rightId: 27, typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 48, name: "Anchor 46+*self+*read", leftId: 47, rightId: 9, typeId: SETTING_TYPE_ID, trash: true });
+    const found = await s.engine.ruleCardForSetting(
+      { name: "Anchor 46" as never, id: 46, typeId: 2, typeName: "RichText" },
+      "read",
+    );
+    // falls through to *all, which has no read rule here
+    expect(found).toBeUndefined();
+  });
+
+  it("walks the keys in pattern order, so the *self rule beats the *all rule", async () => {
+    // rule/all.rb:66-74 iterates rule_lookup_keys in order and returns the
+    // FIRST hit; Base#rule_lookup_key is "<anchor id>+<pattern code>"
+    // (base.rb:75-80) so the anchored key precedes the anchorless "all".
+    await seedCard(s, { id: 46, name: "Anchor 46", typeId: 2 });
+    await seedCard(s, { id: 275, name: "the all read rule", leftId: 7, rightId: 9, typeId: SETTING_TYPE_ID });
+    await seedCard(s, { id: 47, name: "Anchor 46+*self", leftId: 46, rightId: 27, typeId: SET_TYPE_ID });
+    await seedCard(s, { id: 48, name: "the self read rule", leftId: 47, rightId: 9, typeId: SETTING_TYPE_ID });
+    const found = await s.engine.ruleCardForSetting(
+      { name: "Anchor 46" as never, id: 46, typeId: 2, typeName: "RichText" },
+      "read",
+    );
+    expect(found?.id).toBe(48);
   });
 });

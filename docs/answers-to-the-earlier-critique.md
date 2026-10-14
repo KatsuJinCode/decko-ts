@@ -6,11 +6,10 @@ The critique is third-party AI commentary on the original port proposal, not
 binding direction; binding direction comes from the upstream thread
 (`decko-commons/decko#1282`). What the Decko lead posted on that thread was a
 **link** to the critique — a ChatGPT shared conversation titled "Decko
-TypeScript Proposal Review" — not its text. The critique's own words are
-recorded verbatim in, recorded as a ChatGPT share link in the issue thread,
-which was transcribed from that page; the answers below follow its numbering
-(1-21, plus its closing request) and are written from what this repository
-actually measures. That record is excluded from the public package.
+TypeScript Proposal Review" — not its text. The critique's full text was
+transcribed from that page into a separate record, which the published package
+excludes. The answers below follow its numbering (1-21, plus its closing
+request) and are written from what this repository actually measures.
 
 Three verdicts are used, and they are not interchangeable:
 
@@ -210,9 +209,7 @@ on assertion. The authoritative table is
 the migration matrix at the top of
 [`tools/migrate/IMPORT_DECK_RECIPE.md`](../tools/migrate/IMPORT_DECK_RECIPE.md)
 carries `PostgreSQL dump | **no** | no PostgreSQL adapter or dialect translator
-exists in the tree`. The support work is tracked on the working board as
-"Decko Core: Storage — add PostgreSQL support in parallel"
-(`docs/core/work-board.md`, issue 8 in the development repository).
+exists in the tree`. It is not started, and it is not promised here.
 
 Two further migration facts the critique's list did not anticipate are recorded
 in [docs/SECURITY.md](SECURITY.md) "Migration compatibility at a glance": while
@@ -349,9 +346,8 @@ their skip loudly; none of their results are in the public package."
 The distinction the critique drew — a data import is not a compatibility
 migration — is exactly the distinction this repository draws, and the
 import recipe states its own limits in a compatibility matrix rather than in
-prose. Migration delivery is tracked on the working board as "Decko Core:
-Delivery — verify complete migration, one-click setup and recovery"
-(`docs/core/work-board.md`, issue 10 in the development repository).
+prose. Migration delivery is incomplete, and what it does and does not cover is
+stated in the recipe and in [docs/operations.md](operations.md).
 
 ## 13. "The live shadow comparison idea is excellent — but difficult"
 
@@ -434,9 +430,8 @@ edge" as **not established**: "No speed run is recorded against a release
 candidate, and no response-time comparison is committed evidence anywhere in this
 repository."
 
-The roadmap item is the working board's "Decko Core: Evidence — measure
-hosting and performance claims before replacing public values"
-(`docs/core/work-board.md`, issue 11 in the development repository). What the
+The measurement work is not done, and the budgets that stand in for it are
+named as unmeasured in the deploy docs. What the
 repository does
 publish on the measurement-infrastructure side is the budget harness — warm
 per-entry render time, worst-case pathological content, statement count on a
@@ -508,9 +503,7 @@ Answering each against what shipped:
 7. **PostgreSQL first** — **not adopted.** The opposite decision was taken and
    is on the record: PostgreSQL support was removed as unverified rather than
    shipped on assertion ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)),
-   with the migration matrix marking the source **no**. Tracked as the
-   working board's storage item (`docs/core/work-board.md`, issue 8 in the
-   development repository). The reasoning
+   with the migration matrix marking the source **no**. The reasoning
    the critique offers — "the easiest existing-data-stays-put story" — is
    correct and is the reason it is queued rather than dismissed.
 8. **Add D1 later, once the engine is PostgreSQL-independent** — partly adopted,
@@ -537,8 +530,7 @@ Gate by gate, against this repository:
 - **Gate 2 — PostgreSQL compatibility.** **Not met in this release.** There is no
   PostgreSQL adapter in the tree; the support was removed as unverified
   ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)).
-  Roadmap: the working board's storage item (`docs/core/work-board.md`,
-  issue 8 in the development repository).
+  Not started.
 - **Gate 3 — Differential test suite. Partial.** Three kinds over one
   committed fixture, plus three public batteries that account for every step
   ([coverage-inventory.md](coverage-inventory.md)). Partial because the
@@ -561,8 +553,7 @@ Gate by gate, against this repository:
 - **Gate 6 — Cloudflare prototype.** **Not met in this release.** No p50/p95,
   cold-start, CPU, D1-rows or cost measurement is committed
   ([docs/deploy-cloudflare.md](deploy-cloudflare.md), "Costs and energy").
-  Roadmap: the working board's evidence item (`docs/core/work-board.md`,
-  issue 11 in the development repository).
+  Not started.
 - **Gate 7 — Migration promise after the above.** Met in the negative: the
   migration promise is withdrawn rather than made
   ([coverage-inventory.md](coverage-inventory.md)).
@@ -599,19 +590,18 @@ regenerates the equivalent every time, plus an architecture map.
 
 So no reader has to infer it from the answers above:
 
-| # | Unmet | Where it is recorded | Roadmap (all on the working board, `docs/core/work-board.md`) |
-| --- | --- | --- | --- |
-| 1 | Browser journey comparisons — 51 defined, none run | `docs/coverage-inventory.md` item 1 | parity gate, issue 4 |
-| 2 | Hosted-database write evidence — nothing run against a hosted service | `docs/coverage-inventory.md` item 3; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | provider, issue 7 |
-| 3 | Arbitrary/existing Ruby mods — 0% execute unchanged | `docs/coverage-inventory.md` item 4; [0004](decisions/0004-mods-compiled-into-the-view-registry.md) | DSL/mods, issue 5 |
-| 4 | Jobs — delayed_job unported, nothing measured | `docs/coverage-inventory.md` item 5 | parity gate, issue 4 |
-| 5 | PostgreSQL adapter — removed as unverified | `tools/migrate/IMPORT_DECK_RECIPE.md`; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | storage, issue 8 |
-| 6 | Response-time and CPU/cost measurements | `docs/coverage-inventory.md`; `docs/deploy-cloudflare.md` | evidence, issue 11 |
-| 7 | The suites that fail on a clean clone | `KNOWN_FAILURES.md` | per-suite, each row names its prerequisite |
+| # | Unmet | Where it is recorded |
+| --- | --- | --- |
+| 1 | Browser journey comparisons — 51 defined, none run | `docs/coverage-inventory.md` item 1 |
+| 2 | Hosted-database write evidence — nothing run against a hosted service | `docs/coverage-inventory.md` item 3; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
+| 3 | Arbitrary/existing Ruby mods — 0% execute unchanged | `docs/coverage-inventory.md` item 4; [0004](decisions/0004-mods-compiled-into-the-view-registry.md) |
+| 4 | Jobs — delayed_job unported, nothing measured | `docs/coverage-inventory.md` item 5 |
+| 5 | PostgreSQL adapter — removed as unverified | `tools/migrate/IMPORT_DECK_RECIPE.md`; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
+| 6 | Response-time and CPU/cost measurements | `docs/coverage-inventory.md`; `docs/deploy-cloudflare.md` |
+| 7 | The suites that fail on a clean clone | `KNOWN_FAILURES.md`, each row names its prerequisite |
 
-The issue numbers are those of the development repository, which is private;
-they are recorded so a reader with access can find the item, and no issue URL
-is printed because none of them resolves for a reader of this engine.
+Each row says where the gap is recorded; none of them is scheduled work this
+repository promises.
 
 Every claim in this document is answerable against
 [docs/coverage-inventory.md](coverage-inventory.md). Where a figure appears

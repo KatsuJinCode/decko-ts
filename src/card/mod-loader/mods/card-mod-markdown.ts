@@ -104,10 +104,11 @@ function markdownCore(ctx: ViewContext): string {
 }
 
 /** markdown.rb:16-18 escape_literal - identity (same bytes as the base
- *  Format#escape_literal, format.rb:90-92). The TS chunk layer does not
- *  model Chunk::EscapedLiteral (nest-syntax.ts:15-17 keeps that text
- *  verbatim), so nothing calls this yet; it is the set module's method,
- *  transcribed. */
+ *  Format#escape_literal, format.rb:90-92). It is the set module's method,
+ *  transcribed; render/format.ts#escapeLiteralForCard picks this answer for
+ *  Markdown-typed cards when it interprets a Chunk::EscapedLiteral chunk
+ *  (escaped_literal.rb:22), so this transcription stays the reference the
+ *  content pass is written against. */
 export function escapeLiteral(literal: string): string {
   return literal;
 }
