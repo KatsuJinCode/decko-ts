@@ -140,6 +140,10 @@ async function seedTypePlusRightDeck(storage: ActionsTestStorage): Promise<void>
   await seedCard(storage, {
     id: NON_SET_SCRIPT_RULE_ID, leftId: nonSetLeft.id, rightId: script.id, typeId: junction.id,
   });
+  // the no-history right cards: `+*password` and `+*salt` resolve their
+  // right by codename (account set/right/password.rb:13, salt.rb:9).
+  await seedCard(storage, { id: 240, name: "*password", codename: "password" });
+  await seedCard(storage, { id: 241, name: "*salt", codename: "salt" });
   // a plain card with no codename and one with: the codename? truth table
   // reads both. (seedStandardDeck already seeds a "Pudding" at id 50; the
   // cards table's key column is unique, so these carry distinct names.)
@@ -444,6 +448,43 @@ describe("event when: predicates — list / collection / content / assets / hist
   // -------------------------------------------------------------------------
   // no_history? (mod/history set/all/history.rb:6-8)
   // -------------------------------------------------------------------------
+
+  describe("no_history? populated through the history source (set files, history.rb:6)", () => {
+    // Ruby's `history?` is overridden per set file (see NO_HISTORY_SETS in
+    // mod-event-state-sources.ts for each citation). Each case seeds the card
+    // shape the override is scoped to and asserts the populated answer.
+    it("is true for +*password and +*salt (account set/right/password.rb:13, salt.rb:9)", async () => {
+      const card = await populated(storage, { name: "Joe+*password", action: "update" });
+      expect(historyModEventPredicates["no_history?"](card)).toBe(true);
+      const salt = await populated(storage, { name: "Joe+*salt", action: "update" });
+      expect(historyModEventPredicates["no_history?"](salt)).toBe(true);
+    });
+
+    it("is true for a *recent_settings self card (rules set/self/recent_settings.rb:3)", async () => {
+      const card = await populated(storage, {
+        name: "Pudding recent settings", codename: "recent_settings", action: "update",
+      } as ModEventCard);
+      expect(historyModEventPredicates["no_history?"](card)).toBe(true);
+    });
+
+    it("is false for an ordinary card (history? defaults true, history.rb:6)", async () => {
+      const card = await populated(storage, { name: "Plain list card", action: "update" });
+      expect(historyModEventPredicates["no_history?"](card)).toBe(false);
+    });
+
+    it("is false off the read engine (no right/type resolution => the base true)", async () => {
+      const card = await populateModEventCardState(
+        { name: "Joe+*password", action: "update" },
+        {
+          authCurrentId: null,
+          isActCard: true,
+          driver: storage.driver,
+          lexicon: storage.engine.lexicon,
+        },
+      );
+      expect(historyModEventPredicates["no_history?"](card)).toBe(false);
+    });
+  });
 
   describe("no_history? (history.rb:6-8)", () => {
     // Ruby: `def history?; true; end` + `def no_history?; !history?; end`.
