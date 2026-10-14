@@ -91,6 +91,9 @@ function runCase(caseName, { extraArgs, envOverrides, stubSkips }) {
     PATH: `${stubBin}${path.delimiter}${process.env.PATH}`,
     STUB_NET_SKIPS: String(stubSkips),
     DECKO_TEST_QUEUE_DIR: queueDir,
+    // The fake worktree holds every listed member, so a missing one is a
+    // harness bug: fail the proof instead of letting a partial net pass.
+    STANDING_NET_REQUIRE_ALL: "1",
   };
   delete env.DECKO_TS_ORACLE_DB;
   delete env.ORACLE_RAW_DECK;
@@ -167,20 +170,22 @@ function check(caseName, ok, detail) {
   );
 }
 
-// T3 — pinned env via --env, stub emits the pinned 13: exit 0, PASS verdict,
-// and the fake env values never appear in any output (creds-never-printed).
+// T3 — pinned env via --env, stub emits the manifest's pinned skip count: exit 0,
+// PASS verdict, and the fake env values never appear in any output
+// (creds-never-printed). The count is read from the manifest, not hard-coded:
+// the pin moves with the manifest, and a stale literal here made this case fail.
 {
-  const { r, out } = runCase("T3-pinned-env-13skips", {
+  const { r, out } = runCase("T3-pinned-env-pinned-skips", {
     extraArgs: [
       "--env", `DECKO_TS_ORACLE_DB=${FAKE_ENV_VALUE}`,
       "--env", `ORACLE_RAW_DECK=${FAKE_ENV_VALUE}`,
     ],
-    stubSkips: 13,
+    stubSkips: GUARD.expectedSkips,
     envOverrides: {},
   });
   const leaked = out.includes(FAKE_ENV_VALUE);
   check(
-    "T3-pinned-env-13skips",
+    "T3-pinned-env-pinned-skips",
     r.status === 0 && /PASS|verdict[=: ]+pass/i.test(out) && /DECKO_TS_ORACLE_DB=present/.test(out) && !leaked,
     `exit=${r.status} (want 0), verdict=${/PASS|verdict[=: ]+pass/i.test(out)}, fingerprint-present=${/DECKO_TS_ORACLE_DB=present/.test(out)}, value-leaked=${leaked}`,
   );

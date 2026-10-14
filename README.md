@@ -378,6 +378,11 @@ Test Files  66 passed | 2 skipped (68)
      Tests  696 passed | 4 expected fail | 12 skipped (712)
 ```
 
+Members of the net that are not redistributed with this repository print
+`[not redistributed] NOT RUN <file>` and are not run. The runner reports them
+separately, labels the run PARTIAL, and never counts them as passed.
+`STANDING_NET_REQUIRE_ALL=1` makes any such member a failure instead.
+
 This is the tree's one standing total; per-stream counts are
 historical landing-time records, not a
 current measure. What each parity instrument measures, and what the

@@ -24,7 +24,9 @@ The mod-compatibility boundary is its own decision record
 The standing test net (`tests/standing-net.json`, 68 manifest files) run
 2026-10-01: 696 passed, 4 expected fail, 12 skipped (712). That net is
 regression protection, not a parity measurement; the parity figures are the
-ones above.
+ones above. Members of that net that are not redistributed with this
+repository print `[not redistributed] NOT RUN <file>`; the runner counts them
+separately and never reports them as passed.
 
 ### The public batteries, accounted
 

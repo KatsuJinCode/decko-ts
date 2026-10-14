@@ -178,7 +178,12 @@ export async function engineChecks({ driver, spotCount, seed }) {
         readFileSync(`${REPO_ROOT}fixtures/captured/smoke.json`, "utf8"),
       );
     } catch {
+      // The captured fixture is a locally supplied oracle, not part of the
+      // public package. Say so, and continue without the comparison.
       fixtures.source = "fixtures/captured/smoke.json (absent)";
+      console.error(
+        "engine-bridge: fixtures/captured/smoke.json is absent (locally supplied, not in the public package); committed-fixture comparison skipped",
+      );
     }
     for (const [name, expected] of Object.entries(captured.cards ?? {})) {
       const record = await fetcher.fetchByName(name);
