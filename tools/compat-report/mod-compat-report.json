@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T10:53:56.081Z",
+  "generatedAt": "2026-10-14T20:35:00.127Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -327,7 +327,6 @@
     "hasPerms": true
   },
   "legacy": [
-    "card-mod-delayed_job-0.20.0",
     "card-mod-defaults-0.20.0"
   ],
   "mods": [
@@ -1511,9 +1510,9 @@
       "gem": "card-mod-delayed_job-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "ignored",
-        "verdict": "unported (not evaluated)",
-        "evidence": "no meaningful set/ tree; config-only or backend-only gem",
+        "status": "declared-complete",
+        "verdict": "backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 10 it() in tests/card/delayed-job/delayed-job.test.ts",
+        "evidence": "no set/ tree; the mod's surface is engine machinery, guarded by its own test file",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -1531,8 +1530,8 @@
           "hamlFiles": 0,
           "manifestExists": false,
           "manifestViewsDeclared": 0,
-          "testExists": false,
-          "testCount": 0,
+          "testExists": true,
+          "testCount": 10,
           "bytePins": 0
         }
       },

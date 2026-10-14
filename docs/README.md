@@ -8,6 +8,7 @@ and the decisions that shaped it.
 | Document | What it covers |
 | --- | --- |
 | [parity-method.md](parity-method.md) | How byte parity with Ruby Decko is measured: the oracle, the fixtures its figures were recorded against, what each instrument's comparator normalises, and what a parity figure does and does not tell you. |
+| [delayed-jobs.md](delayed-jobs.md) | card-mod-delayed_job: integrate_with_delay events queued as delayed_jobs rows and worked off after the response on Node, Cloudflare and Bunny; the row values, the handler document and what differs from Ruby. |
 | [deploy-bunny.md](deploy-bunny.md) | Deploying on Bunny Edge Scripting against Bunny Database (libSQL): the two bundles, configuration variables, caching switches, the write-surface gate and status endpoints. |
 | [deploy-cloudflare.md](deploy-cloudflare.md) | Deploying on Cloudflare Workers over D1: the deploy button, manual deployment, the Worker entry and its bundle, D1's tighter limits and how the engine works within them. |
 | [operations.md](operations.md) | Running the engine: local development, the staging server, Server-Timing and the edge profiler, data freshness, cache invalidation, credential rotation and troubleshooting. |
