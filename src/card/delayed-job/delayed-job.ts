@@ -106,10 +106,13 @@ function ajStringHash(hash: Record<string, unknown>): Record<string, unknown> {
 function yamlScalar(value: string | number | null): string {
   if (value === null) return "";
   if (typeof value === "number") return ` ${value}`;
-  // Psych single-quotes strings that would otherwise read as another type.
-  if (/^[\w./:-]+$/.test(value) && !/^\d/.test(value) && !/^(true|false|null|yes|no|on|off|~)$/i.test(value)) {
-    return ` ${value}`;
-  }
+  // Psych single-quotes strings that would otherwise load as another type
+  // (numbers, booleans, null, timestamps) and strings with YAML indicators.
+  const otherType =
+    /^[-+]?(\d[\d_]*(\.\d*)?([eE][-+]?\d+)?|\.\d+|0x[\da-fA-F]+)$/.test(value) ||
+    /^\d{4}-\d\d?-\d\d?([Tt ]|$)/.test(value) ||
+    /^(true|false|null|yes|no|on|off|y|n|~)$/i.test(value);
+  if (!otherType && /^[\w./:-]+$/.test(value)) return ` ${value}`;
   return ` '${value.replace(/'/g, "''")}'`;
 }
 
