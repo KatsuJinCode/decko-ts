@@ -404,31 +404,29 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     );
   });
 
-  // Inverted on purpose: the compound_only divergence (known divergence:
-  // see known-divergences-from-ruby.md) - Ruby's right pattern raises
-  // unknown-view for a SIMPLE card, and that raise is the Ruby behavior;
-  // the byte-oracle pin above keeps covering the compound
-  // case. Kept as it.fails so the shape assertions stay in the file for
-  // the day a set-scoped dispatch decides to widen.
-  it.fails("WITH the mod: :popover on a SIMPLE probe still resolves through the registered helper (TS does not enforce compound_only)", async () => {
+  // Ruby's right pattern is compound_only (card-1.110.0
+  // mod/core/set_pattern/07_right.rb:2-5 `@@options = { compound_only:
+  // true, assigns_type: true }`), and Pattern::ClassMethods#pattern_applies?
+  // is `compound_only? ? card.name.compound? : true`
+  // (lib/card/set/pattern/class_methods.rb:37-39). A SIMPLE card therefore
+  // gets no *right pattern, so its chain never reaches Right::Help and the
+  // format does not respond to _view_popover: Card::Format::Render#view_method
+  // raises Card::Error::UserError with unsupported_view_error_message
+  // (lib/card/format/render.rb:69-71), which
+  // mod/format/set/all/error.rb:52-53 renders through the
+  // `format_unsupported_view` translation - mod/format/config/locales/en.yml:24
+  // "view (%{view}) not supported for %{cardname}".
+  it("WITH the mod: :popover on a SIMPLE probe raises unknown-view, as Ruby's compound_only right pattern requires", async () => {
     const s = storage!;
-    // TS-side the popover view is registered as a generic view on
-    // Right::Help's set module without the Ruby compound_only gate. The
-    // byte-oracle pin above covers the COMPOUND case (where the Ruby
-    // bytes match); this assertion documents the TS-engine behavior
-    // (a simple card name also resolves, returning the same anchor shape
-    // with that card's core body) without claiming byte parity to a
-    // captured fixture that does not exist for simple names.
-    const html = await s.engine.render("Oracle Help Probe", "popover");
-    expect(html).toContain('href="#"');
-    expect(html).toContain('class="ps-1 _popover_link"');
-    expect(html).toContain('tabindex="0"');
-    expect(html).toContain('data-bs-toggle="popover"');
-    expect(html).toContain('data-bs-trigger="hover focus"');
-    expect(html).toContain("probe card body");
-    expect(html).toMatch(/data-bs-content="[^"]*probe card body/);
-    expect(html).toContain(
-      '<i class="notranslate material-icons">help</i>',
+    let captured: unknown;
+    try {
+      await s.engine.render("Oracle Help Probe", "popover");
+    } catch (err) {
+      captured = err;
+    }
+    expect(captured).toBeInstanceOf(Error);
+    expect((captured as Error).message).toBe(
+      "view (popover) not supported for Oracle Help Probe",
     );
   });
 

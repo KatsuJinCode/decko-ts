@@ -38,10 +38,10 @@ import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.
 import { resolvePointerItemName, rawItemStrings } from "./render/pointer-list.js";
 import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
-import { ruleCacheStatement, type RuleCacheRow } from "./rules/rule-cache.js";
-import { ruleCacheKeyFromRow } from "./set-patterns/rule-names.js";
+import { ruleCacheStatement, ruleIdLookup, type RuleCacheRow } from "./rules/rule-cache.js";
+import { ruleLookupKeysForCard } from "./set-patterns/card-patterns.js";
+import { ruleCacheKeyFromRow, settingCardNameForCode } from "./set-patterns/rule-names.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
-import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
 import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
@@ -79,7 +79,6 @@ import {
   signedInAccountLinksInnerHtml,
   type SessionRolesInput,
 } from "./render/navbar-views.js";
-import type { ViewOverride } from "./rules/apply.js";
 import {
   HTML_VIEWS,
   SETTING_GROUPS,
@@ -443,6 +442,23 @@ const CORE_REACHING_VIEWS: ReadonlySet<string> = new Set([
   "closed",
 ]);
 
+/**
+ * One value of the deck-wide rule cache: an entry of
+ * Card::Rule::Cache#lookup_hash, whose stored value is the rule id
+ * (card-1.110.0 lib/card/rule/cache.rb:47 `hash[key] =
+ * row["rule_id"].to_i`). `ruleId` is what Ruby keeps; `patternCode`,
+ * `settingCode` and `anchorName` are the SET identity the key itself was
+ * built from (cache.rb:50-62 `lookup_key`), held so the winning rule card's
+ * NAME can be composed without a second lookup and so Set#label needs no
+ * second rule walk.
+ */
+interface RuleCacheEntry {
+  ruleId: number;
+  patternCode: string;
+  settingCode: string;
+  anchorName: string | undefined;
+}
+
 export class RenderEngine implements RenderEngineLike {
   readonly fetcher: FetchEngine;
   readonly views: Record<string, ViewFn>;
@@ -585,12 +601,6 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
   }
-  /** Rule lookup cache: `<card_key>|<view>` -> the resolved ViewOverride
-   *  (or undefined if no rule applies). Filled during the first render of
-   *  a (card, view) pair; subsequent renders skip the rule walk entirely.
-   *  This is what keeps the #1282 constant-queries promise: a warm render
-   *  issues ZERO queries for rule application. Cleared on resetCaches(). */
-  private ruleCache = new Map<string, ReturnType<typeof resolveViewOverride> | undefined>();
   /** Chain-aware view dispatch cache: `<format>|<card_key>|<view>` -> the
    *  resolved ViewFn (or undefined if no view applies). Filled on the
    *  first dispatch per (card, view) pair; subsequent renders skip the
@@ -918,7 +928,7 @@ export class RenderEngine implements RenderEngineLike {
    *  resetCaches(). */
   private structureRefMisses = new Set<string>();
   /** The *default rule universe (composed rule key -> the rule card's own
-   *  type_id) — round 9's new-child template machinery. Ruby resolves a
+   *  type_id) — the new-child template machinery. Ruby resolves a
    *  nest-miss child (format/nest/fetch.rb#new_card -> Card.fetch new:) to
    *  the *default rule card's TYPE (mod/core/set/all/type.rb:78-80
    *  type_id_from_template -> template&.type_id; for a new card the
@@ -2489,37 +2499,14 @@ export class RenderEngine implements RenderEngineLike {
     // serializer omits exactly that enrollment from the root slot - the
     // page-surface and nest renders pass their own optional explicitly and are
     // NOT roots (format.ts#slotOptions root-drop arm reads this flag).
-    const baseHtml =
-      this.skipSyncRender?.() === true ? "" : format.renderView(view, params.viewOpts ?? {}, "show", true);
-
-    // A denied render never reaches view dispatch (the denial span REPLACES
-    // the view in renderView), so view-override rules cannot apply to it —
-    // Ruby's denial happens before any view body runs.
-    if (this.isDenied(rootCard)) return baseHtml;
-
-    // Rule-application hook: cached lookup so warm re-renders cost zero
-    // queries. The cache key encodes the (card, view) pair so different
-    // views of the same card get independent override resolution.
-    const cacheKey = `${name.key}|${view}`;
-    let override = this.ruleCache.get(cacheKey);
-    if (override === undefined && !this.ruleCache.has(cacheKey)) {
-      // Miss: walk the rule chain. Cache both the hit AND the miss (the
-      // undefined in `override` could mean "no rule" — we distinguish via
-      // `has`, but the cache stores undefined for misses too).
-      const rule = await findRule(
-        this.fetcher,
-        { name, id: rootCard.id, typeId: rootCard.record.typeId, typeName: rootCard.typeName },
-        `*${view}`,
-      );
-      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
-      this.ruleCache.set(cacheKey, override);
-    }
-    if (override !== undefined && typeof baseHtml === "string") return applyViewOverride(baseHtml, override);
     // The boundary: Ruby's render returns the view block's value verbatim -
     // integers (:id, the token-days views) and nil (the early-return arms)
-    // survive as numbers/null; view-override rules substitute view NAMES, so
-    // they never post-process a non-string answer.
-    return baseHtml;
+    // survive as numbers/null. A view's markup is whatever its view method
+    // returns; no rule card post-processes it (Ruby has no such mechanism:
+    // card/lib/card/format/render.rb#render! returns the view block's value).
+    return this.skipSyncRender?.() === true
+      ? ""
+      : format.renderView(view, params.viewOpts ?? {}, "show", true);
   }
 
   /**
@@ -2535,27 +2522,6 @@ export class RenderEngine implements RenderEngineLike {
    */
   async renderPage(cardName: string): Promise<string> {
     return renderPageBytes(this, cardName);
-  }
-
-  /**
-   * The (card, view) view-override rule lookup shared with render() (same
-   * ruleCache; the page renderer applies the same *<view> rule to the main
-   * body bytes it builds with main! context). Additive seam — render()
-   * itself is untouched.
-   */
-  async viewOverrideFor(card: RenderCard, view: string): Promise<ViewOverride | undefined> {
-    const cacheKey = `${card.key}|${view}`;
-    let override = this.ruleCache.get(cacheKey);
-    if (override === undefined && !this.ruleCache.has(cacheKey)) {
-      const rule = await findRule(
-        this.fetcher,
-        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
-        `*${view}`,
-      );
-      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
-      this.ruleCache.set(cacheKey, override);
-    }
-    return override;
   }
 
   /**
@@ -2770,6 +2736,16 @@ export class RenderEngine implements RenderEngineLike {
     this.deckDataVersion = version;
   }
 
+  /** Ruby's Card::Rule.clear_rule_cache (rule.rb:37-39 -> Cache.clear,
+   *  cache.rb:36-38): the deck-wide rule lookup hash is dropped so the next
+   *  rule walk reloads it. A committed rule write reaches here through the
+   *  save seam; fixture seams that insert rule rows call it directly. */
+  expireRuleCache(): void {
+    this.ruleCacheSetLabels = undefined;
+    this.ruleCacheSetLabelsLoad = undefined;
+    this.ruleCacheAddressable = true;
+  }
+
   /** Drop every derived cache (the fetch engine's caches + the render-side
    *  maps). Mirrors FetchEngine#resetCaches for whole-engine resets. */
   resetCaches(): void {
@@ -2778,8 +2754,7 @@ export class RenderEngine implements RenderEngineLike {
     this.idsByKey.clear();
     // Ruby's clear_rule_cache: a write invalidates the deck-wide rule
     // lookup hash (the set-label winner map included).
-    this.ruleCacheSetLabels = undefined;
-    this.ruleCacheSetLabelsLoad = undefined;
+    this.expireRuleCache();
     this.resetDerivedRenderState();
   }
 
@@ -2836,7 +2811,6 @@ export class RenderEngine implements RenderEngineLike {
     this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
-    this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
     this.deniedVerdicts.clear();
@@ -3045,7 +3019,7 @@ export class RenderEngine implements RenderEngineLike {
    * (once per engine; one batched id query). These names feed the
    * new-child card's data-card-type-name attribute and its safeSetKeys
    * TYPE anchor. Genuinely missing type rows simply stay absent from the
-   * map — newCardDefaultType degrades to the pre-round-9 untyped new-card
+   * map — newCardDefaultType degrades to the untyped new-card
    * shape for those, never throws.
    */
   private async preloadDefaultTypeNames(): Promise<void> {
@@ -3351,21 +3325,48 @@ export class RenderEngine implements RenderEngineLike {
    * rule_card_id -> rule_id_lookup) needs a sync answer no render-warmed
    * fetch can give (a stored rule no earlier render happened to seat).
    * Values carry the winning rule's SET identity (cache.rb's pattern_code
-   * + the anchor name) so Set#label composes without a second lookup.
+   * + the anchor name) so Set#label composes without a second lookup, plus
+   * the rule id cache.rb's lookup_hash stores (cache.rb:47), so a rule
+   * lookup can answer with `Card.fetch rule_id` the way
+   * Rule::All#rule_card does (rule/all.rb:19-21) instead of walking rule
+   * card NAMES.
+   *
+   * A deck with no Set/Setting TYPE card yields an EMPTY map and marks the
+   * cache unusable (`ruleCacheAddressable`): cache.rb's SQL binds the
+   * deck's Set/Setting type ids (cache.rb:17-18 `#{SetID}` /
+   * `#{SettingID}`), the constants Ruby generates from the codename table
+   * at boot (codename.rb:107-110 generate_id_constants), so on such a deck
+   * Ruby has no rule cache to read at all and rule_card cannot answer
+   * through it either. Callers fall back to the name walk there rather
+   * than reporting "no rule applies" - the absence of the deck's type
+   * cards is not evidence that a rule is missing.
    * Cleared on resetCaches() (Ruby's clear_rule_cache).
    */
   private ruleCacheSetLabels:
-    | Map<string, { patternCode: string; anchorName: string | undefined }>
+    | Map<string, RuleCacheEntry>
     | undefined;
   private ruleCacheSetLabelsLoad: Promise<void> | undefined;
+  /** false when the deck has no Set/Setting TYPE card, so the cache SQL of
+   *  cache.rb:17-18 has no type ids to bind and rule_card cannot be
+   *  answered through the cache. Cleared beside the cache itself. */
+  private ruleCacheAddressable = true;
 
   async ensureRuleCacheSetLabels(): Promise<void> {
     if (this.ruleCacheSetLabels !== undefined) return;
     this.ruleCacheSetLabelsLoad ??= (async () => {
+      // Ruby's SetID/SettingID are GENERATED CONSTANTS
+      // (codename.rb:107-110 generate_id_constants), resolved at boot. The
+      // port peeks them out of the codename registry, which the render
+      // prepare warms before this runs - so a miss here means the DECK has
+      // no such type card, not that the registry is cold. No load is forced
+      // here: a rule lookup must not add a round trip to a render that never
+      // had one (the constant-query pins in render-engine.test.ts and
+      // depth-sweep.test.ts measure exactly that).
       const setTypeId = this.peekIdByCodename("set");
       const settingTypeId = this.peekIdByCodename("setting");
       if (setTypeId === undefined || settingTypeId === undefined) {
         this.ruleCacheSetLabels = new Map();
+        this.ruleCacheAddressable = false;
         return;
       }
       const statement = ruleCacheStatement(setTypeId, settingTypeId);
@@ -3382,10 +3383,7 @@ export class RenderEngine implements RenderEngineLike {
         if (anchorNames.has(anchorId)) continue;
         anchorNames.set(anchorId, (await this.fetcher.lexicon.name(anchorId))?.s);
       }
-      const hash = new Map<
-        string,
-        { patternCode: string; anchorName: string | undefined }
-      >();
+      const hash = new Map<string, RuleCacheEntry>();
       for (const row of result.rows) {
         const anchorId = row.anchor_id === null ? null : Number(row.anchor_id);
         // cache.rb pattern_code: the anchorless arm reads the set row's
@@ -3398,7 +3396,9 @@ export class RenderEngine implements RenderEngineLike {
         hash.set(
           ruleCacheKeyFromRow(anchorId, patternCode, settingCode),
           {
+            ruleId: Number(row.rule_id),
             patternCode,
+            settingCode,
             anchorName:
               anchorId === null ? undefined : anchorNames.get(anchorId),
           },
@@ -3430,6 +3430,74 @@ export class RenderEngine implements RenderEngineLike {
       if (winner !== undefined) return winner;
     }
     return undefined;
+  }
+
+  /**
+   * Rule::All#rule_card (rule/all.rb:19-21) with the storage walk Ruby
+   * actually performs: `Card.fetch rule_card_id(setting_code)`, where
+   * `rule_card_id` is `rule_id_lookup Card::Rule.rule_cache, setting_code`
+   * (rule/all.rb:23-27). Three Ruby facts make this differ from a walk of
+   * rule card NAMES:
+   *
+   * 1. THE KEY IS THE ANCHOR'S CARD ID. Base#rule_lookup_key
+   *    (set/pattern/base.rb:75-80) returns nil for an anchored pattern whose
+   *    anchor card has no id, and Rule::All#rule_lookup_keys compacts those
+   *    away (set/pattern/all.rb) - so a rule hanging on a set whose anchor
+   *    card does not exist is UNREACHABLE in Ruby. A name walk reaches it by
+   *    spelling the anchor's name out of the lexicon.
+   * 2. ROWS WITHOUT A CODENAME ARE SKIPPED (cache.rb:44,47 `next unless`):
+   *    a rule whose setting card or whose set-pattern card carries no
+   *    codename is never in the cache, so Ruby answers nil where a name walk
+   *    still finds the card.
+   * 3. ROWS THE SQL EXCLUDES ARE SKIPPED (cache.rb:20-23): trashed rule, set
+   *    or setting, and a *follow rule with empty db_content.
+   *
+   * The reverse direction matters too: a legacy junction row that stores a
+   * compound SET name with no side ids cannot be composed through the
+   * lexicon, so a name walk cannot spell it - while the id-keyed cache still
+   * reaches it. The cache value carries the winning SET's identity, so the
+   * rule card's name is composed here from the same parts Ruby reads
+   * (`anchor + *pattern_code + *setting_code`).
+   *
+   * The cache is the same deck-wide hash ensureRuleCacheSetLabels loads
+   * (Cache.read, cache.rb:28-29) and resetCaches drops (Cache.clear,
+   * rule.rb:37-39), so an engine that has not yet run the render prepare
+   * loads it here rather than answering a name-walk verdict.
+   *
+   * On a deck with no Set/Setting TYPE card the cache has nothing to bind
+   * (see ruleCacheAddressable) and the name walk answers instead: that deck
+   * has no rule cards of the kind cache.rb selects either, so both walks
+   * agree, and the name walk additionally reaches the rows a synthetic
+   * fixture seeds without the type cards Ruby requires.
+   */
+  async ruleCardForSetting(
+    card: PatternCardInput,
+    settingCode: string,
+  ): Promise<CardRecord | undefined> {
+    await this.ensureRuleCacheSetLabels();
+    if (!this.ruleCacheAddressable) {
+      const byName = await findRule(this.fetcher, card, settingCardNameForCode(settingCode));
+      return byName?.rule;
+    }
+    const hash = this.ruleCacheSetLabels;
+    if (hash === undefined) return undefined;
+    const winner = ruleIdLookup(hash, ruleLookupKeysForCard(card), settingCode);
+    if (winner === undefined) return undefined;
+    const rule = await this.fetcher.fetchById(winner.ruleId);
+    if (rule === undefined) return undefined;
+    if (rule.name !== undefined) return rule;
+    // A junction row the lexicon cannot compose (no side ids). Ruby reaches
+    // this row by id and its Card::Name reads the stored name straight off
+    // the card; the port rebuilds the same name from the cache key's parts,
+    // which are the anchor's name and the pattern/setting codenames.
+    if (winner.anchorName === undefined) {
+      const name = DeckoName.parse(`*${winner.patternCode}+*${winner.settingCode}`);
+      return { ...rule, name, key: name.key };
+    }
+    const name = DeckoName.parse(
+      `${winner.anchorName}+*${winner.patternCode}+*${winner.settingCode}`,
+    );
+    return { ...rule, name, key: name.key };
   }
 
   /**
@@ -3592,14 +3660,14 @@ export class RenderEngine implements RenderEngineLike {
         // walk the raw dbContent refs. Both branches must run — the template
         // refs are what a *structure rule contributes; the raw refs are the
         // closure the prefetch already walked and the render must answer to.
-        // Round 9: both branches absolutize against THIS card's name (the
+        // Both branches absolutize against THIS card's name (the
         // chunk/reference.rb referencing-card contract the Ruby port cites
         // in nest-syntax.ts's header): a template's `{{+image}}` names
         // `<instance>+image`. Without the context the walk produced the
         // literal key "+image", which matched no row, fell into
         // structureRefMisses, and every template child rendered as the
-        // unknown-card empty slot even when its row existed (the round-9
-        // live-wire gap). The prefetch's contextual collect and
+        // unknown-card empty slot even when its row existed (a live-wire
+        // gap found on the deployed site). The prefetch's contextual collect and
         // closureWarm's cardReferenceKeys absolutize identically, so all
         // three walkers agree on one key set.
         const contentForRefs = resolved !== undefined
@@ -3781,7 +3849,7 @@ export class RenderEngine implements RenderEngineLike {
           params: chunk,
         });
       }
-      // W4 batch fusion (the round-trip reduction fix): the type prime no longer
+      // Batch fusion (the round-trip reduction fix): the type prime no longer
       // spends its own round trip before the candidate seat. When the seat
       // will run, the statements ride seatNamesByWave's FIRST batch as its
       // preamble - one round trip carries the priming rows AND the wave's
@@ -3914,14 +3982,14 @@ export class RenderEngine implements RenderEngineLike {
     // from the engine-lifetime maps (a warm render's call would otherwise
     // re-prime nil over an earlier render's positive) and never from
     // per-round answer sets (a multi-round call re-primed nil over its own
-    // round-1 positives - the stored nil then answered the render's own rule
+    // earlier-round positives - the stored nil then answered the render's own rule
     // ladders "absent" for junctions the db holds).
     const callAskedSimple = new Set<string>();
     const callAskedPairs = new Set<string>();
     const callAnsweredSimple = new Set<string>();
     const callAnsweredPairs = new Set<string>();
-    // W4 batch fusion (the round-trip reduction fix): a caller's preamble
-    // statements (the W2b type-card prime) ride the FIRST round's batch -
+    // Batch fusion (the round-trip reduction fix): a caller's preamble
+    // statements (the type-card prime) ride the FIRST round's batch -
     // one round trip carries the priming rows and the wave's own asks. The
     // preamble rows flow through the same compose/write/seat pipeline as the
     // round's rows; they are ordinary cards, not wave asks, so they never
@@ -4140,7 +4208,7 @@ export class RenderEngine implements RenderEngineLike {
       //    (callAnsweredSimple) and it did not seat earlier (renderCards);
       //  - a pair is missed only when no row of any round answered it
       //    (callAnsweredPairs unions every round's fetchedPairs). The
-      //    previous per-round view re-primed NIL over round-1 positives at
+      //    previous per-round view re-primed NIL over first-round positives at
       //    every later round of a multi-round call - and the render-card-map
       //    view (the ask memory variant) primed nil over ANSWERED keys
       //    whenever the answer was not seated into the map.
@@ -6030,10 +6098,10 @@ export class RenderEngine implements RenderEngineLike {
    *  the same engine-lifetime memory. A join miss converts to a pair-id ask
    *  (askedPairs) on the retry round, so this set never blocks that. */
   private waveAskedSideKeyPairs = new Set<string>();
-  /** db round-trip elimination: type-card ids the W3b priming already
+  /** db round-trip elimination: type-card ids the priming already
    *  seated - the priming pass's IN-list runs once per id per engine. */
   private typeCardsPrimed = new Set<number>();
-  /** Root card keys whose rule-candidate set the W2b priming already
+  /** Root card keys whose rule-candidate set the priming already
    *  asked - the priming pass runs once per page per engine, which is what
    *  makes a warm re-render of the same page zero-query by construction
    *  (the candidates of a page's prepared set are deterministic in the
@@ -6298,7 +6366,7 @@ export class RenderEngine implements RenderEngineLike {
       // only over this render's not-done hosts (the sweep surface), and a
       // warm render has none — the d2v1 hops-gate failure mode (a wave
       // proactively asking on warm renders) is structurally absent. The
-      // candidate seat is the W2b precedent's exact shape
+      // candidate seat is the priming precedent's exact shape
       // (primePreparedCardDerivedState seats the same ruleNamesForCard
       // families for the cards seated before it — byte-proven at every
       // cost level; this extends the same coverage to the closure's
@@ -7001,7 +7069,7 @@ export class RenderEngine implements RenderEngineLike {
     // (format.ts:renderView) reads isDenied which reads
     // deniedVerdictsByKey. Without this pass the gate is open for every
     // virtual and the engine renders a bar where Ruby renders the
-    // quiet denial span (the round-7 permission_denied_mismatch
+    // quiet denial span (the permission_denied_mismatch
     // residual; see preloadVirtualRuleVerdicts for the full mechanism).
     await this.preloadVirtualRuleVerdicts(setCard);
     // Marked only after every pass above completed, so an aborted
@@ -7152,8 +7220,8 @@ export class RenderEngine implements RenderEngineLike {
    * gate at view-perms.ts#viewPermissionDenial) reads `isDenied` which
    * pulls from `deniedVerdictsByKey` — without a pre-populated verdict
    * the virtual card's gate is open and the engine renders a bar where
-   * Ruby renders the denial span (the round-7
-   * permission_denied_mismatch residual).
+   * Ruby renders the denial span (the permission_denied_mismatch
+   * residual).
    *
    * This pass mirrors the stored-card verdict path (ensureVerdicts
    * 958-1020): same canReadByRuleLookup, same deniedVerdictsByKey map,
@@ -7630,15 +7698,33 @@ export class RenderEngine implements RenderEngineLike {
     }
     const actorName: string = actor.name.s;
     const accountSettingsName = `${actorName}+*account settings`;
-    const accountSettingsReal =
-      (await this.fetcher.fetchByKey(DeckoName.parse(accountSettingsName).key, {
-        skipVirtual: true,
-      })) !== undefined;
+    const accountSettingsRecord = await this.fetcher.fetchByKey(
+      DeckoName.parse(accountSettingsName).key,
+      { skipVirtual: true },
+    );
+    const accountSettingsReal = accountSettingsRecord !== undefined;
+    // card.type_name (Base#anchor_name's `*type` anchor reads the TYPE's
+    // card name; class_methods.rb#quick_type has the same shape).
+    const accountSettingsTypeName =
+      accountSettingsRecord?.typeId !== undefined
+        ? await this.fetcher.codenames.nameForId(accountSettingsRecord.typeId)
+        : undefined;
     // virtual?: a compound card is known when a *structure rule applies to
-    // it (states.rb:63-67) — findRule walks the same pattern candidates
-    // Ruby's rule lookup does.
+    // it (states.rb:63-67) — rule_card(:structure) over the rule cache
+    // (rule/all.rb:19-27), the same walk Ruby does. The real row above
+    // carries the id Ruby's Base#rule_lookup_key needs for the anchored
+    // lookup keys; an absent card contributes none, exactly as
+    // pattern/base.rb:75-80's nil arm does.
     const accountSettingsVirtual =
-      (await findRule(this.fetcher, { name: accountSettingsName }, "*structure")) !== undefined;
+      (await this.ruleCardForSetting(
+        {
+          name: DeckoName.parse(accountSettingsName),
+          id: accountSettingsRecord?.id,
+          typeId: accountSettingsRecord?.typeId,
+          typeName: accountSettingsTypeName,
+        },
+        "structure",
+      )) !== undefined;
     // The sign-out mark is the SYMBOL :signin (account_dropdown.rb:22) —
     // Card::Name[:symbol] resolves through the codename registry
     // (name.rb:77 Codename.name!), so known? is the codename card's
@@ -8815,16 +8901,21 @@ export class RenderEngine implements RenderEngineLike {
   /** options_card (options_api.rb:47-48) minus the permission-abstract
    *  override (excluded at the gate):
    *  rule_card(:content_options) || right_type_options || Card[:all].
-   *  rule_card rides the SAME rule-name algebra + storage walk the
-   *  view-override lookup uses (findRule -> ruleNamesForCard, the
-   *  pattern-precedence candidate walk). Memoized per card key. */
+   *  rule_card rides the shared rule-name algebra + storage walk
+   *  (findRule -> ruleNamesForCard, the pattern-precedence candidate
+   *  walk). Memoized per card key. */
   private async resolveOptionsCard(card: RenderCard): Promise<RenderCard | undefined> {
     const cached = this.optionsCardCache.get(card.key);
     if (this.optionsCardCache.has(card.key)) return cached;
     let resolved: RenderCard | undefined;
-    const rule = await findRule(this.fetcher, this.structurePatternInputForSync(card), "*content options");
-    if (rule !== undefined && rule.rule.name !== undefined) {
-      resolved = await this.enrichAndStore(rule.rule);
+    const rule = await this.ruleCardForSetting(
+      this.structurePatternInputForSync(card),
+      // the *content_options setting card's codename (cache.rb keys on
+      // the codename, not the card name)
+      "content_options",
+    );
+    if (rule !== undefined && rule.name !== undefined) {
+      resolved = await this.enrichAndStore(rule);
     }
     if (resolved === undefined && card.name.isCompound) {
       // right_type_options: right part is a cardtype -> the by-name
@@ -8887,27 +8978,31 @@ export class RenderEngine implements RenderEngineLike {
       return this.setHostChainCache.get(host.key);
     }
 
-    const settings = ["*content options", "*help", "*structure", "*default"];
+    // SETTING CODES, not setting card names: Rule::Cache keys on the
+    // codename (cache.rb:66 `Card::Codename[setting_id]`), and each of
+    // these is the codename of the setting card Ruby reads here
+    // (*content options, *help, *structure, *default).
+    const settings = ["content_options", "help", "structure", "default"];
 
-    for (const settingName of settings) {
-      // Walk the host's rule-card candidates for this setting: the SAME
-      // ruleNamesForCard algebra the rule-card view-override uses. Each
-      // candidate, when it resolves to a real card, gets parsed DIRECTLY
-      // if it's a search-type rule (the rules editor's nested render
-      // triggers Abstract::CqlSearch#item_type_id on the rule itself,
-      // NOT on the rule's options_card chain). Set-typed rules are
+    for (const settingCode of settings) {
+      // Walk the host's rule-cache lookup keys for this setting: the same
+      // keys Ruby walks (Rule::All#rule_card_id -> rule_id_lookup over
+      // Set::Pattern::All#rule_lookup_keys), answering with the stored rule
+      // id. Each candidate, when it resolves to a real card, gets parsed
+      // DIRECTLY if it's a search-type rule (the rules editor's nested
+      // render triggers Abstract::CqlSearch#item_type_id on the rule
+      // itself, NOT on the rule's options_card chain). Set-typed rules are
       // skipped: the recapture's 676 set-host sentinels all carry
       // search-type terminals (jjmd, kwnd), never the *all "fr"
       // fallback. The first rule whose content parses-failure raises
       // with that content; pointer/list rules recurse into THEIR
       // options chain (rare in practice).
-      const rule = await findRule(
-        this.fetcher,
+      const rule = await this.ruleCardForSetting(
         this.structurePatternInputForSync(host),
-        settingName,
+        settingCode,
       );
-      if (rule !== undefined && rule.rule.name !== undefined) {
-        const ruleCard = await this.enrichAndStore(rule.rule);
+      if (rule !== undefined && rule.name !== undefined) {
+        const ruleCard = await this.enrichAndStore(rule);
         if (ruleCard !== undefined) {
           const fail = this.ruleCardParseFailure(ruleCard);
           if (fail !== undefined) {
@@ -9446,11 +9541,11 @@ export class RenderEngine implements RenderEngineLike {
    *  reference and forced cold closure walks for cards nesting them
    *  (26/1000 shard-0 cards cold after prewarm, render-perf harness).
    *
-   *  Round 9: every non-underscore ref is ABSOLUTIZED against the card's
+   *  Every non-underscore ref is ABSOLUTIZED against the card's
    *  own name (chunk/reference.rb referencing-card contract) — the same
    *  contextual resolution applyStructureContent's ref walk and the
    *  prefetch's record collect use. A card's `{{+image}}` checks
-   *  `<card>+image` in the render-card map; the pre-round-9 literal
+   *  `<card>+image` in the render-card map; the literal
    *  "+image" key matched no prepared card, but the walkers' bogus miss
    *  landed in structureRefMisses so warm detection only stayed stable by
    *  accident of the shared bogus key.

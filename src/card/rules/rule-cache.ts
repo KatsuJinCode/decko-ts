@@ -112,13 +112,19 @@ export function buildRuleLookupHash(
  * sits INSIDE the key loop) — so a more-specific key's fallback beats a
  * less-specific key's primary. fallbackSuffix is preference_card_id's
  * "#{setting}+#{AllID}" after "#{setting}+#{user_id}" (rule/all.rb:56-60).
+ *
+ * Generic over the hash's value type because Ruby returns the STORED rule id
+ * and the caller fetches it (`Card.fetch rule_card_id` - all.rb:21); the
+ * render engine's rule cache carries that id beside the winning rule's set
+ * identity, and this walk must hand back the whole stored value, not a
+ * projection of it.
  */
-export function ruleIdLookup(
-  hash: ReadonlyMap<string, number>,
+export function ruleIdLookup<V>(
+  hash: ReadonlyMap<string, V>,
   lookupKeys: readonly string[],
   settingCode: string,
   fallbackSuffix?: string,
-): number | undefined {
+): V | undefined {
   for (const key of lookupKeys) {
     const ruleId = hash.get(`${key}+${settingCode}`);
     if (ruleId !== undefined) return ruleId;

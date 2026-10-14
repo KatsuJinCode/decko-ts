@@ -44,6 +44,7 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { ANONYMOUS_VIEWER } from "../../../src/card/permissions/index.js";
 import {
   ModLoader,
   modEngineHost,
@@ -84,6 +85,12 @@ const HTML_PROBE = "Layout Html Probe";
 const HEAD = "*head";
 const NAV_PROBE = "Layout Nav Probe";
 const HTML_MENU_PROBE = "Layout Html Menu Probe";
+/** The card whose name is the account_links codename card: the Self set
+ *  Self::AccountLinks' module_key anchors on (see the four account link
+ *  views below). */
+const ACCOUNT_LINKS = "*account links";
+/** The engine's signed-out default, restored after the signed-in arm. */
+const SIGNED_OUT_VIEWER = ANONYMOUS_VIEWER;
 const LINK_TARGET = "Layout Link Target";
 const NEST_TARGET = "Layout Nest Target";
 const NAV_PROBE_CONTENT =
@@ -203,6 +210,14 @@ beforeAll(async () => {
   await seedCard(s, { id: 15, name: HEAD, codename: "head", typeId: 14 });
   await seedCard(s, { id: 16, name: "*guide", codename: "guide", typeId: 14 });
   await seedCard(s, { id: 20, name: "Html", codename: "html", typeId: 2 });
+  // the account_links codename card (boot-seed's *account links entry) - the
+  // Self set's anchor for the four account link views.
+  await seedCard(s, {
+    id: 22,
+    name: ACCOUNT_LINKS,
+    codename: "account_links",
+    typeId: 2,
+  });
   // the set card "<probe>+*self" and the rule card "<probe>+*self+*guide"
   // (the readable *guide rule :overlay_help_link's guide branch resolves)
   await seedCard(s, { id: 21, leftId: 1169, rightId: 11, typeId: 13 });
@@ -368,11 +383,15 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
   // byte-pins.
   // ---------------------------------------------------------------------
 
-  // Inverted on purpose: the codename-key chain-walk divergence (known
-  // divergence: see known-divergences-from-ruby.md) - Self::AccountLinks'
-  // views are Ruby-reachable ONLY on the card NAMED "*account links" (the
-  // Self set). The shape assertions stay live under it.fails.
-  it.fails("WITH the mod: the four account link views render their nav-link anchors (self/account_links.rb:33-54)", async () => {
+  // Self::AccountLinks is reachable only on a card in the Self set whose
+  // anchor is the account_links card (Set::Pattern::Base#module_key joins the
+  // anchor's CODENAME, card-1.110.0 lib/card/set/pattern/class_methods.rb:45-50,
+  // and Card::Set::Helpers#shortname files the module under "Self::AccountLinks",
+  // lib/card/set/helpers.rb:11-15 - the two must agree or lookup_module_list
+  // returns nil, lib/card/set/pattern/base.rb:27-29). The four link views
+  // therefore belong to the card NAMED "*account links", not to an arbitrary
+  // probe; rendering them on any other card raises unknown-view in Ruby.
+  it("WITH the mod: the four account link views render their nav-link anchors on the *account links card (self/account_links.rb:33-54)", async () => {
     const s = storage!;
     // link_to -> `opts[:href] ||= path(...)` runs first, so href is
     // appended AFTER the caller's class (links.rb:99-106).
@@ -382,28 +401,56 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     // `signup`, so both resolve as wanted - the port's fetch-miss arm is
     // the byte-faithful one for THIS deck. A deck that has the account
     // cards renders `known-card` instead.
-    expect(await s.engine.render(PROBE, "sign_in")).toBe(
+    expect(await s.engine.render(ACCOUNT_LINKS, "sign_in")).toBe(
       '<a class="nav-link signin-link wanted-card" href="/signin">Sign in</a>',
     );
-    expect(await s.engine.render(PROBE, "sign_out")).toBe(
-      '<a class="nav-link signout-link wanted-card" href="/signin/delete">Sign out</a>',
+    // add_to_path MERGES the linked card into the caller's path
+    // (links.rb:33-36, :89-91), and Card::Path puts the ACTION before the
+    // mark - `new_cardtype` renders "#{action}/#{mark}" (path.rb:16-23) and
+    // `action_base` "#{action}/#{mark}" (path.rb:44-46). The mark is the
+    // mark CARD's url_key ("Sign up" -> "Sign_up", url_key
+    // cardname/lib/cardname/variants.rb:7-13).
+    expect(await s.engine.render(ACCOUNT_LINKS, "sign_up")).toBe(
+      '<a class="nav-link signup-link wanted-card" href="/new/Sign_up">Sign up</a>',
     );
-    // add_to_path MERGES :mark into the caller's path (links.rb:33-36), so
-    // `path: {action: :new, mark: :signup}` yields the signup mark + the
-    // new action - and the sign_out case keeps its own :action.
-    expect(await s.engine.render(PROBE, "sign_up")).toBe(
-      '<a class="nav-link signup-link wanted-card" href="/signup/new">Sign up</a>',
-    );
-    expect(await s.engine.render(PROBE, "invite")).toBe(
-      '<a class="nav-link invite-link wanted-card" href="/signup/new">Invite</a>',
-    );
+    // The two SIGNED-IN views sit behind their own perms (account_links.rb:30
+    // `link_options :signed_in?` / :55 `link_options(:signed_in?)`), and a
+    // gate failure answers :blank (denial: :blank), so a signed-out session
+    // renders neither.
+    expect(await s.engine.render(ACCOUNT_LINKS, "sign_out")).toBe("");
+    expect(await s.engine.render(ACCOUNT_LINKS, "invite")).toBe("");
+    s.engine.viewer = { signedIn: true, actorId: 1 }; // bot stand-in (always-ok)
+    try {
+      expect(await s.engine.render(ACCOUNT_LINKS, "sign_out")).toBe(
+        '<a class="nav-link signout-link wanted-card" href="/delete/signin">Sign out</a>',
+      );
+      expect(await s.engine.render(ACCOUNT_LINKS, "invite")).toBe(
+        '<a class="nav-link invite-link wanted-card" href="/new/Sign_up">Invite</a>',
+      );
+    } finally {
+      s.engine.viewer = SIGNED_OUT_VIEWER;
+    }
     // add_class is append_class (card-1.110.0
     // lib/card/format/content.rb:43-49): the known/wanted chip is LAST.
     for (const html of await Promise.all(
-      ["sign_in", "sign_out", "sign_up", "invite"].map((v) => s.engine.render(PROBE, v)),
+      ["sign_in", "sign_up"].map((v) => s.engine.render(ACCOUNT_LINKS, v)),
     )) {
       expect(html.indexOf("nav-link")).toBeLessThan(html.indexOf("-card"));
     }
+    // The other half of Ruby's rule: a card OUTSIDE the Self set has no
+    // module_key that reaches Self::AccountLinks, so the format does not
+    // respond to _view_sign_in and view_method raises
+    // (lib/card/format/render.rb:69-71 -> mod/format/set/all/error.rb:52-53
+    // -> mod/format/config/locales/en.yml:24).
+    let captured: unknown;
+    try {
+      await s.engine.render(PROBE, "sign_in");
+    } catch (err) {
+      captured = err;
+    }
+    expect((captured as Error | undefined)?.message).toBe(
+      "view (sign_in) not supported for Oracle Layout Probe",
+    );
   });
 
   it("WITH the mod: :modal_title is empty (modal.rb:26-28)", async () => {

@@ -641,6 +641,11 @@ export async function seedCard(
     }
   }
   expireRuleResolutionCache(storage.fetcher.driver);
+  // The render engine's deck-wide rule lookup hash (Ruby's Rule::Cache,
+  // cache.rb) is the same kind of per-deck memo: a committed save clears it
+  // (Card::Rule.clear_rule_cache), so a fixture row inserted after the first
+  // rule walk must clear it here too.
+  storage.engine.expireRuleCache();
   // Same seam, lexicon half. A committed create runs the update_lexicon
   // store event (Ruby: mod/core/set/all/name_events.rb:76-78 -> Lexicon.add
   // -> lexicon.rb:79-82 write), which OVERWRITES both lex cache keys the

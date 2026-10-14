@@ -67,6 +67,17 @@ let config: DeploymentFollowLiveConfig | undefined;
 
 /** The head/body constants as a preset that CANNOT arm the serializer era.
  *
+ *  THE VALUES BELOW ARE PLACEHOLDERS. Every one of them is a property a real
+ *  deployment sets to match itself — an SRI digest per remote script, the
+ *  compiled-CSS revision it serves, the version string in its footer credit,
+ *  its reCAPTCHA site key, its own root URL, its `default_html_view`. A
+ *  deployment installs them with its own values; the ones here are the
+ *  documented defaults for a deck that has not chosen otherwise, not a
+ *  capture of anyone's site. Nothing installs this preset implicitly, and no
+ *  host in this repository (worker.ts, deploy/, the reference-harness
+ *  adapters) does — every render path in the tree runs with the config
+ *  UNSET.
+ *
  *  WHY A PRESET. The config object carries two independent axes — the
  *  serializer era (the conditional data-slot `show` key + the class-token
  *  order) and the head/body deployment constants — and the two differ in

@@ -353,8 +353,12 @@ describe("B freshness 2: an edit to a nested included card reaches the including
 // ---------------------------------------------------------------------------
 
 describe("B freshness 3: a committed rule change reaches the governed page", () => {
-  const OLD_CLASS = "old-rule-class";
-  const NEW_CLASS = "new-rule-class";
+  // The governed rule is *all+*structure: Ruby's structured_content
+  // (card/lib/card/content/all.rb:25-27), which replaces the card's own
+  // content with the rule's template. Its content is the rule text the
+  // governed page renders.
+  const OLD_TEMPLATE = "old structure template";
+  const NEW_TEMPLATE = "new structure template";
 
   let warm: FileRuntime | undefined;
 
@@ -362,20 +366,17 @@ describe("B freshness 3: a committed rule change reaches the governed page", () 
     warm = openRuntime();
     await applySchema(warm);
     await insertCard(warm, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
-    await insertCard(warm, { id: 2, name: "*open", codename: "open" });
-    // The governed rule: *all+*open carries a JSON view override whose "class"
-    // is appended to the card-slot wrapper (the seam pinned by
-    // tests/card/render/rule-integration.test.ts).
+    await insertCard(warm, { id: 2, name: "*structure", codename: "structure" });
     await insertCard(warm, {
       id: 3, leftId: 1, rightId: 2,
-      dbContent: JSON.stringify({ view: "open", class: OLD_CLASS }),
+      dbContent: OLD_TEMPLATE,
     });
     await insertCard(warm, { id: 40, name: "Governed Card", dbContent: "governed body" });
-    expect(await warm.engine.render("Governed Card", "open")).toContain(OLD_CLASS);
-    // Commit the rule change: the SAME rule id, different override bytes.
+    expect(await warm.engine.render("Governed Card", "open")).toContain(OLD_TEMPLATE);
+    // Commit the rule change: the SAME rule id, different template text.
     await warm.query(
       "UPDATE cards SET db_content = ? WHERE id = 3",
-      [JSON.stringify({ view: "open", class: NEW_CLASS })],
+      [NEW_TEMPLATE],
     );
   });
 
@@ -387,10 +388,10 @@ describe("B freshness 3: a committed rule change reaches the governed page", () 
     const html = await warm!.engine.render("Governed Card", "open");
     expect(
       html,
-      "the governed page still carries the pre-change rule override: the rule " +
+      "the governed page still carries the pre-change structure template: the rule " +
         "walk answered from a cache that the committed rule edit did not invalidate",
-    ).toContain(NEW_CLASS);
-    expect(html).not.toContain(OLD_CLASS);
+    ).toContain(NEW_TEMPLATE);
+    expect(html).not.toContain(OLD_TEMPLATE);
   });
 });
 

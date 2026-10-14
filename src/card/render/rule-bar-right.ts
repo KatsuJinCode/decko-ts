@@ -65,7 +65,7 @@ function typeLink(card: RenderCard): string {
  *  "pointer-item item-link">…</div></div>` regardless of the item
  *  count (single or multi).
  *
- *  CLUSTER 6 RECONCILIATION (2026-09-25, round 4 pin-reconciler): the
+ *  CLUSTER 6 RECONCILIATION (2026-09-25): the
  *  two oracles agree on *star+*delete (fixture corpus:6560 wrapped;
  *  raw recapture-raw-shard-000003:15 ALSO wrapped, content drift
  *  "uflluwkwvaenx"→"Administrator" is anonymization only) — and the
@@ -165,7 +165,7 @@ function ruleOneLineContent(
     return truncated === stripped ? truncated : h(truncated);
   }
   // Toggle-type cards: the compact-mode one_line_content routes through
-  // the card's content view (card-mod-toggle set/type/toggle.rb), which
+  // the card's content view (card-mod-format set/type/toggle.rb), which
   // renders the truthy/falsy display string ("yes" / "no") rather than
   // the raw dbContent. Captured oracle for recapture-raw:*all+*captcha
   // shows `yes` for dbContent "1" (cluster 4 — boolean-yes-vs-integer-1
