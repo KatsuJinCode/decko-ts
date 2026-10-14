@@ -89,17 +89,72 @@ write, a child's trash, the attachment identifier) on every backend and
 compares every table before and after. `tests/card/actions/concurrent-saves.test.ts`
 runs two simultaneous saves to the same card on SQLite and D1.
 
+## One D1 batch per save: investigated, not adopted
+
+A D1 batch is one SQLite transaction, so a save whose writes were sent as a
+single batch would never be visible half-done. That needs every write a save
+makes to be known before any of them is sent. It is not, in this port or in
+Ruby: a save reads its own writes and branches on them. Traced on local
+SQLite (every statement issued inside `transaction()`; measured 2026-10-14,
+the four saves of a create with a subcard, an update with a subcard, a rename
+and a delete over the atomic-saves test deck):
+
+| Save | Reads | Reads after the save's first write | Write statements and batches |
+|---|---|---|---|
+| create with a subcard | 44 | 37 | 32 across the four saves |
+| update with a subcard | 25 | 18 | |
+| rename | 19 | 7 | |
+| delete | 16 | 11 | |
+
+The reads after the first write include the row just inserted (`SELECT *
+FROM cards WHERE id = ?`), `last_insert_rowid()` for the act and action ids
+the next rows carry, `COUNT(*)` over the card's own action rows, and the
+recursive name-resolution query over `cards`, which must see the parent row
+the subcard's name resolves through. Deferring the writes would mean
+answering all of those from an overlay of pending rows, which for joins and
+recursive queries is a second SQL engine in the Worker, or restructuring the
+save into plan-then-apply phases Ruby does not have. Neither keeps the port
+faithful, so the save path keeps its interactive shape.
+
+**What would close the visibility window instead: snapshot reads.** The
+journal already holds, for every row a live transaction touched, the row as
+it was before (`decko_undo_*`, first entry per row). A serving read that
+finds a live, unexpired holder in the lock row can answer from that
+pre-transaction state inside one atomic batch: stash the lock (so the journal
+triggers stay off), copy the touched rows' current images to a redo table,
+restore the before-images, run the reads, put the current images back, empty
+the redo table and restore the lock. D1 runs the batch as one transaction,
+so the writer never observes the swap and other readers never see the
+intermediate state. Two requirements found while designing it:
+
+- `deck_data_version` must also read as its pre-transaction value. The
+  writer's statements bump it as they run, and a reader that pairs the bumped
+  stamp with pre-transaction rows would cache old content under the new
+  stamp; nothing bumps it again at commit, so that stale entry would be
+  served afterwards. The journal therefore has to record the stamp when it
+  takes the lock, and the snapshot batch has to report that value and
+  restore the current one after the reads.
+- The swap is a write batch, so serving reads during a live save become
+  writes on the primary (about four row writes per touched row). Saves are
+  short and infrequent next to reads, so this costs little, but it should be
+  measured on hosted D1 before the guarantee table claims readers are
+  isolated.
+
+Until that is built and tested (an injected pause mid-save, a concurrent
+serving read through a second adapter, asserting it returns the
+pre-save rows and stamp), the visibility window described below stands.
+
 ## Implemented and verified adapters
 
-"Verified" names what the tests ran against. Nothing here was run against a
-hosted service.
+"Verified" names what the tests ran against. Hosted runs are listed with
+their date; everything else ran against local emulations.
 
 | Adapter | Implemented | Conformance suites run against |
 |---|---|---|
 | Local SQLite (`LocalSqliteDriver`) | yes | real SQLite (better-sqlite3), in memory and on disk with two connections |
-| Cloudflare D1 (`CloudflareD1Adapter`) | yes | workerd's local D1 under Miniflare; not hosted D1 |
+| Cloudflare D1 (`CloudflareD1Adapter`) | yes | workerd's local D1 under Miniflare; hosted D1 on 2026-10-14 (`tests/hosted/hosted-write-path.test.ts` through a remote binding: the 7 transaction conformance cases and 10 save scenarios, all passing, on a throwaway database deleted afterwards) |
 | libSQL over HTTP (`LibSqlHttpAdapter`) | yes | a Hrana v2 test server in this repository backed by real SQLite; not sqld, Turso or Bunny |
-| Bunny Database (`BunnyDbDriver`) | yes | the same Hrana test server; reads also against the live database in earlier deploy checks, never writes |
+| Bunny Database (`BunnyDbDriver`) | yes | the same Hrana test server; reads also against the live database in earlier deploy checks, never writes. A hosted run is wired (`tests/hosted/hosted-write-path.test.ts`) but has not run: a scratch database can be created and deleted with the account API key, but its SQL endpoint needs a per-database token, which Bunny issues only from the dashboard or its CLI (`bunny db tokens create`) |
 | PostgreSQL | **no** — removed | — |
 
 **PostgreSQL.** An adapter and a SQL dialect translator existed, tested only
