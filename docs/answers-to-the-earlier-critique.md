@@ -107,18 +107,32 @@ not a general Ruby-mod execution capability."
 queries regardless of depth" is recorded as **not met** in the table of what
 changed from the original proposal
 ([coverage-inventory.md](coverage-inventory.md), "What changed from the original
-proposal"). The measured law, in the repository's words: "four fixed round trips
-plus one per nesting level below the root, however many cards each level holds —
-breadth is free, depth is not." Depth is *not* free.
+proposal"). The measured law was then three fixed round trips plus one per
+nesting level below the root, however many cards each level holds: breadth was
+free, depth was not.
+
+The critique's remedy, a stored graph instead of re-discovering nests at render
+time, is what changed that. The write path keeps `card_references` (one ref_type
+`I` row per nest, as Ruby's references table does), and the cold render now walks
+it recursively from the root in one statement of its prelude batch. A closure
+level those rows answer exactly costs no round trip; any other level goes to the
+database as before, so the stored rows decide cost, never output. Measured
+2026-10-14 (`DEPTH_SWEEP_WRITE_ARTIFACT=1 npx vitest run
+tests/card/render/depth-sweep.test.ts`): three round trips at every depth 1
+through 20 where the index describes the content, three plus one per level where
+it does not. The claim is met only in that first posture, and the coverage
+inventory says so.
 
 The critique's structural objection is also empirically correct here. The
 nesting graph is not a static foreign-key graph, and the measured data shows it:
 the published comparison
 ([scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md))
 renders chains, fans and trees through both engines and records where every
-round trip goes. A `fan f200` (201 cards) costs the TypeScript engine 5 round
-trips, while a `chain d20` (20 cards) costs 23 — breadth is flat, depth is
-linear. The two tests that pin this are
+round trip goes. Those decks write no reference rows, so they measure the
+per-level fallback: a `fan f200` (201 cards) costs the TypeScript engine 4 round
+trips, while a `chain d20` (20 cards) costs 22 (re-measured 2026-10-14 by
+`tests/card/render/deep-nesting-fixture-sweep.test.ts`) — breadth is flat,
+depth is linear. The two tests that pin this are
 `tests/card/render/deep-nesting-trip-attribution.test.ts` and
 `tests/card/render/depth-sweep.test.ts`.
 
