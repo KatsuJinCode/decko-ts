@@ -134,7 +134,8 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // need); renders stay byte-correct (the html assertions above are
       // untouched and pass).
       expect(snapshot.roundTrips).toBe(6);
-      expect(snapshot.statements).toBe(27); // wave-seating ladder, see above
+      // Plus one: the stored nest index's closure statement rides the prelude batch: +1 statement, +0 round trips.
+      expect(snapshot.statements).toBe(28); // wave-seating ladder, see above
     } finally {
       storage.close();
     }
@@ -234,7 +235,8 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // +1 batch per chain level still holds (5 here vs the depth-3
       // case's 6).
       expect(snapshot.roundTrips).toBe(5);
-      expect(snapshot.statements).toBe(25);
+      // Plus one: the stored nest index's closure statement rides the prelude batch: +1 statement, +0 round trips.
+      expect(snapshot.statements).toBe(26);
     } finally {
       storage.close();
     }

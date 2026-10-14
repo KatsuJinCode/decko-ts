@@ -1,5 +1,6 @@
 {
-  "measured_at": "2026-10-14T16:51:23.985Z",
+  "measured_at": "2026-10-14T20:41:29.387Z",
+  "reproduce": "DEPTH_SWEEP_WRITE_ARTIFACT=1 npx vitest run tests/card/render/depth-sweep.test.ts",
   "environment": "local better-sqlite3 over production-schema DDL; synthetic chains",
   "axes": {
     "round_trips": "driver calls: query() + batch() each count ONE",
@@ -10,46 +11,268 @@
     "source": "decko-ts/benchmarks/results/ruby-nesting-r1-r2.json",
     "formula": "depth + 3; depth 32 hard-capped by Card.config.max_depth=20 with 'Man, you're too deep' UserError",
     "table": {
-      "1": 5,
-      "2": 6,
-      "4": 8,
-      "8": 12,
-      "16": 20
+      "1": 4,
+      "2": 5,
+      "4": 7,
+      "8": 11,
+      "16": 19
     }
   },
   "ts_constant": {
     "round_trips": 3,
-    "statements": 20
+    "statements": 21
   },
   "rows": [
     {
       "depth": 1,
       "roundTrips": 3,
-      "statements": 20,
-      "coldWallMs": 15.439,
-      "warmWallMs": 0.652,
+      "statements": 21,
+      "coldWallMs": 32.986,
+      "warmWallMs": 1.434,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 4,
+      "rubyRatio": 1.33
+    },
+    {
+      "depth": 2,
+      "roundTrips": 3,
+      "statements": 21,
+      "coldWallMs": 14.789,
+      "warmWallMs": 1.925,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": 5,
       "rubyRatio": 1.67
     },
     {
-      "depth": 2,
-      "roundTrips": 4,
+      "depth": 3,
+      "roundTrips": 3,
       "statements": 21,
-      "coldWallMs": 6.718,
-      "warmWallMs": 0.851,
+      "coldWallMs": 13.67,
+      "warmWallMs": 2.46,
       "warmRoundTrips": 1,
       "warmStatements": 1,
-      "rubyMeasured": 6,
-      "rubyRatio": 1.5
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 4,
+      "roundTrips": 3,
+      "statements": 21,
+      "coldWallMs": 9.847,
+      "warmWallMs": 1.665,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 7,
+      "rubyRatio": 2.33
+    },
+    {
+      "depth": 5,
+      "roundTrips": 3,
+      "statements": 21,
+      "coldWallMs": 9.075,
+      "warmWallMs": 3.411,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 6,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 12.265,
+      "warmWallMs": 3.2,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 7,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 13.207,
+      "warmWallMs": 3.597,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 8,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 10.505,
+      "warmWallMs": 1.979,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 11,
+      "rubyRatio": 3.67
+    },
+    {
+      "depth": 9,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 10.735,
+      "warmWallMs": 2.989,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 10,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 11.823,
+      "warmWallMs": 2.866,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 11,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 20.991,
+      "warmWallMs": 13.492,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 12,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 16.437,
+      "warmWallMs": 2.835,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 13,
+      "roundTrips": 3,
+      "statements": 22,
+      "coldWallMs": 16.507,
+      "warmWallMs": 3.524,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 14,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 13.371,
+      "warmWallMs": 3.936,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 15,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 12.512,
+      "warmWallMs": 2.569,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 16,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 11.089,
+      "warmWallMs": 3.306,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 19,
+      "rubyRatio": 6.33
+    },
+    {
+      "depth": 17,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 14.499,
+      "warmWallMs": 3.91,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 18,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 14.264,
+      "warmWallMs": 3.289,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 19,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 17.487,
+      "warmWallMs": 3.19,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 20,
+      "roundTrips": 3,
+      "statements": 23,
+      "coldWallMs": 13.051,
+      "warmWallMs": 3.492,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    }
+  ],
+  "rows_without_nest_index": [
+    {
+      "depth": 1,
+      "roundTrips": 3,
+      "statements": 21,
+      "coldWallMs": 6.103,
+      "warmWallMs": 0.486,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 4,
+      "rubyRatio": 1.33
+    },
+    {
+      "depth": 2,
+      "roundTrips": 4,
+      "statements": 22,
+      "coldWallMs": 7.61,
+      "warmWallMs": 1.035,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": 5,
+      "rubyRatio": 1.25
     },
     {
       "depth": 3,
       "roundTrips": 5,
-      "statements": 22,
-      "coldWallMs": 4.509,
-      "warmWallMs": 0.733,
+      "statements": 23,
+      "coldWallMs": 8.001,
+      "warmWallMs": 1.09,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -58,20 +281,20 @@
     {
       "depth": 4,
       "roundTrips": 6,
-      "statements": 23,
-      "coldWallMs": 4.328,
-      "warmWallMs": 0.715,
+      "statements": 24,
+      "coldWallMs": 13.049,
+      "warmWallMs": 1.243,
       "warmRoundTrips": 1,
       "warmStatements": 1,
-      "rubyMeasured": 8,
-      "rubyRatio": 1.33
+      "rubyMeasured": 7,
+      "rubyRatio": 1.17
     },
     {
       "depth": 5,
       "roundTrips": 7,
-      "statements": 24,
-      "coldWallMs": 4.735,
-      "warmWallMs": 0.874,
+      "statements": 25,
+      "coldWallMs": 8.16,
+      "warmWallMs": 0.997,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -80,9 +303,9 @@
     {
       "depth": 6,
       "roundTrips": 8,
-      "statements": 26,
-      "coldWallMs": 4.519,
-      "warmWallMs": 0.882,
+      "statements": 27,
+      "coldWallMs": 15.029,
+      "warmWallMs": 1.539,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -91,9 +314,9 @@
     {
       "depth": 7,
       "roundTrips": 9,
-      "statements": 27,
-      "coldWallMs": 4.766,
-      "warmWallMs": 0.954,
+      "statements": 28,
+      "coldWallMs": 10.43,
+      "warmWallMs": 2.441,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -102,20 +325,42 @@
     {
       "depth": 8,
       "roundTrips": 10,
-      "statements": 28,
-      "coldWallMs": 4.692,
-      "warmWallMs": 0.89,
+      "statements": 29,
+      "coldWallMs": 9.811,
+      "warmWallMs": 1.826,
       "warmRoundTrips": 1,
       "warmStatements": 1,
-      "rubyMeasured": 12,
-      "rubyRatio": 1.2
+      "rubyMeasured": 11,
+      "rubyRatio": 1.1
+    },
+    {
+      "depth": 9,
+      "roundTrips": 11,
+      "statements": 30,
+      "coldWallMs": 11.047,
+      "warmWallMs": 1.902,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
     },
     {
       "depth": 10,
       "roundTrips": 12,
-      "statements": 30,
-      "coldWallMs": 4.978,
-      "warmWallMs": 0.993,
+      "statements": 31,
+      "coldWallMs": 11.025,
+      "warmWallMs": 2.253,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 11,
+      "roundTrips": 13,
+      "statements": 32,
+      "coldWallMs": 11.106,
+      "warmWallMs": 1.626,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -124,9 +369,20 @@
     {
       "depth": 12,
       "roundTrips": 14,
-      "statements": 32,
-      "coldWallMs": 5.055,
-      "warmWallMs": 1.197,
+      "statements": 33,
+      "coldWallMs": 10.794,
+      "warmWallMs": 5.709,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 13,
+      "roundTrips": 15,
+      "statements": 34,
+      "coldWallMs": 11.651,
+      "warmWallMs": 2.593,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -135,9 +391,20 @@
     {
       "depth": 14,
       "roundTrips": 16,
-      "statements": 35,
-      "coldWallMs": 7.749,
-      "warmWallMs": 1.258,
+      "statements": 36,
+      "coldWallMs": 12.382,
+      "warmWallMs": 7.502,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 15,
+      "roundTrips": 17,
+      "statements": 37,
+      "coldWallMs": 17.954,
+      "warmWallMs": 4.817,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -146,20 +413,42 @@
     {
       "depth": 16,
       "roundTrips": 18,
-      "statements": 37,
-      "coldWallMs": 4.968,
-      "warmWallMs": 1.227,
+      "statements": 38,
+      "coldWallMs": 19.538,
+      "warmWallMs": 3.896,
       "warmRoundTrips": 1,
       "warmStatements": 1,
-      "rubyMeasured": 20,
-      "rubyRatio": 1.11
+      "rubyMeasured": 19,
+      "rubyRatio": 1.06
+    },
+    {
+      "depth": 17,
+      "roundTrips": 19,
+      "statements": 39,
+      "coldWallMs": 13.716,
+      "warmWallMs": 3.526,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
     },
     {
       "depth": 18,
       "roundTrips": 20,
-      "statements": 39,
-      "coldWallMs": 5.576,
-      "warmWallMs": 1.51,
+      "statements": 40,
+      "coldWallMs": 12.529,
+      "warmWallMs": 3.141,
+      "warmRoundTrips": 1,
+      "warmStatements": 1,
+      "rubyMeasured": null,
+      "rubyRatio": null
+    },
+    {
+      "depth": 19,
+      "roundTrips": 21,
+      "statements": 41,
+      "coldWallMs": 15.287,
+      "warmWallMs": 3.106,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -168,9 +457,9 @@
     {
       "depth": 20,
       "roundTrips": 22,
-      "statements": 41,
-      "coldWallMs": 5.85,
-      "warmWallMs": 1.392,
+      "statements": 42,
+      "coldWallMs": 14.463,
+      "warmWallMs": 3.62,
       "warmRoundTrips": 1,
       "warmStatements": 1,
       "rubyMeasured": null,
@@ -180,33 +469,33 @@
   "ts_reduces_query_count_by": [
     {
       "depth": 1,
+      "ruby": 4,
+      "ts": 3,
+      "ratio": 1.33
+    },
+    {
+      "depth": 2,
       "ruby": 5,
       "ts": 3,
       "ratio": 1.67
     },
     {
-      "depth": 2,
-      "ruby": 6,
-      "ts": 4,
-      "ratio": 1.5
-    },
-    {
       "depth": 4,
-      "ruby": 8,
-      "ts": 6,
-      "ratio": 1.33
+      "ruby": 7,
+      "ts": 3,
+      "ratio": 2.33
     },
     {
       "depth": 8,
-      "ruby": 12,
-      "ts": 10,
-      "ratio": 1.2
+      "ruby": 11,
+      "ts": 3,
+      "ratio": 3.67
     },
     {
       "depth": 16,
-      "ruby": 20,
-      "ts": 18,
-      "ratio": 1.11
+      "ruby": 19,
+      "ts": 3,
+      "ratio": 6.33
     }
   ]
 }

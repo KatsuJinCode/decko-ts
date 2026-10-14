@@ -353,7 +353,8 @@ describe("RenderEngine structured content", () => {
       // statements and 3 round trips, which is the round-trip law
       // (tests/card/render/round-trip-law.ts) for a render that nests
       // nothing. The law test below asserts it on nesting structures too.
-      expect(cold.statements).toBe(20);
+      // Plus one: the stored nest index's closure statement rides the prelude batch: +1 statement, +0 round trips.
+      expect(cold.statements).toBe(21);
       expect(cold.roundTrips).toBe(coldRoundTripLaw(0));
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip).

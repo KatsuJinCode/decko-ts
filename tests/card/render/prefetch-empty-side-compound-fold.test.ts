@@ -171,7 +171,8 @@ describe("prefetch closure: empty-sided compound names fold", () => {
         // asks its junction: one statement more than the id-pair ask the
         // round after, and one round trip fewer.
         expect(after.roundTrips).toBeLessThanOrEqual(24);
-        expect(after.statements).toBeLessThanOrEqual(47);
+        // Plus one: the stored nest index's closure statement rides the prelude batch: +1 statement, +0 round trips.
+        expect(after.statements).toBeLessThanOrEqual(48);
       } finally {
         storage.close();
       }

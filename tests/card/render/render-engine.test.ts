@@ -292,7 +292,10 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // and the Set TYPE card's row folded into the wave preamble — rides
     // those two batches: statements, not round trips. Warm
     // renders pay exactly that one stamp statement.
-    expect(statementsByDepth).toEqual({ 1: 20, 2: 21, 4: 23, 8: 28 });
+    // The prelude also carries the stored nest index's closure statement
+    // (+1 statement at every depth, +0 round trips). This deck writes no
+    // reference rows, so its closure levels are walked one round trip each.
+    expect(statementsByDepth).toEqual({ 1: 21, 2: 22, 4: 24, 8: 29 });
     // depth 8 costs one batch per level (10 round trips) while reading
     // O(page) rows instead of the whole deck per render - one below
     // Ruby's 11 queries (pinned: TS <= Ruby at every measured depth).

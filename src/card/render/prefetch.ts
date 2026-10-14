@@ -93,6 +93,9 @@ export interface PrefetchStats {
   /** closure rounds run (per-level batches after the prelude; zero minimum -
    *  a root with no references runs no closure round at all). */
   fallbackRounds: number;
+  /** closure rounds answered entirely from the stored nest index (the
+   *  prelude's reference-closure statement) - no round trip spent. */
+  indexedRounds: number;
   /** cards composed into the fetch cache. */
   cards: number;
   /** Results of `additionalStatements` (present only when they were
@@ -251,6 +254,7 @@ export async function prefetchInclusionClosure(
     batches: 0,
     statements: 0,
     fallbackRounds: 0,
+    indexedRounds: 0,
     cards: 0,
     typePrimeMemo: new Set<number>(),
   };
@@ -382,6 +386,51 @@ export async function prefetchInclusionClosure(
     anchorSlot = preludeStatements.length - 1;
   }
 
+  // The stored nest index: the root's whole nest closure in one statement.
+  // card_references holds one ref_type 'I' row per nest the write path
+  // parsed out of a card's content (refresh-references-out.ts; Ruby
+  // card-mod-content set/all/references.rb), with the referee already
+  // absolutized against the referer and its id filled in once the referee
+  // exists (refresh-references-in.ts). Walking those rows recursively from
+  // the root reaches every card the closure rounds below would reach level
+  // by level, plus the sides of every reached junction (the rounds' side
+  // priming). Only `skipClosureWalk` renders, which never walk, leave it out.
+  //
+  // The rows are a POOL, not a result: nothing here is composed or cached.
+  // Each closure round first asks the pool and spends no round trip only
+  // when the pool answers every statement of the round exactly (see
+  // NestIndexPool). A stale reference row can only add an unused pool row
+  // or leave a pool miss; a miss sends that round to the database as
+  // before. So the stored index decides how many round trips a render
+  // costs, never what it renders.
+  //
+  // `via` keeps nest edges and side edges apart: nests are followed only out
+  // of cards reached BY a nest (the rounds scan only those cards' content),
+  // sides out of every reached card. UNION over (id, via) terminates on a
+  // cyclic graph. The LIMIT bounds the pool on a deck whose closure is
+  // larger than any render walks; past it the rounds fetch the rest.
+  let nestIndexSlot = -1;
+  if (ctx.skipClosureWalk !== true && rootRow.id > 0) {
+    preludeStatements.push({
+      sql:
+        `WITH RECURSIVE reach(id, via) AS (\n` +
+        `  SELECT ?, 'n'\n` +
+        `  UNION\n` +
+        `  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n` +
+        `   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n` +
+        `  UNION\n` +
+        `  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n` +
+        `  UNION\n` +
+        `  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n` +
+        `  LIMIT ${NEST_INDEX_LIMIT}\n` +
+        `)\n` +
+        `SELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0`,
+      params: [rootRow.id],
+    });
+    nestIndexSlot = preludeStatements.length - 1;
+  }
+
+  const nestIndexRows: RawRow[] = [];
   const preludeSideRows: RawRow[] = [];
   const preludeTypeRows: RawRow[] = [];
   /** The root message card's +*test context junction row
@@ -402,6 +451,7 @@ export async function prefetchInclusionClosure(
       const rows = (result.rows as CardsRow[]) ?? [];
       if (i === sidePrimeSlot) preludeSideRows.push(...rows.map(toRawRow));
       else if (i === typeRowSlot) preludeTypeRows.push(...rows.map(toRawRow));
+      else if (i === nestIndexSlot) nestIndexRows.push(...rows.map(toRawRow));
       else if (i === testContextSlot) preludeTestContextRows.push(...rows.map(toRawRow));
       else if (i === templateTestContextSlot) preludeTestContextRows.push(...rows.map(toRawRow));
       else if (i === emailFieldAnchorSlot) {
@@ -492,8 +542,101 @@ export async function prefetchInclusionClosure(
     [...composed, ...preludeSideComposed, ...preludeTestContextComposed, ...preludeItemComposed],
     ctx,
     stats,
+    new NestIndexPool(nestIndexRows),
   );
   return stats;
+}
+
+/** Upper bound on the rows the nest-index statement walks (the recursive
+ *  queue, so also the rows it reads). Well above a rendered page's closure;
+ *  a closure past it costs the per-level rounds for the remainder. */
+const NEST_INDEX_LIMIT = 2000;
+
+/** One closure round's asks, in the shapes driveClosure issues them. */
+interface ClosureRoundAsks {
+  simpleKeys: string[];
+  leftKeys: string[];
+  rightKeys: string[];
+  sideIdPairs: { leftId: number; rightId: number }[];
+  sideIdsToPrime: number[];
+}
+
+/**
+ * The rows the stored nest index reached, held for the closure rounds.
+ *
+ * `answer` returns the rows a round's statements would return, or undefined
+ * when it cannot prove that. The pool holds live (`trash = 0`) rows of this
+ * deck read in this request, so a row it holds is the row the database would
+ * return; what it cannot prove is ABSENCE, because the index may lack a
+ * reference. A round is therefore answered only when every row its
+ * statements could return is a row the pool holds:
+ *
+ *   - simple keys: every key found (cards.key is unique);
+ *   - side-key pairs: the statement joins the INDEPENDENT cross product of
+ *     its left and right key lists, so every left and right key must be found
+ *     and every junction of the product must be held;
+ *   - side-id pairs and side primes: every pair and id found.
+ *
+ * Keys are matched exactly; the statements match COLLATE NOCASE, so a key
+ * that differs only in case is a pool miss and goes to the database.
+ */
+class NestIndexPool {
+  private readonly byKey = new Map<string, RawRow>();
+  private readonly byId = new Map<number, RawRow>();
+  private readonly byPair = new Map<string, RawRow>();
+
+  constructor(rows: RawRow[]) {
+    for (const row of rows) {
+      this.byId.set(row.id, row);
+      if (row.key !== null && row.key !== "") this.byKey.set(row.key, row);
+      if (row.leftId !== null && row.rightId !== null) this.byPair.set(`${row.leftId}/${row.rightId}`, row);
+    }
+  }
+
+  get size(): number {
+    return this.byId.size;
+  }
+
+  answer(asks: ClosureRoundAsks): { closureRows: RawRow[]; sideRows: RawRow[] } | undefined {
+    if (this.byId.size === 0) return undefined;
+    const closureRows: RawRow[] = [];
+    const simple = new Map<string, RawRow>();
+    for (const key of asks.simpleKeys) {
+      const row = this.byKey.get(key);
+      if (row === undefined) return undefined;
+      simple.set(key, row);
+    }
+    closureRows.push(...simple.values());
+    if (asks.leftKeys.length > 0 && asks.rightKeys.length > 0) {
+      const junctions = new Map<number, RawRow>();
+      for (const leftKey of new Set(asks.leftKeys)) {
+        const left = this.byKey.get(leftKey);
+        if (left === undefined) return undefined;
+        for (const rightKey of new Set(asks.rightKeys)) {
+          const right = this.byKey.get(rightKey);
+          if (right === undefined) return undefined;
+          const junction = this.byPair.get(`${left.id}/${right.id}`);
+          if (junction === undefined) return undefined;
+          junctions.set(junction.id, junction);
+        }
+      }
+      closureRows.push(...junctions.values());
+    }
+    const pairRows = new Map<number, RawRow>();
+    for (const pair of asks.sideIdPairs) {
+      const junction = this.byPair.get(`${pair.leftId}/${pair.rightId}`);
+      if (junction === undefined) return undefined;
+      pairRows.set(junction.id, junction);
+    }
+    closureRows.push(...pairRows.values());
+    const sideRows: RawRow[] = [];
+    for (const id of new Set(asks.sideIdsToPrime)) {
+      const row = this.byId.get(id);
+      if (row === undefined) return undefined;
+      sideRows.push(row);
+    }
+    return { closureRows, sideRows };
+  }
 }
 
 function recordToRawRow(record: CardRecord): RawRow {
@@ -857,6 +1000,7 @@ async function driveClosure(
   composed: CardRecord[],
   ctx: PrefetchContext,
   stats: PrefetchStats,
+  pool?: NestIndexPool,
 ): Promise<void> {
   /** Composed keys with a cached record - "this name resolves". */
   const known = new Set<string>();
@@ -1118,8 +1262,8 @@ async function driveClosure(
       collectors.push((rows) => rows.map(toRawRow));
     }
 
-    let closureRows: RawRow[] = [];
-    let sideRows: RawRow[] = [];
+    const closureRows: RawRow[] = [];
+    const sideRows: RawRow[] = [];
     const splitResults = (results: SQLQueryResult[]): void => {
       results.forEach((result, i) => {
         const rows = collectors[i]!(result.rows as CardsRow[]);
@@ -1132,13 +1276,28 @@ async function driveClosure(
       // statements: nothing left to fetch, no round trip to spend.
       return;
     }
-    // One batched round trip for the level (single transaction locally;
-    // one HTTP request per round on the edge drivers).
-    const batch = await ctx.driver.batch(statements);
-    stats.batches += 1;
-    stats.statements += statements.length;
-    splitResults(batch);
-    stats.fallbackRounds += 1;
+    // The stored nest index answers the level when it holds every row the
+    // round's statements could return (NestIndexPool.answer); otherwise one
+    // batched round trip for the level (single transaction locally; one HTTP
+    // request per round on the edge drivers).
+    const pooled = pool?.answer({
+      simpleKeys: fetchableKeys,
+      leftKeys: sideKeyPairs.map((pair) => pair.left).filter((key) => key !== ""),
+      rightKeys: sideKeyPairs.map((pair) => pair.right).filter((key) => key !== ""),
+      sideIdPairs,
+      sideIdsToPrime,
+    });
+    if (pooled !== undefined) {
+      closureRows.push(...pooled.closureRows);
+      sideRows.push(...pooled.sideRows);
+      stats.indexedRounds += 1;
+    } else {
+      const batch = await ctx.driver.batch(statements);
+      stats.batches += 1;
+      stats.statements += statements.length;
+      splitResults(batch);
+      stats.fallbackRounds += 1;
+    }
 
     if (closureRows.length === 0 && sideRows.length === 0) {
       // Unknown names: stop, render decides.
@@ -1380,6 +1539,7 @@ export async function prefetchWarmupClosure(
     batches: 0,
     statements: 0,
     fallbackRounds: 0,
+    indexedRounds: 0,
     cards: 0,
     typePrimeMemo: new Set<number>(),
   };
