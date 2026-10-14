@@ -1,8 +1,8 @@
 // The stored-HTML, password and constant-time rows of docs/SECURITY.md,
 // exercised publicly on invented data.
 //
-// Four approved divergences are pinned here (docs/SECURITY.md:23, :34, :37,
-// :57). Every it() name opens with the claim it exercises, quoted.
+// Four claims from approved divergences 1, 2 and 4 of docs/SECURITY.md are
+// pinned here. Every it() name opens with the claim it exercises, quoted.
 //
 // DATA RULE — every card name, email, password, salt, site title and body
 // below is invented. Nothing here is deck content, a real credential, or a
@@ -89,7 +89,7 @@ const STORED_HTML_CLAIM =
  *  inside markup would otherwise absorb it. All invented. */
 const PAGE_AFTER = ["", "<p>a later paragraph</p>", '<img src="pictures/later.png" alt="later">'];
 
-describe("stored HTML (docs/SECURITY.md:23)", () => {
+describe("stored HTML (docs/SECURITY.md, divergence 1)", () => {
   it(`"${STORED_HTML_CLAIM}" — an OWASP javascript: link keeps its text and loses its href`, () => {
     for (const input of [
       `<a href="javascript:alert('XSS')">click me</a>`,
@@ -334,7 +334,7 @@ afterEach(() => {
 const PASSWORD_CLAIM =
   "A newly set or changed password is stored as PBKDF2-HMAC-SHA256 with a random 16-byte salt, in the form `pbkdf2_sha256$<iterations>$<salt, base64>$<hash, base64>`. On the next successful sign-in, a legacy digest ... is replaced.";
 
-describe("password storage (docs/SECURITY.md:34)", () => {
+describe("password storage (docs/SECURITY.md, divergence 2)", () => {
   it(`"${PASSWORD_CLAIM}" — under the default config a newly set password is stored as pbkdf2_sha256$600000$ with a fresh 16-byte salt`, async () => {
     // The default config: no DECKO_PASSWORD_* in the boot environment, so the
     // policy is PBKDF2 at OWASP's count.
@@ -468,7 +468,7 @@ async function bootWorkersDeck(): Promise<Deck> {
   return deck;
 }
 
-describe("the Workers PBKDF2 ceiling (docs/SECURITY.md:37)", () => {
+describe("the Workers PBKDF2 ceiling (docs/SECURITY.md, divergence 2)", () => {
   it(`"${WORKERS_CLAIM}" — signing in with a 600,000-iteration stored hash fails with the explicit cannot-be-verified message, not "Wrong password"`, async () => {
     const deck = await bootWorkersDeck();
     try {
@@ -558,7 +558,7 @@ function counting(bytes: number[]): { bytes: Uint8Array; reads: number[] } {
 
 const EVERY_INDEX = [0, 1, 2, 3, 4, 5, 6, 7];
 
-describe("constant-time comparison (docs/SECURITY.md:57)", () => {
+describe("constant-time comparison (docs/SECURITY.md, divergence 4)", () => {
   it(`"${CONSTANT_TIME_CLAIM}" — equal inputs read every byte of both`, () => {
     const a = counting([1, 2, 3, 4, 5, 6, 7, 8]);
     const b = counting([1, 2, 3, 4, 5, 6, 7, 8]);
