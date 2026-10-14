@@ -106,6 +106,7 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
   ModSetModuleFile,
@@ -417,6 +418,34 @@ const setModules: ModSetModuleFile[] = [
     },
   },
 ];
+
+// ---------------------------------------------------------------------------
+// the when: predicate (set/right/structure.rb)
+// ---------------------------------------------------------------------------
+
+/** update_structurees_references? (mod/card-mod-content
+ *  set/right/structure.rb:34-36): `db_content_changed? || action == :delete`.
+ *  It gates :update_structurees_references (structure.rb:25-32, :integrate),
+ *  which re-points the structuree's outgoing references after this card's
+ *  content changed or the card went away.
+ *
+ *  `db_content_changed?` is the ActiveRecord dirty reader for the db_content
+ *  column, which Decko's Card::Dirty extends with the act-scoped
+ *  `db_content_is_changing?` (dirty.rb:8/:20, method_factory.rb:10-12). The
+ *  engine carries that same per-act dirty set as `changedFields` — the port
+ *  already reads it for core's use_default_content? (set/all/content.rb:30)
+ *  — so the condition is a membership test on the same set.
+ *
+ *  The :integrate stage runs AFTER the row write, and Ruby's
+ *  integration_phase calls `@card.restore_changes_information` first
+ *  (card/lib/card/director/phases.rb:48) precisely so the act's saved
+ *  changes still read as "changed" during the integration walk. The port's
+ *  changedFields is computed from the same before/after pair and rides
+ *  every stage of the save, so the answer matches at :integrate too. */
+export const contentModEventPredicates = {
+  "update_structurees_references?": (card: ModEventCard): boolean =>
+    (card.changedFields ?? []).includes("db_content") || card.action === "delete",
+} as const;
 
 const cardModContent: DeckoModManifest = {
   name: "content",
