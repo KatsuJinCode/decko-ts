@@ -129,7 +129,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
       s.engine.render("Fields_Probe_Member+*account+*password", "raw"),
     ).rejects.toThrow(UnsupportedViewError);
     // ...and :input falls through to card-mod-edit's all/editor :input,
-    // which DOES carry the content (the leak the round-9 :input
+    // which DOES carry the content (the leak the :input
     // registration closes — see the :input pins at the end of this file).
     const input = await s.engine.render(
       "Fields Probe Member+*account+*password",
@@ -212,7 +212,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     );
   });
 
-  // The round-9 security pin. GET /:account+*password/input returned the
+  // A security pin. GET /:account+*password/input returned the
   // stored PBKDF2 digest on the demo deck, because the right/password set
   // registered only :raw and :core: an :input render fell through to
   // card-mod-edit's all/editor :input, whose every arm carries the card's

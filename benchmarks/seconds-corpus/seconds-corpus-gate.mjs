@@ -21,8 +21,9 @@
 // pinned true divergences, and every reproduced upstream failure in the
 // ledger still reproduces. The report carries both counts: the reproduced
 // upstream failures (the oracle's own recorded failures the engine
-// reproduces failure-for-failure - successes of the port, the operator's
-// ruling) and the true divergences (remaining port work).
+// reproduces failure-for-failure - successes of the port, because a
+// faithful port breaks where the original breaks) and the true
+// divergences (remaining port work).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";

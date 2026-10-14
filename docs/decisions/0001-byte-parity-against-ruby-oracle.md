@@ -35,10 +35,10 @@ Three consequences follow from taking byte comparison seriously:
   [../parity-method.md](../parity-method.md), "Every instrument's
   normalisations, in one table": the public harness's N1/N2/N3, the oracle-replay
   comparator's three rules, and the historical corpus's four normalizations
-  plus two transforms and its 50 live-swapped expectations (two disjoint
-  swap sets of 13 and 37, from the live site, which runs an earlier Decko). Timestamps and
-  creator identifiers are excluded from capture rather than normalized, so a
-  divergence there cannot hide. Card identifiers are stripped from both sides
+  plus two transforms and its 50 live-anchored expectations (two disjoint sets
+  of 13 and 37, taken from the live site, which runs an earlier Decko).
+  Timestamps and creator identifiers are excluded at capture time rather than
+  normalized, so a divergence there cannot hide. Card identifiers are stripped from both sides
   before comparison, because they are database-local rather than
   content-derived.
 - **Everything else is exact bytes.** No whitespace tolerance, no case

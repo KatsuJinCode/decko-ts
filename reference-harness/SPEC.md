@@ -241,9 +241,9 @@ upstream failure - the oracle raised while serving, and its capture holds the
 error record - is the upstream behavior the port must reproduce: the engine's
 answer must be the same failure under N8 (the class's host naming
 canonicalized) with the message byte-exact, and a match is counted as a
-**reproduced upstream failure**, its own success category (the operator's
-ruling: where the original is broken and the copy breaks the same way, that
-is the port succeeding). Any other answer on such an item - a different
+**reproduced upstream failure**, its own success category: where the original
+is broken and the copy breaks the same way, that is the port succeeding. Any
+other answer on such an item - a different
 failure, or a render where the oracle failed - fails it.
 
 **Reads write only what the oracle's reads wrote.** Each read session's

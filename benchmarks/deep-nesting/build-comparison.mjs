@@ -150,7 +150,7 @@ A warm render (the same card again on the same engine) costs one round trip: a s
 
 ## Sources
 
-- TypeScript: engine commit \`${ts.engine_commit}\`${ts.engine_tree_dirty ? " (with uncommitted changes)" : ""}, Node ${ts.node}, ${ts.definitions.database}; generated ${ts.generated_at}. Run file \`${tsPin.file}\` (SHA-256 \`${tsPin.sha256}\`).
+- TypeScript: Node ${ts.node}, ${ts.definitions.database}; generated ${ts.generated_at}. Run file \`${tsPin.file}\` (SHA-256 \`${tsPin.sha256}\`), which pins the engine state the figures were produced from.
 ${rubyEnv.join("\n")}
 
 To reproduce the TypeScript run: \`DECKO_BENCH_RUN_DIR=<dir> npx vitest run tests/card/render/deep-nesting-trip-attribution.test.ts\`. The Ruby runs cannot be reproduced from this repository alone: \`benchmarks/run_ruby_deep_nesting_bench.rb\` is the runner (the batched-loading variants above were copies of it with switches, not part of this repository), but it needs a Ruby Decko checkout and a throwaway copy of a stock deck, neither of which is carried here. Each run file records its own configuration.

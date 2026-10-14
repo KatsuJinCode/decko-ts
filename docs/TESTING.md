@@ -37,8 +37,7 @@ tiers of corpus, and the difference matters when you read a test result.
 shards. **It is not part of the published package**, so a clean clone does not
 have it, and the suites that read it do not run there — they fail at import
 rather than skip, because a corpus-consuming suite opens the fixture at module
-load. This is stated here because the fixture was previously described as
-committed and always available; in the package it is development material.
+load. In the package it is development material, not a shipped fixture.
 
 ### 2. The rich corpus (NOT shipped either)
 
