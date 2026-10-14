@@ -26,6 +26,7 @@
     "test:drivers": "vitest run tests/server/drivers/",
     "test:shadow": "vitest run tests/tools/shadow/",
     "test:reference-harness": "node --test \"reference-harness/runner/test/*.test.mjs\"",
+    "test:browser-journeys": "node reference-harness/browser/run-all.mjs --out tmp/browser-journeys --summary docs/browser-journeys.md",
     "test:persistence-probe": "vitest run tests/tools/persist-write-probe.test.ts",
     "test:no-caching-freshness": "vitest run tests/deploy/no-caching-synthetic.test.ts",
     "release-check": "node scripts/release-check.mjs",
@@ -43,6 +44,7 @@
     "better-sqlite3": "^13.0.3",
     "esbuild": "^0.28.2",
     "miniflare": "^5.20261006.1-alpha",
+    "playwright-core": "^1.63.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   },

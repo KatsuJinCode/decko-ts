@@ -52,12 +52,13 @@ process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 process.env.DECKO_DECK_PROFILE = "stock";
 // The mods' public files (TinyMCE's theme, ace's modes): the same files the
 // Ruby oracle app serves from public/mod/<mod> (decko setup links each mod's
-// public directory). run-all forwards its --decko checkout here; a direct run
-// falls back to the machine's decko checkout when it carries mod/.
-const DECKO_CHECKOUT_WITH_MODS = process.env.DECKO_RUBY_PERF ?? "$REPO_ROOT/../decko-ruby-perf";
-process.env.DECKO_MOD_PUBLIC_DIR ??= existsSync(path.join(DECKO_CHECKOUT_WITH_MODS, "mod"))
-  ? DECKO_CHECKOUT_WITH_MODS
-  : path.join(repo, "reference-harness", "oracle", "app", "public");
+// public directory). run-all forwards its --decko checkout here; otherwise
+// the oracle app's own public/ is served (ruby-server.sh links its mod/
+// entries to the installed gems), so both engines serve the same files.
+process.env.DECKO_MOD_PUBLIC_DIR ??= path.join(repo, "reference-harness", "oracle", "app", "public");
+if (!existsSync(path.join(process.env.DECKO_MOD_PUBLIC_DIR, "mod"))) {
+  console.error(`DECKO_MOD_PUBLIC_DIR has no mod/ directory: ${process.env.DECKO_MOD_PUBLIC_DIR}`);
+}
 
 const realCreateServer = http.createServer;
 http.createServer = (...args) => {

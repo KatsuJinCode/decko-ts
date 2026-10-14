@@ -4,7 +4,7 @@
 //   node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/ruby.json \
 //     --fixture reference-harness/fixtures/synthetic-v1 \
 //     --journeys reference-harness/browser/journeys/synthetic-v1.json \
-//     --out <dir> [--filter <regex>] [--signin form|direct] [--html 1]
+//     --out <dir> [--filter <regex>] [--signin form|direct] [--html 1] [--shard K/N]
 //
 // --html 1 also saves each observed page's DOM under <out>/<journey id>/.
 //
@@ -57,6 +57,13 @@ async function settle(page) {
           }, { timeout: 8000 })
           .catch(() => {});
       }
+      // Images an ajax response inserted (an upload's preview) load after
+      // the page's load event, and an image still loading has no size, so
+      // the observation would leave it out. Wait for every image to finish
+      // (loaded or failed) before the page is observed.
+      await page
+        .waitForFunction(() => [...document.images].every((img) => img.complete), null, { timeout: STEP_TIMEOUT })
+        .catch(() => {});
       return;
     }
     await page.waitForTimeout(100);
@@ -179,6 +186,12 @@ async function runStep(ctx, step) {
       await (await locate(page, { field: "*email" })).fill(a.email, { timeout: STEP_TIMEOUT });
       await (await locate(page, { field: "*password" })).fill(a.password, { timeout: STEP_TIMEOUT });
       await (await locate(page, { button: "Sign in" })).click({ timeout: STEP_TIMEOUT });
+      // A successful sign-in leaves the sign-in page. On a slow server the
+      // page can look settled before the sign-in request has answered, and a
+      // following visit would then cancel it, so wait for the page to leave.
+      await page
+        .waitForURL((u) => !decodeURIComponent(u.pathname).endsWith("*signin"), { timeout: STEP_TIMEOUT })
+        .catch(() => {});
       break;
     }
     case "click":
@@ -360,11 +373,19 @@ const engine = loadEngine(args.engine);
 const spec = JSON.parse(readFileSync(path.join(args.fixture, "deck.json"), "utf8"));
 const { journeys } = JSON.parse(readFileSync(args.journeys, "utf8"));
 const filter = args.filter ? new RegExp(args.filter) : null;
+// --shard K/N runs every Nth journey starting at K (0-based), so N runner
+// processes can share one --out directory: each journey still gets its own
+// deck copy, server, port and browser profile; only the shard's log, progress
+// and meta files carry the shard in their name.
+const [shardIndex, shardCount] = args.shard ? args.shard.split("/").map(Number) : [0, 1];
+if (!(shardCount >= 1 && shardIndex >= 0 && shardIndex < shardCount)) throw new Error(`--shard ${args.shard}: expected K/N with 0 <= K < N`);
+const suffix = shardCount > 1 ? `.shard-${shardIndex}` : "";
 mkdirSync(args.out, { recursive: true });
-const logFile = path.join(args.out, "server.log");
+const logFile = path.join(args.out, `server${suffix}.log`);
 writeFileSync(logFile, "");
 const summary = [];
-for (const journey of journeys) {
+for (const [index, journey] of journeys.entries()) {
+  if (index % shardCount !== shardIndex) continue;
   if (filter && !filter.test(journey.id)) continue;
   const t0 = Date.now();
   let result;
@@ -378,7 +399,7 @@ for (const journey of journeys) {
   const failedStep = result.steps.find((s) => s.outcome === "failed");
   const line = `${result.completed ? "ok  " : "FAIL"} ${journey.id} (${result.ms} ms)${failedStep ? ` step ${failedStep.i}: ${failedStep.error}` : ""}${result.error ? ` ${result.error}` : ""}`;
   console.log(line);
-  appendFileSync(path.join(args.out, "progress.txt"), line + "\n");
+  appendFileSync(path.join(args.out, `progress${suffix}.txt`), line + "\n");
   summary.push({ id: journey.id, completed: result.completed, ms: result.ms });
 }
-writeFileSync(path.join(args.out, "run-meta.json"), JSON.stringify({ engine: engine.name, fixture: path.basename(args.fixture), journeys: summary }, null, 1));
+writeFileSync(path.join(args.out, `run-meta${suffix}.json`), JSON.stringify({ engine: engine.name, fixture: path.basename(args.fixture), journeys: summary }, null, 1));
