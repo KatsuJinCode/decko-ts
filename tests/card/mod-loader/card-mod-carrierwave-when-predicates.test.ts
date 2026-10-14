@@ -201,7 +201,7 @@ describe("the upload-cache conditions (00_upload_cache.rb:80-86)", () => {
 });
 
 describe("storage_changed? (01_storage_type.rb:49-53)", () => {
-  const SAME = {
+  const SAME: Partial<ModEventCard> = {
     storageType: "local",
     currentStorageType: "local",
     savedStorageBucket: false,
@@ -364,7 +364,7 @@ describe("the storage grammar the source applies", () => {
 
 describe("the carrierwave state source", () => {
   it("a create with no assigned type takes the configured storage (new_card? arm)", () => {
-    const state = populate(card({ action: "create", dbContent: null }));
+    const state = populate(card({ action: "create" }));
     expect(state.storageType).toBe("local");
     expect(state.currentStorageType).toBe("local");
   });
