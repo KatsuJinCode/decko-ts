@@ -268,12 +268,12 @@ resulting card and the `mail` sent, and every sign-in's answer carries
 Two honesty notes belong here, because the critique asked for the boundary and
 the repository states it elsewhere:
 
-- The side-effects battery on the committed clean deck is **49 of 90 match**, 4
-  declared, 37 mismatched under one declared security divergence
-  ([docs/SECURITY.md](SECURITY.md), divergence 5). It is not presented as a
-  clean sweep.
+- The side-effects battery on the committed clean deck is **83 of its 88 public
+  steps matching**, 4 declared deliberate differences and 1 open, with 2 more
+  steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). It is not
+  presented as a clean sweep.
 - The corpus figure is not purely oracle-against-oracle: fifty of its
-  expected entries are bytes fetched from a live 0.19.1-era site on 2026-10-03
+  expected entries are bytes fetched from a live site running an earlier Decko on 2026-10-03
   and 2026-10-04, not from the 0.20.0 oracle — two disjoint swap sets of 13
   and 37, whose entry keys were checked to be distinct — so the correct
   reading is "50 expectations are live-anchored; the remaining corpus is
@@ -331,15 +331,15 @@ required" as **Withdrawn** (see point 8), and the repository does not make a
 
 What it publishes instead is countable and layered. The public write probe runs
 70 operations against a committed synthetic deck and compares every operation's
-row delta against the Ruby oracle's, with every step accounted as
-65 identical + 5 declared deliberate differences
-([coverage-inventory.md](coverage-inventory.md), "The public batteries,
-accounted"). The 90-step scenario battery does the same for verdicts: 49 match +
-4 declared + 37 under the declared divergence = 90.
+row delta against the Ruby oracle's: of the 67 public operations, 65 are
+identical and 2 are declared deliberate differences, and 3 more are withheld
+until disclosure ([coverage-inventory.md](coverage-inventory.md), "The public
+batteries, accounted"). The 90-step scenario battery does the same for
+verdicts: of 88 public steps, 83 match, 4 are declared and 1 is open, with 2
+withheld.
 
 The deeper evidence is named but is explicitly **not** public: the production-deck
-runs used a copy of a 49,829-card deck whose dumps sit under
-`tests/fixtures/persistence-oracle/`, and the pod round-trip tests skip unless
+runs used a copy of a real deck that is not redistributed, and the pod round-trip tests skip unless
 `PODS_SRC_DECK` / `PODS_BASE_DECK` name a private oracle deck. They "announce
 their skip loudly; none of their results are in the public package."
 

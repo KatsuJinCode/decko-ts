@@ -913,8 +913,16 @@ export type VerificationConfirmation =
       activated: boolean;
       /** trigger_event! :send_welcome_email ran (events.rb:42). */
       welcomeSent: boolean;
-      /** success << "" (events.rb:91) — the redirect target is the card
-       *  itself. */
+      /** success << "" (events.rb:91) — the EMPTY mark, which is the deck
+       *  ROOT, not the account card. Success#<< hands a String to `mark=`
+       *  (success.rb:30-35), process_target's `when ""` arm keeps it
+       *  (success/target.rb:22-34), and to_url returns that "" unrendered
+       *  because the target is not a Card (success.rb:23-25); hard_redirect
+       *  then runs card_url(""), which is "<relative_url_root>/"
+       *  (card/lib/card/env/location.rb:12-21). The earlier value here —
+       *  the account junction's own name — sent the browser to the
+       *  account card instead, which is where `success << {id: name,
+       *  view: :edit}` goes (events.rb:100-104) and not this event. */
       redirectTo: { name: string; view: undefined };
     }
   | { ok: false; kind: "token_invalid"; message: string }
@@ -1008,7 +1016,9 @@ export async function confirmAccountVerification(
     session,
     activated,
     welcomeSent: account.email !== undefined,
-    redirectTo: { name: account.name, view: undefined },
+    // success << "" (events.rb:91): the empty mark — to_url "" -> the site
+    // root (see VerificationConfirmation.redirectTo).
+    redirectTo: { name: "", view: undefined },
   };
 }
 

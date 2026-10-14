@@ -1,0 +1,20 @@
+{
+  "comment": "WITHHELD UNTIL DISCLOSURE. The write probe's steps whose purpose is to reproduce the Ruby stored-HTML sanitizer gap (Ruby's content cleaner keeps markup it should strip, e.g. a script-capable link target). The public probe skips exactly these steps and prints `[withheld until disclosure] NOT RUN: <n> steps (<path>)` when this file is absent; with this file present it runs them and compares them against the recordings in withheld/persist-steps/. A release package excludes this file and that directory. Every later recorded dump carries the withheld step's stored content, so the public recording is cut over this list rather than over the Ruby trace of the full list.",
+  "steps": [
+    {
+      "step": 20,
+      "label": "update with unsafe html",
+      "why": "Withheld: stores the probe's unsafe markup on an existing card and records what Ruby's content cleaner keeps."
+    },
+    {
+      "step": 22,
+      "label": "create plain text with html",
+      "why": "Withheld: creates a card whose content is the probe's unsafe markup, the second arm of the same gap."
+    },
+    {
+      "step": 31,
+      "label": "revert to previous of a create (trashes it)",
+      "why": "Withheld: reverts the step 22 create, so its recorded revert content is the withheld step 22 content."
+    }
+  ]
+}

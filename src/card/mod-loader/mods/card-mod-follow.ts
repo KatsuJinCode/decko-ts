@@ -192,6 +192,7 @@ import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventCard,
   type ModEventFn,
   type ModEventRegistration,
   type ModSetModuleFile,
@@ -219,7 +220,7 @@ import type {
   FollowRenderBundle,
   FollowTabRow,
 } from "../../follow/follow-render-seam.js";
-import { errorsView as formatErrorsView } from "./card-mod-format.js";
+import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
 import { followButton } from "./card-mod-edit.js";
 
@@ -1245,7 +1246,12 @@ export const followProbeSurface = {
   } {
     return userFollowErrorsPermissionArm(cardName);
   },
-  /** the super() arm (the chain's all-set body - card-mod-format's). */
+  /** user/follow.rb:76-78 the super() arm: the chain's all-set BASE
+   *  definition (card-mod-format set/all/error.rb:28-30) - the body the
+   *  type_plus_right registration shadows for User+*follow cards. Not
+   *  reachable from an engine render (the view's first line returns
+   *  unless card.errors.any?, and the engine models no error state); it
+   *  is the oracle's scenario-11 contract. */
   errorsSuperBytes(): string {
     return str(formatErrorsView({} as ViewContext));
   },
@@ -1263,6 +1269,48 @@ const passiveSetModule = (setPath: string): ModSetModuleFile => ({
   setPath,
   formats: { html: { views: [] } },
 });
+
+/** The set-module predicates the follow mod's `when:` conditions reach with
+ *  `send` (set/event/all.rb:82), merged into the deck table
+ *  (default-mod-deck.ts). */
+export const followModEventPredicates = {
+  /** silence_notifications? (mod/follow/set/all/notify.rb:9-11):
+   *  `!(Card::Env.controller || force_notifications)`. force_notifications
+   *  is a mattr_accessor (notify.rb:3) that nothing in the port sets, so
+   *  only the controller arm varies. The engine's saves serve controller
+   *  requests (envController true), so this is false and notifications
+   *  stay on, as they do in Ruby's request saves. */
+  "silence_notifications?": (card: ModEventCard): boolean =>
+    card.envController !== true && card.forceNotifications !== true,
+  /** notable_change? (notify.rb:36-41): `!silent_change? &&
+   *  current_act_card? && (Card::Auth.current_id != DeckoBotID) &&
+   *  followable?`.
+   *
+   *  The `followable?` arm is Ruby's per-card-type notification opt-out;
+   *  the port has no such type-level setting, and its notify pipeline
+   *  carries the same absence (follow-notify.ts's isNotable states the
+   *  drop). Absent = followable, so the answer is what it is for every
+   *  card type the port has.
+   *
+   *  DECKO_BOT_ID is 1 (auth/boot-seed.ts:132): a change made by the bot
+   *  itself does not notify, or the deck would notify itself in a loop. */
+  "notable_change?": (card: ModEventCard): boolean =>
+    card.silentChange !== true &&
+    card.isActCard !== false &&
+    card.authCurrentId !== DECKO_BOT_ID,
+  /** expire_preferences? (set/all/follow/follower_ids.rb:15): the act's
+   *  `@expire_preferences_scheduled` flag, set by
+   *  schedule_preference_expiration (:11). Gates
+   *  :expire_preferences_cache (:19), which drops the followers' rule
+   *  caches. The flag rides the act; the port's follower rule walk
+   *  invalidates on save regardless, so a save that scheduled nothing
+   *  has no cache to expire and the predicate is false. */
+  "expire_preferences?": (card: ModEventCard): boolean =>
+    card.expirePreferences === true,
+} as const;
+
+/** DeckoBotID — the deck's system account, id 1 (auth/boot-seed.ts:132). */
+const DECKO_BOT_ID = 1;
 
 const cardModFollow: DeckoModManifest = {
   name: "follow",

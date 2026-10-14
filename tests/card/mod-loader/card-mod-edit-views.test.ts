@@ -26,9 +26,20 @@
 //   fixture records the NoMethodError arm). The port returns "" (the view
 //   is unreachable without structure in practice); the structure branch
 //   (nest card.structure_rule_card, view: :edit) is the remainder.
-// - Home's :edit_nests / :read_form - the nest-bearing arms render the
-//   nested editors / nested read_formgroups (multi_card_edit's nest
-//   machinery with sub-form prefixes) - rails-runtime, remainder.
+// - Home's :edit_nests - no longer a remainder. The nested editors render
+//   (multi_card_edit's machinery with sub-form prefixes, plus the view
+//   config's "hide") and the arm is pinned BYTE FOR BYTE against the
+//   capture. Two differences that were open here are closed, both real
+//   differences from Ruby rather than runtime artefacts: the nested card
+//   is HTML-typed, so Ruby's editor.rb:5-11 resolves input_type through
+//   the TYPE's method (mod/format set/type/html.rb:20-22, :ace_editor)
+//   and edits it with ace_editor.rb:9-13 rather than the rich_text
+//   fall-through's tinymce textarea; and form.rb:27-31's conflict tracker
+//   carries card.last_action_id, which the closure prefetch projection
+//   was composing as null.
+// - Home's :read_form - the nest-bearing arm renders the nested
+//   read_formgroups (multi_card_edit's machinery with sub-form prefixes) -
+//   rails-runtime, remainder.
 // - Home's :edit_row / :read_formgroup - their :core/:content renders
 //   process Home's nests (the full welcome page) - the engine's nest
 //   machinery, exercised by other suites; pinned on "Oracle Basics" only.
@@ -75,6 +86,7 @@ import cardModHelp from "../../../src/card/mod-loader/mods/card-mod-help.js";
 import cardModMarkdown from "../../../src/card/mod-loader/mods/card-mod-markdown.js";
 import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
+import cardModAceEditor from "../../../src/card/mod-loader/mods/card-mod-ace_editor.js";
 
 /** The recorded fixtures this suite reads at module scope.
  *
@@ -249,7 +261,57 @@ beforeAll(async () => {
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
   await seedCard(s, { id: 30, leftId: 10, rightId: 12, dbContent: "[[Editor]]" });
   await seedReference(s, 30, 7, "editor");
-  await seedCard(s, { id: 40, name: "Getting started", codename: "getting_started" });
+  // The nested card Home's content points at ({{:getting_started|core}}).
+  // The capture records it as the STARRED "*getting started", HTML-typed
+  // (data-card-type-id 39 / HTML, and the slot carries STAR) - the deck's
+  // own row, whose codename is what the ":getting_started" mark resolves.
+  // Seeding the unstarred RichText "Getting started" instead makes every
+  // nested surface render a different card identity (data-card-name, the
+  // link name, the safe_key the slot id is built from, and the type's
+  // card-editor), which is how the :edit_nests arm came to differ.
+  await seedCard(s, {
+    id: 40,
+    name: "*getting started",
+    codename: "getting_started",
+    typeId: 39, // HTML in this deck
+    typeName: "HTML",
+    // The conflict tracker's value is the card's last action id
+    // (form.rb:27-31 reads card.last_action_id, the row's
+    // current_revision_id). The oracle's nested editor carries one; a card
+    // without it emits a valueless hidden field instead. normalize() masks
+    // the value to ACTION_ID, so only its PRESENCE is pinned.
+    currentRevisionId: 41,
+    // The deck's own welcome content, read back off the capture's
+    // textarea (HTML-escaped there, decoded here). It carries one nest of
+    // its own ({{+:shark|core}}), which the editor textarea renders as
+    // AUTHORED TEXT - the editor shows the source, not the expansion -
+    // so this byte-for-byte is the source the deck holds, and seeding it
+    // is what makes the :edit_nests arm comparable with the capture
+    // instead of merely "an editor is present".
+    dbContent:
+      '<div class="container text-center">\n' +
+      '  <div class="d-flex justify-content-center align-items-center p-3 my-3 rounded box-shadow">\n' +
+      "    {{+:shark|core}}\n" +
+      "    <h1>Welcome, Card Shark!</h1>\n" +
+      "  </div>\n" +
+      '  <div class="jumbotron">\n' +
+      "    <h3>Things to sink your teeth into:</h3>\n" +
+      '    <div class="d-flex justify-content-center">\n' +
+      '      <div class="m-4">\n' +
+      '        <p class="lead">Structure</p>\n' +
+      '        <p><a href="new/cardtype" class="btn btn-primary">Add new Cardtype</a></p>\n' +
+      "      </div>\n" +
+      '      <div class="m-4">\n' +
+      '        <p class="lead">Style</p>\n' +
+      "        <p>\n" +
+      '          <a href=":all+:style" class= "btn btn-primary">Configure Skin Card</a>\n' +
+      "        </p>\n" +
+      "      </div>\n" +
+      "    </div>\n" +
+      "  </div>\n" +
+      '  <p class="lead"><a href="Administrator">and more...</a></p>\n' +
+      "</div>",
+  });
   await seedCard(s, {
     id: 605,
     name: "Oracle Basics",
@@ -295,10 +357,68 @@ beforeAll(async () => {
     "Layout", "Skin", "CSS", "SCSS", "JSON", "JavaScript", "CoffeeScript",
   ] as const;
   const typeIdByName = new Map<string, number>(
-    TYPE_CARDS.map((name, i) => [name, 51 + i]),
+    // HTML sits at the deck's own id (39), not in the 51+ block: the
+    // captured nested "*getting started" card names type_id 39, so the
+    // nested slot can only resolve its type's NAME - and therefore emit
+    // the TYPE-html token and data-card-type-name - when the HTML
+    // cardtype row is at 39. Seeding HTML at 51+3 as well would violate
+    // the cards.key uniqueness (both rows key to "html"), so the mapping
+    // carries the override and the loop seeds each name once.
+    TYPE_CARDS.map((name, i) => [name, name === "HTML" ? 39 : 51 + i]),
   );
+  // Each cardtype's CODENAME, read off Ruby's own deck declarations
+  // (mod/*/data/real.yml: `- :name: HTML / :type: :cardtype /
+  // :codename: html`). The codename is not the name: PlainText is
+  // plain_text, Search is search_type, Layout is layout_type,
+  // JavaScript is java_script.
+  //
+  // It has to be seeded because the editor choice reads it. editor.rb:5-11
+  // resolves `input_type` through the TYPE's method
+  // (mod/format set/type/html.rb:20-22 `def input_type; :ace_editor;
+  // end`), and the port reads the same thing through the card's typeCode
+  // (render.ts:5169 populateTypeCodes -> codenames.peekNameForId), which is
+  // the type's NAME FOR THE CODENAMED ROW - the same string the codename
+  // column yields. A cardtype seeded without its codename has no typeCode,
+  // the TYPE override never applies, and the nested HTML card falls through
+  // to default_input_type's rich_text (editor.rb:38-44) and renders the
+  // tinymce textarea where Ruby renders ace-editor-textarea.
+  const CARDTYPE_CODENAME: Readonly<Record<string, string>> = {
+    PlainText: "plain_text",
+    Markdown: "markdown",
+    Phrase: "phrase",
+    HTML: "html",
+    Number: "number",
+    Toggle: "toggle",
+    Date: "date",
+    URI: "uri",
+    File: "file",
+    Image: "image",
+    List: "list",
+    Pointer: "pointer",
+    Search: "search_type",
+    "Link list": "link_list",
+    "Nest list": "nest_list",
+    "Notification template": "notification_template",
+    "Email template": "email_template",
+    Role: "role",
+    Layout: "layout_type",
+    Skin: "skin",
+    CSS: "css",
+    SCSS: "scss",
+    JSON: "json",
+    JavaScript: "java_script",
+    CoffeeScript: "coffee_script",
+    // User declares no codename in any real.yml, so it gets none here
+    // either - a fixture must not invent one Ruby does not have.
+  };
   for (const name of TYPE_CARDS) {
-    await seedCard(s, { id: typeIdByName.get(name)!, name, typeId: 9 });
+    const codename = CARDTYPE_CODENAME[name];
+    await seedCard(s, {
+      id: typeIdByName.get(name)!,
+      name,
+      typeId: 9,
+      ...(codename === undefined ? {} : { codename }),
+    });
   }
   await seedCard(s, {
     id: 80,
@@ -420,6 +540,26 @@ beforeAll(async () => {
     name: "Home+*self",
   });
 
+  // ---- the *recent settings list (setting_categories.rb:64-67) -----------
+  // recent_settings is DECK DATA: `Card[:recent_settings].item_cards.map
+  // (&:codename)`. The rule-list pills' `_category-recent` flag rides this
+  // list's membership, so the captured oracle bytes are only reproducible
+  // against a deck whose list holds the same items. These are exactly the
+  // ten settings whose pills carry `_category-recent` in the capture
+  // (structure, create, read, update, captcha, layout, script, help, input
+  // type, follow); the other visible settings - default, autoname, delete,
+  // head, style, guide, the on_* events, thanks, follow fields - are NOT
+  // members, which is what the capture's pills without the flag show.
+  await seedCard(s, {
+    id: 125,
+    name: "*recent settings",
+    codename: "recent_settings",
+    typeId: 62, // List
+    dbContent:
+      "*structure\n*create\n*read\n*update\n*captcha\n*layout\n*script\n" +
+      "*help\n*input type\n*follow\n",
+  });
+
   // ---- the guide surface (guide.rb + the *all+*guide rule card) ----------
   // *guide setting card (the [[*guide]] link target in the guide text and
   // the rule junction's right side; codename registry reads cards.codename)
@@ -513,9 +653,17 @@ describeOrSkipLoud(
     // loads - set/all registrations leak through the shared flat record
     // once one is loaded)
     for (const view of ["board", "cardboard", "rules_tab", "related_tab", "history_tab"] as const) {
-      await expect(s.engine.render("Oracle Basics", view)).rejects.toThrow(
-        UnsupportedViewError,
-      );
+      // The board family follows the SAME rule as the 16 views above, not
+      // a blanket "must raise". :board and :cardboard are set/all
+      // registrations in card-mod-edit (mod/edit/set/all/board.rb), and
+      // Ruby treats a set/all view as a base-format registration visible
+      // to every card whether or not a deck is bound (registrar.rb:79-84) -
+      // which is why they live in the compiled-in flat record
+      // (render/views.ts:7007-7010) and render loader-less. :rules_tab,
+      // :related_tab and :history_tab are set-scoped, so they still raise.
+      // Asserting a blanket raise here asserted something Ruby does not do;
+      // this asserts what it does, per view, and names it on failure.
+      await expectViewWithoutMod(s.engine.render("Oracle Basics", view), view);
     }
   });
 
@@ -548,6 +696,12 @@ describeOrSkipLoud(
       { manifest: cardModMarkdown },
       { manifest: cardModHistory },
       { manifest: cardModComment },
+      // The deck's one HTML-typed card (the nested "*getting started") is
+      // edited through the ace editor in Ruby (ace_editor's Type::HTML
+      // :editor), and the capture records its ace-editor-textarea. The
+      // suite only reaches that surface through the nested editors, so
+      // loading the gem is confined to that one card's bytes.
+      { manifest: cardModAceEditor },
     ]);
     loader.load();
     botEngine = new RenderEngine(new FetchEngine(s.counting));
@@ -566,12 +720,42 @@ describeOrSkipLoud(
       const html = normalize(await botEngine.render("Home", view));
       expect(html).toBe(FIXTURE.targets.deck_level.views.bot[view]);
     }
-    // the disclosed remainders: :edit_nests renders the frame with an
-    // EMPTY body where Ruby renders the nested editors; :read_form renders
-    // "" where Ruby renders the nested read_formgroups (the fixture holds
-    // the recorded truth for both)
+    // :edit_nests is no longer the empty-body placeholder this arm used to
+    // pin: the nested editors RENDER (multi_card_edit's machinery, with
+    // the sub-form prefixes and the view config's "hide"). Two bytes still
+    // differ from the capture, and both are the rails-runtime remainder,
+    // not a regression:
+    //   - the nested card is HTML-typed in the deck, so Ruby edits it with
+    //     the ACE editor (ace-editor-textarea, data-ace-mode="html"); the
+    //     port renders the tinymce textarea there;
+    //   - the nested card's own content is a nest itself ({{+:shark|core}}
+    //     plus the welcome markup), which the capture expands and this
+    //     seed does not carry.
+    // So this asserts the machinery that IS ported - the frame, the
+    // nested card-editor and its conflict tracker - and the module doc
+    // keeps the remainder on record. Re-recording the capture to the
+    // port's bytes would overwrite the only nested-editing evidence.
+    // :edit_nests matches the capture BYTE FOR BYTE. The two differences
+    // this arm used to carry are both closed, and each was a real
+    // difference from Ruby rather than a Rails artefact:
+    //   - the editor choice. The nested card is HTML-typed, and Ruby's
+    //     editor.rb:5-11 resolves input_type through the TYPE's method -
+    //     mod/format set/type/html.rb:20-22 returns :ace_editor - so the
+    //     card is edited with ace-editor-textarea (ace_editor.rb:9-13),
+    //     not with the rich_text fall-through's tinymce textarea
+    //     (editor.rb:38-44). The port reaches the same answer through the
+    //     type's codename (render.ts populateTypeCodes -> typeCode), which
+    //     is why the seed carries each cardtype's real codename.
+    //   - the conflict tracker's value. form.rb:27-31 reads
+    //     card.last_action_id (cards.current_revision_id); the closure
+    //     prefetch projection was composing that column as null, so a
+    //     prewarmed nested card's tracker rendered with no value
+    //     attribute at all.
     const nestsHtml = normalize(await botEngine.render("Home", "edit_nests"));
-    expect(nestsHtml).toContain('card-body card-text"></div>');
+    expect(nestsHtml).toBe(FIXTURE.targets.deck_level.views.bot.edit_nests);
+    // the remaining disclosed remainder: :read_form renders "" where Ruby
+    // renders the nested read_formgroups (the fixture holds the recorded
+    // truth for it).
     const readFormHtml = await botEngine.render("Home", "read_form");
     expect(readFormHtml).toBe("");
   });
@@ -632,12 +816,15 @@ describeOrSkipLoud(
     const basic = BOARD_FIXTURE.targets.basic_note.views.bot;
     for (const view of BOARD_PINNED_VIEWS) {
       const html = normalize(await botEngine!.render("Oracle Basics", view));
-      expect(html).toBe(basic[view]);
+      // The view name rides the assertion message: a byte mismatch across
+      // an eight-view loop otherwise reports one undifferentiated diff and
+      // the reader has to guess which surface it came from.
+      expect(html, `Oracle Basics :${view}`).toBe(basic[view]);
     }
     for (const view of BOARD_PINNED_VIEWS) {
       // the Home+*self junction row is seeded, so the known branch pins
       const html = normalize(await botEngine!.render("Home", view));
-      expect(html).toBe(BOARD_FIXTURE.targets.deck_level.views.bot[view]);
+      expect(html, `Home :${view}`).toBe(BOARD_FIXTURE.targets.deck_level.views.bot[view]);
     }
   });
 
@@ -645,7 +832,7 @@ describeOrSkipLoud(
     const basic = BOARD_FIXTURE.targets.basic_note.views.tova;
     for (const view of BOARD_PINNED_VIEWS) {
       const html = normalize(await memberEngine!.render("Oracle Basics", view));
-      expect(html).toBe(basic[view]);
+      expect(html, `Oracle Basics :${view} (member)`).toBe(basic[view]);
     }
   });
 

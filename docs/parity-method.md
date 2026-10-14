@@ -126,7 +126,7 @@ instrument is named first and its rules second.
 | **Public reference harness** (N1/N2/N3) | The instrument defines **8** rules (N1–N8); a grade over `synthetic-v1` applies and reports **3** of them. N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does; N3 is a canonical form — inside a real `class` attribute the class tokens are compared as a **set** (both sides sorted; the token set, the count and the tokens themselves all still count, only the order is canonicalised). N4–N8 are canonical forms over capture-host values the seconds-corpus fixture carries and this one does not. Nothing outside N1–N8 is normalised. | `reference-harness/runner/normalize.mjs:78` (`SLOT_ID`, N1), `:220` (`normalizeHtml`, N1+N3), `:394` (`sortClassTokens`, N3), `:416` (`stable`, N2), `:47` (`canonicalErrorClass`, N8); the module header at `:1-18` states all eight. Applied by `runner/grade-lib.mjs:229` and `:293`. Spec: `reference-harness/SPEC.md` §4.2. |
 | **Browser journeys** (B1–B5) | **5** capture-time rules in `observe.mjs` (rendered text with whitespace collapsed; relative times and dates → `<time>`; structure as tag plus sorted classes with Decko's random classes masked to `RAND`; fields by name and type; URL as decoded path and query with the server's own address → `<origin>`), plus **2** borrowed forms at compare time: `stable` (N2) and `canonicalizeDebugPage` (N6 at journey grade, frame count recorded rather than compared). | `reference-harness/browser/lib/observe.mjs:1-13` (B1–B5), `:56-90` (the normalizers); `browser/compare-journeys.mjs:37` (`stable`), `:51` (`canonicalizeDebugPage`), `:132-133` (both applied to each side). Spec: `reference-harness/SPEC.md` §4.1. |
 | **Oracle-replay comparator** | **3** replay-legitimate normalizations, applied to **both** sides by `normalizeForReplay` in this order: (1) `data-slot-id` → `RANDOMIZED`; (2) accordion group hash → `HASH`; (3) `Cardio::Mod` object address → `ADDRESS`. | `src/testing/diff.ts:225` (`normalizeForReplay`, the compare seam); the three rules at `:1-20` (rule 1), `:90` (`ACCORDION_GROUP_HASH_PATTERN`), `:201` (`MOD_OBJECT_ADDRESS_PATTERN`). |
-| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: two one-shot instruments, run once, recorded in the swap manifests (the asset-host prefix; the denied-seam blank-line re-anchor). Live swap: the "live-anchored expectations" subsection above; the swap manifests are not part of the published package. |
+| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→object-store asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: two one-shot instruments, run once, recorded in the swap manifests (the asset-host prefix; the denied-seam blank-line re-anchor). Live swap: the "live-anchored expectations" subsection above; the swap manifests are not part of the published package. |
 
 Two consequences worth stating plainly, because they are where the older
 prose went wrong:
@@ -323,13 +323,11 @@ upper bound on it.
   verbatim** (37 entries in one fetch window, 13 in another),
   including the documented per-response noise (Cloudflare `__CF$cv$params`
   tokens, per-render `data-slot-id` hashes).
-- **Era: the live 0.19.1 serializer, which is an *older* engine era than the
-  0.20.0 oracle.** The live deployment renders `Decko v0.19.1` in its footer
-  credit — `src/card/render/deployment-follow-live-config.ts:40-41` for the
-  note, `:108` for the value `footerDeckoVersion: "0.19.1"` — against the card
-  gem's `"0.20.0"`. Those 50 entries are therefore measured against an
-  **older engine era's output, recorded from a site, not from a 0.20.0 Ruby
-  process**: the live deployment runs behind the version this engine targets.
+- **Era: an earlier Decko release than the 0.20.0 oracle.** The live
+  deployment runs an older Decko than the card gem this engine targets. Those
+  50 entries are therefore measured against an **older engine era's output,
+  recorded from a site, not from a 0.20.0 Ruby process**: the live deployment
+  runs behind the version this engine targets.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
@@ -349,8 +347,9 @@ upper bound on it.
   staging deck), not from live — so it is not one of the 50.
 - **What it means for the historical figure.** A share of the historical
   corpus's expected bytes — the 50 entries listed above — comes from the live
-  0.19.1 site rather than from the 0.20.0 oracle. For those entries a replay
-  is measuring agreement with a 0.19.1-era deployment rather than with the
+  site, which runs an earlier Decko, rather than from the 0.20.0 oracle. For
+  those entries a replay is measuring agreement with that older deployment
+  rather than with the
   Ruby process the rest of the corpus was captured from, so **the historical
   corpus figure is not a pure Ruby-oracle grade.** The correct reading of
   such a figure is: *50 expectations are live-anchored; the remaining corpus

@@ -705,10 +705,11 @@ describe("card-mod-bootstrap through the mod loader", () => {
       expect(init?.modName).toBe("bootstrap");
       expect(init?.at).toBe("prepare_to_store");
       expect(init?.on).toEqual(["update"]);
-      // `when:` predicate rides on the registration - the Ruby event
-      // carries `changed: :type` (events.rb:2); the TS surface carries
-      // it verbatim as the predicate name.
-      expect(init?.when).toBe("changed: type");
+      // The Ruby event carries `changed: :type` (events.rb:2) — a changed
+      // condition, not a `when:` predicate, so the registration carries it
+      // as the changing field.
+      expect(init?.changed).toEqual(["type"]);
+      expect(init?.when).toBeUndefined();
       // set/type/bootswatch_skin/events.rb:10-12
       const copy = registry.forEvent("copy_theme");
       expect(copy?.setPath).toBe("type/bootswatch_skin/events");

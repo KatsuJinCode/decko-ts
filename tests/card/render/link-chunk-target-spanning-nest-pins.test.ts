@@ -164,8 +164,8 @@ describe("WIKI_LINK_REGEXP target atom admits a whole nest", () => {
   });
 
   it("still renders the oracle's escaped-bracket and quote-escape pins", () => {
-    expect(expandWikiLinks('[[Nicole Le\'Strix]]', undefined, undefined, undefined)).toContain(
-      'title="Nicole Le\'Strix"',
+    expect(expandWikiLinks('[[Robin Le\'Strand]]', undefined, undefined, undefined)).toContain(
+      'title="Robin Le\'Strand"',
     );
     const tagged = expandWikiLinks(
       '[[Sample Card 168+*referred_to_by|Pages tagged with "Sample Card 168"]]',

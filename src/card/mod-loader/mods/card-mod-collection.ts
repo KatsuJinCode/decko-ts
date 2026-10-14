@@ -51,6 +51,7 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModSetModuleFile,
 } from "../mod-manifest.js";
 
@@ -535,6 +536,27 @@ const setModules: ModSetModuleFile[] = [
   // inlines the template's bytes into the view function above so the
   // haml file has no separate registration.
 ];
+
+// ---------------------------------------------------------------------------
+// the when: predicate (set/all/item_assignment.rb)
+// ---------------------------------------------------------------------------
+
+/** unique_items? (item_assignment.rb:1-3) is the set-module method Ruby's
+ *  `when:` reaches with `send` (card/lib/card/set/event/all.rb:82). The
+ *  collection mod defines it `false` and NO set module in the deck's gem
+ *  tree overrides it (the only definitions are this one and its one caller,
+ *  item_assignment.rb:75 `array.uniq! if unique_items?`), so the answer is
+ *  false for every card and :validate_item_uniqueness
+ *  (mod/list set/abstract/01_list/events.rb:29-33) never fires — which is
+ *  what events.rb:25-28's comment says ("At present this may never generate
+ *  an error").
+ *
+ *  It reads the state field rather than hardcoding false, so a set module
+ *  that DOES override it (a downstream deck can) has one place to answer.
+ */
+export const collectionModEventPredicates = {
+  "unique_items?": (card: ModEventCard): boolean => card.uniqueItems === true,
+} as const;
 
 const cardModCollection: DeckoModManifest = {
   name: "collection",

@@ -27,7 +27,7 @@ perm-allow fix) is measured on the **corpus, which is not committed** — it car
 the ported deck's real content, so a clean clone cannot recompute it and the
 number is a quoted measurement rather than a replayable one. It is also **not
 a pure Ruby-oracle grade**: 50 of the corpus's expected entries are bytes
-fetched from the live 0.19.1-era site rather than from the 0.20.0 oracle, in
+fetched from the live site, which runs an earlier Decko, rather than from the 0.20.0 oracle, in
 two disjoint swap sets of 13 and 37. Both facts, the per-entry manifests and
 the provenance check are set out in
 [parity-method.md](../parity-method.md) ("The live-anchored expectations",

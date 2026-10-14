@@ -389,11 +389,13 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
 
     const res = await call(baseUrl, "/update/Open_File", uploadParts(), `decko_ts_session=${joeToken}`);
 
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/html");
-    expect(res.body).toContain("preview_editor unauthorised.png");
-    expect(previewRenders).toHaveLength(1);
-    expect(previewRenders[0]?.name).toBe("Open File");
+    // A plain request is the hard redirect (response.rb:25-33 -> 303), to
+    // the target's preview_editor view with the draft's rev_id. Ruby's
+    // oracle Location for this shape is /Parity_Cached_File/preview_editor?rev_id=N.
+    expect(res.status).toBe(303);
+    expect(res.headers["location"]).toMatch(/\/Open_File\/preview_editor\?rev_id=\d+$/);
+    // the redirect carries no html, and the render seam is not run for it
+    expect(previewRenders).toHaveLength(0);
 
     // the stored bytes: one file, the plain File-card shape
     // <action_id>.png under the card's own files directory
@@ -431,6 +433,27 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
     expect((await draftRows()).acts).toBe((beforeRows.acts ?? 0) + 1);
   });
 
+  it("(3b) the same GRANTED update, AJAX (the editor's fileupload): 200 + preview_editor html, the soft arm", async () => {
+    // Card::Env.ajax? (env/serializable.rb:24) takes the SOFT arm
+    // (response.rb:36 default "soft", :54-62 soft_redirect -> show): the
+    // view is rendered and swapped in (upload.js.coffee:48-51).
+    previewRenders.length = 0;
+    const res = await fetch(`${baseUrl}/update/Open_File`, {
+      method: "POST",
+      headers: {
+        "Content-Type": `multipart/form-data; boundary=----deckoTsUploadPermission`,
+        Cookie: `decko_ts_session=${joeToken}`,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: buildMultipartBody("----deckoTsUploadPermission", uploadParts()) as BodyInit,
+      redirect: "manual",
+    });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("preview_editor unauthorised.png");
+    expect(previewRenders).toHaveLength(1);
+    expect(previewRenders[0]?.name).toBe("Open File");
+  });
+
   it("(4) the GRANTED preliminary CREATE: the bytes land in the tmp upload cache, not the deck's files", async () => {
     // A new card has no id, so upload_dir takes its tmp_upload_dir arm
     // (paths.rb:10-12, 00_upload_cache.rb:88-91) and the draft action is
@@ -443,9 +466,10 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
       `decko_ts_session=${joeToken}`,
     );
 
-    expect(res.status).toBe(200);
-    // the success target is the upload-cache card (00_upload_cache.rb:19)
-    expect(previewRenders[previewRenders.length - 1]?.name).toBe("*new file");
+    // Plain request: 303 to the upload-cache card's preview_editor view
+    // (00_upload_cache.rb:19 target). Oracle Location: /*new_file/preview_editor?rev_id=N.
+    expect(res.status).toBe(303);
+    expect(res.headers["location"]).toMatch(/\/\*new_file\/preview_editor\?rev_id=\d+$/);
 
     // Ruby's tmp_upload_dir is files_base_dir("tmp")/files/<cache card id>
     // (00_upload_cache.rb:88-91, file_card_uploader/path.rb:24-25): a
@@ -453,7 +477,8 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
     // below it. The port's store writes the cache through that area's own
     // driver, so the bytes land there and never among the served files.
     const keys = storedKeys();
-    expect(keys).toHaveLength(2); // arm (3)'s file + this one
+    // the earlier granted arms each left one file (3 and 3b) — this arm adds one
+    expect(keys).toHaveLength(3);
     expect(keys.filter((k) => /^tmp\/files\/60\/\d+\.png$/.test(k))).toHaveLength(1);
     // nothing of the cache leaked into the files area
     expect(keys.filter((k) => k.startsWith("files/60/"))).toEqual([]);

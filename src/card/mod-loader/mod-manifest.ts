@@ -185,6 +185,11 @@ export interface ModEventCard {
   readonly name: string;
   readonly id?: number;
   readonly dbContent?: string;
+  /** db_content_before_act — the stored content this save is replacing
+   *  (the dirty tracker's pre-act column, card/lib/card/dirty.rb). The
+   *  carrierwave storage predicates compare the saved content against it
+   *  through `current` (01_storage_type.rb:12-14 `refresh true`). */
+  readonly dbContentBeforeAct?: string | null;
   /** The card's effective key (lib/card/name/all.rb:17-19) — what
    *  map_referees keys on. */
   readonly key?: string;
@@ -198,6 +203,119 @@ export interface ModEventCard {
    *  (dirty.rb:8-10: name, db_content, trash, type_id, left_id, right_id,
    *  codename; DirtyNames :57-60 folds left/right changes into name). */
   readonly changedFields?: readonly string[];
+  /** codename (card/lib/card/codename.rb:5) — the card's codename column,
+   *  read by `when: :codename?` (codename.rb:10). */
+  readonly codename?: string;
+  /** type_id_before_act (card/lib/card/dirty.rb, the dirty tracker) — read
+   *  by `when: :was_cardtype?` (mod/core/set/type/cardtype.rb:11). */
+  readonly typeIdBeforeAct?: number | null;
+  /** Card::Env.params for this save (lib/card/env.rb) — the request-param
+   *  bag Ruby's predicates read as a hash (`draft`, `attachment_upload`,
+   *  `insert_item`). Undefined off a request path. */
+  readonly params?: Readonly<Record<string, unknown>>;
+  /** The type card's template default content, if any — `default_content`
+   *  in `use_default_content?` (mod/core/set/all/content.rb:30). */
+  readonly defaultContent?: string | undefined;
+  /** Auth.current_id (card/lib/card/auth/all.rb) — the signed-in account
+   *  id, for the account mod's `current_account?` /
+   *  `password_redirect?` (set/abstract/account_holder.rb:23). */
+  readonly authCurrentId?: number | null;
+  /** `can_approve?` (mod/account/set/type/signup.rb:12-14): `Card.new(type_id:
+   *  Card.default_accounted_type_id).ok? :create`. Gates
+   *  :auto_approve_with_verification (:20-22). The engine resolves it once
+   *  per save (its own signup arm asks the same question). */
+  readonly canApprove?: boolean;
+  /** history? (mod/history/set/all/history.rb:6) — the card type opts out
+   *  of history when false; backs `actionable?` (events.rb:53). */
+  readonly history?: boolean;
+  /** Whether this card IS the act card (director/all.rb:42 `act_card?`). */
+  readonly isActCard?: boolean;
+  /** carrierwave storage_type — `coded?`/`local?`
+   *  (mod/carrierwave/set/abstract/attachment/01_storage_type.rb:28-33). */
+  readonly storageType?: string;
+  /** The storage_type ASSIGNED on this save (01_storage_type.rb:40-43
+   *  `storage_type=`, which also raises Ruby's @explicit_storage_type) —
+   *  read by `uncode?` (coded.rb:26-28). Absent when the save assigned
+   *  none, which is Ruby's nil. */
+  readonly explicitStorageType?: string;
+  /** The `mod` assigned on this save (coded.rb:12-14 `mod=`,
+   *  set_specific[:mod] at attachment.rb:96) — `uncode?`'s middle clause.
+   *  Absent when the save assigned none. */
+  readonly assignedMod?: string;
+  /** ENV["STORE_CODED_FILES"] (lib/carrier_wave/card_mount.rb:59-63) — the
+   *  opt-in that lets a coded attachment actually store. Undefined where
+   *  the variable is unset, which is Ruby's nil (falsy). */
+  readonly storeCodedFiles?: boolean;
+  /** Whether this save carries an attached file, and whether it changed —
+   *  the carrierwave attachment conditions
+   *  (mod/carrierwave/set/abstract/attachment.rb:51). */
+  readonly attachmentPresent?: boolean;
+  readonly attachmentIsChanging?: boolean;
+  /** `action_id_of_cached_upload` as this save carries it
+   *  (00_upload_cache.rb:2, :84-86) — the two-step upload's final save. */
+  readonly actionIdOfCachedUpload?: number | string;
+  /** The account mod's per-act `@setup_approved` flag
+   *  (mod/account/set/type/user.rb:53) — backs `setup?` (:72). */
+  readonly setupApproved?: boolean;
+  /** Card::Env.controller (card/lib/card/env.rb:18) — true when the save
+   *  rides a controller request. Backs silence_notifications?
+   *  (mod/follow/set/all/notify.rb:9: `!(Card::Env.controller ||
+   *  force_notifications)`). The engine's save paths serve controller
+   *  requests, so the save path sets this true (as the recaptcha guard
+   *  does). */
+  readonly envController?: boolean;
+  /** force_notifications (mod/follow/set/all/notify.rb:3 mattr_accessor) —
+   *  Ruby's test/deck override that keeps notifications on without a
+   *  controller. Unset in the port. */
+  readonly forceNotifications?: boolean;
+  /** The account card's stored password field (blank = none set), read by
+   *  `password_redirect?` (mod/account/set/right/account/events.rb:83). */
+  readonly password?: string | null;
+  /** The follow mod's per-act silent flag and followability
+   *  (mod/follow/set/all/notify.rb:9-38). */
+  readonly silentChange?: boolean;
+  readonly followable?: boolean;
+  /** The follow mod's per-act preference-expiration marker
+   *  (mod/follow/set/all/follow/follower_ids.rb:15). */
+  readonly expirePreferences?: boolean;
+  /** history's pending-revert marker (mod/history/set/all/history/
+   *  revision.rb:29 `actions_to_revert.any?`) and the current act's
+   *  action presence (events.rb:61). */
+  readonly rollbackRequested?: boolean;
+  readonly currentAction?: boolean;
+  /** last_action_id_before_edit (mod/history/set/all/history/events.rb:66)
+   *  — the revision the editor started from; backs `edit_conflict?`. */
+  readonly lastActionIdBeforeEdit?: number | string | null;
+  /** The card is a child of the *recaptcha+*settings card
+   *  (mod/recaptcha/set/abstract/recaptcha_setting.rb:11 `left&.codename
+   *  == :recaptcha_settings`). */
+  readonly recaptchaSettingChild?: boolean;
+  /** list type constraints (mod/list/set/abstract/01_list/events.rb:35-39):
+   *  `ok_item_types.present?` and collection's `unique_items?`
+   *  (mod/collection/set/all/item_assignment.rb:1). */
+  readonly hasOkItemTypes?: boolean;
+  readonly uniqueItems?: boolean;
+  /** carrierwave attachment storage facts, read by the predicates in
+   *  set/abstract/attachment.rb and 01_storage_type.rb: the type as saved
+   *  (`current.storage_type`/`bucket`/`mod` — the storage_changed?
+   *  comparison, 01_storage_type.rb:49), whether this is a `web` storage
+   *  card (:40/:47), whether its bucket is configured read_only
+   *  (cloud.rb:118), and the attachment's own identifier content
+   *  (attachment.db_content, :40). `current.bucket` and `current.mod` are
+   *  Ruby's `false` for a non-cloud / non-coded card (cloud.rb:10,
+   *  coded.rb:16) — not nil — so they are typed to carry that false. */
+  readonly currentStorageType?: string;
+  readonly currentStorageBucket?: string | false;
+  readonly currentStorageMod?: string | false;
+  /** The SAVING card's own `bucket` (cloud.rb:8-11) and `mod` (coded.rb:
+   *  16-18) — the other two halves of `storage_changed?`'s three-way
+   *  comparison (01_storage_type.rb:49-53). `false` where Ruby returns
+   *  false: a non-cloud card has no bucket, a non-coded card no mod. */
+  readonly savedStorageBucket?: string | false;
+  readonly savedStorageMod?: string | false;
+  readonly webStorage?: boolean;
+  readonly bucketReadOnly?: boolean;
+  readonly attachmentIdentifierContent?: string | null;
   /** The act's skip/trigger state (see ModEventActState). */
   readonly act?: ModEventActState;
 }
@@ -277,6 +395,15 @@ export interface ModEventRegistration {
    *  `after: :set_read_rule`) - the event runs after the named one at the
    *  same stage; the execution seam sorts by it. */
   readonly after?: string;
+
+  /** `before: :event_name` relative ordering (signin.rb:27 `before:
+   *  :signin`, user.rb:50 `before: :check_permissions`, enabled_roles.rb:28
+   *  `before: :store_in_session`) - the event runs before the named one at
+   *  the same stage; the execution seam sorts by it. Ruby's options.rb:76
+   *  clears @stage when before:/after:/around: is given, so an event
+   *  carrying this has NO `at:` of its own and inherits the named target's
+   *  stage at dispatch. */
+  readonly before?: string;
 
   readonly priority?: number;
 

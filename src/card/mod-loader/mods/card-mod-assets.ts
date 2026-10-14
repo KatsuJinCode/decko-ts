@@ -58,6 +58,7 @@ import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
 } from "../mod-manifest.js";
@@ -301,6 +302,45 @@ function listGroupOf(items: readonly string[]): string {
 }
 
 // ---------------------------------------------------------------------------
+// the when: predicates (set/right/asset_output.rb, set/abstract/asset_inputter.rb)
+// ---------------------------------------------------------------------------
+
+/** The set-module methods Ruby's `when:` conditions reach with `send`
+ *  (card/lib/card/set/event/all.rb:82) from the asset mod's event
+ *  declarations. The deck-boot composition merges them into
+ *  ModEventRuntime.predicates (default-mod-deck.ts). */
+export const assetsModEventPredicates = {
+  /** codename? (card/lib/card/codename.rb:10-12): `codename.present?`.
+   *  Gates :remove_codename (set/right/asset_output.rb:13-17,
+   *  :prepare_to_validate on :delete) — the to-be-deleted asset-output card
+   *  releases its codename so nothing else resolves to it.
+   *
+   *  The codename column rides the event card as `codename` (mod-manifest.ts
+   *  names it for this predicate); the engine's own delete path already
+   *  reads the row's codename for the protected-card guard
+   *  (validate_delete, set/all/trash.rb:31-34), so the state source fills
+   *  the same field from the same row. `present?` is blankness, not mere
+   *  non-null: an empty string is blank and answers false. */
+  "codename?": (card: ModEventCard): boolean => {
+    const codename = card.codename;
+    return codename !== undefined && codename !== null && codename.trim() !== "";
+  },
+  /** asset_inputter? (set/abstract/asset_inputter.rb:72-74): `true`,
+   *  marked "for override" — it is the set's own opt-in flag, true for
+   *  every card that carries Abstract::AssetInputter. Gates
+   *  :asset_input_changed (:finalize on :save, asset_inputter.rb:24-27) and
+   *  :asset_input_changed_on_delete (:20-23, before :clear_references).
+   *
+   *  No set module in the deck's gem tree overrides it (the only definition
+   *  is this one), so the answer is true wherever the set applies — which
+   *  the dispatcher's set-scoping gate has already established by the time
+   *  the predicate runs (set_condition_applies? runs before the `when:`
+   *  condition, all.rb:16-22). It therefore states true directly rather
+   *  than reading a state field: there is nothing left to resolve. */
+  "asset_inputter?": (_card: ModEventCard): boolean => true,
+} as const;
+
+// ---------------------------------------------------------------------------
 // the manifest (one setModules entry per gem file; format :html block holds
 // the two mod-specific views)
 // ---------------------------------------------------------------------------
@@ -368,10 +408,12 @@ const cardModAssets: DeckoModManifest = {
       // +*asset input virtual content re-store; :20-23 on delete, before
       // clear_references — the referers walk that re-stores dependents
       // before the references die). Ruby's `before: :clear_references`
-      // hangs the event on clear_references' chain (itself a :finalize
-      // on: :delete event); the surface records the resolved stage and
-      // the engine's delete path owns the position (the check_setup
-      // precedent).
+      // clears @stage (options.rb:76) and hangs the event on
+      // clear_references' callback chain; clear_references is an ENGINE
+      // builtin (card-action-engine.ts's reference janitors), not a
+      // registered event, so the name resolves to no registry entry and
+      // the delete arm is a candidate in none of the nine save stages —
+      // the engine's delete path owns the position.
       setPath: "abstract/asset_inputter",
       events: [
         engineOwnedEvent({
@@ -384,7 +426,7 @@ const cardModAssets: DeckoModManifest = {
         }),
         engineOwnedEvent({
           event: "asset_input_changed_on_delete",
-          at: "finalize",
+          before: "clear_references",
           on: ["delete"],
           when: "asset_inputter?",
         }),

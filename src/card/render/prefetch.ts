@@ -147,6 +147,20 @@ interface RawRow {
    *  AnonymousID); it rides through like the date columns above
    *  (a hardcoded 0 zeroed every prewarmed record's creator). */
   creatorId: number | null;
+  /** cards.current_revision_id - the conflict tracker's value
+   *  (card-mod-edit set/all/form.rb:27-31 `hidden_field
+   *  :last_action_id_before_edit` reads card.last_action_id, which is this
+   *  column). It is a FORM-VALUE input like creator_id, and it rides
+   *  through for the same reason: a card prewarmed through the closure
+   *  rounds composed a record with this column null, so the tracker
+   *  rendered with no value attribute at all (Rails skips a nil value,
+   *  tag_helper.rb:298) where the deck's row carries one. That is how the
+   *  nested HTML card of Home's :edit_nests arm came to differ from the
+   *  capture by exactly that attribute. The chunked-search composer
+   *  (composeAndCacheSqlRows, same file) already passes the real row
+   *  through; this closes the same gap on the closure path, so a record
+   *  the two composers build for one id are value-identical. */
+  currentRevisionId: number | null;
 }
 
 function toRawRow(row: CardsRow): RawRow {
@@ -165,6 +179,7 @@ function toRawRow(row: CardsRow): RawRow {
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
     creatorId: row.creator_id ?? null,
+    currentRevisionId: row.current_revision_id ?? null,
   };
 }
 
@@ -492,6 +507,7 @@ function recordToRawRow(record: CardRecord): RawRow {
     createdAt: record.createdAt ?? null,
     updatedAt: record.updatedAt ?? null,
     creatorId: record.creatorId ?? null,
+    currentRevisionId: record.currentRevisionId ?? null,
   };
 }
 
@@ -662,7 +678,8 @@ async function sideName(
 function rowToCardsRow(row: RawRow): CardsRow {
   // The fields composeCardRecord reads; the date columns ride along now
   // that the date mod's content overrides render them (RawRow note).
-  // codename is read (lib/card/codename.rb#codename) and
+  // codename is read (lib/card/codename.rb#codename), current_revision_id
+  // is the conflict tracker's value (form.rb:27-31), and
   // read_rule_id/read_rule_class are read by the permission layer
   // (RawRow note) - both ride along.
   return {
@@ -672,7 +689,7 @@ function rowToCardsRow(row: RawRow): CardsRow {
     codename: row.codename,
     left_id: row.leftId,
     right_id: row.rightId,
-    current_revision_id: null,
+    current_revision_id: row.currentRevisionId,
     created_at: row.createdAt ?? "",
     updated_at: row.updatedAt ?? "",
     creator_id: row.creatorId ?? 0,

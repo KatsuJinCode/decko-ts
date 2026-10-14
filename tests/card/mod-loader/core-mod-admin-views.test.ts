@@ -100,7 +100,10 @@ beforeAll(async () => {
 
 afterAll(() => {
   loader?.reset(); // unregister the mod views from the live record
-  setAdminRuntimeConfig({}); // restore the defaults the file's tests changed
+  // restore the engine defaults the file's tests changed — the reset
+  // seam, not an empty patch (setAdminRuntimeConfig({}) merges nothing
+  // back and would leave performDeliveries false behind).
+  resetAdminRuntimeConfig();
   storage?.close();
 });
 

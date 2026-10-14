@@ -931,20 +931,31 @@ function cardtypeConfigureAnchor(fmt: RenderFormatBase, cssClass: string | undef
   );
 }
 
-/** set/all/error.rb:28-30 view :errors: `"Problem:\\n\\n" + error_messages.
- *  join("\\n")`. error_messages walks card.errors; the headless
- *  engine's RenderCard carries no `errors` list (the engine has no
- *  error attachment surface), so the join is over an empty list and
- *  the body reduces to the "Problem:\\n\\n" prefix + blank join.
+/** set/all/error.rb:28-30 view :errors (the BASE `format do` block, the
+ *  definition every format inherits until it overrides it):
+ *      ["Problem:", "", error_messages].flatten.join "\\n"
+ *  error_messages (:32-39) walks card.errors; the headless engine's
+ *  RenderCard carries no `errors` list (the engine has no error
+ *  attachment surface), so the walk is empty and the body reduces to
+ *  `["Problem:", ""].join("\\n")` = "Problem:\\n\\n".
  *  Exported for the follow mod: the follow mod's User+*follow :errors
  *  view's super() arm dispatches THIS body (user/follow.rb:76-78) - the
- *  chain's all-set definition the type_plus_right registration shadows. */
+ *  chain's all-set BASE definition the type_plus_right registration
+ *  shadows. The html format's own :errors (all/html/error.rb:53-55, the
+ *  `return if card.errors.empty?` nil arm) is errorsView below. */
+export const errorsBaseView: ViewFn = () => "Problem:\n\n";
+
+/** set/all/html/error.rb:53-55 view :errors, perms: :none - the HTML
+ *  arm, which overrides the base block's body for html renders.
+ *  (error.rb:28-30, the base definition every other format reads, is
+ *  errorsBaseView above.) */
 export const errorsView: ViewFn = () =>
-  // error.rb:53-54 view :errors, perms: :none: `return if card.errors.empty?`
-  // - the nil arm is the view's answer whenever the card carries no error
-  // list (the headless engine never has one), so the served answer is
-  // Ruby's nil (JSON null). The with-errors arm (the problems
-  // haml) stays the unported remainder - no error-attachment surface.
+  // html/error.rb:53-54: `return if card.errors.empty?` - the nil arm is
+  // the view's answer whenever the card carries no error list (the
+  // headless engine never has one), so the served answer is Ruby's nil
+  // (JSON null). The with-errors arm (voo.title + class_up +
+  // standard_errors) stays the unported remainder - no error-attachment
+  // surface.
   null;
 
 // ---------------------------------------------------------------------------

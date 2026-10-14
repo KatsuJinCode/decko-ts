@@ -17,11 +17,20 @@ import { UnsupportedViewError } from "../../src/card/render/format.js";
 export const NATIVE_HTML_VIEWS: ReadonlySet<string> = new Set(Object.keys(HTML_VIEWS));
 
 /** Without the view's mod: a compiled view renders a string, any other view
- *  raises UnsupportedViewError. */
+ *  raises UnsupportedViewError. The view name rides a wrapper so a failure
+ *  names WHICH view broke the rule - the bare `expect(p).rejects` reports
+ *  only that some promise resolved, which in a loop over twenty views is a
+ *  diff with no subject. */
 export async function expectViewWithoutMod(render: Promise<string>, view: string): Promise<void> {
-  if (NATIVE_HTML_VIEWS.has(view)) {
-    await expect(render).resolves.toEqual(expect.any(String));
-  } else {
-    await expect(render).rejects.toThrow(UnsupportedViewError);
+  const label = `:${view}`;
+  try {
+    if (NATIVE_HTML_VIEWS.has(view)) {
+      await expect(render).resolves.toEqual(expect.any(String));
+    } else {
+      await expect(render).rejects.toThrow(UnsupportedViewError);
+    }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message.split("\n")[0] : String(err);
+    throw new Error(`${label} — ${detail}`);
   }
 }

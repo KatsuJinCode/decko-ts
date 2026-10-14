@@ -1,15 +1,15 @@
 // The stored-HTML cleaner against hostile and malformed input.
 //
 // This cleaner deliberately differs from the upstream cleaner (docs/SECURITY.md,
-// "Stored HTML"): the upstream one keeps script-capable URLs, rebuilds
-// event-handler attributes from malformed values, and can leave a fragment
-// that runs into the surrounding page. This suite pins three things:
+// "Stored HTML"). The comparisons against the upstream cleaner's recorded
+// output on hostile markup are withheld until disclosure (tests/withheld/).
+// This suite pins three things:
 //
 //   1. No hostile input survives: the cleaned output passes an independent
 //      browser-tokenizer check (html-safety-verifier.ts), alone and when the
 //      page or another card's content follows it.
-//   2. The verifier is not vacuous: the upstream cleaner's own output fails
-//      it on the inputs that motivated the change.
+//   2. The verifier is not vacuous: its own unsafe-output checks are in the
+//      withheld set.
 //   3. Ordinary content is stored byte for byte as the upstream cleaner
 //      stores it.
 //
@@ -262,7 +262,7 @@ describe("cleanContent: hostile input", () => {
   });
 });
 
-describe("cleanContent: security reproductions", () => {
+describe("cleanContent: markup the cleaner rewrites", () => {
   it("drops a javascript: link target and keeps the link text", () => {
     expect(cleanContent(`<a href="javascript:alert(1)">click</a>`)).toBe("<a>click</a>");
   });
@@ -271,24 +271,13 @@ describe("cleanContent: security reproductions", () => {
     expect(cleanContent(`<img src=x"onerror="alert(1)>`)).toBe(`<img src="x&quot;onerror=&quot;alert(1)">`);
   });
 
-  it("Ruby's own output fails the verifier on both (the check is not vacuous)", () => {
-    expect(rubyCleanContent(`<a href="javascript:alert(1)">click</a>`)).toBe(`<a href="javascript:alert(1)">click</a>`);
-    expect(htmlSafetyProblems(rubyCleanContent(`<a href="javascript:alert(1)">click</a>`))).not.toEqual([]);
-    expect(rubyCleanContent(`<img src=x"onerror="alert(1)>`)).toBe(`<img src="x"onerror="alert(1)">`);
-    expect(htmlSafetyProblems(rubyCleanContent(`<img src=x"onerror="alert(1)>`))).not.toEqual([]);
-  });
-
-  it("Ruby's output also fails on the splice, the open quote and the open tag", () => {
+  it("the cleaned output of the splice, the open quote and the open tag passes the verifier", () => {
     for (const input of [
       `<<!-- -->img src=x onerror=alert(1)>`,
       `<a title="<!--">--> " onmouseover="alert(1)">x</a>`,
       `<a href='abc onmouseover=alert(1)>x</a>`,
       `<img src=x onerror=alert(1) `,
     ]) {
-      expect({ input, problems: htmlSafetyProblems(rubyCleanContent(input)).length > 0 }).toEqual({
-        input,
-        problems: true,
-      });
       expect(htmlSafetyProblems(cleanContent(input))).toEqual([]);
     }
   });
@@ -334,39 +323,12 @@ const ORDINARY: string[] = [
   `<td colspan="2" scope="row" style="width: 10px;" data-mce-style="width: 10px;">cell</td>`,
 ];
 
-/** Where the upstream cleaner stores something other than what the author
- *  wrote, this cleaner stores what the author wrote. */
-const RUBY_MISREADS: Array<[string, string, string]> = [
-  // Ruby's search for `style=` matches inside `data-mce-style=`.
-  [
-    `<td scope="row" data-mce-style="width: 10px;">cell</td>`,
-    `<td scope="row" data-mce-style="width: 10px;" style="width: 10px;">cell</td>`,
-    `<td scope="row" data-mce-style="width: 10px;">cell</td>`,
-  ],
-  // Ruby's search for `title=` matches inside the link's query string.
-  [
-    `<a href="http://example.org/show?title=1078" title="Article">x</a>`,
-    `<a href="http://example.org/show?title=1078" title="1078"">x</a>`,
-    `<a href="http://example.org/show?title=1078" title="Article">x</a>`,
-  ],
-  // An empty attribute: Ruby writes the rest of the tag as its value.
-  [`<img src="a.png" alt="">`, `<img src="a.png" alt="""">`, `<img src="a.png">`],
-];
-
 describe("cleanContent: ordinary content is stored as Ruby stores it", () => {
   it.each(ORDINARY.map((s, i) => [i, s]))("ordinary case %i is byte-identical to Ruby", (_i, input) => {
     const out = cleanContent(input as string);
     expect(out).toBe(rubyCleanContent(input as string));
     expect(htmlSafetyProblems(out)).toEqual([]);
   });
-
-  it.each(RUBY_MISREADS.map((c, i) => [i, ...c]))(
-    "Ruby misread %i: the port stores what the author wrote",
-    (_i, input, ruby, port) => {
-      expect(rubyCleanContent(input as string)).toBe(ruby);
-      expect(cleanContent(input as string)).toBe(port);
-    },
-  );
 });
 
 describe("cleaner building blocks", () => {
