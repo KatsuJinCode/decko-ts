@@ -191,9 +191,9 @@ export const CORE_TASK_BASKET: Record<string, AdminTaskConfig> = {
   // scripts, styles") and its name/title/description through the oracle's
   // page surface (the mod: carrierwave :open
   // task-table row "Delete upload tmp files" / "Delete upload tmp files!").
-  // The EXECUTION stays a named remainder — a cron-style scheduled task
-  // (the same AGENTS.md gate the carrierwave port note cites); like the
-  // three core tasks above, execute_policy is a no-op placeholder.
+  // The EXECUTION stays a named remainder — a cron-style scheduled task, and
+  // this engine runs none (the same reason the carrierwave port note gives);
+  // like the three core tasks above, execute_policy is a no-op placeholder.
   delete_upload_tmp_files: {
     mod: "carrierwave",
     executePolicy: () => undefined,

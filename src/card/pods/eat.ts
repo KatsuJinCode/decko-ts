@@ -331,8 +331,7 @@ async function ensureAdvanced(
   // run its Lexicon keeps the old key's id), so the save fails and the other
   // card stays renamed. Later items of the same run that give the old name
   // with a codename still find the moved card (staleNames), as Ruby does. A
-  // Ruby defect the port reproduces so an import ends in the same state;
-  // recorded in recovery/parity-team/persistence.md.
+  // Ruby defect the port reproduces so an import ends in the same state.
   throw new EatError(`Validation failed: Name must be unique; '${moved.s}' already exists.`);
 }
 

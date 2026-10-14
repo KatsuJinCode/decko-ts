@@ -1,5 +1,5 @@
-// image-version-bytes.test.ts -- the image VERSION bytes measurement (the
-// persistence lane's item 43, "image version bytes (real resizes)").
+// image-version-bytes.test.ts -- the image VERSION bytes measurement (image
+// version bytes from real resizes).
 //
 // One real photo upload through both engines' real resizers:
 // - Ruby: mini_magick (ImageMagick) resizes, committed under
@@ -18,8 +18,8 @@
 //   image variants to, tools/parity-side-effects/compare.mjs);
 // - the version BYTES differ (declared deliberate: different encoder —
 //   photon's png/jpeg writer is not ImageMagick's; the persistence probe
-//   compares image versions by name for exactly this reason,
-//   recovery/parity-team/persistence.md normalisation 17).
+//   compares image versions by name rather than by bytes for exactly this
+//   reason).
 //
 // Without the oracle fixture the test skips loudly; IMAGE_PARITY=1 turns
 // the skip into a failure.

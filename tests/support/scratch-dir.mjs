@@ -1,8 +1,9 @@
 // Shared scratch-directory helper for tests, benchmarks and tools.
 //
 // Every temp directory a run creates is registered here and removed when the
-// run ends (success or failure), so nothing accumulates (AGENTS.md, Zero
-// Unmanaged Scratch Policy).
+// run ends (success or failure), so a run leaves nothing behind: an un-scoped
+// scratch directory outlives the process that made it and the next run has no
+// way to tell whose it was.
 //
 //   scratchDir(prefix)   mkdtemp under the repo scratch root, registered for removal
 //   removeScratchDir(d)  remove one directory now (idempotent)

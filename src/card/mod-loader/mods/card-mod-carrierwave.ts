@@ -69,8 +69,9 @@ import { str } from "../../render/format.js";
 //   5 versions definitions (icon/small/medium/large/original via
 //   mini_magick); require ImageMagick runtime
 // - set/self/admin.rb - basket[:tasks][:delete_upload_tmp_files]; requires
-//   the basket machinery (cron-style scheduled task; also
-//   AGENTS.md forbids scheduled tasks without explicit scope)
+//   the basket machinery (a cron-style scheduled task, which this engine does
+//   not run: nothing here schedules background work, so a port would need a
+//   scheduler this codebase deliberately does not have)
 // - set/all/file_utils.rb - ClassMethods for delete_tmp_files_of_cached_uploads
 //   + draft_actions_with_attachment SQL; requires the Action model
 // - set/type/file.rb format :html views :input, :preview_editor - PORTED:

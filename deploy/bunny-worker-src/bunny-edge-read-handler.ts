@@ -3,11 +3,11 @@
 // full engine script.
 //
 // WHY A SECOND SCRIPT: on Bunny most requests land on a fresh isolate, and a
-// fresh isolate pays to load the whole bundle before the first line runs.
-// Measured on staging (recovery/speed-team/platform.md): deleting code cuts
-// that cost, and the write surface (sign-in, sessions, the action engine,
-// card writes, setup) is about a third of the full bundle that no anonymous
-// page read can reach. A script is one file on Bunny, and Bunny refuses
+// fresh isolate pays to load the whole bundle before the first line runs, so
+// bundle size is a per-request cost on a cold isolate and deleting unreachable
+// code cuts it. The write surface (sign-in, sessions, the action engine, card
+// writes, setup) is about a third of the full bundle, and no anonymous page
+// read can reach any of it. A script is one file on Bunny, and Bunny refuses
 // dynamic import() of data:/blob: modules, so the write code cannot be
 // loaded on demand inside one script. This handler's bundle leaves it out;
 // the full engine script (bunny-edge-engine-handler.ts, unchanged in
