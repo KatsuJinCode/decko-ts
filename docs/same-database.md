@@ -93,7 +93,9 @@ Measured 2026-10-14 on Windows, Node 24, Ruby 3.4.
   implementation of the driver interface (`src/server/driver.ts`) and
   MySQL dialect output from the CQL compiler (`src/cql/sql.ts`); the additive
   objects above would be created with MySQL DDL (triggers included).
-  PostgreSQL is tracked separately.
+  The remaining work and its measured size are recorded in
+  `.claude/issues/2026-10-14-serve-ruby-mysql-database.md`. PostgreSQL is
+  tracked separately.
 - The harness converts its private copy of the deck from WAL to the rollback
   journal before opening it (`reference-harness/runner/run.mjs`), so that no
   sidecar files are left in the fixture; a served deck keeps whatever
