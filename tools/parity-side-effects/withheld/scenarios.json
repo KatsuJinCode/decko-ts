@@ -1,0 +1,49 @@
+{
+  "comment": "WITHHELD UNTIL DISCLOSURE. Steps whose purpose is to reproduce the two Ruby account-holder rename defects (the authorization gap and the crash that follows a rename that gap lets through). They are excluded from every release package: this directory must not ship until the maintainers have been told privately. The battery loads this file ONLY when it is present and prints `[withheld until disclosure] NOT RUN: <n> steps` when it is absent (tools/parity-side-effects/compare.mjs and tests/tools/side-effects-scenario-battery.test.ts). Re-record the Ruby trace over the PUBLIC scenario list before shipping; the recording committed at reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json still carries these steps.",
+  "steps": [
+    {
+      "name": "probe-rename-other-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Renamed"
+        }
+      },
+      "deliberate": {
+        "why": "Withheld: this step reproduces the Ruby account-holder rename authorization gap and the crash that follows a rename it lets through. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
+        }
+      }
+    },
+    {
+      "name": "admin-rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Two"
+        }
+      },
+      "deliberate": {
+        "why": "Withheld: the admin-path arm of the same Ruby defect pair. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
+        }
+      }
+    }
+  ]
+}

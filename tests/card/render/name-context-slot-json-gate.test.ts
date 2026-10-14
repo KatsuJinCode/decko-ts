@@ -125,7 +125,7 @@ describe("bar slot JSON name_context: wrap.rb gate", () => {
     );
   });
 
-  it("emits NO name_context inside an absolute-item nest (Latest News shape)", async () => {
+  it("emits NO name_context inside an absolute-item nest (a blog news-list shape)", async () => {
     const html = await renderPageBytes(storage!.engine, "News Page");
     const at = html.indexOf("report-pdf-mini_bar-view");
     expect(at).toBeGreaterThan(-1); // the wanted +pdf mini_bar renders

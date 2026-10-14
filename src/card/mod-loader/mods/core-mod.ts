@@ -731,7 +731,7 @@ export function bindModuleAdminHost(host: ModEngineHost): void {
  *  responsible_role = the *update rule candidate walk self → star → type
  *  → all over the deck's rows). Over the reference seed deck that walk
  *  groups every star-named setting
- *  under the *star+*update items ("Administrator", "Wagneer") — while the
+ *  under the *star+*update items (the deck's role-named settings) — while the
  *  oracle's rendered pages distribute the same settings across DIFFERENT
  *  role pages (Help Desk's page shows *help/*account/Sign up; Shark's
  *  shows *structure/*default/*content options; Administrator's shows the

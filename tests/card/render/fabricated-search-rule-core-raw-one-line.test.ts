@@ -93,7 +93,7 @@ async function seedDeck(): Promise<void> {
   // An Item-typed card the search WOULD return if it executed -- the base
   // bug's executed arm renders this name into the one-line (the Search
   // page's act bytes did); the fix must never render it here.
-  await seedCard(s, { id: 65, name: "HDW CM 20131229 0264", typeId: LIST_TYPE_ID });
+  await seedCard(s, { id: 65, name: "Dated Journal Entry 20131229 0264", typeId: LIST_TYPE_ID });
 }
 
 beforeAll(async () => {
@@ -128,7 +128,7 @@ describe("Search-typed rule card core renders raw (set/rule/html_views.rb:2-12)"
       '<div class="text-muted one-line">{"type":"Item", "sort":"name"}</div>',
     );
     // Never the executed search (the base bug's Search-page arm).
-    expect(region).not.toContain("HDW CM 20131229 0264");
+    expect(region).not.toContain("Dated Journal Entry 20131229 0264");
     // Never the base bug's EI arm: an empty one-line inner (the
     // no_search_results bytes strip to "").
     expect(region).not.toContain('<div class="text-muted one-line"></div>');
