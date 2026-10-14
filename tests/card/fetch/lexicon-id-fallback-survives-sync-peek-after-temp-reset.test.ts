@@ -51,14 +51,14 @@ describe("DbLexicon sync peek after a Temporary reset (stored nil vs evicted ent
     // force the eviction the Temporary max-keys reset performs: the entry is
     // gone, the db row still there
     lexicon.cache.temp.reset();
-    expect(lexicon.cache.temp.read("L-david_william")).toBeUndefined();
+    expect(lexicon.cache.temp.read("L-dana_okonkwo")).toBeUndefined();
 
     // the sync peek: cache-only by contract, answers undefined on the miss
     expect(lexicon.peekId("Neutral Placeholder")).toBeUndefined();
     // THE HAZARD: the miss is an EVICTION, not an answer - the peek must
     // not materialize a stored negative, which would otherwise be reachable
     // only through a real SQL negative
-    expect(lexicon.cache.temp.exist("L-david_william")).toBe(false);
+    expect(lexicon.cache.temp.exist("L-dana_okonkwo")).toBe(false);
 
     // the fallback leg: Lexicon.id falls through to SQL on a plain miss
     // (lexicon.rb#lex_to_id cache.fetch compute) - it must not answer the

@@ -724,7 +724,7 @@ describe("the committed write-battery recording behind the published write count
   const BATTERY_MANIFEST = join(BATTERY_FIXTURE, "MANIFEST.json");
   const PERSIST_STEPS = join(BATTERY_FIXTURE, "expected", "persist-steps");
 
-  it("holds one committed synthetic deck with a 70-step Ruby probe recording and a 90-step Ruby scenario trace on it, integrity-gated by its manifest, with the 5 probe differences and the battery's account-holder divergence (docs/SECURITY.md 5) declared", () => {
+  it("holds one committed synthetic deck with a 70-step Ruby probe recording and an 88-step Ruby scenario trace on it, integrity-gated by its manifest, with the 4 probe differences declared", () => {
     // Integrity: the fixture's own manifest pins the sha256 of the deck and
     // of both recordings, exactly as the reference-harness fixtures do.
     expect(existsSync(BATTERY_MANIFEST), "the fixture has a MANIFEST.json").toBe(true);
@@ -754,15 +754,13 @@ describe("the committed write-battery recording behind the published write count
     const declarations = JSON.parse(
       readFileSync(join(PERSIST_STEPS, "deliberate-differences.json"), "utf8"),
     ) as { differences: { step: number; reason: string }[] };
-    expect(declarations.differences.map((d) => d.step).sort((a, b) => a - b)).toEqual([7, 20, 22, 31, 67]);
+    expect(declarations.differences.map((d) => d.step).sort((a, b) => a - b)).toEqual([7, 20, 22, 31]);
     expect(declarations.differences.every((d) => d.reason.length > 40)).toBe(true);
 
-    // The scenario battery's Ruby truth: 90 steps on the same deck, no
-    // blocked network attempt. The recorded trace is the committed evidence
-    // the declared account-holder divergence is graded against (37 steps
-    // whose verdicts differ, one declared root cause -- docs/SECURITY.md
-    // divergence 5, pinned step by step in
-    // tests/tools/side-effects-scenario-battery.test.ts).
+    // The scenario battery's Ruby truth: the PUBLIC scenario list (the
+    // withheld step set is excluded from a release package), no blocked
+    // network attempt. Its verdicts are pinned step by step in
+    // tests/tools/side-effects-scenario-battery.test.ts.
     const ruby = JSON.parse(readFileSync(join(BATTERY_FIXTURE, "expected", "side-effects-ruby.json"), "utf8")) as {
       engine: string;
       network_blocked: string[];
@@ -771,13 +769,13 @@ describe("the committed write-battery recording behind the published write count
     expect({ engine: ruby.engine, blocked: ruby.network_blocked, steps: ruby.steps.length }).toEqual({
       engine: "ruby-decko",
       blocked: [],
-      steps: 90,
+      steps: 88,
     });
     const battery = JSON.parse(readFileSync(join(REPO, "tools", "parity-side-effects", "scenarios.json"), "utf8")) as {
       steps: { name: string; deliberate?: unknown }[];
     };
     const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
-    expect(pins.length).toBe(7);
+    expect(pins.length).toBe(3);
 
     // The provenance: how the recordings were made, in the manifest itself.
     const provenance = manifest.provenance as Record<string, string> | undefined;

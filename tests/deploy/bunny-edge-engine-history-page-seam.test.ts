@@ -286,7 +286,7 @@ function expectFullChrome(body: string): void {
   expect(body).toContain(`integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="`);
   // the layout's navbar + footer + the footer version pin (delta 4)
   expect(body).toContain(`<nav class="navbar navbar-expand-lg">`);
-  expect(body).toContain(`>Decko v0.19.1</a>`);
+  expect(body).toContain(`>Decko v0.0.0-synthetic</a>`);
   // the live trailing newline (delta 5)
   expect(body.endsWith("</html>\n")).toBe(true);
   // the bare layoutPage shell is gone (the base state this lane closes)

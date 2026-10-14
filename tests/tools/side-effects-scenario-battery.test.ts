@@ -17,41 +17,18 @@
 //                     deltas, actions, mail, files, image variants,
 //                     virtuals, session identity)
 //
-// THE DECLARED DIVERGENCE THIS SUITE PINS. The grade recorded on the
-// reference deck is 90 of 90 steps (83 pass + 7 declared deliberate). On the
-// clean synthetic deck the recorded verdicts are 47 of 90 (47 pass + 3
-// declared + 40 mismatched), most of them traceable to ONE declared security
-// divergence (docs/SECURITY.md, "An account holder's name may be changed
-// only by its holder or Help Desk"): renaming another user's account
-// holder. Ruby 0.20 does not enforce the authorization check on that path,
-// so Ruby allows the rename. The port refuses unless the actor is the
-// account holder or a member of Help Desk
-// (card-action-engine.ts assertMayRenameAccountHolder). On the reference
-// deck that difference never surfaces because Ruby crashes
-// mid-rename there (a second Ruby defect in the same authorization area,
-// withheld on the terms docs/SECURITY.md states -- one of the 7 declared
-// pins); the crash depends on reference-deck state and does
-// not reproduce on a clean deck, so several of the seven declared pins do
-// not transfer
-// (probe-rename-other-account, admin-rename-account-holder,
-// restore-file-revision), and Ruby's successful renames cascade: its
-// later notification mails name the renamed follow rule, and its action ids
-// run one ahead, which accounts for most of the remaining mismatched steps
-// (mailText/mailHtml/stored/writes fields). Two steps, admin-close-account
-// and admin-close-own-account, differ for a second, independent reason:
-// Ruby's {{_|last_action_verb}} renders the PER-GATE denial (the closed
-// account is a card its followers can no longer read, so the verb comes out
-// empty in the text part and a denied span in the html part) where the port
-// emits the action verb. The recording is committed unchanged
-// (expected/side-effects-ruby.json); this suite pins the exact current
-// verdicts under the declared divergence -- divergence 5 of
-// docs/SECURITY.md, the operator's ruling that Ruby's missing
-// authorization check is the defect and the port's refusal is correct --
-// so any engine change
-// here fails loudly and forces the divergence to be re-graded. Neither
-// engine's behavior changes in this suite; the errors field is compared
-// through compare.mjs's own extractors, which must agree about what an
-// error page is (both engines render the same card-mod-format alert).
+// THE DIVERGENCES THIS SUITE PINS. The public scenario list is 88 steps:
+// the two account-holder rename steps live in the withheld set
+// (tools/parity-side-effects/withheld/scenarios.json, excluded from every
+// release package) and are announced on stderr when they are not run. On the
+// clean synthetic deck the recorded verdicts are 70 of 88 (70 pass + 1
+// declared + 17 mismatched). The Ruby recording is committed
+// (expected/side-effects-ruby.json) over the same public list, re-recorded
+// whenever the public list changes; this suite pins the exact current
+// verdicts, so any engine change here fails loudly. Neither engine's
+// behavior changes in this suite; the errors field is compared through
+// compare.mjs's own extractors, which must agree about what an error page
+// is (both engines render the same card-mod-format alert).
 //
 // BUILD ARTIFACTS (not committed, like node_modules): ts-drive.mjs runs the
 // engine from dist/ (built here with tsc from the committed sources) and
@@ -146,7 +123,7 @@ function verifyManifestFiles(rels: string[]): string[] {
   return problems;
 }
 
-describe("side-effects scenario battery (90 steps, committed synthetic deck)", () => {
+describe("side-effects scenario battery (88 public steps, committed synthetic deck)", () => {
   // The committed inputs (deck, Ruby trace) must exist — their absence is a
   // broken checkout. The build artifacts are NOT committed (like
   // node_modules) and are built here on first use, so the suite runs on a
@@ -185,7 +162,7 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
     }
   }
 
-  it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 47 steps pass, the 3 steps whose reference-deck pins still hold are declared, and the 40 remaining steps of the declared account-holder-rename divergence (docs/SECURITY.md 5) and the account-close mail shape are pinned step by step", () => {
+  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 70 steps pass, the 1 step whose reference-deck pin still holds is declared, and the 17 remaining mismatches are pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -211,7 +188,7 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
     expect({ engine: ts.engine, blocked: ts.network_blocked, steps: ts.steps.length }).toEqual({
       engine: "decko-ts",
       blocked: [],
-      steps: 90,
+      steps: 88,
     });
 
     // The verdict: the committed Ruby trace against the trace just produced.
@@ -222,85 +199,55 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
     expect({ engine: ruby.engine, blocked: ruby.network_blocked, steps: ruby.steps.length }).toEqual({
       engine: "ruby-decko",
       blocked: [],
-      steps: 90,
+      steps: 88,
     });
 
-    // The three steps whose production pins hold on this deck, and the total.
-    // restore-file-revision is pinned in scenarios.json too (Ruby crashes on
-    // restoring a File/Image revision; the port restores it), but its pin also
-    // expects the port's status to be 303 and this deck's TypeScript trace
-    // records no status for the step at all, so the pin's exact-match test
-    // fails and the step reads as a plain mismatch rather than a deliberate
-    // difference. That is pinned below with its field set, errors included.
-    const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
-    expect(deliberate.sort()).toEqual(
-      ["admin-create-skin-bad-parent", "after-admin-close-write", "anon-update-skin-colors"].sort(),
+    // The withheld step set (tools/parity-side-effects/withheld/scenarios.json)
+    // is NOT part of this public run and must be excluded from a release
+    // package; the drive names the count it skipped on stderr. Nothing here
+    // describes those steps.
+    expect(drive.err, "the withheld steps are announced, not silently skipped").toContain(
+      "[withheld until disclosure] NOT RUN: ",
     );
+
+    // The one step whose production pin still holds on this deck, and the
+    // total. restore-file-revision is pinned in scenarios.json too (Ruby
+    // crashes on restoring a File/Image revision; the port restores it), but
+    // its pin also expects the port's status to be 303 and this deck's
+    // TypeScript trace records no status for the step at all, so the pin's
+    // exact-match test fails and the step reads as a plain mismatch rather
+    // than a deliberate difference. That is pinned below with its field set,
+    // errors included.
+    const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
+    expect(deliberate.sort()).toEqual(["anon-update-skin-colors"]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 47,
-      deliberate: 3,
-      total: 90,
+      pass: 70,
+      deliberate: 1,
+      total: 88,
     });
 
-    // The declared divergence, pinned step by step: every mismatched step
-    // and the fields it differs on. Most trace to the step-14 rename (Ruby
-    // allows the rename, so its follow-rule rename cascades into its later
-    // notification mails and its action-id sequence); admin-close-account
-    // and admin-close-own-account differ on the last_action_verb mail shape,
-    // and restore-file-revision on its own pin (this deck's TypeScript trace
-    // records no status for the step). A change on either side fails here
-    // and forces the divergence (docs/SECURITY.md 5) to be re-graded.
+    // Every mismatched step and the fields it differs on, pinned step by step.
+    // A change on either side fails here.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
+      { step: "get-home", fields: ["files", "virtuals", "writes"] },
       { step: "probe-update-own-account", fields: ["writes"] },
-      { step: "probe-rename-other-account", fields: ["actions", "errors", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "signed-in-create-card", fields: ["mailHtml", "mailText"] },
-      { step: "create-illegal-name", fields: ["mailHtml", "mailText"] },
-      { step: "create-unknown-type", fields: ["mailHtml", "mailText"] },
-      { step: "create-number-valid", fields: ["mailHtml", "mailText"] },
-      { step: "create-json-valid", fields: ["mailHtml", "mailText"] },
-      { step: "create-compound", fields: ["mailHtml", "mailText"] },
-      { step: "signed-in-update-card", fields: ["mailHtml", "mailText"] },
-      { step: "upload-file", fields: ["stored"] },
       { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
       { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
       { step: "upload-cache-existing-file", fields: ["actions", "files", "location", "stamps", "status", "stored", "writes"] },
       { step: "update-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
       { step: "upload-image", fields: ["stored"] },
       { step: "upload-large-image", fields: ["stored"] },
-      { step: "signed-in-delete-card", fields: ["mailHtml", "mailText"] },
-      { step: "rename-account-holder", fields: ["mailHtml", "mailText"] },
       { step: "update-file", fields: ["stored"] },
-      { step: "delete-file", fields: ["mailHtml", "mailText", "stored"] },
-      { step: "delete-image", fields: ["mailHtml", "mailText", "stored"] },
+      { step: "delete-file", fields: ["stored"] },
+      { step: "delete-image", fields: ["stored"] },
       { step: "restore-file-revision", fields: ["errors", "status"] },
       { step: "admin-approve-with-verification", fields: ["writes"] },
-      { step: "admin-approve-without-verification", fields: ["mailHtml", "mailText"] },
-      { step: "admin-deny-signup", fields: ["mailHtml", "mailText"] },
-      { step: "admin-update-role-members", fields: ["actions", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "admin-create-skin", fields: ["actions", "mailHtml", "mailText", "stamps", "stored", "virtuals", "writes"] },
-      { step: "admin-create-old-skin", fields: ["mailHtml", "mailText"] },
-      { step: "admin-update-scss", fields: ["mailHtml", "mailText"] },
+      { step: "admin-create-skin", fields: ["actions", "stamps", "stored", "virtuals", "writes"] },
+      { step: "admin-create-skin-bad-parent", fields: ["errors", "status"] },
       { step: "admin-update-current-skin-colors", fields: ["actions", "files", "mail", "mailHtml", "mailText", "stored", "virtuals", "writes"] },
-      { step: "admin-update-current-skin-colors-again", fields: ["mailHtml", "mailText", "virtuals", "writes"] },
-      { step: "admin-create-script-card", fields: ["mailHtml", "mailText"] },
-      { step: "admin-edit-site-script", fields: ["mailHtml", "mailText"] },
-      { step: "admin-edit-script-card", fields: ["mailHtml", "mailText"] },
-      { step: "admin-delete-script-card", fields: ["mailHtml", "mailText"] },
-      { step: "admin-update-layout", fields: ["mailHtml", "mailText"] },
-      { step: "admin-rename-account-holder", fields: ["actions", "errors", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "after-close-write", fields: ["mailHtml", "mailText"] },
-      { step: "admin-close-account", fields: ["mail", "mailHtml", "mailText"] },
-      { step: "admin-close-own-account", fields: ["mail", "mailHtml", "mailText", "session"] },
+      { step: "admin-update-current-skin-colors-again", fields: ["virtuals", "writes"] },
     ]);
-
-    // The declared divergence, spelled out: on the rename of another user's
-    // account holder, Ruby 303s and writes the rename; the port refuses
-    // with the account-holder
-    // guard.
-    const root = mismatches.find((r) => r.step === "probe-rename-other-account")!;
-    expect(root.diffs.status).toEqual(["303", "422"]);
-    expect(String(root.diffs.errors![1])).toContain("cannot rename Account Holder");
 
     rmSync(work, { recursive: true, force: true });
   }, 900_000);

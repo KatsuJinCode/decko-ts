@@ -74,54 +74,6 @@
       "added": [],
       "removed": []
     },
-    "library_assistant_decisions": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_assistant_interactions": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_assistant_learner_levels": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_assistant_threads": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_audit_log": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_feature_events": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_lib_settings": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
-    "library_proposals": {
-      "probeRows": 0,
-      "changed": {},
-      "added": [],
-      "removed": []
-    },
     "schema_migrations": {
       "probeRows": 0,
       "changed": {},
