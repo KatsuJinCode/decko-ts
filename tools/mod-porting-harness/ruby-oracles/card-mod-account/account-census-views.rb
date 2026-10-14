@@ -196,27 +196,37 @@ def html_escape(v)
   v.to_s.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub('"', "&quot;")
 end
 
-# the link_to_card href shape (links.rb:101-106, href LAST): the mark path
-# segment + the path hash's to_param query (the path view rides the SEGMENT);
-# every attribute value rides the tag_options escape (href's & becomes &amp;).
+# the link_to_card href shape (links.rb:101-106) over
+# links.rb:111-116 link_to_card + :99-106 link_to, in Ruby's own order:
+#   - add_known_or_wanted_class (links.rb:140-144) APPENDS known-card to the
+#     class the pill opts already carry ("slotter nav-link") - Card.known? is
+#     true for the seeded card;
+#   - link_to's `opts[:href] ||= path opts.delete(:path)` (links.rb:101)
+#     assigns href at the END of the opts hash (the mark path segment + the
+#     path hash's to_param query; the path view rides the SEGMENT);
+#   - interpret_data_opts_to_link_to (links.rb:146-152) DELETES :remote and
+#     re-adds it as "data-remote" AFTER href, so data-remote renders LAST;
+#   - every attribute value rides the tag_options escape (href's & becomes
+#     &amp;).
 def pill_link_html(mark_url_key, text, opts)
-  path = opts[:path]
+  add_class opts, "known-card" # links.rb:140-144 (Card.known? true)
+  path = opts.delete(:path)
   view_segment = path.delete(:view)
   query = to_param(path)
   href = query.empty? ? "/#{mark_url_key}/#{view_segment}" : "/#{mark_url_key}/#{view_segment}?#{query}"
+  opts[:href] = href # links.rb:101 - the key lands LAST
+  remote = opts.delete(:remote) # links.rb:146-152
+  opts["data-remote"] = remote if remote
   attrs = opts.map do |k, v|
-    next nil if k == :path
-    if k == :remote
-      "data-remote=\"true\""
-    elsif k == :class
+    if k == :class
       "class=\"#{html_escape(v)}\""
     elsif k.to_s.start_with?("data-")
       "data-#{k.to_s[5..]}=\"#{html_escape(v)}\""
     else
       "#{k}=\"#{html_escape(v)}\""
     end
-  end.compact.join(" ")
-  "<a #{attrs} href=\"#{html_escape(href)}\">#{text}</a>"
+  end.join(" ")
+  "<a #{attrs}>#{text}</a>"
 end
 
 # verbatim: board_pills.rb:13-18 board_pill_items (the mark: [card, field]
@@ -231,10 +241,12 @@ def board_pill_items(card_name, data, breadcrumb)
 end
 
 # verbatim: board_pills.rb:35-37 board_pill_section (wrap_with(:h6, ...) +
-# wrap_each_with(:li, class: ...) - the items joined "\n")
+# wrap_each_with(:li, class: BOARD_PILL_LI_CLASSES) - the items joined "\n")
 def board_pill_section(tab_name, title, items)
   "<h6 class=\"ms-1 mt-3\">#{title}</h6>" +
-    board_pill_items(CARD_NAME, items, tab_name).join("\n")
+    board_pill_items(CARD_NAME, items, tab_name)
+      .map { |item| "<li class=\"#{BOARD_PILL_LI_CLASSES}\">#{item}</li>" }
+      .join("\n")
 end
 
 # verbatim: account_holder.rb:132-137 view :account_tab ->
@@ -322,7 +334,7 @@ emit(behaviorId: "view:new_buttons",
 emit(behaviorId: "view:edit",
      kind: "view-fragment",
      scenario: "signin_edit_reset_password_voo",
-     gemSource: "set/self/signin.rb:154-157 + 159-163 + 198-202 (signin_field :email) + en.yml:16",
+     gemSource: "set/self/signin.rb:154-157 + 159-163 + 198-202 (signin_field :email — the symbol stars the mark through the codename lookup; runtime-probed) + en.yml:16",
      title: EN["account_forgot_password"],
      editStructure: ["+*email"],
      editStructureOpts: { title: "email", view: "titled", skip_perms: true },
