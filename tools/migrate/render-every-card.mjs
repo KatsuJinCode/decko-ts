@@ -44,6 +44,9 @@ for (const id of ids) {
     out.renderErrors += 1;
     const cls = err?.constructor?.name ?? "unknown";
     out.errorClasses[cls] = (out.errorClasses[cls] ?? 0) + 1;
+    // The first error's stack goes to stderr for diagnosis; stderr stays
+    // in the local run and never enters the JSON summary.
+    if (out.renderErrors === 1) process.stderr.write(`first render error: ${err?.stack ?? err}\n`);
   }
   if (out.attempted % 2000 === 0) {
     process.stderr.write(`render: ${out.attempted}/${ids.length} in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
