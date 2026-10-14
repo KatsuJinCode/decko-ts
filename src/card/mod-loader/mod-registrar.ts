@@ -13,7 +13,7 @@
 //   restores it. No registry file is edited.
 // - view CONFIGS (unknown:/perms:/wrap:/...) have no existing mutable TS
 //   table (format.ts keeps private consts), so they live HERE; the
-//   coordinator-applicable patch that makes the render path consult them
+//   render-path patch that makes the render path consult them
 //   is
 // - mod-registered PATTERNS extend the frozen PATTERN_TABLE via an overlay
 //   here; patternTable() returns the combined concrete table in Ruby's

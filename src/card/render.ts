@@ -918,7 +918,7 @@ export class RenderEngine implements RenderEngineLike {
    *  resetCaches(). */
   private structureRefMisses = new Set<string>();
   /** The *default rule universe (composed rule key -> the rule card's own
-   *  type_id) — round 9's new-child template machinery. Ruby resolves a
+   *  type_id) — the new-child template machinery. Ruby resolves a
    *  nest-miss child (format/nest/fetch.rb#new_card -> Card.fetch new:) to
    *  the *default rule card's TYPE (mod/core/set/all/type.rb:78-80
    *  type_id_from_template -> template&.type_id; for a new card the
@@ -3045,7 +3045,7 @@ export class RenderEngine implements RenderEngineLike {
    * (once per engine; one batched id query). These names feed the
    * new-child card's data-card-type-name attribute and its safeSetKeys
    * TYPE anchor. Genuinely missing type rows simply stay absent from the
-   * map — newCardDefaultType degrades to the pre-round-9 untyped new-card
+   * map — newCardDefaultType degrades to the untyped new-card
    * shape for those, never throws.
    */
   private async preloadDefaultTypeNames(): Promise<void> {
@@ -3592,14 +3592,14 @@ export class RenderEngine implements RenderEngineLike {
         // walk the raw dbContent refs. Both branches must run — the template
         // refs are what a *structure rule contributes; the raw refs are the
         // closure the prefetch already walked and the render must answer to.
-        // Round 9: both branches absolutize against THIS card's name (the
+        // Both branches absolutize against THIS card's name (the
         // chunk/reference.rb referencing-card contract the Ruby port cites
         // in nest-syntax.ts's header): a template's `{{+image}}` names
         // `<instance>+image`. Without the context the walk produced the
         // literal key "+image", which matched no row, fell into
         // structureRefMisses, and every template child rendered as the
-        // unknown-card empty slot even when its row existed (the round-9
-        // live-wire gap). The prefetch's contextual collect and
+        // unknown-card empty slot even when its row existed (a live-wire
+        // gap found on the deployed site). The prefetch's contextual collect and
         // closureWarm's cardReferenceKeys absolutize identically, so all
         // three walkers agree on one key set.
         const contentForRefs = resolved !== undefined
@@ -3914,7 +3914,7 @@ export class RenderEngine implements RenderEngineLike {
     // from the engine-lifetime maps (a warm render's call would otherwise
     // re-prime nil over an earlier render's positive) and never from
     // per-round answer sets (a multi-round call re-primed nil over its own
-    // round-1 positives - the stored nil then answered the render's own rule
+    // earlier-round positives - the stored nil then answered the render's own rule
     // ladders "absent" for junctions the db holds).
     const callAskedSimple = new Set<string>();
     const callAskedPairs = new Set<string>();
@@ -4140,7 +4140,7 @@ export class RenderEngine implements RenderEngineLike {
       //    (callAnsweredSimple) and it did not seat earlier (renderCards);
       //  - a pair is missed only when no row of any round answered it
       //    (callAnsweredPairs unions every round's fetchedPairs). The
-      //    previous per-round view re-primed NIL over round-1 positives at
+      //    previous per-round view re-primed NIL over first-round positives at
       //    every later round of a multi-round call - and the render-card-map
       //    view (the ask memory variant) primed nil over ANSWERED keys
       //    whenever the answer was not seated into the map.
@@ -7059,7 +7059,7 @@ export class RenderEngine implements RenderEngineLike {
     // (format.ts:renderView) reads isDenied which reads
     // deniedVerdictsByKey. Without this pass the gate is open for every
     // virtual and the engine renders a bar where Ruby renders the
-    // quiet denial span (the round-7 permission_denied_mismatch
+    // quiet denial span (the permission_denied_mismatch
     // residual; see preloadVirtualRuleVerdicts for the full mechanism).
     await this.preloadVirtualRuleVerdicts(setCard);
     // Marked only after every pass above completed, so an aborted
@@ -7210,8 +7210,8 @@ export class RenderEngine implements RenderEngineLike {
    * gate at view-perms.ts#viewPermissionDenial) reads `isDenied` which
    * pulls from `deniedVerdictsByKey` — without a pre-populated verdict
    * the virtual card's gate is open and the engine renders a bar where
-   * Ruby renders the denial span (the round-7
-   * permission_denied_mismatch residual).
+   * Ruby renders the denial span (the permission_denied_mismatch
+   * residual).
    *
    * This pass mirrors the stored-card verdict path (ensureVerdicts
    * 958-1020): same canReadByRuleLookup, same deniedVerdictsByKey map,
@@ -9503,11 +9503,11 @@ export class RenderEngine implements RenderEngineLike {
    *  reference and forced cold closure walks for cards nesting them
    *  (26/1000 shard-0 cards cold after prewarm, render-perf harness).
    *
-   *  Round 9: every non-underscore ref is ABSOLUTIZED against the card's
+   *  Every non-underscore ref is ABSOLUTIZED against the card's
    *  own name (chunk/reference.rb referencing-card contract) — the same
    *  contextual resolution applyStructureContent's ref walk and the
    *  prefetch's record collect use. A card's `{{+image}}` checks
-   *  `<card>+image` in the render-card map; the pre-round-9 literal
+   *  `<card>+image` in the render-card map; the literal
    *  "+image" key matched no prepared card, but the walkers' bogus miss
    *  landed in structureRefMisses so warm detection only stayed stable by
    *  accident of the shared bogus key.

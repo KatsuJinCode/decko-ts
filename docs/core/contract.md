@@ -5,7 +5,7 @@ Scope: the runtime-independent behavioral spec both implementations
 (Ruby `card-1.110.0` / `decko-0.20.0` and TypeScript `decko-ts`) MUST
 satisfy in order to claim a feature is "Decko" rather than
 runtime-specific. Architecture direction lives in `architecture.md`;
-governance in `governance.md`; issue mapping in `work-board.md`.
+governance in `governance.md`.
 Provenance is per-statement in `contract-evidence.md`.
 
 A statement is **proven** when an oracle byte/row comparison or a
@@ -756,8 +756,8 @@ document's authoring:
 
 - Architecture direction: `architecture.md`.
 - Governance and gates: `governance.md`.
-- Acceptance work: `work-board.md`, issue #4 (`parity`),
-  issue #6 (`auth`), issue #10 (`migration`).
+- Acceptance evidence: `contract-evidence.md`, and `KNOWN_FAILURES.md` for
+  what is known not to pass.
 - Per-statement evidence (test file + status): `contract-evidence.md`.
 - Stream notes (current implementation evidence):
   `docs/upstream-parity-plan-1282.md` and the per-stream

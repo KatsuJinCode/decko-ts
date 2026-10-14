@@ -217,8 +217,8 @@ export async function followMailViews(
       // with its list's newline (wrap_list_item, :109-111), and the harness's
       // Ruby capture pins exactly one blank line between items and after the
       // header (the trailing wrapper newline never survives to the mail).
-      // The synthetic-v1 oracle arbitrated the two readings at the converge:
-      // the recorded bytes carry the blank line after "the following
+      // The synthetic-v1 oracle settled the two readings: the recorded
+      // bytes carry the blank line after "the following
       // changes:", which only the leading-newline form produces.
       items += html ? `<li>${body}</li>
 ` : `
