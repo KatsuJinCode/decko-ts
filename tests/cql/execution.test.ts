@@ -15,8 +15,10 @@
  * tests also pin the DECIDED edge fallback (see
  * docs/decisions/0005-cql-match-semantics.md): a match query on a driver
  * WITHOUT the UDF post-filters in JS to the same set the UDF path returns,
- * limit/offset leave the SQL, counts post-filter, and a match inside a
- * subselect (unpost-filterable) refuses loudly as CqlBadQuery.
+ * over the COMPLETE candidate set (limit/offset leave the SQL entirely and
+ * apply after the filter), counts post-filter, and the shapes a row filter
+ * cannot reproduce — a match inside a subselect, a match with a GROUP BY —
+ * refuse loudly as CqlBadQuery.
  */
 
 import { readFileSync } from "node:fs";
@@ -27,7 +29,6 @@ import { registerSqliteRegexpFunction } from "../../src/cql/sqlite-regexp.js";
 import { executeQuery } from "../../src/cql/execute.js";
 import type { CqlExecuteOptions } from "../../src/cql/execute.js";
 import { CqlBadQuery } from "../../src/cql/ast.js";
-import { POSTFILTER_ROW_CAP } from "../../src/cql/sql.js";
 import type { CardsRow } from "../../src/server/schema.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -671,19 +672,79 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
     }
   });
 
-  it("post-filter applies limit AFTER filtering (the SQL carries only the cap)", async () => {
+  it("post-filter applies limit AFTER filtering (the SQL carries NO limit at all)", async () => {
     const bare = new LocalSqliteDriver();
     try {
       await loadCoreSchema(bare);
       await insertCards(bare);
       const all = await executeQuery(bare, { match: "a" }, EXEC_OPTS);
       const limited = await executeQuery(bare, { match: "a", limit: 1 }, EXEC_OPTS);
-      expect(all.sql).toContain(`LIMIT ${POSTFILTER_ROW_CAP}`);
+      // The whole match-free candidate set is fetched — no cap, no user
+      // limit. Filtering after a LIMIT would truncate before matching, so
+      // the LIMIT (and its OFFSET) leave the SQL entirely and the executor
+      // applies them in JS over the filtered set.
+      expect(all.sql).not.toContain("LIMIT");
+      expect(limited.sql).not.toContain("LIMIT");
       if ("count" in all || "count" in limited) throw new Error("expected rows results");
       expect(limited.rows).toHaveLength(1);
       // The user limit applies in JS over the FILTERED set: the single
       // returned row is the filtered set's first row (same SQL order).
       expect(limited.rows[0]!.id).toBe(all.rows[0]!.id);
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("post-filter offsets over the FILTERED set, not the fetched superset", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      const all = await executeQuery(bare, { match: "a", sort: "name" }, EXEC_OPTS);
+      const window = await executeQuery(
+        bare,
+        { match: "a", sort: "name", limit: 2, offset: 1 },
+        EXEC_OPTS,
+      );
+      if ("count" in all || "count" in window) throw new Error("expected rows results");
+      expect(window.rows.map((row) => row.id)).toEqual([
+        all.rows[1]!.id,
+        all.rows[2]!.id,
+      ]);
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("match + group refuses loudly instead of grouping unfiltered rows", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      // Ruby filters rows first (WHERE ... REGEXP) and groups the survivors.
+      // The post-filter drops the predicate from the SQL, so a GROUP BY would
+      // run over unfiltered rows and the filter would then compare a grouped
+      // row's arbitrary representative value against the pattern.
+      const statement = { match: "home", group: "c0.type_id", return: "type_id" };
+      await expect(executeQuery(bare, statement, EXEC_OPTS)).rejects.toThrow(CqlBadQuery);
+      await expect(
+        executeQuery(bare, { ...statement, return: "count" }, EXEC_OPTS),
+      ).rejects.toThrow(CqlBadQuery);
+    } finally {
+      bare.close();
+    }
+  });
+
+  it("a subselect-only match refuses by name on a UDF-less driver", async () => {
+    const bare = new LocalSqliteDriver();
+    try {
+      await loadCoreSchema(bare);
+      await insertCards(bare);
+      // No root match, so the post-filter never engages — but the subselect's
+      // match still needs the UDF. Refuse with the named error rather than
+      // surfacing the driver's raw "no such function: REGEXP".
+      const statement = { type_id: 2, any: [{ match: "about" }] };
+      await expect(executeQuery(bare, statement, EXEC_OPTS)).rejects.toThrow(CqlBadQuery);
     } finally {
       bare.close();
     }
