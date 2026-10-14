@@ -63,8 +63,8 @@
 // diffs every operation's row delta against the Ruby oracle recordings
 // committed on it: of the 67 public operations, 65 match and 2 are declared
 // deliberate differences. The scenario battery's 87 public steps are recorded
-// on the same deck and committed beside it, with 3 declared deliberate
-// differences (tests/tools/side-effects-scenario-battery.test.ts). The third
+// on the same deck and committed beside it, with 4 declared deliberate
+// differences and no open mismatch (tests/tools/side-effects-scenario-battery.test.ts). The third
 // describe below asserts the committed recording those published counts rest
 // on.
 
@@ -782,7 +782,7 @@ describe("the committed write-battery recording behind the published write count
     // withheld steps are announced as NOT RUN by the battery, not listed here.
     expect(battery.steps.length).toBe(87);
     const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
-    expect(pins.length).toBe(3);
+    expect(pins.length).toBe(4);
 
     // The provenance: how the recordings were made, in the manifest itself.
     const provenance = manifest.provenance as Record<string, string> | undefined;

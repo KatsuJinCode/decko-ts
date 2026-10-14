@@ -75,12 +75,12 @@
     "expected/persist-steps/step-70.json": "e84e593d9d3814c334ed5a00b65585210c32e11405679b0e3053cc301558620d",
     "expected/persist-steps/ruby-outside-delta.json": "06d9b73de83a008cf467736f193a018ff44630b1d3209bb67275f9c2bd765964",
     "expected/persist-steps/deliberate-differences.json": "483139cf2f5ea6fa845d8559915239a6709145be855d62538b91412a2aebbf0b",
-    "expected/side-effects-ruby.json": "43e13992ce0b7c5495538d3f67b4f21ab3532b065bd799c65b3cde0747d1293e"
+    "expected/side-effects-ruby.json": "f194712c1faef03211cbca08264bc4cb151841b770e6b022ead74108b80c0efd"
   },
   "provenance": {
     "deck_builder": "bash reference-harness/oracle/build-deck.sh reference-harness/fixtures/write-battery-v1 (stock decko setup seed, deck.json applied under the fixture clock, assets pre-compiled), then tools/parity-side-effects/ruby/seed.rb eats the mods' declared data into the copy (the seed's template cards ship without the account and email mods' data)",
     "deck_generator": "node reference-harness/corpus/generate-write-battery-deck.mjs reference-harness/fixtures/write-battery-v1",
-    "scenario_recording": "bundle exec ruby tools/parity-side-effects/ruby/drive.rb reference-harness/oracle/app <deck.sqlite3> <work> — stdout committed as expected/side-effects-ruby.json",
+    "scenario_recording": "bundle exec ruby tools/parity-side-effects/ruby/drive.rb reference-harness/oracle/app <deck.sqlite3> <work> — booted RAILS_ENV=production with the stock production configuration (asset_refresh :cautious, compress_assets true; the trace's environment field records it); stdout committed as expected/side-effects-ruby.json",
     "probe_recording": "bash tools/persistence/run-ruby-steps.sh reference-harness/oracle/app <deck.sqlite3> <out> 70 — per-step dumps committed as expected/persist-steps/",
     "oracle": "decko 0.20.0 / card 1.110.0 (reference-harness/oracle/app, stock)",
     "data_rule": "synthetic content only: invented names, example.com addresses, fixture passwords, generated files"

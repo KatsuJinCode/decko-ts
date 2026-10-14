@@ -85,7 +85,10 @@ export function listTestFiles(dir = REPO_ROOT, out = []) {
     return out;
   }
   for (const entry of entries) {
-    if (entry.name === "node_modules" || entry.name === "dist" || entry.name.startsWith(".git")) continue;
+    // tmp/ is scratch: the gate's own working directories, and the vendored
+    // gem tree an oracle checkout leaves there (bootstrap's jQuery specs are
+    // `.spec.js`, which isTestFile accepts). No project suite lives under it.
+    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "tmp" || entry.name.startsWith(".git")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) listTestFiles(full, out);
     else if (isTestFile(entry.name)) out.push(relative(REPO_ROOT, full).replace(/\\/g, "/"));

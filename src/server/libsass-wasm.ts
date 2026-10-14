@@ -13,7 +13,7 @@
 // isolate: a host that never saves a stylesheet never pays for it.
 
 import libsassWasmBase64 from "../../vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js";
-import type { ScssCompiler, ScssOutputStyle } from "../card/assets/scss-compiler.js";
+import { memoizeScssCompiler, type ScssCompiler, type ScssOutputStyle } from "../card/assets/scss-compiler.js";
 
 interface LibsassExports {
   memory: WebAssembly.Memory;
@@ -150,7 +150,7 @@ function readCString(pointer: number): string {
  *  WebAssembly module. Errors carry LibSass's message, the same shape the
  *  Node process compiler rejects with. */
 export function libsassWasmCompiler(): ScssCompiler {
-  return async (source: string, style: ScssOutputStyle) => {
+  return memoizeScssCompiler(async (source: string, style: ScssOutputStyle) => {
     if (source === "") return ""; // SassC::Engine#render returns the empty template unchanged
     const ex = await instantiate();
     const sourceBytes = new TextEncoder().encode(source);
@@ -182,5 +182,5 @@ export function libsassWasmCompiler(): ScssCompiler {
       ex.free(resultPointer);
       ex.free(sourcePointer);
     }
-  };
+  });
 }

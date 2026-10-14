@@ -41,8 +41,11 @@ import { localAttachmentIdentifier } from "../attachments/attachment-content.js"
 import { rawItemStrings } from "../render/pointer-list.js";
 import { newCardRecord } from "../fetch/card-record.js";
 import { VirtualRecordCache, findVirtualByCard, virtualSave } from "../mod-loader/mods/card-mod-virtual.js";
+import { STYLE_SOURCES_MTIME } from "../assets/style-sources.js";
+import { sqlDateTime } from "../history/act.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
+import type { ScriptCompressor } from "../assets/script-compressor.js";
 import {
   STYLE_INPUTTER_TYPES,
   StyleAssetUnsupportedError,
@@ -72,6 +75,10 @@ export interface StyleAssetEventContext {
   attachmentStore: AttachmentStore | undefined;
   compile: ScssCompiler | undefined;
   compileCoffee?: CoffeeCompiler | undefined;
+  /** Cardio.config.compress_assets; absent = false. */
+  compressAssets?: boolean;
+  /** The Uglifier seam the script leaves minify through under compressAssets. */
+  compressScript?: ScriptCompressor | undefined;
   virtuals: VirtualRecordCache;
 }
 
@@ -131,6 +138,8 @@ function deps(ctx: StyleAssetEventContext, staleContent: ReadonlyMap<string, str
     },
     compile: ctx.compile,
     compileCoffee: ctx.compileCoffee,
+    ...(ctx.compressAssets === undefined ? {} : { compressAssets: ctx.compressAssets }),
+    compressScript: ctx.compressScript,
     staleContent,
   };
 }
@@ -159,9 +168,32 @@ function inputStore(ctx: StyleAssetEventContext): AssetInputStore {
     save: async (inputter, content) => {
       const record = await assetInputRecord(ctx, inputter, content);
       if (record === undefined) return;
-      await virtualSave(ctx.fetch.driver, record, ctx.virtuals, ctx.clock());
+      await virtualSave(ctx.fetch.driver, record, ctx.virtuals, inputStampAt(ctx));
     },
   };
+}
+
+/** The stamp an input row is written with: the clock, but no earlier than
+ *  the gem sources' stamp (style-sources.ts STYLE_SOURCES_MTIME). Ruby's
+ *  clock is the wall clock, which is always past the gems' install; the
+ *  battery's fixture clock is not, so this keeps a refreshed row from
+ *  looking older than the sources it was refreshed from. */
+function inputStampAt(ctx: StyleAssetEventContext): Date {
+  const now = ctx.clock();
+  return now.getTime() < STYLE_SOURCES_MTIME.getTime() ? STYLE_SOURCES_MTIME : now;
+}
+
+/** Abstract::AssetInputter#asset_input_needs_refresh? for the read path
+ *  (mod_assets.rb:134-135, asset_group.rb:41-45): the `+*asset input` row is
+ *  missing, or it is older than the sources. Once a refresh has stamped the
+ *  row, later requests do not repeat the walk. */
+async function inputNeedsRefresh(ctx: StyleAssetEventContext, inputter: StyleCard): Promise<boolean> {
+  const record = await assetInputRecord(ctx, inputter, undefined);
+  if (record === undefined) return false;
+  const row = await findVirtualByCard(ctx.fetch.driver, record);
+  if (row?.updated_at === null || row?.updated_at === undefined) return true;
+  const updatedAt = new Date(`${row.updated_at.replace(" ", "T")}Z`).getTime();
+  return updatedAt < STYLE_SOURCES_MTIME.getTime();
 }
 
 /** A `<set>+*style` rule (type_plus_right/set/style.rb): its right is
@@ -201,7 +233,20 @@ async function isScriptInputter(ctx: StyleAssetEventContext, card: StyleCard): P
 
 /** Any Abstract::AssetInputter card, both asset families. */
 async function isInputter(ctx: StyleAssetEventContext, card: StyleCard): Promise<boolean> {
-  return isStyleTypeInputter(card) || isScriptInputter(ctx, card);
+  // Both operands are awaited: an async call is a truthy promise, so a bare
+  // `a() || b()` on two async predicates returns the first without looking.
+  return (await isStyleInputter(ctx, card)) || (await isScriptInputter(ctx, card));
+}
+
+/** A style inputter that is not typed by STYLE_INPUTTER_TYPES: the
+ *  `style: mods` card (style_mods.rb:1 `include_set Abstract::AssetInputter`)
+ *  and a `mod: X+*style` card (mod/style.rb:4, typed List). Both respond to
+ *  asset_input, so a `dependent_asset_inputters` walk reaches them. */
+async function isStyleInputter(ctx: StyleAssetEventContext, card: StyleCard): Promise<boolean> {
+  if (isStyleTypeInputter(card) || card.codename === "style_mods") return true;
+  if ((await codenameOf(ctx, card.rightId)) !== "style") return false;
+  const left = card.leftId !== undefined ? await rowById(ctx, card.leftId) : undefined;
+  return (left?.codename ?? "").startsWith("mod_");
 }
 
 function refuse(err: unknown): never {
@@ -226,22 +271,72 @@ async function updateAssetInput(
   const content = styleContent ?? (await assembleScriptSide(deps(ctx, stale), card).catch(refuse));
   if (content === undefined) return;
   await store.save(card, content);
+  for (const dependent of await dependentAssetInputters(ctx, card)) {
+    await updateAssetInput(ctx, dependent, stale, visited);
+  }
+  for (const outputter of await outputterReferers(ctx, card)) {
+    await updateAssetOutput(ctx, outputter.card, stale, outputter.family);
+  }
+}
+
+/** `dependent_asset_inputters` (asset_inputter.rb:3-4): the referers that
+ *  are themselves inputters — except on `style: mods`, whose override
+ *  (card-mod-style set/self/style_mods.rb:3-6) is
+ *  `Card::Assets.active_theme_cards`. */
+async function dependentAssetInputters(ctx: StyleAssetEventContext, card: StyleCard): Promise<StyleCard[]> {
+  if (card.codename === "style_mods") return activeThemeCards(ctx);
+  const referers = await referringCards(ctx, card);
+  return (await Promise.all(referers.map(async (c) => ((await isInputter(ctx, c)) ? c : undefined)))).filter(
+    (c): c is StyleCard => c !== undefined,
+  );
+}
+
+/** `outputters` (asset_inputter.rb:9-10): the referers that respond to
+ *  `update_asset_output`, with the family their rule's `*style`/`*script`
+ *  right names (the two store a .css and a .js file — asset_outputter.rb:54). */
+interface OutputterReferer {
+  card: StyleCard;
+  family: "style" | "script";
+}
+
+async function outputterReferers(
+  ctx: StyleAssetEventContext,
+  card: StyleCard,
+): Promise<readonly OutputterReferer[]> {
+  const out: { card: StyleCard; family: "style" | "script" }[] = [];
+  for (const referer of await referringCards(ctx, card)) {
+    if (await isStyleOutputter(ctx, referer)) out.push({ card: referer, family: "style" });
+    else if (await isScriptOutputter(ctx, referer)) out.push({ card: referer, family: "script" });
+  }
+  return out;
+}
+
+/** The cards that refer to this one, in reference order. */
+async function referringCards(ctx: StyleAssetEventContext, card: StyleCard): Promise<StyleCard[]> {
   const referers = (
     await ctx.fetch.driver.query<{ referer_id: number }>(
       "SELECT DISTINCT referer_id FROM card_references WHERE referee_id = ? ORDER BY referer_id",
       [card.id],
     )
   ).rows.map((r) => Number(r.referer_id));
-  const referringCards = (await Promise.all(referers.map((id) => cardById(ctx, id)))).filter(
+  return (await Promise.all(referers.map((id) => cardById(ctx, id)))).filter(
     (c): c is StyleCard => c !== undefined,
   );
-  for (const referer of referringCards) {
-    if (await isInputter(ctx, referer)) await updateAssetInput(ctx, referer, stale, visited);
-  }
-  for (const referer of referringCards) {
-    if (await isStyleOutputter(ctx, referer)) await updateAssetOutput(ctx, referer, stale, "style");
-    if (await isScriptOutputter(ctx, referer)) await updateAssetOutput(ctx, referer, stale, "script");
-  }
+}
+
+/** Card::Assets.active_theme_cards (card-mod-assets lib/card/assets.rb:43-48):
+ *  `Card.search(referred_to_by: {left: {type: :set}, right: :style})` — the
+ *  cards the deck's `<set>+*style` rules refer to, i.e. the items listed in
+ *  their content (`*all+*style` lists its theme, `yeti skin`) — filtered to
+ *  the ones that answer `theme_name`, which only the Bootswatch skin type
+ *  does (card-mod-bootstrap set/type/bootswatch_skin.rb:61). */
+async function activeThemeCards(ctx: StyleAssetEventContext): Promise<StyleCard[]> {
+  const rule = await cardByName(ctx, "*all+*style");
+  if (rule === undefined) return [];
+  const items = (
+    await Promise.all(rawItemStrings(rule.dbContent).map((name) => cardByName(ctx, name)))
+  ).filter((c): c is StyleCard => c !== undefined);
+  return items.filter((c) => c.typeCode === "bootswatch_skin");
 }
 
 /** The script side's assembled input for an inputter card: a mod script
@@ -350,14 +445,20 @@ export async function assertStyleCompilerFor(
   name: DeckoName,
   typeId: number | undefined,
 ): Promise<void> {
-  if (ctx.compile !== undefined && ctx.compileCoffee !== undefined) return;
-  let missing: "SCSS" | "CoffeeScript" | undefined;
+  // A deck running compress_assets minifies every script leaf, so a script
+  // save needs the compressor as well as (for CoffeeScript) the compiler.
+  const compressorMissing = ctx.compressAssets === true && ctx.compressScript === undefined;
+  if (ctx.compile !== undefined && ctx.compileCoffee !== undefined && !compressorMissing) return;
+  let missing: "SCSS" | "CoffeeScript" | "script compressor" | undefined;
   const typeCode = await codenameOf(ctx, typeId);
   if (typeCode !== undefined && STYLE_INPUTTER_TYPES.has(typeCode) && ctx.compile === undefined) missing = "SCSS";
-  // a JavaScript card's input is its raw content — only a CoffeeScript card
-  // compiles
+  // a JavaScript card's input is its content (minified under
+  // compress_assets) — only a CoffeeScript card compiles
   if (typeCode === "coffee_script" && ctx.compileCoffee === undefined) {
     missing ??= "CoffeeScript";
+  }
+  if ((typeCode === "coffee_script" || typeCode === "java_script") && compressorMissing) {
+    missing ??= "script compressor";
   }
   if (!missing && name.isCompound && name.rightName !== undefined && name.leftName !== undefined) {
     const right = await ctx.fetch.fetchByKey(name.rightName.key);
@@ -372,19 +473,90 @@ export async function assertStyleCompilerFor(
       missing = "SCSS";
     } else if (rightCode === "script" && leftIsSet && ctx.compileCoffee === undefined) {
       missing = "CoffeeScript";
+    } else if (rightCode === "script" && leftIsSet && compressorMissing) {
+      missing = "script compressor";
     }
   }
   if (missing !== undefined) {
     // The refusal the edge hosts' gate pins (write-routes-compiler-dispatch):
     // a host without a compiler rejects the save as invalid FOR THIS HOST —
     // a user-error-shaped 422 with the named option, not a server fault.
+    const what =
+      missing === "script compressor"
+        ? "script compressor configured (the scriptCompressor engine option, needed under compressAssets)"
+        : `${missing} compiler configured (the ${missing === "SCSS" ? "scssCompiler" : "coffeeCompiler"} engine option)`;
     throw new CardActionError(
       "user-error",
-      `${name.s}: saving it rebuilds asset files, and this host has no ${missing} compiler configured (the ${
-        missing === "SCSS" ? "scssCompiler" : "coffeeCompiler"
-      } engine option)`,
+      `${name.s}: saving it rebuilds asset files, and this host has no ${what}`,
     );
   }
+}
+
+/** The inputter a page render reads that no standard walk reaches: the
+ *  `style: mods` self card (head.rb:62 nests it). Ruby never refreshes it on
+ *  the request directly; its input is re-stored by the cascade from the mods
+ *  (update_referers_after_input_changed, asset_inputter.rb:29-33 — the
+ *  dependent_asset_inputters of a mod are the referers that respond to
+ *  asset_input, and style: mods is one). The entry only matters on a deck
+ *  whose `style: mods` input is missing and no mod refresh reaches it. */
+const READ_ASSET_INPUT_NAMES: readonly string[] = ["style: mods"];
+
+/** The read-path asset-input refresh: Card::Assets.refresh, which every
+ *  request of an eager deck runs at setup (card-mod-assets lib/card/assets.rb:
+ *  13-28; decko lib/card_controller/rest.rb:32). Each standard inputter (the
+ *  `mod: X+*style` and `mod: X+*script` cards, assets.rb:62-67) whose input
+ *  needs a refresh (asset_input_needs_refresh?, mod_assets.rb:134-135) runs
+ *  update_asset_input as the bot (asset_inputter.rb:37-39): it re-stores its
+ *  input, then update_referers_after_input_changed re-stores every dependent
+ *  inputter and every outputter's bundle file. That cascade is what writes
+ *  the .css and .js bundles of a deck's first request.
+ *
+ *  The gate is the source stamp: a row older than STYLE_SOURCES_MTIME (or
+ *  missing) needs one refresh, and a refresh stamps its row no earlier than
+ *  that stamp, so the next request does not repeat the walk. Ruby's gate is
+ *  the mtime of each mod's source files against the row's updated_at; see
+ *  style-sources.ts.
+ *
+ *  Cost on a settled deck: one row read per standard inputter and nothing
+ *  else. A refresh pays one assembly, one store per dependent, and one bundle
+ *  store per outputter it reaches, once per source change.
+ */
+export async function refreshReadAssetInputs(ctx: StyleAssetEventContext): Promise<void> {
+  for (const card of await standardInputtersNeedingRefresh(ctx)) {
+    await updateAssetInput(ctx, card, new Map(), new Set());
+  }
+  for (const name of READ_ASSET_INPUT_NAMES) {
+    const card = await cardByName(ctx, name);
+    if (card === undefined || !(await inputNeedsRefresh(ctx, card))) continue;
+    await updateAssetInput(ctx, card, new Map(), new Set());
+  }
+}
+
+/** Card::Assets.standard_inputters (card-mod-assets lib/card/assets.rb:62-67),
+ *  `Card.search left: {type: :mod}, right_id: [StyleID, ScriptID]`, narrowed
+ *  to the ones whose input needs a refresh (asset_input_needs_refresh?,
+ *  mod_assets.rb:134-135): one statement over every mod style and script
+ *  card, joined to its `+*asset input` row by where_card's keys (virtual.rb:
+ *  64-72, right_id = *asset input, left_id = the inputter). A row that is
+ *  missing, or stamped before the sources, needs the refresh. A settled deck
+ *  therefore pays this one read per request and loads no card. */
+async function standardInputtersNeedingRefresh(ctx: StyleAssetEventContext): Promise<StyleCard[]> {
+  const modTypeId = await ctx.fetch.codenames.id("mod");
+  const inputRightId = await ctx.fetch.codenames.id("asset_input");
+  if (modTypeId === undefined || inputRightId === undefined) return [];
+  const rows = (
+    await ctx.fetch.driver.query<{ id: number }>(
+      "SELECT c.id AS id FROM cards c " +
+        "JOIN cards l ON l.id = c.left_id JOIN cards r ON r.id = c.right_id " +
+        "LEFT JOIN card_virtuals v ON v.right_id = ? AND v.left_id = c.id " +
+        "WHERE c.trash = 0 AND l.type_id = ? AND r.codename IN ('style', 'script') " +
+        "AND (v.id IS NULL OR v.updated_at IS NULL OR v.updated_at < ?) ORDER BY c.id",
+      [inputRightId, modTypeId, sqlDateTime(STYLE_SOURCES_MTIME)],
+    )
+  ).rows;
+  return (await Promise.all(rows.map((r) => cardById(ctx, Number(r.id))))).filter(
+    (c): c is StyleCard => c !== undefined,
+  );
 }
 
 /** The finalize-stage asset events for the cards an act saved, and the

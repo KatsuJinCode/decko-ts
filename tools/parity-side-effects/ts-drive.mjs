@@ -59,8 +59,17 @@ const { LocalAttachmentStore } = await import(dist("card/attachments/attachment-
 const { CaptureTransport } = await import(dist("card/notify/transport.js"));
 const { DeckoName } = await import(dist("card/name.js"));
 const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import(dist("card/session/visitor-session.js"));
+// A GET renders the page (ruby drive.rb renders the card for every read;
+// a 200 with an empty body compared nothing). The render engine reads through
+// the same driver and attachment store the writes use, so a page that builds
+// and stores its asset inputs writes through them exactly as Ruby does.
+const { defaultDeckLoader } = await import(dist("card/mod-loader/default-mod-deck.js"));
+const { RenderEngine } = await import(dist("card/render.js"));
+const { CardActionEngine } = await import(dist("card/actions/card-action-engine.js"));
+const { renderPageBytes } = await import(dist("card/render/page.js"));
 const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
 const { coffeeNpmCompiler } = await import(dist("server/coffee-npm-compiler.js"));
+const { uglifyHarmonyCompile } = await import(dist("card/assets/uglify-harmony-compile-engine.js"));
 
 const SASSC = process.env.PARITY_SASSC ??
   join(here, "..", "libsass", "build", process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin");
@@ -70,6 +79,12 @@ if (!existsSync(SASSC)) {
 }
 const scssCompiler = libsassProcessCompiler(SASSC);
 const coffeeCompiler = coffeeNpmCompiler();
+// The deployed asset configuration the Ruby trace is recorded under
+// (drive.rb boots RAILS_ENV=production and records it): compress_assets true
+// (card-1.110.0 lib/cardio/railtie.rb:35), every script leaf minified by
+// Uglifier(harmony), the same vendored engine here.
+const compressAssets = true;
+const scriptCompressor = uglifyHarmonyCompile;
 
 const START = process.argv[2];
 const WORK = process.argv[3];
@@ -83,6 +98,16 @@ mkdirSync(FILES, { recursive: true });
 applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 const driver = new LocalSqliteDriver({ path: DB, readonly: false });
 try { registerSqliteRegexpFunction(driver); } catch { /* already registered */ }
+// PARITY_TIMING=1: count the statements each GET runs against the driver and
+// report them with its wall time on stderr (the trace on stdout is unchanged).
+let statementCount = 0;
+if (process.env.PARITY_TIMING === "1") {
+  const query = driver.query.bind(driver);
+  driver.query = (...args) => {
+    statementCount += 1;
+    return query(...args);
+  };
+}
 
 // The port's own session table (db/migrations/001-auth-sessions.sql) is not
 // in the Ruby schema; apply its DDL to the local copy.
@@ -95,6 +120,17 @@ await driver.query(
 await driver.query(
   `CREATE INDEX IF NOT EXISTS "index_auth_sessions_on_account_card_id"
      ON "auth_sessions" ("account_card_id")`, []);
+// Same for the render engine's committed-write stamp (db/schema.sqlite.sql
+// deck_data_version, the ENGINE-FRESHNESS table): a Ruby-built deck has no
+// such table, and the render path reads it once per request. One row at
+// version 0 — the fixture's own data is already what it is; no write here
+// bumps it, and the after-triggers that bump it on INSERT/UPDATE of cards
+// and card_references are the port's schema, not this copy's.
+await driver.query(
+  `CREATE TABLE IF NOT EXISTS "deck_data_version" (
+     "id"      INTEGER PRIMARY KEY CHECK ("id" = 1),
+     "version" INTEGER NOT NULL DEFAULT 0)`, []);
+await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
 
 // The freshness stamp (db/schema.sqlite.sql:305-309, [ENGINE-FRESHNESS]) is
 // also not in the Ruby-built fixture deck: Ruby has no such table, and the
@@ -113,6 +149,41 @@ const fetcher = new FetchEngine(driver);
 const sessions = new SessionStore({ driver });
 const attachmentStore = new LocalAttachmentStore(FILES);
 const transport = new CaptureTransport();
+// The render engine, for GETs. defaultDeckLoader() must run BEFORE the first
+// RenderEngine is constructed: the constructor reads the process-wide default
+// loader (the harness adapter's note, reference-harness/adapters/ts/adapter.ts:108-124).
+defaultDeckLoader();
+const renderEngine = new RenderEngine(fetcher);
+// The read path's asset refresh, as Ruby's request setup runs it
+// (CardController::Rest#setup). It acts as the deck bot, like the server's
+// engine does, so it takes no session actor.
+const readEngine = new CardActionEngine(fetcher, {
+  actor: null,
+  // Ruby's clock is the wall clock: each bundle it stores on this request is
+  // named by the second it was written, so writes one after another get
+  // distinct names. The read path advances the step clock per read, which
+  // keeps the names distinct within the request and clear of the next step's.
+  // requestClock is declared below; read it at call time.
+  now: () => {
+    stepSeconds += 1;
+    return requestClock();
+  },
+  ipAddress: "127.0.0.1",
+  attachmentStore,
+  scssCompiler,
+  coffeeCompiler,
+  compressAssets,
+  scriptCompressor,
+});
+// A deployed Decko runs :cautious (card-1.110.0 lib/cardio/railtie.rb:34).
+const { createReadAssetRefresh } = await import(dist("card/actions/asset-read-refresh.js"));
+const readAssetRefresh = createReadAssetRefresh({
+  mode: "cautious",
+  sharedCache: true,
+  refresh: () => readEngine.refreshReadAssetInputs(),
+});
+renderEngine.renderAbsentCards = true;
+
 
 // The preview_editor render seam (card-mod-carrierwave set/type/file.rb:127-129
 // `view :preview_editor, unknown: true, cache: :never`). The two-step upload's
@@ -315,18 +386,39 @@ let lastRevId = null;
 let mailConsumed = 0;
 let events = [];
 
-// A GET is answered from the fetch layer (no render surface in process):
-// 200 when the card resolves, 404 when it does not. A page view of a known
-// card joins the visitor's location history through the port's page-view
-// hook, as the host's page route records it.
+// A GET RENDERS the page through the engine (ruby drive.rb renders the card
+// for every read; a 200 with an empty body compared nothing). A page view of
+// a known card joins the visitor's location history through the port's
+// page-view hook, as the host's page route records it.
+//
+// The read path is also where Ruby's lazy asset-input refresh runs: a page
+// render reaches style: mods (head.rb:62), and reading an inputter whose
+// `+*asset input` is blank builds and stores it (asset_inputter.rb:44-49).
+// refreshReadAssetInputs is that arm; it is a no-op once the inputs exist.
 async function read(path) {
+  const t0 = performance.now();
+  const s0 = statementCount;
+  const reply = await readPage(path);
+  if (process.env.PARITY_TIMING === "1") {
+    console.error(`GET ${path} status ${reply.status} statements ${statementCount - s0} ms ${(performance.now() - t0).toFixed(1)}`);
+  }
+  return reply;
+}
+
+async function readPage(path) {
   const json = /\.json$/i.test(path);
   const mark = decodeURIComponent(path.replace(/^\//, "")).replace(/\.json$/i, "").replace(/_/g, " ");
   const rec = mark === "" ? { trash: false, codename: "home" } : await fetcher.fetchByKey(DeckoName.parse(mark).key);
   const known = rec !== undefined && !rec.trash;
   storeCookie(pageViewCookie(cookieHeader(), `http://127.0.0.1${path.replace(/ /g, "%20")}`,
     { known, html: !json, ajax: false, codename: rec?.codename ?? null }));
-  return { status: known ? 200 : 404, headers: {}, body: "" };
+  if (!known) return { status: 404, headers: {}, body: "" };
+  const cardName = mark === "" ? "Home" : mark;
+  // The host's read-time refresh (the same factory the Node staging host
+  // runs before every page render, vm-staging-server.mjs), not a direct call.
+  await readAssetRefresh.beforeRead({ explicitFile: false });
+  const body = await renderPageBytes(renderEngine, cardName);
+  return { status: 200, headers: {}, body };
 }
 
 // preview_editor html for the two-step upload's first step (the seam the
@@ -375,7 +467,7 @@ async function call(method, path, params) {
   if (c) headers.cookie = c;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, accountMail, notifyTransport: transport,
+      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, compressAssets, scriptCompressor, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
       renderPreviewEditor: (input) => renderPreviewEditor(input),
     },

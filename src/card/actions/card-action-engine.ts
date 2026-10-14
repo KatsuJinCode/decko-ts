@@ -154,12 +154,15 @@ import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attac
 import { supportsTransactions } from "../../server/driver.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
 import { encryptPassword, planAccountFields } from "../auth/account-fields.js";
+import { actorBot } from "../auth/actor.js";
 import { runObserverEvents } from "../notify/observer.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
+import type { ScriptCompressor } from "../assets/script-compressor.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
+  refreshReadAssetInputs,
   runStyleAssetEvents,
   type SavedCard,
   type StyleAssetEventContext,
@@ -335,6 +338,16 @@ export interface CardActionEngineOptions {
    *  (assets/coffee-compiler.ts). Absent = a save that needs a compile is
    *  refused with a named error. */
   coffeeCompiler?: CoffeeCompiler;
+  /** Cardio.config.compress_assets (card-mod-script 00_script.rb compress?):
+   *  true minifies every script leaf of the asset inputs and outputs through
+   *  scriptCompressor, as a deployed site does (the railtie default,
+   *  card-1.110.0 lib/cardio/railtie.rb:35). Absent = false, the development
+   *  environment's value (config/environments/development.rb:11). */
+  compressAssets?: boolean;
+  /** The Uglifier seam for compressAssets (assets/script-compressor.ts). With
+   *  compressAssets and no compressor, a save that rebuilds a script asset is
+   *  refused with a named error. */
+  scriptCompressor?: ScriptCompressor;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default, the oracle deck's
    *  config_file_storage_default). Shapes validate_file_exist's web? arm:
@@ -453,6 +466,8 @@ export class CardActionEngine {
   private readonly codedAttachmentStore: AttachmentStore | undefined;
   private readonly scssCompiler: ScssCompiler | undefined;
   private readonly coffeeCompiler: CoffeeCompiler | undefined;
+  private readonly compressAssets: boolean;
+  private readonly scriptCompressor: ScriptCompressor | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
   private readonly virtualCache = new VirtualRecordCache();
   /** The deck's file_storage config port (CardActionEngineOptions.
@@ -502,6 +517,8 @@ export class CardActionEngine {
     this.codedAttachmentStore = options.codedAttachmentStore;
     this.scssCompiler = options.scssCompiler;
     this.coffeeCompiler = options.coffeeCompiler;
+    this.compressAssets = options.compressAssets ?? false;
+    this.scriptCompressor = options.scriptCompressor;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
@@ -3404,6 +3421,17 @@ export class CardActionEngine {
     return out;
   }
 
+  /** The read path's asset-input refresh (Card::Assets.refresh, card-mod-assets
+   *  lib/card/assets.rb:13-28, run on every request by CardController::Rest#setup,
+   *  decko lib/card_controller/rest.rb:32). The writes it makes are the decko
+   *  bot's: update_asset_input runs `Card::Auth.as_bot` (asset_inputter.rb:37-39),
+   *  so the acting id is the bot's, whatever the request's session. A deck whose
+   *  inputs are present pays the reads and nothing else. */
+  async refreshReadAssetInputs(): Promise<void> {
+    const bot = await actorBot(this.fetch.driver);
+    await refreshReadAssetInputs(this.styleAssetContext(bot.id));
+  }
+
   /** What the style asset events borrow from this engine. */
   private styleAssetContext(actingId: number | undefined): StyleAssetEventContext {
     return {
@@ -3414,6 +3442,8 @@ export class CardActionEngine {
       attachmentStore: this.attachmentStore,
       compile: this.scssCompiler,
       compileCoffee: this.coffeeCompiler,
+      compressAssets: this.compressAssets,
+      compressScript: this.scriptCompressor,
       virtuals: this.virtualCache,
     };
   }

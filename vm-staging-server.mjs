@@ -156,6 +156,7 @@ import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/pa
 // Uglifier(harmony) compression (see
 // src/card/assets/compiled-script-bundle.ts).
 import { compileScriptBundle } from "./dist/src/card/assets/compiled-script-bundle.js";
+import { uglifyHarmonyCompile } from "./dist/src/card/assets/uglify-harmony-compile-engine.js";
 // The deck-boot seam (default-mod-deck.ts): loads the composed 31-mod deck
 // and binds the process-wide defaults (mod view configs, content-override
 // registry, event registry) — the port of Ruby's one-time boot wiring
@@ -192,6 +193,8 @@ import { recaptchaConfigFromHostEnv } from "./dist/src/server/staging-server-rec
 // Card.paths["files"] port (card-mod-carrierwave paths.rb:14-17) — and
 // serve through the local fallback in handleAssetFile below.
 import { LocalAttachmentStore } from "./dist/src/card/attachments/attachment-store.js";
+import { CardActionEngine } from "./dist/src/card/actions/card-action-engine.js";
+import { createReadAssetRefresh } from "./dist/src/card/actions/asset-read-refresh.js";
 import { libsassProcessCompiler } from "./dist/src/server/libsass-process.js";
 import { coffeeNpmCompiler } from "./dist/src/server/coffee-npm-compiler.js";
 import { expireRenderCachesAfterSave } from "./dist/src/server/post-save-cache-expiry.js";
@@ -558,6 +561,34 @@ const scssCompiler =
 // the compiler the Ruby app's coffee-script-source gem bundles. This host is a
 // Node host, so it always has it.
 const coffeeCompiler = coffeeNpmCompiler();
+// Cardio.config.compress_assets: a deployed site runs it true (card-1.110.0
+// lib/cardio/railtie.rb:35), so the script asset inputs and bundles this host
+// stores are minified by Uglifier(harmony), the vendored engine the uglifier
+// gem runs (card-mod-script set/abstract/00_script.rb:18-27).
+// DECKO_COMPRESS_ASSETS=false mirrors a deck configured with it off (the
+// development environment's value).
+const compressAssets = process.env.DECKO_COMPRESS_ASSETS !== "false";
+const scriptCompressor = uglifyHarmonyCompile;
+// Ruby's read-time asset refresh (CardController::Rest#setup runs
+// Card::Assets.refresh before a card request renders; a deployed site runs it
+// :cautious, card-1.110.0 lib/cardio/railtie.rb:34). The refresh stores the
+// asset inputs and bundles, so it runs only on a write-armed boot, the only
+// boot whose store accepts those writes. It acts as the deck bot, so no
+// session actor is involved.
+const assetReadRefresh = createReadAssetRefresh({
+  mode: "cautious",
+  sharedCache: true,
+  refresh: () =>
+    new CardActionEngine(fetcher, {
+      actor: null,
+      ipAddress: "127.0.0.1",
+      attachmentStore,
+      scssCompiler,
+      coffeeCompiler,
+      compressAssets,
+      scriptCompressor,
+    }).refreshReadAssetInputs(),
+});
 // The recaptcha guard's host config, read ONCE at
 // boot from the environment (DECKO_RECAPTCHA_SITE_KEY / _SECRET_KEY, plus
 // optional _MINIMUM_SCORE / _VERIFY_URL — see the env-config module header).
@@ -3430,6 +3461,8 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       followMail: followMailContext,
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
+      compressAssets,
+      scriptCompressor,
       // The recaptcha seat, composed only when the
       // boot-time env read produced a config — the conditional spread keeps
       // the unarmed context byte-identical (the seat's own discipline,
@@ -3717,6 +3750,14 @@ const server = http.createServer(async (req, res) => {
   // expired, revoked, dead account card — renders as Anonymous
   // (auth/current.rb:58-63, never an error and never a half-privileged
   // state). lookupSession is one indexed SELECT and never throws.
+  // Ruby's request setup refreshes the asset inputs before a card request
+  // renders (CardController::Rest#setup, decko-0.20.0 lib/card_controller/rest.rb:33).
+  // Staging-internal endpoints (/_...) and asset files (/files/...) are not
+  // card requests, and a read-only boot cannot store the refresh's writes.
+  if (req.method === "GET" && writePathEnabled() && !pathname.startsWith("/_") && !pathname.startsWith("/files/")) {
+    await assetReadRefresh.beforeRead({ explicitFile: false });
+  }
+
   let actor = null;
   if (req.method === "GET") {
     const sessionToken = readSessionCookie(req.headers.cookie);

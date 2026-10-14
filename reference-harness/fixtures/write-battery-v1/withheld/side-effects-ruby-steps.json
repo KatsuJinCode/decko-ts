@@ -1,7 +1,12 @@
 {
-  "comment": "WITHHELD UNTIL DISCLOSURE. Ruby oracle recordings of scenario-battery steps withheld from the public list (tools/parity-side-effects/withheld/scenarios.json), cut from expected/side-effects-ruby.json. Each entry is in the trace format of that file and was recorded at the position its step's publicPosition names. A release package excludes this directory.",
+  "comment": "WITHHELD UNTIL DISCLOSURE. Ruby oracle recordings of scenario-battery steps withheld from the public list (tools/parity-side-effects/withheld/scenarios.json). Each entry is in the trace format of expected/side-effects-ruby.json and was cut from a recording of the full list, the public steps with each withheld step at the position its publicPosition names, made under the same production environment as that file (environment below). The 2026-10-14 production recording of anon-update-skin-colors is identical, field for field, to the earlier development-environment one. A release package excludes this directory.",
   "engine": "ruby-decko",
   "version": "1.110.0",
+  "environment": {
+    "rails_env": "production",
+    "asset_refresh": "cautious",
+    "compress_assets": true
+  },
   "steps": [
     {
       "step": "anon-update-skin-colors",

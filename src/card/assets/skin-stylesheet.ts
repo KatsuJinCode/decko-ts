@@ -45,8 +45,15 @@
 import { DeckoName } from "../name.js";
 import { rawItemStrings } from "../render/pointer-list.js";
 import { bootstrapCoreScss, bootstrapFunctionsScss } from "../render/bootstrap-code-files.js";
-import { bootswatchThemeFile, modStyleFileContent, modStyleFiles } from "./style-sources.js";
+import {
+  bootswatchThemeFile,
+  modStyleFileContent,
+  modStyleFiles,
+  modStyleGroups,
+  type ModStyleGroup,
+} from "./style-sources.js";
 import type { CoffeeCompiler } from "./coffee-compiler.js";
+import type { ScriptCompressor } from "./script-compressor.js";
 import type { ScssCompiler } from "./scss-compiler.js";
 
 /** A card as the asset events read it. */
@@ -70,6 +77,11 @@ export interface StyleAssetDeps {
   compile: ScssCompiler | undefined;
   /** The CoffeeScript seam (the script asset types, site-script.ts). */
   compileCoffee?: CoffeeCompiler | undefined;
+  /** Cardio.config.compress_assets (00_script.rb compress?): true minifies
+   *  every script leaf through compressScript. Absent = false. */
+  compressAssets?: boolean;
+  /** The Uglifier seam (script-compressor.ts), used when compressAssets. */
+  compressScript?: ScriptCompressor | undefined;
   /** Pre-act contents of the cards updated in the current act, by key. */
   staleContent?: ReadonlyMap<string, string>;
   /** Env relative_url_root ("" for a deck served at the site root). */
@@ -193,6 +205,85 @@ async function loadContent(deps: StyleAssetDeps, cards: ReadonlyArray<StyleCard 
 }
 
 // ---------------------------------------------------------------------------
+// the `style: mods` core view
+// ---------------------------------------------------------------------------
+
+/** `style: mods` as `assemble_asset_input_content` renders it
+ *  (asset_inputter.rb:51-53 `format(input_format).render input_view`,
+ *  input_view :core): the VIEW TREE, not the flat recursed-item walk
+ *  load_content uses. Three joins, and no two of them are the same:
+ *
+ *   - `style: mods` (type List) and each `mod: X+*style` card both include
+ *     Abstract::List (card-mod-style set/self/style_mods.rb:1,
+ *     set/type_plus_right/mod/style.rb:4-5 -> ModAssets mod_assets.rb:2
+ *     `include_set Abstract::List`), whose BASE-format core view wins:
+ *     card-mod-list set/abstract/01_list/other_views.rb:8-10
+ *     `view :core { pointer_items.join ", " }`.
+ *   - the items of a `view :core` list are nested at the format's implicit
+ *     item view (item.rb:120-125 `options[:view] ||= implicit_item_view`,
+ *     item.rb:130-133 `voo_items_view || default_item_view`), which for
+ *     these cards is :content (other_views.rb:68-70
+ *     `def default_item_view; :content; end`) — so each `mod: X+*style`
+ *     card renders OTHER_views.rb:76-78
+ *     `view :content { nest_item_array.join "\n\n" }`, and its items (the
+ *     `+group:` cards) are nested at :core (card-mod-layout
+ *     set/abstract/items.rb:7-12).
+ *   - a `+group:` card's :core is card-mod-style
+ *     set/abstract/style_group.rb:9-15 `item_cards.compact.map { _render_core
+ *     }.join "\n"`, and a file card's `_render_core` is scss :core
+ *     (card-mod-style set/abstract/02_scss.rb:20-22 `process_content
+ *     _render_raw`), so its link chunks are rendered — the same
+ *     process_content the `scss`/`css` type branches above apply.
+ *
+ * The seams are bytes: `mod: bootstrap+*style` has three groups, and reads
+ * with two "\n\n" where the flat walk gave two "\n". */
+async function styleModsCore(deps: StyleAssetDeps, card: StyleCard): Promise<string> {
+  const items: string[] = [];
+  for (const item of rawItemStrings(contentOf(deps, card))) {
+    if (item === "") continue;
+    const modCard = await deps.card(item);
+    if (modCard === undefined) {
+      items.push(""); // a new card: renders nothing
+      continue;
+    }
+    // A mod is nested at :content here (style: mods' default item view is
+    // :content, card-mod-list other_views.rb:68-70), whose join is "\n\n".
+    items.push(await modStyleGroupsJoined(deps, modCard, "\n\n"));
+  }
+  return items.join(", ");
+}
+
+/** A `mod: X+*style` card's own :core: its groups' cores joined with ", "
+ *  (card-mod-list other_views.rb:8-10, the List core the mod card includes),
+ *  each group a "\n"-joined run of its file cards (style_group.rb:9-15). The
+ *  same card nested at :content, as style: mods nests it, joins with "\n\n".
+ *  This is the mod's own asset input (asset_inputter.rb:51-53). */
+async function modStyleCore(deps: StyleAssetDeps, modStyleCard: StyleCard): Promise<string> {
+  const groups = modStyleGroups(await modNameOf(deps, modStyleCard)) ?? [];
+  return groups.map((group) => groupContent(deps, group)).join(", ");
+}
+
+async function modStyleGroupsJoined(deps: StyleAssetDeps, modCard: StyleCard, join: string): Promise<string> {
+  const groups = modStyleGroups(await modNameOf(deps, modCard)) ?? [];
+  return groups.map((group) => groupContent(deps, group)).join(join);
+}
+
+/** A `+group:` card's core: its file cards' cores joined "\n"
+ *  (card-mod-style set/abstract/style_group.rb:9-15). */
+function groupContent(deps: StyleAssetDeps, group: ModStyleGroup): string {
+  return group.files.map((f) => renderStyleChunks(modStyleFileContent(f), deps.relativeRoot)).join("\n");
+}
+
+/** Whether a card is a `mod: X+*style` rule: its name is "<mod>+*style" and
+ *  its left is a mod card (card-mod-style type_plus_right/mod/style.rb). */
+async function isModStyleCard(deps: StyleAssetDeps, card: StyleCard): Promise<boolean> {
+  if (!card.name.endsWith("+*style")) return false;
+  const left = DeckoName.parse(card.name).leftName;
+  if (left === undefined) return false;
+  return (await deps.card(left.s))?.codename?.startsWith("mod_") === true;
+}
+
+// ---------------------------------------------------------------------------
 // the Bootswatch skin
 // ---------------------------------------------------------------------------
 
@@ -295,9 +386,33 @@ export async function assembleStyleInput(
       }
       return parts.join("\n");
     }
+    case "list": {
+      // The `style: mods` self card (card-mod-style set/self/style_mods.rb:1,
+      // `include_set Abstract::AssetInputter, input_format: :scss`) and a
+      // `<set>+*style` rule (type_plus_right/set/style.rb) are List-typed
+      // inputters, so they miss the type switch above. `style: mods` renders
+      // through its core view (styleModsCore); a `<set>+*style` rule's items
+      // are style-type cards, not mods, so it takes the recursed-item walk
+      // the bootswatch branch uses.
+      if (card.codename === "style_mods") return styleModsCore(deps, card);
+      if (await isModStyleCard(deps, card)) return modStyleCore(deps, card);
+      if (isStyleRule(card)) {
+        const parts: string[] = [];
+        await leafContents(deps, card, parts, new Set());
+        return parts.join("\n");
+      }
+      return undefined;
+    }
     default:
       return undefined;
   }
+}
+
+/** A `<set>+*style` rule: a set card whose right is the `*style` setting
+ *  (the card type_plus_right/set/style.rb describes). Its type is List, so
+ *  the type switch cannot see it. */
+function isStyleRule(card: StyleCard): boolean {
+  return card.rightId !== undefined && card.rightId !== null;
 }
 
 /** `asset_input` (the `+*asset input` card's content): the stored input, or

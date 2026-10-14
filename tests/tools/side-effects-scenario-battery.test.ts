@@ -22,12 +22,28 @@
 // in the withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
 // from every release package) and are announced on stderr when they are not
 // run. On the clean synthetic deck the recorded verdicts are 83 pass +
-// 3 declared + 1 mismatched (87 steps), and the assertions below name every
+// 4 declared + 0 mismatched (87 steps), and the assertions below name every
 // one of them. The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list: re-recorded
 // when the public list changes, or, for a withheld step, cut from the
 // full-list recording with every public verdict unchanged; this suite pins the exact current
-// verdicts, so any engine change here fails loudly. Neither engine's
+// verdicts, so any engine change here fails loudly.
+//
+// THE RECORDING'S ENVIRONMENT. ruby/drive.rb boots the oracle under
+// RAILS_ENV=production with the stock production configuration (the harness
+// arrangements in drive.rb keep files, mail and network local and touch no
+// rendering or asset setting): rescue_all_in_controller true and consider_all_requests_local
+// false (the public error page, no backtrace), asset_refresh :cautious
+// (card-1.110.0 lib/cardio/railtie.rb:34; the first request refreshes the
+// asset inputs and bundles) and compress_assets true (:35; every script leaf
+// minified by Uglifier, card-mod-script 00_script.rb:18-27). The trace records
+// those settings in its environment field and the assertions below check
+// them. ts-drive.mjs runs the port with the same configuration: the
+// :cautious refresh trigger and the vendored Uglifier engine
+// (src/card/assets/uglify-harmony-compile-engine.ts), so every stored script
+// bundle is compared byte for byte (by sha256) with Ruby's minified one.
+//
+// Neither engine's
 // behavior changes in this suite; the errors field is compared through
 // compare.mjs's own extractors, which must agree about what an error page
 // is (both engines render the same card-mod-format alert).
@@ -87,6 +103,7 @@ const CHILD_ENV = {
 
 interface Trace {
   engine: string;
+  environment?: { rails_env: string; asset_refresh: string; compress_assets: boolean };
   network_blocked: string[];
   steps: unknown[];
 }
@@ -192,7 +209,7 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 3 steps whose reference-deck pins hold are declared, and the 1 remaining mismatch is pinned step by step", () => {
+  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -231,6 +248,8 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
       blocked: [],
       steps: 87,
     });
+    // The deployed configuration the recording ran under (drive.rb).
+    expect(ruby.environment).toEqual({ rails_env: "production", asset_refresh: "cautious", compress_assets: true });
 
     // The withheld step set (tools/parity-side-effects/withheld/scenarios.json)
     // is NOT part of this public run and must be excluded from a release
@@ -251,37 +270,27 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     // Before the recording ran under production error handling this step
     // compared equal, because the developer page never ran that save.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
+    // get-home is declared on the script bundles' wall-clock names: Ruby
+    // names a history-less output by Time.now.to_i, and its 15 script writes
+    // share 12 names in one run, while the port's fixture clock gives each
+    // write its own name. The pin lists the exact `files` entries of both
+    // engines (scenarios.json, get-home).
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
       "admin-deny-signup",
+      "get-home",
       "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
       pass: 83,
-      deliberate: 3,
+      deliberate: 4,
       total: 87,
     });
 
     // Every mismatched step and the fields it differs on, pinned step by step.
-    // A change on either side fails here.
+    // A change on either side fails here. None remains on this deck.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
-    expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
-      // OUTSTANDING, not an accepted difference: the boot-time asset refresh
-      // Ruby runs per request (Card::Assets.refresh, card-mod-assets
-      // lib/card/assets.rb:19-26, from CardController::Rest#setup rest.rb:31-33).
-      // With asset_refresh :cautious it fires once per cache clear and writes
-      // the `+*asset input` virtual of every standard inputter whose source
-      // changed; `style: mods` is the one inputter on this deck with no seeded
-      // virtual row, so the first request creates it and, through
-      // update_referers_after_input_changed, re-stores the site stylesheet and
-      // script bundles. The port refreshes assets on save only, so a read
-      // stores nothing. Porting the cautious refresh is the fix. Two gaps
-      // feed it, and neither alone closes the step: the per-request
-      // trigger, and `style: mods` not being an inputter (it is the self
-      // card card-mod-style set/self/style_mods.rb:1, typed List, so the
-      // typeCode arm at style-asset-events.ts:191 misses it).
-      { step: "get-home", fields: ["files", "virtuals", "writes"] },
-    ]);
+    expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
 
     rmSync(work, { recursive: true, force: true });
   }, 900_000);
