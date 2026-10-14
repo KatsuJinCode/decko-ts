@@ -83,7 +83,7 @@
 import { str, type ViewResult } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
-import { scanNests, stripTags } from "../../render/nest-syntax.js";
+import { scanNests, stripTags, interpretEscapedLiteral } from "../../render/nest-syntax.js";
 import { highlight } from "../../render/code-highlighting/index.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import {
@@ -92,6 +92,7 @@ import {
 } from "../../render/text-helpers.js";
 import {
   UnsupportedViewError,
+  escapeLiteralForCard,
   wrappedTitleInner,
   type RenderCard,
   type RenderFormat,
@@ -672,6 +673,19 @@ function navbarItems(ctx: ViewContext, view: string, linkClass: string): string 
   const pieces = scanNests(ctx.fmt.card.dbContent);
   let out = "";
   for (const piece of pieces) {
+    if (piece.kind === "escaped") {
+      // The `case`'s else arm (navbar_links.rb:17-19) is `chunk.process_chunk`,
+      // and an EscapedLiteral's process_chunk reader IS its interpreted bytes
+      // (escaped_literal.rb:21-23) - so the region is inert here, exactly as
+      // the content pass treats it. It must NOT fall into the text arm below:
+      // chunk_list :references (chunk.rb:87) registers EscapedLiteral, so the
+      // parser never offers the raw `\[[x]]` to a Link chunk and it must not
+      // become a nav item.
+      out += interpretEscapedLiteral(piece.text, (literal) =>
+        escapeLiteralForCard(ctx.fmt.card, literal),
+      );
+      continue;
+    }
     if (piece.kind === "text" || piece.nest === undefined) {
       // text segments may still carry [[link]] chunks - walk them here
       out += linkChunksInText(ctx, piece.text, view, linkClass).join("");

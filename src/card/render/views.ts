@@ -59,6 +59,7 @@ import { pluralize } from "../name/inflect.js";
 import {
   UnsupportedViewError,
   RenderFormat,
+  escapeLiteralForCard,
   expandContentLinks,
   rubyChunkListForCardType,
   COMMON_SETTINGS,
@@ -94,7 +95,7 @@ import { dateError, parseRubyDateContent } from "./errors.js";
 import { buildVirtualRuleCard, ruleTypeIdForSetting } from "./virtual-rule-card.js";
 import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
 import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../auth/token.js";
-import { scanNests } from "./nest-syntax.js";
+import { scanNests, interpretEscapedLiteral } from "./nest-syntax.js";
 import { kramdownToStashedHtml } from "./kramdown.js";
 import { registerBuiltInContentOverride, resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
 import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mods/card-mod-date.js";
@@ -839,6 +840,23 @@ const textWithoutNestsView: ViewFn = ({ fmt }) => {
   let nestless = "";
   for (const piece of pieces) {
     if (piece.kind === "nest") continue; // strip_nests
+    if (piece.kind === "escaped") {
+      // strip_nests (content.rb:69-71) rejects Chunk::Nest ONLY, so an
+      // EscapedLiteral chunk survives it - and its `process_chunk` reader IS
+      // its rendered bytes (escaped_literal.rb:22 sets @process_chunk at
+      // construction), so `process_chunks` (content.rb:51) adds nothing and
+      // the chunk never reaches the Link expander: `\[[text]]` is inert here
+      // exactly as it is in the content pass. The escaped bytes then go
+      // through to_text (text.rb:4-6), whose strip_tags removes the
+      // HtmlFormat span, so `\{{Foo}}` reads back as `{{Foo}}` on an
+      // HtmlFormat card, and as `{{Foo}}` on a Markdown card too (identity
+      // escape_literal, nothing to strip). The escape is never read back as a
+      // backslash.
+      nestless += interpretEscapedLiteral(piece.text, (literal) =>
+        escapeLiteralForCard(fmt.card, literal),
+      );
+      continue;
+    }
     nestless += expandContentLinks(piece.text, fmt.engine);
   }
   return toText(nestless);

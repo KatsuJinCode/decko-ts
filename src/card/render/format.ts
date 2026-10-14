@@ -38,6 +38,7 @@ import type { CardRecord } from "../fetch/card-record.js";
 import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
 import {
   scanNests,
+  interpretEscapedLiteral,
   type ContentPiece,
   type NestOptions,
   type ParsedNest,
@@ -2960,27 +2961,32 @@ export class RenderFormat {
     let i = 0;
     while (i < pieces.length) {
       const piece = pieces[i]!;
+      if (piece.kind === "escaped") {
+        // Chunk::EscapedLiteral (card-mod-content
+        // lib/card/content/chunk/escaped_literal.rb): the backslash is the
+        // chunk's idx_char, so a `\{{` / `\[[` prefix claims the region
+        // BEFORE Chunk::Nest does and it never becomes a nest. The chunk's
+        // own bytes are its authored text with the escape consumed and the
+        // escaped character handed to the format's escape_literal - see
+        // interpretEscapedLiteral and escapeLiteralForCard.
+        //
+        // chunk.rb:84-88 registers EscapedLiteral in :default and :references
+        // only. A :nest_only card (JavaScript, CoffeeScript) never consults
+        // the class at all: the backslash is ordinary text and the braces
+        // behind it still chunk as a Nest (parser.rb:52-54 falls through one
+        // character at a time), so the region renders as the literal
+        // backslash plus whatever the nest resolves to.
+        out +=
+          list === "nest_only"
+            ? "\\" + this.processContent(piece.text.slice(1), list)
+            : interpretEscapedLiteral(piece.text, (literal) =>
+                escapeLiteralForCard(this.card, literal),
+              );
+        i += 1;
+        continue;
+      }
       if (piece.kind === "nest") {
-        if (out.endsWith("\\")) {
-          // Chunk::EscapedLiteral (card-mod-content
-          // chunk/escaped_literal.rb): a backslash immediately before the
-          // braces is the escape prefix (prefix_re \\(?:\[\[|\{\{; the
-          // backslash is an idx_char, so the chunk claims the region
-          // before Chunk::Nest ever sees it) - the braces render as the
-          // LITERAL {{...}} bytes, not a nest. interpret
-          // (escaped_literal.rb:22) replaces \X with
-          // format.escape_literal(X); the markdown format's escape_literal
-          // is the identity (markdown.rb:16-18, byte-identical to the base
-          // Format#escape_literal), so the backslash is consumed and the
-          // nest text passes through verbatim. The kramdown stash restores
-          // these bytes WITH the backslash (render/kramdown.ts
-          // kramdownToStashedHtml) exactly so this pass consumes it.
-          // Corpus oracle: *structure+*right+*guide content
-          // (expected-v2/view-surface shard-000032 row 38251) renders
-          // "icon ({{}})" - the braces survive, no blank-reference denial.
-          out = out.slice(0, -1);
-          out += piece.text;
-        } else if (piece.nest !== undefined) {
+        if (piece.nest !== undefined) {
           out += this.contentNest(piece);
         }
         i += 1;
@@ -5131,6 +5137,38 @@ export function rubyChunkListForCardType(
     default:
       return "default";
   }
+}
+
+/** Chunk::EscapedLiteral#interpret (card-mod-content
+ *  lib/card/content/chunk/escaped_literal.rb:21-23) renders the escaped
+ *  character through the card's Format#escape_literal, and Ruby's two
+ *  answers are NOT the same bytes:
+ *
+ *  - HtmlFormat#escape_literal (mod/format/lib/card/format/html_format.rb:
+ *    20-22) wraps it: `<span>{</span>`, so `\{{Foo}}` renders
+ *    `<span>{</span>{Foo}}` - the region is inert (no nest) and the brace is
+ *    visible, which is the whole point of writing a backslash. The gem's own
+ *    spec pins exactly this
+ *    (mod/content/spec/card/content/chunk/escaped_literal_spec.rb:4-12):
+ *    `render_content('write this: \{{cardname}}')` equals
+ *    `"write this: <span>{</span>{cardname}}"`, and the `[[` twin equals
+ *    `"write this: <span>[</span>[text]]"`.
+ *  - Type::Markdown::HtmlFormat#escape_literal
+ *    (mod/markdown/set/type/markdown.rb:16-18) is the identity, byte-identical
+ *    to the base Format#escape_literal (card/lib/card/format.rb:90-92), so
+ *    the backslash is consumed and the braces ride out as `{{Foo}}`.
+ *
+ *  `define_on_format` (card/lib/card/set/format.rb:118-131) puts each of
+ *  these on a set module (`Card::Set::Type::Markdown::HtmlFormat`), so the
+ *  answer is per-CARDTYPE - which is why the card's own typeName picks it,
+ *  the same test card-mod-markdown's :core view uses. */
+export function escapeLiteralForCard(
+  card: { typeName?: string },
+  literal: string,
+): string {
+  return card.typeName === "Markdown"
+    ? literal
+    : `<span>${literal}</span>`;
 }
 
 /** The codename resolver virtualSearchCqlFor takes, built on the engine's
