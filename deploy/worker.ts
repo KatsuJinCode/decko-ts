@@ -650,7 +650,6 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
       parse: { resolveCardId: deck.resolveCardId },
       alwaysOk: permission.alwaysOk,
       readRuleIds: permission.readRuleIds,
-      excludedRightIds: permission.excludedRightIds,
     });
     // THE SQL LEAVES. The 200 body is the result and the result ONLY. The
     // generator's statement text used to ride alongside it, which handed an

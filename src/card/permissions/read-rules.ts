@@ -118,14 +118,23 @@ export interface ReadPermissionState {
    *  ok_to_read? returns before the read_rules_hash lookup
    *  (set/all/permissions.rb:140). */
   readonly alwaysOk: boolean;
-  /** False when the deck has NO live read rule cards: Ruby decks bootstrap
-   *  *all+*read, so this only occurs in synthetic/rule-less seeds; there
-   *  the stored-id fallback is skipped (no rule can resolve anyway) and
-   *  cards read as allowed — the documented rule-less-seed divergence. */
+  /** False when the deck has NO live read rule cards. Ruby has no such
+   *  branch: on a deck with no read rule cards `read_rules_hash` is empty,
+   *  `permission_rule_id :read` resolves to nil, and
+   *  `Auth.as_card.read_rules_hash[nil]` is nil, so `ok_to_read?` denies
+   *  (permissions.rb:139-146). The flag exists only so the walk can skip
+   *  the queries it does not need: with no rule card in the deck, no
+   *  candidate can resolve, and the verdict is DENY without asking
+   *  (canReadByRuleLookupDepth). */
   readonly hasReadRules: boolean;
-  /** True only when the bootstrap *all+*read rule is among the deck's read
-   *  rules — the completeness proof for the live-walk fallback (a seed
-   *  without it is a fragment; see canReadByRuleLookup). */
+  /** True when the bootstrap *all+*read rule is among the deck's read
+   *  rules. Ruby never tests this: `permission_rule_id :read` walks the
+   *  candidate names and takes the first rule card that EXISTS, whether or
+   *  not a catch-all is present, so the walk runs on any deck carrying read
+   *  rules and the verdict is the membership check on whatever it resolves.
+   *  The flag is reported by the same gate statement and consumed only by
+   *  diagnostics and the CQL posture (RenderEngine#cqlPermissionOptions);
+   *  it does not gate the read verdict. */
   readonly hasCatchAllReadRule: boolean;
   /** The party ids the readable set was computed from. */
   readonly parties: number[];
@@ -170,8 +179,12 @@ export function permissionGateCountJsonArm(): string {
 /**
  * The permission statements, ready for a driver.batch fold.
  *
- * Statement 1 (parties): the codename cards the party math needs — the
- * port of the boot-time AnonymousID/AnyoneID constants
+ * Statement 1 (parties): the codename cards the party math needs, ordered by
+ * id so the party map is deterministic when a deck carries more than one row
+ * for a codename (a test seed layered over a bootstrap, or a replayed shard).
+ * Ruby's `const_get_or_set` yields the first card saved under a codename,
+ * which is the lowest id.
+ * The port of the boot-time AnonymousID/AnyoneID constants
  * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`),
  * plus the two codenames the signed-in path compares against
  * (administrator: the always_ok? role; decko_bot: the always_ok? actor —
@@ -196,7 +209,7 @@ export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
         `SELECT id, codename FROM cards WHERE codename IN ` +
         `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}', ` +
         `'${ADMINISTRATOR_CODENAME}', '${DECKOBOT_CODENAME}') ` +
-        `AND trash = 0`,
+        `AND trash = 0 ORDER BY id`,
       params: [],
     },
     {
@@ -326,9 +339,13 @@ export function readPermissionStateFromViewerResults(
     ? ((results[3]?.rows ?? []) as Array<{ roleId: number }>)
     : [];
 
+  // Statement 1 arrives ORDER BY id, so the FIRST row for a codename is the
+  // lowest id — which is the card Ruby's `const_get_or_set` would have
+  // returned (lib/card/codename.rb:108). First wins, later duplicates for
+  // the same codename are ignored rather than overwriting it.
   const byCodename = new Map<string, number>();
   for (const row of codenameRows) {
-    if (row.codename !== null) byCodename.set(row.codename, row.id);
+    if (row.codename !== null && !byCodename.has(row.codename)) byCodename.set(row.codename, row.id);
   }
   const anyone = byCodename.get(ANYONE_CODENAME);
   const anyoneSignedIn = byCodename.get(ANYONE_SIGNED_IN_CODENAME);
@@ -454,15 +471,16 @@ const LEFT_DELEGATION_MAX_DEPTH = 16;
  * (readableRuleIds.has(rule.id) — read_rules_hash[read_rule_id],
  * permissions.rb:143).
  *
- * Returns undefined when the deck carries NO read rule cards at all
- * (`hasReadRules: false`): every real deck bootstraps *all+*read
- * (card/auth/setup.rb:44), so this is the rule-less-seed case only, and
- * the caller treats it as ALLOWED. That is a deliberate divergence —
- * Ruby on a
- * rule-less deck denies; matching that would deny every card of every
- * rule-less test deck.
- * A COMPLETE deck's walk that resolves NO candidate returns false (fail
- * closed): see the tail.
+ * The rule-less deck DENIES, exactly as Ruby does. `ok_to_read?`
+ * (permissions.rb:139-146) has no allowance for a deck that carries no
+ * read rule card: `permission_rule_id :read` composes the candidate names
+ * and returns nil when none of them names a rule card in the deck, then
+ * `Auth.as_card.read_rules_hash[nil]` is nil and the check falls through
+ * to `deny_because you_cant "read this"`. The port answers the same way:
+ * no rule card in the deck means no candidate resolves, and an unresolved
+ * walk is a DENY (see the tail). The `hasReadRules` gate exists so the
+ * walk can skip queries it does not need — with no rule card in the deck
+ * no candidate can resolve, so the denial is reached without the walk.
  */
 export async function canReadByRuleLookup(
   fetcher: FetchEngine,
@@ -479,7 +497,11 @@ async function canReadByRuleLookupDepth(
   depth: number,
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
-  if (!state.hasReadRules || !state.hasCatchAllReadRule) return undefined;
+  // No read rule card in the deck: `permission_rule_id :read` resolves to
+  // nil and `read_rules_hash[nil]` denies (permissions.rb:139-146), so the
+  // walk below could only re-derive that answer at the cost of its queries.
+  // DENY, not "no opinion".
+  if (!state.hasReadRules) return false;
   // pattern/all.rb#patterns: a NEW card's pattern list drops the first
   // concrete pattern (SELF) — and rule_lookup_keys then nils every anchored
   // candidate whose anchor card has no id. The virtual cards (id ===
@@ -525,24 +547,23 @@ async function canReadByRuleLookupDepth(
     }
     return state.readableRuleIds.has(rule.id);
   }
-  // No candidate resolved. In a COMPLETE deck (hasReadRules &&
-  // hasCatchAllReadRule) this is an unevaluatable rule walk, not an
-  // unruled card: the catch-all is structurally present (hasCatchAllReadRule)
-  // AND among the candidates (the *all pattern applies to every card), so a
-  // miss means the composed-key closure could not resolve the deck's own
-  // rule graph for this card. Ruby's walk cannot resolve here either —
-  // permission_rule_id -> nil -> ok_to_read? denies
-  // (set/all/permissions.rb:139-146 read_rules_hash[nil]) — so the port
-  // FAILS CLOSED (deny). The fail-open this replaced leaked card bodies
-  // through the catch-all whenever a more specific rule candidate could not
-  // be evaluated: a *type plus right read rule granting "Anyone Signed In"
-  // never reached the verdict, the walk fell
-  // through to *all+*read, and anonymous was granted.
-  // Partial decks (per-shard replay seeds) simply lack the card's
-  // applicable rule card, and fabricating a denial from missing data would
-  // mis-deny cards the full deck renders — there the port still allows
-  // .
-  return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
+  // No candidate resolved. Ruby cannot resolve here either:
+  // `permission_rule_id :read` composes the candidate names and returns nil
+  // when none of them names a live rule card, then
+  // `Auth.as_card.read_rules_hash[nil]` is nil and ok_to_read? falls through
+  // to `deny_because you_cant "read this"`
+  // (set/all/permissions.rb:139-146). So the port FAILS CLOSED (deny) on
+  // every deck. Ruby draws no distinction between a deck whose rule graph
+  // could not be evaluated and one that simply carries no matching rule —
+  // both are a nil read_rule_id — and neither is an occasion to allow. The
+  // fail-open this replaced leaked card bodies through the catch-all
+  // whenever a more specific rule candidate could not be evaluated: a
+  // *type plus right read rule granting "Anyone Signed In" never reached
+  // the verdict, the walk fell through to *all+*read, and anonymous was
+  // granted. Partial decks (per-shard replay seeds) answer the same way
+  // here, because a rule card the shard does not carry is exactly the
+  // `permission_rule_id -> nil` case Ruby denies.
+  return false;
 }
 
 /** permissions.rb:66-72 left_permission_rule_id:

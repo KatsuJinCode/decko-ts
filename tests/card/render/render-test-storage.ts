@@ -145,13 +145,191 @@ export interface RenderTestStorage {
   fetcher: FetchEngine;
   counting: CountingRenderDriver;
   close(): void;
+  /** The stock read substrate's cards while the bootstrap still stands. A
+   *  suite that seeds its own card under one of these codenames or keys
+   *  supersedes the stock card (see seedCard) and the entry is removed. Undefined
+   *  on a deck built with `bootstrapReadRules: false`. */
+  bootstrap?: StockCard[];
+}
+
+/** One card of the stock read substrate: the codename and key the schema makes
+ *  unique, and the id every reference to it names. */
+interface StockCard {
+  readonly id: number;
+  readonly codename: string;
+  readonly key: string;
 }
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
+/** The ids the bootstrap read substrate occupies. Chosen ABOVE the range the
+ *  seeded decks hand out (tests seed 1..~100), so a suite that layers its own
+ *  permission cards on this deck keeps its own ids and its own semantics: the
+ *  bootstrap's `all` / `read` / `set` codename cards then sit ABOVE the
+ *  suite's, and every codename lookup — statements 1..3 of
+ *  readPermissionStatements — resolves `ORDER BY id LIMIT 1` to the SUITE's
+ *  card, exactly as if the bootstrap were not there. */
+export const BOOTSTRAP_READ_SUBSTRATE_IDS = {
+  all: 900_001,
+  set: 900_002,
+  read: 900_003,
+  anyone: 900_004,
+  anonymous: 900_005,
+  rule: 900_006,
+} as const;
+
+/** The stock Decko read substrate: `*all+*read` -> `[[Anyone]]`, the rule
+ *  every real deck carries.
+ *
+ *  WHY THE SEED CARRIES IT. Ruby's `ok_to_read?` (card-mod-permissions
+ *  set/all/permissions.rb:139-146) has no allowance for a deck with no read
+ *  rule card: `permission_rule_id :read` resolves to nil and
+ *  `Auth.as_card.read_rules_hash[nil]` is nil, so the check denies. Every
+ *  real deck therefore bootstraps `*all+*read` — card/auth/setup.rb:44 does
+ *  exactly this — and the anonymous viewer reads the whole deck through it.
+ *  A test deck that omits it is not a shape Ruby has, and the port denies
+ *  every card of it, which is correct and useless as a test bed: the 250
+ *  suites below are about VIEWS, not about the absence of permission data.
+ *
+ *  So the shared helper seeds what Decko's setup seeds, at ids above the
+ *  seeded range, and a suite that wants a different permission shape
+ *  (a denial deck, a rule-less deck, a deck with `*type plus right` rules)
+ *  still gets it by seeding its own cards on top — see
+ *  tests/card/permissions/read-permission.test.ts for a deck that does both.
+ *
+ *  The rows, in Ruby's shape:
+ *    *all, *read        codename cards (real.yml:55, :70)
+ *    Set               the Set TYPE card, which the read-rule cache join
+ *                      filters on (`sets.type_id = SetID`)
+ *    Anyone/Anonymous  the two parties the anonymous viewer resolves to
+ *                      (account_holder.rb:27-29, :40)
+ *    *all+*read        the rule card: a junction (NULL name/key, sides only,
+ *                      the 2020 Lexicon migration) whose left is the *all set
+ *                      card and whose right is the *read setting, with a
+ *                      card_references row naming the Anyone party — which is
+ *                      what makes read_rules_hash carry it
+ *                      (read_rule_cache.rb's join).
+ */
+/** The stock Decko read substrate: `*all+*read` -> `[[Anyone]]`, the rule
+ *  every real deck carries.
+ *
+ *  WHY THE SEED CARRIES IT. Ruby's `ok_to_read?` (card-mod-permissions
+ *  set/all/permissions.rb:139-146) has no allowance for a deck with no read
+ *  rule card: `permission_rule_id :read` resolves to nil and
+ *  `Auth.as_card.read_rules_hash[nil]` is nil, so the check denies. Every
+ *  real deck therefore bootstraps `*all+*read` (card/auth/setup.rb:44), and
+ *  the anonymous viewer reads through it. A test deck without it is not a
+ *  shape Ruby has; the port denies every card of it, which is correct
+ *  behaviour and useless as a test bed for views.
+ *
+ *  The rows, in Ruby's shape:
+ *    *all, *read        codename cards (real.yml:55, :70)
+ *    Set               the Set TYPE card, which the read-rule cache join
+ *                      filters on (`sets.type_id = SetID`); *all is typed
+ *                      with it, as a Set card is
+ *    Anyone/Anonymous  the two parties the anonymous viewer resolves to
+ *                      (account_holder.rb:27-29, :40)
+ *    *all+*read        the rule card: a junction (NULL name/key, sides only,
+ *                      the 2020 Lexicon migration) whose left is the *all set
+ *                      card and whose right is the *read setting, with a
+ *                      card_references row naming the Anyone party — which is
+ *                      what makes read_rules_hash carry it
+ *                      (read_rule_cache.rb's join).
+ *
+ *  A suite that wants a different permission shape still seeds its own cards
+ *  on top: a rule for a specific type or set is an ordinary card, and the
+ *  candidate walk resolves it before the catch-all. */
+async function seedBootstrapReadSubstrate(storage: RenderTestStorage): Promise<StockCard[]> {
+  const ids = BOOTSTRAP_READ_SUBSTRATE_IDS;
+  // A Set card whose type is the Set TYPE card, so statement 2's
+  // `sets.type_id = SetID` filter admits the rule card below.
+  await seedCard(storage, { id: ids.all, name: "*all", codename: "all", typeId: ids.set });
+  await seedCard(storage, { id: ids.set, name: "Set", codename: "set" });
+  await seedCard(storage, { id: ids.read, name: "*read", codename: "read" });
+  await seedCard(storage, { id: ids.anyone, name: "Anyone", codename: "anyone" });
+  await seedCard(storage, { id: ids.anonymous, name: "Anonymous", codename: "anonymous" });
+  // The rule card itself: a junction, so seedCard leaves name and key NULL
+  // and the sides carry the name (*all+*read). Its own read_rule_id points at
+  // itself, as a real rule card's does.
+  await seedCard(storage, {
+    id: ids.rule,
+    leftId: ids.all,
+    rightId: ids.read,
+    dbContent: "[[Anyone]]",
+    readRuleId: ids.rule,
+    readRuleClass: "*all",
+  });
+  // The reference that puts the rule in read_rules_hash for Anyone: the cache
+  // join reads card_references, not the rule text (read_rule_cache.rb).
+  await seedReference(storage, ids.rule, ids.anyone, "anyone");
+  return [
+    { id: ids.all, codename: "all", key: "*all" },
+    { id: ids.set, codename: "set", key: "set" },
+    { id: ids.read, codename: "read", key: "*read" },
+    { id: ids.anyone, codename: "anyone", key: "anyone" },
+    { id: ids.anonymous, codename: "anonymous", key: "anonymous" },
+  ];
+}
+
+/** Release the stock card's codename and key so a suite's card can take
+ *  either. The schema makes both unique (`cards_codename_index`,
+ *  `cards_key_index`), and a real deck has exactly one of each — so a suite
+ *  that seeds its own `*all` IS the deck's `*all` card, and the stock one
+ *  steps aside.
+ *
+ *  The stock ROW is kept until repointStockReferences has moved everything
+ *  that names it onto the suite's card; only the unique columns are cleared,
+ *  which is what the indexes are about. Returns the displaced stock id, or
+ *  undefined when there is nothing to displace. */
+async function releaseStockCard(
+  storage: RenderTestStorage,
+  opts: SeedOptions,
+): Promise<number | undefined> {
+  const stock = storage.bootstrap;
+  if (stock === undefined) return undefined;
+  const index = stock.findIndex(
+    (card) =>
+      (opts.codename !== undefined && opts.codename !== null && card.codename === opts.codename) ||
+      (typeof opts.key === "string" && card.key === opts.key) ||
+      (typeof opts.name === "string" && opts.key === undefined && DeckoName.parse(opts.name).key === card.key),
+  );
+  if (index < 0) return undefined;
+  const [displaced] = stock.splice(index, 1);
+  await storage.counting.query(
+    `UPDATE cards SET codename = NULL, key = NULL WHERE id = ?`,
+    [displaced!.id],
+  );
+  return displaced!.id;
+}
+
+/** Move every reference to a displaced stock card onto the card that replaced
+ *  it, then remove the stock row. Runs after the suite's row is inserted, so
+ *  its id is known. */
+async function repointStockReferences(
+  storage: RenderTestStorage,
+  stockId: number,
+  replacementId: number,
+): Promise<void> {
+  await storage.counting.query(`UPDATE cards SET left_id = ? WHERE left_id = ?`, [replacementId, stockId]);
+  await storage.counting.query(`UPDATE cards SET right_id = ? WHERE right_id = ?`, [replacementId, stockId]);
+  await storage.counting.query(`UPDATE cards SET type_id = ? WHERE type_id = ?`, [replacementId, stockId]);
+  await storage.counting.query(
+    `UPDATE card_references SET referee_id = ? WHERE referee_id = ?`,
+    [replacementId, stockId],
+  );
+  await storage.counting.query(`DELETE FROM cards WHERE id = ?`, [stockId]);
+  storage.fetcher.lexicon.deleteFor(stockId, undefined);
+}
+
 /** Fresh in-memory database + FetchEngine + RenderEngine over the counting
- *  driver. */
-export async function createRenderTestStorage(): Promise<RenderTestStorage> {
+ *  driver, carrying the stock Decko read substrate.
+ *
+ *  `bootstrapReadRules: false` builds the deck a real Decko never is: one with
+ *  no read rule card at all. Ruby denies every card of it, and the port does
+ *  too; the tests that pin that denial ask for this deck explicitly. */
+export async function createRenderTestStorage(
+  opts: { bootstrapReadRules?: boolean } = {},
+): Promise<RenderTestStorage> {
   const driver = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");
   for (const statement of splitSqlStatements(ddl)) {
@@ -159,7 +337,18 @@ export async function createRenderTestStorage(): Promise<RenderTestStorage> {
   }
   const counting = new CountingRenderDriver(driver);
   const fetcher = new FetchEngine(counting);
-  return { engine: new RenderEngine(fetcher), fetcher, counting, close: () => driver.close() };
+  const storage: RenderTestStorage = {
+    engine: undefined as unknown as RenderEngine,
+    fetcher,
+    counting,
+    close: () => driver.close(),
+  };
+  if (opts.bootstrapReadRules !== false) {
+    storage.bootstrap = await seedBootstrapReadSubstrate(storage);
+  }
+  expireRuleResolutionCache(fetcher.driver);
+  storage.engine = new RenderEngine(fetcher);
+  return storage;
 }
 
 /** Bind a loaded ModLoader to the engine so the render path resolves views
@@ -296,6 +485,9 @@ export async function seedCard(
   const keyColumn = hasName
     ? (opts.key ?? DeckoName.parse(opts.name as string).key)
     : null;
+  // A codename or key the stock read substrate holds: the stock card steps
+  // aside first (its references move once this row has its id — see below).
+  const displacedStockId = await releaseStockCard(storage, opts);
   await storage.counting.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
@@ -335,6 +527,16 @@ export async function seedCard(
   // the same invalidation a committed save performs, applied at the
   // fixture seam. The staleness CONTRACT for truly raw writes is pinned
   // separately (rule-resolution-memo.test.ts uses driver.query directly).
+  if (displacedStockId !== undefined) {
+    const inserted = await storage.counting.query<{ id: number }>(
+      `SELECT last_insert_rowid() AS id`,
+      [],
+    );
+    const replacementId = opts.id ?? inserted.rows[0]?.id;
+    if (typeof replacementId === "number") {
+      await repointStockReferences(storage, displacedStockId, replacementId);
+    }
+  }
   expireRuleResolutionCache(storage.fetcher.driver);
   // Same seam, lexicon half. A committed create runs the update_lexicon
   // store event (Ruby: mod/core/set/all/name_events.rb:76-78 -> Lexicon.add

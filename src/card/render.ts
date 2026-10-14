@@ -2838,7 +2838,6 @@ export class RenderEngine implements RenderEngineLike {
     this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
-    this.accountRightIds = undefined;
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
     this.coreAdminRuntimeEnsured = false;
@@ -4967,8 +4966,10 @@ export class RenderEngine implements RenderEngineLike {
    * (or that match no override) resolve through the stored read_rule_id
    * purely (permissions.rb:142-143), and cards without one fall back to the
    * live rule walk (permission_rule_id, permissions.rb:55-61) — bounded by
-   * the hasReadRules gate, so rule-less seeds cost zero queries and stay
-   * allowed (the documented divergence).
+   * the hasReadRules gate, so a deck carrying no read rule card costs zero
+   * queries and denies outright: no rule card in the deck means
+   * `permission_rule_id :read` resolves to nil, which `ok_to_read?` denies
+   * (permissions.rb:139-146).
    */
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
@@ -5173,58 +5174,6 @@ export class RenderEngine implements RenderEngineLike {
     return !denied;
   }
 
-  /**
-   * The right-part card ids the account substrate hangs its secrets on:
-   * card-mod-account-0.20.0 data/real.yml:82 (`*account`), :121 (`*email`),
-   * :132 (`*password`), :143 (`*salt`), :150 (`*status`), plus `*api_key`.
-   * A junction whose right part is one of these IS a row of somebody's
-   * account: the email address, the PBKDF2 digest, the digest salt, the
-   * bearer key that authenticates as the account.
-   *
-   * `api_key` is the one from a different gem — card-mod-api_key-0.20.0
-   * set/right/api_key.rb:1, `include_set Abstract::AccountField` — but it is
-   * the same kind of row by that include alone: the same abstract set as
-   * `*email`, `*password` and `*salt`, hanging off the same `*account`
-   * junction, and its content is a credential (`authenticate_api_key`
-   * compares it, `generate_api_key` stores a fresh one, set/right/api_key.rb
-   * :25-31). Reading it is an account takeover exactly as reading the digest
-   * is, so it belongs in this list on the account-field argument and not on
-   * card-mod-account's.
-   *
-   * Resolved by CODENAME the way every other account codename is resolved in
-   * this port (signin.ts resolveAccountCodenameIds, first-run-setup.ts
-   * resolveCodenameCardId) — never by a hardcoded id — and absent codenames
-   * are skipped rather than defaulted, so a deck without the account system
-   * (the 0001..0003 chain) gets an empty set and no exclusion clause. A deck
-   * WITHOUT card-mod-api_key has no `api_key` codename, and is unaffected. */
-  private static readonly ACCOUNT_RIGHT_CODENAMES = [
-    "account",
-    "email",
-    "password",
-    "salt",
-    "status",
-    "api_key",
-  ] as const;
-
-  private accountRightIds: number[] | undefined;
-
-  /** The account field right ids, resolved once per engine. */
-  private async accountFieldRightIds(): Promise<number[]> {
-    if (this.accountRightIds === undefined) {
-      const ids: number[] = [];
-      for (const codename of RenderEngine.ACCOUNT_RIGHT_CODENAMES) {
-        const row = await this.fetcher.driver.query<{ id: number }>(
-          `SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1`,
-          [codename],
-        );
-        const id = row.rows[0]?.id;
-        if (typeof id === "number") ids.push(id);
-      }
-      this.accountRightIds = ids;
-    }
-    return this.accountRightIds;
-  }
-
   /** The CQL permission filter for this engine's viewer — the shape
    *  executeQuery's SqlOptions take (sql.ts implicitConditions, the port of
    *  Where#permission_conditions). Ruby's Card::Query runs with
@@ -5232,41 +5181,36 @@ export class RenderEngine implements RenderEngineLike {
    *  filtered to the viewer's readable rule set; serving rows without the
    *  filter leaks db_content the HTML views deny.
    *
-   *  THE RULE-LESS ALLOWANCE, now SCOPED. This used to answer
-   *  `alwaysOk: true` — filter off — whenever the deck carried no catch-all
-   *  read rule, on the reasoning that a rule-less seed has nothing to filter
-   *  by. That reasoning is true of a deck with no ACCOUNTS and false of one
-   *  with them: "no rule to evaluate" is not "readable to everyone", and on
-   *  the shipped demo deck it answered /api/query {"right":"*password"} with
-   *  every stored digest. The allowance stays (a synthetic rule-less deck is
-   *  a real shape, and Ruby's fail-closed answer there would deny every card
-   *  and break it), but it now carries an exclusion for the account field
-   *  rows: `excludedRightIds` renders `right_id NOT IN (...)` (sql.ts
-   *  implicitConditions), so a rule-less deck serves everything EXCEPT
-   *  somebody's account fields.
+   *  THE ANSWER IS ALWAYS THE RULE SET. There is no rule-less allowance
+   *  here, and there never should have been one: Ruby's
+   *  `Where#permission_conditions` reads the same `read_rules_hash` the
+   *  HTML views do, so a deck that carries no read rule gives an empty hash
+   *  and the filter matches nothing — every row denied, which is the same
+   *  answer `ok_to_read?` gives card by card
+   *  (permissions.rb:139-146). An empty `readRuleIds` is that answer:
+   *  sql.ts implicitConditions renders the `read_rule_id IN (1)` sentinel,
+   *  which no row carries.
    *
-   *  A deck that DOES carry the rules (the shipped one, since
-   *  0004-demo-account-substrate.sql block C) gets the ordinary filtered
-   *  answer with no exclusion — the rules are the answer there, and adding a
-   *  second mechanism on top would be the kind of belt-and-braces that hides
-   *  a broken rule set. */
+   *  This method used to answer `alwaysOk: true` — filter off — on a deck
+   *  with no catch-all read rule, then to narrow that with an
+   *  `excludedRightIds` list naming the account-field right parts
+   *  (ACCOUNT_RIGHT_CODENAMES below). Both halves existed because the read
+   *  path failed open on the same deck; with the read path denying, the
+   *  deck is filtered like every other deck and neither is reachable. */
   async cqlPermissionOptions(): Promise<{
     alwaysOk: boolean;
     readRuleIds: number[];
-    excludedRightIds: number[];
   }> {
     const state = await this.ensureReadPermission();
     if (state.alwaysOk) {
       // Ruby's own short-circuit (permissions.rb:140): the bot and
-      // administrators are never filtered, so an exclusion here would
-      // narrow Ruby's answer rather than restore it.
-      return { alwaysOk: true, readRuleIds: [], excludedRightIds: [] };
+      // administrators are never filtered.
+      return { alwaysOk: true, readRuleIds: [] };
     }
-    if (!state.hasReadRules || !state.hasCatchAllReadRule) {
-      // The scoped rule-less allowance (see the doc comment above).
-      return { alwaysOk: true, readRuleIds: [], excludedRightIds: await this.accountFieldRightIds() };
-    }
-    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds], excludedRightIds: [] };
+    // readableRuleIds is read_rules_hash, so a deck with no read rule card
+    // yields an empty set here exactly as `read_rules_hash[nil]` is nil on
+    // the card path. Both deny; neither needs a second mechanism.
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
   }
 
   // -------------------------------------------------------------------------

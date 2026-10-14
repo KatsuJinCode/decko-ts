@@ -35,20 +35,6 @@ export interface SqlOptions {
   alwaysOk?: boolean;
   readRuleIds?: number[];
   /**
-   * Card ids the query must NOT return, by right-part (junction) side:
-   * renders `<alias>.right_id NOT IN (?, ...)`.
-   *
-   * This is the narrowing half of a scoped permission answer, and it exists
-   * because `alwaysOk` is all-or-nothing. Where#permission_conditions has no
-   * equivalent — Ruby either has the viewer's read rules or is always_ok —
-   * so this option is a PORT-SIDE seam, not a Ruby translation: the caller
-   * (RenderEngine#cqlPermissionOptions) uses it to keep the rule-less
-   * allowance from reaching the account field cards, where "no rule to
-   * evaluate" must not read as "readable to everyone". An empty or absent
-   * list renders nothing.
-   */
-  excludedRightIds?: number[];
-  /**
    * REGEXP-on-edge mode ("The REGEXP decision"
    * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
    * OMITTED from the generated SQL and re-applied by the executor in JS
@@ -267,16 +253,6 @@ function formatConditionList(list: string[], conj: string): string {
 function implicitConditions(query: QueryNode, ctx: GenContext): string {
   if (query.kind !== "card") return "";
   const chunks = [`${query.tableAlias}.trash is false`];
-  // The scoped-permission narrowing, applied in BOTH always-ok states: it
-  // is not the read-rule filter, it is an exclusion the caller asked for
-  // regardless of which answer it got for the filter (see SqlOptions
-  // .excludedRightIds).
-  if (ctx.options.excludedRightIds && ctx.options.excludedRightIds.length > 0) {
-    chunks.push(
-      `${query.tableAlias}.right_id NOT IN (${ctx.options.excludedRightIds.map(() => "?").join(",")})`,
-    );
-    ctx.params.push(...ctx.options.excludedRightIds);
-  }
   const { alwaysOk = true, readRuleIds } = ctx.options;
   if (!alwaysOk) {
     if (readRuleIds && readRuleIds.length > 0) {
