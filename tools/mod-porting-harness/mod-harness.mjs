@@ -260,6 +260,14 @@ function namedRemainderFor(modId, behaviorId) {
   return undefined;
 }
 
+/** "3 registered-standing-net, 1 named-remainder" — a set of rows summarised
+ *  by state, for the one place a whole class of rows is reported at once. */
+function byState(rows) {
+  const counts = new Map();
+  for (const r of rows) counts.set(r.state, (counts.get(r.state) ?? 0) + 1);
+  return [...counts.entries()].map(([state, n]) => `${n} ${state}`);
+}
+
 // PORTED-VIEW STATE - the census-missing views BY NAME and their current
 // disposition. A view moves here when it is ported + harness-verified
 // GREEN; the row cites its gem source and oracle. Views not listed stay
@@ -803,9 +811,17 @@ function surfaceMarkdown(s) {
     L.push("");
   }
   if (evs.length) {
+    // Counted, not listed. The surface report measures what a mod DECLARES —
+    // views, set modules, seeds — and an event-hook name is a precise
+    // statement about an upstream gem's executable surface that this report
+    // does not verify: whether the hook fires, and what it does when it does,
+    // are the oracle's business (see the scorecard), not the miner's. Listing
+    // them here publishes upstream's event surface as an inventory. The count
+    // stays: it is what says how much of the gem is hooks rather than
+    // declarations.
     L.push("## Events");
     L.push("");
-    for (const e of evs) L.push(`- \`${e.name}\` ${e.options} — ${e.source}`);
+    L.push(`- ${evs.length} event hook(s) declared. Their names are not listed here (see the header's "what this measures" note).`);
     L.push("");
   }
   const settingBehaviors = kind("setting");
@@ -1082,9 +1098,13 @@ function runProbeTests(probeFiles) {
 }
 
 function verifyMod(modId) {
-  const surfacePath = join(REPORTS_DIR, modId, "surface.json");
-  if (!existsSync(surfacePath)) die(`no surface for ${modId} — run the surface command first`);
-  const surface = JSON.parse(readText(surfacePath));
+  // The surface is MINED here, not read from the committed artifact. The
+  // committed surface.json is a published report whose event-hook rows carry
+  // no names (see the surface command); the harness needs the names to check
+  // that the port registers what the gem declares, and it gets them from the
+  // gem source, which is the only place they are authoritative.
+  const { gemName, gemPath } = resolveMod(modId);
+  const surface = surfaceMod(modId, gemName, gemPath);
   const engineViews = mineEngineViews();
   const regChecks = registrationChecks(surface, engineViews);
 
@@ -1169,18 +1189,51 @@ function verifyMod(modId) {
   const red = rows.filter((r) => r.state.startsWith("red")).length;
   const uncaptured = rows.filter((r) => r.state === "uncaptured" || r.state === "captured-unprobed").length;
 
+  // Event-hook rows carry the upstream hook's NAME as their behaviorId, and
+  // that name is a precise statement about what the upstream gem's executable
+  // surface is. This scorecard measures whether the PORT registers what the
+  // gem declares, not what the hook does when it fires, so the per-hook rows
+  // are reported as one aggregate row: same counts, same states, no inventory.
+  const eventRows = rows.filter((r) => r.kind === "event");
+  const emittedRows = eventRows.length
+    ? [
+        ...rows.filter((r) => r.kind !== "event"),
+        {
+          behaviorId: "event:<declared hooks, not listed>",
+          kind: "event",
+          source: "",
+          registration: "",
+          captured: null,
+          state: "",
+          remainderReason: null,
+          evidence: `${eventRows.length} event hook(s) declared by the gem: ${byState(eventRows).join(", ")}`,
+          aggregate: true,
+        },
+      ]
+    : rows;
+
   const scorecard = {
     mod: modId,
     gem: surface.gemName,
     generatedAt: new Date().toISOString(),
-    totals: { behaviors: rows.length, validated, standingNet, namedRemainder, red, uncaptured },
+    totals: {
+      behaviors: rows.length,
+      // What the rows add up to, stated here as the aggregate row states them:
+      // the hook count, and the states those hooks are in.
+      eventHooks: eventRows.length,
+      validated,
+      standingNet,
+      namedRemainder,
+      red,
+      uncaptured,
+    },
     probeSuite: {
       files: probeCandidates.map((p) => relative(REPO, p).replaceAll("\\", "/")),
       ran: probe.ran,
       detail: probe.detail,
       failures: probe.failures ?? [],
     },
-    behaviors: rows,
+    behaviors: emittedRows,
   };
   writeOut(join(REPORTS_DIR, modId, "scorecard.json"), JSON.stringify(scorecard, null, 2) + "\n");
 
@@ -1190,13 +1243,17 @@ function verifyMod(modId) {
   L.push(`Behaviors validated: **${validated} / ${rows.length}** (standing-net: ${standingNet}, named-remainder: ${namedRemainder}, RED: ${red}, uncaptured: ${uncaptured})`);
   L.push("");
   L.push(`State legend: green = registered + harness oracle captured + probe suite green; registered-standing-net = registered + the mod's tracked suite pins it (no harness oracle line); named-remainder = unregistered with a named, evidenced reason (never RED); uncaptured = no oracle and no probe coverage; red-* = the harness found the behavior unported or the oracle failing.`);
+  if (eventRows.length) {
+    L.push("");
+    L.push(`Event hooks are counted, not listed: this scorecard measures whether the port REGISTERS what the gem declares, not what a hook does when it fires, so the ${eventRows.length} declared hook(s) appear as one aggregate row rather than an inventory of upstream hook names. The totals above count every hook individually.`);
+  }
   L.push("");
   if (probe.ran) L.push(`Probe suite: ${probe.detail} (${scorecard.probeSuite.files.join(", ")})`);
   else L.push(`Probe suite: not run — ${probe.detail}`);
   L.push("");
   L.push("| behavior | kind | state | ts registration | captured | evidence |");
   L.push("|---|---|---|---|---|---|");
-  for (const r of rows) {
+  for (const r of emittedRows) {
     L.push(`| \`${r.behaviorId}\` | ${r.kind} | ${r.state} | ${r.registration} | ${r.captured ?? "-"} | ${(r.evidence ?? r.source).replaceAll("|", "\\|").slice(0, 140)} |`);
   }
   L.push("");
@@ -1373,7 +1430,19 @@ function main() {
     if (!modArg) die("usage: mod-harness.mjs surface <mod>");
     const { modId, gemName, gemPath } = resolveMod(modArg);
     const s = surfaceMod(modId, gemName, gemPath);
-    writeOut(join(REPORTS_DIR, modId, "surface.json"), JSON.stringify(s, null, 2) + "\n");
+    // The written artifact is a PUBLISHED report: event-hook rows carry no
+    // names there (see surfaceMarkdown and the scorecard). The harness reads
+    // the gem source when it needs the names, so nothing is lost.
+    const published = {
+      ...s,
+      behaviors: s.behaviors.map((b) =>
+        b.kind === "event"
+          ? { id: "event:<declared hooks, not listed>", kind: "event", name: null, options: null, source: null }
+          : b,
+      ),
+      eventHooks: s.behaviors.filter((b) => b.kind === "event").length,
+    };
+    writeOut(join(REPORTS_DIR, modId, "surface.json"), JSON.stringify(published, null, 2) + "\n");
     writeOut(join(REPORTS_DIR, modId, "surface.md"), surfaceMarkdown(s));
     process.stdout.write(`${modId}: ${s.behaviors.length} behaviors across ${s.setFiles.length} set files\n`);
   } else if (cmd === "capture") {

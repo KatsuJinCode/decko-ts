@@ -418,8 +418,13 @@ function inventoryGem(gemPath, gemName) {
     setModulesByPattern: setModulesSummary,
     viewsByFormat: viewsByFormatOut,
     aliasPairs,
-    eventHooks,
-    beforeHooks,
+    // Event-hook and before-hook NAMES are counted, not listed. This report
+    // measures views and set patterns; whether a hook fires is explicitly not
+    // measured (see the Method section), so an inventory of hook names would
+    // be a claim about a mod's executable surface that nothing here verifies —
+    // and a hook name is a precise statement about what the upstream gem does,
+    // which is not this report's to publish. The counts stay: they measure how
+    // much of a gem's structure is set modules and views rather than hooks.
     includeSetRefs: [...includeSetRefs].sort(),
     cardioConfigKeys: [...cardioConfigKeys].sort(),
   };
@@ -882,8 +887,8 @@ function renderMd(report) {
     lines.push(`- **all html views declared**: ${(m.inv.viewsByFormat.html ?? []).length ? m.inv.viewsByFormat.html.join(", ") : "(none)"}`);
     lines.push(`- **non-html views**: ${Object.entries(m.inv.viewsByFormat).filter(([fmt]) => fmt !== "html").flatMap(([fmt, vs]) => vs.map((v) => `${fmt}:${v}`)).join(", ") || "(none)"}`);
     lines.push(`- **view aliases**: ${m.inv.aliasPairs.length ? m.inv.aliasPairs.slice(0, 8).map((a) => `:${a.from} -> :${a.to}`).join(", ") + (m.inv.aliasPairs.length > 8 ? `, ...(${m.inv.aliasPairs.length - 8} more)` : "") : "(none)"}`);
-    lines.push(`- **event hooks**: ${m.inv.eventHooks.length} (${m.inv.eventHooks.slice(0, 6).map((e) => `:${e.event}`).join(", ")}${m.inv.eventHooks.length > 6 ? ", ..." : ""})`);
-    lines.push(`- **before hooks**: ${m.inv.beforeHooks.length} (${m.inv.beforeHooks.slice(0, 6).map((e) => `:${e.before}`).join(", ")}${m.inv.beforeHooks.length > 6 ? ", ..." : ""})`);
+    lines.push(`- **event hooks**: ${m.inv.counts.eventHooks} (counted, not listed: this report does not measure whether a hook fires)`);
+    lines.push(`- **before hooks**: ${m.inv.counts.beforeHooks} (counted, not listed, for the same reason)`);
     lines.push(`- **include_set refs**: ${m.inv.includeSetRefs.length ? m.inv.includeSetRefs.join(", ") : "(none)"}`);
     lines.push(`- **Cardio config keys**: ${m.inv.cardioConfigKeys.length ? m.inv.cardioConfigKeys.join(", ") : "(none)"}`);
     lines.push(`- **haml templates**: ${m.inv.counts.hamlFiles}`);
@@ -895,7 +900,7 @@ function renderMd(report) {
   lines.push("Per gem, walk `set/**/*.rb` and `lib/**/*.rb`, mine via regex:");
   lines.push("- `view :name` and `view :name, :target` (aliases)");
   lines.push("- `format :name do ... end` (which views live inside which format)");
-  lines.push("- `def name` (set-module methods), `event :name` (event hooks), `before :view` (before-hooks), `include_set Abstract::Foo`");
+  lines.push("- `def name` (set-module methods), `event :name` and `before :view` (counted only; the names are not emitted), `include_set Abstract::Foo`");
   lines.push("- `Cardio::Railtie.config.tap { |c| c.key = ... }` (config keys)");
   lines.push("");
   lines.push("Compare against decko-ts `src/card/set-patterns/registry.ts` PATTERN_TABLE");
@@ -909,7 +914,8 @@ function renderMd(report) {
   lines.push("- **missing**: zero coverage.");
   lines.push("- **ignored**: not ported, and therefore not evaluated here - data/transform-only or backend-only gems with no set/ tree, so there is no set module or view to compare against the implemented surface.");
   lines.push("");
-  lines.push("NOT measured by any label above: whether event hooks fire, whether");
+  lines.push("NOT measured by any label above: whether event hooks fire (they are");
+  lines.push("counted, never listed), whether");
   lines.push("non-html formats (json, css, email, rss, csv) render, and whether any");
   lines.push("renderer beyond the byte-pinned views matches Ruby's bytes. See");
   lines.push("`docs/coverage-inventory.md` for where byte-level evidence actually");

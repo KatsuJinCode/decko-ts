@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T05:14:22.364Z",
+  "generatedAt": "2026-10-14T10:53:56.081Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -448,129 +448,6 @@
             "file": "set/right/account/views.rb"
           }
         ],
-        "eventHooks": [
-          {
-            "event": "validate_account_holder_name_change",
-            "file": "set/abstract/account_holder.rb"
-          },
-          {
-            "event": "generate_token",
-            "file": "set/all/account.rb"
-          },
-          {
-            "event": "set_stamper",
-            "file": "set/all/account.rb"
-          },
-          {
-            "event": "set_default_salt",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "set_default_status",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "reset_password",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "verify_and_activate",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "password_redirect",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "activate_account",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "delete_account",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "signout_upon_delete",
-            "file": "set/right/account/events.rb"
-          },
-          {
-            "event": "validate_email",
-            "file": "set/right/email.rb"
-          },
-          {
-            "event": "validate_unique_email",
-            "file": "set/right/email.rb"
-          },
-          {
-            "event": "downcase_email",
-            "file": "set/right/email.rb"
-          },
-          {
-            "event": "encrypt_password",
-            "file": "set/right/password.rb"
-          },
-          {
-            "event": "validate_password_length",
-            "file": "set/right/password.rb"
-          },
-          {
-            "event": "validate_password_chars",
-            "file": "set/right/password.rb"
-          },
-          {
-            "event": "validate_password_present",
-            "file": "set/right/password.rb"
-          },
-          {
-            "event": "signin",
-            "file": "set/self/signin.rb"
-          },
-          {
-            "event": "signin_success",
-            "file": "set/self/signin.rb"
-          },
-          {
-            "event": "signout",
-            "file": "set/self/signin.rb"
-          },
-          {
-            "event": "send_reset_password_token",
-            "file": "set/self/signin.rb"
-          },
-          {
-            "event": "auto_approve_with_verification",
-            "file": "set/type/signup.rb"
-          },
-          {
-            "event": "approve_with_verification",
-            "file": "set/type/signup.rb"
-          },
-          {
-            "event": "approve_without_verification",
-            "file": "set/type/signup.rb"
-          },
-          {
-            "event": "act_as_current_for_integrate_stage",
-            "file": "set/type/signup.rb"
-          },
-          {
-            "event": "check_setup",
-            "file": "set/type/user.rb"
-          },
-          {
-            "event": "setup_first_user",
-            "file": "set/type/user.rb"
-          },
-          {
-            "event": "signin_after_setup",
-            "file": "set/type/user.rb"
-          },
-          {
-            "event": "update_role_cache",
-            "file": "set/type_plus_right/role/members.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AccountField",
           "AccountHolder",
@@ -677,8 +554,6 @@
           "html": []
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -762,17 +637,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "generate_api_key",
-            "file": "set/right/api_key.rb"
-          },
-          {
-            "event": "validate_api_key",
-            "file": "set/right/api_key.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AccountField"
         ],
@@ -863,29 +727,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "asset_input_changed",
-            "file": "set/abstract/asset_inputter.rb"
-          },
-          {
-            "event": "asset_input_changed_on_delete",
-            "file": "set/abstract/asset_inputter.rb"
-          },
-          {
-            "event": "update_asset_output_file",
-            "file": "set/abstract/asset_outputter.rb"
-          },
-          {
-            "event": "validate_asset_inputs",
-            "file": "set/abstract/asset_outputter.rb"
-          },
-          {
-            "event": "remove_codename",
-            "file": "set/right/asset_output.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "CodeFile",
           "Items",
@@ -1012,8 +853,6 @@
             "file": "set\\all\\bar.rb"
           }
         ],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -1105,33 +944,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "update_skin_asset_input",
-            "file": "set/abstract/skin_field.rb"
-          },
-          {
-            "event": "initialize_because_of_type_change",
-            "file": "set/type/bootswatch_skin/events.rb"
-          },
-          {
-            "event": "copy_theme",
-            "file": "set/type/bootswatch_skin/events.rb"
-          },
-          {
-            "event": "validate_theme_template",
-            "file": "set/type/bootswatch_skin/events.rb"
-          },
-          {
-            "event": "use_as_current_skin",
-            "file": "set/type/bootswatch_skin.rb"
-          },
-          {
-            "event": "translate_variables_to_scss",
-            "file": "set/type_plus_right/bootswatch_skin/colors.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AssetInputter",
           "BootstrapCodeFile",
@@ -1272,105 +1084,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "prepare_attachment",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "assign_attachment_on_create",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "assign_attachment_on_update",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "delete_cached_upload_file_on_create",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "clear_draft_files",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "delete_cached_upload_file_on_update",
-            "file": "set/abstract/attachment/00_upload_cache.rb"
-          },
-          {
-            "event": "update_storage",
-            "file": "set/abstract/attachment/01_storage_type.rb"
-          },
-          {
-            "event": "validate_storage_type",
-            "file": "set/abstract/attachment/01_storage_type.rb"
-          },
-          {
-            "event": "change_bucket_if_read_only",
-            "file": "set/abstract/attachment/cloud.rb"
-          },
-          {
-            "event": "uncode_attachment_storage",
-            "file": "set/abstract/attachment/coded.rb"
-          },
-          {
-            "event": "validate_coded_storage_type",
-            "file": "set/abstract/attachment/coded.rb"
-          },
-          {
-            "event": "update_public_link_on_create",
-            "file": "set/abstract/attachment/local.rb"
-          },
-          {
-            "event": "remove_public_link_on_delete",
-            "file": "set/abstract/attachment/local.rb"
-          },
-          {
-            "event": "update_public_link",
-            "file": "set/abstract/attachment/local.rb"
-          },
-          {
-            "event": "select_file_revision",
-            "file": "set/abstract/attachment.rb"
-          },
-          {
-            "event": "correct_identifier",
-            "file": "set/abstract/attachment.rb"
-          },
-          {
-            "event": "save_original_filename",
-            "file": "set/abstract/attachment.rb"
-          },
-          {
-            "event": "validate_file_exist",
-            "file": "set/abstract/attachment.rb"
-          },
-          {
-            "event": "write_identifier",
-            "file": "set/abstract/attachment.rb"
-          },
-          {
-            "event": "store_",
-            "file": "lib/carrier_wave/card_mount.rb"
-          },
-          {
-            "event": "remove_",
-            "file": "lib/carrier_wave/card_mount.rb"
-          },
-          {
-            "event": "mark_remove_",
-            "file": "lib/carrier_wave/card_mount.rb"
-          },
-          {
-            "event": "reset_previous_changes_for_",
-            "file": "lib/carrier_wave/card_mount.rb"
-          },
-          {
-            "event": "remove_previously_stored_",
-            "file": "lib/carrier_wave/card_mount.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": [
           "file_buckets",
@@ -1471,8 +1184,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -1544,13 +1255,6 @@
         },
         "viewsByFormat": {},
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "add_comment",
-            "file": "set/all/comment.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "Permission"
         ],
@@ -1646,21 +1350,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "update_structurees_references",
-            "file": "set/right/structure.rb"
-          },
-          {
-            "event": "reset_cache_to_use_new_structure",
-            "file": "set/right/structure.rb"
-          },
-          {
-            "event": "update_structurees_type",
-            "file": "set/right/structure.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "CodeContent",
           "Sources",
@@ -1748,8 +1437,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -1809,8 +1496,6 @@
         "setModulesByPattern": {},
         "viewsByFormat": {},
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -1870,8 +1555,6 @@
         "setModulesByPattern": {},
         "viewsByFormat": {},
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": [
           "delaying"
@@ -1999,8 +1682,6 @@
             "file": "set\\all\\editing.rb"
           }
         ],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -2140,8 +1821,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [
           "EmailField",
           "TestContext"
@@ -2252,49 +1931,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "cache_expired_for_type_change",
-            "file": "set/all/follow/follower_ids.rb"
-          },
-          {
-            "event": "expire_preferences_cache",
-            "file": "set/all/follow/follower_ids.rb"
-          },
-          {
-            "event": "silence_notifications",
-            "file": "set/all/notify.rb"
-          },
-          {
-            "event": "notify_followers_after_save",
-            "file": "set/all/notify.rb"
-          },
-          {
-            "event": "stash_followers",
-            "file": "set/all/notify.rb"
-          },
-          {
-            "event": "notify_followers_after_delete",
-            "file": "set/all/notify.rb"
-          },
-          {
-            "event": "cache_expired_for_new_preference",
-            "file": "set/right/follow.rb"
-          },
-          {
-            "event": "follow_fields_changed",
-            "file": "set/right/follow_fields.rb"
-          },
-          {
-            "event": "update_follow_rules",
-            "file": "set/self/follow_defaults.rb"
-          },
-          {
-            "event": "cache_expired_for_new_set",
-            "file": "set/type/set.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "FollowOption",
           "List"
@@ -2591,17 +2227,6 @@
             "file": "set\\all\\rss.rb"
           }
         ],
-        "eventHooks": [
-          {
-            "event": "validate_json",
-            "file": "set/type/json.rb"
-          },
-          {
-            "event": "validate_number",
-            "file": "set/type/number.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": [
           "default_html_view",
@@ -2739,8 +2364,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [
           "TemplatedNests"
         ],
@@ -2833,33 +2456,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "update_ancestor_timestamps",
-            "file": "set/all/history/events.rb"
-          },
-          {
-            "event": "assign_action",
-            "file": "set/all/history/events.rb"
-          },
-          {
-            "event": "detect_conflict",
-            "file": "set/all/history/events.rb"
-          },
-          {
-            "event": "finalize_action",
-            "file": "set/all/history/events.rb"
-          },
-          {
-            "event": "rollback_actions",
-            "file": "set/all/history/events.rb"
-          },
-          {
-            "event": "finalize_act",
-            "file": "set/all/history/events.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": [
           "acts_per_page"
@@ -2944,13 +2540,6 @@
         },
         "viewsByFormat": {},
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "cache_delete_card_events",
-            "file": "set/all/observer.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -3056,21 +2645,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "validate_role_enabling",
-            "file": "set/right/enabled_roles.rb"
-          },
-          {
-            "event": "clear_roles_cache",
-            "file": "set/right/enabled_roles.rb"
-          },
-          {
-            "event": "update_layout_registry",
-            "file": "set/type/layout_type.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AccountDropdown",
           "Items",
@@ -3224,29 +2798,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "add_and_drop_items",
-            "file": "set/abstract/01_list/events.rb"
-          },
-          {
-            "event": "insert_item_event",
-            "file": "set/abstract/01_list/events.rb"
-          },
-          {
-            "event": "validate_item_type",
-            "file": "set/abstract/01_list/events.rb"
-          },
-          {
-            "event": "validate_item_uniqueness",
-            "file": "set/abstract/01_list/events.rb"
-          },
-          {
-            "event": "delist",
-            "file": "set/abstract/delist.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "Items",
           "List",
@@ -3332,8 +2883,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -3417,37 +2966,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "set_read_rule",
-            "file": "set/all/permissions.rb"
-          },
-          {
-            "event": "set_field_read_rules",
-            "file": "set/all/permissions.rb"
-          },
-          {
-            "event": "update_read_rule",
-            "file": "set/all/permissions.rb"
-          },
-          {
-            "event": "check_permissions",
-            "file": "set/all/permissions.rb"
-          },
-          {
-            "event": "update_rule_cache",
-            "file": "set/all/update_read_rules.rb"
-          },
-          {
-            "event": "expire_related",
-            "file": "set/all/update_read_rules.rb"
-          },
-          {
-            "event": "cascade_read_rule",
-            "file": "set/right/read.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "Permission"
         ],
@@ -3533,21 +3051,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "validate_recaptcha_field",
-            "file": "set/abstract/recaptcha_setting.rb"
-          },
-          {
-            "event": "set_recaptcha_site_key",
-            "file": "set/abstract/recaptcha_setting.rb"
-          },
-          {
-            "event": "recaptcha",
-            "file": "set/all/recaptcha.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "RecaptchaSetting"
         ],
@@ -3694,13 +3197,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "save_recently_edited_settings",
-            "file": "set/rule/rules.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "List",
           "Type::SearchType",
@@ -3833,17 +3329,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "validate_coffeescript_syntax",
-            "file": "set/type/coffee_script.rb"
-          },
-          {
-            "event": "validate_javascript_syntax",
-            "file": "set/type/java_script.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AssetFile",
           "AssetGroup",
@@ -4029,8 +3514,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [
           "CodeContent",
           "CqlSearch",
@@ -4124,25 +3607,6 @@
           "html": []
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "discard_deleted_locations",
-            "file": "set/all/location_history.rb"
-          },
-          {
-            "event": "save_current_location",
-            "file": "set/all/location_history.rb"
-          },
-          {
-            "event": "store_in_session",
-            "file": "set/type/session.rb"
-          },
-          {
-            "event": "delete_in_session",
-            "file": "set/type/session.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "Pointer"
         ],
@@ -4255,21 +3719,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "validate_css",
-            "file": "set/type/css.rb"
-          },
-          {
-            "event": "validate_scss_syntax",
-            "file": "set/type/scss.rb"
-          },
-          {
-            "event": "no_deletion_if_used",
-            "file": "set/type/skin.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [
           "AssetFile",
           "AssetGroup",
@@ -4368,8 +3817,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [
           "BsBadge"
         ],
@@ -4467,8 +3914,6 @@
           ]
         },
         "aliasPairs": [],
-        "eventHooks": [],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },
@@ -4547,17 +3992,6 @@
         },
         "viewsByFormat": {},
         "aliasPairs": [],
-        "eventHooks": [
-          {
-            "event": "save_virtual_content",
-            "file": "set/abstract/virtual_cache.rb"
-          },
-          {
-            "event": "delete_virtual_content",
-            "file": "set/abstract/virtual_cache.rb"
-          }
-        ],
-        "beforeHooks": [],
         "includeSetRefs": [],
         "cardioConfigKeys": []
       },

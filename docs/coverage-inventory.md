@@ -19,7 +19,7 @@ The mod-compatibility boundary is its own decision record
 | Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade. The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
 | Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,389 semantics comparisons, `synthetic-v1` fixture — the fixture's `ops/semantics.jsonl` holds **2,388** lines, plus the 1 scenario step whose op is `ask`, which the grader also grades as semantics (`reference-harness/runner/grade-lib.mjs:197`). See "Why two counts of the same fixture" below |
 | Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: of its 70 operations, **67 are public** — **65** leave row deltas byte-identical to Ruby's on the committed `write-battery-v1` synthetic deck and **2 are declared deliberate differences**, with **0 unexpected**; the other **3 are withheld until disclosure** (`docs/SECURITY.md`) and print a `NOT RUN` line when absent |
-| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: of its 90 steps, **88 are public** — **83** match Ruby on the committed `write-battery-v1` synthetic deck, **4** are declared deliberate differences and **1** (`get-home`, the asset refresh Ruby runs on the first request) is open; the other **2 are withheld until disclosure** (`tests/tools/side-effects-scenario-battery.test.ts` pins every verdict) |
+| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: of its 90 steps, **88 are public** — **84** match Ruby on the committed `write-battery-v1` synthetic deck, **3** are declared deliberate differences and **1** (`get-home`, the asset refresh Ruby runs on the first request) is open; the other **2 are withheld until disclosure** (`tests/tools/side-effects-scenario-battery.test.ts` pins every verdict) |
 
 The standing test net (`tests/standing-net.json`, 68 manifest files) run
 2026-10-01: 696 passed, 4 expected fail, 12 skipped (712). That net is
@@ -57,7 +57,7 @@ is asserted by the suite itself (`reference-harness/runner/test/normalize.test.m
 | --- | --- | ---: | --- |
 | Reference-harness scenarios | `reference-harness/fixtures/synthetic-v1` | 22 | 16 write steps' row deltas (persistence 16/16) + 19 step answers (side effects 19/19: 16 write answers, 3 sign-in answers); the 2 renders and 1 question among them grade as rendering and semantics, reads write only what the oracle's reads wrote (read writes 8/8, other tables 12/12) |
 | The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 67 public: 65 identical row deltas + 2 declared deliberate differences; 3 withheld until disclosure |
-| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 88 public: 83 match + 4 declared + 1 open (`get-home`); 2 withheld until disclosure |
+| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 88 public: 84 match + 3 declared + 1 open (`get-home`); 2 withheld until disclosure |
 
 Every step of all three is pinned: a change in any of them fails the suite
 that runs it. The production-deck runs of the same two batteries remain the
@@ -139,7 +139,7 @@ package does NOT measure, item 6.
   every step's verdict — what the request was told, which error it showed,
   what mail it sent, who is signed in afterwards — against the Ruby trace
   recorded on that deck (`expected/side-effects-ruby.json`, recorded with
-  Ruby's production error handling). **88 steps are public: 83 match Ruby, 4
+  Ruby's production error handling). **88 steps are public: 84 match Ruby, 3
   are declared deliberate differences and 1 is open** (`get-home`, the asset
   refresh Ruby runs on the first request after setup). The other **2 steps are
   withheld until disclosure**. Every verdict is pinned step by step, so any

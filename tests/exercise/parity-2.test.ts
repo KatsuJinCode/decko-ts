@@ -68,10 +68,8 @@
 // committed recording those published counts rest on. The scenario battery's
 // 90-step trace is recorded on the same deck and committed beside it, with an
 // OPEN FINDING: on this synthetic deck 3 of the battery's 7 declared Ruby
-// crashes do not reproduce, and the underlying divergence surfaces instead
-// (the port refuses to rename another user's account holder; Ruby 0.20 does
-// not enforce this) -- tests/tools/side-effects-scenario-battery.test.ts
-// documents it.
+// crashes do not reproduce, and an underlying declared divergence surfaces
+// instead -- tests/tools/side-effects-scenario-battery.test.ts documents it.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";

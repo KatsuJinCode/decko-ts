@@ -16,9 +16,11 @@
 // THE OWASP CORPUS RUNS HERE. The first claim's exercise names the corpus in
 // tests/card/actions/content-clean-security.test.ts, so that module is
 // imported below: its OWASP-derived suite (the vectors, 4,000 random hostile
-// mixtures, the Ruby byte-parity block) executes as part of this run rather
+// mixtures, the ordinary-content block) executes as part of this run rather
 // than being re-described here. The it()s under "stored HTML" then assert,
-// by name, the four neutralisations that claim calls out.
+// by name, the four neutralisations that claim calls out. The byte-for-byte
+// comparison with the upstream cleaner's output is withheld until disclosure
+// (tests/withheld/) and is not exercised here.
 //
 // THE WORKERS RUNTIME IS DECLARED, NOT HOSTED. Node's WebCrypto computes
 // PBKDF2 at 600,000 iterations without complaint (checked on node v24.19.0
@@ -38,7 +40,7 @@ import { pbkdf2Sync } from "node:crypto";
 // The OWASP-derived corpus, run in place (see the header).
 import "../card/actions/content-clean-security.test.js";
 
-import { cleanContent, rubyCleanContent } from "../../src/card/actions/content-clean.js";
+import { cleanContent } from "../../src/card/actions/content-clean.js";
 import { htmlSafetyProblems } from "../card/actions/html-safety-verifier.js";
 import { constantTimeEqual, tokensEqual } from "../../src/card/auth/session-token.js";
 import {
@@ -144,17 +146,17 @@ describe("stored HTML (docs/SECURITY.md:23)", () => {
     }
   });
 
-  it(`"${STORED_HTML_CLAIM}" — a comment is removed where it lies in text and escaped where it does not, and ordinary content is byte-identical to Ruby`, () => {
-    // A comment between blocks lies in text: removed, exactly as Ruby removes it.
+  it(`"${STORED_HTML_CLAIM}" — a comment is removed where it lies in text and escaped where it does not, and ordinary content is stored as written`, () => {
+    // A comment between blocks lies in text: removed.
     const commented = `<p>before the note</p><!-- a note for the editors --><p>after the note</p>`;
     expect(cleanContent(commented)).toBe(`<p>before the note</p><p>after the note</p>`);
-    expect(cleanContent(commented)).toBe(rubyCleanContent(commented));
     // An unterminated "comment" is not one: it would swallow the rest of the
     // page, so its "<" is escaped instead.
     expect(cleanContent(`hello <!-- open comment`)).toBe("hello &lt;!-- open comment");
     expect(htmlSafetyProblems(cleanContent(`hello <!-- open comment<p>page</p>`))).toEqual([]);
-    // Ordinary content: what an editor produces, stored byte for byte as Ruby
-    // stores it — for every case the port's bytes are Ruby's bytes.
+    // Ordinary content: what an editor produces, stored as written (the table
+    // normalises attribute order), stable under a second pass, and leaving
+    // nothing a browser acts on.
     const ordinary = [
       `<p>Plain paragraph.</p>`,
       `<p>Text with <strong>bold</strong> and <em>italic</em>.</p>`,
@@ -168,11 +170,11 @@ describe("stored HTML (docs/SECURITY.md:23)", () => {
     ];
     for (const input of ordinary) {
       const out = cleanContent(input);
-      expect({ input, port: out, ruby: rubyCleanContent(input) }).toEqual({ input, port: out, ruby: out });
       expect(htmlSafetyProblems(out)).toEqual([]);
+      expect(cleanContent(out)).toBe(out);
     }
-    // Of those, every case Ruby itself leaves untouched is stored exactly as
-    // written (the table normalises attribute order in BOTH cleaners).
+    // Every case but the table is stored exactly as written; the table
+    // normalises attribute order.
     for (const input of ordinary.filter((_, i) => i !== 6)) {
       expect(cleanContent(input)).toBe(input);
     }

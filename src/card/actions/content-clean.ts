@@ -20,9 +20,10 @@
 //      tokenizer's rules — the rules a browser applies — and the allowed ones
 //      kept in Ruby's order and quote style, with their values escaped and any
 //      URL or CSS value a browser would act on dropped. Upstream's own output
-//      for the tag is computed too, and stored unchanged whenever a browser
-//      reads exactly the same attributes from it; otherwise the rebuilt tag
-//      is. So cleaning is stable: cleaning cleaned content changes nothing.
+//      for the tag is computed too (rubyHtmlAttribs below, the same read
+//      upstream performs), and stored unchanged whenever a browser reads
+//      exactly the same attributes from it; otherwise the rebuilt tag is. So
+//      cleaning is stable: cleaning cleaned content changes nothing.
 //   3. Comments are removed one line at a time, but only where the comment
 //      opens and closes in text, never inside a tag's attribute value.
 //   4. In the text between tags, a `<` that would open markup this pass did
@@ -30,9 +31,7 @@
 //
 // Ordinary content is stored byte for byte as upstream stores it; only content
 // whose stored form a browser would act on differs. The regression suite is
-// tests/card/actions/content-clean-security.test.ts, and rubyCleanContent
-// below is the upstream algorithm kept intact so the suite can measure where
-// the two differ.
+// tests/card/actions/content-clean-security.test.ts.
 //
 // The port keeps Ruby's regex semantics where JavaScript's differ:
 // - `^` in Ruby always matches at any line start, so the patterns that use
@@ -85,7 +84,10 @@ function allowedTags(allowInlineStyles: boolean): Map<string, string[]> {
   return tags;
 }
 
-const ALLOWED_TAGS = allowedTags(true);
+// The port's own allowlist. Exported for the withheld comparison material
+// under tests/withheld/, which recomputes the upstream cleaner from the same
+// pieces the port uses; nothing here is a copy of it.
+export const ALLOWED_TAGS = allowedTags(true);
 
 /** Attributes whose value is a URL the browser may load or navigate to. */
 const URL_ATTRIBUTES: ReadonlySet<string> = new Set(["href", "src", "cite"]);
@@ -112,8 +114,8 @@ export const ALLOWED_URL_SCHEMES: ReadonlySet<string> = new Set([
 const DATA_IMAGE_RE = /^data:image\/(?:png|gif|jpe?g|pjpeg|webp|bmp|avif|x-icon|vnd\.microsoft\.icon)[;,]/;
 
 // ---------------------------------------------------------------------------
-// Ruby's algorithm, kept verbatim: its output is what the port stores whenever
-// that output is safe.
+// The upstream attribute read. Its output is what the port stores whenever that
+// output is safe (cleanTag below).
 // ---------------------------------------------------------------------------
 
 /** ATTR_VALUE_RE: single-quoted, double-quoted, bare value. */
@@ -153,7 +155,11 @@ function filterClasses(value: string): string {
     .join(" ");
 }
 
-function rubyHtmlAttribs(tag: string, rawAttr: string, okAttrs: readonly string[]): string {
+/** The attribute text upstream's own read produces for one tag. The port
+ *  computes it so it can store upstream's bytes whenever a browser reads the
+ *  same attributes from them (cleanTag below). Exported for the withheld
+ *  comparison material under tests/withheld/. */
+export function rubyHtmlAttribs(tag: string, rawAttr: string, okAttrs: readonly string[]): string {
   const pieces = [tag];
   for (const okAttr of okAttrs) {
     const [q, value] = processAttribute(okAttr, rawAttr);
@@ -432,7 +438,9 @@ interface Piece {
   s: string;
 }
 
-const TAG_RE = /<(\/*)(\w+)([^>]*)>/g;
+/** Ruby's own tag expression (`<(\/*)(\w+)([^>]*)>`), used by the port's
+ *  document pass and by the withheld comparison material under tests/withheld/. */
+export const TAG_RE = /<(\/*)(\w+)([^>]*)>/g;
 
 function tagPieces(input: string): Piece[] {
   const pieces: Piece[] = [];
@@ -567,8 +575,9 @@ function escapeStrayMarkup(pieces: Piece[]): string {
 }
 
 /** clean_spaces (space_last_in_multispace): a run of &nbsp; after a space
- *  moves the plain space to the end of the run. */
-function cleanSpaces(input: string): string {
+ *  moves the plain space to the end of the run. Exported for the withheld
+ *  comparison material under tests/withheld/. */
+export function cleanSpaces(input: string): string {
   return input.replace(/(?:^|\b) ((?:&nbsp;)+)/gm, "$1 ");
 }
 
@@ -577,21 +586,6 @@ function cleanSpaces(input: string): string {
  *  (see the module header). */
 export function cleanContent(input: string): string {
   return cleanSpaces(escapeStrayMarkup(removeComments(tagPieces(input))));
-}
-
-/** Card::Content.clean! exactly as card-1.110.0 runs it, ported verbatim.
- *  Kept for the parity harness and the regression suite, which measure where
- *  the port's output differs; never used to store content. */
-export function rubyCleanContent(input: string): string {
-  const tagged = input
-    .replace(TAG_RE, (_raw, slash: string, name: string, attrs: string) => {
-      const tag = name.toLowerCase();
-      const okAttrs = ALLOWED_TAGS.get(tag);
-      if (okAttrs === undefined) return " ";
-      return `<${slash}${rubyHtmlAttribs(tag, attrs, okAttrs)}>`;
-    })
-    .replace(/<!--[^\n]*?-->/g, "");
-  return cleanSpaces(tagged);
 }
 
 /** Type codenames whose sets override clean_html? to false: type/html.rb
