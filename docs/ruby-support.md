@@ -129,8 +129,8 @@ Result, 2026-10-14, on a copy of `reference-harness/fixtures/synthetic-v2/deck`
 All three masks were needed by the control. With them, all 3,804 renders under
 the gem are byte-identical to stock.
 The check cannot see a difference inside those three values; everything
-else in every render is compared byte for byte. The raw counts agree too:
-the same 2,312 renders differ in the control as under the gem.
+else in every render is compared byte for byte. Before masking, 2,312 renders
+differ from stock in the control and 2,312 under the gem.
 
 ```bash
 # in reference-harness/oracle/app, each run on its own copy of the same deck
@@ -161,8 +161,10 @@ Three adapters share it:
 against the stock captures is a second check that the gem changes no output.
 
 Graded 2026-10-14 on `fixtures/synthetic-v1` (fixture digest `7a96292d…`),
-adapter checkout `71b43a84` (clean), Ruby 3.4.11 x64-mingw-ucrt, normalisation
-N1–N3; report in `reference-harness/grade-reports/synthetic-v1-ruby-batched-report.json`:
+adapter checkout `ede1835d` (clean), Ruby 3.4.11 x64-mingw-ucrt, normalisation
+N1–N3. The run's ready line, copied into the report and the run record,
+names card-mod-batched-nests 0.1.0 with its patches installed and both
+settings on, for every kind; report in `reference-harness/grade-reports/synthetic-v1-ruby-batched-report.json`:
 
 | Kind | Graded | Pass |
 |---|---:|---:|
