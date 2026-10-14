@@ -3611,10 +3611,22 @@ export const engageTabView: ViewFn = (ctx) => {
  *  rows the board_rules_tab pills render for a *self set: [display name,
  *  data-cy key, categories, help text]. The settings register through
  *  setting_opts (setting.rb:55-65) across the mods; the category
- *  flags and help texts are transcribed from the gem's own declarations
- *  (the deck's rule-card
- *  existence drives the recent flags; the common/field model is the
- *  rule-list machinery's). */
+ *  flags and help texts are transcribed from the gem's own declarations.
+ *
+ *  "recent" is NOT in the table. It is DECK DATA - Ruby's
+ *  `categories` (card-mod-rules set/type/set/setting_categories.rb:9-15)
+ *  computes `[:all] + %i[field recent common].select { category_settings(cat)
+ *  &.include? setting }`, and category_settings(:recent) is
+ *  `Card[:recent_settings].item_cards.map(&:codename)` (same file:64-67):
+ *  whatever the deck's *recent settings list holds, and nothing when the
+ *  deck has no such card. The transcription below froze a "recent" flag on
+ *  ten settings, so every one of those pills carried `_category-recent`
+ *  on a deck whose *recent settings list was empty - the oracle records no
+ *  recent pill at all. recentCategoryNames() below answers it per deck.
+ *
+ *  field and common stay in the table: both are static per setting
+ *  (field_settings and COMMON_SETTINGS are frozen constants in the same
+ *  file, lines 6-7 and 21-23), so the transcription of them is exact. */
 const RULE_BOARD_SETTINGS: ReadonlyArray<
   readonly [
     string,
@@ -3624,35 +3636,35 @@ const RULE_BOARD_SETTINGS: ReadonlyArray<
   [
     "templating",
     [
-      ["structure", "structure", "structure", "all recent common", "control card's content / structure"],
-      ["default", "default", "default", "all field recent common", "type/content template for new cards"],
+      ["structure", "structure", "structure", "all common", "control card's content / structure"],
+      ["default", "default", "default", "all field common", "type/content template for new cards"],
       ["autoname", "autoname", "autoname", "all", ""],
     ],
   ],
   [
     "permission",
     [
-      ["create", "create", "create", "all recent common", "who can create cards"],
-      ["read", "read", "read", "all recent common", "who can view cards"],
-      ["update", "update", "update", "all recent common", "who can update cards"],
+      ["create", "create", "create", "all common", "who can create cards"],
+      ["read", "read", "read", "all common", "who can view cards"],
+      ["update", "update", "update", "all common", "who can update cards"],
       ["delete", "delete", "delete", "all common", "who can delete cards"],
-      ["captcha", "captcha", "captcha", "all recent", ""],
+      ["captcha", "captcha", "captcha", "all", ""],
     ],
   ],
   [
     "webpage",
     [
       ["head", "head", "head", "all", "head tag content"],
-      ["layout", "layout", "layout", "all recent", ""],
+      ["layout", "layout", "layout", "all", ""],
       ["style", "style", "style", "all", ""],
-      ["script", "script", "script", "all recent", ""],
+      ["script", "script", "script", "all", ""],
     ],
   ],
   [
     "editing",
     [
-      ["help", "help", "help", "all field recent", "help text people will see when editing"],
-      ["input type", "input_type", "input_type", "all field recent", "edit interface"],
+      ["help", "help", "help", "all field", "help text people will see when editing"],
+      ["input type", "input_type", "input_type", "all field", "edit interface"],
       ["guide", "guide", "guide", "all common", "appears in the full editor view to guide users"],
     ],
   ],
@@ -3669,10 +3681,30 @@ const RULE_BOARD_SETTINGS: ReadonlyArray<
     [
       ["thanks", "thanks", "thank", "all", "destination after card is created"],
       ["follow fields", "follow_fields", "follow_field", "all", ""],
-      ["follow", "follow", "follow", "all recent", ""],
+      ["follow", "follow", "follow", "all", ""],
     ],
   ],
 ];
+
+/** setting_categories.rb:64-67 recent_settings: `Card[:recent_settings]
+ *  .item_cards.map(&:codename).compact`. Deck data, not code - the same
+ *  derivation render/format.ts#recentSettingCodenames already pins (its
+ *  comment carries the corpus row the list was read from): the *recent
+ *  settings card's pointer items are setting names, and their codenames
+ *  are the underscored, star-stripped names ("*content options" ->
+ *  content_options). An absent card is the empty membership, matching
+ *  Ruby's nil fetch. */
+function recentCategoryNames(ctx: ViewContext): Set<string> {
+  const list = ctx.fmt.engine.fetchRenderCard("*recent settings");
+  const items = new Set<string>();
+  if (list === undefined || list.unknown === true) return items;
+  for (const line of list.dbContent.split("\n")) {
+    const item = line.trim();
+    if (item === "") continue;
+    items.add(item.replace(/^\*/, "").toLowerCase().replace(/ +/g, "_"));
+  }
+  return items;
+}
 
 /** rule_lists.rb:69-74 setting_list_item -> the nested rule card's
  *  :rule_board_link pill (the rule card is fetched new: {} - ABSENT for
@@ -3744,9 +3776,25 @@ const editRulesView: ViewFn = (ctx) => {
     `</div></form>`;
   const groups = RULE_BOARD_SETTINGS.map(([group, settings]) => {
     const pills = settings
-      .map(([name, codename, cy, cats, help]) =>
-        ruleBoardPill(setNameUrlKey, name, codename, cy, cats, help),
-      )
+      .map(([name, codename, cy, cats, help]) => {
+        // Ruby's `categories` (setting_categories.rb:9-15) emits
+        // [:all, :field, :recent, :common] in that ORDER, with only the
+        // categories that apply. field/common come from the table (frozen
+        // per-setting constants); recent is per-deck and is appended in
+        // its own slot between them, so a recent setting reads
+        // "all field recent common" and a non-recent one "all field
+        // common" - the order the classes and data-category render in.
+        const parts = cats.split(" ");
+        const recent = recentCategoryNames(ctx);
+        const withRecent = recent.has(codename)
+          ? [
+              ...parts.filter((c) => c !== "common"),
+              "recent",
+              ...parts.filter((c) => c === "common"),
+            ].join(" ")
+          : cats;
+        return ruleBoardPill(setNameUrlKey, name, codename, cy, withRecent, help);
+      })
       .join("\n");
     const collapseId = `card-${setSafeKey}-${group}-collapse-id`;
     const accordionButtonClass = serializerFollowsLive()
@@ -3782,10 +3830,16 @@ const editRulesView: ViewFn = (ctx) => {
   // Topic-typed row carries topic-Xself — Topic-typed left; the
   // RichText-typed fixture carries rich_text-Xself — RichText-typed left). The Set
   // type identity ("5"/"Set") stays the deck's Set type card row.
-  const leftTypeCode =
-    fmt.card.typeCode ??
-    fmt.card.typeName?.toLowerCase().replace(/\s+/g, "_") ??
-    "rich_text";
+  //
+  // The token is the type card's NAME KEY (variants.rb #key), not its name
+  // lowercased: Ruby's Cardtype card is named "RichText" and its key is
+  // "rich_text", so a lowercase of the NAME gives "richtext" and the
+  // emitted TYPE_PLUS_RIGHT token does not match the oracle's
+  // `TYPE_PLUS_RIGHT-rich_text-Xself`. typeCode is the cardtype's CODENAME
+  // (render.ts#seatCard peeks it from the codename registry), which is a
+  // third spelling again and is not what a set key is built from - so the
+  // key is derived from the type NAME here.
+  const leftTypeCode = DeckoName.parse(fmt.card.typeName ?? "RichText").key;
   const setKeys =
     `ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-${leftTypeCode}-Xself` +
     (setRecord !== undefined
@@ -3804,9 +3858,16 @@ const editRulesView: ViewFn = (ctx) => {
     (setRecord !== undefined && setRecord.id !== undefined
       ? ` data-card-id="${setRecord.id}"`
       : "") +
-    // data-card-name carries the card's NAME (the self-set junction name,
-    // e.g. "<card>+*self"); the link-name stays the url key.
-    ` data-card-name="${h(setName)}"` +
+    // data-card-name is wrap.rb:50-53 slot_cardname: the card's NAME,
+    // except that a NEW COMPOUND card carries its url_key instead. The
+    // self-set junction is fetched new whenever it does not exist in the
+    // deck, so "Oracle Basics+*self" (no such row) emits
+    // "Oracle_Basics+*self" while "Home+*self" (a real row) keeps the raw
+    // name with its space - the same junction rendered two ways, which is
+    // what the capture records.
+    ` data-card-name="${h(
+      setRecord !== undefined && setRecord.id !== undefined ? setName : DeckoName.parse(setName).urlKey,
+    )}"` +
     // the deck's Set type card (id 5) - deck data
     ` data-card-type-id="5" data-card-type-name="Set"` +
     ` data-card-link-name="${h(DeckoName.parse(setName).urlKey)}"` +
