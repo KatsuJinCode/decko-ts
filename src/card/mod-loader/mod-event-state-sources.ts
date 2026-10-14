@@ -55,17 +55,16 @@ function coreSource(
  *  whether this card records history at all (history.rb:6). The engine's
  *  write path is what sets them, so they arrive on the context as the
  *  history writer's own view of the act. */
-function historySource(
+async function historySource(
   card: ModEventCard,
   ctx: ModEventCardStateContext,
-): ModEventCardState {
+): Promise<ModEventCardState> {
   return {
     // act_card? (director/all.rb:42): the engine's saves are top-level acts.
     isActCard: ctx.isActCard,
-    // history? (history.rb:6) defaults true; the account mod's no-history
-    // types opt out, and the engine already computes that set for its own
-    // dropHistory call (account-fields.ts NO_HISTORY_RIGHT_CODENAMES).
-    history: true,
+    // history? (history.rb:6) defaults true; the no-history sets override it
+    // to false (see NO_HISTORY_SETS below).
+    history: await resolveHistory(card, ctx),
   };
 }
 
@@ -163,6 +162,61 @@ function carrierwaveSource(
     // pair); without one it is the identifier already on the row.
     attachmentIdentifierContent: riding ? (content ?? undefined) : (before ?? undefined),
   };
+}
+
+/** The set modules that answer `history?` false, each keyed by the codename
+ *  it answers for and the position its set file is scoped to. The port's
+ *  `history?` is a per-card answer, so it is resolved from the card's own
+ *  codename (`self`), its right's codename (`right`), or its type's codename
+ *  (`type`) — the three scopes Ruby's set files live in.
+ *
+ *  - right: card/mod/core/set/right/autoname.rb:3-5,
+ *    mod/account/set/right/password.rb:13-15, mod/account/set/right/salt.rb:9-11,
+ *    mod/api_key/set/right/api_key.rb:20-22, mod/assets/set/right/asset_input.rb:7-9,
+ *    mod/assets/set/right/asset_output.rb:9-11.
+ *  - self: mod/rules/set/self/recent_settings.rb:3-5.
+ *  - type: mod/session/set/type/session.rb:9-11.
+ *  - abstract: mod/virtual/set/abstract/virtual_cache.rb:35-37, included by
+ *    exactly one concrete set (mod/assets/set/right/asset_input.rb:1), so it
+ *    is the asset_input right entry above. */
+const NO_HISTORY_SETS: ReadonlyArray<{
+  scope: "right" | "self" | "type";
+  codename: string;
+}> = [
+  { scope: "right", codename: "autoname" },
+  { scope: "right", codename: "password" },
+  { scope: "right", codename: "salt" },
+  { scope: "right", codename: "api_key" },
+  { scope: "right", codename: "asset_input" },
+  { scope: "right", codename: "asset_output" },
+  { scope: "self", codename: "recent_settings" },
+  { scope: "type", codename: "session" },
+];
+
+/** history? (history.rb:6, overridden per set above): true unless the card
+ *  carries one of the no-history sets. Without a read engine the right and
+ *  self arms cannot be resolved, so the answer is the base true — the same
+ *  answer an unloaded set gives in Ruby. */
+async function resolveHistory(
+  card: ModEventCard,
+  ctx: ModEventCardStateContext,
+): Promise<boolean> {
+  const fetch = ctx.fetch;
+  if (fetch === undefined) return true;
+  // type: the card's own type codename, from its type id.
+  const typeCode = card.typeId !== undefined && card.typeId !== null
+    ? await codenameOfId(ctx, card.typeId)
+    : undefined;
+  // self: the card's own codename (the card's codename column).
+  const selfCode = card.codename;
+  // right: the codename of the card's right side, read off the name.
+  const rightCode = card.name !== "" ? (await fetch.fetch(DeckoName.parse(card.name).rightName?.s ?? ""))?.codename : undefined;
+  for (const set of NO_HISTORY_SETS) {
+    if (set.scope === "type" && typeCode === set.codename) return false;
+    if (set.scope === "self" && selfCode === set.codename) return false;
+    if (set.scope === "right" && rightCode === set.codename) return false;
+  }
+  return true;
 }
 
 /** mod/list set/abstract/01_list/events.rb + mod/collection
