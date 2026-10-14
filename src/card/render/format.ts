@@ -1931,7 +1931,7 @@ export class RenderFormat {
     // format/nest/fetch.rb#new_card: a fetch miss does NOT raise - `Card.fetch
     // cardish, new: new_card_args` returns a NEW unknown card (results.rb:
     // `card if new_opts || card.known?`). Unknown cards need no queries (they
-    // do not exist); the view renders from the miss. Round 9: the new card
+    // do not exist); the view renders from the miss. The new card
     // carries the *default rule's type (newCardDefaultType - the
     // type_id_from_template chain), so its slot renders the class chain and
     // data-card-type-* attributes the captured nest-miss bytes show.
@@ -2400,7 +2400,7 @@ export class RenderFormat {
     // TYPE_PLUS_RIGHT-rich_text-<the timestamp>.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
-    // BRANCH (W2 restore , $1). class_methods.rb:59-71:
+    // BRANCH (the restored `$1` capture). class_methods.rb:59-71:
     //
     //     def quick_type name
     //       if name.present?
@@ -2427,7 +2427,7 @@ export class RenderFormat {
     // The compound-left pins above hold through this arm: quick_type on a
     // compound left ("Soma+tic") resolves the junction *default chain the
     // same way and lands on rich_text there. Engines without the
-    // newCardDefaultType hook keep the pre-W2 shape (the "RichText"
+    // newCardDefaultType hook keep the type-less shape (the "RichText"
     // literal), matching this method's other optional hooks.
     const quickType =
       this.engine.newCardDefaultType?.(leftName) ?? undefined;
@@ -2437,7 +2437,7 @@ export class RenderFormat {
   /** The new-card a nest fetch miss produces (format/nest/fetch.rb#new_card
    *  -> new_card_args): name = the resolved reference, supercard = the
    *  context card (unmodeled - no write path reads it here), no id/
-   *  content. Round 9: the *default rule's type rides along when the
+   *  content. The *default rule's type rides along when the
    *  engine resolves one (newCardDefaultType - the type_id_from_template
    *  chain; the raw-oracle pins absent +Discussion children rendering as
    *  RichText-typed slots). The type informs the set keys (TYPE /
@@ -2555,7 +2555,7 @@ export class RenderFormat {
     // and this builder would not run). The an earlier pass class pins the applied
     // form: the oracle's discussion-page titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
-    // verbatim. (The Round-9 note below — "the *default CONTENT is not
+    // verbatim. (The note below — "the *default CONTENT is not
     // applied at view time" — described the OPEN surface, whose accordion
     // body renders the INNER :content dispatch, itself substituted to
     // :unknown by the same alter_unknown machinery — empty regardless of
@@ -4073,7 +4073,7 @@ export interface RenderEngineLike {
    *  `show: [:full_name]` for the anchorless cases, where Ruby
    *  collapses the per-pattern group into a single full-name row).
    *  Optional; engines without it fall through to the raw-content
-   *  dump (the pre-round-8 shape, the 3,612-line *read oracle ->
+   *  dump (the untyped shape, the 3,612-line *read oracle ->
    *  empty content-view gap). */
   setClassesWithRules?(host: RenderCard): SettingClassWithRules[];
   /** THE SELF/HEAD CORE SEAM read (render.ts preparedHeadBytesFor): the
@@ -4081,7 +4081,7 @@ export interface RenderEngineLike {
    *  the render is not a *head surface (or the engine predates the seam —
    *  the stub harnesses). Optional like every engine hook here. */
   preparedHeadBytesFor?(rootKey: string): string | undefined;
-  /** Round 9 (the new-child template type): the *default rule card's type
+  /** The new-child template type: the *default rule card's type
    *  for a nest-miss child NAME — the port of Ruby's new-card type
    *  resolution. Chain: format/nest/fetch.rb#new_card -> Card.fetch new:
    *  -> mod/core/set/all/type.rb:78-80 type_id_from_template ->
@@ -4093,7 +4093,7 @@ export interface RenderEngineLike {
    *  closed children carry TYPE-list (raw-oracle 9625/13421/14382 open
    *  views; a live blog page's news list renders the same shape).
    *  Optional; engines without it build type-less unknown cards (the
-   *  pre-round-9 shape). */
+   *  type-less shape). */
   newCardDefaultType?(
     name: DeckoName,
     leftTypeName?: string,

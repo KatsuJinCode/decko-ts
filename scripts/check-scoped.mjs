@@ -10,12 +10,12 @@
 //      (default 30 s) are in-flight — covers active edit bursts.
 //   2. ownership: paths under --running directories belong to known
 //      running streams — covers their long think-pauses between bursts.
-// The coordinator's landing gate runs --strict (nothing suppressed).
+// The strict form --strict is what a merge uses: nothing suppressed.
 //
 // Usage:
 //   node scripts/check-scoped.mjs                                  # tsc
 //   node scripts/check-scoped.mjs --vitest                         # vitest
-//   node scripts/check-scoped.mjs --strict                         # landing gate
+//   node scripts/check-scoped.mjs --strict                         # merge form
 //   node scripts/check-scoped.mjs --quiet-ms 60000 --running src/card/fetch,tests/card/fetch
 
 import { spawnSync, execSync } from "node:child_process";

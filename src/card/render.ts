@@ -3782,7 +3782,7 @@ export class RenderEngine implements RenderEngineLike {
           params: chunk,
         });
       }
-      // W4 batch fusion (the round-trip reduction fix): the type prime no longer
+      // Batch fusion (the round-trip reduction fix): the type prime no longer
       // spends its own round trip before the candidate seat. When the seat
       // will run, the statements ride seatNamesByWave's FIRST batch as its
       // preamble - one round trip carries the priming rows AND the wave's
@@ -3921,8 +3921,8 @@ export class RenderEngine implements RenderEngineLike {
     const callAskedPairs = new Set<string>();
     const callAnsweredSimple = new Set<string>();
     const callAnsweredPairs = new Set<string>();
-    // W4 batch fusion (the round-trip reduction fix): a caller's preamble
-    // statements (the W2b type-card prime) ride the FIRST round's batch -
+    // Batch fusion (the round-trip reduction fix): a caller's preamble
+    // statements (the type-card prime) ride the FIRST round's batch -
     // one round trip carries the priming rows and the wave's own asks. The
     // preamble rows flow through the same compose/write/seat pipeline as the
     // round's rows; they are ordinary cards, not wave asks, so they never
@@ -6086,10 +6086,10 @@ export class RenderEngine implements RenderEngineLike {
    *  the same engine-lifetime memory. A join miss converts to a pair-id ask
    *  (askedPairs) on the retry round, so this set never blocks that. */
   private waveAskedSideKeyPairs = new Set<string>();
-  /** db round-trip elimination: type-card ids the W3b priming already
+  /** db round-trip elimination: type-card ids the priming already
    *  seated - the priming pass's IN-list runs once per id per engine. */
   private typeCardsPrimed = new Set<number>();
-  /** Root card keys whose rule-candidate set the W2b priming already
+  /** Root card keys whose rule-candidate set the priming already
    *  asked - the priming pass runs once per page per engine, which is what
    *  makes a warm re-render of the same page zero-query by construction
    *  (the candidates of a page's prepared set are deterministic in the
@@ -6354,7 +6354,7 @@ export class RenderEngine implements RenderEngineLike {
       // only over this render's not-done hosts (the sweep surface), and a
       // warm render has none — the d2v1 hops-gate failure mode (a wave
       // proactively asking on warm renders) is structurally absent. The
-      // candidate seat is the W2b precedent's exact shape
+      // candidate seat is the priming precedent's exact shape
       // (primePreparedCardDerivedState seats the same ruleNamesForCard
       // families for the cards seated before it — byte-proven at every
       // cost level; this extends the same coverage to the closure's

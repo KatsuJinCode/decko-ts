@@ -67,8 +67,13 @@ interface Deck {
 }
 
 // One Deck per isolate (the Workers reuse pattern). The first request in
-// the isolate boots the engine; subsequent requests share the warm caches
-// (a warm re-render issues zero queries). A FAILED boot is
+// the isolate boots the engine; subsequent requests share the warm caches.
+// A warm re-render issues one query, not zero: the render reads the deck's
+// data-version stamp on every request (a single-row SELECT) and resets the
+// retained state if it has moved since the last render, which is what stops
+// a warm isolate from serving anything older than the last committed write
+// (src/card/render.ts; docs/ARCHITECTURE.md, "What is request-local, and
+// what is retained"). A FAILED boot is
 // never cached: the next request retries (a transient D1 hiccup on first
 // hit must not poison the isolate — the deploy entry's proven pattern).
 // Cloudflare's production runtime refuses PBKDF2 above 100,000 iterations

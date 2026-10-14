@@ -373,7 +373,7 @@ export function structuredCardContent(
  * same one the render path and the prefetch verification use) so escaped
  * and commented nests behave identically everywhere.
  *
- * `contextName` (round 9): when given, every non-underscore reference is
+ * `contextName`: when given, every non-underscore reference is
  * ABSOLUTIZED against that name before it is returned — the
  * chunk/reference.rb contract the walkers used to miss for plus-shaped
  * refs. Ruby absolutizes each reference against the REFERENCING card at
