@@ -55,6 +55,8 @@ const DEPLOY_OWNER_EMAIL = "owner@decko.test";
 // The real ladder, not a token string: right/password.rb:1-9 requires a
 // lower, an upper, a special char and a number (first-run-setup.ts:396-400).
 const DEPLOY_OWNER_PASSWORD = "Decko-Demo-1!";
+/** Placeholder operator setup token for the throwaway workerd deck. */
+const DEPLOY_SETUP_TOKEN = "placeholder-setup-token-for-tests";
 
 /** Boot the real worker.ts in a real workerd with a real (local) D1, and
  *  apply the real deploy migration chain to it. Returns the fetch helper and
@@ -389,7 +391,9 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
   describe("DECKO_FIRST_RUN=1 with DECKO_WRITE_PATH=1 — the first-run window", () => {
     let booted: Awaited<ReturnType<typeof bootWorker>>;
     beforeAll(async () => {
-      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1" });
+      // DECKO_SETUP_TOKEN: the one-time setup token an edge host needs from
+      // the operator, since it generates none (docs/SECURITY.md, divergence 5).
+      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1", DECKO_SETUP_TOKEN: DEPLOY_SETUP_TOKEN });
     }, 180_000);
     afterAll(async () => {
       await booted?.dispose();
@@ -430,7 +434,13 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
       // the state that causes it.
       const create = await booted.fetch(
         "/setup",
-        urlencoded(new URLSearchParams({ email: DEPLOY_OWNER_EMAIL, password: DEPLOY_OWNER_PASSWORD }).toString()),
+        urlencoded(
+          new URLSearchParams({
+            email: DEPLOY_OWNER_EMAIL,
+            password: DEPLOY_OWNER_PASSWORD,
+            setup_token: DEPLOY_SETUP_TOKEN,
+          }).toString(),
+        ),
       );
       if (create.status !== 303) {
         // Reported, not hidden: if the create could not run over D1, the

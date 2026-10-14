@@ -136,6 +136,7 @@ import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 // for every request when the flag is unset, so the unarmed staging server
 // behaves exactly as it did before this module existed.
 import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/server/first-run-routes.js";
+import { armGeneratedSetupToken } from "./dist/src/card/auth/setup-token.js";
 // The same-origin check every state-changing request passes (docs/SECURITY.md,
 // "Cross-site requests"): DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS, read at boot.
 import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy } from "./dist/src/server/request-origin.js";
@@ -616,6 +617,17 @@ if (firstRunEnabled() && writePathEnabled()) {
         `(${seeded.modCardsUpdated.length} updated on re-run)`,
     );
   }
+}
+// The one-time setup token (docs/SECURITY.md, divergence 5): with first-run
+// setup on, /setup accepts only a request carrying it. Without an operator
+// DECKO_SETUP_TOKEN, one is generated now and printed here, once.
+if (firstRunEnabled()) {
+  const setupToken = armGeneratedSetupToken();
+  console.log(
+    setupToken === undefined
+      ? "[first-run] /setup requires the token set in DECKO_SETUP_TOKEN"
+      : `[first-run] /setup requires this one-time setup token: ${setupToken}`,
+  );
 }
 const sessions = new SessionStore({ driver: authDriver });
 
