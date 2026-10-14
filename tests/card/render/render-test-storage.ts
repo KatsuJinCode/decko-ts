@@ -164,7 +164,11 @@ export interface RenderTestStorage {
 interface StockCard {
   readonly id: number;
   readonly codename?: string;
-  readonly key?: string;
+  /** The card's stored NAME. The key column is what a seed writes, and it is
+   *  the CANONICAL key, not the codename: `DeckoName.parse("Anonymous").key`
+   *  is "anonymou", so a suite that seeds the same card matches on that
+   *  rather than on "anonymous". */
+  readonly name?: string;
   readonly leftId?: number;
   readonly rightId?: number;
 }
@@ -274,16 +278,24 @@ async function seedBootstrapReadSubstrate(storage: RenderTestStorage): Promise<S
   // join reads card_references, not the rule text (read_rule_cache.rb).
   await seedReference(storage, ids.rule, ids.anyone, "anyone");
   return [
-    { id: ids.all, codename: "all", key: "*all" },
-    { id: ids.set, codename: "set", key: "set" },
-    { id: ids.read, codename: "read", key: "*read" },
-    { id: ids.anyone, codename: "anyone", key: "anyone" },
-    { id: ids.anonymous, codename: "anonymous", key: "anonymous" },
+    { id: ids.all, codename: "all", name: "*all" },
+    { id: ids.set, codename: "set", name: "Set" },
+    { id: ids.read, codename: "read", name: "*read" },
+    { id: ids.anyone, codename: "anyone", name: "Anyone" },
+    { id: ids.anonymous, codename: "anonymous", name: "Anonymous" },
     // The rule card is a junction, so what it occupies is its SIDE PAIR, not
     // a codename or key: a suite seeding its own `*all+*read` is seeding the
     // deck's one such row and the stock one steps aside.
     { id: ids.rule, leftId: ids.all, rightId: ids.read },
   ];
+}
+
+/** The key a seeded row would carry: the explicit key when the suite gives
+ *  one, otherwise the canonical key of the name (what seedCard writes). */
+function stockKeyOf(opts: SeedOptions): string | undefined {
+  if (typeof opts.key === "string") return opts.key;
+  if (typeof opts.name === "string" && opts.name.length > 0) return DeckoName.parse(opts.name).key;
+  return undefined;
 }
 
 /** Release the stock card's codename and key so a suite's card can take
@@ -321,8 +333,7 @@ async function releaseStockCard(
   const index = stock.findIndex(
     (card) =>
       (opts.codename !== undefined && opts.codename !== null && card.codename === opts.codename) ||
-      (typeof opts.key === "string" && card.key === opts.key) ||
-      (typeof opts.name === "string" && opts.key === undefined && card.key !== undefined && DeckoName.parse(opts.name).key === card.key) ||
+      (card.name !== undefined && stockKeyOf(opts) !== undefined && stockKeyOf(opts) === DeckoName.parse(card.name).key) ||
       (junctionStock !== undefined &&
         junctionStock.index === stock.indexOf(card) &&
         junctionStock.leftId === opts.leftId &&
