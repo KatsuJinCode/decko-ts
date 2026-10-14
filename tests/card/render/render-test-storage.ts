@@ -150,8 +150,12 @@ export interface RenderTestStorage {
    *  supersedes the stock card (see seedCard) and the entry is removed. Undefined
    *  on a deck built with `bootstrapReadRules: false`. */
   bootstrap?: StockCard[];
-  /** The stock `*all+*read` rule card's id while it stands. Dropped with its
-   *  parents when a deck's own rule occupies the same sides. */
+  /** The stock `*all+*read` rule card's id while it stands. Dropped as soon as
+   *  a deck takes over `*all` or `*read`: a deck that carries its own
+   *  catch-all SET card and read SETTING brings its own rule with them, and
+   *  the corpus decks do exactly that. Left standing it would be a second row
+   *  on the same sides once that rule lands — the corpus seeds it after the
+   *  takeover, so no collision check at takeover time can see it. */
   bootstrapRule?: number;
 }
 
@@ -578,6 +582,25 @@ export async function seedCard(
   // A codename or key the stock read substrate holds: the stock card steps
   // aside first (its references move once this row has its id — see below).
   const displacedStockId = await releaseStockCard(storage, opts);
+  // A deck that brings its own `*all+*read` is the deck's catch-all rule, and
+  // the stock rule — repointed onto those sides when the deck took over `*all`
+  // and `*read` — is now a second row on them. The suite's rule lands after
+  // the takeover, so the only moment to see the pair is here. The stock row
+  // goes; the deck keeps the rule it brought.
+  if (
+    storage.bootstrapRule !== undefined &&
+    opts.leftId !== undefined &&
+    opts.rightId !== undefined
+  ) {
+    const stockRule = await storage.counting.query<{ left_id: number | null; right_id: number | null }>(
+      `SELECT left_id, right_id FROM cards WHERE id = ?`,
+      [storage.bootstrapRule],
+    );
+    if (stockRule.rows[0]?.left_id === opts.leftId && stockRule.rows[0]?.right_id === opts.rightId) {
+      await storage.counting.query(`DELETE FROM cards WHERE id = ?`, [storage.bootstrapRule]);
+      storage.bootstrapRule = undefined;
+    }
+  }
   await storage.counting.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
