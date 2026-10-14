@@ -45,7 +45,13 @@
 import { DeckoName } from "../name.js";
 import { rawItemStrings } from "../render/pointer-list.js";
 import { bootstrapCoreScss, bootstrapFunctionsScss } from "../render/bootstrap-code-files.js";
-import { bootswatchThemeFile, modStyleFileContent, modStyleFiles, modStyleGroups } from "./style-sources.js";
+import {
+  bootswatchThemeFile,
+  modStyleFileContent,
+  modStyleFiles,
+  modStyleGroups,
+  type ModStyleGroup,
+} from "./style-sources.js";
 import type { CoffeeCompiler } from "./coffee-compiler.js";
 import type { ScssCompiler } from "./scss-compiler.js";
 
@@ -234,14 +240,41 @@ async function styleModsCore(deps: StyleAssetDeps, card: StyleCard): Promise<str
       items.push(""); // a new card: renders nothing
       continue;
     }
-    const groups = modStyleGroups(await modNameOf(deps, modCard)) ?? [];
-    items.push(
-      groups
-        .map((group) => group.files.map((f) => renderStyleChunks(modStyleFileContent(f), deps.relativeRoot)).join("\n"))
-        .join("\n\n"),
-    );
+    // A mod is nested at :content here (style: mods' default item view is
+    // :content, card-mod-list other_views.rb:68-70), whose join is "\n\n".
+    items.push(await modStyleGroupsJoined(deps, modCard, "\n\n"));
   }
   return items.join(", ");
+}
+
+/** A `mod: X+*style` card's own :core: its groups' cores joined with ", "
+ *  (card-mod-list other_views.rb:8-10, the List core the mod card includes),
+ *  each group a "\n"-joined run of its file cards (style_group.rb:9-15). The
+ *  same card nested at :content, as style: mods nests it, joins with "\n\n".
+ *  This is the mod's own asset input (asset_inputter.rb:51-53). */
+async function modStyleCore(deps: StyleAssetDeps, modStyleCard: StyleCard): Promise<string> {
+  const groups = modStyleGroups(await modNameOf(deps, modStyleCard)) ?? [];
+  return groups.map((group) => groupContent(deps, group)).join(", ");
+}
+
+async function modStyleGroupsJoined(deps: StyleAssetDeps, modCard: StyleCard, join: string): Promise<string> {
+  const groups = modStyleGroups(await modNameOf(deps, modCard)) ?? [];
+  return groups.map((group) => groupContent(deps, group)).join(join);
+}
+
+/** A `+group:` card's core: its file cards' cores joined "\n"
+ *  (card-mod-style set/abstract/style_group.rb:9-15). */
+function groupContent(deps: StyleAssetDeps, group: ModStyleGroup): string {
+  return group.files.map((f) => renderStyleChunks(modStyleFileContent(f), deps.relativeRoot)).join("\n");
+}
+
+/** Whether a card is a `mod: X+*style` rule: its name is "<mod>+*style" and
+ *  its left is a mod card (card-mod-style type_plus_right/mod/style.rb). */
+async function isModStyleCard(deps: StyleAssetDeps, card: StyleCard): Promise<boolean> {
+  if (!card.name.endsWith("+*style")) return false;
+  const left = DeckoName.parse(card.name).leftName;
+  if (left === undefined) return false;
+  return (await deps.card(left.s))?.codename?.startsWith("mod_") === true;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +389,7 @@ export async function assembleStyleInput(
       // are style-type cards, not mods, so it takes the recursed-item walk
       // the bootswatch branch uses.
       if (card.codename === "style_mods") return styleModsCore(deps, card);
+      if (await isModStyleCard(deps, card)) return modStyleCore(deps, card);
       if (isStyleRule(card)) {
         const parts: string[] = [];
         await leafContents(deps, card, parts, new Set());

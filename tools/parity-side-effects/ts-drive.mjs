@@ -65,10 +65,8 @@ const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import
 // and stores its asset inputs writes through them exactly as Ruby does.
 const { defaultDeckLoader } = await import(dist("card/mod-loader/default-mod-deck.js"));
 const { RenderEngine } = await import(dist("card/render.js"));
-const { refreshReadAssetInputs } = await import(dist("card/actions/style-asset-events.js"));
 const { CardActionEngine } = await import(dist("card/actions/card-action-engine.js"));
 const { renderPageBytes } = await import(dist("card/render/page.js"));
-const { VirtualRecordCache } = await import(dist("card/mod-loader/mods/card-mod-virtual.js"));
 const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
 const { coffeeNpmCompiler } = await import(dist("server/coffee-npm-compiler.js"));
 
@@ -93,6 +91,16 @@ mkdirSync(FILES, { recursive: true });
 applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 const driver = new LocalSqliteDriver({ path: DB, readonly: false });
 try { registerSqliteRegexpFunction(driver); } catch { /* already registered */ }
+// PARITY_TIMING=1: count the statements each GET runs against the driver and
+// report them with its wall time on stderr (the trace on stdout is unchanged).
+let statementCount = 0;
+if (process.env.PARITY_TIMING === "1") {
+  const query = driver.query.bind(driver);
+  driver.query = (...args) => {
+    statementCount += 1;
+    return query(...args);
+  };
+}
 
 // The port's own session table (db/migrations/001-auth-sessions.sql) is not
 // in the Ruby schema; apply its DDL to the local copy.
@@ -126,23 +134,26 @@ const transport = new CaptureTransport();
 // loader (the harness adapter's note, reference-harness/adapters/ts/adapter.ts:108-124).
 defaultDeckLoader();
 const renderEngine = new RenderEngine(fetcher);
+// The read path's asset refresh, as Ruby's request setup runs it
+// (CardController::Rest#setup). It acts as the deck bot, like the server's
+// engine does, so it takes no session actor.
+const readEngine = new CardActionEngine(fetcher, {
+  actor: null,
+  // Ruby's clock is the wall clock: each bundle it stores on this request is
+  // named by the second it was written, so writes one after another get
+  // distinct names. The read path advances the step clock per read, which
+  // keeps the names distinct within the request and clear of the next step's.
+  // requestClock is declared below; read it at call time.
+  now: () => {
+    stepSeconds += 1;
+    return requestClock();
+  },
+  ipAddress: "127.0.0.1",
+  attachmentStore,
+  scssCompiler,
+  coffeeCompiler,
+});
 renderEngine.renderAbsentCards = true;
-// The dependency seat the read-path asset refresh borrows from the write path:
-// the same fetch engine, attachment store and compilers, so an input stored
-// during a render is the same row the save events would have written.
-const virtuals = new VirtualRecordCache();
-function styleEventContext(actingId) {
-  return {
-    fetch: fetcher,
-    clock: requestClock,
-    newWriter: () => { throw new Error("the read-path asset refresh does not open an act"); },
-    expire: async () => undefined,
-    attachmentStore,
-    compile: scssCompiler,
-    compileCoffee: coffeeCompiler,
-    virtuals,
-  };
-}
 const FROZEN = new Date("2026-10-07T12:00:00.000Z");
 // The request clock: the frozen start plus one second per step, so that
 // files named by the clock (a history-less card's file is <epoch seconds>
@@ -339,6 +350,16 @@ let events = [];
 // `+*asset input` is blank builds and stores it (asset_inputter.rb:44-49).
 // refreshReadAssetInputs is that arm; it is a no-op once the inputs exist.
 async function read(path) {
+  const t0 = performance.now();
+  const s0 = statementCount;
+  const reply = await readPage(path);
+  if (process.env.PARITY_TIMING === "1") {
+    console.error(`GET ${path} status ${reply.status} statements ${statementCount - s0} ms ${(performance.now() - t0).toFixed(1)}`);
+  }
+  return reply;
+}
+
+async function readPage(path) {
   const json = /\.json$/i.test(path);
   const mark = decodeURIComponent(path.replace(/^\//, "")).replace(/\.json$/i, "").replace(/_/g, " ");
   const rec = mark === "" ? { trash: false, codename: "home" } : await fetcher.fetchByKey(DeckoName.parse(mark).key);
@@ -347,7 +368,7 @@ async function read(path) {
     { known, html: !json, ajax: false, codename: rec?.codename ?? null }));
   if (!known) return { status: 404, headers: {}, body: "" };
   const cardName = mark === "" ? "Home" : mark;
-  await refreshReadAssetInputs(styleEventContext(undefined));
+  await readEngine.refreshReadAssetInputs();
   const body = await renderPageBytes(renderEngine, cardName);
   return { status: 200, headers: {}, body };
 }

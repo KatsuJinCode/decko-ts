@@ -261,23 +261,16 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     // A change on either side fails here.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
-      // OUTSTANDING, not an accepted difference. Ruby's first GET of the home
-      // page reads `style: mods` (head.rb:62 nests :style_mods), whose
-      // `+*asset input` is blank on this deck, so asset_input_content builds
-      // it and stores it (asset_inputter.rb:44-49), then
-      // update_referers_after_input_changed re-stores the bundles
-      // (asset_inputter.rb:29-33). The port now runs that read refresh
-      // (refreshReadAssetInputs, style-asset-events.ts) and writes the row,
-      // so the `virtuals` and `writes` fields differ only in content, and the
-      // bundle files are not yet re-stored. Two gaps remain, both named:
-      //   1. the row's content is 221050 bytes, Ruby's is 221005 (45 bytes
-      //      short on Ruby's side); the 42 vendored files match their
-      //      references, so the difference is in what Ruby assembles and is
-      //      being attributed against the Ruby oracle;
-      //   2. the updateAssetOutput cascade that stores the 30 bundle files
-      //      (18 .css, 12 .js, identical bytes each) is not yet reached from
-      //      the read refresh.
-      { step: "get-home", fields: ["files", "virtuals", "writes"] },
+      // OUTSTANDING, one count. The first GET of the home page runs Ruby's
+      // request-setup asset refresh (Card::Assets.refresh, assets.rb:13-28,
+      // refreshReadAssetInputs in style-asset-events.ts). Its `virtuals`,
+      // `writes` and the 18 .css bundles match Ruby by content. The 12 .js
+      // entries differ in count: Ruby stores 15 script bundles and its wall
+      // clock names them by second, and three of them land in a second an
+      // earlier one already took, so 12 distinct names remain. The port's
+      // request clock gives each write its own second, so it shows 15. No
+      // fixed clock reproduces Ruby's collisions.
+      { step: "get-home", fields: ["files"] },
       { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
       { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
       { step: "upload-cache-existing-file", fields: ["actions", "files", "location", "stamps", "status", "stored", "writes"] },

@@ -154,12 +154,14 @@ import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attac
 import { supportsTransactions } from "../../server/driver.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
 import { encryptPassword, planAccountFields } from "../auth/account-fields.js";
+import { actorBot } from "../auth/actor.js";
 import { runObserverEvents } from "../notify/observer.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
+  refreshReadAssetInputs,
   runStyleAssetEvents,
   type SavedCard,
   type StyleAssetEventContext,
@@ -3253,6 +3255,17 @@ export class CardActionEngine {
     }
     for (const sub of result.subactions) out.push({ cardId: sub.cardId, actionId: sub.actionId, verb: sub.verb });
     return out;
+  }
+
+  /** The read path's asset-input refresh (Card::Assets.refresh, card-mod-assets
+   *  lib/card/assets.rb:13-28, run on every request by CardController::Rest#setup,
+   *  decko lib/card_controller/rest.rb:32). The writes it makes are the decko
+   *  bot's: update_asset_input runs `Card::Auth.as_bot` (asset_inputter.rb:37-39),
+   *  so the acting id is the bot's, whatever the request's session. A deck whose
+   *  inputs are present pays the reads and nothing else. */
+  async refreshReadAssetInputs(): Promise<void> {
+    const bot = await actorBot(this.fetch.driver);
+    await refreshReadAssetInputs(this.styleAssetContext(bot.id));
   }
 
   /** What the style asset events borrow from this engine. */
