@@ -135,6 +135,32 @@ describe("write steps' other tables (the other_tables grade)", () => {
     assert.equal(gradeCli(["--fixture", fixture, "--actual", dir, "--declared-other-tables", file]).status, 0);
   });
 
+  it("a table the oracle's schema does not have is reported as engine-only, not compared, matched or declared", () => {
+    const dir = copyGood();
+    const stamp = { deck_data_version: { inserted: [], updated: [{ id: 1, version: 2 }], deleted: [] } };
+    injectOtherTables(dir, stamp);
+    const report = grade(dir);
+    assert.equal(report.verdict, "pass");
+    assert.equal(report.other_tables.graded, 1);
+    assert.equal(report.other_tables.pass, 1);
+    assert.equal(report.other_tables.declared, 0);
+    assert.equal(report.other_table_writes[0].actual.deck_data_version, undefined, "not part of the comparison");
+    assert.deepEqual(report.engine_only_tables.tables, ["deck_data_version"]);
+    assert.deepEqual(report.engine_only_tables.writes, [{ id: "create-then-render#1", table: "deck_data_version", delta: stamp.deck_data_version }]);
+    const cli = gradeCli(["--fixture", fixture, "--actual", dir]);
+    assert.equal(cli.status, 0);
+    assert.match(cli.stdout, /engine-only\s+deck_data_version: tables the oracle's schema does not have/);
+  });
+
+  it("an engine-only table does not hide a difference in a table the oracle's schema has", () => {
+    const dir = copyGood();
+    injectOtherTables(dir, { ...syntheticSessions, deck_data_version: { inserted: [], updated: [{ id: 1, version: 2 }], deleted: [] } });
+    const report = grade(dir);
+    assert.equal(report.verdict, "fail");
+    assert.deepEqual(report.other_tables.failures[0].tables, ["sessions"]);
+    assert.deepEqual(report.engine_only_tables.tables, ["deck_data_version"]);
+  });
+
   it("a declaration is keyed on the step id and the table: another step or table does not cover it", () => {
     for (const declared of [{ "create-then-render#2": { sessions: "another step" } }, { "create-then-render#1": { other: "another table" } }]) {
       const dir = copyGood();

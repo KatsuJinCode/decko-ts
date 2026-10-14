@@ -59,16 +59,17 @@ Measured 2026-10-14 on Windows, Node 24, Ruby 3.4.
    node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json \
         --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
    node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
-        --actual <resultsDir> \
-        --declared-other-tables reference-harness/adapters/ts/declared-other-tables.json
+        --actual <resultsDir>
    ```
 
    Result: rendering 1,754 of 1,754, semantics 2,389 of 2,389, persistence
-   16 of 16, side effects 19 of 19, read-writes 8 of 8, verdict pass. The
-   twelve write steps each bump `deck_data_version`, a table Ruby's database
-   does not have; the declared-tables file records that, with its reason, so
-   the grade reports them as declared rather than hiding them. Graded
-   without the file, those twelve steps fail the "other tables" check.
+   16 of 16, side effects 19 of 19, read-writes 8 of 8, other tables 12 of
+   12, verdict pass. The grader compares every table that exists in the
+   oracle's schema (read from the fixture's Ruby-built deck); a table only
+   the engine's schema has is listed in the report's `engine_only_tables`
+   field with its row deltas, and is neither a match nor a declared
+   difference. Here that field lists `deck_data_version`, bumped by all
+   twelve write steps.
 
 3. `tools/same-database/cross-engine-check.mjs` drives both engines on one
    copy of the file: the port writes a card, stock Ruby opens the same file
