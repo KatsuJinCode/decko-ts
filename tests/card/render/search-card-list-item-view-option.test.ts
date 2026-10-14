@@ -16,14 +16,28 @@
 // nest origin's postProcessSearchCards bridge masked it.
 
 import { describe, expect, it } from "vitest";
-import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
+  createRenderTestStorage,
+  seedCard,
+} from "./render-test-storage.js";
+
+/** Every card of a real deck carries its resolved *read rule id: Ruby's
+ *  set_read_rule store event writes cards.read_rule_id on save
+ *  (card-mod-permissions set/all/permissions.rb:1-5; the port's transcription
+ *  is src/card/mod-loader/mods/card-mod-permissions.ts:611-612). The search's
+ *  permission filter rides that column (cql/sql.ts implicitConditions'
+ *  `read_rule_id IN (...)` — Ruby's Where#permission_conditions, applied at
+ *  the relation level before the result window closes), so a NULL column
+ *  leaves the row invisible to the card_list. */
+const READ_RULE = { readRuleId: BOOTSTRAP_READ_SUBSTRATE_IDS.rule, readRuleClass: "*all" };
 
 async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRenderTestStorage>>): Promise<void> {
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
-  await seedCard(storage, { id: 701, name: "child_one", typeId: 2 });
-  await seedCard(storage, { id: 702, name: "child_two", typeId: 2 });
-  await seedCard(storage, { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card." });
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 701, name: "child_one", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 702, name: "child_two", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card.", ...READ_RULE });
   await seedCard(storage, {
     id: 608,
     name: "Oracle Junction+child_one",
@@ -31,6 +45,7 @@ async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRen
     rightId: 701,
     typeId: 2,
     dbContent: "first child",
+    ...READ_RULE,
   });
   await seedCard(storage, {
     id: 610,
@@ -39,12 +54,14 @@ async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRen
     rightId: 702,
     typeId: 2,
     dbContent: "second child",
+    ...READ_RULE,
   });
   await seedCard(storage, {
     id: 614,
     name: "Oracle Search",
     typeId: 98,
     dbContent: '{"left":"Oracle Junction","sort":"name"}',
+    ...READ_RULE,
   });
   // idsByKey warm-up (see search-card-list-render-parity.test.ts — the CQL
   // `left:` value resolves through the enrichment-fed id map).
