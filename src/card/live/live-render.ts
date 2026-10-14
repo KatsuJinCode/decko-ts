@@ -2,11 +2,23 @@
 //
 // THE REQUEST-LOCAL PAGE RENDER: one anonymous GET page, rendered uncached
 // over a request store (live-store-driver.ts), in a handful of batched round
-// trips instead of hundreds one after another. Nothing is recorded, planned
-// or kept between requests: the store, the passes' engines, the seeds and the
+// trips instead of hundreds one after another. The passes' engines and the
 // automatic choice are locals of one call, the process-wide boot bundle is
 // dropped before every pass and after the request, and the name memos live
 // in this request's scope only.
+//
+// KEPT PAGES. What a completed page fetched (its request store: the rows and
+// the exact-statement answers) and the cards it needed (the seeds and eager
+// structure references) are kept per page, stamped with the deck's freshness
+// stamp (deck_data_version) as it stood when the first of those rows was
+// read: the stamp read rides the page's first round trip. A later request for
+// the same page reads the stamp first, in one trip. Unchanged, it renders
+// from the kept rows on a fresh engine, with the kept seeds, under the same
+// completion rule as any pass; a pass that asks for anything the kept store
+// cannot prove fetches it as usual. Moved, the kept entry is dropped and the
+// page renders as on a first request. The stamp is bumped by triggers on
+// every write to cards and card_references, so a committed write between two
+// requests is always seen by the second. DECKO_LIVE_KEEP=0 turns keeping off.
 //
 // How a page is found:
 //
@@ -33,11 +45,11 @@
 //   storage's own, so its bytes are the bytes today's engine renders. A
 //   discovery miss costs a pass and a trip, never a byte.
 
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
 import type { RenderEngine } from "../render.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
 import { renderPageBytes } from "../render/page.js";
-import { resetBootCache } from "../render/boot-cache.js";
+import { BOOT_VERSION_STATEMENT, resetBootCache } from "../render/boot-cache.js";
 import { DeckoName } from "../name.js";
 import { LiveRenderAborted, LiveStoreDriver, type LiveStoreStats } from "./live-store-driver.js";
 
@@ -76,6 +88,70 @@ export interface LiveRenderOptions {
    *  throws LiveRenderAborted, so an abandoned request sends no more
    *  statements. */
   signal?: AbortSignal;
+  /** Keep the page's fetched rows for the next request (see KEPT PAGES).
+   *  Default on; false here or env DECKO_LIVE_KEEP=0 turns it off. */
+  keep?: boolean;
+}
+
+/** One page's kept request store and the cards it needed, valid while the
+ *  deck's freshness stamp equals `stamp`. */
+interface KeptPage {
+  live: LiveStoreDriver;
+  stamp: number;
+  seeds: Set<string>;
+  eagerRefs: Set<string>;
+  deniedRootKey: string | undefined;
+}
+
+/** Kept pages per serving driver (one deck each), least recently used first. */
+let keptPages = new WeakMap<SQLDatabaseDriver, Map<string, KeptPage>>();
+/** Pages kept per deck; the least recently rendered is dropped beyond it. */
+const KEPT_PAGES_PER_DECK = 256;
+
+function keptKey(page: string, opts: LiveRenderOptions): string {
+  return `${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}`;
+}
+
+/** Take a page's kept entry out of the map: a request owns it exclusively
+ *  while it renders, so a concurrent request for the same page renders as a
+ *  first request instead of sharing a store mid-render. */
+function takeKept(base: SQLDatabaseDriver, key: string): KeptPage | undefined {
+  const pages = keptPages.get(base);
+  const kept = pages?.get(key);
+  if (kept !== undefined) pages!.delete(key);
+  return kept;
+}
+
+function putKept(base: SQLDatabaseDriver, key: string, kept: KeptPage): void {
+  let pages = keptPages.get(base);
+  if (pages === undefined) {
+    pages = new Map();
+    keptPages.set(base, pages);
+  }
+  pages.get(key)?.live.close();
+  pages.delete(key);
+  pages.set(key, kept);
+  while (pages.size > KEPT_PAGES_PER_DECK) {
+    const oldest = pages.keys().next().value as string;
+    pages.get(oldest)?.live.close();
+    pages.delete(oldest);
+  }
+}
+
+/** Drop every kept page (tests; an operator-side reset). */
+export function clearKeptLivePages(base?: SQLDatabaseDriver): void {
+  if (base === undefined) {
+    keptPages = new WeakMap();
+    return;
+  }
+  const pages = keptPages.get(base);
+  pages?.forEach((k) => k.live.close());
+  pages?.clear();
+}
+
+function stampOf(result: SQLQueryResult | undefined): number | undefined {
+  const v = (result?.rows[0] as { version?: unknown } | undefined)?.version;
+  return typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : undefined;
 }
 
 export interface LivePassReport {
@@ -175,12 +251,35 @@ export async function liveRenderPage(
   // read many of those rows whole. Which side wins depends on what a trip
   // costs against what a byte costs; against the gzip transport the driver
   // asks for, a trip dominates, so whole rows are the default.
-  const live = new LiveStoreDriver(base, {
-    ringAll,
-    signal: opts.signal,
-    compact: env?.DECKO_LIVE_COMPACT !== "0",
-    identityRing: env?.DECKO_LIVE_IDENTITY_RING === "1",
-  });
+  // KEPT PAGES (see the header). Incremental discovery keeps a discovery
+  // engine across passes and is not covered.
+  const keepOn =
+    opts.keep !== false && env?.DECKO_LIVE_KEEP !== "0" && !(opts.refreshDiscoveryEngine !== undefined && (opts.incremental ?? env?.DECKO_LIVE_INCREMENTAL === "1"));
+  const key = keptKey(page, opts);
+  let kept = keepOn ? takeKept(base, key) : undefined;
+  // The stamp this request's rows are read under: read first when a kept
+  // entry exists, otherwise folded into the first round trip below.
+  let stamp: number | undefined;
+  if (kept !== undefined) {
+    if (opts.signal?.aborted === true) throw new LiveRenderAborted();
+    stamp = stampOf(await base.query(BOOT_VERSION_STATEMENT, []));
+    if (stamp === undefined || stamp !== kept.stamp) {
+      kept.live.close();
+      kept = undefined;
+    }
+  }
+  const live =
+    kept?.live ??
+    new LiveStoreDriver(base, {
+      ringAll,
+      signal: opts.signal,
+      compact: env?.DECKO_LIVE_COMPACT !== "0",
+      identityRing: env?.DECKO_LIVE_IDENTITY_RING === "1",
+    });
+  if (kept !== undefined) live.beginRequest(opts.signal);
+  if (keepOn && stamp !== undefined) live.stats.round_trips += 1;
+  if (keepOn && stamp === undefined) live.leadStatement = { sql: BOOT_VERSION_STATEMENT, params: [] };
+  let completed = false;
   const passes: LivePassReport[] = [];
   // Default: never switch, so the request stays in collect mode throughout.
   // With lazy structure references collect mode needs both the fewest trips
@@ -194,18 +293,18 @@ export async function liveRenderPage(
   // walks it runs eagerly, which is far worse than the trips it saves.
   const tail = opts.autoTail ?? (env?.DECKO_LIVE_AUTO_TAIL !== undefined ? Number(env.DECKO_LIVE_AUTO_TAIL) : 0);
   const tailTrips = opts.autoTailTrips === undefined || opts.autoTailTrips < 0 ? undefined : opts.autoTailTrips;
-  const seeds = new Set<string>();
+  const seeds = kept?.seeds ?? new Set<string>();
   let choice: "collect" | "speculate" = "collect";
   let blockNext = false;
   // Lazy structure references (RenderEngine.skipStructureRefWalks; on by
   // default, DECKO_LIVE_STRUCTURE_WALKS=1 restores the eager walk).
   const lazyRefs = env?.DECKO_LIVE_STRUCTURE_WALKS !== "1";
-  const eagerRefs = new Set<string>();
+  const eagerRefs = kept?.eagerRefs ?? new Set<string>();
   // Denied root: once a collect pass has judged the page root read-denied,
   // later passes skip its inclusion-closure walk (RenderEngine
   // skipRootClosureWalk; DECKO_LIVE_DENIED_CLOSURE=1 keeps the walk).
   const skipDeniedClosure = env?.DECKO_LIVE_DENIED_CLOSURE !== "1";
-  let deniedRootKey: string | undefined;
+  let deniedRootKey: string | undefined = kept?.deniedRootKey;
   // Incremental discovery (off by default; DECKO_LIVE_INCREMENTAL=1): one
   // engine serves the discovery passes until a pass asks nothing new; then
   // fresh engines take over under the completion rule, so the page is still
@@ -310,6 +409,7 @@ export async function liveRenderPage(
           process.stderr.write(`LIVE-TRACE-FINAL pass ${passes.length} htmlLen ${html.length} htmlHash ${h}\n`);
         }
         if (threw !== undefined) throw threw;
+        completed = true;
         return { html: html as string, status: out.engine?.pageErrorStatus ?? 200, stats: live.stats, passes, choice };
       }
       if (env?.DECKO_LIVE_TRACE === "1") {
@@ -326,7 +426,13 @@ export async function liveRenderPage(
     }
     throw new Error(`live render did not converge in ${MAX_PASSES} passes`);
   } finally {
-    live.close();
+    if (stamp === undefined) stamp = stampOf(live.leadResult);
+    live.leadStatement = undefined;
+    if (completed && keepOn && choice === "collect" && stamp !== undefined) {
+      putKept(base, key, { live, stamp, seeds, eagerRefs, deniedRootKey });
+    } else {
+      live.close();
+    }
     resetBootCache();
     DeckoName.endRequestScope();
   }

@@ -17,9 +17,10 @@
 // a link needs. An identity row the render then reads whole is fetched whole
 // with the next trip.
 //
-// Nothing is recorded and nothing is predicted from a previous request: the
-// ring is computed from rows this request has already read. The store and the
-// exact-statement memo die with the request.
+// Nothing is predicted from a previous request: the ring is computed from rows
+// already read. The store and the exact-statement memo live as long as the
+// page's kept entry (live-render.ts), which is valid only while the deck's
+// freshness stamp is unchanged; otherwise they die with the request.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import { referencedNames } from "../render/nest-syntax.js";
@@ -657,6 +658,20 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     const plain = async (stmts: SQLStatement[]) => {
       this.stats.round_trips += 1;
       this.stats.statements_sent += stmts.length;
+      const lead = this.leadStatement;
+      if (lead !== undefined) {
+        // The lead statement rides the first trip only. A database that
+        // cannot answer it (no freshness stamp) gets the trip again without
+        // it, and the lead's answer stays unknown.
+        this.leadStatement = undefined;
+        try {
+          const [first, ...rest] = await this.base.batch([lead, ...stmts]);
+          this.leadResult = first;
+          return rest;
+        } catch {
+          this.stats.round_trips += 1;
+        }
+      }
       return await this.base.batch(stmts);
     };
     if (!this.compact) return await plain(send);
@@ -703,6 +718,27 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         `AND id NOT IN (SELECT id FROM __q)`,
       params: s.params ?? [],
     };
+  }
+
+  /** A statement sent at the head of the next round trip, in the same batch
+   *  (live-render.ts folds the freshness stamp read into a page's first trip
+   *  this way). Its answer lands in leadResult; undefined there means the
+   *  statement was never answered. */
+  leadStatement: SQLStatement | undefined = undefined;
+  leadResult: SQLQueryResult | undefined = undefined;
+
+  /** Hand a store kept from an earlier request to a new one: the rows stay,
+   *  the request's own state (statistics, abort signal, pending reads) starts
+   *  over. Only valid while the deck's freshness stamp is the one the rows
+   *  were fetched under (live-render.ts). */
+  beginRequest(signal: AbortSignal | undefined): void {
+    this.opts.signal = signal;
+    this.mode = "block";
+    this.blockTrips = undefined;
+    this.spec.take();
+    this.leadStatement = undefined;
+    this.leadResult = undefined;
+    for (const k of Object.keys(this.stats) as (keyof LiveStoreStats)[]) this.stats[k] = 0;
   }
 
   close(): void {

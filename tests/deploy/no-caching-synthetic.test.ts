@@ -8,7 +8,8 @@
 // nothing; whatever it kept must notice the change by itself.
 //
 // What this proves, and for which configuration:
-//   - the anonymous bare-page path (fresh engines per request), the
+//   - the anonymous bare-page path (fresh engines per request over the
+//     page's rows kept from the previous request, live-render.ts), the
 //     /:card/:view path (the isolate's long-lived deck engine) and the
 //     signed-in per-actor engine follow permission-rule, structure-rule,
 //     content and search changes made between two requests;
@@ -33,6 +34,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { bootEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
 import { handleEngineRequest, type Deck } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 import { ActorRenderEngines } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
@@ -204,6 +206,51 @@ describeOrSkipLoud(!HAVE_DECK, "tests/deploy/no-caching-synthetic.test.ts", "HAV
       }
       const back = [await live(e, "All Topics"), await deckView(e, "All Topics")];
       expect(back.map((r) => r.html.includes(listed))).toEqual([true, true]);
+    }, 120_000);
+
+    it("a repeat anonymous page renders from its kept rows in one trip, and a write between two requests is visible on the second", async () => {
+      const e = env!;
+      // A driver of its own (kept pages are per driver) that counts trips.
+      let trips = 0;
+      const counting: SQLDatabaseDriver = {
+        query: async (sql, params) => {
+          trips += 1;
+          return await e.driver.query(sql, params);
+        },
+        batch: async (stmts) => {
+          trips += 1;
+          return await e.driver.batch(stmts);
+        },
+      } as SQLDatabaseDriver;
+      const source = { driver: counting, deck: async () => e.deck };
+      const page = async () => {
+        trips = 0;
+        const res = await handleEngineRequest(new Request(`https://deck.example${pagePath("Topic 002")}`), source, { anonymous: true });
+        return { status: res.status, html: await res.text(), trips };
+      };
+      const field = id(e.writer, "Topic 002+summary");
+      const content = (e.writer.prepare("SELECT db_content FROM cards WHERE id = ?").get(field) as { db_content: string }).db_content;
+      const marker = `KEPT-ROWS-MARKER-${Date.now()}`;
+      const first = await page();
+      const repeat = await page();
+      expect(first.status).toBe(200);
+      expect(first.trips).toBeGreaterThan(1);
+      expect(repeat.trips).toBe(1);
+      expect(norm(repeat.html)).toBe(norm(first.html));
+      e.writer.prepare("UPDATE cards SET db_content = ? WHERE id = ?").run(`${content}${marker}`, field);
+      let afterWrite: { status: number; html: string; trips: number };
+      try {
+        afterWrite = await page();
+      } finally {
+        e.writer.prepare("UPDATE cards SET db_content = ? WHERE id = ?").run(content, field);
+      }
+      expect(first.html.includes(marker)).toBe(false);
+      expect(afterWrite.html.includes(marker)).toBe(true);
+      expect(afterWrite.trips).toBeGreaterThan(1);
+      // The restore is a write too: the next request follows it.
+      const restored = await page();
+      expect(restored.html.includes(marker)).toBe(false);
+      expect(norm(restored.html)).toBe(norm(first.html));
     }, 120_000);
 
     it("every readable Topic page shows a content edit made between two renders, and a denied one never does", async () => {
