@@ -26,6 +26,7 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluateMod, loadGrades, saveGrades, summariseGrade } from "./behaviour.mjs";
 
 // ---------------------------------------------------------------------------
 // config
@@ -53,6 +54,7 @@ const PERMS_DIR = join(REPO, "src", "card", "permissions");
 
 const OUTPUT_MD = join(HERE, "mod-compat-report.md");
 const OUTPUT_JSON = join(HERE, "mod-compat-report.json");
+const GRADED_OPS = join(HERE, "graded-ops.json");
 
 // The 9 concrete set patterns registered by card-1.110.0 mod/core/set_pattern.
 // (src/card/set-patterns/registry.ts PATTERN_TABLE - frozen, lookup-order.)
@@ -815,6 +817,62 @@ function classify(inv, surface, pins) {
 // report rendering
 // ---------------------------------------------------------------------------
 
+function renderBehaviourMd(report) {
+  const lines = [];
+  const evaluated = report.mods.filter((m) => m.classification.status !== "ignored");
+  const done = evaluated.filter((m) => m.behaviour.status === "behaviour-complete");
+  lines.push("## Behavioural verdict");
+  lines.push("");
+  lines.push(
+    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods (${report.mods.length - evaluated.length} not evaluated: ${report.mods.filter((m) => m.classification.status === "ignored").map((m) => `\`${m.gem}\``).join(", ")}).`,
+  );
+  lines.push("");
+  lines.push(
+    "A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view or event NAME (see `tools/compat-report/behaviour.mjs`): a graded operation names a view, not the set module Ruby chose, so a shared view name is credited to every mod declaring it. Fixture operations are all html; views declared in other formats can only be credited by tests.",
+  );
+  lines.push("");
+  lines.push("Grades this verdict rests on (`tools/compat-report/graded-ops.json`):");
+  lines.push("");
+  for (const g of report.grades ?? []) {
+    const r = g.rendering ? `${g.rendering.pass}/${g.rendering.graded} rendering ops identical` : "no rendering summary";
+    lines.push(`- \`${g.fixture}\`: verdict ${g.verdict}, ${r}; engine commit ${g.adapter_commit}${g.adapter_dirty ? " (dirty)" : ""}, graded ${g.graded_at}`);
+  }
+  if (!(report.grades ?? []).length) lines.push("- (none recorded: every view counts as ungraded)");
+  lines.push("");
+  lines.push("| mod | behaviour | views | graded identical | graded differs | test-pinned | unexercised views | events | events named by a test | unexercised events |");
+  lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|");
+  for (const m of report.mods) {
+    if (m.classification.status === "ignored") {
+      lines.push(`| \`${m.gem}\` | not evaluated | | | | | | | | |`);
+      continue;
+    }
+    const s = m.behaviour.summary;
+    lines.push(
+      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_pinned} | ${s.views_unexercised} | ${s.events} | ${s.events_named} | ${s.events_unexercised} |`,
+    );
+  }
+  lines.push("");
+  lines.push("### Unexercised and differing declarations, per mod");
+  lines.push("");
+  for (const m of report.mods) {
+    if (m.classification.status === "ignored") continue;
+    const b = m.behaviour;
+    const differs = b.views.filter((v) => v.evidence === "graded-differs");
+    const unexV = b.views.filter((v) => v.evidence === "unexercised");
+    const unexE = b.events.filter((e) => e.evidence === "unexercised");
+    lines.push(`#### ${m.gem}`);
+    lines.push("");
+    lines.push(`- tests linked: ${b.tests.length ? b.tests.map((t) => `\`${t}\``).join(", ") : "(none)"}`);
+    lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} (${v.ops.length} ops)`).join(", ") || "(none)"}`);
+    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.differing_ops.join("; ")}]`).join(", ") || "(none)"}`);
+    lines.push(`- views test-pinned only: ${b.views.filter((v) => v.evidence === "pinned").map((v) => `${v.format}:${v.view}`).join(", ") || "(none)"}`);
+    lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view}`).join(", ") || "(none)"}`);
+    lines.push(`- events unexercised: ${unexE.map((e) => e.event).join(", ") || "(none)"}`);
+    lines.push("");
+  }
+  return lines;
+}
+
 function renderMd(report) {
   const lines = [];
   lines.push("# card-mod compatibility report — decko-ts");
@@ -846,6 +904,7 @@ function renderMd(report) {
     "**What these labels measure: declarations only.** \"declared-complete\" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
   );
   lines.push("");
+  lines.push(...renderBehaviourMd(report));
   lines.push("## decko-ts implemented surface (truth)");
   lines.push("");
   lines.push(`- Set patterns (${report.surface.implementedPatterns.length}): ${report.surface.implementedPatterns.join(", ")}`);
@@ -931,9 +990,25 @@ function renderMd(report) {
 // ---------------------------------------------------------------------------
 
 function main() {
-  const args = new Set(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = new Set(argv);
   const wantMd = !args.has("--json-only");
   const wantJson = !args.has("--md-only");
+
+  // --grade <report.json> (repeatable): refresh the committed graded-ops
+  // record from grade reports written by reference-harness/runner/grade.mjs.
+  const gradeReports = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--grade") gradeReports.push(argv[++i]);
+  }
+  let grades = loadGrades(GRADED_OPS);
+  if (gradeReports.length) {
+    const fresh = gradeReports.map((p) => summariseGrade(REPO, JSON.parse(readText(p))));
+    const keep = grades.filter((g) => !fresh.some((f) => f.fixture === g.fixture));
+    grades = [...keep, ...fresh].sort((a, b) => a.fixture.localeCompare(b.fixture));
+    saveGrades(GRADED_OPS, grades);
+    process.stderr.write(`wrote ${GRADED_OPS}\n`);
+  }
 
   const gems = listGemDirs(GEM_DIR);
   const surface = inventoryDeckoTs();
@@ -941,7 +1016,9 @@ function main() {
     const inv = inventoryGem(g.path, g.name);
     const pins = inventoryModPins(g.name);
     const cls = classify(inv, surface, pins);
-    return { gem: g.name, version: g.version, classification: cls, inv, pins };
+    const modId = g.name.replace(/-0\.\d+\.\d+$/, "");
+    const behaviour = evaluateMod(REPO, g.path, modId, grades);
+    return { gem: g.name, version: g.version, classification: cls, behaviour, inv, pins };
   });
 
   const report = {
@@ -958,6 +1035,14 @@ function main() {
       hasPerms: surface.hasPerms,
     },
     legacy: [...LEGACY_MODS],
+    grades: grades.map((g) => ({
+      fixture: g.fixture,
+      adapter_commit: g.adapter_commit,
+      adapter_dirty: g.adapter_dirty,
+      graded_at: g.graded_at,
+      verdict: g.verdict,
+      rendering: g.rendering,
+    })),
     mods,
   };
 
