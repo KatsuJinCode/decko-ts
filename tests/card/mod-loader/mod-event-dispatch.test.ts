@@ -139,6 +139,107 @@ describe("mod-event dispatcher — the stage walk", () => {
     expect(report.fired).toEqual(["before_guard", "validate_delete", "delete_children"]);
   });
 
+  it("fires no-stage before: events in their target's stage, directly before it", async () => {
+    // mod/account/set/self/signin.rb:27 `event :send_reset_password_token,
+    // before: :signin, on: :update, trigger: :required` — before: clears
+    // @stage (options.rb:76), so the event has no stage of its own and
+    // hangs on signin's callback chain (`set_callback object_method, :before,
+    // event.name, prepend: true`, set/event/callbacks.rb:17-18). signin is
+    // the :validate stage event (signin.rb:10), so this runs at validate.
+    const order: string[] = [];
+    const { report, thrown } = await run(
+      [
+        // signin.rb:10 is declared BEFORE :27 in the module, so the
+        // registration order is the opposite of the run order — the
+        // before: relation is what puts the token event first, exactly as
+        // Ruby's `prepend: true` does.
+        { event: "signin", at: "validate", on: ["update"], fn: () => { order.push("signin"); } },
+        {
+          event: "send_reset_password_token",
+          before: "signin",
+          on: ["update"],
+          trigger: "required",
+          fn: () => { order.push("send_reset_password_token"); },
+        },
+      ],
+      "validate",
+      card({ act: { action: "update" } }),
+      { trigger: ["send_reset_password_token"] },
+    );
+    expect(thrown).toBeUndefined();
+    expect(order).toEqual(["send_reset_password_token", "signin"]);
+    expect(report.fired).toEqual(["send_reset_password_token", "signin"]);
+  });
+
+  it("pins a before: entry immediately ahead of its target and an after: entry immediately behind", async () => {
+    // An `after:` entry is a callback on its target's OWN chain
+    // (callbacks.rb:17-18), so it unwinds the moment that target's body
+    // returns - BEFORE the next stage event, which is a separate callback
+    // on the stage chain. mod/layout/set/right/enabled_roles.rb:28
+    // clear_roles_cache before: store_in_session (prepare_to_store);
+    // mod/session/set/type/session.rb pairs the store/delete arms.
+    const order: string[] = [];
+    const { thrown } = await run(
+      [
+        { event: "store_in_session", at: "prepare_to_store", on: ["save"], fn: () => { order.push("store_in_session"); } },
+        { event: "clear_roles_cache", before: "store_in_session", fn: () => { order.push("clear_roles_cache"); } },
+        { event: "early", at: "prepare_to_store", fn: () => { order.push("early"); } },
+        { event: "seed_session", after: "store_in_session", fn: () => { order.push("seed_session"); } },
+      ],
+      "prepare_to_store",
+      card(),
+    );
+    expect(thrown).toBeUndefined();
+    expect(order).toEqual(["clear_roles_cache", "store_in_session", "seed_session", "early"]);
+  });
+
+  it("runs a before: event in no save stage when its target is not a registered event", async () => {
+    // mod/session/set/all/location_history.rb:6 `event :save_current_location,
+    // before: :show_page, on: :read` — show_page is the page cycle, not a
+    // stage event, so the name resolves to nothing in the registry and the
+    // entry is a candidate in none of the nine save stages.
+    for (const stage of ["validate", "prepare_to_store", "finalize"] as const) {
+      const { report, thrown } = await run(
+        [{ event: "save_current_location", before: "show_page", fn: noop }],
+        stage,
+        card(),
+      );
+      expect(thrown, `stage=${stage}`).toBeUndefined();
+      expect(report.fired, `stage=${stage}`).toEqual([]);
+      expect(report.skipped, `stage=${stage}`).toEqual([]);
+    }
+  });
+
+  it("does not integration-rescue a before:/after: event, though it runs in an integrate stage", async () => {
+    // event.rb:147-152 fixes the rescue at DEFINITION time from the
+    // event's own @stage, and options.rb:76 leaves @stage nil for a
+    // before:/after: event — so such an event propagates its error even
+    // when it inherits an integrate stage. mod/account/set/type/user.rb:66
+    // signin_after_setup is :integrate with its OWN stage and is rescued;
+    // the after: chain event hanging off it is not.
+    const boom = (): void => {
+      throw new Error("boom");
+    };
+    const ownStage = await run(
+      [{ event: "own_integrate", at: "integrate", fn: boom }],
+      "integrate",
+      card(),
+    );
+    expect(ownStage.thrown).toBeUndefined();
+    expect(ownStage.report.failed.map((f) => f.event)).toEqual(["own_integrate"]);
+
+    const relative = await run(
+      [
+        { event: "chain_root", at: "integrate", fn: noop },
+        { event: "after_chain", after: "chain_root", fn: boom },
+      ],
+      "integrate",
+      card(),
+    );
+    expect(relative.thrown).toBeInstanceOf(Error);
+    expect(relative.report.failed).toEqual([]);
+  });
+
   it("expands on: save to create+update and never delete; absent on: fires every action", async () => {
     // all/reference_events.rb:2 `on: :save` (options.rb:70) vs :28
     // clear_references `on: :delete`.
@@ -305,20 +406,42 @@ describe("mod-event dispatcher — when: predicates", () => {
     ]);
   });
 
-  it("skips with reason predicate-unresolved when the runtime has no such predicate", async () => {
-    // Ruby raises NoMethodError for an unresolvable when: symbol (all.rb:81
-    // send block); the port cannot abort a save on an unported predicate —
-    // it records the skip in the report (documented divergence).
+  it("raises when the runtime cannot resolve the when: predicate", async () => {
+    // Ruby has no "predicate not found" branch: when_condition_applies?
+    // (all.rb:79-85) does `when Symbol then send block`, and a card with no
+    // such method raises NoMethodError, killing the save. The port raises
+    // for the same reason rather than silently dropping the event.
     const { report, thrown } = await run(
       [{ event: "set_autoname", at: "prepare_to_store", on: ["create"], when: "autoname?", fn: noop }],
       "prepare_to_store",
       card({ act: { action: "create" } }),
     );
+    expect(report.fired).toEqual([]);
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toContain("NoMethodError");
+    expect((thrown as Error).message).toContain("autoname?");
+    expect((thrown as Error).message).toContain("set_autoname");
+  });
+
+  it("evaluates the resolved predicate instead of raising", async () => {
+    const { report, thrown } = await run(
+      [{ event: "set_autoname", at: "prepare_to_store", on: ["create"], when: "autoname?", fn: noop }],
+      "prepare_to_store",
+      card({ act: { action: "create" } }),
+      { predicates: { "autoname?": () => false } },
+    );
     expect(thrown).toBeUndefined();
     expect(report.fired).toEqual([]);
-    expect(report.skipped).toEqual([
-      { event: "set_autoname", reason: "predicate-unresolved" },
-    ]);
+    expect(report.skipped).toEqual([{ event: "set_autoname", reason: "when-false" }]);
+
+    const allowed = await run(
+      [{ event: "set_autoname", at: "prepare_to_store", on: ["create"], when: "autoname?", fn: noop }],
+      "prepare_to_store",
+      card({ act: { action: "create" } }),
+      { predicates: { "autoname?": () => true } },
+    );
+    expect(allowed.thrown).toBeUndefined();
+    expect(allowed.report.fired).toEqual(["set_autoname"]);
   });
 });
 

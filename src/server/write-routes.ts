@@ -530,6 +530,29 @@ function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[]
 }
 
 /** A JSON card hash's subcards object, at every depth. */
+/** The Card::Env.params bag the mod-event state sources hand to the
+ *  `when:` predicates (mod-loader/mod-event-card-state.ts).
+ *
+ *  Ruby reads whole keys off `Env.params` — `Env.params["draft"]`
+ *  (core/set/all/content.rb:17), `Env.params[:insert_item]`
+ *  (mod/list set/abstract/01_list/events.rb:44),
+ *  `Env.params[:attachment_upload]` (mod/carrierwave
+ *  set/abstract/attachment/00_upload_cache.rb:80). This builds the same
+ *  shape from the parsed body: the card hash under `card`, and the
+ *  top-level shortcut params as bare keys, which is what Rack's
+ *  indifferent hash yields for those reads. A param the request did not
+ *  carry is absent, exactly as it is in Ruby — a predicate reading it gets
+ *  undefined and evaluates false. */
+function requestParamsForEvents(parsed: ParsedBody): Record<string, unknown> {
+  const params: Record<string, unknown> = { ...parsed.card };
+  if (parsed.draft !== undefined) params["draft"] = parsed.draft;
+  if (parsed.comment !== undefined) params["comment"] = parsed.comment;
+  if (parsed.commentAuthor !== undefined) params["comment_author"] = parsed.commentAuthor;
+  if (parsed.recaptchaToken !== undefined) params["recaptcha_token"] = parsed.recaptchaToken;
+  if (parsed.token !== undefined) params["token"] = parsed.token;
+  return params;
+}
+
 function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
   const out: Record<string, ParsedSubcard> = {};
   if (typeof raw !== "object" || raw === null) return out;
@@ -1500,6 +1523,10 @@ async function dispatchWriteRequest(
     // prepareRecaptchaSaveInput), so an unarmed host registers the event and
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await observedModEventRuntime(ctx),
+    // Card::Env.params for this request (env.rb): the mod-event state
+    // sources hand it to the `when:` predicates that read request params
+    // (`draft`, `insert_item`, `attachment_upload`).
+    params: requestParamsForEvents(parsed),
     ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
     followMail: {
       origin: cardUrl(req, ""),

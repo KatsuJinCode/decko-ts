@@ -111,8 +111,10 @@ describe("card-mod-assets events (5)", () => {
       changed: ["content"],
       skip: "allowed",
     });
+    // Ruby: `before: :clear_references` (asset_inputter.rb:21) — the relation,
+    // not a stage (options.rb:76).
     expect(byName.get("asset_input_changed_on_delete")).toMatchObject({
-      at: "finalize",
+      before: "clear_references",
       on: ["delete"],
       when: "asset_inputter?",
     });
@@ -154,7 +156,9 @@ describe("card-mod-layout events (3)", () => {
     // layout_type.rb:7 / enabled_roles.rb:21/:28
     expect(byName.get("update_layout_registry")).toMatchObject({ at: "finalize", on: ["update"] });
     expect(byName.get("validate_role_enabling")).toMatchObject({ at: "validate", on: ["save"] });
-    expect(byName.get("clear_roles_cache")).toMatchObject({ at: "prepare_to_store" });
+    // Ruby: `before: :store_in_session` (enabled_roles.rb:28) — the relation,
+    // not a stage (options.rb:76); it runs in store_in_session's stage.
+    expect(byName.get("clear_roles_cache")).toMatchObject({ before: "store_in_session" });
   });
 });
 

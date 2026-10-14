@@ -48,23 +48,24 @@ import {
 import { setDefaultModEventRegistry } from "./mod-event-registry.js";
 
 import coreMod, { coreModEventPredicates } from "./mods/core-mod.js";
-import cardModCollection from "./mods/card-mod-collection.js";
-import cardModContent from "./mods/card-mod-content.js";
+import cardModCollection, { collectionModEventPredicates } from "./mods/card-mod-collection.js";
+import cardModContent, { contentModEventPredicates } from "./mods/card-mod-content.js";
 import cardModFormat from "./mods/card-mod-format.js";
-import cardModList from "./mods/card-mod-list.js";
+import cardModList, { listModEventPredicates } from "./mods/card-mod-list.js";
 import cardModMarkdown from "./mods/card-mod-markdown.js";
-import cardModPermissions from "./mods/card-mod-permissions.js";
+import cardModPermissions, { permissionsModEventPredicates } from "./mods/card-mod-permissions.js";
 import cardModHelp from "./mods/card-mod-help.js";
 import cardModSearch from "./mods/card-mod-search.js";
 import cardModRules from "./mods/card-mod-rules.js";
 import cardModEdit from "./mods/card-mod-edit.js";
 import cardModEmail from "./mods/card-mod-email.js";
 import cardModIntegrate from "./mods/card-mod-integrate.js";
-import cardModAccount from "./mods/card-mod-account.js";
-import cardModHistory from "./mods/card-mod-history.js";
-import cardModCarrierwave from "./mods/card-mod-carrierwave.js";
+import cardModAccount, { accountModEventPredicates } from "./mods/card-mod-account.js";
+import cardModHistory, { historyModEventPredicates } from "./mods/card-mod-history.js";
+import { registerDeckModEventCardStateSources } from "./mod-event-state-sources.js";
+import cardModCarrierwave, { carrierwaveModEventPredicates } from "./mods/card-mod-carrierwave.js";
 import cardModVirtual from "./mods/card-mod-virtual.js";
-import cardModAssets from "./mods/card-mod-assets.js";
+import cardModAssets, { assetsModEventPredicates } from "./mods/card-mod-assets.js";
 import cardModScript from "./mods/card-mod-script.js";
 import cardModAceEditor from "./mods/card-mod-ace_editor.js";
 import cardModApiKey from "./mods/card-mod-api_key.js";
@@ -72,7 +73,7 @@ import cardModStyle from "./mods/card-mod-style.js";
 import cardModBootstrap from "./mods/card-mod-bootstrap.js";
 import cardModComment, { commentModEventPredicates } from "./mods/card-mod-comment.js";
 import cardModDate from "./mods/card-mod-date.js";
-import cardModFollow from "./mods/card-mod-follow.js";
+import cardModFollow, { followModEventPredicates } from "./mods/card-mod-follow.js";
 import cardModSession from "./mods/card-mod-session.js";
 import cardModTabs from "./mods/card-mod-tabs.js";
 import cardModLayout from "./mods/card-mod-layout.js";
@@ -227,17 +228,30 @@ function eventOnlyDeckLoader(): ModLoader {
 // builders below are the port's seam for that shape: the save-path runtime
 // over the BOOTED deck (never a private per-caller subset).
 
-/** The deck's named `when:` predicate table: the three predicate-exporting
- *  mods' tables merged in bundle order (core's skip_update_referers?,
- *  comment's comment, recaptcha's validate_recaptcha - no name collisions;
- *  the other ported mods export none). Merging here - at the deck-boot
- *  seam - is what makes the deck runtime resolve every predicate the deck
- *  registered, instead of the single-mod subsets a per-caller composition
- *  would give. */
+/** The deck's named `when:` predicate table: the predicate-exporting mods'
+ *  tables merged in bundle order (core's autoname?/draft?/no_autoname?/
+ *  use_default_content?/was_cardtype?/skip_update_referers?, comment's
+ *  comment, history's actionable?/act_card?/edit_conflict?/
+ *  finalize_action?/rollback_request?, recaptcha's validate_recaptcha - no
+ *  name collisions). Merging here - at the deck-boot seam - is what makes
+ *  the deck runtime resolve every predicate the deck registered, instead of
+ *  the single-mod subsets a per-caller composition would give. A predicate
+ *  left out is not a silent skip: `when_condition_applies?` sends the name
+ *  as a card method in Ruby and raises when nothing answers it, so the
+ *  dispatcher raises for it here too. */
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
+    ...accountModEventPredicates,
+    ...assetsModEventPredicates,
+    ...carrierwaveModEventPredicates,
+    ...collectionModEventPredicates,
+    ...contentModEventPredicates,
     ...coreModEventPredicates,
     ...commentModEventPredicates,
+    ...followModEventPredicates,
+    ...historyModEventPredicates,
+    ...listModEventPredicates,
+    ...permissionsModEventPredicates,
     ...recaptchaModEventPredicates,
   };
 }
@@ -255,6 +269,11 @@ export function defaultDeckEventRuntime(host?: ModEngineHost): ModEventRuntime {
   // node host) keeps rendering that way after its first save: the events
   // come from a loader of their own, never bound as the process default.
   const loader = getDefaultModLoader() ?? eventOnlyDeckLoader();
+  // The other half of `when:` support: the state sources that populate the
+  // event card with what the predicates read (mod-event-card-state.ts).
+  // Registered here, beside the predicate tables, so a mod's two halves are
+  // wired in one place.
+  registerDeckModEventCardStateSources();
   return {
     registry: loader.eventRegistry(),
     predicates: defaultDeckEventPredicates(),
