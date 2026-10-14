@@ -19,7 +19,7 @@ import { DeckoName } from "../../../src/card/name.js";
 
 describe("name-key/url shape: query percent-encoding", () => {
   it("encodes Latin-1-supplement characters as UTF-8 octet pairs", () => {
-    expect(cgiEscape("Bogotá")).toBe("Bogot%C3%A1");
+    expect(cgiEscape("Málaga")).toBe("M%C3%A1laga");
   });
 
   it("encodes CJK as UTF-8 octet triples, not codepoint hex (oracle family shape)", () => {
@@ -68,7 +68,7 @@ describe("name-key/url shape: phantom item bar body attrs (R2, V12+Z4 exemplar b
   });
 
   it("url_key folds the apostrophe to an underscore; the bar-shaped name takes Haml's SECOND escape", () => {
-    // "Nicole Le'Strix" -> url_key "Nicole_Le_Strix" (' is not \p{L}: it
+    // "Robin Le'Strand" -> url_key "Robin_Le_Strand" (' is not \p{L}: it
     // follows the same not-ok -> space -> underscore fold as spaces and
     // hyphens).
     //
@@ -79,14 +79,14 @@ describe("name-key/url shape: phantom item bar body attrs (R2, V12+Z4 exemplar b
     // Haml::Helpers.html_escape_without_haml_xss (= CGI.escapeHTML,
     // lib/haml/helpers.rb:609-614), with NO html_safe? branch.
     //
-    // HONEST LIMIT on THIS pin: "Nicole Le'Strix" is synthetic. The
+    // HONEST LIMIT on THIS pin: "Robin Le'Strand" is synthetic. The
     // two-level form on the DENIED body is read off the shared bar.haml
     // template rather than off a rendered denied bar whose name carries an
     // apostrophe; the other pins in this block use names with no
     // apostrophe, so their bytes are unchanged either way.
-    const body = pointerListItemBodyForUnknown("Nicole Le'Strix");
-    expect(body).toContain("data-card-link-name='Nicole_Le_Strix'");
-    expect(body).toContain("data-card-name='Nicole Le&amp;#39;Strix'");
+    const body = pointerListItemBodyForUnknown("Robin Le'Strand");
+    expect(body).toContain("data-card-link-name='Robin_Le_Strand'");
+    expect(body).toContain("data-card-name='Robin Le&amp;#39;Strand'");
   });
 
   it("hyphenated names fold hyphens to underscores in the link-name, raw keeps them", () => {
