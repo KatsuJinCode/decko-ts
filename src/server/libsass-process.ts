@@ -7,7 +7,7 @@
 // time, so importing this module adds no node: import to a bundle; on a
 // runtime without it the compiler rejects.
 
-import type { ScssCompiler, ScssOutputStyle } from "../card/assets/scss-compiler.js";
+import { memoizeScssCompiler, type ScssCompiler, type ScssOutputStyle } from "../card/assets/scss-compiler.js";
 
 interface ChildProcessModule {
   spawn(
@@ -30,9 +30,11 @@ function childProcess(): ChildProcessModule {
   return mod;
 }
 
-/** An ScssCompiler that runs the sassc-stdin program at `programPath`. */
+/** An ScssCompiler that runs the sassc-stdin program at `programPath`. A
+ *  repeated source answers from the memo (memoizeScssCompiler): each
+ *  program run costs a process start and a full LibSass compile. */
 export function libsassProcessCompiler(programPath: string): ScssCompiler {
-  return (source: string, style: ScssOutputStyle) =>
+  return memoizeScssCompiler((source: string, style: ScssOutputStyle) =>
     new Promise<string>((resolve, reject) => {
       if (source === "") return resolve("");
       const child = childProcess().spawn(programPath, [style], {
@@ -50,7 +52,7 @@ export function libsassProcessCompiler(programPath: string): ScssCompiler {
         else reject(new Error(`LibSass compile failed: ${text(err).trim() || `exit ${code}`}`));
       });
       child.stdin.end(new TextEncoder().encode(source));
-    });
+    }));
 }
 
 function concat(parts: Uint8Array[]): Uint8Array {

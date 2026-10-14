@@ -22,7 +22,7 @@
 // withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
 // from every release package) and are announced on stderr when they are not
 // run. On the clean synthetic deck the recorded verdicts are 83 pass +
-// 4 declared + 1 mismatched (88 steps), and the assertions below name every
+// 5 declared + 0 mismatched (88 steps), and the assertions below name every
 // one of them. The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
@@ -191,7 +191,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose reference-deck pins hold are declared, and the 1 remaining mismatch is pinned step by step", () => {
+  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 5 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -250,33 +250,28 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     // Before the recording ran under production error handling this step
     // compared equal, because the developer page never ran that save.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
+    // get-home is declared on the script bundles' wall-clock names: Ruby
+    // names a history-less output by Time.now.to_i, and its 15 script writes
+    // share 12 names in one run, while the port's fixture clock gives each
+    // write its own name. The pin lists the exact `files` entries of both
+    // engines (scenarios.json, get-home).
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
       "admin-deny-signup",
       "anon-update-skin-colors",
+      "get-home",
       "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
       pass: 83,
-      deliberate: 4,
+      deliberate: 5,
       total: 88,
     });
 
     // Every mismatched step and the fields it differs on, pinned step by step.
-    // A change on either side fails here.
+    // A change on either side fails here. None remains on this deck.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
-    expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
-      // OUTSTANDING, one count. The first GET of the home page runs Ruby's
-      // request-setup asset refresh (Card::Assets.refresh, assets.rb:13-28,
-      // refreshReadAssetInputs in style-asset-events.ts). Its `virtuals`,
-      // `writes` and the 18 .css bundles match Ruby by content. The 12 .js
-      // entries differ in count: Ruby stores 15 script bundles and its wall
-      // clock names them by second, and three of them land in a second an
-      // earlier one already took, so 12 distinct names remain. The port's
-      // request clock gives each write its own second, so it shows 15. No
-      // fixed clock reproduces Ruby's collisions.
-      { step: "get-home", fields: ["files"] },
-    ]);
+    expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
 
     rmSync(work, { recursive: true, force: true });
   }, 900_000);
