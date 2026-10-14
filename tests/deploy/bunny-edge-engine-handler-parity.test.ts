@@ -30,7 +30,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
-import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
+import { CONFIGURED_DECK_SERVED_DELTAS } from "./fixtures/configured-deck-served-deltas.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
@@ -48,7 +48,7 @@ const CREDENTIAL_ENV = {
  *  environment alone — no test-only injection. */
 const CONFIGURED_ENV = {
   ...CREDENTIAL_ENV,
-  DECKO_SERVED_DELTAS: JSON.stringify(PRODUCTION_DECK_SERVED_DELTAS),
+  DECKO_SERVED_DELTAS: JSON.stringify(CONFIGURED_DECK_SERVED_DELTAS),
 };
 
 /** Translate BunnyDbDriver's Hrana-v2 pipeline POSTs into local sqlite

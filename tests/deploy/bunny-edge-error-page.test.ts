@@ -53,26 +53,29 @@ import {
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
 import {
-  PRODUCTION_ASSET_HOST,
-  PRODUCTION_DECK_SERVED_DELTAS,
-} from "./fixtures/production-deck-served-deltas.js";
+  CONFIGURED_ASSET_HOST,
+  CONFIGURED_CSS_REVISION_TO,
+  CONFIGURED_DECK_SERVED_DELTAS,
+  CONFIGURED_FAVICON_FILE,
+  CONFIGURED_NOT_FOUND_TYPE_ID,
+} from "./fixtures/configured-deck-served-deltas.js";
 import type { RenderEngine } from "../../src/card/render.js";
 
 function edgeGet(pathname: string): Request {
   return new Request(`https://script-placeholder.bunny.run${pathname}`);
 }
 
-/** The seeded shell deck, CONFIGURED as the production migration
- *  deployment. The chrome pins below assert that deployment's bytes (its
- *  card type ids, its asset URLs, its footer version pin), so this suite
- *  states that configuration explicitly — the same values an operator sets
- *  through the environment — rather than relying on the engine's source
- *  carrying one deck's identity by default. */
+/** The seeded shell deck, CONFIGURED as a synthetic deployment. The chrome
+ *  pins below assert that deployment's bytes (its card type ids, its asset
+ *  URLs, its footer version pin), so this suite states that configuration
+ *  explicitly — the same values an operator sets through the environment —
+ *  rather than relying on the engine's source carrying one deck's identity
+ *  by default. */
 function realDeck(storage: RenderTestStorage) {
   return {
     fetcher: storage.fetcher,
     render: storage.engine,
-    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+    servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
   };
 }
 
@@ -84,7 +87,7 @@ function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
         throw error;
       },
     } as unknown as RenderEngine,
-    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+    servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
   };
 }
 
@@ -97,7 +100,7 @@ function deckWithRenderDelay(storage: RenderTestStorage, ms: number) {
         return `<p>Some+Card open</p>`;
       },
     } as unknown as RenderEngine,
-    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+    servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
   };
 }
 
@@ -123,7 +126,7 @@ async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
 }
 
-const SPACES = PRODUCTION_ASSET_HOST;
+const SPACES = CONFIGURED_ASSET_HOST;
 
 describe("bunny edge — full-chrome not_found page (staging builder shape)", () => {
   it("GET a missing card serves Decko's not_found page in the Default-Layout chrome, status 404", async () => {
@@ -145,8 +148,8 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       // (vm-staging-server.mjs:1508-1511).
       expect(body).toContain(`<meta content='noindex' name='robots'>`);
       // Favicon + CSS revision from the configured asset host, baked by the chrome head.
-      expect(body).toContain(`<link rel="shortcut icon" href="${SPACES}/files/61003/1610000005-small.jpg" />`);
-      expect(body).toContain(`files/51201/1610000002.css`);
+      expect(body).toContain(`<link rel="shortcut icon" href="${SPACES}/files/${CONFIGURED_FAVICON_FILE}" />`);
+      expect(body).toContain(`files/${CONFIGURED_CSS_REVISION_TO}`);
       // The *header nest substituted verbatim into the layout body.
       expect(body).toContain(`<header><nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav></header>`);
       // The not_found slot (buildNotFoundSlotHtml): type constants pinned
@@ -156,7 +159,7 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       // URL-display link name (urlKey keeps case, underscores only for
       // spaces: "NoSuchCard"), per-request slot id, and the escaped outer
       // slot JSON.
-      expect(body).toContain(`<div id="no_such_card-not_found-view" class="card-slot not_found-view ALL TYPE-basic_c" data-card-name="NoSuchCard" data-card-type-id="72281" data-card-type-name="BasicCs" data-card-link-name="NoSuchCard" data-slot-id="`);
+      expect(body).toContain(`<div id="no_such_card-not_found-view" class="card-slot not_found-view ALL TYPE-basic_c" data-card-name="NoSuchCard" data-card-type-id="${CONFIGURED_NOT_FOUND_TYPE_ID}" data-card-type-name="BasicCs" data-card-link-name="NoSuchCard" data-slot-id="`);
       expect(body).toContain(`data-slot="{&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;_main&quot;,&quot;nest_syntax&quot;:&quot;_main|titled&quot;,&quot;hide&quot;:[&quot;menu&quot;,&quot;help&quot;],&quot;main&quot;:true,&quot;home_view&quot;:&quot;titled&quot;,&quot;main_view&quot;:true,&quot;layout&quot;:&quot;Default Layout&quot;}">`);
       expect(body).toContain(`<span class="card-title" title="Not Found">Not Found</span>`);
       expect(body).toContain(`Could not find\n<em>\nNoSuchCard\n</em>`);
@@ -239,10 +242,10 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       // path never 500s a second time.
       expect(body).toContain(`<h1>Card not found</h1>`);
       // And nothing from another deck's chrome leaked into it.
-      expect(body).not.toContain("22281");
+      expect(body).not.toContain(String(CONFIGURED_NOT_FOUND_TYPE_ID));
       expect(body).not.toContain("basic_c");
       expect(body).not.toContain("Decko v0.0.0-synthetic");
-      expect(body).not.toContain(PRODUCTION_ASSET_HOST);
+      expect(body).not.toContain(CONFIGURED_ASSET_HOST);
     } finally {
       storage.close();
     }
@@ -256,7 +259,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
         edgeGet("/Home"),
         // The SAME throwing render, but with no deltas configured: this
         // suite is about the unconfigured half, so it must not borrow the
-        // production deck's configuration the way the pins above do.
+        // configured deck's configuration the way the pins above do.
         {
           fetcher: storage.fetcher,
           render: {
@@ -268,10 +271,10 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       );
       expect(res.status).toBe(500);
       const body = await res.text();
-      expect(body).not.toContain("22281");
+      expect(body).not.toContain(String(CONFIGURED_NOT_FOUND_TYPE_ID));
       expect(body).not.toContain("basic_c");
       expect(body).not.toContain("Decko v0.0.0-synthetic");
-      expect(body).not.toContain(PRODUCTION_ASSET_HOST);
+      expect(body).not.toContain(CONFIGURED_ASSET_HOST);
       expect(body).not.toContain("source-deck");
     } finally {
       storage.close();
@@ -279,7 +282,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
   });
 
   it("a CONFIGURED deck's chrome contains exactly its configured ids", async () => {
-    // The counterpart: with the production deltas the same deck answers the
+    // The counterpart: with the configured deltas the same deck answers the
     // full chrome carrying THAT deck's identity — the pins above, restated
     // as a before/after so the pair is legible in one place.
     const storage = await createRenderTestStorage();
@@ -287,10 +290,10 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       await seedShellHeadDeck(storage);
       const res = await handleEngineRequest(edgeGet("/NoSuchCard"), realDeck(storage));
       const body = await res.text();
-      expect(body).toContain(`data-card-type-id="72281"`);
+      expect(body).toContain(`data-card-type-id="${CONFIGURED_NOT_FOUND_TYPE_ID}"`);
       expect(body).toContain(`TYPE-basic_c`);
       expect(body).toContain(`Decko v0.0.0-synthetic`);
-      expect(body).toContain(PRODUCTION_ASSET_HOST);
+      expect(body).toContain(CONFIGURED_ASSET_HOST);
     } finally {
       storage.close();
     }
@@ -449,7 +452,7 @@ describe("bunny edge — budget-exceeded 503 in the full chrome", () => {
           query: () => new Promise<{ rows: never[] }>(() => {}),
         },
       },
-      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+      servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
     } as unknown as ErrorPageDeck;
     const started = Date.now();
     const res = await renderFullChromeErrorPage(hungDeck, {
