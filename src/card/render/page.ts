@@ -41,7 +41,6 @@ import { str, type ViewResult } from "./format.js";
 import type { CardRecord } from "../fetch/card-record.js";
 import { DeckoName } from "../name.js";
 import { findRule } from "../rules/lookup.js";
-import { applyViewOverride } from "../rules/apply.js";
 import { scanNests, referencedNames } from "./nest-syntax.js";
 import type { WarmupMode, WarmupRef, WarmupScan } from "./prefetch.js";
 import { RenderFormat } from "./format.js";
@@ -646,7 +645,7 @@ async function renderPageBytesWithPageConfigInner(
     // JS default parameter would revive "show" on undefined).
     null,
   );
-  rootFormat.rendered = str(await applyMainViewOverride(engine, rootCard, mainView, mainBody));
+  rootFormat.rendered = str(mainBody);
   // The bare main-view lane returns HERE: show_without_page_layout renders
   // the view alone — no layout body, no layout nest warm-ups (the main
   // closure above is complete).
@@ -735,22 +734,6 @@ async function renderPageBytesWithPageConfigInner(
     `        ${resolveCloudUrls(interior)}\n` +
     `      </html>\n`
   );
-}
-
-/** The main view's *<view> rule override — the same rule-application hook
- *  RenderEngine.render applies to its bare output (shared ruleCache, so the
- *  warm page pass is one Map lookup). A denied main render never reaches
- *  view dispatch, so overrides cannot apply to it — same guard as render(). */
-async function applyMainViewOverride(
-  engine: RenderEngine,
-  rootCard: RenderCard,
-  view: string,
-  baseHtml: ViewResult,
-): Promise<ViewResult> {
-  if (engine.isDenied(rootCard)) return baseHtml;
-  const override = await engine.viewOverrideFor(rootCard, view);
-  if (override === undefined || typeof baseHtml !== "string") return baseHtml;
-  return applyViewOverride(baseHtml, override);
 }
 
 // ---------------------------------------------------------------------------
