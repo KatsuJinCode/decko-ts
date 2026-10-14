@@ -83,5 +83,9 @@ if (ot.graded > 0 || ot.fail > 0) {
   console.log(`${"other tables".padEnd(13)} ${String(ot.pass).padStart(5)} / ${String(ot.graded).padEnd(5)} write steps whose non-card tables match the oracle's${declaredNote}`);
   for (const f of ot.failures) console.log(`    ${f.id}: ${f.reason} (${f.tables.join(", ")})`);
 }
+const eo = report.engine_only_tables;
+if (eo && eo.tables.length > 0) {
+  console.log(`${"engine-only".padEnd(13)} ${eo.tables.join(", ")}: tables the oracle's schema does not have, written by ${new Set(eo.writes.map((w) => w.id)).size} write step(s); not compared`);
+}
 console.log(`verdict: ${report.verdict}`);
 process.exit(EXIT[report.verdict]);

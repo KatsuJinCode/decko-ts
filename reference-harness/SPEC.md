@@ -266,6 +266,13 @@ and does not fail; an undeclared one fails the grade even when every answer
 matches. Every write step whose non-card tables changed is listed in the
 report (`other_table_writes`), with its verdict: pass, declared, or fail.
 
+The comparison covers every table that exists in the oracle's schema, read
+from the fixture's built deck (`deck/deck.sqlite3`). A table only the
+engine's schema has holds no row the oracle reads or writes; its changes are
+not compared, matched or declared, and are listed in the report's
+`engine_only_tables` field (`tables`, and `writes` with each step's id, table
+and row delta).
+
 Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
 grade.
 

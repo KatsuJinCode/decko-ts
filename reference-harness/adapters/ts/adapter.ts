@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { getDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
@@ -93,12 +94,10 @@ console.info = console.log;
 console.warn = console.log;
 
 const driver = new LocalSqliteDriver({ path: process.env.HARNESS_DECK!, readonly: false });
-// The render engine's freshness stamp is a port-only table.
-await driver.query(
-  `CREATE TABLE IF NOT EXISTS "deck_data_version" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1), "version" INTEGER NOT NULL DEFAULT 0)`,
-  [],
-);
-await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
+// The deck is the database Ruby built, opened as it is: the port's own
+// objects (freshness stamp, session table, lookup indexes) are added
+// additively, the same way every Node host opens a deck (same-database.ts).
+await openSameDatabase(driver);
 
 // THE GRADED CONFIGURATION IS THE SERVED CONFIGURATION.
 //

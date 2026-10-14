@@ -7,7 +7,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
 import { RULE_ORDER, normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
@@ -107,6 +108,13 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   const readWrites = { graded: 0, pass: 0, fail: 0, failures: [] };
   const otherTableWrites = [];
   const otherTables = { graded: 0, pass: 0, declared: 0, fail: 0, failures: [] };
+  // Tables the oracle's schema does not have at all hold no row Ruby reads or
+  // writes, so they are not part of the comparison. Their writes are reported
+  // in their own field, never counted as a match or a declared difference.
+  const oracleTables = oracleSchemaTables(fixtureDir);
+  if (oracleTables === undefined) warnings.push("fixture: no built deck to read the oracle's schema from; every table is compared");
+  const engineOnlyWrites = [];
+  const isOracleTable = (t) => oracleTables === undefined || oracleTables.has(t);
   const selected = (kind, id) => !allowPartial || act.present[kind].has(id);
 
   const grade = (kind, group, id, e, a, mode) => {
@@ -198,7 +206,11 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   // A write step's `other_tables` are Ruby-recorded truth just like its `rows`:
   // the engine's changed non-card tables must equal the oracle's, and every
   // differing table must be declared (step id + table) or the grade fails.
-  const gradeOtherTables = (id, expOther, actOther) => {
+  const gradeOtherTables = (id, expOtherAll, actOtherAll) => {
+    const pick = (o, keep) => Object.fromEntries(Object.entries(o).filter(([t]) => keep(t)));
+    const expOther = pick(expOtherAll, isOracleTable);
+    const actOther = pick(actOtherAll, isOracleTable);
+    for (const [table, delta] of Object.entries(pick(actOtherAll, (t) => !isOracleTable(t)))) engineOnlyWrites.push({ id, table, delta });
     const record = { id, expected: expOther, actual: actOther };
     otherTableWrites.push(record);
     otherTables.graded++;
@@ -306,9 +318,32 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     read_writes: readWrites,
     other_tables: otherTables,
     other_table_writes: otherTableWrites,
+    engine_only_tables: {
+      tables: [...new Set(engineOnlyWrites.map((w) => w.table))].sort(),
+      writes: engineOnlyWrites,
+    },
     failures,
     reproduced,
   };
+}
+
+/**
+ * The table names of the oracle's schema: the fixture's Ruby-built deck,
+ * opened immutable so no journal sidecar is left beside the fixture.
+ * Undefined when the fixture carries no built deck.
+ */
+function oracleSchemaTables(fixtureDir) {
+  const file = path.join(fixtureDir, "deck", "deck.sqlite3");
+  if (!existsSync(file)) return undefined;
+  const url = pathToFileURL(file);
+  url.searchParams.set("mode", "ro");
+  url.searchParams.set("immutable", "1");
+  const db = new DatabaseSync(url, { readOnly: true });
+  try {
+    return new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => String(r.name)));
+  } finally {
+    db.close();
+  }
 }
 
 /** The declared-difference record's shape: `{ "<step id>": { "<table>": "why" } }`. */

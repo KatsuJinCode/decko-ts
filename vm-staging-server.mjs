@@ -167,6 +167,7 @@ import { uglifyHarmonyCompile } from "./dist/src/card/assets/uglify-harmony-comp
 // raises UnsupportedViewError at the serving surface even though the views
 // themselves are ported.
 import { defaultDeckLoader } from "./dist/src/card/mod-loader/default-mod-deck.js";
+import { openSameDatabase, passwordHashModeFor } from "./dist/src/server/same-database.js";
 // Write path: the whole write surface lives in its own
 // module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
 import {
@@ -620,7 +621,20 @@ setRenderRecaptchaConfig(recaptchaConfig);
 // dist (it is a source/test surface; the deploy stream applies D1
 // migrations its own way) — this Node origin passes its own repo-root
 // db/migrations explicitly.
-await runAuthMigrations(authDriver, { migrationsDir: path.join(HERE, "db", "migrations") });
+// The deck is opened as it is - a database Ruby Decko wrote is served with
+// no import: the port adds only its own objects (freshness stamp, session
+// table, lookup indexes), additively and idempotently, and never alters a
+// table Ruby owns (src/server/same-database.ts, docs/same-database.md).
+const sameDatabase = await openSameDatabase(authDriver, { authMigrationsDir: path.join(HERE, "db", "migrations") });
+// A database Ruby also serves keeps Ruby's salted SHA-1 password rows, so
+// every password the port writes is one Ruby can verify. An explicit
+// DECKO_PASSWORD_HASH wins.
+const passwordMode = passwordHashModeFor(sameDatabase.rubyDatabase, process.env.DECKO_PASSWORD_HASH);
+if (passwordMode !== undefined) process.env.DECKO_PASSWORD_HASH = passwordMode;
+console.log(
+  `[vm-staging] database: ${sameDatabase.rubyDatabase ? "Ruby Decko schema, served as it is" : "port schema"}; ` +
+    `added ${sameDatabase.created.length === 0 ? "nothing" : sameDatabase.created.join(", ")}; password hash ${passwordMode ?? "pbkdf2"}`,
+);
 
 // ---------------------------------------------------------------------------
 // Boot-seed: a FRESH deck seeds itself at boot.
