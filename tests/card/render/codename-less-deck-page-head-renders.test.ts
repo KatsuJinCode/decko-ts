@@ -38,7 +38,10 @@ import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./ren
  *  ":codename" nests (the body's mark handling is a separate render
  *  concern, not this pin's). */
 async function seedCodenamelessDeck(): Promise<RenderTestStorage> {
-  const storage = await createRenderTestStorage();
+  // No bootstrap: the stock read substrate IS five codename cards, and this
+  // suite's whole subject is a deck that has none. Asking for the bootstrap
+  // would put the codenames back and test nothing.
+  const storage = await createRenderTestStorage({ bootstrapReadRules: false });
   // The Basic cardtype - its "basic" codename is the layout classification's
   // structural read (card_layout? type check), not a head read.
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
