@@ -95,9 +95,29 @@ function stableKey(word: string): string {
   return keyOne === keyTwo ? keyOne : word;
 }
 
+/** simpleKey is a pure function of its input and the inflection rules, so
+ *  its results live across requests (unlike the per-request parse memo) and
+ *  are dropped whenever the deck's inflections change. A page that names
+ *  hundreds of cards otherwise re-runs the singularize rule list for every
+ *  word of every name on every request. The memo is emptied when it reaches
+ *  SIMPLE_KEY_MEMO_LIMIT entries so arbitrary request strings cannot grow
+ *  an isolate's memory without bound. */
+const simpleKeyMemo = new Map<string, string>();
+const SIMPLE_KEY_MEMO_LIMIT = 100_000;
+onDeckInflectionsChanged(() => simpleKeyMemo.clear());
+
 /** Cardname#simple_key (cardname lib/cardname.rb private #simple_key). */
 function simpleKey(body: string): string {
   if (body === "") return "";
+  const known = simpleKeyMemo.get(body);
+  if (known !== undefined) return known;
+  if (simpleKeyMemo.size >= SIMPLE_KEY_MEMO_LIMIT) simpleKeyMemo.clear();
+  const key = simpleKeyUncached(body);
+  simpleKeyMemo.set(body, key);
+  return key;
+}
+
+function simpleKeyUncached(body: string): string {
   return underscore(body)
     .replace(NOT_OK_FOR_KEY, "_")
     .split(/_+/)
