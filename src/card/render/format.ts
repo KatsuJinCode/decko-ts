@@ -4798,11 +4798,9 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  The joint span carries NO class in the corpus: `classy("joint")`
  *  (card-1.110.0 lib/card/view/classy.rb:50-53) joins "joint" with the
  *  extra classes, but the frozen record carries 102,508 bare `<span>+</span>`
- *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The two
- *  `<span class="joint">+</span>` emitters in the port — card-mod-tabs.ts:326
- *  and the rules `jointClass` override at src/card/rules/apply.ts:128-132 —
- *  are a separate divergence; apply.ts rewrites the bare form, which is the
- *  oracle shape.)
+ *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The one other
+ *  `<span class="joint">+</span>` emitter in the port — card-mod-tabs.ts:326 —
+ *  is a separate divergence.)
  *
  *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-surface + 48 view-surface,
  *  sha-verified copies): 145,260 `card-title` spans, 61,309 of them

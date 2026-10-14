@@ -41,7 +41,6 @@ import { findRule } from "./rules/lookup.js";
 import { ruleCacheStatement, type RuleCacheRow } from "./rules/rule-cache.js";
 import { ruleCacheKeyFromRow } from "./set-patterns/rule-names.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
-import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
 import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
@@ -79,7 +78,6 @@ import {
   signedInAccountLinksInnerHtml,
   type SessionRolesInput,
 } from "./render/navbar-views.js";
-import type { ViewOverride } from "./rules/apply.js";
 import {
   HTML_VIEWS,
   SETTING_GROUPS,
@@ -585,12 +583,6 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
   }
-  /** Rule lookup cache: `<card_key>|<view>` -> the resolved ViewOverride
-   *  (or undefined if no rule applies). Filled during the first render of
-   *  a (card, view) pair; subsequent renders skip the rule walk entirely.
-   *  This is what keeps the #1282 constant-queries promise: a warm render
-   *  issues ZERO queries for rule application. Cleared on resetCaches(). */
-  private ruleCache = new Map<string, ReturnType<typeof resolveViewOverride> | undefined>();
   /** Chain-aware view dispatch cache: `<format>|<card_key>|<view>` -> the
    *  resolved ViewFn (or undefined if no view applies). Filled on the
    *  first dispatch per (card, view) pair; subsequent renders skip the
@@ -2489,37 +2481,14 @@ export class RenderEngine implements RenderEngineLike {
     // serializer omits exactly that enrollment from the root slot - the
     // page-surface and nest renders pass their own optional explicitly and are
     // NOT roots (format.ts#slotOptions root-drop arm reads this flag).
-    const baseHtml =
-      this.skipSyncRender?.() === true ? "" : format.renderView(view, params.viewOpts ?? {}, "show", true);
-
-    // A denied render never reaches view dispatch (the denial span REPLACES
-    // the view in renderView), so view-override rules cannot apply to it —
-    // Ruby's denial happens before any view body runs.
-    if (this.isDenied(rootCard)) return baseHtml;
-
-    // Rule-application hook: cached lookup so warm re-renders cost zero
-    // queries. The cache key encodes the (card, view) pair so different
-    // views of the same card get independent override resolution.
-    const cacheKey = `${name.key}|${view}`;
-    let override = this.ruleCache.get(cacheKey);
-    if (override === undefined && !this.ruleCache.has(cacheKey)) {
-      // Miss: walk the rule chain. Cache both the hit AND the miss (the
-      // undefined in `override` could mean "no rule" — we distinguish via
-      // `has`, but the cache stores undefined for misses too).
-      const rule = await findRule(
-        this.fetcher,
-        { name, id: rootCard.id, typeId: rootCard.record.typeId, typeName: rootCard.typeName },
-        `*${view}`,
-      );
-      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
-      this.ruleCache.set(cacheKey, override);
-    }
-    if (override !== undefined && typeof baseHtml === "string") return applyViewOverride(baseHtml, override);
     // The boundary: Ruby's render returns the view block's value verbatim -
     // integers (:id, the token-days views) and nil (the early-return arms)
-    // survive as numbers/null; view-override rules substitute view NAMES, so
-    // they never post-process a non-string answer.
-    return baseHtml;
+    // survive as numbers/null. A view's markup is whatever its view method
+    // returns; no rule card post-processes it (Ruby has no such mechanism:
+    // card/lib/card/format/render.rb#render! returns the view block's value).
+    return this.skipSyncRender?.() === true
+      ? ""
+      : format.renderView(view, params.viewOpts ?? {}, "show", true);
   }
 
   /**
@@ -2535,27 +2504,6 @@ export class RenderEngine implements RenderEngineLike {
    */
   async renderPage(cardName: string): Promise<string> {
     return renderPageBytes(this, cardName);
-  }
-
-  /**
-   * The (card, view) view-override rule lookup shared with render() (same
-   * ruleCache; the page renderer applies the same *<view> rule to the main
-   * body bytes it builds with main! context). Additive seam — render()
-   * itself is untouched.
-   */
-  async viewOverrideFor(card: RenderCard, view: string): Promise<ViewOverride | undefined> {
-    const cacheKey = `${card.key}|${view}`;
-    let override = this.ruleCache.get(cacheKey);
-    if (override === undefined && !this.ruleCache.has(cacheKey)) {
-      const rule = await findRule(
-        this.fetcher,
-        { name: card.name, id: card.id, typeId: card.record.typeId, typeName: card.typeName },
-        `*${view}`,
-      );
-      override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
-      this.ruleCache.set(cacheKey, override);
-    }
-    return override;
   }
 
   /**
@@ -2836,7 +2784,6 @@ export class RenderEngine implements RenderEngineLike {
     this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
-    this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
     this.accountRightIds = undefined;
