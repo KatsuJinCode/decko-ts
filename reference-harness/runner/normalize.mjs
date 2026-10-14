@@ -42,7 +42,7 @@
  * `Card::Error::CodenameNotFound: unknown codename: test_context`; the engine
  * raises `CodenameNotFoundError` with the byte-same message on all 24, and
  * after N8 the failure records compare equal
- * (benchmarks/seconds-corpus/upstream-failure-classification-evidence.md).
+ * (reference-harness/NORMALIZATION-EVIDENCE.md#reproduced-upstream-failures).
  */
 export function canonicalErrorClass(name) {
   if (typeof name !== "string" || name === "") return name;
@@ -101,9 +101,9 @@ const isNameChar = (c) => /[A-Za-z0-9:_-]/.test(c);
  * `collapse_id: "card-#{card.name.safe_key}-#{args[:context]}-collapse-id"`).
  * Ruby hashes strings with a per-process seed, so the digits are process
  * noise, not bytes: two stock-oracle runs of synthetic-v2 over every op that
- * carries the token (30 of 2,557, 84 tokens) differ in 84 of 84 tokens and,
- * after N1 and this rule, in nothing else (benchmarks/seconds-corpus/
- * collapse-id-nondeterminism-evidence.md). The literal contexts ("files",
+ * carries the token (30 of the 2,573 public render operations, 84 tokens) differ
+ * in 84 of 84 tokens and, after N1 and this rule, in nothing else
+ * (reference-harness/NORMALIZATION-EVIDENCE.md#n4-collapse-ids). The literal contexts ("files",
  * "depends_on", view names) hold no digits and never match. Canonical form,
  * not erasure: each distinct digit run becomes N4#k in first-appearance
  * order per html string, so the accordion button's data-bs-target and its
@@ -124,11 +124,11 @@ export const COLLAPSE_ID = /(card-[a-z0-9_]+-)(-?\d+)(-collapse-id)/g;
  * presence and position still count while its clock-drawn value does not.
  * The surrounding sentence must still match byte for byte ("added ... ago
  * by", the whole attribute or line around it), so a real content change
- * beside a span still fails. Measured on synthetic-v2: 22 of 2,557 oracle
- * ops carry a span (179 "less than a minute", one "2 days"); the four ops
- * whose only divergence was the span grade identical after N5, and no
- * identical op breaks (benchmarks/seconds-corpus/
- * capture-clock-and-debug-span-canonicalization-evidence.md).
+ * beside a span still fails. Measured on synthetic-v2: 22 of the 2,573 public
+ * render operations carry a span (179 "less than a minute", one "2 days"). On
+ * the shipped capture, with the composed TypeScript adapter (which freezes the
+ * capture clock), both sides render the same spans, so this rule changes no
+ * outcome there (reference-harness/NORMALIZATION-EVIDENCE.md#n5-relative-time-spans).
  */
 export const RELATIVE_TIME =
   /\b(less than a minute|half a minute|less than \d+ seconds|about (?:[1-9]|1[0-9]|2[0-4]) hours?|about (?:[1-9]|1[0-2]) months?|about [1-9][0-9]* years?|over [1-9][0-9]* years?|almost [1-9][0-9]* years?|(?:[1-9]|1[0-9]|2[0-9]|3[0-9]|4[0-4]) minutes?|(?:[1-9]|1[0-9]|2[0-4]) hours?|(?:[1-9]|[12][0-9]|30) days?|(?:[1-9]|1[0-2]) months?)\b/g;
@@ -144,11 +144,12 @@ export const RELATIVE_TIME =
  * move - differs in them while saying the same thing. Inside a title that
  * begins with the debug page marker they become placeholders; the error
  * message, the frame COUNT (N6) and every byte outside the title still
- * count. Measured on synthetic-v2: 8 oracle ops carry the page (554 path
- * tokens, 2 heap addresses). The engine emits the same debug page where it
- * raises as stock Ruby raises (error.rb's backtrace_link posture), so this
- * rule stops the comparison from demanding the capture machine's
- * filesystem on either side (same evidence receipt as N5).
+ * count. The eight oracle operations that carry the debug page are not in the
+ * public package, so this rule's effect on them cannot be re-measured from
+ * shipped files (reference-harness/NORMALIZATION-EVIDENCE.md#n7-capture-host-content-in-debug-pages).
+ * The engine emits the same debug page where it raises, as stock Ruby does
+ * (error.rb's backtrace_link posture), so this rule stops the comparison from
+ * demanding the capture machine's filesystem on either side.
  */
 export const ERROR_SPAN_TITLE =
   /(&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;)/;
@@ -173,11 +174,11 @@ const HEAP_ADDRESS = /0x[0-9a-fA-F]{6,16}/g;
  * `<br>`-separated structure stays compared, so a side emitting a different
  * number of its own frames still fails, as do the heading, the error
  * message and every byte outside the div (they keep their existing rules).
- * Measured on synthetic-v2 at the raise posture: the 8 oracle debug pages
- * carry 51-63 Ruby frames; the engine's raise sites produce 8-10 V8 frames
- * (Node's Error.stackTraceLimit caps at 10), so the six raise-posture rows
- * stay pinned with the count as their recorded residual
- * (benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md).
+ * The eight oracle debug pages are not in the public package. Their recorded
+ * frame counts (51-63 Ruby frames against 8-10 V8 frames, the V8 count capped
+ * by Node's Error.stackTraceLimit of 10) are kept in
+ * reference-harness/NORMALIZATION-EVIDENCE.md#n6-backtrace-frame-lines and
+ * cannot be re-measured from shipped files.
  */
 export const FRAME_MARKER = "N6#frame";
 // The debug page's backtrace div: the region between the message paragraph's

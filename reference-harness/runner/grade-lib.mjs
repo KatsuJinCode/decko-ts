@@ -118,7 +118,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
       // (reproducing a recorded upstream failure is a success, not a
       // divergence: a faithful port breaks where the original breaks).
       // Identity is still the bar: the engine's
-      // failure must equal the oracle's under N7 (the class's host naming
+      // failure must equal the oracle's under N8 (the class's host naming
       // canonicalized) with the message byte-exact, and a match is counted
       // as a reproduced upstream failure, its own success category. Any
       // other answer - a different failure, or a render where the oracle
