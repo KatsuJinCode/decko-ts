@@ -1290,11 +1290,10 @@ export class CardActionEngine {
    *  new Bootswatch skin adds its +*variables and +*colors fields (SCSS),
    *  and each is permission-checked as its own create; a denied field
    *  rejects the whole save (shown as "+*VARIABLES: permission_denied
-   *  You don't have permission to create <skin>+*variables"). +*colors
-   *  checks only when the skin has a real parent skin
-   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?:
-   *  `left.parent? && super`); a new skin has none. The fields' own
-   *  creation on an allowed save is not ported. */
+   *  You don't have permission to create <skin>+*variables"). On a new
+   *  skin only +*variables is checked here, as Ruby's create path does
+   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?). The
+   *  fields' own creation on an allowed save is not ported. */
   private async checkSkinFieldPermissions(name: DeckoName, typeId: number): Promise<void> {
     const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
     if (skinTypeId === undefined || typeId !== skinTypeId) return;

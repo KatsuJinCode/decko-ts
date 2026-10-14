@@ -71,3 +71,27 @@ There are six exceptions to that parity rule, listed below, in three classes:
 | **Tests** | The scenario-battery steps that exercise this rename are withheld from the public package until the disclosure described under "Reporting a vulnerability"; when they are absent, `tests/tools/side-effects-scenario-battery.test.ts` prints a `[withheld until disclosure] NOT RUN` line for them. The public battery's other 88 steps run without them. |
 
 ```
+
+## Approved divergence: upload permission order (removed 2026-10-14)
+
+Removed from `docs/SECURITY.md`, where it was divergence 4, because it describes an action Ruby Decko permits against a stock site. Its suite moved with it, from `tests/server/write-routes-preliminary-upload-permission.test.ts` to `tests/withheld/upload-order.test.ts`.
+
+### 4. An upload is refused before it is stored
+
+| | |
+|---|---|
+| **Ruby** | A two-step (preliminary) upload is answered at the `:prepare_to_validate` stage (`card-mod-carrierwave set/abstract/attachment/00_upload_cache.rb:8-25`), one stage before `check_permissions` runs at `:validate` (`mod/permissions/set/all/permissions.rb:22-26`). The event stores the file and files a draft action, then ends the act with `abort :success`, which does not roll back (`card/mod/core/set/all/result.rb:63-71`). So an actor with no permission on the card still gets the file into the deck's storage and leaves draft `card_actions`, `card_changes` and `card_acts` rows behind. |
+| **Port** | The port checks `ok_to_update?` / `ok_to_create?` before anything is stored (`src/card/actions/card-action-engine.ts`), and a refused upload writes no file and no rows. A permitted two-step upload behaves as Ruby's does: the bytes are stored and the draft action is filed. |
+| **Why** | Storing a file for an actor who may not change the card lets anyone who can reach the upload route write to the deck's storage. |
+| **Compatibility** | Only refused uploads differ: Ruby answers them with the preview and leaves the file and draft rows; the port answers with its permission error and leaves nothing. |
+| **Configuration** | None. |
+| **Tests** | The upload permission suites added with this entry pin a denied update (403, no file, draft, change or act), a denied create (403, upload cache empty), a granted update and a granted create, and an ordinary one-step upload denial. |
+
+## Flaws added to the withheld list on 2026-10-14
+
+The public count of withheld Ruby Decko flaws rose from three to five:
+
+4. the two-step upload permission order: an actor with no permission on a card gets a file into the deck storage and leaves draft action rows (the entry above);
+5. the Bootswatch skin `+*colors` update permission gap: `ok_to_update?` on a skin's `+*colors` is `left.parent? && super`, so on a skin with no parent the permission check never runs and an anonymous visitor can change the site colours. The scenario-battery step `anon-update-skin-colors` that reproduces it moved to `tools/parity-side-effects/withheld/scenarios.json`, and its Ruby recording to `reference-harness/fixtures/write-battery-v1/withheld/side-effects-ruby-steps.json`.
+
+The public class line for security holes now reads "Divergence 2" and the credential line "Divergences 1 and 3", matching the renumbered entries.

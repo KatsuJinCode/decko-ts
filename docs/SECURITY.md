@@ -2,10 +2,10 @@
 
 decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are six exceptions to that parity rule. Four are listed below, in two classes; the other two are withheld until a private channel exists to disclose them responsibly.
+There are six exceptions to that parity rule. Three are listed below, in two classes; the other three are withheld until a private channel exists to disclose them responsibly.
 
-1. **Security holes.** Where Ruby's behaviour lets one user act against another, the port does not copy it. Divergences 1 and 2.
-2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 3 and 4.
+1. **Security holes.** Where Ruby's behaviour lets one user act against another, the port does not copy it. Divergence 2.
+2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 1 and 3.
 
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
@@ -22,7 +22,7 @@ advisory filed against a repository you do not hold is not a second channel: the
 email fallback. Include the request or content that triggers the problem and what you
 observed. Because of the nature of a security concern, a flaw that exists in Ruby Decko is
 not disclosed here until a private channel is established to disclose it
-responsibly. Three Ruby Decko flaws are withheld on those terms, in areas of Ruby Decko this
+responsibly. Five Ruby Decko flaws are withheld on those terms, in areas of Ruby Decko this
 repository does not describe. Nothing about them is described in this file or in any other
 shipped file: no upstream file, line, guard name, request shape or payload, and no explanation
 of what Ruby does with any of them. Where a rule the port enforces is material to one of
@@ -61,7 +61,7 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 ## Approved divergences
 
-Two further approved divergences exist, are pinned by withheld tests, and are not described here until the disclosure described under "Reporting a vulnerability".
+Three further approved divergences exist, are pinned by withheld tests, and are not described here until the disclosure described under "Reporting a vulnerability".
 
 ### 1. Passwords: new ones are stored with PBKDF2
 
@@ -95,17 +95,6 @@ Two further approved divergences exist, are pinned by withheld tests, and are no
 | **Why** | A timing difference can leak a secret one character at a time to a patient remote attacker. |
 | **Compatibility** | None: the results are identical, only the timing differs. |
 | **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison, including the padded-prefix case the length check exists for (`[1,2,3]` against `[1,2,3,0,0,0]`, and `"x"` against `"x\0"` through the string path); `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
-
-### 4. An upload is refused before it is stored
-
-| | |
-|---|---|
-| **Ruby** | A two-step (preliminary) upload is answered at the `:prepare_to_validate` stage (`card-mod-carrierwave set/abstract/attachment/00_upload_cache.rb:8-25`), one stage before `check_permissions` runs at `:validate` (`mod/permissions/set/all/permissions.rb:22-26`). The event stores the file and files a draft action, then ends the act with `abort :success`, which does not roll back (`card/mod/core/set/all/result.rb:63-71`). So an actor with no permission on the card still gets the file into the deck's storage and leaves draft `card_actions`, `card_changes` and `card_acts` rows behind. |
-| **Port** | The port checks `ok_to_update?` / `ok_to_create?` before anything is stored (`src/card/actions/card-action-engine.ts`), and a refused upload writes no file and no rows. A permitted two-step upload behaves as Ruby's does: the bytes are stored and the draft action is filed. |
-| **Why** | Storing a file for an actor who may not change the card lets anyone who can reach the upload route write to the deck's storage. |
-| **Compatibility** | Only refused uploads differ: Ruby answers them with the preview and leaves the file and draft rows; the port answers with its permission error and leaves nothing. |
-| **Configuration** | None. |
-| **Tests** | The upload permission suites added with this entry pin a denied update (403, no file, draft, change or act), a denied create (403, upload cache empty), a granted update and a granted create, and an ordinary one-step upload denial. |
 
 ## Migration tooling
 
