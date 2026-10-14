@@ -176,12 +176,24 @@ Stated plainly, with where the gap closes when it closes:
    (`reference-harness/browser/journeys/synthetic-v1.json`), but no journey
    comparison run is committed. What a browser session sees — editors, uploads,
    follow flows — is unproven in the public package.
-2. **The default PBKDF2 password path, in the harness grade.** The public
-   fixture's TS adapter pins `DECKO_PASSWORD_HASH=legacy-sha1`
-   (`reference-harness/adapters/ts/adapter.ts`), because the fixture deck is
-   Ruby-built with Ruby's salted SHA-1 digests; the graded sign-ins therefore
-   never exercise PBKDF2 storage or the upgrade-on-sign-in write. That path
-   is covered by unit tests (`tests/card/auth/password-hash.test.ts`,
+2. **PBKDF2 storage of a newly set password, in the harness grade.** The
+   default PBKDF2 policy is graded by its own adapter configuration,
+   `reference-harness/adapters/ts-pbkdf2/`, which runs the full synthetic-v1
+   grade with PBKDF2 on and declares one divergence to the grader
+   (`--declared-divergences`, `reference-harness/runner/divergences.mjs`):
+   the digest value of a `+*password` card may differ from Ruby's, every
+   other byte is compared. That grade covers the upgrade-on-sign-in write.
+   Reproduce it with `node reference-harness/runner/run.mjs --adapter
+   reference-harness/adapters/ts-pbkdf2/adapter.json --fixture
+   reference-harness/fixtures/synthetic-v1 --out tmp/grade-pbkdf2-results`
+   and then `node reference-harness/runner/grade.mjs --fixture
+   reference-harness/fixtures/synthetic-v1 --actual tmp/grade-pbkdf2-results
+   --declared-divergences
+   reference-harness/adapters/ts-pbkdf2/declared-divergences.json`; the
+   report from 2026-10-14 is
+   `reference-harness/grade-reports/synthetic-v1-pbkdf2-report.json`. No
+   synthetic-v1 scenario sets a password, so storing a new password as
+   PBKDF2 is covered by unit tests (`tests/card/auth/password-hash.test.ts`,
    `tests/card/auth/signin.test.ts`), not by the harness grade.
 3. **Hosted D1 / Bunny write semantics.** The transaction and atomic-save
    suites ran against workerd's local D1 under Miniflare and a Hrana v2 test
