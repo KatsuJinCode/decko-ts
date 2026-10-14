@@ -19,11 +19,13 @@
 # printed by `npx wrangler d1 create decko-ts`. No infrastructure id from any
 # existing deployment ships in this file.
 #
-# NO SECRETS LIVE IN THIS FILE, and the deploy needs none: the only BINDING the
-# Worker reads from `env` is the D1 one below. There is no [vars] secret, no
-# .dev.vars, no token — so a fork of this repo carries nothing sensitive. The
-# two [vars] further down are plain non-secret flags, and a deploy from the
-# button sets neither.
+# NO SECRETS LIVE IN THIS FILE, and the deploy needs none. The bindings below
+# are a D1 database (DB), an R2 bucket (FILES), a queue (DELAYED) and a cron
+# trigger; the button provisions each on the deployer's account. There is no
+# [vars] secret, no .dev.vars, no token — so a fork of this repo carries
+# nothing sensitive. The [vars] further down are plain non-secret flags. The
+# one secret a deck has at birth, its first-run setup token, is generated at
+# deploy time, printed to the deployer, and stored only as a sha256 in D1.
 #
 # For local dev / preview with miniflare (no account, no deploy):
 #   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
@@ -129,39 +131,55 @@ database_name = "decko-ts"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 migrations_dir = "deploy/migrations"
 
-[vars]
-# LIBRARY_RUNTIME is expressed via [define]; nothing needed here yet.
-#
-# THE TWO OPT-IN FLAGS. Both are OFF unless you set them to "1" here, and the
-# one-click deploy button sets neither: a deploy from the button is a
-# read-only deck, exactly as it was before the write surface existed. Set a
-# value to "1", redeploy, and that surface turns on. Nothing else moves.
+# THE WRITE SURFACE IS ON. A deploy from the button is a full, writable deck:
 #
 #   DECKO_WRITE_PATH = "1"
-#       Sign-in (GET /_signin plus the POST /update/*signin) and card
-#       create/update/delete. Signing in mints a session row in D1, which is
-#       not a card write, so the flag does NOT gate it: with DECKO_WRITE_PATH
-#       unset a POST /update/*signin still dispatches and still records that
-#       row. What the unset flag does gate is every card write — create,
-#       update and delete — and the /_signin page; those answer 403 and no card
-#       row is written. "Read-only" means NO CARD WRITES, not that the engine
-#       is never called. src/server/cloudflare-write-routes.ts states this
-#       posture at the top of the file and pins it.
+#       Sign-in (GET /_signin plus POST /update/*signin) and card
+#       create/update/delete, uploads included. Set "0" for a read-only deck:
+#       every card write then answers 403 (src/server/cloudflare-write-routes.ts
+#       states that posture at the top of the file).
 #
 #   DECKO_FIRST_RUN = "1"
-#       The first-run window at /setup: GET renders the create-owner form,
-#       POST creates the deck's first account. The window is only open while
-#       the deck has no user accounts, so it closes by itself the moment the
-#       first owner exists. Unset, /setup does not exist.
+#       The first-run window at /setup: it creates the deck's first account
+#       and closes by itself once that account exists. It is NOT open to
+#       whoever arrives first: `npm run deploy` issues a one-time setup token,
+#       stores only its sha256 in D1 (deploy/migrations/0010) and prints the
+#       link `/setup?token=...` in the deploy output. Without that link /setup
+#       answers 403 (src/server/setup-token.ts). `npm run setup-token` issues a
+#       fresh one.
 #
-# Neither flag is a secret: they are plain [vars] values, readable by anyone
-# who can read this file, and a fork of this repo still carries nothing
-# sensitive.
-# DECKO_WRITE_PATH = "0"
-# DECKO_FIRST_RUN = "0"
+# Neither flag is a secret: they are plain [vars] values, and a fork of this
+# repo still carries nothing sensitive.
+[vars]
+DECKO_WRITE_PATH = "1"
+DECKO_FIRST_RUN = "1"
 
-# Optional: bind a R2 bucket for asset hosting if/when the demo grows
-# attachments. The engine never reads from R2 directly — adapters only.
-# [[r2_buckets]]
-# binding = "ASSETS"
-# bucket_name = "decko-ts-assets"
+# The deck's files: uploads, image renditions and the stored asset outputs
+# (the site stylesheet the style asset events write on save). Keyed exactly as
+# the Node host's files directory: <card_id>/<action_id><ext>
+# (src/card/attachments/attachment-store.ts). A button deploy creates the
+# bucket on the deployer's account; for a manual deploy,
+# `npx wrangler r2 bucket create decko-ts-files`.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "decko-ts-files"
+
+# Delayed work (src/server/edge-delayed-work.ts): the cron trigger below
+# enqueues the periodic sweep and this Worker consumes it. A button deploy
+# creates the queue; for a manual deploy,
+# `npx wrangler queues create decko-ts-delayed`.
+[[queues.producers]]
+binding = "DELAYED"
+queue = "decko-ts-delayed"
+
+[[queues.consumers]]
+queue = "decko-ts-delayed"
+max_batch_size = 10
+max_retries = 3
+
+# The periodic sweep: expired sessions and abandoned upload drafts.
+[triggers]
+crons = ["17 3 * * *"]
+
+# No KV namespace: nothing in this engine reads one. D1 holds the deck and
+# its sessions, R2 holds its files.

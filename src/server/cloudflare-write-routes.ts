@@ -95,6 +95,14 @@ import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/aut
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
 import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
+import type { AttachmentStore } from "../card/attachments/attachment-store.js";
+import {
+  clearSetupTokens,
+  SETUP_TOKEN_PARAM,
+  SETUP_TOKEN_REFUSAL,
+  setupTokenFromRequest,
+  verifySetupToken,
+} from "./setup-token.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
@@ -116,6 +124,10 @@ export interface WriteSurfaceFlags {
   readonly DECKO_ORIGIN_CHECK?: string;
   /** Comma-separated extra origins allowed to post to this deck. */
   readonly DECKO_TRUSTED_ORIGINS?: string;
+  /** "off" opens /setup without the one-time deploy token
+   *  (src/server/setup-token.ts). Anything else, including absent, requires
+   *  it: a public deploy must not be claimable by whoever arrives first. */
+  readonly DECKO_SETUP_TOKEN?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {
@@ -137,6 +149,10 @@ export interface WorkersWriteContext {
   /** Overrides the D1 adapter the surface would build from env.DB. Tests
    *  pass the LocalSqliteDriver here; the Worker never does. */
   readonly driver?: SQLDatabaseDriver;
+  /** The attachment storage seam: the host's bucket (R2 on Cloudflare,
+   *  Bunny Storage on Bunny) under BlobAttachmentStore. Absent = uploads and
+   *  stored asset outputs fail with the engine's named rejection. */
+  readonly attachmentStore?: AttachmentStore;
 }
 
 /** One inbound request, normalized off the Web Request. Same field names and
@@ -405,9 +421,21 @@ async function mountFirstRun(
   driver: SQLDatabaseDriver,
   req: WorkersWriteRequest,
   originPolicy: OriginPolicy,
+  tokenRequired: boolean,
 ): Promise<WorkersWriteResponse> {
+  let formAction: string | undefined;
+  if (tokenRequired) {
+    const verdict = await verifySetupToken(
+      driver,
+      setupTokenFromRequest(req.search, req.headers["content-type"], req.body),
+    );
+    if (!verdict.ok) {
+      return plainText(403, "First-run setup needs its one-time link", SETUP_TOKEN_REFUSAL[verdict.reason]);
+    }
+    formAction = `${SETUP_PATH}?${SETUP_TOKEN_PARAM}=${encodeURIComponent(verdict.token)}`;
+  }
   const result = await handleFirstRunRequest(
-    { driver, fetcher: ctx.fetcher, originPolicy },
+    { driver, fetcher: ctx.fetcher, originPolicy, ...(formAction === undefined ? {} : { formAction }) },
     {
       method: req.method,
       pathname: req.pathname,
@@ -427,6 +455,11 @@ async function mountFirstRun(
       "This deployment sets DECKO_FIRST_RUN=1, but its runtime did not make the " +
         "setting visible to the engine's gate, so /setup is not served.",
     );
+  }
+  if (result.status === 303 && tokenRequired) {
+    // The owner exists: the window is closed by the census from here on, and
+    // the token is spent.
+    await clearSetupTokens(driver);
   }
   expireAfterSave(ctx, result.expiryName);
   return { status: result.status, headers: result.headers, body: result.body };
@@ -461,10 +494,13 @@ async function mountWrite(
       // and script saves compile here instead of being refused.
       scssCompiler: edgeScssCompiler,
       coffeeCompiler: edgeCoffeeCompiler,
-      // attachmentStore is deliberately ABSENT: a Workers deployment binds no
-      // R2 bucket, so there is no storage seam to pass. An upload therefore
-      // fails with the engine's programming-error rejection rather than
-      // silently writing nothing. Disclosed rather than faked.
+      // The host's bucket (env.FILES on Cloudflare): uploads, image
+      // renditions and the stored asset outputs (the site stylesheet the
+      // style asset events write on save) land here, keyed exactly as the
+      // Node host's files directory keys them (attachment-store.ts). A host
+      // that binds no bucket passes nothing, and an upload fails with the
+      // engine's named rejection rather than silently writing nothing.
+      ...(ctx.attachmentStore === undefined ? {} : { attachmentStore: ctx.attachmentStore }),
     },
     {
       method: req.method,
@@ -538,7 +574,7 @@ export async function handleWorkersWriteSurface(
   // accepts GET and POST only, so a HEAD falls through to the read surface
   // and keeps answering exactly what it answers today.
   if (firstRun && (req.method === "GET" || req.method === "POST") && req.pathname === SETUP_PATH) {
-    return mountFirstRun(ctx, resolveDriver(ctx, env), req, applySecuritySettings(env));
+    return mountFirstRun(ctx, resolveDriver(ctx, env), req, applySecuritySettings(env), env.DECKO_SETUP_TOKEN !== "off");
   }
 
   // The sign-in form, when the write gate is armed (sign-in mints a session

@@ -147,6 +147,10 @@ export interface FirstRunRouteContext {
   /** Same-origin policy for the setup POST (request-origin.ts). Absent:
    *  from process.env, else enabled. */
   readonly originPolicy?: OriginPolicy;
+  /** The form's action URL. Absent: SETUP_PATH. A host that gates the window
+   *  on a one-time token (src/server/setup-token.ts) passes SETUP_PATH with
+   *  that token's query, so the POST carries it. */
+  readonly formAction?: string;
 }
 
 /**
@@ -174,14 +178,14 @@ export async function handleFirstRunRequest(
   }
 
   if (req.method === "GET") {
-    return htmlResponse(200, "Set up this deck", renderSetupFormHtml(null, null));
+    return htmlResponse(200, "Set up this deck", renderSetupFormHtml(null, null, ctx.formAction));
   }
 
   // Same-origin check (docs/SECURITY.md, "Cross-site requests"): the setup
   // POST creates the owner account, so another site must not submit it.
   const origin = checkRequestOrigin({ headers: req.headers, host: req.host }, ctx.originPolicy ?? defaultOriginPolicy());
   if (!origin.ok) {
-    return htmlResponse(403, "Set up this deck", renderSetupFormHtml(null, `${CROSS_ORIGIN_MESSAGE} (${origin.reason})`));
+    return htmlResponse(403, "Set up this deck", renderSetupFormHtml(null, `${CROSS_ORIGIN_MESSAGE} (${origin.reason})`, ctx.formAction));
   }
 
   const submitted = parseSetupForm(req.body, req.headers["content-type"] ?? "");
@@ -192,7 +196,7 @@ export async function handleFirstRunRequest(
     return htmlResponse(
       400,
       "Set up this deck",
-      renderSetupFormHtml(null, "Could not read the submitted form."),
+      renderSetupFormHtml(null, "Could not read the submitted form.", ctx.formAction),
     );
   }
 
@@ -207,7 +211,7 @@ export async function handleFirstRunRequest(
     return htmlResponse(
       422,
       "Set up this deck",
-      renderSetupFormHtml(outcome.field ?? null, outcome.message),
+      renderSetupFormHtml(outcome.field ?? null, outcome.message, ctx.formAction),
       // A validation failure is a user error -> 422; the re-render
       // carries the message against its own field.
       { "Cache-Control": "no-store" },
@@ -321,6 +325,7 @@ const CLOSED_BODY: Record<SetupWindowReason, string> = {
 function renderSetupFormHtml(
   errorField: "email" | "password" | null,
   errorMessage: string | null,
+  formAction: string = SETUP_PATH,
 ): string {
   const error =
     errorMessage === null
@@ -335,7 +340,7 @@ function renderSetupFormHtml(
     `<div class="d0-card-body card-body card-text">\n` +
     `<p>Your deck is ready to go!</p>\n` +
     error +
-    `<form action="${SETUP_PATH}" method="post" class="first-run-setup-form">\n` +
+    `<form action="${escapeHtml(formAction)}" method="post" class="first-run-setup-form">\n` +
     `<div class="form-group">\n` +
     `<label for="setup_email">Email</label>\n` +
     `<input type="text" name="email" id="setup_email" class="form-control" autocomplete="username" />\n` +

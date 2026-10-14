@@ -83,6 +83,11 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // would deny the whole deck. 0009 rather than 0007 because 0007 is reserved
   // above.
   { filename: "0009-demo-account-read-rules.sql", number: "0009" },
+  // The first-run setup token table (host infrastructure, not a Decko
+  // table): the deploy chain writes the sha256 of a one-time token here and
+  // prints the token, and the edge /setup window opens only for a request
+  // carrying it (src/server/setup-token.ts).
+  { filename: "0010-first-run-setup-token.sql", number: "0010" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */
