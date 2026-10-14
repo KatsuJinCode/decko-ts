@@ -84,7 +84,7 @@ import type { ViewResult } from "../../render/format.js";
 // to invent Voo API to exist at all. Documented, not faked.
 
 import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
-import { RenderFormat, rubyBacktraceError, str, UnsupportedViewError } from "../../render/format.js";
+import { NoMethodError, RenderFormat, str, UnsupportedViewError } from "../../render/format.js";
 import { formEscape } from "../../follow/follow-form-shapes.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
@@ -579,12 +579,8 @@ function cardInspect(card: RenderCard): string {
 //   That is the reproduced-upstream-failure decision: the oracle's answer
 //   for a search_error render of a valid non-count query is the quiet
 //   render-error span carrying that debug page (0_search/views.rb:7 raise
-//   site, 51 boot-inclusive Ruby frames, pinned in
-//   reference-harness/fixtures/synthetic-v2/expected), so the port raises
-//   the same failure with the same
-//   message and the declared frame structure (rubyBacktraceError; the
-//   engine's own V8 stack cannot carry Ruby's boot-inclusive depth, hence
-//   the fixed frame count). The view's own
+//   site), so the port raises the same class with the same message. The
+//   debug page's backtrace is the engine's own stack. The view's own
 //   interpolation bytes never exist in either engine.
 //
 // A deck the warm never ran on still has no warmed result to dispatch on;
@@ -614,9 +610,8 @@ const searchErrorView: ViewFn = (ctx) => {
   } catch {
     // unreachable: a BadQuery cql warms as a failure (the branch above)
   }
-  throw rubyBacktraceError(
+  throw new NoMethodError(
     `undefined method \`message' for an instance of ${cqlReturnCount ? "Integer" : "Array"}`,
-    51,
   );
 };
 
