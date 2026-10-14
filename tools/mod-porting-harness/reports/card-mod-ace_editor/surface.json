@@ -1,7 +1,7 @@
 {
   "modId": "card-mod-ace_editor",
   "gemName": "card-mod-ace_editor-0.20.0",
-  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-ace_editor-0.20.0",
+  "gemPath": "$GEM_HOME/gems/card-mod-ace_editor-0.20.0",
   "setFiles": [
     {
       "file": "set/all/ace_editor.rb",

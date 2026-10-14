@@ -14,10 +14,10 @@
 //     bytes pass through untouched apart from the trailing newline every
 //     served HTML document carries. That is the regression guard: no deck's
 //     private identity can leak into a deployment that configured nothing.
-//   - CONFIGURED: the production migration deployment's deltas
-//     (fixtures/production-deck-served-deltas.ts — the same values its
-//     runbook sets), which apply exactly and reproduce the production
-//     deployment's served bytes.
+//   - CONFIGURED: a synthetic deck's deltas
+//     (fixtures/configured-deck-served-deltas.ts — the same shape a
+//     deployment sets through the environment, per the runbook), which
+//     apply exactly and reproduce a configured deployment's served bytes.
 //
 // The shell the configured deployment buys: favicon
 // link, Material-Icons stylesheet, compiled site CSS at the configured
@@ -46,11 +46,11 @@ import {
   servedDeltasAreEmpty,
 } from "../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
 import {
-  PRODUCTION_ASSET_HOST,
-  PRODUCTION_CSS_REVISION_FROM,
-  PRODUCTION_CSS_REVISION_TO,
-  PRODUCTION_DECK_SERVED_DELTAS,
-} from "./fixtures/production-deck-served-deltas.js";
+  CONFIGURED_ASSET_HOST,
+  CONFIGURED_CSS_REVISION_FROM,
+  CONFIGURED_CSS_REVISION_TO,
+  CONFIGURED_DECK_SERVED_DELTAS,
+} from "./fixtures/configured-deck-served-deltas.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -68,7 +68,7 @@ describe("bunny edge page shell — UNCONFIGURED deltas (the default)", () => {
   // UNCHANGED.
   const FOG_CSS_FRAGMENT =
     `<link media="all" rel="stylesheet" type="text/css" ` +
-    `href="http://s3.amazonaws.com//files/${PRODUCTION_CSS_REVISION_FROM}" />`;
+    `href="http://s3.amazonaws.com//files/${CONFIGURED_CSS_REVISION_FROM}" />`;
 
   it("applies no version rewrite — the deck's own footer bytes stand", () => {
     expect(applyServedEnvironmentDeltas(`<a href="/:latest">Decko v</a>`).trimEnd()).toBe(
@@ -83,8 +83,8 @@ describe("bunny edge page shell — UNCONFIGURED deltas (the default)", () => {
 
   it("applies no asset-host rewrite and no stylesheet-revision rewrite", () => {
     expect(applyServedEnvironmentDeltas(FOG_CSS_FRAGMENT).trimEnd()).toBe(FOG_CSS_FRAGMENT);
-    expect(applyServedEnvironmentDeltas(FOG_CSS_FRAGMENT)).not.toContain(PRODUCTION_ASSET_HOST);
-    expect(applyServedEnvironmentDeltas(FOG_CSS_FRAGMENT)).not.toContain(PRODUCTION_CSS_REVISION_TO);
+    expect(applyServedEnvironmentDeltas(FOG_CSS_FRAGMENT)).not.toContain(CONFIGURED_ASSET_HOST);
+    expect(applyServedEnvironmentDeltas(FOG_CSS_FRAGMENT)).not.toContain(CONFIGURED_CSS_REVISION_TO);
   });
 
   it("injects no SRI attributes", () => {
@@ -111,23 +111,23 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
   // These pins feed FRAGMENTS; the trailing-newline delta still appends to
   // a fragment, so the fragment assertions trimEnd before comparing. The
   // full-page newline behavior has its own pin below.
-  const DELTAS = PRODUCTION_DECK_SERVED_DELTAS;
+  const DELTAS = CONFIGURED_DECK_SERVED_DELTAS;
 
   it("rewrites the capture fog attachment host to the configured asset host", () => {
     const input =
       `<link media="all" rel="stylesheet" type="text/css" ` +
-      `href="http://s3.amazonaws.com//files/${PRODUCTION_CSS_REVISION_FROM}" />`;
+      `href="http://s3.amazonaws.com//files/${CONFIGURED_CSS_REVISION_FROM}" />`;
     expect(applyServedEnvironmentDeltas(input, DELTAS).trimEnd()).toBe(
       `<link media="all" rel="stylesheet" type="text/css" ` +
-        `href="${PRODUCTION_ASSET_HOST}/files/${PRODUCTION_CSS_REVISION_TO}" />`,
+        `href="${CONFIGURED_ASSET_HOST}/files/${CONFIGURED_CSS_REVISION_TO}" />`,
     );
   });
 
   it("rewrites the recorded stylesheet revision to the served revision (link + cssPath)", () => {
     const input =
-      `decko.cssPath='http://s3.amazonaws.com//files/${PRODUCTION_CSS_REVISION_FROM}';`;
+      `decko.cssPath='http://s3.amazonaws.com//files/${CONFIGURED_CSS_REVISION_FROM}';`;
     expect(applyServedEnvironmentDeltas(input, DELTAS).trimEnd()).toBe(
-      `decko.cssPath='${PRODUCTION_ASSET_HOST}/files/${PRODUCTION_CSS_REVISION_TO}';`,
+      `decko.cssPath='${CONFIGURED_ASSET_HOST}/files/${CONFIGURED_CSS_REVISION_TO}';`,
     );
   });
 
@@ -159,12 +159,12 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
     // The deltas are per-field: setting one value must not drag in the rest.
     const onlyVersion = { footerVersionPin: "1.2.3" };
     const out = applyServedEnvironmentDeltas(
-      `<a href="/:latest">Decko v</a><link href="http://s3.amazonaws.com//files/${PRODUCTION_CSS_REVISION_FROM}" />`,
+      `<a href="/:latest">Decko v</a><link href="http://s3.amazonaws.com//files/${CONFIGURED_CSS_REVISION_FROM}" />`,
       onlyVersion,
     );
     expect(out).toContain("Decko v1.2.3</a>");
-    expect(out).toContain(PRODUCTION_CSS_REVISION_FROM);
-    expect(out).not.toContain(PRODUCTION_ASSET_HOST);
+    expect(out).toContain(CONFIGURED_CSS_REVISION_FROM);
+    expect(out).not.toContain(CONFIGURED_ASSET_HOST);
   });
 });
 
@@ -223,9 +223,9 @@ describe("bunny edge page shell — reading the deltas off the environment", () 
     // blob parser and the fixture cannot disagree: every field the fixture
     // carries must come back out of a JSON.stringify/parse round trip.
     const deltas = resolveServedEnvironmentDeltas({
-      DECKO_SERVED_DELTAS: JSON.stringify(PRODUCTION_DECK_SERVED_DELTAS),
+      DECKO_SERVED_DELTAS: JSON.stringify(CONFIGURED_DECK_SERVED_DELTAS),
     });
-    expect(deltas).toEqual(PRODUCTION_DECK_SERVED_DELTAS);
+    expect(deltas).toEqual(CONFIGURED_DECK_SERVED_DELTAS);
   });
 
   it("the loose-variable form resolves the same fields", () => {
@@ -373,7 +373,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       const res = await handleEngineRequest(edgeGet("/Home"), {
         fetcher: storage.fetcher,
         render: storage.engine,
-        servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+        servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
       });
       expect(res.status).toBe(200);
       const body = await res.text();
@@ -387,7 +387,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       // variant, at the CONFIGURED asset host — cloudAttachmentUrl(small) +
       // the configured asset-host delta in one assertion.
       expect(body).toContain(
-        `<link rel="shortcut icon" href="${PRODUCTION_ASSET_HOST}/files/103/3649-small.jpg" />`,
+        `<link rel="shortcut icon" href="${CONFIGURED_ASSET_HOST}/files/103/3649-small.jpg" />`,
       );
       // The main decko javascript comment and a remote script with the
       // configured integrity attribute.
@@ -432,7 +432,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       expect(body).toContain("hello");
       expect(body.endsWith("</html>\n")).toBe(true);
       // No asset host from any other deck, in any of its forms.
-      expect(body).not.toContain(PRODUCTION_ASSET_HOST);
+      expect(body).not.toContain(CONFIGURED_ASSET_HOST);
       expect(body).not.toContain("production-storage");
       // No SRI injection.
       expect(body).not.toContain("integrity=");
@@ -474,11 +474,11 @@ describe("bunny edge page shell — the /files attachment route", () => {
       const res = await handleEngineRequest(edgeGet("/files/2175/13244-large.jpg"), {
         fetcher: storage.fetcher,
         render: storage.engine,
-        servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+        servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
       });
       expect(res.status).toBe(302);
       expect(res.headers.get("Location")).toBe(
-        `${PRODUCTION_ASSET_HOST}/files/2175/13244-large.jpg`,
+        `${CONFIGURED_ASSET_HOST}/files/2175/13244-large.jpg`,
       );
     } finally {
       storage.close();

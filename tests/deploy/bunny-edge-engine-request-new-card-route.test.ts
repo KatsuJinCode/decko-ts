@@ -48,7 +48,7 @@ import {
   seedReference,
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
-import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
+import { CONFIGURED_DECK_SERVED_DELTAS } from "./fixtures/configured-deck-served-deltas.js";
 
 const SET_TYPE_ID = 2;
 const CARDTYPE_TYPE_ID = 5;
@@ -61,7 +61,7 @@ function realDeck(storage: RenderTestStorage) {
   return {
     fetcher: storage.fetcher,
     render: storage.engine,
-    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+    servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
   };
 }
 
