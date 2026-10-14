@@ -36,6 +36,7 @@ import { setDeckEnvironment } from "../../src/card/render/deck-origin.js";
 import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { DeckoName } from "../../src/card/name.js";
 import { loadRubyMod } from "../../src/card/mod-loader/ruby-mod/ruby-mod-source.js";
 
 interface Plan {
@@ -134,7 +135,7 @@ for (const ev of plan.events) {
       name: ev.name,
       action: "create",
       dbContent: ev.content,
-      key: ev.name.toLowerCase().replace(/ /g, "_"),
+      key: DeckoName.parse(ev.name).key,
       act: { action: "create" },
     },
     { driver, lexicon: fetcher.lexicon, fetch: fetcher },
