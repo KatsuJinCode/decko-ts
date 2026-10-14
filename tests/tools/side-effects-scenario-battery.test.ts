@@ -210,19 +210,16 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       "[withheld until disclosure] NOT RUN: ",
     );
 
-    // The one step whose production pin still holds on this deck, and the
-    // total. restore-file-revision is pinned in scenarios.json too (Ruby
-    // crashes on restoring a File/Image revision; the port restores it), but
-    // its pin also expects the port's status to be 303 and this deck's
-    // TypeScript trace records no status for the step at all, so the pin's
-    // exact-match test fails and the step reads as a plain mismatch rather
-    // than a deliberate difference. That is pinned below with its field set,
-    // errors included.
+    // The steps whose production pin holds on this deck, and the total.
+    // restore-file-revision is pinned in scenarios.json (Ruby crashes on
+    // restoring a File/Image revision with a 500; the port restores it and
+    // answers 303), and its pin's expected status now matches the port's
+    // recorded status, so it reads as the documented deliberate difference.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
-    expect(deliberate.sort()).toEqual(["anon-update-skin-colors"]);
+    expect(deliberate.sort()).toEqual(["anon-update-skin-colors", "restore-file-revision"]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 70,
-      deliberate: 1,
+      pass: 81,
+      deliberate: 2,
       total: 88,
     });
 
@@ -231,18 +228,6 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
       { step: "get-home", fields: ["files", "virtuals", "writes"] },
-      { step: "probe-update-own-account", fields: ["writes"] },
-      { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
-      { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-cache-existing-file", fields: ["actions", "files", "location", "stamps", "status", "stored", "writes"] },
-      { step: "update-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-image", fields: ["stored"] },
-      { step: "upload-large-image", fields: ["stored"] },
-      { step: "update-file", fields: ["stored"] },
-      { step: "delete-file", fields: ["stored"] },
-      { step: "delete-image", fields: ["stored"] },
-      { step: "restore-file-revision", fields: ["errors", "status"] },
-      { step: "admin-approve-with-verification", fields: ["writes"] },
       { step: "admin-create-skin", fields: ["actions", "stamps", "stored", "virtuals", "writes"] },
       { step: "admin-create-skin-bad-parent", fields: ["errors", "status"] },
       { step: "admin-update-current-skin-colors", fields: ["actions", "files", "mail", "mailHtml", "mailText", "stored", "virtuals", "writes"] },
