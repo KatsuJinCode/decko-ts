@@ -181,9 +181,12 @@ Stated plainly, with where the gap closes when it closes:
    default PBKDF2 policy is graded by its own adapter configuration,
    `reference-harness/adapters/ts-pbkdf2/`, which runs the full synthetic-v1
    grade with PBKDF2 on and declares one divergence to the grader
-   (`--declared-divergences`, `reference-harness/runner/divergences.mjs`):
-   the digest value of a `+*password` card may differ from Ruby's, every
-   other byte is compared. That grade covers the upgrade-on-sign-in write.
+   (`--declared-divergences`, `reference-harness/runner/divergences.mjs`),
+   one column wide: `cards.db_content` of a `+*password` card. Every other
+   byte is compared. Stated plainly, the exception hides one behavioural
+   difference: Ruby writes nothing at sign-in, while the port rewrites that
+   digest; the grade establishes that the rewrite changes the digest and
+   nothing else.
    Reproduce it with `node reference-harness/runner/run.mjs --adapter
    reference-harness/adapters/ts-pbkdf2/adapter.json --fixture
    reference-harness/fixtures/synthetic-v1 --out tmp/grade-pbkdf2-results`
@@ -191,10 +194,12 @@ Stated plainly, with where the gap closes when it closes:
    reference-harness/fixtures/synthetic-v1 --actual tmp/grade-pbkdf2-results
    --declared-divergences
    reference-harness/adapters/ts-pbkdf2/declared-divergences.json`; the
-   report from 2026-10-14 is
+   report from 2026-10-14 (commit 77c4423d) is
    `reference-harness/grade-reports/synthetic-v1-pbkdf2-report.json`. No
    synthetic-v1 scenario sets a password, so storing a new password as
-   PBKDF2 is covered by unit tests (`tests/card/auth/password-hash.test.ts`,
+   PBKDF2 is not graded. If one did, it would fail: the `card_changes`
+   history row holds the digest too, and that column is not masked. It is
+   covered by unit tests (`tests/card/auth/password-hash.test.ts`,
    `tests/card/auth/signin.test.ts`), not by the harness grade.
 3. **Hosted D1 / Bunny write semantics.** The transaction and atomic-save
    suites ran against workerd's local D1 under Miniflare and a Hrana v2 test

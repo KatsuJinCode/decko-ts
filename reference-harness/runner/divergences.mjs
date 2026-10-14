@@ -14,18 +14,24 @@
 //     Ruby stores its salted SHA-1, and replaces a legacy SHA-1 digest with a
 //     PBKDF2 hash when its owner signs in (src/card/auth/password-hash.ts;
 //     docs/SECURITY.md, "Passwords"). Ruby cannot produce or verify that
-//     value, so no oracle capture can hold it. Under this declaration:
-//       - in a `cards` row of a +*password card (right_id is the card with
-//         codename `password`), a `db_content` that is a password digest of
-//         either scheme is masked;
-//       - in a `card_changes` row recorded by an action on such a card, a
-//         `value` that is a password digest is masked;
-//       - an update whose only change is such a masked digest (digest before
-//         and digest after) is no change at all, so the sign-in upgrade,
-//         which rewrites nothing but the digest, grades as the oracle's
-//         empty delta.
-//     Every other column of those rows, every other row, and every other
-//     table is compared byte for byte as usual.
+//     value, so no oracle capture can hold it. The exception is exactly one
+//     column, and nothing wider:
+//       - `cards.db_content` of a +*password card (right_id is the card with
+//         codename `password`), when the value is a password digest of
+//         either scheme, is masked;
+//       - an update of such a row whose only changed column is that digest
+//         (digest before, digest after) is therefore left with no change and
+//         is dropped, so the sign-in upgrade grades as the oracle's empty
+//         delta.
+//     WHAT THIS HIDES, stated plainly: Ruby does not write at sign-in; the
+//     port, under PBKDF2, rewrites the digest of the account's password card.
+//     The grade with this declaration says that write changes the digest and
+//     nothing else; it does not say the port writes nothing.
+//     Not masked: every other column of those rows, every other row, every
+//     other table - including the `card_changes.value` history row a write
+//     that SETS a password records. A write that stores a new PBKDF2 password
+//     therefore still differs from Ruby in card_changes and fails the grade;
+//     that is a known, unmasked difference, not exercised by synthetic-v1.
 
 import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
@@ -58,13 +64,13 @@ export function validateDeclaredDivergences(declared) {
 }
 
 /**
- * The +*password card ids and the card ids of every action of the fixture's
- * deck, read once from the deck file (Decko's schema is the persistence
- * contract). Rows a step creates are recognised from the step's own delta.
+ * The +*password card ids of the fixture's deck, read once from the deck file
+ * (Decko's schema is the persistence contract). A password card a step
+ * creates is recognised from the step's own delta.
  */
 export function passwordDigestContext(fixtureDir) {
   const deckPath = path.join(fixtureDir, "deck", "deck.sqlite3");
-  const context = { passwordCodeId: undefined, passwordCards: new Set(), actionCards: new Map() };
+  const context = { passwordCodeId: undefined, passwordCards: new Set() };
   if (!existsSync(deckPath)) return context;
   // The fixture deck's header is in WAL mode, and any handle on a WAL file -
   // read-only included - leaves -shm/-wal sidecars beside it, which the
@@ -79,7 +85,6 @@ export function passwordDigestContext(fixtureDir) {
     if (code === undefined) return context;
     context.passwordCodeId = Number(code.id);
     for (const row of db.prepare("SELECT id FROM cards WHERE right_id = ?").all(context.passwordCodeId)) context.passwordCards.add(Number(row.id));
-    for (const row of db.prepare("SELECT id, card_id FROM card_actions").all()) context.actionCards.set(Number(row.id), row.card_id === null ? null : Number(row.card_id));
   } finally {
     db.close();
     rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
@@ -100,12 +105,9 @@ export function maskPasswordDigests(delta, context) {
   if (delta === undefined || delta === null || typeof delta !== "object") return { delta, masked };
   const out = clone(delta);
   const passwordCards = new Set(context.passwordCards);
-  const actionCards = new Map(context.actionCards);
   const isPasswordRow = (row) => context.passwordCodeId !== undefined && Number(row?.right_id) === context.passwordCodeId;
-  // Rows this delta creates join the known sets first, so a step that
-  // creates an account and its password is read with its own new ids.
+  // A password card this delta creates is known by its own new id.
   for (const row of out.cards?.inserted ?? []) if (isPasswordRow(row)) passwordCards.add(Number(row.id));
-  for (const row of out.card_actions?.inserted ?? []) actionCards.set(Number(row.id), row.card_id === null ? null : Number(row.card_id));
 
   const maskRows = (table, rows, kind, column, applies) => {
     for (const row of rows ?? []) {
@@ -127,22 +129,15 @@ export function maskPasswordDigests(delta, context) {
     });
   };
 
+  // The one masked column: cards.db_content of a +*password card.
   const passwordCard = (row) => isPasswordRow(row) || passwordCards.has(Number(row.id));
   maskRows("cards", out.cards?.inserted, "inserted", "db_content", passwordCard);
   maskRows("cards", out.cards?.deleted, "deleted", "db_content", passwordCard);
   maskUpdates("cards", "db_content", (entry) => passwordCards.has(Number(entry.id)));
 
-  const changeOfPasswordCard = (row) => passwordCards.has(actionCards.get(Number(row.card_action_id)));
-  maskRows("card_changes", out.card_changes?.inserted, "inserted", "value", changeOfPasswordCard);
-  maskRows("card_changes", out.card_changes?.deleted, "deleted", "value", changeOfPasswordCard);
-  // card_changes rows are written once and never updated (Card::Change is
-  // an append-only record), so an updated card_changes row is left to the
-  // ordinary comparison: the divergence does not describe it.
-
-  for (const [table, d] of Object.entries(out)) {
-    if (d && typeof d === "object" && Array.isArray(d.inserted) && Array.isArray(d.updated) && Array.isArray(d.deleted)) {
-      if (d.inserted.length === 0 && d.updated.length === 0 && d.deleted.length === 0) delete out[table];
-    }
-  }
+  // Only a cards delta this pass emptied is dropped; every other table is
+  // returned exactly as it came in.
+  const cards = out.cards;
+  if (masked.length > 0 && cards && cards.inserted.length === 0 && cards.updated.length === 0 && cards.deleted.length === 0) delete out.cards;
   return { delta: out, masked };
 }

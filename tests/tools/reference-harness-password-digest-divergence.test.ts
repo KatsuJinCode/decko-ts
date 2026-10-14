@@ -12,7 +12,7 @@ import { MASKED_PASSWORD_DIGEST, isPasswordDigest, maskPasswordDigests, password
 const SHA1 = "c109ea3d686454ae92e588cb0a0dc2f312e8990b";
 const PBKDF2 = "pbkdf2_sha256$600000$uBRUF6yiFPxy0NkxRcy3rg==$GS/E5/Z1jx7eLTHBVoc7ZLnUk5TLWHlAaP6YNOu+7rA=";
 const PASSWORD_CODE = 216;
-const context = { passwordCodeId: PASSWORD_CODE, passwordCards: new Set([620]), actionCards: new Map([[900, 620], [901, 5]]) };
+const context = { passwordCodeId: PASSWORD_CODE, passwordCards: new Set([620]) };
 const cards = (d: object) => ({ cards: { inserted: [], updated: [], deleted: [], ...d } });
 
 describe("password-digest divergence", () => {
@@ -45,22 +45,29 @@ describe("password-digest divergence", () => {
     expect(maskPasswordDigests(input, context).delta).toEqual(input);
   });
 
-  it("a newly created password card and its change row compare everything but the digest", () => {
+  it("masks only cards.db_content: a new password's card_changes history row still differs", () => {
     const ruby = {
       cards: { inserted: [{ id: 700, left_id: 699, right_id: PASSWORD_CODE, db_content: SHA1 }], updated: [], deleted: [] },
       card_actions: { inserted: [{ id: 950, card_id: 700 }], updated: [], deleted: [] },
-      card_changes: { inserted: [{ id: 3, card_action_id: 950, field: 2, value: SHA1 }, { id: 4, card_action_id: 901, field: 2, value: SHA1 }], updated: [], deleted: [] },
+      card_changes: { inserted: [{ id: 3, card_action_id: 950, field: 2, value: SHA1 }], updated: [], deleted: [] },
     };
     const port = JSON.parse(JSON.stringify(ruby).replaceAll(SHA1, PBKDF2));
     const a = maskPasswordDigests(ruby, context);
     const b = maskPasswordDigests(port, context);
     expect(a.delta.cards.inserted[0].db_content).toBe(MASKED_PASSWORD_DIGEST);
-    expect(a.delta.card_changes.inserted[0].value).toBe(MASKED_PASSWORD_DIGEST);
-    // The change row of an action on another card keeps its value.
-    expect(a.delta.card_changes.inserted[1].value).toBe(SHA1);
-    expect(b.delta.card_changes.inserted[1].value).toBe(PBKDF2);
     expect(a.delta.cards).toEqual(b.delta.cards);
+    // The exception is the digest column and nothing wider: the history row
+    // keeps each engine's own value, so the two deltas still differ.
+    expect(a.delta.card_changes).toEqual(ruby.card_changes);
+    expect(b.delta.card_changes).toEqual(port.card_changes);
+    expect(a.delta).not.toEqual(b.delta);
+    expect(a.masked).toEqual(["cards/inserted/700/db_content"]);
     expect(ruby.cards.inserted[0].db_content).toBe(SHA1); // the input is not changed
+  });
+
+  it("leaves every table it did not mask exactly as it came in", () => {
+    const input = { card_acts: { inserted: [], updated: [], deleted: [] } };
+    expect(maskPasswordDigests(input, context).delta).toEqual(input);
   });
 
   it("only known divergences, each with a reason, can be declared", () => {

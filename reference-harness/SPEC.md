@@ -280,11 +280,15 @@ of divergence name to why. Each name is defined in `runner/divergences.mjs`;
 the grader masks exactly the values it describes in the expected and actual
 row deltas alike, compares everything else as usual, and lists every masked
 value in the report (`declared_divergences`). The one defined divergence is
-`password-digest`: the `db_content` of a `+*password` card, and the `value`
-of a `card_changes` row recorded by an action on one, when it is a password
-digest of either scheme; an update whose only change is such a digest is no
-change. The `adapters/ts-pbkdf2` configuration (the port's default PBKDF2
-password policy) is graded with it.
+`password-digest`, and it is one column wide: `cards.db_content` of a
+`+*password` card when the value is a password digest of either scheme. An
+update of such a row whose only changed column is that digest is left with no
+change and dropped. That is how the `adapters/ts-pbkdf2` configuration (the
+port's default PBKDF2 password policy) passes the sign-in steps: Ruby writes
+nothing at sign-in, the port rewrites the digest, and the grade says only that
+the rewrite changes the digest and nothing else. Nothing else is masked; a
+write that sets a new password still differs from Ruby in its `card_changes`
+history row and would fail.
 
 Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
 grade.
