@@ -176,6 +176,27 @@ function writeSummary(file) {
     rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
   }
   const date = startedAt.toISOString().slice(0, 10);
+  const rubyVersion = spawnSync("bundle", ["exec", "ruby", "-e", "print RUBY_VERSION"], {
+    cwd: path.join(harness, "oracle", "app"),
+    encoding: "utf8",
+    windowsHide: true,
+    shell: process.platform === "win32",
+  }).stdout?.trim();
+  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md). Ruby
+  // 3.4 changed Hash#inspect from {"k"=>v} to {"k" => v}, and Rails' debug
+  // exceptions page prints the request parameters with it.
+  const runtimeNote =
+    rubyVersion && !rubyVersion.startsWith("3.3.")
+      ? [
+          "",
+          `The reference ran on Ruby ${rubyVersion}; the declared oracle runtime is Ruby 3.3`,
+          "(`docs/parity-method.md`). Ruby 3.4 changed `Hash#inspect` from `{\"k\"=>v}` to",
+          "`{\"k\" => v}`, and the debug-exceptions page that stock Decko shows for a keyword",
+          "search on SQLite prints the request parameters with it. The port reproduces the",
+          "Ruby 3.3 page, so on a newer Ruby those observations differ in that one line of",
+          "text and nowhere else.",
+        ]
+      : [];
   const extra = Object.entries(args)
     .filter(([k]) => !["out", "summary"].includes(k))
     // A checkout path is this machine's, not part of the command's meaning.
@@ -196,11 +217,13 @@ function writeSummary(file) {
     "",
     `- Date: ${date}`,
     `- Command: \`${command}\``,
+    `- Reference runtime: Ruby ${rubyVersion || "(unknown)"}`,
     `- Journeys: ${selected}`,
     `- Completed on Ruby: ${rubyDone} / ${selected}`,
     `- Completed on the port: ${tsDone} / ${selected}`,
     `- Comparison: ${report.journeys.pass} / ${report.journeys.graded} graded journeys pass` +
       ` (${report.journeys.total - report.journeys.graded} not graded: a journey that fails on the reference is not graded)`,
+    ...runtimeNote,
     "",
     "Per graded item:",
     "",

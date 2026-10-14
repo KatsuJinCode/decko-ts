@@ -57,6 +57,13 @@ async function settle(page) {
           }, { timeout: 8000 })
           .catch(() => {});
       }
+      // Images an ajax response inserted (an upload's preview) load after
+      // the page's load event, and an image still loading has no size, so
+      // the observation would leave it out. Wait for every image to finish
+      // (loaded or failed) before the page is observed.
+      await page
+        .waitForFunction(() => [...document.images].every((img) => img.complete), null, { timeout: STEP_TIMEOUT })
+        .catch(() => {});
       return;
     }
     await page.waitForTimeout(100);
@@ -179,6 +186,12 @@ async function runStep(ctx, step) {
       await (await locate(page, { field: "*email" })).fill(a.email, { timeout: STEP_TIMEOUT });
       await (await locate(page, { field: "*password" })).fill(a.password, { timeout: STEP_TIMEOUT });
       await (await locate(page, { button: "Sign in" })).click({ timeout: STEP_TIMEOUT });
+      // A successful sign-in leaves the sign-in page. On a slow server the
+      // page can look settled before the sign-in request has answered, and a
+      // following visit would then cancel it, so wait for the page to leave.
+      await page
+        .waitForURL((u) => !decodeURIComponent(u.pathname).endsWith("*signin"), { timeout: STEP_TIMEOUT })
+        .catch(() => {});
       break;
     }
     case "click":
