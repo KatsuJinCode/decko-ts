@@ -40,8 +40,8 @@ The composed adapter sets the capture clock to the fixture's `clock` value,
 |---|---|---|---|
 | N4 | Digits of an accordion collapse id, from Ruby's per-process string hash | 30 | shipped, engine run, recorded |
 | N5 | Relative-time phrases, from the frozen capture clock | 0 | shipped, engine run |
-| N6 | Backtrace frame lines in a debug page | none in the public capture | withheld, recorded |
-| N7 | Absolute paths and heap addresses in a debug page | none in the public capture | withheld, recorded |
+| N6 | Backtrace frame lines in a debug page | not measured: no oracle operation in the public capture carries one | withheld, recorded |
+| N7 | Absolute paths and heap addresses in a debug page | not measured: no oracle operation in the public capture carries one | withheld, recorded |
 | N8 | The class name of a recorded failure | 24 | shipped, engine run |
 
 Reproduced upstream failures are a separate category: 24 items in the public
@@ -117,9 +117,8 @@ as the checked value.
 
 **Measured facts.**
 
-- shipped: no public operation renders a debug page. The public capture has no
-  row whose HTML contains the debug-page title marker, and the rule rewrites
-  nothing (section A reports zero).
+- shipped: no oracle operation in the public capture renders a debug page. The public capture has no row whose HTML contains the debug-page title marker, and the rule rewrites nothing on the oracle side (section A reports zero).
+- engine run: the engine's own output for `view:admin:All Topics:search_count` is an error span with a debug-page title. The grade therefore reaches N6 and N7 on that output. The operation differs for another reason and fails in any case.
 - withheld: the eight admin error-view operations that do render a debug page
   are not in the public package. Recorded at an earlier revision, the oracle
   pages carry 51 to 63 Ruby frames and the engine's raise sites produce 8 to 10
@@ -145,7 +144,8 @@ frame's line number stays outside the placeholder, so the frame still counts.
 
 **Measured facts.**
 
-- shipped: no public row contains the debug-page title, so the rule rewrites zero paths and zero addresses.
+- shipped: no oracle row in the public capture contains the debug-page title, so the rule rewrites zero paths and zero addresses on the oracle side.
+- engine run: the engine's output for `view:admin:All Topics:search_count` carries the debug-page title, so N7 applies to that output as well (see N6).
 - withheld: the eight debug-page operations carry 554 path tokens and 2 heap addresses. Recorded at an earlier revision. Not reproducible from the public package.
 
 **Reproduce.** The unit tests in the `N7` block of `runner/test/normalize.test.mjs`
@@ -278,6 +278,10 @@ node reference-harness/runner/grade.mjs --fixture <scratch>/synthetic-v2 \
 
 The rendering line of the grade names the identical count and the reproduced
 upstream failures. `report.json` holds `summary`, `failures` and `reproduced`.
+Its `normalization` field lists the canonical forms the grade reached, in rule
+order. A form is named when its pattern occurs in a value the grade compared,
+on either side; a form whose pattern never occurs is not named. On this grade
+that is N1 to N8.
 
 ### C. What each rule changes (engine run)
 
@@ -353,7 +357,5 @@ the oracle on 20 items.
 
 ## Known gaps
 
-1. **The grade report names only N1 to N3.** `gradeRun` in `runner/grade-lib.mjs` sets `normalization` to `N1`, `N2` and `N3` (and omits `N3` when class-token order is off), whatever rules ran. A grade over `synthetic-v2` therefore does not list N4, N5 or N8, although they apply. The `normalization` test in `runner/test/normalize.test.mjs` asserts the fixed list for `synthetic-v1`, where only N1 to N3 apply. Fixing this means the grader reporting the rules it applied, and changing that test.
-2. **Some source comments use an older numbering.** In `src/card/render/format.ts` (the comments around the debug-page helpers) and `src/card/mod-loader/mods/card-mod-account.ts` (around the deletion walk), comments attribute capture-host path and address blanking to N5. In the numbering above that is N7. Those comments have not been changed in this revision.
-3. **The Ruby-side figures are recorded, not repeated.** The two-run figures in N4 were measured with Ruby 3.3.12 and decko 0.20.0 at an earlier revision. The oracle application here declares decko 0.20.0 in its lock file. Repeating the measurement requires installing the oracle's gems.
-4. **Withheld facts are not re-measurable.** N6 and N7 rest on the eight withheld debug-page operations. Their rules have unit tests, but their effect on the real capture cannot be shown from the public package.
+1. **The Ruby-side figures are recorded, not repeated.** The two-run figures in N4 were measured with Ruby 3.3.12 and decko 0.20.0 at an earlier revision. The oracle application here declares decko 0.20.0 in its lock file. Repeating the measurement requires installing the oracle's gems.
+2. **Withheld facts are not re-measurable.** N6 and N7 rest on the eight withheld debug-page operations. Their rules have unit tests, but their effect on the real capture cannot be shown from the public package.

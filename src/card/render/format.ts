@@ -4568,7 +4568,7 @@ function normalizeView(view: string): string {
  * declares the oracle's measured boot-inclusive depth (the committed capture
  * at reference-harness/fixtures/synthetic-v2/expected, re-verified live on
  * the capture host), and the debug page renders that many frame lines. The
- * lines' text is host-VM identity in N5's/N6's class — canonicalized away on
+ * lines' text is host-VM identity in N6's/N7's class — canonicalized away on
  * both sides — so the emitted lines are canonical placeholders, not a
  * replay of the capture's frames (the raise-posture receipt's rule).
  */
@@ -4614,7 +4614,7 @@ function showAllErrors(fmt: RenderFormat | undefined): boolean {
  * more when backtrace_link builds the title attribute (Rails' content_tag
  * html_escape), which is why the capture's embedded quotes read &amp;#39;.
  * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
- * the instrument's N5 canonicalization blanks the machine-specific path
+ * the instrument's N7 canonicalization blanks the machine-specific path
  * tokens on both sides and N6 replaces each frame line with its marker, so
  * the compared residual is the frame COUNT - the engine's V8 stack depth
  * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
@@ -4652,7 +4652,7 @@ function backtraceLink(card: RenderCard, error: unknown): string {
 
 /** The hex object-address token Ruby's NoMethodError/NameError messages
  *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
- *  The engine has no heap addresses; the instrument's N5 canonicalization
+ *  The engine has no heap addresses; the instrument's N7 canonicalization
  *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
  *  port derives a stable pseudo-address from the object's id — the
  *  inspection token stays shape-true (0x + a hex run) without pretending
