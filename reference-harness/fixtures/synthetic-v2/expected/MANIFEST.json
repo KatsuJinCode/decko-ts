@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-expected-manifest/1",
   "fixture": "synthetic-v2",
-  "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+  "fixture_digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2",
   "oracle": {
     "variant": "stock",
     "patches": [],
@@ -138,7 +138,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+      "fixture_digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2",
       "fixture_problems": [],
       "ms_per_op": 196,
       "session_writes": {}
@@ -164,7 +164,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+      "fixture_digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2",
       "fixture_problems": [],
       "ms_per_op": 0,
       "session_writes": {}
@@ -182,7 +182,7 @@
         "dirty": true
       },
       "engine": null,
-      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+      "fixture_digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2",
       "fixture_problems": [],
       "steps_total": 0,
       "steps_run": 0
@@ -190,13 +190,13 @@
   },
   "files": {
     "render.jsonl.gz": {
-      "sha256": "33a45a244f2c2924f567941648b164c6e24456e7ffaa22327f9dda06cea0ce75",
-      "content_sha256": "02daf906dcc197126c1c7bd010fa666fbffb86f3ef28842f1f33842a3e822353",
-      "bytes": 2564710
+      "sha256": "50c4e8074b83a6603fa231fa64d20640aa9ccf2225f0be87562ce46c5906ccf2",
+      "content_sha256": "d362798e8f588ab61d997aa12237b251e083538f7e642233f8aae60bc1b1f3a4",
+      "bytes": 2557775
     },
     "run-meta.json": {
-      "sha256": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c",
-      "content_sha256": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c",
+      "sha256": "976260fa9c192b7613786905d74687099c87d573c8e326488b3c30d9cf21eb06",
+      "content_sha256": "976260fa9c192b7613786905d74687099c87d573c8e326488b3c30d9cf21eb06",
       "bytes": 2073
     },
     "scenarios.jsonl": {
@@ -216,6 +216,16 @@
       "what": "The fixture deck lost eight empty tables that another application running on the same engine had left in it (reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs, which now drops every table stock Decko does not create); the fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture.",
       "why": "The tables carried another application's schema, were empty, and sit outside the graded surface: render, semantics and scenario answers and every row delta are unchanged. The grade run recorded beside this manifest re-verifies the answers against the re-pinned fixture.",
       "previous_fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841"
+    },
+    "withheld": {
+      "date": "2026-10-14",
+      "what": "Eight render operations, each a whole operation with its whole recorded answer, moved out of ops/render.jsonl and this directory's render.jsonl.gz into the fixture's withheld/ set (same shapes, lines byte-identical and in their original order). The fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture; the run records still describe the capture of the full 2,581-operation list.",
+      "why": "Their recorded answers are Decko's admin error view (card-mod-format set/all/html/error.rb), which shows the exception backtrace to an admin actor, so the recorded bytes carry the capturing machine's filesystem paths. Captured text is never rewritten. With the withheld set present the op list and the capture are the full ones and every answer is graded; without it the eight are reported NOT RUN.",
+      "previous_fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+      "previous_files": {
+        "render.jsonl.gz": "33a45a244f2c2924f567941648b164c6e24456e7ffaa22327f9dda06cea0ce75",
+        "run-meta.json": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c"
+      }
     }
   }
 }

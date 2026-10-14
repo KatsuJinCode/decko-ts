@@ -1,0 +1,1 @@
+<p onclick="x()">hi</p><script>bad()</script><b>ok</b><a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>

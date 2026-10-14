@@ -34,6 +34,7 @@ reference-harness/
     deck/deck.sqlite3        the built deck (Decko's schema), and deck/files/
     ops/                     render.jsonl, semantics.jsonl, scenarios.json
     expected/                the oracle's answers, one JSON line per operation
+    withheld/                operations and answers kept out of the package (section 6), when present
   oracle/                    the Ruby oracle: stock Decko app, deck builder, adapter, Dockerfile
   adapters/<engine>/adapter.json   how to start an engine's adapter
   runner/                    run.mjs (drive an adapter), grade.mjs (compare), normalisation
@@ -241,9 +242,9 @@ upstream failure - the oracle raised while serving, and its capture holds the
 error record - is the upstream behavior the port must reproduce: the engine's
 answer must be the same failure under N8 (the class's host naming
 canonicalized) with the message byte-exact, and a match is counted as a
-**reproduced upstream failure**, its own success category (the operator's
-ruling: where the original is broken and the copy breaks the same way, that
-is the port succeeding). Any other answer on such an item - a different
+**reproduced upstream failure**, its own success category: where the original
+is broken and the copy breaks the same way, that is the port succeeding. Any
+other answer on such an item - a different
 failure, or a render where the oracle failed - fails it.
 
 **Reads write only what the oracle's reads wrote.** Each read session's
@@ -642,6 +643,27 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
   along in the deck file, and the grade re-run against the re-pinned fixture is
   the 1,754 / 1,754 renders and 2,388 semantics operations the
   [coverage inventory](../docs/coverage-inventory.md) quotes.
+
+  **Declared withholding.** A recorded answer that cannot ship publicly (it
+  carries the capturing machine's filesystem, say) is never rewritten. The
+  whole operation and its whole recorded answer move, lines byte-identical,
+  into the fixture's `withheld/` set: `withheld/ops/<kind>.jsonl`,
+  `withheld/<expected dir>/<kind>.jsonl[.gz]` and `withheld/withheld.json`
+  (`{label, why}`). `withheld/` is excluded from every release package. The
+  fixture manifest pins the set under `withheld` (its label, operation counts
+  and file hashes, which also enter the digest, so the fixture's identity is
+  the same with the set or without it), and the move is re-pinned like a
+  re-pin above, disclosed under `provenance.withheld` in the expected
+  manifest. With the set present the runner runs its operations after the
+  public ones and the grader grades them against its recorded answers;
+  absent, the runner, the grader, `manifest.mjs check` and the seconds-corpus
+  gate print `[withheld: <label>] NOT RUN: <n> ops (<path>)`, and a run made
+  with the set is refused by a grader without it, and the reverse. Re-pin with
+  the set present (`manifest.mjs fixture` reads it from disk; without it the
+  previous declaration is kept, unverified). `synthetic-v2` withholds eight
+  admin error-view renders this way (`[withheld: machine-specific
+  backtraces]`): card-mod-format's `set/all/html/error.rb` shows an admin
+  the exception backtrace, so their recorded bytes carry machine paths.
 - **Oracle**: expected outputs record the oracle's versions, variant and
   contract in their manifest. Capturing against another Decko release makes a
   new fixture name.

@@ -161,30 +161,29 @@ set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
 `DECKO_SERVED_PHANTOM_TYPE_ID` / `_NAME` / `_KEY`. Where both forms are
 present the JSON wins field-by-field.
 
-The values below are a filled-in example in the anonymized family this
-repository uses for a reference deck's identity; the machine-readable copy
-the deploy suites configure when they assert that deck's served bytes is
-`tests/deploy/fixtures/production-deck-served-deltas.ts`.
+The values below are a filled-in example; the machine-readable copy the
+deploy suites configure when they assert a configured deployment's served
+bytes is `tests/deploy/fixtures/configured-deck-served-deltas.ts`.
 
 ```json
 {
-  "assetHost": "https://production-storage.r1.cdn.objectstore.example",
+  "assetHost": "https://assets.example.org",
   "footerVersionPin": "0.19.1",
-  "stylesheetRevisionFrom": "45514/9999999999.css",
-  "stylesheetRevisionTo": "45514/0000000001.css",
+  "stylesheetRevisionFrom": "41001/9999999999.css",
+  "stylesheetRevisionTo": "41001/0000000001.css",
   "scriptIntegrity": [
     {
       "src": "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\"></script>",
       "withIntegrity": "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\" integrity=\"sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=\"></script>"
     }
   ],
-  "notFoundType": { "id": "22281", "name": "BasicCs", "classToken": "basic_c" },
-  "footerCardId": "22749", "footerTypeId": "50", "footerTypeName": "HTML",
-  "allCardId": 274, "layoutPointerId": 255, "pointerTypeId": 34843,
-  "mainCssUrl": "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
-  "mainJsUrl": "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
-  "logoUrl": "https://production-storage.r1.cdn.objectstore.example/files/79/0000000003-small.jpg",
-  "faviconUrl": "https://production-storage.r1.cdn.objectstore.example/files/103/0000000004-small.jpg",
+  "notFoundType": { "id": "41005", "name": "BasicCs", "classToken": "basic_c" },
+  "footerCardId": "41006", "footerTypeId": "50", "footerTypeName": "HTML",
+  "allCardId": 41007, "layoutPointerId": 41008, "pointerTypeId": 41009,
+  "mainCssUrl": "https://assets.example.org/files/41001/0000000001.css",
+  "mainJsUrl": "https://assets.example.org/files/41002/0000000002.js",
+  "logoUrl": "https://assets.example.org/files/41003/0000000003-small.jpg",
+  "faviconUrl": "https://assets.example.org/files/41004/0000000004-small.jpg",
   "siteTitleDefault": "Example Site",
   "rootUrl": "https://www.example.org/",
   "deckOrigin": "https://www.example.org",
@@ -195,7 +194,7 @@ the deploy suites configure when they assert that deck's served bytes is
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==\" referrerpolicy=\"no-referrer\"></script>",
     "<script src=\"https://kit.fontawesome.com/<your-kit-id>.js\" crossorigin=\"anonymous\"></script>"
   ],
-  "phantomType": { "typeId": 22281, "typeName": "BasicCs", "typeKey": "basic_c" }
+  "phantomType": { "typeId": 41005, "typeName": "BasicCs", "typeKey": "basic_c" }
 }
 ```
 

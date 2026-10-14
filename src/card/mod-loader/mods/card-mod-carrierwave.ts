@@ -69,8 +69,9 @@ import { str } from "../../render/format.js";
 //   5 versions definitions (icon/small/medium/large/original via
 //   mini_magick); require ImageMagick runtime
 // - set/self/admin.rb - basket[:tasks][:delete_upload_tmp_files]; requires
-//   the basket machinery (cron-style scheduled task; also
-//   AGENTS.md forbids scheduled tasks without explicit scope)
+//   the basket machinery (a cron-style scheduled task, which this engine does
+//   not run: nothing here schedules background work, so a port would need a
+//   scheduler this codebase deliberately does not have)
 // - set/all/file_utils.rb - ClassMethods for delete_tmp_files_of_cached_uploads
 //   + draft_actions_with_attachment SQL; requires the Action model
 // - set/type/file.rb format :html views :input, :preview_editor - PORTED:
@@ -105,6 +106,7 @@ import {
 } from "../../attachments/attachment-content.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
 } from "../mod-manifest.js";
@@ -694,6 +696,166 @@ const polymorphicCoreView: ViewFn = (ctx) => {
   if (BASE_CORE === undefined) return "";
   return BASE_CORE(ctx);
 };
+
+// ---------------------------------------------------------------------------
+// the `when:` predicates (mod-loader/mod-event-card-state.ts supplies the
+// state they read; the table itself is the Ruby method bodies).
+//
+// A predicate here is a card method in Ruby (set/event/all.rb:79-85: a
+// Symbol condition is sent to the card), so each is written against the
+// fields the carrierwave state source populates from the same Ruby
+// definitions — never against what the port happens to do.
+// ---------------------------------------------------------------------------
+
+/** deprecated_mod_file? (set/abstract/attachment/coded.rb:73-75):
+ *  `content.present? && !content.match?(/^~/) && content.split("\n")&.size == 4`
+ *  — the pre-codename four-line mod-file content still in card_changes
+ *  (coded.rb:76-78). */
+function deprecatedModFile(content: string | null | undefined): boolean {
+  if (content === undefined || content === null) return false;
+  if (content.trim() === "") return false;
+  if (/^~/.test(content)) return false;
+  return content.split("\n").length === 4;
+}
+
+/** storage_type_from_content (set/abstract/attachment/01_storage_type.rb:
+ *  102-116) with its `configured` fallback spelled out:
+ *
+ *      case content
+ *      when /^\(/          then :cloud
+ *      when %r{/^https?:/} then :web
+ *      when /^~/           then :local
+ *      when /^:/           then :coded
+ *      else deprecated_mod_file? ? :coded : storage_type_from_config
+ *      end
+ *
+ *  The render-side `storageTypeFromContent` above answers "unknown" for the
+ *  last arm because a view has no config to fall back to; a `when:` does,
+ *  so this is the grammar the predicates read. */
+export function rubyStorageTypeFromContent(
+  content: string | null | undefined,
+  configured: string,
+): string {
+  if (content === undefined || content === null) return configured;
+  if (/^\(/.test(content)) return "cloud";
+  if (/^https?:/.test(content)) return "web";
+  if (/^~/.test(content)) return "local";
+  if (/^:/.test(content)) return "coded";
+  return deprecatedModFile(content) ? "coded" : configured;
+}
+
+/** bucket_from_content (cloud.rb:72-76): the `(bucket)` prefix of a cloud
+ *  identifier. Nil when the content names none. */
+export function rubyBucketFromContent(content: string | null | undefined): string | undefined {
+  if (content === undefined || content === null) return undefined;
+  const m = /^\(([^)]+)\)/.exec(content);
+  return m !== null ? m[1] : undefined;
+}
+
+/** mod_from_content (coded.rb:35-40) — `m[1]` of `^:[:\w/+]+/([^./]+)\.` for
+ *  the current identifier format, else the deprecated four-line content's
+ *  last line (mod_from_deprecated_content, :78-80). Nil when neither. */
+export function rubyModFromContent(content: string | null | undefined): string | undefined {
+  if (content === undefined || content === null) return undefined;
+  const m = /^:[:\w/+]+\/([^./]+)\./.exec(content);
+  if (m !== null) return m[1];
+  return deprecatedModFile(content)
+    ? (content.split("\n").at(-1) ?? undefined)
+    : undefined;
+}
+
+/** activeSupport `present?` — not nil and not blank (an all-whitespace
+ *  string is blank). The predicates Ruby writes with `.present?` share
+ *  this one definition. */
+function present(value: unknown): boolean {
+  if (value === undefined || value === null || value === false) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  return true;
+}
+
+/** Ruby truthiness for a value read off a params hash: only nil and false
+ *  are falsy, so an EMPTY STRING is true (00_upload_cache.rb:80-82's
+ *  `Card::Env.params[:attachment_upload]` returns the value itself). */
+function truthy(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== false;
+}
+
+/** storage_type (01_storage_type.rb:45-47) resolved by the state source:
+ *  `coded?` (:32-34) / `local?` (:28-30) / `web?` (:24-26) /
+ *  `cloud?` (:20-22) all read this one memoized value. */
+function storageTypeIs(card: ModEventCard, type: string): boolean {
+  return card.storageType === type;
+}
+
+export const carrierwaveModEventPredicates = {
+  /** `store_#{column}_event?` (lib/carrier_wave/card_mount.rb:59-63):
+   *  `!coded? || ENV["STORE_CODED_FILES"]` — a coded attachment (a mod
+   *  file) is NOT written to the deck's files unless the deck opts in.
+   *  One method per mounted column; the bodies are identical. */
+  "store_file_event?": (card: ModEventCard): boolean =>
+    !storageTypeIs(card, "coded") || card.storeCodedFiles === true,
+  "store_image_event?": (card: ModEventCard): boolean =>
+    !storageTypeIs(card, "coded") || card.storeCodedFiles === true,
+  /** incorrect_identifier? (set/abstract/attachment.rb:40-45):
+   *  `return false if web?; correct_id = attachment.db_content;
+   *   correct_id.present? && db_content != correct_id` — the mounted
+   *  column must carry the identifier the mount computed, which needs the
+   *  card id and so can only be known after the row exists (the event's
+   *  own comment, :13-14). */
+  "incorrect_identifier?": (card: ModEventCard): boolean =>
+    !storageTypeIs(card, "web") &&
+    present(card.attachmentIdentifierContent) &&
+    card.dbContent !== card.attachmentIdentifierContent,
+  /** write_identifier? (attachment.rb:47-49): `!web?` — a web card's
+   *  content IS its url and is never overwritten with an identifier. */
+  "write_identifier?": (card: ModEventCard): boolean => !storageTypeIs(card, "web"),
+  /** file_ready_to_save? (attachment.rb:51-56): a file rides the save,
+   *  it is not a preliminary upload and not the two-step upload's final
+   *  save, and the mount's column is changing. */
+  "file_ready_to_save?": (card: ModEventCard): boolean =>
+    card.attachmentPresent === true &&
+    !truthy(card.params?.["attachment_upload"]) &&
+    !present(card.actionIdOfCachedUpload) &&
+    card.attachmentIsChanging === true,
+  /** preliminary_upload? (set/abstract/attachment/00_upload_cache.rb:
+   *  80-82): `Card::Env.params[:attachment_upload]` — the first step of a
+   *  two-step upload, the save that only caches the bytes. */
+  "preliminary_upload?": (card: ModEventCard): boolean =>
+    truthy(card.params?.["attachment_upload"]),
+  /** save_preliminary_upload? (00_upload_cache.rb:84-86):
+   *  `@action_id_of_cached_upload.present?` — the second step, the save
+   *  that adopts the cached draft's file. */
+  "save_preliminary_upload?": (card: ModEventCard): boolean =>
+    present(card.actionIdOfCachedUpload),
+  /** storage_changed? (01_storage_type.rb:49-53): the saved storage type,
+   *  bucket or mod differs from the card's stored one (`current`, :12-14
+   *  `refresh true`). */
+  "storage_changed?": (card: ModEventCard): boolean =>
+    card.storageType !== card.currentStorageType ||
+    card.currentStorageBucket !== card.savedStorageBucket ||
+    card.currentStorageMod !== card.savedStorageMod,
+  /** coded? (01_storage_type.rb:32-34): `storage_type == :coded`. */
+  "coded?": (card: ModEventCard): boolean => storageTypeIs(card, "coded"),
+  /** local? (01_storage_type.rb:28-30): `storage_type == :local`. */
+  "local?": (card: ModEventCard): boolean => storageTypeIs(card, "local"),
+  /** change_bucket_if_read_only? (set/abstract/attachment/cloud.rb:118-120):
+   *  `cloud? && bucket_config[:read_only] && attachment_is_changing?` — a
+   *  read-only bucket's cloud card falls back to the configured storage
+   *  when a new file arrives. */
+  "change_bucket_if_read_only?": (card: ModEventCard): boolean =>
+    storageTypeIs(card, "cloud") &&
+    card.bucketReadOnly === true &&
+    card.attachmentIsChanging === true,
+  /** uncode? (set/abstract/attachment/coded.rb:26-28):
+   *  `(@explicit_storage_type != :coded) && !set_specific[:mod].present? &&
+   *   current.coded?` — a coded card that this save did not ask to stay
+   *  coded moves to the configured storage. */
+  "uncode?": (card: ModEventCard): boolean =>
+    card.explicitStorageType !== "coded" &&
+    !present(card.assignedMod) &&
+    storageTypeIs(card, "coded") === false &&
+    card.currentStorageType === "coded",
+} as const;
 
 // ---------------------------------------------------------------------------
 // the manifest

@@ -32,8 +32,8 @@
 //
 // The runtime config defaults mirror the Rails/decko defaults, not any
 // one deck's choices: perform_deliveries defaults TRUE (Rails
-// actionmailer; the oracle demo deck sets it false in its
-// config/application.rb:19 — a deck choice), and
+// actionmailer; the decks and the card gem's own environment files that
+// turn it OFF set it explicitly — see the interface doc), and
 // allow_irreversible_admin_tasks defaults FALSE (probe:
 // config_allow_irreversible_admin_tasks: false).
 
@@ -48,10 +48,30 @@ export interface AdminRuntimeConfig {
   /** Card.config.action_mailer.perform_deliveries (self/admin.rb:21).
    *  DECKO's OWN config hash - NOT the Rails::Application layer the
    *  oracle's config/application.rb sets (perform_deliveries = true there)
-   *  and NOT ActionMailer::Base (harness_env.rb sets that directly): the
-   *  oracle's *admin warning renders the no_email_delivery
-   *  item, which only fires when this flag is false - the decko default
-   *  the oracle output proves. */
+   *  and NOT ActionMailer::Base (harness_env.rb sets that directly).
+   *
+   *  WHY THE ENGINE DEFAULT IS TRUE: the Ruby predicate is
+   *    `Card.config.action_mailer.perform_deliveries == false`
+   *  (card-1.110.0 mod/core/set/self/admin.rb:21) - a comparison
+   *  AGAINST false, so an engine that never sets the key (production's
+   *  card/config/environments/production.rb sets nothing; ActionMailer
+   *  itself defaults to true, card/config/environments/test.rb:43) reads
+   *  nil and renders NO warning. The flag is off only where something
+   *  writes it off: the card gem's own development and profile
+   *  environments (card/config/environments/development.rb:70,
+   *  profile.rb:32 `config.action_mailer.perform_deliveries = false`)
+   *  and a deck's own config/application.rb. Those are explicit sets,
+   *  not the default, so the port's default is "deliveries on".
+   *
+   *  The reference capture that renders the no_email_delivery item was
+   *  taken in DEVELOPMENT (the probe runs RAILS_ENV=development), where
+   *  the environment file's false lands after the deck's
+   *  config/application.rb: true — the environment file wins (Rails
+   *  loads it from the load_environment_config initializer, after the
+   *  application class body), which is why that capture shows the item
+   *  even though the oracle deck sets the flag true. A suite that
+   *  renders that item sets the flag, exactly as those environment
+   *  files do. */
   performDeliveries: boolean;
 
   /** Cardio.config.allow_irreversible_admin_tasks (self/admin.rb:55). */
@@ -59,7 +79,7 @@ export interface AdminRuntimeConfig {
 }
 
 const DEFAULT_ADMIN_RUNTIME_CONFIG: AdminRuntimeConfig = {
-  performDeliveries: false,
+  performDeliveries: true,
   allowIrreversibleAdminTasks: false,
 };
 
@@ -171,9 +191,9 @@ export const CORE_TASK_BASKET: Record<string, AdminTaskConfig> = {
   // scripts, styles") and its name/title/description through the oracle's
   // page surface (the mod: carrierwave :open
   // task-table row "Delete upload tmp files" / "Delete upload tmp files!").
-  // The EXECUTION stays a named remainder — a cron-style scheduled task
-  // (the same AGENTS.md gate the carrierwave port note cites); like the
-  // three core tasks above, execute_policy is a no-op placeholder.
+  // The EXECUTION stays a named remainder — a cron-style scheduled task, and
+  // this engine runs none (the same reason the carrierwave port note gives);
+  // like the three core tasks above, execute_policy is a no-op placeholder.
   delete_upload_tmp_files: {
     mod: "carrierwave",
     executePolicy: () => undefined,

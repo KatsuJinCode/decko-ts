@@ -530,6 +530,29 @@ function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[]
 }
 
 /** A JSON card hash's subcards object, at every depth. */
+/** The Card::Env.params bag the mod-event state sources hand to the
+ *  `when:` predicates (mod-loader/mod-event-card-state.ts).
+ *
+ *  Ruby reads whole keys off `Env.params` — `Env.params["draft"]`
+ *  (core/set/all/content.rb:17), `Env.params[:insert_item]`
+ *  (mod/list set/abstract/01_list/events.rb:44),
+ *  `Env.params[:attachment_upload]` (mod/carrierwave
+ *  set/abstract/attachment/00_upload_cache.rb:80). This builds the same
+ *  shape from the parsed body: the card hash under `card`, and the
+ *  top-level shortcut params as bare keys, which is what Rack's
+ *  indifferent hash yields for those reads. A param the request did not
+ *  carry is absent, exactly as it is in Ruby — a predicate reading it gets
+ *  undefined and evaluates false. */
+function requestParamsForEvents(parsed: ParsedBody): Record<string, unknown> {
+  const params: Record<string, unknown> = { ...parsed.card };
+  if (parsed.draft !== undefined) params["draft"] = parsed.draft;
+  if (parsed.comment !== undefined) params["comment"] = parsed.comment;
+  if (parsed.commentAuthor !== undefined) params["comment_author"] = parsed.commentAuthor;
+  if (parsed.recaptchaToken !== undefined) params["recaptcha_token"] = parsed.recaptchaToken;
+  if (parsed.token !== undefined) params["token"] = parsed.token;
+  return params;
+}
+
 function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
   const out: Record<string, ParsedSubcard> = {};
   if (typeof raw !== "object" || raw === null) return out;
@@ -1500,6 +1523,10 @@ async function dispatchWriteRequest(
     // prepareRecaptchaSaveInput), so an unarmed host registers the event and
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await observedModEventRuntime(ctx),
+    // Card::Env.params for this request (env.rb): the mod-event state
+    // sources hand it to the `when:` predicates that read request params
+    // (`draft`, `insert_item`, `attachment_upload`).
+    params: requestParamsForEvents(parsed),
     ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
     followMail: {
       origin: cardUrl(req, ""),
@@ -1546,7 +1573,7 @@ async function dispatchWriteRequest(
       attachment !== undefined &&
       (route.verb === "create" || route.verb === "update")
     ) {
-      return await handlePreliminaryUpload(ctx, engine, route, parsed, attachment, mount);
+      return await handlePreliminaryUpload(ctx, engine, req, route, parsed, attachment, mount);
     }
     if (route.verb === "create") {
       const input = {
@@ -1917,6 +1944,7 @@ function cachedUploadActionParam(parsed: ParsedBody): string | undefined {
 async function handlePreliminaryUpload(
   ctx: WriteRouteContext,
   engine: CardActionEngine,
+  req: WriteRouteRequest,
   route: RouteMatch,
   parsed: ParsedBody,
   attachment: AttachmentInput,
@@ -1951,15 +1979,24 @@ async function handlePreliminaryUpload(
     }
     typeId = existing.typeId;
   } else {
+    // uri_fetch_opts (card_class.rb:128-133): the card hash is the base and
+    // a request that names the type BY NAME resolves it just the same — the
+    // editor's fileupload posts card[type_id] (upload.js.coffee:13), but
+    // `card[type]: "File"` is an equally ordinary spelling of the same
+    // request, and Card.new(type: "File") is what Ruby builds from it. The
+    // id form wins when both are posted, as assign_attributes' precedence
+    // (type.rb:81-92 extract_type_id!) gives it.
     const typeIdRaw = parsed.card["type_id"];
-    if (typeIdRaw === undefined || !/^\d+$/.test(typeIdRaw)) {
-      // the editor's fileupload formData always posts card[type_id]
-      // (upload.js.coffee:13, the #attachment_type_id value); without it
-      // the save has no type — Ruby's Card.new(type_id: nil) would fail
-      // validation, and no oracle shape reaches here.
-      throw new CardActionError("type-unknown", "a preliminary upload requires card[type_id]");
+    if (typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw)) {
+      typeId = Number(typeIdRaw);
+    } else {
+      const typeName = parsed.card["type"] ?? route.typeShortcut;
+      const type = typeName !== undefined ? await ctx.fetcher.fetchByName(typeName) : undefined;
+      if (type?.id === undefined || type.id === null) {
+        throw new CardActionError("type-unknown", "a preliminary upload requires card[type_id]");
+      }
+      typeId = type.id;
     }
-    typeId = Number(typeIdRaw);
   }
   const { actionId, cacheCardName, identifier, size, originalFilename } =
     await engine.recordPreliminaryUpload({
@@ -1975,6 +2012,27 @@ async function handlePreliminaryUpload(
     : cacheCardName;
   if (renderName === undefined) {
     throw new CardActionError("not-found", "no *new cache card for the preliminary upload");
+  }
+  // The success hash's redirect (00_upload_cache.rb:18-24 `success << {target,
+  // type, view: "preview_editor", rev_id}` then `abort :success`), answered
+  // the way cud_success answers any success (response.rb:25-33): a PLAIN
+  // request is a hard redirect, 303 to the target's view with the draft's
+  // rev_id — the oracle's Location is
+  // http://127.0.0.1/*new_file/preview_editor?rev_id=734 for a create and
+  // /Parity_Cached_File/preview_editor?rev_id=736 for an update. Only an
+  // AJAX request (Card::Env.ajax?, the editor's fileupload) takes the soft
+  // arm: it renders the preview_editor view itself (response.rb:54-62
+  // soft_redirect -> show), which is the html decko.js swaps in
+  // (upload.js.coffee:48-51).
+  if (!isAjax(req, parsed)) {
+    return {
+      status: 303,
+      headers: {
+        Location: cardUrl(req, `/${locationName(renderName)}/preview_editor?rev_id=${actionId}`),
+        "Content-Type": "text/html; charset=utf-8",
+      },
+      body: "",
+    };
   }
   // The response renders the save's OWN post-draft state (Ruby renders the
   // in-memory success target: selected_action_id = the draft just filed —

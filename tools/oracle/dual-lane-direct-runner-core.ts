@@ -612,7 +612,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;
 
   // The graded environment's cloud asset host: the deployment serves
-  // carrierwave attachments from DigitalOcean Spaces FR1, and the corpus
+  // carrierwave attachments from an object store's regional endpoint, and the corpus
   // expectations carry the same prefix (the companion transform moves engine
   // config and expectations TOGETHER). Set BEFORE any storage boot so every
   // worker's render emits the deployment form. The engine DEFAULT (fog s3

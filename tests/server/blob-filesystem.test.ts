@@ -1,8 +1,8 @@
 // The filesystem blob driver against the shared conformance suite.
 //
 // The suite owns its resource: a throwaway scratch directory removed in
-// the teardown, so no test leaves files behind (the Zero Unmanaged
-// Scratch policy). The extra cases here cover the filesystem-specific
+// the teardown, so no test leaves files behind. The extra cases here cover
+// the filesystem-specific
 // behaviour the shared suite cannot state: the key IS the path below the
 // root, which is what lets a Ruby deck's files directory be read
 // unchanged, and the write-then-rename that keeps a failed put from

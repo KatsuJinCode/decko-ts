@@ -41,15 +41,17 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it } from "vitest";
+import { beforeAll, expect, it } from "vitest";
 import { describeOrSkipLoud } from "../../../tests/support/describe-with-corpus.js";
 import { mineViews } from "../../../tools/mod-porting-harness/mod-harness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = dirname(dirname(dirname(HERE))); // tests/tools/mod-porting-harness -> repo root
 
-// Same frozen gem set the harness mines (mod-harness.mjs GEM_DIR).
-const GEM_DIR = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems";
+// Same frozen gem set the harness mines (mod-harness.mjs GEM_DIR), resolved
+// from GEM_HOME the way tools/compat-report resolves it. Unset on a clean
+// clone, which is exactly what the skip below is for.
+const GEM_DIR = process.env.GEM_HOME === undefined ? "" : join(process.env.GEM_HOME, "gems");
 const GEM_PATH = join(GEM_DIR, "card-mod-format-0.20.0");
 // Ruby's Dir.glob treats a backslash as an ESCAPE, not a path separator, so
 // node's win32 join() output silently globs zero files. The oracle is handed
@@ -100,10 +102,9 @@ function rubyCensus(): RubyCensus {
   return JSON.parse(res.stdout) as RubyCensus;
 }
 
-// GEM_DIR is a machine-specific absolute gem path baked into this suite
-// (and into mod-harness.mjs): on a machine without that tree the census walk
-// below throws ENOENT and the suite fails red on a host it has never
-// supported. Skip loudly instead.
+// GEM_DIR comes from GEM_HOME, so a host without the gem tree installed —
+// including every clean clone — hits a census walk that throws ENOENT and
+// fails red on a host it was never going to support. Skip loudly instead.
 //
 // THE GATE CHECKS THE DIRECTORY THE WALK ACTUALLY READS, NOT ITS PARENT.
 // Checking existsSync(GEM_PATH) alone was not enough: rbFiles() below walks
@@ -120,17 +121,26 @@ const GEM_TREE_PRESENT = existsSync(join(GEM_PATH, "set"));
 describeOrSkipLoud(
   !GEM_TREE_PRESENT,
   "tests/tools/mod-porting-harness/format-census-view-set.test.ts",
-  `the recorded gem tree is present at ${join(GEM_PATH, "set").replaceAll("\\", "/")} — the fixture records a machine-specific compile verification: the view census was mined from a local card-mod-format gem checkout that this tree does not carry`,
+  `GEM_HOME is set and $GEM_HOME/gems/card-mod-format-0.20.0/set exists — the view census was mined from a local card-mod-format gem checkout that this tree does not carry`,
 )("card-mod-format view census == Ruby's view set", () => {
-  const ruby = rubyCensus();
-  const setFiles = rbFiles(join(GEM_PATH, "set"));
-  const mined = setFiles.flatMap((full) => {
-    const rel = relative(GEM_PATH, full).replaceAll("\\", "/");
-    return mineViews(readFileSync(full, "utf8"), rel);
+  // Collected inside the describe body but RUN in beforeAll: vitest evaluates
+  // a skipped suite's body to collect its test names, so walking the gem tree
+  // here would turn the loud skip above into a red suite on every host without
+  // the gems.
+  let ruby: RubyCensus;
+  let setFiles: string[];
+  let minedNames: string[];
+  beforeAll(() => {
+    ruby = rubyCensus();
+    setFiles = rbFiles(join(GEM_PATH, "set"));
+    const mined = setFiles.flatMap((full) => {
+      const rel = relative(GEM_PATH, full).replaceAll("\\", "/");
+      return mineViews(readFileSync(full, "utf8"), rel);
+    });
+    minedNames = mined.map((v) => v.name);
   });
 
-  const rubyNames = ruby.views.map((v) => v.name);
-  const minedNames = mined.map((v) => v.name);
+  const rubyNames = (): string[] => ruby.views.map((v) => v.name);
 
   // The oracle must itself be TOTAL and non-empty: an unresolved binding, a
   // shadowed loop variable, or a silently empty census would mean the set
@@ -140,16 +150,16 @@ describeOrSkipLoud(
     expect(ruby.shadowedLoopVars).toEqual([]);
     expect(ruby.totals.files).toBe(setFiles.length);
     expect(setFiles.length).toBeGreaterThan(0);
-    expect(ruby.totals.views).toBe(rubyNames.length);
+    expect(ruby.totals.views).toBe(rubyNames().length);
     expect(ruby.totals.views).toBeGreaterThan(0);
   });
 
   it("mines no view Ruby does not declare", () => {
-    expect([...new Set(minedNames)].filter((n) => !rubyNames.includes(n)).sort()).toEqual([]);
+    expect([...new Set(minedNames)].filter((n) => !rubyNames().includes(n)).sort()).toEqual([]);
   });
 
   it("misses no view Ruby declares", () => {
-    expect([...new Set(rubyNames)].filter((n) => !minedNames.includes(n)).sort()).toEqual([]);
+    expect([...new Set(rubyNames())].filter((n) => !minedNames.includes(n)).sort()).toEqual([]);
   });
 
   it("names no view that is not a real `view` call in the gem source", () => {
@@ -158,7 +168,7 @@ describeOrSkipLoud(
     // `link_to` option walk — `interpret_data_opts_to_link_to`.
     for (const phantom of ["remote", "method"]) {
       expect(minedNames).not.toContain(phantom);
-      expect(rubyNames).not.toContain(phantom);
+      expect(rubyNames()).not.toContain(phantom);
       expect(ruby.views.some((v) => v.file === "set/all/links.rb" && v.name === phantom)).toBe(
         false,
       );

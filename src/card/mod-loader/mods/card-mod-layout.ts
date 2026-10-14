@@ -1185,9 +1185,11 @@ const cardModLayout: DeckoModManifest = {
       events: [
         event({ event: "validate_role_enabling", at: "validate", on: ["save"] }),
         // Ruby: `event :clear_roles_cache, :prepare_to_store, before:
-        // :store_in_session` — the stage is explicit; the before relation
-        // rides this comment (the surface has no before field).
-        event({ event: "clear_roles_cache", at: "prepare_to_store" }),
+        // :store_in_session` — options.rb:76 clears @stage when before: is
+        // given, so the declared :prepare_to_store never becomes the
+        // event's own stage; the event rides store_in_session's chain
+        // (itself :prepare_to_store), which is the stage it runs at.
+        event({ event: "clear_roles_cache", before: "store_in_session" }),
       ],
       formats: {
         html: {

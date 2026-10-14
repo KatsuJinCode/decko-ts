@@ -125,9 +125,15 @@ import { h } from "../../render/slot-html.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
 } from "../mod-manifest.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
+import {
+  isStandardRuleName,
+  isPreferenceName,
+} from "../../actions/rule-content-walk.js";
 
 // ---------------------------------------------------------------------------
 // the permission-right set guard (right/{create,delete,read,update}.rb)
@@ -691,6 +697,43 @@ function setModuleEntry(
 ): { setPath: string; events?: readonly ModEventRegistration[] } {
   return events === undefined ? { setPath } : { setPath, events };
 }
+
+/** The permissions mod's `when:` predicates, reached by Ruby's `send`
+ *  (set/event/all.rb:82).
+ *
+ *  rule? (card/lib/card/rule/all.rb:33-35) is `standard_rule? ||
+ *  preference?`, and both halves are already ported against this same
+ *  Ruby source as the rule-pattern operands (actions/rule-content-walk.ts
+ *  isStandardRuleName / isPreferenceName, citing rule/all.rb:37-40 and
+ *  :42-54). This reuses them rather than restating the walk — one
+ *  definition of "is this name a rule" in the engine.
+ *
+ *  Gates :update_rule_cache (set/all/update_read_rules.rb:4) and
+ *  :cascade_read_rule (set/right/read.rb:9). */
+export const permissionsModEventPredicates = {
+  "rule?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    const fetch = ctx?.fetch;
+    if (fetch === undefined || card.name === undefined) return false;
+    const name = DeckoName.parse(card.name);
+    if (name.s === "") return false;
+    return (
+      (await isStandardRuleName(fetch, name)) || (await isPreferenceName(fetch, name))
+    );
+  },
+  /** preference? (rule/all.rb:42-54) — the second half of the rule?
+   *  definition above (rule/all.rb:33-35), reached on its own by
+   *  mod/follow's set/right/follow.rb:7-9 (:integrate,
+   *  `when: :preference?` on :cache_expired_for_new_preference). Ruby
+   *  defines it once, on Card; the port keeps the one definition here,
+   *  beside rule?, because both walk the same name parts. */
+  "preference?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    const fetch = ctx?.fetch;
+    if (fetch === undefined || card.name === undefined) return false;
+    const name = DeckoName.parse(card.name);
+    if (name.s === "") return false;
+    return isPreferenceName(fetch, name);
+  },
+} as const;
 
 const cardModPermissions: DeckoModManifest = {
   name: "permissions",

@@ -43,7 +43,7 @@ export type SearchNestPosture = "write-time" | "live";
 
 /** THE config seam. Write-time execution is the default per the research
  *  verdict (SOLVED-BY-COMBINATION §2.2) and this deck's read-mostly regime.
- *  The operator rules the final default; flipping this constant (or passing
+ *  A deployment's owner chooses the final default; flipping this constant (or passing
  *  an explicit posture to the builder) is the whole switch. */
 export const DEFAULT_SEARCH_NEST_POSTURE: SearchNestPosture = "write-time";
 

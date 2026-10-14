@@ -84,6 +84,58 @@ ENV["RAILS_LOG_TO_STDOUT"] = nil
 require File.join(APP_ROOT, "config", "environment")
 require "rack/test"
 
+# ---- production-style error handling. A deployed Decko site does not serve
+# Rails' developer exception page, so recording one into the committed trace
+# would put this machine's absolute paths (gem paths, the user profile, the
+# work directory) into a file that ships. Two settings decide what an unhandled
+# exception answers, and both differ between development and what a deployed
+# site runs:
+#
+#   rescue_all_in_controller  Decko's own config/environments/production.rb
+#     (decko-0.20.0 :1-3) sets it true; the Railtie defaults it false
+#     (decko/railtie.rb:9) and the development environment never changes it.
+#     True makes CardController rescue StandardError and render the error
+#     view for its class (card_controller/errors.rb:18 handle_exception,
+#     card/error.rb:46 ServerError) — card-mod-format's server_error.haml,
+#     "Wild Card! / 500 Server Error / Yuck, sorry about that.", with no
+#     message and no backtrace.
+#
+#   consider_all_requests_local  card-1.110.0's own production environment
+#     (config/environments/production.rb:17) sets it false; its development
+#     environment (:25) sets it true. It becomes
+#     "action_dispatch.show_detailed_exceptions" (rails application.rb:318),
+#     which is what DebugExceptions checks before rendering the developer
+#     page (debug_exceptions.rb:61); with it false, anything that still
+#     escapes the controller reaches the public error response instead.
+#
+# Both are applied to the recording only, and only these two: the rest of the
+# development environment (reloading, caching, the live server) is what the
+# rest of this recording was made under, and changing it would re-record
+# behaviour this task is not about. The oracle app itself is left stock.
+Cardio.config.rescue_all_in_controller = true
+Cardio.config.consider_all_requests_local = false
+# Booting the app already loaded CardController, whose class body registered
+# its rescue handlers under the development default (card_controller.rb:28,
+# `rescue_from_class StandardError if rescue_all?`). That line runs once, at
+# class-body time, so the config write above cannot reach it. Running the same
+# call here gives the same handler (`handle_exception`), so the recorded
+# response is the one a production boot gives, not a new shape.
+CardController.rescue_from_class StandardError
+# The guards. Without them a setting that silently failed to take would put the
+# developer page back into the recording, which is the defect this exists to
+# remove, and the run would look clean. rescue_handlers holds
+# [class NAME, handler] pairs (activesupport rescuable.rb:72).
+unless CardController.rescue_handlers.any? { |name, _handler| name == "StandardError" }
+  raise "rescue_all_in_controller did not take: StandardError is not rescued"
+end
+# env_config is memoized on first use. This check reads it after the setting
+# above, so a value memoized earlier with the development default fails here,
+# rather than silently answering requests with the developer page.
+unless Cardio.application.env_config["action_dispatch.show_detailed_exceptions"] == false
+  raise "consider_all_requests_local did not take: " \
+        "show_detailed_exceptions is #{Cardio.application.env_config['action_dispatch.show_detailed_exceptions'].inspect}"
+end
+
 # ---- storage: local work directory only, no buckets.
 Cardio.config.file_buckets = {}
 Cardio.config.file_default_storage = :local
@@ -174,8 +226,10 @@ $conn = ActiveRecord::Base.connection
 # ---- event trace: every event body (`<event>_without_callbacks`, defined
 # by Card::Set::Event#define_simple_method) logs [card name, event] when it
 # runs. The wrapper is prepended to each set module that defines events.
+# The trace records event names and the step's observable outcome only. Exception
+# messages and backtraces are not recorded: they name this machine's paths, and
+# the committed trace carries no text rewritten from them either.
 $EVENTS = []
-$SWALLOWED = []
 $TRACE = false
 MODULE_NAME = Module.instance_method(:name)
 ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start_with?("Card::Set::") }.each do |mod|
@@ -188,13 +242,6 @@ ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start
       ev = mn.to_s.sub(/_without_callbacks\z/, "")
       define_method(mn) do |*a, **k, &b|
         $EVENTS << [name.to_s, ev] if $TRACE
-        # The integrate stages swallow exceptions (result.rb
-        # notable_exception_raised logs and continues); record what was
-        # swallowed so a missing side effect can be traced to its cause.
-        if $TRACE && ev == "notable_exception_raised" && (err = Card::Error.current)
-          $SWALLOWED << { card: name.to_s, error: err.class.name, message: err.message.to_s[0, 300],
-                          backtrace: Array(err.backtrace).grep_v(%r{/(actionpack|activesupport|rack)-}).first(8) }
-        end
         super(*a, **k, &b)
       end
     end
@@ -334,17 +381,16 @@ def step(name)
   files_before = files_list
   virtuals_before = virtuals_snapshot
   $EVENTS.clear
-  $SWALLOWED.clear
   $TRACE = true
   $status = nil
   $headers = {}
   $body = ""
-  extra = nil
   begin
     yield
-  rescue StandardError => e
-    extra = { raised: e.class.name, error: e.message.to_s[0, 300],
-              backtrace: e.backtrace.grep_v(/actionpack|activesupport|rack/).first(6) }
+  rescue StandardError
+    # A step that raises outside the HTTP response is recorded by what it did
+    # (its status, body and writes), not by the exception: the trace carries no
+    # exception text. The run continues to the next step.
   ensure
     $TRACE = false
   end
@@ -354,7 +400,7 @@ def step(name)
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
     files: files_list - files_before, virtuals: virtuals_delta(virtuals_before, virtuals_snapshot),
-    mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
+    mail: drain_mail,
     signed_in_as: session_user, session_cards: session_cards
   }
 end

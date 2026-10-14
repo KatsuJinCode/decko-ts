@@ -18,8 +18,8 @@ The mod-compatibility boundary is its own decision record
 | --- | --- | --- | --- |
 | Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade. The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
 | Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,389 semantics comparisons, `synthetic-v1` fixture — the fixture's `ops/semantics.jsonl` holds **2,388** lines, plus the 1 scenario step whose op is `ask`, which the grader also grades as semantics (`reference-harness/runner/grade-lib.mjs:197`). See "Why two counts of the same fixture" below |
-| Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: **65 of 70** operations' row deltas match Ruby's byte for byte on the committed `write-battery-v1` synthetic deck, and the remaining **5 are declared deliberate differences** — 65 + 5 = 70, with **0 unexpected** |
-| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: 49 of 90 steps match on the committed `write-battery-v1` synthetic deck (4 declared, 37 mismatched: 36 under the declared account-holder security divergence, `docs/SECURITY.md` divergence 5, and 1 under a separate closure-mail difference still under investigation; see `tests/tools/side-effects-scenario-battery.test.ts`, whose header records the same 36/1 split) |
+| Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: of its 70 operations, **67 are public** — **65** leave row deltas byte-identical to Ruby's on the committed `write-battery-v1` synthetic deck and **2 are declared deliberate differences**, with **0 unexpected**; the other **3 are withheld until disclosure** (`docs/SECURITY.md`) and print a `NOT RUN` line when absent |
+| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: of its 90 steps, **88 are public** — **84** match Ruby on the committed `write-battery-v1` synthetic deck, **3** are declared deliberate differences and **1** (`get-home`, the asset refresh Ruby runs on the first request) is open; the other **2 are withheld until disclosure** (`tests/tools/side-effects-scenario-battery.test.ts` pins every verdict) |
 
 The standing test net (`tests/standing-net.json`, 68 manifest files) run
 2026-10-01: 696 passed, 4 expected fail, 12 skipped (712). That net is
@@ -56,8 +56,8 @@ is asserted by the suite itself (`reference-harness/runner/test/normalize.test.m
 | Battery | Where | Steps | Accounted as |
 | --- | --- | ---: | --- |
 | Reference-harness scenarios | `reference-harness/fixtures/synthetic-v1` | 22 | 16 write steps' row deltas (persistence 16/16) + 19 step answers (side effects 19/19: 16 write answers, 3 sign-in answers); the 2 renders and 1 question among them grade as rendering and semantics, reads write only what the oracle's reads wrote (read writes 8/8, other tables 12/12) |
-| The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 65 identical row deltas + 5 declared deliberate differences = 70 |
-| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 49 match + 4 declared + 37 mismatched (36 under the declared account-holder security divergence, `docs/SECURITY.md` 5; 1 under a separate closure-mail difference under investigation) = 90 |
+| The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 67 public: 65 identical row deltas + 2 declared deliberate differences; 3 withheld until disclosure |
+| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 88 public: 84 match + 3 declared + 1 open (`get-home`); 2 withheld until disclosure |
 
 Every step of all three is pinned: a change in any of them fails the suite
 that runs it. The production-deck runs of the same two batteries remain the
@@ -74,7 +74,7 @@ package does NOT measure, item 6.
   every card record and every recorded view compared byte for byte. The
   2026-09-23 with-mods run measured 167,674 of 180,442 captured views
   byte-identical (92.9%). **That figure is not a pure Ruby-oracle grade**: 50
-  of its expected entries are bytes fetched from the live 0.19.1-era site,
+  of its expected entries are bytes fetched from the live site (an earlier Decko),
   not the 0.20.0 oracle — two disjoint swap sets of 13 and 37, entry keys
   checked distinct, per-entry manifests kept with the capture). Method, the
   full breakdown and the failure families: [parity-method.md](parity-method.md),
@@ -113,50 +113,44 @@ package does NOT measure, item 6.
   `card_virtuals`) is compared against Ruby's: **16 persistence comparisons**.
   Read steps must additionally leave exactly the rows Ruby's reads left.
 - **The 70-step write probe** (committed):
-  `tests/tools/persist-write-probe.test.ts` runs the full 70-operation list
+  `tests/tools/persist-write-probe.test.ts` runs the 70-operation list
   against the committed synthetic `write-battery-v1` deck
   (`reference-harness/fixtures/write-battery-v1`) and compares every
   operation's row delta with the Ruby oracle dumps recorded on that same
-  deck: **65 of 70 match byte for byte and 5 are declared deliberate
-  differences, 0 unexpected.** The five, as declared in
-  `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`:
-  steps **20, 22, 31** are the stored-HTML security choice (`docs/SECURITY.md`
-  divergence 1 — the port's cleaner stores something different where Ruby's
-  would be acted on by a browser; the difference itself is withheld), and steps
-  **7** and **67** are two upstream Ruby defects (a trashed
+  deck. **67 operations are public: 65 match byte for byte and 2 are
+  declared deliberate differences, 0 unexpected.** The two, as declared in
+  `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`,
+  are upstream Ruby defects the port does not reproduce: step **7** (a trashed
   junction revived before its part id resolves, which only inserts on the
-  oracle deck's missing `UNIQUE (left_id, right_id)` index; and a revert of a
-  rename that stores rows and then raises). Password storage is **not** among
-  the five: on this synthetic deck the probe defaults to
+  oracle deck's missing `UNIQUE (left_id, right_id)` index) and step **67**
+  (a revert of a rename that stores rows and then raises, losing the act's
+  history rows; the port completes the revert). The remaining **3
+  operations are withheld until disclosure** (`docs/SECURITY.md`, "Reporting a
+  vulnerability"); without them the suite prints a `[withheld until
+  disclosure] NOT RUN` line. Password storage is not among the declared
+  differences: on this synthetic deck the probe defaults to
   `DECKO_PASSWORD_HASH=legacy-sha1` (the deck is Ruby-built with salted SHA-1
-  digests), so steps 57 and 58 match exactly. It runs from a clean checkout; no
-  Ruby, no private deck.
-- **The 90-step scenario battery** (recording committed; the clean-deck
-  divergence declared): `tests/tools/side-effects-scenario-battery.test.ts`
-  drives the TypeScript engine through the same 90
-  HTTP-shaped steps the production-deck measurement drove
-  (`tools/parity-side-effects/`), from the committed
-  `reference-harness/fixtures/write-battery-v1` deck, and compares every
-  step's verdict against the Ruby trace recorded on that deck
-  (`expected/side-effects-ruby.json`). On this clean synthetic deck the
-  verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
-  36 of them traceable to one root cause, now a declared security
-  divergence (`docs/SECURITY.md`, divergence 5). That entry names what this
-  engine refuses and withholds what Ruby does instead.
-  On the production deck that difference never surfaced, because a second
-  Ruby flaw (the one of the three named under "Reporting a vulnerability"
-  above) intervenes there — one of the 7 production pins declares it, and it
-  does not reproduce on a clean deck, so three of the seven production pins
-  do not transfer. The divergence is declared, not adjusted away; the exact
-  verdicts stay pinned step by step, and the production-deck figures remain
-  the measured 83 + 7 of 90.
+  digests), so steps 57 and 58 match exactly. It runs from a clean checkout;
+  no Ruby, no private deck.
+- **The 90-step scenario battery** (recording committed):
+  `tests/tools/side-effects-scenario-battery.test.ts` drives the TypeScript
+  engine through HTTP-shaped steps (`tools/parity-side-effects/`) from the
+  committed `reference-harness/fixtures/write-battery-v1` deck, and compares
+  every step's verdict — what the request was told, which error it showed,
+  what mail it sent, who is signed in afterwards — against the Ruby trace
+  recorded on that deck (`expected/side-effects-ruby.json`, recorded with
+  Ruby's production error handling). **88 steps are public: 84 match Ruby, 3
+  are declared deliberate differences and 1 is open** (`get-home`, the asset
+  refresh Ruby runs on the first request after setup). The other **2 steps are
+  withheld until disclosure**. Every verdict is pinned step by step, so any
+  change on either side fails the suite.
 - **The pod import/export round-trips remain private**:
   `tests/tools/pod-round-trip.test.ts` and `tests/tools/pod-features.test.ts`
   skip unless `PODS_SRC_DECK` / `PODS_BASE_DECK` name a private oracle deck.
   They announce their skip loudly; none of their results are in the public
   package. The production-deck runs of the two batteries above (a copy of a
-  49,829-card deck, its dumps under `tests/fixtures/persistence-oracle/`)
-  remain the deeper, non-public evidence.
+  real deck, its dumps not redistributed) remain the deeper, non-public
+  evidence.
 
 ### Side effects
 
@@ -209,12 +203,10 @@ Stated plainly, with where the gap closes when it closes:
    job behavior is measured.
 6. **Anything a skipped probe would have covered** (see Persistence above):
    pod round-trips and the production-deck runs of the write batteries on the
-   real oracle deck. The 70-step write sequence is now public, on the
-   committed `write-battery-v1` synthetic deck; the 90-step scenario battery
-   is recorded on that deck with its account-holder divergence declared
-   (above). What remains
-   non-public is the same measurement on a copy of the 49,829-card
-   production deck.
+   real oracle deck. The 70-step write sequence and the 90-step scenario
+   battery are public on the committed `write-battery-v1` synthetic deck,
+   apart from the steps withheld until disclosure (above). What remains
+   non-public is the same measurement on a copy of a real production deck.
 
 ---
 

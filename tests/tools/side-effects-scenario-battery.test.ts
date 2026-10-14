@@ -18,11 +18,12 @@
 //                     virtuals, session identity)
 //
 // THE DIVERGENCES THIS SUITE PINS. The public scenario list is 88 steps:
-// the two account-holder rename steps live in the withheld set
-// (tools/parity-side-effects/withheld/scenarios.json, excluded from every
-// release package) and are announced on stderr when they are not run. On the
-// clean synthetic deck the recorded verdicts are 78 of 88 (75 pass + 3
-// declared + 10 mismatched). The Ruby recording is committed
+// the two steps whose divergence is withheld until disclosure live in the
+// withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
+// from every release package) and are announced on stderr when they are not
+// run. On the clean synthetic deck the recorded verdicts are 83 pass +
+// 4 declared + 1 mismatched (88 steps), and the assertions below name every
+// one of them. The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
 // verdicts, so any engine change here fails loudly. Neither engine's
@@ -190,7 +191,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 75 steps pass, the 3 steps whose reference-deck pins hold are declared, and the 10 remaining mismatches are pinned step by step", () => {
+  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose reference-deck pins hold are declared, and the 1 remaining mismatch is pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -238,22 +239,26 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       "[withheld until disclosure] NOT RUN: ",
     );
 
-    // The one step whose production pin still holds on this deck, and the
-    // total. restore-file-revision is pinned in scenarios.json too (Ruby
-    // crashes on restoring a File/Image revision; the port restores it), but
-    // its pin also expects the port's status to be 303 and this deck's
-    // TypeScript trace records no status for the step at all, so the pin's
-    // exact-match test fails and the step reads as a plain mismatch rather
-    // than a deliberate difference. That is pinned below with its field set,
-    // errors included.
+    // The steps whose production pin holds on this deck, and the total.
+    // restore-file-revision is pinned in scenarios.json (Ruby crashes on
+    // restoring a File/Image revision with a 500; the port restores it and
+    // answers 303), and its pin's expected status now matches the port's
+    // recorded status, so it reads as the documented deliberate difference.
+    // admin-deny-signup is declared as a knock-on of that step: the 500 Ruby
+    // answers there renders the server_error view, which saves the page into
+    // the location history, so the deny's *previous redirect resolves to it.
+    // Before the recording ran under production error handling this step
+    // compared equal, because the developer page never ran that save.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
+      "admin-deny-signup",
       "anon-update-skin-colors",
+      "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 75,
-      deliberate: 2,
+      pass: 83,
+      deliberate: 4,
       total: 88,
     });
 
@@ -276,20 +281,6 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       // card card-mod-style set/self/style_mods.rb:1, typed List, so the
       // typeCode arm at style-asset-events.ts:191 misses it).
       { step: "get-home", fields: ["files", "virtuals", "writes"] },
-      { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
-      { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-cache-existing-file", fields: ["actions", "files", "location", "stamps", "status", "stored", "writes"] },
-      { step: "update-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-image", fields: ["stored"] },
-      { step: "upload-large-image", fields: ["stored"] },
-      { step: "update-file", fields: ["stored"] },
-      { step: "delete-file", fields: ["stored"] },
-      { step: "delete-image", fields: ["stored"] },
-      // Its $create_action placeholder names "Parity Cached File", a card the
-      // upload family above never creates in the port, so the drive raises
-      // before the save and records no status. Consequential, not its own
-      // difference: it clears when the upload family does.
-      { step: "restore-file-revision", fields: ["errors", "status"] },
     ]);
 
     rmSync(work, { recursive: true, force: true });

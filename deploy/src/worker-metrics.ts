@@ -506,7 +506,7 @@ export function wrapDriverWithMetrics(
       // The result carries through unchanged. We discard `start` deliberately:
       // engine time accounting is on wallMs (the request-scoped clock), not
       // per-query. Per-query timings would double-count when the engine
-      // batches; the review asked for per-render numbers, not per-SQL.
+      // batches; the figures this reports are per-render, not per-SQL.
       void start;
       return result;
     },

@@ -196,6 +196,12 @@ import {
   type ModEventRecaptchaVerify,
 } from "../mod-loader/mod-event-dispatch.js";
 import {
+  populateModEventCardState,
+  type ModEventCardState,
+  type ModEventCardStateContext,
+  type ModEventSaveAttributes,
+} from "../mod-loader/mod-event-card-state.js";
+import {
   recaptchaSiteverifyGet,
   RECAPTCHA_CARDIO_CONFIG_DEFAULTS,
 } from "../mod-loader/mods/card-mod-recaptcha.js";
@@ -337,6 +343,12 @@ export interface CardActionEngineOptions {
    *  one without the core mod) behaves exactly as before. ABSENT (every
    *  pre-existing caller) -> no dispatch at all, byte-identical behavior. */
   modEvents?: ModEventRuntime;
+
+  /** Card::Env.params for the request this engine serves (env.rb). Read by
+   *  the mod-event state sources (mod-loader/mod-event-card-state.ts) so
+   *  `when:` predicates that consult request params (`draft`,
+   *  `insert_item`, `attachment_upload`) see the same bag Ruby does. */
+  params?: Readonly<Record<string, unknown>>;
   /** The recaptcha config port (Cardio.config.recaptcha_* — the seven keys
    *  card-mod-recaptcha lib/card/mod/recaptcha.rb:1-10 initializes).
    *  ABSENT = no keys configured = recaptcha_keys? false = the guard is
@@ -446,6 +458,19 @@ export class CardActionEngine {
    *  sibling cards skip). Ruby's lifetime is the request; the engine's is
    *  the instance ("construct per request"). */
   private captchaUsedThisRequest = false;
+  /** Card::Env.params for the save (lib/card/env.rb) — the request-param
+   *  bag Ruby's `when:` predicates read (`draft`, `insert_item`,
+   *  `attachment_upload`). Undefined on an engine built for a non-request
+   *  save; a predicate that needs it then reads false, which is what Ruby
+   *  does for a param the request did not carry. */
+  private readonly saveParams: Readonly<Record<string, unknown>> | undefined;
+  /** The assigned attributes of the save in flight, as the mod-event state
+   *  sources read them (mod-loader/mod-event-card-state.ts
+   *  ModEventSaveAttributes): Ruby's `set_specific` / the card's own
+   *  attribute writers (advanced_api.rb:33-38). Set once the save input is
+   *  final — after the two-step upload's cached attachment is installed —
+   *  and restored by the public entries' `finally`, like saveSkip. */
+  private activeSaveAttributes: ModEventSaveAttributes | undefined;
 
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
@@ -466,6 +491,7 @@ export class CardActionEngine {
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
+    this.saveParams = options.params;
   }
 
   /** How many saves are running on this engine right now: 1 inside a
@@ -1180,10 +1206,12 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
+    const outerAttributes = this.activeSaveAttributes;
     try {
       return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
     } finally {
       this.pendingSaveInput = undefined;
+      this.activeSaveAttributes = outerAttributes;
     }
   }
 
@@ -1299,8 +1327,19 @@ export class CardActionEngine {
    *  `Card::Error, "no main nest found in layout \"<name>\""` when neither
    *  its content nor the cards it nests (five levels deep,
    *  lib/card/layout/card_layout.rb:20-40) holds a {{_main}} nest. The
-   *  raise rolls the act back and answers 500; the port refuses before
-   *  writing. */
+   *  raise rolls the act back; the port refuses before writing.
+   *
+   *  The raised class is the BASE Card::Error, not ServerError. The
+   *  controller's rescue (card_controller/errors.rb:18 handle_exception,
+   *  reached because a deployed site sets rescue_all_in_controller — see
+   *  decko-0.20.0 config/environments/production.rb:1-3) reports it through
+   *  Card::Error.report, which keeps an exception that already IS a
+   *  Card::Error (card/error.rb cardify_exception, :146) rather than
+   *  rewrapping it as ServerError. The base class carries view :errors and
+   *  status_code 422 (card/error.rb:20-21), so the deployed answer is the
+   *  errors-view alert at 422 — the "ERROR" key is the class name's last
+   *  segment upcased (card/error.rb add_card_errors, :159-161) — and not the
+   *  500 Wild Card page a ServerError would give. */
   private async assertLayoutHasMainNest(
     row: CardsRow,
     content: string | null | undefined,
@@ -1324,7 +1363,7 @@ export class CardActionEngine {
     if (await hasMain(content ?? row.db_content ?? "", 0)) return;
     const name = (await this.composedNameOf(row))?.s ?? String(row.id);
     const message = `no main nest found in layout "${name}"`;
-    throw new CardActionError("server-error", message, message);
+    throw new CardActionError("user-error", message, `ERROR: ${message}`, { Error: message }, name);
   }
 
   /** initialize_because_of_type_change (card-mod-bootstrap
@@ -1527,6 +1566,7 @@ export class CardActionEngine {
     input = await this.applyAccountFieldEvents(input, typeId);
     await this.checkSkinFieldPermissions(name, typeId);
     input = await this.applySkinCreateEvents(input, typeId);
+    this.setActiveSaveAttributes(input);
     await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     const writer = this.newWriter(actingId);
     // Ruby runs every card's finalize events after the whole act's store
@@ -1658,6 +1698,7 @@ export class CardActionEngine {
         name,
         key: name.key,
         dbContent: input.content,
+        dbContentBeforeAct: null,
         action: "create",
         typeId: eventTypeId,
       });
@@ -1783,6 +1824,7 @@ export class CardActionEngine {
           id: trashed.id,
           key: name.key,
           dbContent: input.content,
+          dbContentBeforeAct: trashed.db_content ?? null,
           action: "create",
           trash: false,
           typeId,
@@ -2054,6 +2096,7 @@ export class CardActionEngine {
         id: created.cardId,
         key: name.key,
         dbContent: attachmentIdentifier ?? (input.content ?? null),
+        dbContentBeforeAct: null,
         action: "create",
         trash: false,
         typeId,
@@ -2108,6 +2151,7 @@ export class CardActionEngine {
     // card[skip] (skip_and_trigger.rb): the events this save's act skips,
     // seen by every event of the act, nested saves included.
     const outerSkip = this.saveSkip;
+    const outerAttributes = this.activeSaveAttributes;
     if (input.skip !== undefined && input.skip.length > 0) {
       this.saveSkip = [...(outerSkip ?? []), ...input.skip];
     }
@@ -2116,6 +2160,7 @@ export class CardActionEngine {
     } finally {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
+      this.activeSaveAttributes = outerAttributes;
     }
   }
 
@@ -2182,6 +2227,7 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
+    this.setActiveSaveAttributes(input);
     // Renaming a card that carries an account needs an account manager —
     // the account itself, or a Help Desk member. This guard is stricter
     // than Ruby 0.20; the difference is a deliberate one, recorded in
@@ -2445,6 +2491,7 @@ export class CardActionEngine {
         id: row.id,
         key: currentKey,
         dbContent: incomingContent,
+        dbContentBeforeAct: row.db_content ?? null,
         action: "update",
         trash: false,
         typeId: incomingTypeId,
@@ -2816,6 +2863,7 @@ export class CardActionEngine {
         id: row.id,
         key: nameChanged && newName !== undefined ? newName.key : currentKey,
         dbContent: after.db_content,
+        dbContentBeforeAct: before.db_content ?? null,
         action: "update",
         actId: saved.actId,
         trash: false,
@@ -3526,6 +3574,7 @@ export class CardActionEngine {
         id: row.id,
         key: row.key ?? undefined,
         dbContent: row.db_content,
+        dbContentBeforeAct: row.db_content ?? null,
         action: "delete",
         trash: true,
         typeId: row.type_id,
@@ -3565,6 +3614,7 @@ export class CardActionEngine {
         id: row.id,
         key: currentName?.key ?? row.key ?? undefined,
         dbContent: row.db_content,
+        dbContentBeforeAct: row.db_content ?? null,
         action: "delete",
         actId: saved.actId,
         trash: true,
@@ -3709,6 +3759,7 @@ export class CardActionEngine {
         id: row.id,
         key: name?.key ?? row.key ?? undefined,
         dbContent: row.db_content,
+        dbContentBeforeAct: row.db_content ?? null,
         action: "delete",
         actId: saved.actId,
         trash: true,
@@ -3834,17 +3885,22 @@ export class CardActionEngine {
     typeId?: number | null;
     nameBeforeAct?: string;
     changedFields?: readonly string[];
+    dbContentBeforeAct?: string | null;
   }): ModEventCard {
     return {
       name: input.name?.s ?? (input.id !== undefined ? `~${input.id}` : ""),
       id: input.id,
       key: input.key,
       dbContent: input.dbContent ?? undefined,
+      dbContentBeforeAct: input.dbContentBeforeAct,
       action: input.action,
       trash: input.trash,
       typeId: input.typeId ?? null,
       nameBeforeAct: input.nameBeforeAct,
       changedFields: input.changedFields ?? [],
+      // Env.controller (env.rb:18): the engine's saves serve controller
+      // requests (see the recaptcha guard's envController note).
+      envController: true,
       act: {
         action: input.action,
         actId: input.actId,
@@ -3855,20 +3911,104 @@ export class CardActionEngine {
     };
   }
 
+  /** The save-scoped context the mod-event state sources populate against
+   *  (mod-loader/mod-event-card-state.ts): Ruby's `Env.params` and
+   *  `Auth.current_id` reach a predicate through the card's own accessors,
+   *  and this is where the port supplies them. */
+  private eventStateContext(stage: ModEventStage): ModEventCardStateContext {
+    return {
+      ...(this.saveParams !== undefined ? { params: this.saveParams } : {}),
+      authCurrentId: this.actor?.id ?? null,
+      isActCard: true,
+      stage,
+      ...(this.activeSaveAttributes !== undefined
+        ? { saveInput: this.activeSaveAttributes }
+        : {}),
+      // Cardio.config.file_storage (01_storage_type.rb:20-22
+      // storage_type_from_config) — the deck's configured backend, the
+      // fallback arm of storage_type and the answer a content that names
+      // no backend resolves to. Undefined = :local (the field's doc).
+      ...(this.fileStorage !== undefined ? { fileStorage: this.fileStorage } : {}),
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      fetch: this.fetch,
+    };
+  }
+
+  /** Record the save's assigned attributes for the mod-event state sources
+   *  (mod-loader/mod-event-card-state.ts ModEventSaveAttributes). Called
+   *  once the save input is final — the two-step upload's cached
+   *  attachment is already installed, which is what makes
+   *  `save_preliminary_upload?` (00_upload_cache.rb:84-86) and the mount's
+   *  file presence agree with what the events will actually run. */
+  private setActiveSaveAttributes(input: {
+    attachment?: { coded?: { mod?: string } };
+    actionIdOfCachedUpload?: number | string;
+  }): void {
+    this.activeSaveAttributes = {
+      attachmentRides: input.attachment !== undefined,
+      ...(input.actionIdOfCachedUpload !== undefined
+        ? { actionIdOfCachedUpload: input.actionIdOfCachedUpload }
+        : {}),
+      // `mod` assigned through the mount's writer (coded.rb:12-14): the
+      // port's coded save carries it on the attachment, the only place a
+      // caller can name the mod a coded file belongs to
+      // (AttachmentInput.coded).
+      ...(input.attachment?.coded?.mod !== undefined
+        ? { mod: input.attachment.coded.mod }
+        : {}),
+      ...(input.attachment?.coded !== undefined ? { storageType: "coded" } : {}),
+    };
+  }
+
+  /** The mod-event state this engine contributes directly, beyond the
+   *  per-mod sources (mod-loader/mod-event-card-state.ts): the answers the
+   *  engine already computes for its own gates, which the same predicates
+   *  consult. Merged in before the sources run, so a source may override
+   *  any of it.
+   *
+   *  - canApprove — `can_approve?` (mod/account/set/type/signup.rb:12-14):
+   *    `Card.new(type_id: Card.default_accounted_type_id).ok? :create`. The
+   *    engine already answers this for signup's own arm
+   *    (canCreateDefaultAccountedType below); answering it twice would mean
+   *    two permission probes per save, so the first answer is kept.
+   *  - accountId / setupApproved — `current_account?`
+   *    (set/abstract/account_holder.rb:23 `id && Auth.current_id == id`) and
+   *    `setup?` (set/type/user.rb:72 `@setup_approved == true`), which is
+   *    this act's flag on the User card it just created. */
+  private async engineEventCardState(): Promise<ModEventCardState> {
+    const state: ModEventCardState = {
+      authCurrentId: this.actor?.id ?? null,
+    };
+    if (this.actor !== null) {
+      return { ...state, canApprove: await this.canCreateDefaultAccountedType() };
+    }
+    return state;
+  }
+
   /** Dispatch one director stage for this save (no dispatch without a
    *  runtime). The deps pair is the same one the built-in janitors take.
    *  The pending add_comment save input (if this save carries one) rides
-   *  the ctx so the `when: :comment` predicate sees it. */
-  private dispatchEventStage(
+   *  the ctx so the `when: :comment` predicate sees it.
+   *
+   *  The card is POPULATED first (mod-loader/mod-event-card-state.ts): the
+   *  per-mod state sources contribute what Ruby's `when:` predicates read
+   *  off the acting card, which the structural snapshot does not carry. */
+  private async dispatchEventStage(
     stage: ModEventStage,
     card: ModEventCard,
   ): Promise<ModEventStageReport | undefined> {
     const runtime = this.modEvents;
-    if (runtime === undefined) return Promise.resolve(undefined);
+    if (runtime === undefined) return undefined;
+    const engineState = await this.engineEventCardState();
+    const populated = await populateModEventCardState(
+      { ...card, ...engineState },
+      this.eventStateContext(stage),
+    );
     return runModEventStage(
       this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
       stage,
-      card,
+      populated,
       {
         driver: this.fetch.driver,
         lexicon: this.fetch.lexicon,
@@ -3882,6 +4022,10 @@ export class CardActionEngine {
         // referer's own expire).
         fetchRefererCard: (id) => this.fetch.bracket(id),
         pinStaleReferer: (card) => this.fetch.pinStaleCard(card),
+        // rule? / preference? (card/lib/card/rule/all.rb:33-54) resolve a
+        // card shape by walking the name's parts, which the port's own
+        // rule helpers do with the read engine.
+        fetch: this.fetch,
       },
       this.pendingSaveInput,
     );

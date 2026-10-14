@@ -27,7 +27,10 @@
 //     port in its auth_sessions table; neither table is compared, the
 //     signed-in identity is.
 //   - error pages: Ruby renders errors inside the deck layout, the port as a
-//     bare page; only the message text is compared.
+//     bare page; only the message text is compared. A server error is the
+//     deployed "Wild Card!" block on both sides (the recording runs Ruby the
+//     way a deployed site does, see ruby/drive.rb), so it is compared by that
+//     block, not by an exception message.
 //   - HTML entities decoded, whitespace collapsed.
 //   - mail bodies: account-token values replaced by <token> (signed with
 //     different secrets and clocks), whitespace collapsed.
@@ -74,22 +77,30 @@ function rubyErrors(step) {
   }
   if (!(step.status >= 400)) return "";
   const text = decode(b.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " "));
-  // A server error (the development exception page): the exception's
-  // message only, as the port shows it.
-  const ex = text.match(/Exception caught \S+ in \S+ (.*?) Extracted source/);
-  // (a Ruby object's address, which varies per run, is dropped). The
-  // inspect form depends on the Ruby version and on how much of the
-  // record was loaded: older rubies print `#<Card:0x00007f...>` (address
-  // only, with a closing bracket), card-1.110.0 prints
-  // `#<Card#637[basic:2](Parity Probe Card){set_mods_loaded>` — id, type
-  // cache, name and loaded-set, and no closing bracket. Address, id and
-  // state all drift between runs and between the recorded trace and a
-  // fresh recording, so the whole inspect header reduces to the bare
-  // `#<Card` the other form already produces.
-  if (step.status >= 500 && ex) {
-    return ex[1]
-      .trim()
-      .replace(/#<Card(?::0x[0-9a-f]+|#[0-9]+)?(?:\[[^\]]*\])?(?:\([^>]*?\))?(?:\{[^}]*\})?>*/g, "#<Card>");
+  // A server error as a deployed site answers it: card-mod-format's
+  // set/all/html/server_error.haml, the "Wild Card!" block. It carries no
+  // exception message and no backtrace — that is the point of recording the
+  // oracle the way it runs (tools/parity-side-effects/ruby/drive.rb sets
+  // rescue_all_in_controller), so the message the two engines used to be
+  // compared on is no longer on the page and the ports of the same view are
+  // compared instead. Cut structurally, like the alert below: the deck
+  // layout around it is chrome the port has no counterpart for.
+  const wild = b.match(/<div class='border border-danger[^>]*>([\s\S]*?)<\/div>/);
+  if (step.status >= 500 && wild) {
+    return decode(wild[1].replace(/<[^>]+>/g, " "));
+  }
+  // The errors-view alert. The capture was the "Problems … b&w_logo" cut
+  // below, which needs the deck layout Ruby's alert is normally rendered
+  // inside; when Ruby renders the alert as a bare page there is no footer to
+  // bound it, the cut missed, and the 160-char fallback returned the page's
+  // title and heading instead of the message the port shows. The alert is
+  // cut structurally instead (its own </div> bounds it), which is what the
+  // port's twin does, and the <h4> heading is left out because the capture
+  // starts at the "KEY:" token.
+  const alert = b.match(/class="[^"]*card-error-msg"[^>]*>([\s\S]*?)<\/div>/);
+  if (alert !== null) {
+    const shown = [...alert[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((p) => decode(p[1].replace(/<[^>]+>/g, " ")));
+    if (shown.length > 0) return shown.join(" ");
   }
   const m = text.match(/Problems(?: with .*?)?\s((?:[A-Z_*+ ]+:.*?)+?)\s*b&w_logo/) ??
             text.match(/Problems(?: with .*?)?\s(.*?)\s*b&w_logo/);
@@ -113,6 +124,12 @@ function tsErrors(step) {
   } catch { /* html */ }
   const pre = b.match(/<pre>([\s\S]*?)<\/pre>/);
   if (pre) return decode(pre[1]);
+  // The counterpart rubyErrors' server_error cut: the port renders the same
+  // "Wild Card!" block (src/card/render/debug-server-error.ts SERVER_ERROR_HTML,
+  // set/all/html/server_error.haml), so it is cut the same way. The <pre> arm
+  // above and this one never match the same page, so their order is free.
+  const wild = b.match(/<div class='border border-danger[^>]*>([\s\S]*?)<\/div>/);
+  if (step.status >= 500 && wild) return decode(wild[1].replace(/<[^>]+>/g, " "));
   // The counterpart rubyErrors' `Problems … b&w_logo` cut (:82-84) had no
   // equivalent here, and the asymmetry was the whole defect: both engines
   // render the SAME errors-view alert (card-mod-format set/all/html/error.rb

@@ -161,7 +161,7 @@ must notice by itself. It covers the anonymous bare-page path, the
 `/:card/:view` path and the signed-in per-actor engine, and pins that a
 signed-in render's verdicts never reach the next anonymous render.
 `tests/deploy/no-caching-decision-state.test.ts` runs the same
-two-requests-one-process shape on internal fixtures.
+two-requests-one-process shape against its own committed test fixtures.
 
 **What the stamp covers, and what it does not.** The triggers are on `cards`
 and `card_references` only. That is the whole retained render surface — card

@@ -92,10 +92,32 @@ def probe_files(ids)
     end
   end
 end
-# Markup Card::Content.clean! must rewrite: an event handler attribute, a
-# script element, a javascript: link, and allowed markup that must survive.
-UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
-              '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>'
+# The withheld step set (reference-harness/fixtures/write-battery-v1/
+# withheld/steps.json). Those steps are NOT part of the public run: they
+# reproduce a Ruby content-cleaner defect the public material is not cleared
+# to carry, and every step after them would record the content they store. A
+# release package excludes that directory, so when it is absent this half runs
+# the public op list only and says so out loud rather than skipping silently.
+WITHHELD_DIR = File.expand_path("../../reference-harness/fixtures/" \
+                                 "write-battery-v1/withheld", __dir__)
+WITHHELD_STEPS_FILE = ENV["PERSIST_WITHHELD_STEPS"] || File.join(WITHHELD_DIR, "steps.json")
+# The op list's withheld steps. The set file declares them and is excluded from
+# a release package, so the numbers live here: an absent file must withhold the
+# same steps, not silently widen the run to all 70.
+WITHHELD_STEP_NUMBERS = [20, 22, 31].freeze
+WITHHELD_SET_PRESENT = File.exist?(WITHHELD_STEPS_FILE)
+WITHHELD_STEPS = WITHHELD_SET_PRESENT ? [] : WITHHELD_STEP_NUMBERS
+if WITHHELD_SET_PRESENT
+  warn "[withheld until disclosure] RUN: #{WITHHELD_STEP_NUMBERS.length} steps (#{WITHHELD_STEPS_FILE})"
+else
+  warn "[withheld until disclosure] NOT RUN: #{WITHHELD_STEP_NUMBERS.length} steps (#{WITHHELD_STEPS_FILE})"
+end
+
+# Content only the withheld steps use. It lives in the withheld set
+# (withheld/unsafe-html.txt, the same bytes the TypeScript half reads), so the
+# public source carries no copy of it and no description of it.
+UNSAFE_HTML_FILE = File.join(WITHHELD_DIR, "unsafe-html.txt")
+UNSAFE_HTML = File.exist?(UNSAFE_HTML_FILE) ? File.read(UNSAFE_HTML_FILE).strip : ""
 # The new content step 32 gives an existing, nested deck card.
 NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>"
 # Step 37's referer: links and a nest naming the rename subject, its child,
@@ -510,6 +532,14 @@ def run_op(step)
   else
     abort "unknown step #{step}"
   end
+end
+
+# A withheld step is not part of this run at all: it writes nothing, and no
+# state file is recorded for it, so the public dumps carry only the public
+# list's own steps.
+if WITHHELD_STEPS.include?(STEP)
+  warn "[persist] step #{STEP} withheld until disclosure; not run"
+  exit 0
 end
 
 # PERSIST_WATCHDOG=<seconds>: a step still running after that long prints

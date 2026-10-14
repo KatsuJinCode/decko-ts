@@ -2,9 +2,8 @@
 // `GET /:mark/:view(.:format)` (engine_routes.rb:51) with the format suffix
 // dispatches the view in the JSON FORMAT through the engine — the navbox
 // typeahead's live-suggestions surface
-// (`/*search/search_box_complete.json`, the merge-57 route surgery carried
-// to this lineage after demo round 4 proved the Bunny host still answered
-// the raw-suffix view name).
+// (`/*search/search_box_complete.json`, the route shape the Bunny host also
+// answers, with the raw-suffix view name served).
 //
 // The old parse kept the literal suffix — the view name answered
 // unsupported-view as `search_box_complete.json` — while the staging host

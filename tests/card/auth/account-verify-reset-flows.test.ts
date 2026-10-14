@@ -519,7 +519,10 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
     if (!confirmation.ok) return;
     expect(confirmation.activated).toBe(true);
     expect(confirmation.welcomeSent).toBe(true);
-    expect(confirmation.redirectTo).toEqual({ name: `${JILL.name}+*account`, view: undefined });
+    // success << "" (events.rb:87-92): the empty mark, whose to_url is
+    // the site root — NOT the account card (that is the reset event's
+    // `success << {id: name, view: :edit}`, events.rb:100-104).
+    expect(confirmation.redirectTo).toEqual({ name: "", view: undefined });
     // activate_account: the +*status child content is
     // now "active" (written under the bot actor).
     const status = f.storage.selectOne<{ db_content: string }>(

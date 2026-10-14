@@ -18,11 +18,11 @@ and the decisions that shaped it.
 | [answers-to-the-earlier-critique.md](answers-to-the-earlier-critique.md) | Point-by-point answers to the third-party critique linked from decko-commons/decko#1282, written from what this repository actually measures. |
 | [decisions/README.md](decisions/README.md) | Decision records for the choices that are expensive to reverse. |
 
-One further document, `upstream-1282-external-critical-review-fulltext.md`, is
-deliberately not indexed here: it is third-party text and the public release
-build excludes it, so a link to it would resolve in the repository and 404 in
-the published package. `answers-to-the-earlier-critique.md` carries its
-provenance and answers it by its own numbering.
+`upstream-1282-external-critical-review-fulltext.md` is deliberately not
+indexed here: it reproduces third-party text and is excluded from the public
+release build, so a link to it would resolve in a repository checkout and 404 in
+the published package. `answers-to-the-earlier-critique.md` answers the same
+critique by its own numbering, without reproducing it.
 
 ## Conventions
 

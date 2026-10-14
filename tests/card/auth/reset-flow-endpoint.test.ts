@@ -8,8 +8,9 @@
 //     -> the captured envelope; the reset link extracted from its bytes
 //   GET  <resetUrl>       (the EXACT link from the email — /update/<mark>?
 //        card[trigger]=reset_password&token=<jwt>)
-//     -> 302 to the +account edit view + the session cookie (the browser
-//        that clicked is signed in, Ruby's Auth.signin parity)
+//     -> 303 to the +account edit view's PATH address (/<url_key>/edit)
+//        + the session cookie (the browser that clicked is signed in,
+//        Ruby's Auth.signin parity)
 //   POST /_account-password {password} with that cookie
 //     -> the +*password validate/store events; the digest lands
 //   POST /_signin {identifier, password}
@@ -198,14 +199,29 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
 
     // 3. CONFIRM: the member clicks the EXACT link (GET; redirects manual).
     const confirmResponse = await fetch(linkLine, { redirect: "manual" });
-    expect(confirmResponse.status, await confirmResponse.text()).toBe(302);
+    expect(confirmResponse.status, await confirmResponse.text()).toBe(303);
     const location = confirmResponse.headers.get("location") ?? "";
     expect(decodeURIComponent(location)).toContain(fixture.accountMark);
     // Ruby's success redirect for `success << {id: name, view: :edit}`
-    // (account-verify-reset-flows events.rb:102) is the card's EDIT ACTION
-    // path (/Mira_Member+*account/edit), not the ?view= query form — the
-    // recorded oracle journey pins the /edit address on the reset link page.
+    // (card-mod-account-0.20.0 set/right/account/events.rb:100-104) is
+    // Success#to_url -> Card::Path#path(view: :edit) on the account card,
+    // and Card::Path answers the PATH form: a mark AND a view render
+    // "#{mark}/#{view}" (mod/format/lib/card/path.rb:37-45, the view is
+    // deleted from the opts at :60-62 so it never also lands in the query).
+    // So the browser lands on /Mira_Member+*account/edit, not on a
+    // ?view=edit address. The status is Ruby's CUD hard redirect, 303
+    // (decko/lib/card_controller/response.rb:29-33).
     expect(decodeURIComponent(location).endsWith("/edit")).toBe(true);
+    // The MARK is not percent-encoded: Card::Path builds it from
+    // `name.url_key` (mod/format/lib/card/path.rb:64-71), and
+    // Cardname#url_key already makes a URL-safe mark — word characters
+    // and "*" survive, runs of space/underscore collapse to one "_",
+    // parts join with "+" (cardname/lib/cardname/variants.rb:8-14 +
+    // cardname.rb:37 OK4KEY_RE) — and nothing escapes it afterwards
+    // (card/lib/card/env/location.rb:12-21 card_path returns any "/…"
+    // string untouched). So the RAW Location carries the junction's "+"
+    // and "*" literally, and needs no decodeURIComponent to be right.
+    expect(location).toBe(`${fixture.baseUrl}/${fixture.accountMark}/edit`);
     const setCookie = confirmResponse.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("decko_ts_session=");
     const sessionCookie = /decko_ts_session=[^;]+/.exec(setCookie)?.[0] ?? "";
@@ -511,6 +527,33 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
       messages: Array<{ subject: string }>;
     };
     expect(mailLog.messages).toHaveLength(1);
+  });
+
+  it("the verify link's success redirect answers the deck root, not the account card", async () => {
+    const token = signAccountToken(
+      { user_id: HOLDER_ID, exp: Math.floor(Date.now() / 1000) + 3600 },
+      TOKEN_SECRET,
+    );
+    const response = await fetch(
+      `${fixture.baseUrl}/update/${fixture.accountMark}?card%5Btrigger%5D=verify_and_activate&token=${token}`,
+      { redirect: "manual" },
+    );
+    // verify_and_activate_success (card-mod-account-0.20.0
+    // set/right/account/events.rb:87-92) ends in `success << ""` — the
+    // EMPTY mark. Success#<< hands a String to `mark=`
+    // (card/lib/card/env/success.rb:30-35); process_target's `when ""`
+    // arm keeps it (success/target.rb:22-34); to_url returns that ""
+    // unrendered because the target is not a Card (success.rb:23-25);
+    // and hard_redirect's card_url turns "" into the site root
+    // (card/lib/card/env/location.rb:12-21 — card_path "" is
+    // "<relative_url_root>/"). So Ruby sends the browser to the DECK
+    // ROOT; the account-card address is the RESET event's
+    // `success << {id: name, view: :edit}` (events.rb:100-104), not this
+    // one's. The status is the same CUD hard redirect, 303
+    // (decko/lib/card_controller/response.rb:29-33).
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe(`${fixture.baseUrl}/`);
+    expect(response.headers.get("set-cookie")).toContain("decko_ts_session=");
   });
 });
 

@@ -18,7 +18,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { AdapterSession, loadAdapterManifest } from "./adapter-process.mjs";
 import { rawDelta, snapshot, splitDelta } from "./deck-state.mjs";
-import { verifyFixture } from "./manifest.mjs";
+import { WITHHELD_DIR, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
 
 export const RESULTS_FORMAT = 2;
 
@@ -46,6 +46,10 @@ const readLines = (file) =>
 // disagreement is recorded and the grader refuses the results.
 const fixtureCheck = verifyFixture(fixture);
 for (const p of fixtureCheck.problems) log(`fixture: ${p}`);
+// A declared withheld set runs after the public operations of each kind when
+// it is present; absent, its operations are not run and the line says so.
+const withheld = withheldStatus(fixture);
+if (withheld) process.stderr.write(`${withheldLine(withheld, path.join(args.fixture, WITHHELD_DIR))}\n`);
 const checkout = gitCheckout(manifest.dir);
 
 /** A private copy of the deck and its files for one adapter session. */
@@ -135,7 +139,7 @@ try {
   // ---- read sessions: rendering and semantics, one deck copy each ----------
   for (const kind of ["render", "semantics"]) {
     if (!kinds.includes(kind)) continue;
-    const all = readLines(path.join(fixture, "ops", `${kind}.jsonl`));
+    const all = [...readLines(path.join(fixture, "ops", `${kind}.jsonl`)), ...(withheldOpsOf(fixture, kind) ?? [])];
     const ops = all.filter((o) => !filter || filter.test(o.id)).slice(0, limit);
     const run = beginKind(kind, all.length);
     const outFile = path.join(outDir, `${kind}.jsonl`);
@@ -163,7 +167,7 @@ try {
 
   // ---- write scenarios: a fresh deck copy and adapter session each --------
   if (kinds.includes("scenarios")) {
-    const { scenarios: all } = JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8"));
+    const all = [...JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8")).scenarios, ...(withheldScenariosOf(fixture) ?? [])];
     const scenarios = all.filter((s) => !filter || filter.test(s.id)).slice(0, limit);
     const run = beginKind("scenarios", all.length, { steps_total: all.reduce((n, s) => n + s.steps.length, 0), steps_run: 0 });
     const outFile = path.join(outDir, "scenarios.jsonl");

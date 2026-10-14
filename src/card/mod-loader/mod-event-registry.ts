@@ -43,7 +43,10 @@ export interface RegisteredModEvent {
   /** the contributing mod ("integrate"). */
   readonly modName: string;
   /** the stage (`event :x, :integrate` - event.rb's stage position;
-   *  absent = recorded without a stage, resolved by the execution seam). */
+   *  absent = recorded without a stage, resolved by the execution seam).
+   *  Ruby clears @stage when before:/after:/around: is declared
+   *  (options.rb:76), so an event carrying either relative ordering has no
+   *  `at` of its own and inherits its target's stage at dispatch. */
   readonly at?: ModEventStage;
   /** the `on:` triggers (`on: :create`); "save" is stored verbatim - the
    *  execution seam applies Ruby's :save -> [:create, :update] expansion
@@ -65,6 +68,8 @@ export interface RegisteredModEvent {
   readonly trigger?: "required";
   /** `after:` relative ordering, stored verbatim (see ModEventRegistration). */
   readonly after?: string;
+  /** `before:` relative ordering, stored verbatim (see ModEventRegistration). */
+  readonly before?: string;
   readonly priority?: number;
   readonly fn: ModEventFn;
 }

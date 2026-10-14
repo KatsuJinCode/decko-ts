@@ -44,7 +44,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
 import { createRenderTestStorage, seedCard, seedReference, type RenderTestStorage } from "./render-test-storage.js";
-import { PRODUCTION_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/production-deck-served-deltas.js";
+import { CONFIGURED_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/configured-deck-served-deltas.js";
 
 /** The cardtype cards the codename registry needs for typeCode gates. */
 async function seedCardtypes(s: RenderTestStorage): Promise<void> {
@@ -91,10 +91,10 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     const body = pointerListItemBodyForUnknown(
       "phantom item",
       undefined,
-      PRODUCTION_PHANTOM_ITEM_TYPE,
+      CONFIGURED_PHANTOM_ITEM_TYPE,
     );
     expect(body).toMatch(/<div class='bar [^']*TYPE-basic_c[^']*with-bar-menu/);
-    expect(body).toContain(`data-card-type-id='${PRODUCTION_PHANTOM_ITEM_TYPE.typeId}'`);
+    expect(body).toContain(`data-card-type-id='${CONFIGURED_PHANTOM_ITEM_TYPE.typeId}'`);
     expect(body).toContain("data-card-type-name='BasicCs'");
     expect(body).not.toContain("TYPE-consideration");
     expect(body).not.toContain("data-card-type-id='2979'");
@@ -120,7 +120,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     const body = pointerListItemBodyForUnknown(
       "phantom item",
       identity,
-      PRODUCTION_PHANTOM_ITEM_TYPE,
+      CONFIGURED_PHANTOM_ITEM_TYPE,
     );
     expect(body).toMatch(/<div class='bar [^']*TYPE-consideration[^']*with-bar-menu/);
     expect(body).toContain("data-card-type-id='2979'");
