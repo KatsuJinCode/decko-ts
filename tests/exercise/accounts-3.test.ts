@@ -622,12 +622,17 @@ describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, 
 
     // --- follow the emailed link, exactly as the mail carries it ---------
     const confirmed = await fetch(linkLine, { redirect: "manual" });
-    expect(confirmed.status).toBe(302);
+    // Ruby's CUD hard redirect is 303 (decko/lib/card_controller/
+    // response.rb:29-33) and its address is Card::Path#path's PATH form:
+    // mark + view render "#{mark}/#{view}" and the view never also lands
+    // in the query (mod/format/lib/card/path.rb:37-45 + :60-62) — so the
+    // browser lands on /<owner_name>+*account/edit.
+    expect(confirmed.status).toBe(303);
     const location = confirmed.headers.get("location") ?? "";
     expect(decodeURIComponent(location)).toContain(
       `${ownerName.replace(/ /g, "_")}${ACCOUNT_MARK_SUFFIX}`,
       );
-      expect(location).toContain("view=edit");
+      expect(decodeURIComponent(location).endsWith("/edit")).toBe(true);
     const confirmCookie = sessionTokenOf(confirmed.headers.get("set-cookie"));
 
     // --- set the new password under that link's session -----------------
