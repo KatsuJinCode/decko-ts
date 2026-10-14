@@ -83,6 +83,10 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // would deny the whole deck. 0009 rather than 0007 because 0007 is reserved
   // above.
   { filename: "0009-demo-account-read-rules.sql", number: "0009" },
+  // The sign-in throttle's counter table (src/card/auth/signin-security.ts).
+  // The engine also creates it on first use; this entry provisions it up
+  // front.
+  { filename: "0010-auth-signin-throttle.sql", number: "0010" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

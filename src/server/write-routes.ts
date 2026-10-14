@@ -104,6 +104,7 @@ import { composeCardRecord, type CardRecord } from "../card/fetch/card-record.js
 import type { CardsRow } from "./schema.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
+import { signinSecurityPolicy } from "../card/auth/signin-security.js";
 import {
   sendAccountVerificationToken,
   sendAccountWelcomeEmail,
@@ -355,16 +356,45 @@ export function readSessionCookie(cookieHeader: unknown): string | null {
 
 /** The Set-Cookie header value for a fresh session token (the /_signin and
  *  /update/*signin success surfaces). */
-export function sessionCookieHeader(token: string): string {
+export function sessionCookieHeader(token: string, secure = false): string {
   return (
     `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; ` +
-    `Max-Age=${SESSION_COOKIE_MAX_AGE}`
+    `Max-Age=${SESSION_COOKIE_MAX_AGE}${secure ? "; Secure" : ""}`
   );
 }
 
 /** The cleared-cookie header (the signout surface). */
-export function clearedSessionCookieHeader(): string {
-  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export function clearedSessionCookieHeader(secure = false): string {
+  return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
+}
+
+/** DECKO_COOKIE_SECURE: "auto" (default), "always" or "never". */
+export type CookieSecureSetting = "auto" | "always" | "never";
+
+function cookieSecureSetting(): CookieSecureSetting {
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
+  const raw = (proc?.env?.["DECKO_COOKIE_SECURE"] ?? "").trim().toLowerCase();
+  if (raw === "" || raw === "auto") return "auto";
+  if (raw === "always" || raw === "never") return raw;
+  throw new Error(`DECKO_COOKIE_SECURE must be "auto", "always" or "never", got ${JSON.stringify(raw)}`);
+}
+
+/** Whether the session cookie carries Secure for this request
+ *  (docs/SECURITY.md, divergence 4). Under "auto" it does when the client
+ *  reached the deck over https: the request's own scheme, or
+ *  `X-Forwarded-Proto: https` from a TLS-terminating proxy (a forged header
+ *  can only make the cookie stricter). "always" sets it unconditionally, for
+ *  a proxy that forwards no scheme; "never" omits it, for local http
+ *  development. */
+export function sessionCookieSecure(
+  req: Pick<WriteRouteRequest, "scheme" | "headers">,
+  setting: CookieSecureSetting = cookieSecureSetting(),
+): boolean {
+  if (setting === "always") return true;
+  if (setting === "never") return false;
+  if (req.scheme === "https") return true;
+  const forwarded = req.headers["x-forwarded-proto"];
+  return typeof forwarded === "string" && forwarded.split(",")[0]!.trim().toLowerCase() === "https";
 }
 
 // -----------------------------------------------------------------------
@@ -1182,7 +1212,10 @@ async function handleSigninUpdate(
     return fail(`${field} missing`, `${field} can't be blank`);
   }
   const sessions = new SessionStore({ driver: ctx.driver });
-  const outcome = await signinAccount(ctx.driver, sessions, email, password);
+  const outcome = await signinAccount(ctx.driver, sessions, email, password, {
+    clientAddress: ctx.ipAddress ?? req.headers["cf-connecting-ip"] ?? req.headers["x-forwarded-for"],
+    now: ctx.now,
+  });
   if (!outcome.ok) {
     // The recorded Ruby ladder splits by failure class: the blank-field
     // validations (account_email_missing / account_password_missing) render
@@ -1205,13 +1238,13 @@ async function handleSigninUpdate(
     const body = jsonResponse(200, { redirect: target });
     return {
       status: body.status,
-      headers: { ...body.headers, "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+      headers: { ...body.headers, "Set-Cookie": sessionCookieHeader(outcome.session.token, sessionCookieSecure(req)) },
       body: body.body,
     };
   }
   return {
     status: 303,
-    headers: { Location: target, "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+    headers: { Location: target, "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token, sessionCookieSecure(req)) },
     body: "",
   };
 }
@@ -1246,7 +1279,12 @@ async function handleResetPasswordTrigger(
   // an unknown or blank address is an error on :email, a known-but-inactive
   // account on :account. The JSON flavor's shown string carries the same key
   // Ruby renders, so the alert does not double-prefix it.
-  if (!outcome.ok) {
+  // Under the uniform-failure policy (docs/SECURITY.md, divergence 4) an
+  // unrecognized or inactive address gets the same redirect a sent reset
+  // does, and no mail; a blank address is still an error.
+  const hideAccountState =
+    !outcome.ok && outcome.reason !== "blank_email" && signinSecurityPolicy().uniformFailure;
+  if (!outcome.ok && !hideAccountState) {
     const key = outcome.reason === "not_active" ? "ACCOUNT" : "EMAIL";
     return fail(outcome.message, `${key}: ${outcome.message}`, key);
   }
@@ -1277,7 +1315,7 @@ async function handleSignout(
   delete visit.history;
   visit.cards = {};
   const target = cardUrl(req, `/${locationName("*signin")}`);
-  const headers = { "Cache-Control": "no-store", "Set-Cookie": clearedSessionCookieHeader() };
+  const headers = { "Cache-Control": "no-store", "Set-Cookie": clearedSessionCookieHeader(sessionCookieSecure(req)) };
   if (json) {
     const body = jsonResponse(200, { redirect: target });
     return { ...body, headers: { ...body.headers, ...headers } };
