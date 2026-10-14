@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T21:52:47.001Z",
+  "generatedAt": "2026-10-14T23:28:43.524Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -9339,6 +9339,37 @@
         ],
         "views": [],
         "events": []
+      },
+      "seed": {
+        "seed_cards": 604,
+        "port_boot_seed": {
+          "cards": 38,
+          "in_seed": 38,
+          "not_in_seed": [],
+          "seed_cards_not_booted": 566
+        },
+        "port_seed": {
+          "cards": 3,
+          "present": 1
+        },
+        "deck": {
+          "name": "synthetic-v2",
+          "present": 604,
+          "missing": [],
+          "codename_differs": [],
+          "type_differs": [
+            "email_stylesheet"
+          ],
+          "content_differs": [
+            "administrator+*member",
+            "password_reset_email+*text_message",
+            "password_reset_email+*html_message",
+            "*all+*script+*asset_output",
+            "*all+*style+*asset_output",
+            "follower_notification_email+*html_message",
+            "*recent_setting"
+          ]
+        }
       },
       "inv": {
         "gem": "card-mod-defaults-0.20.0",

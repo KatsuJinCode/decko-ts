@@ -26,7 +26,7 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateMod, loadGrades, saveGrades, specificDeclarations, summariseGrade } from "./behaviour.mjs";
+import { evaluateMod, evaluateSeedMod, loadGrades, saveGrades, specificDeclarations, summariseGrade } from "./behaviour.mjs";
 
 // ---------------------------------------------------------------------------
 // config
@@ -821,10 +821,12 @@ function renderBehaviourMd(report) {
   const lines = [];
   const evaluated = report.mods.filter((m) => m.classification.status !== "ignored");
   const done = evaluated.filter((m) => m.behaviour.status === "behaviour-complete");
+  const seedOnly = report.mods.filter((m) => m.classification.status === "ignored" && m.seed);
+  const notEvaluated = report.mods.filter((m) => m.classification.status === "ignored" && !m.seed);
   lines.push("## Behavioural verdict");
   lines.push("");
   lines.push(
-    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods (${report.mods.length - evaluated.length} not evaluated: ${report.mods.filter((m) => m.classification.status === "ignored").map((m) => `\`${m.gem}\``).join(", ")}).`,
+    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
   );
   lines.push("");
   lines.push(
@@ -843,7 +845,7 @@ function renderBehaviourMd(report) {
   lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|");
   for (const m of report.mods) {
     if (m.classification.status === "ignored") {
-      lines.push(`| \`${m.gem}\` | not evaluated | | | | | | | | |`);
+      lines.push(`| \`${m.gem}\` | ${m.seed ? "seed only (see below)" : "not evaluated"} | | | | | | | | |`);
       continue;
     }
     const s = m.behaviour.summary;
@@ -852,6 +854,23 @@ function renderBehaviourMd(report) {
     );
   }
   lines.push("");
+  for (const m of seedOnly) {
+    const d = m.seed.deck;
+    lines.push(`### ${m.gem}: seed comparison`);
+    lines.push("");
+    lines.push(
+      `The gem declares no views and no events; it contributes seed data. Its seeded-deck dump (\`data/fixtures/real/cards.yml\`, ${m.seed.seed_cards} live cards) is compared card by card, by key, with the \`${d.name}\` fixture deck that Ruby built, and with the port's own \`db/seed.sql\`.`,
+    );
+    lines.push("");
+    lines.push(`- present in ${d.name}: ${d.present}/${m.seed.seed_cards}; missing: ${d.missing.join(", ") || "(none)"}`);
+    lines.push(`- codename differs: ${d.codename_differs.join(", ") || "(none)"}`);
+    lines.push(`- type differs: ${d.type_differs.join(", ") || "(none)"}`);
+    lines.push(`- db_content differs (${d.content_differs.length}): ${d.content_differs.join(", ") || "(none)"}. A deck's content diverges from its seed as the deck is used (membership, recent settings, compiled asset outputs), so these are listed, not judged.`);
+    const b = m.seed.port_boot_seed;
+    lines.push(`- the port's fresh-deck seed (\`src/card/auth/boot-seed.ts\`, bootstrapFreshDeck: the core fixture plus the account-system cards): ${b.cards} cards, ${b.in_seed} of them in this seed${b.not_in_seed.length ? `; not in it: ${b.not_in_seed.join(", ")}` : ""}. **${b.seed_cards_not_booted} of this gem's ${m.seed.seed_cards} seed cards are not created by the port's own seed**: a deck the port provisions itself lacks them, and every fixture deck graded here has them only because Ruby built it (reference-harness/oracle/build-deck.rb).`);
+    lines.push(`- the port's demo seed (\`db/seed.sql\`): ${m.seed.port_seed.cards} cards, ${m.seed.port_seed.present} of them in this seed.`);
+    lines.push("");
+  }
   lines.push("### Unexercised and differing declarations, per mod");
   lines.push("");
   for (const m of report.mods) {
@@ -1021,7 +1040,9 @@ function main() {
     const cls = classify(inv, surface, pins);
     const modId = g.name.replace(/-0\.\d+\.\d+$/, "");
     const behaviour = evaluateMod(REPO, g.path, modId, grades, specific);
-    return { gem: g.name, version: g.version, classification: cls, behaviour, inv, pins };
+    // A gem with no set/ tree but a seed dump is evaluated by its seed.
+    const seed = cls.status === "ignored" ? evaluateSeedMod(REPO, g.path) : null;
+    return { gem: g.name, version: g.version, classification: cls, behaviour, ...(seed ? { seed } : {}), inv, pins };
   });
 
   const report = {

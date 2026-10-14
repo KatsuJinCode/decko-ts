@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-14T21:52:47.001Z
+Generated: 2026-10-14T23:28:43.524Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -17,7 +17,7 @@ Mods scanned: **33**
 
 ## Behavioural verdict
 
-Behaviour-complete: **18** of 31 evaluated mods (2 not evaluated: `card-mod-defaults-0.20.0`, `card-mod-delayed_job-0.20.0`).
+Behaviour-complete: **18** of 31 evaluated mods. Seed-only, evaluated by seed comparison: `card-mod-defaults-0.20.0`. Not evaluated: `card-mod-delayed_job-0.20.0`.
 
 A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html; views declared in other formats can only be credited by tests.
 
@@ -40,7 +40,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 | `card-mod-comment-0.20.0` | behaviour-complete | 7 | 2 | 0 | 5 | 0 | 1 | 1 | 0 |
 | `card-mod-content-0.20.0` | behaviour-complete | 9 | 7 | 0 | 2 | 0 | 3 | 3 | 0 |
 | `card-mod-date-0.20.0` | behaviour-complete | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `card-mod-defaults-0.20.0` | not evaluated | | | | | | | | |
+| `card-mod-defaults-0.20.0` | seed only (see below) | | | | | | | | |
 | `card-mod-delayed_job-0.20.0` | not evaluated | | | | | | | | |
 | `card-mod-edit-0.20.0` | behaviour-incomplete | 43 | 41 | 2 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-email-0.20.0` | behaviour-complete | 11 | 3 | 0 | 8 | 0 | 0 | 0 | 0 |
@@ -62,6 +62,17 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 | `card-mod-tabs-0.20.0` | behaviour-complete | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-tinymce_editor-0.20.0` | behaviour-complete | 11 | 9 | 0 | 2 | 0 | 0 | 0 | 0 |
 | `card-mod-virtual-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
+
+### card-mod-defaults-0.20.0: seed comparison
+
+The gem declares no views and no events; it contributes seed data. Its seeded-deck dump (`data/fixtures/real/cards.yml`, 604 live cards) is compared card by card, by key, with the `synthetic-v2` fixture deck that Ruby built, and with the port's own `db/seed.sql`.
+
+- present in synthetic-v2: 604/604; missing: (none)
+- codename differs: (none)
+- type differs: email_stylesheet
+- db_content differs (7): administrator+*member, password_reset_email+*text_message, password_reset_email+*html_message, *all+*script+*asset_output, *all+*style+*asset_output, follower_notification_email+*html_message, *recent_setting. A deck's content diverges from its seed as the deck is used (membership, recent settings, compiled asset outputs), so these are listed, not judged.
+- the port's fresh-deck seed (`src/card/auth/boot-seed.ts`, bootstrapFreshDeck: the core fixture plus the account-system cards): 38 cards, 38 of them in this seed. **566 of this gem's 604 seed cards are not created by the port's own seed**: a deck the port provisions itself lacks them, and every fixture deck graded here has them only because Ruby built it (reference-harness/oracle/build-deck.rb).
+- the port's demo seed (`db/seed.sql`): 3 cards, 1 of them in this seed.
 
 ### Unexercised and differing declarations, per mod
 

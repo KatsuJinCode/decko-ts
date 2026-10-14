@@ -206,16 +206,32 @@ export function summariseGrade(repo, gradeReport, extra = null) {
 const partKey = (p) => p.trim().toLowerCase().replace(/[^a-z0-9*]+/g, "_").replace(/^_+|_+$/g, "");
 const nameKey = (n) => n.split("+").map(partKey).join("+");
 
-function deckCardIndex(dbPath) {
+// A compound card's row stores no name and no key (left_id/right_id only);
+// its key is derived from its parts.
+function deckRows(dbPath) {
   const db = new DatabaseSync(dbPath, { readOnly: true });
-  const rows = db.prepare("SELECT id, key, codename, type_id FROM cards WHERE trash = 0 OR trash IS NULL").all();
+  const rows = db
+    .prepare("SELECT id, key, codename, type_id, left_id, right_id, db_content FROM cards WHERE trash = 0 OR trash IS NULL")
+    .all();
   db.close();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const keyOf = (r, depth = 0) => {
+    if (r.key) return r.key;
+    if (r.left_id == null || r.right_id == null || depth > 8) return null;
+    const l = byId.get(r.left_id);
+    const rt = byId.get(r.right_id);
+    const lk = l && keyOf(l, depth + 1);
+    const rk = rt && keyOf(rt, depth + 1);
+    return lk && rk ? `${lk}+${rk}` : null;
+  };
+  for (const r of rows) r.key = keyOf(r);
+  return { rows, byId };
+}
+
+function deckCardIndex(dbPath) {
+  const { rows, byId } = deckRows(dbPath);
   const byKey = new Map();
-  const byId = new Map();
-  for (const r of rows) {
-    byKey.set(r.key, r);
-    byId.set(r.id, r);
-  }
+  for (const r of rows) if (r.key) byKey.set(r.key, r);
   return { byKey, byId };
 }
 
@@ -415,4 +431,151 @@ export function loadGrades(path) {
 
 export function saveGrades(path, grades) {
   writeFileSync(path, JSON.stringify({ format: "decko-ts-graded-ops/1", grades }, null, 1) + "\n");
+}
+
+// ---------------------------------------------------------------------------
+// seed-only mods (card-mod-defaults): compare the seed with decks
+// ---------------------------------------------------------------------------
+
+// The fixtures dump (data/fixtures/real/cards.yml) is the seeded deck Ruby
+// produces; each `cards_NNN:` entry carries id, key, codename, type_id, trash
+// and db_content. Only those fields are read.
+function yamlScalar(raw) {
+  if (/^'.*'$/.test(raw)) return raw.slice(1, -1).replaceAll("''", "'");
+  if (/^".*"$/.test(raw)) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw.slice(1, -1);
+    }
+  }
+  return raw;
+}
+
+function parseCardsDump(src) {
+  const cards = [];
+  let cur = null;
+  let block = null; // field name of an open |- block
+  let quoted = null; // { field, text } of an open multi-line "..." scalar
+  const closesQuote = (t) => /(^|[^\\])"$/.test(t);
+  for (const line of src.split(/\r?\n/)) {
+    if (quoted) {
+      // YAML double-quoted folding: continuation lines join with one space,
+      // an empty line is a newline, a trailing backslash joins with none.
+      const t = line.trim();
+      if (t === "") quoted.text += "\\n";
+      else if (quoted.text.endsWith("\\") && !quoted.text.endsWith("\\\\")) quoted.text = quoted.text.slice(0, -1) + t;
+      else quoted.text += (quoted.text.endsWith("\\n") ? "" : " ") + t;
+      if (closesQuote(t)) {
+        cur[quoted.field] = yamlScalar(quoted.text);
+        quoted = null;
+      }
+      continue;
+    }
+    if (/^cards_\d+:\s*$/.test(line)) {
+      cur = {};
+      cards.push(cur);
+      block = null;
+      continue;
+    }
+    if (!cur) continue;
+    if (block) {
+      if (line.startsWith("    ") || line === "") {
+        cur[block] = cur[block] === "" ? line.slice(4) : `${cur[block]}\n${line.slice(4)}`;
+        continue;
+      }
+      cur[block] = cur[block].replace(/\n+$/, "");
+      block = null;
+    }
+    const m = line.match(/^  ([a-z_]+):(?: (.*))?$/);
+    if (!m) continue;
+    const [, field, raw = ""] = m;
+    if (raw.startsWith('"') && (raw.length === 1 || !closesQuote(raw.slice(1)))) {
+      quoted = { field, text: raw };
+      continue;
+    }
+    if (raw === "|-" || raw === "|") {
+      cur[field] = "";
+      block = field;
+    } else {
+      cur[field] = yamlScalar(raw);
+    }
+  }
+  return cards;
+}
+
+export function evaluateSeedMod(repo, gemPath) {
+  const dumpPath = join(gemPath, "data", "fixtures", "real", "cards.yml");
+  if (!existsSync(dumpPath)) return null;
+  const dump = parseCardsDump(readFileSync(dumpPath, "utf8")).filter((c) => String(c.trash) !== "1");
+  const dumpById = new Map(dump.map((c) => [String(c.id), c]));
+  // A compound card's dump row carries no key: it is left key + right key.
+  const keyOf = (c, depth = 0) => {
+    if (c.key) return c.key;
+    if (!c.left_id || !c.right_id || depth > 8) return "";
+    const l = dumpById.get(String(c.left_id));
+    const r = dumpById.get(String(c.right_id));
+    return l && r ? `${keyOf(l, depth + 1)}+${keyOf(r, depth + 1)}` : "";
+  };
+  for (const c of dump) c.key = keyOf(c);
+  const typeCode = (c) => dumpById.get(String(c.type_id))?.codename || null;
+
+  // The port's own seed. src/card/auth/boot-seed.ts (bootstrapFreshDeck) is
+  // what a fresh port-provisioned deck receives: the core fixture's rows
+  // (CORE_FIXTURE_SEED_CARDS, junctions by side ids) and the account-system
+  // cards (ACCOUNT_MOD_SEED_CARDS, matched to the dump by codename, or by
+  // name when the entry has none). db/seed.sql is the demo deck's seed.
+  const bootSrc = existsSync(join(repo, "src", "card", "auth", "boot-seed.ts"))
+    ? readFileSync(join(repo, "src", "card", "auth", "boot-seed.ts"), "utf8")
+    : "";
+  const section = (name) => {
+    const i = bootSrc.indexOf(`export const ${name}`);
+    return i < 0 ? "" : bootSrc.slice(i, bootSrc.indexOf("\n];", i));
+  };
+  const core = [...section("CORE_FIXTURE_SEED_CARDS").matchAll(
+    /\{ id: (\d+), name: (?:"[^"]*"|null), key: (?:"([^"]*)"|null), codename: (?:"[^"]*"|null), leftId: (\d+|null), rightId: (\d+|null)/g,
+  )].map((m) => ({ id: m[1], key: m[2] ?? null, left: m[3], right: m[4] }));
+  const coreById = new Map(core.map((c) => [c.id, c]));
+  const coreKey = (c) => c.key ?? `${coreKey(coreById.get(c.left))}+${coreKey(coreById.get(c.right))}`;
+  const dumpByCodename = new Map(dump.filter((c) => c.codename).map((c) => [c.codename, c]));
+  const dumpKeys = new Set(dump.map((c) => c.key));
+  const bootKeys = new Set(core.map(coreKey));
+  const unmatchedBoot = [];
+  for (const m of section("ACCOUNT_MOD_SEED_CARDS").matchAll(/\{ name: "([^"]*)"(?:, codename: "([^"]*)")?/g)) {
+    const hit = m[2] ? dumpByCodename.get(m[2]) : null;
+    if (hit) bootKeys.add(hit.key);
+    else if (dumpKeys.has(nameKey(m[1]))) bootKeys.add(nameKey(m[1]));
+    else unmatchedBoot.push(m[1]);
+  }
+  const seedSql = existsSync(join(repo, "db", "seed.sql")) ? readFileSync(join(repo, "db", "seed.sql"), "utf8") : "";
+  const portKeys = new Set([...seedSql.matchAll(/VALUES \(\s*\d+,\s*'[^']*',\s*'([^']*)'/g)].map((m) => m[1]));
+  const bootInSeed = [...bootKeys].filter((k) => dumpKeys.has(k));
+
+  const deckPath = join(repo, "reference-harness", "fixtures", "synthetic-v2", "deck", "deck.sqlite3");
+  const { rows, byId } = deckRows(deckPath);
+  const deck = new Map(rows.filter((r) => r.key).map((r) => [r.key, { ...r, type: byId.get(r.type_id)?.codename ?? null }]));
+
+  const out = {
+    seed_cards: dump.length,
+    port_boot_seed: {
+      cards: bootKeys.size + unmatchedBoot.length,
+      in_seed: bootInSeed.length,
+      not_in_seed: [...[...bootKeys].filter((k) => !dumpKeys.has(k)), ...unmatchedBoot],
+      seed_cards_not_booted: dump.length - bootInSeed.length,
+    },
+    port_seed: { cards: portKeys.size, present: 0 },
+    deck: { name: "synthetic-v2", present: 0, missing: [], codename_differs: [], type_differs: [], content_differs: [] } };
+  for (const c of dump) {
+    if (portKeys.has(c.key)) out.port_seed.present++;
+    const r = deck.get(c.key);
+    if (!r) {
+      out.deck.missing.push(c.key);
+      continue;
+    }
+    out.deck.present++;
+    if ((c.codename || null) !== (r.codename || null)) out.deck.codename_differs.push(c.key);
+    if (typeCode(c) !== (r.type || null)) out.deck.type_differs.push(c.key);
+    if ((c.db_content ?? "").trim() !== (r.db_content ?? "").trim()) out.deck.content_differs.push(c.key);
+  }
+  return out;
 }
