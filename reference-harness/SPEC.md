@@ -703,9 +703,10 @@ serves). Both sign tokens with the same fixture secret.
 
 ### What is compared
 
-Per journey: completion (every step ran); every observation on four aspects
-(address: path, query and HTTP status; text; structure; form fields); the mail
-sent; and the row delta in Decko's card tables (N4, with timestamps and
+Per journey: completion (every step ran); which editor (TinyMCE, ace or the
+plain field) took each `editor` step's content; every observation on four
+aspects (address: path, query and HTTP status; text; structure; form fields);
+the mail sent; and the row delta in Decko's card tables (N4, with timestamps and
 password digests masked, because a browser session cannot pin both engines'
 clocks). Observations are normalised by B1-B5 (`browser/lib/observe.mjs`):
 rendered text with whitespace collapsed and relative times and dates masked;

@@ -9,6 +9,8 @@
 //   - each observation, on four aspects: address (URL and HTTP status), text
 //     (what the page says), structure (its element tree) and fields (the form
 //     controls offered);
+//   - editor: which editor (tinymce, ace or the plain field) took each
+//     editor step's content;
 //   - mail: the messages sent;
 //   - rows: the row delta left in Decko's card tables.
 // A journey passes when every item passes. Failures are grouped by cause: the
@@ -122,6 +124,9 @@ for (const [id, exp] of Object.entries(expected)) {
   }
   const failedStep = act.steps?.find((s) => s.outcome === "failed");
   add("completion", "all steps", act.completed, failedStep ? { step: failedStep.i, do: failedStep.step, error: failedStep.error } : { error: act.error });
+  // Which editor took each editor step's content (tinymce, ace, plain).
+  const vias = (r) => (r.steps ?? []).filter((s) => "editor" in s.step).map((s) => s.via ?? "(not recorded)");
+  if (vias(exp).length > 0) add("editor", "editor used", eq(vias(exp), vias(act)), { expected: vias(exp), actual: vias(act) });
   const actObs = Object.fromEntries((act.observations ?? []).map((o) => [o.label, o]));
   for (const o of exp.observations ?? []) {
     const a = actObs[o.label];
