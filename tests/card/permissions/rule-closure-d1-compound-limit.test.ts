@@ -20,8 +20,10 @@ import {
 import { CloudflareD1Adapter } from "../../../src/server/drivers/d1.js";
 
 // A small deck: simple cards, set patterns, rules with stored and composed
-// keys, a trashed rule, and a non-rule junction.
-const SCHEMA = `CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, "key" TEXT, left_id INTEGER, right_id INTEGER, trash INTEGER NOT NULL DEFAULT 0)`;
+// keys, a trashed rule, and a non-rule junction. db_content is part of the
+// production schema (db/schema.sqlite.sql) and the statement projects it, so
+// the stub carries it too; no row needs a value.
+const SCHEMA = `CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, "key" TEXT, left_id INTEGER, right_id INTEGER, db_content TEXT, trash INTEGER NOT NULL DEFAULT 0)`;
 const ROWS: [number, string | null, number | null, number | null, number][] = [
   [1, "a", null, null, 0],
   [2, "*self", null, null, 0],

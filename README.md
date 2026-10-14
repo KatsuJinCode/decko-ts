@@ -400,7 +400,10 @@ reproducible with `tests/card/render/deep-nesting-trip-attribution.test.ts`):
 a cold render costs four fixed round trips plus one per nesting level below
 the root, however many cards each level holds — breadth costs nothing extra
 (a 200-card fan is 5 round trips) — while Ruby sends one query per card at
-every depth. The `#1282` constant-per-depth claim is not met; the
+every depth. That holds on a deck that carries its `*all+*read` rule card,
+which every real deck does: the read permission's one-time setup rides the
+prelude batch, so it costs statements and no round trips. The `#1282`
+constant-per-depth claim is not met; the
 depth-sweep test (`tests/card/render/depth-sweep.test.ts`) asserts the same
 slope at every depth up to the renderer's 20-level ceiling.
 

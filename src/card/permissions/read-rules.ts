@@ -205,8 +205,10 @@ export function permissionGateCountJsonArm(): string {
 export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
   const statements: SQLStatement[] = [
     {
+      // key and left_id ride along so the signed-out viewer's own key comes
+      // from this batch (actorKeyFromResults) instead of a point fetch.
       sql:
-        `SELECT id, codename FROM cards WHERE codename IN ` +
+        `SELECT id, codename, key, left_id FROM cards WHERE codename IN ` +
         `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}', ` +
         `'${ADMINISTRATOR_CODENAME}', '${DECKOBOT_CODENAME}') ` +
         `AND trash = 0 ORDER BY id`,
@@ -403,6 +405,32 @@ export function anonymousIdFromResults(results: SQLQueryResult[]): number | unde
 }
 
 /**
+ * The actor card's canonical key, answered from the permission batch when
+ * that batch carries the actor's row (statement 1 projects key and left_id
+ * for the codename cards, so the signed-out viewer's card is always present).
+ *
+ * A card with no left_id keys by its stored `key` column, which is exactly
+ * what composeCardRecord (fetch/card-record.ts) yields for it; a compound
+ * card's key is composed from its sides, so it is NOT answered here. Returns
+ * undefined when the batch does not carry a simple actor row — the caller
+ * then reads the card by id, as before.
+ */
+export function actorKeyFromResults(
+  results: SQLQueryResult[],
+  actorId: number | undefined,
+): { key: string | undefined } | undefined {
+  if (actorId === undefined) return undefined;
+  const codenameRows = (results[0]?.rows ?? []) as Array<{
+    id: number;
+    key: string | null;
+    left_id: number | null;
+  }>;
+  const row = codenameRows.find((candidate) => candidate.id === actorId);
+  if (row === undefined || (row.left_id !== null && row.left_id !== undefined)) return undefined;
+  return { key: row.key ?? undefined };
+}
+
+/**
  * The Anonymous viewer's permission state — the viewer every default
  * computation runs as.
  * Anonymous joins no roles (account_holder.rb:40 all_enabled_roles is []
@@ -519,12 +547,18 @@ async function canReadByRuleLookupDepth(
   // RENDER path, so the rule-closure walk: every candidate here is a
   // pattern name joined to *read, which the scoped walk resolves exactly
   // (resolveRuleRowsByRuleKeys carries the equivalence measurement).
+  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
+  // The winning rule's content is read only by the _left delegation below,
+  // which applies to COMPOUND card names alone (the `cardName.isCompound`
+  // test in the loop). A simple or blank-key card therefore never needs the
+  // content, so it is not fetched: the blank-key verdict (seated on every
+  // cold render, render.ts seatBlankKeyReadVerdict) pays no content round
+  // trip. A compound card asks for it as before.
   const resolved = await resolveRuleRowsByRuleKeys(
     fetcher.driver,
     candidates.map((name) => DeckoName.parse(name).key),
-    true,
+    cardName?.isCompound === true,
   );
-  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
   for (const name of candidates) {
     const key = DeckoName.parse(name).key;
     const rule = resolved.get(key);
@@ -928,6 +962,12 @@ const RULE_SUFFIX_LAST_CHARS = [
  * Row ORDER is not part of the contract (the legacy statement has no
  * ORDER BY either); the check script reports whether it matched.
  *
+ * The projection carries each card's db_content alongside its composed key,
+ * so the rule card whose content the _left delegation inspects needs no
+ * second read (resolveRowsAgainst would otherwise ask for it in a query of
+ * its own). The legacy walk above omits the column; the row SETS (key, id)
+ * are what the two walks must agree on, and consumers read those.
+ *
  * AT MOST FIVE TERMS PER COMPOUND SELECT. Cloudflare D1 runs SQLite with
  * the compound-SELECT limit at 5 (measured in workerd's local D1: 5 terms
  * run, 6 answer "too many terms in compound SELECT"). The two left-arm edge
@@ -975,30 +1015,30 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `  UNION\n` +
   `  SELECT parent, child FROM tl\n` +
   `),\n` +
-  `resolved(id, ckey) AS (\n` +
-  `  SELECT c.id, c."key" FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
+  `resolved(id, ckey, content) AS (\n` +
+  `  SELECT c.id, c."key", c.db_content FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
   `  UNION\n` +
-  `  SELECT c.id, c."key" FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
+  `  SELECT c.id, c."key", c.db_content FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
   `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
   `  UNION\n` +
-  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key", j.db_content FROM resolved l\n` +
   `    JOIN dtl ON dtl.child = l.id\n` +
   `    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n` +
   `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
   `  UNION\n` +
-  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
   `    JOIN dr ON dr.child = r.id\n` +
   `    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n` +
   `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
   `  UNION\n` +
-  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
   `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
   `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
   `    WHERE ${endsInRuleSuffix(`('+' || r.ckey)`)}\n` +
   `)\n` +
-  `SELECT rs.ckey, rs.id FROM resolved rs\n` +
+  `SELECT rs.ckey, rs.id, rs.content FROM resolved rs\n` +
   `WHERE ${endsInRuleSuffix("rs.ckey")}`;
 
 /** The statement the render path's rule-closure walk runs. */
@@ -1071,6 +1111,47 @@ export async function resolveRuleRowsByRuleKeys(
   withContent: boolean,
 ): Promise<Map<string, ResolvedRuleRow>> {
   return resolveRowsAgainst(driver, keys, withContent, "ruleClosure");
+}
+
+/**
+ * The rule-closure walk as a batch member, for a caller that already has a
+ * batch in hand (the render's cold prepare batch). The walk depends only on
+ * the deck and the four setting names, never on another statement's result,
+ * so it rides that batch at no extra round trip; primeRuleClosureUniverse
+ * then seats its rows as the memo resolveRowsAgainst would have built.
+ *
+ * Returns undefined when this driver generation already holds the closure
+ * (nothing to fold). The walk statement is the same one resolveRowsAgainst
+ * issues on its own, so the memo built either way is identical.
+ */
+export function ruleClosureWalkStatement(driver: SQLDatabaseDriver): SQLStatement | undefined {
+  const cache = ruleResolutionCaches.get(driver);
+  if (cache !== undefined && universeFor(cache, "ruleClosure") !== undefined) return undefined;
+  return { sql: ruleClosureStatement(), params: [...TASK_RULE_SETTING_NAMES] };
+}
+
+/**
+ * Seat the rule-closure memo from the rows of a ruleClosureWalkStatement
+ * result that an earlier batch carried. A memo already present is kept (the
+ * first build wins, as in resolveRowsAgainst).
+ */
+export function primeRuleClosureUniverse(driver: SQLDatabaseDriver, result: SQLQueryResult): void {
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  if (universeFor(cache, "ruleClosure") !== undefined) return;
+  const universe = new Map<string, number>();
+  for (const row of (result.rows ?? []) as Array<{
+    ckey: string;
+    id: number;
+    content?: string | null;
+  }>) {
+    universe.set(row.ckey, row.id);
+    if (row.content !== undefined) cache.contentById.set(row.id, row.content);
+  }
+  setUniverseFor(cache, "ruleClosure", universe);
 }
 
 /** Which walk backs a resolution: the whole deck's composed-key universe, or
