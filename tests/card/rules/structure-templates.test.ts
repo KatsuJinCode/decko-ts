@@ -22,6 +22,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -35,6 +36,7 @@ import {
 } from "../../../src/card/rules/structure.js";
 import { DeckoName } from "../../../src/card/name.js";
 import type { SQLQueryResult } from "../../../src/server/driver.js";
+import { coldRoundTripLaw } from "../render/round-trip-law.js";
 
 // ---------------------------------------------------------------------------
 // pure mechanics
@@ -265,7 +267,7 @@ describe("RenderEngine structured content", () => {
       // Minimal copy of the governed pair (engine caches are per-instance).
       // The Basic type card (id 2) every real deck carries: the prelude's type
       // prime reads it. Without it the fetch ladder asks for the absent id again
-      // on every late read (13 round trips here, 6 with it).
+      // on every late read (11 round trips here, 3 with it).
       await seedCard(fresh, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
       await seedCard(fresh, { id: 100, name: "Page" });
       await seedCard(fresh, { id: 101, name: "*type", codename: "type" });
@@ -303,30 +305,33 @@ describe("RenderEngine structured content", () => {
       // universes. Zero render-byte change (this deck's other tests pass
       // unchanged).
       //
-      // Per-statement derivation (the waves' batched priming answers the
+      // Per-statement derivation (the wave's batched priming answers the
       // SAME questions Ruby resolves per-card through Card::Cache - only
       // the request batching differs):
-      //  +1  templateTypeNameStatement rides the prelude batch
-      //      (type_id_from_template reads the template rule card's own
-      //      type_id AND its NAME - templating.rb:25-27 + type.rb:78-80).
-      //      +0 round trips.
-      //  +1  the type-card prime (one chunked IN-list over every prepared
-      //      record's typeId - Ruby's Card#type_card quick_fetch(type_id)
-      //      per prepared card, type.rb:32-35) folded INTO the first wave
-      //      batch.
-      //  +2  wave seating round 1 (the rule candidates of the view-time
-      //      settings - resolveOptionsCard's *content options,
-      //      setHostOptionsParseFailure's *help/*structure/*default; Ruby's
-      //      Set#rule/rule_card fetches walk the same candidate names,
-      //      rule/all.rb - as chunked key IN-list + the depth-2 side-key
-      //      junction join).
-      //  +1  wave round 1's composition type fetch (a seated row's type
-      //      card - enrichAndStore's retrieveFromCacheById miss; the same
-      //      ladder-residue class the root composition has always paid).
-      //  +2  wave seating round 2 (depth-3 junction candidates whose sides
-      //      round 1 seated - "a junction's ids are the previous round's
-      //      ANSWERS").
-      //  +1  wave round 2's composition type fetch (same class as above).
+      //  RT1 (1)   the root key row.
+      //  RT2 (14)  the prelude batch. Its first statement reads the root's
+      //            type row AND that type's own type row (Page, then Basic):
+      //            the composition needs both, and the second used to be a
+      //            one-statement batch of its own after the prelude.
+      //            templateTypeNameStatement rides here too
+      //            (type_id_from_template reads the template rule card's
+      //            own type_id AND its NAME - templating.rb:25-27 +
+      //            type.rb:78-80).
+      //  RT3 (5)   the wave's one round: the Set type card, the type-card
+      //            prime (Ruby's Card#type_card quick_fetch(type_id) per
+      //            prepared card, type.rb:32-35), the rule candidates of the
+      //            view-time settings by key (resolveOptionsCard's *content
+      //            options, setHostOptionsParseFailure's
+      //            *help/*structure/*default; Ruby's Set#rule/rule_card
+      //            fetches walk the same candidate names, rule/all.rb), their
+      //            depth-2 junctions by side keys, and their depth-3 names
+      //            (Page+*type+*structure) through the depth-2 junction by
+      //            keys. Before the depth-3 key join this took two more
+      //            rounds: one to seat Page+*type, one to ask its +*structure
+      //            pair by ids. A side-key junction that comes back empty
+      //            (Basic+*type, *all+*structure here) is primed negative
+      //            from that answer; it used to be asked again by ids in a
+      //            later round.
       //  -1  REMOVED: the pre-waves rule-candidate PAIR point query
       //      (SELECT .. left_id=? AND right_id=? - Ruby's rule_card fetch
       //      by composed name): the wave seats (or negatively primes) the
@@ -340,30 +345,16 @@ describe("RenderEngine structured content", () => {
       //      (the pin below carries the current figures).
       //  Freshness: the deck_data_version stamp read folds LAST into the
       //  cold batch (+1 statement, +0 round trips).
-      //  Batched composition adds three: the compose type prime
-      //  (prefetch.ts primeComposeTypeInputs asks the prelude type row's
-      //  own type, id 2, which this six-card deck does not have - absent
-      //  ids are deliberately left unprimed (the fetch ladder's idToLex
-      //  read has no trash filter, so a primed miss could answer
-      //  differently), so the ladder still asks it later; on a real deck
-      //  the type exists and the prime replaces the ladder's reads); the
-      //  wave re-pends a junction whose compound side was unresolved
-      //  (render.ts, fetch-composer V3) and probes the rule pair
-      //  (Page+*type, *structure) as its own batch; and one more point
-      //  read of the absent id 2 on the late path. A fourth extra trip
-      //  (re-reading the prelude's type row, already composed and cached)
-      //  was a redundancy and is fixed: composeAndCache marks every
-      //  composed row as held for later type primes.
-      // Measured on this branch for this render, with the Basic card above:
-      // 24 statements and 6 round trips. The round-trip law (depth-sweep.test.ts:
-      // four fixed trips plus one per nesting level) gives 4 for this render: the
-      // title view nests nothing (0 levels). The two trips above it are
-      // single-statement batches: one by-id read (the second batch after the
-      // prelude) and the rule-pair probe for the junction Page+*type+*structure
-      // (the wave re-pends it as its own batch). Both sit above the law and are
-      // not folded into a neighbouring batch yet.
-      expect(cold.statements).toBe(24);
-      expect(cold.roundTrips).toBe(6);
+      //  Absent type ids are deliberately left unprimed (the fetch ladder's
+      //  idToLex read has no trash filter, so a primed miss could answer
+      //  differently), which is why the deck without the Basic card pays
+      //  the ladder's point reads.
+      // Measured 2026-10-14 for this render, with the Basic card above: 20
+      // statements and 3 round trips, which is the round-trip law
+      // (tests/card/render/round-trip-law.ts) for a render that nests
+      // nothing. The law test below asserts it on nesting structures too.
+      expect(cold.statements).toBe(20);
+      expect(cold.roundTrips).toBe(coldRoundTripLaw(0));
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip).
       fresh.counting.reset();
@@ -371,6 +362,156 @@ describe("RenderEngine structured content", () => {
       expect(fresh.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
     } finally {
       fresh.close();
+    }
+  });
+
+  // The cold round-trip law on structure-template renders: whatever rule
+  // governs the card (a *type, *self or *all structure) and however deep the
+  // template nests, a cold render pays the law's fixed trips plus one per
+  // level of nesting below the root. Each shape renders on its own deck, so
+  // every render is cold.
+  describe("cold round-trip law on structure-template renders", () => {
+    interface LawShape {
+      label: string;
+      root: string;
+      view: string;
+      levels: number;
+      /** Trips measured above the law, with their causes (see FIELD_EXTRA). */
+      aboveLaw?: number;
+      expectHtml: string[];
+      seed: (s: RenderTestStorage) => Promise<void>;
+    }
+    const seedSettings = async (s: RenderTestStorage): Promise<void> => {
+      await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
+      await seedCard(s, { id: 100, name: "Page" });
+      await seedCard(s, { id: 101, name: "*type", codename: "type" });
+      await seedCard(s, { id: 102, name: "*structure", codename: "structure" });
+      await seedCard(s, { id: 105, name: "*self", codename: "self" });
+      await seedCard(s, { id: 107, name: "*right", codename: "right" });
+      await seedCard(s, { id: 108, name: "*type plus right", codename: "type_plus_right" });
+      await seedCard(s, { id: 103, leftId: 100, rightId: 101 }); // Page+*type
+    };
+    // A structure that nests a FIELD (+body) measures two trips above the
+    // law, both single wave rounds (measured 2026-10-14):
+    //  - the field's *type plus right rule candidates are depth-4 names
+    //    (Page+body+*type plus right+*structure). The wave's key join reaches
+    //    depth 3, so the depth-3 parent (Page+body+*type plus right) is asked
+    //    in a second round.
+    //  - the late structure seat for the field card probes the pair
+    //    (Page+*type+*structure, body) in a round of its own.
+    // Pinned so that folding either one shows here.
+    const FIELD_EXTRA = 2;
+    const SHAPES: LawShape[] = [
+      {
+        label: "*type structure, title view (nests nothing)",
+        root: "Doc1",
+        view: "title",
+        levels: 0,
+        expectHtml: ["Doc1"],
+        seed: async (s) => {
+          await seedSettings(s);
+          await seedCard(s, { id: 104, leftId: 103, rightId: 102, dbContent: "T {{_self|title}}" });
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: null });
+        },
+      },
+      {
+        label: "*type structure, core view nesting only the card itself",
+        root: "Doc1",
+        view: "core",
+        levels: 0,
+        expectHtml: ["T ", "Doc1"],
+        seed: async (s) => {
+          await seedSettings(s);
+          await seedCard(s, { id: 104, leftId: 103, rightId: 102, dbContent: "T {{_self|title}}" });
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: null });
+        },
+      },
+      {
+        label: "*type structure nesting a field (one level)",
+        root: "Doc1",
+        view: "core",
+        levels: 1,
+        aboveLaw: FIELD_EXTRA,
+        expectHtml: ["FIELD BODY"],
+        seed: async (s) => {
+          await seedSettings(s);
+          await seedCard(s, { id: 104, leftId: 103, rightId: 102, dbContent: "{{+body|core}}" });
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: null });
+          await seedCard(s, { id: 130, name: "body" });
+          await seedCard(s, { id: 131, leftId: 120, rightId: 130, dbContent: "FIELD BODY" });
+        },
+      },
+      {
+        label: "*type structure nesting a field that nests a card (two levels)",
+        root: "Doc1",
+        view: "core",
+        levels: 2,
+        aboveLaw: FIELD_EXTRA,
+        expectHtml: ["LEAF BODY"],
+        seed: async (s) => {
+          await seedSettings(s);
+          await seedCard(s, { id: 104, leftId: 103, rightId: 102, dbContent: "{{+body|core}}" });
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: null });
+          await seedCard(s, { id: 130, name: "body" });
+          await seedCard(s, { id: 131, leftId: 120, rightId: 130, dbContent: "{{Leaf|core}}" });
+          await seedCard(s, { id: 132, name: "Leaf", dbContent: "LEAF BODY" });
+        },
+      },
+      {
+        label: "*self structure nesting a card (one level)",
+        root: "Doc1",
+        view: "core",
+        levels: 1,
+        expectHtml: ["LEAF BODY"],
+        seed: async (s) => {
+          await seedSettings(s);
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: "own content" });
+          await seedCard(s, { id: 140, leftId: 120, rightId: 105 }); // Doc1+*self
+          await seedCard(s, { id: 141, leftId: 140, rightId: 102, dbContent: "{{Leaf|core}}" });
+          await seedCard(s, { id: 132, name: "Leaf", dbContent: "LEAF BODY" });
+        },
+      },
+      {
+        label: "*all structure nesting a card (one level)",
+        root: "Doc1",
+        view: "core",
+        levels: 1,
+        expectHtml: ["LEAF BODY"],
+        seed: async (s) => {
+          await seedSettings(s);
+          // *all+*structure, on the *all card the stock read substrate seeds
+          await seedCard(s, { id: 150, leftId: BOOTSTRAP_READ_SUBSTRATE_IDS.all, rightId: 102, dbContent: "{{Leaf|core}}" });
+          await seedCard(s, { id: 120, name: "Doc1", typeId: 100, dbContent: null });
+          await seedCard(s, { id: 132, name: "Leaf", dbContent: "LEAF BODY" });
+          // Leaf+*self+*structure "_self": Leaf renders its own content
+          // rather than the *all template, which would nest Leaf in itself.
+          await seedCard(s, { id: 133, leftId: 132, rightId: 105 });
+          await seedCard(s, { id: 134, leftId: 133, rightId: 102, dbContent: "_self" });
+        },
+      },
+    ];
+    for (const shape of SHAPES) {
+      const expected = coldRoundTripLaw(shape.levels) + (shape.aboveLaw ?? 0);
+      const title =
+        shape.aboveLaw === undefined
+          ? `${shape.label}: the law, ${expected} round trips`
+          : `${shape.label}: ${expected} round trips, ${shape.aboveLaw} above the law`;
+      it(title, async () => {
+        const fresh = await createRenderTestStorage();
+        try {
+          await shape.seed(fresh);
+          // The name environment is process-global and the first engine of
+          // the file installed it; this deck's codenames (the field shapes
+          // resolve :type_plus_right) answer only through its own engine.
+          fresh.fetcher.installNameEnvironment();
+          fresh.counting.reset();
+          const html = await fresh.engine.render(shape.root, shape.view);
+          for (const fragment of shape.expectHtml) expect(html).toContain(fragment);
+          expect(fresh.counting.snapshot().roundTrips).toBe(expected);
+        } finally {
+          fresh.close();
+        }
+      });
     }
   });
 

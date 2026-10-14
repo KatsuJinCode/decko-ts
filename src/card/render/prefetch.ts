@@ -276,9 +276,14 @@ export async function prefetchInclusionClosure(
   let typeRowSlot = -1;
   const rootTypeId = root.typeId;
   if (typeof rootTypeId === "number" && Number.isSafeInteger(rootTypeId) && rootTypeId > 0) {
+    // The type row rides with ITS type row: the type's own type id is a column
+    // of the type row, so one statement returns both. The composition below
+    // finds that type row held (primeComposeTypeInputs skips ids the caller's
+    // own set holds). Before, the type-of-type read was a separate batch after
+    // this one, a round trip that carried a single row.
     preludeStatements.push({
-      sql: `SELECT * FROM cards WHERE id = ? AND trash = 0`,
-      params: [rootTypeId],
+      sql: `SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0`,
+      params: [rootTypeId, rootTypeId],
     });
     typeRowSlot = preludeStatements.length - 1;
   }

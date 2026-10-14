@@ -25,6 +25,7 @@ import {
 } from "./render-test-storage.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
+import { coldRoundTripLaw } from "./round-trip-law.js";
 
 // Receipt refresh is opt-in (see header): the depth-sweep assertions below
 // run on every execution; the TS results file is rewritten
@@ -32,8 +33,20 @@ import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
 const ARTIFACT_WRITE_REQUESTED = process.env.DEPTH_SWEEP_WRITE_ARTIFACT === "1";
 
 const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20];
-// Ruby depth+3 truth, measured on the oracle app (the recorded Ruby results file, not in the public package).
+// Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
+// THE LAW (round-trip-law.ts): three fixed round trips plus one per nesting level below the
+// root. A depth-N chain nests N-1 levels below its root.
+const expectedRts = (depth: number): number => coldRoundTripLaw(depth - 1);
+// Statements: twenty at depth 1 plus one closure statement per level, plus
+// the extra statements of the wave's depth-3 key join. That join carries at
+// most 30 names per statement (90 bound parameters, under D1's 100-parameter
+// cap), and every chain card brings its own *self rule candidates (about four
+// depth-3 names each), so the join needs a second statement from depth 6 and
+// a third from depth 14. Statements, not round trips: they ride the same
+// wave batch.
+const KEY_JOIN_EXTRA = (depth: number): number => (depth >= 14 ? 2 : depth >= 6 ? 1 : 0);
+const expectedSts = (depth: number): number => 20 + Math.max(0, depth - 1) + KEY_JOIN_EXTRA(depth);
 
 async function seedChain(storage: RenderTestStorage, depth: number): Promise<void> {
   // RichText cardtype (codename :basic) - the same cardtype the captured fixtures use.
@@ -105,17 +118,14 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     // Structural assertions: cold round trips scale with the CHAIN at slope
     // 1 (one batch per unfetched inclusion level) - the trade for rows-read
     // dropping from O(deck x passes) per render to O(page). Ruby's measured
-    // truth is depth+3; the TS curve is that same line, depth by depth (see
-    // the note below on which deck it is measured). Statements add exactly
-    // one fetch statement per level.
+    // truth is depth+3; the TS curve is depth+2, one round trip below Ruby's
+    // at every depth Ruby was measured on (1, 2, 4, 8, 16). Statements add
+    // one fetch statement per level (see expectedSts).
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
-    // Structural shape: round trips = 4 + max(0, depth-1) and statements =
-    // 21 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
-    // batch per unfetched inclusion level), independent of deck size.
-    // Ruby's measured truth is depth+3: the TS curve EQUALS it at every
-    // depth Ruby was measured on (1, 2, 4, 8, 16), on a deck that carries
-    // its read rule.
+    // Structural shape: round trips = 3 + max(0, depth-1) - the chain slope
+    // stays exactly 1 (one closure batch per unfetched inclusion level),
+    // independent of deck size.
     //
     // THE DECK CARRIES ITS READ RULE. The seeds go through
     // createRenderTestStorage(), which seeds the stock `*all+*read` rule
@@ -128,16 +138,18 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     // trips (render.ts cold slots; permissions/read-rules.ts
     // ruleClosureWalkStatement / primeRuleClosureUniverse /
     // actorKeyFromResults). A deck with no read rule card therefore
-    // measures the same four round trips with two fewer statements.
-    // The four fixed round trips: RT1 the root key row, RT2 the PRELUDE
+    // measures the same three round trips with two fewer statements.
+    // The three fixed round trips: RT1 the root key row, RT2 the PRELUDE
     // batch (src/card/render/prefetch.ts prefetchInclusionClosure: the
-    // root's side priming, the root's TYPE row, the root's set-pattern
-    // anchor priming, and the engine's permission/codename/structure/
-    // rule-walk/stamp folds), RT3 wave round 1 (the type-card prime and
-    // the Set TYPE card's row folded in as the batch preamble), RT4 wave
-    // round 2 (depth-3 junction candidates whose sides round 1 seated -
-    // "a junction's ids are the previous round's ANSWERS"; genuinely
-    // sequential, not a fusion gap). Ruby derivation: the wave
+    // root's side priming, the root's TYPE row with that type's own type
+    // row, the root's set-pattern anchor priming, and the engine's
+    // permission/codename/structure/rule-walk/stamp folds), RT3 the wave's
+    // one round (the type-card prime and the Set TYPE card's row folded in
+    // as the batch preamble, the rule candidates by key, their depth-2
+    // junctions by side keys and their depth-3 names through the depth-2
+    // junction by keys). The depth-3 names used to wait for a second wave
+    // round, after the first had seated their depth-2 junctions; the key
+    // join asks them in the same round. Ruby derivation: the wave
     // asks the rule-candidate names of the view-time settings (*content
     // options, *help, *structure, *default) that Ruby resolves per lookup
     // through Set#rule/rule_card (rule/all.rb) plus the prepared records'
@@ -151,8 +163,6 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     // statements but no round trips.
     // The deck_data_version freshness stamp folds LAST into the cold batch
     // (+1 statement at every depth, +0 round trips).
-    const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 21 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

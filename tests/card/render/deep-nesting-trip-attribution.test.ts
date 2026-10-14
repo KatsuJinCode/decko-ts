@@ -24,6 +24,7 @@ import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../s
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { createRenderTestStorage, type RenderTestStorage } from "./render-test-storage.js";
+import { coldRoundTripLaw } from "./round-trip-law.js";
 import {
   DEEP_RENDERABLE_CHAIN_DEPTHS,
   FANOUTS,
@@ -139,7 +140,7 @@ const CAUSES = [
   },
   {
     id: "wave",
-    what: "the derived-state prime before rendering: the types of the cards in hand and the rule cards that could govern them, by name, in waves (a compound rule name is looked up once the wave before has found its parts)",
+    what: "the derived-state prime before rendering: the types of the cards in hand and the rule cards that could govern them, by name, in one round (a depth-2 rule name through its sides' keys, a depth-3 rule name through its depth-2 junction's keys)",
     match: (t: Trip) => t.kind === "batch" && t.site.some((s) => s.startsWith("RenderEngine.seatNamesByWave")),
   },
 ] as const;
@@ -171,12 +172,13 @@ describe("deep-nesting round-trip attribution", () => {
         byCause[k] = { trips: (byCause[k]?.trips ?? 0) + 1, statements: (byCause[k]?.statements ?? 0) + t.statements };
       }
       expect(unexplained, `${shape.label}: trips with no named cause`).toEqual([]);
-      // The law the attribution supports: fixed root + prelude + two waves,
+      // The law the attribution supports: fixed root + prelude + one wave,
       // plus one closure batch per level of nesting below the root.
       expect(byCause.root?.trips ?? 0).toBe(1);
       expect(byCause.prelude?.trips ?? 0).toBe(1);
       expect(byCause.closure?.trips ?? 0).toBe(nestLevels);
-      expect(byCause.wave?.trips ?? 0).toBe(2);
+      expect(byCause.wave?.trips ?? 0).toBe(1);
+      expect(trips.length).toBe(coldRoundTripLaw(nestLevels));
       rows.push({
         fixture: shape.label,
         shape: shape.shape,
@@ -208,7 +210,7 @@ describe("deep-nesting round-trip attribution", () => {
         nest_levels_below_root: "chain of n cards: n - 1; fan: 1; tree of depth d: d",
       },
       causes: CAUSES.map((c) => ({ id: c.id, what: c.what })),
-      law: "round trips = 1 root + 1 prelude + 1 closure batch per nest level below the root + 2 wave = 4 + nest levels below the root",
+      law: "round trips = 1 root + 1 prelude + 1 wave + 1 closure batch per nest level below the root = 3 + nest levels below the root",
       rows,
     };
 

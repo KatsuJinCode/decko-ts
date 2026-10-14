@@ -123,13 +123,18 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // constant. The deck here carries the stock `*all+*read` rule card
       // (createRenderTestStorage seeds it; Ruby has no rule-less reading
       // deck), and the read permission's one-time setup rides the prelude
-      // batch, so it adds statements and no round trips: 7 round trips /
-      // 26 statements. The invariant the pin guards is intact at these
-      // readings: depth-3 (7/26) minus depth-2 (6/25) = +1 round trip
-      // +1 statement per chain level, constant in deck size; renders stay
-      // byte-correct (the html assertions above are untouched and pass).
-      expect(snapshot.roundTrips).toBe(7);
-      expect(snapshot.statements).toBe(26); // wave-seating ladder, see above
+      // batch, so it adds statements and no round trips. The wave asks a
+      // depth-3 rule name through its junction by keys in the round that
+      // asks the junction (one statement, no round of its own), and a
+      // side-key junction miss is primed negative rather than re-asked:
+      // 6 round trips / 27 statements. The invariant the pin guards is
+      // intact at these readings: depth-3 (6/27) minus depth-2 (5/25) = +1
+      // round trip per chain level, constant in deck size (the second
+      // extra statement is the depth-3 key join this chain's rule names
+      // need); renders stay byte-correct (the html assertions above are
+      // untouched and pass).
+      expect(snapshot.roundTrips).toBe(6);
+      expect(snapshot.statements).toBe(27); // wave-seating ladder, see above
     } finally {
       storage.close();
     }
@@ -223,10 +228,12 @@ describe("depth-3+ junction inclusion closure (recursive compound-side resolutio
       // fetch-shapes round into the per-wave seating ladder, re-pinning
       // this constant. As in the depth-3 case above, this deck carries the
       // stock `*all+*read` rule card and the read permission's setup rides
-      // the prelude batch: 6 round trips / 25 statements.
-      // +1 batch per chain level still holds (6 here vs the depth-3
-      // case's 7).
-      expect(snapshot.roundTrips).toBe(6);
+      // the prelude batch. With the depth-3 key join and the negative
+      // priming of side-key junction misses (see the depth-3 case above):
+      // 5 round trips / 25 statements.
+      // +1 batch per chain level still holds (5 here vs the depth-3
+      // case's 6).
+      expect(snapshot.roundTrips).toBe(5);
       expect(snapshot.statements).toBe(25);
     } finally {
       storage.close();

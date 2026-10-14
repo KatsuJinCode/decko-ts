@@ -4033,6 +4033,10 @@ export class RenderEngine implements RenderEngineLike {
       const simpleKeys: string[] = [];
       const sideKeyPairs: { left: string; right: string; raw: string }[] = [];
       const sideIdPairs: { leftId: number; rightId: number; lex: Lex }[] = [];
+      // depth-3 names whose left is a depth-2 pair of simple names (see the
+      // branch that fills this): one join per name reaches the parent through
+      // its junction by keys, so the parent is asked in the round that sees it.
+      const tripleAsks: { junction: DeckoName; l1: string; l2: string; r: string; raw: string }[] = [];
       const nextRound: string[] = [];
       let heldSeatThisRound = false;
       for (const raw of pending) {
@@ -4109,6 +4113,36 @@ export class RenderEngine implements RenderEngineLike {
               simpleKeys.push(right.key);
             }
           }
+        } else if (
+          !right.isCompound &&
+          left.leftName !== undefined &&
+          left.rightName !== undefined &&
+          !left.leftName.isCompound &&
+          !left.rightName.isCompound &&
+          leftId === undefined
+        ) {
+          // depth-3 name, left side an unseated depth-2 pair of simple names.
+          // The keys are in the name, so the junction rides as a side-key pair
+          // and one join reaches the parent through it: the parent is asked in
+          // THIS round rather than the round after its junction seats. A parent
+          // that misses is primed negative after the round, through its pair.
+          const tripleKey = `${left.leftName.key}~${left.rightName.key}~${right.key}`;
+          if (!askedSideKeyPairs.has(tripleKey)) {
+            askedSideKeyPairs.add(tripleKey);
+            const junctionKey = `${left.leftName.key}~${left.rightName.key}`;
+            if (!askedSideKeyPairs.has(junctionKey)) {
+              askedSideKeyPairs.add(junctionKey);
+              sideKeyPairs.push({ left: left.leftName.key, right: left.rightName.key, raw: left.s });
+            }
+            for (const key of [left.leftName.key, left.rightName.key, right.key]) {
+              if (!this.renderCards.has(key) && !askedSimpleKeys.has(key)) {
+                askedSimpleKeys.set(key, key);
+                callAskedSimple.add(key);
+                simpleKeys.push(key);
+              }
+            }
+            tripleAsks.push({ junction: left, l1: left.leftName.key, l2: left.rightName.key, r: right.key, raw });
+          }
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
@@ -4180,6 +4214,24 @@ export class RenderEngine implements RenderEngineLike {
           });
         }
       }
+      if (tripleAsks.length > 0) {
+        for (let i = 0; i < tripleAsks.length; i += 30) {
+          const chunk = tripleAsks.slice(i, i + 30);
+          const clauses = chunk
+            .map(() => `(pl."key" COLLATE NOCASE = ? AND pm."key" COLLATE NOCASE = ? AND r."key" COLLATE NOCASE = ?)`)
+            .join(" OR ");
+          statements.push({
+            sql:
+              `SELECT DISTINCT j.* FROM cards j\n` +
+              `  JOIN cards jl ON jl.id = j.left_id AND jl.trash = 0\n` +
+              `  JOIN cards pl ON pl.id = jl.left_id AND pl.trash = 0\n` +
+              `  JOIN cards pm ON pm.id = jl.right_id AND pm.trash = 0\n` +
+              `  JOIN cards r ON r.id = j.right_id AND r.trash = 0\n` +
+              ` WHERE j.trash = 0 AND (${clauses})`,
+            params: chunk.flatMap((ask) => [ask.l1, ask.l2, ask.r]),
+          });
+        }
+      }
       if (sideIdPairs.length > 0) {
         for (let i = 0; i < sideIdPairs.length; i += 400) {
           const chunk = sideIdPairs.slice(i, i + 400);
@@ -4231,6 +4283,39 @@ export class RenderEngine implements RenderEngineLike {
         seatedAny = true;
       }
       for (const pairKey of fetchedPairs) callAnsweredPairs.add(pairKey);
+      // A key-join ask that did not seat its junction asked, in this round,
+      // exactly the pair the junction names: the join matches the sides by
+      // key (cards.key is unique, so a key names one side id) and the
+      // junction by `j.trash = 0`, the same row the id-pair form
+      // `left_id = ? AND right_id = ?` reads. Once the sides are seated the
+      // pair is recorded as asked, so the negative below primes it (only if no
+      // row of any round answered it) and no later round re-asks it. Applies
+      // to depth-2 side-key pairs and to the depth-3 key join's parents.
+      const keyJoinMisses: { junctionKey: string; leftKey: string; rightKey: string }[] = [];
+      for (const pair of sideKeyPairs) {
+        let asked: DeckoName;
+        try {
+          asked = DeckoName.parse(pair.raw);
+        } catch {
+          continue;
+        }
+        keyJoinMisses.push({ junctionKey: asked.key, leftKey: pair.left, rightKey: pair.right });
+      }
+      for (const ask of tripleAsks) {
+        keyJoinMisses.push({ junctionKey: DeckoName.parse(ask.raw).key, leftKey: ask.junction.key, rightKey: ask.r });
+      }
+      for (const miss of keyJoinMisses) {
+        if (this.renderCards.has(miss.junctionKey)) continue;
+        const leftId = knownId(miss.leftKey);
+        const rightId = knownId(miss.rightKey);
+        if (leftId === undefined || rightId === undefined) continue; // side missed: its negative is primed
+        const pairKey = `L-${leftId}-${rightId}`;
+        if (askedPairs.has(pairKey)) continue;
+        const lex: Lex = [leftId, rightId];
+        if (this.fetcher.lexicon.lexEntryKnown(lex)) continue;
+        askedPairs.set(pairKey, { leftId, rightId, lex });
+        callAskedPairs.add(pairKey);
+      }
       // Negative priming for the asked-and-missed questions: the exact
       // entries lexToId's cacheFetch would have cached. Both derivations are
       // THIS CALL's cumulative ask/answer sets (see their declaration):
@@ -4259,31 +4344,12 @@ export class RenderEngine implements RenderEngineLike {
       }
       pending.clear();
       for (const raw of nextRound) pending.add(raw);
-      // A side-key-pair name whose junction row did not come back retries
-      // NEXT round as a side-id pair (its sides just seated): that ask is
-      // final - it lands in askedPairs and primes the negative there. A
-      // name whose final-form ask missed is dropped: its negative is
-      // primed, so the ladder walk below answers the miss from cache with
-      // the same placeholder the point-query path would have cached
-      // (zero queries).
-      for (const pair of sideKeyPairs) {
-        let retry: DeckoName;
-        try {
-          retry = DeckoName.parse(pair.raw);
-        } catch {
-          continue;
-        }
-        const left = retry.leftName;
-        const right = retry.rightName;
-        if (left === undefined || right === undefined) continue;
-        const leftId = knownId(left.key);
-        const rightId = knownId(right.key);
-        if (leftId === undefined || rightId === undefined) continue; // side missed: negative already primed
-        const pairKey = `L-${leftId}-${rightId}`;
-        if (!askedPairs.has(pairKey) && !this.renderCards.has(retry.key)) {
-          pending.add(pair.raw);
-        }
-      }
+      // A key-join name whose junction row did not come back is not retried:
+      // its pair was recorded as asked above and its negative is primed, so
+      // the ladder walk answers the miss from cache with the same placeholder
+      // the point-query path would have cached (zero queries). Re-asking it
+      // as an id pair next round read the same row a second time, in a round
+      // trip of its own.
     }
     if (preamble.length > 0) {
       // The wave never reached a batch (all candidate names already seated
