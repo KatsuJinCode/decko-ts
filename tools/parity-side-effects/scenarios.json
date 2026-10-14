@@ -568,41 +568,6 @@
       }
     },
     {
-      "name": "anon-update-skin-colors",
-      "mod": "assets",
-      "method": "put",
-      "path": "/darkly_skin+*colors",
-      "params": {
-        "card": {
-          "content": "$primary: #654321;"
-        }
-      },
-      "deliberate": {
-        "why": "Security hole in Ruby: ok_to_update? on a Bootswatch skin's +*colors is `left.parent? && super`, so for a skin without a parent the permission check never runs and anyone, anonymous visitors included, can change the site's colours. The port keeps checking the rules and refuses.",
-        "ruby": {
-          "status": "303",
-          "errors": ""
-        },
-        "ts": {
-          "status": "403",
-          "errors": "Sorry! Please sign in or sign up to do that."
-        },
-        "absentIn": "ts",
-        "consequences": [
-          "location",
-          "writes",
-          "actions",
-          "stamps",
-          "stored",
-          "mail",
-          "mailText",
-          "mailHtml",
-          "files",
-          "virtuals"
-        ]
-      }
-    },
-    {
       "name": "anon-approve-signup",
       "mod": "account",
       "method": "put",

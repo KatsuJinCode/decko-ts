@@ -30,6 +30,16 @@ import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
 import { type WriteRouteContext } from "../../src/server/write-routes.js";
 import { actionTypeCode } from "../../src/card/history/action.js";
 import { makeWriteRouteServer as makeServer } from "./write-routes-test-bridge.js";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+// A write-route suite withheld until disclosure (docs/SECURITY.md,
+// "Reporting a vulnerability") lives in tests/withheld/ and is excluded from
+// a release package; its absence is announced, never silent.
+const WITHHELD_UPLOAD_SUITE = fileURLToPath(new URL("../withheld/upload-order.test.ts", import.meta.url));
+if (!existsSync(WITHHELD_UPLOAD_SUITE)) {
+  process.stderr.write(`[withheld until disclosure] NOT RUN: 6 tests (${WITHHELD_UPLOAD_SUITE})\n`);
+}
 
 const SET_TYPE_ID = 2;
 const JOE_ID = 90;

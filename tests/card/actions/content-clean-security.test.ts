@@ -1,20 +1,17 @@
 // The stored-HTML cleaner against hostile and malformed input.
 //
-// This cleaner deliberately differs from the upstream cleaner (docs/SECURITY.md,
-// "Stored HTML is sanitised safely"). The comparisons against the upstream
-// cleaner's output — on hostile markup and on ordinary content — are withheld
-// until disclosure (tests/withheld/). This suite pins three things:
+// This suite pins three things:
 //
 //   1. No hostile input survives: the cleaned output passes an independent
 //      browser-tokenizer check (html-safety-verifier.ts), alone and when the
 //      page or another card's content follows it.
-//   2. The verifier is not vacuous: its own unsafe-output checks are in the
-//      withheld set.
+//   2. The verifier is not vacuous: its own unsafe-output checks are in a
+//      set that is not part of the public package.
 //   3. Ordinary content leaves nothing executable and is stable under a
 //      second pass.
 //
 // The hostile cases follow the OWASP XSS Filter Evasion Cheat Sheet, plus the
-// regex-specific cases found while replacing the upstream algorithm.
+// cleaner's own edge cases.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -119,13 +116,13 @@ const OWASP: string[] = [
   `<A HREF="http://www.google.com/ogle.com/">XSS</A>`,
 ];
 
-/** Cases aimed at this cleaner's own structure: Ruby's regexes, the comment
+/** Cases aimed at this cleaner's own structure: its regexes, the comment
  *  pass, the fragment's boundary with the page, and URL decoding. */
 const TARGETED: string[] = [
-  // The two reproductions that motivated the stricter cleaner.
+  // A script-capable link target and a malformed tag.
   `<a href="javascript:alert(1)">click</a>`,
   `<img src=x"onerror="alert(1)>`,
-  // An unterminated quote that Ruby closes early.
+  // An unterminated attribute value.
   `<a href='abc onmouseover=alert(1)>x</a>`,
   `<a href="abc onmouseover=alert(1)>x</a>`,
   // Comment removal splicing two fragments into a tag.
@@ -144,7 +141,7 @@ const TARGETED: string[] = [
   `<!-- a`,
   // A "<" before an inclusion: the included card's text would complete a tag.
   `x <{{Other card|core}}`,
-  // Ruby finds an attribute name anywhere, including inside another value.
+  // An attribute name inside another attribute's value.
   `<a title="href=javascript:alert(1)">x</a>`,
   `<a title="x href=javascript:alert(1)">x</a>`,
   `<a title="x>y" onclick=alert(1)>z</a>`,
@@ -292,8 +289,7 @@ describe("cleanContent: markup the cleaner rewrites", () => {
 
 /** Ordinary content: what an editor produces. Every case must clean to
  *  something a browser acts on nothing in, and must be stable under a second
- *  pass. The byte-for-byte comparison with the upstream cleaner's output is
- *  withheld until disclosure (tests/withheld/). */
+ *  pass. */
 const ORDINARY: string[] = [
   "<p>Plain paragraph.</p>",
   "<p>Text with <strong>bold</strong>, <em>italic</em>, <b>b</b>, <i>i</i>, <sup>2</sup>, <sub>x</sub>, <del>old</del> and <ins>new</ins>.</p>",

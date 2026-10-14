@@ -1,10 +1,8 @@
 // Card content cleaning: the port's own output on ordinary and hostile markup.
 //
-// The assertions that compare against the recorded output of the upstream
-// cleaner, on hostile markup and on ordinary content alike, are withheld until
-// disclosure, in tests/withheld/stored-html-ruby-reproductions.test.ts. A
-// release package excludes that file, so when it is absent this suite says so
-// on stderr.
+// A further set of assertions is not part of the public package (see the
+// "Reporting a vulnerability" section of docs/SECURITY.md). A release package
+// excludes that file, so when it is absent this suite says so on stderr.
 
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -14,7 +12,7 @@ import { cleanContent } from "../../../src/card/actions/content-clean.js";
 
 const WITHHELD_SUITE = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
-  "../../withheld/stored-html-ruby-reproductions.test.ts",
+  "../../withheld/content-clean-extra.test.ts",
 );
 if (!existsSync(WITHHELD_SUITE)) {
   process.stderr.write(

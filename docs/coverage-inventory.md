@@ -58,7 +58,7 @@ is asserted by the suite itself (`reference-harness/runner/test/normalize.test.m
 | --- | --- | ---: | --- |
 | Reference-harness scenarios | `reference-harness/fixtures/synthetic-v1` | 22 | 16 write steps' row deltas (persistence 16/16) + 19 step answers (side effects 19/19: 16 write answers, 3 sign-in answers); the 2 renders and 1 question among them grade as rendering and semantics, reads write only what the oracle's reads wrote (read writes 8/8, other tables 12/12) |
 | The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 67 public: 65 identical row deltas + 2 declared deliberate differences; 3 withheld until disclosure |
-| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 88 public: 83 match + 4 declared + 1 open (`get-home`); 2 withheld until disclosure |
+| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 87 public: 83 match + 3 declared + 1 open (`get-home`); 3 withheld until disclosure |
 
 Every step of all three is pinned: a change in any of them fails the suite
 that runs it. The production-deck runs of the same two batteries remain the
@@ -140,9 +140,9 @@ package does NOT measure, item 6.
   every step's verdict — what the request was told, which error it showed,
   what mail it sent, who is signed in afterwards — against the Ruby trace
   recorded on that deck (`expected/side-effects-ruby.json`, recorded with
-  Ruby's production error handling). **88 steps are public: 83 match Ruby, 4
+  Ruby's production error handling). **87 steps are public: 83 match Ruby, 3
   are declared deliberate differences and 1 is open** (`get-home`, the asset
-  refresh Ruby runs on the first request after setup). The other **2 steps are
+  refresh Ruby runs on the first request after setup). The other **3 steps are
   withheld until disclosure**. Every verdict is pinned step by step, so any
   change on either side fails the suite.
 - **The pod import/export round-trips remain private**:

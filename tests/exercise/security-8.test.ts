@@ -1,7 +1,7 @@
-// The stored-HTML, password and constant-time rows of docs/SECURITY.md,
+// The stored-HTML, password and constant-time claims of docs/SECURITY.md,
 // exercised publicly on invented data.
 //
-// Four claims from approved divergences 1, 2 and 4 of docs/SECURITY.md are
+// Four claims from approved divergences 1, 2 and 3 of docs/SECURITY.md are
 // pinned here. Every it() name opens with the claim it exercises, quoted.
 //
 // DATA RULE — every card name, email, password, salt, site title and body
@@ -18,13 +18,11 @@
 // imported below: its OWASP-derived suite (the vectors, 4,000 random hostile
 // mixtures, the ordinary-content block) executes as part of this run rather
 // than being re-described here. The it()s under "stored HTML" then assert,
-// by name, the four neutralisations that claim calls out. The byte-for-byte
-// comparison with the upstream cleaner's output is withheld until disclosure
-// (tests/withheld/) and is not exercised here.
+// by name, the four neutralisations that claim calls out.
 //
 // THE WORKERS RUNTIME IS DECLARED, NOT HOSTED. Node's WebCrypto computes
 // PBKDF2 at 600,000 iterations without complaint (checked on node v24.19.0
-// while writing this file), and docs/SECURITY.md:37 records that local
+// while writing this file), and docs/SECURITY.md records that local
 // workerd does not enforce Cloudflare's limit either. So the Workers claim is
 // exercised the way a Workers host declares it — setPbkdf2IterationLimit with
 // Cloudflare's own 100,000 (exactly what
@@ -79,7 +77,7 @@ import {
 import { generatedEmail, generatedPassword, generatedTokenSecret } from "../../src/testing/generated-credentials.js";
 
 // ---------------------------------------------------------------------------
-// 1. Stored HTML is sanitised safely (docs/SECURITY.md:23)
+// 1. Stored HTML (the port's own cleaner)
 // ---------------------------------------------------------------------------
 
 const STORED_HTML_CLAIM =
@@ -89,7 +87,7 @@ const STORED_HTML_CLAIM =
  *  inside markup would otherwise absorb it. All invented. */
 const PAGE_AFTER = ["", "<p>a later paragraph</p>", '<img src="pictures/later.png" alt="later">'];
 
-describe("stored HTML (docs/SECURITY.md, divergence 1)", () => {
+describe("stored HTML", () => {
   it(`"${STORED_HTML_CLAIM}" — an OWASP javascript: link keeps its text and loses its href`, () => {
     for (const input of [
       `<a href="javascript:alert('XSS')">click me</a>`,
@@ -328,13 +326,13 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Passwords: a new one is stored with PBKDF2 (docs/SECURITY.md:34)
+// 2. Passwords: a new one is stored with PBKDF2 (docs/SECURITY.md)
 // ---------------------------------------------------------------------------
 
 const PASSWORD_CLAIM =
   "A newly set or changed password is stored as PBKDF2-HMAC-SHA256 with a random 16-byte salt, in the form `pbkdf2_sha256$<iterations>$<salt, base64>$<hash, base64>`. On the next successful sign-in, a legacy digest ... is replaced.";
 
-describe("password storage (docs/SECURITY.md, divergence 2)", () => {
+describe("password storage (docs/SECURITY.md, divergence 1)", () => {
   it(`"${PASSWORD_CLAIM}" — under the default config a newly set password is stored as pbkdf2_sha256$600000$ with a fresh 16-byte salt`, async () => {
     // The default config: no DECKO_PASSWORD_* in the boot environment, so the
     // policy is PBKDF2 at OWASP's count.
@@ -419,7 +417,7 @@ describe("password storage (docs/SECURITY.md, divergence 2)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Cloudflare Workers' PBKDF2 ceiling (docs/SECURITY.md:37)
+// 3. Cloudflare Workers' PBKDF2 ceiling (docs/SECURITY.md)
 // ---------------------------------------------------------------------------
 
 const WORKERS_CLAIM =
@@ -468,7 +466,7 @@ async function bootWorkersDeck(): Promise<Deck> {
   return deck;
 }
 
-describe("the Workers PBKDF2 ceiling (docs/SECURITY.md, divergence 2)", () => {
+describe("the Workers PBKDF2 ceiling (docs/SECURITY.md, divergence 1)", () => {
   it(`"${WORKERS_CLAIM}" — signing in with a 600,000-iteration stored hash fails with the explicit cannot-be-verified message, not "Wrong password"`, async () => {
     const deck = await bootWorkersDeck();
     try {
@@ -536,7 +534,7 @@ describe("the Workers PBKDF2 ceiling (docs/SECURITY.md, divergence 2)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Secrets are compared in constant time (docs/SECURITY.md:57)
+// 4. Secrets are compared in constant time (docs/SECURITY.md)
 // ---------------------------------------------------------------------------
 
 const CONSTANT_TIME_CLAIM =
@@ -558,7 +556,7 @@ function counting(bytes: number[]): { bytes: Uint8Array; reads: number[] } {
 
 const EVERY_INDEX = [0, 1, 2, 3, 4, 5, 6, 7];
 
-describe("constant-time comparison (docs/SECURITY.md, divergence 4)", () => {
+describe("constant-time comparison (docs/SECURITY.md, divergence 3)", () => {
   it(`"${CONSTANT_TIME_CLAIM}" — equal inputs read every byte of both`, () => {
     const a = counting([1, 2, 3, 4, 5, 6, 7, 8]);
     const b = counting([1, 2, 3, 4, 5, 6, 7, 8]);

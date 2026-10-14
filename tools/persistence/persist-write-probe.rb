@@ -93,11 +93,11 @@ def probe_files(ids)
   end
 end
 # The withheld step set (reference-harness/fixtures/write-battery-v1/
-# withheld/steps.json). Those steps are NOT part of the public run: they
-# reproduce a Ruby content-cleaner defect the public material is not cleared
-# to carry, and every step after them would record the content they store. A
-# release package excludes that directory, so when it is absent this half runs
-# the public op list only and says so out loud rather than skipping silently.
+# withheld/steps.json). Those steps are NOT part of the public run: the public
+# material is not cleared to carry what they store, and every step after them
+# would record it. A release package excludes that directory, so when it is
+# absent this half runs the public op list only and says so out loud rather
+# than skipping silently.
 WITHHELD_DIR = File.expand_path("../../reference-harness/fixtures/" \
                                  "write-battery-v1/withheld", __dir__)
 WITHHELD_STEPS_FILE = ENV["PERSIST_WITHHELD_STEPS"] || File.join(WITHHELD_DIR, "steps.json")
@@ -114,10 +114,10 @@ else
 end
 
 # Content only the withheld steps use. It lives in the withheld set
-# (withheld/unsafe-html.txt, the same bytes the TypeScript half reads), so the
+# (withheld/step-content.txt, the same bytes the TypeScript half reads), so the
 # public source carries no copy of it and no description of it.
-UNSAFE_HTML_FILE = File.join(WITHHELD_DIR, "unsafe-html.txt")
-UNSAFE_HTML = File.exist?(UNSAFE_HTML_FILE) ? File.read(UNSAFE_HTML_FILE).strip : ""
+WITHHELD_CONTENT_FILE = File.join(WITHHELD_DIR, "step-content.txt")
+WITHHELD_CONTENT = File.exist?(WITHHELD_CONTENT_FILE) ? File.read(WITHHELD_CONTENT_FILE).strip : ""
 # The new content step 32 gives an existing, nested deck card.
 NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>"
 # Step 37's referer: links and a nest naming the rename subject, its child,
@@ -312,11 +312,11 @@ def run_op(step)
     # parent, and every later op would inherit that state.
     [:trash, "revive child (model path: update trash=false)", -> { Card.find(id_of("PersistProbe Parent+PersistProbe Child")).update!(trash: false) }]
   when 20
-    [:update, "update with unsafe html", -> { Card.find(id_of("PersistProbe Renamed")).update!(content: UNSAFE_HTML) }]
+    [:update, "withheld", -> { Card.find(id_of("PersistProbe Renamed")).update!(content: WITHHELD_CONTENT) }]
   when 21
     [:create, "create without type or content", -> { Card.create!(name: "PersistProbe Bare") }]
   when 22
-    [:create, "create plain text with html", -> { Card.create!(name: "PersistProbe Plain", type: "PlainText", content: UNSAFE_HTML) }]
+    [:create, "withheld", -> { Card.create!(name: "PersistProbe Plain", type: "PlainText", content: WITHHELD_CONTENT) }]
   # 23-31: the history pane's revert and restore requests.
   when 23
     [:create, "create revert subject", -> { Card.create!(name: "PersistProbe Rev", type: "RichText", content: "one [[PersistProbe B]]") }]
@@ -345,7 +345,7 @@ def run_op(step)
       revert_request("PersistProbe Rev", "revert_actions" => [ids[-2].to_s])
     }]
   when 31
-    [:revert, "revert to previous of a create (trashes it)", lambda {
+    [:revert, "withheld", lambda {
       act = act_of_action(nth_action_id("PersistProbe Plain", 1))
       revert_request("PersistProbe Plain", "revert_to" => "previous", "revert_act" => act.to_s)
     }]

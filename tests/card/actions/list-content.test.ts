@@ -1,6 +1,6 @@
 // List content standardization (src/card/actions/list-content.ts). The
 // expected values are the historically recorded stored content for the same
-// input (the withheld step-51 and step-52 fixtures, not in the public package).
+// input.
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";

@@ -1275,7 +1275,6 @@ const setModules: ModSetModuleFile[] = [
     // over the verbatim item walks (the pill composition the oracle pins;
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
-    // card-action-engine.ts assertMayRenameAccountHolder.
     events: [
       engineOwnedEvent({
         event: "validate_account_holder_name_change",
