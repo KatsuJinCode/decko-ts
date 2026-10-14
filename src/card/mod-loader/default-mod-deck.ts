@@ -48,10 +48,10 @@ import {
 import { setDefaultModEventRegistry } from "./mod-event-registry.js";
 
 import coreMod, { coreModEventPredicates } from "./mods/core-mod.js";
-import cardModCollection from "./mods/card-mod-collection.js";
-import cardModContent from "./mods/card-mod-content.js";
+import cardModCollection, { collectionModEventPredicates } from "./mods/card-mod-collection.js";
+import cardModContent, { contentModEventPredicates } from "./mods/card-mod-content.js";
 import cardModFormat from "./mods/card-mod-format.js";
-import cardModList from "./mods/card-mod-list.js";
+import cardModList, { listModEventPredicates } from "./mods/card-mod-list.js";
 import cardModMarkdown from "./mods/card-mod-markdown.js";
 import cardModPermissions, { permissionsModEventPredicates } from "./mods/card-mod-permissions.js";
 import cardModHelp from "./mods/card-mod-help.js";
@@ -65,7 +65,7 @@ import cardModHistory, { historyModEventPredicates } from "./mods/card-mod-histo
 import { registerDeckModEventCardStateSources } from "./mod-event-state-sources.js";
 import cardModCarrierwave, { carrierwaveModEventPredicates } from "./mods/card-mod-carrierwave.js";
 import cardModVirtual from "./mods/card-mod-virtual.js";
-import cardModAssets from "./mods/card-mod-assets.js";
+import cardModAssets, { assetsModEventPredicates } from "./mods/card-mod-assets.js";
 import cardModScript from "./mods/card-mod-script.js";
 import cardModAceEditor from "./mods/card-mod-ace_editor.js";
 import cardModApiKey from "./mods/card-mod-api_key.js";
@@ -242,11 +242,15 @@ function eventOnlyDeckLoader(): ModLoader {
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
     ...accountModEventPredicates,
+    ...assetsModEventPredicates,
     ...carrierwaveModEventPredicates,
+    ...collectionModEventPredicates,
+    ...contentModEventPredicates,
     ...coreModEventPredicates,
     ...commentModEventPredicates,
     ...followModEventPredicates,
     ...historyModEventPredicates,
+    ...listModEventPredicates,
     ...permissionsModEventPredicates,
     ...recaptchaModEventPredicates,
   };

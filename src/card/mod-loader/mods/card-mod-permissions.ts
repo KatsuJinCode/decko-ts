@@ -720,6 +720,19 @@ export const permissionsModEventPredicates = {
       (await isStandardRuleName(fetch, name)) || (await isPreferenceName(fetch, name))
     );
   },
+  /** preference? (rule/all.rb:42-54) — the second half of the rule?
+   *  definition above (rule/all.rb:33-35), reached on its own by
+   *  mod/follow's set/right/follow.rb:7-9 (:integrate,
+   *  `when: :preference?` on :cache_expired_for_new_preference). Ruby
+   *  defines it once, on Card; the port keeps the one definition here,
+   *  beside rule?, because both walk the same name parts. */
+  "preference?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    const fetch = ctx?.fetch;
+    if (fetch === undefined || card.name === undefined) return false;
+    const name = DeckoName.parse(card.name);
+    if (name.s === "") return false;
+    return isPreferenceName(fetch, name);
+  },
 } as const;
 
 const cardModPermissions: DeckoModManifest = {

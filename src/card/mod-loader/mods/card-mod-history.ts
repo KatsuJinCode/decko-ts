@@ -935,6 +935,15 @@ export const historyModEventPredicates = {
    *  (history.rb:6, default true). Gates :assign_action (events.rb:15),
    *  the initialize-stage action assignment the port's ActWriter performs. */
   "actionable?": (card: ModEventCard): boolean => card.history !== false,
+  /** no_history? (set/all/history.rb:6-8): `!history?` — the same opt-out,
+   *  read by the inverse name. It is the history mod's method even where
+   *  the events that use it are declared elsewhere: mod/carrierwave
+   *  lib/carrier_wave/card_mount.rb:37/:46/:51 `when: :no_history?` on the
+   *  attachment/file/image removal events, and the port registers those
+   *  declarations verbatim (card-mod-carrierwave.ts). Ruby's `send`
+   *  (all.rb:82) reaches whichever definition the card carries, and only
+   *  this one defines the name. */
+  "no_history?": (card: ModEventCard): boolean => card.history === false,
   /** finalize_action? (events.rb:61): `actionable? && current_action` —
    *  there is an open action to finalize. Gates :finalize_action
    *  (events.rb:25). */

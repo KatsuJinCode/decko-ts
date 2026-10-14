@@ -97,6 +97,7 @@ import type { CardRecord } from "../../fetch/card-record.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventCard,
   ModEventFn,
 } from "../mod-manifest.js";
 
@@ -1189,6 +1190,42 @@ const viewListView: ViewFn = (ctx) => {
     return `<p><h3>${view} items</h3>\n${content}</p>`;
   }).join("\n");
 };
+
+// ---------------------------------------------------------------------------
+// the when: predicates (set/abstract/01_list/events.rb)
+// ---------------------------------------------------------------------------
+
+/** The set-module methods Ruby's `when:` conditions reach with `send`
+ *  (card/lib/card/set/event/all.rb:82) from the Abstract::List event
+ *  declarations. The deck-boot composition merges them into
+ *  ModEventRuntime.predicates (default-mod-deck.ts).
+ *
+ *  Two of the three read `ok_item_types`, whose base definition is nil
+ *  (events.rb:35-37) and whose three overrides live in OTHER mods'
+ *  set modules (mod/style set/type_plus_right/set/style.rb:5-7,
+ *  mod/script set/type_plus_right/set/script.rb:3-5, mod/bootstrap
+ *  set/type_plus_right/bootswatch_skin/stylesheets.rb:3-5). The list mod's
+ *  own state source therefore answers the QUESTION ("does this card
+ *  constrain its item types?") by resolving which of those three sets the
+ *  card carries, not by restating any one override - see the okItemTypes
+ *  resolver below and mod-event-state-sources.ts's listSource. */
+export const listModEventPredicates = {
+  /** item_to_insert (events.rb:43-45): `Env.params["insert_item"]` - the
+   *  request named an item to splice into the list at `item_index`
+   *  (events.rb:8-11). Not a `?` method: Ruby sends it and takes its
+   *  TRUTHINESS as the condition (when_condition_applies? returns the
+   *  method's value, all.rb:79-85), so an empty-string param still
+   *  reaches the body - which is Ruby's arm too, since the body only
+   *  skips on a nil index. */
+  item_to_insert: (card: ModEventCard): boolean =>
+    card.params?.["insert_item"] !== undefined && card.params?.["insert_item"] !== null,
+  /** validate_item_type? (events.rb:39-41): `ok_item_types.present?`. The
+   *  base returns nil (events.rb:35-37), so the predicate is false for
+   *  every plain list card and true only for the three type-constraining
+   *  sets. Reads the resolved answer off the card rather than
+   *  re-deriving it here, so the walk has one definition. */
+  "validate_item_type?": (card: ModEventCard): boolean => card.hasOkItemTypes === true,
+} as const;
 
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
