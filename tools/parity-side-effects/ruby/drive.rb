@@ -84,6 +84,58 @@ ENV["RAILS_LOG_TO_STDOUT"] = nil
 require File.join(APP_ROOT, "config", "environment")
 require "rack/test"
 
+# ---- production-style error handling. A deployed Decko site does not serve
+# Rails' developer exception page, so recording one into the committed trace
+# would put this machine's absolute paths (gem paths, AppData, the work
+# directory) into a file that ships. Two settings decide what an unhandled
+# exception answers, and both differ between development and what a deployed
+# site runs:
+#
+#   rescue_all_in_controller  Decko's own config/environments/production.rb
+#     (decko-0.20.0 :1-3) sets it true; the Railtie defaults it false
+#     (decko/railtie.rb:9) and the development environment never changes it.
+#     True makes CardController rescue StandardError and render the error
+#     view for its class (card_controller/errors.rb:18 handle_exception,
+#     card/error.rb:46 ServerError) — card-mod-format's server_error.haml,
+#     "Wild Card! / 500 Server Error / Yuck, sorry about that.", with no
+#     message and no backtrace.
+#
+#   consider_all_requests_local  card-1.110.0's own production environment
+#     (config/environments/production.rb:17) sets it false; its development
+#     environment (:25) sets it true. It becomes
+#     "action_dispatch.show_detailed_exceptions" (rails application.rb:318),
+#     which is what DebugExceptions checks before rendering the developer
+#     page (debug_exceptions.rb:61); with it false, anything that still
+#     escapes the controller reaches the public error response instead.
+#
+# Both are applied to the recording only, and only these two: the rest of the
+# development environment (reloading, caching, the live server) is what the
+# rest of this recording was made under, and changing it would re-record
+# behaviour this task is not about. The oracle app itself is left stock.
+Cardio.config.rescue_all_in_controller = true
+Cardio.config.consider_all_requests_local = false
+# Booting the app already loaded CardController, whose class body registered
+# its rescue handlers under the development default (card_controller.rb:28,
+# `rescue_from_class StandardError if rescue_all?`). That line runs once, at
+# class-body time, so the config write above cannot reach it. Running the same
+# call here gives the same handler (`handle_exception`), so the recorded
+# response is the one a production boot gives, not a new shape.
+CardController.rescue_from_class StandardError
+# The guards. Without them a setting that silently failed to take would put the
+# developer page back into the recording, which is the defect this exists to
+# remove, and the run would look clean. rescue_handlers holds
+# [class NAME, handler] pairs (activesupport rescuable.rb:72).
+unless CardController.rescue_handlers.any? { |name, _handler| name == "StandardError" }
+  raise "rescue_all_in_controller did not take: StandardError is not rescued"
+end
+# env_config is memoized on first use. This check reads it after the setting
+# above, so a value memoized earlier with the development default fails here,
+# rather than silently answering requests with the developer page.
+unless Cardio.application.env_config["action_dispatch.show_detailed_exceptions"] == false
+  raise "consider_all_requests_local did not take: " \
+        "show_detailed_exceptions is #{Cardio.application.env_config['action_dispatch.show_detailed_exceptions'].inspect}"
+end
+
 # ---- storage: local work directory only, no buckets.
 Cardio.config.file_buckets = {}
 Cardio.config.file_default_storage = :local
@@ -171,6 +223,40 @@ ActionMailer::Base.deliveries.clear
 
 $conn = ActiveRecord::Base.connection
 
+# ---- portable paths. A recorded backtrace or message that names this
+# machine's directories (the BUNDLE_PATH the gems were installed under, the
+# app root, the work directory, the checkout the drive itself runs from)
+# would put absolute paths in a file that ships, so every path-bearing string
+# the trace records is rewritten to the part that is stable: the gem name and
+# version, or a marker. The gem root comes from Bundler, not from a hard-coded
+# path; the checkout root is the directory two levels above this file's
+# tools/parity-side-effects/ruby. Roots are matched with their separators
+# normalised, because Windows records backslash paths and POSIX records
+# forward ones, and longest first so the checkout wins over the app inside it.
+GEM_ROOT = ENV["BUNDLE_PATH"] || File.join(Gem.dir, "gems")
+CHECKOUT_ROOT = File.expand_path("../../..", __dir__)
+PORTABLE_ROOTS = [
+  [File.expand_path(GEM_ROOT).tr("\\", "/"), "<gem-root>"],
+  [File.expand_path(APP_ROOT).tr("\\", "/"), "<app>"],
+  [File.expand_path(WORK_DIR).tr("\\", "/"), "<work>"],
+  [File.expand_path(DECK_SRC).tr("\\", "/"), "<deck>"],
+  [CHECKOUT_ROOT.tr("\\", "/"), "<checkout>"],
+].sort_by { |root, _| -root.length }.freeze
+# Any drive-letter path left after the roots above is still this machine's
+# directory tree (a cache, a temp dir, a gem outside BUNDLE_PATH). The letter
+# is dropped so no absolute path reaches the recording.
+DRIVE_ROOT = %r{\b[A-Za-z]:/}
+
+def portable_paths(str)
+  out = str.to_s.tr("\\", "/")
+  PORTABLE_ROOTS.each { |root, marker| out = out.gsub(root, marker) }
+  out.gsub(DRIVE_ROOT, "<path>/")
+end
+
+def portable_backtrace(backtrace, keep)
+  Array(backtrace).grep_v(%r{/(actionpack|activesupport|rack)-}).first(keep).map { |l| portable_paths(l) }
+end
+
 # ---- event trace: every event body (`<event>_without_callbacks`, defined
 # by Card::Set::Event#define_simple_method) logs [card name, event] when it
 # runs. The wrapper is prepended to each set module that defines events.
@@ -192,8 +278,9 @@ ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start
         # notable_exception_raised logs and continues); record what was
         # swallowed so a missing side effect can be traced to its cause.
         if $TRACE && ev == "notable_exception_raised" && (err = Card::Error.current)
-          $SWALLOWED << { card: name.to_s, error: err.class.name, message: err.message.to_s[0, 300],
-                          backtrace: Array(err.backtrace).grep_v(%r{/(actionpack|activesupport|rack)-}).first(8) }
+          $SWALLOWED << { card: name.to_s, error: err.class.name,
+                          message: portable_paths(err.message)[0, 300],
+                          backtrace: portable_backtrace(err.backtrace, 8) }
         end
         super(*a, **k, &b)
       end
@@ -343,8 +430,8 @@ def step(name)
   begin
     yield
   rescue StandardError => e
-    extra = { raised: e.class.name, error: e.message.to_s[0, 300],
-              backtrace: e.backtrace.grep_v(/actionpack|activesupport|rack/).first(6) }
+    extra = { raised: e.class.name, error: portable_paths(e.message)[0, 300],
+              backtrace: portable_backtrace(e.backtrace.grep_v(/actionpack|activesupport|rack/), 6) }
   ensure
     $TRACE = false
   end

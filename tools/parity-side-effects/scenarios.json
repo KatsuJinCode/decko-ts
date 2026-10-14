@@ -783,10 +783,10 @@
         }
       },
       "deliberate": {
-        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do.",
+        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message.",
         "ruby": {
           "status": "500",
-          "errors": "wrong number of arguments (given 2, expected 1)"
+          "errors": "Wild Card! 500 Server Error Yuck, sorry about that."
         },
         "ts": {
           "status": "303",
@@ -856,7 +856,16 @@
       "name": "admin-deny-signup",
       "mod": "account",
       "method": "delete",
-      "path": "/Parity_Joiner"
+      "path": "/Parity_Joiner",
+      "deliberate": {
+        "why": "A knock-on of restore-file-revision, not a difference of its own. The delete's configure_successful_deletion redirects to the session's *previous location (card-mod-session set/all/location_history.rb:9-17, env/location_history.rb:19-21). Ruby renders a page on the failed restore — its controller rescue shows the server_error view, whose before: :show_page fires :save_current_location — so /Parity_Cached_File joins the history at restore-file-revision and is the entry this redirect resolves to. The port does not render on that step (it restores the version, the deliberate difference pinned there), so its history still names /Parity_Pending. Every other field agrees; only the redirect target differs, and only because of the earlier step.",
+        "ruby": {
+          "location": "/Parity_Cached_File"
+        },
+        "ts": {
+          "location": "/Parity_Pending"
+        }
+      }
     },
     {
       "name": "admin-update-role-members",
@@ -898,10 +907,10 @@
         }
       },
       "deliberate": {
-        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything.",
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message.",
         "ruby": {
           "status": "500",
-          "errors": "undefined method `theme_card' for #<Card> Did you mean? type_card"
+          "errors": "Wild Card! 500 Server Error Yuck, sorry about that."
         },
         "ts": {
           "status": "422",

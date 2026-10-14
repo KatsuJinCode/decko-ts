@@ -81,6 +81,12 @@ recorded in `MANIFEST.json`'s `provenance`.
          <repo>/reference-harness/fixtures/write-battery-v1/deck/deck.sqlite3 <work dir>
        # stdout is the trace committed as expected/side-effects-ruby.json
 
+   The drive runs the oracle with production error handling (rescue_all in
+   the controller, no developer exception page), as a deployed Decko site
+   does, so a failed step records the public "Wild Card!" page and no
+   backtrace. It also rewrites every path a recorded message or backtrace
+   names to a stable marker, so the committed trace carries no machine path.
+
 4. Record the 70 write operations (one `decko runner` process per step):
 
        bash tools/persistence/run-ruby-steps.sh reference-harness/oracle/app \
