@@ -60,7 +60,7 @@ import cardModRules from "./mods/card-mod-rules.js";
 import cardModEdit from "./mods/card-mod-edit.js";
 import cardModEmail from "./mods/card-mod-email.js";
 import cardModIntegrate from "./mods/card-mod-integrate.js";
-import cardModAccount from "./mods/card-mod-account.js";
+import cardModAccount, { accountModEventPredicates } from "./mods/card-mod-account.js";
 import cardModHistory, { historyModEventPredicates } from "./mods/card-mod-history.js";
 import { registerDeckModEventCardStateSources } from "./mod-event-state-sources.js";
 import cardModCarrierwave from "./mods/card-mod-carrierwave.js";
@@ -241,6 +241,7 @@ function eventOnlyDeckLoader(): ModLoader {
  *  dispatcher raises for it here too. */
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
+    ...accountModEventPredicates,
     ...coreModEventPredicates,
     ...commentModEventPredicates,
     ...followModEventPredicates,

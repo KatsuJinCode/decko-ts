@@ -246,10 +246,11 @@ describe("card-mod-account event declarations (A/B)", () => {
       on: ["create"],
     });
     // type/user.rb:50 `event :check_setup, before: :check_permissions,
-    // on: :create, trigger: :required` (recorded at the resolved stage;
-    // the before: relation rides the declaration's comment)
+    // on: :create, trigger: :required` — Ruby's before: clears @stage
+    // (set/event/options.rb:76), so the declaration carries the relation
+    // and NOT a stage: it runs in check_permissions' stage.
     expect(byName.get("check_setup")).toMatchObject({
-      at: "validate",
+      before: "check_permissions",
       on: ["create"],
       trigger: "required",
     });
@@ -274,10 +275,10 @@ describe("card-mod-account event declarations (A/B)", () => {
     // self/signin.rb:19 `event :signout, :validate, on: :delete`
     expect(byName.get("signout")).toMatchObject({ at: "validate", on: ["delete"] });
     // self/signin.rb:27 `event :send_reset_password_token, before: :signin,
-    // on: :update, trigger: :required` (recorded at the resolved stage;
-    // declared before signin so the same-stage walk order matches)
+    // on: :update, trigger: :required` — the relation, not a stage
+    // (options.rb:76); it runs in signin's :validate stage.
     expect(byName.get("send_reset_password_token")).toMatchObject({
-      at: "validate",
+      before: "signin",
       on: ["update"],
       trigger: "required",
     });

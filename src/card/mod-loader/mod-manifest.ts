@@ -215,6 +215,11 @@ export interface ModEventCard {
    *  id, for the account mod's `current_account?` /
    *  `password_redirect?` (set/abstract/account_holder.rb:23). */
   readonly authCurrentId?: number | null;
+  /** `can_approve?` (mod/account/set/type/signup.rb:12-14): `Card.new(type_id:
+   *  Card.default_accounted_type_id).ok? :create`. Gates
+   *  :auto_approve_with_verification (:20-22). The engine resolves it once
+   *  per save (its own signup arm asks the same question). */
+  readonly canApprove?: boolean;
   /** history? (mod/history/set/all/history.rb:6) — the card type opts out
    *  of history when false; backs `actionable?` (events.rb:53). */
   readonly history?: boolean;
@@ -242,6 +247,9 @@ export interface ModEventCard {
    *  Ruby's test/deck override that keeps notifications on without a
    *  controller. Unset in the port. */
   readonly forceNotifications?: boolean;
+  /** The account card's stored password field (blank = none set), read by
+   *  `password_redirect?` (mod/account/set/right/account/events.rb:83). */
+  readonly password?: string | null;
   /** The follow mod's per-act silent flag and followability
    *  (mod/follow/set/all/notify.rb:9-38). */
   readonly silentChange?: boolean;

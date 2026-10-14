@@ -1277,7 +1277,35 @@ export const followModEventPredicates = {
    *  stay on, as they do in Ruby's request saves. */
   "silence_notifications?": (card: ModEventCard): boolean =>
     card.envController !== true && card.forceNotifications !== true,
+  /** notable_change? (notify.rb:36-41): `!silent_change? &&
+   *  current_act_card? && (Card::Auth.current_id != DeckoBotID) &&
+   *  followable?`.
+   *
+   *  The `followable?` arm is Ruby's per-card-type notification opt-out;
+   *  the port has no such type-level setting, and its notify pipeline
+   *  carries the same absence (follow-notify.ts's isNotable states the
+   *  drop). Absent = followable, so the answer is what it is for every
+   *  card type the port has.
+   *
+   *  DECKO_BOT_ID is 1 (auth/boot-seed.ts:132): a change made by the bot
+   *  itself does not notify, or the deck would notify itself in a loop. */
+  "notable_change?": (card: ModEventCard): boolean =>
+    card.silentChange !== true &&
+    card.isActCard !== false &&
+    card.authCurrentId !== DECKO_BOT_ID,
+  /** expire_preferences? (set/all/follow/follower_ids.rb:15): the act's
+   *  `@expire_preferences_scheduled` flag, set by
+   *  schedule_preference_expiration (:11). Gates
+   *  :expire_preferences_cache (:19), which drops the followers' rule
+   *  caches. The flag rides the act; the port's follower rule walk
+   *  invalidates on save regardless, so a save that scheduled nothing
+   *  has no cache to expire and the predicate is false. */
+  "expire_preferences?": (card: ModEventCard): boolean =>
+    card.expirePreferences === true,
 } as const;
+
+/** DeckoBotID — the deck's system account, id 1 (auth/boot-seed.ts:132). */
+const DECKO_BOT_ID = 1;
 
 const cardModFollow: DeckoModManifest = {
   name: "follow",

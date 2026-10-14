@@ -165,6 +165,7 @@ import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
 import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventCard,
   type ModEventRegistration,
   type ModEventFn,
   type ModSetModuleFile,
@@ -1726,6 +1727,44 @@ const setModules: ModSetModuleFile[] = [
     },
   },
 ];
+
+/** The account mod's `when:` predicates, reached by Ruby's `send`
+ *  (set/event/all.rb:82). Each cites the Ruby source it is ported from.
+ *
+ *  - can_approve? is resolved by the engine (card-action-engine.ts
+ *    engineEventCardState), which already answers it for signup's own arm.
+ *  - setup? is the act's @setup_approved flag on the User card the signup
+ *    flow just created (type/user.rb:53, predicate at :72).
+ *  - current_account? / password_redirect? read the account id the save is
+ *    on against Auth.current_id (abstract/account_holder.rb:23,
+ *    right/account/events.rb:83). */
+export const accountModEventPredicates = {
+  /** can_approve? (set/type/signup.rb:12-14): the actor may create a card
+   *  of the default accounted type. */
+  "can_approve?": (card: ModEventCard): boolean => card.canApprove === true,
+  /** setup? (set/type/user.rb:72): `@setup_approved == true` — this User
+   *  card was created through the signup/setup flow. Gates
+   *  :setup_first_user (:59) and :signin_after_setup (:66). */
+  "setup?": (card: ModEventCard): boolean => card.setupApproved === true,
+  /** current_account? (set/abstract/account_holder.rb:23): `id &&
+   *  Auth.current_id == id`. Gates :signout_upon_delete
+   *  (right/account/events.rb:49). */
+  "current_account?": (card: ModEventCard): boolean =>
+    card.id !== undefined &&
+    card.authCurrentId !== null &&
+    card.authCurrentId !== undefined &&
+    card.id === card.authCurrentId,
+  /** password_redirect? (right/account/events.rb:83): `Auth.current_id ==
+   *  accounted_id && password.blank?` — the signed-in holder of this
+   *  account has no password set, i.e. the invitation/password-setup
+   *  redirect. Gates :password_redirect (:26). */
+  "password_redirect?": (card: ModEventCard): boolean =>
+    card.authCurrentId !== null &&
+    card.authCurrentId !== undefined &&
+    card.id !== undefined &&
+    card.id === card.authCurrentId &&
+    (card.password ?? "") === "",
+} as const;
 
 const cardModAccount: DeckoModManifest = {
   name: "account",

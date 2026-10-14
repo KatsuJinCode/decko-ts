@@ -197,6 +197,7 @@ import {
 } from "../mod-loader/mod-event-dispatch.js";
 import {
   populateModEventCardState,
+  type ModEventCardState,
   type ModEventCardStateContext,
 } from "../mod-loader/mod-event-card-state.js";
 import {
@@ -3876,6 +3877,31 @@ export class CardActionEngine {
     };
   }
 
+  /** The mod-event state this engine contributes directly, beyond the
+   *  per-mod sources (mod-loader/mod-event-card-state.ts): the answers the
+   *  engine already computes for its own gates, which the same predicates
+   *  consult. Merged in before the sources run, so a source may override
+   *  any of it.
+   *
+   *  - canApprove — `can_approve?` (mod/account/set/type/signup.rb:12-14):
+   *    `Card.new(type_id: Card.default_accounted_type_id).ok? :create`. The
+   *    engine already answers this for signup's own arm
+   *    (canCreateDefaultAccountedType below); answering it twice would mean
+   *    two permission probes per save, so the first answer is kept.
+   *  - accountId / setupApproved — `current_account?`
+   *    (set/abstract/account_holder.rb:23 `id && Auth.current_id == id`) and
+   *    `setup?` (set/type/user.rb:72 `@setup_approved == true`), which is
+   *    this act's flag on the User card it just created. */
+  private async engineEventCardState(): Promise<ModEventCardState> {
+    const state: ModEventCardState = {
+      authCurrentId: this.actor?.id ?? null,
+    };
+    if (this.actor !== null) {
+      return { ...state, canApprove: await this.canCreateDefaultAccountedType() };
+    }
+    return state;
+  }
+
   /** Dispatch one director stage for this save (no dispatch without a
    *  runtime). The deps pair is the same one the built-in janitors take.
    *  The pending add_comment save input (if this save carries one) rides
@@ -3890,7 +3916,11 @@ export class CardActionEngine {
   ): Promise<ModEventStageReport | undefined> {
     const runtime = this.modEvents;
     if (runtime === undefined) return undefined;
-    const populated = await populateModEventCardState(card, this.eventStateContext());
+    const engineState = await this.engineEventCardState();
+    const populated = await populateModEventCardState(
+      { ...card, ...engineState },
+      this.eventStateContext(),
+    );
     return runModEventStage(
       this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
       stage,
