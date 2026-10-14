@@ -29,10 +29,8 @@ import { str } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
-import type {
-  DeckoModManifest,
-  ModEngineHost,
-} from "../mod-manifest.js";
+import type { ModEngineHost } from "../mod-manifest.js";
+import { defineMod } from "../mod-dsl.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { processHelpContent } from "../../render/help-popover.js";
 import { parseNestOptions } from "../../render/nest-syntax.js";
@@ -344,79 +342,61 @@ async function prepareHelpAndGuideRules(host: ModEngineHost): Promise<void> {
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
-const cardModHelp: DeckoModManifest = {
-  name: "help",
-  gemName: "card-mod-help",
-  group: "gem-defaults",
-  setModules: [
-    {
-      // card-mod-help-0.20.0/set/all/help.rb
-      setPath: "all/help",
-      formats: {
-        html: {
-          views: [
-            { view: "help", viewFn: helpView, config: { unknown: true, cache: "never", wrap: "slot" } },
-            { view: "help_text", viewFn: helpTextView, config: { unknown: true, cache: "never" } },
-            { view: "lead", viewFn: leadView },
-          ],
-        },
-      },
-    },
-    {
-      // card-mod-help-0.20.0/set/all/guide.rb: the :guide view (unknown:
-      // true, cache: :never, wrap: :slot - identical config to :help). The
-      // view body's bytes run the guide card's Markdown core through
-      // nest(view: :core); that path is provided by card-mod-markdown
-      // (Type::Markdown::HtmlFormat#core, card-mod-markdown.ts:87-90).
-      setPath: "all/guide",
-      formats: {
-        html: {
-          views: [
-            { view: "guide", viewFn: guideView, config: { unknown: true, cache: "never", wrap: "slot" } },
-          ],
-        },
-      },
-    },
-    {
-      // card-mod-help-0.20.0/set/self/help.rb
-      setPath: "self/help",
-      settingOpts: {
-        group: "editing",
-        position: 1,
-        ruleTypeEditable: true,
-        shortHelpText: "help text people will see when editing",
-        helpText:
-          "[[http://decko.org/custom_help_text|Help text]] people will see when editing.",
-      },
-    },
-    {
-      // card-mod-help-0.20.0/set/self/guide.rb
-      setPath: "self/guide",
-      settingOpts: {
-        group: "editing",
-        position: 3,
-        ruleTypeEditable: true,
-        shortHelpText: "appears in the full editor view to guide users",
-      },
-    },
-    {
-      // card-mod-help-0.20.0/set/right/help.rb: the :popover view
-      // (help.rb:4-6). The view body delegates to card-mod-bootstrap's
-      // popover_link helper (helper.rb:41-44) - the TS port is the
-      // popoverLink export (card-mod-bootstrap.ts:166) imported as-is at
-      // the top of this file; the port-level tests assert the emitted
-      // anchor bytes.
-      setPath: "right/help",
-      formats: {
-        html: {
-          views: [
-            { view: "popover", viewFn: popoverView },
-          ],
-        },
-      },
-    },
-  ],
-  prepareEngine: prepareHelpAndGuideRules,
-};
+const cardModHelp = defineMod("card-mod-help", { group: "gem-defaults" }, ({ set, prepareEngine }) => {
+  // card-mod-help-0.20.0/set/all/help.rb
+  set("all/help", ({ format }) => {
+    format("html", ({ view }) => {
+      view("help", { unknown: true, cache: "never", wrap: "slot" }, helpView);
+      view("help_text", { unknown: true, cache: "never" }, helpTextView);
+      view("lead", leadView);
+    });
+  });
+
+  // card-mod-help-0.20.0/set/all/guide.rb: the :guide view (unknown:
+  // true, cache: :never, wrap: :slot - identical config to :help). The
+  // view body's bytes run the guide card's Markdown core through
+  // nest(view: :core); that path is provided by card-mod-markdown
+  // (Type::Markdown::HtmlFormat#core, card-mod-markdown.ts markdownCoreView).
+  set("all/guide", ({ format }) => {
+    format("html", ({ view }) => {
+      view("guide", { unknown: true, cache: "never", wrap: "slot" }, guideView);
+    });
+  });
+
+  // card-mod-help-0.20.0/set/self/help.rb
+  set("self/help", ({ setting }) => {
+    setting({
+      group: "editing",
+      position: 1,
+      ruleTypeEditable: true,
+      shortHelpText: "help text people will see when editing",
+      helpText: "[[http://decko.org/custom_help_text|Help text]] people will see when editing.",
+    });
+  });
+
+  // card-mod-help-0.20.0/set/self/guide.rb
+  set("self/guide", ({ setting }) => {
+    setting({
+      group: "editing",
+      position: 3,
+      ruleTypeEditable: true,
+      shortHelpText: "appears in the full editor view to guide users",
+    });
+  });
+
+  // card-mod-help-0.20.0/set/right/help.rb: the :popover view
+  // (help.rb:4-6). The view body delegates to card-mod-bootstrap's
+  // popover_link helper (helper.rb:41-44) - the TS port is the
+  // popoverLink export of card-mod-bootstrap.ts, imported as-is at the
+  // top of this file; the port-level tests assert the emitted anchor
+  // bytes.
+  set("right/help", ({ format }) => {
+    format("html", ({ view }) => {
+      view("popover", popoverView);
+    });
+  });
+
+  prepareEngine(prepareHelpAndGuideRules);
+});
 
 export default cardModHelp;
