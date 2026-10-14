@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds the synthetic-v2 coverage map: the render operation list
-// (fixtures/synthetic-v2/ops/render.jsonl) folded against the registration
+// (reference-harness/fixtures/synthetic-v2/ops/render.jsonl) folded against the registration
 // census, so every operation's code paths are answerable from one artifact.
 // The generation-time assertion in generate-ops.mjs guarantees every census
 // view is exercised; this map is the reviewable record of WHICH operation

@@ -39,7 +39,7 @@ import type { CardRecord } from "../../../src/card/fetch/card-record.js";
  *  Decko deck's read substrate is never Search-typed — Set and Setting are
  *  Cardtype cards, the party cards carry their own type, and the
  *  `*all+*read` rule junction carries the junction type (captured corpus
- *  rows: fixtures/test-corpus/test-corpus.sqlite3 — codename "set" type_id
+ *  rows of the captured test corpus (not redistributed) — codename "set" type_id
  *  = the cardtype card, `*all+*read` type_id = the junction type, neither of
  *  them the Search type). The shared bootstrap seeds those rows with the
  *  deck's DEFAULT type id, which here IS the Search type card, so the

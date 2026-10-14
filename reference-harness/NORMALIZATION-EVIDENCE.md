@@ -17,7 +17,7 @@ reproduce each fact. Each fact carries one label:
 
 ## The capture these facts come from
 
-The committed oracle capture is `fixtures/synthetic-v2/expected/render.jsonl.gz`.
+The committed oracle capture is `reference-harness/fixtures/synthetic-v2/expected/render.jsonl.gz`.
 Its public part holds 2,573 render operations:
 
 - 2,540 operations that return HTML;
@@ -30,7 +30,7 @@ operations. Every count below is over the 2,573 public operations unless it says
 otherwise.
 
 The composed adapter sets the capture clock to the fixture's `clock` value,
-`2026-09-19T12:00:00Z` (`fixtures/synthetic-v2/deck.json`), for the whole run
+`2026-09-19T12:00:00Z` (`reference-harness/fixtures/synthetic-v2/deck.json`), for the whole run
 (`adapters/ts-composed/adapter.ts`). The counts below were measured on
 2026-10-14 with that adapter at the revision this document was committed with.
 
@@ -204,7 +204,7 @@ the repository, or under `tmp/`, which is gitignored.
 
 Save the script below as `measure-shipped.mjs` in a scratch directory, then run
 `node --input-type=module < <path-to>/measure-shipped.mjs` from the repository root.
-It reads only `fixtures/synthetic-v2/expected/render.jsonl.gz` and uses the rules
+It reads only `reference-harness/fixtures/synthetic-v2/expected/render.jsonl.gz` and uses the rules
 exactly as the grader applies them.
 
 ```js
