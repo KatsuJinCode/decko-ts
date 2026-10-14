@@ -45,7 +45,7 @@
 import { DeckoName } from "../name.js";
 import { rawItemStrings } from "../render/pointer-list.js";
 import { bootstrapCoreScss, bootstrapFunctionsScss } from "../render/bootstrap-code-files.js";
-import { bootswatchThemeFile, modStyleFileContent, modStyleFiles } from "./style-sources.js";
+import { bootswatchThemeFile, modStyleFileContent, modStyleFiles, modStyleGroups } from "./style-sources.js";
 import type { CoffeeCompiler } from "./coffee-compiler.js";
 import type { ScssCompiler } from "./scss-compiler.js";
 
@@ -193,6 +193,58 @@ async function loadContent(deps: StyleAssetDeps, cards: ReadonlyArray<StyleCard 
 }
 
 // ---------------------------------------------------------------------------
+// the `style: mods` core view
+// ---------------------------------------------------------------------------
+
+/** `style: mods` as `assemble_asset_input_content` renders it
+ *  (asset_inputter.rb:51-53 `format(input_format).render input_view`,
+ *  input_view :core): the VIEW TREE, not the flat recursed-item walk
+ *  load_content uses. Three joins, and no two of them are the same:
+ *
+ *   - `style: mods` (type List) and each `mod: X+*style` card both include
+ *     Abstract::List (card-mod-style set/self/style_mods.rb:1,
+ *     set/type_plus_right/mod/style.rb:4-5 -> ModAssets mod_assets.rb:2
+ *     `include_set Abstract::List`), whose BASE-format core view wins:
+ *     card-mod-list set/abstract/01_list/other_views.rb:8-10
+ *     `view :core { pointer_items.join ", " }`.
+ *   - the items of a `view :core` list are nested at the format's implicit
+ *     item view (item.rb:120-125 `options[:view] ||= implicit_item_view`,
+ *     item.rb:130-133 `voo_items_view || default_item_view`), which for
+ *     these cards is :content (other_views.rb:68-70
+ *     `def default_item_view; :content; end`) — so each `mod: X+*style`
+ *     card renders OTHER_views.rb:76-78
+ *     `view :content { nest_item_array.join "\n\n" }`, and its items (the
+ *     `+group:` cards) are nested at :core (card-mod-layout
+ *     set/abstract/items.rb:7-12).
+ *   - a `+group:` card's :core is card-mod-style
+ *     set/abstract/style_group.rb:9-15 `item_cards.compact.map { _render_core
+ *     }.join "\n"`, and a file card's `_render_core` is scss :core
+ *     (card-mod-style set/abstract/02_scss.rb:20-22 `process_content
+ *     _render_raw`), so its link chunks are rendered — the same
+ *     process_content the `scss`/`css` type branches above apply.
+ *
+ * The seams are bytes: `mod: bootstrap+*style` has three groups, and reads
+ * with two "\n\n" where the flat walk gave two "\n". */
+async function styleModsCore(deps: StyleAssetDeps, card: StyleCard): Promise<string> {
+  const items: string[] = [];
+  for (const item of rawItemStrings(contentOf(deps, card))) {
+    if (item === "") continue;
+    const modCard = await deps.card(item);
+    if (modCard === undefined) {
+      items.push(""); // a new card: renders nothing
+      continue;
+    }
+    const groups = modStyleGroups(await modNameOf(deps, modCard)) ?? [];
+    items.push(
+      groups
+        .map((group) => group.files.map((f) => renderStyleChunks(modStyleFileContent(f), deps.relativeRoot)).join("\n"))
+        .join("\n\n"),
+    );
+  }
+  return items.join(", ");
+}
+
+// ---------------------------------------------------------------------------
 // the Bootswatch skin
 // ---------------------------------------------------------------------------
 
@@ -299,10 +351,12 @@ export async function assembleStyleInput(
       // The `style: mods` self card (card-mod-style set/self/style_mods.rb:1,
       // `include_set Abstract::AssetInputter, input_format: :scss`) and a
       // `<set>+*style` rule (type_plus_right/set/style.rb) are List-typed
-      // inputters, so they miss the type switch above. Their input is the
-      // same recursed-item walk the bootswatch branch uses
-      // (leafContents: recursed_item_cards mapped to content).
-      if (card.codename === "style_mods" || isStyleRule(card)) {
+      // inputters, so they miss the type switch above. `style: mods` renders
+      // through its core view (styleModsCore); a `<set>+*style` rule's items
+      // are style-type cards, not mods, so it takes the recursed-item walk
+      // the bootswatch branch uses.
+      if (card.codename === "style_mods") return styleModsCore(deps, card);
+      if (isStyleRule(card)) {
         const parts: string[] = [];
         await leafContents(deps, card, parts, new Set());
         return parts.join("\n");

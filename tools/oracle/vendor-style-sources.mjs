@@ -13,8 +13,14 @@
 //
 // Writes:
 //   fixtures/vendor/mod-style-assets/<gem>/<path>   one copy per leaf
-//   fixtures/vendor/mod-style-assets/manifest.json  the leaves in order:
-//       { mods: { "<mod name>": [ { file, type, sha256 } ] } }
+//   fixtures/vendor/mod-style-assets/manifest.json  the groups in Ruby's order,
+//       each with its files:
+//       { mods: { "<mod name>": [ { name, type, files: [ { file, type, sha256 } ] } ] } }
+//   The grouping is what the `style: mods` input is assembled from: a mod
+//   card's `view :core` joins its group cards with ", " (card-mod-list
+//   other_views.rb:8-10), a group card's joins its file cards with "\n"
+//   (card-mod-style style_group.rb:9-15), so the seams are part of the
+//   bytes.
 //   fixtures/vendor/bootswatch/<theme>/_variables.scss and _bootswatch.scss
 //       for every theme directory in card-mod-bootstrap's vendored
 //       bootswatch dist (the files a themed skin reads, bootswatch_skin.rb
@@ -50,8 +56,9 @@ for (const modCard of probe.mod_style_cards) {
   // "mod: api key+*style" -> mod "api_key" (the mod card's codename is
   // mod_<name>; mod_assets.rb mod_name strips the prefix)
   const modName = modCard.name.replace(/^mod: /, "").replace(/\+\*style$/, "").replace(/ /g, "_");
-  const files = [];
+  const groups = [];
   for (const group of modCard.items) {
+    const files = [];
     for (let i = 0; i < group.files.length; i++) {
       const leaf = leaves.shift();
       if (leaf === undefined) throw new Error(`leaf list ended inside ${modCard.name}`);
@@ -65,12 +72,15 @@ for (const modCard of probe.mod_style_cards) {
       copyFileSync(abs, dest);
       files.push({ file: rel, type: leaf.type, sha256: leaf.sha });
     }
+    groups.push({ name: group.name, type: group.type, files });
   }
-  mods[modName] = files;
+  mods[modName] = groups;
 }
 if (leaves.length > 0) throw new Error(`${leaves.length} leaves left over`);
 writeFileSync(join(modOut, "manifest.json"), `${JSON.stringify({ mods }, null, 2)}\n`);
-console.log(`mod style files: ${Object.values(mods).flat().length} in ${Object.keys(mods).length} mods`);
+console.log(
+  `mod style files: ${Object.values(mods).flatMap((g) => g.flatMap((x) => x.files)).length} in ${Object.keys(mods).length} mods`,
+);
 
 // ---- bootswatch themes
 const distDir = join(GEMS, "card-mod-bootstrap-0.20.0", "vendor", "bootswatch", "dist");

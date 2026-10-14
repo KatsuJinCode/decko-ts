@@ -84,16 +84,42 @@ export interface ModStyleFile {
   sha256: string;
 }
 
-let manifest: Record<string, ModStyleFile[]> | undefined;
-/** The vendored files of one mod's style groups, in Ruby's order; undefined
- *  for a mod with no style assets (its `+*style` card has no groups). */
-export function modStyleFiles(modName: string): readonly ModStyleFile[] | undefined {
+let manifest: Record<string, ModStyleGroup[]> | undefined;
+function vendoredManifest(): Record<string, ModStyleGroup[]> {
   if (manifest === undefined) {
     const text = readVendored("mod-style-assets/manifest.json");
     if (text === undefined) throw new Error("vendored style sources not found: mod-style-assets/manifest.json");
-    manifest = (JSON.parse(text) as { mods: Record<string, ModStyleFile[]> }).mods;
+    manifest = (JSON.parse(text) as { mods: Record<string, ModStyleGroup[]> }).mods;
   }
-  return manifest[modName];
+  return manifest;
+}
+
+/** One `mod: X+*style+group: <name>` card: its asset file cards, in Ruby's
+ *  order (asset_group.rb:15-18 item_cards over relative_paths). The group is
+ *  the unit `style: mods`'s input is assembled from — a mod card's core view
+ *  joins the groups, a group card's core view joins the files. */
+export interface ModStyleGroup {
+  name: string;
+  /** The group's type: "local_style_folder_group" or "local_style_manifest_group". */
+  type: string;
+  files: ModStyleFile[];
+}
+
+/** The style groups of one `mod: X+*style` card, in Ruby's order
+ *  (mod_assets.rb:5-7 item_cards -> local_group_cards); undefined for a mod
+ *  with no style assets (its `+*style` card has no groups). */
+export function modStyleGroups(modName: string): readonly ModStyleGroup[] | undefined {
+  return vendoredManifest()[modName];
+}
+
+/** Every file of every group of one mod, groups in order — the flat
+ *  `recursed_item_cards` walk (bootswatch_skin.rb:163-172 load_content maps
+ *  recursed_item_cards to content and joins "\n"), which does not read the
+ *  group seams. */
+export function modStyleFiles(modName: string): readonly ModStyleFile[] | undefined {
+  const groups = vendoredManifest()[modName];
+  if (groups === undefined) return undefined;
+  return groups.flatMap((group) => group.files);
 }
 
 /** An asset file card's `content`: the file's text (Abstract::AssetFile ->
