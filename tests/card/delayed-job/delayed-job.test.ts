@@ -12,6 +12,8 @@
 //   - the handler is the JobWrapper document and reads back to its job;
 //   - each host's after-response hand-off runs the worker.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   createActionsTestStorage,
@@ -146,7 +148,7 @@ describe("card-mod-delayed_job: integrate_with_delay", () => {
     const row = rows[0]!;
     expect({ ...row, id: undefined, handler: undefined }).toEqual({
       id: undefined,
-      priority: 10,
+      priority: 20,
       attempts: 0,
       handler: undefined,
       last_error: null,
@@ -163,7 +165,8 @@ describe("card-mod-delayed_job: integrate_with_delay", () => {
     expect(job.queue).toBe("notify_followers_after_save");
     expect(job.methodName).toBe("notify_followers_after_save_without_callbacks");
     expect(job.cardId).toBe(created.cardId);
-    expect(job.auth).toEqual({ as_id: null, current_id: 7 });
+    expect(job.auth).toEqual({ as_id: 7, current_id: 7 });
+    expect(job.cardAttribs.action).toBe("update");
 
     // The host's after-response hand-off runs the worker.
     expect(r.deferred).toHaveLength(1);
@@ -207,9 +210,9 @@ describe("card-mod-delayed_job: integrate_with_delay", () => {
       actId: 1,
       cardId: 1,
       methodName: "no_such_event_without_callbacks",
-      env: { main_name: null, params: {}, ip: null, protocol: null, host: null, origin: null, ajax: null, html: true },
+      env: { origin: "", html: true, "ajax?": null, "html?": true, ip: null, protocol: null, params: {}, main_name: null, ajax: null, host: null },
       auth: { as_id: null, current_id: 7 },
-      act: { actId: 1, actor: { id: 7, name: "Dana", email: null }, silent: false, events: [] },
+      cardAttribs: { action: "update", currentActionId: null },
     };
     await r.store.insert(job);
     expect(await r.worker.workOff()).toEqual({ success: 0, failure: 1 });
@@ -228,9 +231,9 @@ describe("card-mod-delayed_job: integrate_with_delay", () => {
       actId: null,
       cardId: 1,
       methodName: "x_without_callbacks",
-      env: { main_name: null, params: {}, ip: null, protocol: null, host: null, origin: null, ajax: null, html: true },
+      env: { origin: "", html: true, "ajax?": null, "html?": true, ip: null, protocol: null, params: {}, main_name: null, ajax: null, host: null },
       auth: { as_id: null, current_id: 7 },
-      act: { actId: 1, actor: { id: 7, name: "Dana", email: null }, silent: false, events: [] },
+      cardAttribs: { action: "update", currentActionId: null },
     };
     await r.store.insert({ ...base, queue: "late", priority: 100 });
     await r.store.insert({ ...base, queue: "early", priority: 10 });
@@ -241,46 +244,67 @@ describe("card-mod-delayed_job: integrate_with_delay", () => {
 });
 
 describe("delayed_jobs handler", () => {
-  it("is the ActiveJob JobWrapper document and reads back to its job", () => {
-    const job: DelayedEventJob = {
+  // Captured from the Ruby oracle app (card 1.110.0, card-mod-delayed_job
+  // 0.20.0, config.delaying = true): Ada Admin updates a card Mira Member
+  // follows. Two Ruby runs on the same deck differ only in job_id,
+  // enqueued_at, run_at, created_at and updated_at.
+  const ruby = JSON.parse(
+    readFileSync(fileURLToPath(new URL("./fixtures/ruby-oracle-notify-row.json", import.meta.url)), "utf8"),
+  ) as DelayedJobsRow;
+
+  it("matches the Ruby oracle's handler byte for byte, given Ruby's job_id and enqueue time", () => {
+    const job = parseDelayedJobHandler(ruby.handler);
+    expect(job).toEqual({
       queue: "notify_followers_after_save",
-      priority: 10,
-      actId: 41,
-      cardId: 99,
-      methodName: "notify_followers_after_save_without_callbacks",
+      priority: 20,
+      actId: 105617,
+      cardId: 911,
+      cardAttribs: { action: "update", currentActionId: 1001 },
       env: {
-        main_name: "Watched Card",
-        params: { card: { content: "it's" } },
-        ip: "192.0.2.7",
-        protocol: "https://",
-        host: "deck.example",
-        origin: "https://deck.example",
-        ajax: null,
+        origin: "",
         html: true,
+        "ajax?": null,
+        "html?": true,
+        ip: null,
+        protocol: null,
+        params: {},
+        main_name: null,
+        ajax: null,
+        host: null,
       },
-      auth: { as_id: null, current_id: 7 },
-      act: { actId: 41, actor: { id: 7, name: "Dana", email: null }, silent: false, events: [], actCardName: "Watched Card" },
-    };
-    const handler = buildDelayedJobHandler(job, {
-      jobId: "0f1e2d3c-4b5a-4987-8a6b-5c4d3e2f1a0b",
-      enqueuedAt: new Date("2026-10-14T09:30:00.250Z"),
+      auth: { as_id: 611, current_id: 611 },
+      methodName: "notify_followers_after_save_without_callbacks",
     });
-    const lines = handler.split("\n");
-    expect(lines.slice(0, 6)).toEqual([
-      `--- ${JOB_WRAPPER_TAG}`,
-      "job_data:",
-      `  job_class: ${INTEGRATE_WITH_DELAY_JOB_CLASS}`,
-      "  job_id: 0f1e2d3c-4b5a-4987-8a6b-5c4d3e2f1a0b",
-      "  provider_job_id:",
-      "  queue_name: notify_followers_after_save",
-    ]);
-    expect(lines).toContain("  enqueued_at: '2026-10-14T09:30:00.250000000Z'");
-    const args = JSON.parse(lines.find((l) => l.startsWith("  arguments: "))!.slice("  arguments: ".length));
-    expect(args[0]).toBe(41);
-    expect(args[1]).toEqual({ _aj_globalid: "gid://decko/Card/99" });
-    expect(args[4]).toEqual({ as_id: null, current_id: 7, _aj_symbol_keys: ["as_id", "current_id"], _aj_integer_keys: [] });
-    expect(args[5]).toBe("notify_followers_after_save_without_callbacks");
-    expect(parseDelayedJobHandler(handler)).toEqual(job);
+    const jobId = /^  job_id: (.*)$/m.exec(ruby.handler)![1]!;
+    // Ruby's enqueued_at carries sub-millisecond digits a JavaScript Date
+    // cannot hold; the instant is otherwise the same.
+    const enqueuedRuby = /^  enqueued_at: '(.*)'$/m.exec(ruby.handler)![1]!;
+    const port = buildDelayedJobHandler(job, {
+      jobId,
+      enqueuedAt: new Date(enqueuedRuby),
+      globalIdApp: "reference-oracle",
+    });
+    const mask = (h: string): string => h.replace(/^  enqueued_at: .*$/m, "  enqueued_at: <instant>");
+    expect(mask(port)).toBe(mask(ruby.handler));
+    expect(port).toContain(`  enqueued_at: '${enqueuedRuby.slice(0, 23)}000000Z'`);
+  });
+
+  it("writes the Ruby oracle's column values for the row", async () => {
+    const storage = await createActionsTestStorage();
+    const job = parseDelayedJobHandler(ruby.handler);
+    const at = new Date("2026-10-14T21:12:40.990Z");
+    const store = new SqlDelayedJobStore(storage.driver, {
+      now: () => at,
+      newJobId: () => /^  job_id: (.*)$/m.exec(ruby.handler)![1]!,
+      globalIdApp: "reference-oracle",
+    });
+    await store.insert(job);
+    const [row] = await storage.selectAll<DelayedJobsRow>("SELECT * FROM delayed_jobs", []);
+    const runToRun = ["id", "handler", "run_at", "created_at", "updated_at"] as const;
+    const stable = (r: DelayedJobsRow): Partial<DelayedJobsRow> =>
+      Object.fromEntries(Object.entries(r).filter(([k]) => !(runToRun as readonly string[]).includes(k)));
+    expect(stable(row!)).toEqual(stable(ruby));
+    storage.close();
   });
 
   it("refuses a handler that is not an IntegrateWithDelayJob", () => {

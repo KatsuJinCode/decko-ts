@@ -916,7 +916,9 @@ function renderMd(report) {
       .filter(([, n]) => n > 0)
       .map(([p, n]) => `${p}=${n}`)
       .join(", ");
-    const pinsSummary = `${m.pins.testCount}/${m.pins.bytePins}`;
+    // The classification's own counts: a backend port's guarding test file is
+    // not a mod-loader pin file, so m.pins would read 0/0 for it.
+    const pinsSummary = `${cls.metrics.testCount}/${cls.metrics.bytePins}`;
     lines.push(
       `| \`${m.gem}\` | ${cls.status} | ${modSpec} | ${manifestSpec} | ${cls.metrics.setModules} (${setModSummary}) | ${cls.metrics.libRbFiles} | ${pinsSummary} | ${cls.verdict.replace(/\|/g, "\\|").slice(0, 200)} |`,
     );
@@ -932,7 +934,7 @@ function renderMd(report) {
     lines.push(`- **verdict**: ${cls.verdict}`);
     lines.push(`- **evidence**: ${cls.evidence}`);
     lines.push(`- **mod-loader manifest**: ${m.pins.manifestExists ? `yes (${m.pins.manifestViews.length} views registered)` : "no"}`);
-    lines.push(`- **byte-pinned test**: ${m.pins.testExists ? `yes (${m.pins.testCount} it() blocks, ${m.pins.bytePins} toBe(<literal>) pins)` : "no"}`);
+    lines.push(`- **byte-pinned test**: ${cls.metrics.testExists ? `yes (${cls.metrics.testCount} it() blocks, ${cls.metrics.bytePins} toBe(<literal>) pins)` : "no"}`);
     lines.push(`- **set modules by pattern**: ${Object.entries(m.inv.setModulesByPattern).filter(([, n]) => n > 0).map(([p, n]) => `${p}=${n}`).join(", ") || "(none)"}`);
     lines.push(`- **mod-specific html views (covered/total)**: ${cls.metrics.specificViewsCovered}/${cls.metrics.specificViewsDeclared} (${(m.inv.viewsByFormat.html ?? []).filter((v) => !["core","content","title","titled","titled_content","menu","open","closed","blank","unknown","mini_unknown","no_search_results"].includes(v)).join(", ") || "(none)"})`);
     lines.push(`- **all html views declared**: ${(m.inv.viewsByFormat.html ?? []).length ? m.inv.viewsByFormat.html.join(", ") : "(none)"}`);

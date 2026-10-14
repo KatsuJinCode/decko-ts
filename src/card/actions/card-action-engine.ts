@@ -135,6 +135,8 @@ import {
   savePathEventFromAction,
   type FollowerResolver,
   type NotifyTransport,
+
+  type SavePathEvent,
   type SavePathIntegrationHook,
 } from "../notify/index.js";
 import {
@@ -213,6 +215,7 @@ import type {
   ModEventStage,
 } from "../mod-loader/mod-manifest.js";
 import { isEditConflict } from "../mod-loader/mods/card-mod-history.js";
+import type { SavePathAct } from "../notify/types.js";
 import {
   DEFAULT_DELAYED_EVENT_PRIORITY,
   type DelayedEventJob,
@@ -703,9 +706,7 @@ export class CardActionEngine {
       for (const hook of hooks) {
         if (hook.stage !== "integrate_with_delay" || first === undefined) continue;
         if (!hook.notable(first)) continue;
-        await this.delayedJobs.queue.enqueue(
-          this.delayedEventJob(hook, { actId: result.actId, actor, silent: false, events, actCardName }, result.cardId),
-        );
+        await this.delayedJobs.queue.enqueue(this.delayedEventJob(hook, result, actor.id));
       }
     }
     if (inline.length === 0) return;
@@ -720,12 +721,11 @@ export class CardActionEngine {
     });
   }
 
-  /** perform_delayed_job_args (delayed_event.rb:99-106) for one hook. */
-  private delayedEventJob(
-    hook: SavePathIntegrationHook,
-    act: DelayedEventJob["act"],
-    cardId: number,
-  ): DelayedEventJob {
+  /** perform_delayed_job_args (delayed_event.rb:99-106) for one hook: the
+   *  act id, the act card, its action attributes, Card::Env.serialize and
+   *  Card::Auth.serialize (as_id is the signed-in user when nobody is
+   *  impersonated), and the event's simple method name. */
+  private delayedEventJob(hook: SavePathIntegrationHook, result: ActionResult, actorId: number): DelayedEventJob {
     const event = hook.event ?? hook.name ?? "integrate_with_delay";
     let protocol: string | null = null;
     let host: string | null = null;
@@ -741,23 +741,70 @@ export class CardActionEngine {
     return {
       queue: event,
       priority: hook.priority ?? DEFAULT_DELAYED_EVENT_PRIORITY,
-      actId: act.actId,
-      cardId,
-      methodName: `${event}_without_callbacks`,
+      actId: result.actId,
+      cardId: result.cardId,
+      cardAttribs: { action: result.verb, currentActionId: result.actionId },
       env: {
-        main_name: act.actCardName ?? null,
-        params: { ...(this.saveParams ?? {}) },
+        origin: this.followMail?.origin ?? "",
+        html: true,
+        "ajax?": null,
+        "html?": true,
         ip: this.ipAddress,
         protocol,
-        host,
-        origin: this.followMail?.origin ?? null,
+        params: { ...(this.saveParams ?? {}) },
+        main_name: null,
         ajax: null,
-        html: true,
-        decko_bot_email: this.followMail?.deckoBotEmail ?? null,
+        host,
       },
-      auth: { as_id: null, current_id: act.actor.id },
-      act,
+      auth: { as_id: actorId, current_id: actorId },
+      methodName: `${event}_without_callbacks`,
     };
+  }
+
+  /** The act a delayed job names, read back from card_acts/card_actions —
+   *  Ruby's Act.find(act_id) in with_delay_act, then act.reload in
+   *  notify_followers. */
+  private async delayedJobAct(job: DelayedEventJob): Promise<SavePathAct> {
+    const driver = this.fetch.driver;
+    const actId = job.actId ?? 0;
+    const actRow = (await driver.query<{ card_id: number | null; actor_id: number | null }>(
+      "SELECT card_id, actor_id FROM card_acts WHERE id = ? LIMIT 1",
+      [actId],
+    )).rows[0];
+    const actorId = job.auth.current_id ?? actRow?.actor_id ?? 0;
+    const actorCard = await this.fetch.fetchById(actorId);
+    const actor = { id: actorId, name: actorCard?.name?.s ?? "", email: null };
+    const actions = (await driver.query<{ id: number; card_id: number; action_type: number | null }>(
+      "SELECT id, card_id, action_type FROM card_actions WHERE card_act_id = ? AND (draft IS NULL OR draft = 0) ORDER BY id",
+      [actId],
+    )).rows;
+    const VERBS = ["create", "update", "delete"] as const;
+    const events: SavePathEvent[] = [];
+    for (const action of actions) {
+      const card = await this.fetch.fetchById(action.card_id, { lookInTrash: true });
+      const verb = VERBS[action.action_type ?? 1] ?? "update";
+      events.push({
+        card: card?.name === undefined
+          ? null
+          : {
+              id: action.card_id,
+              name: card.name.s ?? null,
+              leftName: card.name.leftName?.s ?? null,
+              rightName: card.name.rightName?.s ?? null,
+              type: null,
+              content: null,
+              trashed: verb === "delete",
+            },
+        verb,
+        actId,
+        actionId: action.id,
+        actor,
+        silent: false,
+        isDeletePath: verb === "delete",
+      });
+    }
+    const actCard = actRow?.card_id == null ? undefined : await this.fetch.fetchById(actRow.card_id, { lookInTrash: true });
+    return { actId, actor, silent: false, events, actCardName: actCard?.name?.s ?? null };
   }
 
   /**
@@ -781,12 +828,13 @@ export class CardActionEngine {
     if (hook === undefined) {
       throw new Error(`undefined method '${job.methodName}' for an instance of Card`);
     }
+    const act = await this.delayedJobAct(job);
     await runIntegrationHooks({
-      actId: job.act.actId,
-      actor: job.act.actor,
-      silent: job.act.silent,
-      events: job.act.events,
-      actCardName: job.act.actCardName ?? null,
+      actId: act.actId,
+      actor: act.actor,
+      silent: act.silent,
+      events: act.events,
+      actCardName: act.actCardName ?? null,
       hooks: [hook],
       context: makeNotifyContext(this.notifyTransport ?? defaultTransport, this.notifyLogger),
       onError: (err) => {
