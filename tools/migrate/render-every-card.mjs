@@ -6,8 +6,12 @@
 //   node <bundle.mjs> <staging.sqlite>
 //
 // Prints progress to stderr and one JSON line to stdout: cards attempted,
-// rendered, fetch misses, render errors (by error class name), total
-// bytes and elapsed time. No card name or content is printed.
+// fetch misses (no composable name), and per view (page = the full layout
+// page Ruby serves for GET /<card>, core = the card's core view) the count
+// rendered, render errors by error class name, total bytes and elapsed
+// time. No card name or content is printed. RENDER_EVERY_CARD_STACKS=1
+// writes the first stack per view and error class to stderr for local
+// diagnosis; it never enters the JSON line.
 
 import { LocalSqliteToolDriver } from "./import.mjs";
 import { FetchEngine } from "../../src/card/fetch.ts";
@@ -26,27 +30,37 @@ const driver = new LocalSqliteToolDriver(dbPath, { readonly: true });
 const fetcher = new FetchEngine(driver);
 const renderer = new RenderEngine(fetcher);
 const ids = (await driver.query("SELECT id FROM cards WHERE trash = 0 ORDER BY id", [])).rows.map((r) => Number(r.id));
+const limit = process.env.RENDER_EVERY_CARD_LIMIT ? Number(process.env.RENDER_EVERY_CARD_LIMIT) : ids.length;
 
-const out = { view: "content", attempted: 0, rendered: 0, fetchMisses: 0, renderErrors: 0, errorClasses: {}, bytes: 0, ms: 0 };
+const VIEWS = ["page", "core"];
+const out = { attempted: 0, fetchMisses: 0, views: {}, ms: 0 };
+for (const v of VIEWS) out.views[v] = { rendered: 0, renderErrors: 0, errorClasses: {}, bytes: 0, ms: 0 };
+const stackShown = new Set();
 const t0 = Date.now();
-for (const id of ids) {
+for (const id of ids.slice(0, limit)) {
   out.attempted += 1;
   const record = await fetcher.fetchById(id);
   if (record === undefined || record.name === undefined || record.name.s === "") {
     out.fetchMisses += 1;
     continue;
   }
-  try {
-    const html = await renderer.render(record.name.s, "content");
-    out.rendered += 1;
-    out.bytes += Buffer.byteLength(html, "utf8");
-  } catch (err) {
-    out.renderErrors += 1;
-    const cls = err?.constructor?.name ?? "unknown";
-    out.errorClasses[cls] = (out.errorClasses[cls] ?? 0) + 1;
-    // The first error's stack goes to stderr for diagnosis; stderr stays
-    // in the local run and never enters the JSON summary.
-    if (out.renderErrors === 1) process.stderr.write(`first render error: ${err?.stack ?? err}\n`);
+  for (const view of VIEWS) {
+    const v = out.views[view];
+    const tv = Date.now();
+    try {
+      const html = view === "page" ? await renderer.renderPage(record.name.s) : await renderer.render(record.name.s, view);
+      v.rendered += 1;
+      v.bytes += Buffer.byteLength(html, "utf8");
+    } catch (err) {
+      v.renderErrors += 1;
+      const cls = err?.constructor?.name ?? "unknown";
+      v.errorClasses[cls] = (v.errorClasses[cls] ?? 0) + 1;
+      if (process.env.RENDER_EVERY_CARD_STACKS === "1" && !stackShown.has(`${view}:${cls}`)) {
+        stackShown.add(`${view}:${cls}`);
+        process.stderr.write(`first ${view} ${cls}: ${err?.stack ?? err}\n`);
+      }
+    }
+    v.ms += Date.now() - tv;
   }
   if (out.attempted % 2000 === 0) {
     process.stderr.write(`render: ${out.attempted}/${ids.length} in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);

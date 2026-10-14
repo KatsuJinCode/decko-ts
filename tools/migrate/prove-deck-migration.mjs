@@ -3,7 +3,7 @@
 // prove the result row by row.
 //
 //   node tools/migrate/prove-deck-migration.mjs --deck <deck.sqlite> \
-//     --work <scratch-dir> [--keep] [--summary <file.json>]
+//     --work <scratch-dir> [--rebuild-keys] [--keep] [--summary <file.json>]
 //
 // Steps:
 //   1. COPY the deck into <work> (the original is never opened for write)
@@ -39,10 +39,11 @@ const REPO_ROOT = path.resolve(HERE, "..", "..");
 const DDL = path.join(REPO_ROOT, "db", "schema.sqlite.sql");
 
 function parseArgs(argv) {
-  const opts = { deck: undefined, work: undefined, keep: false, summary: undefined };
+  const opts = { deck: undefined, work: undefined, keep: false, summary: undefined, rebuildKeys: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--deck") opts.deck = argv[++i];
+    if (a === "--rebuild-keys") opts.rebuildKeys = true;
+    else if (a === "--deck") opts.deck = argv[++i];
     else if (a === "--work") opts.work = argv[++i];
     else if (a === "--summary") opts.summary = argv[++i];
     else if (a === "--keep") opts.keep = true;
@@ -52,7 +53,7 @@ function parseArgs(argv) {
     }
   }
   if (!opts.deck || !opts.work) {
-    console.error("usage: prove-deck-migration.mjs --deck <deck.sqlite> --work <dir> [--keep] [--summary <file>]");
+    console.error("usage: prove-deck-migration.mjs --deck <deck.sqlite> --work <dir> [--rebuild-keys] [--keep] [--summary <file>]");
     process.exit(2);
   }
   return opts;
@@ -82,8 +83,18 @@ function runNode(args, label, env = {}) {
 // Target column for a source column.
 const targetColumn = (c) => (c === "content" ? "db_content" : c);
 
-// Values compare by type and value; SQLite integers and text keep their
-// storage class through both paths, so no coercion is applied.
+// Values compare by type and value after the source value is given the
+// target column's declared type affinity, as SQLite does on INSERT: a
+// TEXT value that is a well-formed integer stored into an INTEGER column
+// becomes that integer. Nothing else is coerced.
+const INTEGER_TEXT = /^[+-]?\d+$/;
+function withAffinity(value, declaredType) {
+  if (typeof value === "string" && /INT/i.test(declaredType ?? "") && INTEGER_TEXT.test(value.trim())) {
+    const n = Number(value.trim());
+    if (Number.isSafeInteger(n)) return n;
+  }
+  return value;
+}
 const same = (a, b) => (a === null || a === undefined ? b === null || b === undefined : a === b);
 
 const opts = parseArgs(process.argv.slice(2));
@@ -109,6 +120,7 @@ try {
       path.join(HERE, "import-deck.mjs"),
       "--source", source, "--dedup", "--out-dir", outDir, "--staging", staging,
       "--chunk-rows", "500", "--chunk-bytes", "1048576", "--quiet",
+      ...(opts.rebuildKeys ? ["--rebuild-keys"] : []),
     ],
     "import-deck",
     { DECKO_KEEP_STAGING: "1" },
@@ -122,6 +134,7 @@ try {
     rows: Number(/(\d+) rows total/.exec(imp.stdout)?.[1] ?? NaN),
     duplicateKeyNulled: nulledKeys ? Number(nulledKeys[1]) : 0,
     validatorAllChecksPass: report.allChecksPass ?? report.all_checks_pass ?? null,
+    rebuiltKeys: report.rebuiltKeys ?? null,
   };
 
   // 3. D1 (local Miniflare) -------------------------------------------------
@@ -151,6 +164,13 @@ try {
     [path.join(HERE, "apply-chunks-to-d1-local.mjs"), path.join(outDir, "chunks"), "--d1-path", path.join(d1Persist, d1Files[0])],
     "apply-chunks-to-d1-local",
   );
+  // The freshness-stamp triggers go in after the load (parseTargetSchema).
+  {
+    const mf = new Miniflare(mfOptions);
+    const db = await mf.getD1Database("DB");
+    for (const stmt of schema.createTriggers) await db.prepare(stmt).run();
+    await mf.dispose();
+  }
   summary.steps.d1Apply = { ms: Date.now() - t0, applierMs: apply.ms };
 
   // 4. VERIFY ---------------------------------------------------------------
@@ -160,9 +180,18 @@ try {
   const mf = new Miniflare(mfOptions);
   const d1 = await mf.getD1Database("DB");
   const verify = {};
+  // With --rebuild-keys the importer deliberately replaces a card's stored
+  // key with Card::Name#key of its name; the collision policy may then NULL
+  // it. Those rows are counted apart from mismatches, by recomputing the
+  // expected key here with the same function.
+  const deriveKey = opts.rebuildKeys ? await (await import("./load-derive-key.mjs")).loadDeriveKey() : undefined;
+  const derivedKeyCache = new Map();
   for (const table of ["cards", "card_references"]) {
     const srcCols = src.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name);
     const tgtCols = srcCols.map(targetColumn);
+    const declared = new Map(stg.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, c.type]));
+    const tgtTypes = tgtCols.map((c) => declared.get(c));
+    const keyCol = table === "cards" ? srcCols.indexOf("key") : -1;
     const tgtList = tgtCols.map((c) => `"${c}"`).join(", ");
     const srcCount = src.prepare(`SELECT COUNT(*) n FROM "${table}"`).get().n;
     const stgCount = stg.prepare(`SELECT COUNT(*) n FROM "${table}"`).get().n;
@@ -171,6 +200,9 @@ try {
       source: srcCount, staging: stgCount, d1: d1Count,
       stagingMismatchedRows: 0, d1MismatchedRows: 0,
       mismatchedColumns: {}, missingInStaging: 0, missingInD1: 0,
+      ...(deriveKey !== undefined && table === "cards"
+        ? { keyRebuilt: { staging: 0, d1: 0 }, keyNulledByCollision: { staging: 0, d1: 0 } }
+        : {}),
     };
     const PAGE = 5000;
     let last = -1;
@@ -192,7 +224,15 @@ try {
           if (t === undefined) { stats[missKey] += 1; continue; }
           let bad = false;
           for (let i = 0; i < srcCols.length; i++) {
-            if (!same(row[srcCols[i]], t[tgtCols[i]])) {
+            const want = withAffinity(row[srcCols[i]], tgtTypes[i]);
+            const got = t[tgtCols[i]];
+            if (i === keyCol && deriveKey !== undefined && !same(want, got) && typeof row.name === "string" && row.name !== "") {
+              let derived = derivedKeyCache.get(row.id);
+              if (derived === undefined) { derived = deriveKey(row.name); derivedKeyCache.set(row.id, derived); }
+              if (got === derived) { stats.keyRebuilt[label] += 1; continue; }
+              if (got === null) { stats.keyNulledByCollision[label] += 1; continue; }
+            }
+            if (!same(want, got)) {
               bad = true;
               const k = `${label}.${tgtCols[i]}`;
               stats.mismatchedColumns[k] = (stats.mismatchedColumns[k] ?? 0) + 1;

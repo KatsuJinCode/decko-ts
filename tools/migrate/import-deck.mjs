@@ -94,6 +94,9 @@ function usage(exitCode = 0) {
     "  --dedup              SQLite source: ingest through the streaming dedup path",
     "                       (the same UNIQUE-index collision policy the dump and",
     "                       seed paths apply) instead of generalized-import",
+    "  --rebuild-keys       Streaming path: recompute the key of every card that stores",
+    "                       a name from that name with the port's Card::Name#key, then",
+    "                       apply the key collision policy; reports how many changed",
     "",
     "The JSON report is content-free (ids, counts, hashes - never card names/content).",
   ];
@@ -120,6 +123,7 @@ function parseArgs(argv) {
     quiet: false,
     strict: false,
     dedup: false,
+    rebuildKeys: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -147,6 +151,7 @@ function parseArgs(argv) {
       case "--quiet": opts.quiet = true; break;
       case "--strict": opts.strict = true; break;
       case "--dedup": opts.dedup = true; break;
+      case "--rebuild-keys": opts.rebuildKeys = true; break;
       case "--help": case "-h": usage(0); break;
       default:
         console.error(`unknown argument: ${a}`);
@@ -159,6 +164,10 @@ function parseArgs(argv) {
     usage(1);
   }
   if (!opts.outDir) usage(1);
+  if (opts.rebuildKeys && opts.source !== undefined && !opts.dedup) {
+    console.error("--rebuild-keys with --source requires --dedup (the streaming path)");
+    usage(1);
+  }
   return opts;
 }
 
@@ -258,6 +267,13 @@ if (sourceKind === "sqlite" && !opts.dedup) {
   for (const stmt of schema.createTables) await stagingDriver.query(stmt, []);
 
   const { mapRowToTarget } = await import("./schema-map.mjs");
+  // --rebuild-keys: Ruby stores Card::Name#key of the name in every simple
+  // card's key column. A source whose keys were written by something else
+  // has them recomputed here, before the collision policy below sees them.
+  // Compound cards store NULL name and key (the Lexicon composes them), so
+  // only rows carrying a name are touched.
+  const deriveKey = opts.rebuildKeys ? await (await import("./load-derive-key.mjs")).loadDeriveKey() : undefined;
+  const rebuiltKeys = { examined: 0, changed: 0, caseOnly: 0 };
   // Deduplicate by (table, id) when the table has an id column. Real
   // decko data is unique on id, but dump files produced by lossy
   // sanitization passes can carry duplicate rows. Skipping the
@@ -315,6 +331,19 @@ if (sourceKind === "sqlite" && !opts.dedup) {
     // on the duplicate row so the UNIQUE INDEX does not reject it; the row
     // itself still lands and the count is reported.
     const keyIdx = mapped.columns.indexOf("key");
+    if (deriveKey !== undefined && row.table === "cards" && keyIdx >= 0) {
+      const name = mapped.values[mapped.columns.indexOf("name")];
+      if (typeof name === "string" && name !== "") {
+        rebuiltKeys.examined += 1;
+        const before = mapped.values[keyIdx];
+        const after = deriveKey(name);
+        if (after !== before) {
+          rebuiltKeys.changed += 1;
+          if (typeof before === "string" && before.toLowerCase() === after.toLowerCase()) rebuiltKeys.caseOnly += 1;
+          mapped.values[keyIdx] = after;
+        }
+      }
+    }
     if (keyIdx >= 0) {
       const key = mapped.values[keyIdx];
       if (key !== null && key !== undefined) {
@@ -383,6 +412,11 @@ if (sourceKind === "sqlite" && !opts.dedup) {
   }
   await flush();
   for (const stmt of schema.createIndexes) await stagingDriver.query(stmt, []);
+  // [ENGINE-FRESHNESS]: the stamp row and its triggers go in after the load,
+  // as parseTargetSchema documents, so the render path's freshness read
+  // finds its row and later writes bump it.
+  for (const stmt of schema.postLoadStatements) await stagingDriver.query(stmt, []);
+  for (const stmt of schema.createTriggers) await stagingDriver.query(stmt, []);
   // Planner statistics, after the rows are in and after the indexes exist.
   // Without them SQLite estimates every equality alike and can pick a
   // low-selectivity index, reading far more rows than the query needs.
@@ -393,6 +427,10 @@ if (sourceKind === "sqlite" && !opts.dedup) {
     const total = [...skippedDuplicates.values()].reduce((a, b) => a + b, 0);
     console.log(`  duplicate-id skip: ${total} rows (per-table: ${JSON.stringify(Object.fromEntries(skippedDuplicates))})`);
     stagingStats.skippedDuplicates = Object.fromEntries(skippedDuplicates);
+  }
+  if (deriveKey !== undefined) {
+    console.log(`  rebuilt keys: ${rebuiltKeys.changed} of ${rebuiltKeys.examined} named cards changed (${rebuiltKeys.caseOnly} in letter case only)`);
+    stagingStats.rebuiltKeys = rebuiltKeys;
   }
   if (nulledKeyDuplicates.size > 0) {
     const total = [...nulledKeyDuplicates.values()].reduce((a, b) => a + b, 0);
@@ -578,6 +616,9 @@ if (stagingStats.skippedDuplicates !== undefined) {
   report.warnings.push(
     `deduped ${Object.values(stagingStats.skippedDuplicates).reduce((a, b) => a + b, 0)} rows whose id collided with a previously-ingested row in the same table (a sanitization artifact of the source deck)`,
   );
+}
+if (stagingStats.rebuiltKeys !== undefined) {
+  report.rebuiltKeys = stagingStats.rebuiltKeys;
 }
 if (stagingStats.nulledKeyDuplicates !== undefined) {
   report.nulledKeyDuplicates = stagingStats.nulledKeyDuplicates;
