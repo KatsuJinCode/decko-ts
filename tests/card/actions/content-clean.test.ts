@@ -1,22 +1,31 @@
-// Card content cleaning. The first expectation is the historically stored
-// content for the same input (persistence probe step 20, RichText and
-// PlainText alike), except for the declared security difference: this engine
-// drops the javascript: link target the old cleaner kept (docs/SECURITY.md;
-// content-clean-security.test.ts).
+// Card content cleaning: the port's own output on ordinary and hostile markup.
+//
+// The assertions that compare against the recorded output of the upstream
+// cleaner on hostile markup are withheld until disclosure, in
+// tests/withheld/stored-html-ruby-reproductions.test.ts. A release package
+// excludes that file, so when it is absent this suite says so on stderr.
 
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { cleanContent, rubyCleanContent } from "../../../src/card/actions/content-clean.js";
+import { cleanContent } from "../../../src/card/actions/content-clean.js";
+
+const WITHHELD_SUITE = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../withheld/stored-html-ruby-reproductions.test.ts",
+);
+if (!existsSync(WITHHELD_SUITE)) {
+  process.stderr.write(
+    `[withheld until disclosure] NOT RUN: 4 tests (${WITHHELD_SUITE})\n`,
+  );
+}
 
 describe("cleanContent", () => {
-  it("matches the oracle on event handlers, script, links and inline styles", () => {
+  it("drops event handlers and script elements, and a script-capable link target, keeping the link text", () => {
     const input =
       '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
       '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
-    // The historically stored content.
-    expect(rubyCleanContent(input)).toBe(
-      '<p>hi</p> bad() <b>ok</b><a href="javascript:evil()">l</a><div style="color:red">d</div>',
-    );
-    // This engine's: the same, without the script-capable link target.
     expect(cleanContent(input)).toBe(
       '<p>hi</p> bad() <b>ok</b><a>l</a><div style="color:red">d</div>',
     );
