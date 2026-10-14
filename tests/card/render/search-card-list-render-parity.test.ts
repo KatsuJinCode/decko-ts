@@ -58,18 +58,34 @@ const CAPTURED_ORACLE_SEARCH_OPEN = capture("Oracle Search#open");
  *  fixture is small enough that seeding all its cards is cheaper than
  *  carving out the closure by hand — the test does not need the wider deck
  *  for the rendering decisions under test (no pointer/list items, no rule
- *  rows in scope, no read-permission denial). */
+ *  rows in scope, no read-permission denial).
+ *
+ *  Every row carries the stock `*all+*read -> [[Anyone]]` catch-all as its
+ *  stored read_rule_id, the DATA side of the read rule Ruby stamps on save
+ *  (the set_read_rule store event,
+ *  card-mod-permissions set/all/permissions.rb:1-5). It has to: the CQL
+ *  engine filters every search by `read_rule_id IN (the viewer's readable
+ *  rules)` (card-1.110.0 set/all/permissions.rb Where#permission_conditions,
+ *  ported at src/cql/sql.ts:277-306), so a result row whose read_rule_id
+ *  is NULL is filtered out for every viewer and the list renders
+ *  no_search_results. A real deck stores the id on every row; this one
+ *  does the same. */
 async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRenderTestStorage>>): Promise<void> {
+  const CATCH_ALL = storage.bootstrapRule;
+  if (CATCH_ALL === undefined) {
+    throw new Error("search-card-list-render-parity: the stock read substrate's rule is required");
+  }
+  const readable = { readRuleId: CATCH_ALL, readRuleClass: "*all" };
   // cardtype cards the typeCode dispatch reads (card-mod-search uses
   // SearchTypeID; the rest are ambient so the captured setKeys strings
   // match).
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...readable });
+  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...readable });
   // junction part cards the captured Oracle Junction children name.
-  await seedCard(storage, { id: 701, name: "child_one", typeId: 2 });
-  await seedCard(storage, { id: 702, name: "child_two", typeId: 2 });
+  await seedCard(storage, { id: 701, name: "child_one", typeId: 2, ...readable });
+  await seedCard(storage, { id: 702, name: "child_two", typeId: 2, ...readable });
   // the captured cards (ids/contents from smoke.json).
-  await seedCard(storage, { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card." });
+  await seedCard(storage, { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card.", ...readable });
   await seedCard(storage, {
     id: 608,
     name: "Oracle Junction+child_one",
@@ -77,6 +93,7 @@ async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRen
     rightId: 701,
     typeId: 2,
     dbContent: "first child",
+    ...readable,
   });
   await seedCard(storage, {
     id: 610,
@@ -85,12 +102,14 @@ async function seedOracleSearchDeck(storage: Awaited<ReturnType<typeof createRen
     rightId: 702,
     typeId: 2,
     dbContent: "second child",
+    ...readable,
   });
   await seedCard(storage, {
     id: 614,
     name: "Oracle Search",
     typeId: 98,
     dbContent: '{"left":"Oracle Junction","sort":"name"}',
+    ...readable,
   });
   // The CQL engine resolves `left: "Oracle Junction"` through the
   // engine's sync id map (render.ts:106 idsByKey + runSearch resolveCardId).
@@ -324,21 +343,32 @@ describe("search card_list rendering — valid-JSON path (M5)", () => {
       // :bar -> altered_view); the outer search-result-item wrapper
       // structure must survive regardless of whether the inner slot
       // body is the bar view or the denial span.
-      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
-      await seedCard(storage, { id: 900, name: "denied parent", typeId: 2, dbContent: "p" });
+      const CATCH_ALL = storage.bootstrapRule!;
+      const readable = { readRuleId: CATCH_ALL, readRuleClass: "*all" };
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...readable });
+      await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...readable });
+      await seedCard(storage, { id: 900, name: "denied parent", typeId: 2, dbContent: "p", ...readable });
+      // The item under the denial pin: a result row with a live stored read
+      // rule, so the CQL relation filter (`read_rule_id IN (the viewer's
+      // readable rules)`, card-1.110.0 set/all/permissions.rb
+      // Where#permission_conditions, ported at src/cql/sql.ts:277-306) keeps
+      // it and the item reaches the card_list at all. Whether its slot body
+      // is the :bar view or the denial span, the wrapper is what this pin
+      // asserts, and the assertions below accept both.
       await seedCard(storage, {
         id: 901,
         name: "denied child",
         leftId: 900,
         typeId: 2,
         dbContent: "x",
+        ...readable,
       });
       await seedCard(storage, {
         id: 902,
         name: "denied search",
         typeId: 98,
         dbContent: '{"left":"denied parent"}',
+        ...readable,
       });
       // Warm idsByKey so the CQL engine resolves "denied parent" to id 900
       // (the search card has no nest references in its JSON content, so

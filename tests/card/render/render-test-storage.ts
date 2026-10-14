@@ -345,13 +345,31 @@ async function releaseStockCard(
   );
   if (index < 0) return undefined;
   const [displaced] = stock.splice(index, 1);
-  // Clear every unique column the displaced card occupies: a named card
-  // holds a codename and a key, a junction holds its side pair. The ROW stays
-  // until repointStockReferences has moved what names it.
-  await storage.counting.query(
-    `UPDATE cards SET codename = NULL, key = NULL, left_id = NULL, right_id = NULL WHERE id = ?`,
-    [displaced!.id],
-  );
+  // Clear every unique column the displaced card occupies, and only those the
+  // suite's card takes over: a codename card holds a codename and a key, a
+  // junction holds its side pair. The match above may have been on EITHER
+  // (a codename card is also matched by the key of the name a suite seeds, so
+  // seeding `*read` alone displaces the stock `*read` codename card), and
+  // clearing a column the suite does not take would strand the live rule on
+  // it: the permission statements resolve the rule's setting through the
+  // 'read' codename (read-rules.ts readPermissionStatements, statement 2) and
+  // its set through the 'set' codename, so a codename released without a
+  // replacement makes the catch-all unresolvable and the deck denies every
+  // card, as Ruby does on a deck with no read rule (permissions.rb:139-146).
+  // The ROW stays until repointStockReferences has moved what names it.
+  const columns: Array<string | undefined> = ["codename = NULL", "key = NULL", "left_id = NULL", "right_id = NULL"];
+  if (stockKeyOf(opts) === undefined) columns[1] = undefined;
+  if (junctionStock === undefined) {
+    columns[2] = undefined;
+    columns[3] = undefined;
+  } else {
+    if (opts.leftId !== junctionStock.leftId) columns[2] = undefined;
+    if (opts.rightId !== junctionStock.rightId) columns[3] = undefined;
+  }
+  const sets = columns.filter((column): column is string => column !== undefined).join(", ");
+  if (sets !== "") {
+    await storage.counting.query(`UPDATE cards SET ${sets} WHERE id = ?`, [displaced!.id]);
+  }
   return displaced!.id;
 }
 

@@ -477,8 +477,11 @@ if (flags.local) {
   let ok = true;
   if (statusRes.status !== 200) { console.error("launch --local FAIL: /_status != 200"); ok = false; }
   const statusJson = JSON.parse(statusBody);
-  if (statusJson.database?.card_count !== 15) {
-    console.error(`launch --local FAIL: /_status card_count=${statusJson.database?.card_count} (expected 15)`);
+  // the seed deck's card count (deploy/seed.mjs): 15 synthetic content cards
+  // plus the stock read substrate every Ruby deck bootstraps (ids 6-8,
+  // 25-28, 30)
+  if (statusJson.database?.card_count !== 23) {
+    console.error(`launch --local FAIL: /_status card_count=${statusJson.database?.card_count} (expected 23)`);
     ok = false;
   }
   if (!depthOk) { console.error("launch --local FAIL: depth-4 inclusion chain did not render"); ok = false; }

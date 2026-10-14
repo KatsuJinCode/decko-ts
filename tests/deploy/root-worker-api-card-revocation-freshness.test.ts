@@ -77,24 +77,26 @@ const PROBE_CARD_ID = 9210;
 const RULE_CARD_ID = 9212;
 const ROLE_A_ID = 9207;
 
+/** The seed deck's stock read substrate (deploy/seed.mjs): the codename
+ *  carriers the permission statements' subselects need — *read (26, codename
+ *  'read'), *all (25, codename 'all', typed Set id 7), Set (7, codename
+ *  'set'), the Role type (6), and the parties Anyone (27, codename 'anyone')
+ *  and Anonymous (28) — with the catch-all rule card 30 granting Anyone.
+ *  Every deck has exactly one of each; the ids are the generator's. */
+const SEED_SET_ID = 7;
+const SEED_ALL_ID = 25;
+const SEED_READ_ID = 26;
+const SEED_ANYONE_ID = 27;
+
 /** The read-rule skeleton over the demo seed (ids mirror the freshness
  *  suite's shape, renumbered into the 92xx band the seed does not use):
- *  the codename carriers the permission statements' subselects need, the
- *  party cards, the probe card, its *self set, and the *read rule card
- *  whose content starts as [[Anyone]]. */
+ *  the probe card, its *self set, and the *read rule card whose content
+ *  starts as [[Anyone]]. The seed's own codename carriers (the 9xxx rows
+ *  this skeleton used to insert) are NOT re-seeded here: cards.key and
+ *  cards.codename are UNIQUE, so the same carriers cannot be inserted twice
+ *  over one deck, and the probe's *self set and rule card join the seed's
+ *  *all / *read / Set by id. */
 const SKELETON_STATEMENTS = [
-  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
-     created_at, updated_at, creator_id, updater_id,
-     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9201, '*read', 'read', 'read', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
-  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
-     created_at, updated_at, creator_id, updater_id,
-     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9202, '*all', 'all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
-  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
-     created_at, updated_at, creator_id, updater_id,
-     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9203, 'Set', 'set', 'set', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
   `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
@@ -102,33 +104,26 @@ const SKELETON_STATEMENTS = [
   `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9205, 'Anyone', 'anyone', 'anyone', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
+   VALUES (${ROLE_A_ID}, 'Role A', 'role_a', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL)`,
   `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9206, 'Anonymous', 'anonymous', 'anonymous', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
+   VALUES (${PROBE_CARD_ID}, 'Freshness Probe', 'freshness_probe', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '${SECRET}')`,
+  // the probe's *self set (junction row, typed Set as a set card is) and its
+  // *read rule card
   `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9207, 'Role A', 'role_a', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL)`,
+   VALUES (9211, NULL, NULL, NULL, ${PROBE_CARD_ID}, 9204, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, ${SEED_SET_ID}, NULL)`,
   `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
      created_at, updated_at, creator_id, updater_id,
      read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9210, 'Freshness Probe', 'freshness_probe', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '${SECRET}')`,
-  // the probe's *self set (junction row) and its *read rule card
-  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
-     created_at, updated_at, creator_id, updater_id,
-     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (9211, NULL, NULL, NULL, ${PROBE_CARD_ID}, 9204, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 9203, NULL)`,
-  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
-     created_at, updated_at, creator_id, updater_id,
-     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-   VALUES (${RULE_CARD_ID}, NULL, NULL, NULL, 9211, 9201, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '[[Anyone]]')`,
+   VALUES (${RULE_CARD_ID}, NULL, NULL, NULL, 9211, ${SEED_READ_ID}, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '[[Anyone]]')`,
   // The rule's committed party list lives in card_references (see
   // read-rules.ts): [[Anyone]] becomes a reference row pointing at the
   // Anyone card.
   `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
-   VALUES (${RULE_CARD_ID}, 'anyone', 9205, 'L', NULL)`,
+   VALUES (${RULE_CARD_ID}, 'anyone', ${SEED_ANYONE_ID}, 'L', NULL)`,
   `UPDATE cards SET read_rule_id = ${RULE_CARD_ID}, read_rule_class = 'R' WHERE id = ${PROBE_CARD_ID}`,
 ];
 

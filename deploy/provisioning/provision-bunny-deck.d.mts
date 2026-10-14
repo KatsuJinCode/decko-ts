@@ -143,7 +143,16 @@ export function provisionDatabase(opts: {
   preSeedStatements: number;
   postSeedStatements: number;
   seedTables: string[];
+  readRule: { installed: boolean; ruleId: number; parties: string[] };
 }>;
+
+/** Report the provisioned deck's own catch-all read rule, or install the
+ *  stock substrate's when the deck carries none (a deck with no catch-all
+ *  read rule denies every card, as Ruby does). */
+export function ensureCatchAllReadRule(
+  pipelineUrl: string,
+  dbToken: string,
+): Promise<{ installed: boolean; ruleId: number; parties: string[] }>;
 
 /** Validate a raw payload object; returns a normalized copy. Throws
  *  ProvisionRefusal(REFUSAL.PAYLOAD_INVALID) with the full problem list. */
