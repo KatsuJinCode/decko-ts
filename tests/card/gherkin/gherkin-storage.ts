@@ -244,6 +244,23 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
   // structure card fails (name.ts#fromCardish).
   await seedCard(storage, { id: 308, name: "*right", codename: "right" });
   await seedCard(storage, { id: 309, name: "*type plus right", codename: "type_plus_right" });
+  // The READ half of the same bootstrap, which the deck above never grew:
+  // *all+*read -> [[Anyone]], the rule card/auth/setup.rb:44 seeds. Ruby
+  // denies every card of a deck without it (permission_rule_id resolves nil,
+  // read_rules_hash[nil] denies — permissions.rb:139-146), so the scenarios
+  // need it exactly as they need the *create/*update/*delete fallbacks.
+  await seedCard(storage, { id: 310, name: "*read", codename: "read" });
+  await seedCard(storage, {
+    id: 311,
+    leftId: 7,
+    rightId: 310,
+    typeId: 300,
+    dbContent: "[[Anyone]]",
+  });
+  await storage.driver.query(
+    "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (311, 'anyone', 304, 'L', NULL)",
+    [],
+  );
   await installGherkinNameEnvironment(storage);
 }
 
