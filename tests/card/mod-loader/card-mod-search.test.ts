@@ -45,11 +45,13 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
+import { expireRuleResolutionCache } from "../../../src/card/permissions/read-rules.js";
 import { RenderFormat, UnsupportedViewError } from "../../../src/card/render/format.js";
 import {
   ModLoader,
@@ -65,16 +67,11 @@ let loader: ModLoader | undefined;
 let bigLoader: ModLoader | undefined;
 let loadReport: ReturnType<ModLoader["load"]> | undefined;
 
-/** The stock read substrate's own Set card and its plain codename cards
- *  (Set, *read, Anyone, Anonymous and the *all+*read rule junction) are
- *  Codename-typed — a Set whose members are Codename, so its rows are NOT
- *  Set-typed. This deck's Basic is that Codename (the suite's Cardtype-typed
- *  rows play the Cardtype role here), so a type query reads them the way
- *  Ruby reads a Codename set's rows — and a `{"type": <this deck's
- *  Codename>}` count stays Ruby-correct even though it counts the substrate
- *  rows as well as the deck's own. seedCard's default type is id 2, which is
- *  that card here; naming it (PLAIN_TYPE_ID) keeps the deck honest about it
- *  rather than leaning on the default. */
+/** This deck's Basic card (id 2). Items are typed by it, and the stock read
+ *  substrate is re-typed to Ruby's shape (seedRubyShapedSubstrate below), so
+ *  Basic-typed rows are the items plus Anonymous, the one substrate card the
+ *  decko setup seed types as Basic. Named here so the item rows do not lean on
+ *  seedCard's default type. */
 const PLAIN_TYPE_ID = 2;
 
 /** Every card row here carries the catch-all read rule the deck's
@@ -111,6 +108,59 @@ async function stampCatchAllReadRule(s: RenderTestStorage): Promise<number> {
   return ruleId;
 }
 
+/** Re-types the stock read substrate to the shape Ruby's decko setup seed
+ *  gives it, and stamps every substrate row with the catch-all rule.
+ *
+ *  The shared bootstrap (render-test-storage.ts seedBootstrapReadSubstrate)
+ *  leaves seedCard's default type on every substrate row, so all six are
+ *  Basic-typed, and leaves them unstamped. Read from a seeded deck's `cards`
+ *  table (decko setup, the Ruby 0.20.0 stock seed):
+ *    *all          Set-typed        (the set card)
+ *    Set           Cardtype-typed
+ *    *read         Setting-typed
+ *    Anyone        Role-typed
+ *    *all+*read    List-typed       (the rule junction)
+ *    Anonymous     RichText-typed   (RichText is the card codenamed basic)
+ *    every row     read_rule_id = the stock rule (Ruby's set_read_rule
+ *                  store event stamps each saved row, card-mod-permissions
+ *                  set/all/permissions.rb:1-5)
+ *  Only Anonymous is Basic in Ruby, so a `{"type": "Basic"}` count on this
+ *  deck counts the items plus Anonymous. The ids and codenames stay as the
+ *  bootstrap wrote them; only types and stamps move. */
+async function seedRubyShapedSubstrate(
+  s: RenderTestStorage,
+  catchAll: number,
+  cardtypeId: number,
+): Promise<void> {
+  const ids = BOOTSTRAP_READ_SUBSTRATE_IDS;
+  const role = 10_000_007;
+  const setting = 10_000_008;
+  const list = 10_000_009;
+  await seedCard(s, { id: role, name: "Role", codename: "role", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  await seedCard(s, { id: setting, name: "Setting", codename: "setting", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  await seedCard(s, { id: list, name: "List", codename: "list", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  const retyped: Array<[number, number]> = [
+    [ids.set, cardtypeId],
+    [ids.read, setting],
+    [ids.anyone, role],
+    [ids.rule, list],
+  ];
+  for (const [id, typeId] of retyped) {
+    await s.counting.query(`UPDATE cards SET type_id = ? WHERE id = ?`, [typeId, id]);
+  }
+  for (const id of [ids.all, ids.set, ids.read, ids.anyone, ids.anonymous, ids.rule]) {
+    await s.counting.query(
+      `UPDATE cards SET read_rule_id = ?, read_rule_class = '*all' WHERE id = ?`,
+      [catchAll, id],
+    );
+  }
+  // Raw UPDATEs bypass seedCard's cache seam: drop what the re-typed rows and
+  // the rule walk may have memoised (the same two caches seedCard expires).
+  expireRuleResolutionCache(s.fetcher.driver);
+  s.engine.expireRuleCache();
+  for (const [id] of retyped) s.fetcher.lexicon.deleteFor(id, undefined);
+}
+
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
@@ -127,6 +177,7 @@ beforeAll(async () => {
   await seedCard(s, { id: 2, name: "Basic", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
   // the Search cardtype card: codename search_type = the SearchTypeID source
   await seedCard(s, { id: 200, name: "Search", codename: "search_type", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
+  await seedRubyShapedSubstrate(s, CATCH_ALL, 5);
 
   // search cards (typeId 200 -> typeName "Search"); A Search's cql uses a
   // name-in list (key comparison - resolvable by BOTH the mod's count warm
@@ -203,6 +254,7 @@ beforeAll(async () => {
   await seedCard(b, { id: 5, name: "Cardtype", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
   await seedCard(b, { id: 2, name: "Basic", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
   await seedCard(b, { id: 200, name: "Search", codename: "search_type", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
+  await seedRubyShapedSubstrate(b, B_CATCH_ALL, 5);
   await seedCard(b, {
     id: 501,
     name: "Big Search",
@@ -274,17 +326,18 @@ describe("card-mod-search through the mod loader (A/B)", () => {
   it("WITH the mod: :count on a count-returning cql renders the same digits (0_search.rb:35-39 count forces return count)", async () => {
     const s = storage!;
     const html = await s.engine.render("Counting Search", "count");
-    // Eight, and the Ruby-correct count of this deck: the three Basic items
-    // PLUS the five stock-substrate rows that are Codename-typed, where this
-    // deck's Basic is that Codename (see PLAIN_TYPE_ID). `{"type":"Basic"}`
-    // selects every row typed by the Basic card (real.yml:17: the Basic TYPE
-    // card whose cards are its members' types); a Codename set's own rows
-    // are Codename-typed, and Basic IS this deck's Codename, so the Set
-    // card itself (10_000_002), its members *read (10_000_003), Anyone
-    // (10_000_004), Anonymous (10_000_005) and the *all+*read rule junction
-    // (10_000_006) match as well. Before the stock read substrate this deck
-    // held only the three items, hence 3.
-    expect(html).toBe("8");
+    // Four: the three Basic items and Anonymous, the one stock substrate card
+    // typed Basic (seedRubyShapedSubstrate). The viewer is anonymous, and the
+    // count is Ruby's count query under that viewer: the count view runs
+    // the search (set/abstract/0_search.rb:35-39, `count` forces
+    // `return: :count`), and the query carries the read filter
+    // (card-1.110.0 lib/card/query/sql_statement/where.rb:79-84,
+    // permission_conditions: `read_rule_id IN (readable rules)` unless
+    // Auth.always_ok?). Every row here is stamped with the catch-all and
+    // Anonymous reads through it, so all four are counted. Measured on the Ruby
+    // oracle (reference-harness/oracle/app, Decko 0.20.0 / card 1.110.0) over
+    // this row set on 2026-10-14: 4.
+    expect(html).toBe("4");
   });
 
   it("WITH the mod: :count through found_by '_left' resolves the left search card's count (found_by.rb:7-19)", async () => {
@@ -304,10 +357,10 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     const s = storage!;
     // Integer#to_s - no delimiter (the count view's html delimiter is
     // collection item.rb's, not this view's). The digits are Counting
-    // Search's count — eight on this deck, for the reason the :count test
-    // above gives (the substrate's Codename-typed rows are typed by this
-    // deck's Codename, Basic).
-    expect(await s.engine.render("Counting Search", "search_count")).toBe("8");
+    // Search's count: four on this deck, for the reason the :count test
+    // above gives (the Ruby-shaped substrate leaves Anonymous as the one
+    // Basic-typed card besides the items).
+    expect(await s.engine.render("Counting Search", "search_count")).toBe("4");
   });
 
   it("WITH the mod: :search_count through found_by '_left' + return count renders the left card's count (views.rb:2-4)", async () => {
@@ -596,10 +649,9 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     bigLoader = new ModLoader([{ manifest: cardModSearch }]);
     bigLoader.load();
     await bigLoader.installInto(modEngineHost(b.engine, b.fetcher));
-    // 1001 Basic cards + the five stock-substrate rows typed by this deck's
-    // Codename (the same count the :count test above derives: a Codename
-    // set's rows are Codename-typed and Basic is this deck's Codename).
+    // 1001 Basic items and Anonymous, the one Basic-typed substrate card (the
+    // same count the :count test above derives, for the same Ruby reasons).
     const html = await b.engine.render("Big Search", "count");
-    expect(html).toBe("1,006");
+    expect(html).toBe("1,002");
   });
 });
