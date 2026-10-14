@@ -96,10 +96,39 @@ await driver.query(
   `CREATE INDEX IF NOT EXISTS "index_auth_sessions_on_account_card_id"
      ON "auth_sessions" ("account_card_id")`, []);
 
+// The freshness stamp (db/schema.sqlite.sql:305-309, [ENGINE-FRESHNESS]) is
+// also not in the Ruby-built fixture deck: Ruby has no such table, and the
+// deck predates it. The RENDER path reads it (render/boot-cache.ts:58,
+// render.ts:282) and refuses to render without it — loudly, by design
+// (boot-cache.ts:42). Only the local copy is touched; the committed fixture
+// is never written. Bumped by the write path as it commits, so the preview
+// render sees the draft rows this run just stored.
+await driver.query(
+  `CREATE TABLE IF NOT EXISTS "deck_data_version" (
+     "id" INTEGER NOT NULL PRIMARY KEY,
+     "version" INTEGER NOT NULL)`, []);
+await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id","version") VALUES (1, 0)`, []);
+
 const fetcher = new FetchEngine(driver);
 const sessions = new SessionStore({ driver });
 const attachmentStore = new LocalAttachmentStore(FILES);
 const transport = new CaptureTransport();
+
+// The preview_editor render seam (card-mod-carrierwave set/type/file.rb:127-129
+// `view :preview_editor, unknown: true, cache: :never`). The two-step upload's
+// first step (00_upload_cache.rb:18-24) answers with this view's html, which
+// decko.js's doneFile drops into .chosen-file (upload.js.coffee:48-51); the
+// write surface requires a host to supply it and REFUSES the request outright
+// without it (write-routes.ts:1931-1936), so a drive that omits the seam never
+// runs the step at all and its oracle comparison is vacuous.
+//
+// preview_editor is a SET-SCOPED view, so it needs the deck's mod loader to
+// resolve (render.ts#resolveView walks the card's set chain through it). The
+// loader is built lazily, on the first preliminary upload, so the 81 steps
+// that never render pay nothing for it. It is bound as the process default
+// because RenderEngine captures it in its CONSTRUCTOR (render.ts:466) — the
+// same reason the render-test storage binds before building its engine.
+let deckLoader;
 const FROZEN = new Date("2026-10-07T12:00:00.000Z");
 // The request clock: the frozen start plus one second per step, so that
 // files named by the clock (a history-less card's file is <epoch seconds>
@@ -300,6 +329,44 @@ async function read(path) {
   return { status: known ? 200 : 404, headers: {}, body: "" };
 }
 
+// preview_editor html for the two-step upload's first step (the seam the
+// write surface requires). Rendered as the ACTING account, with the draft
+// rows the request just write visible: the render pass seats the card, and
+// the seating is what makes the fetcher re-read those rows instead of a
+// cached card record. Same sequence as vm-staging-server.mjs:3506-3519 —
+// seat with render, take the seated card, renderView with the request opts.
+async function renderPreviewEditor({ name, opts }) {
+  const token = jar.has("decko_ts_session") ? readSessionCookie(cookieHeader()) : null;
+  const actor = token !== null ? await sessions.lookupSession(token) : undefined;
+  // The render engine, not the action engine: preview_editor is a VIEW
+  // (set/type/file.rb:127-129), so it is rendered by RenderEngine under the
+  // acting account's viewer — the same seat vm-staging-server.mjs:2948 wires
+  // per actor, so the preview reads under the requester's read rules.
+  const { RenderEngine } = await import(dist("card/render.js"));
+  const { RenderFormat } = await import(dist("card/render/format.js"));
+  const { defaultDeckLoader } = await import(dist("card/mod-loader/default-mod-deck.js"));
+  deckLoader ??= defaultDeckLoader();
+  // A render FETCH engine of its own over the same driver: seating the cache
+  // card must not seat or expire entries on the drive's shared fetcher, which
+  // the GET path answers from (read() above). The draft rows the write just
+  // stored are in the database, so this fetcher reads them directly.
+  const { FetchEngine: RenderFetch } = await import(dist("card/fetch.js"));
+  const engine = new RenderEngine(new RenderFetch(driver));
+  engine.modLoader = deckLoader;
+  if (actor?.id !== undefined) engine.viewer = { signedIn: true, actorId: actor.id };
+  engine.expireRenderCard(name);
+  try {
+    await engine.render(name, "preview_editor");
+  } catch {
+    // the seating view's own error posture is the renderView's to raise (or not)
+  }
+  const previewCard = engine.fetchRenderCard(name);
+  if (previewCard === undefined) {
+    throw new Error(`ts-drive: preview_editor render could not seat the card: ${name}`);
+  }
+  return new RenderFormat(previewCard, engine, { nestQuietErrors: true }).renderView("preview_editor", opts);
+}
+
 async function call(method, path, params) {
   if (method === "get") return read(path);
   const enc = encode(params);
@@ -310,6 +377,7 @@ async function call(method, path, params) {
     {
       driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
+      renderPreviewEditor: (input) => renderPreviewEditor(input),
     },
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",
       headers, body: enc.body, bodyBytes: enc.bodyBytes });

@@ -244,6 +244,7 @@ export class ActWriter {
   private readonly clock: () => Date;
   private actCardId: number | undefined;
   private actId: number | null = null;
+
   /** Whether the act row already existed when the current operation began.
    *  Snapshotted at each public operation's entry; the reserved-create fill
    *  reads reserveCreateAction's snapshot (reserve + fill are ONE logical

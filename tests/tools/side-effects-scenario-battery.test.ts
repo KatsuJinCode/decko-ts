@@ -238,22 +238,20 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       "[withheld until disclosure] NOT RUN: ",
     );
 
-    // The one step whose production pin still holds on this deck, and the
-    // total. restore-file-revision is pinned in scenarios.json too (Ruby
-    // crashes on restoring a File/Image revision; the port restores it), but
-    // its pin also expects the port's status to be 303 and this deck's
-    // TypeScript trace records no status for the step at all, so the pin's
-    // exact-match test fails and the step reads as a plain mismatch rather
-    // than a deliberate difference. That is pinned below with its field set,
-    // errors included.
+    // The steps whose production pin holds on this deck, and the total.
+    // restore-file-revision is pinned in scenarios.json (Ruby crashes on
+    // restoring a File/Image revision with a 500; the port restores it and
+    // answers 303), and its pin's expected status now matches the port's
+    // recorded status, so it reads as the documented deliberate difference.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
       "anon-update-skin-colors",
+      "restore-file-revision",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 75,
-      deliberate: 2,
+      pass: 84,
+      deliberate: 3,
       total: 88,
     });
 
@@ -276,20 +274,6 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       // card card-mod-style set/self/style_mods.rb:1, typed List, so the
       // typeCode arm at style-asset-events.ts:191 misses it).
       { step: "get-home", fields: ["files", "virtuals", "writes"] },
-      { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
-      { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-cache-existing-file", fields: ["actions", "files", "location", "stamps", "status", "stored", "writes"] },
-      { step: "update-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
-      { step: "upload-image", fields: ["stored"] },
-      { step: "upload-large-image", fields: ["stored"] },
-      { step: "update-file", fields: ["stored"] },
-      { step: "delete-file", fields: ["stored"] },
-      { step: "delete-image", fields: ["stored"] },
-      // Its $create_action placeholder names "Parity Cached File", a card the
-      // upload family above never creates in the port, so the drive raises
-      // before the save and records no status. Consequential, not its own
-      // difference: it clears when the upload family does.
-      { step: "restore-file-revision", fields: ["errors", "status"] },
     ]);
 
     rmSync(work, { recursive: true, force: true });
