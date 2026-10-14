@@ -27,6 +27,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { FetchEngine } from "../fetch.js";
 import type { ModEventCard } from "./mod-manifest.js";
 
 /** The state fields predicates read (the optional, non-identity part of
@@ -50,6 +51,13 @@ export interface ModEventCardStateContext {
   readonly isActCard: boolean;
   readonly driver: SQLDatabaseDriver;
   readonly lexicon: RenameSwapLexicon;
+  /** The read engine, for a predicate that resolves a card shape the way
+   *  Ruby's does — `rule?` and `preference?` (card/lib/card/rule/all.rb)
+   *  walk Card.fetch_type_id over the name's parts, which the port's own
+   *  isStandardRuleName / isPreferenceName already do (actions/
+   *  rule-content-walk.ts). Absent off a model-pure dispatch; a predicate
+   *  that needs it then yields an absent field, never a guess. */
+  readonly fetch?: FetchEngine;
 }
 
 /** One mod's contribution to the event card's predicate state. */

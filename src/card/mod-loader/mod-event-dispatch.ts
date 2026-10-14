@@ -52,6 +52,7 @@
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
 import type { CardRecord } from "../fetch/card-record.js";
+import type { FetchEngine } from "../fetch.js";
 import {
   ModEventRegistry,
   type RegisteredModEvent,
@@ -198,6 +199,12 @@ export interface ModEventContext {
    *  dispatches, whose referer reads stay raw row queries. */
   readonly fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
   readonly pinStaleReferer?: (card: CardRecord) => void;
+  /** The read engine, for a predicate that resolves a card shape the way
+   *  Ruby does — `rule?` / `preference?` walk Card.fetch_type_id over the
+   *  name's parts (card/lib/card/rule/all.rb:33-54), which the port's own
+   *  isStandardRuleName / isPreferenceName do (actions/rule-content-walk.ts).
+   *  Absent off a model-pure dispatch. */
+  readonly fetch?: FetchEngine;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -487,6 +494,7 @@ export async function runModEventStage(
     lexicon: RenameSwapLexicon;
     fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
     pinStaleReferer?: (card: CardRecord) => void;
+    fetch?: FetchEngine;
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
@@ -499,6 +507,7 @@ export async function runModEventStage(
     lexicon: deps.lexicon,
     ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
     ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
+    ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
     stage,
     skipEvent: (name) =>
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,

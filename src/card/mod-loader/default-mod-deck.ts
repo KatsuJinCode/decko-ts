@@ -53,7 +53,7 @@ import cardModContent from "./mods/card-mod-content.js";
 import cardModFormat from "./mods/card-mod-format.js";
 import cardModList from "./mods/card-mod-list.js";
 import cardModMarkdown from "./mods/card-mod-markdown.js";
-import cardModPermissions from "./mods/card-mod-permissions.js";
+import cardModPermissions, { permissionsModEventPredicates } from "./mods/card-mod-permissions.js";
 import cardModHelp from "./mods/card-mod-help.js";
 import cardModSearch from "./mods/card-mod-search.js";
 import cardModRules from "./mods/card-mod-rules.js";
@@ -246,6 +246,7 @@ export function defaultDeckEventPredicates(): ModEventPredicateTable {
     ...commentModEventPredicates,
     ...followModEventPredicates,
     ...historyModEventPredicates,
+    ...permissionsModEventPredicates,
     ...recaptchaModEventPredicates,
   };
 }

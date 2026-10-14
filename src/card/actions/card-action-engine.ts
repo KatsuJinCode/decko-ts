@@ -3874,6 +3874,7 @@ export class CardActionEngine {
       isActCard: true,
       driver: this.fetch.driver,
       lexicon: this.fetch.lexicon,
+      fetch: this.fetch,
     };
   }
 
@@ -3938,6 +3939,10 @@ export class CardActionEngine {
         // referer's own expire).
         fetchRefererCard: (id) => this.fetch.bracket(id),
         pinStaleReferer: (card) => this.fetch.pinStaleCard(card),
+        // rule? / preference? (card/lib/card/rule/all.rb:33-54) resolve a
+        // card shape by walking the name's parts, which the port's own
+        // rule helpers do with the read engine.
+        fetch: this.fetch,
       },
       this.pendingSaveInput,
     );
