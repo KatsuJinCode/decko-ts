@@ -231,9 +231,19 @@ export interface ModEventCard {
   /** The account mod's per-act `@setup_approved` flag
    *  (mod/account/set/type/user.rb:53) — backs `setup?` (:72). */
   readonly setupApproved?: boolean;
-  /** The follow mod's per-act silent/notification flags
+  /** Card::Env.controller (card/lib/card/env.rb:18) — true when the save
+   *  rides a controller request. Backs silence_notifications?
+   *  (mod/follow/set/all/notify.rb:9: `!(Card::Env.controller ||
+   *  force_notifications)`). The engine's save paths serve controller
+   *  requests, so the save path sets this true (as the recaptcha guard
+   *  does). */
+  readonly envController?: boolean;
+  /** force_notifications (mod/follow/set/all/notify.rb:3 mattr_accessor) —
+   *  Ruby's test/deck override that keeps notifications on without a
+   *  controller. Unset in the port. */
+  readonly forceNotifications?: boolean;
+  /** The follow mod's per-act silent flag and followability
    *  (mod/follow/set/all/notify.rb:9-38). */
-  readonly silenceNotifications?: boolean;
   readonly silentChange?: boolean;
   readonly followable?: boolean;
   /** The follow mod's per-act preference-expiration marker

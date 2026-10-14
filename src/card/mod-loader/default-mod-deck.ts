@@ -72,7 +72,7 @@ import cardModStyle from "./mods/card-mod-style.js";
 import cardModBootstrap from "./mods/card-mod-bootstrap.js";
 import cardModComment, { commentModEventPredicates } from "./mods/card-mod-comment.js";
 import cardModDate from "./mods/card-mod-date.js";
-import cardModFollow from "./mods/card-mod-follow.js";
+import cardModFollow, { followModEventPredicates } from "./mods/card-mod-follow.js";
 import cardModSession from "./mods/card-mod-session.js";
 import cardModTabs from "./mods/card-mod-tabs.js";
 import cardModLayout from "./mods/card-mod-layout.js";
@@ -242,6 +242,7 @@ export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
     ...coreModEventPredicates,
     ...commentModEventPredicates,
+    ...followModEventPredicates,
     ...historyModEventPredicates,
     ...recaptchaModEventPredicates,
   };

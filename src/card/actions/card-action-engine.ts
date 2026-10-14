@@ -3832,6 +3832,9 @@ export class CardActionEngine {
       typeId: input.typeId ?? null,
       nameBeforeAct: input.nameBeforeAct,
       changedFields: input.changedFields ?? [],
+      // Env.controller (env.rb:18): the engine's saves serve controller
+      // requests (see the recaptcha guard's envController note).
+      envController: true,
       act: {
         action: input.action,
         actId: input.actId,

@@ -192,6 +192,7 @@ import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventCard,
   type ModEventFn,
   type ModEventRegistration,
   type ModSetModuleFile,
@@ -1263,6 +1264,20 @@ const passiveSetModule = (setPath: string): ModSetModuleFile => ({
   setPath,
   formats: { html: { views: [] } },
 });
+
+/** The set-module predicates the follow mod's `when:` conditions reach with
+ *  `send` (set/event/all.rb:82), merged into the deck table
+ *  (default-mod-deck.ts). */
+export const followModEventPredicates = {
+  /** silence_notifications? (mod/follow/set/all/notify.rb:9-11):
+   *  `!(Card::Env.controller || force_notifications)`. force_notifications
+   *  is a mattr_accessor (notify.rb:3) that nothing in the port sets, so
+   *  only the controller arm varies. The engine's saves serve controller
+   *  requests (envController true), so this is false and notifications
+   *  stay on, as they do in Ruby's request saves. */
+  "silence_notifications?": (card: ModEventCard): boolean =>
+    card.envController !== true && card.forceNotifications !== true,
+} as const;
 
 const cardModFollow: DeckoModManifest = {
   name: "follow",
