@@ -188,18 +188,18 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       // The type card: its NAME is a random string (NOT "Search"),
       // its codename is "search_type".
-      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "ztpmqk", codename: "search_type", typeId: 2 });
       // The simple card shape whose :open view raises. The content MUST
       // be raw non-JSON so JSON.parse throws (random alphabetic text).
       await seedCard(storage, {
         id: 101,
-        name: "wrjuvyhaoiwnvvnblfl",
+        name: "qvnrtbkxwlpmzhjdcf",
         typeId: 30,
         dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
       });
       let captured: unknown;
       try {
-        await storage.engine.render("wrjuvyhaoiwnvvnblfl", "open");
+        await storage.engine.render("qvnrtbkxwlpmzhjdcf", "open");
       } catch (err) {
         captured = err;
       }
@@ -224,16 +224,16 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "ztpmqk", codename: "search_type", typeId: 2 });
       await seedCard(storage, {
         id: 101,
-        name: "wrjuvyhaoiwnvvnblfl content",
+        name: "qvnrtbkxwlpmzhjdcf content",
         typeId: 30,
         dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
       });
       let captured: unknown;
       try {
-        await storage.engine.render("wrjuvyhaoiwnvvnblfl_content", "content");
+        await storage.engine.render("qvnrtbkxwlpmzhjdcf_content", "content");
       } catch (err) {
         captured = err;
       }
@@ -255,7 +255,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "ztpmqk", codename: "search_type", typeId: 2 });
       await seedCard(storage, {
         id: 101,
         name: "broken search card",
@@ -289,7 +289,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
+      await seedCard(storage, { id: 30, name: "ztpmqk", codename: "search_type", typeId: 2 });
       // The rule predicate's type anchors (render.ts computeIsRuleSync):
       // left part's type is the SET cardtype, right part's type is the
       // SETTING cardtype.

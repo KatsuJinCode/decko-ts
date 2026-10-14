@@ -446,7 +446,7 @@ interface OrderDirective {
  *    directive's own direction.
  *
  *  The ported decks break ties by THEIR physical order instead: the corpus
- *  scrub carries name/key as NULL for 40,090 of 49,829 rows
+ *  scrub carries name/key as NULL for most rows of a production dump
  *  (seedCard writes keyColumn NULL for unnamed rows,
  *  render-test-storage.ts), so every `sort: name` search over such rows
  *  ties on the NULL-key tier and the seeded deck's insertion (BFS closure)

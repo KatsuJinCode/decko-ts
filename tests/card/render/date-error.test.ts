@@ -147,20 +147,20 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
   // silently unvalidated.
 
   it("rendering :open of a Date-type card whose type card name is NOT 'Date' still raises DateError (a corpus-shaped fixture)", async () => {
-    // The type card's NAME is the random string "evog", but its codename
+    // The type card's NAME is the random string "zqvkt", but its codename
     // (the codehash lookup the engine uses) is "date". A typeName gate
     // skips it; a typeCode gate fires.
     //
-    // The fixture uses the simple card shape (`name: "evog+*right+*default"`
+    // The fixture uses the simple card shape (`name: "zqvkt+*right+*default"`
     // would require the side cards `*right` / `*default` to exist too;
     // the gate under test is type-card-name-independent, so we collapse
-    // the compound to a one-name card whose type card's name is "evog"
+    // the compound to a one-name card whose type card's name is "zqvkt"
     // and codename is "date" — the invariant under test).
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      // The type card: name="evog" (NOT "Date"), codename="date".
-      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      // The type card: name="zqvkt" (NOT "Date"), codename="date".
+      await seedCard(storage, { id: 17, name: "zqvkt", codename: "date", typeId: 2 });
       // The simple card shape whose :open view raises — a random-string
       // name and content; only the type card's (name, codename) shape
       // matters for the gate.
@@ -191,7 +191,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      await seedCard(storage, { id: 17, name: "zqvkt", codename: "date", typeId: 2 });
       await seedCard(storage, {
         id: 1211,
         name: "iaqgzhboog card",
@@ -220,7 +220,7 @@ describe("Date::Error — Date-type card parse failure (M4 sweep)", () => {
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 17, name: "evog", codename: "date", typeId: 2 });
+      await seedCard(storage, { id: 17, name: "zqvkt", codename: "date", typeId: 2 });
       await seedCard(storage, {
         id: 1135,
         name: "broken date card",

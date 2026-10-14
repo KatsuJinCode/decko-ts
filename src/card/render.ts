@@ -354,12 +354,12 @@ const PERMISSION_RIGHT_CODENAMES: ReadonlySet<string> = new Set([
 ]);
 // The codename the search-type type card carries in the codehash
 // (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). Corpus
-// search cards have type cards whose CARD NAME is random
-// (id=101 -> type_card name="qnzkqz"), so gating on typeName silently
-// skips every corpus-shaped entry — the prepare phase never runs
-// runSearch and the JSON-parse BadQuery never fires. Match by codename
-// (the value the codehash lookup returns) for parity with the captured
-// Ruby deck.
+// search cards have type cards whose CARD NAME is arbitrary -- the deck
+// gives its type cards generated names, not the human name -- so gating
+// on typeName silently skips every corpus-shaped entry: the prepare
+// phase never runs runSearch and the JSON-parse BadQuery never fires.
+// Match by codename (the value the codehash lookup returns) for parity
+// with the captured Ruby deck.
 const DATE_TYPE_CODE = "date";
 // The codename the date-type type card carries. Corpus date cards (id=1135
 // with content "brcvtwrvz", etc.) have type cards whose CARD NAME is
@@ -932,8 +932,8 @@ export class RenderEngine implements RenderEngineLike {
   /** composed *default rule key -> the rule card's db_content (the
    *  content/all.rb:17-19 standard_content's
    *  new_card branch — a nest-miss new card's content IS the *default
-   *  rule's content; the oracle's associative_inquiry-discussion-titled-view
-   *  body is discussion+*right+*default's `<p> </p>` x2 verbatim). Parsed
+   *  rule's content; the oracle's discussion-page titled-view
+   *  body is the discussion+*right+*default's `<p> </p>` x2 verbatim). Parsed
    *  from the SAME universe rows the types ride (structureUniverseFromResults
    *  over the default result). Cleared on resetCaches(). */
   private defaultRuleContents: Map<string, string | null> | undefined;
@@ -997,9 +997,9 @@ export class RenderEngine implements RenderEngineLike {
    *  type is THAT nest's folded item type (determine_item_view_options_type
    *  folds the rendering host's item_type_name only for its own nest), and
    *  one host's fold must never answer another host's item slot — the
-   *  per-item-only keying let a pointer host that resolves Person
-   *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Ellery readable where the oracle denies.
+   *  per-item-only keying let a pointer host that folds to Person
+   *  pre-empt the RVW List's untyped BasicCs verdict and render a person
+   *  card readable where the oracle denies.
    *  Cleared on resetCaches(). */
   private pointerItemVerdicts = new Map<
     string,
@@ -1615,8 +1615,8 @@ export class RenderEngine implements RenderEngineLike {
     // here on cold renders. The Search / Date gates inside prepareSearches
     // (and the Search gate inside closureWarm) match on typeCode, NOT
     // typeName — the latter would silently miss corpus-shaped type cards
-    // whose NAME is random (corpus:1135 has the date-type card named
-    // "evog"; corpus:101 has the search-type card named "qnzkqz"). Patch
+    // whose NAME is arbitrary (the corpus's date-type and search-type
+    // cards are both named with generated strings). Patch
     // every prepared card's typeCode from the (now-folded) codehash
     // before the prepare walk reads it.
     this.populateTypeCodes();
@@ -1734,9 +1734,9 @@ export class RenderEngine implements RenderEngineLike {
       // `<skin> customized`, `<skin> customized 1`, ... The customized
       // sibling is NOT in this page's nest closure (nothing on a skin page
       // references it), so the render-card-map-only gate could not see it -
-      // that is the M9 gap: the oracle's journal/slate skin pages carry
-      // `card[name]=...customized+1` (corpus 34179 / 38274) and the other
-      // eighteen skin pages carry the bare name. This is the async half of
+      // that is the M9 gap: two of the corpus's skin pages carry
+      // `card[name]=...customized+1` and the other eighteen skin pages
+      // carry the bare name. This is the async half of
       // the seam; warmCustomizedName runs the whole walk here, where
       // queries are legal, and the synchronous customize_button view
       // reads the answer out of memory.
@@ -1746,10 +1746,11 @@ export class RenderEngine implements RenderEngineLike {
       // card_accessor TRAIT (bootswatch_skin.rb:37), so Ruby's `card.parent`
       // is `parent_skin_card` (bootswatch_skin.rb:57-59) - a CODENAME-keyed
       // subcard lookup. The deck's pointer is a Pointer junction whose right
-      // side is the card NAMED `parent 1` carrying codename `parent` (corpus
-      // 45365: left 34179 `journal skin customized` + right 45364, content
-      // "journal skin"), so `<skin>+parent` as a NAME resolves to the
-      // junction (34179, 38357) - a different card - or to nothing, and every
+      // side is a card NAMED `parent 1` carrying codename `parent` (the
+      // junction's left is a customized skin card and its content is that
+      // skin's own name), so `<skin>+parent` as a NAME resolves to the
+      // junction (the skin's left id, the id of the card literally named
+      // `parent`) - a different card - or to nothing, and every
       // skin page took the parent-less branch where the capture carries
       // `Inherit from:` + a link to the parent theme (+232 B on the page).
       // warmSkinParentPointer resolves the pointer the way Ruby does and
@@ -2042,14 +2043,15 @@ export class RenderEngine implements RenderEngineLike {
     }
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
-    // the earlier scan walks it — measured cold on
-    // `journal skin customized+parent 1:open`: that scan sees mapSize=10 with
-    // only `journal skin customized` in it, the pointer-item walk then grows
-    // the map to 211 with `journal skin` seated, and the bar_left nest fires
-    // `fetchRenderCard("journal skin+Image")` against a junction the scan
-    // never looked at. The bytes were then the empty image-box
-    // (`<div title="journal skin" class="image-box medium"></div>`), -86 on
-    // journal, -84 litera, -82 slate. Re-walking after the pointer/list
+    // the earlier scan walks it — measured cold on a skin reached
+    // through a pointer: that scan sees mapSize=10 with
+    // only the skin's own customized card in it, the pointer-item walk
+    // then grows the map to 211 with the base skin seated, and the
+    // bar_left nest fires `fetchRenderCard("<skin>+Image")` against a
+    // junction the scan never looked at. The bytes were then the empty
+    // image-box
+    // (`<div title="<skin>" class="image-box medium"></div>`), -86 on
+    // one skin, -84 on another, -82 on a third. Re-walking after the pointer/list
     // closure is what makes those three entries' verdict independent of
     // whether the process happened to render the skin as a root earlier.
     await this.warmNestedSkinImages();
@@ -2180,7 +2182,7 @@ export class RenderEngine implements RenderEngineLike {
       if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
-    // A set card's rule list nested by OTHER content (Shark's getting-started
+    // A set card's rule list nested by OTHER content (a getting-started
     // Rules section: `{{:all|bar_setting_list; filter: webpage}}`) reads the
     // same stored rule children (rule_lists.rb setting_list_item:
     // `card.fetch setting, new: {}`), so the nested set gets the same
@@ -2609,11 +2611,11 @@ export class RenderEngine implements RenderEngineLike {
     //
     // RULE-card asymmetry (capture census, 2026-09-23): a search-TYPE card
     // that is ALSO a rule (3-part name, right part a setting — e.g.
-    // "*layout+*right+*content options", corpus:316/571/9610) captures REAL
-    // :open/:content bytes (48 *content options + 27 *structure rules, zero
-    // CAPTURE_ERROR), while every CAPTURE_ERROR search card is non-rule;
-    // date-typed rules (corpus:1135 "evog+*right+*default") still capture
-    // the Date::Error sentinel. So the Search arm skips rule cards
+    // "*layout+*right+*content options") captures REAL :open/:content bytes
+    // (48 *content options + 27 *structure rules, zero CAPTURE_ERROR), while
+    // every CAPTURE_ERROR search card is non-rule; date-typed rules (a
+    // `<date type>+*right+*default` card) still capture the Date::Error
+    // sentinel. So the Search arm skips rule cards
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
     if (card.typeCode === SEARCH_TYPE_CODE && PARSE_DISPATCH_VIEWS.has(view)) {
@@ -2637,9 +2639,8 @@ export class RenderEngine implements RenderEngineLike {
     // Raising at the :content dispatch instead skipped the view body: the
     // `wrap` never ran, so the card-slot div was never emitted, and nest()'s
     // catch (format.ts) produced the unwrapped span labelled "(content
-    // view)". The corpus carries the wrapped form with the DELEGATED label —
-    // card 34322 `Maturana ...+Date`, 27918 `Jamie McHugh ...+Date`, 35469
-    // `White Fragility ...+Date`, 9788 `Sample Card 098+Date`:
+    // view)". The corpus carries the wrapped form with the DELEGATED label,
+    // on four Date cards whose content refuses to render:
     //   <div id="...-date-content-view" class="card-slot content-view ...">
     //   <span class="render-error alert alert-danger">Error rendering:
     //   ...+Date (core view)</span></div>
@@ -2964,7 +2965,7 @@ export class RenderEngine implements RenderEngineLike {
    * recapture-raw-shard-000025: the implicit {{_self+*referred_to_by}}
    * nest renders content-view where the railtie-default arm rendered
    * titled-view), the same deck state the live pages' page-surface bytes
-   * prove (capture record #5, blog.html latest_news-content-view).
+   * prove (capture record #5, a blog page whose content-view it sets).
    */
   defaultHtmlViewConfig(): string {
     if (this.pageConfigActive) return pageDefaultHtmlView();
@@ -3127,7 +3128,7 @@ export class RenderEngine implements RenderEngineLike {
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
    *  card), while the simple-named denied phantoms (the view-surface census,
-   *  133 entries — Test Person 01, Nadine Corliss, Marianne Winslow, all
+   *  133 entries — mostly anonymized person cards, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
@@ -3245,13 +3246,12 @@ export class RenderEngine implements RenderEngineLike {
       // dup's *structure rule card, when it exists (content != "_self"),
       // BECOMES the template, and ensure_type_id's type_id_from_template
       // then answers THE STRUCTURE RULE CARD's own type_id. Corpus proof
-      // (2026-10-02): RichText+Gallery10+*type plus right's prototype
-      // *dummy+Gallery10 — *default walk hits *all plus+*default (rule
-      // 17827, RichText-typed); the RichText-typed dup carries
-      // RichText+Gallery10+*type plus right+*structure (rule 10525,
-      // HTML-typed) -> the prototype types HTML -> the *create walk hits
-      // HTML+*type+*create (rule 6553, "Shark") — the oracle's
-      // [Shark] create/delete rows for that set page.
+      // (2026-10-02): a RichText gallery set whose *type plus right rule
+      // names its prototype's *default walk hits *all plus+*default
+      // (RichText-typed); the RichText-typed dup carries that set's
+      // *type plus right+*structure rule (HTML-typed) -> the prototype
+      // types HTML -> the *create walk hits HTML's *type+*create rule —
+      // the oracle's create/delete rows for that set page.
       //
       // leftTypeName (the typeprint regression fix, 2026-10-02): Ruby's dup is a
       // real `dup` of the prototype Card, so it keeps @supercard/@superleft —
@@ -3268,9 +3268,9 @@ export class RenderEngine implements RenderEngineLike {
       // PlainText-typed) — with the RichText default the candidate misses,
       // the walk falls to `large image+*right+*structure` (rule 17705,
       // HTML-typed), and the prototype types HTML, so the *create/*update/
-      // *delete walks hit HTML+*type+*<setting> (rules 6553/6558/6562,
-      // "Shark") where the oracle renders the `_left` inherit-perm span
-      // (*all plus+*<setting>, rules 6567/6571/6573).
+      // *delete walks hit HTML's +*type+*<setting> rules, which are
+      // HTML-typed, where the oracle renders the `_left` inherit-perm span
+      // (*all plus+*<setting>).
       const structureTypes = this.structureRuleTypes;
       const structureContents = this.structureContents;
       if (structureTypes !== undefined && structureTypes.size > 0) {
@@ -3513,12 +3513,13 @@ export class RenderEngine implements RenderEngineLike {
    * Raw-ref walk (2026-09-22 fix): every render card's dbContent refs are
    * walked for closure closureWarm parity, not just structured cards'
    * templates. Without this the closureWalk returned false for cards whose
-   * transitive refs (e.g. ojib -> tazcdqsapii -> {{xxxx...}}) sat on a
+   * transitive refs (e.g. A -> B -> {{xxxx...}}) sat on a
    * card without an applicable *structure rule: structureProcessed
    * skipped such cards (the old `if (resolved === undefined) continue`
    * shape) so the xxx refs never entered structureRefMisses, closureWarm
    * saw them missing on every render, and the cold SQL walk re-ran —
-   * measured 4.5 s/render on ojib:closed alone (well past the 25 ms
+   * measured 4.5 s/render on one card's closed view alone (well past
+   * the 25 ms
    * budget; warm-render-sample avg 102 ms is 60× that single entry).
    * Walking raw refs matches Ruby's closure behavior: every ref in every
    * card's content contributes to the closure.
@@ -4526,19 +4527,19 @@ export class RenderEngine implements RenderEngineLike {
       // The fetch-miss card's type follows the NEST-FETCH semantics, not the
       // Card.new template chain: the nest pipeline (format/nest/fetch.rb
       // new_card) constructs the miss like Card.fetch's new card under the
-      // page's render context, and the capture pins the result — the
-      // mythicity-research page's {{+Gallery10}} miss (the +research
-      // structure's nest, structure rule 655 Research+*type+*structure) is
-      // typed RichText (data-card-type-id 3): the left card
-      // mythicity_research is Research-typed, and Ruby's dup_structure walk
+      // page's render context, and the capture pins the result — a
+      // research page's {{+gallery}} miss (the +research
+      // structure's nest, structure rule Research+*type+*structure) is
+      // typed RichText (data-card-type-id 3): the left card is
+      // Research-typed, and Ruby's dup_structure walk
       // for the *default-typed dup lands on the LEFT TYPE's *structure rule
-      // (research+gallery10+*type plus right+*structure is absent; the TYPE
-      // rule 655 exists and is RichText-typed), whose own type_id (3)
+      // (the set's *type plus right+*structure rule is absent; the TYPE
+      // rule exists and is RichText-typed), whose own type_id (3)
       // becomes type_id_from_template's answer. Typing through
       // newCardDefaultType WITHOUT the left's type name instead walks the
-      // TPR anchor on the registry's RichText fallback into
-      // RichText+Gallery10+*type plus right+*structure (10525, HTML-typed)
-      // and seats HTML — whose *type+*create rule (6553, "Shark") denies a
+      // TPR anchor on the registry's RichText fallback into the set's
+      // *type plus right+*structure rule (HTML-typed)
+      // and seats HTML — whose *type+*create rule denies a
       // member the capture permits (the *all plus+*create "_left" chain to
       // *all+*update "Anyone Signed In"). leftTypeName is the same
       // quick_type(left) input seatAbsentRoot passes. (The unknown-view
@@ -4802,10 +4803,9 @@ export class RenderEngine implements RenderEngineLike {
       // valid_preferer? (all.rb:50-52): the `[-2]` part is User-typed, or
       // that part's codename is "all". The async twin's predicate, read
       // off the render-card map instead of the fetch ladder. Corpus
-      // evidence for both preferer clauses: `*all` is card 274, type 259
-      // (Set) = the trunk, codename "all" = the codename clause;
-      // `Riley Ellery` is card 393, type 4 (codename "user") =
-      // the User clause.
+      // evidence for both preferer clauses: `*all` is the Set-typed
+      // trunk card whose codename is "all" = the codename clause; a
+      // person card is User-typed (codename "user") = the User clause.
       const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
       if (trunkKey === "") return false;
       const trunkCard = this.peekPrepared(trunkKey);
@@ -5351,23 +5351,22 @@ export class RenderEngine implements RenderEngineLike {
    *  `parent_skin_card&.real?`, and `parent` is a card_accessor TRAIT
    *  (bootswatch_skin.rb:37) - so the subcard is found through the CODENAME
    *  registry, by the (left_id, codename-id) side pair. It is NOT a name.
-   *  The deck proves the difference: the pointer is corpus card 45365, a
-   *  Pointer junction with left_id 34179 (`journal skin customized`) and
-   *  right_id 45364 - the card NAMED `parent 1` whose codename is `parent` -
-   *  content "journal skin", with card_references row referer 45365 ->
-   *  referee_key journal_skin. So the junction's composed name is
-   *  `journal skin customized+parent 1`, and the `<skin>+parent` name every
-   *  view builds resolves to the junction (34179, 38357) instead: corpus
-   *  38357 is a DIFFERENT card literally named `parent`.
+   *  The deck proves the difference: the pointer is a Pointer junction whose
+   *  left_id is a customized skin card and whose right_id is the card
+   *  NAMED `parent 1` whose codename is `parent`, with content the skin's own
+   *  name and a card_references row from the junction to that referee key.
+   *  So the junction's composed name is
+   *  `<skin customized>+parent 1`, and the `<skin>+parent` name every
+   *  view builds resolves to the junction (the skin's left id, the id of the
+   *  card literally named `parent`) instead.
    *
-   *  MEASURED (tmp/parityfixes-work/probe-skin-parent-pointer.mjs, the
-   *  47,235-card raw corpus):
-   *    fetchByName("journal skin customized+parent")    -> undefined
-   *    fetchByName("journal skin customized+parent 1")  -> id 45365, Pointer,
-   *                                                       content "journal skin"
+   *  MEASURED (a probe over the raw corpus): asking for the composed name
+   *  with the codename name (`<skin>+parent`) resolves to nothing, while
+   *  asking for the db's own composed name (`<skin>+parent 1`) resolves to
+   *  the Pointer junction whose content is the skin's name.
    *  which is why every skin page took the parent-less branch and the capture
    *  carries `Inherit from:` + a known-card link to the parent theme instead
-   *  (+232 B on `journal skin customized`).
+   *  (+232 B on the skin's page).
    *
    *  WHY AN ALIAS SEAT. The pointer is seated under its OWN canonical name
    *  (the db's, `<skin>+parent 1`) and then aliased under the requested
@@ -5531,7 +5530,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (or static help popover) links cards no {{nest}} reference reaches
    *  emitted wanted-card for existing cards — 15 an earlier pass dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
-   *  5x card-body links like Vera Prescott's [[Bluevolution]]).
+   *  5x card-body wikilinks to other cards on the page).
    *
    *  Harvest (memory only): the [[target]] matches of every prepared card's
    *  dbContent not yet scanned (once per engine per card), plus the rendered
@@ -6169,19 +6168,19 @@ export class RenderEngine implements RenderEngineLike {
    *  are name-shaped).
    *
    *  The +Image child is a NULL-NAMED left/right junction — corpus-wide,
-   *  zero rows carry `+Image` in a name (`journal skin`'s is card 22846:
-   *  left 22794, right 19, content ":journal_skin+:image/bootstrap.png") —
+   *  zero rows carry `+Image` in a name, and the one a skin owns is a
+   *  plain left/right row whose content is that skin's own asset path —
    *  so the fetch has to be by DERIVED COMPOUND name. `fetchByName` does
-   *  derive it (it returns that junction with `name` = "journal skin+Image"),
+   *  derive it (it returns that junction with `name` = "<skin>+Image"),
    *  which is why the guard below is `name !== undefined` and not a
    *  stored-name check.
    *
    *  WHY IT IS CALLED TWICE. A skin reached through a POINTER/LIST item is
    *  not in renderCards when the prepare phase's first pass walks the map:
-   *  on a cold render of `journal skin customized+parent 1:open` that pass
-   *  sees mapSize=10 holding only `journal skin customized`, and the
+   *  on a cold render of a skin reached through a pointer that pass
+   *  sees mapSize=10 holding only the skin's customized card, and the
    *  pointer/list closure walk that follows grows the map to 211 with
-   *  `journal skin` seated. The view-time nest then reads a junction nobody
+   *  the base skin seated. The view-time nest then reads a junction nobody
    *  had fetched and emits the EMPTY image-box, -86 bytes. Re-walking after
    *  that walk is what makes the entry's bytes a function of the card alone
    *  rather than of what the process rendered earlier. Both calls are
@@ -6387,9 +6386,8 @@ export class RenderEngine implements RenderEngineLike {
         // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
         // Signed In" denied Anonymous — rendering the two-span denied body
         // for exactly the host-typed unknown items Ruby renders the full
-        // bar for (Delia Rosenquist id 18560, Jonas Verhove+musings
-        // id 14546; the captured oracle renders bar-body/card-title/
-        // bar-menu for both).
+        // bar for (two person cards in the capture, both of which the
+        // oracle renders bar-body/card-title/bar-menu for).
         await this.resolveHostItemTypeName(card);
         await this.enrichPointerListItems(card);
         this.pointerListHostsDone.add(card.key);
@@ -6429,9 +6427,9 @@ export class RenderEngine implements RenderEngineLike {
    *  renderUnknownPointerListItem right before the phantom's nest renders,
    *  so the inner bar views see THIS host's fold rather than a foreign
    *  host's earlier global seeding of the same item name (the
-   *  Quicksilver+Core Project mytho-psychology poisoning: a foreign
-   *  untyped BasicCs fold seated denied; this host's Project-typed fold
-   *  reads allowed — the oracle renders the item bar). */
+   *  a foreign untyped BasicCs fold seats denied where this host's
+   *  own Project-typed fold reads allowed, and the oracle renders the
+   *  item bar). */
   seatPhantomReadVerdict(key: string, denied: boolean): void {
     this.deniedVerdictsByKey.set(key, denied);
   }
@@ -6464,9 +6462,9 @@ export class RenderEngine implements RenderEngineLike {
    * the verdict from newCardDefaultType alone (the *all+*default template
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
-   * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jonas Verhove+musings divergence (captured oracle
-   * renders the full bar body for both). The default-template walk stays
+   * type falls through to *all+*read = "Anyone" — the divergence
+   * the capture records on two person cards, both of which the oracle
+   * renders the full bar body for. The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
    *
@@ -6474,8 +6472,8 @@ export class RenderEngine implements RenderEngineLike {
    * fetch (Nest::Fetch#new_card -> Card.fetch name, new: new_card_args),
    * so the same unknown item name under two hosts renders TWO verdicts —
    * each nest's own fold. The verdicts are therefore keyed
-   * `"${host.key}|${itemKey}"`; a host that resolves Person
-   * (weekday_morning_usual+owner) must not pre-empt the RVW List's
+   * `"${host.key}|${itemKey}"`; a host that resolves a Person item
+   * type must not pre-empt the RVW List's
    * untyped BasicCs verdict for the same item (probe p21b: RVW's oracle
    * renders the two-span denied body — its item_type_name is nil — while
    * the foreign host's Person fold rendered readable). The deck-global
@@ -6529,13 +6527,13 @@ export class RenderEngine implements RenderEngineLike {
       // is Ruby's bare Card.new ensure_type_id verdict for the name. A
       // HOST-TYPED computation is per-context in Ruby (each nest constructs
       // its own phantom, Nest::Fetch#new_card) and must neither poison nor
-      // consume the global slot: Quicksilver+Core Project's unknown list
-      // item mytho-psychology resolved Project-typed (readable via *all+*read
+      // consume the global slot: one host's unknown list
+      // item resolved Project-typed (readable via *all+*read
       // "Anyone") while an earlier render in the same boot seated the global
       // map from a different host's computation (denied) — the nest's view
       // gate then read the poisoned entry and emitted two quiet denial spans
-      // where the oracle renders the item bar (recapture-raw-shard-000000,
-      // Quicksilver+Core Project :open, -1605 bytes). Only the untyped walk
+      // where the oracle renders the item bar (-1605 bytes on that
+      // page). Only the untyped walk
       // may claim pointerItemGlobalVerdictDone, so an untyped computation
       // that arrives later still seeds the global maps (the RVW p21b case:
       // its nil-item-type BasicCs denial must land no matter which
@@ -6841,7 +6839,7 @@ export class RenderEngine implements RenderEngineLike {
           // Ruby's Lexicon.name(id) reads rows WITHOUT a trash filter
           // (lexicon.rb#id_to_lex), so a `~id` item pointing at a TRASHED
           // member card still RESOLVES to its name there (CB_role /
-          // Ellery Family +*members: their item ids are trashed
+          // role card's +*members nest: the item ids are trashed
           // rows, never warmed by warmLexicon's live-id pour and carrying
           // no card_references rows for the seed closure). The async
           // lexicon IS that db fallback: resolve, record the durable name
@@ -7603,8 +7601,8 @@ export class RenderEngine implements RenderEngineLike {
    *  - known/virtual resolution for the three links (links.rb:141-144
    *    add_known_or_wanted_class -> Card.known? = real? || virtual?;
    *    virtual? = compound && structure.present? — states.rb:63-67 — which
-   *    for "Decko Bot 1+*account settings" hits the deck's
-   *    `*account settings+*right+*structure` rule, corpus rule card 34826).
+   *    for a deck account holder's `+*account settings` nest hits
+   *    the deck's `*account settings+*right+*structure` rule).
    *  Memoized per actor; a no-op for signed-out or actor-less sessions.
    *  An unresolvable session account cannot exist in Ruby (Auth.current_id
    *  always names a live account card), so the engine degrades the whole
@@ -7752,9 +7750,9 @@ export class RenderEngine implements RenderEngineLike {
    *  The pattern input rides through structurePatternInputForSync so the
    *  verdict walk's type_plus_right candidate anchors on the SAME
    *  leftTypeName the structure walk sees (class_methods.rb:58-72
-   *  left_type: the LEFT card's type — cd-smalls' 7 Very Rosie +discussion
-   *  pages: `image+discussion+*type plus right+*update` rule 16985
-   *  ("Anyone") wins where the type-less input anchored rich_text and
+   *  left_type: the LEFT card's type — on an Image card's +discussion
+   *  page, an `image+discussion+*type plus right+*update` rule granting
+   *  "Anyone" wins, where the type-less input anchored rich_text and
    *  denied). */
   async updateVerdictForCard(card: RenderCard): Promise<boolean | undefined> {
     if (this.readPermission?.alwaysOk) return true;
@@ -8782,8 +8780,9 @@ export class RenderEngine implements RenderEngineLike {
    *  - right_type_options (layout options_api.rb:57-59): the right part is
    *    a cardtype -> Card.fetch [right.name, :type, :by_name] — a VIRTUAL
    *    card whose Ruby content is a CQL Hash, so cql_content never parses
-   *    and item_type_id returns nil (probe 5, cixvol+jzuqht). The port has
-   *    no such virtual card -> stop, no raise.
+   *    and item_type_id returns nil (measured on a two-part name
+   *    whose parts are both generated strings). The port has no such
+   *    virtual card -> stop, no raise.
    *  - Card[:all] fallback (options_api.rb:48); *all is set-typed, so the
    *    terminal parse fires on its db_content ("fr" corpus-wide).
    *  - `seen` carries the visited keys — `opt != self` recursion guard.
@@ -8832,8 +8831,8 @@ export class RenderEngine implements RenderEngineLike {
       // virtual card stops the chain (see itemOptionsParseFailure).
       // Per the recapture 2026-09-24 probe: the peekNameForId check fires
       // for the Cardtype cardtype ITSELF (right whose TYPE has codename
-      // "cardtype") and for *right (right whose TYPE swtktey is a
-      // cardtype but anonymized). The full Ruby's "right's TYPE is a
+      // "cardtype") and for *right (right whose TYPE is a
+      // cardtype whose own name is a generated string). The full Ruby's "right's TYPE is a
       // cardtype" check (peekNameForId(peekId(rightType.type_id)) ===
       // "cardtype") is more permissive and gates ~898 entries that the
       // corpus pins as BadQuery raises — Ruby gates only the codename'd
@@ -9178,9 +9177,9 @@ export class RenderEngine implements RenderEngineLike {
         const parsed = DeckoName.parse(`*dummy+${anchorName}`);
         // 07_right.rb:18-20 {name: "*dummy+anchor"}; the type rides the
         // template chain (type.rb:58-80): Recommendations+*right resolves
-        // News Item (rule 11377's own type), putting the TYPE candidate
-        // News Item+*type+*create (rule 14192, "Administrator\r\nTeam")
-        // ahead of *all plus+*create — the exact winner the
+        // the anchor card's own type, putting its TYPE candidate
+        // "<that type>+*type+*create" (whose content is a two-line
+        // role list) ahead of *all plus+*create — the exact winner the
         // Recommendations+*right oracle pins (pointer-list [Administrator,
         // Team]). typeName MUST ride along: the type pattern's anchor name
         // reads it (03_type.rb:15-17 anchor_name = card.type_name) — a
@@ -9209,8 +9208,8 @@ export class RenderEngine implements RenderEngineLike {
         // type always runs ensure_type_id (type.rb:58-66
         // type_id_from_code || type_id_from_template) — the *default template
         // walk (newCardDefaultType), which for RichText+Recommendations
-        // resolves News Item (rule 11377) and puts the TYPE candidate
-        // News Item+*type+*create (rule 14192, [Administrator, Team]) ahead
+        // resolves the anchor card and puts its TYPE candidate
+        // "<that type>+*type+*create" ([Administrator, Team]) ahead
         // of *all plus+*create — the oracle's create-row bytes for BOTH the
         // Recommendations+*right and RichText+Recommendations+*type plus
         // right set pages. The prior anchor-type stamp (RichText) built the
@@ -10090,7 +10089,7 @@ export class RenderEngine implements RenderEngineLike {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Riley_Ellery +Item(s) Listing "0
+          // (2026-09-25 a person card's +Item(s) Listing "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

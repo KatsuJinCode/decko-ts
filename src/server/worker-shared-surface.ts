@@ -86,8 +86,7 @@ export function mapRenderError(message: string): RenderErrorPage {
  * orphan-junction page (left_id/right_id NULL rows fetched virtual) rendered
  * the underscored mark — and, through the key-seated render placeholder, the
  * canonical key string — in the masthead and <title> where the oracle renders
- * the requested name ("dream_team+association" vs "Dream Team+Associations",
- * the acceptance's compound-masthead rows).
+ * the requested name (the acceptance's compound-masthead rows).
  *
  * The fold is for PLAIN names only: a codename mark's underscore is the
  * primed codehash key's own spelling (the `:` prefix routes through the

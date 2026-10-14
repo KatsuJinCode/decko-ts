@@ -2,10 +2,10 @@
 // stored, left_id/right_id NULL) fetched through the serving boot renders its
 // REQUESTED name, not the canonical key string.
 //
-// Recorded defect (deployed edge + tip bundle, workerd): /Dream_Team+Associations
-// rendered <title>dream_team+association - Example Site</title> and a masthead
-// keyed "dream_team+association" where the oracle (body
-// 0ab20bb1cea138bf0d72545f, 403, 13,377 B) renders "Dream Team+Associations"
+// Recorded defect (deployed edge + tip bundle, workerd): /Growth_Circle+Associations
+// rendered <title>growth_circle+association - Example Site</title> and a masthead
+// keyed "growth_circle+association" where the oracle (body
+// 0ab20bb1cea138bf0d72545f, 403, 13,377 B) renders "Growth Circle+Associations"
 // in both. Two seams, both Ruby-cited:
 //
 // 1. THE REQUEST MARK DECODES. card_class.rb:126-131 uri_fetch_opts:
@@ -26,8 +26,8 @@
 //
 // Red evidence (pre-fix): the serving-boot bisect rendered the key-form title
 // for BOTH name forms (tmp bisect captures, title
-// "dream_team+association - Example Site", 13,136 B); the bundle run recorded
-// the same for /Dream_Team+Associations (13,759 B, slot-masked identical to
+// "growth_circle+association - Example Site", 13,136 B); the bundle run recorded
+// the same for /Growth_Circle+Associations (13,759 B, slot-masked identical to
 // the deployed edge's sweep body).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -57,7 +57,7 @@ async function seedOrphanJunctionDeck(): Promise<LocalSqliteDriver> {
   // the layout card's type carries the html codename so the card-layout
   // check (page.ts resolvePageLayout) accepts it
   await driver.query("UPDATE cards SET codename = 'html' WHERE id = 50", []);
-  await simple(9001, "Dream Team", "dream_team");
+  await simple(9001, "Growth Circle", "growth_circle");
   await simple(9002, "Associations", "association");
   // The structure rule the orphan junction's virtual resolution matches: the
   // corpus's rule 869 shape — set card "Associations+*right" (junction,
@@ -90,7 +90,7 @@ async function seedOrphanJunctionDeck(): Promise<LocalSqliteDriver> {
   );
   // The orphan junction itself (the corpus's 3270 shape).
   await driver.query(
-    "INSERT INTO cards (id, name, key, left_id, right_id, trash, type_id, db_content, read_rule_class, read_rule_id, created_at, updated_at, creator_id, updater_id) VALUES (9003, 'Dream Team+Associations', 'dream_team+association', NULL, NULL, 0, 3, '<p>template body</p>', '*all', 9006, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1, 1)",
+    "INSERT INTO cards (id, name, key, left_id, right_id, trash, type_id, db_content, read_rule_class, read_rule_id, created_at, updated_at, creator_id, updater_id) VALUES (9003, 'Growth Circle+Associations', 'growth_circle+association', NULL, NULL, 0, 3, '<p>template body</p>', '*all', 9006, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1, 1)",
     [],
   );
   return driver;
@@ -98,8 +98,8 @@ async function seedOrphanJunctionDeck(): Promise<LocalSqliteDriver> {
 
 describe("absent-junction masthead renders the requested name", () => {
   it("decodes the URI mark per uri_fetch_opts", () => {
-    expect(decodeName("Dream_Team%2BAssociations")).toBe("Dream Team+Associations");
-    expect(decodeName("Dream_Team+Associations")).toBe("Dream Team+Associations");
+    expect(decodeName("Growth_Circle%2BAssociations")).toBe("Growth Circle+Associations");
+    expect(decodeName("Growth_Circle+Associations")).toBe("Growth Circle+Associations");
     // the joint survives (the '%' decode must not eat it)
     expect(decodeName("Home")).toBe("Home");
   });
@@ -110,15 +110,15 @@ describe("absent-junction masthead renders the requested name", () => {
       const deck = await bootCorpusDeckEngines(driver);
       // the worker surface decodes the URI mark before the fetch
       // (decodeName is what parsePath hands renderPage)
-      const page = await deck.render.renderPage(decodeName("Dream_Team+Associations") as string);
+      const page = await deck.render.renderPage(decodeName("Growth_Circle+Associations") as string);
       const title = (page.match(/<title>([^<]*)/) ?? ["", ""])[1];
-      expect(title).toBe("Dream Team+Associations");
+      expect(title).toBe("Growth Circle+Associations");
       // the bare fixture renders the code-default layout (no card-header h1);
       // the denial slot still carries the url-key form of the requested name
       // data-card-name keeps Ruby's url_key form for an id-less compound
       // (format.ts: card.id === undefined && isCompound -> name.urlKey).
-      expect(page.includes('data-card-name="Dream_Team+Associations"')).toBe(true);
-      expect(page.includes("dream_team+association")).toBe(false);
+      expect(page.includes('data-card-name="Growth_Circle+Associations"')).toBe(true);
+      expect(page.includes("growth_circle+association")).toBe(false);
     } finally {
       driver.close();
     }
