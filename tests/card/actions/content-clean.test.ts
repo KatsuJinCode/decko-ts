@@ -1,9 +1,10 @@
 // Card content cleaning: the port's own output on ordinary and hostile markup.
 //
 // The assertions that compare against the recorded output of the upstream
-// cleaner on hostile markup are withheld until disclosure, in
-// tests/withheld/stored-html-ruby-reproductions.test.ts. A release package
-// excludes that file, so when it is absent this suite says so on stderr.
+// cleaner, on hostile markup and on ordinary content alike, are withheld until
+// disclosure, in tests/withheld/stored-html-ruby-reproductions.test.ts. A
+// release package excludes that file, so when it is absent this suite says so
+// on stderr.
 
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -17,7 +18,7 @@ const WITHHELD_SUITE = path.join(
 );
 if (!existsSync(WITHHELD_SUITE)) {
   process.stderr.write(
-    `[withheld until disclosure] NOT RUN: 7 tests (${WITHHELD_SUITE})\n`,
+    `[withheld until disclosure] NOT RUN: 34 tests (${WITHHELD_SUITE})\n`,
   );
 }
 

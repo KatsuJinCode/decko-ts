@@ -1,17 +1,17 @@
 // The stored-HTML cleaner against hostile and malformed input.
 //
 // This cleaner deliberately differs from the upstream cleaner (docs/SECURITY.md,
-// "Stored HTML"). The comparisons against the upstream cleaner's recorded
-// output on hostile markup are withheld until disclosure (tests/withheld/).
-// This suite pins three things:
+// "Stored HTML is sanitised safely"). The comparisons against the upstream
+// cleaner's output — on hostile markup and on ordinary content — are withheld
+// until disclosure (tests/withheld/). This suite pins three things:
 //
 //   1. No hostile input survives: the cleaned output passes an independent
 //      browser-tokenizer check (html-safety-verifier.ts), alone and when the
 //      page or another card's content follows it.
 //   2. The verifier is not vacuous: its own unsafe-output checks are in the
 //      withheld set.
-//   3. Ordinary content is stored byte for byte as the upstream cleaner
-//      stores it.
+//   3. Ordinary content leaves nothing executable and is stable under a
+//      second pass.
 //
 // The hostile cases follow the OWASP XSS Filter Evasion Cheat Sheet, plus the
 // regex-specific cases found while replacing the upstream algorithm.
@@ -23,7 +23,6 @@ import {
   isSafeStyle,
   isSafeUrl,
   parseAttributes,
-  rubyCleanContent,
 } from "../../../src/card/actions/content-clean.js";
 import { htmlSafetyProblems } from "./html-safety-verifier.js";
 
@@ -291,8 +290,10 @@ describe("cleanContent: markup the cleaner rewrites", () => {
   });
 });
 
-/** Ordinary content: what an editor produces and Ruby keeps. Every case must
- *  clean to exactly Ruby's bytes. */
+/** Ordinary content: what an editor produces. Every case must clean to
+ *  something a browser acts on nothing in, and must be stable under a second
+ *  pass. The byte-for-byte comparison with the upstream cleaner's output is
+ *  withheld until disclosure (tests/withheld/). */
 const ORDINARY: string[] = [
   "<p>Plain paragraph.</p>",
   "<p>Text with <strong>bold</strong>, <em>italic</em>, <b>b</b>, <i>i</i>, <sup>2</sup>, <sub>x</sub>, <del>old</del> and <ins>new</ins>.</p>",
@@ -323,11 +324,11 @@ const ORDINARY: string[] = [
   `<td colspan="2" scope="row" style="width: 10px;" data-mce-style="width: 10px;">cell</td>`,
 ];
 
-describe("cleanContent: ordinary content is stored as Ruby stores it", () => {
-  it.each(ORDINARY.map((s, i) => [i, s]))("ordinary case %i is byte-identical to Ruby", (_i, input) => {
+describe("cleanContent: ordinary content", () => {
+  it.each(ORDINARY.map((s, i) => [i, s]))("ordinary case %i leaves nothing executable and is stable", (_i, input) => {
     const out = cleanContent(input as string);
-    expect(out).toBe(rubyCleanContent(input as string));
     expect(htmlSafetyProblems(out)).toEqual([]);
+    expect(cleanContent(out)).toBe(out);
   });
 });
 
