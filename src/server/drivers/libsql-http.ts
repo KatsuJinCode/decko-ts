@@ -48,7 +48,7 @@
 // with it, which is a rollback.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
-import { TransactionGate } from "../driver.js";
+import { retryWhileBusy, TransactionGate } from "../driver.js";
 
 export interface LibSqlHttpOptions {
   /** Base URL of the libSQL server, e.g. "https://db.example.turso.io" or
@@ -139,19 +139,23 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
     return this.gate.run(async () => {
-      const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
-      const opened = await this.pipeline(begin, { url: this.pipelineUrl(this.baseUrl) });
-      if (opened.baton === undefined) {
-        throw new LibSqlHttpError("libsql server returned no baton for an open stream (protocol violation)");
-      }
-      this.stream = { baton: opened.baton, url: opened.url };
-      try {
-        opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
-      } catch (error) {
-        // BEGIN failed (the database is busy, for one): close the stream.
-        await this.endStream(undefined).catch(() => undefined);
-        throw error;
-      }
+      // Another connection holding the write lock makes BEGIN IMMEDIATE
+      // fail at once; wait for it, up to the lock timeout.
+      await retryWhileBusy(async () => {
+        const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+        const opened = await this.pipeline(begin, { url: this.pipelineUrl(this.baseUrl) });
+        if (opened.baton === undefined) {
+          throw new LibSqlHttpError("libsql server returned no baton for an open stream (protocol violation)");
+        }
+        this.stream = { baton: opened.baton, url: opened.url };
+        try {
+          opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+        } catch (error) {
+          // BEGIN failed (the database is busy, for one): close the stream.
+          await this.endStream(undefined).catch(() => undefined);
+          throw error;
+        }
+      });
       let result: R;
       try {
         result = await work();

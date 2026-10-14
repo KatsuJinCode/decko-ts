@@ -118,6 +118,40 @@ export class TransactionLockTimeoutError extends Error {
   }
 }
 
+/** True when a database reported its write lock held by another connection
+ *  (SQLite's SQLITE_BUSY, "database is locked"). */
+export function isDatabaseBusyError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+  return /database is locked|SQLITE_BUSY/i.test(message);
+}
+
+/**
+ * Runs `open` until it does not fail with a busy error: a native adapter's
+ * BEGIN IMMEDIATE fails at once when another connection holds the write
+ * lock, and the transaction must wait for it, as transactions through one
+ * driver object wait for each other (TransactionGate). Waits with backoff
+ * up to `timeoutMs`, then fails with TransactionLockTimeoutError. Any other
+ * error is rethrown at once.
+ */
+export async function retryWhileBusy<R>(
+  open: () => Promise<R>,
+  timeoutMs: number = DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<R> {
+  const started = Date.now();
+  let delay = 5;
+  for (;;) {
+    try {
+      return await open();
+    } catch (error) {
+      if (!isDatabaseBusyError(error)) throw error;
+      if (Date.now() - started >= timeoutMs) throw new TransactionLockTimeoutError(timeoutMs);
+    }
+    await sleep(delay);
+    delay = Math.min(delay * 2, 250);
+  }
+}
+
 /** Default wait for a transaction lock. A save holds it for well under a
  *  second; a wait this long means a stuck or nested transaction. */
 export const DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS = 30_000;

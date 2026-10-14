@@ -70,25 +70,19 @@ test server (`tests/server/drivers/mock-hrana-server.ts`, real SQLite) per
 database, and that Hrana server in place of a Bunny database. sqld itself is
 not installed here and was not run.
 
-Result on 2026-10-14 (`node tools/hosted-conformance/run.mjs --local`, exit 1):
+Result on 2026-10-14 (`node tools/hosted-conformance/run.mjs --local`, exit 0):
+every suite that runs passes on all three targets (transaction conformance
+7, atomic saves 11, concurrent saves 3, multi-user read isolation 2), every
+scratch database is removed, and no stand-in database is left behind.
 
-| Suite | d1 | turso | bunny |
-|---|---|---|---|
-| transaction conformance | pass (7) | pass (7) | pass (7) |
-| atomic saves | pass (11) | pass (11) | pass (11) |
-| concurrent saves | pass (3) | **fail (3)** | **fail (3)** |
-| multi-user read isolation | pass (2) | **fail (1 of 2)** | **fail (1 of 2)** |
-| scratch database removed | pass | pass | **fail** |
-
-The libSQL and Bunny failures share one cause: when a second driver object
-starts a transaction while another holds the write lock, its `BEGIN
-IMMEDIATE` fails at once with `database is locked` instead of waiting, and
-the save fails. `LibSqlHttpAdapter` and `BunnyDbDriver` do not retry a busy
-`BEGIN`, and the Hrana test server opens SQLite with no busy timeout. Whether
-sqld, Turso and Bunny wait for the lock or report it the same way is what the
-hosted run will show; until a busy `BEGIN` is retried within the lock
-timeout, concurrent writers on libSQL and Bunny are not safe. The failed Bunny
-teardown follows from the same failures (a stream left holding the lock in
-the test server).
+An earlier run found that concurrent writers on libSQL and Bunny failed:
+while one connection held the write lock, another's `BEGIN IMMEDIATE` failed
+at once with `database is locked`. `LibSqlHttpAdapter` and `BunnyDbDriver`
+now retry a busy `BEGIN` with backoff up to the transaction lock timeout
+(`retryWhileBusy`, `src/server/driver.ts`), and
+`tests/card/actions/concurrent-saves.test.ts` runs two driver objects over
+the Hrana test server for both, which fails without the retry. Whether
+sqld, Turso and Bunny report a held lock the same way is what the hosted run
+shows.
 
 Nothing in this runner has yet been run against a hosted service.

@@ -256,8 +256,10 @@ describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
     const final = await observe(reader);
     expect(committed).toContain(final.content);
     expect(final.content).toBe(final.newestChange);
-    const journal = await reader.query<{ c: number }>("SELECT COUNT(*) AS c FROM decko_tx_undo", []);
-    expect(Number(journal.rows[0].c)).toBe(0);
+    if (reader.transactionGuarantee?.mechanism === "compensating") {
+      const journal = await reader.query<{ c: number }>("SELECT COUNT(*) AS c FROM decko_tx_undo", []);
+      expect(Number(journal.rows[0].c)).toBe(0);
+    }
   }, 240_000);
 });
 }

@@ -135,22 +135,30 @@ describe("transactions: Hrana stream wire shape", () => {
     }
   });
 
-  it("keeps a second writer out while a stream holds the write lock", async () => {
+  it("keeps a second writer out while a stream holds the write lock, and lets it in after the commit", async () => {
     const { server, dispose } = await hranaServer();
     try {
       const a = new LibSqlHttpAdapter({ url: server.url });
       const b = new LibSqlHttpAdapter({ url: server.url });
       await a.query("CREATE TABLE lock_t (id INTEGER PRIMARY KEY, s TEXT)", []);
+      let second: Promise<number> | undefined;
       await a.transaction(async () => {
         await a.query("INSERT INTO lock_t (s) VALUES ('in a')", []);
-        // A writer on another stream is refused (SQLITE_BUSY) instead of
-        // interleaving; a reader does not see the uncommitted row.
-        await expect(b.transaction(async () => undefined)).rejects.toThrow(/locked|busy/i);
+        // A writer on another stream waits (its BEGIN IMMEDIATE is refused
+        // as busy and retried) instead of interleaving; a reader does not
+        // see the uncommitted row.
+        second = b.transaction(async () => {
+          await b.query("INSERT INTO lock_t (s) VALUES ('in b')", []);
+          return Number((await b.query<{ c: number }>("SELECT COUNT(*) AS c FROM lock_t", [])).rows[0].c);
+        });
+        expect(await settlesWithin(second, 150)).toBe(false);
         const seen = await b.query<{ c: number }>("SELECT COUNT(*) AS c FROM lock_t", []);
         expect(Number(seen.rows[0].c)).toBe(0);
       });
+      // The second writer ran after the first committed, and saw its row.
+      expect(await second).toBe(2);
       const after = await b.query<{ c: number }>("SELECT COUNT(*) AS c FROM lock_t", []);
-      expect(Number(after.rows[0].c)).toBe(1);
+      expect(Number(after.rows[0].c)).toBe(2);
     } finally {
       await dispose();
     }
