@@ -332,10 +332,22 @@ describe("card-mod-follow harness probe: the wave-1 oracle replay", () => {
 // --- section B: the views through the seeded runtime engine -----------------
 
 describe("card-mod-follow harness probe: the ported views through the engine", () => {
+  // subedit_notice lives in all/notify/base_views.rb's BARE `format do`
+  // block, and so do the wrap helpers the oracle scenarios were taken
+  // through: base_views.rb:105-115 wrap_list_item/wrap_subedit_item
+  // ("#{item}\n" / "\n#{yield}\n") - the BYTES the harness captured. The
+  // html format overrides exactly those two helpers (all/notify/
+  // html_views.rb:10-16: "<li>#{item}</li>\n" / "<li>#{yield}</li>\n"),
+  // so these renders answer in a NON-html format (Ruby's own :text, one
+  // of the deck's format classes). The html arm is pinned separately,
+  // below, so both formats' bytes are netted.
+  const TEXT_FORMAT = "text";
+
   it("renders subedit_notice for an explicit action_id (Action.fetch arm)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Basics", "subedit_notice", {
       viewOpts: { action_id: "9001" },
+      format: TEXT_FORMAT,
     });
     // the create action's rows, byte-exact against the oracle scenario
     expect(html).toBe(
@@ -347,6 +359,7 @@ describe("card-mod-follow harness probe: the ported views through the engine", (
     const s = storage!;
     const html = await s.engine.render("Oracle Basics", "subedit_notice", {
       viewOpts: { action_id: "9002" },
+      format: TEXT_FORMAT,
     });
     // action 9002 renamed the card + changed content; the header carries
     // the PREVIOUS name
@@ -357,11 +370,28 @@ describe("card-mod-follow harness probe: the ported views through the engine", (
 
   it("renders subedit_notice with no action_id (the card.last_action default)", async () => {
     const s = storage!;
-    const html = await s.engine.render("Oracle Basics", "subedit_notice");
+    const html = await s.engine.render("Oracle Basics", "subedit_notice", {
+      format: TEXT_FORMAT,
+    });
     // voo.action_id nil -> card.last_action = the card's LATEST action
     // (9002, the renamed update) - the seam's cardLastAction
     expect(html).toBe(
       "\nOracle Basics updated\n  new name: Oracle Basics Renamed\n  new content: New content\n\n",
+    );
+  });
+
+  it("renders subedit_notice in html (the html_views.rb wrap overrides)", async () => {
+    const s = storage!;
+    // the html block's wrap_subedit_item wraps the WHOLE item and
+    // wrap_list_item wraps each row - the base bytes' <li> forms
+    const html = await s.engine.render("Oracle Basics", "subedit_notice", {
+      viewOpts: { action_id: "9001" },
+    });
+    expect(html).toBe(
+      "<li>Oracle Basics created\n" +
+        "<li>   cardtype: Basic</li>\n" +
+        "<li>   content: Hello world</li>\n" +
+        "</li>\n",
     );
   });
 

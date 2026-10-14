@@ -220,7 +220,7 @@ import type {
   FollowRenderBundle,
   FollowTabRow,
 } from "../../follow/follow-render-seam.js";
-import { errorsView as formatErrorsView } from "./card-mod-format.js";
+import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
 import { followButton } from "./card-mod-edit.js";
 
@@ -1246,7 +1246,12 @@ export const followProbeSurface = {
   } {
     return userFollowErrorsPermissionArm(cardName);
   },
-  /** the super() arm (the chain's all-set body - card-mod-format's). */
+  /** user/follow.rb:76-78 the super() arm: the chain's all-set BASE
+   *  definition (card-mod-format set/all/error.rb:28-30) - the body the
+   *  type_plus_right registration shadows for User+*follow cards. Not
+   *  reachable from an engine render (the view's first line returns
+   *  unless card.errors.any?, and the engine models no error state); it
+   *  is the oracle's scenario-11 contract. */
   errorsSuperBytes(): string {
     return str(formatErrorsView({} as ViewContext));
   },
