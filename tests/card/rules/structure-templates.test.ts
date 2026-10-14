@@ -263,6 +263,10 @@ describe("RenderEngine structured content", () => {
     const fresh = await createRenderTestStorage();
     try {
       // Minimal copy of the governed pair (engine caches are per-instance).
+      // The Basic type card (id 2) every real deck carries: the prelude's type
+      // prime reads it. Without it the fetch ladder asks for the absent id again
+      // on every late read (13 round trips here, 6 with it).
+      await seedCard(fresh, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
       await seedCard(fresh, { id: 100, name: "Page" });
       await seedCard(fresh, { id: 101, name: "*type", codename: "type" });
       await seedCard(fresh, { id: 102, name: "*structure", codename: "structure" });
@@ -350,11 +354,16 @@ describe("RenderEngine structured content", () => {
       //  (re-reading the prelude's type row, already composed and cached)
       //  was a redundancy and is fixed: composeAndCache marks every
       //  composed row as held for later type primes.
-      // This deck carries the stock read substrate (createRenderTestStorage's
-      // default). Measured on this branch for this render: 32 statements and 16
-      // round trips before the permission-setup fold, 31 and 13 after it.
-      expect(cold.statements).toBe(31);
-      expect(cold.roundTrips).toBe(13);
+      // Measured on this branch for this render, with the Basic card above:
+      // 24 statements and 6 round trips. The round-trip law (depth-sweep.test.ts:
+      // four fixed trips plus one per nesting level) gives 4 for this render: the
+      // title view nests nothing (0 levels). The two trips above it are
+      // single-statement batches: one by-id read (the second batch after the
+      // prelude) and the rule-pair probe for the junction Page+*type+*structure
+      // (the wave re-pends it as its own batch). Both sit above the law and are
+      // not folded into a neighbouring batch yet.
+      expect(cold.statements).toBe(24);
+      expect(cold.roundTrips).toBe(6);
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip).
       fresh.counting.reset();

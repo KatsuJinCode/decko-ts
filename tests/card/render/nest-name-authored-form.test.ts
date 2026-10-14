@@ -17,8 +17,8 @@
 // passing the item's absolute name explicitly — the item slots'
 // nest_name is the absolute item name.
 //
-// Rule-less storage: no read rules exist, so the rule-less allowance
-// keeps every card readable and the nest renders the titled child body.
+// Stock read substrate: the catch-all grants Anyone, so every card is
+// readable and the nest renders the titled child body.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
