@@ -828,7 +828,7 @@ function renderBehaviourMd(report) {
   );
   lines.push("");
   lines.push(
-    "A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view or event NAME (see `tools/compat-report/behaviour.mjs`): a graded operation names a view, not the set module Ruby chose, so a shared view name is credited to every mod declaring it. Fixture operations are all html; views declared in other formats can only be credited by tests.",
+    "A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html; views declared in other formats can only be credited by tests.",
   );
   lines.push("");
   lines.push("Grades this verdict rests on (`tools/compat-report/graded-ops.json`):");
@@ -863,10 +863,10 @@ function renderBehaviourMd(report) {
     lines.push(`#### ${m.gem}`);
     lines.push("");
     lines.push(`- tests linked: ${b.tests.length ? b.tests.map((t) => `\`${t}\``).join(", ") : "(none)"}`);
-    lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} (${v.ops.length} ops)`).join(", ") || "(none)"}`);
-    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.differing_ops.join("; ")}]`).join(", ") || "(none)"}`);
-    lines.push(`- views test-pinned only: ${b.views.filter((v) => v.evidence === "pinned").map((v) => `${v.format}:${v.view}`).join(", ") || "(none)"}`);
-    lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view}`).join(", ") || "(none)"}`);
+    lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} [${v.set}] (${v.ops.length} ops)`).join(", ") || "(none)"}`);
+    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}`).join(", ") || "(none)"}`);
+    lines.push(`- views test-pinned only: ${b.views.filter((v) => v.evidence === "pinned").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
+    lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     lines.push(`- events unexercised: ${unexE.map((e) => e.event).join(", ") || "(none)"}`);
     lines.push("");
   }

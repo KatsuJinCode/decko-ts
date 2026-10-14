@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-14T20:37:08.718Z
+Generated: 2026-10-14T21:27:29.119Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -17,9 +17,9 @@ Mods scanned: **33**
 
 ## Behavioural verdict
 
-Behaviour-complete: **10** of 31 evaluated mods (2 not evaluated: `card-mod-defaults-0.20.0`, `card-mod-delayed_job-0.20.0`).
+Behaviour-complete: **16** of 31 evaluated mods (2 not evaluated: `card-mod-defaults-0.20.0`, `card-mod-delayed_job-0.20.0`).
 
-A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view or event NAME (see `tools/compat-report/behaviour.mjs`): a graded operation names a view, not the set module Ruby chose, so a shared view name is credited to every mod declaring it. Fixture operations are all html; views declared in other formats can only be credited by tests.
+A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html; views declared in other formats can only be credited by tests.
 
 Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
@@ -28,37 +28,37 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 | mod | behaviour | views | graded identical | graded differs | test-pinned | unexercised views | events | events named by a test | unexercised events |
 |-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|
-| `card-mod-account-0.20.0` | behaviour-incomplete | 25 | 17 | 5 | 1 | 2 | 30 | 30 | 0 |
+| `card-mod-account-0.20.0` | behaviour-incomplete | 30 | 8 | 7 | 9 | 6 | 33 | 33 | 0 |
 | `card-mod-ace_editor-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `card-mod-api_key-0.20.0` | behaviour-incomplete | 7 | 5 | 1 | 1 | 0 | 2 | 2 | 0 |
-| `card-mod-assets-0.20.0` | behaviour-incomplete | 5 | 3 | 1 | 0 | 1 | 5 | 5 | 0 |
-| `card-mod-bar_and_box-0.20.0` | behaviour-complete | 21 | 21 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `card-mod-bootstrap-0.20.0` | behaviour-incomplete | 11 | 10 | 1 | 0 | 0 | 6 | 6 | 0 |
-| `card-mod-carrierwave-0.20.0` | behaviour-incomplete | 17 | 7 | 3 | 3 | 4 | 24 | 19 | 5 |
+| `card-mod-api_key-0.20.0` | behaviour-complete | 10 | 6 | 0 | 4 | 0 | 2 | 2 | 0 |
+| `card-mod-assets-0.20.0` | behaviour-incomplete | 8 | 1 | 3 | 2 | 2 | 5 | 5 | 0 |
+| `card-mod-bar_and_box-0.20.0` | behaviour-complete | 21 | 19 | 0 | 2 | 0 | 0 | 0 | 0 |
+| `card-mod-bootstrap-0.20.0` | behaviour-incomplete | 14 | 3 | 0 | 7 | 4 | 6 | 6 | 0 |
+| `card-mod-carrierwave-0.20.0` | behaviour-incomplete | 25 | 7 | 2 | 9 | 7 | 24 | 19 | 5 |
 | `card-mod-collection-0.20.0` | behaviour-incomplete | 5 | 0 | 3 | 0 | 2 | 0 | 0 | 0 |
-| `card-mod-comment-0.20.0` | behaviour-incomplete | 3 | 2 | 1 | 0 | 0 | 1 | 1 | 0 |
-| `card-mod-content-0.20.0` | behaviour-incomplete | 5 | 4 | 1 | 0 | 0 | 3 | 3 | 0 |
-| `card-mod-date-0.20.0` | behaviour-incomplete | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `card-mod-comment-0.20.0` | behaviour-complete | 7 | 2 | 0 | 5 | 0 | 1 | 1 | 0 |
+| `card-mod-content-0.20.0` | behaviour-incomplete | 9 | 5 | 2 | 2 | 0 | 3 | 3 | 0 |
+| `card-mod-date-0.20.0` | behaviour-complete | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-defaults-0.20.0` | not evaluated | | | | | | | | |
 | `card-mod-delayed_job-0.20.0` | not evaluated | | | | | | | | |
-| `card-mod-edit-0.20.0` | behaviour-complete | 43 | 42 | 0 | 1 | 0 | 0 | 0 | 0 |
-| `card-mod-email-0.20.0` | behaviour-incomplete | 9 | 2 | 1 | 6 | 0 | 0 | 0 | 0 |
-| `card-mod-follow-0.20.0` | behaviour-incomplete | 21 | 18 | 2 | 0 | 1 | 10 | 3 | 7 |
-| `card-mod-format-0.20.0` | behaviour-incomplete | 146 | 88 | 6 | 26 | 26 | 2 | 0 | 2 |
+| `card-mod-edit-0.20.0` | behaviour-complete | 43 | 43 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `card-mod-email-0.20.0` | behaviour-incomplete | 11 | 2 | 1 | 8 | 0 | 0 | 0 | 0 |
+| `card-mod-follow-0.20.0` | behaviour-incomplete | 24 | 15 | 0 | 7 | 2 | 10 | 3 | 7 |
+| `card-mod-format-0.20.0` | behaviour-incomplete | 154 | 87 | 6 | 33 | 28 | 2 | 0 | 2 |
 | `card-mod-help-0.20.0` | behaviour-complete | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-history-0.20.0` | behaviour-complete | 14 | 12 | 0 | 2 | 0 | 6 | 6 | 0 |
-| `card-mod-integrate-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |
-| `card-mod-layout-0.20.0` | behaviour-incomplete | 25 | 23 | 2 | 0 | 0 | 3 | 3 | 0 |
-| `card-mod-list-0.20.0` | behaviour-incomplete | 15 | 5 | 2 | 3 | 5 | 5 | 5 | 0 |
-| `card-mod-markdown-0.20.0` | behaviour-incomplete | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `card-mod-integrate-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 4 | 4 | 0 |
+| `card-mod-layout-0.20.0` | behaviour-complete | 32 | 17 | 0 | 15 | 0 | 3 | 3 | 0 |
+| `card-mod-list-0.20.0` | behaviour-incomplete | 22 | 10 | 2 | 5 | 5 | 5 | 5 | 0 |
+| `card-mod-markdown-0.20.0` | behaviour-complete | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-permissions-0.20.0` | behaviour-incomplete | 4 | 3 | 1 | 0 | 0 | 7 | 7 | 0 |
-| `card-mod-recaptcha-0.20.0` | behaviour-incomplete | 1 | 0 | 1 | 0 | 0 | 3 | 3 | 0 |
-| `card-mod-rules-0.20.0` | behaviour-incomplete | 36 | 31 | 4 | 1 | 0 | 1 | 1 | 0 |
-| `card-mod-script-0.20.0` | behaviour-incomplete | 9 | 5 | 2 | 1 | 1 | 2 | 2 | 0 |
-| `card-mod-search-0.20.0` | behaviour-incomplete | 29 | 13 | 5 | 2 | 9 | 0 | 0 | 0 |
+| `card-mod-recaptcha-0.20.0` | behaviour-complete | 1 | 0 | 0 | 1 | 0 | 3 | 3 | 0 |
+| `card-mod-rules-0.20.0` | behaviour-incomplete | 41 | 24 | 3 | 9 | 5 | 1 | 1 | 0 |
+| `card-mod-script-0.20.0` | behaviour-incomplete | 13 | 6 | 2 | 4 | 1 | 2 | 2 | 0 |
+| `card-mod-search-0.20.0` | behaviour-incomplete | 32 | 12 | 7 | 2 | 11 | 0 | 0 | 0 |
 | `card-mod-session-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 4 | 4 | 0 |
-| `card-mod-style-0.20.0` | behaviour-incomplete | 16 | 8 | 1 | 6 | 1 | 3 | 3 | 0 |
-| `card-mod-tabs-0.20.0` | behaviour-complete | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `card-mod-style-0.20.0` | behaviour-incomplete | 19 | 7 | 1 | 10 | 1 | 3 | 3 | 0 |
+| `card-mod-tabs-0.20.0` | behaviour-complete | 5 | 5 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `card-mod-tinymce_editor-0.20.0` | behaviour-complete | 11 | 9 | 0 | 2 | 0 | 0 | 0 | 0 |
 | `card-mod-virtual-0.20.0` | behaviour-complete | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 
@@ -67,10 +67,10 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-account-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-account-events.test.ts`, `tests/card/mod-loader/card-mod-account-fields.test.ts`, `tests/card/mod-loader/card-mod-account-forms.test.ts`, `tests/card/mod-loader/card-mod-account-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-account.test.ts`
-- views graded identical: base:raw (2 ops), base:token_expiry (1 ops), html:account_tab (1 ops), html:closed_account (1 ops), html:configs (1 ops), html:content_formgroups (1 ops), html:edit (2 ops), html:edit_buttons (1 ops), html:link_with_checkbox (1 ops), html:new (2 ops), html:new_buttons (1 ops), html:one_line_content (1 ops), html:open (1 ops), html:open_content (1 ops), html:reset_password_success (1 ops), html:title (1 ops), html:token_expiry (1 ops)
-- views graded but differing: base:reset_password_days [synthetic-v2#view:admin:Ada Admin+*account:reset_password_days], base:token_days [synthetic-v2#view:admin:Ada Admin+*account:token_days], base:verify_days [synthetic-v2#view:admin:Ada Admin+*account:verify_days], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:setup [synthetic-v2#view:admin:Quinn Contractor:setup]
-- views test-pinned only: base:closure
-- views unexercised: base:reset_password_url, base:verify_url
+- views graded identical: base:token_expiry [set/right/account/views.rb] (1 ops), html:account_tab [set/abstract/account_holder.rb] (1 ops), html:closed_account [set/abstract/account_holder.rb] (1 ops), html:configs [set/type/role.rb] (1 ops), html:core [set/self/signin.rb] (2 ops), html:link_with_checkbox [set/type/role.rb] (1 ops), html:reset_password_success [set/self/signin.rb] (1 ops), html:token_expiry [set/right/account/views.rb] (1 ops)
+- views graded but differing: base:closure [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:closure, base:reset_password_days [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:reset_password_days, base:reset_password_url [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:reset_password_url, base:token_days [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:token_days, base:verify_days [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:verify_days, base:verify_url [set/right/account/views.rb] differs at synthetic-v2#view:admin:Ada Admin+*account:verify_url, html:setup [set/type/user.rb] differs at synthetic-v2#view:admin:Quinn Contractor:setup
+- views test-pinned only: base:raw [set/right/password.rb], base:raw [set/right/salt.rb], base:raw [set/type_plus_right/user/email.rb], html:core [set/right/account/views.rb], html:core [set/right/password.rb], html:core [set/type/signup/views.rb], html:edit_buttons [set/self/signin.rb], html:one_line_content [set/self/signin.rb], html:open_content [set/self/signin.rb]
+- views unexercised: html:content_formgroups [set/type/signup/views.rb], html:edit [set/self/signin.rb], html:new_buttons [set/type/signup/views.rb], html:new [set/type/signup/views.rb], html:open [set/self/signin.rb], html:title [set/self/signin.rb]
 - events unexercised: (none)
 
 #### card-mod-ace_editor-0.20.0
@@ -85,80 +85,80 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-api_key-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-api_key.test.ts`
-- views graded identical: html:api_key (1 ops), html:buttons (1 ops), html:current (1 ops), html:generate_button (1 ops), html:token_link (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: json:token
+- views graded identical: html:api_key [set/right/account.rb] (1 ops), html:buttons [set/right/api_key.rb] (1 ops), html:core [set/right/api_key.rb] (2 ops), html:current [set/right/api_key.rb] (1 ops), html:generate_button [set/right/api_key.rb] (1 ops), html:token_link [set/right/api_key.rb] (1 ops)
+- views graded but differing: (none)
+- views test-pinned only: html:content [set/right/api_key.rb], html:titled_content [set/right/api_key.rb], html:titled [set/right/api_key.rb], json:token [set/right/api_key.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-assets-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-assets.test.ts`
-- views graded identical: base:not_found (1 ops), html:javascript_include_tag (1 ops), html:stylesheet_include_tag (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: (none)
-- views unexercised: base:asset_output_url
+- views graded identical: html:javascript_include_tag [set/abstract/asset_file.rb] (1 ops)
+- views graded but differing: base:asset_output_url [set/abstract/asset_outputter.rb] differs at synthetic-v2#view:admin:*all+*script:asset_output_url, html:core [set/abstract/01_manifest_group.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:core [set/abstract/mod_assets.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: html:javascript_include_tag [set/right/group_remote.rb], html:stylesheet_include_tag [set/right/group_remote.rb]
+- views unexercised: base:not_found [set/right/asset_output.rb], html:core [set/right/group_remote.rb]
 - events unexercised: (none)
 
 #### card-mod-bar_and_box-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-bar-and-box-views.test.ts`
-- views graded identical: base:box (1 ops), base:box_bottom (1 ops), base:box_middle (1 ops), base:box_top (1 ops), html:accordion_bar (1 ops), html:bar (2 ops), html:bar_body (1 ops), html:bar_bottom (1 ops), html:bar_left (1 ops), html:bar_menu (1 ops), html:bar_middle (1 ops), html:bar_right (1 ops), html:boxed (1 ops), html:boxed_link (1 ops), html:closed (1 ops), html:closed_bar (1 ops), html:expanded_bar (1 ops), html:full_bar (1 ops), html:mini_bar (1 ops), html:open (1 ops), html:open_bar (1 ops)
+- views graded identical: base:box_bottom [set/all/box.rb] (1 ops), base:box_middle [set/all/box.rb] (1 ops), base:box_top [set/all/box.rb] (1 ops), base:box [set/all/box.rb] (1 ops), html:accordion_bar [set/all/bar.rb] (1 ops), html:bar_body [set/all/bar.rb] (1 ops), html:bar_bottom [set/all/bar.rb] (1 ops), html:bar_left [set/all/bar.rb] (1 ops), html:bar_menu [set/all/bar.rb] (1 ops), html:bar_middle [set/all/bar.rb] (1 ops), html:bar_right [set/all/bar.rb] (1 ops), html:bar [set/all/bar.rb] (2 ops), html:closed_bar [set/all/bar.rb] (1 ops), html:closed [set/all/bar.rb] (1 ops), html:expanded_bar [set/all/bar.rb] (1 ops), html:full_bar [set/all/bar.rb] (1 ops), html:mini_bar [set/all/bar.rb] (1 ops), html:open_bar [set/all/bar.rb] (1 ops), html:open [set/all/bar.rb] (1 ops)
 - views graded but differing: (none)
-- views test-pinned only: (none)
+- views test-pinned only: html:boxed_link [set/type/image.rb], html:boxed [set/type/image.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-bootstrap-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts`, `tests/card/mod-loader/card-mod-bootstrap.test.ts`
-- views graded identical: html:bar_bottom (1 ops), html:bar_left (1 ops), html:bar_middle (1 ops), html:bar_right (1 ops), html:carousel (1 ops), html:customize_button (1 ops), html:icons (1 ops), html:input (1 ops), html:one_line_content (1 ops), html:progress_bar (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: (none)
-- views unexercised: (none)
+- views graded identical: html:carousel [set/all/bootstrap/carousel.rb] (1 ops), html:icons [set/all/bootstrap/icon.rb] (1 ops), html:progress_bar [set/abstract/progress_bar.rb] (1 ops)
+- views graded but differing: (none)
+- views test-pinned only: html:core [set/type_plus_right/bootswatch_skin/colors.rb], html:core [set/type/bootswatch_skin/html_views.rb], html:customize_button [set/type/bootswatch_skin/html_views.rb], html:input [set/type_plus_right/bootswatch_skin/colors.rb], html:input [set/type/bootswatch_skin.rb], html:one_line_content [set/type/bootswatch_skin.rb], html:one_line_content [set/type/bootswatch_skin/html_views.rb]
+- views unexercised: html:bar_bottom [set/type/bootswatch_skin/html_views.rb], html:bar_left [set/type/bootswatch_skin/html_views.rb], html:bar_middle [set/type_plus_right/bootswatch_skin/colors.rb], html:bar_right [set/type/bootswatch_skin/html_views.rb]
 - events unexercised: (none)
 
 #### card-mod-carrierwave-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-carrierwave-events.test.ts`, `tests/card/mod-loader/card-mod-carrierwave-when-predicates.test.ts`, `tests/card/mod-loader/card-mod-carrierwave.test.ts`
-- views graded identical: base:inline (1 ops), base:one_line_content (1 ops), base:source (1 ops), html:full_width (1 ops), html:input (1 ops), html:link_tag (1 ops), html:source (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:content_changes [synthetic-v2#view:admin:*favicon:content_changes], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: css:core, file:core, json:image_complete
-- views unexercised: css:content, email_html:inline, html:preview_editor, json:content
-- events unexercised: mark_remove_, remove_, remove_previously_stored_, reset_previous_changes_for_, store_
+- views graded identical: base:core [set/type/file.rb] (20 ops), base:inline [set/type/image.rb] (1 ops), base:source [set/type/file.rb] (1 ops), html:core [set/type/file.rb] (20 ops), html:core [set/type/image/html_views.rb] (6 ops), html:full_width [set/type/image/html_views.rb] (1 ops), html:link_tag [set/self/favicon.rb] (1 ops)
+- views graded but differing: html:content_changes [set/type/image/html_views.rb] differs at synthetic-v2#view:admin:*favicon:content_changes, html:preview_editor [set/type/file.rb] differs at synthetic-v2#view:admin:Report 1:preview_editor
+- views test-pinned only: base:source [set/type/image.rb], css:core [set/type/image.rb], file:core [set/type/file.rb], html:core [set/self/new_file.rb], html:core [set/self/new_image.rb], html:source [set/self/favicon.rb], html:source [set/self/new_file.rb], html:source [set/self/new_image.rb], json:image_complete [set/self/search.rb]
+- views unexercised: base:one_line_content [set/type/image.rb], css:content [set/type/image.rb], email_html:inline [set/type/image.rb], html:input [set/self/new_file.rb], html:input [set/self/new_image.rb], html:input [set/type/file.rb], json:content [set/type/file.rb]
+- events unexercised: mark_remove_<column>_false_event, remove_<column>_event, remove_previously_stored_<column>_event, reset_previous_changes_for_<column>_event, store_<column>_event
 
 #### card-mod-collection-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-collection.test.ts`
 - views graded identical: (none)
-- views graded but differing: base:count [synthetic-v2#view:admin:All Topics:count], html:count [synthetic-v2#view:admin:All Topics:count], html:paging [synthetic-v2#view:admin:All Topics:paging]
+- views graded but differing: base:count [set/all/item.rb] differs at synthetic-v2#view:admin:All Topics:count, html:count [set/all/item.rb] differs at synthetic-v2#view:admin:All Topics:count, html:paging [set/abstract/paging/paging_views.rb] differs at synthetic-v2#view:admin:All Topics:paging
 - views test-pinned only: (none)
-- views unexercised: json:paging_urls, jsonld:paging_urls
+- views unexercised: json:paging_urls [set/abstract/paging/paging_views.rb], jsonld:paging_urls [set/abstract/paging/paging_views.rb]
 - events unexercised: (none)
 
 #### card-mod-comment-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-comment-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-comment-save-event.test.ts`, `tests/card/mod-loader/card-mod-comment.test.ts`
-- views graded identical: base:comment_box (2 ops), base:input (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: (none)
+- views graded identical: base:comment_box [set/all/comment.rb] (2 ops), base:core [set/right/discussion.rb] (4 ops)
+- views graded but differing: (none)
+- views test-pinned only: base:input [set/right/discussion.rb], base:open_content [set/right/discussion.rb], base:open [set/right/discussion.rb], base:titled_content [set/right/discussion.rb], base:titled [set/right/discussion.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-content-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-content.test.ts`
-- views graded identical: html:bar_middle (1 ops), html:file_size (1 ops), html:input (1 ops), html:one_line_content (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: (none)
+- views graded identical: html:bar_middle [set/abstract/01_code_content.rb] (1 ops), html:file_size [set/abstract/02_code_file.rb] (1 ops), html:input [set/abstract/01_code_content.rb] (1 ops), html:input [set/abstract/haml_file.rb] (1 ops), html:input [set/abstract/read_only.rb] (1 ops)
+- views graded but differing: html:core [set/abstract/haml_file.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:core [set/abstract/templated_nests.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: html:one_line_content [set/right/default.rb], html:one_line_content [set/right/structure.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-date-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-date.test.ts`
-- views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded identical: html:core [set/type/date.rb] (15 ops)
+- views graded but differing: (none)
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -166,43 +166,43 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-edit-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-edit-forms.test.ts`, `tests/card/mod-loader/card-mod-edit-views.test.ts`, `tests/card/mod-loader/card-mod-edit.test.ts`
-- views graded identical: base:template_nest (1 ops), html:board (2 ops), html:board_type_formgroup (1 ops), html:cardboard (1 ops), html:conflict_tracker (1 ops), html:content_formgroup (1 ops), html:content_formgroups (1 ops), html:edit (2 ops), html:edit_buttons (1 ops), html:edit_form (1 ops), html:edit_in_form (1 ops), html:edit_inline (2 ops), html:edit_inline_buttons (1 ops), html:edit_name (1 ops), html:edit_name_row (1 ops), html:edit_nests (1 ops), html:edit_row (1 ops), html:edit_rules (1 ops), html:edit_type (1 ops), html:edit_type_form (1 ops), html:edit_type_row (1 ops), html:engage_tab (1 ops), html:follow_section (2 ops), html:guide_tab (1 ops), html:history_tab (2 ops), html:input (1 ops), html:just_deleted (1 ops), html:name_form (1 ops), html:name_formgroup (1 ops), html:new (2 ops), html:new_buttons (1 ops), html:new_fields (1 ops), html:new_in_modal (1 ops), html:new_in_modal_buttons (1 ops), html:new_type_formgroup (1 ops), html:overlay_guide (1 ops), html:read_form (1 ops), html:read_formgroup (1 ops), html:related_tab (1 ops), html:rules_tab (1 ops), html:simple_new (1 ops), html:type_formgroup (1 ops)
+- views graded identical: base:template_nest [set/all/template_nest.rb] (1 ops), html:board_type_formgroup [set/all/edit_type.rb] (1 ops), html:board [set/all/editing.rb] (2 ops), html:cardboard [set/all/editing.rb] (1 ops), html:conflict_tracker [set/all/form.rb] (1 ops), html:content_formgroup [set/all/form.rb] (1 ops), html:content_formgroups [set/all/form.rb] (1 ops), html:edit_buttons [set/all/editing.rb] (1 ops), html:edit_form [set/all/edit_content.rb] (1 ops), html:edit_in_form [set/all/form.rb] (1 ops), html:edit_inline_buttons [set/all/edit_inline.rb] (1 ops), html:edit_inline [set/all/edit_inline.rb] (2 ops), html:edit_name_row [set/all/edit_inline.rb] (1 ops), html:edit_name [set/all/edit_name.rb] (1 ops), html:edit_nests [set/all/editing.rb] (1 ops), html:edit_row [set/all/edit_inline.rb] (1 ops), html:edit_rules [set/all/editing.rb] (1 ops), html:edit_structure [set/all/editing.rb] (1 ops), html:edit_type_form [set/all/edit_type.rb] (1 ops), html:edit_type_row [set/all/edit_type.rb] (1 ops), html:edit_type [set/all/edit_type.rb] (1 ops), html:edit [set/all/edit_content.rb] (2 ops), html:engage_tab [set/all/board/tab_views.rb] (1 ops), html:follow_section [set/all/board/tab_views.rb] (2 ops), html:guide_tab [set/all/board/tab_views.rb] (1 ops), html:history_tab [set/all/board/tab_views.rb] (2 ops), html:input [set/all/editor.rb] (1 ops), html:just_deleted [set/all/editing.rb] (1 ops), html:name_form [set/all/edit_name.rb] (1 ops), html:name_formgroup [set/all/form.rb] (1 ops), html:new_buttons [set/all/new.rb] (1 ops), html:new_fields [set/all/new.rb] (1 ops), html:new_in_modal_buttons [set/all/new.rb] (1 ops), html:new_in_modal [set/all/new.rb] (1 ops), html:new_type_formgroup [set/all/new.rb] (1 ops), html:new [set/all/new.rb] (2 ops), html:overlay_guide [set/all/overlay_guide.rb] (1 ops), html:read_form [set/all/formgroup.rb] (1 ops), html:read_formgroup [set/all/formgroup.rb] (1 ops), html:related_tab [set/all/board/tab_views.rb] (1 ops), html:rules_tab [set/all/board/tab_views.rb] (1 ops), html:simple_new [set/all/new.rb] (1 ops), html:type_formgroup [set/all/edit_type.rb] (1 ops)
 - views graded but differing: (none)
-- views test-pinned only: html:edit_structure
+- views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-email-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-email-raw-oracle.test.ts`, `tests/card/mod-loader/card-mod-email.test.ts`
-- views graded identical: html:content (1 ops), html:email_page (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: email_html:compact_missing, email_html:core, email_html:unknown, email_text:compact_missing, email_text:last_action, email_text:unknown
+- views graded identical: html:core [set/type/email_template/html.rb] (12 ops), html:email_page [set/all/email_html.rb] (1 ops)
+- views graded but differing: html:core [set/abstract/test_context.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: email_html:compact_missing [set/all/email_html.rb], email_html:core [set/abstract/test_context.rb], email_html:unknown [set/all/email_html.rb], email_text:compact_missing [set/all/email_text.rb], email_text:last_action [set/all/email_text.rb], email_text:unknown [set/all/email_text.rb], html:content [set/right/html_message.rb], html:core [set/right/text_message.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-follow-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-follow-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-follow-views.test.ts`, `tests/card/mod-loader/card-mod-follow.test.ts`
-- views graded identical: base:followed (1 ops), base:follower (1 ops), base:last_action_verb (1 ops), base:list_of_changes (1 ops), base:subedit_notice (1 ops), base:subedits (1 ops), base:unfollow_url (1 ops), html:confirm_update_all (1 ops), html:edit (2 ops), html:edit_buttons (1 ops), html:follow_button (2 ops), html:follow_item (1 ops), html:follow_status (1 ops), html:follow_tab (1 ops), html:ignore_tab (1 ops), html:one_line_content (1 ops), html:rule_editor (1 ops), html:status (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors]
-- views test-pinned only: (none)
-- views unexercised: json:follow_status
+- views graded identical: base:followed [set/all/notify/base_views.rb] (1 ops), base:follower [set/all/notify/base_views.rb] (1 ops), base:last_action_verb [set/all/notify/base_views.rb] (1 ops), base:list_of_changes [set/all/notify/base_views.rb] (1 ops), base:subedit_notice [set/all/notify/base_views.rb] (1 ops), base:subedits [set/all/notify/base_views.rb] (1 ops), base:unfollow_url [set/all/notify/base_views.rb] (1 ops), html:core [set/type_plus_right/user/follow.rb] (2 ops), html:follow_button [set/all/follow/follow_link_views.rb] (2 ops), html:follow_item [set/right/follow.rb] (1 ops), html:follow_status [set/right/follow.rb] (1 ops), html:follow_tab [set/type_plus_right/user/follow.rb] (1 ops), html:ignore_tab [set/type_plus_right/user/follow.rb] (1 ops), html:rule_editor [set/right/following.rb] (1 ops), html:status [set/right/following.rb] (1 ops)
+- views graded but differing: (none)
+- views test-pinned only: html:confirm_update_all [set/self/follow_defaults.rb], html:core [set/right/followers.rb], html:core [set/right/following.rb], html:edit [set/type_plus_right/user/follow.rb], html:errors [set/type_plus_right/user/follow.rb], html:one_line_content [set/right/following.rb], html:one_line_content [set/type_plus_right/user/follow.rb]
+- views unexercised: html:edit_buttons [set/self/follow_defaults.rb], json:follow_status [set/all/follow/follow_link_views.rb]
 - events unexercised: cache_expired_for_new_set, cache_expired_for_type_change, expire_preferences_cache, notify_followers_after_delete, notify_followers_after_save, silence_notifications, stash_followers
 
 #### card-mod-format-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-format-async-head-views.test.ts`, `tests/card/mod-loader/card-mod-format-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-format-head-header-views.test.ts`, `tests/card/mod-loader/card-mod-format-hidden-content-field-view.test.ts`, `tests/card/mod-loader/card-mod-format-remaining-views.test.ts`, `tests/card/mod-loader/card-mod-format-smart-label.test.ts`, `tests/card/mod-loader/card-mod-format-toggle-raises.test.ts`, `tests/card/mod-loader/card-mod-format.test.ts`
-- views graded identical: base:acted_at (1 ops), base:bad_address (1 ops), base:blank (1 ops), base:closed (1 ops), base:closed_content (1 ops), base:codename (1 ops), base:compact_missing (1 ops), base:content (1 ops), base:created_at (1 ops), base:denial (1 ops), base:home_path (1 ops), base:home_url (1 ops), base:id_url (1 ops), base:key (1 ops), base:label (1 ops), base:labeled (1 ops), base:labeled_content (1 ops), base:link (1 ops), base:linkname (1 ops), base:name (1 ops), base:nav_link (1 ops), base:not_found (1 ops), base:one_line_content (1 ops), base:open (1 ops), base:open_content (1 ops), base:page_title (1 ops), base:raw (2 ops), base:raw_one_line_content (1 ops), base:server_error (1 ops), base:smart_label (1 ops), base:text_without_nests (1 ops), base:title (1 ops), base:title_link (1 ops), base:titled (1 ops), base:titled_content (1 ops), base:type (1 ops), base:unknown (1 ops), base:updated_at (1 ops), base:url (1 ops), base:url_link (1 ops), html:add_button (1 ops), html:add_link (1 ops), html:add_url (1 ops), html:admin (1 ops), html:bar_right (1 ops), html:board_link (1 ops), html:compact_missing (1 ops), html:configure_button (1 ops), html:configure_link (1 ops), html:conflict (1 ops), html:content (1 ops), html:content_panel (1 ops), html:content_with_title (1 ops), html:demo (1 ops), html:denial (1 ops), html:edit_button (2 ops), html:edit_link (2 ops), html:favicon_tag (1 ops), html:flash (1 ops), html:full_page_link (1 ops), html:head (1 ops), html:header (1 ops), html:header_title (1 ops), html:help_link (1 ops), html:hidden_content_field (1 ops), html:input (1 ops), html:labeled (1 ops), html:labeled_editor (1 ops), html:menu (1 ops), html:menu_block (1 ops), html:meta_tags (1 ops), html:mini_unknown (1 ops), html:not_found (1 ops), html:one_line_content (1 ops), html:page_title_tag (1 ops), html:raw_one_line_content (1 ops), html:server_error (1 ops), html:short_content (1 ops), html:stylesheet_tags (1 ops), html:title (1 ops), html:title_link (1 ops), html:title_no_link (1 ops), html:titled (1 ops), html:type (1 ops), html:type_info (1 ops), html:universal_edit_button (1 ops), html:unknown (1 ops), html:view_list (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:errors [synthetic-v2#view:admin:Nonexistent Card:errors], base:id [synthetic-v2#view:admin:Topic 001:id], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors], html:rss_links [synthetic-v2#view:admin:Home:rss_links]
-- views test-pinned only: css:content, css:titled, css:unknown, css:url, csv:header, csv:titled, csv:unknown, data:content, data:core, file:core, file:style, json:bad_address, json:denial, json:errors, json:not_found, json:server_error, jsonld:denial, jsonld:errors, jsonld:not_found, jsonld:server_error, rss:closed, rss:content, rss:menu, rss:open, text:core, yaml:core
-- views unexercised: css:import, csv:body, csv:row, data:ancestors, data:atom, data:cast, data:items, data:links, data:molecule, data:nucleus, data:pod, html:debug_server_error, js:source, json:page, json:status, jsonld:format_unsupported, jsonld:items, jsonld:test, rss:comment_box, rss:feed, rss:feed_body, rss:feed_description, rss:feed_item, rss:feed_item_description, rss:feed_title, rss:open_content
+- views graded identical: base:acted_at [set/all/base.rb] (1 ops), base:bad_address [set/all/error.rb] (1 ops), base:blank [set/all/base.rb] (1 ops), base:closed_content [set/all/content.rb] (1 ops), base:closed [set/all/base.rb] (1 ops), base:codename [set/all/base.rb] (1 ops), base:compact_missing [set/all/error.rb] (1 ops), base:content [set/all/base.rb] (1 ops), base:core [set/type/toggle.rb] (15 ops), base:created_at [set/all/base.rb] (1 ops), base:denial [set/all/error.rb] (1 ops), base:id_url [set/all/base.rb] (1 ops), base:key [set/all/base.rb] (1 ops), base:label [set/all/content.rb] (1 ops), base:labeled_content [set/all/base.rb] (1 ops), base:labeled [set/all/base.rb] (1 ops), base:link [set/all/base.rb] (1 ops), base:linkname [set/all/base.rb] (1 ops), base:name [set/all/base.rb] (1 ops), base:nav_link [set/all/base.rb] (1 ops), base:not_found [set/all/error.rb] (1 ops), base:one_line_content [set/all/base.rb] (1 ops), base:one_line_content [set/all/content.rb] (1 ops), base:open_content [set/all/base.rb] (1 ops), base:open [set/all/base.rb] (1 ops), base:page_title [set/all/html/head.rb] (1 ops), base:raw_one_line_content [set/all/content.rb] (1 ops), base:raw [set/all/base.rb] (2 ops), base:server_error [set/all/error.rb] (1 ops), base:smart_label [set/all/content.rb] (1 ops), base:text_without_nests [set/all/text.rb] (1 ops), base:title_link [set/type/uri.rb] (1 ops), base:title [set/all/title.rb] (1 ops), base:titled_content [set/all/base.rb] (1 ops), base:titled [set/all/base.rb] (1 ops), base:type [set/all/base.rb] (1 ops), base:unknown [set/all/error.rb] (1 ops), base:updated_at [set/all/base.rb] (1 ops), base:url_link [set/all/base.rb] (1 ops), base:url [set/all/base.rb] (1 ops), html:add_button [set/type/cardtype.rb] (1 ops), html:add_link [set/type/cardtype.rb] (1 ops), html:add_url [set/type/cardtype.rb] (1 ops), html:board_link [set/all/html/menu.rb] (1 ops), html:compact_missing [set/all/html/error.rb] (1 ops), html:configure_button [set/type/cardtype.rb] (1 ops), html:configure_link [set/type/cardtype.rb] (1 ops), html:conflict [set/all/html/error.rb] (1 ops), html:content_panel [set/all/html/views.rb] (1 ops), html:content_with_title [set/all/html/views.rb] (1 ops), html:content [set/all/html/views.rb] (1 ops), html:core [set/type/plain_text.rb] (25 ops), html:core [set/type/uri.rb] (2 ops), html:demo [set/all/demo.rb] (1 ops), html:denial [set/all/html/error.rb] (1 ops), html:edit_button [set/all/html/menu.rb] (2 ops), html:edit_link [set/all/html/menu.rb] (2 ops), html:favicon_tag [set/all/html/head.rb] (1 ops), html:flash [set/all/html/frame.rb] (1 ops), html:full_page_link [set/all/html/menu.rb] (1 ops), html:head [set/all/html/head.rb] (1 ops), html:header_title [set/all/html/header.rb] (1 ops), html:header [set/all/html/header.rb] (1 ops), html:help_link [set/all/html/menu.rb] (1 ops), html:hidden_content_field [set/all/content.rb] (1 ops), html:labeled_editor [set/type/toggle.rb] (1 ops), html:labeled [set/all/html/views.rb] (1 ops), html:menu_block [set/all/html/menu.rb] (1 ops), html:menu [set/all/html/menu.rb] (1 ops), html:meta_tags [set/all/html/head.rb] (1 ops), html:mini_unknown [set/all/html/error.rb] (1 ops), html:not_found [set/all/html/error.rb] (1 ops), html:one_line_content [set/all/html/views.rb] (1 ops), html:page_title_tag [set/all/html/head.rb] (1 ops), html:raw_one_line_content [set/all/html/views.rb] (1 ops), html:server_error [set/all/html/error.rb] (1 ops), html:short_content [set/all/html/views.rb] (1 ops), html:stylesheet_tags [set/all/html/head.rb] (1 ops), html:title_link [set/all/title.rb] (1 ops), html:title_no_link [set/all/title.rb] (1 ops), html:title [set/all/title.rb] (1 ops), html:titled [set/all/html/views.rb] (1 ops), html:type_info [set/all/html.rb] (1 ops), html:type [set/all/html.rb] (1 ops), html:universal_edit_button [set/all/html/head.rb] (1 ops), html:unknown [set/all/html/error.rb] (1 ops), html:view_list [set/all/demo.rb] (1 ops)
+- views graded but differing: base:core [set/all/base.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, base:errors [set/all/error.rb] differs at synthetic-v2#view:admin:Nonexistent Card:errors, base:id [set/all/base.rb] differs at synthetic-v2#view:admin:Topic 001:id, html:debug_server_error [set/all/html/error.rb] differs at synthetic-v2#view:admin:Note 001:debug_server_error, html:errors [set/all/html/error.rb] differs at synthetic-v2#view:admin:Nonexistent Card:errors, html:rss_links [set/all/html/head.rb] differs at synthetic-v2#view:admin:Home:rss_links
+- views test-pinned only: base:home_url [set/self/home.rb], base:one_line_content [set/type/html.rb], base:url_link [set/type/uri.rb], css:content [set/all/css.rb], css:titled [set/all/css.rb], css:unknown [set/all/css.rb], css:url [set/all/css.rb], csv:header [set/all/csv.rb], csv:titled [set/all/csv.rb], csv:unknown [set/all/csv.rb], data:content [set/all/data.rb], data:core [set/all/data.rb], file:core [set/all/file.rb], file:style [set/all/file.rb], html:admin [set/type/mod.rb], html:core [set/type/json.rb], html:one_line_content [set/type/html.rb], html:type [set/type/cardtype.rb], json:bad_address [set/all/error.rb], json:denial [set/all/error.rb], json:errors [set/all/error.rb], json:not_found [set/all/error.rb], json:server_error [set/all/error.rb], jsonld:denial [set/all/error.rb], jsonld:errors [set/all/error.rb], jsonld:not_found [set/all/error.rb], jsonld:server_error [set/all/error.rb], rss:closed [set/all/rss.rb], rss:content [set/all/rss.rb], rss:menu [set/all/rss.rb], rss:open [set/all/rss.rb], text:core [set/all/text.rb], yaml:core [set/all/yaml.rb]
+- views unexercised: base:home_path [set/self/home.rb], css:import [set/all/css.rb], csv:body [set/all/csv.rb], csv:row [set/all/csv.rb], data:ancestors [set/all/data.rb], data:atom [set/all/data.rb], data:cast [set/all/data.rb], data:items [set/all/data.rb], data:links [set/all/data.rb], data:molecule [set/all/data.rb], data:nucleus [set/all/data.rb], data:pod [set/all/data.rb], html:bar_right [set/type/mod.rb], html:input [set/type/toggle.rb], js:source [set/all/js.rb], json:page [set/all/json.rb], json:status [set/all/json.rb], jsonld:format_unsupported [set/all/error.rb], jsonld:items [set/all/jsonld.rb], jsonld:test [set/all/error.rb], rss:comment_box [set/all/rss.rb], rss:feed_body [set/all/rss.rb], rss:feed_description [set/all/rss.rb], rss:feed_item_description [set/all/rss.rb], rss:feed_item [set/all/rss.rb], rss:feed_title [set/all/rss.rb], rss:feed [set/all/rss.rb], rss:open_content [set/all/rss.rb]
 - events unexercised: validate_json, validate_number
 
 #### card-mod-help-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-help.test.ts`
-- views graded identical: html:guide (1 ops), html:help (1 ops), html:help_text (1 ops), html:lead (1 ops), html:popover (1 ops)
+- views graded identical: html:guide [set/all/guide.rb] (1 ops), html:help_text [set/all/help.rb] (1 ops), html:help [set/all/help.rb] (1 ops), html:lead [set/all/help.rb] (1 ops), html:popover [set/right/help.rb] (1 ops)
 - views graded but differing: (none)
 - views test-pinned only: (none)
 - views unexercised: (none)
@@ -211,9 +211,9 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-history-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-history-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-history-ladder-views.test.ts`, `tests/card/mod-loader/card-mod-history-updater-of-seam.test.ts`, `tests/card/mod-loader/card-mod-history-views.test.ts`, `tests/card/mod-loader/card-mod-history.test.ts`
-- views graded identical: html:act (1 ops), html:act_legend (1 ops), html:action_expanded (1 ops), html:action_summary (1 ops), html:board_act (1 ops), html:change (1 ops), html:creator_credit (1 ops), html:draft_legend (1 ops), html:history (2 ops), html:last_action (1 ops), html:last_action_verb (1 ops), html:updated_by (1 ops)
+- views graded identical: html:act_legend [set/all/history/views.rb] (1 ops), html:act [set/all/history/views.rb] (1 ops), html:action_expanded [set/all/history/views.rb] (1 ops), html:action_summary [set/all/history/views.rb] (1 ops), html:board_act [set/all/history_board.rb] (1 ops), html:change [set/all/history/views.rb] (1 ops), html:creator_credit [set/all/history_board.rb] (1 ops), html:draft_legend [set/all/history/views.rb] (1 ops), html:history [set/all/history/views.rb] (2 ops), html:last_action_verb [set/all/history/views.rb] (1 ops), html:last_action [set/all/history/views.rb] (1 ops), html:updated_by [set/all/history_board.rb] (1 ops)
 - views graded but differing: (none)
-- views test-pinned only: json:actions, json:history
+- views test-pinned only: json:actions [set/all/history/export.rb], json:history [set/all/history/export.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
@@ -229,26 +229,26 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-layout-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-layout-mycard-views.test.ts`, `tests/card/mod-loader/card-mod-layout.test.ts`
-- views graded identical: html:bar_bottom (1 ops), html:close_modal_link (1 ops), html:edit_inline (2 ops), html:head_content (1 ops), html:input (1 ops), html:invite (1 ops), html:modal (2 ops), html:modal_footer (1 ops), html:modal_link (2 ops), html:modal_menu (1 ops), html:modal_title (1 ops), html:my_card (2 ops), html:nav_item (1 ops), html:nav_link_in_dropdown (1 ops), html:navbar_links (1 ops), html:one_line_content (1 ops), html:overlay_header (1 ops), html:overlay_help_link (1 ops), html:overlay_menu (1 ops), html:overlay_title (1 ops), html:pop_out_modal_link (1 ops), html:sign_out (1 ops), html:sign_up (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:sign_in [synthetic-v2#view:anonymous:*account links:sign_in]
-- views test-pinned only: (none)
+- views graded identical: html:close_modal_link [set/all/modal.rb] (1 ops), html:core [set/self/head.rb] (2 ops), html:core [set/type/layout_type.rb] (6 ops), html:modal_footer [set/all/modal.rb] (1 ops), html:modal_link [set/all/modal.rb] (2 ops), html:modal_menu [set/all/modal.rb] (1 ops), html:modal_title [set/all/modal.rb] (1 ops), html:modal [set/all/modal.rb] (2 ops), html:nav_item [set/abstract/items.rb] (1 ops), html:nav_item [set/all/navbar_links.rb] (1 ops), html:nav_link_in_dropdown [set/all/navbar_links.rb] (1 ops), html:navbar_links [set/all/navbar_links.rb] (1 ops), html:overlay_header [set/all/overlay.rb] (1 ops), html:overlay_help_link [set/all/overlay.rb] (1 ops), html:overlay_menu [set/all/overlay.rb] (1 ops), html:overlay_title [set/all/overlay.rb] (1 ops), html:pop_out_modal_link [set/all/modal.rb] (1 ops)
+- views graded but differing: (none)
+- views test-pinned only: html:bar_bottom [set/self/head.rb], html:core [set/right/head.rb], html:core [set/self/account_links.rb], html:edit_inline [set/right/enabled_roles.rb], html:head_content [set/right/head.rb], html:input [set/self/head.rb], html:invite [set/self/account_links.rb], html:my_card [set/self/account_links.rb], html:nav_item [set/self/dropdown_divider.rb], html:nav_link_in_dropdown [set/self/dropdown_divider.rb], html:navbar_links [set/type/html.rb], html:one_line_content [set/right/head.rb], html:sign_in [set/self/account_links.rb], html:sign_out [set/self/account_links.rb], html:sign_up [set/self/account_links.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-list-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-list-checkbox-editor.test.ts`, `tests/card/mod-loader/card-mod-list-select-editor.test.ts`, `tests/card/mod-loader/card-mod-list.test.ts`
-- views graded identical: html:input (1 ops), html:list (1 ops), html:nest_list_input (1 ops), html:one_line_content (1 ops), html:view_list (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: css:content, data:content, json:content
-- views unexercised: css:titled, csv:core, data:core, js:core, json:links
+- views graded identical: html:autocomplete [set/abstract/01_list/html_views.rb] (1 ops), html:checkbox [set/abstract/01_list/html_views.rb] (1 ops), html:input [set/abstract/01_list/html_views.rb] (1 ops), html:list [set/abstract/01_list/html_views.rb] (1 ops), html:multiselect [set/abstract/01_list/html_views.rb] (1 ops), html:nest_list_input [set/type/nest_list.rb] (1 ops), html:one_line_content [set/abstract/01_list/html_views.rb] (1 ops), html:radio [set/abstract/01_list/html_views.rb] (1 ops), html:select [set/abstract/01_list/html_views.rb] (1 ops), html:view_list [set/abstract/01_list.rb] (1 ops)
+- views graded but differing: base:core [set/abstract/01_list/other_views.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:core [set/abstract/01_list/html_views.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: css:content [set/abstract/01_list/other_views.rb], data:content [set/abstract/01_list/other_views.rb], html:input [set/type/link_list.rb], html:input [set/type/nest_list.rb], json:content [set/abstract/01_list/other_views.rb]
+- views unexercised: css:titled [set/abstract/01_list/other_views.rb], csv:core [set/abstract/01_list/other_views.rb], data:core [set/abstract/01_list/other_views.rb], js:core [set/abstract/01_list/other_views.rb], json:links [set/abstract/01_list/other_views.rb]
 - events unexercised: (none)
 
 #### card-mod-markdown-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-markdown.test.ts`
-- views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded identical: html:core [set/type/markdown.rb] (2 ops)
+- views graded but differing: (none)
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -256,8 +256,8 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-permissions-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-permissions.test.ts`
-- views graded identical: html:input (1 ops), html:one_line_content (1 ops), html:pointer_core (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded identical: html:input [set/abstract/permission.rb] (1 ops), html:one_line_content [set/abstract/permission.rb] (1 ops), html:pointer_core [set/abstract/permission.rb] (1 ops)
+- views graded but differing: html:core [set/abstract/permission.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -266,36 +266,36 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-recaptcha-form-hooks.test.ts`, `tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts`, `tests/card/mod-loader/card-mod-recaptcha.test.ts`
 - views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: (none)
+- views graded but differing: (none)
+- views test-pinned only: html:core [set/self/recaptcha_settings.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 
 #### card-mod-rules-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-rules-nest-oracle-pinned.test.ts`, `tests/card/mod-loader/card-mod-rules-views-2.test.ts`, `tests/card/mod-loader/card-mod-rules-views-3.test.ts`, `tests/card/mod-loader/card-mod-rules-views.test.ts`, `tests/card/mod-loader/card-mod-rules.test.ts`
-- views graded identical: html:accordion_bar_list (1 ops), html:accordion_rule_list (1 ops), html:bar (2 ops), html:bar_bottom (1 ops), html:bar_middle (1 ops), html:bar_right (1 ops), html:bar_setting_list (1 ops), html:board_rules_tab (1 ops), html:card_select (1 ops), html:filtered_accordion_rule_list (1 ops), html:grouped_list (1 ops), html:help_text (1 ops), html:input (1 ops), html:modal_nest_rules (1 ops), html:modal_pill_setting_list (1 ops), html:modal_rule (1 ops), html:nest_rules (1 ops), html:one_line_content (1 ops), html:overlay_rule (1 ops), html:overlay_rule_list_link (1 ops), html:overlay_title (1 ops), html:pill_setting_list (1 ops), html:quick_edit_setting_list (1 ops), html:quick_edit_success (1 ops), html:raw_one_line_content (1 ops), html:rule_board_link (1 ops), html:rule_edit (1 ops), html:rule_help (1 ops), html:rule_nest_editor_link (1 ops), html:set_label (1 ops), html:template_link (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:quick_edit [synthetic-v2#view:admin:*all+*read:quick_edit; synthetic-v2#view:anonymous:*all+*read:quick_edit], html:rule_form [synthetic-v2#view:admin:*all+*create:rule_form], html:rule_form_card_editor [synthetic-v2#view:admin:*all+*create:rule_form_card_editor]
-- views test-pinned only: data:core
-- views unexercised: (none)
+- views graded identical: html:accordion_bar_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:accordion_rule_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:bar_setting_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:board_rules_tab [set/type/set/html_views/filtered_rule_lists.rb] (1 ops), html:card_select [set/all/set_select.rb] (1 ops), html:core [set/rule/html_views.rb] (76 ops), html:core [set/type/set/html_views.rb] (7 ops), html:core [set/type/setting.rb] (16 ops), html:filtered_accordion_rule_list [set/type/set/html_views/filtered_rule_lists.rb] (1 ops), html:modal_nest_rules [set/type/set/html_views/filtered_rule_lists.rb] (1 ops), html:modal_pill_setting_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:modal_rule [set/rule/board_rules_editor.rb] (1 ops), html:nest_rules [set/type/set/html_views/filtered_rule_lists.rb] (1 ops), html:overlay_rule_list_link [set/type/set/html_views/rule_lists.rb] (1 ops), html:overlay_rule [set/rule/board_rules_editor.rb] (1 ops), html:pill_setting_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:quick_edit_setting_list [set/type/set/html_views/rule_lists.rb] (1 ops), html:quick_edit_success [set/rule/quick_editor.rb] (1 ops), html:rule_board_link [set/rule/editor.rb] (1 ops), html:rule_edit [set/rule/editor.rb] (1 ops), html:rule_help [set/type/setting.rb] (1 ops), html:rule_nest_editor_link [set/rule/editor.rb] (1 ops), html:set_label [set/type/set/html_views.rb] (1 ops), html:template_link [set/type/set/html_views/template.rb] (1 ops)
+- views graded but differing: html:quick_edit [set/rule/quick_editor.rb] differs at synthetic-v2#view:admin:*all+*read:quick_edit; synthetic-v2#view:anonymous:*all+*read:quick_edit, html:rule_form_card_editor [set/rule/rule_form.rb] differs at synthetic-v2#view:admin:*all+*create:rule_form_card_editor, html:rule_form [set/rule/rule_form.rb] differs at synthetic-v2#view:admin:*all+*create:rule_form
+- views test-pinned only: data:core [set/type/setting.rb], html:grouped_list [set/self/cardtype.rb], html:input [set/type/set/html_views.rb], html:one_line_content [set/rule/bar_view.rb], html:one_line_content [set/type/set/html_views.rb], html:one_line_content [set/type/setting.rb], html:overlay_title [set/rule/board_rules_editor.rb], html:raw_one_line_content [set/rule/bar_view.rb], html:rule_help [set/rule/editor.rb]
+- views unexercised: html:bar_bottom [set/rule/bar_view.rb], html:bar_middle [set/rule/bar_view.rb], html:bar_right [set/rule/bar_view.rb], html:bar [set/rule/bar_view.rb], html:help_text [set/rule/board_rules_editor.rb]
 - events unexercised: (none)
 
 #### card-mod-script-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-script.test.ts`
-- views graded identical: html:javascript_include_tag (1 ops), html:javascript_tags (1 ops), html:remote_script_tags (1 ops), html:script_calls (1 ops), html:script_variables (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: js:core
-- views unexercised: js:compressed
+- views graded identical: html:javascript_include_tag [set/abstract/00_script.rb] (1 ops), html:javascript_include_tag [set/all/head_javascript.rb] (1 ops), html:javascript_tags [set/all/head_javascript.rb] (1 ops), html:remote_script_tags [set/type_plus_right/set/script.rb] (1 ops), html:script_calls [set/all/head_javascript.rb] (1 ops), html:script_variables [set/all/head_javascript.rb] (1 ops)
+- views graded but differing: base:core [set/abstract/02_coffee_script.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:core [set/abstract/00_script.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: html:javascript_include_tag [set/right/script.rb], html:remote_script_tags [set/type_plus_right/mod/script.rb], js:core [set/abstract/01_java_script.rb], js:core [set/abstract/script_group.rb]
+- views unexercised: js:compressed [set/abstract/00_script.rb]
 - events unexercised: (none)
 
 #### card-mod-search-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-search-list-oracle-pinned.test.ts`, `tests/card/mod-loader/card-mod-search-read-scope.test.ts`, `tests/card/mod-loader/card-mod-search.test.ts`
-- views graded identical: base:card_list (1 ops), base:no_search_results (1 ops), base:title (1 ops), html:add_autocomplete_item (1 ops), html:bar (2 ops), html:card_list (1 ops), html:checkbox_list (1 ops), html:goto_autocomplete_item (1 ops), html:no_search_results (1 ops), html:one_line_content (1 ops), html:results_for_keyword (1 ops), html:search_box (1 ops), html:title (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:count [synthetic-v2#view:admin:All Topics:count], base:search_count [synthetic-v2#view:admin:All Topics:search_count], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:count [synthetic-v2#view:admin:All Topics:count]
-- views test-pinned only: base:search_error, json:select2_option
-- views unexercised: csv:body, data:card_list, json:complete, json:molecule, json:name_complete, json:name_match, json:search_box_complete, rss:feed_body, rss:feed_item_description
+- views graded identical: base:card_list [set/abstract/0_search/views.rb] (1 ops), base:no_search_results [set/abstract/0_search/views.rb] (1 ops), html:add_autocomplete_item [set/all/autocomplete.rb] (1 ops), html:bar [set/abstract/search_views.rb] (2 ops), html:card_list [set/abstract/0_search/views.rb] (1 ops), html:checkbox_list [set/abstract/0_search/views.rb] (1 ops), html:core [set/self/recent.rb] (2 ops), html:goto_autocomplete_item [set/all/autocomplete.rb] (1 ops), html:no_search_results [set/abstract/0_search/views.rb] (1 ops), html:one_line_content [set/abstract/search_views.rb] (1 ops), html:results_for_keyword [set/self/search.rb] (1 ops), html:search_box [set/self/search.rb] (1 ops)
+- views graded but differing: base:core [set/abstract/search_views.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, base:count [set/abstract/0_search.rb] differs at synthetic-v2#view:admin:All Topics:count, base:search_count [set/abstract/0_search/views.rb] differs at synthetic-v2#view:admin:All Topics:search_count, base:search_error [set/abstract/0_search/views.rb] differs at synthetic-v2#view:admin:All Topics:search_error, html:core [set/abstract/search_views.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:core [set/self/search.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search, html:count [set/abstract/0_search.rb] differs at synthetic-v2#view:admin:All Topics:count
+- views test-pinned only: base:search_error [set/self/search.rb], json:select2_option [set/all/autocomplete.rb]
+- views unexercised: base:title [set/self/recent.rb], csv:body [set/abstract/0_search/views.rb], data:card_list [set/abstract/0_search/views.rb], html:title [set/self/search.rb], json:complete [set/self/search.rb], json:molecule [set/abstract/0_search/views.rb], json:name_complete [set/abstract/0_search/views.rb], json:name_match [set/abstract/0_search/views.rb], json:search_box_complete [set/self/search.rb], rss:feed_body [set/abstract/search_views.rb], rss:feed_item_description [set/self/recent.rb]
 - events unexercised: (none)
 
 #### card-mod-session-0.20.0
@@ -310,16 +310,16 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-style-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-style-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-style.test.ts`
-- views graded identical: html:box (1 ops), html:box_bottom (1 ops), html:box_middle (1 ops), html:customize_button (1 ops), html:remote_include_tags (1 ops), html:remote_style_tags (1 ops), html:stylesheet_include_tag (1 ops), html:stylesheet_path (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
-- views test-pinned only: css:compiled, css:compressed, css:core, css:import, scss:core, scss:labeled
-- views unexercised: css:concat
+- views graded identical: html:box_bottom [set/abstract/skin_box.rb] (1 ops), html:box_middle [set/abstract/skin_box.rb] (1 ops), html:box [set/abstract/skin_box.rb] (1 ops), html:customize_button [set/abstract/skin_box.rb] (1 ops), html:remote_include_tags [set/type_plus_right/mod/style.rb] (1 ops), html:stylesheet_include_tag [set/abstract/style_group.rb] (1 ops), html:stylesheet_path [set/type_plus_right/set/style.rb] (1 ops)
+- views graded but differing: html:core [set/abstract/01_css.rb] differs at synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search
+- views test-pinned only: css:compiled [set/abstract/01_css.rb], css:compiled [set/abstract/02_scss.rb], css:compressed [set/abstract/01_css.rb], css:core [set/abstract/02_scss.rb], css:import [set/abstract/01_css.rb], html:remote_style_tags [set/self/style_mods.rb], html:stylesheet_include_tag [set/type_plus_right/mod/style.rb], scss:core [set/abstract/02_scss.rb], scss:core [set/abstract/style_group.rb], scss:labeled [set/abstract/02_scss.rb]
+- views unexercised: css:concat [set/type/skin.rb]
 - events unexercised: (none)
 
 #### card-mod-tabs-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-tabs.test.ts`
-- views graded identical: html:pills (1 ops), html:pills_static (1 ops), html:tabs (1 ops), html:tabs_static (1 ops)
+- views graded identical: html:pills_static [set/all/tabs.rb] (1 ops), html:pills [set/all/tabs.rb] (1 ops), html:tabs_static [set/all/tabs.rb] (1 ops), html:tabs [set/abstract/tabs.rb] (1 ops), html:tabs [set/all/tabs.rb] (1 ops)
 - views graded but differing: (none)
 - views test-pinned only: (none)
 - views unexercised: (none)
@@ -328,9 +328,9 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 #### card-mod-tinymce_editor-0.20.0
 
 - tests linked: `tests/card/mod-loader/card-mod-tinymce-editor-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts`, `tests/card/mod-loader/card-mod-tinymce_editor.test.ts`
-- views graded identical: html:link_editor (1 ops), html:modal_link_editor (1 ops), html:modal_nest_editor (1 ops), html:modal_nest_image (1 ops), html:nest_content (1 ops), html:nest_editor (1 ops), html:nest_image (1 ops), html:new_image (1 ops), html:new_image_buttons (1 ops)
+- views graded identical: html:link_editor [set/all/reference_editor/link_editor.rb] (1 ops), html:modal_link_editor [set/all/reference_editor/link_editor.rb] (1 ops), html:modal_nest_editor [set/all/reference_editor/nest_editor.rb] (1 ops), html:modal_nest_image [set/all/reference_editor/nest_image.rb] (1 ops), html:nest_content [set/all/reference_editor/nest_editor.rb] (1 ops), html:nest_editor [set/all/reference_editor/nest_editor.rb] (1 ops), html:nest_image [set/all/reference_editor/nest_image.rb] (1 ops), html:new_image_buttons [set/all/reference_editor/nest_image.rb] (1 ops), html:new_image [set/all/reference_editor/nest_image.rb] (1 ops)
 - views graded but differing: (none)
-- views test-pinned only: js:change_create_to_update, js:open_nest_editor
+- views test-pinned only: js:change_create_to_update [set/all/reference_editor/nest_image.rb], js:open_nest_editor [set/all/reference_editor/nest_image.rb]
 - views unexercised: (none)
 - events unexercised: (none)
 

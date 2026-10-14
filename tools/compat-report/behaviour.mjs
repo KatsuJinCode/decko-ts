@@ -17,12 +17,15 @@
 //              event in a string literal or symbol.
 //   unexercised — none of the above.
 //
-// Attribution is by NAME, and that is the stated limit of this layer: a
-// graded operation names a view, not the set module whose definition Ruby
-// chose for that card, so when two mods declare the same view name an
-// operation is credited to both. Page operations (no view) are credited to no
-// mod-specific view. All fixture operations render the html format; a view a
-// mod declares in base format (outside any format block, or `format do`) is
+// Attribution is by view name AND set membership: an operation credits a
+// declaration only when the operation's card is in the declaring file's set
+// (self/right/type/type_plus_right/star/rstar/rule decided from the deck's
+// codenames and types, recorded per operation in graded-ops.json; set cards
+// are virtual and typed Set by name shape). all/, lib/ and abstract/ modules
+// apply by name alone: abstract modules reach a card through include_set,
+// which this layer does not resolve. Page operations (no view) credit no
+// declaration. All fixture operations render the html format; a view a mod
+// declares in base format (outside any format block, or `format do`) is
 // inherited by html and is credited, every other format is not.
 //
 // A mod is behaviourally complete when every view it declares is graded-pass
@@ -30,6 +33,7 @@
 
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 const HTML_LIKE = new Set(["html", "base"]);
 
@@ -37,11 +41,33 @@ const HTML_LIKE = new Set(["html", "base"]);
 // view is declared under. A `format :x do` line opens a block that closes at
 // the first `end` with the same indentation; a view outside any block (or in a
 // bare `format do`) belongs to the base format.
+//
+// Two dynamic forms are expanded: a view or event declared inside a
+// `%i[a b].each do |x|` loop with `view x` / `event :"..#{x}.."` is one
+// declaration per list element; an event whose symbol interpolates a value
+// the file does not enumerate (`event :store_#{column}_event`, carrierwave's
+// mount_uploader) is recorded with the interpolation shown as `<column>`.
 export function parseDeclarations(src) {
   const lines = src.split(/\r?\n/);
-  const stack = []; // { fmt, indent }
+  const stack = []; // { kind: "format", fmt, indent } | { kind: "loop", names, var, indent }
   const views = [];
   const events = [];
+  const currentFormat = () => {
+    for (let i = stack.length - 1; i >= 0; i--) if (stack[i].kind === "format") return stack[i].fmt;
+    return "base";
+  };
+  const loopFor = (v) => {
+    for (let i = stack.length - 1; i >= 0; i--) if (stack[i].kind === "loop" && stack[i].var === v) return stack[i];
+    return null;
+  };
+  const expand = (tmpl) => {
+    // interpolate #{x} with loop values; otherwise mark the hole
+    const holes = [...tmpl.matchAll(/#\{([A-Za-z_][A-Za-z0-9_]*)\}/g)].map((h) => h[1]);
+    if (!holes.length) return [tmpl];
+    const loop = holes.map(loopFor).find(Boolean);
+    if (!loop) return [tmpl.replace(/#\{([A-Za-z_][A-Za-z0-9_]*)\}/g, "<$1>")];
+    return loop.names.map((n) => tmpl.replaceAll(`#{${loop.var}}`, n).replace(/#\{([A-Za-z_][A-Za-z0-9_]*)\}/g, "<$1>"));
+  };
   for (const raw of lines) {
     if (/^\s*#/.test(raw)) continue;
     const indent = raw.match(/^[ \t]*/)[0].length;
@@ -52,17 +78,26 @@ export function parseDeclarations(src) {
     }
     let m = raw.match(/^[ \t]*format(?:[ \t]*\(?[ \t]*:([A-Za-z0-9_]+))?[ \t]*\)?[ \t]*(?:do|\{)/);
     if (m) {
-      stack.push({ fmt: m[1] ?? "base", indent });
+      stack.push({ kind: "format", fmt: m[1] ?? "base", indent });
+      continue;
+    }
+    m = raw.match(/^[ \t]*%[iw][[(]([^\])]*)[\])]\.each[ \t]+do[ \t]*\|[ \t]*([A-Za-z_][A-Za-z0-9_]*)[ \t]*\|/);
+    if (m) {
+      stack.push({ kind: "loop", names: m[1].trim().split(/\s+/), var: m[2], indent });
       continue;
     }
     m = raw.match(/^[ \t]*view[ \t]*\(?[ \t]*:([A-Za-z0-9_?!]+)(?:[ \t]*,[ \t]*:([A-Za-z0-9_?!]+))?/);
     if (m) {
-      const fmt = stack.length ? stack[stack.length - 1].fmt : "base";
-      views.push({ format: fmt, view: m[1], alias: m[2] ?? null });
+      views.push({ format: currentFormat(), view: m[1], alias: m[2] ?? null });
       continue;
     }
-    m = raw.match(/^[ \t]*event[ \t]+:([A-Za-z0-9_?!]+)/);
-    if (m) events.push(m[1]);
+    m = raw.match(/^[ \t]*view[ \t]*\(?[ \t]*([a-z_][A-Za-z0-9_]*)\b/);
+    if (m && loopFor(m[1])) {
+      for (const n of loopFor(m[1]).names) views.push({ format: currentFormat(), view: n, alias: null });
+      continue;
+    }
+    m = raw.match(/^[ \t]*event[ \t]+:(?:"([^"]+)"|([A-Za-z0-9_?!]*(?:#\{[A-Za-z_][A-Za-z0-9_]*\}[A-Za-z0-9_?!]*)*))/);
+    if (m && (m[1] ?? m[2])) events.push(...expand(m[1] ?? m[2]));
   }
   return { views, events };
 }
@@ -77,20 +112,30 @@ function walk(dir, out = []) {
   return out;
 }
 
+// The set a declaring file belongs to, from its path under the gem:
+// set/<pattern>/<anchor>.rb, set/<pattern>/<anchor>/<sub>.rb, or lib/.
+export function setOfFile(rel) {
+  const parts = rel.replaceAll("\\", "/").split("/");
+  if (parts[0] !== "set") return { pattern: "lib", anchor: null, sub: null, file: rel };
+  const strip = (x) => (x ? x.replace(/\.rb$/, "") : null);
+  return { pattern: parts[1], anchor: strip(parts[2]), sub: strip(parts[3] ?? null), file: parts.join("/") };
+}
+
 export function gemDeclarations(gemPath) {
   const files = [...walk(join(gemPath, "set")), ...walk(join(gemPath, "lib"))].filter((f) =>
     f.endsWith(".rb"),
   );
-  const views = new Map(); // "fmt:view" -> { format, view, alias }
+  const views = new Map(); // "fmt:view@file" -> declaration
   const events = new Set();
   for (const f of files) {
+    const set = setOfFile(f.slice(gemPath.length + 1));
     const d = parseDeclarations(readFileSync(f, "utf8"));
-    for (const v of d.views) views.set(`${v.format}:${v.view}`, v);
+    for (const v of d.views) views.set(`${v.format}:${v.view}@${set.file}`, { ...v, set });
     for (const e of d.events) events.add(e);
   }
   return {
     views: [...views.values()].sort((a, b) =>
-      `${a.format}:${a.view}`.localeCompare(`${b.format}:${b.view}`),
+      `${a.format}:${a.view}@${a.set.file}`.localeCompare(`${b.format}:${b.view}@${b.set.file}`),
     ),
     events: [...events].sort(),
   };
@@ -104,18 +149,29 @@ export function gemDeclarations(gemPath) {
 // fixture's op list to { fixture, commit, verdict, ops: { id: {view, pass} } }.
 export function summariseGrade(repo, gradeReport) {
   const fixture = gradeReport.fixture;
-  const opsPath = join(repo, "reference-harness", "fixtures", fixture, "ops", "render.jsonl");
+  const fixtureDir = join(repo, "reference-harness", "fixtures", fixture);
   const failed = new Set((gradeReport.failures?.rendering ?? []).map((f) => f.id));
   const reproduced = new Set((gradeReport.reproduced?.rendering ?? []).map((f) => f.id));
+  const cards = deckCardIndex(join(fixtureDir, "deck", "deck.sqlite3"));
   const ops = {};
-  for (const line of readFileSync(opsPath, "utf8").split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const op = JSON.parse(line);
-    if (op.op !== "render") continue;
-    ops[op.id] = {
-      view: op.view ?? null,
-      result: failed.has(op.id) ? "differs" : reproduced.has(op.id) ? "reproduced-upstream-failure" : "identical",
-    };
+  const opFiles = [
+    { path: join(fixtureDir, "ops", "render.jsonl"), withheld: false },
+    { path: join(fixtureDir, "withheld", "ops", "render.jsonl"), withheld: true },
+  ];
+  for (const { path, withheld } of opFiles) {
+    if (!existsSync(path)) continue;
+    for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      const op = JSON.parse(line);
+      if (op.op !== "render") continue;
+      ops[op.id] = {
+        card: op.card,
+        view: op.view ?? null,
+        set: cardSetFacts(cards, op.card),
+        ...(withheld ? { withheld: true } : {}),
+        result: failed.has(op.id) ? "differs" : reproduced.has(op.id) ? "reproduced-upstream-failure" : "identical",
+      };
+    }
   }
   return {
     fixture,
@@ -128,6 +184,94 @@ export function summariseGrade(repo, gradeReport) {
       : null,
     ops,
   };
+}
+
+// ---------------------------------------------------------------------------
+// set membership of an operation's card
+// ---------------------------------------------------------------------------
+
+// Decko's name key, close enough for the fixture decks' names: each part
+// lower-cased, runs of other characters folded to "_".
+const partKey = (p) => p.trim().toLowerCase().replace(/[^a-z0-9*]+/g, "_").replace(/^_+|_+$/g, "");
+const nameKey = (n) => n.split("+").map(partKey).join("+");
+
+function deckCardIndex(dbPath) {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  const rows = db.prepare("SELECT id, key, codename, type_id FROM cards WHERE trash = 0 OR trash IS NULL").all();
+  db.close();
+  const byKey = new Map();
+  const byId = new Map();
+  for (const r of rows) {
+    byKey.set(r.key, r);
+    byId.set(r.id, r);
+  }
+  return { byKey, byId };
+}
+
+// The facts set matching needs, recorded with each graded operation so the
+// report does not need the deck to regenerate: the card's own codename, its
+// type's codename, and for a compound name the right part's codename and the
+// left part's type codename. A name not in the deck (a virtual or unknown
+// card) has no type and no codename.
+// Set cards are virtual: a name whose right part is a set-pattern card
+// (Topic+*type, *all+*create's left) or that names a whole-deck set has
+// type Set by Decko's default *type rules, with no stored row to say so.
+const SET_PATTERN_CODES = new Set(["type", "right", "self", "type_plus_right", "all_plus", "star", "rstar"]);
+const WHOLE_DECK_SETS = new Set(["*all", "*all_plus", "*star", "*rstar"]);
+
+function cardSetFacts(cards, name) {
+  const typeOf = (row) => (row ? cards.byId.get(row.type_id)?.codename ?? null : null);
+  const typeOfName = (n) => {
+    const row = cards.byKey.get(nameKey(n));
+    if (row) return typeOf(row);
+    const ps = n.split("+");
+    if (ps.length === 1) return WHOLE_DECK_SETS.has(nameKey(n)) ? "set" : null;
+    const r = cards.byKey.get(partKey(ps[ps.length - 1]));
+    return r && SET_PATTERN_CODES.has(r.codename) ? "set" : null;
+  };
+  const parts = name.split("+");
+  const self = cards.byKey.get(nameKey(name)) ?? null;
+  const facts = { codename: self?.codename ?? null, type: typeOfName(name), compound: parts.length > 1 };
+  if (parts.length > 1) {
+    const right = cards.byKey.get(partKey(parts[parts.length - 1])) ?? null;
+    facts.right = right?.codename ?? null;
+    facts.right_name = parts[parts.length - 1].trim();
+    facts.left_type = typeOfName(parts.slice(0, -1).join("+"));
+  }
+  facts.name = name;
+  return facts;
+}
+
+// Does a declaration's set contain the operation's card? Patterns whose
+// membership the recorded facts decide are decided; `all` and `lib`
+// always apply; `abstract` modules are included into other sets by
+// include_set, which this layer does not resolve, so they apply by name.
+export function setContains(set, facts) {
+  if (!facts) return true;
+  switch (set.pattern) {
+    case "all":
+    case "lib":
+    case "abstract":
+      return true;
+    case "all_plus":
+      return facts.compound;
+    case "self":
+      return facts.codename === set.anchor;
+    case "right":
+      return facts.compound && facts.right === set.anchor;
+    case "type":
+      return facts.type === set.anchor;
+    case "type_plus_right":
+      return facts.compound && facts.left_type === set.anchor && facts.right === set.sub;
+    case "star":
+      return facts.name.startsWith("*");
+    case "rstar":
+      return facts.compound && facts.right_name.startsWith("*");
+    case "rule":
+      return facts.compound && facts.right_name.startsWith("*") && facts.left_type === "set";
+    default:
+      return true;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -169,19 +313,21 @@ export function evaluateMod(repo, gemPath, modId, grades) {
   const tests = modTestFiles(repo, modId);
   const pinnedTests = tests.filter((t) => hasBytePins(t.src));
 
-  // view name -> [{fixture, id, result}]
+  // view name -> [{fixture, id, result, set}]
   const opsByView = new Map();
   for (const g of grades) {
     for (const [id, o] of Object.entries(g.ops)) {
       if (!o.view) continue;
       if (!opsByView.has(o.view)) opsByView.set(o.view, []);
-      opsByView.get(o.view).push({ fixture: g.fixture, id, result: o.result });
+      opsByView.get(o.view).push({ fixture: g.fixture, id, result: o.result, set: o.set });
     }
   }
 
   const views = decl.views.map((v) => {
-    const entry = { format: v.format, view: v.view, alias: v.alias };
-    const ops = HTML_LIKE.has(v.format) ? opsByView.get(v.view) ?? [] : [];
+    const entry = { format: v.format, view: v.view, alias: v.alias, set: v.set.file };
+    const ops = HTML_LIKE.has(v.format)
+      ? (opsByView.get(v.view) ?? []).filter((o) => setContains(v.set, o.set))
+      : [];
     if (ops.length) {
       const differs = ops.filter((o) => o.result === "differs");
       entry.evidence = differs.length ? "graded-differs" : "graded-identical";
