@@ -248,6 +248,7 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
     name: "follow_notification_after_save",
     // card-mod-follow set/all/notify.rb: `event :notify_followers_after_save`
     event: "notify_followers_after_save",
+    priority: 20,
     notable: isNotable,
     async fire(event: SavePathEvent, ctx: NotifyContext): Promise<void> {
       // Single-event act (the legacy per-event seam): the stash over one

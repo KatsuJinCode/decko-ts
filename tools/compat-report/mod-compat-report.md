@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-14T20:35:00.127Z
+Generated: 2026-10-14T22:12:50.004Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -38,7 +38,7 @@ Mods scanned: **33**
 | `card-mod-content-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 14 (abstract=7, all=3, right=2, self=2) | 7 | 16/9 | 4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content |
 | `card-mod-date-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 | `card-mod-defaults-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 1 | 0/0 | unported (not evaluated) |
-| `card-mod-delayed_job-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 0 () | 2 | 0/0 | backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 10 it() in tests/card/delayed-job |
+| `card-mod-delayed_job-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 0 () | 2 | 11/0 | backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 11 it() in tests/card/delayed-job |
 | `card-mod-edit-0.20.0` | declared-complete | 41/41 | 45 (covered=45) | 21 (all=15, right=2, self=1, type=3) | 0 | 9/3 | 41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
 | `card-mod-email-0.20.0` | declared-complete | 2/2 | 6 (covered=6) | 13 (abstract=2, all=2, right=7, type=2) | 2 | 10/4 | 2 mod-specific view(s) declared: compact_missing, email_page |
 | `card-mod-follow-0.20.0` | declared-complete | 12/12 | 19 (covered=19) | 25 (abstract=1, all=4, right=8, self=7, type=4, type_plus_right=1) | 2 | 12/5 | 12 mod-specific view(s) declared: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ... |
@@ -293,10 +293,10 @@ Mods scanned: **33**
 ### card-mod-delayed_job-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 10 it() in tests/card/delayed-job/delayed-job.test.ts
+- **verdict**: backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 11 it() in tests/card/delayed-job/delayed-job.test.ts
 - **evidence**: no set/ tree; the mod's surface is engine machinery, guarded by its own test file
 - **mod-loader manifest**: no
-- **byte-pinned test**: no
+- **byte-pinned test**: yes (11 it() blocks, 0 toBe(<literal>) pins)
 - **set modules by pattern**: (none)
 - **mod-specific html views (covered/total)**: 0/0 ((none))
 - **all html views declared**: (none)

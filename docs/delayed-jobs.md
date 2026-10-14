@@ -17,7 +17,7 @@ The port lives in `src/card/delayed-job/delayed-job.ts`; the engine side is
 |------|------|
 | `Cardio.config.delaying` (default false) | `delayedJobs.delaying`; omitted means false |
 | event conditions (`when:`) evaluated at scheduling time | the hook's `notable` is evaluated when the job is enqueued |
-| `set_delayed_job_args`: queue = event name, priority = event priority (10) | `queue` = the hook's `event` name, `priority` = the hook's `priority` or 10 |
+| `set_delayed_job_args`: queue = event name, priority = event priority (default 10; `notify_followers_after_save` declares 20) | `queue` = the hook's `event` name, `priority` = the hook's `priority` or 10 |
 | `perform_delayed_job_args`: act id, card, card attributes, `Env.serialize`, `Auth.serialize`, `<event>_without_callbacks` | the same six arguments, in order |
 | `Delayed::Job.enqueue`: one INSERT, `run_at` = now, attempts 0, lock columns NULL | `SqlDelayedJobStore.insert` |
 | `find_available` + `lock_exclusively!`: ready, unlocked or lock older than `max_run_time` (4 h), not failed; ordered by priority, then `run_at`; lock without touching `updated_at` | `SqlDelayedJobStore.reserve` |
@@ -40,20 +40,24 @@ carry ActiveJob's `_aj_symbol_keys` and the card patch's `_aj_integer_keys`;
 the card is a GlobalID (`gid://<app>/Card/<id>`, app configurable, default
 `decko`).
 
-Where it differs from Ruby's text, deliberately:
+The port writes it the way Psych does (block style, Ruby's quoting, the
+card's action-specific attributes and `Card::Env`'s readers in Ruby's
+order). On perform, the act is read back from `card_acts` and
+`card_actions` by its id, as Ruby's `Act.find` does.
 
-- `arguments` is written in YAML flow style (JSON). Psych loads it to the
-  same values as its own block style.
-- The card-attributes argument carries the completed act
-  (`decko_ts_act`) rather than the card's instance variables: the port's
-  integration hooks work from the act, which Ruby reloads from `card_acts`.
-- `Env.serialize` carries the readers the hooks use plus the deck's Decko
-  Bot address; `ajax` is nil and `html` true, as for a form post.
+Checked against the Ruby oracle app (`reference-harness/oracle/app`,
+`config.delaying = true`, `active_job.queue_adapter = :delayed_job`) on
+2026-10-14: an update by a signed-in user to a followed card on the
+synthetic-v1 deck. Two Ruby runs on the same deck differ only in
+`job_id`, `enqueued_at`, `run_at`, `created_at` and `updated_at`. The
+port's handler equals Ruby's byte for byte once those two handler fields
+are given Ruby's values, except that `enqueued_at` carries the instant at
+millisecond precision followed by zeros (a JavaScript Date holds no finer
+time); the other columns equal Ruby's. The captured row is
+`tests/card/delayed-job/fixtures/ruby-oracle-notify-row.json`. Ruby writes
+`run_at` a few microseconds before `created_at`; the port writes one
+instant to both.
 
-`job_id` (a random UUID) and `enqueued_at` differ between any two runs in
-Ruby too, so no two handlers are byte-identical across implementations. The
-other columns (apart from the autoincrement id) hold delayed_job's values
-for the same instant.
 
 ## Hosts
 
@@ -79,9 +83,10 @@ calling `engine.performDelayedJob(job)`.
 
 ## Not covered
 
-- Row comparison against a running Ruby oracle has not been run; the column
-  values above come from the delayed_job 4.2.0, delayed_job_active_record
-  4.1.11 and activejob 7.2.4 sources.
+- The worker's mail after the job has not been compared with the oracle:
+  the oracle probe's work-off ran the job without error but delivered no
+  mail, and why has not been established.
+- The deployed hosts' configuration does not yet turn delaying on.
 - `DelayedJobWeb` (the `/*admin/delayed_job` inspection UI) is not ported.
 - Mod-manifest events declared at `integrate_with_delay` (for example
   carrierwave's `clear_draft_files`) run through the mod-event dispatch, not

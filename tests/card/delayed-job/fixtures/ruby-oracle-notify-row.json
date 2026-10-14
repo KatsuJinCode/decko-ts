@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "priority": 20,
+  "attempts": 0,
+  "handler": "--- !ruby/object:ActiveJob::QueueAdapters::DelayedJobAdapter::JobWrapper\njob_data:\n  job_class: Card::Set::Event::DelayedEvent::IntegrateWithDelayJob\n  job_id: 93ae204f-b9e2-4bd0-95f1-7a8b46d2fcdd\n  provider_job_id:\n  queue_name: notify_followers_after_save\n  priority: 20\n  arguments:\n  - 105617\n  - _aj_globalid: gid://reference-oracle/Card/911\n  - action:\n      _aj_value_key: update\n      _aj_class_name_key: Symbol\n    current_action:\n      _aj_globalid: gid://reference-oracle/Card::Action/1001\n    last_action_id_before_edit:\n    comment:\n    silent_change:\n    skip:\n    skip_in_action:\n    trigger:\n    trigger_in_action:\n    skip_hash:\n      _aj_symbol_keys: []\n      _aj_integer_keys: []\n    full_skip_hash:\n      _aj_symbol_keys: []\n      _aj_integer_keys: []\n    trigger_hash:\n    full_trigger_hash:\n    duplicate_file:\n    _aj_symbol_keys:\n    - action\n    - current_action\n    - last_action_id_before_edit\n    - comment\n    - silent_change\n    - skip\n    - skip_in_action\n    - trigger\n    - trigger_in_action\n    - skip_hash\n    - full_skip_hash\n    - trigger_hash\n    - full_trigger_hash\n    - duplicate_file\n    _aj_integer_keys: []\n  - origin: ''\n    html: true\n    ajax?:\n    html?: true\n    ip:\n    protocol:\n    params:\n      _aj_symbol_keys: []\n      _aj_integer_keys: []\n    main_name:\n    ajax:\n    host:\n    _aj_symbol_keys:\n    - origin\n    - html\n    - ajax?\n    - html?\n    - ip\n    - protocol\n    - params\n    - main_name\n    - ajax\n    - host\n    _aj_integer_keys: []\n  - as_id: 611\n    current_id: 611\n    _aj_symbol_keys:\n    - as_id\n    - current_id\n    _aj_integer_keys: []\n  - notify_followers_after_save_without_callbacks\n  executions: 0\n  exception_executions: {}\n  locale: en\n  timezone: UTC\n  enqueued_at: '2026-10-14T21:12:40.982009400Z'\n  scheduled_at:\n",
+  "last_error": null,
+  "run_at": "2026-10-14 21:12:40.990148",
+  "locked_at": null,
+  "failed_at": null,
+  "locked_by": null,
+  "queue": "notify_followers_after_save",
+  "created_at": "2026-10-14 21:12:40.990193",
+  "updated_at": "2026-10-14 21:12:40.990193"
+}

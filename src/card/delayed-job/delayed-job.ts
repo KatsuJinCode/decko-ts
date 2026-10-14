@@ -25,14 +25,14 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { DelayedJobsRow, SQLDateTime } from "../../server/schema.js";
-import type { SavePathAct } from "../notify/types.js";
 import { sqlDateTime } from "../history/act.js";
 
 /** ActiveJob's job class for every delayed card event (delayed_event.rb:57). */
 export const INTEGRATE_WITH_DELAY_JOB_CLASS = "Card::Set::Event::DelayedEvent::IntegrateWithDelayJob";
 /** The YAML tag delayed_job writes for an ActiveJob payload (JobWrapper#to_yaml). */
 export const JOB_WRAPPER_TAG = "!ruby/object:ActiveJob::QueueAdapters::DelayedJobAdapter::JobWrapper";
-/** DelayedEvent#priority's default (delayed_event.rb:21-23). */
+/** DelayedEvent#priority's default (delayed_event.rb:21-23); an event
+ *  declared with priority: overrides it (notify_followers_after_save: 20). */
 export const DEFAULT_DELAYED_EVENT_PRIORITY = 10;
 /** Delayed::Worker.max_attempts as card-mod-delayed_job sets it. */
 export const DELAYED_JOB_MAX_ATTEMPTS = 1;
@@ -41,26 +41,33 @@ export const DELAYED_JOB_MAX_RUN_TIME_MS = 4 * 60 * 60 * 1000;
 /** Delayed::Worker.read_ahead default: rows find_available returns per reserve. */
 const READ_AHEAD = 5;
 
-/** Card::Env.serialize — the Card::Env::Serializable readers (env/serializable.rb),
- *  in declaration order. The port carries the values the integration hooks read. */
+/** Card::Env.serialize: every Card::Env::Serializable instance method, in
+ *  the order Ruby's instance_methods lists them (oracle capture). */
 export interface DelayedJobEnv {
-  main_name: string | null;
-  params: Record<string, unknown>;
+  origin: string;
+  html: boolean;
+  "ajax?": boolean | null;
+  "html?": boolean;
   ip: string | null;
   protocol: string | null;
-  host: string | null;
-  origin: string | null;
+  params: Record<string, unknown>;
+  main_name: string | null;
   ajax: boolean | null;
-  html: boolean;
-  /** Not a Serializable reader in Ruby: the deck's Decko Bot address, which the
-   *  follower mail's From rule needs and Ruby reads from the deck at perform time. */
-  decko_bot_email?: string | null;
+  host: string | null;
 }
 
 /** Card::Auth.serialize (auth.rb:40-42). */
 export interface DelayedJobAuth {
   as_id: number | null;
   current_id: number | null;
+}
+
+/** The card's serialize_for_active_job values the port tracks: the action
+ *  verb (a Symbol) and the current action (a GlobalID). Every other
+ *  action-specific attribute is nil or an empty hash at this stage. */
+export interface DelayedJobCardAttribs {
+  action: "create" | "update" | "delete";
+  currentActionId: number | null;
 }
 
 /** Everything one IntegrateWithDelayJob carries: its perform arguments plus
@@ -72,15 +79,13 @@ export interface DelayedEventJob {
   readonly priority: number;
   /** Card::Director.act&.id. */
   readonly actId: number | null;
-  /** The card the event belongs to (serialized by GlobalID in Ruby). */
+  /** The card the event belongs to (serialized by GlobalID). */
   readonly cardId: number;
-  /** event.simple_method_name: "<event>_without_callbacks". */
-  readonly methodName: string;
+  readonly cardAttribs: DelayedJobCardAttribs;
   readonly env: DelayedJobEnv;
   readonly auth: DelayedJobAuth;
-  /** The card's serializable attributes in Ruby (card_attribs). The port's
-   *  integration hooks work from the completed act, so the act travels here. */
-  readonly act: SavePathAct;
+  /** event.simple_method_name: "<event>_without_callbacks". */
+  readonly methodName: string;
 }
 
 /** Where the engine puts a delayed event (Cardio.config.delaying = true). */
@@ -92,28 +97,94 @@ export interface DelayedJobQueue {
 // The handler column
 // ---------------------------------------------------------------------------
 
-/** ActiveJob's hash serialization with the card patch: string keys, the
- *  symbol keys listed under _aj_symbol_keys, then _aj_integer_keys. */
-function ajSymbolHash(hash: Record<string, unknown>): Record<string, unknown> {
-  return { ...hash, _aj_symbol_keys: Object.keys(hash), _aj_integer_keys: [] };
-}
+type Yaml = null | boolean | number | string | Yaml[] | { [key: string]: Yaml };
 
-function ajStringHash(hash: Record<string, unknown>): Record<string, unknown> {
-  return { ...hash, _aj_integer_keys: [] };
-}
-
-/** One YAML scalar as Psych writes it for these values. */
-function yamlScalar(value: string | number | null): string {
+/** One YAML scalar as Psych writes it. */
+function yamlScalar(value: null | boolean | number | string): string {
   if (value === null) return "";
-  if (typeof value === "number") return ` ${value}`;
+  if (typeof value === "boolean" || typeof value === "number") return String(value);
   // Psych single-quotes strings that would otherwise load as another type
-  // (numbers, booleans, null, timestamps) and strings with YAML indicators.
+  // (numbers, booleans, null, timestamps), empty strings, and strings with
+  // YAML indicators.
   const otherType =
+    value === "" ||
     /^[-+]?(\d[\d_]*(\.\d*)?([eE][-+]?\d+)?|\.\d+|0x[\da-fA-F]+)$/.test(value) ||
     /^\d{4}-\d\d?-\d\d?([Tt ]|$)/.test(value) ||
     /^(true|false|null|yes|no|on|off|y|n|~)$/i.test(value);
-  if (!otherType && /^[\w./:-]+$/.test(value)) return ` ${value}`;
-  return ` '${value.replace(/'/g, "''")}'`;
+  if (!otherType && /^[\w./:?-]+$/.test(value) && !/^[-?:]/.test(value)) return value;
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+function isScalar(v: Yaml): v is null | boolean | number | string {
+  return v === null || typeof v !== "object";
+}
+
+/** Psych's block style: mappings indent by two, a sequence sits at its
+ *  key's indent, a mapping item starts on its "- " line. */
+function yamlMapping(obj: { [key: string]: Yaml }, indent: number): string[] {
+  const pad = " ".repeat(indent);
+  const lines: string[] = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (isScalar(v)) {
+      const s = yamlScalar(v);
+      lines.push(s === "" ? `${pad}${k}:` : `${pad}${k}: ${s}`);
+    } else if (Array.isArray(v)) {
+      if (v.length === 0) lines.push(`${pad}${k}: []`);
+      else lines.push(`${pad}${k}:`, ...yamlSequence(v, indent));
+    } else if (Object.keys(v).length === 0) {
+      lines.push(`${pad}${k}: {}`);
+    } else {
+      lines.push(`${pad}${k}:`, ...yamlMapping(v, indent + 2));
+    }
+  }
+  return lines;
+}
+
+function yamlSequence(items: Yaml[], indent: number): string[] {
+  const pad = " ".repeat(indent);
+  const lines: string[] = [];
+  for (const item of items) {
+    if (isScalar(item)) {
+      const s = yamlScalar(item);
+      lines.push(s === "" ? `${pad}-` : `${pad}- ${s}`);
+    } else if (Array.isArray(item)) {
+      const inner = yamlSequence(item, indent + 2);
+      lines.push(`${pad}- ${(inner[0] ?? "").trimStart()}`, ...inner.slice(1));
+    } else {
+      const inner = yamlMapping(item, indent + 2);
+      lines.push(`${pad}- ${(inner[0] ?? "").trimStart()}`, ...inner.slice(1));
+    }
+  }
+  return lines;
+}
+
+/** ActiveJob's hash serialization with the card patch: string keys, the
+ *  symbol keys listed under _aj_symbol_keys, then _aj_integer_keys. */
+function ajSymbolHash(hash: { [key: string]: Yaml }): { [key: string]: Yaml } {
+  return { ...hash, _aj_symbol_keys: Object.keys(hash), _aj_integer_keys: [] };
+}
+
+/** The action-specific attributes Card#serialize_for_active_job writes, in
+ *  the order the oracle capture shows (card 1.110.0 + card-mod-carrierwave's
+ *  duplicate_file). */
+function cardAttribsYaml(attribs: DelayedJobCardAttribs, app: string): { [key: string]: Yaml } {
+  return ajSymbolHash({
+    action: { _aj_value_key: attribs.action, _aj_class_name_key: "Symbol" },
+    current_action:
+      attribs.currentActionId === null ? null : { _aj_globalid: `gid://${app}/Card::Action/${attribs.currentActionId}` },
+    last_action_id_before_edit: null,
+    comment: null,
+    silent_change: null,
+    skip: null,
+    skip_in_action: null,
+    trigger: null,
+    trigger_in_action: null,
+    skip_hash: ajSymbolHash({}),
+    full_skip_hash: ajSymbolHash({}),
+    trigger_hash: null,
+    full_trigger_hash: null,
+    duplicate_file: null,
+  });
 }
 
 export interface HandlerOptions {
@@ -121,86 +192,109 @@ export interface HandlerOptions {
   jobId: string;
   /** Time.now.utc at enqueue. */
   enqueuedAt: Date;
-  /** GlobalID.app — the Rails application name the card's GlobalID carries. */
+  /** GlobalID.app: the Rails application name, dasherized ("reference-oracle"
+   *  for the oracle app's ReferenceOracle). */
   globalIdApp?: string;
 }
 
-/** The delayed_jobs.handler text for one job: the YAML document delayed_job
- *  writes for JobWrapper.new(job.serialize) (activejob 7.2 core.rb#serialize).
- *  The arguments sequence is written in YAML flow style (JSON), which Psych
- *  loads to the same values as its own block style. */
+/** The delayed_jobs.handler text for one job: the YAML document Psych writes
+ *  for JobWrapper.new(job.serialize) (activejob 7.2 core.rb#serialize). */
 export function buildDelayedJobHandler(job: DelayedEventJob, opts: HandlerOptions): string {
   const app = opts.globalIdApp ?? "decko";
-  const args = [
+  const env = job.env;
+  const args: Yaml[] = [
     job.actId,
     { _aj_globalid: `gid://${app}/Card/${job.cardId}` },
-    ajStringHash({ decko_ts_act: job.act }),
-    ajSymbolHash({ ...job.env, params: ajStringHash(job.env.params) }),
-    ajSymbolHash({ ...job.auth }),
+    cardAttribsYaml(job.cardAttribs, app),
+    ajSymbolHash({
+      origin: env.origin,
+      html: env.html,
+      "ajax?": env["ajax?"],
+      "html?": env["html?"],
+      ip: env.ip,
+      protocol: env.protocol,
+      params: ajSymbolHash(env.params as { [key: string]: Yaml }),
+      main_name: env.main_name,
+      ajax: env.ajax,
+      host: env.host,
+    }),
+    ajSymbolHash({ as_id: job.auth.as_id, current_id: job.auth.current_id }),
     job.methodName,
   ];
   // iso8601(9): nanosecond fraction.
-  const enqueued = `${opts.enqueuedAt.toISOString().slice(0, 19)}.${String(opts.enqueuedAt.getUTCMilliseconds()).padStart(3, "0")}000000Z`;
-  return [
-    `--- ${JOB_WRAPPER_TAG}`,
-    "job_data:",
-    `  job_class:${yamlScalar(INTEGRATE_WITH_DELAY_JOB_CLASS)}`,
-    `  job_id:${yamlScalar(opts.jobId)}`,
-    "  provider_job_id:",
-    `  queue_name:${yamlScalar(job.queue)}`,
-    `  priority:${yamlScalar(job.priority)}`,
-    `  arguments: ${JSON.stringify(args)}`,
-    "  executions: 0",
-    "  exception_executions: {}",
-    "  locale: en",
-    "  timezone: UTC",
-    `  enqueued_at:${yamlScalar(enqueued)}`,
-    "  scheduled_at:",
-    "",
-  ].join("\n");
+  const ms = String(opts.enqueuedAt.getUTCMilliseconds()).padStart(3, "0");
+  const enqueued = `${opts.enqueuedAt.toISOString().slice(0, 19)}.${ms}000000Z`;
+  const doc: { [key: string]: Yaml } = {
+    job_data: {
+      job_class: INTEGRATE_WITH_DELAY_JOB_CLASS,
+      job_id: opts.jobId,
+      provider_job_id: null,
+      queue_name: job.queue,
+      priority: job.priority,
+      arguments: args,
+      executions: 0,
+      exception_executions: {},
+      locale: "en",
+      timezone: "UTC",
+      enqueued_at: enqueued,
+      scheduled_at: null,
+    },
+  };
+  return [`--- ${JOB_WRAPPER_TAG}`, ...yamlMapping(doc, 0), ""].join("\n");
 }
 
-/** Read a handler written by buildDelayedJobHandler back into its job.
- *  Throws DelayedJobDeserializationError (delayed_job's DeserializationError)
- *  when the text is not such a handler. */
+/** Read a handler in Ruby's IntegrateWithDelayJob shape (written by Ruby or
+ *  by buildDelayedJobHandler) back into its job. Request params are not
+ *  read back; no delayed event the port runs consults them. Throws
+ *  DelayedJobDeserializationError (delayed_job's DeserializationError) when
+ *  the text is not such a handler. */
 export function parseDelayedJobHandler(handler: string): DelayedEventJob {
-  const field = (key: string): string | undefined => {
-    const m = new RegExp(`^  ${key}:(.*)$`, "m").exec(handler);
+  const one = (re: RegExp, text: string = handler): string | undefined => {
+    const m = re.exec(text);
     if (m === null) return undefined;
     const raw = (m[1] ?? "").trim();
     return raw.startsWith("'") ? raw.slice(1, -1).replace(/''/g, "'") : raw;
   };
-  if (!handler.startsWith(`--- ${JOB_WRAPPER_TAG}`) || field("job_class") !== INTEGRATE_WITH_DELAY_JOB_CLASS) {
-    throw new DelayedJobDeserializationError("Job failed to load: not an IntegrateWithDelayJob handler");
-  }
-  let args: unknown[];
-  try {
-    args = JSON.parse(field("arguments") ?? "") as unknown[];
-  } catch (e) {
-    throw new DelayedJobDeserializationError(`Job failed to load: ${(e as Error).message}`);
-  }
-  const [actId, gid, cardAttribs, env, auth, methodName] = args as [
-    number | null,
-    { _aj_globalid: string },
-    { decko_ts_act: SavePathAct },
-    Record<string, unknown>,
-    Record<string, unknown>,
-    string,
-  ];
-  const strip = (h: Record<string, unknown>): Record<string, unknown> => {
-    const { _aj_symbol_keys: _s, _aj_integer_keys: _i, ...rest } = h;
-    return rest;
+  const fail = (why: string): never => {
+    throw new DelayedJobDeserializationError(`Job failed to load: ${why}`);
   };
-  const envOut = strip(env) as unknown as DelayedJobEnv;
+  if (!handler.startsWith(`--- ${JOB_WRAPPER_TAG}`) || one(/^  job_class: (.*)$/m) !== INTEGRATE_WITH_DELAY_JOB_CLASS) {
+    fail("not an IntegrateWithDelayJob handler");
+  }
+  const argsAt = handler.indexOf("\n  arguments:\n");
+  if (argsAt < 0) fail("no arguments");
+  const args = handler.slice(argsAt);
+  const nullable = (v: string | undefined): string | null => (v === undefined || v === "" ? null : v);
+  const num = (v: string | undefined): number | null => (nullable(v) === null ? null : Number(v));
+  const bool = (v: string | undefined): boolean | null => (nullable(v) === null ? null : v === "true");
+  const cardGid = one(/^  - _aj_globalid: gid:\/\/[^/]+\/Card\/(\d+)$/m, args) ?? fail("no card GlobalID");
+  const actionId = one(/^      _aj_globalid: gid:\/\/[^/]+\/Card::Action\/(\d+)$/m, args);
   return {
-    queue: field("queue_name") ?? "",
-    priority: Number(field("priority")),
-    actId,
-    cardId: Number(gid._aj_globalid.slice(gid._aj_globalid.lastIndexOf("/") + 1)),
-    methodName,
-    env: { ...envOut, params: strip(envOut.params) },
-    auth: strip(auth) as unknown as DelayedJobAuth,
-    act: cardAttribs.decko_ts_act,
+    queue: one(/^  queue_name: (.*)$/m) ?? "",
+    priority: Number(one(/^  priority: (.*)$/m)),
+    actId: num(one(/^  arguments:\n  -(.*)$/m)),
+    cardId: Number(cardGid),
+    cardAttribs: {
+      action: (one(/^      _aj_value_key: (\w+)$/m, args) ?? "update") as DelayedJobCardAttribs["action"],
+      currentActionId: num(actionId),
+    },
+    env: {
+      origin: one(/^  - origin:(.*)$/m, args) ?? "",
+      html: bool(one(/^    html:(.*)$/m, args)) ?? true,
+      "ajax?": bool(one(/^    ajax\?:(.*)$/m, args)),
+      "html?": bool(one(/^    html\?:(.*)$/m, args)) ?? true,
+      ip: nullable(one(/^    ip:(.*)$/m, args)),
+      protocol: nullable(one(/^    protocol:(.*)$/m, args)),
+      params: {},
+      main_name: nullable(one(/^    main_name:(.*)$/m, args)),
+      ajax: bool(one(/^    ajax:(.*)$/m, args)),
+      host: nullable(one(/^    host:(.*)$/m, args)),
+    },
+    auth: {
+      as_id: num(one(/^  - as_id:(.*)$/m, args)),
+      current_id: num(one(/^    current_id:(.*)$/m, args)),
+    },
+    methodName: one(/^  - (\w+_without_callbacks)$/m, args) ?? fail("no method name"),
   };
 }
 

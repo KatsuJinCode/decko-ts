@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T20:35:00.127Z",
+  "generatedAt": "2026-10-14T22:12:50.004Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -1511,7 +1511,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 10 it() in tests/card/delayed-job/delayed-job.test.ts",
+        "verdict": "backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 11 it() in tests/card/delayed-job/delayed-job.test.ts",
         "evidence": "no set/ tree; the mod's surface is engine machinery, guarded by its own test file",
         "metrics": {
           "htmlViewsDeclared": 0,
@@ -1531,7 +1531,7 @@
           "manifestExists": false,
           "manifestViewsDeclared": 0,
           "testExists": true,
-          "testCount": 10,
+          "testCount": 11,
           "bytePins": 0
         }
       },
