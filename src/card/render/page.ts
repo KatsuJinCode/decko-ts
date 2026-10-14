@@ -466,6 +466,15 @@ async function renderPageBytesWithPageConfigInner(
     // below reads it. undefined passes through render()'s own `= {}`
     // default, so non-history pages are untouched.
     await engine.render(record.name.s, mainView, historyParams);
+    // The warm pass is not a served render: its output is discarded and the
+    // page re-renders the view below from the warm maps. Ruby renders the
+    // main view once, before the layout around it
+    // (card/lib/card/format/wrapper.rb:15 `@rendered = yield`, then the
+    // layout wrapper at :20-28), so a roles nest in the main body is the
+    // request's first and the navbar's comes after it. Drop any
+    // ensure_roles consumption the warm pass recorded so the layout pass
+    // starts from the request's committed state.
+    engine.blankSessionRolesFill?.();
     if (recordIsNew && requestedSubstituted) {
       // page_status_for_unknown: the :new substitution renders only when the
       // actor may create (card-mod-format html/error.rb:85-86); without it —

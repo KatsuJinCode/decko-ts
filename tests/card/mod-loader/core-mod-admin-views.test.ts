@@ -209,8 +209,12 @@ describe("set/self/admin.rb — view :core (the task table)", () => {
 });
 
 describe("set/self/admin.rb — view :warning (the warning alert)", () => {
-  it("renders empty when email delivery is on (the Rails default)", async () => {
+  it("renders empty when email delivery is on (a deck that turns it on)", async () => {
     const s = storage!;
+    // A deck whose config/application.rb sets perform_deliveries = true
+    // (card/lib/generators/deck/templates/config/application.rb.erb:19 is
+    // the deck-local switch). The engine's own default is development's
+    // false (card/config/environments/development.rb:70).
     setAdminRuntimeConfig({ performDeliveries: true });
     // self/admin.rb:63-69 — warnings.compact!; empty -> ""
     expect(await s.engine.render("*admin", "warning")).toBe("");
@@ -248,11 +252,15 @@ describe("set/self/admin.rb — view :warning (the warning alert)", () => {
     expect(html).toBe(expected);
   });
 
-  it("resets to the Rails default (perform_deliveries true)", () => {
-    // the Rails default is true (application.rb's false is a DECK choice,
-    // not an engine default); resetAdminRuntimeConfig restores it.
+  it("resets to the development environment's value (perform_deliveries false)", () => {
+    // The engine boots RAILS_ENV=development and the card gem's
+    // development environment writes perform_deliveries = false
+    // (card/config/environments/development.rb:70) after the deck's
+    // config/application.rb body, so the warning item is present after a
+    // reset (the oracle's synthetic-v2 `view:admin:*admin:warning` bytes
+    // list it). resetAdminRuntimeConfig restores that development value.
     resetAdminRuntimeConfig();
-    expect(adminRuntimeConfig().performDeliveries).toBe(true);
+    expect(adminRuntimeConfig().performDeliveries).toBe(false);
   });
 });
 

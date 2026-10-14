@@ -50,28 +50,23 @@ export interface AdminRuntimeConfig {
    *  oracle's config/application.rb sets (perform_deliveries = true there)
    *  and NOT ActionMailer::Base (harness_env.rb sets that directly).
    *
-   *  WHY THE ENGINE DEFAULT IS TRUE: the Ruby predicate is
+   *  WHY THE ENGINE DEFAULT IS FALSE: the Ruby predicate is
    *    `Card.config.action_mailer.perform_deliveries == false`
-   *  (card-1.110.0 mod/core/set/self/admin.rb:21) - a comparison
-   *  AGAINST false, so an engine that never sets the key (production's
-   *  card/config/environments/production.rb sets nothing; ActionMailer
-   *  itself defaults to true, card/config/environments/test.rb:43) reads
-   *  nil and renders NO warning. The flag is off only where something
-   *  writes it off: the card gem's own development and profile
-   *  environments (card/config/environments/development.rb:70,
-   *  profile.rb:32 `config.action_mailer.perform_deliveries = false`)
-   *  and a deck's own config/application.rb. Those are explicit sets,
-   *  not the default, so the port's default is "deliveries on".
-   *
-   *  The reference capture that renders the no_email_delivery item was
-   *  taken in DEVELOPMENT (the probe runs RAILS_ENV=development), where
-   *  the environment file's false lands after the deck's
-   *  config/application.rb: true — the environment file wins (Rails
-   *  loads it from the load_environment_config initializer, after the
-   *  application class body), which is why that capture shows the item
-   *  even though the oracle deck sets the flag true. A suite that
-   *  renders that item sets the flag, exactly as those environment
-   *  files do. */
+   *  (card-1.110.0 mod/core/set/self/admin.rb:21), and the oracle boots
+   *  RAILS_ENV=development. The card gem's development environment
+   *  writes the key off (card/config/environments/development.rb:70
+   *  `config.action_mailer.perform_deliveries = false`) AFTER the deck's
+   *  config/application.rb body (Rails' load_environment_config
+   *  initializer), so the environment file wins over the deck's own
+   *  setting and `*admin`'s :warning view lists the email item (the
+   *  oracle's recorded bytes - synthetic-v2 `view:admin:*admin:warning` -
+   *  carry "Email delivery is turned off" as the first <li>). The profile
+   *  environment writes it off the same way
+   *  (card/config/environments/profile.rb:32). The port's default is the
+   *  development value: deliveries off, warning present. A deck whose
+   *  config/application.rb owns the flag
+   *  (card/lib/generators/deck/templates/config/application.rb.erb:19)
+   *  sets it explicitly through setAdminRuntimeConfig. */
   performDeliveries: boolean;
 
   /** Cardio.config.allow_irreversible_admin_tasks (self/admin.rb:55). */
@@ -79,7 +74,7 @@ export interface AdminRuntimeConfig {
 }
 
 const DEFAULT_ADMIN_RUNTIME_CONFIG: AdminRuntimeConfig = {
-  performDeliveries: true,
+  performDeliveries: false,
   allowIrreversibleAdminTasks: false,
 };
 
