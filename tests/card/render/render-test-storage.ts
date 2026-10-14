@@ -421,8 +421,14 @@ export async function createRenderTestStorage(
   }
   const counting = new CountingRenderDriver(driver);
   const fetcher = new FetchEngine(counting);
+  // The engine is constructed BEFORE the bootstrap seed, not after: the
+  // original order left `storage.engine` undefined while seedCard ran, and
+  // a suite whose seed touches the engine (a mod loader registering, a
+  // prefetch warm-up) read that undefined. Constructing it first changes
+  // nothing about the deck — RenderEngine reads storage lazily.
+  const engine = new RenderEngine(fetcher);
   const storage: RenderTestStorage = {
-    engine: undefined as unknown as RenderEngine,
+    engine,
     fetcher,
     counting,
     close: () => driver.close(),
@@ -432,7 +438,6 @@ export async function createRenderTestStorage(
     storage.bootstrapRule = BOOTSTRAP_READ_SUBSTRATE_IDS.rule;
   }
   expireRuleResolutionCache(fetcher.driver);
-  storage.engine = new RenderEngine(fetcher);
   return storage;
 }
 

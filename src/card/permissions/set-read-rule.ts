@@ -57,11 +57,14 @@
 //
 // Rule-less decks: Ruby raises PermissionDenied from require_permission_rule!
 // (permissions.rb:77-85) when no read rule resolves at all — every real deck
-// bootstraps *all+*read (card/auth/setup.rb:44). The port instead stores
-// NULLs for that rule-less-seed case, the same documented divergence the
-// read side makes (read-rules.ts canReadByRuleLookup -> undefined); the
-// write-permission gate remains the
-// engine's canWrite seam (the :check_permissions validate event,
+// bootstraps *all+*read (card/auth/setup.rb:44). The port stores NULLs for
+// that case, matching Ruby's stored value (read_rule_id is NULL when
+// permission_rule_id resolves nil) and letting the write-permission gate
+// decide, which is Ruby's own separation: the row is written, and the gate
+// refuses on the read. The read side denies the same deck
+// (read-rules.ts canReadByRuleLookup -> false,
+// permissions.rb:139-146 read_rules_hash[nil]); the write-permission gate
+// remains the engine's canWrite seam (the :check_permissions validate event,
 // permissions.rb:22-25, is not ported).
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
@@ -155,8 +158,9 @@ export interface ReadRuleWriteDeps {
 /**
  * The port of `permission_rule_id_and_class(:read)` for one card
  * (permissions.rb:1-5, :63-65): the pair the set_read_rule store event
- * assigns. NULLs when the deck carries no applicable read rule (the
- * rule-less-seed divergence documented in the module header).
+ * assigns. NULLs when the deck carries no applicable read rule, which is
+ * Ruby's own stored value for a nil permission_rule_id — the read check
+ * denies such a card (permissions.rb:139-146).
  */
 export async function deriveReadRuleRecord(
   deps: ReadRuleWriteDeps,
@@ -181,8 +185,9 @@ export async function deriveReadRuleRecord(
  * for the write path; the read path (canReadByRuleLookup) needs only the id,
  * so the class queries stay off the render-hot path.
  *
- * Null when no rule resolves (the rule-less-seed case; the caller decides
- * the divergence posture).
+ * Null when no rule resolves, which is Ruby's own answer for a card whose
+ * permission_rule_id is nil; the read check denies it
+ * (permissions.rb:139-146).
  */
 export async function effectiveReadRuleId(
   deps: ReadRuleWriteDeps,
