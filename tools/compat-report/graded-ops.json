@@ -51659,6 +51659,252 @@
      "result": "differs"
     }
    }
+  },
+  {
+   "fixture": "synthetic-v2 + extra-ops",
+   "verdict_note": "graded against Ruby answers captured for this op list; the grader's fixture-manifest checks do not apply",
+   "adapter_commit": "46da63b305726e4e463a7e8f1a5d6b080e9ac711",
+   "adapter_dirty": false,
+   "graded_at": "2026-10-14T21:43:53.753Z",
+   "verdict": "fail",
+   "rendering": {
+    "graded": 21,
+    "pass": 13,
+    "fail": 8
+   },
+   "ops": {
+    "view:admin:*signin:edit": {
+     "card": "*signin",
+     "view": "edit",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "differs"
+    },
+    "view:anonymous:*signin:edit": {
+     "card": "*signin",
+     "view": "edit",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "differs"
+    },
+    "view:admin:*signin:open": {
+     "card": "*signin",
+     "view": "open",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "differs"
+    },
+    "view:anonymous:*signin:open": {
+     "card": "*signin",
+     "view": "open",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "differs"
+    },
+    "view:admin:*signin:title": {
+     "card": "*signin",
+     "view": "title",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "identical"
+    },
+    "view:anonymous:*signin:title": {
+     "card": "*signin",
+     "view": "title",
+     "set": {
+      "codename": "signin",
+      "type": "basic",
+      "compound": false,
+      "name": "*signin"
+     },
+     "result": "identical"
+    },
+    "view:anonymous:Sign up:new": {
+     "card": "Sign up",
+     "view": "new",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "identical"
+    },
+    "view:admin:Sign up:new": {
+     "card": "Sign up",
+     "view": "new",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "differs"
+    },
+    "view:anonymous:Sign up:new_buttons": {
+     "card": "Sign up",
+     "view": "new_buttons",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "identical"
+    },
+    "view:admin:Sign up:new_buttons": {
+     "card": "Sign up",
+     "view": "new_buttons",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "identical"
+    },
+    "view:anonymous:Sign up:content_formgroups": {
+     "card": "Sign up",
+     "view": "content_formgroups",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "identical"
+    },
+    "view:admin:Sign up:content_formgroups": {
+     "card": "Sign up",
+     "view": "content_formgroups",
+     "set": {
+      "codename": "signup",
+      "type": "cardtype",
+      "compound": false,
+      "name": "Sign up"
+     },
+     "result": "identical"
+    },
+    "view:admin:*follow defaults:edit_buttons": {
+     "card": "*follow defaults",
+     "view": "edit_buttons",
+     "set": {
+      "codename": null,
+      "type": null,
+      "compound": false,
+      "name": "*follow defaults"
+     },
+     "result": "differs"
+    },
+    "view:admin:*new file:input": {
+     "card": "*new file",
+     "view": "input",
+     "set": {
+      "codename": "new_file",
+      "type": "file",
+      "compound": false,
+      "name": "*new file"
+     },
+     "result": "identical"
+    },
+    "view:admin:*new image:input": {
+     "card": "*new image",
+     "view": "input",
+     "set": {
+      "codename": "new_image",
+      "type": "image",
+      "compound": false,
+      "name": "*new image"
+     },
+     "result": "differs"
+    },
+    "view:admin:mod: help:bar_right": {
+     "card": "mod: help",
+     "view": "bar_right",
+     "set": {
+      "codename": "mod_help",
+      "type": "mod",
+      "compound": false,
+      "name": "mod: help"
+     },
+     "result": "identical"
+    },
+    "view:admin:cerulean skin:bar_left": {
+     "card": "cerulean skin",
+     "view": "bar_left",
+     "set": {
+      "codename": "cerulean_skin",
+      "type": "bootswatch_skin",
+      "compound": false,
+      "name": "cerulean skin"
+     },
+     "result": "identical"
+    },
+    "view:admin:cerulean skin:bar_right": {
+     "card": "cerulean skin",
+     "view": "bar_right",
+     "set": {
+      "codename": "cerulean_skin",
+      "type": "bootswatch_skin",
+      "compound": false,
+      "name": "cerulean skin"
+     },
+     "result": "differs"
+    },
+    "view:admin:cerulean skin:bar_bottom": {
+     "card": "cerulean skin",
+     "view": "bar_bottom",
+     "set": {
+      "codename": "cerulean_skin",
+      "type": "bootswatch_skin",
+      "compound": false,
+      "name": "cerulean skin"
+     },
+     "result": "identical"
+    },
+    "view:admin:Toggle 1:input": {
+     "card": "Toggle 1",
+     "view": "input",
+     "set": {
+      "codename": null,
+      "type": "toggle",
+      "compound": false,
+      "name": "Toggle 1"
+     },
+     "result": "identical"
+    },
+    "view:admin:group: remote:core": {
+     "card": "group: remote",
+     "view": "core",
+     "set": {
+      "codename": "group_remote",
+      "type": "basic",
+      "compound": false,
+      "name": "group: remote"
+     },
+     "result": "identical"
+    }
+   }
   }
  ]
 }

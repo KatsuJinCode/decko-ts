@@ -1,0 +1,21 @@
+{"id": "view:admin:*signin:edit", "op": "render", "actor": "admin", "card": "*signin", "view": "edit"}
+{"id": "view:anonymous:*signin:edit", "op": "render", "actor": "anonymous", "card": "*signin", "view": "edit"}
+{"id": "view:admin:*signin:open", "op": "render", "actor": "admin", "card": "*signin", "view": "open"}
+{"id": "view:anonymous:*signin:open", "op": "render", "actor": "anonymous", "card": "*signin", "view": "open"}
+{"id": "view:admin:*signin:title", "op": "render", "actor": "admin", "card": "*signin", "view": "title"}
+{"id": "view:anonymous:*signin:title", "op": "render", "actor": "anonymous", "card": "*signin", "view": "title"}
+{"id": "view:anonymous:Sign up:new", "op": "render", "actor": "anonymous", "card": "Sign up", "view": "new"}
+{"id": "view:admin:Sign up:new", "op": "render", "actor": "admin", "card": "Sign up", "view": "new"}
+{"id": "view:anonymous:Sign up:new_buttons", "op": "render", "actor": "anonymous", "card": "Sign up", "view": "new_buttons"}
+{"id": "view:admin:Sign up:new_buttons", "op": "render", "actor": "admin", "card": "Sign up", "view": "new_buttons"}
+{"id": "view:anonymous:Sign up:content_formgroups", "op": "render", "actor": "anonymous", "card": "Sign up", "view": "content_formgroups"}
+{"id": "view:admin:Sign up:content_formgroups", "op": "render", "actor": "admin", "card": "Sign up", "view": "content_formgroups"}
+{"id": "view:admin:*follow defaults:edit_buttons", "op": "render", "actor": "admin", "card": "*follow defaults", "view": "edit_buttons"}
+{"id": "view:admin:*new file:input", "op": "render", "actor": "admin", "card": "*new file", "view": "input"}
+{"id": "view:admin:*new image:input", "op": "render", "actor": "admin", "card": "*new image", "view": "input"}
+{"id": "view:admin:mod: help:bar_right", "op": "render", "actor": "admin", "card": "mod: help", "view": "bar_right"}
+{"id": "view:admin:cerulean skin:bar_left", "op": "render", "actor": "admin", "card": "cerulean skin", "view": "bar_left"}
+{"id": "view:admin:cerulean skin:bar_right", "op": "render", "actor": "admin", "card": "cerulean skin", "view": "bar_right"}
+{"id": "view:admin:cerulean skin:bar_bottom", "op": "render", "actor": "admin", "card": "cerulean skin", "view": "bar_bottom"}
+{"id": "view:admin:Toggle 1:input", "op": "render", "actor": "admin", "card": "Toggle 1", "view": "input"}
+{"id": "view:admin:group: remote:core", "op": "render", "actor": "admin", "card": "group: remote", "view": "core"}

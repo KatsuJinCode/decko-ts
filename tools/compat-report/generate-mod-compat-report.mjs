@@ -26,7 +26,7 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateMod, loadGrades, saveGrades, summariseGrade } from "./behaviour.mjs";
+import { evaluateMod, loadGrades, saveGrades, specificDeclarations, summariseGrade } from "./behaviour.mjs";
 
 // ---------------------------------------------------------------------------
 // config
@@ -999,11 +999,13 @@ function main() {
   // record from grade reports written by reference-harness/runner/grade.mjs.
   const gradeReports = [];
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--grade") gradeReports.push(argv[++i]);
+    if (argv[i] === "--grade") gradeReports.push({ path: argv[++i], extra: null });
+    if (argv[i] === "--grade-extra")
+      gradeReports.push({ path: argv[++i], extra: { deck: "synthetic-v2", ops: join(HERE, "extra-ops.jsonl") } });
   }
   let grades = loadGrades(GRADED_OPS);
   if (gradeReports.length) {
-    const fresh = gradeReports.map((p) => summariseGrade(REPO, JSON.parse(readText(p))));
+    const fresh = gradeReports.map((g) => summariseGrade(REPO, JSON.parse(readText(g.path)), g.extra));
     const keep = grades.filter((g) => !fresh.some((f) => f.fixture === g.fixture));
     grades = [...keep, ...fresh].sort((a, b) => a.fixture.localeCompare(b.fixture));
     saveGrades(GRADED_OPS, grades);
@@ -1012,12 +1014,13 @@ function main() {
 
   const gems = listGemDirs(GEM_DIR);
   const surface = inventoryDeckoTs();
+  const specific = specificDeclarations(gems.map((g) => g.path));
   const mods = gems.map((g) => {
     const inv = inventoryGem(g.path, g.name);
     const pins = inventoryModPins(g.name);
     const cls = classify(inv, surface, pins);
     const modId = g.name.replace(/-0\.\d+\.\d+$/, "");
-    const behaviour = evaluateMod(REPO, g.path, modId, grades);
+    const behaviour = evaluateMod(REPO, g.path, modId, grades, specific);
     return { gem: g.name, version: g.version, classification: cls, behaviour, inv, pins };
   });
 

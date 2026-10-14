@@ -147,17 +147,23 @@ export function gemDeclarations(gemPath) {
 
 // Reduce a grade report (reference-harness/runner/grade.mjs --report) and the
 // fixture's op list to { fixture, commit, verdict, ops: { id: {view, pass} } }.
-export function summariseGrade(repo, gradeReport) {
-  const fixture = gradeReport.fixture;
-  const fixtureDir = join(repo, "reference-harness", "fixtures", fixture);
+// `extra` grades an op list kept beside this report (extra-ops.jsonl) and run
+// on synthetic-v2's deck: the Ruby oracle's answers are captured with the
+// runner's ruby adapter and the port graded against them with grade.mjs
+// --expected (see the report's Method section for the commands).
+export function summariseGrade(repo, gradeReport, extra = null) {
+  const fixture = extra ? `${extra.deck} + extra-ops` : gradeReport.fixture;
+  const fixtureDir = join(repo, "reference-harness", "fixtures", extra ? extra.deck : fixture);
   const failed = new Set((gradeReport.failures?.rendering ?? []).map((f) => f.id));
   const reproduced = new Set((gradeReport.reproduced?.rendering ?? []).map((f) => f.id));
   const cards = deckCardIndex(join(fixtureDir, "deck", "deck.sqlite3"));
   const ops = {};
-  const opFiles = [
-    { path: join(fixtureDir, "ops", "render.jsonl"), withheld: false },
-    { path: join(fixtureDir, "withheld", "ops", "render.jsonl"), withheld: true },
-  ];
+  const opFiles = extra
+    ? [{ path: extra.ops, withheld: false }]
+    : [
+        { path: join(fixtureDir, "ops", "render.jsonl"), withheld: false },
+        { path: join(fixtureDir, "withheld", "ops", "render.jsonl"), withheld: true },
+      ];
   for (const { path, withheld } of opFiles) {
     if (!existsSync(path)) continue;
     for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
@@ -173,13 +179,18 @@ export function summariseGrade(repo, gradeReport) {
       };
     }
   }
+  const graded = Object.keys(ops).length;
+  const fail = Object.values(ops).filter((o) => o.result === "differs").length;
   return {
     fixture,
+    ...(extra ? { verdict_note: "graded against Ruby answers captured for this op list; the grader's fixture-manifest checks do not apply" } : {}),
     adapter_commit: gradeReport.adapter_checkout?.commit ?? null,
     adapter_dirty: gradeReport.adapter_checkout?.dirty ?? null,
     graded_at: gradeReport.graded_at ?? null,
-    verdict: gradeReport.verdict,
-    rendering: gradeReport.summary?.rendering
+    verdict: extra ? (fail ? "fail" : "pass") : gradeReport.verdict,
+    rendering: extra
+      ? { graded, pass: graded - fail, fail }
+      : gradeReport.summary?.rendering
       ? { graded: gradeReport.summary.rendering.graded, pass: gradeReport.summary.rendering.pass, fail: gradeReport.summary.rendering.fail }
       : null,
     ops,
@@ -308,7 +319,24 @@ const namesLiteral = (src, name) => {
 // per-mod evaluation
 // ---------------------------------------------------------------------------
 
-export function evaluateMod(repo, gemPath, modId, grades) {
+const GENERAL = new Set(["all", "abstract", "lib"]);
+
+// An all/abstract/lib declaration does not render for a card that a more
+// specific set (in any mod) also declares the view for: Ruby's set modules
+// for self/right/type/... are included after all/ and override it.
+export function specificDeclarations(gemPaths) {
+  const byView = new Map();
+  for (const gp of gemPaths) {
+    for (const v of gemDeclarations(gp).views) {
+      if (GENERAL.has(v.set.pattern) || !HTML_LIKE.has(v.format)) continue;
+      if (!byView.has(v.view)) byView.set(v.view, []);
+      byView.get(v.view).push(v.set);
+    }
+  }
+  return byView;
+}
+
+export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) {
   const decl = gemDeclarations(gemPath);
   const tests = modTestFiles(repo, modId);
   const pinnedTests = tests.filter((t) => hasBytePins(t.src));
@@ -326,7 +354,11 @@ export function evaluateMod(repo, gemPath, modId, grades) {
   const views = decl.views.map((v) => {
     const entry = { format: v.format, view: v.view, alias: v.alias, set: v.set.file };
     const ops = HTML_LIKE.has(v.format)
-      ? (opsByView.get(v.view) ?? []).filter((o) => setContains(v.set, o.set))
+      ? (opsByView.get(v.view) ?? []).filter(
+          (o) =>
+            setContains(v.set, o.set) &&
+            !(GENERAL.has(v.set.pattern) && (specific.get(v.view) ?? []).some((s) => setContains(s, o.set))),
+        )
       : [];
     if (ops.length) {
       const differs = ops.filter((o) => o.result === "differs");
