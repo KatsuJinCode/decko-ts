@@ -115,8 +115,9 @@ interface Deck {
   driver: CloudflareD1Adapter;
   fetcher: FetchEngine;
   render: RenderEngine;
-  /** Sync name -> id resolver for CQL interpretation (primed once). */
-  resolveCardId: (name: string) => number | undefined;
+  /** Sync name -> id resolver for CQL interpretation, primed by the first
+   *  /api/query request (see cqlResolver). */
+  cqlResolver: Promise<(name: string) => number | undefined> | undefined;
   primedAt: string;
 }
 
@@ -160,9 +161,47 @@ async function bootDeck(env: Env): Promise<Deck> {
   const driver = new CloudflareD1Adapter(env.DB);
   observeDriverQueries(driver, recorder());
   const fetcher = new FetchEngine(driver);
+  fetcher.lexicon.storedKeyFallback = true;
   const render = new RenderEngine(fetcher);
-  const resolveCardId = await primeCqlNameResolver(driver, fetcher);
-  return { driver, fetcher, render, resolveCardId, primedAt: new Date().toISOString() };
+  // ON-DEMAND BOOT. The boot no longer reads every card row: a request
+  // loads what it renders through the engine's own batched prefetch and
+  // point reads. The boot keeps only what the sync name environment needs
+  // before any request runs: the adapters, the codename table and the
+  // virtual-card rule universe.
+  fetcher.installNameEnvironment();
+  await fetcher.codenames.ensureLoaded();
+  {
+    const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
+    fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+      contents: structureUniverseFromResults(universeResult),
+      ruleTypeIds: structureRuleTypesFromResults(universeResult),
+    });
+  }
+  return {
+    driver,
+    fetcher,
+    render,
+    cqlResolver: undefined,
+    primedAt: new Date().toISOString(),
+  };
+}
+
+/** The CQL name resolver is synchronous, so /api/query primes the full
+ *  name index the first time it is asked, and only then. Page routes never
+ *  pay for it. */
+function cqlResolver(deck: Deck): Promise<(name: string) => number | undefined> {
+  deck.cqlResolver ??= primeCqlNameResolver(deck.driver, deck.fetcher).catch((error) => {
+    deck.cqlResolver = undefined;
+    throw error;
+  });
+  return deck.cqlResolver;
+}
+
+/** A `~<id>` mark resolves through the sync name environment, which reads
+ *  only warm caches; warm that one id before the render parses it. */
+async function warmMark(deck: Deck, name: string): Promise<void> {
+  const match = /^~(\d+)$/.exec(name.trim());
+  if (match !== null) await deck.fetcher.warmLexicon([Number(match[1])]);
 }
 
 /** Feed every adapter SQL call into the recorder. query() carries D1 meta
@@ -316,8 +355,6 @@ async function primeCqlNameResolver(
   // the codename codehash is its own small query. Mirrors FetchEngine#
   // warmLexicon + installNameEnvironment, the composition the local
   // engine boots with.
-  fetcher.installNameEnvironment();
-  await fetcher.codenames.ensureLoaded();
   for (const row of rows) {
     if (row.left_id !== null && row.right_id !== null) {
       const joined = composedName(row.id);
@@ -327,20 +364,6 @@ async function primeCqlNameResolver(
       const name = parseOnce(row.name);
       fetcher.lexicon.write(row.id, name, row.name);
     }
-  }
-  // Virtual-card rule universe: the
-  // storage factory's responsibility per
-  // src/card/fetch/virtual-cards.ts:44-49. Without this hook, compound
-  // names that resolve only through the structure rule walk return
-  // undefined from `FetchEngine.fetchByName` and the serving path 404s
-  // them even when the stored deck carries the rule (e.g. a compound name
-  // reachable only through a `+*right` rule row).
-  {
-    const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
-    fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
-      contents: structureUniverseFromResults(universeResult),
-      ruleTypeIds: structureRuleTypesFromResults(universeResult),
-    });
   }
   return (nameish: string) => keyToId.get(DeckoName.parse(nameish).key);
 }
@@ -494,6 +517,7 @@ async function renderCardPage(
   params: Record<string, string> = {},
 ): Promise<Response> {
   try {
+    await warmMark(deck, cardName);
     const view = await deck.render.render(cardName, requestedView, params);
     // Body wrapper = the decko page shell: everything visible
     // rides inside <article class="container flex-shrink-0" role="main"> —
@@ -533,6 +557,7 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
   // verdicts, so a rule revoked after the last render must not keep serving
   // the record JSON.
   await deck.render.ensureFreshness();
+  await warmMark(deck, cardName);
   const record = await deck.fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
@@ -597,6 +622,7 @@ async function cardFormatShow(
   // csv/rss surfaces judge permissions against the same memoized engine
   // state and must not outlive a committed revocation.
   await deck.render.ensureFreshness();
+  await warmMark(deck, cardName);
   const record = await deck.fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
@@ -661,7 +687,7 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
     // Ruby's Card::Query under Auth.always_ok? false.
     const permission = await deck.render.cqlPermissionOptions();
     const result = await executeQuery(deck.driver, cql, {
-      parse: { resolveCardId: deck.resolveCardId },
+      parse: { resolveCardId: await cqlResolver(deck) },
       alwaysOk: permission.alwaysOk,
       readRuleIds: permission.readRuleIds,
     });
@@ -824,6 +850,7 @@ export default {
         const deck = await getDeck(env);
         const search = jsonViewSearchParams(new URL(request.url).searchParams);
         try {
+          await warmMark(deck, markName);
           const body = await deck.render.render(markName, viewName, {
             ...(search !== undefined ? { search } : {}),
             format: "json",

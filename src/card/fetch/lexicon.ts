@@ -116,6 +116,18 @@ export class DbLexicon {
     this.durableLexIds.set(key, id);
   }
 
+  /**
+   * Deployment option, off by default (Ruby's lex_to_id has no such step).
+   * A deck whose stored `key` column was written under different inflection
+   * rules than this engine applies holds rows that `key = ?` cannot find
+   * (the cf-scale deck's "Anonymous" is stored as `anonymou`). When set, a
+   * simple-name miss asks once more by the stored name and accepts the row
+   * only if that name's computed key equals the requested key. The worker
+   * entry enables it so on-demand lookups answer what its former full-deck
+   * key index answered.
+   */
+  storedKeyFallback = false;
+
   constructor(driver: SQLDatabaseDriver, cache: CardCache) {
     this.driver = driver;
     this.cache = cache;
@@ -465,7 +477,10 @@ export class DbLexicon {
         `SELECT id FROM cards WHERE ${sql} AND trash = 0 LIMIT 1`,
         params,
       );
-      const id = result.rows[0]?.id;
+      let id: number | undefined = result.rows[0]?.id;
+      if (id === undefined && this.storedKeyFallback && !Array.isArray(lex)) {
+        id = await this.idByStoredName(lex);
+      }
       // `cache.write id.to_s, lex if lex.is_a?(Array)` - compound lexes get
       // the reverse (id -> lex) entry so name(id) avoids a query; simple
       // lexes deliberately do not (lex might not be the canonical name).
@@ -478,6 +493,22 @@ export class DbLexicon {
       return id;
     })) as number | undefined;
     return found;
+  }
+
+  /** The storedKeyFallback lookup: rows stored under the requested name
+   *  text (as given and standardized), kept only when the stored name's
+   *  computed key is the requested key. */
+  private async idByStoredName(lex: string): Promise<number | undefined> {
+    const requested = DeckoName.parse(lex);
+    const texts = lex === requested.s ? [lex] : [lex, requested.s];
+    const result = await this.driver.query<{ id: number; name: string | null }>(
+      `SELECT id, name FROM cards WHERE name IN (${texts.map(() => "?").join(", ")}) AND trash = 0`,
+      texts,
+    );
+    for (const row of result.rows) {
+      if (row.name !== null && DeckoName.parse(row.name).key === requested.key) return row.id;
+    }
+    return undefined;
   }
 
   /** cache.fetch with async compute (cache.rb#fetch semantics: temp first,
