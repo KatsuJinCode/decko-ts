@@ -1,0 +1,6 @@
+{
+  "name": "decko-ts-pbkdf2",
+  "description": "The decko-ts adapter (adapters/ts) under the port's default password policy: new passwords stored as PBKDF2 and a legacy SHA-1 digest replaced at sign-in. Grade it with --declared-divergences reference-harness/adapters/ts-pbkdf2/declared-divergences.json; only the password digest value may differ from the oracle.",
+  "command": ["node", "../ts/adapter.mjs"],
+  "env": { "DECKO_HARNESS_PASSWORD_HASH": "pbkdf2" }
+}
