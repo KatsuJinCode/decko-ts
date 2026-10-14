@@ -3408,6 +3408,14 @@ export class RenderEngine implements RenderEngineLike {
   async ensureRuleCacheSetLabels(): Promise<void> {
     if (this.ruleCacheSetLabels !== undefined) return;
     this.ruleCacheSetLabelsLoad ??= (async () => {
+      // Ruby's SetID/SettingID are GENERATED CONSTANTS
+      // (codename.rb:107-110 generate_id_constants), resolved at boot. The
+      // port peeks them out of the codename registry, which the render
+      // prepare warms before this runs - so a miss here means the DECK has
+      // no such type card, not that the registry is cold. No load is forced
+      // here: a rule lookup must not add a round trip to a render that never
+      // had one (the constant-query pins in render-engine.test.ts and
+      // depth-sweep.test.ts measure exactly that).
       const setTypeId = this.peekIdByCodename("set");
       const settingTypeId = this.peekIdByCodename("setting");
       if (setTypeId === undefined || settingTypeId === undefined) {

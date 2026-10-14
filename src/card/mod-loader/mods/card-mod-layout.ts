@@ -887,11 +887,35 @@ const headBarBottomView: ViewFn = (ctx) =>
  *  path(mark:) - `/<mark url key>` - with the action arms riding PATH
  *  position, not mark position: `path: {action: :new, mark: :signup}` is
  *  "/new/Sign_up" and `path: {action: :delete}` on *signin is
- *  "/delete/*signin" (path.rb:34-63: "<action>/<mark>"). Both targets
+ *  "/delete/signin" (path.rb:34-63: "<action>/<mark>"). Both targets
  *  exist in every deck that seeds the account mod, so the hrefs carry the
- *  known-card class. */
-function accountLinkHref(targetUrlKey: string, action?: string): string {
-  return action === undefined ? `/${h(targetUrlKey)}` : `/${h(action)}/${h(targetUrlKey)}`;
+ *  known-card class.
+ *
+ *  The mark goes through Cardname#url_key (cardname/lib/cardname/
+ *  variants.rb:7-13), which strips every character outside the key
+ *  charset - so the *signin card's mark is "signin", NOT "*signin"
+ *  (path.rb:63-67 `interpret_mark` calls `name&.url_key.to_s`). The
+ *  callers pass the card NAME; the star is removed here, as Ruby removes
+ *  it. */
+function accountLinkHref(targetName: string, action?: string): string {
+  const mark = urlKey(targetName);
+  return action === undefined ? `/${h(mark)}` : `/${h(action)}/${h(mark)}`;
+}
+
+/** Cardname#url_key (cardname/lib/cardname/variants.rb:7-13): each part's
+ *  non-key characters become spaces, then space runs collapse to a single
+ *  underscore. Enough of it for a link mark - a name whose parts are
+ *  already key-safe (every account link mark here) is unchanged. */
+function urlKey(name: string): string {
+  return name
+    .split("+")
+    .map((part) =>
+      part
+        .replace(/[^\p{L}\p{N}_]+/gu, " ")
+        .trim()
+        .replace(/[\s_]+/g, "_"),
+    )
+    .join("+");
 }
 
 /** links.rb:140-144 add_known_or_wanted_class: `Card.known?(name)`. The
