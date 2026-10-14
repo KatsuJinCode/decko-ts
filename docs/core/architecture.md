@@ -33,7 +33,7 @@ Provider adapters must declare transaction/isolation, rollback, search, collatio
 
 Data import is one component of migration. Acceptance includes files, accounts, rules, mods, jobs, configuration, upgrade and recovery. Retain one authoritative writer during comparison. Replay writes into isolated state with external effects captured; do not execute duplicate production side effects. Cutover and rollback require explicit reconciliation of writes made after cutover.
 
-Verify fresh-account deployment and existing-deck migration as separate user journeys. Hosting cost is workload-dependent. Existing public claims remain unchanged pending measurement and Julian-approved replacements; unmeasured values are hypotheses in internal reports.
+Verify fresh-account deployment and existing-deck migration as separate user journeys. Hosting cost is workload-dependent. Existing public claims are replaced only by measured values with their instrument named; unmeasured values are hypotheses, not findings.
 
 ## Deliberate non-requirements
 

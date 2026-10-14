@@ -28,9 +28,12 @@ for raw patterns, and would add index maintenance to the write path for a
 feature the oracle shows is a scan. Delegating to provider capabilities has
 nothing to delegate to: no SQLite build has a native regular-expression
 function, so every path needs one registered. Post-filtering in the
-application breaks the query's own semantics, because the read-permission and
-limit conditions interleave with the match predicate in one clause — filtering
-afterwards either over-fetches without bound or returns the wrong window.
+application is not the primary path, because the read-permission and limit
+conditions interleave with the match predicate in one clause: filtering
+afterwards over-fetches, and applying the limit before the filter returns the
+wrong window. It is used only where no function can be registered, and then
+over the complete candidate set with the limit applied last (see "Edge
+drivers").
 
 That leaves a registered function backed by the platform's own regular
 expression engine.
@@ -65,10 +68,36 @@ collation it was taken on. Server engines do not agree on the exotic forms, so
 the contract is not "identical everywhere". It is: behave as captured, and fail
 loudly rather than quietly where behaviour cannot be reproduced.
 
-`match` does not work on edge deployments, which cannot register functions.
-Those queries fail with the driver's own error rather than returning an empty
-result. That is intentional and it is why the documented seed decks use only
-the condition shapes that work everywhere.
+### Edge drivers (D1, libSQL): complete JS post-filter, no cap
+
+Ruby evaluates `match` inside the statement's WHERE clause
+(`#{field} REGEXP ?`, one predicate among the others), so it returns every
+matching card and applies `LIMIT`/`OFFSET` to the matches. Drivers that
+cannot register a function (D1, libSQL) therefore take a different route that
+produces the same result set:
+
+- the regexp-shaped match conditions are left out of the SQL, and every other
+  condition (permission, type, ordering, ...) stays in it;
+- the statement runs with **no LIMIT and no OFFSET**, so the candidate set is
+  complete; an earlier revision capped it at 10,000 rows, which silently
+  dropped matches on any larger deck and is removed;
+- the rows are filtered in the application with the same compiled pattern the
+  local function uses, a group such as `match: x` (name OR content) is
+  evaluated whole, and the statement's own limit and offset are then applied
+  to the filtered, already-ordered rows. As in Ruby, an offset without a
+  positive limit is ignored.
+
+The cost is explicit: a match query on an edge driver reads every row that
+satisfies the non-match conditions. That is the price of staying faithful
+without a function; a stored full-text index would not reduce it for
+substring and regular-expression terms (see above).
+
+Shapes the post-filter cannot reproduce exactly **fail loudly** with a bad-query
+error naming this record, never with fewer rows: a match inside a subselect
+(a row filter cannot re-apply subselect membership), and a match combined with
+`group` (Ruby filters before grouping; the post-filter would group unfiltered
+rows). Local SQLite is unaffected: the registered function runs inside the
+statement, so every shape works there.
 
 Two limits are recorded rather than hidden: the capture came from one server,
 and the local engine's word-boundary semantics are ASCII-only where the

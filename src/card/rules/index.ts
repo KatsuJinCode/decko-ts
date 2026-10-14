@@ -1,6 +1,5 @@
 // Public surface for the rule evaluation engine. Re-exports the lookup
-// and application primitives so callers can `import { findRule,
-// resolveViewOverride } from "./rules/index.js"`.
+// primitives so callers can `import { findRule } from "./rules/index.js"`.
 
 export { findRule, findRules, ruleCacheKey, nameAsPatternCardInput } from "./lookup.js";
 export type { RuleLookupResult } from "./lookup.js";
@@ -12,13 +11,6 @@ export {
   ruleIdLookup,
 } from "./rule-cache.js";
 export type { RuleCacheRow } from "./rule-cache.js";
-
-export {
-  parseViewOverride,
-  applyViewOverride,
-  resolveViewOverride,
-} from "./apply.js";
-export type { ViewOverride } from "./apply.js";
 
 // structured content: the *structure rule template mechanism
 // (content/all.rb#content — structured_content || standard_content)

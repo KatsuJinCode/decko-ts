@@ -327,6 +327,12 @@ describe("RenderEngine structured content", () => {
       //      (SELECT .. left_id=? AND right_id=? - Ruby's rule_card fetch
       //      by composed name): the wave seats (or negatively primes) the
       //      candidates, so the findRule ladder answers from cache.
+      //  -1  REMOVED: the render's per-view rule walk (findRule for
+      //      "*<view>" on the cold render). Ruby has no view-override rule
+      //      lookup (view.rb / render.rb issue none), so the port no longer
+      //      issues that candidate walk. Verified 2026-10-13 by restoring the
+      //      walk temporarily: the cold count returned to 28 and 13 round
+      //      trips. The pins are now 27 statements and 12 round trips.
       //  Freshness: the deck_data_version stamp read folds LAST into the
       //  cold batch (+1 statement, +0 round trips).
       //  Batched composition adds three: the compose type prime
@@ -343,8 +349,8 @@ describe("RenderEngine structured content", () => {
       //  (re-reading the prelude's type row, already composed and cached)
       //  was a redundancy and is fixed: composeAndCache marks every
       //  composed row as held for later type primes.
-      expect(cold.statements).toBe(28);
-      expect(cold.roundTrips).toBe(13);
+      expect(cold.statements).toBe(27);
+      expect(cold.roundTrips).toBe(12);
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip).
       fresh.counting.reset();

@@ -76,11 +76,11 @@ package does NOT measure, item 6.
   byte-identical (92.9%). **That figure is not a pure Ruby-oracle grade**: 50
   of its expected entries are bytes fetched from the live 0.19.1-era site,
   not the 0.20.0 oracle — two disjoint swap sets of 13 and 37, entry keys
-  checked distinct, per-entry manifests in the private repository). Method, the
+  checked distinct, per-entry manifests kept with the capture). Method, the
   full breakdown and the failure families: [parity-method.md](parity-method.md),
   `tools/corpus-failure-classes/`.
-- **Miniature fixture** (private repository; `fixtures/captured/` is excluded
-  from the public package): `fixtures/captured/smoke.json` — a small seeded
+- **Miniature fixture** (not redistributed; `fixtures/captured/` is excluded
+  from the published package): `fixtures/captured/smoke.json` — a small seeded
   deck with four rendered views per card. Its consuming suites are excluded
   with it, so a clean clone does not replay this one.
 - **Reference harness** (committed): `reference-harness/fixtures/synthetic-v1/`
@@ -98,8 +98,8 @@ package does NOT measure, item 6.
   against the committed oracle answer. The grade reports 2,389 comparisons
   because the 1 scenario `ask` step is graded as semantics too (see "Why two
   counts of the same fixture" above).
-- **CQL batteries** (private repository; `fixtures/captured/` is excluded
-  from the public package): `fixtures/captured/cql-basic.json` (11
+- **CQL batteries** (not redistributed; `fixtures/captured/` is excluded
+  from the published package): `fixtures/captured/cql-basic.json` (11
   canonical query shapes) and `fixtures/captured/cql-mysql-match.json` (the
   `match` battery, 30 queries, captured against a MySQL-protocol server —
   see [decisions/0005](decisions/0005-cql-match-semantics.md)).
