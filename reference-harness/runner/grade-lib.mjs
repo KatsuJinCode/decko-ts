@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
-import { EXPECTED_MANIFEST_FORMAT, resultFiles, storedFileHashes, verifyFixture } from "./manifest.mjs";
+import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
 import { normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
 
 export const RESULTS_FORMAT = 2;
@@ -80,7 +80,9 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     if (existsSync(expectedDir)) for (const f of resultFiles(expectedDir)) if (!(f in listed)) problems.push(`expected: file not in its manifest: ${f}`);
   }
   const expRuns = expManifest.ok ? expManifest.value.runs ?? {} : {};
-  const exp = loadResults(expectedDir, "expected", ops, problems, problems);
+  const withheld = withheldStatus(fixtureDir);
+  const withheldExpectedDir = withheld?.present ? path.join(withheld.dir, path.basename(expectedDir)) : null;
+  const exp = loadResults(expectedDir, "expected", ops, problems, problems, withheldExpectedDir);
 
   // ---- actual results: metadata, identity, completeness ------------------------
   const metaRead = readJson(path.join(actualDir, "run-meta.json"));
@@ -282,6 +284,8 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   return {
     fixture: path.basename(fixtureDir),
     fixture_digest: digest,
+    // A declared withheld set: whether its operations were part of this grade.
+    ...(withheld ? { withheld: { label: withheld.label, ops: withheld.total, run: withheld.present, line: withheldLine(withheld, workspaceRelative(path.join(fixtureDir, WITHHELD_DIR))) } } : {}),
     actual: workspaceRelative(actualDir),
     expected: workspaceRelative(expectedDir),
     oracle,
@@ -364,10 +368,13 @@ function firstEngine(runs) {
 }
 
 /** The fixture's operation ids and scenario step lists. */
+/** A present withheld set's operations are operations of the fixture; an
+ *  absent one's are not run, graded or expected (see manifest.mjs). */
 function loadOps(fixtureDir) {
-  const ids = (file) => new Set(readLinesFrom(path.join(fixtureDir, "ops", file)).lines.map((o) => o.id));
-  const scen = JSON.parse(readFileSync(path.join(fixtureDir, "ops", "scenarios.json"), "utf8")).scenarios;
-  return { render: ids("render.jsonl"), semantics: ids("semantics.jsonl"), scenarios: new Map(scen.map((s) => [s.id, s])) };
+  const ids = (kind) =>
+    new Set([...readLinesFrom(path.join(fixtureDir, "ops", `${kind}.jsonl`)).lines, ...(withheldOpsOf(fixtureDir, kind) ?? [])].map((o) => o.id));
+  const scen = [...JSON.parse(readFileSync(path.join(fixtureDir, "ops", "scenarios.json"), "utf8")).scenarios, ...(withheldScenariosOf(fixtureDir) ?? [])];
+  return { render: ids("render"), semantics: ids("semantics"), scenarios: new Map(scen.map((s) => [s.id, s])) };
 }
 
 /**
@@ -376,11 +383,18 @@ function loadOps(fixtureDir) {
  * go to `missing` (problems for expected outputs, a partial selection for
  * results, which --allow-partial accepts).
  */
-function loadResults(dir, label, ops, problems, missing) {
+function loadResults(dir, label, ops, problems, missing, withheldDir = null) {
   const out = { render: new Map(), semantics: new Map(), scenarios: new Map(), present: {} };
   for (const kind of RUN_KINDS) {
     const file = path.join(dir, `${kind}.jsonl`);
     const read = readLinesFrom(file);
+    // Expected outputs of a present withheld set sit in the same shape under
+    // withheld/<expected dir>/ and are read as part of the expectation.
+    if (read.exists && withheldDir) {
+      const more = readLinesFrom(path.join(withheldDir, `${kind}.jsonl`));
+      read.lines.push(...more.lines);
+      read.bad.push(...more.bad.map((n) => `${n} (withheld)`));
+    }
     if (!read.exists) {
       missing.push(`${label}: no ${kind}.jsonl`);
       out.present[kind] = new Set();

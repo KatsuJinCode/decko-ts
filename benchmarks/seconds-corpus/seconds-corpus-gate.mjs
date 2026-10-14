@@ -29,6 +29,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withheldLine, withheldStatus } from "../../reference-harness/runner/manifest.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const fixture = path.join(repo, "reference-harness/fixtures/synthetic-v2");
@@ -65,6 +66,12 @@ const ledgerFile = path.join(repo, "benchmarks/seconds-corpus/pinned-divergences
 const ledger = existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : { pins: [], reproduced_upstream_failures: [] };
 const pins = new Map((ledger.pins ?? []).map((p) => [p.op, p]));
 const reproducedLedger = new Map((ledger.reproduced_upstream_failures ?? []).map((p) => [p.op, p]));
+
+// The fixture's withheld set (reference-harness/runner/manifest.mjs): its
+// operations run and are graded when it is present; absent, the run and the
+// grade leave them out and this line says so.
+const withheld = withheldStatus(fixture);
+if (withheld) console.log(withheldLine(withheld, path.relative(repo, withheld.dir)));
 
 const hidden = { windowsHide: true };
 const wallStart = Date.now();

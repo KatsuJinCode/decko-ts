@@ -1,0 +1,8 @@
+{"id":"view:admin:Topic 001:edit_structure","op":"render","actor":"admin","card":"Topic 001","view":"edit_structure"}
+{"id":"view:admin:Report 1:preview_editor","op":"render","actor":"admin","card":"Report 1","view":"preview_editor"}
+{"id":"view:admin:Note 001:debug_server_error","op":"render","actor":"admin","card":"Note 001","view":"debug_server_error"}
+{"id":"view:admin:Ada Admin+*account:verify_url","op":"render","actor":"admin","card":"Ada Admin+*account","view":"verify_url"}
+{"id":"view:admin:Ada Admin+*account:reset_password_url","op":"render","actor":"admin","card":"Ada Admin+*account","view":"reset_password_url"}
+{"id":"view:admin:Ada Admin+*account:closure","op":"render","actor":"admin","card":"Ada Admin+*account","view":"closure"}
+{"id":"view:admin:All Topics:search_error","op":"render","actor":"admin","card":"All Topics","view":"search_error"}
+{"id":"view:admin:*all+*script:asset_output_url","op":"render","actor":"admin","card":"*all+*script","view":"asset_output_url"}

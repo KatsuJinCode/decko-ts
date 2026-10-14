@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-fixture-manifest/1",
   "fixture": "synthetic-v2",
-  "digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+  "digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2",
   "files": {
     "deck.json": "4fe9c76756fc899f03366504776a4327a7d2f88cc95c1d1256fb49d29665aa3b",
     "deck/deck.sqlite3": "40b48126ea905836a9d8fcb9fe5a478a3467bf688b37b0587001f9f322ccd6e1",
@@ -15,8 +15,20 @@
     "files/report-2.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
     "files/report-3.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
     "files/report-4.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
-    "ops/render.jsonl": "3af352ce62794fa8c51d8639622afa53e49cdb8f8bd1b1de63ccc000aba362c6",
+    "ops/render.jsonl": "65e5973133fd6a65e62f76b4b8ba416796f29ce86e3735dcbb913dde59104704",
     "ops/scenarios.json": "a7351ba72655cde4c780c8b0fd36fa8e9e538c5ebed914d19ebaf3c87dd55c49",
     "ops/semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "withheld": {
+    "label": "machine-specific backtraces",
+    "why": "These render operations' recorded oracle answers are Decko's admin error view (card-mod-format set/all/html/error.rb), which shows the exception backtrace to an admin actor; the recorded bytes therefore carry the capturing machine's filesystem paths. Captured text is never rewritten, so the whole operations and their recorded answers are kept out of the public package. The runner and grader run and grade them when this set is present and report them as NOT RUN when it is absent.",
+    "ops": {
+      "render": 8
+    },
+    "files": {
+      "expected/render.jsonl.gz": "92efeef916d3ad9db4b78b0905cbb5919a608f837ae278752d17eabd2652a5db",
+      "ops/render.jsonl": "cac7265dd48d079e3685b7cedbfbc77da5767065b9cef3635d86929135304336",
+      "withheld.json": "891ead1a5efbdaf0509acde3de527e9b965c7962b335d9bf5743da190ed8a848"
+    }
   }
 }
