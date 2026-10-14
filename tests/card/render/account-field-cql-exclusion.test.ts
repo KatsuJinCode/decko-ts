@@ -106,8 +106,16 @@ async function buildDeck(
   // seedCard writes through storage.counting (the shared render-test seam),
   // so this deck is seeded through the same two calls every other render test
   // uses rather than a hand-written INSERT that could drift from the schema.
+  // The engine is real, not a placeholder: seedCard's lexicon and rule-cache
+  // invalidation both reach for it.
   const counting = new CountingRenderDriver(driver);
-  const storage = { engine: undefined, fetcher: new FetchEngine(counting), counting, close: () => undefined } as unknown as RenderTestStorage;
+  const fetcher = new FetchEngine(counting);
+  const storage: RenderTestStorage = {
+    engine: new RenderEngine(fetcher),
+    fetcher,
+    counting,
+    close: () => driver.close(),
+  };
   let nextId = 10;
   const codenames = [
     ...(opts.withAccountSubstrate ? ACCOUNT_FIELD_CODENAMES.map((f) => f.codename) : []),
