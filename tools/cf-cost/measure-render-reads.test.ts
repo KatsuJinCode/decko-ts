@@ -158,7 +158,9 @@ async function accountRender(driver: CountingDriver, html: string, label: string
       idxTables.set(r.name as string, t);
       const col = (await driver.query(
         `SELECT name FROM pragma_index_info('${String(r.name)}') ORDER BY seqno LIMIT 1`, [])).rows[0]?.name;
-      leadingCol.set(r.name as string, String(col));
+      // An expression index has no named leading column (pragma_index_info
+      // reports NULL); it is accounted below as an upper bound, not probed.
+      if (col !== null && col !== undefined) leadingCol.set(r.name as string, String(col));
     }
   }
   const countCache = new Map<string, number>();
@@ -186,6 +188,11 @@ async function accountRender(driver: CountingDriver, html: string, label: string
         estEach += 1; parts.push(`uniq(${idx})=1`);
       } else {
         const table = idxTables.get(idx) ?? "cards";
+        if (idxTables.has(idx) && !leadingCol.has(idx)) {
+          const size = tableSizes.get(table) ?? 0;
+          estEach += size; parts.push(`${idx}(expression)<=${size}`);
+          continue;
+        }
         const col = leadingCol.get(idx) ?? "id";
         // trash is a LITERAL in engine SQL (" AND trash = 0"); bound params feed
         // the seek columns, which take params[0] in every inventoried shape.
