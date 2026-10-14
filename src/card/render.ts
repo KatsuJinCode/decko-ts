@@ -8818,9 +8818,9 @@ export class RenderEngine implements RenderEngineLike {
   /** options_card (options_api.rb:47-48) minus the permission-abstract
    *  override (excluded at the gate):
    *  rule_card(:content_options) || right_type_options || Card[:all].
-   *  rule_card rides the SAME rule-name algebra + storage walk the
-   *  view-override lookup uses (findRule -> ruleNamesForCard, the
-   *  pattern-precedence candidate walk). Memoized per card key. */
+   *  rule_card rides the shared rule-name algebra + storage walk
+   *  (findRule -> ruleNamesForCard, the pattern-precedence candidate
+   *  walk). Memoized per card key. */
   private async resolveOptionsCard(card: RenderCard): Promise<RenderCard | undefined> {
     const cached = this.optionsCardCache.get(card.key);
     if (this.optionsCardCache.has(card.key)) return cached;
@@ -8893,8 +8893,8 @@ export class RenderEngine implements RenderEngineLike {
     const settings = ["*content options", "*help", "*structure", "*default"];
 
     for (const settingName of settings) {
-      // Walk the host's rule-card candidates for this setting: the SAME
-      // ruleNamesForCard algebra the rule-card view-override uses. Each
+      // Walk the host's rule-card candidates for this setting, through the
+      // shared ruleNamesForCard algebra. Each
       // candidate, when it resolves to a real card, gets parsed DIRECTLY
       // if it's a search-type rule (the rules editor's nested render
       // triggers Abstract::CqlSearch#item_type_id on the rule itself,
