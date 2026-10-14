@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-14T20:01:35.766Z
+Generated: 2026-10-14T20:37:08.718Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -23,8 +23,8 @@ A mod is **behaviour-complete** only when every view it declares (any format) is
 
 Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
-- `synthetic-v1`: verdict pass, 1754/1754 rendering ops identical; engine commit e230c7c72effd173237e44f2646d23b23256eb7b, graded 2026-10-14T19:51:29.036Z
-- `synthetic-v2`: verdict fail, 2516/2581 rendering ops identical; engine commit e230c7c72effd173237e44f2646d23b23256eb7b, graded 2026-10-14T19:51:33.280Z
+- `synthetic-v1`: verdict pass, 1754/1754 rendering ops identical; engine commit deb0be4faa78ff7166b3400b297bd89941f3f4bb, graded 2026-10-14T20:37:06.231Z
+- `synthetic-v2`: verdict fail, 2520/2581 rendering ops identical; engine commit deb0be4faa78ff7166b3400b297bd89941f3f4bb, graded 2026-10-14T20:36:37.187Z
 
 | mod | behaviour | views | graded identical | graded differs | test-pinned | unexercised views | events | events named by a test | unexercised events |
 |-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|
@@ -68,7 +68,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-account-events.test.ts`, `tests/card/mod-loader/card-mod-account-fields.test.ts`, `tests/card/mod-loader/card-mod-account-forms.test.ts`, `tests/card/mod-loader/card-mod-account-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-account.test.ts`
 - views graded identical: base:raw (2 ops), base:token_expiry (1 ops), html:account_tab (1 ops), html:closed_account (1 ops), html:configs (1 ops), html:content_formgroups (1 ops), html:edit (2 ops), html:edit_buttons (1 ops), html:link_with_checkbox (1 ops), html:new (2 ops), html:new_buttons (1 ops), html:one_line_content (1 ops), html:open (1 ops), html:open_content (1 ops), html:reset_password_success (1 ops), html:title (1 ops), html:token_expiry (1 ops)
-- views graded but differing: base:reset_password_days [synthetic-v2#view:admin:Ada Admin+*account:reset_password_days], base:token_days [synthetic-v2#view:admin:Ada Admin+*account:token_days], base:verify_days [synthetic-v2#view:admin:Ada Admin+*account:verify_days], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:setup [synthetic-v2#view:admin:Quinn Contractor:setup]
+- views graded but differing: base:reset_password_days [synthetic-v2#view:admin:Ada Admin+*account:reset_password_days], base:token_days [synthetic-v2#view:admin:Ada Admin+*account:token_days], base:verify_days [synthetic-v2#view:admin:Ada Admin+*account:verify_days], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:setup [synthetic-v2#view:admin:Quinn Contractor:setup]
 - views test-pinned only: base:closure
 - views unexercised: base:reset_password_url, base:verify_url
 - events unexercised: (none)
@@ -86,7 +86,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-api_key.test.ts`
 - views graded identical: html:api_key (1 ops), html:buttons (1 ops), html:current (1 ops), html:generate_button (1 ops), html:token_link (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: json:token
 - views unexercised: (none)
 - events unexercised: (none)
@@ -95,7 +95,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-assets.test.ts`
 - views graded identical: base:not_found (1 ops), html:javascript_include_tag (1 ops), html:stylesheet_include_tag (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: base:asset_output_url
 - events unexercised: (none)
@@ -113,7 +113,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts`, `tests/card/mod-loader/card-mod-bootstrap.test.ts`
 - views graded identical: html:bar_bottom (1 ops), html:bar_left (1 ops), html:bar_middle (1 ops), html:bar_right (1 ops), html:carousel (1 ops), html:customize_button (1 ops), html:icons (1 ops), html:input (1 ops), html:one_line_content (1 ops), html:progress_bar (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -122,7 +122,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-carrierwave-events.test.ts`, `tests/card/mod-loader/card-mod-carrierwave-when-predicates.test.ts`, `tests/card/mod-loader/card-mod-carrierwave.test.ts`
 - views graded identical: base:inline (1 ops), base:one_line_content (1 ops), base:source (1 ops), html:full_width (1 ops), html:input (1 ops), html:link_tag (1 ops), html:source (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:content_changes [synthetic-v2#view:admin:*favicon:content_changes], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:content_changes [synthetic-v2#view:admin:*favicon:content_changes], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: css:core, file:core, json:image_complete
 - views unexercised: css:content, email_html:inline, html:preview_editor, json:content
 - events unexercised: mark_remove_, remove_, remove_previously_stored_, reset_previous_changes_for_, store_
@@ -140,7 +140,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-comment-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-comment-save-event.test.ts`, `tests/card/mod-loader/card-mod-comment.test.ts`
 - views graded identical: base:comment_box (2 ops), base:input (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -149,7 +149,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-content.test.ts`
 - views graded identical: html:bar_middle (1 ops), html:file_size (1 ops), html:input (1 ops), html:one_line_content (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -158,7 +158,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-date.test.ts`
 - views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -176,7 +176,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-email-raw-oracle.test.ts`, `tests/card/mod-loader/card-mod-email.test.ts`
 - views graded identical: html:content (1 ops), html:email_page (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: email_html:compact_missing, email_html:core, email_html:unknown, email_text:compact_missing, email_text:last_action, email_text:unknown
 - views unexercised: (none)
 - events unexercised: (none)
@@ -185,7 +185,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-follow-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-follow-views.test.ts`, `tests/card/mod-loader/card-mod-follow.test.ts`
 - views graded identical: base:followed (1 ops), base:follower (1 ops), base:last_action_verb (1 ops), base:list_of_changes (1 ops), base:subedit_notice (1 ops), base:subedits (1 ops), base:unfollow_url (1 ops), html:confirm_update_all (1 ops), html:edit (2 ops), html:edit_buttons (1 ops), html:follow_button (2 ops), html:follow_item (1 ops), html:follow_status (1 ops), html:follow_tab (1 ops), html:ignore_tab (1 ops), html:one_line_content (1 ops), html:rule_editor (1 ops), html:status (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors]
 - views test-pinned only: (none)
 - views unexercised: json:follow_status
 - events unexercised: cache_expired_for_new_set, cache_expired_for_type_change, expire_preferences_cache, notify_followers_after_delete, notify_followers_after_save, silence_notifications, stash_followers
@@ -194,7 +194,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-format-async-head-views.test.ts`, `tests/card/mod-loader/card-mod-format-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-format-head-header-views.test.ts`, `tests/card/mod-loader/card-mod-format-hidden-content-field-view.test.ts`, `tests/card/mod-loader/card-mod-format-remaining-views.test.ts`, `tests/card/mod-loader/card-mod-format-smart-label.test.ts`, `tests/card/mod-loader/card-mod-format-toggle-raises.test.ts`, `tests/card/mod-loader/card-mod-format.test.ts`
 - views graded identical: base:acted_at (1 ops), base:bad_address (1 ops), base:blank (1 ops), base:closed (1 ops), base:closed_content (1 ops), base:codename (1 ops), base:compact_missing (1 ops), base:content (1 ops), base:created_at (1 ops), base:denial (1 ops), base:home_path (1 ops), base:home_url (1 ops), base:id_url (1 ops), base:key (1 ops), base:label (1 ops), base:labeled (1 ops), base:labeled_content (1 ops), base:link (1 ops), base:linkname (1 ops), base:name (1 ops), base:nav_link (1 ops), base:not_found (1 ops), base:one_line_content (1 ops), base:open (1 ops), base:open_content (1 ops), base:page_title (1 ops), base:raw (2 ops), base:raw_one_line_content (1 ops), base:server_error (1 ops), base:smart_label (1 ops), base:text_without_nests (1 ops), base:title (1 ops), base:title_link (1 ops), base:titled (1 ops), base:titled_content (1 ops), base:type (1 ops), base:unknown (1 ops), base:updated_at (1 ops), base:url (1 ops), base:url_link (1 ops), html:add_button (1 ops), html:add_link (1 ops), html:add_url (1 ops), html:admin (1 ops), html:bar_right (1 ops), html:board_link (1 ops), html:compact_missing (1 ops), html:configure_button (1 ops), html:configure_link (1 ops), html:conflict (1 ops), html:content (1 ops), html:content_panel (1 ops), html:content_with_title (1 ops), html:demo (1 ops), html:denial (1 ops), html:edit_button (2 ops), html:edit_link (2 ops), html:favicon_tag (1 ops), html:flash (1 ops), html:full_page_link (1 ops), html:head (1 ops), html:header (1 ops), html:header_title (1 ops), html:help_link (1 ops), html:hidden_content_field (1 ops), html:input (1 ops), html:labeled (1 ops), html:labeled_editor (1 ops), html:menu (1 ops), html:menu_block (1 ops), html:meta_tags (1 ops), html:mini_unknown (1 ops), html:not_found (1 ops), html:one_line_content (1 ops), html:page_title_tag (1 ops), html:raw_one_line_content (1 ops), html:server_error (1 ops), html:short_content (1 ops), html:stylesheet_tags (1 ops), html:title (1 ops), html:title_link (1 ops), html:title_no_link (1 ops), html:titled (1 ops), html:type (1 ops), html:type_info (1 ops), html:universal_edit_button (1 ops), html:unknown (1 ops), html:view_list (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:errors [synthetic-v2#view:admin:Nonexistent Card:errors], base:id [synthetic-v2#view:admin:Topic 001:id], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors], html:rss_links [synthetic-v2#view:admin:Home:rss_links]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:errors [synthetic-v2#view:admin:Nonexistent Card:errors], base:id [synthetic-v2#view:admin:Topic 001:id], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:errors [synthetic-v2#view:admin:Nonexistent Card:errors], html:rss_links [synthetic-v2#view:admin:Home:rss_links]
 - views test-pinned only: css:content, css:titled, css:unknown, css:url, csv:header, csv:titled, csv:unknown, data:content, data:core, file:core, file:style, json:bad_address, json:denial, json:errors, json:not_found, json:server_error, jsonld:denial, jsonld:errors, jsonld:not_found, jsonld:server_error, rss:closed, rss:content, rss:menu, rss:open, text:core, yaml:core
 - views unexercised: css:import, csv:body, csv:row, data:ancestors, data:atom, data:cast, data:items, data:links, data:molecule, data:nucleus, data:pod, html:debug_server_error, js:source, json:page, json:status, jsonld:format_unsupported, jsonld:items, jsonld:test, rss:comment_box, rss:feed, rss:feed_body, rss:feed_description, rss:feed_item, rss:feed_item_description, rss:feed_title, rss:open_content
 - events unexercised: validate_json, validate_number
@@ -230,7 +230,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-layout-mycard-views.test.ts`, `tests/card/mod-loader/card-mod-layout.test.ts`
 - views graded identical: html:bar_bottom (1 ops), html:close_modal_link (1 ops), html:edit_inline (2 ops), html:head_content (1 ops), html:input (1 ops), html:invite (1 ops), html:modal (2 ops), html:modal_footer (1 ops), html:modal_link (2 ops), html:modal_menu (1 ops), html:modal_title (1 ops), html:my_card (2 ops), html:nav_item (1 ops), html:nav_link_in_dropdown (1 ops), html:navbar_links (1 ops), html:one_line_content (1 ops), html:overlay_header (1 ops), html:overlay_help_link (1 ops), html:overlay_menu (1 ops), html:overlay_title (1 ops), html:pop_out_modal_link (1 ops), html:sign_out (1 ops), html:sign_up (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:sign_in [synthetic-v2#view:anonymous:*account links:sign_in]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:sign_in [synthetic-v2#view:anonymous:*account links:sign_in]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -239,7 +239,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-list-checkbox-editor.test.ts`, `tests/card/mod-loader/card-mod-list-select-editor.test.ts`, `tests/card/mod-loader/card-mod-list.test.ts`
 - views graded identical: html:input (1 ops), html:list (1 ops), html:nest_list_input (1 ops), html:one_line_content (1 ops), html:view_list (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: css:content, data:content, json:content
 - views unexercised: css:titled, csv:core, data:core, js:core, json:links
 - events unexercised: (none)
@@ -248,7 +248,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-markdown.test.ts`
 - views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -257,7 +257,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-permissions.test.ts`
 - views graded identical: html:input (1 ops), html:one_line_content (1 ops), html:pointer_core (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -266,7 +266,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-recaptcha-form-hooks.test.ts`, `tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts`, `tests/card/mod-loader/card-mod-recaptcha.test.ts`
 - views graded identical: (none)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: (none)
 - views unexercised: (none)
 - events unexercised: (none)
@@ -275,7 +275,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-rules-nest-oracle-pinned.test.ts`, `tests/card/mod-loader/card-mod-rules-views-2.test.ts`, `tests/card/mod-loader/card-mod-rules-views-3.test.ts`, `tests/card/mod-loader/card-mod-rules-views.test.ts`, `tests/card/mod-loader/card-mod-rules.test.ts`
 - views graded identical: html:accordion_bar_list (1 ops), html:accordion_rule_list (1 ops), html:bar (2 ops), html:bar_bottom (1 ops), html:bar_middle (1 ops), html:bar_right (1 ops), html:bar_setting_list (1 ops), html:board_rules_tab (1 ops), html:card_select (1 ops), html:filtered_accordion_rule_list (1 ops), html:grouped_list (1 ops), html:help_text (1 ops), html:input (1 ops), html:modal_nest_rules (1 ops), html:modal_pill_setting_list (1 ops), html:modal_rule (1 ops), html:nest_rules (1 ops), html:one_line_content (1 ops), html:overlay_rule (1 ops), html:overlay_rule_list_link (1 ops), html:overlay_title (1 ops), html:pill_setting_list (1 ops), html:quick_edit_setting_list (1 ops), html:quick_edit_success (1 ops), html:raw_one_line_content (1 ops), html:rule_board_link (1 ops), html:rule_edit (1 ops), html:rule_help (1 ops), html:rule_nest_editor_link (1 ops), html:set_label (1 ops), html:template_link (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:quick_edit [synthetic-v2#view:admin:*all+*read:quick_edit; synthetic-v2#view:anonymous:*all+*read:quick_edit], html:rule_form [synthetic-v2#view:admin:*all+*create:rule_form], html:rule_form_card_editor [synthetic-v2#view:admin:*all+*create:rule_form_card_editor]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:quick_edit [synthetic-v2#view:admin:*all+*read:quick_edit; synthetic-v2#view:anonymous:*all+*read:quick_edit], html:rule_form [synthetic-v2#view:admin:*all+*create:rule_form], html:rule_form_card_editor [synthetic-v2#view:admin:*all+*create:rule_form_card_editor]
 - views test-pinned only: data:core
 - views unexercised: (none)
 - events unexercised: (none)
@@ -284,7 +284,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-script.test.ts`
 - views graded identical: html:javascript_include_tag (1 ops), html:javascript_tags (1 ops), html:remote_script_tags (1 ops), html:script_calls (1 ops), html:script_variables (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: js:core
 - views unexercised: js:compressed
 - events unexercised: (none)
@@ -293,7 +293,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-search-list-oracle-pinned.test.ts`, `tests/card/mod-loader/card-mod-search-read-scope.test.ts`, `tests/card/mod-loader/card-mod-search.test.ts`
 - views graded identical: base:card_list (1 ops), base:no_search_results (1 ops), base:title (1 ops), html:add_autocomplete_item (1 ops), html:bar (2 ops), html:card_list (1 ops), html:checkbox_list (1 ops), html:goto_autocomplete_item (1 ops), html:no_search_results (1 ops), html:one_line_content (1 ops), html:results_for_keyword (1 ops), html:search_box (1 ops), html:title (1 ops)
-- views graded but differing: base:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:count [synthetic-v2#view:admin:All Topics:count], base:search_count [synthetic-v2#view:admin:All Topics:search_count], html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:count [synthetic-v2#view:admin:All Topics:count]
+- views graded but differing: base:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], base:count [synthetic-v2#view:admin:All Topics:count], base:search_count [synthetic-v2#view:admin:All Topics:search_count], html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search], html:count [synthetic-v2#view:admin:All Topics:count]
 - views test-pinned only: base:search_error, json:select2_option
 - views unexercised: csv:body, data:card_list, json:complete, json:molecule, json:name_complete, json:name_match, json:search_box_complete, rss:feed_body, rss:feed_item_description
 - events unexercised: (none)
@@ -311,7 +311,7 @@ Grades this verdict rests on (`tools/compat-report/graded-ops.json`):
 
 - tests linked: `tests/card/mod-loader/card-mod-style-harness-probe.test.ts`, `tests/card/mod-loader/card-mod-style.test.ts`
 - views graded identical: html:box (1 ops), html:box_bottom (1 ops), html:box_middle (1 ops), html:customize_button (1 ops), html:remote_include_tags (1 ops), html:remote_style_tags (1 ops), html:stylesheet_include_tag (1 ops), html:stylesheet_path (1 ops)
-- views graded but differing: html:core [synthetic-v2#core:admin:Topic 001+discussion; synthetic-v2#core:anonymous:Topic 001+discussion; synthetic-v2#core:admin:Topic 002+discussion; synthetic-v2#core:anonymous:Topic 002+discussion; synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
+- views graded but differing: html:core [synthetic-v2#core:admin:*search; synthetic-v2#core:anonymous:*search]
 - views test-pinned only: css:compiled, css:compressed, css:core, css:import, scss:core, scss:labeled
 - views unexercised: css:concat
 - events unexercised: (none)

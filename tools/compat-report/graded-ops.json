@@ -3,9 +3,9 @@
  "grades": [
   {
    "fixture": "synthetic-v1",
-   "adapter_commit": "e230c7c72effd173237e44f2646d23b23256eb7b",
+   "adapter_commit": "deb0be4faa78ff7166b3400b297bd89941f3f4bb",
    "adapter_dirty": false,
-   "graded_at": "2026-10-14T19:51:29.036Z",
+   "graded_at": "2026-10-14T20:37:06.231Z",
    "verdict": "pass",
    "rendering": {
     "graded": 1754,
@@ -7025,14 +7025,14 @@
   },
   {
    "fixture": "synthetic-v2",
-   "adapter_commit": "e230c7c72effd173237e44f2646d23b23256eb7b",
+   "adapter_commit": "deb0be4faa78ff7166b3400b297bd89941f3f4bb",
    "adapter_dirty": false,
-   "graded_at": "2026-10-14T19:51:33.280Z",
+   "graded_at": "2026-10-14T20:36:37.187Z",
    "verdict": "fail",
    "rendering": {
     "graded": 2581,
-    "pass": 2516,
-    "fail": 41
+    "pass": 2520,
+    "fail": 37
    },
    "ops": {
     "page:anonymous:Topic": {
@@ -14517,11 +14517,11 @@
     },
     "core:admin:Topic 001+discussion": {
      "view": "core",
-     "result": "differs"
+     "result": "identical"
     },
     "core:anonymous:Topic 001+discussion": {
      "view": "core",
-     "result": "differs"
+     "result": "identical"
     },
     "page:anonymous:Topic 002+discussion": {
      "view": null,
@@ -14541,11 +14541,11 @@
     },
     "core:admin:Topic 002+discussion": {
      "view": "core",
-     "result": "differs"
+     "result": "identical"
     },
     "core:anonymous:Topic 002+discussion": {
      "view": "core",
-     "result": "differs"
+     "result": "identical"
     },
     "page:anonymous:Note+*type+*help": {
      "view": null,

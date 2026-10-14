@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T20:01:35.766Z",
+  "generatedAt": "2026-10-14T20:37:08.718Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -333,9 +333,9 @@
   "grades": [
     {
       "fixture": "synthetic-v1",
-      "adapter_commit": "e230c7c72effd173237e44f2646d23b23256eb7b",
+      "adapter_commit": "deb0be4faa78ff7166b3400b297bd89941f3f4bb",
       "adapter_dirty": false,
-      "graded_at": "2026-10-14T19:51:29.036Z",
+      "graded_at": "2026-10-14T20:37:06.231Z",
       "verdict": "pass",
       "rendering": {
         "graded": 1754,
@@ -345,14 +345,14 @@
     },
     {
       "fixture": "synthetic-v2",
-      "adapter_commit": "e230c7c72effd173237e44f2646d23b23256eb7b",
+      "adapter_commit": "deb0be4faa78ff7166b3400b297bd89941f3f4bb",
       "adapter_dirty": false,
-      "graded_at": "2026-10-14T19:51:33.280Z",
+      "graded_at": "2026-10-14T20:36:37.187Z",
       "verdict": "fail",
       "rendering": {
         "graded": 2581,
-        "pass": 2516,
-        "fail": 41
+        "pass": 2520,
+        "fail": 37
       }
     }
   ],
@@ -2172,10 +2172,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -4446,10 +4442,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -6280,10 +6272,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -8463,10 +8451,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -10333,10 +10317,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -12050,10 +12030,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -14224,10 +14200,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -15999,10 +15971,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -17809,10 +17777,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -20357,10 +20321,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -22214,10 +22174,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -24241,10 +24197,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -26496,10 +26448,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -29638,10 +29586,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -31671,10 +31615,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -33355,10 +33295,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -35254,10 +35190,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -36998,10 +36930,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -38834,10 +38762,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -40726,10 +40650,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -42804,10 +42724,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -44452,10 +44368,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -46330,10 +46242,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -48078,10 +47986,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
@@ -50233,10 +50137,6 @@
               "synthetic-v2#view:admin:mod: style+*style:core"
             ],
             "differing_ops": [
-              "synthetic-v2#core:admin:Topic 001+discussion",
-              "synthetic-v2#core:anonymous:Topic 001+discussion",
-              "synthetic-v2#core:admin:Topic 002+discussion",
-              "synthetic-v2#core:anonymous:Topic 002+discussion",
               "synthetic-v2#core:admin:*search",
               "synthetic-v2#core:anonymous:*search"
             ]
