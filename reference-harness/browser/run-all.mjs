@@ -15,7 +15,7 @@
 // journey's outcome on both engines and in the comparison).
 //
 // Steps 1 and 2 run side by side. Each engine's journeys are split over
-// --shards (Ruby, default 3) and --ts-shards (default 1) runner processes;
+// --shards (Ruby, default 4) and --ts-shards (default 1) runner processes;
 // every journey still runs alone on its own deck copy, server and browser.
 // A Ruby server takes most of a minute to boot, which is why its journeys
 // are sharded; the port's take seconds.
@@ -86,10 +86,17 @@ if (args.build !== "0") {
 if (args.decko) process.env.DECKO_MOD_PUBLIC_DIR ??= args.decko;
 step("link the mods' public files into the oracle app", "bash", [path.join(here, "engines", "ruby-server.sh"), "--link-mods"]);
 
+// TinyMCE finishes initializing outside jQuery's knowledge, and a cold Ruby
+// page is slow enough that an editor step or an observation can land before
+// it does: the editor's default content is then saved instead of the typed
+// text, or a half-built toolbar is observed. The settled-editor mode waits
+// for the editor on both engines (run-journeys.mjs, settle and setEditor).
+process.env.HARNESS_EDITOR_SETTLE ??= "1";
+
 const fixture = path.join(harness, "fixtures", "synthetic-v1");
 const journeysFile = path.join(here, "journeys", "synthetic-v1.json");
 const filter = args.filter ? ["--filter", args.filter] : [];
-const shards = { ruby: Number(args.shards ?? 3), ts: Number(args["ts-shards"] ?? 1) };
+const shards = { ruby: Number(args.shards ?? 4), ts: Number(args["ts-shards"] ?? 1) };
 console.log(`\n== journeys on ruby (${shards.ruby} shards) and ts (${shards.ts} shards)`);
 const runs = [];
 for (const engine of ["ruby", "ts"]) {
@@ -169,7 +176,11 @@ function writeSummary(file) {
     rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
   }
   const date = startedAt.toISOString().slice(0, 10);
-  const command = `npm run test:browser-journeys${args.filter ? ` -- --filter '${args.filter}'` : ""}`;
+  const extra = Object.entries(args)
+    .filter(([k]) => !["out", "summary"].includes(k))
+    // A checkout path is this machine's, not part of the command's meaning.
+    .map(([k, v]) => `--${k} ${k === "decko" ? "<decko checkout>" : /^[\w./:-]+$/.test(v) ? v : `'${v}'`}`);
+  const command = `npm run test:browser-journeys${extra.length ? ` -- ${extra.join(" ")}` : ""}`;
   const md = [
     "# Browser journeys",
     "",
