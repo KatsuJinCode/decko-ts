@@ -6,7 +6,7 @@
 //   4. Decko's own @javascript cucumber scenarios on stock Ruby Decko.
 //
 //   node reference-harness/browser/run-all.mjs --out <dir> [--decko <decko git checkout>]
-//     [--filter <regex>] [--shards <n>] [--ts-shards <n>] [--build 0] [--summary <file.md>]
+//     [--filter <regex>] [--shards <n>] [--ts-shards <n>] [--build 0] [--summary <file.md>] [--report-only 1]
 //
 // --decko names a checkout of the decko repository (its v0.20.0 tag supplies
 // the feature files); without it step 4 is skipped and says so. Results:
@@ -69,7 +69,10 @@ function runNode(script, scriptArgs, label) {
   });
 }
 
-if (args.build !== "0") {
+// --report-only 1 skips the build and the runs: it compares the results
+// already in <out> and rewrites the summary.
+const reportOnly = args["report-only"] === "1";
+if (!reportOnly && args.build !== "0") {
   step("build the port into dist/", process.execPath, [path.join(repo, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], { cwd: repo });
   // tsc emits only dist/src/**; the dist modules also import the generated
   // asset-source snapshots from vendor/.
@@ -84,7 +87,9 @@ if (args.build !== "0") {
 // public/mod, unless --decko names a checkout whose mod/*/public directories
 // the TS engine serves instead.
 if (args.decko) process.env.DECKO_MOD_PUBLIC_DIR ??= args.decko;
-step("link the mods' public files into the oracle app", "bash", [path.join(here, "engines", "ruby-server.sh"), "--link-mods"]);
+if (!reportOnly) {
+  step("link the mods' public files into the oracle app", "bash", [path.join(here, "engines", "ruby-server.sh"), "--link-mods"]);
+}
 
 // TinyMCE finishes initializing outside jQuery's knowledge, and a cold Ruby
 // page is slow enough that an editor step or an observation can land before
@@ -97,9 +102,9 @@ const fixture = path.join(harness, "fixtures", "synthetic-v1");
 const journeysFile = path.join(here, "journeys", "synthetic-v1.json");
 const filter = args.filter ? ["--filter", args.filter] : [];
 const shards = { ruby: Number(args.shards ?? 4), ts: Number(args["ts-shards"] ?? 1) };
-console.log(`\n== journeys on ruby (${shards.ruby} shards) and ts (${shards.ts} shards)`);
+if (!reportOnly) console.log(`\n== journeys on ruby (${shards.ruby} shards) and ts (${shards.ts} shards)`);
 const runs = [];
-for (const engine of ["ruby", "ts"]) {
+for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
   for (let k = 0; k < shards[engine]; k++) {
     runs.push(
       runNode(
@@ -176,11 +181,10 @@ function writeSummary(file) {
     rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
   }
   const date = startedAt.toISOString().slice(0, 10);
-  const rubyVersion = spawnSync("bundle", ["exec", "ruby", "-e", "print RUBY_VERSION"], {
+  const rubyVersion = spawnSync("bash", ["-c", "bundle exec ruby -e 'print RUBY_VERSION'"], {
     cwd: path.join(harness, "oracle", "app"),
     encoding: "utf8",
     windowsHide: true,
-    shell: process.platform === "win32",
   }).stdout?.trim();
   // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md). Ruby
   // 3.4 changed Hash#inspect from {"k"=>v} to {"k" => v}, and Rails' debug
@@ -198,7 +202,7 @@ function writeSummary(file) {
         ]
       : [];
   const extra = Object.entries(args)
-    .filter(([k]) => !["out", "summary"].includes(k))
+    .filter(([k]) => !["out", "summary", "report-only"].includes(k))
     // A checkout path is this machine's, not part of the command's meaning.
     .map(([k, v]) => `--${k} ${k === "decko" ? "<decko checkout>" : /^[\w./:-]+$/.test(v) ? v : `'${v}'`}`);
   const command = `npm run test:browser-journeys${extra.length ? ` -- ${extra.join(" ")}` : ""}`;
