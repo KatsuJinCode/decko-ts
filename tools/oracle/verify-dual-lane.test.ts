@@ -111,6 +111,7 @@ import {
 // corpus expectations.
 setCaptureWallClock(RECORDED_NOW_INSTANT);
 import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "../../tests/card/render/raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../tests/support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -329,7 +330,15 @@ function summarize(
   };
 }
 
-describe("dual-lane ground-truth verification", () => {
+// The verifier replays against the raw corpus database, which is local data
+// and not redistributed (docs/TESTING.md). Without it the suite skips loudly.
+const describeDualLane = describeOrSkipLoud(
+  !existsSync(RAW_CORPUS_DB),
+  "tools/oracle/verify-dual-lane.test.ts",
+  `raw corpus database present at ${RAW_CORPUS_DB}`,
+);
+
+describeDualLane("dual-lane ground-truth verification", () => {
   it(
     "judges expected-v2 view-lane and page-lane entries through the landed engine",
     { timeout: 86_400_000 },
