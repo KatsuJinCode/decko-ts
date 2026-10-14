@@ -54,15 +54,35 @@ cold render (`Card::Cache.reset` first) of each fixture's root in the `open`
 view.
 
 Measured 2026-10-14, Ruby 3.4.11 (x64-mingw-ucrt), decko 0.20.0, card
-1.110.0, sqlite3, on a copy of `reference-harness/fixtures/synthetic-v2/deck`:
+1.110.0, sqlite3, on copies of `reference-harness/fixtures/synthetic-v2/deck`,
+one warmup and one measured cold render per fixture. The run records are
+pinned under their SHA-256 in `benchmarks/results/runs/`:
+`deep-nesting-ruby-014bd126730480e7.json` (stock) and
+`deep-nesting-ruby-433a5529609786ab.json` (with the gem; its `config` block
+records `batched_nests_gem`, `prefetch_nests` and `prefetch_machinery`).
 
 | Fixture | Cards | Stock 0.20.0 | With card-mod-batched-nests |
 |---|---:|---:|---:|
 | chain d1 | 1 | 4 | 3 |
+| chain d2 | 2 | 5 | 4 |
+| chain d4 | 4 | 7 | 6 |
+| chain d8 | 8 | 11 | 10 |
+| chain d10 | 10 | 13 | 12 |
+| chain d16 | 16 | 19 | 18 |
 | chain d20 | 20 | 23 | 22 |
+| fan f1 | 2 | 5 | 4 |
+| fan f4 | 5 | 8 | 4 |
+| fan f16 | 17 | 20 | 4 |
+| fan f50 | 51 | 54 | 4 |
+| fan f100 | 101 | 104 | 4 |
 | fan f200 | 201 | 204 | 4 |
 | tree d4xf4 | 341 | 344 | 8 |
 | tree d3xf10 | 1,111 | 1,114 | 9 |
+
+Chains of 50, 100 and 200 cards exceed Decko's `max_depth` of 20 and are
+refused by both, as in stock Decko; those rows are in the run records. A chain
+is one nest per level, so batching a level saves nothing there; the one query
+saved is machinery batching.
 
 To reproduce, from `reference-harness/oracle/app` on a copy of a deck
 (`BUNDLE_GEMFILE=Gemfile.batched` for the gem, unset for stock):
@@ -135,9 +155,26 @@ Three adapters share it:
 
 `adapters/ruby-batched` runs the same oracle app and `adapter.rb` under
 `app/Gemfile.batched` (`oracle/run-adapter.sh batched`), so a grade of it
-against the stock captures is a second check that the gem changes no output:
+against the stock captures is a second check that the gem changes no output.
+
+Graded 2026-10-14 on `fixtures/synthetic-v1` (fixture digest `7a96292d…`),
+adapter checkout `71b43a84` (clean), Ruby 3.4.11 x64-mingw-ucrt, normalisation
+N1–N3; report in `reference-harness/grade-reports/synthetic-v1-ruby-batched-report.json`:
+
+| Kind | Graded | Pass |
+|---|---:|---:|
+| rendering | 1,754 | 1,754 |
+| semantics | 2,389 | 2,389 |
+| persistence | 16 | 16 |
+| side effects | 19 | 19 |
+| reads that wrote only what the oracle's reads wrote | 8 | 8 |
+| write steps whose other tables match the oracle's | 12 | 12 |
+
+Verdict: pass. The report's `actual` field names where the results were
+written; it is replaced by a placeholder because that directory was outside
+the checkout.
 
 ```bash
-node runner/run.mjs --adapter adapters/ruby-batched/adapter.json --fixture fixtures/synthetic-v2 --out <resultsDir>
-node runner/grade.mjs --fixture fixtures/synthetic-v2 --actual <resultsDir> --report report.json
+node runner/run.mjs --adapter adapters/ruby-batched/adapter.json --fixture fixtures/synthetic-v1 --out <resultsDir>
+node runner/grade.mjs --fixture fixtures/synthetic-v1 --actual <resultsDir> --report report.json
 ```

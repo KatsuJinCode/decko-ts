@@ -356,7 +356,11 @@ payload = {
 
 File.write(OUT_PATH, JSON.pretty_generate(payload) + "\n")
 puts "wrote #{OUT_PATH}"
-puts "cleanup: #{deleted} deleted, #{remaining_live} remaining live (must be 0)"
+if SKIP_CLEANUP
+  puts "cleanup skipped: #{remaining_live} bench cards left in the throwaway deck"
+else
+  puts "cleanup: #{deleted} deleted, #{remaining_live} remaining live (must be 0)"
+end
 unless SKIP_CLEANUP || remaining_live.zero?
   abort "bench cleanup failed: #{remaining_live} BenchDN cards still live"
 end
