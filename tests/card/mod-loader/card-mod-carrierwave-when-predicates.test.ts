@@ -15,7 +15,9 @@
 //   set/abstract/attachment/01_storage_type.rb:28-30  local?
 //   set/abstract/attachment/cloud.rb:118-120          change_bucket_if_read_only?
 //   set/abstract/attachment/coded.rb:26-28           uncode?
-//   mod/history/set/all/history.rb:6-8                no_history?
+//
+// no_history? (mod/history/set/all/history.rb:6-8) is the history mod's
+// predicate; it is tested with that table (event-predicate-structure-table).
 //
 // The state those bodies read is the carrierwave source's
 // (mod-loader/mod-event-state-sources.ts), exercised here directly against
@@ -292,16 +294,6 @@ describe("uncode? (coded.rb:26-28)", () => {
   it("is false when the stored card is not coded (current.coded?)", () => {
     expect(when("uncode?", { currentStorageType: "local" })).toBe(false);
     expect(when("uncode?", {})).toBe(false);
-  });
-});
-
-describe("no_history? (history.rb:6-8): !history?", () => {
-  it("is the negation of history?", () => {
-    expect(when("no_history?", { history: true })).toBe(false);
-    expect(when("no_history?", { history: false })).toBe(true);
-    // Ruby defines history? (history.rb:1-3) and the history source always
-    // populates it, so an absent field is a card that records history.
-    expect(when("no_history?")).toBe(false);
   });
 });
 

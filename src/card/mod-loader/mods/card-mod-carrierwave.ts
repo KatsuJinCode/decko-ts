@@ -854,11 +854,6 @@ export const carrierwaveModEventPredicates = {
     !present(card.assignedMod) &&
     storageTypeIs(card, "coded") === false &&
     card.currentStorageType === "coded",
-  /** no_history? (mod/history/set/all/history.rb:6-8): `!history?`. The
-   *  method lives in the history mod, but the carrierwave mount is the
-   *  only `when:` user of it in this port (card_mount.rb:37/:46/:51), so
-   *  it is declared with the mount's events. */
-  "no_history?": (card: ModEventCard): boolean => card.history === false,
 } as const;
 
 // ---------------------------------------------------------------------------
