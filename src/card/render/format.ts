@@ -3912,10 +3912,11 @@ export interface RenderEngineLike {
    *  Optional: engines without a prepared session chrome never carry the
    *  roles nest. */
   markSessionRolesContentFilled?(): void;
-  /** Blank the request's ensure_roles fill without touching the prepared
-   *  chrome (RenderEngine.blankSessionRolesFill): the page path's warm pass
-   *  is not a served render, so a roles-nest render inside it must not
-   *  decide which variant the layout pass reads. Optional. */
+  /** Drop the current pass's ensure_roles consumption, keeping the
+   *  committed card-cache state (RenderEngine.blankSessionRolesFill): the
+   *  page path's warm pass is not a served render, so a roles-nest render
+   *  inside it must not decide which variant the layout pass reads.
+   *  Optional. */
   blankSessionRolesFill?(): void;
   /** ok?(:update) for an arbitrary card, computed on demand (the page head's
    *  universal_edit_button perms: :update gate — card-mod-format
