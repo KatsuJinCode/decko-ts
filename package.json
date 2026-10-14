@@ -49,6 +49,7 @@
   "dependencies": {
     "@cf-wasm/photon": "0.4.0",
     "coffeescript": "^1.12.2",
+    "mysql2": "^3.24.6",
     "sass": "1.105.0"
   }
 }
