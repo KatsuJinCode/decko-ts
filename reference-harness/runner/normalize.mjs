@@ -3,19 +3,20 @@
 //
 // - A mask erases a value. A mask is allowed only for a field shown to vary
 //   between two runs of the same oracle on the same fixture, and it is as
-//   narrow as that field's exact shape. There is one: N1.
+//   narrow as that field's exact shape: N1. The one exception is N6, the
+//   backtrace frame list in an admin debug page, which is the raising
+//   engine's own call stack and so cannot be shared by two engines.
 // - A plain canonical form compares the same value in another encoding and
 //   erases nothing: N2, JSON key order, and N3, class-token order inside a
 //   `class` attribute.
 // - A canonical form over a volatile value replaces values that are a pure
 //   function of something outside the engines (a per-process hash seed, the
-//   capture clock, the capture host's filesystem, the host VM's stack format,
-//   the host language's error naming) with one placeholder, so the comparison
-//   sees only what the engines themselves decide. The surrounding bytes still
-//   count: an engine whose output differs anywhere outside the volatile span
-//   still fails. There are five: N4 (collapse ids), N5 (relative-time spans),
-//   N6 (backtrace frame lines), N7 (capture-host debug content), N8 (an
-//   error record's class name).
+//   capture clock, the capture host's filesystem, the host language's error
+//   naming) with one placeholder, so the comparison sees only what the
+//   engines themselves decide. The surrounding bytes still count: an engine
+//   whose output differs anywhere outside the volatile span still fails.
+//   There are four: N4 (collapse ids), N5 (relative-time spans), N7
+//   (capture-host debug content), N8 (an error record's class name).
 //
 // Application is structural, not textual: the rules run inside a walk of the
 // HTML's real grammar, so a mask lands only where an attribute can be, a
@@ -32,8 +33,8 @@
  * (`Card::Error::CodenameNotFound`, module path included); the engine names
  * its own Error subclass through the host language's convention
  * (`CodenameNotFoundError`, flat, suffixed). A class NAME is the host
- * language's identity in the same class as N7's capture-host content and N6's
- * frame lines: no port can emit the other language's naming. The canonical
+ * language's identity in the same class as N7's capture-host content: no
+ * port can emit the other language's naming. The canonical
  * form keeps the class's name proper - the terminal `::` segment of the Ruby
  * path, with one trailing `Error` suffix (the JS subclass convention) dropped
  * from either side - so a reproduced failure must still be THE SAME failure:
@@ -149,8 +150,8 @@ export const RELATIVE_TIME =
  * capture from another host - or the same deck captured after a checkout
  * move - differs in them while saying the same thing. Inside a title that
  * begins with the debug page marker they become placeholders; the error
- * message, the frame COUNT (N6) and every byte outside the title still
- * count. The eight oracle operations that carry the debug page are not in the
+ * message and every byte outside the title still count (the frame list
+ * itself is N6's). The eight oracle operations that carry the debug page are not in the
  * public package, so this rule's effect on them cannot be re-measured from
  * shipped files (reference-harness/NORMALIZATION-EVIDENCE.md#n7-capture-host-content-in-debug-pages).
  * The engine emits the same debug page where it raises, as stock Ruby does
@@ -166,38 +167,29 @@ const CAPTURE_HOST_PATH = /\b[A-Za-z]:[/\\][^\s<>&":]+/g;
 const HEAP_ADDRESS = /0x[0-9a-fA-F]{6,16}/g;
 
 /**
- * N6. A backtrace frame line, inside a render-error span title's backtrace
- * div. Ruby's debug page embeds `exception.backtrace * "<br>\n"` - the
- * raising VM's own stack, one line per frame. The two sides run different
- * languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
- * boot-inclusive, dozens of frames from the process's startup up), the
- * engine's are V8's (`at fn (file:///path:line:col)`). A frame line is the
- * host VM's identity - its language, its paths, its boot history - in the
- * same class as N7's capture-host content: no port can emit the other
- * language's stack, and nothing in the oracle's semantics lives in a
- * frame's TEXT. Each frame line therefore becomes the one placeholder
- * `N6#frame`, and the frame COUNT becomes the checkable invariant: the
- * `<br>`-separated structure stays compared, so a side emitting a different
- * number of its own frames still fails, as do the heading, the error
- * message and every byte outside the div (they keep their existing rules).
- * The eight oracle debug pages are not in the public package. Their recorded
- * frame counts (51-63 Ruby frames against 8-10 V8 frames, the V8 count capped
- * by Node's Error.stackTraceLimit of 10) are kept in
- * reference-harness/NORMALIZATION-EVIDENCE.md#n6-backtrace-frame-lines and
- * cannot be re-measured from shipped files.
+ * N6. The backtrace frame list inside a render-error span title's debug
+ * page. Ruby's debug page embeds `exception.backtrace * "<br>\n"`: the call
+ * stack of the engine that raised. A backtrace is engine-specific by
+ * definition - the oracle's is Ruby's (`path:line:in \`method'`, including
+ * the frames of its boot and of the capture harness), a port's is its own
+ * language's - so neither its text nor its frame count says anything about
+ * the oracle's semantics, and no port can honestly emit the other engine's
+ * stack. The whole frame list (everything between the div's open and close)
+ * therefore becomes the one placeholder `N6#frames` on both sides. The div
+ * itself, the heading, the error message and every byte outside the div
+ * still compare exactly (N7 still applies to the message). The eight oracle
+ * debug pages are the fixture's withheld set; the measured effect is in
+ * reference-harness/NORMALIZATION-EVIDENCE.md#n6-backtrace-frame-list.
  */
-export const FRAME_MARKER = "N6#frame";
+export const FRAME_MARKER = "N6#frames";
 // The debug page's backtrace div: the region between the message paragraph's
 // close and the div's close, both html-escaped inside the title attribute.
-// The frames are joined by the escaped Ruby join separator; splitting on it
-// yields one segment per frame line.
 const BACKTRACE_DIV = /(&lt;\/p&gt;\s*&lt;div&gt;)([\s\S]*?)(&lt;\/div&gt;)/;
-const FRAME_SEPARATOR = /&lt;br&gt;\n/g;
 
 /** N7 then N6, inside a debug-page title: the capture host's path and heap
- *  tokens become placeholders, then each backtrace frame line inside the
- *  div becomes N6#frame - separators and everything outside the div stay
- *  exact, so the frame count and the div's anchors still compare. */
+ *  tokens become placeholders, then the backtrace frame list inside the
+ *  div becomes N6#frames - everything outside the div's content stays
+ *  exact. */
 function canonicalizeDebugTitle(body, note) {
   return body
     .replace(CAPTURE_HOST_PATH, () => {
@@ -208,12 +200,9 @@ function canonicalizeDebugTitle(body, note) {
       note("N7");
       return "N7#addr";
     })
-    .replace(BACKTRACE_DIV, (_, pre, frames, post) => {
+    .replace(BACKTRACE_DIV, (_, pre, _frames, post) => {
       note("N6");
-      // an empty div holds zero frames; `"".split(sep)` would yield [""] and
-      // wrongly normalize to one
-      const lines = frames === "" ? [] : frames.split(FRAME_SEPARATOR);
-      return pre + lines.map(() => FRAME_MARKER).join("&lt;br&gt;\n") + post;
+      return pre + FRAME_MARKER + post;
     });
 }
 

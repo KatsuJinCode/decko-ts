@@ -40,8 +40,8 @@ The composed adapter sets the capture clock to the fixture's `clock` value,
 |---|---|---|---|
 | N4 | Digits of an accordion collapse id, from Ruby's per-process string hash | 30 | shipped, engine run, recorded |
 | N5 | Relative-time phrases, from the frozen capture clock | 0 | shipped, engine run |
-| N6 | Backtrace frame lines in a debug page | not measured: no oracle operation in the public capture carries one | withheld, recorded |
-| N7 | Absolute paths and heap addresses in a debug page | not measured: no oracle operation in the public capture carries one | withheld, recorded |
+| N6 | The backtrace frame list in a debug page (masked) | 0 public; all 8 withheld operations | withheld, engine run |
+| N7 | Absolute paths and heap addresses in a debug page | not measured separately: it acts only on the 8 withheld operations, whose frame lists N6 masks | withheld, recorded |
 | N8 | The class name of a recorded failure | 24 | shipped, engine run |
 
 Reproduced upstream failures are a separate category: 24 items in the public
@@ -106,32 +106,42 @@ day. The shipped capture does not exercise that case.
 **Reproduce.** The span counts are in section A. The effect of removing the rule
 is in section C.
 
-## N6: backtrace frame lines
+## N6: backtrace frame list
 
-**What varies.** A Ruby debug page embeds the Ruby backtrace of the failed
-render, one line per frame. The oracle's frames are Ruby's and include the boot
-path. The engine's frames are V8's. V8 keeps 10 frames by default, which
-`node -p 'Error.stackTraceLimit'` confirms. Neither frame text can match the
-other, so N6 replaces each frame line with one marker and keeps the frame count
-as the checked value.
+**Why it is masked.** A Ruby debug page embeds `exception.backtrace * "<br>\n"`:
+the call stack of the engine that raised. A backtrace is engine-specific by
+definition. The oracle's frames are Ruby's and include the frames of the
+capture process's boot and of the harness; the engine's are its own V8 frames.
+Neither the frame text nor the frame count says anything about the behaviour
+the oracle defines, and a port can only match them by fabricating frames, which
+the engine does not do. N6 therefore replaces the whole content of the
+backtrace div with the single marker `N6#frames` on both sides. The div, the
+heading, the error message (with N7) and every byte outside the div are still
+compared byte for byte, so a different error message or a missing debug page
+still fails.
 
-**Measured facts.**
+This is the one mask that does not rest on two-run variation (SPEC section 4.2):
+the oracle's backtrace is stable between runs, but no other engine has it.
 
-- shipped: no oracle operation in the public capture renders a debug page. The public capture has no row whose HTML contains the debug-page title marker, and the rule rewrites nothing on the oracle side (section A reports zero).
-- engine run: the engine's own output for `view:admin:All Topics:search_count` is an error span with a debug-page title. The grade therefore reaches N6 and N7 on that output. The operation differs for another reason and fails in any case.
-- withheld: the eight admin error-view operations that do render a debug page
-  are not in the public package. Recorded at an earlier revision, the oracle
-  pages carry 51 to 63 Ruby frames and the engine's raise sites produce 8 to 10
-  V8 frames. Those counts cannot be reproduced from the public package.
+**Measured facts** (2026-10-14, composed adapter, checkout holding the withheld set).
 
-**Reproduce.** The shipped counts above show that the rule has no public
-operation to act on. The rule's behaviour is covered by the unit tests in
-`runner/test/normalize.test.mjs` (the `N6` block), which run on constructed
-input:
+- shipped: no operation in the public capture renders a debug page, so N6 changes no public grade.
+- withheld: the eight admin error-view operations render a debug page on both sides. The oracle pages carry 51 to 168 Ruby frames (edit_structure 168, verify_url and reset_password_url 63, preview_editor 60, closure 59, asset_output_url 53, debug_server_error and search_error 51). The engine's pages carry its real V8 stack, 8 to 10 frames (Node's default `Error.stackTraceLimit` is 10).
+- engine run: with the frame list masked, all 8 grade identical. With the earlier rule (each frame line replaced by a marker, frame count compared) all 8 differ, and with no N6 all 8 differ. No other operation's output, on either side, carries a debug page, so the rule changes exactly these 8 grades.
+- engine run: the error messages agree on all 8 operations. The debug page prints the message, not the class, so no class name is compared there.
+
+**Reproduce** (needs the withheld set):
 
 ```
-node --test reference-harness/runner/test/normalize.test.mjs
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts-composed/adapter.json \
+     --fixture reference-harness/fixtures/synthetic-v2 --out tmp/g2
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v2 \
+     --actual tmp/g2 --expected reference-harness/fixtures/synthetic-v2/expected --report tmp/g2.json
 ```
+
+The report lists no rendering failure among the eight withheld `view:admin:*`
+operations. The rule's behaviour on constructed input is covered by the `N6`
+block in `runner/test/normalize.test.mjs`.
 
 ## N7: capture-host content in debug pages
 
@@ -145,7 +155,7 @@ frame's line number stays outside the placeholder, so the frame still counts.
 **Measured facts.**
 
 - shipped: no oracle row in the public capture contains the debug-page title, so the rule rewrites zero paths and zero addresses on the oracle side.
-- engine run: the engine's output for `view:admin:All Topics:search_count` carries the debug-page title, so N7 applies to that output as well (see N6).
+- engine run: the engine's debug pages appear only on the eight withheld operations (see N6).
 - withheld: the eight debug-page operations carry 554 path tokens and 2 heap addresses. Recorded at an earlier revision. Not reproducible from the public package.
 
 **Reproduce.** The unit tests in the `N7` block of `runner/test/normalize.test.mjs`
@@ -239,7 +249,7 @@ for (const n of normalized) {
 for (const n of normalized) for (const m of n.raw.matchAll(RELATIVE_TIME)) elapsed.phrases[m[0]] = (elapsed.phrases[m[0]] ?? 0) + 1;
 out.N5_relative_time = elapsed;
 
-out.N6_frame_rewrites = normalized.reduce((s, n) => s + count(n.out, /N6#frame/g), 0);
+out.N6_frame_list_rewrites = normalized.reduce((s, n) => s + count(n.out, /N6#frames/g), 0);
 out.N7_path_rewrites = normalized.reduce((s, n) => s + count(n.out, /N7#path/g), 0);
 out.N7_addr_rewrites = normalized.reduce((s, n) => s + count(n.out, /N7#addr/g), 0);
 out.debug_page_marker_rows = normalized.filter((n) => n.raw.includes("Error message (visible to admin only)")).length;
@@ -358,4 +368,4 @@ the oracle on 20 items.
 ## Known gaps
 
 1. **The Ruby-side figures are recorded, not repeated.** The two-run figures in N4 were measured with Ruby 3.3.12 and decko 0.20.0 at an earlier revision. The oracle application here declares decko 0.20.0 in its lock file. Repeating the measurement requires installing the oracle's gems.
-2. **Withheld facts are not re-measurable.** N6 and N7 rest on the eight withheld debug-page operations. Their rules have unit tests, but their effect on the real capture cannot be shown from the public package.
+2. **Withheld facts are not re-measurable from the public package.** N6 and N7 rest on the eight withheld debug-page operations. Their rules have unit tests; their effect on the real capture is measured only in a checkout that holds the withheld set.

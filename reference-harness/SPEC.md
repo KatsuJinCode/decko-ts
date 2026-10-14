@@ -337,7 +337,9 @@ Two kinds of rule:
 
 - A **mask** erases a value. It is allowed only for a field shown to vary
   between two complete runs of the same oracle on the same fixture, and only
-  in that field's exact shape.
+  in that field's exact shape. The one exception is N6: a backtrace does not
+  vary between oracle runs, but it reports the raising engine's own call
+  stack, which no other engine can reproduce honestly.
 - A **canonical form** compares the same value in another encoding and
   erases nothing.
 
@@ -395,22 +397,20 @@ Two kinds of rule:
    side only, or a different sentence shape still fails. Absolute dates
    (`2026-09-19`) are NOT spans and stay exact — a date view is an encoding
    the engine must get right, not clock noise.
-6. **N6 (canonical form over the host VM's stack identity).** In rendered
-   HTML, inside a render-error span's debug-page title, every backtrace
-   frame line within the div that follows the message paragraph — the
-   `<br>
-`-separated lines Ruby's `exception.backtrace * "<br>
-"` embeds —
-   becomes the single placeholder `N6#frame`. The two sides run different
-   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
-   boot-inclusive — dozens of frames from the capture process's startup
-   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
-   line's text is the host VM's identity — language, paths, boot history —
-   in the same class as N7's capture-host content below; nothing in the
-   oracle's semantics lives in it. The frame COUNT becomes the checkable
-   invariant: the `<br>`-separated structure inside the div stays compared,
-   so a side emitting a different number of its own frames still fails, as
-   do the heading, the error message and every byte outside the div.
+6. **N6 (mask over the raising engine's call stack).** In rendered HTML,
+   inside a render-error span's debug-page title, the whole content of the
+   div that follows the message paragraph — the frame list Ruby's
+   `exception.backtrace * "<br>\n"` embeds — becomes the single placeholder
+   `N6#frames` on both sides. A backtrace is the call stack of the engine
+   that raised, so it is engine-specific by definition: the oracle's is
+   Ruby's (`path:line:in \`method'`, including the frames of the capture
+   process's boot and of the harness), a port's is its own language's. Its
+   frame text and its frame count describe the engine, not the behaviour the
+   oracle defines, and no port can honestly emit another engine's stack.
+   The div itself, the heading, the error message (with N7) and every byte
+   outside the div still compare byte for byte. On `synthetic-v2` the rule
+   acts on the eight withheld admin error-view operations and changes the
+   grade of all eight; see NORMALIZATION-EVIDENCE.md.
 7. **N7 (canonical form over capture-host content).** In rendered HTML,
    inside a render-error span's `title` attribute that begins with the Ruby
    debug page marker (`&lt;h3&gt;Error message (visible to admin only)
@@ -418,12 +418,9 @@ Two kinds of rule:
    hexadecimal heap addresses become `N7#path` / `N7#addr`. The debug pages
    embed the capture host's backtrace frames — the Ruby install, gem home
    and harness checkout of the machine that recorded the capture — which
-   are that machine's filesystem, not the oracle's semantics; a frame path
-   token ends at its `:line:` separator. Every byte outside such a title,
-   and the error message inside it, still count. (Written when the engine
-   did not raise where the oracle raises; the raise posture has since made
-   the engine emit the same debug page, and N6 above now carries the frame
-   layer.)
+   are that machine's filesystem, not the oracle's semantics. Every byte
+   outside such a title, and the error message inside it, still count. The
+   frame list itself is masked by N6 above.
 8. **N8 (canonical form over the host language's class naming).** On an
    operation whose recorded result IS the failure (section 3, "What the
    grader compares"), the error record's class name canonicalizes to its
@@ -459,9 +456,9 @@ through N8 are canonical forms over values that do not vary between two runs
 of one oracle, so their evidence is oracle-versus-engine pairs on the fixture.
 Two findings there bear on this section. The composed adapter freezes the
 capture clock, so on the shipped capture N5 changes no grade outcome. The
-debug-page operations that N6 and N7 act on are outside the public package,
-so their figures are recorded there and cannot be re-measured from shipped
-files.
+debug-page operations that N6 and N7 act on are the fixture's withheld set
+(`fixtures/synthetic-v2/withheld`), outside the public package; a checkout
+that holds the set re-measures them with the commands given there.
 
 N3 is not a mask and needs no nondeterminism evidence — it erases nothing,
 and it canonicalises rather than hides. Its evidence is the environment
