@@ -205,16 +205,18 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
-  it("WITH the mod: discussion :core dispatches to base core AND appends comment_box (right/discussion.rb:8-10)", async () => {
+  it("WITH the mod: a bare discussion :core hides the optional comment_box (right/discussion.rb:8-10)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Discussion Probe+discussion", "core");
-    // The base core runs first (raw content bytes); the appended
-    // comment_box body follows immediately after (no slot wrapper around
-    // the appended bytes - it's a raw concatenation, mirroring Ruby's
-    // `output [super(), render_comment_box(optional: :hide)]`).
+    // `output [super(), render_comment_box(optional: :hide)]`: nothing has
+    // shown comment_box on a bare :core render, so the optional render
+    // returns nil and output's compact drops it — no box and no "\n"
+    // separator. The oracle's captured answer for the same shape is
+    // synthetic-v2 `core:admin:Topic 001+discussion`, exactly the
+    // content bytes `<p>First comment.</p>`.
     expect(html).toContain("discussion junction body");
-    expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
+    expect(html).not.toContain('<div class="comment-box nodblclick">');
+    expect(html.endsWith("\n")).toBe(false);
   });
 
   it("WITH the mod: discussion :input falls through to base input (right/discussion.rb:12-16, non-editor branch)", async () => {

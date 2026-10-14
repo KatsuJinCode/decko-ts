@@ -1928,6 +1928,12 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
+  // voo_api.rb:150-156 render with optional: :hide — the child voo enrolls
+  // :hide unless the viz already holds a setting for comment_box, and a
+  // hidden optional render returns nil. output's compact then drops it, so
+  // no "\n" separator is emitted. Only a voo that SHOWS comment_box (the
+  // discussion :open/:titled overrides, discussion.rb:1-6) renders the box.
+  if (ctx.voo.viz.get("comment_box") !== "show") return base;
   let box = "";
   try {
     const result = ctx.fmt.renderView("comment_box", {}, "hide");
