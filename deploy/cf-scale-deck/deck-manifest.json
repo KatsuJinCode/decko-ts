@@ -1,8 +1,8 @@
 {
-  "cards": 2279,
-  "refs": 531,
-  "totalRows": 2810,
-  "bytes": 1634430,
+  "cards": 2287,
+  "refs": 532,
+  "totalRows": 2819,
+  "bytes": 1638469,
   "file": "deploy/cf-scale-deck/seed.sql",
   "dimensions": {
     "ordinary": 2000,
