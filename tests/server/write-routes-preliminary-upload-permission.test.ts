@@ -47,10 +47,10 @@
 //
 // That is an unauthorised write to the deck's storage, so the port's
 // stricter order is a security improvement and is kept (card-action-engine.ts
-// :4166-4169 records the divergence in place). It is NOT yet listed in
-// docs/SECURITY.md's approved divergences: that declaration is pending with
-// the lead. This file pins the port's behaviour so a future parity pass
-// cannot silently walk it back.
+// :4166-4169 records it in place). It is declared as an approved divergence
+// in docs/SECURITY.md ("An upload is refused before it is stored"). This file
+// pins the port's behaviour so a future parity pass cannot silently walk it
+// back.
 //
 // WHAT IS PINNED HERE — the port's observable outcome for a denied
 // preliminary upload, and the granted counterpart that proves the gate is

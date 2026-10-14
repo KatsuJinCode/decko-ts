@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import { cleanContent } from "../../src/card/actions/content-clean.js";
-import { rubyCleanContent } from "./ruby-clean-content.js";
+import { rubyCleanContent } from "./content-clean-reference.js";
 import { htmlSafetyProblems } from "../card/actions/html-safety-verifier.js";
 
 describe("stored HTML, withheld: the upstream cleaner's recorded output on hostile markup", () => {

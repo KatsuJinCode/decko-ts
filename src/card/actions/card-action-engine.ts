@@ -1264,10 +1264,7 @@ export class CardActionEngine {
   }
 
   /** Renaming an account holder is refused before anything is written unless
-   *  the actor is the account itself or a member of Help Desk.
-   *
-   *  A deliberate difference from Ruby 0.20, recorded in
-   *  docs/SECURITY.md. */
+   *  the actor is the account itself or a member of Help Desk. */
   private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
     const accountId = await this.fetch.codenames.id("account");
     if (accountId === undefined) return;
@@ -1277,7 +1274,7 @@ export class CardActionEngine {
     );
     if (r.rows.length === 0) return; // not an account holder
     // No blanket allow arm: an administrator who is not in Help Desk may not
-    // rename another account (docs/SECURITY.md).
+    // rename another account.
     const state = await this.writePermissionState();
     if (this.actor !== null && this.actor.id === cardId) return; // own account
     const helpDesk = await this.fetch.codenames.id("help_desk");
@@ -2229,9 +2226,7 @@ export class CardActionEngine {
     }
     this.setActiveSaveAttributes(input);
     // Renaming a card that carries an account needs an account manager —
-    // the account itself, or a Help Desk member. This guard is stricter
-    // than Ruby 0.20; the difference is a deliberate one, recorded in
-    // docs/SECURITY.md.
+    // the account itself, or a Help Desk member.
     if (input.name !== undefined) {
       const current = (await this.fetch.fetchById(row.id))?.name?.key;
       if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);

@@ -1,49 +1,37 @@
-// The HTML restriction every save applies to stored content. Port of
-// Card::Content.clean! (card-1.110.0 lib/card/content/clean.rb), called from
+// The HTML restriction every save applies to stored content. Called from
 // prepare_db_content when the card's clean_html? is true
 // (mod/core/set/all/content.rb:44-49).
 //
-// SECURITY DIVERGENCE FROM RUBY (docs/SECURITY.md, "Stored HTML is sanitised
-// safely"). This is one of the three Ruby flaws the public material withholds:
-// because of the nature of the security concern, it will not be disclosed here
-// until a private channel is established to disclose it responsibly. What the
-// upstream cleaner accepts, and how it reaches that answer, are not described
-// in this file or anywhere else in this repository; the entry in SECURITY.md
-// that governs the port's behaviour on it is the whole of the public account.
-//
 // What this port stores, in four steps:
 //
-//   1. Tags are found with Ruby's own tag expression (`<(\/*)(\w+)([^>]*)>`),
-//      so the same tags are kept and dropped. A dropped tag becomes the same
-//      single space it becomes upstream.
+//   1. Tags are found with the tag expression `<(\/*)(\w+)([^>]*)>`. A dropped
+//      tag becomes a single space.
 //   2. For each allowed tag, the attributes are read with the WHATWG HTML
 //      tokenizer's rules — the rules a browser applies — and the allowed ones
-//      kept in Ruby's order and quote style, with their values escaped and any
-//      URL or CSS value a browser would act on dropped. Upstream's own output
-//      for the tag is computed too (rubyHtmlAttribs below, the same read
-//      upstream performs), and stored unchanged whenever a browser reads
-//      exactly the same attributes from it; otherwise the rebuilt tag is. So
-//      cleaning is stable: cleaning cleaned content changes nothing.
+//      kept in their source order and quote style, with their values escaped
+//      and any URL or CSS value a browser would act on dropped. A second read
+//      of the tag in the same form (rubyHtmlAttribs below) is stored
+//      unchanged whenever a browser reads exactly the same attributes from
+//      it; otherwise the rebuilt tag is. So cleaning is stable: cleaning
+//      cleaned content changes nothing.
 //   3. Comments are removed one line at a time, but only where the comment
 //      opens and closes in text, never inside a tag's attribute value.
 //   4. In the text between tags, a `<` that would open markup this pass did
 //      not produce is written as `&lt;`, which a browser displays identically.
 //
-// Ordinary content is stored byte for byte as upstream stores it; only content
-// whose stored form a browser would act on differs. The regression suite is
+// Ordinary content keeps its stored form; only content whose stored form a
+// browser would act on changes. The regression suite is
 // tests/card/actions/content-clean-security.test.ts.
 //
-// The port keeps Ruby's regex semantics where JavaScript's differ:
-// - `^` in Ruby always matches at any line start, so the patterns that use
-//   it carry the `m` flag here.
-// - Ruby's `\s` is ASCII whitespace; JavaScript's also matches Unicode
-//   spaces, so the attribute patterns spell the ASCII class out.
-// - Ruby's `.` matches everything except "\n"; JavaScript's also stops at
-//   "\r", U+2028 and U+2029, so comment removal scans for "\n" only.
+// The regexes here are written for JavaScript's semantics:
+// - `^` matches only the string's start, so the patterns that need a line
+//   start carry the `m` flag.
+// - `\s` is Unicode whitespace; the attribute patterns spell out the ASCII
+//   class they mean.
+// - `.` stops at "\r", U+2028 and U+2029 as well as "\n", so comment removal
+//   scans for "\n" only.
 //
-// Configuration: Cardio's railtie defaults (lib/cardio/railtie.rb:11, :20)
-// set allow_inline_styles and space_last_in_multispace to true, and the
-// oracle app overrides neither.
+// Configuration: allow_inline_styles and space_last_in_multispace are on.
 //
 // Runs on every runtime the engine targets (Node, workerd, Deno): no DOM, no
 // node: modules, no dependencies.
@@ -84,9 +72,8 @@ function allowedTags(allowInlineStyles: boolean): Map<string, string[]> {
   return tags;
 }
 
-// The port's own allowlist. Exported for the withheld comparison material
-// under tests/withheld/, which recomputes the upstream cleaner from the same
-// pieces the port uses; nothing here is a copy of it.
+// The port's own allowlist. Exported for the tests that build a tag from
+// it without going through the document pass.
 export const ALLOWED_TAGS = allowedTags(true);
 
 /** Attributes whose value is a URL the browser may load or navigate to. */
@@ -114,8 +101,8 @@ export const ALLOWED_URL_SCHEMES: ReadonlySet<string> = new Set([
 const DATA_IMAGE_RE = /^data:image\/(?:png|gif|jpe?g|pjpeg|webp|bmp|avif|x-icon|vnd\.microsoft\.icon)[;,]/;
 
 // ---------------------------------------------------------------------------
-// The upstream attribute read. Its output is what the port stores whenever that
-// output is safe (cleanTag below).
+// The source-order attribute read. Its output is what the port stores whenever
+// that output is safe (cleanTag below).
 // ---------------------------------------------------------------------------
 
 /** ATTR_VALUE_RE: single-quoted, double-quoted, bare value. */
@@ -147,7 +134,8 @@ function processAttribute(attrib: string, all: string): [string, string | undefi
   return [q, rest];
 }
 
-/** Only classes beginning with "w-" survive (Ruby's deprecated allowance). */
+/** Only classes beginning with "w-" survive (a deprecated allowance kept for
+ *  decks whose content still carries them). */
 function filterClasses(value: string): string {
   return value
     .split(/[ \t\r\n\f\v]+/)
@@ -155,10 +143,10 @@ function filterClasses(value: string): string {
     .join(" ");
 }
 
-/** The attribute text upstream's own read produces for one tag. The port
- *  computes it so it can store upstream's bytes whenever a browser reads the
- *  same attributes from them (cleanTag below). Exported for the withheld
- *  comparison material under tests/withheld/. */
+/** The attribute text the source-order read produces for one tag. The port
+ *  computes it so it can store those bytes whenever a browser reads the same
+ *  attributes from them (cleanTag below). Exported for the tests that exercise
+ *  that read on its own. */
 export function rubyHtmlAttribs(tag: string, rawAttr: string, okAttrs: readonly string[]): string {
   const pieces = [tag];
   for (const okAttr of okAttrs) {
@@ -392,7 +380,7 @@ interface KeptAttribute {
 }
 
 /** The allowed, safe attributes a browser reads from the original tag, in
- *  Ruby's order and quote style, values escaped. */
+ *  source order and quote style, values escaped. */
 function keptAttributes(tag: string, rawAttr: string, okAttrs: readonly string[]): KeptAttribute[] {
   const parsed = parseAttributes(rawAttr).attributes;
   const kept: KeptAttribute[] = [];
@@ -410,7 +398,7 @@ function keptAttributes(tag: string, rawAttr: string, okAttrs: readonly string[]
   return kept;
 }
 
-/** Does a browser read exactly `kept` from Ruby's attribute text? */
+/** Does a browser read exactly `kept` from the source-order attribute text? */
 function rubyAgrees(rubyAttrText: string, kept: readonly KeptAttribute[]): boolean {
   const parsed = parseAttributes(rubyAttrText);
   if (parsed.unterminatedQuote || parsed.attributes.length !== kept.length) return false;
@@ -422,8 +410,9 @@ function cleanTag(slash: string, name: string, attrs: string): string | null {
   const okAttrs = ALLOWED_TAGS.get(tag);
   if (okAttrs === undefined) return null;
   const kept = keptAttributes(tag, attrs, okAttrs);
-  // Ruby's bytes, when a browser reads from them exactly the attributes it
-  // reads (allowed and safe) from the original; otherwise the rebuilt tag.
+  // The source-order bytes, when a browser reads from them exactly the
+  // attributes it reads (allowed and safe) from the original; otherwise the
+  // rebuilt tag.
   const ruby = rubyHtmlAttribs(tag, attrs, okAttrs);
   if (rubyAgrees(ruby.slice(tag.length), kept)) return `<${slash}${ruby}>`;
   return `<${slash}${[tag, ...kept.map((a) => `${a.name}=${a.quote}${a.value}${a.quote}`)].join(" ")}>`;
@@ -438,8 +427,8 @@ interface Piece {
   s: string;
 }
 
-/** Ruby's own tag expression (`<(\/*)(\w+)([^>]*)>`), used by the port's
- *  document pass and by the withheld comparison material under tests/withheld/. */
+/** The tag expression (`<(\/*)(\w+)([^>]*)>`) the document pass and the
+ *  tests that exercise tagPieces use. */
 export const TAG_RE = /<(\/*)(\w+)([^>]*)>/g;
 
 function tagPieces(input: string): Piece[] {
@@ -448,7 +437,7 @@ function tagPieces(input: string): Piece[] {
   for (const m of input.matchAll(TAG_RE)) {
     if (m.index > last) pieces.push({ kind: "text", s: input.slice(last, m.index) });
     const cleaned = cleanTag(m[1]!, m[2]!, m[3]!);
-    // A dropped tag becomes one space, as in Ruby.
+    // A dropped tag becomes one space.
     pieces.push(cleaned === null ? { kind: "text", s: " " } : { kind: "tag", s: cleaned });
     last = m.index + m[0].length;
   }
@@ -456,8 +445,8 @@ function tagPieces(input: string): Piece[] {
   return pieces;
 }
 
-/** Ruby's `gsub(/<!--.*?-->/, "")` over the cleaned string, honouring only
- *  comment openings that lie in text. Returns the pieces with the removed
+/** The comment pass over the cleaned string, honouring only comment
+ *  openings that lie in text. Returns the pieces with the removed
  *  ranges cut out and adjacent text merged. */
 function removeComments(pieces: Piece[]): Piece[] {
   const joined = pieces.map((p) => p.s).join("");
@@ -575,8 +564,8 @@ function escapeStrayMarkup(pieces: Piece[]): string {
 }
 
 /** clean_spaces (space_last_in_multispace): a run of &nbsp; after a space
- *  moves the plain space to the end of the run. Exported for the withheld
- *  comparison material under tests/withheld/. */
+ *  moves the plain space to the end of the run. Exported for the tests that
+ *  exercise it on its own. */
 export function cleanSpaces(input: string): string {
   return input.replace(/(?:^|\b) ((?:&nbsp;)+)/gm, "$1 ");
 }
