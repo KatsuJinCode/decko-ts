@@ -20,6 +20,7 @@
 
 require "js"
 require "erb"
+require "date"
 
 module DeckoRubyMods
   BRIDGE_NAME = :__deckoRubyBridge
@@ -39,9 +40,16 @@ module DeckoRubyMods
     # into a fresh set module and return its index.
     def load_set_file(set_path, source)
       mod = SetModule.build(set_path)
+      if (m = set_path.match(%r{\Aabstract/(.+)\.rb\z}))
+        abstract_sets[camelize(m[1])] = mod
+      end
       mod.module_eval(source, "set/#{set_path}", 1)
       set_modules << mod
       set_modules.size - 1
+    end
+
+    def camelize(path)
+      path.split("/").map { |seg| seg.sub(/\A\d+_/, "").split("_").map(&:capitalize).join }.join("::")
     end
 
     # The registrations of one set module, as JSON for the TypeScript side.
@@ -61,14 +69,31 @@ module DeckoRubyMods
       fmt.render_registered(view).to_s
     end
 
+    # set/event/all.rb#when_condition_applies?, asked by the dispatcher
+    # before the event is counted as firing.
+    def event_condition(index, event_index)
+      mod = set_modules.fetch(index)
+      spec = mod.event_specs.fetch(event_index)
+      CardProxy.for_current(mod).event_condition_applies?(spec[:when_cond]) ? "true" : "false"
+    end
+
     def run_event(index, event_index)
       mod = set_modules.fetch(index)
       spec = mod.event_specs.fetch(event_index)
-      card = CardProxy.for_current(mod)
-      return "when-false" unless card.event_condition_applies?(spec[:when_cond])
-
-      card.instance_exec(&spec[:block])
+      CardProxy.for_current(mod).instance_exec(&spec[:block])
       "fired"
+    end
+
+    # Abstract set modules by name (Card::Set::Abstract::X). A mod's own
+    # set/abstract/x.rb files are loaded first and registered here; a name
+    # no loaded mod defines answers an empty stand-in, recorded so the
+    # loader can report it.
+    def abstract_sets
+      @abstract_sets ||= {}
+    end
+
+    def missing_abstracts
+      @missing_abstracts ||= []
     end
   end
 
@@ -153,9 +178,27 @@ module DeckoRubyMods
     alias accessor card_accessor
 
     # Declarations the shim accepts and records but does not act on.
-    def include_set(*); end
     def assign_type(*); end
     def add_to_basket(*); end
+
+    # lib/card/set/advanced_api.rb#include_set: the included set's card
+    # methods, format helpers and views become this set's own; views this
+    # set defines itself (before or after) take precedence.
+    def include_set(set, *_opts)
+      return unless set.is_a?(Module) && set.singleton_class.include?(SetModule)
+
+      include set
+      set.format_modules.each do |f, fmod|
+        (format_modules[f] ||= FormatModule.build(self, f)).include fmod
+      end
+      set.view_blocks.each do |k, block|
+        next if view_blocks.key?(k)
+
+        view_blocks[k] = block
+        spec = set.view_specs.find { |s| s[:format] == k[0].to_s && s[:view] == k[1].to_s }
+        view_specs << spec if spec
+      end
+    end
 
     # Card::Set basket (lib/card/set/basket.rb): recorded, not acted on.
     def basket
@@ -192,9 +235,19 @@ module DeckoRubyMods
         v = opts[k]
         config[k] = v.is_a?(Symbol) ? v.to_s : v
       end
-      block ||= proc { render(alias_to) } if alias_to
+      if alias_to && !block
+        # abstract_format.rb#alias_block binds the aliased view from the
+        # DEFINING set module, not the card's most specific one.
+        sm = set_module
+        fname = format_name
+        target = alias_to.to_sym
+        block = proc do
+          instance_exec(&(sm.view_blocks[[fname, target]] || sm.view_blocks[[:base, target]]))
+        end
+      end
       block ||= proc { "" }
       set_module.view_blocks[[format_name, name.to_sym]] = block
+      set_module.view_specs.reject! { |s| s[:format] == format_name.to_s && s[:view] == name.to_s }
       set_module.view_specs << { format: format_name.to_s, view: name.to_s, config: config }
     end
 
@@ -282,6 +335,28 @@ module DeckoRubyMods
     end
 
     alias h html_escape
+
+    # format/nest.rb#nest: hands the nest to the engine's own nest path.
+    def nest(cardish, opts = {})
+      name = cardish.respond_to?(:name) ? cardish.name.to_s : cardish.to_s
+      opts = opts.transform_keys(&:to_s).transform_values { |v| v.is_a?(Array) ? v.join(" ") : v.to_s }
+      DeckoRubyMods.bridge.call(:nest, name, opts.to_json_for_bridge).to_s
+    end
+
+    # card-mod-format set/all/html/link.rb#link_to_card (text and class
+    # only; path options are not passed through).
+    def link_to_card(cardish, text = nil, opts = {})
+      name = cardish.respond_to?(:name) ? cardish.name.to_s : cardish.to_s
+      DeckoRubyMods.bridge.call(:linkToCard, name, text.nil? ? "" : text.to_s, text.nil? ? "0" : "1",
+                                opts.transform_keys(&:to_s).to_json_for_bridge).to_s
+    end
+
+    # Translation with the default only: no locale files are loaded.
+    def t(key, default: nil, **_opts)
+      raise "I18n key #{key} has no default; locale files are not loaded" if default.nil?
+
+      default.to_s
+    end
   end
 
   # The card a view or event sees (`card` in a view, `self` in an event).
@@ -353,5 +428,30 @@ module DeckoRubyMods
       else true
       end
     end
+  end
+end
+
+# Abstract set modules (Card::Set::Abstract::X), resolved by name.
+module ::Abstract
+  def self.const_missing(name)
+    DeckoRubyMods.abstract_sets[name.to_s] ||= begin
+      DeckoRubyMods.missing_abstracts << name.to_s
+      DeckoRubyMods::SetModule.build("abstract/#{name}")
+    end
+  end
+end
+
+# Card.fetch for set code: answers a card proxy when the engine has the card
+# seated for this render, nil otherwise.
+class ::Card
+  def self.fetch(cardish, *_args)
+    name = cardish.respond_to?(:name) ? cardish.name.to_s : cardish.to_s
+    return nil if DeckoRubyMods.bridge.call(:cardExists, name).to_s != "1"
+
+    DeckoRubyMods::CardProxy.new(name)
+  end
+
+  def self.search(*)
+    raise NotImplementedError, "Card.search is asynchronous in the port and is not bridged"
   end
 end

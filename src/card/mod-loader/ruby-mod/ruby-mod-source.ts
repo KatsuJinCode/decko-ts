@@ -29,6 +29,9 @@ import type {
   ModViewDefinition,
 } from "../mod-manifest.js";
 import type { ModSource } from "../../mod-loader.js";
+import type { ParsedNest } from "../../render/nest-syntax.js";
+import { DeckoName } from "../../name.js";
+import { registerModEventPredicates } from "../default-mod-deck.js";
 
 const SHIM_PATH = fileURLToPath(new URL("./card-set-shim.rb", import.meta.url));
 
@@ -54,13 +57,15 @@ interface RubyRegistrations {
  *  card an event fires on. One frame per nested call. */
 type BridgeFrame =
   | { kind: "view"; fmt: RenderFormat }
-  | { kind: "event"; card: ModEventCard; ctx: ModEventContext; setContent: (s: string) => void };
+  | { kind: "event"; card: ModEventCard; ctx: ModEventContext | undefined; setContent: (s: string) => void };
 
 /** One loaded Ruby mod: its VM, its manifest and what the bridge reaches. */
 export interface RubyModHandle {
   readonly source: ModSource;
   /** The set files evaluated, relative to the mod's set/ directory. */
   readonly setFiles: readonly string[];
+  /** Abstract set names referenced but defined by no loaded set file. */
+  readonly missingAbstracts: readonly string[];
   /** The raw registrations each set file produced (for reporting). */
   readonly registrations: readonly RubyRegistrations[];
 }
@@ -78,7 +83,7 @@ export function rubyVM(): Promise<RubyVMLike> {
       ),
     ]);
     const module = await WebAssembly.compile(readFileSync(wasmPath));
-    const { vm } = await DefaultRubyVM(module, { consolePrint: false });
+    const { vm } = await DefaultRubyVM(module);
     installBridge();
     vm.eval(readFileSync(SHIM_PATH, "utf8"));
     return vm as unknown as RubyVMLike;
@@ -133,7 +138,7 @@ function installBridge(): void {
     },
     content(name: string): string {
       const f = top();
-      if (name === "" && f.kind === "event") return f.ctx.saveInput?.pendingContent ?? f.card.dbContent ?? "";
+      if (name === "" && f.kind === "event") return f.ctx?.saveInput?.pendingContent ?? f.card.dbContent ?? "";
       return renderCardNamed(name)?.dbContent ?? "";
     },
     setContent(value: string): void {
@@ -141,11 +146,47 @@ function installBridge(): void {
       if (f.kind !== "event") throw new Error("content= outside an event");
       f.setContent(value);
     },
+    cardExists(name: string): string {
+      const rc = renderCardNamed(name === cardNameOfTop() ? "" : name);
+      return rc !== undefined && rc.id !== undefined ? "1" : "";
+    },
+    nest(name: string, optsJson: string): string {
+      const f = top();
+      if (f.kind !== "view") throw new Error(`nest(${name}) outside a view`);
+      const { view, title, show, hide, size, ...extra } = JSON.parse(optsJson) as Record<string, string>;
+      const parsed: ParsedNest = {
+        syntax: name,
+        name,
+        options: { view, title, show, hide, size, extra },
+        comment: undefined,
+      };
+      return f.fmt.nest(parsed);
+    },
+    linkToCard(name: string, text: string, hasText: string, optsJson: string): string {
+      // card-mod-format set/all/links.rb#link_to_card: the known/wanted
+      // class, the name as the default text, the href from the url key.
+      const opts = JSON.parse(optsJson) as Record<string, string>;
+      const rc = renderCardNamed(name === cardNameOfTop() ? "" : name);
+      const known = rc !== undefined && rc.id !== undefined;
+      const cls = [opts.class, known ? "known-card" : "wanted-card"].filter(Boolean).join(" ");
+      const parsedName = DeckoName.parse(name);
+      const body = hasText === "1" ? text : escapeHtml(parsedName.s);
+      return `<a class="${escapeHtml(cls)}" href="/${escapeHtml(parsedName.urlKey)}">${body}</a>`;
+    },
     action(): string {
       const f = top();
       return f.kind === "event" ? (f.card.action ?? "") : "";
     },
   };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function cardNameOfTop(): string {
@@ -185,6 +226,7 @@ export async function loadRubyMod(modDir: string, opts: { name?: string } = {}):
   const setFiles = listSetFiles(setDir);
   const registrations: RubyRegistrations[] = [];
   const setModules: ModSetModuleFile[] = [];
+  const predicates: Record<string, (card: ModEventCard, ctx?: ModEventContext) => boolean> = {};
 
   for (const rel of setFiles) {
     const source = readFileSync(path.join(setDir, rel), "utf8");
@@ -218,13 +260,29 @@ export async function loadRubyMod(modDir: string, opts: { name?: string } = {}):
 
     const events: ModEventRegistration[] = reg.events.map((e, eventIndex) => {
       const at = (STAGES as readonly string[]).includes(e.at ?? "") ? (e.at as ModEventStage) : undefined;
+      // `when:` (set/event/all.rb#when_condition_applies?) runs in Ruby, but
+      // BEFORE dispatch: the registration names a predicate the dispatcher
+      // resolves, so a false condition is a when-false skip, not a firing.
+      let when: string | undefined;
+      if (e.when !== null) {
+        when = `ruby:${name}:${reg.set_path}:${e.event}`;
+        predicates[when] = (card, ctx) => {
+          frames.push({ kind: "event", card, ctx, setContent: () => {
+            throw new Error(`event ${e.event}: content= inside a when: condition`);
+          } });
+          try {
+            return vm.eval(`DeckoRubyMods.event_condition(${index}, ${eventIndex})`).toString() === "true";
+          } finally {
+            frames.pop();
+          }
+        };
+      }
       return {
         event: e.event,
         at,
         on: e.on === null ? undefined : (e.on as ModEventTrigger[]),
         changed: e.changed ?? undefined,
-        // `when:` is evaluated inside the Ruby body (CardProxy
-        // #event_condition_applies?), so the registration carries none.
+        when,
         fn: (card: ModEventCard, _host: ModEngineHost, ctx: ModEventContext) => {
           frames.push({
             kind: "event",
@@ -246,12 +304,16 @@ export async function loadRubyMod(modDir: string, opts: { name?: string } = {}):
       };
     });
 
+    // Abstract set files reach cards only through include_set.
+    if (reg.set_path.startsWith("abstract/")) continue;
     setModules.push({
       setPath: reg.set_path,
       formats: Object.keys(formats).length > 0 ? formats : undefined,
       events: events.length > 0 ? events : undefined,
     });
   }
+
+  registerModEventPredicates(predicates);
 
   const manifest: DeckoModManifest = {
     name,
@@ -260,5 +322,8 @@ export async function loadRubyMod(modDir: string, opts: { name?: string } = {}):
       host = h;
     },
   };
-  return { source: { manifest, group: "custom" }, setFiles, registrations };
+  const missingAbstracts = JSON.parse(
+    vm.eval("DeckoRubyMods.missing_abstracts.to_json_for_bridge").toString(),
+  ) as string[];
+  return { source: { manifest, group: "custom" }, setFiles, registrations, missingAbstracts };
 }

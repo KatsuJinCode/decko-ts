@@ -6,7 +6,9 @@
 //   node tools/ruby-mods/port-run.mjs <plan.json>
 //
 // plan.json: { deck, deckJson, modDir, renders: [{card, view}],
-//              events: [{name, content}] }
+//              events: [{name, content}], upstreamMods?: [{dir, name}] }
+// upstreamMods are gem card-mods run from their Ruby source IN PLACE OF the
+// port's hand-ported manifest of the same name.
 // The deck file must be a private copy: boot adds the port's freshness table.
 
 import { readFileSync } from "node:fs";
@@ -42,6 +44,7 @@ interface Plan {
   modDir: string;
   renders: { card: string; view: string }[];
   events: { name: string; content: string }[];
+  upstreamMods?: { dir: string; name: string }[];
 }
 
 const plan = JSON.parse(readFileSync(process.argv[2]!, "utf8")) as Plan;
@@ -55,11 +58,18 @@ setRaiseAllRenderingErrors(false);
 
 const t0 = performance.now();
 const ruby = await loadRubyMod(plan.modDir);
+const upstream = [];
+for (const m of plan.upstreamMods ?? []) upstream.push(await loadRubyMod(m.dir, { name: m.name }));
 const tRubyLoaded = performance.now();
+const replaced = new Set(upstream.map((u) => u.source.manifest.name));
 
 // The deck's mod directory comes after the gem mods, as Cardio::Mod::Dirs
 // orders an app's mod/ after its bundled gems.
-const loader = new ModLoader([...defaultDeckSources(), ruby.source]);
+const loader = new ModLoader([
+  ...defaultDeckSources().filter((s) => !replaced.has(s.manifest.name)),
+  ...upstream.map((u) => u.source),
+  ruby.source,
+]);
 loader.resolveOrder({ gemMods: portedBundleOrder(), deckModDirs: [{ listing: [ruby.source.manifest.name] }] });
 loader.load();
 setDefaultModLoader(loader);
@@ -143,6 +153,12 @@ process.stdout.write(
   JSON.stringify({
     setFiles: ruby.setFiles,
     registrations: ruby.registrations,
+    missingAbstracts: ruby.missingAbstracts,
+    upstream: upstream.map((u) => ({
+      name: u.source.manifest.name,
+      setFiles: u.setFiles,
+      missingAbstracts: u.missingAbstracts,
+    })),
     timings: {
       rubyModLoadMs: tRubyLoaded - t0,
       engineBootMs: tBooted - tRubyLoaded,
