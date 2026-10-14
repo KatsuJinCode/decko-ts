@@ -189,6 +189,18 @@ async function deckRows<T>(
   return await driver.query<T>(sql, params);
 }
 
+/** The id of the card holding `codename`, or undefined when the deck has
+ *  none (Card::Codename.id). */
+async function codenameCardId(deck: ErrorPageDeck, codename: string): Promise<number | undefined> {
+  const { rows } = await deckRows<{ id?: number | string | null }>(
+    deck,
+    "SELECT id FROM cards WHERE codename = ? AND trash = 0 LIMIT 1",
+    [codename],
+  );
+  const id = Number(rows[0]?.id);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+}
+
 interface ErrorPageBootValues {
   siteTitle: string;
   logoUrl: string;
@@ -484,15 +496,17 @@ interface DefaultLayout {
 async function resolveDefaultLayout(deck: ErrorPageDeck): Promise<DefaultLayout> {
   const deltas = deltasOf(deck);
   // The default-layout rule's two anchors are the deck's OWN *all and *layout
-  // card ids, which differ per deck. Without them there is
-  // nothing to query with, so the builder falls back to its minimal stub —
-  // the same contract as a missing layout body, and the honest answer for a
-  // deployment that has not told us which layout rule is its default.
-  if (deltas.allCardId === undefined || deltas.layoutPointerId === undefined) {
+  // card ids, which differ per deck. A deployment may name them
+  // (DECKO_SERVED_ALL_CARD_ID / DECKO_SERVED_LAYOUT_POINTER_ID); unset, they
+  // are the cards whose codenames are `all` and `layout`, as Ruby resolves
+  // them (Card::Codename.id). Only a deck holding neither card falls back to
+  // the minimal stub.
+  const allCardId = deltas.allCardId ?? (await codenameCardId(deck, "all"));
+  const layoutPointerId = deltas.layoutPointerId ?? (await codenameCardId(deck, "layout"));
+  if (allCardId === undefined || layoutPointerId === undefined) {
     throw new Error(
-      "no default-layout rule anchors configured; set DECKO_SERVED_ALL_CARD_ID and " +
-        "DECKO_SERVED_LAYOUT_POINTER_ID (or the DECKO_SERVED_DELTAS allCardId/layoutPointerId " +
-        "fields) so the error page can resolve this deck's Default Layout",
+      "no default-layout rule anchors: the deck has no `all`/`layout` codename cards and " +
+        "DECKO_SERVED_ALL_CARD_ID / DECKO_SERVED_LAYOUT_POINTER_ID are unset",
     );
   }
   let dbContent: string | undefined;
@@ -500,7 +514,7 @@ async function resolveDefaultLayout(deck: ErrorPageDeck): Promise<DefaultLayout>
     const { rows } = await deckRows<{ id?: number | string | null; db_content?: string | null }>(
       deck,
       "SELECT id, db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
-      [deltas.allCardId, deltas.layoutPointerId],
+      [allCardId, layoutPointerId],
     );
     const row = rows[0];
     if (row !== undefined && typeof row.db_content === "string") dbContent = row.db_content;
@@ -849,17 +863,32 @@ export async function renderDeckoNotFoundErrorPage(
 export async function renderDeckoServerErrorPage(
   deck: ErrorPageDeck,
   cardName: string,
+  cause?: unknown,
 ): Promise<Response> {
+  // The render error that led here is logged and named on the response
+  // (X-Decko-Error, one line), so a 500 is diagnosable from outside the
+  // isolate; the page body stays Decko's own error shape.
+  const causeLine =
+    cause === undefined
+      ? undefined
+      : (cause instanceof Error ? cause.message : String(cause)).replace(/[\r\n]+/g, " ").slice(0, 500);
+  if (causeLine !== undefined) {
+    console.error(`[bunny-edge-error-page] render failed for ${cardName}: ${causeLine}`);
+  }
+  const marked = (response: Response): Response => {
+    if (causeLine !== undefined) response.headers.set("X-Decko-Error", causeLine.replace(/[^\x20-\x7e]/g, "?"));
+    return response;
+  };
   try {
     const layout = await resolveDefaultLayout(deck);
     const viewHtml = buildServerErrorSlotHtml();
     const body = await wrapWithLayout(deck, cardName, viewHtml, layout, {});
-    return errorResponse(500, body);
+    return marked(errorResponse(500, body));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
       `[bunny-edge-error-page] server_error build failed for ${cardName}: ${message}; serving minimal stub`,
     );
-    return minimalServerErrorResponse(message);
+    return marked(minimalServerErrorResponse(message));
   }
 }

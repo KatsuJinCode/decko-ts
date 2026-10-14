@@ -226,7 +226,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
   // other half: with no configuration, the same seeded deck serves no other
   // deck's card ids, no private asset URLs and no version pin belonging to
   // any other deck.
-  it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no recorded page ids to look up)", async () => {
+  it("an UNCONFIGURED deck's 404 resolves its layout anchors from the deck's own codenames", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);
@@ -237,10 +237,11 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       expect(res.status).toBe(404);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
-      // No layout-rule anchors configured -> the builder cannot resolve a
-      // default layout -> its documented fallback answers, and the error
-      // path never 500s a second time.
-      expect(body).toContain(`<h1>Card not found</h1>`);
+      // No layout-rule anchors configured -> the builder reads the deck's
+      // `all` and `layout` codename cards and lays the page out in the
+      // deck's own Default Layout chrome.
+      expect(body).toContain(`<title>NoSuchCard - Test Site</title>`);
+      expect(body).not.toContain(`<h1>Card not found</h1>`);
       // And nothing from another deck's chrome leaked into it.
       expect(body).not.toContain(String(CONFIGURED_NOT_FOUND_TYPE_ID));
       expect(body).not.toContain("basic_c");
