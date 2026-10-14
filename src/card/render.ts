@@ -2816,6 +2816,7 @@ export class RenderEngine implements RenderEngineLike {
     if (level < 2) {
       this.structureRefMisses.clear();
       this.waveAskedSimpleKeys = undefined;
+      this.wavePrimedKeys = undefined;
       this.waveAskedPairs = undefined;
       this.waveAskedSideKeyPairs.clear();
       this.warmupScannedKeys.clear();
@@ -2916,6 +2917,7 @@ export class RenderEngine implements RenderEngineLike {
     // ask/answer sets (see seatNamesByWave), which post-reset read the
     // CURRENT deck — correct by construction.
     this.waveAskedSimpleKeys = undefined;
+    this.wavePrimedKeys = undefined;
     this.waveAskedPairs = undefined;
     this.waveAskedSideKeyPairs.clear();
     this.primeAskedIds = undefined;
@@ -3942,7 +3944,40 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
       if (seatCandidates && names.size > 0) {
-        await this.seatNamesByWave([...names], typeStatements);
+        // A *structure candidate that exists seats with this wave, and the
+        // late-seat structure sweep (applyLateSeatStructureContent) then walks
+        // the references of its content, absolutized against the rule card's
+        // name, in a round trip of its own. The universe already holds that
+        // content, so those references are asked in this wave as well, PRIME
+        // ONLY: their rows reach the fetch cache and the lexicon and their
+        // misses are primed negative, but nothing seats. The sweep then seats
+        // or records exactly what it did before, from cache.
+        const anticipated: string[] = [];
+        const universe = this.structureContents;
+        if (universe !== undefined) {
+          for (const candidate of names) {
+            let candidateName: DeckoName;
+            try {
+              candidateName = DeckoName.parse(candidate);
+            } catch {
+              continue;
+            }
+            const content = universe.get(candidateName.key);
+            if (content === undefined || content === null || content === "") continue;
+            if (this.renderCards.has(candidateName.key) || this.structureProcessed.has(candidateName.key)) continue;
+            for (const refName of templateReferenceNames(content, candidateName)) {
+              let refKey: string;
+              try {
+                refKey = DeckoName.parse(refName).key;
+              } catch {
+                continue;
+              }
+              if (refKey === "" || this.renderCards.has(refKey) || this.structureRefMisses.has(refKey)) continue;
+              anticipated.push(refName);
+            }
+          }
+        }
+        await this.seatNamesByWave([...names], typeStatements, anticipated);
       } else {
         const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
           (result) => (result.rows as CardsRow[]) ?? [],
@@ -3992,6 +4027,7 @@ export class RenderEngine implements RenderEngineLike {
   private async seatNamesByWave(
     names: string[],
     preambleStatements?: SQLStatement[],
+    primeOnly: string[] = [],
   ): Promise<boolean> {
     if (names.length === 0) return false;
     const knownId = (key: string): number | undefined => {
@@ -3999,21 +4035,57 @@ export class RenderEngine implements RenderEngineLike {
       const id = card?.record.id;
       return typeof id === "number" && id > 0 ? id : undefined;
     };
+    /** The keys of every level of a name: each part and each prefix. */
+    const levelKeys = (name: DeckoName): string[] => {
+      const keys = name.partKeys.slice();
+      const parts = name.parts;
+      for (let n = 2; n <= parts.length; n++) {
+        keys.push(n === parts.length ? name.key : DeckoName.parse(parts.slice(0, n).join("+")).key);
+      }
+      return keys;
+    };
     const MAX_WAVE_ROUNDS = 25; // prefetch.ts MAX_CLOSURE_ROUNDS parity
     const pending = new Set<string>();
+    // PRIME-ONLY asks (the anticipated references of a caller, see
+    // primePreparedCardDerivedState): asked in the same rounds, but a row that
+    // answers only them is composed into the fetch cache and the lexicon
+    // without seating, and their misses are primed negative. `seatKeys` are
+    // the levels the seating names need; a level both need seats.
+    const seatKeys = new Set<string>();
     for (const raw of names) {
-      let key: string;
+      let name: DeckoName;
       try {
-        key = DeckoName.parse(raw).key;
+        name = DeckoName.parse(raw);
       } catch (err) {
         if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
           continue; // unresolved mark: the ladder walk reports it
         }
         throw err;
       }
-      if (this.renderCards.has(key) || this.structureRefMisses.has(key)) continue;
+      if (primeOnly.length > 0) for (const key of levelKeys(name)) seatKeys.add(key);
+      if (this.renderCards.has(name.key) || this.structureRefMisses.has(name.key)) continue;
       pending.add(raw);
     }
+    const primeRaws = new Set<string>();
+    const primeOnlyKeys = new Set<string>();
+    for (const raw of primeOnly) {
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(raw);
+      } catch {
+        continue;
+      }
+      if (seatKeys.has(name.key) || this.renderCards.has(name.key) || this.structureRefMisses.has(name.key)) continue;
+      for (const key of levelKeys(name)) if (!seatKeys.has(key)) primeOnlyKeys.add(key);
+      pending.add(raw);
+      primeRaws.add(raw);
+    }
+    if (this.wavePrimedKeys === undefined) this.wavePrimedKeys = new Set();
+    const wavePrimedKeys = this.wavePrimedKeys;
+    /** Prime-only asks of THIS call (never the engine-lifetime ask memory:
+     *  a later seating ask must still find and seat the row). */
+    const primeAskedSimple = new Set<string>();
+    const primeAskedChains = new Set<string>();
     // ENGINE-LIFETIME ask memory (db round-trip elimination): every
     // question one wave asked the database, this engine never re-asks. The
     // deck is static per engine lifetime (the same contract
@@ -4052,12 +4124,39 @@ export class RenderEngine implements RenderEngineLike {
       const simpleKeys: string[] = [];
       const sideKeyPairs: { left: string; right: string; raw: string }[] = [];
       const sideIdPairs: { leftId: number; rightId: number; lex: Lex }[] = [];
-      // depth-3 names whose left is a depth-2 pair of simple names (see the
-      // branch that fills this): one join per name reaches the parent through
-      // its junction by keys, so the parent is asked in the round that sees it.
-      const tripleAsks: { junction: DeckoName; l1: string; l2: string; r: string; raw: string }[] = [];
+      // names of depth 3 or more whose left is not seated (see the branch
+      // that fills this): one join per name reaches it through its chain of
+      // left junctions by the part keys, so every level of the name is asked
+      // in the round that sees it. `junction` is the name's left.
+      const chainAsks: { junction: DeckoName; partKeys: string[]; raw: string }[] = [];
+      // side-key pairs asked only for prime-only names: their own statement,
+      // so the cross product of a seating statement is the one it always was.
+      const primeSideKeyPairs: { left: string; right: string; raw: string }[] = [];
       const nextRound: string[] = [];
       let heldSeatThisRound = false;
+      /** Ask a simple key: a seating level through the engine-lifetime ask
+       *  memory, a prime-only level through this call's own. */
+      const askSimple = (key: string, raw: string, prime: boolean): void => {
+        if (key === "" || this.renderCards.has(key)) return;
+        if (prime && !seatKeys.has(key)) {
+          if (
+            primeAskedSimple.has(key) ||
+            askedSimpleKeys.has(key) ||
+            this.fetcher.lexicon.heldKeyNegative(key) ||
+            this.fetcher.retrieveFromCacheByKey(key) !== undefined
+          ) {
+            return;
+          }
+          primeAskedSimple.add(key);
+          callAskedSimple.add(key);
+          simpleKeys.push(key);
+          return;
+        }
+        if (askedSimpleKeys.has(key)) return;
+        askedSimpleKeys.set(key, raw);
+        callAskedSimple.add(key);
+        simpleKeys.push(key);
+      };
       for (const raw of pending) {
         let name: DeckoName;
         try {
@@ -4069,8 +4168,24 @@ export class RenderEngine implements RenderEngineLike {
           throw err;
         }
         if (this.renderCards.has(name.key)) continue; // seated by an earlier round
+        const prime = primeRaws.has(raw) && !seatKeys.has(name.key);
+        if (!prime && wavePrimedKeys.has(name.key)) {
+          // A prime-only ask of an earlier wave composed this row into the
+          // fetch cache without seating it: seat it from there (zero queries).
+          const held = this.fetcher.retrieveFromCacheByKey(name.key);
+          if (held !== undefined) {
+            heldSeatThisRound = true;
+            await this.cacheFetchedRecord(held);
+            seatedAny = true;
+            continue;
+          }
+        }
         const left = name.leftName;
         const right = name.rightName;
+        if (prime && (!name.isCompound || left === undefined || right === undefined)) {
+          askSimple(name.key, raw, true);
+          continue;
+        }
         if (!name.isCompound || left === undefined || right === undefined) {
           const key = name.key;
           // the batched fetch composer (2026-10-06): the OLD gate skipped the
@@ -4114,6 +4229,14 @@ export class RenderEngine implements RenderEngineLike {
             callAskedPairs.add(pairKey);
             sideIdPairs.push({ leftId, rightId, lex });
           }
+        } else if (prime && !left.isCompound && !right.isCompound) {
+          const sidePairKey = `${left.key}~${right.key}`;
+          if (!askedSideKeyPairs.has(sidePairKey) && !primeAskedChains.has(sidePairKey)) {
+            primeAskedChains.add(sidePairKey);
+            primeSideKeyPairs.push({ left: left.key, right: right.key, raw });
+            askSimple(left.key, left.s, true);
+            askSimple(right.key, right.s, true);
+          }
         } else if (!left.isCompound && !right.isCompound) {
           // depth-2 pair: side-key join; the sides ride this round's
           // IN-list so the junction composes (driveClosure shape).
@@ -4132,39 +4255,52 @@ export class RenderEngine implements RenderEngineLike {
               simpleKeys.push(right.key);
             }
           }
-        } else if (
-          !right.isCompound &&
-          left.leftName !== undefined &&
-          left.rightName !== undefined &&
-          !left.leftName.isCompound &&
-          !left.rightName.isCompound &&
-          leftId === undefined
-        ) {
-          // depth-3 name, left side an unseated depth-2 pair of simple names.
-          // The keys are in the name, so the junction rides as a side-key pair
-          // and one join reaches the parent through it: the parent is asked in
-          // THIS round rather than the round after its junction seats. A parent
-          // that misses is primed negative after the round, through its pair.
-          const tripleKey = `${left.leftName.key}~${left.rightName.key}~${right.key}`;
-          if (!askedSideKeyPairs.has(tripleKey)) {
-            askedSideKeyPairs.add(tripleKey);
-            const junctionKey = `${left.leftName.key}~${left.rightName.key}`;
-            if (!askedSideKeyPairs.has(junctionKey)) {
-              askedSideKeyPairs.add(junctionKey);
-              sideKeyPairs.push({ left: left.leftName.key, right: left.rightName.key, raw: left.s });
+        } else if (left.isCompound && leftId === undefined) {
+          // A name of depth 3 or more whose left is not seated. Every part of
+          // a name is simple (a+b+c+d is ((a+b)+c)+d), so its keys name every
+          // level: the depth-2 prefix rides as a side-key pair, each deeper
+          // prefix (this name included) rides one join through its chain of
+          // left junctions by the part keys. Every level is asked in THIS
+          // round rather than one round after the level below it seats. A
+          // level that misses is primed negative after the round, through its
+          // pair.
+          const partNames = name.partNames;
+          for (const part of partNames) askSimple(part.key, part.s, prime);
+          const partKeys = partNames.map((part) => part.key);
+          const pairRaw = partNames.slice(0, 2).map((p) => p.s).join("+");
+          const pairKey = `${partKeys[0]}~${partKeys[1]}`;
+          const pairSeats = !prime || seatKeys.has(DeckoName.parse(pairRaw).key);
+          if (
+            !askedSideKeyPairs.has(pairKey) &&
+            !(!pairSeats && primeAskedChains.has(pairKey)) &&
+            knownId(DeckoName.parse(pairRaw).key) === undefined
+          ) {
+            if (pairSeats) {
+              askedSideKeyPairs.add(pairKey);
+              sideKeyPairs.push({ left: partKeys[0]!, right: partKeys[1]!, raw: pairRaw });
+            } else {
+              primeAskedChains.add(pairKey);
+              primeSideKeyPairs.push({ left: partKeys[0]!, right: partKeys[1]!, raw: pairRaw });
             }
-            for (const key of [left.leftName.key, left.rightName.key, right.key]) {
-              if (!this.renderCards.has(key) && !askedSimpleKeys.has(key)) {
-                askedSimpleKeys.set(key, key);
-                callAskedSimple.add(key);
-                simpleKeys.push(key);
-              }
-            }
-            tripleAsks.push({ junction: left, l1: left.leftName.key, l2: left.rightName.key, r: right.key, raw });
+          }
+          for (let depth = 3; depth <= partNames.length; depth++) {
+            const prefixKeys = partKeys.slice(0, depth);
+            const chainKey = prefixKeys.join("~");
+            if (askedSideKeyPairs.has(chainKey) || primeAskedChains.has(chainKey)) continue;
+            const prefixRaw = depth === partNames.length ? raw : partNames.slice(0, depth).map((p) => p.s).join("+");
+            const prefix = depth === partNames.length ? name : DeckoName.parse(prefixRaw);
+            if (this.renderCards.has(prefix.key)) continue;
+            if (!prime || seatKeys.has(prefix.key)) askedSideKeyPairs.add(chainKey);
+            else primeAskedChains.add(chainKey);
+            chainAsks.push({ junction: prefix.leftName!, partKeys: prefixKeys, raw: prefixRaw });
           }
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
+          if (prime) {
+            for (const side of [left, right]) if (!seatKeys.has(side.key)) primeRaws.add(side.s);
+            primeRaws.add(raw);
+          }
           // the batched fetch composer (2026-10-06): re-pend the name itself.
           // MEASURED CONVERGENCE GAP (this pass's attribution): the old push
           // resolved the sides but never re-asked the PARENT, so the
@@ -4182,7 +4318,13 @@ export class RenderEngine implements RenderEngineLike {
           nextRound.push(raw);
         }
       }
-      if (simpleKeys.length === 0 && sideKeyPairs.length === 0 && sideIdPairs.length === 0) {
+      if (
+        simpleKeys.length === 0 &&
+        sideKeyPairs.length === 0 &&
+        primeSideKeyPairs.length === 0 &&
+        chainAsks.length === 0 &&
+        sideIdPairs.length === 0
+      ) {
         // Nothing fetchable: every pending name waits on sides that resolve
         // next round or is already seated/asked.
         if (nextRound.length === 0) break;
@@ -4199,6 +4341,16 @@ export class RenderEngine implements RenderEngineLike {
         continue;
       }
       const statements: SQLStatement[] = [];
+      // How each statement's rows land: "seat" always seats (the preamble
+      // and the seating side-key joins, whose cross products are what they
+      // always were), "prime" never seats (prime-only side-key joins), and
+      // "auto" statements return only the rows they asked for, so a row seats
+      // unless only prime-only names asked for it.
+      const statementKinds: ("seat" | "prime" | "auto")[] = [];
+      /** Tag every statement pushed since the last tag with `kind`. */
+      const tagStatements = (kind: "seat" | "prime" | "auto"): void => {
+        while (statementKinds.length < statements.length) statementKinds.push(kind);
+      };
       if (preamble.length > 0) {
         // The preamble rows return FIRST in the batch results and seat
         // before the wave rows (the flatMap below preserves statement
@@ -4206,6 +4358,7 @@ export class RenderEngine implements RenderEngineLike {
         statements.push(...preamble);
         preamble = [];
       }
+      tagStatements("seat");
       if (simpleKeys.length > 0) {
         for (let i = 0; i < simpleKeys.length; i += 90) {
           const chunk = simpleKeys.slice(i, i + 90);
@@ -4216,9 +4369,13 @@ export class RenderEngine implements RenderEngineLike {
           });
         }
       }
-      if (sideKeyPairs.length > 0) {
-        for (let i = 0; i < sideKeyPairs.length; i += 45) {
-          const chunk = sideKeyPairs.slice(i, i + 45);
+      tagStatements("auto");
+      for (const [pairs, kind] of [
+        [sideKeyPairs, "seat"],
+        [primeSideKeyPairs, "prime"],
+      ] as const) {
+        for (let i = 0; i < pairs.length; i += 45) {
+          const chunk = pairs.slice(i, i + 45);
           const leftKeys = chunk.map((pair) => pair.left);
           const rightKeys = chunk.map((pair) => pair.right);
           const placeholdersL = leftKeys.map(() => "?").join(", ");
@@ -4232,23 +4389,44 @@ export class RenderEngine implements RenderEngineLike {
             params: [...leftKeys, ...rightKeys],
           });
         }
+        tagStatements(kind);
       }
-      if (tripleAsks.length > 0) {
-        for (let i = 0; i < tripleAsks.length; i += 30) {
-          const chunk = tripleAsks.slice(i, i + 30);
-          const clauses = chunk
-            .map(() => `(pl."key" COLLATE NOCASE = ? AND pm."key" COLLATE NOCASE = ? AND r."key" COLLATE NOCASE = ?)`)
-            .join(" OR ");
-          statements.push({
-            sql:
-              `SELECT DISTINCT j.* FROM cards j\n` +
-              `  JOIN cards jl ON jl.id = j.left_id AND jl.trash = 0\n` +
-              `  JOIN cards pl ON pl.id = jl.left_id AND pl.trash = 0\n` +
-              `  JOIN cards pm ON pm.id = jl.right_id AND pm.trash = 0\n` +
-              `  JOIN cards r ON r.id = j.right_id AND r.trash = 0\n` +
-              ` WHERE j.trash = 0 AND (${clauses})`,
-            params: chunk.flatMap((ask) => [ask.l1, ask.l2, ask.r]),
-          });
+      if (chainAsks.length > 0) {
+        // One statement shape per depth, shallower depths first so a level's
+        // row composes before the rows that name it as their left. A depth-d
+        // join binds d keys per name; chunks stay under D1's 100-parameter
+        // cap (90 bound parameters).
+        const byDepth = new Map<number, typeof chainAsks>();
+        for (const ask of chainAsks) {
+          const list = byDepth.get(ask.partKeys.length) ?? [];
+          list.push(ask);
+          byDepth.set(ask.partKeys.length, list);
+        }
+        for (const depth of [...byDepth.keys()].sort((a, b) => a - b)) {
+          const asks = byDepth.get(depth)!;
+          // c<depth> is the asked card, c<n> its left junction of depth n down
+          // to c2; p0 is c2's left, p<n> (n >= 1) is c<n+1>'s right.
+          const joins: string[] = [];
+          for (let n = depth - 1; n >= 2; n--) {
+            joins.push(`  JOIN cards c${n} ON c${n}.id = c${n + 1}.left_id AND c${n}.trash = 0\n`);
+          }
+          joins.push(`  JOIN cards p0 ON p0.id = c2.left_id AND p0.trash = 0\n`);
+          for (let n = 1; n < depth; n++) {
+            joins.push(`  JOIN cards p${n} ON p${n}.id = c${n + 1}.right_id AND p${n}.trash = 0\n`);
+          }
+          const clause =
+            "(" + Array.from({ length: depth }, (_, n) => `p${n}."key" COLLATE NOCASE = ?`).join(" AND ") + ")";
+          const perStatement = Math.floor(90 / depth);
+          for (let i = 0; i < asks.length; i += perStatement) {
+            const chunk = asks.slice(i, i + perStatement);
+            statements.push({
+              sql:
+                `SELECT DISTINCT c${depth}.* FROM cards c${depth}\n` +
+                joins.join("") +
+                ` WHERE c${depth}.trash = 0 AND (${chunk.map(() => clause).join(" OR ")})`,
+              params: chunk.flatMap((ask) => ask.partKeys),
+            });
+          }
         }
       }
       if (sideIdPairs.length > 0) {
@@ -4265,9 +4443,15 @@ export class RenderEngine implements RenderEngineLike {
       // Side priming rides LAST (the driveClosure batch contract): the
       // sides of every row this round fetched join the next round so their
       // records compose + enrich (junction names need them).
-      const rows = (await this.fetcher.driver.batch(statements)).flatMap(
-        (result) => (result.rows as CardsRow[]) ?? [],
-      );
+      tagStatements("auto");
+      const rows: CardsRow[] = [];
+      const rowKinds: ("seat" | "prime" | "auto")[] = [];
+      (await this.fetcher.driver.batch(statements)).forEach((result, i) => {
+        for (const row of (result.rows as CardsRow[]) ?? []) {
+          rows.push(row);
+          rowKinds.push(statementKinds[i] ?? "auto");
+        }
+      });
       // the batched fetch composer: the rows in hand carry everything
       // the per-row compose pipeline is about to ask one row at a time
       // (sides' idToLex reads, type-card reads, left-side row reads).
@@ -4279,7 +4463,8 @@ export class RenderEngine implements RenderEngineLike {
       // own pipeline and lands every row through cacheFetchedRecord.
       await this.primeRowsForComposition(rows);
       const fetchedPairs = new Set<string>();
-      for (const row of rows) {
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex]!;
         if (row.left_id !== null && row.left_id !== undefined && row.right_id !== null && row.right_id !== undefined) {
           fetchedPairs.add(`L-${row.left_id}-${row.right_id}`);
         }
@@ -4298,6 +4483,15 @@ export class RenderEngine implements RenderEngineLike {
         ) {
           this.fetcher.lexicon.write(record.id!, record.name, [row.left_id, row.right_id]);
         }
+        const rowKind = rowKinds[rowIndex];
+        if (rowKind === "prime" || (rowKind === "auto" && primeOnlyKeys.has(record.key))) {
+          // Answers only prime-only names: held in the fetch cache, not seated.
+          if (!this.renderCards.has(record.key) && this.fetcher.peekStaleCard(record.key) === undefined) {
+            this.fetcher.writeToCache(record);
+            wavePrimedKeys.add(record.key);
+          }
+          continue;
+        }
         await this.cacheFetchedRecord(record);
         seatedAny = true;
       }
@@ -4311,7 +4505,7 @@ export class RenderEngine implements RenderEngineLike {
       // row of any round answered it) and no later round re-asks it. Applies
       // to depth-2 side-key pairs and to the depth-3 key join's parents.
       const keyJoinMisses: { junctionKey: string; leftKey: string; rightKey: string }[] = [];
-      for (const pair of sideKeyPairs) {
+      for (const pair of [...sideKeyPairs, ...primeSideKeyPairs]) {
         let asked: DeckoName;
         try {
           asked = DeckoName.parse(pair.raw);
@@ -4320,13 +4514,19 @@ export class RenderEngine implements RenderEngineLike {
         }
         keyJoinMisses.push({ junctionKey: asked.key, leftKey: pair.left, rightKey: pair.right });
       }
-      for (const ask of tripleAsks) {
-        keyJoinMisses.push({ junctionKey: DeckoName.parse(ask.raw).key, leftKey: ask.junction.key, rightKey: ask.r });
+      for (const ask of chainAsks) {
+        keyJoinMisses.push({
+          junctionKey: DeckoName.parse(ask.raw).key,
+          leftKey: ask.junction.key,
+          rightKey: ask.partKeys[ask.partKeys.length - 1]!,
+        });
       }
       for (const miss of keyJoinMisses) {
-        if (this.renderCards.has(miss.junctionKey)) continue;
-        const leftId = knownId(miss.leftKey);
-        const rightId = knownId(miss.rightKey);
+        if (this.renderCards.has(miss.junctionKey) || wavePrimedKeys.has(miss.junctionKey)) continue;
+        const primedId = (key: string): number | undefined =>
+          wavePrimedKeys.has(key) ? this.fetcher.retrieveFromCacheByKey(key)?.id : undefined;
+        const leftId = knownId(miss.leftKey) ?? primedId(miss.leftKey);
+        const rightId = knownId(miss.rightKey) ?? primedId(miss.rightKey);
         if (leftId === undefined || rightId === undefined) continue; // side missed: its negative is primed
         const pairKey = `L-${leftId}-${rightId}`;
         if (askedPairs.has(pairKey)) continue;
@@ -6225,6 +6425,10 @@ export class RenderEngine implements RenderEngineLike {
    *  the database, so warm renders' waves re-ask nothing and the
    *  warm-zero query-shape pins hold. */
   private waveAskedSimpleKeys?: Map<string, string>;
+  /** Keys a prime-only wave ask composed into the fetch cache without
+   *  seating (seatNamesByWave's primeOnly): a later seating ask seats them
+   *  from the cache. Reset with the ask memory. */
+  private wavePrimedKeys?: Set<string>;
   private waveAskedPairs?: Map<string, { leftId: number; rightId: number; lex: Lex }>;
   /** the edge regression fixes (2026-10-06): the composition primer's own
    *  ask memory — every side/type id primeRowsForComposition ever batched,
