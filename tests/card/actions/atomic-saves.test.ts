@@ -26,6 +26,8 @@ import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/drivers/d1.js";
 import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
 import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { PGlite } from "@electric-sql/pglite";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
@@ -136,6 +138,10 @@ function scratchDir(): string {
 }
 
 const BACKENDS: Record<string, () => Promise<Backend>> = {
+  "PostgreSQL (PGlite, native)": async () => {
+    const driver = new PostgresDriver({ client: await PGlite.create() });
+    return { driver, dispose: () => driver.close() };
+  },
   "local SQLite (native)": async () => {
     const path = join(scratchDir(), "deck.sqlite");
     const driver = new LocalSqliteDriver({ path });

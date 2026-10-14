@@ -70,6 +70,7 @@ export class PostgresDriver implements SQLDatabaseDriver {
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     const t = translateSqliteToPostgres(sql);
     if (t.skip) return { rows: [], rowsAffected: 0 };
+    if (t.prelude !== undefined) await this.client.query(t.prelude, []);
     const res = await this.client.query(t.sql, params.map(toPgParam));
     const rows = res.rows.map(normalizeRow) as T[];
     const rowsAffected = Number(res.affectedRows ?? res.rowCount ?? 0);
@@ -81,6 +82,7 @@ export class PostgresDriver implements SQLDatabaseDriver {
       }
       if (t.explicitId) await this.advanceSequence(t.insertTable);
     }
+    for (const extra of t.postlude ?? []) await this.client.query(extra, []);
     return result;
   }
 
@@ -156,6 +158,10 @@ function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
 
 export interface TranslatedStatement {
   sql: string;
+  /** Run after `sql` (the NULL-id default for a sequenced table). */
+  postlude?: string[];
+  /** Run before `sql` (a trigger's function definition). */
+  prelude?: string;
   /** The statement has no PostgreSQL meaning (PRAGMA) and is skipped. */
   skip?: boolean;
   /** For INSERT: the target table. */
@@ -261,6 +267,8 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
   const tokens = tokenize(sql);
   const first = next(tokens, 0);
   if (isWord(tokens[first], "PRAGMA")) return { sql, skip: true };
+  const trigger = translateTrigger(sql);
+  if (trigger !== undefined) return trigger;
   const isCreateTable = isWord(tokens[first], "CREATE") && tokens.some((t) => isWord(t, "TABLE"));
   const isCreateIndex = isWord(tokens[first], "CREATE") && tokens.some((t) => isWord(t, "INDEX"));
   const out: Token[] = [];
@@ -386,8 +394,27 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
   }
 
   if (isCreateTable) addMissingColumnTypes(out);
+  let postlude: string[] | undefined;
+  if (isCreateTable && out.some((t) => t.text === "SERIAL PRIMARY KEY")) {
+    // SQLite assigns the next id when an insert gives "id" as NULL;
+    // PostgreSQL rejects the NULL. A BEFORE INSERT trigger restores the
+    // SQLite behaviour.
+    const nameAt = next(out, out.findIndex((t) => isWord(t, "TABLE")) + 1);
+    let n = nameAt;
+    if (isWord(out[n], "IF")) n = next(out, next(out, next(out, n + 1) + 1) + 1);
+    const table = unquote(out[n]!);
+    const fn = `"${table}_id_default_fn"`;
+    postlude = [
+      `CREATE OR REPLACE FUNCTION ${fn}() RETURNS trigger LANGUAGE plpgsql AS $decko$ BEGIN IF NEW.id IS NULL THEN NEW.id := nextval(pg_get_serial_sequence(TG_TABLE_NAME, 'id')); END IF; RETURN NEW; END $decko$`,
+      `CREATE TRIGGER "${table}_id_default" BEFORE INSERT ON "${table}" FOR EACH ROW EXECUTE FUNCTION ${fn}()`,
+    ];
+  }
 
   let text = out.map((t) => t.text).join("").trim().replace(/;\s*$/, "");
+  // SQLite's implicit rowid orders rows by insertion for tables keyed by an
+  // integer id; PostgreSQL has no stable equivalent, so order by the first
+  // column (the id, on every table that has one).
+  text = text.replace(/ORDER BY rowid/gi, "ORDER BY 1");
   // json_array_elements_text(?) needs a json argument.
   text = text.replace(/json_array_elements_text\((\$\d+)\)/g, "json_array_elements_text($1::json)");
   let returningId = false;
@@ -398,7 +425,7 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
       returningId = true;
     }
   }
-  return { sql: text, insertTable, explicitId, returningId };
+  return { sql: text, insertTable, explicitId, returningId, postlude };
 }
 
 /** SQLite allows a column with no declared type; PostgreSQL does not. Such a
@@ -432,4 +459,20 @@ function addMissingColumnTypes(tokens: Token[]): void {
     const idx = tokens.indexOf(w, a);
     tokens.splice(idx + 1, 0, { kind: "space", text: " " }, { kind: "word", text: "TEXT" });
   }
+}
+
+/** SQLite's `CREATE TRIGGER name AFTER|BEFORE event ON table [FOR EACH ROW]
+ *  BEGIN body END` becomes a PL/pgSQL trigger function plus a row trigger
+ *  that runs it. Triggers with a WHEN clause are not translated. */
+function translateTrigger(sql: string): TranslatedStatement | undefined {
+  const m = /^\s*CREATE\s+TRIGGER\s+(?:IF\s+NOT\s+EXISTS\s+)?("[^"]+"|\w+)\s+(AFTER|BEFORE)\s+(INSERT|UPDATE|DELETE)\s+ON\s+("[^"]+"|\w+)\s+(?:FOR\s+EACH\s+ROW\s+)?BEGIN\s+([\s\S]*?)\s*END\s*;?\s*$/i.exec(sql);
+  if (m === null) return undefined;
+  const [, rawName, timing, event, table, body] = m;
+  const name = rawName!.replace(/"/g, "");
+  const fn = `"${name}_fn"`;
+  const statements = body!.trim().replace(/;\s*$/, "") + ";";
+  return {
+    prelude: `CREATE OR REPLACE FUNCTION ${fn}() RETURNS trigger LANGUAGE plpgsql AS $decko$ BEGIN ${statements} RETURN NULL; END $decko$`,
+    sql: `CREATE TRIGGER "${name}" ${timing!.toUpperCase()} ${event!.toUpperCase()} ON ${table} FOR EACH ROW EXECUTE FUNCTION ${fn}()`,
+  };
 }
