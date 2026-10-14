@@ -18,8 +18,8 @@ and the engine, not Ruby.
 
 This harness is one instrument among several. What it measures, what the
 other instruments cover, and what nothing in the public package measures
-(browser journeys, the default PBKDF2 password path in the graded fixture,
-hosted database writes) is inventoried in
+(browser journeys, PBKDF2 storage of a newly set password, hosted database
+writes) is inventoried in
 [../docs/coverage-inventory.md](../docs/coverage-inventory.md).
 
 ## Layout
@@ -272,6 +272,19 @@ engine's schema has holds no row the oracle reads or writes; its changes are
 not compared, matched or declared, and are listed in the report's
 `engine_only_tables` field (`tables`, and `writes` with each step's id, table
 and row delta).
+
+**A declared divergence masks one named kind of value, nothing more.** An
+engine configuration that differs from Ruby on purpose in a stored value Ruby
+cannot produce names that divergence with `--declared-divergences`, a JSON map
+of divergence name to why. Each name is defined in `runner/divergences.mjs`;
+the grader masks exactly the values it describes in the expected and actual
+row deltas alike, compares everything else as usual, and lists every masked
+value in the report (`declared_divergences`). The one defined divergence is
+`password-digest`: the `db_content` of a `+*password` card, and the `value`
+of a `card_changes` row recorded by an action on one, when it is a password
+digest of either scheme; an update whose only change is such a digest is no
+change. The `adapters/ts-pbkdf2` configuration (the port's default PBKDF2
+password policy) is graded with it.
 
 Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
 grade.

@@ -21,6 +21,13 @@ export interface TargetSchema {
  *  importer can never drift from the schema stream's decisions. */
 export function parseTargetSchema(ddlPath: string): TargetSchema;
 
+/** [ENGINE-FRESHNESS] Install the stamp table, row and every card-table
+ *  trigger from the DDL on a deck lacking any of them. Idempotent. */
+export function installFreshnessStamp(
+  driver: Pick<SQLDatabaseDriver, "query">,
+  schema: Pick<TargetSchema, "createTables" | "createTriggers" | "postLoadStatements">,
+): Promise<void>;
+
 /** Minimal SQLDatabaseDriver over better-sqlite3 for local CLI use
  *  (structurally compatible with the engine's shared driver interface —
  *  FetchEngine/RenderEngine accept it directly). */

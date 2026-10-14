@@ -622,9 +622,11 @@ setRenderRecaptchaConfig(recaptchaConfig);
 // migrations its own way) — this Node origin passes its own repo-root
 // db/migrations explicitly.
 // The deck is opened as it is - a database Ruby Decko wrote is served with
-// no import: the port adds only its own objects (freshness stamp, session
-// table, lookup indexes), additively and idempotently, and never alters a
-// table Ruby owns (src/server/same-database.ts, docs/same-database.md).
+// no import: the port adds only its own objects (the freshness stamp on every
+// card table via ensureFreshnessStamp, the session table, lookup indexes),
+// additively and idempotently, and never alters a table Ruby owns
+// (src/server/same-database.ts, src/server/freshness-stamp.ts,
+// docs/same-database.md).
 const sameDatabase = await openSameDatabase(authDriver, { authMigrationsDir: path.join(HERE, "db", "migrations") });
 // A database Ruby also serves keeps Ruby's salted SHA-1 password rows, so
 // every password the port writes is one Ruby can verify. An explicit

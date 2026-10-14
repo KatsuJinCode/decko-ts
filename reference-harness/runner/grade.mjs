@@ -7,7 +7,15 @@
 //
 //   node reference-harness/runner/grade.mjs --fixture <fixtureDir> \
 //        --actual <resultsDir> [--expected <expectedDir>] [--report <report.json>] \
-//        [--declared-other-tables <declared.json>] [--allow-partial] [--no-class-token-order]
+//        [--declared-other-tables <declared.json>] [--declared-divergences <divergences.json>]
+//        [--allow-partial] [--no-class-token-order]
+//
+// --declared-divergences names a JSON map of divergences an engine
+//   configuration makes on purpose, by name, each with its why:
+//   { "password-digest": "the port stores PBKDF2 where Ruby stores SHA-1" }.
+//   Each name is defined in divergences.mjs, which masks exactly the values it
+//   describes in expected and actual row deltas alike; everything else is
+//   compared as usual, and the report lists every masked value.
 //
 // --declared-other-tables names a JSON map, keyed on step id then table name,
 //   of write-step differences outside the card tables an engine is known to
@@ -43,6 +51,10 @@ let declaredOtherTables = {};
 if (args["declared-other-tables"]) {
   declaredOtherTables = JSON.parse(readFileSync(args["declared-other-tables"], "utf8"));
 }
+let declaredDivergences = {};
+if (args["declared-divergences"]) {
+  declaredDivergences = JSON.parse(readFileSync(args["declared-divergences"], "utf8"));
+}
 
 const report = gradeRun({
   fixture: args.fixture,
@@ -51,6 +63,7 @@ const report = gradeRun({
   allowPartial: Boolean(args["allow-partial"]),
   classTokenOrder: !args["no-class-token-order"],
   declaredOtherTables,
+  declaredDivergences,
 });
 report.graded_at = new Date().toISOString();
 if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 2) + "\n");
@@ -67,6 +80,7 @@ if (report.verdict === "invalid") {
 }
 if (report.verdict === "partial") console.log(`PARTIAL RUN, not a grade: ${report.partial.join("; ")}`);
 console.log(`normalization: ${report.normalization.join(", ")}`);
+for (const d of report.declared_divergences) console.log(`declared divergence ${d.name}: ${d.masked.length} value(s) masked - ${d.why}`);
 for (const k of KINDS) {
   const s = report.summary[k];
   console.log(`${k.padEnd(13)} ${String(s.pass).padStart(5)} / ${String(s.graded).padEnd(5)} ${s.rate === null ? "-" : s.rate + "%"}` +

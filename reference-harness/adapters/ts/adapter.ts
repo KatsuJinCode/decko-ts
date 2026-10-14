@@ -64,11 +64,18 @@ type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
 // The synthetic deck is Ruby-built: every account's stored password is
-// Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so the
-// adapter pins that storage policy — under the port's modern default a
+// Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so this
+// configuration pins that storage policy — under the port's modern default a
 // sign-in would upgrade the row to PBKDF2 and write a row Ruby never
-// writes. Set before any account machinery loads.
-process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
+// writes. The ts-pbkdf2 configuration (adapters/ts-pbkdf2/adapter.json) sets
+// DECKO_HARNESS_PASSWORD_HASH=pbkdf2 to grade the port's default policy
+// instead, with the password-digest divergence declared to the grader. Set
+// before any account machinery loads.
+const passwordHash = process.env.DECKO_HARNESS_PASSWORD_HASH ?? "legacy-sha1";
+if (passwordHash !== "legacy-sha1" && passwordHash !== "pbkdf2") {
+  throw new Error(`DECKO_HARNESS_PASSWORD_HASH must be "legacy-sha1" or "pbkdf2", got ${JSON.stringify(passwordHash)}`);
+}
+process.env.DECKO_PASSWORD_HASH = passwordHash;
 // The engine ships stock Decko's inflection rules (card 1.110.0
 // config/initializers/inflections.rb) under this name; every stock deck uses
 // them, so they are installed before any name is parsed.
@@ -480,7 +487,7 @@ const HANDLERS: Record<string, (req: Req) => Promise<Json>> = {
 };
 
 await boot();
-emit({ ready: true, protocol: 1, engine: "decko-ts", version: { package: "decko-ts" } });
+emit({ ready: true, protocol: 1, engine: "decko-ts", version: { package: "decko-ts", password_hash: passwordHash } });
 
 const lines = createInterface({ input: process.stdin });
 for await (const line of lines) {

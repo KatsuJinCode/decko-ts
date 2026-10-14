@@ -314,6 +314,25 @@ async function createUnlessExists(driver, statement) {
   return true;
 }
 
+/**
+ * [ENGINE-FRESHNESS] Install the deck_data_version stamp (table, row and the
+ * triggers on every card table, from the DDL's [ENGINE-FRESHNESS] block) on
+ * a deck that lacks any part of it. Idempotent: what exists is left alone,
+ * so a resumed import, a re-run, or an import into a deck that already has
+ * the stamp is safe. Every import path calls it after its bulk load (a
+ * trigger present during the load would fire per row). The engine's open
+ * paths do the same through src/server/freshness-stamp.ts.
+ */
+export async function installFreshnessStamp(driver, schema) {
+  for (const statement of schema.createTables) {
+    if (/^CREATE TABLE "deck_data_version"/.test(statement)) await createUnlessExists(driver, statement);
+  }
+  for (const statement of schema.createTriggers) await createUnlessExists(driver, statement);
+  for (const statement of schema.postLoadStatements) {
+    await driver.query(statement.replace(/^INSERT INTO/i, "INSERT OR IGNORE INTO"), []);
+  }
+}
+
 /** Apply the engine's own migrations (db/migrations/*.sql: the session
  *  table), with the same bookkeeping src/card/auth/migrations.ts keeps, so a
  *  host that runs those migrations at boot finds them applied. */
@@ -620,10 +639,7 @@ export async function importDump(opts) {
   // [ENGINE-FRESHNESS] stamp triggers + row LAST — after the bulk load, so
   // the per-row trigger fire never happens during import (see
   // parseTargetSchema's note).
-  for (const statement of schema.createTriggers) await createUnlessExists(driver, statement);
-  for (const statement of schema.postLoadStatements) {
-    await driver.query(statement.replace(/^INSERT INTO/i, "INSERT OR IGNORE INTO"), []);
-  }
+  await installFreshnessStamp(driver, schema);
   stats.engineMigrations = await applyEngineMigrations(
     driver,
     opts.engineMigrationsDir ?? join(dirname(ddlPath), "migrations"),

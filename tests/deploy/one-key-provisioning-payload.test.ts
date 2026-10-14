@@ -349,9 +349,9 @@ describe("the engine schema a provisioned deck gets", () => {
     expect(cards).toMatch(/"db_content"/i);
     expect(plan.preSeed.join("\n")).toMatch(/cards_name_index/);
     expect(plan.preSeed.every((s) => /^CREATE\s+(TABLE|(UNIQUE\s+)?INDEX)/i.test(s))).toBe(true);
-    // the six data-version triggers, each a whole statement (body included)
+    // the eighteen data-version triggers (three per card table), each a whole statement (body included)
     const triggers = plan.postSeed.filter((s) => /^CREATE\s+TRIGGER/i.test(s));
-    expect(new Set(triggers.map((t) => /TRIGGER\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/i.exec(t)![1])).size).toBe(6);
+    expect(new Set(triggers.map((t) => /TRIGGER\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/i.exec(t)![1])).size).toBe(18);
     for (const t of triggers) expect(t).toMatch(/END$/);
     // the stamp row, safe to run over a seed that already carried one
     expect(plan.postSeed.some((s) => /^INSERT OR IGNORE INTO "deck_data_version"/i.test(s))).toBe(true);
@@ -397,7 +397,7 @@ describe("provisionDatabase on a local libSQL-protocol server (no Bunny)", () =>
       const stamp = await driver.query<{ version: number }>('SELECT "version" FROM "deck_data_version" WHERE "id" = 1', []);
       expect(stamp.rows).toHaveLength(1);
       const triggers = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'trigger'", []);
-      expect(Number(triggers.rows[0]!.n)).toBe(6);
+      expect(Number(triggers.rows[0]!.n)).toBe(18);
       const sessions = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", []);
       expect(Number(sessions.rows[0]!.n)).toBe(0);
       // the triggers fire on a write after the seed

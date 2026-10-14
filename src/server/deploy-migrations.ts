@@ -83,6 +83,9 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // would deny the whole deck. 0009 rather than 0007 because 0007 is reserved
   // above.
   { filename: "0009-demo-account-read-rules.sql", number: "0009" },
+  // The freshness stamp's triggers widened from cards + card_references to
+  // every card table, so a card_actions-only write moves the stamp too.
+  { filename: "0010-deck-data-version-all-card-tables.sql", number: "0010" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

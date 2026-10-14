@@ -39,6 +39,7 @@ import {
   parseTargetSchema,
   Checksum,
   IMPORT_PRAGMAS,
+  installFreshnessStamp,
 } from "./import.mjs";
 import { reconstructCardName } from "./name-reconstruct.mjs";
 
@@ -276,6 +277,11 @@ export async function importFromSqlite(opts) {
     }
     await flush();
     for (const statement of schema.createIndexes) await driver.query(statement, []);
+    // [ENGINE-FRESHNESS] the stamp row and the triggers on every card table,
+    // after the bulk load so no trigger fires per imported row. Without them
+    // the deck renders but a committed write never moves the stamp, and a
+    // long-lived engine keeps serving what it derived before the write.
+    await installFreshnessStamp(driver, schema);
     // Planner statistics, after the rows are in and after the indexes exist.
     // Without them SQLite estimates every equality alike and can pick a
     // low-selectivity index, reading far more rows than the query needs.

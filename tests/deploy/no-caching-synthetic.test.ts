@@ -19,20 +19,21 @@
 //     layers store whole responses and are not exercised here.
 // The engines that live between requests do keep derived state; they check
 // the deck_data_version stamp once per request and discard it when the stamp
-// has moved. The stamp is maintained by triggers on cards and card_references
-// (deploy/migrations/0003-deck-data-version-stamp.sql), which this test
-// installs on its copy exactly as a provisioned deck has them.
+// has moved. The stamp is maintained by triggers on every card table
+// (src/server/freshness-stamp.ts), which this test installs on its copy
+// through the open path, exactly as a deck opened by the engine gets them.
 //
 // The fixture is read from reference-harness/fixtures/synthetic-v1/deck/ in
 // this checkout, or from DECKO_SYNTHETIC_DECK. The copy is deleted afterwards.
 
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { ensureFreshnessStamp } from "../../src/server/freshness-stamp.js";
 import { bootEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
 import { handleEngineRequest, type Deck } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 import { ActorRenderEngines } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
@@ -44,7 +45,6 @@ import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 const DECK =
   process.env.DECKO_SYNTHETIC_DECK ??
   join(process.cwd(), "reference-harness", "fixtures", "synthetic-v1", "deck", "deck.sqlite3");
-const STAMP_MIGRATION = join(process.cwd(), "deploy", "migrations", "0003-deck-data-version-stamp.sql");
 const HAVE_DECK = existsSync(DECK);
 
 // Slot ids are SecureRandom.hex(10) fresh per render (wrap.rb wrap_data —
@@ -99,7 +99,10 @@ describeOrSkipLoud(!HAVE_DECK, "tests/deploy/no-caching-synthetic.test.ts", "HAV
       const path = join(dir, "deck.sqlite3");
       copyFileSync(DECK, path);
       const writer = new DatabaseSync(path);
-      writer.exec(readFileSync(STAMP_MIGRATION, "utf8"));
+      // The deck is Ruby-built and carries no stamp; the open path installs
+      // it on every card table, as it does for any deck that lacks it.
+      const driver = new LocalSqliteDriver({ path });
+      await ensureFreshnessStamp(driver);
       if (process.env.DECKO_FRESHNESS_CONTROL === "stamp-frozen") {
         // Negative control: with the stamp's triggers gone, a committed write
         // no longer moves the stamp, so state kept between requests goes
@@ -107,7 +110,6 @@ describeOrSkipLoud(!HAVE_DECK, "tests/deploy/no-caching-synthetic.test.ts", "HAV
         const triggers = writer.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE '%deck_data_version%'").all() as { name: string }[];
         for (const t of triggers) writer.exec(`DROP TRIGGER "${t.name}"`);
       }
-      const driver = new LocalSqliteDriver({ path });
       const deck = await bootEdgeServingEngines(driver);
       env = { dir, driver, deck, writer };
     }, 120_000);

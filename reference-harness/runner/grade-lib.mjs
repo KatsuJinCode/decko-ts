@@ -12,6 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
 import { RULE_ORDER, normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
+import { maskPasswordDigests, passwordDigestContext, validateDeclaredDivergences } from "./divergences.mjs";
 
 export const RESULTS_FORMAT = 2;
 export const PROTOCOL = 1;
@@ -35,9 +36,14 @@ export const EXIT = { pass: 0, fail: 1, invalid: 2, partial: 2 };
  * `{ "create-then-render#1": { "sessions": "why the engine's row differs" } }`.
  * A difference named here is graded as declared (recorded, with its why, in
  * the report); every other difference fails the grade.
+ * `declaredDivergences` names divergences the engine configuration makes on
+ * purpose (divergences.mjs), `{ "password-digest": "why" }`: the values each
+ * one describes are masked in the expected and actual row deltas alike before
+ * they are compared, and every masked value is listed in the report.
  */
-export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {} }) {
+export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {}, declaredDivergences = {} }) {
   const declared = validateDeclaredOtherTables(declaredOtherTables);
+  const divergences = validateDeclaredDivergences(declaredDivergences);
   // The canonical forms this grade actually reached (see normalizeHtml): the
   // report's `normalization` field names exactly these, in rule order.
   const applied = new Set();
@@ -54,6 +60,17 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   for (const p of fixtureCheck.problems) problems.push(`fixture: ${p}`);
   const digest = fixtureCheck.digest;
   const ops = loadOps(fixtureDir);
+  // Declared divergences: one masking pass per declared name, applied to a
+  // row delta before any comparison reads it.
+  const divergenceRecords = Object.entries(divergences).map(([name, why]) => ({ name, why, masked: [] }));
+  const digestContext = "password-digest" in divergences ? passwordDigestContext(fixtureDir) : null;
+  const maskDelta = (where, side, delta) => {
+    if (digestContext === null || delta === undefined || delta === null) return delta;
+    const { delta: out, masked } = maskPasswordDigests(delta, digestContext);
+    const record = divergenceRecords.find((d) => d.name === "password-digest");
+    for (const at of masked) record.masked.push({ at: where, side, path: at });
+    return out;
+  };
 
   // ---- expected outputs: manifest, hashes, oracle variant, completeness ---------
   const expManifest = readJson(path.join(expectedDir, "MANIFEST.json"));
@@ -253,7 +270,8 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   // Reads must write only what the oracle's reads wrote (in practice nothing).
   for (const kind of ["render", "semantics"]) {
     if (allowPartial && !actRuns[kind]) continue;
-    gradeReadWrites(`${kind} session`, expRuns[kind]?.session_writes, actRuns[kind]?.session_writes);
+    const id = `${kind} session`;
+    gradeReadWrites(id, maskDelta(id, "expected", expRuns[kind]?.session_writes), maskDelta(id, "actual", actRuns[kind]?.session_writes));
   }
   for (const [sid, e] of exp.scenarios) {
     if (!selected("scenarios", sid)) continue;
@@ -272,12 +290,13 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
       }
       if (op.op === "write") {
         if (step.rows === undefined && !step.error) problems.push(`expected: scenario step ${id} has no row delta`);
-        const rows = (s) => (s === undefined ? undefined : s.rows === undefined ? { error: { class: "HarnessMissingRows", message: "no row delta recorded" } } : { value: s.rows });
-        grade("persistence", `write ${op.action}`, id, rows(step), rows(actStep), "rows");
+        const rows = (s, side) =>
+          s === undefined ? undefined : s.rows === undefined ? { error: { class: "HarnessMissingRows", message: "no row delta recorded" } } : { value: maskDelta(id, side, s.rows) };
+        grade("persistence", `write ${op.action}`, id, rows(step, "expected"), rows(actStep, "actual"), "rows");
         if (step.other_tables || actStep?.other_tables) gradeOtherTables(id, step.other_tables ?? {}, actStep?.other_tables ?? {});
       } else {
-        const all = (s) => (s === undefined ? undefined : { ...(s.rows ?? {}), ...(s.other_tables ?? {}) });
-        gradeReadWrites(id, all(step), actStep && actStep.rows !== undefined ? all(actStep) : undefined);
+        const all = (s, side) => (s === undefined ? undefined : maskDelta(id, side, { ...(s.rows ?? {}), ...(s.other_tables ?? {}) }));
+        gradeReadWrites(id, all(step, "expected"), actStep && actStep.rows !== undefined ? all(actStep, "actual") : undefined);
       }
     });
   }
@@ -314,6 +333,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     partial: allowPartial ? partial : [],
     warnings,
     normalization: RULE_ORDER.filter((rule) => applied.has(rule)),
+    declared_divergences: divergenceRecords,
     summary,
     read_writes: readWrites,
     other_tables: otherTables,
