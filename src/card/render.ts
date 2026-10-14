@@ -183,6 +183,12 @@ const HISTORY_SEAM_VIEWS = new Set([
   // denial:blank config answers before any body runs).
   "subedit_notice",
   "list_of_changes",
+  // card-mod-carrierwave set/type/image/html_views.rb:49-51 view
+  // :content_changes — `content_changes card.last_action, :expanded`
+  // reads card.last_action (last.rb:53-55) for both sides of the
+  // old_image/new_image pair, so the render needs the prepared act
+  // bundle like the history views do.
+  "content_changes",
 ]);
 import type {
   HistoryActionCardInfo,
@@ -631,6 +637,13 @@ export class RenderEngine implements RenderEngineLike {
    *  runSearch alongside the items; read by the :card_list view's
    *   searchResultPaging seam. Cleared on resetCaches(). */
   private searchResultPagingMap = new Map<string, SearchResultPaging>();
+  /** Seated FULL result counts by search card key, for every search whose
+   *  count query ran (not only the show_paging? case): Ruby's
+   *  count_with_params (0_search.rb:52-54) is that count, and the paging
+   *  helpers read it whether or not a list render follows — the standalone
+   *  :paging view (paging_views.rb:27, template: :haml) dispatches with no
+   *  card_list around it. Cleared on resetCaches(). */
+  private searchResultCounts = new Map<string, number>();
   /** Seated counts by search card key, for a search whose cql declares
    *  `return: "count"`: Ruby's search_with_params answers an Integer and
    *  search_result_view (search_views.rb:6-13) renders :search_count
@@ -728,24 +741,30 @@ export class RenderEngine implements RenderEngineLike {
    *  is the CACHE's, not the request's: Card::Env.reset alone keeps the
    *  filled content (probed: a post-reset page renders FILLED), and
    *  Card::Cache.renew blanks it again (probed). The real-deck capture rig
-   *  recorded exactly that (6,537 of 6,588 member pages carry the filled
-   *  input; the 48 real-page exceptions are each capture process's FIRST
-   *  page). The flag is therefore cache-scoped: cleared by
-   *  resetRequestSession — the harness seam that stands for the Ruby rigs'
+   *  recorded the process lifetime (6,537 of 6,588 member pages carry the
+   *  filled input; the 48 real-page exceptions are each capture process's
+   *  FIRST page); the synthetic recorder's begin_request! renews the cache
+   *  before every recorded render, so there every request starts blank.
+   *  The flag is therefore cache-scoped: cleared by resetRequestSession —
+   *  the harness seam that stands for the Ruby rigs'
    *  fresh-process/Cache.renew boundary — never at render() entry, and
-   *  flipped by the view fns AFTER they consume the roles-nest html
-   *  (RenderEngineLike.markSessionRolesContentFilled). */
+   *  set at the request boundary (commitSessionRolesFill) when the request
+   *  consumed a roles nest (RenderEngineLike.markSessionRolesContentFilled,
+   *  called by the view fns AFTER they consume the roles-nest html). */
   private sessionRolesContentFilled = false;
   /** The fill's consumption WITHIN the current render pass (render() entry
    *  to render() exit). The page pipeline renders a page op in several
    *  passes (the prepare render, the main re-render); Ruby serves ONE
-   *  render per request, so each pass reads the COMMITTED state and its
+   *  render per request, so each pass reads the committed state and its
    *  own consumption — never an earlier pass's flip (the synthetic
    *  corpus's single-nest pages pin the navbar UNFILLED even though the
-   *  prepare pass already consumed the nest; the real corpus's pages
-   *  after the first pin FILLED from the committed state). Folded into
-   *  the committed flag at the request boundary
-   *  (commitSessionRolesFill, renderPageBytes' finally). */
+   *  prepare pass already consumed the nest; a two-nest page — the
+   *  *account links / *header page whose main body renders my_card first —
+   *  pins the body's content input blank and the navbar's filled, because
+   *  the body consumes the nest BEFORE the field is emitted and the navbar
+   *  renders after checkbox_input's ensure_roles). Folded into the
+   *  committed flag at the request boundary (commitSessionRolesFill,
+   *  renderPageBytes' finally). */
   private sessionRolesFillConsumedThisPass = false;
   private sessionAccountLinksHasRoles = false;
 
@@ -4033,6 +4052,10 @@ export class RenderEngine implements RenderEngineLike {
       const simpleKeys: string[] = [];
       const sideKeyPairs: { left: string; right: string; raw: string }[] = [];
       const sideIdPairs: { leftId: number; rightId: number; lex: Lex }[] = [];
+      // depth-3 names whose left is a depth-2 pair of simple names (see the
+      // branch that fills this): one join per name reaches the parent through
+      // its junction by keys, so the parent is asked in the round that sees it.
+      const tripleAsks: { junction: DeckoName; l1: string; l2: string; r: string; raw: string }[] = [];
       const nextRound: string[] = [];
       let heldSeatThisRound = false;
       for (const raw of pending) {
@@ -4109,6 +4132,36 @@ export class RenderEngine implements RenderEngineLike {
               simpleKeys.push(right.key);
             }
           }
+        } else if (
+          !right.isCompound &&
+          left.leftName !== undefined &&
+          left.rightName !== undefined &&
+          !left.leftName.isCompound &&
+          !left.rightName.isCompound &&
+          leftId === undefined
+        ) {
+          // depth-3 name, left side an unseated depth-2 pair of simple names.
+          // The keys are in the name, so the junction rides as a side-key pair
+          // and one join reaches the parent through it: the parent is asked in
+          // THIS round rather than the round after its junction seats. A parent
+          // that misses is primed negative after the round, through its pair.
+          const tripleKey = `${left.leftName.key}~${left.rightName.key}~${right.key}`;
+          if (!askedSideKeyPairs.has(tripleKey)) {
+            askedSideKeyPairs.add(tripleKey);
+            const junctionKey = `${left.leftName.key}~${left.rightName.key}`;
+            if (!askedSideKeyPairs.has(junctionKey)) {
+              askedSideKeyPairs.add(junctionKey);
+              sideKeyPairs.push({ left: left.leftName.key, right: left.rightName.key, raw: left.s });
+            }
+            for (const key of [left.leftName.key, left.rightName.key, right.key]) {
+              if (!this.renderCards.has(key) && !askedSimpleKeys.has(key)) {
+                askedSimpleKeys.set(key, key);
+                callAskedSimple.add(key);
+                simpleKeys.push(key);
+              }
+            }
+            tripleAsks.push({ junction: left, l1: left.leftName.key, l2: left.rightName.key, r: right.key, raw });
+          }
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
@@ -4180,6 +4233,24 @@ export class RenderEngine implements RenderEngineLike {
           });
         }
       }
+      if (tripleAsks.length > 0) {
+        for (let i = 0; i < tripleAsks.length; i += 30) {
+          const chunk = tripleAsks.slice(i, i + 30);
+          const clauses = chunk
+            .map(() => `(pl."key" COLLATE NOCASE = ? AND pm."key" COLLATE NOCASE = ? AND r."key" COLLATE NOCASE = ?)`)
+            .join(" OR ");
+          statements.push({
+            sql:
+              `SELECT DISTINCT j.* FROM cards j\n` +
+              `  JOIN cards jl ON jl.id = j.left_id AND jl.trash = 0\n` +
+              `  JOIN cards pl ON pl.id = jl.left_id AND pl.trash = 0\n` +
+              `  JOIN cards pm ON pm.id = jl.right_id AND pm.trash = 0\n` +
+              `  JOIN cards r ON r.id = j.right_id AND r.trash = 0\n` +
+              ` WHERE j.trash = 0 AND (${clauses})`,
+            params: chunk.flatMap((ask) => [ask.l1, ask.l2, ask.r]),
+          });
+        }
+      }
       if (sideIdPairs.length > 0) {
         for (let i = 0; i < sideIdPairs.length; i += 400) {
           const chunk = sideIdPairs.slice(i, i + 400);
@@ -4231,6 +4302,39 @@ export class RenderEngine implements RenderEngineLike {
         seatedAny = true;
       }
       for (const pairKey of fetchedPairs) callAnsweredPairs.add(pairKey);
+      // A key-join ask that did not seat its junction asked, in this round,
+      // exactly the pair the junction names: the join matches the sides by
+      // key (cards.key is unique, so a key names one side id) and the
+      // junction by `j.trash = 0`, the same row the id-pair form
+      // `left_id = ? AND right_id = ?` reads. Once the sides are seated the
+      // pair is recorded as asked, so the negative below primes it (only if no
+      // row of any round answered it) and no later round re-asks it. Applies
+      // to depth-2 side-key pairs and to the depth-3 key join's parents.
+      const keyJoinMisses: { junctionKey: string; leftKey: string; rightKey: string }[] = [];
+      for (const pair of sideKeyPairs) {
+        let asked: DeckoName;
+        try {
+          asked = DeckoName.parse(pair.raw);
+        } catch {
+          continue;
+        }
+        keyJoinMisses.push({ junctionKey: asked.key, leftKey: pair.left, rightKey: pair.right });
+      }
+      for (const ask of tripleAsks) {
+        keyJoinMisses.push({ junctionKey: DeckoName.parse(ask.raw).key, leftKey: ask.junction.key, rightKey: ask.r });
+      }
+      for (const miss of keyJoinMisses) {
+        if (this.renderCards.has(miss.junctionKey)) continue;
+        const leftId = knownId(miss.leftKey);
+        const rightId = knownId(miss.rightKey);
+        if (leftId === undefined || rightId === undefined) continue; // side missed: its negative is primed
+        const pairKey = `L-${leftId}-${rightId}`;
+        if (askedPairs.has(pairKey)) continue;
+        const lex: Lex = [leftId, rightId];
+        if (this.fetcher.lexicon.lexEntryKnown(lex)) continue;
+        askedPairs.set(pairKey, { leftId, rightId, lex });
+        callAskedPairs.add(pairKey);
+      }
       // Negative priming for the asked-and-missed questions: the exact
       // entries lexToId's cacheFetch would have cached. Both derivations are
       // THIS CALL's cumulative ask/answer sets (see their declaration):
@@ -4259,31 +4363,12 @@ export class RenderEngine implements RenderEngineLike {
       }
       pending.clear();
       for (const raw of nextRound) pending.add(raw);
-      // A side-key-pair name whose junction row did not come back retries
-      // NEXT round as a side-id pair (its sides just seated): that ask is
-      // final - it lands in askedPairs and primes the negative there. A
-      // name whose final-form ask missed is dropped: its negative is
-      // primed, so the ladder walk below answers the miss from cache with
-      // the same placeholder the point-query path would have cached
-      // (zero queries).
-      for (const pair of sideKeyPairs) {
-        let retry: DeckoName;
-        try {
-          retry = DeckoName.parse(pair.raw);
-        } catch {
-          continue;
-        }
-        const left = retry.leftName;
-        const right = retry.rightName;
-        if (left === undefined || right === undefined) continue;
-        const leftId = knownId(left.key);
-        const rightId = knownId(right.key);
-        if (leftId === undefined || rightId === undefined) continue; // side missed: negative already primed
-        const pairKey = `L-${leftId}-${rightId}`;
-        if (!askedPairs.has(pairKey) && !this.renderCards.has(retry.key)) {
-          pending.add(pair.raw);
-        }
-      }
+      // A key-join name whose junction row did not come back is not retried:
+      // its pair was recorded as asked above and its negative is primed, so
+      // the ladder walk answers the miss from cache with the same placeholder
+      // the point-query path would have cached (zero queries). Re-asking it
+      // as an id pair next round read the same row a second time, in a round
+      // trip of its own.
     }
     if (preamble.length > 0) {
       // The wave never reached a batch (all candidate names already seated
@@ -7669,10 +7754,13 @@ export class RenderEngine implements RenderEngineLike {
 
   /** The request boundary's fold (renderPageBytes' finally): a Ruby request
    *  whose roles nest rendered leaves the fill committed on the session's
-   *  card object — the next request (and every later page of the process,
-   *  the real capture rigs' filled-everywhere posture) reads it. The
-   *  passes INSIDE this request model the one Ruby render and never see
-   *  each other's flips; this fold is where the flip becomes cache state. */
+   *  card object — the next request of the same cache lifetime reads it
+   *  (the real capture rigs' filled-everywhere posture). The passes INSIDE
+   *  this request model the one Ruby render and never see each other's
+   *  flips; this fold is where the flip becomes cache state. A harness
+   *  that renews the cache before every request (the synthetic recorder's
+   *  begin_request! -> Card::Cache.renew) calls resetRequestSession, which
+   *  blanks the committed state. */
   commitSessionRolesFill(): void {
     if (this.sessionRolesFillConsumedThisPass) this.sessionRolesContentFilled = true;
   }
@@ -7718,6 +7806,15 @@ export class RenderEngine implements RenderEngineLike {
    *  A no-op unless the session's chrome carries the roles nest. */
   markSessionRolesContentFilled(): void {
     if (this.sessionAccountLinksHasRoles) this.sessionRolesFillConsumedThisPass = true;
+  }
+
+  /** Drop this pass's ensure_roles consumption, keeping the committed
+   *  card-cache state. The page path calls it after the warm pass: that
+   *  pass is not a served render (its output is discarded and the layout
+   *  pass renders the same view from the warm maps), so a roles-nest render
+   *  inside it must not decide which variant the layout pass reads. */
+  blankSessionRolesFill(): void {
+    this.sessionRolesFillConsumedThisPass = false;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the
@@ -8265,6 +8362,15 @@ export class RenderEngine implements RenderEngineLike {
    *  show_paging? == false case). */
   searchResultPaging(fmt: RenderFormat): SearchResultPaging | undefined {
     return this.searchResultPagingMap.get(this.searchCacheKey(fmt.card));
+  }
+
+  /** RenderEngineLike#searchItemCount — Ruby's count_with_params
+   *  (0_search.rb:52-54: `search_params.merge(return: :count)`, the search
+   *  re-run with the window zeroed) for a card whose own content is a CQL
+   *  search. Undefined for every other card and for a search whose count
+   *  query never ran (a cql the engine could not execute). */
+  searchItemCount(fmt: RenderFormat): number | undefined {
+    return this.searchResultCounts.get(this.searchCacheKey(fmt.card));
   }
 
   /** RenderEngineLike#searchKeyword — the request's search keyword
@@ -10219,6 +10325,7 @@ export class RenderEngine implements RenderEngineLike {
     let rows: CardsRow[];
     let records: Map<number, CardRecord>;
     let paging: SearchResultPaging | undefined;
+    let searchCount: number | undefined;
     try {
       const queryOptions = {
         // The viewer's read-permission filter rides the SQL
@@ -10332,6 +10439,7 @@ export class RenderEngine implements RenderEngineLike {
         delete countStatement["offset"];
         delete countStatement["limit"];
         const count = await executeCount(this.fetcher.driver, countStatement, queryOptions);
+        searchCount = count;
         // The record carries the REQUEST's offset (paging_params' offset —
         // the focal env_search_param), not the hardcoded 0: the nav's
         // current_page math renders the requested page's state (page 2's
@@ -10409,6 +10517,16 @@ export class RenderEngine implements RenderEngineLike {
       }
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
+    }
+    // The full result count rides the seat whenever the count query ran,
+    // NOT only in the show_paging? case. show_paging? (paging_views.rb:4-9)
+    // is a FUNCTION of (limit, offset, count_with_params) — the standalone
+    // :paging view renders the nav without any list render to compare
+    // against, so its count can only come from here. count_with_params
+    // (0_search.rb:52-54 `search_params.merge(return: :count)`) is the same
+    // search with the window zeroed, so this is Ruby's value.
+    if (searchCount !== undefined) {
+      this.searchResultCounts.set(this.searchCacheKey(card), searchCount);
     }
     if (paging !== undefined) {
       this.searchResultPagingMap.set(this.searchCacheKey(card), paging);

@@ -400,15 +400,22 @@ command already costs about 155 s on this tree, and because a deploy-suite
 proof does not belong to a card-only script. Round trips per render are pinned by the
 measured law ([docs/scaling-comparison-deep-nesting.md](docs/scaling-comparison-deep-nesting.md),
 reproducible with `tests/card/render/deep-nesting-trip-attribution.test.ts`):
-a cold render costs four fixed round trips plus one per nesting level below
-the root, however many cards each level holds — breadth costs nothing extra
-(a 200-card fan is 5 round trips) — while Ruby sends one query per card at
-every depth. That holds on a deck that carries its `*all+*read` rule card,
-which every real deck does: the read permission's one-time setup rides the
-prelude batch, so it costs statements and no round trips. The `#1282`
-constant-per-depth claim is not met; the
-depth-sweep test (`tests/card/render/depth-sweep.test.ts`) asserts the same
-slope at every depth up to the renderer's 20-level ceiling.
+a cold render whose nests the stored nest index describes costs three round
+trips at every depth, while Ruby sends one query per card at every depth. The
+index is the `card_references` table the write path keeps (one ref_type `I`
+row per nest); the prelude batch walks it recursively from the root in one
+statement, and each closure level it answers costs no round trip. Content the
+index does not describe (no reference rows, or a stale row) falls back to one
+round trip per nesting level below the root, however many cards each level
+holds. Measured 2026-10-14 with `DEPTH_SWEEP_WRITE_ARTIFACT=1 npx vitest run
+tests/card/render/depth-sweep.test.ts`: three round trips at every depth 1
+through 20 with the index, 3 + (depth - 1) without it
+(`benchmarks/results/depth-sweep-ts.json`); that test asserts both at every
+depth up to the renderer's 20-level ceiling. Both hold on a deck that carries
+its `*all+*read` rule card, which every real deck does: the read permission's
+one-time setup rides the prelude batch, so it costs statements and no round
+trips. The deep-nesting comparison linked above was measured on decks that
+write no reference rows, so it shows the per-level fallback.
 
 ## Ground rules
 

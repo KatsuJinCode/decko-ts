@@ -273,6 +273,26 @@ describe("card-mod-account harness probe: the walk + the setup view", () => {
     // the walk's field editors inside the setup form (nest_mode :edit)
     expect(html).toContain("email");
     expect(html).toContain("password");
+    // `voo.hide! :menu` (set/type/user.rb:14): the header's render_menu is
+    // an optional render (format/set/all/html/header.rb:6), so the hidden
+    // menu is nil and output() compacts it - the header closes straight
+    // after the title, as the synthetic-v2 oracle's
+    // `view:admin:Quinn Contractor:setup` bytes do
+    // (`...ready to go!</span></h2></div>\n<div id="..-help-view"`).
+    expect(html).toContain(
+      `<span class="card-title" title="Your deck is ready to go!">Your deck is ready to go!</span></h2></div>\n<div id="probe_admin-help-view"`,
+    );
+    expect(html).not.toContain("card-menu");
+    // frame_and_form :create -> card_form -> `form_for card` (edit
+    // set/all/form.rb:193-199): Rails names the form and picks the verb
+    // from the record, so a stored card is edit_card_<id> with the
+    // _method=patch spoof while the url stays /card/create (the oracle's
+    // `id="edit_card_913" action="/card/create"` form tag).
+    expect(html).toContain(
+      `<form class="card-form slotter" id="edit_card_404" action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
+        `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+        `<input type="hidden" name="_method" value="patch" autocomplete="off" />`,
+    );
 
     // closed verdict -> Ruby's perms denial
     setPreparedSetupVerdict({ open: false, accountCount: 7 });

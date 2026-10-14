@@ -581,16 +581,67 @@ function inventoryModPins(gemName) {
 // Anyone who wants these evaluated needs a ported surface to evaluate; the
 // honest report row is "unported (not evaluated)".
 const LEGACY_MODS = new Set([
-  // delayed_job: backend-only (lib/card/mod/delayed_job.rb + a single
-  // integration helper); no set/ at all.
-  "card-mod-delayed_job-0.20.0",
   // defaults: pure data seeding (17 transform files), no set/, no lib/
   // ruby beyond the mod entry point - data-only.
   "card-mod-defaults-0.20.0",
 ]);
 
+// Backend-only mods with no set/ tree, ported as engine machinery rather
+// than views. Each names its port and the test file that guards it; the
+// row is complete only when both exist and the test file has it() cases.
+const BACKEND_PORTS = new Map([
+  [
+    "card-mod-delayed_job-0.20.0",
+    {
+      port: "src/card/delayed-job/delayed-job.ts",
+      test: "tests/card/delayed-job/delayed-job.test.ts",
+      what: "integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny",
+    },
+  ],
+]);
+
+function classifyBackendPort(inv, pins, entry) {
+  const portPath = join(REPO, entry.port);
+  const testPath = join(REPO, entry.test);
+  const testCount = existsSync(testPath)
+    ? (readFileSync(testPath, "utf8").match(/^\s*it\(/gm) ?? []).length
+    : 0;
+  const ported = existsSync(portPath) && testCount > 0;
+  return {
+    status: ported ? "declared-complete" : "missing",
+    verdict: ported
+      ? `backend port (${entry.port}): ${entry.what}; ${testCount} it() in ${entry.test}`
+      : `backend port missing: ${entry.port} or its tests (${entry.test})`,
+    evidence: "no set/ tree; the mod's surface is engine machinery, guarded by its own test file",
+    metrics: {
+      htmlViewsDeclared: 0,
+      htmlViewsCovered: 0,
+      htmlViewsMissing: 0,
+      htmlViewsMissingNames: [],
+      specificViewsDeclared: 0,
+      specificViewsCovered: 0,
+      specificViewsCoverage: 0,
+      patternsUsed: [],
+      patternsImplemented: [],
+      patternsCoverage: 0,
+      viewsCoverage: 0,
+      setModules: inv.counts.setModules,
+      libRbFiles: inv.counts.libRbFiles,
+      hamlFiles: inv.counts.hamlFiles,
+      manifestExists: pins.manifestExists,
+      manifestViewsDeclared: pins.manifestViews.length,
+      testExists: testCount > 0,
+      testCount,
+      bytePins: 0,
+    },
+  };
+}
+
 function classify(inv, surface, pins) {
   const gem = inv.gem;
+
+  const backendPort = BACKEND_PORTS.get(gem);
+  if (backendPort !== undefined) return classifyBackendPort(inv, pins, backendPort);
 
   // Legacy gate first.
   if (LEGACY_MODS.has(gem)) {

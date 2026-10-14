@@ -341,24 +341,70 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
   return `<div class="attachment-preview" id="${h(originalName)}-preview">${inner}</div>`;
 };
 
-/** set/type/image/html_views.rb:49-51 view :content_changes.
- *  Ruby joins the pair `old_image(action) + new_image(action)` (line 56:
- *  `[old_image(action, hide_diff), new_image(action)].compact.join`), the
- *  two images differing through Card::Content::Diff chunk highlighting.
- *  The diff surface is not ported (headless has no previous-action content
- *  seam), so this view emits the structural pair from the card's current
- *  :core bytes: a blank core renders "", otherwise the core appears twice,
- *  once standing in for each side of the pair. */
+/** card/lib/card/content/diff.rb:16-18 `render_added_chunk` -
+ *  `<ins class='diffins diff-added'>#{text}</ins>` (the class order is the
+ *  literal's). Its sibling :20-22 `render_deleted_chunk`
+ *  (`<del class='diffdel diff-deleted'>`, the deleted side) is named in the
+ *  old-image remainder below. */
+function renderAddedChunk(text: string): string {
+  return `<ins class='diffins diff-added'>${text}</ins>`;
+}
+
+/** set/type/image/html_views.rb:49-51 view :content_changes —
+ *  `content_changes card.last_action, :expanded` (hide_diff defaults
+ *  false, so the old side renders). The body (html_views.rb:53-56) is
+ *  `voo.size = diff_type == :summary ? :icon : :medium` (the expanded diff
+ *  is the medium size) then `[old_image(action, hide_diff),
+ *  new_image(action)].compact.join`.
+ *
+ *  old_image (html_views.rb:58-66) renders NOTHING unless the card has an
+ *  earlier db_content change (`card.last_change_on(:db_content,
+ *  before: action)`, html_views.rb:68-72; last.rb:9-21's before: window
+ *  scopes out create actions — last.rb:27-29 create_action_last_change?),
+ *  so a card whose last action is the create that uploaded the file has
+ *  no deleted side and the pair joins to the added side alone (the oracle
+ *  bytes for synthetic-v2 `view:admin:*favicon:content_changes` are
+ *  exactly the single `<ins class='diffins diff-added'><img .../></ins>`).
+ *  When an earlier change exists, old_image renders the core as of that
+ *  change's action, which is the file version this port has no read seam
+ *  for (attachment versions are not in the act bundle); that arm raises a
+ *  named not-ported error instead of emitting a partial pair.
+ *
+ *  new_image (html_views.rb:74-78) is the CURRENT core in an added chunk:
+ *  `card.with_selected_action_id action.id { Diff.render_added_chunk
+ *  _render_core }`. The action carries no db_content Change row of its own
+ *  for a plain upload (the attachment lives in the file column), so
+ *  value(:db_content) is nil and Action#content_diff
+ *  (card/action/content.rb) falls back to the card's current content —
+ *  the same :core bytes the view renders. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
-  // image/html_views.rb:53-56 content_changes(action, diff_type): the
-  // pair [old_image, new_image].compact.join. The diff highlighting
-  // (Card::Content::Diff.render_added_chunk, diff.rb:16-21) is a separate
-  // surface - the headless port emits the structural pair from the
-  // card's current :core bytes: a blank core renders "", otherwise the
-  // core appears twice, once standing in for each side of the pair.
-  const core = str(ctx.fmt.renderView("core"));
-  if (core === "") return "";
-  return core + core;
+  const reader = ctx.fmt.engine.historyRenderReader?.();
+  if (reader === undefined) {
+    throw new Error("content_changes: the history render seam is not prepared for this render (card.last_action is unreadable)");
+  }
+  const action = reader.cardLastAction;
+  if (action === undefined) {
+    // new_image (html_views.rb:74-75) calls `action.id`; a card with no
+    // action raises NoMethodError on nil there.
+    throw new Error("content_changes: card has no last action (Ruby nil.id NoMethodError, html_views.rb:75)");
+  }
+  // old_image's gate (html_views.rb:58-66 -> old_image_change :68-72):
+  // `card.last_change_on(:db_content, before: action)` - a Change row on
+  // this card's db_content older than this action (last.rb:9-21; a CREATE
+  // action scopes the window out, last.rb:27-29). The seam's change rows
+  // are the bundle's actions' changes (render.ts valueCache /
+  // previousCache build), so the earlier db_content change is the one
+  // previous_value(:db_content) reads.
+  if (reader.previousValue(action, "db_content") !== undefined) {
+    // old_image renders the card's core AS OF that change's action inside
+    // render_deleted_chunk (html_views.rb:61-65). The core of an earlier
+    // attachment revision is not ported; the render fails loudly rather
+    // than dropping the deleted side.
+    throw new Error("content_changes: old_image for an earlier db_content change is not ported (html_views.rb:58-66)");
+  }
+  // new_image (html_views.rb:74-78): the added chunk wraps the core
+  // unconditionally, a blank core included.
+  return renderAddedChunk(str(ctx.fmt.renderView("core")));
 };
 
 // ---------------------------------------------------------------------------

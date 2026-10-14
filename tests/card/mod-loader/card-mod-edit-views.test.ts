@@ -587,7 +587,16 @@ beforeAll(async () => {
   // walk (the Right pattern is in the update candidates for the junction
   // "*all+*guide")
   await seedCard(s, { id: 118, name: "*right", codename: "right", typeId: 14 });
-  await seedCard(s, { id: 121, name: "Administrator" });
+  // Administrator is Role-typed, as Ruby's seed makes it
+  // (card-mod-account-0.20.0 data/real.yml:35-45; src/card/auth/boot-seed.ts
+  // ACCOUNT_MOD_SEED_CARDS); Role is the cardtype the table above seeds with
+  // its codename.
+  await seedCard(s, {
+    id: 121,
+    name: "Administrator",
+    codename: "administrator",
+    typeId: typeIdByName.get("Role")!,
+  });
   await seedCard(s, {
     id: 123,
     leftId: 115,

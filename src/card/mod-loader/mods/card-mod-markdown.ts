@@ -65,7 +65,7 @@ import type { ViewResult } from "../../render/format.js";
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import { defineMod } from "../mod-dsl.js";
 import { kramdownToHtml, kramdownToStashedHtml } from "../../render/kramdown.js";
 
 /** Re-exported for the existing test import path (pre-extraction the
@@ -124,21 +124,13 @@ export const aceMode = "markdown";
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
-const cardModMarkdown: DeckoModManifest = {
-  name: "markdown",
-  gemName: "card-mod-markdown",
-  group: "gem-defaults",
-  setModules: [
-    {
-      // card-mod-markdown-0.20.0/set/type/markdown.rb
-      setPath: "type/markdown",
-      formats: {
-        html: {
-          views: [{ view: "core", viewFn: markdownCoreView }],
-        },
-      },
-    },
-  ],
-};
+const cardModMarkdown = defineMod("card-mod-markdown", { group: "gem-defaults" }, ({ set }) => {
+  // card-mod-markdown-0.20.0/set/type/markdown.rb
+  set("type/markdown", ({ format }) => {
+    format("html", ({ view }) => {
+      view("core", markdownCoreView);
+    });
+  });
+});
 
 export default cardModMarkdown;

@@ -266,35 +266,44 @@ describe("card-mod-collection through the mod loader", () => {
       // ellipse if total>window_end+1 => 3>4 false. next_page =
       // current<total => 0<3 yes -> next_page_link (page=1, status :next).
       const html = registered(ctxWithOpts(PAGING_CONTENT, { limit: 3, offset: 0 }));
-      expect(html).toContain('<nav class="nav justify-content-between align-items-center">');
-      expect(html).toContain('<ul class="pagination paging">');
-      expect(html).toContain('<li class="page-item');
-      // Page 0 (display "1") is the current page ->
-      // PAGE_LI_CLASS[:current]="active" -> <li class="page-item active">.
-      expect(html).toContain('<li class="page-item active">');
-      // The "next" link is an <a> (page != nil) carrying aria-label="Next".
-      // The "previous" link is rendered as a <div> (page == nil when
-      // current is 0; paging_views.rb:47 page_link's `unless page` branch)
-      // carrying the laquo span but no aria-label - the Ruby page_link
-      // drops options when page is nil.
-      expect(html).toContain('aria-label="Next"');
-      expect(html).toContain('&laquo;');
-      // Paging-context: start = offset+1 = 1, end = min(10, 0+3) = 3,
-      // total = 10 -> "1-3 of 10".
-      expect(html).toContain('<div class="paging-context">');
-      expect(html).toContain("1-3 of 10");
+      // paging.haml:1-10: single-quoted haml class attributes, the links
+      // joined on one line, one paging-context value per line, and the
+      // document's trailing newline. The previous link has no page (current
+      // is 0), so page_link (paging_views.rb:46-47) renders the div form
+      // and drops its aria-label; page 0 is :current -> "page-item active"
+      // (PAGE_LI_CLASS, paging_views.rb:18); the next link carries
+      // aria-label="Next" first (paging_links.rb:66-69 options, then the
+      // merged class, the href link_to appends, and the data-remote
+      // interpret_data_opts_to_link_to moves to the end - card-mod-format
+      // set/all/links.rb:101-106, :146-151). Context: offset+1 = 1,
+      // last_item_on_page = min(10, 3) = 3, count = 10.
+      const link = (offset: number, text: string, aria = "") =>
+        `<a${aria} class="card-paging-link slotter page-link" href="/Stub_Paging?limit=3&amp;offset=${offset}" data-remote="true">${text}</a>`;
+      expect(html).toBe(
+        "<nav class='nav justify-content-between align-items-center'>\n" +
+          "<ul class='pagination paging'>\n" +
+          '<li class="page-item"><div class="page-link"><span aria-hidden="true">&laquo;</span></div></li>' +
+          `<li class="page-item active">${link(0, "1")}</li>` +
+          `<li class="page-item">${link(3, "2")}</li>` +
+          `<li class="page-item">${link(6, "3")}</li>` +
+          `<li class="page-item">${link(9, "4")}</li>` +
+          `<li class="page-item">${link(3, '<span aria-hidden="true">&raquo;</span>', ' aria-label="Next"')}</li>` +
+          "\n</ul>\n" +
+          "<div class='paging-context'>\n1\n-\n3\nof\n10\n</div>\n" +
+          "</nav>\n",
+      );
     });
 
-    it("emits the <a> page links with the card-paging-link slotter class chain", () => {
+    it("emits the <a> page links with the card path and limit/offset query (paging_views.rb:46-53)", () => {
       const registered = loader!.viewsTable()["paging"] as ViewFn;
       const html = registered(ctxWithOpts(PAGING_CONTENT, { limit: 3, offset: 0 }));
-      // page_link text+page (not the next/previous/ellipse): class chain
-      // "card-paging-link slotter page-link", data-remote="true",
-      // data-path with the JSON-encoded limit/offset payload.
-      expect(html).toContain('class="card-paging-link slotter page-link"');
-      expect(html).toContain('data-remote="true"');
-      expect(html).toContain("data-path=");
-      expect(html).toContain('"limit":3');
+      // page_link_path_args (paging_views.rb:70-72) is paging_path_args
+      // merged with offset: page * limit; link_to's href is path() of
+      // those args - the card's url key with ?limit=&offset= in hash order.
+      expect(html).toContain(
+        '<a class="card-paging-link slotter page-link" href="/Stub_Paging?limit=3&amp;offset=6" data-remote="true">3</a>',
+      );
+      expect(html).not.toContain("data-path=");
     });
 
     it("renders <div class='page-link'> for the ellipses (page nil branch, paging_views.rb:47)", () => {
@@ -316,7 +325,7 @@ describe("card-mod-collection through the mod loader", () => {
       const html = registered(ctxWithOpts(PAGING_CONTENT, { limit: 3, offset: 3 }));
       expect(html).toContain('<li class="page-item active">');
       // Paging-context: start=4, end=min(10,6)=6, total=10 -> "4-6 of 10".
-      expect(html).toContain("4-6 of 10");
+      expect(html).toContain("<div class='paging-context'>\n4\n-\n6\nof\n10\n</div>");
     });
 
     it("renders no paging when offset=0 and items fit under the limit (paging_views.rb:11 fewer_results_than_limit?)", () => {
@@ -391,6 +400,7 @@ function ctxWithOpts(dbContent: string, opts: Record<string, unknown>): ViewCont
       s: "Stub Paging",
       safeKey: "stub_paging",
       key: "stub_paging",
+      urlKey: "Stub_Paging",
     } as RenderCard["name"],
     key: "stub_paging",
     dbContent,

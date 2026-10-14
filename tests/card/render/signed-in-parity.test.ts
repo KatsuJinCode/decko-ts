@@ -425,7 +425,9 @@ describe("signed-in shapes rendered through the engine", () => {
   };
 
   it("a signed-in comment box carries neither the reCAPTCHA nor the author field (comment.rb)", async () => {
-    const member = await signedIn().render("Topic+discussion", "core");
+    // discussion.rb:1-6: :titled_content records `voo.show :comment_box`;
+    // a bare :core leaves the optional: :hide box hidden (discussion.rb:8-10).
+    const member = await signedIn().render("Topic+discussion", "titled_content");
     expect(member).toContain('<form class="card-form slotter autosave" id="edit_card_61" action="/update/Topic+discussion"');
     expect(member).not.toContain("data-recaptcha");
     expect(member).not.toContain("recaptcha_token");
@@ -433,7 +435,7 @@ describe("signed-in shapes rendered through the engine", () => {
     expect(member).toContain(
       '</textarea>\n<div class="comment-buttons"><button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>',
     );
-    const anonymous = await new RenderEngine(new FetchEngine(storage!.counting)).render("Topic+discussion", "core");
+    const anonymous = await new RenderEngine(new FetchEngine(storage!.counting)).render("Topic+discussion", "titled_content");
     expect(anonymous).toContain('id="edit_card_61" data-recaptcha="on"');
     expect(anonymous).toContain("My Name is:");
   });

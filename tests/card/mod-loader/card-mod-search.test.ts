@@ -244,6 +244,28 @@ beforeAll(async () => {
     readRuleClass: "*all",
   });
 
+  // *search (the Self::Search set's card; a name-in cql keeps its result
+  // list independent of request vars)
+  await seedCard(s, {
+    id: 320,
+    name: "*search",
+    codename: "search",
+    typeId: 200,
+    dbContent: '{"name":["in","Item One","Item Two"]}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
+  });
+
+  // a search whose cql declares its own limit (the paging window)
+  await seedCard(s, {
+    id: 321,
+    name: "Paged Search",
+    typeId: 200,
+    dbContent: '{"name":["in","Item One","Item Two","Item Three"],"limit":2}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
+  });
+
   // the search results (Basic items)
   await seedCard(s, { id: 401, name: "Item One", typeId: PLAIN_TYPE_ID, dbContent: "one body", readRuleId: CATCH_ALL, readRuleClass: "*all" });
   await seedCard(s, { id: 402, name: "Item Two", typeId: PLAIN_TYPE_ID, dbContent: "two body", readRuleId: CATCH_ALL, readRuleClass: "*all" });
@@ -370,10 +392,20 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(await s.engine.render("A Search+Size", "search_count")).toBe("3");
   });
 
-  it("WITH the mod: :search_count on a plain (non-count) cql refuses the ActiveRecord-inspect branch (views.rb:2-4 Array#to_s)", async () => {
+  it("WITH the mod: :search_count on a plain (non-count) cql renders Array#inspect of the result cards (views.rb:2-4, debug.rb:5-8)", async () => {
     const s = storage!;
-    await expect(s.engine.render("A Search", "search_count")).rejects.toThrow(
-      /ActiveRecord#inspect/,
+    // search_with_params is the result Array; Array#to_s is Array#inspect,
+    // and each element is card-1.110.0 mod/core/set/all/debug.rb:5-8
+    // Card#inspect: "#<Card##{id}[#{type_code}:#{type_id}](#{name})
+    // {#{inspect_tags * ','}}" - no closing ">". The type here has no
+    // codename, so debug_type is ":2"; a fetched result card's one tag is
+    // set_mods_loaded. The same shape is the synthetic-v2 oracle's
+    // view:admin:All Topics:search_count record ("#<Card#655[:605](Topic
+    // 001){set_mods_loaded}, ...").
+    expect(await s.engine.render("A Search", "search_count")).toBe(
+      "[#<Card#401[:2](Item One){set_mods_loaded}, " +
+        "#<Card#402[:2](Item Two){set_mods_loaded}, " +
+        "#<Card#403[:2](Item Three){set_mods_loaded}]",
     );
   });
 
@@ -476,6 +508,20 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     await expect(s.engine.render("A Search", "results_for_keyword")).rejects.toThrow(
       UnsupportedViewError,
     );
+  });
+
+  it("WITH the mod: *search :core leads with the empty keyword line and one newline (self/search.rb:44-46)", async () => {
+    const s = storage!;
+    // set/self/search.rb:44-46 `view :core, cache: :never do
+    // [render_results_for_keyword, super()] end`; the array rides output's
+    // `Array.wrap(content).flatten.compact.join "\n"` (card-1.110.0
+    // lib/card/format/content.rb:70-73). With no request keyword the
+    // results_for_keyword haml renders "" - not nil, so compact keeps it -
+    // and the core opens with "\n" before the result list. The synthetic-v2
+    // oracle's core:anonymous:*search record begins
+    // "\n<div class=\"card-list card-list-bar search-result-list\">".
+    const core = await s.engine.render("*search", "core");
+    expect(core.startsWith('\n<div class="card-list card-list-bar search-result-list">')).toBe(true);
   });
 
   it("WITH the mod: the new views are refused off a non-Search card (set-scoped like the module's other views)", async () => {
@@ -641,6 +687,44 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     } finally {
       setDefaultModLoader(undefined);
       bothLoader.reset(); // restores the pre-test flat registrations
+    }
+  });
+
+  it("WITH both mods: a standalone :paging on a search card pages the executed result count (paging_views.rb:4-15, paging.haml)", async () => {
+    const s = storage!;
+    const bothLoader = new ModLoader([
+      { manifest: cardModCollection },
+      { manifest: cardModSearch },
+    ]);
+    bothLoader.load();
+    bindModLoaderToEngine(storage!, bothLoader);
+    setDefaultModLoader(bothLoader);
+    try {
+      // limit: default_limit is the cql's own limit (card-mod-search
+      // set/abstract/cql_search.rb:80-94 `card_content_limit || super`) = 2;
+      // offset 0. search_with_params is the 2-item window and
+      // count_with_params the full count 3 (0_search.rb:47-54), so
+      // fewer_results_than_limit? (2 > 0 + 2) is false and show_paging? is
+      // 2 < 3. total_pages = (3 - 1) / 2 = 1, current_page = 0 (paging.rb:
+      // 24-34); PagingLinks#build 5 yields previous (no page), pages 0-1,
+      // next (page 1). The context is offset + 1, last_item_on_page
+      // min(3, 2), count.
+      const link = (offset: number, text: string, aria = "") =>
+        `<a${aria} class="card-paging-link slotter page-link" href="/Paged_Search?limit=2&amp;offset=${offset}" data-remote="true">${text}</a>`;
+      expect(await s.engine.render("Paged Search", "paging")).toBe(
+        "<nav class='nav justify-content-between align-items-center'>\n" +
+          "<ul class='pagination paging'>\n" +
+          '<li class="page-item"><div class="page-link"><span aria-hidden="true">&laquo;</span></div></li>' +
+          `<li class="page-item active">${link(0, "1")}</li>` +
+          `<li class="page-item">${link(2, "2")}</li>` +
+          `<li class="page-item">${link(2, '<span aria-hidden="true">&raquo;</span>', ' aria-label="Next"')}</li>` +
+          "\n</ul>\n" +
+          "<div class='paging-context'>\n1\n-\n2\nof\n3\n</div>\n" +
+          "</nav>\n",
+      );
+    } finally {
+      setDefaultModLoader(undefined);
+      bothLoader.reset();
     }
   });
 

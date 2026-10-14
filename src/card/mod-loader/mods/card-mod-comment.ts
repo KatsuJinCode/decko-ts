@@ -211,13 +211,15 @@ const commentBoxView: ViewFn = (ctx) =>
 // ---------------------------------------------------------------------------
 
 /** discussion.rb:1-6 view :open, unknown: true. The voo.show :comment_box
- *  here is the SETTER (visibility.rb show! via vizWrite, first write wins):
-  *  the recorded show propagates to the comment_box child render's voo, whose
+ *  here is the SETTER (visibility.rb:31-33 `viz views, :show`, first write
+ *  wins - Voo#showViz; Voo#show is the show? QUERY and writes nothing):
+ *  the recorded show propagates to the comment_box child render's voo, whose
  *  optional :hide then does NOT enroll (viz already set) and the box
-  *  renders; the :core view never sets it, so its child voo's optional
-  *  :hide bails the box render to nil (voo_api.rb:154). */
+ *  renders; the :core view never sets it, so a bare :core render's
+ *  optional :hide bails the box render to nil (visibility.rb:82-84
+ *  hide_requested_view?). */
 const discussionOpenView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_OPEN, "open");
 };
 
@@ -227,19 +229,19 @@ const discussionOpenView: ViewFn = (ctx) => {
  *  port preserves the semantic shape - show comment_box and emit empty
  *  bytes when no base view exists. */
 const discussionOpenContentView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_INPUT ?? HTML_VIEWS["content"], "open_content");
 };
 
 /** discussion.rb:1-6 view :titled, unknown: true. */
 const discussionTitledView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_TITLED, "titled");
 };
 
 /** discussion.rb:1-6 view :titled_content, unknown: true. */
 const discussionTitledContentView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_TITLED_CONTENT, "titled_content");
 };
 
@@ -268,10 +270,11 @@ const discussionCoreView: ViewFn = (ctx) => {
   // set-scoped override, so the base owns the emulation), this override's
   // BASE_CORE capture IS that same wrapper. Appending the box HERE on top
   // of it rendered the box TWICE (two adjacent comment-box divs). Ruby's
-  // override output is exactly
-  // plain_core + "\n" + box - which is what the base branch emits - so
-  // the override delegates; the voo.show("comment_box") the titled
-  // override sets rides the inherited viz and flips the box's
+  // override output is plain_core + "\n" + box when an ancestor voo shows
+  // :comment_box, and plain_core alone otherwise (the optional: :hide
+  // render returns nil) - which is what the base branch emits - so the
+  // override delegates; the showViz("comment_box") the open/titled
+  // overrides record rides the inherited viz and flips the box's
   // optional-hidden default to shown inside that single render.
   return callBaseView(ctx, BASE_CORE, "core");
 };

@@ -47,7 +47,7 @@ through a driver with no transaction rather than save non-atomically.
 | Mechanism | `BEGIN IMMEDIATE` / `COMMIT` on the driver's connection | `BEGIN IMMEDIATE` / `COMMIT` on one Hrana stream (baton) | Compensating: undo journal kept by triggers, restored in one atomic batch |
 | Atomic on failure | yes | yes | yes |
 | Interrupted transaction undone by | the database | the database (a dropped stream rolls back) | the next transaction, or any serving read once the lock lease is known expired (the read restores the journal before answering) |
-| Other connections see uncommitted writes | no | no | yes while the transaction runs and its lease is unexpired; a lease-expired holder's rows are restored before a serving read answers |
+| Other connections see uncommitted writes | no | no | no: a serving read answers only from a batch that saw the lock free, and otherwise waits for the holder (or restores a lease-expired holder's journal first) |
 | Writers serialized | database-wide (SQLite write lock) | database-wide (SQLite write lock) | database-wide (lock row with a lease) |
 | `batch()` atomic on its own | yes | no (a pipeline autocommits each statement) | yes |
 | Ids given back by a rollback | yes | yes | no (ids skip, as PostgreSQL sequences do) |
@@ -59,7 +59,7 @@ only execute while its transaction still owns the lease. A transaction that
 lost its lease therefore writes nothing after the takeover; its commit fails
 with `TransactionLeaseLostError`, and that report is then literally true:
 the winner restored the writes made before the takeover, and nothing made
-after it landed. **Read-time repair:** a serving read carries the lock row
+after it landed. **Readers wait for a live save:** a serving read answers only from an atomic batch whose lock-row read found the lock free. Commit, rollback and takeover each free the lock in the batch that settles the journal, so such a read saw committed rows only. When a live transaction holds the lock, the read discards its results, waits and runs again; the wait is bounded by the holder's lease. A read issued from the transaction's own call tree (tracked with AsyncLocalStorage) through another driver object is answered, so a save does not wait for itself. **Read-time repair:** a serving read carries the lock row
 in its own atomic batch, and when the row names a holder whose lease has
 expired, the read restores that holder's journal first and answers only
 after, so an interrupted save's rows are not served and its recovery does
@@ -152,24 +152,27 @@ A rejected save changes nothing, on every backend, and retrying it is safe.
 Mail and other integration effects follow a committed save only.
 
 On D1 a save costs two extra round trips (taking the lock, committing) and
-one extra row write per journaled row it changes. A reader on another
-connection can see a D1 save's rows while it runs and its lease is
-unexpired — that intermediate-visibility window remains, stated plainly:
-a read that answered moments before the lease ran out keeps what it served.
-What a reader is never served is an interrupted save's rows: once the lease
-is known expired, a serving read restores the journal before answering, so
-recovery does not wait for the next save. Because of that window,
-write-enabled D1 is presented as evaluation/single-user grade, not a
-supported multiuser deployment: a multiuser deployment on D1 keeps writes
-disabled or accepts that a save's rows are visible to concurrent readers
-mid-save and vanish if the save fails. A D1 save that fails is undone at
-once; one whose isolate dies is undone by the next save or by the first
-serving read after its lease expires. Every statement the save runs is
-fenced to the lease (the ownership assert rides in the statement's own
-atomic batch), so a save that lost its lease writes nothing further and
-fails with `TransactionLeaseLostError`, with the reported outcome matching
-the database's final state. A D1 save that holds the lock longer than its
-lease (two minutes) loses it and fails.
+one extra row write per journaled row it changes. Readers on other driver
+objects are not served a save's rows while it runs: they wait until it
+commits or rolls back, so a failed save is never visible to another user.
+The cost is that reads wait for the save in progress, as SQLite readers wait
+for a writer's commit in rollback-journal mode. A D1 save that fails is
+undone at once; one whose isolate dies is undone by the next save or by the
+first serving read after its lease expires, and readers wait at most until
+then. Every statement the save runs is fenced to the lease (the ownership
+assert rides in the statement's own atomic batch), so a save that lost its
+lease writes nothing further and fails with `TransactionLeaseLostError`,
+with the reported outcome matching the database's final state. A D1 save
+that holds the lock longer than its lease (two minutes) loses it and fails.
+Readers sharing the save's own driver object share its transaction and see
+its rows, on every adapter; the Workers write path builds its own adapter
+per request, so serving reads never share it.
+
+Verified under workerd's local D1 (Miniflare), not hosted D1:
+`tests/card/actions/d1-multi-user-saves.test.ts` (a read during a save
+that then fails; four concurrent writers with failing saves and two
+readers) and the lease cases in `tests/server/drivers/transactions.test.ts`.
+Both multi-user tests fail against the previous read path.
 
 Writes to journaled tables made outside the save path while a D1 save is open
 are journaled under that save and undone if it rolls back. Requests write

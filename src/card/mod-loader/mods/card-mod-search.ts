@@ -531,15 +531,37 @@ const searchCountView: ViewFn = (ctx) => {
     }
     return String(warmed.count);
   }
-  // Array branch, empty case: [].to_s inspects to "[]" - no ActiveRecord
-  // objects to inspect, so the bytes ARE reproducible (the warm's count is
-  // 0 exactly when the statement returns no rows - same statement, return
-  // mode aside). Non-empty lists carry Card#inspect - refused below.
+  // Array branch: search_with_params is the executed result window (the
+  // card list's own items, 0_search.rb:43-45), and Array#to_s is
+  // Array#inspect - "[" + each element's #inspect joined by ", " + "]".
+  // The empty list is "[]" (the warm's count is 0 exactly when the
+  // statement returns no rows - same statement, return mode aside).
   if (warmed !== undefined && warmed.count === 0) return "[]";
-  throw new Error(
-    "search_count Array bytes (ActiveRecord#inspect of the result list) are not reproducible in this engine",
-  );
+  const items = ctx.fmt.engine.executeSearch(ctx.fmt);
+  if (items.length === 0 && ctx.fmt.engine.searchItemCount?.(ctx.fmt) === undefined) {
+    throw new Error("search results not warmed (cql not executable through the CQL engine)");
+  }
+  return `[${items.map(cardInspect).join(", ")}]`;
 };
+
+/** card-1.110.0 mod/core/set/all/debug.rb:5-19 Card#inspect:
+ *  `"#<Card##{id}[#{debug_type}](#{name})#{error_messages}{#{inspect_tags *
+ *  ','}}"` - no closing `>` (Ruby's own format string ends at the brace).
+ *  debug_type is `"#{type_code || ''}:#{type_id}"` (the type card's
+ *  codename, empty for a codename-less type). error_messages is "" for a
+ *  fetched card (no validation ran). inspect_tags selects, in order, the
+ *  predicates trash? new? frozen? readonly? virtual? set_mods_loaded?; a
+ *  search result is a real, live, non-virtual row fetched through
+ *  Card.fetch, whose include_set_modules (initialize.rb:61-69) sets
+ *  @set_mods_loaded - so its one tag is set_mods_loaded. */
+function cardInspect(card: RenderCard): string {
+  const tags: string[] = [];
+  if (card.record.trash === true) tags.push("trash");
+  if (card.id === undefined) tags.push("new");
+  tags.push("set_mods_loaded");
+  const debugType = `${card.typeCode ?? ""}:${card.typeId ?? ""}`;
+  return `#<Card#${card.id ?? ""}[${debugType}](${card.name.s}){${tags.join(",")}}`;
+}
 
 // ---------------------------------------------------------------------------
 // set/abstract/0_search/views.rb:6-8 - view :search_error, cache: :never
@@ -1127,14 +1149,28 @@ const cardModSearch: DeckoModManifest = {
             // search.rb:48 view :results_for_keyword, cache: :never,
             // template: :haml
             { view: "results_for_keyword", viewFn: resultsForKeywordView, config: { cache: "never" } },
-            // search.rb:45 view :core, cache: :never — the SELF-set override
-            // the *search page's own renders dispatch: the keyword header
-            // (results_for_keyword — the var-carrying requests) followed by
-            // the super's core (the abstract search_views' search_result_view
-            // → the card list / count / error dispatch).
+            // search.rb:44-46 view :core, cache: :never — the SELF-set
+            // override the *search page's own renders dispatch: the keyword
+            // header (results_for_keyword — the var-carrying requests)
+            // followed by the super's core (the abstract search_views'
+            // search_result_view → the card list / count / error dispatch).
+            //
+            // The array `[render_results_for_keyword, super()]` rides
+            // output (content.rb:70-73:
+            // `Array.wrap(content).flatten.compact.join "\n"`), so the two
+            // parts are joined with ONE newline. With no request term
+            // (results_for_keyword.haml:1 `if search_keyword.present?` is
+            // false in a headless render) the header contributes "" — an
+            // empty string is Ruby-truthy, survives compact, and joins as
+            // an empty line: the core view's bytes LEAD with "\n", which
+            // the page view carries into its `d0-card-content` div.
             {
               view: "core",
-              viewFn: (ctx) => str(resultsForKeywordView(ctx)) + str(ctx.fmt.renderView("card_list")),
+              viewFn: (ctx) =>
+                [resultsForKeywordView(ctx), ctx.fmt.renderView("card_list")]
+                  .filter((part) => part !== undefined && part !== null)
+                  .map(str)
+                  .join("\n"),
               config: { cache: "never" },
             },
           ],

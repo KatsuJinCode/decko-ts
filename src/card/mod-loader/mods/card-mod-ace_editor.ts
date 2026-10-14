@@ -47,7 +47,7 @@
 //   - config/admin.yml - editor configurations list; admin surface, no TS
 //     consumer.
 
-import type { DeckoModManifest } from "../mod-manifest.js";
+import { defineMod } from "../mod-dsl.js";
 
 // The raw_help_text body from set/self/ace.rb:2-6 - one Defect dashboard
 // cite. Double-quoted strings concatenated with " \ " line continuations;
@@ -61,39 +61,26 @@ const ACE_HELP_TEXT =
   "Decko's default code editor, using these available " +
   "[[https://github.com/ajaxorg/ace/wiki/Configuring-Ace|options]].";
 
-const cardModAceEditor: DeckoModManifest = {
-  name: "ace_editor",
-  gemName: "card-mod-ace_editor",
-  group: "gem-defaults",
-  setModules: [
-    {
-      // card-mod-ace_editor-0.20.0/set/self/ace.rb
-      // The format :html do block defines raw_help_text; per setting.rb:112-114
-      // the same string is stored on BOTH the Self set and the Right set, so
-      // ModSettingOpts.helpText propagates to both halves (the registrar
-      // record has rawHelpText + rightRawHelpText mirroring Ruby's dual store).
-      setPath: "self/ace",
-      settingOpts: {
-        group: "other",
-        helpText: ACE_HELP_TEXT,
-      },
-    },
-    {
-      // card-mod-ace_editor-0.20.0/set/all/ace_editor.rb
-      // Two basket operations on the set module (lines 1-2) have no TS
-      // analog (admin form + JS asset pipeline; both outside the engine).
-      // The format :html do block on lines 4-18 defines helper methods
-      // (ace_config / ace_editor_input / ace_mode) consumed by an
-      // input-type renderer defined in card-mod-format, not this mod -
-      // no view declarations, no bytes emitted by this file alone.
-      setPath: "all/ace_editor",
-      formats: {
-        html: {
-          views: [],
-        },
-      },
-    },
-  ],
-};
+const cardModAceEditor = defineMod("card-mod-ace_editor", { group: "gem-defaults" }, ({ set }) => {
+  // card-mod-ace_editor-0.20.0/set/self/ace.rb
+  // The format :html do block defines raw_help_text; per setting.rb:112-114
+  // the same string is stored on BOTH the Self set and the Right set, so
+  // ModSettingOpts.helpText propagates to both halves (the registrar
+  // record has rawHelpText + rightRawHelpText mirroring Ruby's dual store).
+  set("self/ace", ({ setting }) => {
+    setting({ group: "other", helpText: ACE_HELP_TEXT });
+  });
+
+  // card-mod-ace_editor-0.20.0/set/all/ace_editor.rb
+  // Two basket operations on the set module (lines 1-2) have no TS
+  // analog (admin form + JS asset pipeline; both outside the engine).
+  // The format :html do block on lines 4-18 defines helper methods
+  // (ace_config / ace_editor_input / ace_mode) consumed by an
+  // input-type renderer defined in card-mod-format, not this mod -
+  // no view declarations, no bytes emitted by this file alone.
+  set("all/ace_editor", ({ format }) => {
+    format("html", () => {});
+  });
+});
 
 export default cardModAceEditor;

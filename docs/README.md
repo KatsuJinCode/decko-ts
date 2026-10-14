@@ -8,9 +8,11 @@ and the decisions that shaped it.
 | Document | What it covers |
 | --- | --- |
 | [parity-method.md](parity-method.md) | How byte parity with Ruby Decko is measured: the oracle, the fixtures its figures were recorded against, what each instrument's comparator normalises, and what a parity figure does and does not tell you. |
+| [delayed-jobs.md](delayed-jobs.md) | card-mod-delayed_job: integrate_with_delay events queued as delayed_jobs rows and worked off after the response on Node, Cloudflare and Bunny; the row values, the handler document and what differs from Ruby. |
 | [deploy-bunny.md](deploy-bunny.md) | Deploying on Bunny Edge Scripting against Bunny Database (libSQL): the two bundles, configuration variables, caching switches, the write-surface gate and status endpoints. |
 | [deploy-cloudflare.md](deploy-cloudflare.md) | Deploying on Cloudflare Workers over D1: the deploy button, manual deployment, the Worker entry and its bundle, D1's tighter limits and how the engine works within them. |
 | [operations.md](operations.md) | Running the engine: local development, the staging server, Server-Timing and the edge profiler, data freshness, cache invalidation, credential rotation and troubleshooting. |
+| [mod-dsl.md](mod-dsl.md) | Writing mods with `defineMod`, the TypeScript form of Ruby Decko's set-module DSL: how each Ruby construct is written, and a worked example of a new mod from set files to a loaded deck. |
 | [TESTING.md](TESTING.md) | What the test suite guards, what data it needs and how to run it. |
 | [coverage-inventory.md](coverage-inventory.md) | What the public package measures and what it does not, domain by domain: where each parity figure's evidence lives and what no committed instrument covers. |
 | [SECURITY.md](SECURITY.md) | The declared divergences from Ruby that are described: each one carries what Ruby does, what this engine does, why, what it costs, how to configure it and the test that pins it. Two further approved divergences are withheld until a private channel exists to disclose them. |

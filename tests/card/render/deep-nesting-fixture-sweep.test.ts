@@ -59,6 +59,7 @@ import {
   treeRootName,
 } from "./deep-nesting-fixtures.js";
 import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
+import { coldRoundTripLaw } from "./round-trip-law.js";
 
 // ---- measurement ------------------------------------------------------------
 
@@ -198,21 +199,20 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
 
       const byRoot = new Map(rows.map((r) => [r.root, r]));
 
-      // 1. Renderable open chains: round trips = 4 + (depth - 1) - the fixed
-      //    cost is the root fetch + the prelude batch + the two wave seating
-      //    rounds; each inclusion level costs exactly one batched round trip,
-      //    independent of deck size.
-      //    The base is 4, not 2: the db-roundtrip waves' batched priming adds
-      //    wave seating round 1 (the type-card prime folded in as the batch
-      //    preamble) + wave round 2 (junction candidates whose sides round 1
-      //    seated - "a junction's ids are the previous round's ANSWERS") on
-      //    every cold render, tiny fixtures included. Same measured law
-      //    depth-sweep.test.ts pins (base 4, slope exactly 1 per level,
-      //    warm 0).
+      // 1. Renderable open chains: round trips = 3 + (depth - 1) - the fixed
+      //    cost is the root fetch + the prelude batch + the wave's one
+      //    seating round; each inclusion level costs exactly one batched
+      //    round trip, independent of deck size.
+      //    The base is 3, not 2: the wave's batched priming (the type-card
+      //    prime folded in as the batch preamble, the rule candidates by key,
+      //    their depth-2 junctions by side keys and their depth-3 names
+      //    through the junction by keys) is one round on every cold render,
+      //    tiny fixtures included. Same measured law depth-sweep.test.ts pins
+      //    (round-trip-law.ts: base 3, slope exactly 1 per level, warm 0).
       for (const depth of [...PARITY_CHAIN_DEPTHS, ...DEEP_RENDERABLE_CHAIN_DEPTHS]) {
         const row = byRoot.get(chainName(depth, 1))!;
         expect(row.cold.renderError).toBeNull();
-        expect(row.cold.roundTrips).toBe(4 + Math.max(0, depth - 1));
+        expect(row.cold.roundTrips).toBe(coldRoundTripLaw(depth - 1));
       }
 
       // 2. Past the cap the response is the too-deep rejection, and its query
@@ -221,10 +221,9 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    1 root fetch + 1 prelude batch + 25 closure rounds (the prefetch's
       //    MAX_CLOSURE_ROUNDS cap, prefetch.ts:68) + 8 rounds of
       //    applyStructureContent pass #1 (render.ts:460, loop cap
-      //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) + the two
-      //    wave seating rounds (the db-roundtrip waves' priming machinery -
-      //    the same fixed +2 every cold render pays, see invariant 1) = 45
-      //    round trips. On a chain each chase round's batched IN-query
+      //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) + the
+      //    wave's one seating round (the same fixed +1 every cold render
+      //    pays, see invariant 1) = 44 round trips. On a chain each chase round's batched IN-query
       //    degenerates to one key, so each round is one round trip; the walk
       //    itself renders cached rows only and throws the guard at nest depth
       //    21 (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
@@ -233,11 +232,11 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    cards seated by the render tail's late paths get their structure
       //    processed (before it, they rendered without it). On a past-cap
       //    chain that pass also runs to its 8-round loop cap, so the bound is
-      //    45 + 8 = 53. It stays depth-independent, which is the claim this
+      //    44 + 8 = 52. It stays depth-independent, which is the claim this
       //    invariant protects.
       for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
         const row = byRoot.get(chainName(depth, 1))!;
-        expect(row.cold.roundTrips).toBe(53);
+        expect(row.cold.roundTrips).toBe(52);
         expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
         // Response-form note: an earlier lineage propagated the too-deep
         // rejection out of render() as a thrown Error("nest depth exceeded
@@ -267,6 +266,7 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    from 3 to 202 live cards.
       const fanRows = FANOUTS.map((f) => byRoot.get(fanRootName(f))!);
       const fanRt = fanRows[0]!.cold.roundTrips;
+      expect(fanRt).toBe(coldRoundTripLaw(1)); // the fan is one level below its root
       for (const row of fanRows) {
         expect(row.cold.renderError).toBeNull();
         expect(row.cold.roundTrips).toBe(fanRt);
@@ -277,15 +277,15 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
         fanRows[0]!.cold.htmlBytes!,
       );
 
-      // 4. Whole trees: round trips = 4 + tree DEPTH - the closure costs one
-      //    round per LEVEL (not per card) + the two fixed wave seating rounds
-      //    (same fixed cost as invariant 1): d4xf4 serves 342 cards in 8
-      //    round trips; d3xf10 serves 1112 cards in 7.
+      // 4. Whole trees: round trips = 3 + tree DEPTH - the closure costs one
+      //    round per LEVEL (not per card) + the one fixed wave seating round
+      //    (same fixed cost as invariant 1): d4xf4 serves 342 cards in 7
+      //    round trips; d3xf10 serves 1112 cards in 6.
       const treeRows = TREES.map(({ depth, fanout }) => byRoot.get(treeRootName(depth, fanout))!);
       for (const row of treeRows) {
         expect(row.cold.renderError).toBeNull();
         const depthLevels = Number(row.treeDims!.match(/^d(\d+)/)![1]);
-        expect(row.cold.roundTrips).toBe(4 + depthLevels);
+        expect(row.cold.roundTrips).toBe(coldRoundTripLaw(depthLevels));
       }
       expect(treeRows[1]!.liveCards).toBe(1112);
 
