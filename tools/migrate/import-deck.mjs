@@ -40,6 +40,21 @@ import { LocalSqliteToolDriver } from "./import.mjs";
 import { importFromSqlite } from "./generalized-import.mjs";
 import { dumpRows } from "./parse-dump.mjs";
 import { deckSeedRows } from "./deck-seed-parser.mjs";
+import { openSourceSqlite, inventorySource, sourceTableRows } from "./source-sqlite.mjs";
+
+// A SQLite source read as a row stream, so it can take the same dedup
+// path as a dump or seed. Tables are read in name order, one at a time.
+async function* sqliteSourceRows(file, tables) {
+  const db = openSourceSqlite(file);
+  try {
+    const wanted = new Set(tables);
+    for (const name of Object.keys(inventorySource(db)).sort()) {
+      if (wanted.has(name)) yield* sourceTableRows(db, name);
+    }
+  } finally {
+    db.close();
+  }
+}
 import { writeChunkedSeed, readTableColumns } from "./d1-chunker.mjs";
 import { buildReport, writeReport } from "./d1-validator.mjs";
 
@@ -76,6 +91,9 @@ function usage(exitCode = 0) {
     "  --tables <a,b,c>     Restrict to these tables (default: every table the DDL declares)",
     "  --quiet              No progress output",
     "  --strict             Exit nonzero when validation checks fail",
+    "  --dedup              SQLite source: ingest through the streaming dedup path",
+    "                       (the same UNIQUE-index collision policy the dump and",
+    "                       seed paths apply) instead of generalized-import",
     "",
     "The JSON report is content-free (ids, counts, hashes - never card names/content).",
   ];
@@ -101,6 +119,7 @@ function parseArgs(argv) {
     tables: undefined,
     quiet: false,
     strict: false,
+    dedup: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -127,6 +146,7 @@ function parseArgs(argv) {
       case "--tables": opts.tables = val().split(",").map((s) => s.trim()); break;
       case "--quiet": opts.quiet = true; break;
       case "--strict": opts.strict = true; break;
+      case "--dedup": opts.dedup = true; break;
       case "--help": case "-h": usage(0); break;
       default:
         console.error(`unknown argument: ${a}`);
@@ -195,7 +215,7 @@ let stagingStats = { rowsEmitted: 0, elapsedMs: 0, errors: [] };
 // real source-vs-staging check, not a value against itself.
 let streamedCardsCount = 0;
 
-if (sourceKind === "sqlite") {
+if (sourceKind === "sqlite" && !opts.dedup) {
   // Use the existing generalized-import.mjs: it already handles schema
   // mapping and writes rows directly into the target DB.
   console.log("\ningest: SQLite source -> staging DB (generalized-import)");
@@ -227,7 +247,9 @@ if (sourceKind === "sqlite") {
   const rowsIter =
     sourceKind === "mysqldump"
       ? dumpRows(sourcePath, { tables: targetTables })
-      : deckSeedRows(sourcePath, { tables: targetTables });
+      : sourceKind === "sqlite"
+        ? sqliteSourceRows(sourcePath, targetTables)
+        : deckSeedRows(sourcePath, { tables: targetTables });
 
   // Apply the schema's pragmas + CREATE TABLEs.
   const { parseTargetSchema } = await import("./import.mjs");
@@ -255,6 +277,9 @@ if (sourceKind === "sqlite") {
   const nulledKeyDuplicates = new Map(); // table -> count
   const nulledLRDuplicates = new Map(); // table -> count
   const nulledCodenameDuplicates = new Map(); // table -> count
+  // The key and codename UNIQUE INDEXes are COLLATE NOCASE, which folds
+  // ASCII letters only; the seen-sets compare under the same folding.
+  const nocaseFold = (v) => (typeof v === "string" ? v.replace(/[A-Z]/g, (c) => c.toLowerCase()) : v);
   function getSeen(t, m) {
     let s = m.get(t);
     if (s === undefined) { s = new Set(); m.set(t, s); }
@@ -294,11 +319,12 @@ if (sourceKind === "sqlite") {
       const key = mapped.values[keyIdx];
       if (key !== null && key !== undefined) {
         const seen = getSeen(row.table, seenKeys);
-        if (seen.has(key)) {
+        const folded = nocaseFold(key);
+        if (seen.has(folded)) {
           mapped.values[keyIdx] = null;
           nulledKeyDuplicates.set(row.table, (nulledKeyDuplicates.get(row.table) ?? 0) + 1);
         } else {
-          seen.add(key);
+          seen.add(folded);
         }
       }
     }
@@ -332,11 +358,12 @@ if (sourceKind === "sqlite") {
       const cn = mapped.values[cnIdx];
       if (cn !== null && cn !== undefined) {
         const seen = getSeen(row.table, seenCodenames);
-        if (seen.has(cn)) {
+        const folded = nocaseFold(cn);
+        if (seen.has(folded)) {
           mapped.values[cnIdx] = null;
           nulledCodenameDuplicates.set(row.table, (nulledCodenameDuplicates.get(row.table) ?? 0) + 1);
         } else {
-          seen.add(cn);
+          seen.add(folded);
         }
       }
     }
