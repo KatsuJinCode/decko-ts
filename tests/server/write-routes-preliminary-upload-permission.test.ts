@@ -238,21 +238,23 @@ async function call(
   return { status: res.status, headers: responseHeaders, body: text };
 }
 
-/** Every stored file under the deck's files root, as the store keys it
- *  ("<card id>/<name>" for the files area, "tmp/<cache card id>/<name>" for
- *  the upload cache — attachment-store.ts keyFor). The sibling tmp
- *  directory is not walked: see the disclosed layout note at arm (4). */
+/** Every stored file under the deck's files root and its sibling tmp area,
+ *  as the store keys them ("<card id>/<name>" for the files area,
+ *  "files/<cache card id>/<name>" under the tmp root for the upload cache —
+ *  attachment-store.ts keyFor, matching Ruby's tmp_upload_dir,
+ *  00_upload_cache.rb:88-91). */
 function storedKeys(): string[] {
   const out: string[] = [];
-  const walk = (dir: string, prefix: string): void => {
+  const walk = (dir: string, area: string, prefix: string): void => {
     if (!existsSync(dir)) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const rel = prefix === "" ? entry.name : `${prefix}/${entry.name}`;
-      if (entry.isDirectory()) walk(join(dir, entry.name), rel);
-      else out.push(rel);
+      if (entry.isDirectory()) walk(join(dir, entry.name), area, rel);
+      else out.push(`${area}/${rel}`);
     }
   };
-  walk(filesDir, "");
+  walk(filesDir, "files", "");
+  walk(tmpDir, "tmp", "");
   return out.sort();
 }
 
@@ -288,6 +290,7 @@ async function dbContentOf(cardId: number): Promise<string | null> {
 
 let storage: RenderTestStorage | undefined;
 let filesDir: string;
+let tmpDir: string;
 
 let joeToken = "";
 let server: http.Server;
@@ -304,7 +307,12 @@ beforeAll(async () => {
   // The store roots are laid out as a host would: <root>/files and its
   // sibling <root>/tmp (LocalAttachmentStore: the cache area roots at the
   // files directory's PARENT, 00_upload_cache.rb:88-91).
-  filesDir = join(scratchDir("decko-ts-upload-permission-"), "files");
+  // The store roots are laid out as a host would: <root>/files and its
+  // sibling <root>/tmp (LocalAttachmentStore roots the cache area at the
+  // files directory's PARENT — 00_upload_cache.rb:88-91's files_base_dir).
+  const root = scratchDir("decko-ts-upload-permission-");
+  filesDir = join(root, "files");
+  tmpDir = join(root, "tmp");
 
   const ctx: WriteRouteContext = {
     driver: storage.counting,
@@ -392,7 +400,7 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
     // (attachment-store.ts keyFor; paths.rb:10-12 upload_dir's id arm)
     const keys = storedKeys();
     expect(keys).toHaveLength(1);
-    const match = /^50\/(\d+)\.png$/.exec(keys[0] ?? "");
+    const match = /^files\/50\/(\d+)\.png$/.exec(keys[0] ?? "");
     expect(match).not.toBeNull();
     const stored = readFileSync(join(filesDir, "50", `${match?.[1]}.png`));
     expect(stored.length).toBe(PNG_BYTES.length);
@@ -439,15 +447,16 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
     // the success target is the upload-cache card (00_upload_cache.rb:19)
     expect(previewRenders[previewRenders.length - 1]?.name).toBe("*new file");
 
-    // Disclosed layout note: Ruby keeps the cache at files_base_dir("tmp")/
-    // files/<cache card id> (00_upload_cache.rb:88-91), a sibling of files/.
-    // The port's store keys it tmp/<cache card id>/<action id> under the
-    // files root (attachment-store.ts store(): blobsFor is never used). The
-    // pin is on the store's key, the one read() resolves; the sibling
-    // location is not asserted.
+    // Ruby's tmp_upload_dir is files_base_dir("tmp")/files/<cache card id>
+    // (00_upload_cache.rb:88-91, file_card_uploader/path.rb:24-25): a
+    // sibling of the deck's files area, with a literal "files" segment
+    // below it. The port's store writes the cache through that area's own
+    // driver, so the bytes land there and never among the served files.
     const keys = storedKeys();
     expect(keys).toHaveLength(2); // arm (3)'s file + this one
-    expect(keys.filter((k) => /^tmp\/60\/\d+\.png$/.test(k))).toHaveLength(1);
+    expect(keys.filter((k) => /^tmp\/files\/60\/\d+\.png$/.test(k))).toHaveLength(1);
+    // nothing of the cache leaked into the files area
+    expect(keys.filter((k) => k.startsWith("files/60/"))).toEqual([]);
     // the draft is filed on the CACHE card, not on a card of the new card's name
     // arm (3)'s draft (on card 50) is still present; the NEW draft is the one
     // filed on the cache card
@@ -487,6 +496,6 @@ describe("the two-step upload's permission order (00_upload_cache.rb:8-25 vs per
     expect(await dbContentOf(LOCKED_FILE_ID)).toBe(before);
     // nothing was stored under the denied card's id (arms (3)/(4) wrote
     // under 50 and the cache key only)
-    expect(storedKeys().filter((k) => k.startsWith("40/"))).toEqual([]);
+    expect(storedKeys().filter((k) => k.startsWith("files/40/"))).toEqual([]);
   });
 });

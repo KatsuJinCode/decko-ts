@@ -117,11 +117,17 @@ export class BlobAttachmentStore implements AttachmentStore {
   }
 
   /** The blob key for one stored file. The tmp upload cache of a two-step
-   *  upload lives under the tmp partition of the files base
-   *  (00_upload_cache.rb files_base_dir("tmp")), never among the deck's
-   *  served files. */
+   *  upload lives under the cache area, never among the deck's served files:
+   *  - with a separate cache driver (LocalAttachmentStore), the key is
+   *    Ruby's tmp_upload_dir RELATIVE to that driver — files_base_dir("tmp")
+   *    IS the driver root, and the path below it is a literal "files/"
+   *    segment plus the cache card id (00_upload_cache.rb:88-91,
+   *    file_card_uploader/path.rb:24-25 cache_dir);
+   *  - with one namespace (a bucket, no cache driver), a "tmp/" prefix keeps
+   *    the cache distinguishable from the served files. */
   private keyFor(cardId: number, name: string, area?: "files" | "tmp"): string {
-    return area === "tmp" ? `tmp/${cardId}/${name}` : `${cardId}/${name}`;
+    if (area !== "tmp") return `${cardId}/${name}`;
+    return this.tmpBlobs !== undefined ? `files/${cardId}/${name}` : `tmp/${cardId}/${name}`;
   }
 
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
@@ -144,9 +150,9 @@ export class BlobAttachmentStore implements AttachmentStore {
       // (image-resize.ts imageVersionBytes); the -original spelling and any
       // name the resizer did not produce store the original bytes.
       const bytes = input.renditionBytes?.[name] ?? input.bytes;
-      const result = await this.blobs.put(
-        // Local keys ride keyFor so the two-step upload's tmp area keeps its
-        // prefix (carrierwave's cache/store split); coded keys are the mod's
+      const result = await this.blobsFor(input.area).put(
+        // Local keys ride keyFor so the two-step upload's cache keeps its own
+        // area (carrierwave's cache/store split); coded keys are the mod's
         // own directory, no area.
         coded === undefined ? this.keyFor(input.cardId, name, input.area) : `${prefix}${name}`,
         bytes,
@@ -174,7 +180,9 @@ export class BlobAttachmentStore implements AttachmentStore {
     const prefix = coded === undefined ? `${input.cardId}/` : `${coded.dirParts.join("/")}/`;
     const names = input.renditionNames ?? [coded === undefined ? filenameWithVariant(input.actionId, input.ext) : `${coded.mountName}${input.ext}`];
     for (const name of names) {
-      await this.blobs.delete(coded === undefined ? this.keyFor(input.cardId, name, input.area) : `${prefix}${name}`);
+      await this.blobsFor(input.area).delete(
+        coded === undefined ? this.keyFor(input.cardId, name, input.area) : `${prefix}${name}`,
+      );
     }
   }
 
@@ -201,7 +209,7 @@ export class BlobAttachmentStore implements AttachmentStore {
         ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
-      const bytes = await this.blobs.getBytes(this.keyFor(cardId, name, area));
+      const bytes = await this.blobsFor(area).getBytes(this.keyFor(cardId, name, area));
       if (bytes !== undefined) return bytes;
     }
     return undefined;
