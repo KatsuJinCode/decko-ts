@@ -51,6 +51,7 @@ interface RubyRegistrations {
     when: string | null;
   }>;
   accessors: string[];
+  setting_opts: Record<string, unknown> | null;
 }
 
 /** What a Ruby body sees while it runs: the format being rendered, or the
@@ -306,8 +307,21 @@ export async function loadRubyMod(modDir: string, opts: { name?: string } = {}):
 
     // Abstract set files reach cards only through include_set.
     if (reg.set_path.startsWith("abstract/")) continue;
+    const so = reg.setting_opts;
     setModules.push({
       setPath: reg.set_path,
+      settingOpts:
+        so === null
+          ? undefined
+          : {
+              group: so.group as string | undefined,
+              position: so.position as number | undefined,
+              ruleTypeEditable: so.rule_type_editable as boolean | undefined,
+              shortHelpText: so.short_help_text as string | undefined,
+              helpText: so.help_text as string | undefined,
+              restrictedToType: so.restricted_to_type as string[] | undefined,
+              preference: so.preference as boolean | undefined,
+            },
       formats: Object.keys(formats).length > 0 ? formats : undefined,
       events: events.length > 0 ? events : undefined,
     });

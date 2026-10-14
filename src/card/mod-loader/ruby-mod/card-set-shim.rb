@@ -60,6 +60,7 @@ module DeckoRubyMods
         views: mod.view_specs,
         events: mod.event_specs.map { |e| e.reject { |k, _| k == :block || k == :when_cond } },
         accessors: mod.accessor_names,
+        setting_opts: mod.setting_opts_spec,
       }.to_json_for_bridge
     end
 
@@ -198,6 +199,17 @@ module DeckoRubyMods
         spec = set.view_specs.find { |s| s[:format] == k[0].to_s && s[:view] == k[1].to_s }
         view_specs << spec if spec
       end
+    end
+
+    # advanced_api.rb#setting_opts: handed to the loader's setting registry.
+    def setting_opts(**opts)
+      @setting_opts = opts.transform_values do |v|
+        v.is_a?(Array) ? v.map(&:to_s) : (v.is_a?(Symbol) ? v.to_s : v)
+      end
+    end
+
+    def setting_opts_spec
+      @setting_opts
     end
 
     # Card::Set basket (lib/card/set/basket.rb): recorded, not acted on.
