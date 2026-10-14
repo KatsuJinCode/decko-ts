@@ -4,9 +4,10 @@
 //
 // Expected outcomes (each is asserted below):
 //  1. A reader that reads while a save is part-way through (its card row
-//     already updated, its history not yet written) is not answered until
-//     the save ends; when the save fails, the reader gets the card as it was
-//     before the save.
+//     already updated) is never answered with the partial save: on D1 it
+//     waits until the save ends, on a native transaction it is answered
+//     from the committed state; when the save fails, the reader gets the
+//     card as it was before the save.
 //  2. Under concurrent writers, some of whose saves fail part-way, no
 //     reader ever observes a failed save's content, and every observation
 //     is a committed state: the card's content equals the newest content
@@ -190,8 +191,12 @@ describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
     await isPaused;
     // The card row really holds the partial content at this moment: the
     // transaction's own statements see it.
+    // D1 makes the read wait for the save; a native transaction answers it
+    // at once from the committed state. Either way it is never the
+    // partial save.
     const read = observe(reader);
-    expect(await settlesWithin(read, 200)).toBe(false);
+    if (await settlesWithin(read, 200)) expect(await read).toEqual({ content: "v1", newestChange: null });
+    if (connect().transactionGuarantee?.mechanism === "compensating") expect(await settlesWithin(read, 0)).toBe(false);
     release();
     await expect(save).rejects.toThrow(/injected failure/);
     expect(await read).toEqual({ content: "v1", newestChange: null });

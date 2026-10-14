@@ -507,8 +507,11 @@ Answering each against what shipped:
 8. **Add D1 later, once the engine is PostgreSQL-independent** — partly adopted,
    with the caveat the critique did not anticipate: D1 arrived first, and it
    arrived with a transaction contract of its own (a compensating journal, not
-   `BEGIN`/`COMMIT`) and an intermediate-visibility window that keeps
-   write-enabled D1 at evaluation/single-user grade
+   `BEGIN`/`COMMIT`). Its intermediate-visibility window is closed: readers
+   on other connections wait for a save in progress rather than reading its
+   rows, so a failed save is never visible to another user (verified under
+   Miniflare; the hosted check is `tools/hosted-conformance/run.mjs`, not yet
+   run against a hosted service)
    ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md);
    [docs/SECURITY.md](SECURITY.md), "Migration compatibility at a glance").
 

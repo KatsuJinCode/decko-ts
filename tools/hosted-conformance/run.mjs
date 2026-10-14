@@ -229,13 +229,13 @@ async function startLocalStandIns() {
     return [405, { success: false, errors: [{ message: "method not allowed" }] }];
   });
   const turso = new Map();
-  const tursoApi = await listen(async (req) => {
+  const tursoApi = await listen(async (req, body) => {
     const m = /^\/v1\/organizations\/[^/]+\/databases(?:\/([^/]+)(\/auth\/tokens)?)?$/.exec(req.url);
     if (m === null) return [404, { error: "not found" }];
     if (req.method === "POST" && m[1] === undefined) {
       const dir = mkdtempSync(join(tmpdir(), "decko-turso-stand-in-"));
       const server = await startMockHranaServer({ path: join(dir, "db.sqlite") });
-      const name = `local-${turso.size + 1}`;
+      const name = body.name;
       turso.set(name, { server, dir });
       return [200, { database: { Name: name, Hostname: new URL(server.url).host } }];
     }
