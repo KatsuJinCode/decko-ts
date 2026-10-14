@@ -369,14 +369,9 @@ refused with a reason, never deleted.
 
 ## Test status
 
-The standing verification net (`tests/standing-net.json`, 68 manifest
-files), run via `node tools/test-queue/run-standing-net.mjs` on
-2026-10-01:
-
-```
-Test Files  66 passed | 2 skipped (68)
-     Tests  696 passed | 4 expected fail | 12 skipped (712)
-```
+The standing verification net (`tests/standing-net.json`, 125 manifest
+files) runs via `node tools/test-queue/run-standing-net.mjs`. The full-suite
+result for this tree is recorded in [KNOWN_FAILURES.md](KNOWN_FAILURES.md).
 
 Members of the net that are not redistributed with this repository print
 `[not redistributed] NOT RUN <file>` and are not run. The runner reports them

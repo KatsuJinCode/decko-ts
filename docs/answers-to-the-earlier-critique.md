@@ -333,7 +333,7 @@ row delta against the Ruby oracle's: of the 67 public operations, 65 are
 identical and 2 are declared deliberate differences, and 3 more are withheld
 until disclosure ([coverage-inventory.md](coverage-inventory.md), "The public
 batteries, accounted"). The 90-step scenario battery does the same for
-verdicts: of 88 public steps, 84 match, 3 are declared and 1 is open, with 2
+verdicts: of 88 public steps, 83 match, 4 are declared and 1 is open, with 2
 withheld.
 
 The deeper evidence is named but is explicitly **not** public: the production-deck
