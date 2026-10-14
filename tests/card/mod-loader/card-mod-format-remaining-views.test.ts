@@ -95,8 +95,11 @@ beforeAll(async () => {
   // typed by the "Cardtype" CARD (id 22) - set/type/cardtype.rb's set is
   // "cards whose type card is Cardtype", the set keys walk the type card
   await seedCard(s, { id: 508, name: "Configure Probe", typeId: 22 });
-  // Conflict Probe (509) is created through the ActWriter below - the real
-  // write path seeds the cards row together with its actions.
+  // Conflict Probe is created through the ActWriter below - the real write
+  // path seeds the cards row together with its actions. Its id is the
+  // AUTOINCREMENT id the deck hands out, which is above the stock read
+  // substrate's ids (BOOTSTRAP_READ_SUBSTRATE_IDS, render-test-storage.ts), so
+  // it is read back from createCard rather than assumed.
 
   // conflict's last_action/act data through the REAL write path (the
   // history-views suite's pattern): create + one content update.
@@ -105,19 +108,20 @@ beforeAll(async () => {
   const clock = () => new Date(T0 + ticks++ * 1000);
   const request = () =>
     new ActWriter({ driver: s.counting, actorId: 1, ipAddress: "127.0.0.1", now: clock });
-  const probeState = async () =>
+  const probeState = async (cardId: number) =>
     cardFieldStateFromRow(
-      (await s.counting.query("SELECT * FROM cards WHERE id = ?", [509])).rows[0]! as never,
+      (await s.counting.query("SELECT * FROM cards WHERE id = ?", [cardId])).rows[0]! as never,
     );
-  await request().createCard({
+  const created = await request().createCard({
     name: "Conflict Probe",
     key: "conflict_probe",
     type_id: 2,
     db_content: "first body",
   });
-  let before = await probeState();
+  const conflictProbeId = created.cardId;
+  let before = await probeState(conflictProbeId);
   await request().updateCard({
-    cardId: 509,
+    cardId: conflictProbeId,
     before,
     after: { ...before, db_content: "second body" },
   });

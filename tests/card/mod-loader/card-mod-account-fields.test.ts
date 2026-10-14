@@ -52,9 +52,18 @@ import cardModAccount from "../../../src/card/mod-loader/mods/card-mod-account.j
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
 
-beforeAll(async () => {
-  storage = await createRenderTestStorage();
-  const s = storage;
+/** The probe deck, seeded on a fresh storage with the given read viewer.
+ *  card-mod-account's Right::Email overrides ok_to_read? (set/right/email.rb:
+ *  39-43 `own_email? || Auth.always_ok?` else deny_because — NO super), and
+ *  own_email? (email.rb:45-47) is `name.part_names[0].key == Auth.as_card.key`.
+ *  So a +*email card is readable ONLY to the account it is a field of: the
+ *  deck's Fields Probe Member (id 120). `viewer` must be set BEFORE the
+ *  engine's first render — the read verdict memoizes Auth.as_card.key for
+ *  the engine's lifetime (render.ts resolveViewerKey), so a viewer assigned
+ *  after a first render does not take. */
+async function deckFor(viewer?: RenderTestStorage["engine"]["viewer"]): Promise<RenderTestStorage> {
+  const s = await createRenderTestStorage();
+  if (viewer !== undefined) s.engine.viewer = viewer;
 
   // codename/type scaffolding (the same shape the account A/B suite seeds)
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
@@ -104,6 +113,26 @@ beforeAll(async () => {
     typeId: 14,
     dbContent: "account junction body",
   });
+  return s;
+}
+
+/** A member-viewed deck with card-mod-account loaded (the email-content
+ *  tests' surface; closed by the caller). */
+async function memberDeck(): Promise<RenderTestStorage> {
+  const s = await deckFor({ signedIn: true, actorId: 120 });
+  const modLoader = new ModLoader([{ manifest: cardModAccount }]);
+  modLoader.load();
+  bindModLoaderToEngine(s, modLoader);
+  await modLoader.installInto(modEngineHost(s.engine, s.fetcher));
+  return s;
+}
+
+beforeAll(async () => {
+  // The shared deck is the ANONYMOUS viewer's, as before: the password
+  // views below render through the generic read rule (right/password.rb:17
+  // is `own_account? || super`, and an anonymous viewer is not the account
+  // holder). The email-content tests build their own member-viewed deck.
+  storage = await deckFor();
 }, 60_000);
 
 afterAll(() => {
@@ -139,50 +168,53 @@ describe("card-mod-account field views (right/account :core + right/password raw
   });
 
   it("WITH the mod: +*account :core renders the email+password field nests (views.rb:50-57)", async () => {
-    const s = storage!;
-    loader = new ModLoader([{ manifest: cardModAccount }]);
-    loader.load();
-    bindModLoaderToEngine(storage!, loader!);
-    await loader.installInto(modEngineHost(s.engine, s.fetcher));
-
-    const actual = await s.engine.render("Fields Probe Member+*account", "core");
-    // The two programmatic field nests (output() joins the array body with
-    // a newline — content.rb:70-73; the slot markup itself is multi-line).
-    // Each nest renders the child card's :labeled view in a slot carrying
-    // the field_nest's title, and the slots appear in Ruby's order
-    // (email first, then password). The slot IDs and the data-slot opts are
-    // the warming-independent invariants (whether the nested child renders
-    // resolved or fabricated-unknown depends on the prefetch cache — see
-    // the NAMED SEAM note).
-    const emailIdx = actual.indexOf("field_probe_member-Xaccount-Xemail-labeled-view");
-    const passwordIdx = actual.indexOf(
-      "field_probe_member-Xaccount-Xpassword-labeled-view",
-    );
-    expect(emailIdx).toBeGreaterThan(-1);
-    expect(passwordIdx).toBeGreaterThan(emailIdx);
-    expect(actual).toContain("labeled-view");
-    expect(actual).toContain(
-      '&quot;title&quot;:&quot;email&quot;',
-    );
-    expect(actual).toContain(
-      '&quot;title&quot;:&quot;password&quot;',
-    );
-    expect(actual).toContain("&quot;nest_name&quot;:&quot;+*email&quot;");
-    expect(actual).toContain("&quot;nest_name&quot;:&quot;+*password&quot;");
-    // The child card's own renders are complete: its :core is the
-    // linkified email body (RichText URI scan), its :labeled carries the
-    // row id + content.
-    const childCore = await s.engine.render(
-      "Fields Probe Member+*account+*email",
-      "core",
-    );
-    expect(childCore).toContain('href="mailto:probe@example.com"');
-    const childLabeled = await s.engine.render(
-      "Fields Probe Member+*account+*email",
-      "labeled",
-    );
-    expect(childLabeled).toContain('data-card-id="121"');
-    expect(childLabeled).toContain("probe@example.com");
+    // Rendered as the account holder (memberDeck): right/email.rb:39-43
+    // denies a +*email card to every viewer but the account itself, and the
+    // field nests render the email child's :labeled — so the anonymous
+    // viewer sees denial chrome for the whole nest row, not the nests.
+    const s = await memberDeck();
+    try {
+      const actual = await s.engine.render("Fields Probe Member+*account", "core");
+      // The two programmatic field nests (output() joins the array body with
+      // a newline — content.rb:70-73; the slot markup itself is multi-line).
+      // Each nest renders the child card's :labeled view in a slot carrying
+      // the field_nest's title, and the slots appear in Ruby's order
+      // (email first, then password). The slot IDs and the data-slot opts are
+      // the warming-independent invariants (whether the nested child renders
+      // resolved or fabricated-unknown depends on the prefetch cache — see
+      // the NAMED SEAM note).
+      const emailIdx = actual.indexOf("field_probe_member-Xaccount-Xemail-labeled-view");
+      const passwordIdx = actual.indexOf(
+        "field_probe_member-Xaccount-Xpassword-labeled-view",
+      );
+      expect(emailIdx).toBeGreaterThan(-1);
+      expect(passwordIdx).toBeGreaterThan(emailIdx);
+      expect(actual).toContain("labeled-view");
+      expect(actual).toContain(
+        '&quot;title&quot;:&quot;email&quot;',
+      );
+      expect(actual).toContain(
+        '&quot;title&quot;:&quot;password&quot;',
+      );
+      expect(actual).toContain("&quot;nest_name&quot;:&quot;+*email&quot;");
+      expect(actual).toContain("&quot;nest_name&quot;:&quot;+*password&quot;");
+      // The child card's own renders are complete: its :core is the
+      // linkified email body (RichText URI scan), its :labeled carries the
+      // row id + content.
+      const childCore = await s.engine.render(
+        "Fields Probe Member+*account+*email",
+        "core",
+      );
+      expect(childCore).toContain('href="mailto:probe@example.com"');
+      const childLabeled = await s.engine.render(
+        "Fields Probe Member+*account+*email",
+        "labeled",
+      );
+      expect(childLabeled).toContain('data-card-id="121"');
+      expect(childLabeled).toContain("probe@example.com");
+    } finally {
+      s.close();
+    }
   });
 
   it("WITH the mod: +password :raw renders the en.yml string (right/password.rb:53-55)", async () => {
@@ -256,20 +288,23 @@ describe("card-mod-account field views (right/account :core + right/password raw
   });
 
   it("WITH the mod: the OTHER account field keeps its content-bearing input (the pin is password-specific)", async () => {
-    const s = storage!;
-    loader = new ModLoader([{ manifest: cardModAccount }]);
-    loader.load();
-    bindModLoaderToEngine(storage!, loader!);
-    await loader.installInto(modEngineHost(s.engine, s.fetcher));
-
-    // right/email.rb declares no input_type override and no input view, so
-    // an email field's :input is the editor's ordinary text field WITH its
-    // value. If this ever fails the way the password pin did, the :input
-    // registration has widened past the password set.
-    const emailInput = await s.engine.render(
-      "Fields Probe Member+*account+*email",
-      "input",
-    );
-    expect(emailInput).toContain("probe@example.com");
+    // Right::Email's own ok_to_read? override (right/email.rb:39-43,
+    // own_email? || always_ok? else DENY) admits only the account holder, so
+    // the pin renders on the member's deck — the same viewer Ruby would
+    // show this field to.
+    const s = await memberDeck();
+    try {
+      // right/email.rb declares no input_type override and no input view, so
+      // an email field's :input is the editor's ordinary text field WITH its
+      // value. If this ever fails the way the password pin did, the :input
+      // registration has widened past the password set.
+      const emailInput = await s.engine.render(
+        "Fields Probe Member+*account+*email",
+        "input",
+      );
+      expect(emailInput).toContain("probe@example.com");
+    } finally {
+      s.close();
+    }
   });
 });
