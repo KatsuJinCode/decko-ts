@@ -466,6 +466,18 @@ async function renderPageBytesWithPageConfigInner(
     // below reads it. undefined passes through render()'s own `= {}`
     // default, so non-history pages are untouched.
     await engine.render(record.name.s, mainView, historyParams);
+    // The warm pass is not a render: its output is discarded and the page
+    // re-renders the view below from the warm maps. The account-links
+    // chrome the session nest reads is prepared AFTER the warm pass, so
+    // the warm pass's own dispatch through the layout header's
+    // {{:account_links|navbar_links}} nest finds no prepared items and
+    // cannot be the request's roles-nest render. Ruby has no warm pass:
+    // the layout content renders once and the layout nests first (the
+    // header precedes {{_main}} in the Default Layout), so the navbar's
+    // roles nest IS the request's first one. Blank the ensure_roles fill
+    // so the layout pass reads Ruby's starting state (a second nest in
+    // the layout body keeps its own intra-request marks).
+    engine.blankSessionRolesFill?.();
     if (recordIsNew && requestedSubstituted) {
       // page_status_for_unknown: the :new substitution renders only when the
       // actor may create (card-mod-format html/error.rb:85-86); without it —

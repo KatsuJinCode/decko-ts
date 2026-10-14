@@ -84,14 +84,17 @@ const navbarLinksView: ViewFn = (ctx) => {
     // dropped).
     const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
     if (prepared !== undefined) {
-      // The prepared string embeds the my_card roles nest whose render is
-      // ensure_roles' mutation point — consuming it marks the fill for the
-      // rest of the process (the same consume-then-mark the :core arm
-      // carries; the Default Layout's navbar dispatches through THIS view,
-      // so without the mark here a signed-in page's roles form never
-      // flips to the filled variant and every page after the first renders
-      // the blank content input the real captures only pin on each
-      // capture process's first page).
+      // Ruby's navbar_item_views ORDER is %i[my_card sign_out sign_up
+      // sign_in] (set/self/account_links.rb:25-27), so the roles nest
+      // (my_card) is rendered BEFORE sign_out and consumes the ensure_roles
+      // fill first (set/right/enabled_roles.rb:52 checkbox_input). The
+      // prepared string embeds both items, so the mark rides here: this
+      // roles nest is the request's mutation point, and every roles nest
+      // rendered after it (the *account links page's main body) reads the
+      // filled content input. On a page whose main body never nests
+      // *account links (the Default Layout only puts the roles nest in its
+      // header, mod/layout data/real.yml:59), this nest is the request's
+      // FIRST one and reads the blank input.
       ctx.fmt.engine.markSessionRolesContentFilled?.();
       return `<ul class="navbar-nav">${fillUniqueIds(prepared, fmt)}</ul>`;
     }
@@ -309,6 +312,12 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
 export function accountLinksCoreHtml(ctx: ViewContext): string {
   const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
   if (prepared !== undefined) {
+    // The view body runs navbar_items (my_card first — the roles nest and
+    // its ensure_roles mutation point), so consuming it here marks the
+    // fill for every LATER roles nest in the request (the layout header's
+    // {{:account_links|navbar_links}} nest, rendered after the main body).
+    // This page's own nest reads the blank input: the content field is
+    // emitted BEFORE checkbox_input's ensure_roles fills it.
     ctx.fmt.engine.markSessionRolesContentFilled?.();
     return `<div id="logging" class="logged-in">${fillUniqueIds(prepared, ctx.fmt)}</div>`;
   }

@@ -1928,6 +1928,17 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
+  // card-mod-comment set/right/discussion.rb:8-10 is
+  //   output [super(), render_comment_box(optional: :hide)]
+  // render_comment_box(optional: :hide) enrolls comment_box as hidden
+  // unless the voo already shows it (visibility.rb:76 process_visibility),
+  // and a hidden optional view returns nil (view.rb process_live_options ->
+  // hide_requested_view?, view.rb:61-62 `return if process_live_options ==
+  // :hide`). output() drops nils (content.rb:70-72 compact), so a hidden box
+  // contributes neither bytes nor the "\n" separator. The open/titled views
+  // show comment_box (views.ts openView / titledView, set/right/discussion.rb
+  // :1-6), which the core voo inherits, so only a bare core render is hidden.
+  if (!ctx.voo.explicitShow("comment_box")) return base;
   let box = "";
   try {
     const result = ctx.fmt.renderView("comment_box", {}, "hide");

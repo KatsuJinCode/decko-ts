@@ -183,7 +183,7 @@ import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { RenderFormat, str, type ViewResult } from "../../render/format.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
-import { createFormShell, successTags } from "../mod-form-substrate.js";
+import { cardFormShell, createFormShell, successTags } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
@@ -1591,7 +1591,13 @@ export function framedView(
   // unknown-card frames keep the title's trailing newline (the
   // Nonexistent Card rows).
   const titleTag = `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>`;
-  const menuRendered = fmt.renderView("menu");
+  // header.rb:6 `render_menu` is an OPTIONAL render (method_delegation.rb
+  // render_args: no bang -> optional :show), so its voo inherits the
+  // frame's viz (visibility.rb:73-77 process_visibility reverse_merge!)
+  // and a hidden :menu returns nil before the view body runs
+  // (visibility.rb:82-84 hide_requested_view?). The setup view's
+  // `voo.hide! :menu` (card-mod-account set/type/user.rb:14) is that case.
+  const menuRendered = voo.show("menu") ? fmt.renderView("menu") : null;
   const header =
     `<div class="${voo.classy("d0-card-header")}">` +
     (menuRendered === null ? titleTag : `${titleTag}\n${str(menuRendered)}`) +
@@ -2540,13 +2546,36 @@ export function updateFormDataShell(
  *  frame_and_form chain's inner shell (user.rb:29-32 setup_form:
  *  frame_and_form :create { [hidden fields, name formgroup,
  *  account_formgroups, buttons] }; NO with_create_context - that wrapper is
- *  the :new family's). */
+ *  the :new family's).
+ *
+ *  card_form is `form_for card, card_form_opts(...)` (form.rb:193-199), and
+ *  Rails' form_for names the form and picks the verb from the RECORD, not
+ *  from the card_form action (actionview form_helper.rb
+ *  apply_form_for_options!: `object.persisted? ? [:edit, :patch] :
+ *  [:new, :post]`, dom_id(object, action)). A stored card - the setup view
+ *  rendered on an existing User card - is therefore
+ *  `id="edit_card_<id>"` with the `_method=patch` spoof while the url stays
+ *  path(action: :create) = "/card/create"; a new card is `id="new_card"`
+ *  with no spoof. The persisted test is the one createCardForm uses (the
+ *  card carries an id). */
 export function createCardBodyShell(
   ctx: ViewContext,
   formOpts: { success?: Record<string, unknown>; body: string },
 ): string {
-  return createFormShell(ctx, {
+  const id = ctx.fmt.card.id;
+  if (id === undefined) {
+    return createFormShell(ctx, {
+      htmlAttrs: [],
+      success: formOpts.success,
+      body: formOpts.body,
+    });
+  }
+  return cardFormShell(ctx, {
+    formClass: "card-form slotter",
+    id: `edit_card_${id}`,
     htmlAttrs: [],
+    action: "/card/create",
+    methodSpoof: "patch",
     success: formOpts.success,
     body: formOpts.body,
   });

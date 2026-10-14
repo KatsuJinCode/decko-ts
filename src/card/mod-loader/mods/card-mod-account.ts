@@ -1194,8 +1194,11 @@ const setupView: ViewFn = (ctx) => {
     // the text (the graded corpus row pins both halves). Writing them
     // into voo.opts serialized them on the outer setup slot too.
     voo.liveTitle = "Your deck is ready to go!"; // LOCALIZE
-    voo.showViz("help");
-    voo.hide("menu");
+    // voo.show! :help / voo.hide! :menu are the FORCE writers
+    // (visibility.rb:39-45 `viz views, setting, true`) - they override any
+    // earlier setting, unlike plain show/hide (first write wins).
+    voo.setViz("help", "show");
+    voo.setViz("menu", "hide");
     // voo.help = haml :setup_help (the oracle's helpBytes line)
     voo.liveHelp = SETUP_HELP_BYTES;
     // Auth.as_bot { setup_form } - frame_and_form :create over the body

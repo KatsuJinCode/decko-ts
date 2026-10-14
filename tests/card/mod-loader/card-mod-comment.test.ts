@@ -205,16 +205,26 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
-  it("WITH the mod: discussion :core dispatches to base core AND appends comment_box (right/discussion.rb:8-10)", async () => {
+  it("WITH the mod: a bare discussion :core renders the base core alone (right/discussion.rb:8-10)", async () => {
     const s = storage!;
+    // `output [super(), render_comment_box(optional: :hide)]`: nothing above
+    // a bare :core render showed :comment_box, so the optional :hide
+    // enrolls it hidden (visibility.rb:73-77 process_visibility) and the
+    // render returns nil (visibility.rb:82-84 hide_requested_view?).
+    // output() compacts the nil (card/lib/card/format/content.rb output),
+    // so neither the box nor the "\n" separator appears. The synthetic-v2
+    // oracle's `core:admin:Topic 001+discussion` bytes are exactly the
+    // comment body, and `core:admin:Topic 002+discussion` (no comments) is
+    // the empty string.
     const html = await s.engine.render("Oracle Discussion Probe+discussion", "core");
-    // The base core runs first (raw content bytes); the appended
-    // comment_box body follows immediately after (no slot wrapper around
-    // the appended bytes - it's a raw concatenation, mirroring Ruby's
-    // `output [super(), render_comment_box(optional: :hide)]`).
     expect(html).toContain("discussion junction body");
-    expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
+    expect(html).not.toContain("comment-box");
+    expect(html.endsWith("\n")).toBe(false);
+    // The :titled_content view shows the box (right/discussion.rb:1-6) and
+    // renders core under that viz, so its bytes are the bare core's bytes,
+    // the "\n" separator and the box.
+    const titledContent = await s.engine.render("Oracle Discussion Probe+discussion", "titled_content");
+    expect(titledContent.startsWith(`${html}\n<div class="comment-box nodblclick">`)).toBe(true);
   });
 
   it("WITH the mod: discussion :input falls through to base input (right/discussion.rb:12-16, non-editor branch)", async () => {

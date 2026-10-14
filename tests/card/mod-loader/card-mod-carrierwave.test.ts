@@ -56,7 +56,10 @@ import { Voo, type RenderFormat, type ViewContext } from "../../../src/card/rend
 
 /** Build a minimal ViewContext for direct viewFn invocation. The card's
  *  typeName drives the polymorphic dispatch (image vs file behavior). */
-function makeCtx(dbContent: string, opts: { typeName?: string; typeCode?: string; name?: string } = {}): ViewContext {
+function makeCtx(
+  dbContent: string,
+  opts: { typeName?: string; typeCode?: string; name?: string; historyReader?: unknown } = {},
+): ViewContext {
   const name = opts.name ?? "TestCard";
   const card = {
     dbContent,
@@ -72,7 +75,10 @@ function makeCtx(dbContent: string, opts: { typeName?: string; typeCode?: string
   };
   const fmt = {
     card,
-    engine: { imageCdnHost: undefined },
+    engine: {
+      imageCdnHost: undefined,
+      historyRenderReader: opts.historyReader === undefined ? undefined : () => opts.historyReader,
+    },
     renderView: ((view: string, viewOpts: Record<string, unknown> = {}) => {
       if (view === "core") {
         if (card.typeCode === "image") return imageHtmlCoreView({ fmt: fmt as unknown as RenderFormat, voo: new Voo(undefined, "core", viewOpts) });
@@ -248,17 +254,50 @@ describe("image :preview (set/type/image/html_views.rb:36-43)", () => {
 });
 
 describe("image :content_changes (set/type/image/html_views.rb:49-51)", () => {
-  it("returns the pair of :core bytes for a non-empty source", () => {
+  // A last action with no earlier db_content change (the create that
+  // uploaded the file): previous_value(:db_content) is nil.
+  const createActionReader = {
+    cardLastAction: { id: 7, action_type: 0 },
+    previousValue: () => undefined,
+  };
+
+  it("wraps the current :core in the added chunk when no earlier content change exists", () => {
     const html = imageHtmlContentChangesView(
-      makeCtx("https://example.com/img.png", { name: "DiffImg", typeCode: "image" }),
+      makeCtx("https://example.com/img.png", {
+        name: "DiffImg",
+        typeCode: "image",
+        historyReader: createActionReader,
+      }),
     );
-    // Two :core renders concatenated; the diff highlighting the Ruby
-    // version provides via Card::Content::Diff.render_added_chunk /
-    // render_deleted_chunk (lines 63 + 76) is a separate surface - the
-    // headless port emits the structural pair only.
+    // `[old_image(action, hide_diff), new_image(action)].compact.join`
+    // (html_views.rb:53-56): old_image is nil without an earlier db_content
+    // change (:58-72), and new_image is
+    // `Card::Content::Diff.render_added_chunk _render_core` (:74-78), whose
+    // literal is "<ins class='diffins diff-added'>#{text}</ins>"
+    // (card/lib/card/content/diff.rb:16-18). The synthetic-v2 oracle's
+    // `view:admin:*favicon:content_changes` bytes have this shape.
     expect(html).toBe(
-      '<img alt="DiffImg" src="https://example.com/img.png" /><img alt="DiffImg" src="https://example.com/img.png" />',
+      `<ins class='diffins diff-added'><img alt="DiffImg" src="https://example.com/img.png" /></ins>`,
     );
+  });
+
+  it("wraps a blank :core too (new_image has no blank guard)", () => {
+    const html = imageHtmlContentChangesView(
+      makeCtx("", { name: "DiffImg", typeCode: "image", historyReader: createActionReader }),
+    );
+    expect(html).toBe(`<ins class='diffins diff-added'></ins>`);
+  });
+
+  it("raises when the card has no last action (new_image's action.id on nil)", () => {
+    expect(() =>
+      imageHtmlContentChangesView(
+        makeCtx("https://example.com/img.png", {
+          name: "DiffImg",
+          typeCode: "image",
+          historyReader: { cardLastAction: undefined, previousValue: () => undefined },
+        }),
+      ),
+    ).toThrow(/no last action/);
   });
 });
 

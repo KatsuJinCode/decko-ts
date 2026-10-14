@@ -183,6 +183,12 @@ const HISTORY_SEAM_VIEWS = new Set([
   // denial:blank config answers before any body runs).
   "subedit_notice",
   "list_of_changes",
+  // card-mod-carrierwave set/type/image/html_views.rb:49-51 view
+  // :content_changes — `content_changes card.last_action, :expanded`
+  // reads card.last_action (last.rb:53-55) for both sides of the
+  // old_image/new_image pair, so the render needs the prepared act
+  // bundle like the history views do.
+  "content_changes",
 ]);
 import type {
   HistoryActionCardInfo,
@@ -728,24 +734,30 @@ export class RenderEngine implements RenderEngineLike {
    *  is the CACHE's, not the request's: Card::Env.reset alone keeps the
    *  filled content (probed: a post-reset page renders FILLED), and
    *  Card::Cache.renew blanks it again (probed). The real-deck capture rig
-   *  recorded exactly that (6,537 of 6,588 member pages carry the filled
-   *  input; the 48 real-page exceptions are each capture process's FIRST
-   *  page). The flag is therefore cache-scoped: cleared by
-   *  resetRequestSession — the harness seam that stands for the Ruby rigs'
+   *  recorded the process lifetime (6,537 of 6,588 member pages carry the
+   *  filled input; the 48 real-page exceptions are each capture process's
+   *  FIRST page); the synthetic recorder's begin_request! renews the cache
+   *  before every recorded render, so there every request starts blank.
+   *  The flag is therefore cache-scoped: cleared by resetRequestSession —
+   *  the harness seam that stands for the Ruby rigs'
    *  fresh-process/Cache.renew boundary — never at render() entry, and
-   *  flipped by the view fns AFTER they consume the roles-nest html
-   *  (RenderEngineLike.markSessionRolesContentFilled). */
+   *  set at the request boundary (commitSessionRolesFill) when the request
+   *  consumed a roles nest (RenderEngineLike.markSessionRolesContentFilled,
+   *  called by the view fns AFTER they consume the roles-nest html). */
   private sessionRolesContentFilled = false;
   /** The fill's consumption WITHIN the current render pass (render() entry
    *  to render() exit). The page pipeline renders a page op in several
    *  passes (the prepare render, the main re-render); Ruby serves ONE
-   *  render per request, so each pass reads the COMMITTED state and its
+   *  render per request, so each pass reads the committed state and its
    *  own consumption — never an earlier pass's flip (the synthetic
    *  corpus's single-nest pages pin the navbar UNFILLED even though the
-   *  prepare pass already consumed the nest; the real corpus's pages
-   *  after the first pin FILLED from the committed state). Folded into
-   *  the committed flag at the request boundary
-   *  (commitSessionRolesFill, renderPageBytes' finally). */
+   *  prepare pass already consumed the nest; a two-nest page — the
+   *  *account links / *header page whose main body renders my_card first —
+   *  pins the body's content input blank and the navbar's filled, because
+   *  the body consumes the nest BEFORE the field is emitted and the navbar
+   *  renders after checkbox_input's ensure_roles). Folded into the
+   *  committed flag at the request boundary (commitSessionRolesFill,
+   *  renderPageBytes' finally). */
   private sessionRolesFillConsumedThisPass = false;
   private sessionAccountLinksHasRoles = false;
 
@@ -7669,10 +7681,13 @@ export class RenderEngine implements RenderEngineLike {
 
   /** The request boundary's fold (renderPageBytes' finally): a Ruby request
    *  whose roles nest rendered leaves the fill committed on the session's
-   *  card object — the next request (and every later page of the process,
-   *  the real capture rigs' filled-everywhere posture) reads it. The
-   *  passes INSIDE this request model the one Ruby render and never see
-   *  each other's flips; this fold is where the flip becomes cache state. */
+   *  card object — the next request of the same cache lifetime reads it
+   *  (the real capture rigs' filled-everywhere posture). The passes INSIDE
+   *  this request model the one Ruby render and never see each other's
+   *  flips; this fold is where the flip becomes cache state. A harness
+   *  that renews the cache before every request (the synthetic recorder's
+   *  begin_request! -> Card::Cache.renew) calls resetRequestSession, which
+   *  blanks the committed state. */
   commitSessionRolesFill(): void {
     if (this.sessionRolesFillConsumedThisPass) this.sessionRolesContentFilled = true;
   }
@@ -7718,6 +7733,15 @@ export class RenderEngine implements RenderEngineLike {
    *  A no-op unless the session's chrome carries the roles nest. */
   markSessionRolesContentFilled(): void {
     if (this.sessionAccountLinksHasRoles) this.sessionRolesFillConsumedThisPass = true;
+  }
+
+  /** Drop this pass's ensure_roles consumption, keeping the committed
+   *  card-cache state. The page path calls it after the warm pass: that
+   *  pass is not a served render (its output is discarded and the layout
+   *  pass renders the same view from the warm maps), so a roles-nest render
+   *  inside it must not decide which variant the layout pass reads. */
+  blankSessionRolesFill(): void {
+    this.sessionRolesFillConsumedThisPass = false;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the

@@ -378,9 +378,10 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
   });
 
   // ---------------------------------------------------------------------
-  // The four account LINK views. NO ORACLE CAPTURE of any of them exists,
-  // so these are SHAPE assertions derived from the Ruby source, not
-  // byte-pins.
+  // The four account LINK views, asserted against the Ruby source. The
+  // synthetic-v2 oracle captures :sign_in, :sign_up, :sign_out and :invite
+  // on a deck that seeds the account cards; this fixture seeds neither, so
+  // the known/wanted chip differs and the hrefs are the same.
   // ---------------------------------------------------------------------
 
   // Self::AccountLinks is reachable only on a card in the Self set whose
@@ -401,8 +402,16 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     // `signup`, so both resolve as wanted - the port's fetch-miss arm is
     // the byte-faithful one for THIS deck. A deck that has the account
     // cards renders `known-card` instead.
+    //
+    // The mark is the *signin card's url_key, and url_key KEEPS the star:
+    // variants.rb:7-13 replaces only characters outside OK4KEY_RE, which is
+    // `'\p{Word}\*'` (cardname/lib/cardname.rb:37). The href is therefore
+    // "/*signin" (path.rb:63-67 interpret_mark -> url_key). The oracle's
+    // synthetic-v2 `view:anonymous:*account links:sign_in` bytes are
+    // `<a class="nav-link signin-link known-card" href="/*signin">Sign in</a>`
+    // (that deck seeds *signin, hence known-card there).
     expect(await s.engine.render(ACCOUNT_LINKS, "sign_in")).toBe(
-      '<a class="nav-link signin-link wanted-card" href="/signin">Sign in</a>',
+      '<a class="nav-link signin-link wanted-card" href="/*signin">Sign in</a>',
     );
     // add_to_path MERGES the linked card into the caller's path
     // (links.rb:33-36, :89-91), and Card::Path puts the ACTION before the
@@ -421,8 +430,11 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     expect(await s.engine.render(ACCOUNT_LINKS, "invite")).toBe("");
     s.engine.viewer = { signedIn: true, actorId: 1 }; // bot stand-in (always-ok)
     try {
+      // action_base "#{action}/#{mark}" (path.rb:44-46) with the starred
+      // url_key mark: "/delete/*signin", the href every signed-in page of
+      // the synthetic oracle captures carries.
       expect(await s.engine.render(ACCOUNT_LINKS, "sign_out")).toBe(
-        '<a class="nav-link signout-link wanted-card" href="/delete/signin">Sign out</a>',
+        '<a class="nav-link signout-link wanted-card" href="/delete/*signin">Sign out</a>',
       );
       expect(await s.engine.render(ACCOUNT_LINKS, "invite")).toBe(
         '<a class="nav-link invite-link wanted-card" href="/new/Sign_up">Invite</a>',
