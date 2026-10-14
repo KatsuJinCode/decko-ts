@@ -339,6 +339,11 @@ This is a derivative work of [decko-commons/decko](https://github.com/decko-comm
 licensed GPL-3.0-or-later, targeting `card` 1.110.0 and `decko` 0.20.0. Its
 authors are credited in [NOTICE](NOTICE). The record of what was ported from
 which upstream file, and what is deliberately different, lives in the source
-comments: every module under `src/` names the Ruby file its area was ported
-from. See [docs/README.md](docs/README.md) for the decisions that shape the engine
-and how its parity is measured.
+comments: **200 of the 232 tracked files under `src/card/` name a `.rb` path**,
+and across `src/` as a whole 209 of 275 do. The 66 files that cite no Ruby
+file are the parts with no upstream counterpart at all or no upstream shape to
+copy — `src/cql/parser.ts` and the rest of the query language, the request-local
+and batching layers (`live/`, `one-trip/`), the SQL and blob driver interfaces
+and their adapters, the HTTP surface under `src/server/`, and the shared test
+helpers. See [docs/README.md](docs/README.md) for the decisions that shape the
+engine and how its parity is measured.

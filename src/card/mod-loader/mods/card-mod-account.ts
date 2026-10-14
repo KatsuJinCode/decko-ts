@@ -1443,7 +1443,7 @@ const setModules: ModSetModuleFile[] = [
     // surfaces-batch3: BOTH views ported (the visible half of every
     // password field — a labeled render shows the "encrypted" stand-in,
     // never the hash).
-    // 2026-10-11 (round-9 fix): the THIRD view ported, :input — the one the
+    // The THIRD view ported, :input — the one the
     // `input_type :password` override (:86-88) routes the editor to, and the
     // one whose absence let the PBKDF2 digest reach the page. See
     // passwordInputView for the byte derivation and the Rails

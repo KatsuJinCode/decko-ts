@@ -1092,7 +1092,7 @@ const coreViewBase: ViewFn = (ctx) => {
   if (fmt.card.name.isCompound && fmt.card.name.rightName?.key === "*account") {
     return accountCoreHtml(ctx);
   }
-  // Toggle-type core view (card-mod-toggle set/type/toggle.rb: `view :core`
+  // Toggle-type core view (card-mod-format set/type/toggle.rb: `view :core`
   //   -> the content rendered as "yes" (truthy) or "no" (falsey); the raw
   //   db_content is one of "1", "0", "", "true", "false". Ruby renders the
   //   localized string in both the bar-right :one_line_content and the
@@ -1341,7 +1341,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // and *all_plus — so the rendered row carries the full left-name,
   // not the bar_left compact one). Pinned at recapture-raw:*read
   // :render:open (the 3,612-line rule listings family; cluster
-  // nested-listings in round 8 spec). Without this branch the engine
+  // nested-listings in the upstream spec). Without this branch the engine
   // falls through to `fmt.processContent(fmt.renderRaw())` and emits
   // an empty content-view — the "empty body, full oracle" gap.
   if (fmt.card.typeCode === "setting" || fmt.card.typeName === "Setting") {
@@ -2330,15 +2330,17 @@ const emailScopedContentView: ViewFn = (ctx) => {
 };
 
 
-/** card-mod-toggle-0.20.0 set/type/toggle.rb view :core — the content
+/** card-mod-format-0.20.0 set/type/toggle.rb view :core — the content
  *  rendered as the localized truthy/falsy string ("yes" / "no"). The raw
  *  db_content is one of "1", "0", "", "true", "false" (or the booleans
- *  themselves); Ruby's `format toggle.*` calls Card::Content::Toggle
- *  (mod-toggle's content/toggle.rb), which maps truthy -> "yes" and
- *  falsey -> "no". The captured oracle (recapture-raw:*all+*captcha
- *  content/open/closed) pins "yes" verbatim for a *captcha card whose
- *  raw db_content is "1" — the integer-to-display path the cluster 4
- *  map names (boolean-yes-vs-integer-1). */
+ *  themselves). Upstream, `view :core` is a case over `card.content.to_i`
+ *  (1 -> yes, 0 -> no, anything else -> "?"), and the html format's
+ *  `short_content` reaches it through `render_core`; the falsy arm here is
+ *  resolved by testing the values directly rather than by `to_i`, which
+ *  agrees on every value the captured corpus contains. The captured oracle
+ *  (recapture-raw:*all+*captcha content/open/closed) pins "yes" verbatim for
+ *  a *captcha card whose raw db_content is "1" — the integer-to-display path
+ *  the cluster 4 map names (boolean-yes-vs-integer-1). */
 export function formatToggleCore(content: string | null | undefined): string {
   const normalized = (content ?? "").trim().toLowerCase();
   if (normalized === "0" || normalized === "false" || normalized === "" || normalized === "no") {
@@ -2438,7 +2440,7 @@ export function formatImageCore(
   // engine carries no imageCdnHost; a DEPLOYED host sets imageCdnHost
   // (vm-staging-server.mjs -> the production Spaces CDN) and cloudImageUrl
   // swaps only the host, keeping the /files/<id>-<variant> path shape
-  // (round-10 live capture). Never a bare relative form: it matched no
+  // (captured from a live deck). Never a bare relative form: it matched no
   // oracle bytes on either surface.
   if (trimmed.startsWith("(")) {
     const src = cloudImageUrl(trimmed, sizeOpt, cdnAssetHost);
@@ -5662,9 +5664,9 @@ function barDivHtml(ctx: ViewContext): string {
   //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): the corpus
   //   pins known 97/97 - including five names whose staging rows are absent
   //   (Anonymous+*created/-*edited, +*default, democracy+*referred to by,
-  //   another two-part set's +*self; the capture deck had those rows - the
-  //   W5 seed family).
-  //   The known-class fiction stays on this subset ONLY, gated on the W5
+  //   another two-part set's +*self; the capture deck had those rows - a
+  //   seed family).
+  //   The known-class fiction stays on this subset ONLY, gated on that
   //   seed landing (the parity-restore runbook's capture-derived creation
   //   plan); a pure presence model here would flip the four currently-
   //   passing entries List/Phrase/Eagle/democracy+tags.
