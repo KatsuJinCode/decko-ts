@@ -25,6 +25,11 @@ export default defineConfig({
     exclude: [
       "**/node_modules/**",
       "**/.git/**",
+      // Scratch: the gate's own working directories, and the vendored gem
+      // tree an oracle checkout leaves under tmp/ (bootstrap's jQuery specs
+      // are `.spec.js`, which vitest collects as suites). A suite is never
+      // written here, so nothing of the project's is excluded with them.
+      "tmp/**",
       "**/dist/**",
       "tools/oracle/corpus-deck-pairing-gate.test.mjs",
       "tools/oracle/capture-stores-raw-slot-ids.test.mjs",
