@@ -219,15 +219,21 @@ async function seedSeamDeck(s: RenderTestStorage): Promise<void> {
 
   // ---- the page-shell machinery (bunny-edge-page-shell.test.ts's deck):
   // the head's global settings, the layout rule + Default Layout card, the
-  // header/footer content the layout nests render
-  await seedCard(s, { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" });
+  // header/footer content the layout nests render. Each of these is a SETTING
+  // in Ruby - a rule can only hang off a setting (Card::Rule::All#
+  // standard_rule?, rule/all.rb:31-34), and the rule cache's SQL filters on
+  // the setting's type (`settings.type_id = #{SettingID}`,
+  // lib/card/rule/cache.rb:18) - so they carry SettingID (14 here). *layout is
+  // a setting too: mod/layout/set/all/process_layout.rb:34 reads it with
+  // `card.rule_card(:layout)`.
+  await seedCard(s, { id: 55, name: "*title", codename: "title", typeId: 14, dbContent: "Test Site" });
   await seedCard(s, { id: 103, name: "*favicon", codename: "favicon", typeId: 19, dbContent: "(my_bucket)/103/3649.jpg" });
-  await seedCard(s, { id: 400, name: "*ace", codename: "ace", typeId: 52, dbContent: "{}" });
-  await seedCard(s, { id: 401, name: "*tiny_mce", codename: "tiny_mce", typeId: 52, dbContent: "{}" });
+  await seedCard(s, { id: 400, name: "*ace", codename: "ace", typeId: 14, dbContent: "{}" });
+  await seedCard(s, { id: 401, name: "*tiny_mce", codename: "tiny_mce", typeId: 14, dbContent: "{}" });
   await seedCard(s, { id: 50, name: "Html", codename: "html", typeId: 5 });
-  await seedCard(s, { id: 600, name: "*layout", codename: "layout", typeId: 52 });
+  await seedCard(s, { id: 600, name: "*layout", codename: "layout", typeId: 14 });
   // the junction anchors by sides (*all = id 10, seeded above)
-  await seedCard(s, { id: 22746, name: "*all+*layout", leftId: 10, rightId: 600, typeId: 52, dbContent: "Default Layout" });
+  await seedCard(s, { id: 22746, name: "*all+*layout", leftId: 10, rightId: 600, typeId: 14, dbContent: "Default Layout" });
   await seedCard(s, {
     id: 22747,
     name: "Default Layout",
