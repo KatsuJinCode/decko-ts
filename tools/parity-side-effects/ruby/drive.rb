@@ -86,8 +86,8 @@ require "rack/test"
 
 # ---- production-style error handling. A deployed Decko site does not serve
 # Rails' developer exception page, so recording one into the committed trace
-# would put this machine's absolute paths (gem paths, AppData, the work
-# directory) into a file that ships. Two settings decide what an unhandled
+# would put this machine's absolute paths (gem paths, the user profile, the
+# work directory) into a file that ships. Two settings decide what an unhandled
 # exception answers, and both differ between development and what a deployed
 # site runs:
 #

@@ -57,19 +57,16 @@
 // synthetic fixture (invented names, example.test addresses, a frozen clock),
 // or is an id and a timestamp the captures pin.
 //
-// THE DEEPER BATTERY, PUBLIC ON A SYNTHETIC DECK. The write-probe half of the
-// figures this file once declared out of scope -- 70 of 70 write operations
-// leaving Ruby's rows -- is exercised here on the committed synthetic
-// write-battery fixture (reference-harness/fixtures/write-battery-v1): the
-// write probe (tests/tools/persist-write-probe.test.ts) runs its 70
-// operations against that deck and diffs every operation's row delta against
-// the Ruby oracle recordings committed on it (65 of 70 deltas match; 5 are
-// the declared deliberate differences). The third describe below asserts the
-// committed recording those published counts rest on. The scenario battery's
-// 90-step trace is recorded on the same deck and committed beside it, with an
-// OPEN FINDING: on this synthetic deck 3 of the battery's 7 declared Ruby
-// crashes do not reproduce, and an underlying declared divergence surfaces
-// instead -- tests/tools/side-effects-scenario-battery.test.ts documents it.
+// THE DEEPER BATTERY, PUBLIC ON A SYNTHETIC DECK. The write probe
+// (tests/tools/persist-write-probe.test.ts) runs on the committed synthetic
+// write-battery fixture (reference-harness/fixtures/write-battery-v1) and
+// diffs every operation's row delta against the Ruby oracle recordings
+// committed on it: of the 67 public operations, 65 match and 2 are declared
+// deliberate differences. The scenario battery's 88 public steps are recorded
+// on the same deck and committed beside it, with 4 declared deliberate
+// differences (tests/tools/side-effects-scenario-battery.test.ts). The third
+// describe below asserts the committed recording those published counts rest
+// on.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -782,7 +779,7 @@ describe("the committed write-battery recording behind the published write count
       steps: { name: string; deliberate?: unknown }[];
     };
     const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
-    expect(pins.length).toBe(3);
+    expect(pins.length).toBe(4);
 
     // The provenance: how the recordings were made, in the manifest itself.
     const provenance = manifest.provenance as Record<string, string> | undefined;
