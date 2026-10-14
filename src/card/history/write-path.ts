@@ -244,6 +244,16 @@ export class ActWriter {
   private readonly clock: () => Date;
   private actCardId: number | undefined;
   private actId: number | null = null;
+
+  /** Whether this writer has already INSERTED this act's row. The act row
+   *  is lazy — it is written by the first operation that persists an action,
+   *  and by a no-op save of the act card itself (updateCard's no-op arm,
+   *  finalize_act per events.rb:48-50). A caller standing in for that arm
+   *  reads this so it adds no SECOND row for the same act. */
+  get actInserted(): boolean {
+    return this.actId !== null;
+  }
+
   /** Whether the act row already existed when the current operation began.
    *  Snapshotted at each public operation's entry; the reserved-create fill
    *  reads reserveCreateAction's snapshot (reserve + fill are ONE logical

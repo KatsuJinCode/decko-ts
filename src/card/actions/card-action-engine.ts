@@ -2314,7 +2314,7 @@ export class CardActionEngine {
     } else if (result !== null && subResults.length > 0) {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
-    if (result === null && subResults.length === 0 && input.subcards !== undefined) {
+    if (result === null && subResults.length === 0 && input.subcards !== undefined && !writer.actInserted) {
       // The save RAN (the director instantiated the posted subcards) but no
       // card changed: Ruby's update! still records the ACT on the mark —
       // one card_acts row, zero actions (the oracle probe's "one act"; the
