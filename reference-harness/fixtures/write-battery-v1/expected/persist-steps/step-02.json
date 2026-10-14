@@ -29,8 +29,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-10 15:46:22.053959",
-        "updated_at": "2026-10-10 15:46:22.053959"
+        "created_at": "2026-10-14 03:07:25.356292",
+        "updated_at": "2026-10-14 03:07:25.356292"
       },
       {
         "id": 638,
@@ -48,8 +48,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-10 15:46:30.710000",
-        "updated_at": "2026-10-10 15:46:30.710000"
+        "created_at": "2026-10-14 03:07:41.583891",
+        "updated_at": "2026-10-14 03:07:41.583891"
       },
       {
         "id": 639,
@@ -67,8 +67,8 @@
         "read_rule_id": 10,
         "current_revision_id": null,
         "references_expired": null,
-        "created_at": "2026-10-10 15:46:30.715007",
-        "updated_at": "2026-10-10 15:46:30.715007"
+        "created_at": "2026-10-14 03:07:41.638133",
+        "updated_at": "2026-10-14 03:07:41.638133"
       }
     ],
     "card_acts": [
@@ -77,14 +77,14 @@
         "card_id": 637,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-10 15:46:22.086218"
+        "acted_at": "2026-10-14 03:07:25.570847"
       },
       {
         "id": 105343,
         "card_id": 639,
         "actor_id": 1,
         "ip_address": null,
-        "acted_at": "2026-10-10 15:46:30.769229"
+        "acted_at": "2026-10-14 03:07:41.707531"
       }
     ],
     "card_actions": [

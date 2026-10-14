@@ -718,13 +718,16 @@ interface BatteryManifest {
  *  claims live in tests/tools/ (persist-write-probe.test.ts and
  *  side-effects-scenario-battery.test.ts); this case pins the committed
  *  recording those published counts rest on: its shape, its integrity, and
- *  the differences it declares. */
+ *  the differences it declares. The write probe's public recording is the
+ *  67 steps the withheld set does not claim; the withheld set's own
+ *  recordings live under withheld/ and are excluded from a release
+ *  package, so nothing here pins them. */
 describe("the committed write-battery recording behind the published write counts", () => {
   const BATTERY_FIXTURE = join(REPO, "reference-harness", "fixtures", "write-battery-v1");
   const BATTERY_MANIFEST = join(BATTERY_FIXTURE, "MANIFEST.json");
   const PERSIST_STEPS = join(BATTERY_FIXTURE, "expected", "persist-steps");
 
-  it("holds one committed synthetic deck with a 70-step Ruby probe recording and an 88-step Ruby scenario trace on it, integrity-gated by its manifest, with the 4 probe differences declared", () => {
+  it("holds one committed synthetic deck with the public 67-step Ruby probe recording and an 88-step Ruby scenario trace on it, integrity-gated by its manifest, with the 2 public probe differences declared", () => {
     // Integrity: the fixture's own manifest pins the sha256 of the deck and
     // of both recordings, exactly as the reference-harness fixtures do.
     expect(existsSync(BATTERY_MANIFEST), "the fixture has a MANIFEST.json").toBe(true);
@@ -739,7 +742,11 @@ describe("the committed write-battery recording behind the published write count
     ]) {
       expect(pinned, `${required} is pinned by the manifest`).toContain(required);
     }
-    expect(pinned.filter((rel) => /^expected\/persist-steps\/step-\d+\.json$/.test(rel)).length).toBe(70);
+    // The public probe recording: every step of the 70-step op list the
+    // withheld set does not claim (withheld/steps.json, excluded from a
+    // release package). Its own full-list recording lives beside it under
+    // withheld/persist-steps/ and is not pinned by this manifest.
+    expect(pinned.filter((rel) => /^expected\/persist-steps\/step-\d+\.json$/.test(rel)).length).toBe(67);
     const drifted = pinned.filter((rel) => {
       const file = join(BATTERY_FIXTURE, rel);
       return !existsSync(file) || createHash("sha256").update(readFileSync(file)).digest("hex") !== manifest.files[rel];
@@ -750,11 +757,13 @@ describe("the committed write-battery recording behind the published write count
     // the deliberate differences the recording declares — every engine/Ruby
     // divergence stated with its step number and reason rather than hidden.
     const steps = readdirSync(PERSIST_STEPS).filter((f) => /^step-\d+\.json$/.test(f));
-    expect(steps.length).toBe(70);
+    expect(steps.length).toBe(67);
+    // The withheld steps' declarations and recordings are NOT public: the
+    // public set declares only the differences the public run can still see.
     const declarations = JSON.parse(
       readFileSync(join(PERSIST_STEPS, "deliberate-differences.json"), "utf8"),
     ) as { differences: { step: number; reason: string }[] };
-    expect(declarations.differences.map((d) => d.step).sort((a, b) => a - b)).toEqual([7, 20, 22, 31]);
+    expect(declarations.differences.map((d) => d.step).sort((a, b) => a - b)).toEqual([7, 67]);
     expect(declarations.differences.every((d) => d.reason.length > 40)).toBe(true);
 
     // The scenario battery's Ruby truth: the PUBLIC scenario list (the

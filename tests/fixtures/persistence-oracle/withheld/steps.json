@@ -1,0 +1,20 @@
+{
+  "comment": "WITHHELD UNTIL DISCLOSURE. The private oracle deck's copy of the withheld step set, and its reason. This directory holds the private deck's recorded probe dumps for the FULL 70-step op list; every dump from step 20 on carries the content the withheld steps store. The withheld step numbers and reasons are the ones in reference-harness/fixtures/write-battery-v1/withheld/steps.json — this file records that the same three steps apply to this recording. A release package excludes this directory.",
+  "steps": [
+    {
+      "step": 20,
+      "label": "update with unsafe html",
+      "why": "Withheld: stores the probe's unsafe markup on an existing card and records what Ruby's content cleaner keeps."
+    },
+    {
+      "step": 22,
+      "label": "create plain text with html",
+      "why": "Withheld: creates a card whose content is the probe's unsafe markup, the second arm of the same gap."
+    },
+    {
+      "step": 31,
+      "label": "revert to previous of a create (trashes it)",
+      "why": "Withheld: reverts the step 22 create, so its recorded revert content is the withheld step 22 content."
+    }
+  ]
+}
