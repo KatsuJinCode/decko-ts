@@ -387,6 +387,48 @@ export async function assertStyleCompilerFor(
   }
 }
 
+/** The inputters a page render reads, by name: the `style: mods` self card
+ *  (head.rb:62 nests it) and the default `*all` style rule
+ *  (main_stylesheet_path's rule card, head.rb:75-77 — `*all+*style` is its
+ *  ASSET OUTPUT child, the file card the rule's input is written to). */
+const READ_ASSET_INPUT_NAMES: readonly string[] = ["style: mods", "*all"];
+
+/** The READ-path asset-input refresh — card-mod-assets
+ *  Abstract::AssetInputter#asset_input_content (asset_inputter.rb:44-49)
+ *  `return assemble_asset_input_content if virtual?; update_asset_input if
+ *  asset_input.blank?; asset_input`: reading an inputter whose `+*asset input`
+ *  is blank BUILDS it and STORES it (as bot), then
+ *  update_referers_after_input_changed (:29-33) re-stores each dependent
+ *  inputter and each outputter's file — so the very first page render of a
+ *  deck whose style inputs were never materialized writes the rows and the
+ *  bundles Ruby writes.
+ *
+ *  A page render reaches this through head.rb:62's `nest(:style_mods, view:
+ *  :remote_style_tags)` and main_stylesheet_path: the head reads each
+ *  mod+*style rule's asset output, whose url comes from the rule's own input.
+ *  The SAVE path never reaches the `asset_input.blank?` arm for a card no act
+ *  touched, so without this a fresh deck renders with unwritten inputs where
+ *  Ruby renders and writes them.
+ *
+ *  Cost, as Ruby has it: one `+*asset input` read per inputter, and an
+ *  assembly + store ONLY while that input is blank — assetInputContent
+ *  (skin-stylesheet.ts:316-323) returns the stored value untouched once one
+ *  exists. A deck whose inputs are all present pays the reads and nothing
+ *  else; the first render pays one assembly per blank inputter, which is
+ *  what Ruby does on that render too. No extra round trip on any render.
+ */
+export async function refreshReadAssetInputs(ctx: StyleAssetEventContext): Promise<void> {
+  // `style: mods` (self/style_mods.rb:1) and the `<set>+*style` rule are the
+  // cards a page render reads: head.rb:62 nests the former and the latter is
+  // main_stylesheet_path's rule card. Both are inputters whose type (List) is
+  // not in STYLE_INPUTTER_TYPES, so they are named here rather than matched.
+  for (const name of READ_ASSET_INPUT_NAMES) {
+    const card = await cardByName(ctx, name);
+    if (card === undefined) continue;
+    await updateAssetInput(ctx, card, new Map(), new Set());
+  }
+}
+
 /** The finalize-stage asset events for the cards an act saved, and the
  *  delete-side asset_input_changed_on_delete for the cards it deleted. */
 export async function runStyleAssetEvents(ctx: StyleAssetEventContext, savedCards: readonly SavedCard[]): Promise<void> {

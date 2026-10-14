@@ -295,9 +295,30 @@ export async function assembleStyleInput(
       }
       return parts.join("\n");
     }
+    case "list": {
+      // The `style: mods` self card (card-mod-style set/self/style_mods.rb:1,
+      // `include_set Abstract::AssetInputter, input_format: :scss`) and a
+      // `<set>+*style` rule (type_plus_right/set/style.rb) are List-typed
+      // inputters, so they miss the type switch above. Their input is the
+      // same recursed-item walk the bootswatch branch uses
+      // (leafContents: recursed_item_cards mapped to content).
+      if (card.codename === "style_mods" || isStyleRule(card)) {
+        const parts: string[] = [];
+        await leafContents(deps, card, parts, new Set());
+        return parts.join("\n");
+      }
+      return undefined;
+    }
     default:
       return undefined;
   }
+}
+
+/** A `<set>+*style` rule: a set card whose right is the `*style` setting
+ *  (the card type_plus_right/set/style.rb describes). Its type is List, so
+ *  the type switch cannot see it. */
+function isStyleRule(card: StyleCard): boolean {
+  return card.rightId !== undefined && card.rightId !== null;
 }
 
 /** `asset_input` (the `+*asset input` card's content): the stored input, or

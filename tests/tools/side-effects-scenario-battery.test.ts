@@ -261,20 +261,22 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     // A change on either side fails here.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
-      // OUTSTANDING, not an accepted difference: the boot-time asset refresh
-      // Ruby runs per request (Card::Assets.refresh, card-mod-assets
-      // lib/card/assets.rb:19-26, from CardController::Rest#setup rest.rb:31-33).
-      // With asset_refresh :cautious it fires once per cache clear and writes
-      // the `+*asset input` virtual of every standard inputter whose source
-      // changed; `style: mods` is the one inputter on this deck with no seeded
-      // virtual row, so the first request creates it and, through
-      // update_referers_after_input_changed, re-stores the site stylesheet and
-      // script bundles. The port refreshes assets on save only, so a read
-      // stores nothing. Porting the cautious refresh is the fix. Two gaps
-      // feed it, and neither alone closes the step: the per-request
-      // trigger, and `style: mods` not being an inputter (it is the self
-      // card card-mod-style set/self/style_mods.rb:1, typed List, so the
-      // typeCode arm at style-asset-events.ts:191 misses it).
+      // OUTSTANDING, not an accepted difference. Ruby's first GET of the home
+      // page reads `style: mods` (head.rb:62 nests :style_mods), whose
+      // `+*asset input` is blank on this deck, so asset_input_content builds
+      // it and stores it (asset_inputter.rb:44-49), then
+      // update_referers_after_input_changed re-stores the bundles
+      // (asset_inputter.rb:29-33). The port now runs that read refresh
+      // (refreshReadAssetInputs, style-asset-events.ts) and writes the row,
+      // so the `virtuals` and `writes` fields differ only in content, and the
+      // bundle files are not yet re-stored. Two gaps remain, both named:
+      //   1. the row's content is 221050 bytes, Ruby's is 221005 (45 bytes
+      //      short on Ruby's side); the 42 vendored files match their
+      //      references, so the difference is in what Ruby assembles and is
+      //      being attributed against the Ruby oracle;
+      //   2. the updateAssetOutput cascade that stores the 30 bundle files
+      //      (18 .css, 12 .js, identical bytes each) is not yet reached from
+      //      the read refresh.
       { step: "get-home", fields: ["files", "virtuals", "writes"] },
       { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
       { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
