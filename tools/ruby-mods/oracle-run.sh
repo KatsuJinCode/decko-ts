@@ -34,3 +34,5 @@ export RUBY_THREAD_VM_STACK_SIZE="${RUBY_THREAD_VM_STACK_SIZE:-67108864}"
 export RUBY_THREAD_MACHINE_STACK_SIZE="${RUBY_THREAD_MACHINE_STACK_SIZE:-268435456}"
 cd "$WORK/app"
 bundle exec decko runner "$HERE/oracle-run.rb" "$PLAN" "$OUT"
+DECK_OUT="$(node -e "console.log(require('$PLAN').deckOut || '')")"
+if [ -n "$DECK_OUT" ]; then cp "$WORK/deck.sqlite3" "$DECK_OUT"; fi

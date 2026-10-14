@@ -21,6 +21,14 @@ ensure
   Rails.env = old_env
 end
 
+# Setup creates are committed, and the resulting deck is what the port reads
+# (oracle-run.sh copies it to plan["deckOut"]).
+Card::Auth.as_bot do
+  (plan["setup"] || []).each do |c|
+    Card.create! name: c["name"], type: c["type"], content: c["content"]
+  end
+end
+
 renders = plan.fetch("renders").map do |r|
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
   begin

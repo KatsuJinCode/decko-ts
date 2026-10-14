@@ -239,6 +239,15 @@ function eventOnlyDeckLoader(): ModLoader {
  *  left out is not a silent skip: `when_condition_applies?` sends the name
  *  as a card method in Ruby and raises when nothing answers it, so the
  *  dispatcher raises for it here too. */
+/** Predicate tables contributed at boot by mods the deck loads from outside
+ *  the compiled-in manifests (the Ruby mods run through ruby.wasm, whose
+ *  `when:` methods live in Ruby). Merged after the ported tables. */
+const extraEventPredicates: ModEventPredicateTable[] = [];
+
+export function registerModEventPredicates(table: ModEventPredicateTable): void {
+  extraEventPredicates.push(table);
+}
+
 export function defaultDeckEventPredicates(): ModEventPredicateTable {
   return {
     ...accountModEventPredicates,
@@ -253,6 +262,7 @@ export function defaultDeckEventPredicates(): ModEventPredicateTable {
     ...listModEventPredicates,
     ...permissionsModEventPredicates,
     ...recaptchaModEventPredicates,
+    ...Object.assign({}, ...extraEventPredicates),
   };
 }
 
