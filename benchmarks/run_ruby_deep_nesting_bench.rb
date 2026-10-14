@@ -28,6 +28,10 @@
 #   BENCH_DEPTHS      comma list of chain depths (default 1,2,4,8,10,16,20,50,100,200)
 #   BENCH_FANOUTS     comma list of fan widths  (default 1,4,16,50,100,200)
 #   BENCH_TREES       comma list of depth x fanout trees (default "4x4,3x10")
+#   BENCH_SKIP_CLEANUP 1 leaves the seeded cards in place; only for a throwaway
+#                     copy of a deck (deleting them one at a time takes longer
+#                     than the measurement)
+#   BENCH_HOST        host label recorded in the results (default: hostname)
 
 require "json"
 require "socket"
@@ -269,8 +273,9 @@ end
 # Match on NAME (not key): Decko's key algorithm inserts underscores at
 # letter/digit boundaries ("BenchDN_x" -> "bench_dn_x").
 t_clean0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-bench_names = Card.where(trash: false).where("name LIKE ?", "#{PREFIX}%")
-                  .pluck(:name)
+SKIP_CLEANUP = ENV["BENCH_SKIP_CLEANUP"] == "1"
+bench_names = SKIP_CLEANUP ? [] : Card.where(trash: false).where("name LIKE ?", "#{PREFIX}%")
+                                      .pluck(:name)
 deleted = 0
 Card::Auth.as_bot do
   bench_names.each do |name|
@@ -308,7 +313,7 @@ payload = {
   "date" => Time.now.utc.iso8601,
   "engine" => "ruby-decko-oracle",
   "environment" => deep_sort(
-    "host" => Socket.gethostname,
+    "host" => ENV.fetch("BENCH_HOST") { Socket.gethostname },
     "os" => RUBY_PLATFORM,
     "ruby" => RUBY_VERSION,
     "rails" => defined?(Rails) ? Rails.version.to_s : nil,
@@ -317,12 +322,18 @@ payload = {
     "cpu" => cpu_model,
     "ram_bytes" => total_ram_bytes,
     "db_engine" => "sqlite3",
-    "db_path" => db_path.to_s,
+    "db_path" => File.basename(db_path.to_s),
     "db_size_bytes" => db_size,
     "live_cards_in_db_before_seed" => cards_before,
     "live_cards_in_db_after_cleanup" => cards_after
   ),
   "config" => {
+    # card-mod-batched-nests settings; "absent" when the gem is not loaded
+    "batched_nests_gem" => defined?(Cardio::BatchedNests) ? true : false,
+    "prefetch_nests" => Card.config.respond_to?(:prefetch_nests) ? Card.config.prefetch_nests : "absent",
+    "prefetch_machinery" =>
+      Card.config.respond_to?(:prefetch_machinery) ? Card.config.prefetch_machinery : "absent",
+    "cleanup_skipped" => SKIP_CLEANUP,
     "background_cards" => BACKGROUND,
     "render_n" => RENDER_N,
     "warmup" => WARMUP,
@@ -345,7 +356,13 @@ payload = {
 
 File.write(OUT_PATH, JSON.pretty_generate(payload) + "\n")
 puts "wrote #{OUT_PATH}"
-puts "cleanup: #{deleted} deleted, #{remaining_live} remaining live (must be 0)"
-abort "bench cleanup failed: #{remaining_live} BenchDN cards still live" unless remaining_live.zero?
+if SKIP_CLEANUP
+  puts "cleanup skipped: #{remaining_live} bench cards left in the throwaway deck"
+else
+  puts "cleanup: #{deleted} deleted, #{remaining_live} remaining live (must be 0)"
+end
+unless SKIP_CLEANUP || remaining_live.zero?
+  abort "bench cleanup failed: #{remaining_live} BenchDN cards still live"
+end
 
 ActiveSupport::Notifications.unsubscribe(SQL_SUBSCRIPTION)
