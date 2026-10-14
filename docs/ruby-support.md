@@ -83,19 +83,43 @@ the output but not compared here.
 `ruby/card-mod-batched-nests/test/render_digest.rb` renders every card of a
 deck from a cold cache in the `open`, `core` and `titled` HTML views and the
 `molecule` JSON view, and records the bytes; rendering errors are recorded by
-class and message. `test/byte_identity.rb` compares a run in the stock app
-with a run in the app with the gem and fails on any difference.
+class and message. `test/byte_identity.rb` takes three runs on copies of the
+same deck: stock, stock again (the control), and with the gem.
+
+Stock Decko does not render the same bytes twice. The control finds what
+varies between two stock runs, and only those values are masked:
+
+| Masked value | Where stock Decko produces it |
+|---|---|
+| `data-slot-id` | card-mod-format `set/all/html/wrap.rb` writes `SecureRandom.hex(10)` into every wrapped slot |
+| accordion context in `card-<key>-<context>-collapse-id` | card-mod-bootstrap `set/all/bootstrap/accordion.rb`; the dashboard passes a number that differs from process to process |
+| the `*now` card's content | the current time, to the minute |
+
+A value is masked only if the control still differs when that value alone is
+left unmasked, and the check fails if the control differs anywhere else.
+
+Result, 2026-10-14, on a copy of `reference-harness/fixtures/synthetic-v2/deck`
+(951 cards, 3,804 renders), Ruby 3.4.11, decko 0.20.0, card 1.110.0:
+
+| Run | Queries | Renders differing from stock, raw | after masking |
+|---|---:|---:|---:|
+| stock control | (sharded, 8 processes) | 2,312 | 0 |
+| with card-mod-batched-nests | 52,070 (stock: 147,229) | 2,312 | 0 |
+
+All three masks were needed by the control. With them, all 3,804 renders under
+the gem are byte-identical to stock.
 
 ```bash
-# in reference-harness/oracle/app, each on its own copy of the same deck
-DATABASE_URL=sqlite3:<copy 1> DIGEST_OUT=stock.json \
-  bundle exec decko runner ../../../ruby/card-mod-batched-nests/test/render_digest.rb
-BUNDLE_GEMFILE=Gemfile.batched DATABASE_URL=sqlite3:<copy 2> DIGEST_OUT=gem.json \
-  bundle exec decko runner ../../../ruby/card-mod-batched-nests/test/render_digest.rb
-ruby ../../../ruby/card-mod-batched-nests/test/byte_identity.rb stock.json gem.json
+# in reference-harness/oracle/app, each run on its own copy of the same deck
+DATABASE_URL=sqlite3:<copy 1> DIGEST_OUT=stock.json   bundle exec decko runner ../../../ruby/card-mod-batched-nests/test/render_digest.rb
+DATABASE_URL=sqlite3:<copy 2> DIGEST_OUT=control.json   bundle exec decko runner ../../../ruby/card-mod-batched-nests/test/render_digest.rb
+BUNDLE_GEMFILE=Gemfile.batched DATABASE_URL=sqlite3:<copy 3> DIGEST_OUT=gem.json   bundle exec decko runner ../../../ruby/card-mod-batched-nests/test/render_digest.rb
+ruby ../../../ruby/card-mod-batched-nests/test/byte_identity.rb stock.json control.json gem.json
 ```
 
-Result on the synthetic-v2 deck: not yet recorded.
+A run takes about 40 minutes in one process (the oracle app's file cache is
+cleared before every render). `DIGEST_SHARD=i/n` splits it across processes;
+pass the shard files comma-separated.
 
 ## One instrument for both engines
 

@@ -6,7 +6,9 @@
 # Run it once in a stock Decko 0.20.0 app and once in the same app with this
 # gem in its Gemfile, on copies of the same deck; byte_identity.rb compares the
 # two files. In an app that has the gem, DIGEST_SETTINGS=off renders with both
-# settings false.
+# settings false. DIGEST_SHARD=i/n renders only the cards whose id is i modulo
+# n, so a run can be split across processes and the files given to
+# byte_identity.rb together.
 #
 # Each card is rendered in the views a page shows it in (open, core, titled)
 # and as JSON, after Card::Cache.reset, so every render starts cold and the
@@ -36,7 +38,10 @@ queries = 0
 counter = ->(*, payload) { queries += 1 unless payload[:name] == "SCHEMA" }
 Card::Auth.as_bot do
   ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+    shard, shards = ENV.fetch("DIGEST_SHARD", "0/1").split("/").map(&:to_i)
     Card.where(trash: false).order(:id).pluck(:id).each do |id|
+      next unless (id % shards) == shard
+
       card = Card.fetch id
       next unless card
 
