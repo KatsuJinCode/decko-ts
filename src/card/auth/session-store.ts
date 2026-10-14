@@ -100,6 +100,13 @@ export class SessionStore {
     this.revocation = options.revocation;
   }
 
+  /** The database the session rows live in. The sign-in throttle keeps its
+   *  counters beside them: on a host whose deck connection is read-only for
+   *  card writes, this is the connection that accepts auth writes. */
+  get storageDriver(): SQLDatabaseDriver {
+    return this.driver;
+  }
+
   /**
    * Create a session for an account's user card: mint a 32-byte
    * crypto-random hex token, store only its sha256 digest, return the raw

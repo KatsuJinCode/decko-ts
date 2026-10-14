@@ -433,7 +433,7 @@ export async function signinAccount(
   // answered before the throttle and never counted.
   const throttle =
     security.throttle && rubyStrip(identifier) !== "" && password !== ""
-      ? new SigninThrottle(driver, security, options.now)
+      ? new SigninThrottle(sessions.storageDriver, security, options.now)
       : undefined;
   const scopes = signinScopes(identifier, options.clientAddress);
   if (throttle !== undefined && (await throttle.lockedUntil(scopes)) !== undefined) {
