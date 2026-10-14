@@ -13,13 +13,10 @@
 //
 //   * The HTML path never reached a rule walk at all. A deck with no catch-all
 //     read rule has hasCatchAllReadRule=false (read-rules.ts:226-231, the
-//     structural catchAll count), and canReadByRuleLookupDepth (:480) returns
-//     undefined for that state — which the caller reads as ALLOWED, the
-//     documented "rule-less deck" divergence. An unruled +*password or +*salt
-//     field therefore rendered.
-//   * The CQL permission filter was switched off wholesale by the same
-//     predicate: cqlPermissionOptions (render.ts) answered `alwaysOk: true`
-//     whenever the deck had no catch-all, so /api/query returned every row.
+//     structural catchAll count), and canReadByRuleLookup denies every card of
+//     it, as Ruby does (permissions.rb:139-146).
+//   * The CQL permission filter reads the same rule set (cqlPermissionOptions,
+//     render.ts), so /api/query returns no rows from such a deck.
 //
 // The fix at the DECK level is card-mod-account-0.20.0's own rules, which the
 // demo deck was missing:
@@ -238,12 +235,10 @@ const header = [
   "--",
   "-- THE MECHANISM, one missing card, two consequences:",
   "--   * a deck with no catch-all read rule has hasCatchAllReadRule=false",
-  "--     (the structural catchAll count, read-rules.ts:226-231), and",
-  "--     canReadByRuleLookupDepth (:480) returns undefined for that state —",
-  "--     which the caller reads as ALLOWED, the documented rule-less-deck",
-  "--     divergence. An unruled +*password / +*salt field rendered.",
-  "--   * the same predicate switched the CQL permission filter off wholesale",
-  "--     (RenderEngine#cqlPermissionOptions), so /api/query returned every row.",
+  "--     (the structural catchAll count, read-rules.ts:226-231). The port denies",
+  "--     every card of that deck, as Ruby does (permissions.rb:139-146).",
+  "--   * the CQL permission filter reads the same rule set",
+  "--     (RenderEngine#cqlPermissionOptions), so /api/query returns no rows.",
   "--",
   "-- THE RULES ARE THE GEM'S OWN, transcribed field for field from",
   "-- card-mod-account-0.20.0/data/real.yml. Each of the five field cards",

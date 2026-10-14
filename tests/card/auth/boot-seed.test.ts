@@ -75,7 +75,11 @@ afterEach(() => {
 });
 
 async function freshSchemaDeck(): Promise<RenderTestStorage> {
-  storage = await createRenderTestStorage();
+  // No bootstrap: the whole subject of this file is a deck with nothing on
+  // it — the test below asserts exactly zero cards, and the suite then
+  // bootstraps it through the real capability. The stock read substrate the
+  // shared helper seeds would make that count 6.
+  storage = await createRenderTestStorage({ bootstrapReadRules: false });
   return storage;
 }
 

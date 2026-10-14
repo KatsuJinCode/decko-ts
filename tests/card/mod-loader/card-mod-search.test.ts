@@ -45,11 +45,13 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
+import { expireRuleResolutionCache } from "../../../src/card/permissions/read-rules.js";
 import { RenderFormat, UnsupportedViewError } from "../../../src/card/render/format.js";
 import {
   ModLoader,
@@ -65,15 +67,119 @@ let loader: ModLoader | undefined;
 let bigLoader: ModLoader | undefined;
 let loadReport: ReturnType<ModLoader["load"]> | undefined;
 
+/** This deck's Basic card (id 2). Items are typed by it, and the stock read
+ *  substrate is re-typed to Ruby's shape (seedRubyShapedSubstrate below), so
+ *  Basic-typed rows are the items plus Anonymous, the one substrate card the
+ *  decko setup seed types as Basic. Named here so the item rows do not lean on
+ *  seedCard's default type. */
+const PLAIN_TYPE_ID = 2;
+
+/** Every card row here carries the catch-all read rule the deck's
+ *  `*all+*read -> [[Anyone]]` grants, the DATA side of the read rule (a
+ *  stored cards.read_rule_id + read_rule_class). Ruby stamps it on save via
+ *  the set_read_rule store event (card-mod-permissions
+ *  set/all/permissions.rb:1-5) and it is what two paths read:
+ *    - the HTML permission check (permissions.rb:139-146: ok_to_read? is
+ *      `read_rules_hash[read_rule_id]`), and
+ *    - the CQL relation-level filter every search rides (card-1.110.0
+ *      set/all/permissions.rb Where#permission_conditions: `read_rule_id
+ *      IN (viewer's readable rule ids)`, ported at src/cql/sql.ts:277-293
+ *      implicitConditions). A row WITHOUT the stored id has read_rule_id
+ *      NULL and is filtered out of every search result for every viewer
+ *      (render.ts cqlPermissionOptions: "there is no rule-less allowance
+ *      here, and there never should have been one"), so an unstamped result
+ *      row is invisible to the engine-side search. The mod's count warm keeps
+ *      counts per stored rule (NULL rows apart) and each view applies the
+ *      viewer's read scope to them (card-mod-search-read-scope.test.ts), so an
+ *      unstamped row is counted for always-ok viewers only. A real deck stores
+ *      the id on every row; the deck below does the same.
+ *
+ *  Returns the catch-all rule card's id, the value readRuleId takes. A deck
+ *  that brought its own `*all`/`*read` (which takes the codenames over from
+ *  the stock substrate and moves the stock rule onto its sides) answers its
+ *  own catch-all rule here; the suite brings neither, so the stock rule id
+ *  stands. */
+async function stampCatchAllReadRule(s: RenderTestStorage): Promise<number> {
+  const ruleId = s.bootstrapRule;
+  if (ruleId === undefined) {
+    throw new Error(
+      "card-mod-search: the stock read substrate's *all+*read rule is required; " +
+        "build this deck with createRenderTestStorage() (default bootstrapReadRules)",
+    );
+  }
+  return ruleId;
+}
+
+/** Re-types the stock read substrate to the shape Ruby's decko setup seed
+ *  gives it, and stamps every substrate row with the catch-all rule.
+ *
+ *  The shared bootstrap (render-test-storage.ts seedBootstrapReadSubstrate)
+ *  leaves seedCard's default type on every substrate row, so all six are
+ *  Basic-typed, and leaves them unstamped. Read from a seeded deck's `cards`
+ *  table (decko setup, the Ruby 0.20.0 stock seed):
+ *    *all          Set-typed        (the set card)
+ *    Set           Cardtype-typed
+ *    *read         Setting-typed
+ *    Anyone        Role-typed
+ *    *all+*read    List-typed       (the rule junction)
+ *    Anonymous     RichText-typed   (RichText is the card codenamed basic)
+ *    every row     read_rule_id = the stock rule (Ruby's set_read_rule
+ *                  store event stamps each saved row, card-mod-permissions
+ *                  set/all/permissions.rb:1-5)
+ *  Only Anonymous is Basic in Ruby, so a `{"type": "Basic"}` count on this
+ *  deck counts the items plus Anonymous. The ids and codenames stay as the
+ *  bootstrap wrote them; only types and stamps move. */
+async function seedRubyShapedSubstrate(
+  s: RenderTestStorage,
+  catchAll: number,
+  cardtypeId: number,
+): Promise<void> {
+  const ids = BOOTSTRAP_READ_SUBSTRATE_IDS;
+  const role = 10_000_007;
+  const setting = 10_000_008;
+  const list = 10_000_009;
+  await seedCard(s, { id: role, name: "Role", codename: "role", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  await seedCard(s, { id: setting, name: "Setting", codename: "setting", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  await seedCard(s, { id: list, name: "List", codename: "list", typeId: cardtypeId, readRuleId: catchAll, readRuleClass: "*all" });
+  const retyped: Array<[number, number]> = [
+    [ids.set, cardtypeId],
+    [ids.read, setting],
+    [ids.anyone, role],
+    [ids.rule, list],
+  ];
+  for (const [id, typeId] of retyped) {
+    await s.counting.query(`UPDATE cards SET type_id = ? WHERE id = ?`, [typeId, id]);
+  }
+  for (const id of [ids.all, ids.set, ids.read, ids.anyone, ids.anonymous, ids.rule]) {
+    await s.counting.query(
+      `UPDATE cards SET read_rule_id = ?, read_rule_class = '*all' WHERE id = ?`,
+      [catchAll, id],
+    );
+  }
+  // Raw UPDATEs bypass seedCard's cache seam: drop what the re-typed rows and
+  // the rule walk may have memoised (the same two caches seedCard expires).
+  expireRuleResolutionCache(s.fetcher.driver);
+  s.engine.expireRuleCache();
+  for (const [id] of retyped) s.fetcher.lexicon.deleteFor(id, undefined);
+}
+
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
-
+  const CATCH_ALL = await stampCatchAllReadRule(s);
+  // every seeded row below carries this pair: typeId 5 (Cardtype) where the
+  // row is a plain type card, and the catch-all read rule.
+  //
+  // TYPE IDS NAMED EXPLICITLY. seedCard's default type is id 2 — this deck's
+  // Basic card — so a Cardtype-typed row left on the default would be picked
+  // up by the `{"type":"Basic"}` searches (Counting Search, Big Search) and
+  // inflate their counts.
   // type/codename cards (id 5 self-typed so it stays OUT of Basic matches)
-  await seedCard(s, { id: 5, name: "Cardtype", typeId: 5 });
-  await seedCard(s, { id: 2, name: "Basic", typeId: 5 });
+  await seedCard(s, { id: 5, name: "Cardtype", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
+  await seedCard(s, { id: 2, name: "Basic", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
   // the Search cardtype card: codename search_type = the SearchTypeID source
-  await seedCard(s, { id: 200, name: "Search", codename: "search_type", typeId: 5 });
+  await seedCard(s, { id: 200, name: "Search", codename: "search_type", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
+  await seedRubyShapedSubstrate(s, CATCH_ALL, 5);
 
   // search cards (typeId 200 -> typeName "Search"); A Search's cql uses a
   // name-in list (key comparison - resolvable by BOTH the mod's count warm
@@ -84,30 +190,38 @@ beforeAll(async () => {
     name: "A Search",
     typeId: 200,
     dbContent: '{"name":["in","Item One","Item Two","Item Three"]}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
   await seedCard(s, {
     id: 302,
     name: "Counting Search",
     typeId: 200,
     dbContent: '{"type":"Basic","return":"count"}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
   // junctions: "A Search+Outer" (found_by _left), "A Search+Size"
   // (found_by _left + return count)
-  await seedCard(s, { id: 304, name: "Outer", typeId: 5 });
+  await seedCard(s, { id: 304, name: "Outer", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
   await seedCard(s, {
     id: 303,
     leftId: 301,
     rightId: 304,
     typeId: 200,
     dbContent: '{"found_by":"_left"}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
-  await seedCard(s, { id: 306, name: "Size", typeId: 5 });
+  await seedCard(s, { id: 306, name: "Size", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
   await seedCard(s, {
     id: 305,
     leftId: 301,
     rightId: 306,
     typeId: 200,
     dbContent: '{"found_by":"_left","return":"count"}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
   // empty search (matches nothing)
   await seedCard(s, {
@@ -115,45 +229,53 @@ beforeAll(async () => {
     name: "Empty Search",
     typeId: 200,
     dbContent: '{"type":"No Such Type"}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
   // found_by whose left is NOT a search card -> BadQuery at the warm
-  await seedCard(s, { id: 309, name: "Bad Found", typeId: 5 });
+  await seedCard(s, { id: 309, name: "Bad Found", typeId: 5, readRuleId: CATCH_ALL, readRuleClass: "*all" });
   await seedCard(s, {
     id: 308,
     leftId: 401,
     rightId: 309,
     typeId: 200,
     dbContent: '{"found_by":"_left"}',
+    readRuleId: CATCH_ALL,
+    readRuleClass: "*all",
   });
 
   // the search results (Basic items)
-  await seedCard(s, { id: 401, name: "Item One", typeId: 2, dbContent: "one body" });
-  await seedCard(s, { id: 402, name: "Item Two", typeId: 2, dbContent: "two body" });
-  await seedCard(s, { id: 403, name: "Item Three", typeId: 2, dbContent: "three body" });
+  await seedCard(s, { id: 401, name: "Item One", typeId: PLAIN_TYPE_ID, dbContent: "one body", readRuleId: CATCH_ALL, readRuleClass: "*all" });
+  await seedCard(s, { id: 402, name: "Item Two", typeId: PLAIN_TYPE_ID, dbContent: "two body", readRuleId: CATCH_ALL, readRuleClass: "*all" });
+  await seedCard(s, { id: 403, name: "Item Three", typeId: PLAIN_TYPE_ID, dbContent: "three body", readRuleId: CATCH_ALL, readRuleClass: "*all" });
 
   // the big deck for the number_with_delimiter grouping (storage B)
   bigStorage = await createRenderTestStorage();
   const b = bigStorage;
-  await seedCard(b, { id: 5, name: "Cardtype", typeId: 5 });
-  await seedCard(b, { id: 2, name: "Basic", typeId: 5 });
-  await seedCard(b, { id: 200, name: "Search", codename: "search_type", typeId: 5 });
+  const B_CATCH_ALL = await stampCatchAllReadRule(b);
+  await seedCard(b, { id: 5, name: "Cardtype", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
+  await seedCard(b, { id: 2, name: "Basic", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
+  await seedCard(b, { id: 200, name: "Search", codename: "search_type", typeId: 5, readRuleId: B_CATCH_ALL, readRuleClass: "*all" });
+  await seedRubyShapedSubstrate(b, B_CATCH_ALL, 5);
   await seedCard(b, {
     id: 501,
     name: "Big Search",
     typeId: 200,
     dbContent: '{"type":"Basic"}',
+    readRuleId: B_CATCH_ALL,
+    readRuleClass: "*all",
   });
   // 1001 Basic rows in bulk INSERTs (500 per statement)
   for (let chunkStart = 0; chunkStart < 1001; chunkStart += 500) {
     const values: string[] = [];
     const params: unknown[] = [];
     for (let i = chunkStart; i < Math.min(chunkStart + 500, 1001); i++) {
-      values.push("(?, ?, ?, ?, ?, ?, ?, ?, ?)");
-      params.push(600 + i, `Bulk Item ${i}`, `bulk_item_${i}`, 2, 0, 1, 1,
-        "2026-09-19 00:00:00.000", "2026-09-19 00:00:00.000");
+      values.push("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+      params.push(600 + i, `Bulk Item ${i}`, `bulk_item_${i}`, PLAIN_TYPE_ID, 0, 1, 1,
+        "2026-09-19 00:00:00.000", "2026-09-19 00:00:00.000", B_CATCH_ALL, "*all");
     }
     await b.counting.query(
-      `INSERT INTO cards (id, name, key, type_id, trash, creator_id, updater_id, created_at, updated_at)
+      `INSERT INTO cards (id, name, key, type_id, trash, creator_id, updater_id, created_at, updated_at, read_rule_id, read_rule_class)
        VALUES ${values.join(", ")}`,
       params,
     );
@@ -206,7 +328,18 @@ describe("card-mod-search through the mod loader (A/B)", () => {
   it("WITH the mod: :count on a count-returning cql renders the same digits (0_search.rb:35-39 count forces return count)", async () => {
     const s = storage!;
     const html = await s.engine.render("Counting Search", "count");
-    expect(html).toBe("3");
+    // Four: the three Basic items and Anonymous, the one stock substrate card
+    // typed Basic (seedRubyShapedSubstrate). The viewer is anonymous, and the
+    // count is Ruby's count query under that viewer: the count view runs
+    // the search (set/abstract/0_search.rb:35-39, `count` forces
+    // `return: :count`), and the query carries the read filter
+    // (card-1.110.0 lib/card/query/sql_statement/where.rb:79-84,
+    // permission_conditions: `read_rule_id IN (readable rules)` unless
+    // Auth.always_ok?). Every row here is stamped with the catch-all and
+    // Anonymous reads through it, so all four are counted. Measured on the Ruby
+    // oracle (reference-harness/oracle/app, Decko 0.20.0 / card 1.110.0) over
+    // this row set on 2026-10-14: 4.
+    expect(html).toBe("4");
   });
 
   it("WITH the mod: :count through found_by '_left' resolves the left search card's count (found_by.rb:7-19)", async () => {
@@ -225,8 +358,11 @@ describe("card-mod-search through the mod loader (A/B)", () => {
   it("WITH the mod: :search_count renders the Integer branch for count-returning cql (0_search/views.rb:2-4)", async () => {
     const s = storage!;
     // Integer#to_s - no delimiter (the count view's html delimiter is
-    // collection item.rb's, not this view's)
-    expect(await s.engine.render("Counting Search", "search_count")).toBe("3");
+    // collection item.rb's, not this view's). The digits are Counting
+    // Search's count: four on this deck, for the reason the :count test
+    // above gives (the Ruby-shaped substrate leaves Anonymous as the one
+    // Basic-typed card besides the items).
+    expect(await s.engine.render("Counting Search", "search_count")).toBe("4");
   });
 
   it("WITH the mod: :search_count through found_by '_left' + return count renders the left card's count (views.rb:2-4)", async () => {
@@ -515,8 +651,9 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     bigLoader = new ModLoader([{ manifest: cardModSearch }]);
     bigLoader.load();
     await bigLoader.installInto(modEngineHost(b.engine, b.fetcher));
-    // 1001 Basic cards
+    // 1001 Basic items and Anonymous, the one Basic-typed substrate card (the
+    // same count the :count test above derives, for the same Ruby reasons).
     const html = await b.engine.render("Big Search", "count");
-    expect(html).toBe("1,001");
+    expect(html).toBe("1,002");
   });
 });

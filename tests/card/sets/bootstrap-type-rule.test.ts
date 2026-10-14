@@ -373,8 +373,8 @@ describe("createCard — auto-created side cards get the assigned type", () => {
     // set/all/permissions.rb:1-5) runs against the SAVED row's type; the
     // type-assignment walk changes the derived read_rule_id/class. With
     // no *read rule card for the assigned-type set registered, the port
-    // stores NULL read_rule_id (the rule-less-seed divergence documented
-    // in src/card/permissions/set-read-rule.ts header). What we verify is
+    // stores NULL read_rule_id (the case set-read-rule.ts documents in its
+    // header: no read rule resolves for the assigned type). What we verify is
     // that the column is populated (the derivation DID run) rather than
     // undefined / NaN.
     const storage = await createActionsTestStorage();

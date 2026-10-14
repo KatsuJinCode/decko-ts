@@ -276,9 +276,14 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // head views read deck-level setting cards no reference closure can
     // reach, so their read rides the same prelude batch instead of
     // paying its own round trip; and the deck_data_version stamp read
-    // folds in last (+1 statement at every depth, +0 round trips). Warm
+    // folds in last (+1 statement at every depth, +0 round trips). The deck
+    // here carries the stock `*all+*read` rule card (createRenderTestStorage
+    // seeds it; Ruby denies a deck without one), and the read permission's
+    // one-time setup — the rule-closure walk folded into the prelude batch,
+    // and the Set TYPE card's row folded into the wave preamble — rides
+    // those two batches: statements, not round trips. Warm
     // renders pay exactly that one stamp statement.
-    expect(statementsByDepth).toEqual({ 1: 19, 2: 20, 4: 22, 8: 26 });
+    expect(statementsByDepth).toEqual({ 1: 21, 2: 22, 4: 24, 8: 28 });
     // depth 8 costs one batch per level (11 round trips) while reading
     // O(page) rows instead of the whole deck per render - and lands AT
     // Ruby's 11 queries (pinned: TS <= Ruby at every measured depth; in

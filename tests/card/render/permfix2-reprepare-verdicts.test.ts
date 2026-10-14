@@ -50,8 +50,8 @@ interface EnginePrivate {
 
 /** Sets of cards with readers in the anonymous viewer: every readable
  *  rule id is a granted authorization. We do not seed a *all+*read
- *  rule; the engine treats the rule-less deck as always-allowed for
- *  verifiable denominators. */
+ *  rule of our own: the stock *all+*read the shared helper seeds grants
+ *  Anyone, which is the anonymous viewer, so every card is readable. */
 const ALWAYS_OK_VIEWER: ReadViewer = ANONYMOUS_VIEWER;
 
 /** A small *help-rule-shaped deck: one set card + one setting card +

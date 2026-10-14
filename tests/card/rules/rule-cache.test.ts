@@ -60,7 +60,9 @@ const SET_TYPE_ID = 8; // the *set card's id (cache.rb SQL `sets.type_id = SetID
 const SETTING_TYPE_ID = 11; // the *setting card's id (`settings.type_id = SettingID`)
 
 beforeAll(async () => {
-  storage = await createRenderTestStorage();
+  // No bootstrap: this file exercises Rule::Cache's rule_card_id lookups over
+// a deck it builds itself, and the stock *all+*read rule would answer them.
+storage = await createRenderTestStorage({ bootstrapReadRules: false });
   const s = storage;
 
   // -- the registry itself (cards the id constants derive from, generate_id
@@ -301,7 +303,7 @@ describe("Rule::Cache runtime half (rule/all.rb#rule_card_id)", () => {
   let s: RenderTestStorage;
 
   beforeEach(async () => {
-    s = await createRenderTestStorage();
+    s = await createRenderTestStorage({ bootstrapReadRules: false });
     // The registry cards cache.rb's SQL binds (lib/card/rule/cache.rb:17-18
     // `#{SetID}` / `#{SettingID}`, generated from the codename table at boot —
     // codename.rb:107-110 generate_id_constants).

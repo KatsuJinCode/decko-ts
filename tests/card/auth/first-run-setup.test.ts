@@ -175,7 +175,11 @@ interface Fixture {
 async function fixture(
   opts: { trashedAccount?: boolean; withAccountSystem?: boolean } = {},
 ): Promise<Fixture> {
-  const render = await createRenderTestStorage();
+  // No bootstrap: this fixture applies Ruby's OWN first-run seed
+// (src/card/auth/boot-seed.ts), which creates the codename cards AND the
+// default *all+*read rule itself. Seeding the stock read substrate first
+// would collide with every codename row it writes.
+const render = await createRenderTestStorage({ bootstrapReadRules: false });
   // The auth_sessions table, through the real migration runner — the sign-in
   // assertion at the end of the happy path needs it (signin.ts:364 creates a
   // session row). The render storage loads only the CORE schema

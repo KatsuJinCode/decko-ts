@@ -36,11 +36,25 @@ import {
 } from "../../../src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
   seedReference,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+
+/** Ruby writes cards.read_rule_id on every save — the set_read_rule store
+ *  event (card-mod-permissions set/all/permissions.rb:1-5, ported as
+ *  `read_rule_id, read_rule_class = permission_rule_id_and_class(:read)` in
+ *  src/card/mod-loader/mods/card-mod-permissions.ts:611-612) — so every card
+ *  of a real deck carries the catch-all `*all+*read` rule as its DATA side.
+ *  That column is what the search's permission filter rides
+ *  (cql/sql.ts implicitConditions' `read_rule_id IN (...)`, Ruby's
+ *  Where#permission_conditions at the relation level): a fixture row left
+ *  NULL is invisible to every search result and to every plus/join part, so
+ *  the participating-section search matched nothing. Seeding it is deck
+ *  shape, not a test crutch: with it, the search returns both projects. */
+const READ_RULE = { readRuleId: BOOTSTRAP_READ_SUBSTRATE_IDS.rule, readRuleClass: "*all" };
 
 afterEach(() => {
   resetDeckInflections();
@@ -58,13 +72,13 @@ const PARTICIPATING_CQL = JSON.stringify({
  *  Keys are EXPLICIT so seeding never depends on the engine's inflection
  *  state — deck keys are written by Ruby, not by this engine. */
 async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
-  await seedCard(storage, { id: 700, name: "Project", typeId: 2 });
-  await seedCard(storage, { id: 400, name: "Participant(s)", key: "participant_s", typeId: 2 });
-  await seedCard(storage, { id: 500, name: "Jane Doe", typeId: 2 });
-  await seedCard(storage, { id: 600, name: "mythosynth", typeId: 700 });
-  await seedCard(storage, { id: 601, name: "NXDD", typeId: 700 });
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 700, name: "Project", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 400, name: "Participant(s)", key: "participant_s", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 500, name: "Jane Doe", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 600, name: "mythosynth", typeId: 700, ...READ_RULE });
+  await seedCard(storage, { id: 601, name: "NXDD", typeId: 700, ...READ_RULE });
   await seedCard(storage, {
     id: 610,
     name: "mythosynth+Participant(s)",
@@ -72,6 +86,7 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
     leftId: 600,
     rightId: 400,
     typeId: 2,
+    ...READ_RULE,
   });
   await seedCard(storage, {
     id: 611,
@@ -80,8 +95,9 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
     leftId: 601,
     rightId: 400,
     typeId: 2,
+    ...READ_RULE,
   });
-  await seedCard(storage, { id: 410, name: "Participating Search", typeId: 2 });
+  await seedCard(storage, { id: 410, name: "Participating Search", typeId: 2, ...READ_RULE });
   await seedCard(storage, {
     id: 510,
     name: "Jane Doe+Participating Search",
@@ -90,6 +106,7 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
     rightId: 410,
     typeId: 98,
     dbContent: PARTICIPATING_CQL,
+    ...READ_RULE,
   });
   // card_references rows the refer_to tie reads (Ruby writes them on
   // save: referer = the +Participant(s) junction, referee = the person,

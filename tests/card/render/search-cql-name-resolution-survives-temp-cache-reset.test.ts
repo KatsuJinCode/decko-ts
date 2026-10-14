@@ -26,11 +26,22 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
   seedReference,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+
+/** Every card of a real deck carries its resolved *read rule id: Ruby's
+ *  set_read_rule store event writes cards.read_rule_id on save
+ *  (card-mod-permissions set/all/permissions.rb:1-5; the port's transcription
+ *  is src/card/mod-loader/mods/card-mod-permissions.ts:611-612). The search's
+ *  permission filter rides that column (cql/sql.ts implicitConditions'
+ *  `read_rule_id IN (...)` — Ruby's Where#permission_conditions, applied at
+ *  the relation level before the result window closes), so a NULL column
+ *  makes the row invisible to every result list. */
+const READ_RULE = { readRuleId: BOOTSTRAP_READ_SUBSTRATE_IDS.rule, readRuleClass: "*all" };
 
 const CQL =
   '{"type":"project","plus":["Participant(s)",{"refer_to":"_left"}]}';
@@ -44,27 +55,28 @@ const FILLER_CARDS = 6000;
 
 async function seedDeck(storage: RenderTestStorage): Promise<void> {
   // the type cards the render dispatch reads
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...READ_RULE });
   // the page shape: Project type card, Participant(s), the person, and a
   // project whose +Participant(s) junction part LINKS the person
   // (card_references row - plus: {refer_to: ...} is reference semantics on
   // the plus part).
-  await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
-  await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
-  await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2 });
-  await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398 });
+  await seedCard(storage, { id: 398, name: "Project", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2, ...READ_RULE });
+  await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398, ...READ_RULE });
   await seedCard(storage, {
     id: 810,
     name: "Sample Card 121+Participant(s)",
     leftId: 580,
     rightId: 406,
     typeId: 2,
+    ...READ_RULE,
   });
   await seedReference(storage, 810, 583, "casey_morgan", "L");
   // the search card: the "Casey Morgan+Item(s) Listing"
   // junction page card - its structure-rule CQL content, stored directly.
-  await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2 });
+  await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2, ...READ_RULE });
   await seedCard(storage, {
     id: 704,
     name: "Casey Morgan+Item(s) Listing",
@@ -72,12 +84,13 @@ async function seedDeck(storage: RenderTestStorage): Promise<void> {
     rightId: 418,
     typeId: 98,
     dbContent: CQL,
+    ...READ_RULE,
   });
   // filler: seeding it FIRST would leave it below the reset line instead -
   // seed AFTER the real cards so the real ids sit below the reset line
   // (they warm early, the reset wipes them, the tail survives).
   for (let i = 0; i < FILLER_CARDS; i++) {
-    await seedCard(storage, { id: 10000 + i, name: `filler card ${i}`, typeId: 2 });
+    await seedCard(storage, { id: 10000 + i, name: `filler card ${i}`, typeId: 2, ...READ_RULE });
   }
 }
 
@@ -132,21 +145,22 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
     // when the cache misses, and the port's pre-parse pass is that leg.
     const storage = await createRenderTestStorage();
     try {
-      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
-      await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
-      await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
-      await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2 });
-      await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398 });
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2, ...READ_RULE });
+      await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2, ...READ_RULE });
+      await seedCard(storage, { id: 398, name: "Project", typeId: 2, ...READ_RULE });
+      await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2, ...READ_RULE });
+      await seedCard(storage, { id: 583, name: "Casey Morgan", typeId: 2, ...READ_RULE });
+      await seedCard(storage, { id: 580, name: "Sample Card 121", typeId: 398, ...READ_RULE });
       await seedCard(storage, {
         id: 810,
         name: "Sample Card 121+Participant(s)",
         leftId: 580,
         rightId: 406,
         typeId: 2,
+        ...READ_RULE,
       });
       await seedReference(storage, 810, 583, "casey_morgan", "L");
-      await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2 });
+      await seedCard(storage, { id: 418, name: "Item(s) Listing", typeId: 2, ...READ_RULE });
       await seedCard(storage, {
         id: 704,
         name: "Casey Morgan+Item(s) Listing",
@@ -154,6 +168,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
         rightId: 418,
         typeId: 98,
         dbContent: CQL,
+        ...READ_RULE,
       });
       // NO warmLexicon here - the lexicon mirror is fully cold.
       expect(storage.fetcher.lexicon.cache.temp.read("L-project")).toBeUndefined();

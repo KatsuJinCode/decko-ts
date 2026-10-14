@@ -227,6 +227,9 @@ import {
   PERMISSION_GATE_COUNT_STATEMENT_INDEX,
   canReadByStoredRule,
   canReadByRuleLookup,
+  ruleClosureWalkStatement,
+  primeRuleClosureUniverse,
+  actorKeyFromResults,
   ANONYMOUS_VIEWER,
   anonymousIdFromResults,
   type ReadViewer,
@@ -1314,6 +1317,9 @@ export class RenderEngine implements RenderEngineLike {
     // batch below — +1 statement, +0 round trips. Every later render reads
     // it standalone at the render entry (see the gate at render() top).
     const stampCold = this.deckDataVersion === undefined;
+    // The rule-closure walk folds into the cold batch when this driver
+    // generation has not built it yet (see the cold slots below).
+    const ruleWalkCold = ruleClosureWalkStatement(this.fetcher.driver);
     let foldedResults: SQLQueryResult[] | undefined;
     if (!this.closureWarm(record)) {
       // THE BOOT READ-SET, OR THE CONTENT-VERSION CACHE'S COPY OF IT.
@@ -1392,6 +1398,12 @@ export class RenderEngine implements RenderEngineLike {
         ...(stampCold
           ? [{ sql: DECK_DATA_VERSION_STATEMENT, params: [] as unknown[] }]
           : []),
+        // The rule-closure walk (the render's blank-key read verdict needs it
+        // on every cold render; read-rules.ts resolveRowsAgainst). It depends
+        // only on the deck, so it rides THIS batch as the last member: the
+        // verdicts that follow find the memo already seated and pay no walk
+        // round trip. Absent when the driver generation already holds it.
+        ...(ruleWalkCold !== undefined ? [ruleWalkCold] : []),
       ];
       const coldStatements = coldSlots.filter(
         (slot): slot is SQLStatement => !isCachedColdSlot(slot),
@@ -1424,6 +1436,11 @@ export class RenderEngine implements RenderEngineLike {
         foldedResults = coldSlots.map((slot) =>
           isCachedColdSlot(slot) ? slot.cachedResult : (executed as SQLQueryResult[])[cursor++],
         );
+      }
+      // The folded rule-closure walk seats the memo the blank-key verdict and
+      // every later rule lookup read (its slot is the batch's last member).
+      if (ruleWalkCold !== undefined) {
+        primeRuleClosureUniverse(this.fetcher.driver, foldedResults[coldSlots.length - 1]!);
       }
       // The rule ids must be memoized BEFORE enrichment: enrichAndStore
       // computes set keys (the RULE pattern's applies?) synchronously from
@@ -2813,7 +2830,6 @@ export class RenderEngine implements RenderEngineLike {
     this.setHostChainCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
-    this.accountRightIds = undefined;
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
     this.coreAdminRuntimeEnsured = false;
@@ -3842,6 +3858,19 @@ export class RenderEngine implements RenderEngineLike {
       for (const id of typeIds) this.typeCardsPrimed.add(id);
       const ids = [...typeIds];
       const typeStatements: SQLStatement[] = [];
+      // The Set TYPE card joins the primed type cards for the same reason
+      // the rest do: every rule card the walk seats is a Set card, and its
+      // enrichAndStore set-key computation reads the Set card's type NAME.
+      // One batch member; the card is fetched once per engine, not per rule.
+      // The row only needs priming once, so the statement is issued on the
+      // first type prime only; later ones carry the cards that changed.
+      if (!this.setTypeCardPrimed) {
+        this.setTypeCardPrimed = true;
+        typeStatements.push({
+          sql: `SELECT * FROM cards WHERE codename = 'set' AND trash = 0`,
+          params: [],
+        });
+      }
       for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         const placeholders = chunk.map(() => "?").join(", ");
@@ -4944,6 +4973,17 @@ export class RenderEngine implements RenderEngineLike {
         : { signedIn: false, actorId: anonymousIdFromResults(results) };
     this.readPermission = readPermissionStateFromViewerResults(results, viewer);
     this.readViewer = viewer;
+    // The viewer's own canonical key, answered from this batch when its card
+    // row rides it (the anonymous codename row always does): resolveViewerKey
+    // then reads no card by id. A row the batch does not carry is left to
+    // the point read, exactly as before.
+    if (!this.readViewerKeyResolved) {
+      const known = actorKeyFromResults(results, viewer.actorId);
+      if (known !== undefined) {
+        this.readViewerKey = known.key;
+        this.readViewerKeyResolved = true;
+      }
+    }
     return this.readPermission;
   }
 
@@ -5035,8 +5075,10 @@ export class RenderEngine implements RenderEngineLike {
    * (or that match no override) resolve through the stored read_rule_id
    * purely (permissions.rb:142-143), and cards without one fall back to the
    * live rule walk (permission_rule_id, permissions.rb:55-61) — bounded by
-   * the hasReadRules gate, so rule-less seeds cost zero queries and stay
-   * allowed (the documented divergence).
+   * the hasReadRules gate, so a deck carrying no read rule card costs zero
+   * queries and denies outright: no rule card in the deck means
+   * `permission_rule_id :read` resolves to nil, which `ok_to_read?` denies
+   * (permissions.rb:139-146).
    */
   private async ensureVerdicts(): Promise<void> {
     const state = this.readPermission;
@@ -5207,8 +5249,9 @@ export class RenderEngine implements RenderEngineLike {
    *  (deploy/worker.ts cardRecordJson). The full ok_to_read? port — the mod
    *  set-module overrides first (cardReadAllowed -> read-override.ts), then
    *  the stored read_rule_id (canReadByStoredRule, permissions.rb:142-143),
-   *  then the live rule walk (canReadByRuleLookup, permissions.rb:55-61;
-   *  undefined = rule-less deck: allowed, the documented divergence).
+   *  then the live rule walk (canReadByRuleLookup, permissions.rb:55-61).
+   *  A deck with no read rule card has nothing for the walk to resolve, so
+   *  canReadByRuleLookup answers false there (permissions.rb:139-146).
    *  `typeName` is optional — the *type pattern's anchor name; callers that
    *  already hold the type record pass it, others let the lookup resolve.
    *  Verdicts memoize into the same deniedVerdicts map ensureVerdicts uses,
@@ -5241,58 +5284,6 @@ export class RenderEngine implements RenderEngineLike {
     return !denied;
   }
 
-  /**
-   * The right-part card ids the account substrate hangs its secrets on:
-   * card-mod-account-0.20.0 data/real.yml:82 (`*account`), :121 (`*email`),
-   * :132 (`*password`), :143 (`*salt`), :150 (`*status`), plus `*api_key`.
-   * A junction whose right part is one of these IS a row of somebody's
-   * account: the email address, the PBKDF2 digest, the digest salt, the
-   * bearer key that authenticates as the account.
-   *
-   * `api_key` is the one from a different gem — card-mod-api_key-0.20.0
-   * set/right/api_key.rb:1, `include_set Abstract::AccountField` — but it is
-   * the same kind of row by that include alone: the same abstract set as
-   * `*email`, `*password` and `*salt`, hanging off the same `*account`
-   * junction, and its content is a credential (`authenticate_api_key`
-   * compares it, `generate_api_key` stores a fresh one, set/right/api_key.rb
-   * :25-31). Reading it is an account takeover exactly as reading the digest
-   * is, so it belongs in this list on the account-field argument and not on
-   * card-mod-account's.
-   *
-   * Resolved by CODENAME the way every other account codename is resolved in
-   * this port (signin.ts resolveAccountCodenameIds, first-run-setup.ts
-   * resolveCodenameCardId) — never by a hardcoded id — and absent codenames
-   * are skipped rather than defaulted, so a deck without the account system
-   * (the 0001..0003 chain) gets an empty set and no exclusion clause. A deck
-   * WITHOUT card-mod-api_key has no `api_key` codename, and is unaffected. */
-  private static readonly ACCOUNT_RIGHT_CODENAMES = [
-    "account",
-    "email",
-    "password",
-    "salt",
-    "status",
-    "api_key",
-  ] as const;
-
-  private accountRightIds: number[] | undefined;
-
-  /** The account field right ids, resolved once per engine. */
-  private async accountFieldRightIds(): Promise<number[]> {
-    if (this.accountRightIds === undefined) {
-      const ids: number[] = [];
-      for (const codename of RenderEngine.ACCOUNT_RIGHT_CODENAMES) {
-        const row = await this.fetcher.driver.query<{ id: number }>(
-          `SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1`,
-          [codename],
-        );
-        const id = row.rows[0]?.id;
-        if (typeof id === "number") ids.push(id);
-      }
-      this.accountRightIds = ids;
-    }
-    return this.accountRightIds;
-  }
-
   /** The CQL permission filter for this engine's viewer — the shape
    *  executeQuery's SqlOptions take (sql.ts implicitConditions, the port of
    *  Where#permission_conditions). Ruby's Card::Query runs with
@@ -5300,41 +5291,47 @@ export class RenderEngine implements RenderEngineLike {
    *  filtered to the viewer's readable rule set; serving rows without the
    *  filter leaks db_content the HTML views deny.
    *
-   *  THE RULE-LESS ALLOWANCE, now SCOPED. This used to answer
-   *  `alwaysOk: true` — filter off — whenever the deck carried no catch-all
-   *  read rule, on the reasoning that a rule-less seed has nothing to filter
-   *  by. That reasoning is true of a deck with no ACCOUNTS and false of one
-   *  with them: "no rule to evaluate" is not "readable to everyone", and on
-   *  the shipped demo deck it answered /api/query {"right":"*password"} with
-   *  every stored digest. The allowance stays (a synthetic rule-less deck is
-   *  a real shape, and Ruby's fail-closed answer there would deny every card
-   *  and break it), but it now carries an exclusion for the account field
-   *  rows: `excludedRightIds` renders `right_id NOT IN (...)` (sql.ts
-   *  implicitConditions), so a rule-less deck serves everything EXCEPT
-   *  somebody's account fields.
+   *  THE ANSWER IS ALWAYS THE RULE SET. There is no rule-less allowance
+   *  here, and there never should have been one: Ruby's
+   *  `Where#permission_conditions` reads the same `read_rules_hash` the
+   *  HTML views do, so a deck that carries no read rule gives an empty hash
+   *  and the filter matches nothing — every row denied, which is the same
+   *  answer `ok_to_read?` gives card by card
+   *  (permissions.rb:139-146). An empty `readRuleIds` is that answer:
+   *  sql.ts implicitConditions renders the `read_rule_id IN (1)` sentinel,
+   *  which no row carries.
    *
-   *  A deck that DOES carry the rules (the shipped one, since
-   *  0004-demo-account-substrate.sql block C) gets the ordinary filtered
-   *  answer with no exclusion — the rules are the answer there, and adding a
-   *  second mechanism on top would be the kind of belt-and-braces that hides
-   *  a broken rule set. */
+   *  This method used to answer `alwaysOk: true` — filter off — on a deck
+   *  with no catch-all read rule, then to narrow that with an
+   *  `excludedRightIds` list naming the account-field right parts
+   *  (ACCOUNT_RIGHT_CODENAMES below). Both halves existed because the read
+   *  path failed open on the same deck; with the read path denying, the
+   *  deck is filtered like every other deck and neither is reachable. */
+  /** The viewer's read scope, synchronously, for views that cannot await. The
+   *  read state is folded in render()'s prelude before any view runs (the same
+   *  state isDenied reads); undefined before that fold. Same answer as
+   *  cqlPermissionOptions once the state exists. */
+  cqlReadScope(): { alwaysOk: boolean; readRuleIds: number[] } | undefined {
+    const state = this.readPermission;
+    if (state === undefined) return undefined;
+    if (state.alwaysOk) return { alwaysOk: true, readRuleIds: [] };
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
+  }
+
   async cqlPermissionOptions(): Promise<{
     alwaysOk: boolean;
     readRuleIds: number[];
-    excludedRightIds: number[];
   }> {
     const state = await this.ensureReadPermission();
     if (state.alwaysOk) {
       // Ruby's own short-circuit (permissions.rb:140): the bot and
-      // administrators are never filtered, so an exclusion here would
-      // narrow Ruby's answer rather than restore it.
-      return { alwaysOk: true, readRuleIds: [], excludedRightIds: [] };
+      // administrators are never filtered.
+      return { alwaysOk: true, readRuleIds: [] };
     }
-    if (!state.hasReadRules || !state.hasCatchAllReadRule) {
-      // The scoped rule-less allowance (see the doc comment above).
-      return { alwaysOk: true, readRuleIds: [], excludedRightIds: await this.accountFieldRightIds() };
-    }
-    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds], excludedRightIds: [] };
+    // readableRuleIds is read_rules_hash, so a deck with no read rule card
+    // yields an empty set here exactly as `read_rules_hash[nil]` is nil on
+    // the card path. Both deny; neither needs a second mechanism.
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
   }
 
   // -------------------------------------------------------------------------
@@ -6163,6 +6160,12 @@ export class RenderEngine implements RenderEngineLike {
    *  (the candidates of a page's prepared set are deterministic in the
    *  deck-static-per-engine contract). */
   private ruleCandidatesPrimedFor = new Set<string>();
+  /** The Set TYPE card's row has been fetched into the cache by the
+   *  priming pass (primePreparedCardDerivedState). Every rule card the walk
+   *  seats is a Set card; its enrichAndStore set-key computation reads the
+   *  Set card's type name, and the fetch cache answers it. One row per
+   *  engine, not one read per rule card. */
+  private setTypeCardPrimed = false;
   /** Templated-nests rule cards whose content the junction warm already
    *  scanned. The gate that keeps this pass off the other ~47k deck cards
    *  is `isTemplatedNestsName` (the `*default` / `*structure` right tag),

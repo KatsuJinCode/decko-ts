@@ -105,33 +105,44 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     // Structural assertions: cold round trips scale with the CHAIN at slope
     // 1 (one batch per unfetched inclusion level) - the trade for rows-read
     // dropping from O(deck x passes) per render to O(page). Ruby's measured
-    // truth is depth+3; the TS curve is level-linear BELOW it (see the
-    // re-pin note below). Statements add exactly one fetch statement per
-    // level.
+    // truth is depth+3; the TS curve is that same line, depth by depth (see
+    // the note below on which deck it is measured). Statements add exactly
+    // one fetch statement per level.
     const rts = rows.map((r) => r.roundTrips);
     const sts = rows.map((r) => r.statements);
     // Structural shape: round trips = 4 + max(0, depth-1) and statements =
-    // 19 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
+    // 21 + max(0, depth-1) - the chain slope stays exactly 1 (one closure
     // batch per unfetched inclusion level), independent of deck size.
-    // Ruby's measured truth is depth+3, so the TS curve is below it.
+    // Ruby's measured truth is depth+3: the TS curve EQUALS it at every
+    // depth Ruby was measured on (1, 2, 4, 8, 16), on a deck that carries
+    // its read rule.
+    //
+    // THE DECK CARRIES ITS READ RULE. The seeds go through
+    // createRenderTestStorage(), which seeds the stock `*all+*read` rule
+    // card: Ruby has no allowance for a deck without one
+    // (card-mod-permissions set/all/permissions.rb:139-146), so this is
+    // the posture every real deck renders in and the one these numbers
+    // describe. The read permission's one-time setup - the rule-closure
+    // walk, the rule card's content and the viewer card's key - rides the
+    // PRELUDE batch, so it adds statements to the fixed cost and NO round
+    // trips (render.ts cold slots; permissions/read-rules.ts
+    // ruleClosureWalkStatement / primeRuleClosureUniverse /
+    // actorKeyFromResults). A deck with no read rule card therefore
+    // measures the same four round trips with two fewer statements.
     // The four fixed round trips: RT1 the root key row, RT2 the PRELUDE
     // batch (src/card/render/prefetch.ts prefetchInclusionClosure: the
     // root's side priming, the root's TYPE row, the root's set-pattern
-    // anchor priming, and the engine's permission/codename/structure
-    // folds), RT3 wave round 1 (the type-card prime folded in as the batch
-    // preamble), RT4 wave round 2 (depth-3 junction candidates whose sides
-    // round 1 seated - "a junction's ids are the previous round's ANSWERS";
-    // genuinely sequential, not a fusion gap). Ruby derivation: the wave
+    // anchor priming, and the engine's permission/codename/structure/
+    // rule-walk/stamp folds), RT3 wave round 1 (the type-card prime and
+    // the Set TYPE card's row folded in as the batch preamble), RT4 wave
+    // round 2 (depth-3 junction candidates whose sides round 1 seated -
+    // "a junction's ids are the previous round's ANSWERS"; genuinely
+    // sequential, not a fusion gap). Ruby derivation: the wave
     // asks the rule-candidate names of the view-time settings (*content
     // options, *help, *structure, *default) that Ruby resolves per lookup
     // through Set#rule/rule_card (rule/all.rb) plus the prepared records'
     // type cards (Card#type_card, type.rb:32-35) - batched here,
     // point-by-point in Ruby's cache.
-    // The wave adds +6 statements: type-prime IN-list (1) + wave round 1
-    // (key IN-list 5 + side-key junction join 1) + wave round 2 (key
-    // IN-list 2 + junction join 1); the misses prime negative lexicon
-    // entries so the view-time ladders answer from cache exactly as Ruby's
-    // cache-negative misses do.
     // Other prelude members: the junction-priming prelude statements
     // (field-anchor prelude + context junction priming) and the template
     // TYPE-NAME read (templateTypeNameStatement - newCardDefaultType's
@@ -141,7 +152,7 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     // The deck_data_version freshness stamp folds LAST into the cold batch
     // (+1 statement at every depth, +0 round trips).
     const expectedRts = (depth: number): number => 4 + Math.max(0, depth - 1);
-    const expectedSts = (depth: number): number => 19 + Math.max(0, depth - 1);
+    const expectedSts = (depth: number): number => 21 + Math.max(0, depth - 1);
     for (let i = 0; i < rows.length; i++) {
       expect(rts[i]).toBe(expectedRts(rows[i]!.depth));
       expect(sts[i]).toBe(expectedSts(rows[i]!.depth));

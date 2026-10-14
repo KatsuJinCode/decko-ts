@@ -35,19 +35,13 @@ export interface SqlOptions {
   alwaysOk?: boolean;
   readRuleIds?: number[];
   /**
-   * Card ids the query must NOT return, by right-part (junction) side:
-   * renders `<alias>.right_id NOT IN (?, ...)`.
-   *
-   * This is the narrowing half of a scoped permission answer, and it exists
-   * because `alwaysOk` is all-or-nothing. Where#permission_conditions has no
-   * equivalent — Ruby either has the viewer's read rules or is always_ok —
-   * so this option is a PORT-SIDE seam, not a Ruby translation: the caller
-   * (RenderEngine#cqlPermissionOptions) uses it to keep the rule-less
-   * allowance from reaching the account field cards, where "no rule to
-   * evaluate" must not read as "readable to everyone". An empty or absent
-   * list renders nothing.
+   * Count-returning root only: select `count` per `read_rule_id` (GROUP BY the
+   * stored rule, NULL rows in their own group). Every group carries the
+   * unfiltered rows of one rule, so a viewer's count is the sum over the rules
+   * its `read_rule_id IN (...)` admits — the same count Card::Query returns for
+   * that viewer (where.rb:79-84), computed once without the viewer.
    */
-  excludedRightIds?: number[];
+  countByReadRule?: boolean;
   /**
    * REGEXP-on-edge mode ("The REGEXP decision"
    * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
@@ -162,7 +156,11 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   const orderDirectives = full ? orderDirectivesOf(query, ctx) : [];
 
   // SqlStatement#fields
-  const parts: string[] = [fullField(alias, query.mods.return)];
+  const groupByRule =
+    isRoot && query.mods.return === "count" && ctx.options.countByReadRule === true;
+  const parts: string[] = groupByRule
+    ? [`${alias}.read_rule_id AS read_rule_id`, fullField(alias, query.mods.return)]
+    : [fullField(alias, query.mods.return)];
   for (const directive of orderDirectives) parts.push(directive.field);
   // Post-filter mode: make sure the filter's columns are selected even when
   // the return mod selects only its own (see MATCH_HELPER_PREFIX).
@@ -179,7 +177,11 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   const fromSql = `FROM ${query.table} ${alias}`;
   const joinsSql = renderJoins(query, ctx);
   const whereSql = renderWhere(query, ctx);
-  const groupSql = full && query.mods.group ? `GROUP BY ${safeSql(query.mods.group)}` : "";
+  const groupSql = groupByRule
+    ? `GROUP BY ${alias}.read_rule_id`
+    : full && query.mods.group
+      ? `GROUP BY ${safeSql(query.mods.group)}`
+      : "";
   const orderSql =
     orderDirectives.length > 0
       ? `ORDER BY ${orderDirectives.map((d) => (d.dir ? `${d.field} ${d.dir}` : d.field)).join(", ")}`
@@ -292,16 +294,6 @@ function formatConditionList(list: string[], conj: string): string {
 function implicitConditions(query: QueryNode, ctx: GenContext): string {
   if (query.kind !== "card") return "";
   const chunks = [`${query.tableAlias}.trash is false`];
-  // The scoped-permission narrowing, applied in BOTH always-ok states: it
-  // is not the read-rule filter, it is an exclusion the caller asked for
-  // regardless of which answer it got for the filter (see SqlOptions
-  // .excludedRightIds).
-  if (ctx.options.excludedRightIds && ctx.options.excludedRightIds.length > 0) {
-    chunks.push(
-      `${query.tableAlias}.right_id NOT IN (${ctx.options.excludedRightIds.map(() => "?").join(",")})`,
-    );
-    ctx.params.push(...ctx.options.excludedRightIds);
-  }
   const { alwaysOk = true, readRuleIds } = ctx.options;
   if (!alwaysOk) {
     if (readRuleIds && readRuleIds.length > 0) {

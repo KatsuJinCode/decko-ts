@@ -116,10 +116,11 @@ __DECKO_RUNTIME__ = "'workers'"
 #                      <field>+*right+*read grants real.yml gives the Help
 #                      Desk role. It sorts after 0006 because every one of its
 #                      rows names that role as its referee. Without it the
-#                      demo deck sits in the rule-less allowance
-#                      (docs/SECURITY.md, divergence 6), where only the
-#                      account-field rows are withheld and everything else
-#                      renders to anyone.
+#                      demo deck has accounts and no read rule at all, which
+#                      is exactly the deck Ruby denies in full: with no
+#                      *all+*read, permission_rule_id :read resolves to nil
+#                      and read_rules_hash[nil] denies
+#                      (mod/permissions/set/all/permissions.rb:139-146).
 #                  So a fresh deploy comes up with a schema, content, AND an
 #                  account system — idempotent, so re-running is a no-op.
 [[d1_databases]]

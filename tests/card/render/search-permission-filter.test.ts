@@ -292,10 +292,14 @@ describe("read verdict: *type plus right rule evaluated from the LEFT side's typ
 
   it("fails CLOSED when a complete deck's rule walk resolves no candidate", async () => {
     // canReadByRuleLookup's no-candidate branch, unit-tested against an
-    // empty driver (a full deck's catch-all would always resolve): a
-    // complete deck's unresolved walk denies (Ruby: permission_rule_id ->
-    // nil -> read_rules_hash[nil] -> deny); a partial deck's stays the
-    // documented allow (undefined).
+    // empty driver (a full deck's catch-all would always resolve): the walk
+    // denies when it resolves nothing, with or without a catch-all. Ruby
+    // draws no such distinction — `permission_rule_id :read` composes the
+    // candidate names and returns nil when none of them names a live rule
+    // card, then `read_rules_hash[nil]` is nil and ok_to_read? denies
+    // (set/all/permissions.rb:139-146). A deck whose catch-all is missing is
+    // exactly the deck whose walk cannot resolve, so it takes the same
+    // branch.
     const { canReadByRuleLookup } = await import("../../../src/card/permissions/index.js");
     const emptyFetcher = {
       driver: { query: async () => ({ rows: [] }), batch: async () => [] },
@@ -311,11 +315,19 @@ describe("read verdict: *type plus right rule evaluated from the LEFT side's typ
       { ...base, hasReadRules: true, hasCatchAllReadRule: true },
     );
     expect(complete).toBe(false);
-    const partial = await canReadByRuleLookup(
+    const noCatchAll = await canReadByRuleLookup(
       emptyFetcher,
       { name: "Some Card", id: 1, typeId: 4 },
       { ...base, hasReadRules: true, hasCatchAllReadRule: false },
     );
-    expect(partial).toBeUndefined();
+    expect(noCatchAll).toBe(false);
+    // And the deck with no read rule card at all denies too, without
+    // running the walk.
+    const ruleLess = await canReadByRuleLookup(
+      emptyFetcher,
+      { name: "Some Card", id: 1, typeId: 4 },
+      { ...base, hasReadRules: false, hasCatchAllReadRule: false },
+    );
+    expect(ruleLess).toBe(false);
   });
 });

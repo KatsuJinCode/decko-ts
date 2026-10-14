@@ -13,8 +13,10 @@
 import { describe, expect, it } from "vitest";
 import { installHelpRules } from "../../../src/card/render/help-popover.js";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
+  seedReference,
   type RenderTestStorage,
 } from "./render-test-storage.js";
 
@@ -288,29 +290,53 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       await seedCard(storage, { id: 710, leftId: 705, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "A default" });
       await seedCard(storage, { id: 711, leftId: 706, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "B default", readRuleId: 7000 });
       await seedCard(storage, { id: 712, leftId: 707, rightId: 700, typeId: SETTING_TYPE_ID, dbContent: "C default", readRuleId: 8000 });
-      // The viewer's read-permission state (the anonymous viewer; only
-      // rule 7000 is in the readable set, mirroring an [Anyone] party
-      // grant). readPermission is the field the resolver reads; the
-      // engine populates it in ensureReadPermission.
-      const engineHost = storage.engine as unknown as {
-        readPermission?: {
-          readableRuleIds: ReadonlySet<number>;
-          alwaysOk: boolean;
-        };
-      };
-      engineHost.readPermission = {
-        readableRuleIds: new Set<number>([7000]),
-        alwaysOk: false,
-      };
+      // The viewer's readable set, built the way the deck builds it instead
+      // of handed to the engine as a literal: rule 7000 is a REAL read rule
+      // card — a Set-typed left joined to the `*read` codename card — and
+      // Anyone is REFERENCED from it, which is exactly the row pair
+      // read_rule_cache.rb's join reads (statement 2 of
+      // readPermissionStatements: rule cards whose right is `*read` and
+      // whose left is Set-typed, joined to their card_references). The
+      // anonymous viewer's read_rules_hash is therefore the deck's own:
+      // {the stock `*all+*read`, 7000}.
+      //
+      // The stub this replaces (readPermission written straight onto the
+      // engine host) could not survive the rule-less-deck work: the read
+      // walk resolves the CANDIDATE rule for "Set A+*right+*default" — no
+      // SELF/`Set A+*right+*read` rule card exists, so the walk lands on the
+      // deck's catch-all `*all+*read` — and asks whether THAT rule is in the
+      // readable set. A hand-built set of {7000} alone denied the very card
+      // under test, which is Ruby's answer only for a deck whose grant the
+      // viewer is not party to (set/all/permissions.rb:139-146:
+      // `read_rules_hash[read_rule_id]` nil -> deny).
+      await seedCard(storage, {
+        id: 7000,
+        leftId: 702,
+        rightId: BOOTSTRAP_READ_SUBSTRATE_IDS.read,
+        typeId: SET_TYPE_ID,
+        dbContent: "[[Anyone]]",
+        readRuleId: 7000,
+        readRuleClass: "*type",
+      });
+      await seedReference(
+        storage,
+        7000,
+        BOOTSTRAP_READ_SUBSTRATE_IDS.anyone,
+        "anyone",
+      );
+      // Rule 8000 is the denied grant: no reference row names Anyone from it,
+      // so it is absent from the viewer's read_rules_hash — the exclusion
+      // this test pins.
       const resolver = installHelpRules(storage.engine, storage.fetcher);
       await resolver.prepare();
 
       // The unresolved rule (no stored read_rule_id) IS readable
-      // (Ruby's Card.search default), and rule 711 IS readable (in the
-      // viewer's readable set). Rule 712 is NOT. Result: 2 default
-      // rules in the count, mirroring Ruby's filtered count. Without
-      // the filter the count would be 3 — the unfiltered baseline the
-      // engine produced before this fix.
+      // (Ruby's Card.search default — the walk lands on the deck's
+      // `*all+*read`, which Anyone is party to), and rule 711 IS readable
+      // (its stored read_rule_id 7000 is in the readable set). Rule 712 is
+      // NOT. Result: 2 default rules in the count, mirroring Ruby's filtered
+      // count. Without the filter the count would be 3 — the unfiltered
+      // baseline the engine produced before this fix.
       const ruleHtml = await storage.engine.render("Set A+*right+*default", "closed");
       expect(helpContentOf(ruleHtml)).toContain("(2 default rules)");
     } finally {

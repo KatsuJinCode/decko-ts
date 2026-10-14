@@ -16,6 +16,7 @@
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
+  BOOTSTRAP_READ_SUBSTRATE_IDS,
   createRenderTestStorage,
   seedCard,
   type RenderTestStorage,
@@ -39,6 +40,25 @@ afterAll(() => {
  *  THAT shape. */
 async function seedDeck(): Promise<RenderTestStorage> {
   storage = await createRenderTestStorage();
+  // The deck's own `*all` SET card, carrying the CQL hash a real deck's
+  // `*all` holds (reference-harness/fixtures/synthetic-v2/deck: `*all`,
+  // codename "all", type Set, db_content "{}"). The stock substrate's `*all`
+  // steps aside for it and the stock `*all+*read` rule repoints onto its
+  // side, so the anonymous viewer still reads the whole deck.
+  //
+  // The content is load-bearing, not decoration: `Weapons` is a List host
+  // rendered :open, so the engine walks its options chain
+  // (options_api.rb:47-48 -> the `Card[:all]` fallback) and parses the
+  // terminal card as CQL. An EMPTY `*all` is the "can't run search with
+  // empty content" raise (cql_search.rb:29-38) that Ruby makes for a deck
+  // whose `*all` has no content; a real deck does not have that shape.
+  await seedCard(storage, {
+    id: 10,
+    name: "*all",
+    codename: "all",
+    typeId: BOOTSTRAP_READ_SUBSTRATE_IDS.set,
+    dbContent: "{}",
+  });
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   await seedCard(storage, { id: 3, name: "List", codename: "list", typeId: 2 });
   await seedCard(storage, { id: 4, name: "RichText", codename: "rich_text", typeId: 2 });

@@ -58,9 +58,9 @@ describe("pointer/list item slot: readable items keep the bar-view slot, denied 
   it(
     "a List card renders its readable item as a bar-view slot with data-card-id and the titled bar body",
     async () => {
-      // Rule-less storage: the read-permission state's rule-less
-      // allowance keeps every card readable (render.ts readPermission
-      // gate), isolating the readable half of the split.
+      // Stock read substrate: the catch-all grants Anyone, so every card here
+      // is readable by the anonymous viewer, isolating the readable half of
+      // the split.
       plainStorage = await createRenderTestStorage();
       // The List cardtype card (codename drives the pointer/list
       // dispatch's typeCode check) + the host list + the item.
