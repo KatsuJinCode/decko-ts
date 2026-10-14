@@ -193,7 +193,7 @@ Stated plainly, with where the gap closes when it closes:
    reference-harness/fixtures/synthetic-v1 --actual tmp/grade-pbkdf2-results
    --declared-divergences
    reference-harness/adapters/ts-pbkdf2/declared-divergences.json`; the
-   report from 2026-10-14 is
+   report from 2026-10-14 (commit 77c4423d) is
    `reference-harness/grade-reports/synthetic-v1-pbkdf2-report.json`. No
    synthetic-v1 scenario sets a password, so storing a new password as
    PBKDF2 is not graded. If one did, it would fail: the `card_changes`
