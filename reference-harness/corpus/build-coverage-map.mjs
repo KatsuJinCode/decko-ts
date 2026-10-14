@@ -94,7 +94,7 @@ const map = {
   unreachableViews: unreachable,
   notes: [
     "A corpus operation's coverage is its view row here (view ops) or the page-grid shape (page/core ops: the full page frame, the card's type editor and permission verdicts for the actor).",
-    "Op ids: page:<actor>:<card>, core:<actor>:<card>, view:<actor>:<card>:<view> - see fixtures/synthetic-v2/ops/render.jsonl.",
+    "Op ids: page:<actor>:<card>, core:<actor>:<card>, view:<actor>:<card>:<view> - see reference-harness/fixtures/synthetic-v2/ops/render.jsonl.",
     "unreachableViews holds the census rows no stock-deck card can instantiate, each with its reason; the generate-ops assertion keeps this list honest.",
   ],
 };
