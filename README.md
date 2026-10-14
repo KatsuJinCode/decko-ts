@@ -44,9 +44,12 @@ names in its `normalization` field
 ([SPEC.md](reference-harness/SPEC.md), §4.2; `runner/normalize.mjs`): N1 masks
 the `data-slot-id` attribute value, N2 canonicalizes JSON key order, and N3
 compares class-token order inside a `class` attribute as a set. The
-instrument defines eight rules in total (N1–N8); N4–N8 exist for the
-seconds-corpus fixture's capture-host values and are applied when a comparison
-reaches them, which on `synthetic-v1` none does. The browser journeys are a
+instrument defines eight rules in total (N1–N8); N4–N8 exist for values that
+`synthetic-v2` carries and `synthetic-v1` does not (collapse ids, relative
+times, capture-host content in debug pages, and error class names), and they
+are applied when a comparison reaches them, which on `synthetic-v1` none does.
+The evidence for each is in
+[NORMALIZATION-EVIDENCE.md](reference-harness/NORMALIZATION-EVIDENCE.md). The browser journeys are a
 different instrument with their own rules (`B1`–`B5` in
 `browser/lib/observe.mjs`) — the two namespaces are distinct, and the journeys
 comparator names the two harness forms it borrows rather than renumbering them.

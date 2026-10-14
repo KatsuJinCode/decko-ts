@@ -47,11 +47,27 @@ function q(value) {
 }
 
 /** One INSERT INTO cards with the demo conventions: trash 0, creator and
- *  updater = 1 (Demo Bot), canonical timestamps, no revision/read-rule
- *  state — this demo deck is read-only and the write path is out of its
- *  scope. */
+ *  updater = 1 (Demo Bot), canonical timestamps, no revision state — this
+ *  demo deck is read-only and the write path is out of its scope. Every row
+ *  carries the catch-all read rule (read_rule_class / read_rule_id), which is
+ *  what Ruby's set_read_rule store event stamps on each saved row
+ *  (card-mod-permissions set/all/permissions.rb:1-5) and what both the HTML
+ *  permission check and the CQL read filter read.
+ *
+ *  The only rule a row here may carry is the catch-all (30), which grants
+ *  Anyone: a card stamped with a rule no card_references row grants would be
+ *  unreadable to every actor, and cardSql refuses to generate one. */
 function cardSql(row) {
   const keyColumn = row.key !== undefined ? row.key : row.name !== undefined ? canonicalKey(row.name) : null;
+  const readRuleClass = row.readRuleClass ?? "*all";
+  const readRuleId = row.readRuleId ?? CATCH_ALL_RULE_ID;
+  // The seed's ONLY rule card is the catch-all (30), which grants Anyone, so
+  // any other rule id here is one this file does not create — a card stamped
+  // with it would be unreadable to every actor. Refuse rather than generate it.
+  if (readRuleId !== CATCH_ALL_RULE_ID) {
+    console.error(`seed: card ${row.id} would be stamped with the raw rule ${readRuleId}, which grants nobody; stamp it with the catch-all or leave it NULL`);
+    process.exit(1);
+  }
   return [
     `-- id ${row.id}: ${row.label}`,
     `INSERT INTO cards (`,
@@ -62,10 +78,50 @@ function cardSql(row) {
     `  ${q(row.id)}, ${q(row.name ?? null)}, ${q(keyColumn)}, ${q(row.codename ?? null)},`,
     `  ${q(row.leftId ?? null)}, ${q(row.rightId ?? null)}, NULL,`,
     `  '${STAMP}', '${STAMP}', 1, 1,`,
-    `  NULL, NULL, NULL, 0, ${q(row.typeId)}, ${q(row.dbContent ?? null)}`,
+    `  ${q(readRuleClass)}, ${q(readRuleId)}, NULL, 0, ${q(row.typeId)}, ${q(row.dbContent ?? null)}`,
     `);`,
   ].join("\n");
 }
+
+// -- the stock read substrate (`*all+*read` -> [[Anyone]]) ---------------------
+// EVERY real Ruby deck bootstraps this rule (card/auth/setup.rb:44;
+// mod/core data/fixtures/real/cards.yml cards_010), and Ruby's ok_to_read?
+// (card-mod-permissions set/all/permissions.rb:139-146) denies a deck that
+// does not carry it: permission_rule_id :read resolves to nil and
+// Auth.as_card.read_rules_hash[nil] is nil. Without these rows the dev deck
+// this file produces renders every card as "Sorry, you don't have permission
+// (read)" — correct Ruby behaviour on a deck shape Ruby never has, and a
+// useless demo. The rows below are Ruby's shape, transcribed from
+// migrations/0004 (types and codenames), 0006 (the roles) and 0009 (the
+// rules); the dev chain cannot apply those files because their keys overlap
+// this deck's (Cardtype id 3, User id 4, *all), so the same cards are
+// generated here at ids above the deck's own range.
+const CATCH_ALL_RULE_ID = 30;
+// Ids below 30 are the seed's own (type scaffold 1-5, content and junctions
+// 10-18, the search 20); the read substrate takes 6, 7, 8, 25-28 and 30,
+// above them and out of the deck's way.
+const substrateCards = [
+  { id: 6, name: "Role", codename: "role", typeId: 3, label: "the Role cardtype (cards_020), the type of the two party cards below" },
+  // Set carries the 'set' codename (Ruby: card-mod-core's Set type card is the
+// deck's SetID, generated from the codename registry at boot). The
+// permission statements join rule rows' left cards on that codename's id
+// (read-rules.ts readPermissionStatements, statement 2), so without it the
+// catch-all is not in read_rules_hash and the deck denies every card.
+  { id: 7, name: "Set", codename: "set", typeId: 3, label: "the Set TYPE card (codename 'set' = the deck's SetID); the read-rule cache join filters rule rows' left cards on sets.type_id = SetID (read-rules.ts)" },
+  { id: 8, name: "Setting", codename: "setting", typeId: 3, label: "the Setting TYPE card (cards_009)" },
+  // The keys of *all and *read are given explicitly as '*all' / '*read' (as
+  // migrations/0004:124 and 0009:86 store them): the generator's canonical
+  // derivation turns a leading * into an underscore, and a set/setting card
+  // carries its own name as the key.
+  { id: 25, name: "*all", key: "*all", codename: "all", typeId: 7, label: "the *all set card (the catch-all's left side), typed Set (type 7) as a set card is — the read-rule join's sets.type_id = SetID filter needs it" },
+  { id: 26, name: "*read", key: "*read", codename: "read", typeId: 8, label: "the *read setting card (the catch-all's right side), typed Setting (type 8) as a setting card is" },
+  { id: 27, name: "Anyone", codename: "anyone", typeId: 6, label: "the party the catch-all grants (real.yml:20-26), typed Role; the reference below is what puts the rule in read_rules_hash" },
+  { id: 28, name: "Anonymous", key: "anonymou", codename: "anonymous", typeId: 3, label: "the anonymous viewer's own card; key given explicitly because DeckoName singularizes the name to 'anonymou'. Typed Cardtype, as Ruby's setup seed types it (mod/core data/fixtures/real/cards.yml cards_016) — the actor card is not content, so it does not join a `type: \"Note\"` search" },
+  // The catch-all itself: a Set card (typed Set as a set card is), so it does
+  // not answer a `type: "Note"` search — a rule card is not content.
+  { id: CATCH_ALL_RULE_ID, leftId: 25, rightId: 26, typeId: 7, label: "*all+*read, the catch-all read rule (a junction: NULL name/key, sides only, per the 2020 Lexicon migration), typed Set as the set card it is",
+    dbContent: "[[Anyone]]" },
+];
 
 // -- type scaffold -----------------------------------------------------------
 // "Search" must exist BY NAME because the render engine dispatches search
@@ -132,8 +188,8 @@ const searchCards = [
 // Guard: the key derivation above is only canonical for names WITHOUT a
 // plural stem (DeckoName singularizes trailing-s stems; see the guard
 // comment at canonicalKey). Refuse to generate a deck that trips it.
-for (const card of [...typeCards, ...contentCards, ...searchCards]) {
-  if (card.name !== undefined && /[^s]s$/.test(card.name.toLowerCase())) {
+for (const card of [...typeCards, ...contentCards, ...searchCards, ...substrateCards]) {
+  if (card.name !== undefined && card.key === undefined && /[^s]s$/.test(card.name.toLowerCase())) {
     console.error(`seed: card name "${card.name}" ends in a plural stem — DeckoName would store key "${canonicalKey(card.name).replace(/s$/, "")}"; rename the card or extend the generator's key derivation`);
     process.exit(1);
   }
@@ -151,22 +207,37 @@ const header = [
   "--",
   "-- Contents: 5 type/author scaffold cards, 6 plain Note cards, the depth-4",
   "-- compound chain Demo Guide+Section One+Detail+History (junction rows with",
-  "-- NULL name/key columns per the 2020 Lexicon convention), and the 'All",
-  "-- Notes' search card whose db_content is a CQL statement.",
+  "-- NULL name/key columns per the 2020 Lexicon convention), the 'Note Index'",
+  "-- search card whose db_content is a CQL statement, and the stock read",
+  "-- substrate every Ruby deck carries (cards_010): *all+*read -> [[Anyone]],",
+  "-- with Set/Setting/Role typed so the read-rule cache join admits it, every",
+  "-- row stamped with the rule (set_read_rule, permissions.rb:1-5), and one",
+  "-- card_references row naming Anyone (the rule's party).",
   "--",
-  "-- Deliberately EMPTY tables (read-only demo; history is write-path, and no",
-  "-- demo card carries rules or references bookkeeping): card_acts,",
-  "-- card_actions, card_changes, card_references, card_revisions,",
-  "-- card_virtuals, delayed_jobs, sessions, schema_migrations,",
+  "-- Deliberately EMPTY tables (read-only demo; history is write-path; the one",
+  "-- card_references row below is the catch-all's party, the only reference a",
+  "-- read-only deck needs): card_acts, card_actions, card_changes,",
+  "-- card_revisions, card_virtuals, delayed_jobs, sessions, schema_migrations,",
   "-- ar_internal_metadata, transform_migrations.",
   "-- ============================================================================",
   "",
 ].join("\n");
 
-const all = [...typeCards, ...contentCards, ...junctionCards, ...searchCards];
+const all = [...typeCards, ...contentCards, ...junctionCards, ...searchCards, ...substrateCards];
 const body = all.map(cardSql).join("\n\n") + "\n";
 
-const sql = header + body;
+// The rule's party. read_rule_cache.rb (card-1.110.0) builds
+// read_rules_hash from the reference graph, not the rule text: one row
+// naming the Anyone card (27) as the rule card's (30) referee is what puts
+// the catch-all in the anonymous viewer's readable rules (account_holder.rb:
+// #parties = [AnyoneID, AnonymousID] for the signed-out actor).
+const referenceSql = [
+  "-- *all+*read grants Anyone: the reference that makes the catch-all readable",
+  "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)",
+  `VALUES (${CATCH_ALL_RULE_ID}, '', 27, 'L', 1);`,
+].join("\n");
+
+const sql = header + body + "\n" + referenceSql + "\n";
 
 mkdirSync(dirname(TARGET), { recursive: true });
 writeFileSync(TARGET, sql, "utf8");

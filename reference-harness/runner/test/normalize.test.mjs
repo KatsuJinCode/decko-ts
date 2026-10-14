@@ -451,7 +451,9 @@ describe("synthetic-v1: the masks are the measured nondeterminism", () => {
     assert.equal(report.read_writes.graded, 8);
   });
 
-  it("a grade names the normalisation rules it ran under", () => {
+  it("a grade names exactly the canonical forms it reached: N1 to N3 on synthetic-v1", () => {
+    // Every rule the v1 grade reaches is named; N4 to N8 have no pattern in
+    // this fixture, so they are not named (see the applied-forms block below).
     assert.deepEqual(gradeRun({ fixture, actual: path.join(fixture, "expected") }).normalization, ["N1", "N2", "N3"]);
     assert.deepEqual(gradeRun({ fixture, actual: path.join(fixture, "expected"), classTokenOrder: false }).normalization, ["N1", "N2"]);
   });

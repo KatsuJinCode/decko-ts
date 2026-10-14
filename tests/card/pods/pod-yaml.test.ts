@@ -52,9 +52,10 @@ describe("pod YAML: Psych's bytes", () => {
     expect((last.get(sym("fields")) as YamlMap).get("plain key")).toBe("v");
   });
 
-  // The oracle deck's pod is a private-deck artifact (it carries the withheld
-  // stored-HTML row), excluded from a release package. Absent, the test says so
-  // and skips, the repository's [corpus-gated] convention, instead of failing.
+  // The oracle deck's pod is a private-deck artifact (it carries rows that a
+  // release package withholds), excluded from a release package. Absent, the
+  // test says so and skips, the repository's [corpus-gated] convention,
+  // instead of failing.
   itOrSkipLoud(
     !existsSync(path.join(FIXTURES, "oracle-deck-after-probe.ruby.yml")),
     "tests/card/pods/pod-yaml.test.ts",

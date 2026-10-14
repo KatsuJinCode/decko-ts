@@ -130,7 +130,15 @@ beforeAll(async () => {
   }
   // The page-shell rows — byte-identical to the handler parity suite's
   // fixture (same cites; see that suite for the CodenameNotFoundError
-  // boundary this row set closes).
+  // boundary this row set closes). The *all+*layout rule hangs off the seed
+  // deck's own `*all` (id 25, codename 'all', typed Set): the seed carries
+  // the stock read substrate, and a second or untyped `*all` would take the
+  // catch-all out of read_rules_hash, which denies every card.
+  const SEED_ALL_ID = 25;
+  const SEED_CATCH_ALL_READ_RULE_ID = 30;
+  // *layout is typed Setting, as every setting card is: the rule cache joins
+  // rules to Set-typed sets and Setting-typed settings (rule_cache.rb).
+  const SEED_SETTING_TYPE_ID = 8;
   const T = "2026-09-20 00:00:00.000";
   const insert = (values: string): string =>
     `INSERT OR IGNORE INTO cards (\n` +
@@ -139,18 +147,17 @@ beforeAll(async () => {
     `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
     `) VALUES (\n${values}\n)`;
   for (const statement of [
-    insert(`22746, '*all', '*all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22747, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22748, NULL, NULL, NULL, 22746, 22747, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Default Layout'`),
-    insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
-    insert(`22750, '*header', '*header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
-    insert(`22751, '*footer', '*footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
-    insert(`22752, '*title', '*title', 'title', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, 'Test Site'`),
-    insert(`22753, '*favicon', '*favicon', 'favicon', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '(my_bucket)/103/3649.jpg'`),
-    insert(`22754, '*ace', '*ace', 'ace', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
-    insert(`22755, '*tiny_mce', '*tiny_mce', 'tiny_mce', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, '{}'`),
-    insert(`22756, 'Html', 'html', 'html', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`22757, 'Basic', 'basic', 'basic', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
+    insert(`22747, '*layout', '*layout', 'layout', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, ${SEED_SETTING_TYPE_ID}, NULL`),
+    insert(`22748, NULL, NULL, NULL, ${SEED_ALL_ID}, 22747, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, 'Default Layout'`),
+    insert(`22749, 'Default Layout', 'default_layout', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 22756, '<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>'`),
+    insert(`22750, '*header', '*header', 'header', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>'`),
+    insert(`22751, '*footer', '*footer', 'footer', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>'`),
+    insert(`22752, '*title', '*title', 'title', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, 'Test Site'`),
+    insert(`22753, '*favicon', '*favicon', 'favicon', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '(my_bucket)/103/3649.jpg'`),
+    insert(`22754, '*ace', '*ace', 'ace', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '{}'`),
+    insert(`22755, '*tiny_mce', '*tiny_mce', 'tiny_mce', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, '{}'`),
+    insert(`22756, 'Html', 'html', 'html', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, NULL`),
+    insert(`22757, 'Basic', 'basic', 'basic', NULL, NULL, NULL, '${T}', '${T}', 1, 1, '*all', ${SEED_CATCH_ALL_READ_RULE_ID}, NULL, 0, 3, NULL`),
   ]) {
     await driver.query(statement, []);
   }

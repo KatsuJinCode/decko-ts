@@ -19,12 +19,12 @@
 //   7  revive child (ROUTE path)        17 create child
 //   8  revive parent (ROUTE path)       18 delete parent (trash cascade)
 //   9  no-op update                     19 revive child (MODEL path)
-//  10  create over existing name        20 update with unsafe html
-//  21  create without type or content   22 create plain text with html
+//  10  create over existing name        20 (withheld)
+//  21  create without type or content   22 (withheld)
 //  23  create revert subject            28 revert to previous (last act)
 //  24  update revert subject            29 delete revert subject
 //  25  rename revert subject            30 restore from history
-//  26  revert to this (undo rename)     31 revert to previous of a create
+//  26  revert to this (undo rename)     31 (withheld)
 //  27  revert to this (create content) 32 update a nested deck card
 //  33-42 renames: descendants moved, referers rewritten or kept
 //        (card[skip]=update_referer_content), compound renames creating
@@ -88,14 +88,13 @@ const FILES_DIR = path.join(PERSIST_DIR, "ts-files");
 // The TS deck as the op list left it, kept only for the whole-deck comparison.
 const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
 // The withheld step set (reference-harness/fixtures/write-battery-v1/
-// withheld/steps.json). Those steps are NOT part of the public run: they
-// reproduce a Ruby content-cleaner defect the public material is not cleared
-// to carry, and every step after them would record the content they store, so
-// the whole run would carry it. A release package excludes that file, so when
-// it is absent this run covers the remaining steps and announces the skipped
-// count loudly rather than skipping silently (the repository forbids a silent
-// skip). With it present the run is the full list again, compared against the
-// withheld recording in the same directory.
+// withheld/steps.json). Those steps are NOT part of the public run: the public
+// material is not cleared to carry what they store, and every step after them
+// would record it, so the whole run would carry it. A release package excludes
+// that file, so when it is absent this run covers the remaining steps and
+// announces the skipped count loudly rather than skipping silently (the
+// repository forbids a silent skip). With it present the run is the full list
+// again, compared against the withheld recording in the same directory.
 const WITHHELD_STEPS_FILE =
   process.env.PERSIST_WITHHELD_STEPS ??
   path.join(FIXTURE_DIR, "withheld", "steps.json");
@@ -110,13 +109,13 @@ const WITHHELD_SET_PRESENT = existsSync(WITHHELD_STEPS_FILE);
 // full-list run), the declared numbers when it is absent.
 const WITHHELD_STEPS: number[] = WITHHELD_SET_PRESENT ? [] : WITHHELD_STEP_NUMBERS;
 const PUBLIC_STEP_COUNT = 70 - WITHHELD_STEPS.length;
-// The markup the withheld steps feed the engine. It lives in the withheld set
-// (withheld/unsafe-html.txt) and is read only when that set is present: the
-// public op list never builds this content, so the public source carries no
-// copy of it. The Ruby half reads the same file.
-const UNSAFE_HTML_FILE = path.join(FIXTURE_DIR, "withheld", "unsafe-html.txt");
-const UNSAFE_HTML = existsSync(UNSAFE_HTML_FILE)
-  ? readFileSync(UNSAFE_HTML_FILE, "utf8").trim()
+// The content the withheld steps feed the engine. It lives in the withheld
+// set (withheld/step-content.txt) and is read only when that set is present:
+// the public op list never builds this content, so the public source carries
+// no copy of it. The Ruby half reads the same file.
+const WITHHELD_CONTENT_FILE = path.join(FIXTURE_DIR, "withheld", "step-content.txt");
+const WITHHELD_CONTENT = existsSync(WITHHELD_CONTENT_FILE)
+  ? readFileSync(WITHHELD_CONTENT_FILE, "utf8").trim()
   : "";
 // The Ruby oracle's per-step dumps, committed so the comparison runs without
 // a Ruby install: the synthetic fixture's own dumps beside that fixture by
@@ -140,11 +139,9 @@ const RUBY_STEPS =
 // row delta. Step 7, re-creating a junction while its left side is trashed:
 // Ruby inserts a second junction row (possible only because the oracle deck
 // lacks the upstream UNIQUE (left_id, right_id) index); the port revives
-// the trashed row. Steps 20, 22 and 31, stored HTML: a deliberate
-// difference, recorded in docs/SECURITY.md. Those four — 7, 20, 22 and 31
-// — are the declared list this run pins; deliberate-differences.json is the
-// authority and carries no other step whose delta the port still matches
-// exactly. (This comment once also described step 48, assigning a type
+// the trashed row. Steps 20, 22 and 31 are withheld; their declaration
+// travels with the withheld recording. The steps this run declares — 7 and 67
+// — are the ones deliberate-differences.json carries over the public list. (This comment once also described step 48, assigning a type
 // that does not exist, and steps 57 and 58, password storage. None of the
 // three is declared any more, so they are gone rather than left as a claim
 // nothing backs. Step 67 joined the list on 2026-10-13: it is a deliberate
@@ -152,10 +149,9 @@ const RUBY_STEPS =
 // KNOWN_DIVERGENCES below.) The comparator accepts a
 // declared step only if its delta is exactly
 // the declared one.
-// The declarations in force for this run: each deck's own file (the steps
-// 7/20/22/31 differences are engine behaviour, but the 67 declaration
-// also pins the raw outside rows Ruby's half-applied revert leaves, and
-// those ids are per deck).
+// The declarations in force for this run: each deck's own file (the 67
+// declaration also pins the raw outside rows Ruby's half-applied revert
+// leaves, and those ids are per deck).
 const DECLARATIONS =
   USING_SYNTHETIC_DECK && WITHHELD_SET_PRESENT
     ? path.join(WITHHELD_RECORDING, "deliberate-differences.json")
@@ -172,8 +168,7 @@ if (USING_SYNTHETIC_DECK && process.env.DECKO_PASSWORD_HASH === undefined) {
 const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
 const PASSWORD_STEPS = [57, 58];
 // The declared differences this run must see: the ones the withheld set does
-// not claim. Step 7 is the junction revival; steps 20, 22 and 31 are the
-// stored-HTML arms and are withheld with the rest of that defect.
+// not claim.
 const ALL_DELIBERATE_STEPS = [7, 20, 22, 31, 67];
 const DELIBERATE_STEPS = ALL_DELIBERATE_STEPS.filter(
   (s) => !WITHHELD_STEPS.includes(s),
@@ -654,17 +649,17 @@ describe("persistence write probe (TS half)", () => {
         const childId = await idOf(`${PREFIX} Parent+${PREFIX} Child`);
         return engine.updateCard({ cardId: childId, trash: false, lookInTrash: true } as UpdateCardInput);
       });
-      await op(20, "update with unsafe html", "update", () =>
-        engine.updateCard({ cardId: revivedId, content: UNSAFE_HTML } as UpdateCardInput),
+      await op(20, "withheld", "update", () =>
+        engine.updateCard({ cardId: revivedId, content: WITHHELD_CONTENT } as UpdateCardInput),
       );
       await op(21, "create without type or content", "create", () =>
         engine.createCard({ name: `${PREFIX} Bare` } as CreateCardInput),
       );
-      await op(22, "create plain text with html", "create", () =>
+      await op(22, "withheld", "create", () =>
         engine.createCard({
           name: `${PREFIX} Plain`,
           typeName: "PlainText",
-          content: UNSAFE_HTML,
+          content: WITHHELD_CONTENT,
         } as CreateCardInput),
       );
       // 23-31: the history pane's revert and restore requests, through the
@@ -718,7 +713,7 @@ describe("persistence write probe (TS half)", () => {
       await op(30, "restore from history (revert a trashed card)", "revert", async () =>
         engine.revertActions({ cardId: await idOf(rev), actionIds: [(await actionIdsOf(rev)).at(-2)!] }),
       );
-      await op(31, "revert to previous of a create (trashes it)", "revert", async () =>
+      await op(31, "withheld", "revert", async () =>
         engine.revertActions({
           cardId: await idOf(`${PREFIX} Plain`),
           revertToPrevious: true,

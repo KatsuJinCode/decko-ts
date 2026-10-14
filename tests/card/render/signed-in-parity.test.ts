@@ -266,7 +266,13 @@ describe("a modal-wrapped view renders outside the layout (process_layout.rb ren
     storage = await createRenderTestStorage();
     const s = storage;
     await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
-    await seedCard(s, { id: 900, name: "*all", typeId: 2 });
+    // This deck's `*all` takes the all codename (displacing the stock one,
+    // which repoints the stock `*all+*read -> [[Anyone]]` rule onto it), and
+    // is Set-typed with the stock Set TYPE card — a set card is typed as a
+    // Set, and that type is what the read-rule cache join filters on
+    // (`sets.type_id = SetID`). Without it the anonymous viewer reads
+    // nothing on this deck and the board's denial is no longer the only one.
+    await seedCard(s, { id: 900, name: "*all", codename: "all", typeId: 2 });
     await seedCard(s, { id: 901, name: "*layout", typeId: 2 });
     await seedCard(s, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
     await seedCard(s, {

@@ -77,3 +77,9 @@ scripts/deploy/one-click-deck/out/
 /tmp-lane-cssparity/
 /.zcode/
 vitest.gate.generated.ts
+
+# SQLite journal sidecars: a handle on a WAL database leaves these beside the file
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite-wal
+*.sqlite-shm

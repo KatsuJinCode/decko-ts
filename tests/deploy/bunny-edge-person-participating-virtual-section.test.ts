@@ -72,11 +72,20 @@ interface SeedRow {
   dbContent?: string;
 }
 
+// The deck's catch-all read rule (`*all+*read` -> Anyone). Every row is
+// stamped with it and the anonymous visitor reads through it, exactly as a
+// real deck's set_read_rule store event stamps each saved row
+// (card-mod-permissions set/all/permissions.rb:1-5). A deck with no
+// catch-all read rule denies every card, as Ruby does
+// (permissions.rb:139-146), which is not this suite's subject.
+const CATCH_ALL_RULE_ID = 22760;
+const SET_TYPE_ID = 22761;
+const READ_SETTING_ID = 22762;
+
 /** One cards INSERT -- the same columns and defaults the render-test
- *  storage's seedCard writes (created/updated stamp, creator/updater 1,
- *  no read-rule state: anonymous reads by the default rule). Junction rows
- *  carry NULL name/key and ride left_id/right_id (the 2020 Lexicon
- *  convention). */
+ *  storage's seedCard writes (created/updated stamp, creator/updater 1),
+ *  stamped with the catch-all read rule. Junction rows carry NULL
+ *  name/key and ride left_id/right_id (the 2020 Lexicon convention). */
 async function seedCards(driver: LocalSqliteDriver, rows: SeedRow[]): Promise<void> {
   for (const row of rows) {
     const hasName = typeof row.name === "string" && row.name.length > 0;
@@ -100,8 +109,8 @@ async function seedCards(driver: LocalSqliteDriver, rows: SeedRow[]): Promise<vo
         "2026-09-19 00:00:00.000",
         1,
         1,
-        null,
-        null,
+        "*all",
+        CATCH_ALL_RULE_ID,
         null,
         0,
         row.typeId,
@@ -125,13 +134,22 @@ function personPageDeckRows(): SeedRow[] {
     { id: 401, name: "*tiny_mce", codename: "tiny_mce", typeId: 52, dbContent: "{}" },
     { id: 50, name: "Html", codename: "html", typeId: 5 },
     { id: 2, name: "Basic", codename: "basic", typeId: 5 },
-    { id: 600, name: "*all", codename: "all", typeId: 52 },
+    // Set is this deck's SetID (the 'set' codename) and *all is typed Set:
+    // the read-rule cache join filters rule rows' left cards on
+    // sets.type_id = SetID, so an untyped *all takes the catch-all out of
+    // read_rules_hash (read-rules.ts readPermissionStatements).
+    { id: SET_TYPE_ID, name: "Set", codename: "set", typeId: 52 },
+    { id: 600, name: "*all", codename: "all", typeId: SET_TYPE_ID },
     { id: 601, name: "*layout", codename: "layout", typeId: 52 },
     // The Default Layout nests {{:header|core}} / {{:footer|content}} --
     // codename marks, so the *header / *footer codename cards must exist.
     { id: 9001, name: "*header", codename: "header", typeId: 52, dbContent: "" },
     { id: 9002, name: "*footer", codename: "footer", typeId: 52, dbContent: "" },
     { id: 22746, name: "*all+*layout", leftId: 600, rightId: 601, typeId: 52, dbContent: "Default Layout" },
+    // the stock read substrate: the *read setting the catch-all's right side
+    // names, and the catch-all rule itself
+    { id: READ_SETTING_ID, name: "*read", codename: "read", typeId: 52 },
+    { id: CATCH_ALL_RULE_ID, leftId: 600, rightId: READ_SETTING_ID, typeId: SET_TYPE_ID, dbContent: "[[Anyone]]" },
     { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` },
 
     // -- cardtypes the shape names
@@ -203,6 +221,14 @@ describe("bunny edge boot renders the person page's virtual +Item(s) Listing sec
         await driver.query(statement, []);
       }
       await seedCards(driver, personPageDeckRows());
+      // the catch-all's party: the card_references row naming the Anyone
+      // party card (8) is what puts the rule in read_rules_hash (Ruby reads
+      // the reference graph, not the rule text)
+      await driver.query(
+        `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+         VALUES (?, ?, ?, ?, NULL)`,
+        [CATCH_ALL_RULE_ID, "", 8, "L"],
+      );
       // The reference graph the CQL plus-join reads: the project's
       // Participant(s) junction (referer 690) refers to the person (393) --
       // ref_type "L", referee_key the composed key.

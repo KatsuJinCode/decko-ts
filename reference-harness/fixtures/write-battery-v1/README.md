@@ -28,6 +28,7 @@ batteries — only the repo's own build artifacts (dist, the LibSass program).
 | `expected/side-effects-ruby.json` | the Ruby oracle's recorded trace of the public scenario steps |
 | `withheld/steps.json` | the probe steps withheld until disclosure, and why |
 | `withheld/persist-steps/` | the Ruby oracle's recording of the FULL 70-step op list, made with the withheld set present |
+| `withheld/side-effects-ruby-steps.json` | the Ruby oracle's recording of the scenario-battery steps withheld until disclosure, cut from the full-list trace |
 | `MANIFEST.json` | the sha256 of every public file above and how each recording was made |
 
 ## The withheld step set

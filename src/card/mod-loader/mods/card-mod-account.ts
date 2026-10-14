@@ -512,7 +512,7 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
  *  deletion list, the close button) never renders in stock Ruby, so the
  *  port raises from the same point; the inspection address is the engine's
  *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
- *  N5 blanks the hex on both sides). The deletion WALK itself stays ported
+ *  N7 blanks the hex on both sides). The deletion WALK itself stays ported
  *  in accountFollowBundle (the follow surface reads it); close_account's
  *  own internal call (:77) is in-object and never hits the visibility
  *  boundary. */
@@ -1275,7 +1275,6 @@ const setModules: ModSetModuleFile[] = [
     // over the verbatim item walks (the pill composition the oracle pins;
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
-    // card-action-engine.ts assertMayRenameAccountHolder.
     events: [
       engineOwnedEvent({
         event: "validate_account_holder_name_change",

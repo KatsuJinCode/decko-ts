@@ -16,7 +16,7 @@ Two further compatibility facts a migration must plan around:
   the same deck (a shared-engine migration), the port must run with
   `DECKO_PASSWORD_HASH=legacy-sha1` so every digest stays in Ruby's form;
   accounts whose passwords the port already upgraded need a password reset to
-  sign in through Ruby. Full detail: `docs/SECURITY.md`, approved divergence 2.
+  sign in through Ruby. Full detail: `docs/SECURITY.md`, approved divergence 1.
 - **D1 transaction semantics differ** from Ruby's and from plain SQLite: a
   save on D1 is atomic through a compensating journal (not `BEGIN`/`COMMIT`),
   other connections can read a D1 save's rows before it commits, and ids

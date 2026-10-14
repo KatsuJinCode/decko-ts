@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
-import { normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
+import { RULE_ORDER, normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
 
 export const RESULTS_FORMAT = 2;
 export const PROTOCOL = 1;
@@ -37,7 +37,10 @@ export const EXIT = { pass: 0, fail: 1, invalid: 2, partial: 2 };
  */
 export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {} }) {
   const declared = validateDeclaredOtherTables(declaredOtherTables);
-  const normalizeOptions = { classTokenOrder };
+  // The canonical forms this grade actually reached (see normalizeHtml): the
+  // report's `normalization` field names exactly these, in rule order.
+  const applied = new Set();
+  const normalizeOptions = { classTokenOrder, applied };
   const fixtureDir = path.resolve(fixture);
   const actualDir = path.resolve(actual);
   const expectedDir = path.resolve(expected ?? path.join(fixtureDir, "expected"));
@@ -118,7 +121,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
       // (reproducing a recorded upstream failure is a success, not a
       // divergence: a faithful port breaks where the original breaks).
       // Identity is still the bar: the engine's
-      // failure must equal the oracle's under N7 (the class's host naming
+      // failure must equal the oracle's under N8 (the class's host naming
       // canonicalized) with the message byte-exact, and a match is counted
       // as a reproduced upstream failure, its own success category. Any
       // other answer - a different failure, or a render where the oracle
@@ -145,7 +148,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
         });
         return;
       }
-      if (sameFailure(e.error, a.error)) {
+      if (sameFailure(e.error, a.error, applied)) {
         t.reproduced_upstream_failures++;
         reproduced[kind].push({ id, group, oracle: e.error, engine: a.error });
         return;
@@ -270,6 +273,9 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   const summary = Object.fromEntries(
     KINDS.map((k) => [k, { ...tally[k], rate: tally[k].graded ? +((tally[k].pass / tally[k].graded) * 100).toFixed(2) : null }]),
   );
+  // N2 (key order) is applied to every value a comparison reads, so it is
+  // named whenever the grade compared anything at all.
+  if (KINDS.some((k) => tally[k].graded > 0) || readWrites.graded > 0 || otherTables.graded > 0) applied.add("N2");
   const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0 && otherTables.fail === 0;
   const verdict = problems.length > 0 ? "invalid" : partial.length > 0 ? (allowPartial ? "partial" : "invalid") : allPass ? "pass" : "fail";
   if (!allowPartial) problems.push(...partial.map((p) => `incomplete: ${p}`));
@@ -295,7 +301,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     problems,
     partial: allowPartial ? partial : [],
     warnings,
-    normalization: ["N1", "N2", ...(classTokenOrder ? ["N3"] : [])],
+    normalization: RULE_ORDER.filter((rule) => applied.has(rule)),
     summary,
     read_writes: readWrites,
     other_tables: otherTables,

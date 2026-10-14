@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// Builds the seconds corpus's coverage map: the corpus page list
-// (fixtures/synthetic-v2/ops/render.jsonl) folded against the registration
-// census, so every corpus operation's code paths are answerable from one
-// committed artifact. The generation-time assertion in generate-ops.mjs
-// guarantees every census view is exercised; this map is the reviewable
-// record of WHICH operation exercises it, under which actors, served by
-// which mods' registrations.
+// Builds the synthetic-v2 coverage map: the render operation list
+// (reference-harness/fixtures/synthetic-v2/ops/render.jsonl) folded against the registration
+// census, so every operation's code paths are answerable from one artifact.
+// The generation-time assertion in generate-ops.mjs guarantees every census
+// view is exercised; this map is the reviewable record of WHICH operation
+// exercises it, under which actors, served by which mods' registrations.
 //
-//   node reference-harness/corpus/build-coverage-map.mjs > benchmarks/seconds-corpus/coverage-map.json
+// The map is generated locally and is not part of the shipped tree. Write it
+// under tmp/ (gitignored):
+//
+//   node reference-harness/corpus/build-coverage-map.mjs > tmp/coverage-map.json
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -74,7 +76,7 @@ const pageGrid = {
 };
 
 const map = {
-  format: "seconds-corpus-coverage-map/1",
+  format: "synthetic-v2-coverage-map/1",
   fixture: "synthetic-v2",
   generatedBy: "reference-harness/corpus/build-coverage-map.mjs",
   census: {
@@ -92,7 +94,7 @@ const map = {
   unreachableViews: unreachable,
   notes: [
     "A corpus operation's coverage is its view row here (view ops) or the page-grid shape (page/core ops: the full page frame, the card's type editor and permission verdicts for the actor).",
-    "Op ids: page:<actor>:<card>, core:<actor>:<card>, view:<actor>:<card>:<view> - see fixtures/synthetic-v2/ops/render.jsonl.",
+    "Op ids: page:<actor>:<card>, core:<actor>:<card>, view:<actor>:<card>:<view> - see reference-harness/fixtures/synthetic-v2/ops/render.jsonl.",
     "unreachableViews holds the census rows no stock-deck card can instantiate, each with its reason; the generate-ops assertion keeps this list honest.",
   ],
 };

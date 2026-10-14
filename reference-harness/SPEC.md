@@ -329,9 +329,9 @@ rather than renumbered:
 These are the rules a grade report names in its `normalization` field, and
 they are the ones the committed expected outputs were captured under. A grade
 over `synthetic-v1` applies **N1, N2 and N3** and reports exactly those three;
-N4 through N8 exist because the seconds-corpus fixture carries capture-host
-values this fixture does not, and they are applied when a comparison reaches
-them. Nothing outside that list is normalised.
+N4 through N8 exist because `synthetic-v2` carries values this fixture does not
+(collapse ids, relative times, capture-host content in debug pages, and error
+class names), and they are applied when a comparison reaches them. Nothing outside that list is normalised.
 
 Two kinds of rule:
 
@@ -448,43 +448,20 @@ two complete stock-oracle runs differ in 1,351 of 4,156 items, all in slot
 ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
 the expected outputs' manifest (`provenance.nondeterminism`), and a test
 checks that it covers exactly the masks `normalize.mjs` applies. A new mask
-needs the same evidence on the fixture that needs it. For `synthetic-v2`'s
-N3: two stock-oracle processes run over every op of that fixture that
-carries the token (30 of 2,557, 84 tokens; the capture commands are in
-`benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
-in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
-(0 unexplained). N5 and N7 are canonical forms over values that do NOT vary
-between two runs of the oracle on one machine — the frozen clock and the
-capture host's filesystem are constant within a capture — so their evidence
-shape is different: the committed capture bytes themselves carry the
-volatility (the oracle's frozen-clock spans, the capture host's absolute
-paths in the debug pages), and the measurement is over oracle-vs-engine
-pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
-relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
-whose only divergence was the span grade identical after N5 and no
-identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
-addresses) and at its original commit N7 closed no op — the six debug rows
-were structural then (the engine did not raise where the oracle raises);
-the raise posture closed that layer and N6 above now carries the frame
-layer. Full procedure,
-commands and counts in
-`benchmarks/seconds-corpus/capture-clock-and-debug-span-canonicalization-evidence.md`.
-N6's evidence shape is N4/N5's (the committed capture bytes carry the
-host-VM identity; the measurement is over oracle-vs-engine pairs): at the
-raise posture the 8 oracle debug pages carry 51-63 Ruby frames against the
-engine's 8-10 V8 frames (Node's `Error.stackTraceLimit` caps at 10), so the
-frame count — the invariant N6 checks — is the six raise-posture rows'
-recorded residual
-(`benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md`).
-N7's evidence is the failure records themselves (the oracle's capture bytes
-carry the raise; the measurement is over oracle-vs-engine pairs): 24 of the
-oracle's 2,581 render operations record the upstream raise
-`Card::Error::CodenameNotFound: unknown codename: test_context` (six
-email/codename-bearing cards x four actors) — previously tallied as oracle
-errors and left ungraded — and the engine raises `CodenameNotFoundError`
-with the byte-same message on all 24, so after N7 all 24 grade as reproduced
-upstream failures
-(`benchmarks/seconds-corpus/upstream-failure-classification-evidence.md`).
+needs the same evidence on the fixture that needs it.
+
+The evidence for N4 through N8 on `synthetic-v2` is in
+[NORMALIZATION-EVIDENCE.md](NORMALIZATION-EVIDENCE.md): for each rule, the
+values it canonicalizes, the measured facts behind it, and the commands that
+reproduce them from the shipped files. N4 (collapse ids) is evidenced by two
+complete stock-oracle runs over the operations that carry the token. N5
+through N8 are canonical forms over values that do not vary between two runs
+of one oracle, so their evidence is oracle-versus-engine pairs on the fixture.
+Two findings there bear on this section. The composed adapter freezes the
+capture clock, so on the shipped capture N5 changes no grade outcome. The
+debug-page operations that N6 and N7 act on are outside the public package,
+so their figures are recorded there and cannot be re-measured from shipped
+files.
 
 N3 is not a mask and needs no nondeterminism evidence — it erases nothing,
 and it canonicalises rather than hides. Its evidence is the environment
@@ -656,8 +633,8 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
   re-pin above, disclosed under `provenance.withheld` in the expected
   manifest. With the set present the runner runs its operations after the
   public ones and the grader grades them against its recorded answers;
-  absent, the runner, the grader, `manifest.mjs check` and the seconds-corpus
-  gate print `[withheld: <label>] NOT RUN: <n> ops (<path>)`, and a run made
+  absent, the runner, the grader and `manifest.mjs check` print
+  `[withheld: <label>] NOT RUN: <n> ops (<path>)`, and a run made
   with the set is refused by a grader without it, and the reverse. Re-pin with
   the set present (`manifest.mjs fixture` reads it from disk; without it the
   previous declaration is kept, unverified). `synthetic-v2` withholds eight

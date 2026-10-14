@@ -519,8 +519,8 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     const html = await s.engine.render("Item One", "goto_autocomplete_item");
     // autocomplete_item.haml: Haml merges the hash class BEFORE the literal
     // one (`class: "autocomplete-item-#{type}"` on .autocomplete-item) and
-    // emits the lines flush-left - the seconds-corpus oracle bytes pin both
-    // (view op Topic 001:goto_autocomplete_item, 2026-10-10)
+    // emits the lines flush-left - the committed synthetic-v2 oracle capture
+    // pins both (view op Topic 001:goto_autocomplete_item)
     expect(html).toContain("<div class='autocomplete-item-goto autocomplete-item'>");
     expect(html).toContain("<div class='autocomplete-icon'>");
     // no +image card -> icon_tag(:forward) -> basket forward: :arrow_forward

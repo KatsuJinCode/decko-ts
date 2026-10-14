@@ -42,7 +42,7 @@
  * `Card::Error::CodenameNotFound: unknown codename: test_context`; the engine
  * raises `CodenameNotFoundError` with the byte-same message on all 24, and
  * after N8 the failure records compare equal
- * (benchmarks/seconds-corpus/upstream-failure-classification-evidence.md).
+ * (reference-harness/NORMALIZATION-EVIDENCE.md#reproduced-upstream-failures).
  */
 export function canonicalErrorClass(name) {
   if (typeof name !== "string" || name === "") return name;
@@ -51,16 +51,22 @@ export function canonicalErrorClass(name) {
   return proper.endsWith(stem) && proper.length > stem.length ? proper.slice(0, -stem.length) : proper;
 }
 
+/** Every canonical form, in rule order. */
+export const RULE_ORDER = ["N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8"];
+
 /** N8 on an error record: the class's host naming canonicalizes; the message
- *  and every other field compare exact. */
-export function normalizeErrorRecord(error) {
+ *  and every other field compare exact. `applied`, when given, collects "N8"
+ *  when the class name actually changed. */
+export function normalizeErrorRecord(error, applied) {
   if (error === null || typeof error !== "object") return error;
-  return { ...error, class: canonicalErrorClass(error.class) };
+  const cls = canonicalErrorClass(error.class);
+  if (applied && cls !== error.class) applied.add("N8");
+  return { ...error, class: cls };
 }
 
 /** Equality for two recorded failures under N8 and N2. */
-export function sameFailure(a, b) {
-  return sameJson(normalizeErrorRecord(a), normalizeErrorRecord(b));
+export function sameFailure(a, b, applied) {
+  return sameJson(normalizeErrorRecord(a, applied), normalizeErrorRecord(b, applied));
 }
 
 /**
@@ -101,9 +107,9 @@ const isNameChar = (c) => /[A-Za-z0-9:_-]/.test(c);
  * `collapse_id: "card-#{card.name.safe_key}-#{args[:context]}-collapse-id"`).
  * Ruby hashes strings with a per-process seed, so the digits are process
  * noise, not bytes: two stock-oracle runs of synthetic-v2 over every op that
- * carries the token (30 of 2,557, 84 tokens) differ in 84 of 84 tokens and,
- * after N1 and this rule, in nothing else (benchmarks/seconds-corpus/
- * collapse-id-nondeterminism-evidence.md). The literal contexts ("files",
+ * carries the token (30 of the 2,573 public render operations, 84 tokens) differ
+ * in 84 of 84 tokens and, after N1 and this rule, in nothing else
+ * (reference-harness/NORMALIZATION-EVIDENCE.md#n4-collapse-ids). The literal contexts ("files",
  * "depends_on", view names) hold no digits and never match. Canonical form,
  * not erasure: each distinct digit run becomes N4#k in first-appearance
  * order per html string, so the accordion button's data-bs-target and its
@@ -124,11 +130,11 @@ export const COLLAPSE_ID = /(card-[a-z0-9_]+-)(-?\d+)(-collapse-id)/g;
  * presence and position still count while its clock-drawn value does not.
  * The surrounding sentence must still match byte for byte ("added ... ago
  * by", the whole attribute or line around it), so a real content change
- * beside a span still fails. Measured on synthetic-v2: 22 of 2,557 oracle
- * ops carry a span (179 "less than a minute", one "2 days"); the four ops
- * whose only divergence was the span grade identical after N5, and no
- * identical op breaks (benchmarks/seconds-corpus/
- * capture-clock-and-debug-span-canonicalization-evidence.md).
+ * beside a span still fails. Measured on synthetic-v2: 22 of the 2,573 public
+ * render operations carry a span (179 "less than a minute", one "2 days"). On
+ * the shipped capture, with the composed TypeScript adapter (which freezes the
+ * capture clock), both sides render the same spans, so this rule changes no
+ * outcome there (reference-harness/NORMALIZATION-EVIDENCE.md#n5-relative-time-spans).
  */
 export const RELATIVE_TIME =
   /\b(less than a minute|half a minute|less than \d+ seconds|about (?:[1-9]|1[0-9]|2[0-4]) hours?|about (?:[1-9]|1[0-2]) months?|about [1-9][0-9]* years?|over [1-9][0-9]* years?|almost [1-9][0-9]* years?|(?:[1-9]|1[0-9]|2[0-9]|3[0-9]|4[0-4]) minutes?|(?:[1-9]|1[0-9]|2[0-4]) hours?|(?:[1-9]|[12][0-9]|30) days?|(?:[1-9]|1[0-2]) months?)\b/g;
@@ -144,11 +150,12 @@ export const RELATIVE_TIME =
  * move - differs in them while saying the same thing. Inside a title that
  * begins with the debug page marker they become placeholders; the error
  * message, the frame COUNT (N6) and every byte outside the title still
- * count. Measured on synthetic-v2: 8 oracle ops carry the page (554 path
- * tokens, 2 heap addresses). The engine emits the same debug page where it
- * raises as stock Ruby raises (error.rb's backtrace_link posture), so this
- * rule stops the comparison from demanding the capture machine's
- * filesystem on either side (same evidence receipt as N5).
+ * count. The eight oracle operations that carry the debug page are not in the
+ * public package, so this rule's effect on them cannot be re-measured from
+ * shipped files (reference-harness/NORMALIZATION-EVIDENCE.md#n7-capture-host-content-in-debug-pages).
+ * The engine emits the same debug page where it raises, as stock Ruby does
+ * (error.rb's backtrace_link posture), so this rule stops the comparison from
+ * demanding the capture machine's filesystem on either side.
  */
 export const ERROR_SPAN_TITLE =
   /(&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;)/;
@@ -173,11 +180,11 @@ const HEAP_ADDRESS = /0x[0-9a-fA-F]{6,16}/g;
  * `<br>`-separated structure stays compared, so a side emitting a different
  * number of its own frames still fails, as do the heading, the error
  * message and every byte outside the div (they keep their existing rules).
- * Measured on synthetic-v2 at the raise posture: the 8 oracle debug pages
- * carry 51-63 Ruby frames; the engine's raise sites produce 8-10 V8 frames
- * (Node's Error.stackTraceLimit caps at 10), so the six raise-posture rows
- * stay pinned with the count as their recorded residual
- * (benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md).
+ * The eight oracle debug pages are not in the public package. Their recorded
+ * frame counts (51-63 Ruby frames against 8-10 V8 frames, the V8 count capped
+ * by Node's Error.stackTraceLimit of 10) are kept in
+ * reference-harness/NORMALIZATION-EVIDENCE.md#n6-backtrace-frame-lines and
+ * cannot be re-measured from shipped files.
  */
 export const FRAME_MARKER = "N6#frame";
 // The debug page's backtrace div: the region between the message paragraph's
@@ -191,11 +198,18 @@ const FRAME_SEPARATOR = /&lt;br&gt;\n/g;
  *  tokens become placeholders, then each backtrace frame line inside the
  *  div becomes N6#frame - separators and everything outside the div stay
  *  exact, so the frame count and the div's anchors still compare. */
-function canonicalizeDebugTitle(body) {
+function canonicalizeDebugTitle(body, note) {
   return body
-    .replace(CAPTURE_HOST_PATH, "N7#path")
-    .replace(HEAP_ADDRESS, "N7#addr")
+    .replace(CAPTURE_HOST_PATH, () => {
+      note("N7");
+      return "N7#path";
+    })
+    .replace(HEAP_ADDRESS, () => {
+      note("N7");
+      return "N7#addr";
+    })
     .replace(BACKTRACE_DIV, (_, pre, frames, post) => {
+      note("N6");
       // an empty div holds zero frames; `"".split(sep)` would yield [""] and
       // wrongly normalize to one
       const lines = frames === "" ? [] : frames.split(FRAME_SEPARATOR);
@@ -216,12 +230,21 @@ function canonicalizeDebugTitle(body) {
  * are content-shaped, never markup-shaped. One `seen` map per html string
  * keeps N4's placeholders consistent across the button and the panel: an
  * engine that emitted mismatched ids still fails.
+ *
+ * `applied`, when given, is a Set that collects the name of each canonical
+ * form whose pattern matched somewhere in this html ("N1", "N3" through "N7").
+ * A form whose pattern never occurs is never named, so a grade reports only
+ * the forms it reached.
  */
-export function normalizeHtml(html, { classTokenOrder = true } = {}) {
+export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
   if (typeof html !== "string") return html;
+  const note = (rule) => {
+    if (applied) applied.add(rule);
+  };
   const seen = new Map();
   const collapse = (text) =>
     text.replace(COLLAPSE_ID, (_, pre, digits, post) => {
+      note("N4");
       let k = seen.get(digits);
       if (k === undefined) {
         k = `N4#${seen.size + 1}`;
@@ -229,7 +252,11 @@ export function normalizeHtml(html, { classTokenOrder = true } = {}) {
       }
       return `${pre}${k}${post}`;
     });
-  const elapse = (text) => text.replace(RELATIVE_TIME, "N5#elapsed");
+  const elapse = (text) =>
+    text.replace(RELATIVE_TIME, () => {
+      note("N5");
+      return "N5#elapsed";
+    });
   let out = "";
   let i = 0;
   const lower = html.toLowerCase();
@@ -284,7 +311,7 @@ export function normalizeHtml(html, { classTokenOrder = true } = {}) {
     }
     const tagEnd = j >= html.length ? html.length : j + 1;
     const tagText = html.slice(i, tagEnd);
-    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse);
+    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note);
     i = tagEnd;
     // A raw text element's body is text, not markup: copied verbatim,
     // whatever it contains. xmp closes like the others, at its end tag;
@@ -314,7 +341,7 @@ function canonicalizeText(text, collapse, elapse) {
 /** Applies the attribute-level rules inside one tag's text. Walks the
  *  attribute region the way the HTML tokenizer does — names, `=`, quoted or
  *  unquoted values — and copies every byte no rule rewrites. */
-function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse) {
+function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note) {
   let out = "";
   let k = 1; // past `<`
   while (k < tagText.length && !isWhitespace(tagText[k]) && tagText[k] !== ">" && tagText[k] !== "/") k++;
@@ -354,13 +381,18 @@ function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse) {
       let next = value;
       if (name === "data-slot-id" && /^[0-9a-f]{20}$/.test(value)) {
         next = "SLOT"; // N1: the exact mask shape, and nothing looser
+        note("N1");
       } else {
-        if (isClass && classTokenOrder) next = sortClassTokens(value); // N3
+        if (isClass && classTokenOrder) {
+          // N3 reaches a class attribute with two or more tokens
+          if (value.split(/[ \t\n\r\f]+/).filter((t) => t !== "").length >= 2) note("N3");
+          next = sortClassTokens(value);
+        }
         next = collapse(next); // N4, shape only, seen-map shared with the text regions
         next = elapse(next); // N5, shape only
       }
       if (isTitle && ERROR_SPAN_TITLE.test(next)) {
-        next = canonicalizeDebugTitle(next); // N7 then N6
+        next = canonicalizeDebugTitle(next, note); // N7 then N6
       }
       out += q + next + (closeQ === -1 ? "" : q);
       k = closeQ === -1 ? tagText.length : closeQ + 1;

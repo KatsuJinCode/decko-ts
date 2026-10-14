@@ -106,9 +106,15 @@ beforeAll(async () => {
   }
   // The read-denial fixture is the same recipe
   // tests/deploy/deploy-worker-miniflare.test.ts pins for its denied-card
-  // JSON check: the codename carriers the permission statements'
-  // subselects need, a probe card, its *self set, and a *read rule card
-  // granting NOBODY (no card_references rows).
+  // JSON check: a probe card, its *self set, and a *read rule card
+  // granting NOBODY (no card_references rows). The *read/*all/set codename
+  // carriers the permission statements' subselects need are NOT seeded
+  // here: the deck (deploy/seed/seed.sql) carries Ruby's stock read
+  // substrate — *read id 26 (codename 'read'), *all id 25 (codename 'all',
+  // typed Set id 7), Set id 7, and the catch-all rule — so the probe's
+  // *self set is typed Set id 7 and the probe's rule card joins them by id.
+  // The earlier recipe seeded its own carriers under the same keys and
+  // codenames, which the seed now already holds (cards.key is UNIQUE).
   const T = "2026-09-20 00:00:00.000";
   const insert = (values: string): string =>
     `INSERT INTO cards (\n` +
@@ -117,12 +123,9 @@ beforeAll(async () => {
     `  read_rule_class, read_rule_id, references_expired, trash, type_id, db_content\n` +
     `) VALUES (\n${values}\n)`;
   for (const statement of [
-    insert(`9001, '*read', 'read', 'read', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`9002, '*all', 'all', 'all', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
-    insert(`9003, 'Set', 'set', 'set', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
     insert(`9004, '*self', 'self', 'self', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL`),
     insert(`9010, 'Probe Restricted', 'probe_restricted', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, 'Restricted secret body'`),
-    insert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 9003, NULL`),
+    insert(`9011, NULL, NULL, NULL, 9010, 9004, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 7, NULL`),
     insert(`9012, NULL, NULL, NULL, 9011, 9001, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL`),
     `UPDATE cards SET read_rule_id = 9012, read_rule_class = 'R' WHERE id = 9010`,
   ]) {
