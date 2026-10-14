@@ -36,7 +36,7 @@ import { existsSync, statSync, mkdirSync, rmSync, readFileSync, writeFileSync } 
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { LocalSqliteToolDriver } from "./import.mjs";
+import { LocalSqliteToolDriver, ENGINE_OWNED_TABLES } from "./import.mjs";
 import { importFromSqlite } from "./generalized-import.mjs";
 import { dumpRows } from "./parse-dump.mjs";
 import { deckSeedRows } from "./deck-seed-parser.mjs";
@@ -462,10 +462,12 @@ console.log(
 console.log("\nchunk: staging DB -> chunked D1-ready SQL");
 
 async function* readStagingRows(targetTableNames) {
-  // Stream every row of every target table, in name-sorted order.
+  // Stream every row of every target table, in name-sorted order. Engine-
+  // owned tables (the freshness stamp) come from the target schema, not
+  // from the chunks.
   const targetTableSet = new Set(targetTableNames);
   const sortedTables = Object.keys(tableColumns)
-    .filter((t) => targetTableSet.has(t))
+    .filter((t) => targetTableSet.has(t) && !ENGINE_OWNED_TABLES.includes(t))
     .sort();
   for (const table of sortedTables) {
   const cols = tableColumns[table];

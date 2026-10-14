@@ -164,11 +164,12 @@ try {
     [path.join(HERE, "apply-chunks-to-d1-local.mjs"), path.join(outDir, "chunks"), "--d1-path", path.join(d1Persist, d1Files[0])],
     "apply-chunks-to-d1-local",
   );
-  // The freshness-stamp triggers go in after the load (parseTargetSchema).
+  // The freshness-stamp row and its triggers go in after the load
+  // (parseTargetSchema); the chunks never carry engine-owned tables.
   {
     const mf = new Miniflare(mfOptions);
     const db = await mf.getD1Database("DB");
-    for (const stmt of schema.createTriggers) await db.prepare(stmt).run();
+    for (const stmt of [...schema.postLoadStatements, ...schema.createTriggers]) await db.prepare(stmt).run();
     await mf.dispose();
   }
   summary.steps.d1Apply = { ms: Date.now() - t0, applierMs: apply.ms };
