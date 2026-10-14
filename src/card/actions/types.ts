@@ -162,7 +162,18 @@ export interface SubcardInput extends TypeSpec {
   history?: boolean;
   /** The content is already an encrypted password (the account field
    *  plan encrypted it with the salt it generated). */
-  passwordEncrypted?: boolean;}
+  passwordEncrypted?: boolean;
+  /** The subcard is instantiated by an EVENT, not posted: a `field`
+   *  assignment (subcards/all.rb:32-39 -> add_field -> add_child ->
+   *  new_by_attributes, card/subcards/add.rb:52-54), which builds a real
+   *  Card object and saves it in this act — a typed field with blank
+   *  content still CREATES its row. The engine sets this on the fields an
+   *  event adds (Bootswatch skin `copy_theme`'s +*colors/+*variables,
+   *  events.rb:10-12), so the blank-noop skip — which models a POSTED
+   *  form's hidden blank field (saveSubcardsInWriter) — does not swallow
+   *  it. A posted field never sets this. */
+  fromEventField?: boolean;
+}
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
  *  `card = new opts; card.save!`). Name is the mark; everything else is

@@ -9,15 +9,65 @@ import { DeckoName } from "../name.js";
 // - card-1.110.0 lib/card/view/options.rb (the shark_keys an option value
 //   may target) + key_lists.rb (keymap)
 //
-// The chunk regex is Ruby's, verbatim: full_re /\A\{\{([^{}]*)\}\}/ with
+// The chunk regexes are Ruby's, verbatim: full_re /\A\{\{([^{}]*)\}\}/ with
 // prefix "\\{\\{" (nest.rb Chunk.register_class). Decko spans cannot nest
-// braces - [^{}]* is the whole grammar - so a global scan with that exact
+// braces - [^{}]* is the whole grammar - so a scan with that exact
 // character class reproduces Ruby's chunker for nest chunks. Other chunk
 // classes (links, URIs) are NOT chunks this renderer substitutes; their text
 // passes through verbatim, exactly as Ruby leaves non-reference chunks.
+//
+// EscapedLiteral is the one other chunk class this scan has to split out,
+// because it RENDERS differently from the text around it and it claims
+// `\{{…}}` BEFORE Nest does (see the chunk note above the scanner).
 
-/** Nest chunk regex - Ruby full_re (nest.rb): /\A\{\{([^{}]*)\}\}/ unanchored. */
-const NEST_FULL_REGEXP = /\{\{([^{}]*)\}\}/g;
+/** The two chunk regexes this scan splits out, both Ruby's verbatim, both
+ *  sticky: Card::Content::Parser (parser.rb:45-59) advances one character at a
+ *  time and asks each registered class to full_match the raw REMAINDER from
+ *  the position where it stands, so a match has to be ANCHORED there rather
+ *  than found anywhere ahead.
+ *
+ *  NEST_AT_REGEXP - Chunk::Nest full_re (chunk/nest.rb:13) `/\A\{\{([^{}]*)\}\}/`
+ *  with prefix `\{\{` and idx_char "{" (12-14). Decko spans cannot nest
+ *  braces - [^{}]* is the whole grammar.
+ *
+ *  ESCAPED_LITERAL_AT_REGEXP - Chunk::EscapedLiteral (card-mod-content
+ *  lib/card/content/chunk/escaped_literal.rb), scanned in PARALLEL because
+ *  Ruby's parser splits it out too:
+ *  - FULL_RE (11-12), keyed by the SECOND character of the prefix, exactly as
+ *    Ruby's `FULL_RE[prefix[1, 1]]` (17-19) picks between them:
+ *      "{" => /\A\\\{\{[^}]*\}\}/    note `[^}]*`, not the nest's `[^{}]*`
+ *      "[" => /\A\\\[\[[^\]]*\]\]    so `{` and `[` may sit INSIDE the escaped
+ *                                   region - a nest span never may
+ *  - prefix_re (14) `'\\\\(?:\\[\\[|\\{\\{'` = `\\(?:\[\[|\{\{)`, and
+ *    idx_char "\\" (15). chunk.rb:49 find_class_by_prefix looks at the prefix's
+ *    FIRST character first, so a `\{{` / `\[[` prefix selects EscapedLiteral
+ *    before Nest ("{" / "[") is ever consulted. That is the whole reason a
+ *    backslash works as an escape: the region becomes ONE literal chunk and
+ *    never reaches Chunk::Nest. */
+const NEST_AT_REGEXP = /\{\{([^{}]*)\}\}/y;
+const ESCAPED_LITERAL_AT_REGEXP = /\\(?:\[\[[^\]]*\]\]|\{\{[^}]*\}\})/y;
+
+/** escaped_literal.rb:21-23 `interpret`:
+ *
+ *    @process_chunk = match[0].sub(/^\\(.)/, format.escape_literal('\1'))
+ *
+ *  The sub swaps the backslash and the ONE character behind it for the
+ *  format's escape_literal answer and leaves the rest of the chunk verbatim.
+ *  Ruby hands escape_literal the two-character string '\1' as a REPLACEMENT
+ *  string, so the backreference expands back to the escaped character itself;
+ *  splicing the pieces out writes the same bytes and keeps a `$` inside a
+ *  format's answer from being read as a JS replacement pattern.
+ *
+ *  The answer is format-dependent, which is what makes this byte-visible -
+ *  see escapeLiteralForCard (render/format.ts). */
+export function interpretEscapedLiteral(
+  chunkText: string,
+  escapeLiteral: (literal: string) => string,
+): string {
+  const escaped = /^\\(.)/.exec(chunkText);
+  if (escaped === null) return chunkText;
+  return escapeLiteral(escaped[1]!) + chunkText.slice(escaped[0].length);
+}
 
 /** strip_tags (nest.rb): `string.gsub(/<[^>]*>/, "")` - "super fast", not
  *  ActionView's. */
@@ -142,7 +192,7 @@ function optionStringToHash(listString: string, hash: Record<string, unknown>): 
  *  pieces are the EXACT original bytes (Card::Content#to_s reconstructs
  *  from chunk texts; unprocessed text is unchanged). */
 export interface ContentPiece {
-  kind: "text" | "nest";
+  kind: "text" | "nest" | "escaped";
   text: string;
   nest?: ParsedNest;
 }
@@ -177,16 +227,52 @@ function deepFreeze<T>(value: T): T {
 }
 
 function scanNestsUncached(content: string): ContentPiece[] {
+  // parser.rb:45-59 match_prefices, one character at a time: a position
+  // where NO chunk class full_matches is ordinary text and the scan moves
+  // on (line 52-54), which is why a half-written `\{{a}b}}` stays verbatim
+  // rather than losing its backslash. Two chunk classes are consulted here,
+  // in Ruby's leftmost-wins order - the escaped literal's prefix starts one
+  // character earlier than the nest's braces, so `\{{Foo}}` is never a nest.
   const pieces: ContentPiece[] = [];
-  let last = 0;
-  for (const match of content.matchAll(NEST_FULL_REGEXP)) {
-    const start = match.index;
-    if (start > last) pieces.push({ kind: "text", text: content.slice(last, start) });
-    pieces.push({ kind: "nest", text: match[0], nest: interpretNest(match[1] ?? "") });
-    last = start + match[0].length;
+  let textStart = 0;
+  let at = 0;
+  while (at < content.length) {
+    const escaped = matchAt(ESCAPED_LITERAL_AT_REGEXP, content, at);
+    if (escaped !== undefined) {
+      pushText(pieces, content.slice(textStart, at));
+      pieces.push({ kind: "escaped", text: escaped });
+      at += escaped.length;
+      textStart = at;
+      continue;
+    }
+    NEST_AT_REGEXP.lastIndex = at;
+    const nest = NEST_AT_REGEXP.exec(content);
+    if (nest !== null) {
+      pushText(pieces, content.slice(textStart, at));
+      pieces.push({ kind: "nest", text: nest[0], nest: interpretNest(nest[1] ?? "") });
+      at += nest[0].length;
+      textStart = at;
+      continue;
+    }
+    at += 1;
   }
-  if (last < content.length) pieces.push({ kind: "text", text: content.slice(last) });
+  pushText(pieces, content.slice(textStart));
   return pieces;
+}
+
+/** matchAt: the anchored full-match parser.rb:42 asks of one chunk class
+ *  (full_match content, prefix - `match full_re(prefix)`), with the scan
+ *  position moved to the chunk's start first. */
+function matchAt(re: RegExp, content: string, at: number): string | undefined {
+  re.lastIndex = at;
+  return re.exec(content)?.[0];
+}
+
+/** Card::Parser never records an EMPTY string as a piece (parser.rb:84
+ *  `unless @interval_string.empty?`), and neither does handle_remainder's
+ *  guard (101). */
+function pushText(pieces: ContentPiece[], text: string): void {
+  if (text !== "") pieces.push({ kind: "text", text });
 }
 
 /** nest.rb#interpret: strip tags, split name | options, handle comment

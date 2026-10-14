@@ -1,8 +1,11 @@
-// Depth sweep: every depth 1..20 measured for the same axes the #1282
-// claim is graded on. No gaps. (Ceiling aligned to the renderer's
-// RUBY_MAX_DEPTH=20 — Card.config.max_depth, railtie.rb:17; the sweep once
-// ran 1..42 before the renderer's old 42 guard was aligned to the vendored
-// prototype. Depths past 20 raise the too-deep guard.)
+// Depth sweep: fourteen depths measured for the same axes the upstream
+// round-trip claim is graded on — 1 through 8 every depth, then 10, 12, 14,
+// 16, 18 and 20 (the DEPTHS array below is the exact list these assertions
+// run; the describe title names it so a green run cannot be read as a denser
+// sweep than it is). Ceiling aligned to the renderer's RUBY_MAX_DEPTH=20 —
+// Card.config.max_depth, railtie.rb:17; the sweep once ran 1..42 before the
+// renderer's old 42 guard was aligned to the vendored prototype. Depths past
+// 20 raise the too-deep guard.
 //
 // Run via: npx vitest run tests/card/render/depth-sweep.test.ts
 //
@@ -41,7 +44,7 @@ async function seedChain(storage: RenderTestStorage, depth: number): Promise<voi
   }
 }
 
-describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", () => {
+describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20", () => {
   it("measures round trips, statements, warm cache, and wall-clock at every depth", { timeout: 60_000 }, async () => {
     const rows: Array<{
       depth: number;
@@ -185,7 +188,7 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
 
     // Human-readable summary in the test report.
     // eslint-disable-next-line no-console
-    console.log("\nM3 depth sweep - TypeScript vs Ruby queries-per-render:\n");
+    console.log("\nDepth sweep - TypeScript vs Ruby queries-per-render:\n");
     // eslint-disable-next-line no-console
     console.log("depth | ruby q | ts RT | ts SQL | cold ms | warm ms");
     // eslint-disable-next-line no-console

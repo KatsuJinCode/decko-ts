@@ -18,6 +18,7 @@
 //      colours as they were before the change, as Ruby does.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -145,24 +146,27 @@ const SASSC = join(
   fileURLToPath(new URL("../../../tools/libsass/build/", import.meta.url)),
   process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin",
 );
-const haveLibsass = existsSync(SASSC);
-if (!haveLibsass) {
-  console.warn(
-    `SKIPPED: the LibSass compile cases need ${SASSC}; build it with ` +
-      "`node tools/libsass/build-native.mjs <libsass 3.6.4 source dir>`",
-  );
-}
+// The gate is the presence of the LibSass native program at that path, and
+// nothing else. It is built output, not a fixture: a checkout without it has
+// not run these cases, whatever else the run did. The skip therefore goes
+// through the same loud helper as every other gated suite, so it lands in the
+// "Not run" list at the end of every run instead of printing once from
+// wherever this module happened to be collected.
+const LIBSASS_GATE = `${SASSC} (build it with \`node tools/libsass/build-native.mjs tools/libsass/libsass\`)`;
 
-describe("compiled skin stylesheets (LibSass, against Ruby's bytes)", () => {
-  for (const skin of ORACLE.skins) {
-    it.skipIf(!haveLibsass)(`${skin.name} compiles to Ruby's stylesheet`, async () => {
-      const deps = oracleDeckDeps();
-      const card = await deps.card(skin.name);
-      const css = await libsassProcessCompiler(SASSC)(renderStyleChunks(await bootswatchSkinContent(deps, card!)), "compressed");
-      expect(digest(css)).toEqual(skin.compressed);
-    }, 30_000);
-  }
-});
+describeOrSkipLoud(!existsSync(SASSC), "tests/card/assets/skin-stylesheet.test.ts", LIBSASS_GATE)(
+  "compiled skin stylesheets (LibSass, against Ruby's bytes)",
+  () => {
+    for (const skin of ORACLE.skins) {
+      it(`${skin.name} compiles to Ruby's stylesheet`, async () => {
+        const deps = oracleDeckDeps();
+        const card = await deps.card(skin.name);
+        const css = await libsassProcessCompiler(SASSC)(renderStyleChunks(await bootswatchSkinContent(deps, card!)), "compressed");
+        expect(digest(css)).toEqual(skin.compressed);
+      }, 30_000);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // the write path

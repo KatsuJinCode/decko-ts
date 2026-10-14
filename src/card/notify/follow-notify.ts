@@ -75,8 +75,8 @@ export type FollowerResolver = (
 export type EmailTemplateResolver = () => EmailTemplate | Promise<EmailTemplate>;
 
 /** Build the follow-notify integration hook. The returned
- *  SavePathIntegrationHook is the registration the coordinator attaches to
- *  the action engine via CardActionEngineOptions.integrationHooks. */
+ *  SavePathIntegrationHook is a registration the host attaches to the
+ *  action engine via CardActionEngineOptions.integrationHooks. */
 export interface FollowNotifyDeps {
   /** The "who follows the saved card?" lookup. The caller supplies this
    *  against the rule algebra (card-mod-follow set/all/follow.rb —
