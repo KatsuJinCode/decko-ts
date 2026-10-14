@@ -186,6 +186,7 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
    *  never dropped once created; before the first transaction ever ran,
    *  there is no lease and nothing to repair. */
   private lockStateSeen = false;
+  private readonly sleep: (ms: number) => Promise<void>;
 
   /** D1 has no interactive transaction (BEGIN is refused; only a batch is
    *  atomic, and a batch cannot read its own writes and branch). A save
@@ -195,13 +196,15 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
    *  isolates; every statement a transaction runs is fenced to its lease
    *  (batched with an ownership assert), and a serving read repairs a
    *  lease-expired holder's rows before answering, so recovery does not
-   *  wait for the next transaction. What is still true: a reader sees a
-   *  live, unexpired transaction's intermediate rows. */
+   *  wait for the next transaction. Readers on other driver objects are
+   *  isolated: a serving read answers only from a batch that saw the lock
+   *  free, and otherwise waits for the holder to commit or roll back
+   *  (servingReads), so no reader is served a save's uncommitted rows. */
   readonly transactionGuarantee: SQLTransactionGuarantee = {
     mechanism: "compensating",
     atomicOnFailure: true,
     crashRecovery: "next-transaction-or-read",
-    readersIsolated: false,
+    readersIsolated: true,
     serializedWriters: "database",
     atomicBatch: true,
     idsReusedAfterRollback: false,
@@ -209,6 +212,7 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
 
   constructor(db: D1DatabaseLike, options: CloudflareD1AdapterOptions = {}) {
     this.db = db;
+    this.sleep = options.journal?.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     // The journal's own batches carry their ownership guards already
     // (begin, takeover, commit, rollback); wiring it to the plain methods
     // keeps them out of the serving-read lease check, which is meaningless
@@ -220,7 +224,12 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
   }
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
-    return this.gate.run(() => this.journal.run(work));
+    return this.gate.run(() =>
+      this.journal.run(() => {
+        const tx = this.journal.activeTx;
+        return tx === null ? work() : runInTransactionScope(tx, work);
+      }),
+    );
   }
 
   /** Every statement the transaction callback runs is batched with a fence
@@ -311,29 +320,50 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
   }
 
   /** Answers read-only statements when no transaction is active on this
-   *  adapter. Pairs them with the lock row in one atomic batch: when the
-   *  row names a holder whose lease has expired, that holder's journal is
-   *  restored first (repairExpiredLease) and the reads are answered after,
-   *  so an interrupted save's rows are never served and its recovery does
-   *  not wait for the next transaction. A batch that writes is not
-   *  checked: it cannot be safely re-run after a repair, and the engine
-   *  writes journaled tables only inside transactions. */
+   *  adapter. Pairs them with the lock row in one atomic batch, and answers
+   *  only from a batch that saw the lock free: commit, rollback and
+   *  takeover each clear the lock in the same atomic batch that settles the
+   *  journal, so a batch that saw no holder saw committed rows only.
+   *
+   *  - Lock free: the reads are answered.
+   *  - Lock held by a live transaction: the batch's results are discarded
+   *    and the reads wait and run again, so a save's uncommitted rows are
+   *    never served (read-committed; readers wait for a save, as SQLite
+   *    readers wait for a writer's commit in rollback-journal mode). The
+   *    wait is bounded by the holder's lease.
+   *  - Lock held by a holder whose lease has expired: its journal is
+   *    restored first (repairExpiredLease) and the reads run again.
+   *  - Lock held by the transaction whose own call tree issued the read
+   *    (through another driver object): answered, since a transaction sees
+   *    its own writes, and waiting for itself would never end.
+   *
+   *  A batch that writes is not checked: it cannot be safely re-run after a
+   *  repair, and the engine writes journaled tables only inside
+   *  transactions. */
   private async servingReads(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     if (statements.some((s) => isWriteStatement(s.sql))) return this.plainBatch(statements);
-    let results: SQLQueryResult[];
-    try {
-      results = await this.plainBatch([lockStateStatement(), ...statements]);
-    } catch (error) {
-      if (!this.lockStateSeen && isMissingLockStateTable(error)) return this.plainBatch(statements);
-      throw error;
+    let delay = READ_WAIT_INITIAL_MS;
+    for (;;) {
+      let results: SQLQueryResult[];
+      try {
+        results = await this.plainBatch([lockStateStatement(), ...statements]);
+      } catch (error) {
+        if (!this.lockStateSeen && isMissingLockStateTable(error)) return this.plainBatch(statements);
+        throw error;
+      }
+      this.lockStateSeen = true;
+      const state = results[0].rows[0] as { tx: unknown; expires_at: unknown } | undefined;
+      if (state === undefined || state.tx == null) return results.slice(1);
+      const holder = String(state.tx);
+      if (transactionInScope(holder)) return results.slice(1);
+      if (this.journal.leaseIsExpired(state)) {
+        await this.journal.repairExpiredLease(holder);
+        delay = READ_WAIT_INITIAL_MS;
+        continue; // answer only after the dead rows are restored away
+      }
+      await this.sleep(delay);
+      delay = Math.min(delay * 2, READ_WAIT_MAX_MS);
     }
-    this.lockStateSeen = true;
-    const state = results[0].rows[0] as { tx: unknown; expires_at: unknown } | undefined;
-    if (state !== undefined && this.journal.leaseIsExpired(state)) {
-      await this.journal.repairExpiredLease(String(state.tx));
-      return this.plainBatch(statements); // answer only after the dead rows are restored away
-    }
-    return results.slice(1);
   }
 
   /** The lease fence for a statement issued right now, or null outside a
@@ -366,6 +396,51 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
       rowsWritten: metaNumberOrOmit(result.meta?.rows_written),
     };
   }
+}
+
+/** First and longest pause of a serving read waiting for a live holder. */
+const READ_WAIT_INITIAL_MS = 5;
+const READ_WAIT_MAX_MS = 100;
+
+interface TxScopeStorage {
+  getStore(): string | undefined;
+  run<R>(store: string, fn: () => R): R;
+}
+
+/** AsyncLocalStorage, looked up at run time as src/card/request-context.ts
+ *  does (a global in workerd, node:async_hooks in Node), so a runtime
+ *  without it still loads this module. */
+function findTxScopeStorage(): TxScopeStorage | undefined {
+  const g = globalThis as {
+    AsyncLocalStorage?: new () => TxScopeStorage;
+    process?: { getBuiltinModule?: (id: string) => { AsyncLocalStorage?: new () => TxScopeStorage } | undefined };
+  };
+  try {
+    const Als = typeof g.AsyncLocalStorage === "function" ? g.AsyncLocalStorage : g.process?.getBuiltinModule?.("node:async_hooks")?.AsyncLocalStorage;
+    return typeof Als === "function" ? new Als() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const txScope = findTxScopeStorage();
+/** Transactions whose callbacks are running in this process; consulted
+ *  only where AsyncLocalStorage is missing. */
+const liveTransactions = new Set<string>();
+
+function runInTransactionScope<R>(tx: string, work: () => Promise<R>): Promise<R> {
+  if (txScope !== undefined) return txScope.run(tx, work);
+  liveTransactions.add(tx);
+  return work().finally(() => liveTransactions.delete(tx));
+}
+
+/** True when `tx` is the transaction whose call tree is running this code.
+ *  Without AsyncLocalStorage the call tree cannot be told apart, and any
+ *  transaction of this process counts (a reader in the same process then
+ *  sees that transaction's rows, rather than waiting for itself). */
+function transactionInScope(tx: string): boolean {
+  if (txScope !== undefined) return txScope.getStore() === tx;
+  return liveTransactions.has(tx);
 }
 
 /** A statement that starts with INSERT, UPDATE, DELETE or REPLACE (the

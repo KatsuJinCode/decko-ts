@@ -17,6 +17,17 @@ import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
 import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
 import { startMockHranaServer, type MockHranaServer } from "./mock-hrana-server.js";
 
+/** Whether a promise settles within `ms` of real time. */
+async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  let settled = false;
+  promise.then(
+    () => (settled = true),
+    () => (settled = true),
+  );
+  await new Promise((resolve) => setTimeout(resolve, ms));
+  return settled;
+}
+
 /** The undo journal over a plain local connection: the compensating
  *  mechanism D1 uses, exercised without workerd. */
 class JournaledLocalDriver implements SQLDatabaseDriver {
@@ -263,12 +274,14 @@ describe("transactions: CloudflareD1Adapter (miniflare local D1, compensating)",
       await stalled; // the holder hangs past its lease, as a killed isolate would
     });
     await hasWritten;
-    // A reader on another connection sees the intermediate rows (no
-    // isolation on a compensating adapter; the lease is still live) ...
-    const mid = await next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
-    expect(mid.rows.map((r) => r.s)).toEqual(["half-done", "half-done"]);
-    // ... until the lease runs out and the next transaction restores it.
+    // A reader on another connection is not served the intermediate rows:
+    // the lease is still live, so the read waits for the holder ...
+    const mid = next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
+    expect(await settlesWithin(mid, 150)).toBe(false);
+    // ... and once the lease runs out it restores the journal and answers
+    // with the committed rows; the next transaction sees the same.
     clock.value += 1_000;
+    expect((await mid).rows.map((r) => r.s)).toEqual(["committed"]);
     await next.transaction(async () => {
       const seen = await next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
       expect(seen.rows.map((r) => r.s)).toEqual(["committed"]);
@@ -408,11 +421,12 @@ describe("transactions: CloudflareD1Adapter (miniflare local D1, compensating)",
       await stalled; // the holder hangs past its lease and never commits
     });
     await hasWritten;
-    // The lease is still live: a serving read sees the intermediate rows
-    // (the visibility window a compensating transaction keeps).
-    const mid = await reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
-    expect(mid.rows.map((r) => r.s)).toEqual(["half-done", "half-done"]);
+    // The lease is still live: a serving read is not served the
+    // intermediate rows; it waits for the holder.
+    const mid = reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
+    expect(await settlesWithin(mid, 150)).toBe(false);
     clock.value += 1_000; // the lease runs out
+    expect((await mid).rows.map((r) => r.s)).toEqual(["committed"]);
     // The same serving read must not answer with the dead save's rows.
     const after = await reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
     expect(after.rows.map((r) => r.s)).toEqual(["committed"]);
