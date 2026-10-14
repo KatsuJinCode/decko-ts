@@ -4345,10 +4345,9 @@ export class CardActionEngine {
    *    stored with the card's files;
    *  - for a new card: a create draft filed on the upload-cache card
    *    (*new file / *new image), the file kept in the upload cache.
-   *  Ruby runs this at :prepare_to_validate, before the permission check,
-   *  so anyone could store files that way; the port checks first (update
-   *  permission on the card, or create permission for the new card's type)
-   *  and refuses otherwise. */
+   *  The port checks permission first (update permission on the card, or
+   *  create permission for the new card's type) and refuses otherwise,
+   *  storing nothing. */
   async recordPreliminaryUpload(input: {
     cardId?: number;
     typeId: number;
