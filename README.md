@@ -27,7 +27,8 @@ reference harness and reproducible from this repository
 node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json \
      --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
 node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
-     --actual <resultsDir>
+     --actual <resultsDir> \
+     --declared-other-tables reference-harness/adapters/ts/declared-other-tables.json
 ```
 
 That run produced: rendering
