@@ -409,6 +409,19 @@ async function repointStockReferences(
   storage.fetcher.lexicon.deleteFor(stockId, undefined);
 }
 
+/** Seed the stock Decko read substrate onto a deck this module did not
+ *  build. For the suites that construct their own driver — because they
+ *  record statements, or count round trips, or wrap the driver — and so
+ *  cannot go through createRenderTestStorage: without a catch-all read rule
+ *  every card of their deck denies, which no real deck does. The same rows
+ *  the factory seeds, through the same seedCard seam, so a suite that seeds
+ *  its own `*all` still takes the codename over. */
+export async function seedStockReadSubstrate(
+  storage: Pick<RenderTestStorage, "counting" | "fetcher">,
+): Promise<void> {
+  await seedBootstrapReadSubstrate(storage as RenderTestStorage);
+}
+
 /** Fresh in-memory database + FetchEngine + RenderEngine over the counting
  *  driver, carrying the stock Decko read substrate.
  *

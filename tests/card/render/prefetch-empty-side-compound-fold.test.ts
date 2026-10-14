@@ -38,6 +38,7 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import {
   seedCard,
+  seedStockReadSubstrate,
   splitSqlStatements,
   type RenderTestStorage,
 } from "./render-test-storage.js";
@@ -101,13 +102,17 @@ async function bootRecordingStorage(): Promise<{
     },
   };
   const fetcher = new FetchEngine(counting);
+  const storage: RenderTestStorage = {
+    engine: new RenderEngine(fetcher),
+    fetcher,
+    counting: counting as unknown as RenderTestStorage["counting"],
+    close: () => driver.close(),
+  };
+  // The stock read substrate: this deck is built here rather than by the
+  // factory, and without the catch-all read rule every card of it denies.
+  await seedStockReadSubstrate(storage);
   return {
-    storage: {
-      engine: new RenderEngine(fetcher),
-      fetcher,
-      counting: counting as unknown as RenderTestStorage["counting"],
-      close: () => driver.close(),
-    },
+    storage,
     recorded,
     counts: () => ({ statements, roundTrips }),
   };
