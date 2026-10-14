@@ -14,7 +14,7 @@ objects the port needs that Ruby's schema does not have, and nothing else:
 | Object | Why the port needs it |
 | --- | --- |
 | `deck_data_version` table, one row | The freshness stamp the render gate checks before reusing cached work. |
-| Six `AFTER INSERT/UPDATE/DELETE` triggers on `cards` and `card_references` | Bump the stamp. They fire on Ruby's writes too, so a card saved by Ruby invalidates the port's cached renders. |
+| `AFTER INSERT/UPDATE/DELETE` triggers on every card table (`cards`, `card_acts`, `card_actions`, `card_changes`, `card_references`, `card_virtuals`), installed by `ensureFreshnessStamp` (`src/server/freshness-stamp.ts`) | Bump the stamp. They fire on Ruby's writes too, so a card saved by Ruby invalidates the port's cached renders. |
 | `auth_sessions` and its two indexes, `auth_migrations` | The port's session table and its bookkeeping (`db/migrations`). Ruby's own `sessions` table is left alone. |
 | `cards_name_trash_index`, `cards_right_id_trash_index`, `cards_codename_present_index`, `cards_key_last_char_index` | Non-unique lookup indexes for the serving path. They add no constraint a Ruby write could fail. |
 | `cards_key_binary_index`, `cards_codename_binary_index` | Only when the database has no BINARY-collated index leading on `key` / `codename`. A Ruby-built SQLite deck already has one, so these are not created there. |

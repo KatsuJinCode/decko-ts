@@ -8,8 +8,10 @@
 // here, on first open:
 //
 //   * deck_data_version — the freshness stamp the render gate reads
-//     (src/card/one-trip/render-gate.ts), plus AFTER triggers on cards and
-//     card_references that bump it. The triggers fire on Ruby's writes as
+//     (src/card/one-trip/render-gate.ts), plus AFTER triggers on every card
+//     table (cards, card_acts, card_actions, card_changes, card_references,
+//     card_virtuals) that bump it, installed by ensureFreshnessStamp
+//     (src/server/freshness-stamp.ts). The triggers fire on Ruby's writes as
 //     well as the port's, which is what lets both engines serve the same
 //     file: a card Ruby saves moves the stamp the port's caches check.
 //   * auth_sessions — the port's session table (db/migrations), via
@@ -26,6 +28,7 @@
 // a Ruby-built deck.
 import type { SQLDatabaseDriver } from "./driver.js";
 import { runAuthMigrations } from "../card/auth/migrations.js";
+import { ensureFreshnessStamp } from "./freshness-stamp.js";
 
 /** One object the port adds to a Ruby database. */
 export interface PortSchemaObject {
@@ -33,34 +36,6 @@ export interface PortSchemaObject {
   readonly name: string;
   readonly sql: string;
 }
-
-const stampTrigger = (table: string, op: "ins" | "upd" | "del"): PortSchemaObject => {
-  const event = op === "ins" ? "INSERT" : op === "upd" ? "UPDATE" : "DELETE";
-  const name = `${table}_bump_deck_data_version_${op}`;
-  return {
-    type: "trigger",
-    name,
-    sql: `CREATE TRIGGER IF NOT EXISTS "${name}" AFTER ${event} ON "${table}" BEGIN
-  UPDATE "deck_data_version" SET "version" = "version" + 1 WHERE "id" = 1;
-END`,
-  };
-};
-
-/** The freshness stamp and its triggers (deploy/migrations
- *  0003-deck-data-version-stamp.sql, the same DDL). */
-export const FRESHNESS_STAMP_OBJECTS: readonly PortSchemaObject[] = [
-  {
-    type: "table",
-    name: "deck_data_version",
-    sql: `CREATE TABLE IF NOT EXISTS "deck_data_version" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1), "version" INTEGER NOT NULL DEFAULT 0)`,
-  },
-  stampTrigger("cards", "ins"),
-  stampTrigger("cards", "upd"),
-  stampTrigger("cards", "del"),
-  stampTrigger("card_references", "ins"),
-  stampTrigger("card_references", "upd"),
-  stampTrigger("card_references", "del"),
-];
 
 /** The serving-path lookup indexes (deploy/migrations
  *  0008-cards-serving-path-indexes.sql, without that file's DROP INDEX —
@@ -144,7 +119,7 @@ export async function openSameDatabase(
   // tables to attach the stamp triggers and lookup indexes to; its seed
   // schema carries them.
   const hasCardTables = before.has("cards") && before.has("card_references");
-  const objects: PortSchemaObject[] = hasCardTables ? [...FRESHNESS_STAMP_OBJECTS, ...LOOKUP_INDEX_OBJECTS] : [];
+  const objects: PortSchemaObject[] = hasCardTables ? [...LOOKUP_INDEX_OBJECTS] : [];
   if (hasCardTables && !(await hasBinaryLeadingIndex(driver, "key"))) {
     objects.push({ type: "index", name: "cards_key_binary_index", sql: `CREATE UNIQUE INDEX IF NOT EXISTS "cards_key_binary_index" ON "cards" ("key")` });
   }
@@ -155,15 +130,12 @@ export async function openSameDatabase(
       sql: `CREATE UNIQUE INDEX IF NOT EXISTS "cards_codename_binary_index" ON "cards" ("codename")`,
     });
   }
+  // The freshness stamp has one installer (src/server/freshness-stamp.ts),
+  // shared with the import and pod open paths; it writes nothing when the
+  // stamp is whole.
+  if (hasCardTables) await ensureFreshnessStamp(driver);
   const missing = objects.filter((o) => !before.has(o.name));
-  if (missing.length > 0) {
-    await driver.batch([
-      ...missing.map((o) => ({ sql: o.sql, params: [] as unknown[] })),
-      { sql: `INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, params: [] },
-    ]);
-  } else if (hasCardTables) {
-    await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
-  }
+  if (missing.length > 0) await driver.batch(missing.map((o) => ({ sql: o.sql, params: [] as unknown[] })));
   const auth = options.skipAuthSessions
     ? { applied: [] as string[] }
     : await runAuthMigrations(driver, options.authMigrationsDir === undefined ? {} : { migrationsDir: options.authMigrationsDir });
