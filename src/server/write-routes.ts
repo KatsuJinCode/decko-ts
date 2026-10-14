@@ -119,6 +119,7 @@ import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import type { ScssCompiler } from "../card/assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../card/assets/coffee-compiler.js";
+import type { ScriptCompressor } from "../card/assets/script-compressor.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
@@ -254,6 +255,12 @@ export interface WriteRouteContext {
    *  package on Node hosts (coffee-npm-compiler.ts). Absent = saves that
    *  need a compile are refused with a named error. */
   coffeeCompiler?: CoffeeCompiler;
+  /** Cardio.config.compress_assets for the script asset events: true (a
+   *  deployed site's value) minifies every script leaf through
+   *  scriptCompressor; absent = false. */
+  compressAssets?: boolean;
+  /** The Uglifier seam (uglifyHarmonyCompile on Node hosts). */
+  scriptCompressor?: ScriptCompressor;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and
    *  the storage-type resolution ride it. */
@@ -1511,6 +1518,8 @@ async function dispatchWriteRequest(
     attachmentStore: ctx.attachmentStore,
     ...(ctx.scssCompiler === undefined ? {} : { scssCompiler: ctx.scssCompiler }),
     ...(ctx.coffeeCompiler === undefined ? {} : { coffeeCompiler: ctx.coffeeCompiler }),
+    ...(ctx.compressAssets === undefined ? {} : { compressAssets: ctx.compressAssets }),
+    ...(ctx.scriptCompressor === undefined ? {} : { scriptCompressor: ctx.scriptCompressor }),
     fileStorage: ctx.fileStorage,
     // the deck's event runtime rides EVERY save (the deck-boot seam,
     // servingModEventRuntime above - Ruby's boot composes all mods once and

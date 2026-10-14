@@ -45,6 +45,7 @@ import { STYLE_SOURCES_MTIME } from "../assets/style-sources.js";
 import { sqlDateTime } from "../history/act.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
+import type { ScriptCompressor } from "../assets/script-compressor.js";
 import {
   STYLE_INPUTTER_TYPES,
   StyleAssetUnsupportedError,
@@ -74,6 +75,10 @@ export interface StyleAssetEventContext {
   attachmentStore: AttachmentStore | undefined;
   compile: ScssCompiler | undefined;
   compileCoffee?: CoffeeCompiler | undefined;
+  /** Cardio.config.compress_assets; absent = false. */
+  compressAssets?: boolean;
+  /** The Uglifier seam the script leaves minify through under compressAssets. */
+  compressScript?: ScriptCompressor | undefined;
   virtuals: VirtualRecordCache;
 }
 
@@ -133,6 +138,8 @@ function deps(ctx: StyleAssetEventContext, staleContent: ReadonlyMap<string, str
     },
     compile: ctx.compile,
     compileCoffee: ctx.compileCoffee,
+    ...(ctx.compressAssets === undefined ? {} : { compressAssets: ctx.compressAssets }),
+    compressScript: ctx.compressScript,
     staleContent,
   };
 }
@@ -438,14 +445,20 @@ export async function assertStyleCompilerFor(
   name: DeckoName,
   typeId: number | undefined,
 ): Promise<void> {
-  if (ctx.compile !== undefined && ctx.compileCoffee !== undefined) return;
-  let missing: "SCSS" | "CoffeeScript" | undefined;
+  // A deck running compress_assets minifies every script leaf, so a script
+  // save needs the compressor as well as (for CoffeeScript) the compiler.
+  const compressorMissing = ctx.compressAssets === true && ctx.compressScript === undefined;
+  if (ctx.compile !== undefined && ctx.compileCoffee !== undefined && !compressorMissing) return;
+  let missing: "SCSS" | "CoffeeScript" | "script compressor" | undefined;
   const typeCode = await codenameOf(ctx, typeId);
   if (typeCode !== undefined && STYLE_INPUTTER_TYPES.has(typeCode) && ctx.compile === undefined) missing = "SCSS";
-  // a JavaScript card's input is its raw content — only a CoffeeScript card
-  // compiles
+  // a JavaScript card's input is its content (minified under
+  // compress_assets) — only a CoffeeScript card compiles
   if (typeCode === "coffee_script" && ctx.compileCoffee === undefined) {
     missing ??= "CoffeeScript";
+  }
+  if ((typeCode === "coffee_script" || typeCode === "java_script") && compressorMissing) {
+    missing ??= "script compressor";
   }
   if (!missing && name.isCompound && name.rightName !== undefined && name.leftName !== undefined) {
     const right = await ctx.fetch.fetchByKey(name.rightName.key);
@@ -460,17 +473,21 @@ export async function assertStyleCompilerFor(
       missing = "SCSS";
     } else if (rightCode === "script" && leftIsSet && ctx.compileCoffee === undefined) {
       missing = "CoffeeScript";
+    } else if (rightCode === "script" && leftIsSet && compressorMissing) {
+      missing = "script compressor";
     }
   }
   if (missing !== undefined) {
     // The refusal the edge hosts' gate pins (write-routes-compiler-dispatch):
     // a host without a compiler rejects the save as invalid FOR THIS HOST —
     // a user-error-shaped 422 with the named option, not a server fault.
+    const what =
+      missing === "script compressor"
+        ? "script compressor configured (the scriptCompressor engine option, needed under compressAssets)"
+        : `${missing} compiler configured (the ${missing === "SCSS" ? "scssCompiler" : "coffeeCompiler"} engine option)`;
     throw new CardActionError(
       "user-error",
-      `${name.s}: saving it rebuilds asset files, and this host has no ${missing} compiler configured (the ${
-        missing === "SCSS" ? "scssCompiler" : "coffeeCompiler"
-      } engine option)`,
+      `${name.s}: saving it rebuilds asset files, and this host has no ${what}`,
     );
   }
 }

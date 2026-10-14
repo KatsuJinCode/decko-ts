@@ -77,63 +77,61 @@ FileUtils.rm_rf(CACHE_DIR)
 FileUtils.mkdir_p(CACHE_DIR)
 ENV["DECKO_CACHE_DIR"] = CACHE_DIR
 
-ENV["RAILS_ENV"] ||= "development"
+# ---- the environment a deployed site runs. The recording boots the oracle
+# under RAILS_ENV=production, so every rendering and asset setting comes from
+# the stock production configuration (the storage, mail and recaptcha
+# arrangements below only keep the run local): card-1.110.0
+# config/environments/production.rb, decko-0.20.0
+# config/environments/production.rb, and the cardio railtie defaults they
+# leave alone (asset_refresh :cautious, compress_assets true,
+# lib/cardio/railtie.rb:34-35). A production boot requires a
+# secret_key_base; a deployed site supplies its own through the environment,
+# and this run supplies a fixed placeholder the same way.
+ENV["RAILS_ENV"] ||= "production"
+ENV["SECRET_KEY_BASE"] ||= "parity-harness-placeholder-secret-key-base"
 Dir.chdir(APP_ROOT)
 ENV["DATABASE_URL"] = "sqlite3:#{DB_COPY}"
 ENV["RAILS_LOG_TO_STDOUT"] = nil
 require File.join(APP_ROOT, "config", "environment")
 require "rack/test"
 
-# ---- production-style error handling. A deployed Decko site does not serve
-# Rails' developer exception page, so recording one into the committed trace
-# would put this machine's absolute paths (gem paths, the user profile, the
-# work directory) into a file that ships. Two settings decide what an unhandled
-# exception answers, and both differ between development and what a deployed
-# site runs:
+# ---- error handling, as the production environment sets it. A deployed
+# Decko site does not serve Rails' developer exception page, so a recording
+# that did would put this machine's absolute paths into a file that ships.
+# Two settings decide what an unhandled exception answers, and the production
+# environment above sets both:
 #
-#   rescue_all_in_controller  Decko's own config/environments/production.rb
-#     (decko-0.20.0 :1-3) sets it true; the Railtie defaults it false
-#     (decko/railtie.rb:9) and the development environment never changes it.
+#   rescue_all_in_controller  decko-0.20.0 config/environments/production.rb
+#     :1-3 sets it true (the railtie default is false, decko/railtie.rb:9).
 #     True makes CardController rescue StandardError and render the error
 #     view for its class (card_controller/errors.rb:18 handle_exception,
 #     card/error.rb:46 ServerError) — card-mod-format's server_error.haml,
 #     "Wild Card! / 500 Server Error / Yuck, sorry about that.", with no
 #     message and no backtrace.
 #
-#   consider_all_requests_local  card-1.110.0's own production environment
-#     (config/environments/production.rb:17) sets it false; its development
-#     environment (:25) sets it true. It becomes
-#     "action_dispatch.show_detailed_exceptions" (rails application.rb:318),
-#     which is what DebugExceptions checks before rendering the developer
-#     page (debug_exceptions.rb:61); with it false, anything that still
-#     escapes the controller reaches the public error response instead.
+#   consider_all_requests_local  card-1.110.0 config/environments/production.rb
+#     :17 sets it false. It becomes "action_dispatch.show_detailed_exceptions"
+#     (rails application.rb:318), which DebugExceptions checks before
+#     rendering the developer page (debug_exceptions.rb:61).
 #
-# Both are applied to the recording only, and only these two: the rest of the
-# development environment (reloading, caching, the live server) is what the
-# rest of this recording was made under, and changing it would re-record
-# behaviour this task is not about. The oracle app itself is left stock.
-Cardio.config.rescue_all_in_controller = true
-Cardio.config.consider_all_requests_local = false
-# Booting the app already loaded CardController, whose class body registered
-# its rescue handlers under the development default (card_controller.rb:28,
-# `rescue_from_class StandardError if rescue_all?`). That line runs once, at
-# class-body time, so the config write above cannot reach it. Running the same
-# call here gives the same handler (`handle_exception`), so the recorded
-# response is the one a production boot gives, not a new shape.
-CardController.rescue_from_class StandardError
-# The guards. Without them a setting that silently failed to take would put the
-# developer page back into the recording, which is the defect this exists to
-# remove, and the run would look clean. rescue_handlers holds
-# [class NAME, handler] pairs (activesupport rescuable.rb:72).
+# The guards. A boot that did not take these settings (another RAILS_ENV, or
+# an app config that overrides them) would put the developer page back into
+# the recording and look clean, so it stops here instead. rescue_handlers
+# holds [class NAME, handler] pairs (activesupport rescuable.rb:72).
 unless CardController.rescue_handlers.any? { |name, _handler| name == "StandardError" }
   raise "rescue_all_in_controller did not take: StandardError is not rescued"
 end
-# env_config is memoized on first use. This check reads it after the setting
-# above, so a value memoized earlier with the development default fails here,
-# rather than silently answering requests with the developer page.
 unless Cardio.application.env_config["action_dispatch.show_detailed_exceptions"] == false
   raise "consider_all_requests_local did not take: " \
         "show_detailed_exceptions is #{Cardio.application.env_config['action_dispatch.show_detailed_exceptions'].inspect}"
+end
+# The asset settings a deployed site runs (the railtie defaults the
+# production environment leaves alone). The trace records them, and the
+# TypeScript drive runs the same configuration.
+unless Cardio.config.asset_refresh == :cautious && Cardio.config.compress_assets == true
+  raise "the recording expects the deployed asset settings (asset_refresh :cautious, " \
+        "compress_assets true); this boot has #{Cardio.config.asset_refresh.inspect} / " \
+        "#{Cardio.config.compress_assets.inspect}"
 end
 
 # ---- storage: local work directory only, no buckets.
@@ -494,6 +492,9 @@ FIXTURES = File.join(File.dirname(__FILE__), "..", "fixtures")
 require File.join(File.dirname(__FILE__), "scenarios.rb")
 
 puts JSON.pretty_generate({ engine: "ruby-decko", version: Gem.loaded_specs["card"]&.version&.to_s,
+                            environment: { rails_env: Rails.env.to_s,
+                                           asset_refresh: Cardio.config.asset_refresh.to_s,
+                                           compress_assets: Cardio.config.compress_assets },
                             delaying: (Cardio.config.delaying rescue nil),
                             network_blocked: $NETWORK_BLOCKED, steps: $steps })
 unless $NETWORK_BLOCKED.empty?

@@ -69,6 +69,7 @@ const { CardActionEngine } = await import(dist("card/actions/card-action-engine.
 const { renderPageBytes } = await import(dist("card/render/page.js"));
 const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
 const { coffeeNpmCompiler } = await import(dist("server/coffee-npm-compiler.js"));
+const { uglifyHarmonyCompile } = await import(dist("card/assets/uglify-harmony-compile-engine.js"));
 
 const SASSC = process.env.PARITY_SASSC ??
   join(here, "..", "libsass", "build", process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin");
@@ -78,6 +79,12 @@ if (!existsSync(SASSC)) {
 }
 const scssCompiler = libsassProcessCompiler(SASSC);
 const coffeeCompiler = coffeeNpmCompiler();
+// The deployed asset configuration the Ruby trace is recorded under
+// (drive.rb boots RAILS_ENV=production and records it): compress_assets true
+// (card-1.110.0 lib/cardio/railtie.rb:35), every script leaf minified by
+// Uglifier(harmony), the same vendored engine here.
+const compressAssets = true;
+const scriptCompressor = uglifyHarmonyCompile;
 
 const START = process.argv[2];
 const WORK = process.argv[3];
@@ -165,6 +172,8 @@ const readEngine = new CardActionEngine(fetcher, {
   attachmentStore,
   scssCompiler,
   coffeeCompiler,
+  compressAssets,
+  scriptCompressor,
 });
 // A deployed Decko runs :cautious (card-1.110.0 lib/cardio/railtie.rb:34).
 const { createReadAssetRefresh } = await import(dist("card/actions/asset-read-refresh.js"));
@@ -458,7 +467,7 @@ async function call(method, path, params) {
   if (c) headers.cookie = c;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, accountMail, notifyTransport: transport,
+      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, compressAssets, scriptCompressor, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
       renderPreviewEditor: (input) => renderPreviewEditor(input),
     },

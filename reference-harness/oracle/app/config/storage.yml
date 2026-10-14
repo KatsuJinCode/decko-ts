@@ -1,0 +1,4 @@
+# The deck generator writes this file empty (card-1.110.0
+# lib/generators/deck/templates/config/storage.yml, deck_generator.rb:89).
+# A production boot eager-loads Active Storage, which requires the file to
+# exist; Decko stores files through its own card storage, not Active Storage.

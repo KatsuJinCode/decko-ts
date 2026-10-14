@@ -461,6 +461,11 @@ async function mountWrite(
       // and script saves compile here instead of being refused.
       scssCompiler: edgeScssCompiler,
       coffeeCompiler: edgeCoffeeCompiler,
+      // compressAssets is left off: the Uglifier engine the Node hosts run
+      // (assets/script-compressor.ts) builds its keyword predicates with
+      // `new Function`, which the Workers runtime refuses, so script asset
+      // inputs saved here are stored unminified, as on a deck configured
+      // with compress_assets false.
       // attachmentStore is deliberately ABSENT: a Workers deployment binds no
       // R2 bucket, so there is no storage seam to pass. An upload therefore
       // fails with the engine's programming-error rejection rather than

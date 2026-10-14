@@ -53,6 +53,7 @@ import {
   type ModStyleGroup,
 } from "./style-sources.js";
 import type { CoffeeCompiler } from "./coffee-compiler.js";
+import type { ScriptCompressor } from "./script-compressor.js";
 import type { ScssCompiler } from "./scss-compiler.js";
 
 /** A card as the asset events read it. */
@@ -76,6 +77,11 @@ export interface StyleAssetDeps {
   compile: ScssCompiler | undefined;
   /** The CoffeeScript seam (the script asset types, site-script.ts). */
   compileCoffee?: CoffeeCompiler | undefined;
+  /** Cardio.config.compress_assets (00_script.rb compress?): true minifies
+   *  every script leaf through compressScript. Absent = false. */
+  compressAssets?: boolean;
+  /** The Uglifier seam (script-compressor.ts), used when compressAssets. */
+  compressScript?: ScriptCompressor | undefined;
   /** Pre-act contents of the cards updated in the current act, by key. */
   staleContent?: ReadonlyMap<string, string>;
   /** Env relative_url_root ("" for a deck served at the site root). */

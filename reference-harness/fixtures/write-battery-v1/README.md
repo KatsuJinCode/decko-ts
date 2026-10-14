@@ -82,11 +82,15 @@ recorded in `MANIFEST.json`'s `provenance`.
          <repo>/reference-harness/fixtures/write-battery-v1/deck/deck.sqlite3 <work dir>
        # stdout is the trace committed as expected/side-effects-ruby.json
 
-   The drive runs the oracle with production error handling (rescue_all in
-   the controller, no developer exception page), as a deployed Decko site
-   does, so a failed step records the public "Wild Card!" page and no
-   backtrace. The trace records no exception messages or backtraces at all,
-   so it carries no machine path.
+   The drive boots the oracle under `RAILS_ENV=production` with the stock
+   production configuration, as a deployed Decko site runs: rescue_all in
+   the controller and no developer exception page, so a failed step records
+   the public "Wild Card!" page and no backtrace; the first request's asset
+   refresh (`asset_refresh :cautious`); and minified script assets
+   (`compress_assets true`, Uglifier). The trace's `environment` field
+   records those settings, and the drive refuses to run without them. The
+   trace records no exception messages or backtraces at all, so it carries
+   no machine path.
 
 4. Record the 70 write operations (one `decko runner` process per step):
 

@@ -156,6 +156,7 @@ import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/pa
 // Uglifier(harmony) compression (see
 // src/card/assets/compiled-script-bundle.ts).
 import { compileScriptBundle } from "./dist/src/card/assets/compiled-script-bundle.js";
+import { uglifyHarmonyCompile } from "./dist/src/card/assets/uglify-harmony-compile-engine.js";
 // The deck-boot seam (default-mod-deck.ts): loads the composed 31-mod deck
 // and binds the process-wide defaults (mod view configs, content-override
 // registry, event registry) — the port of Ruby's one-time boot wiring
@@ -560,6 +561,14 @@ const scssCompiler =
 // the compiler the Ruby app's coffee-script-source gem bundles. This host is a
 // Node host, so it always has it.
 const coffeeCompiler = coffeeNpmCompiler();
+// Cardio.config.compress_assets: a deployed site runs it true (card-1.110.0
+// lib/cardio/railtie.rb:35), so the script asset inputs and bundles this host
+// stores are minified by Uglifier(harmony), the vendored engine the uglifier
+// gem runs (card-mod-script set/abstract/00_script.rb:18-27).
+// DECKO_COMPRESS_ASSETS=false mirrors a deck configured with it off (the
+// development environment's value).
+const compressAssets = process.env.DECKO_COMPRESS_ASSETS !== "false";
+const scriptCompressor = uglifyHarmonyCompile;
 // Ruby's read-time asset refresh (CardController::Rest#setup runs
 // Card::Assets.refresh before a card request renders; a deployed site runs it
 // :cautious, card-1.110.0 lib/cardio/railtie.rb:34). The refresh stores the
@@ -576,6 +585,8 @@ const assetReadRefresh = createReadAssetRefresh({
       attachmentStore,
       scssCompiler,
       coffeeCompiler,
+      compressAssets,
+      scriptCompressor,
     }).refreshReadAssetInputs(),
 });
 // The recaptcha guard's host config, read ONCE at
@@ -3450,6 +3461,8 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       followMail: followMailContext,
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
+      compressAssets,
+      scriptCompressor,
       // The recaptcha seat, composed only when the
       // boot-time env read produced a config — the conditional spread keeps
       // the unarmed context byte-identical (the seat's own discipline,

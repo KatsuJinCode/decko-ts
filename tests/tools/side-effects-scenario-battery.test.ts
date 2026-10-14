@@ -29,20 +29,19 @@
 // full-list recording with every public verdict unchanged; this suite pins the exact current
 // verdicts, so any engine change here fails loudly.
 //
-// THE RECORDING'S ENVIRONMENT. The trace was recorded by
-// ruby/drive.rb with only two production-style settings applied
-// (rescue_all_in_controller, consider_all_requests_local; the file's own
-// comment at drive.rb:86-116 says so and declines the rest). The rest of
-// the boot is the DEVELOPMENT environment: asset_refresh :eager
-// (card-1.110.0 config/environments/development.rb:10) and
-// compress_assets false (:11), against the railtie defaults a deployed site
-// runs: :cautious (lib/cardio/railtie.rb:34) and true (:35). A deployed
-// deck therefore serves minified script bundles (00_script.rb:25-27
-// Uglifier) where this trace carries the unminified form. This driver runs
-// the port's deployed-config path (:cautious, the same trigger the Node
-// staging host runs), which produces this trace's verdicts under both
-// asset_refresh settings; re-recording under RAILS_ENV=production is what
-// would close the compress_assets gap.
+// THE RECORDING'S ENVIRONMENT. ruby/drive.rb boots the oracle under
+// RAILS_ENV=production with the stock production configuration (the harness
+// arrangements in drive.rb keep files, mail and network local and touch no
+// rendering or asset setting): rescue_all_in_controller true and consider_all_requests_local
+// false (the public error page, no backtrace), asset_refresh :cautious
+// (card-1.110.0 lib/cardio/railtie.rb:34; the first request refreshes the
+// asset inputs and bundles) and compress_assets true (:35; every script leaf
+// minified by Uglifier, card-mod-script 00_script.rb:18-27). The trace records
+// those settings in its environment field and the assertions below check
+// them. ts-drive.mjs runs the port with the same configuration: the
+// :cautious refresh trigger and the vendored Uglifier engine
+// (src/card/assets/uglify-harmony-compile-engine.ts), so every stored script
+// bundle is compared byte for byte (by sha256) with Ruby's minified one.
 //
 // Neither engine's
 // behavior changes in this suite; the errors field is compared through
@@ -104,6 +103,7 @@ const CHILD_ENV = {
 
 interface Trace {
   engine: string;
+  environment?: { rails_env: string; asset_refresh: string; compress_assets: boolean };
   network_blocked: string[];
   steps: unknown[];
 }
@@ -248,6 +248,8 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
       blocked: [],
       steps: 87,
     });
+    // The deployed configuration the recording ran under (drive.rb).
+    expect(ruby.environment).toEqual({ rails_env: "production", asset_refresh: "cautious", compress_assets: true });
 
     // The withheld step set (tools/parity-side-effects/withheld/scenarios.json)
     // is NOT part of this public run and must be excluded from a release

@@ -4,10 +4,10 @@
 // skin-stylesheet.ts's style half. What Ruby stores:
 //
 //   - a JavaScript card's `+*asset input` is its js :compressed render
-//     (00_script.rb:9-12): `// <card name>\n` + the content (the compress is
-//     the identity when a deck runs with compress_assets=false; the
-//     uglifier arm throws a named error rather than storing bytes Ruby would
-//     not store — see sassc-coffeescript-compile-engines.ts);
+//     (00_script.rb:9-12): `// <card name>\n` + the content, minified by
+//     Uglifier(harmony) when the deck runs compress_assets (the railtie
+//     default, a deployed site's value) and left as it is when it does not
+//     (the development environment); see script-compressor.ts;
 //   - a CoffeeScript card's is the same shape over the compiled CoffeeScript
 //     (02_coffee_script.rb:22-24 compile_coffee, no_wrap false outside the
 //     html format);
@@ -37,6 +37,7 @@ import {
   type StyleCard,
 } from "./skin-stylesheet.js";
 import { modScriptFileContent, modScriptGroups } from "./script-sources.js";
+import { ScriptCompressionError } from "./script-compressor.js";
 
 /** The types whose cards include Abstract::Script, the AssetInputter include
  *  with input_format :js and input_view :compressed (00_script.rb:6, through
@@ -54,11 +55,29 @@ function compileCoffee(deps: StyleAssetDeps, script: string, what: string): stri
   return deps.compileCoffee(script, false);
 }
 
-/** One leaf's compressed render: comment_with_source (00_script.rb:20-22)
- *  over the core — the file's content, compiled when it is CoffeeScript. */
+/** 00_script.rb:18-30 compress: the identity unless compress_assets, else
+ *  Uglifier(harmony) over the core, a failure raised as Ruby's
+ *  "JavaScript::SyntaxError (<name>): ..." Card::Error. */
+function compressCore(deps: StyleAssetDeps, core: string, name: string): string {
+  if (deps.compressAssets !== true) return core;
+  if (deps.compressScript === undefined) {
+    throw new StyleAssetUnsupportedError(
+      `${name}: compress_assets is on and this host has no script compressor configured (the scriptCompressor engine option)`,
+    );
+  }
+  try {
+    return deps.compressScript(core);
+  } catch (e) {
+    throw new ScriptCompressionError(name, e);
+  }
+}
+
+/** One leaf's compressed render (00_script.rb:9-12 view :compressed):
+ *  comment_with_source (:20-22) over the compressed core — the file's
+ *  content, compiled when it is CoffeeScript. */
 function leafChunk(deps: StyleAssetDeps, name: string, type: string, content: string, what: string): string {
   const core = type === "coffee_script" ? compileCoffee(deps, content, what) : content;
-  return `// ${name}\n${core}`;
+  return `// ${name}\n${compressCore(deps, core, name)}`;
 }
 
 /** A JavaScript or CoffeeScript card's assembled asset input; undefined for

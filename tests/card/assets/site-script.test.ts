@@ -17,7 +17,11 @@
 //      card's input; editing the card rebuilds the file with its new chunk;
 //      deleting it rebuilds the file without it (the delete-side
 //      asset_input_changed_on_delete); without the CoffeeScript compiler the
-//      saves that would need it are refused with a named error.
+//      saves that would need it are refused with a named error;
+//   4. compress_assets: every mod script card's minified asset input equals
+//      the one production Ruby stores (the scenario battery's committed
+//      production recording), and without a compressor the saves that would
+//      need it are refused with a named error.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createHash } from "node:crypto";
@@ -33,6 +37,8 @@ import {
 import { StyleAssetUnsupportedError, type StyleAssetDeps, type StyleCard } from "../../../src/card/assets/skin-stylesheet.js";
 import { modScriptFileContent, modScriptGroups, scriptSourcesAvailable } from "../../../src/card/assets/script-sources.js";
 import { coffeeNpmCompiler } from "../../../src/server/coffee-npm-compiler.js";
+import { uglifyHarmonyCompile } from "../../../src/card/assets/uglify-harmony-compile-engine.js";
+import { ScriptCompressionError } from "../../../src/card/assets/script-compressor.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { ActWriter, cardFieldStateFromRow } from "../../../src/card/history/write-path.js";
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
@@ -143,6 +149,75 @@ describe("the site script's vendored sources and assembly (against Ruby)", () =>
 
   it("the script inputter types are the Abstract::Script types", () => {
     expect([...SCRIPT_INPUTTER_TYPES].sort()).toEqual(["coffee_script", "java_script"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// compress_assets
+// ---------------------------------------------------------------------------
+//
+// A deployed site runs compress_assets true (card-1.110.0
+// lib/cardio/railtie.rb:35): every script leaf's :compressed render is
+// comment_with_source over Uglifier(harmony) (card-mod-script
+// 00_script.rb:9-27). The Ruby side of the comparison is the scenario
+// battery's committed production recording: its first request
+// (get-home) re-stores every mod script card's asset input minified, and the
+// trace records each stored input's length and sha256.
+
+const BATTERY_TRACE = join(
+  fileURLToPath(new URL("../../../", import.meta.url)),
+  "reference-harness", "fixtures", "write-battery-v1", "expected", "side-effects-ruby.json",
+);
+const compressingDeps = (): StyleAssetDeps => ({
+  ...assemblyDeps(),
+  compressAssets: true,
+  compressScript: uglifyHarmonyCompile,
+});
+
+describe("compress_assets: the script leaves minified as a deployed site stores them (against Ruby)", () => {
+  it("the recording these pins come from ran with compress_assets true", () => {
+    const trace = JSON.parse(readFileSync(BATTERY_TRACE, "utf8")) as { environment?: unknown };
+    expect(trace.environment).toEqual({ rails_env: "production", asset_refresh: "cautious", compress_assets: true });
+  });
+
+  it("every mod script card's minified asset input is the one production Ruby stores", () => {
+    const trace = JSON.parse(readFileSync(BATTERY_TRACE, "utf8")) as {
+      steps: { step: string; virtuals: { card: string; length: number; sha256: string }[] }[];
+    };
+    const stored = trace.steps
+      .find((s) => s.step === "get-home")!
+      .virtuals.filter((v) => /^mod: .+\+\*script\+\*asset input$/.test(v.card));
+    expect(stored.length).toBe(15);
+    for (const v of stored) {
+      const name = v.card.replace(/\+\*asset input$/, "");
+      const assembled = assembleModScriptInput(compressingDeps(), scriptCard(name)) ?? "";
+      expect({ length: assembled.length, sha256: sha256(assembled) }, name).toEqual({ length: v.length, sha256: v.sha256 });
+    }
+  }, 60_000);
+
+  it("a JavaScript card's input is its commented, minified content", () => {
+    expect(assembleScriptInput(compressingDeps(), scriptCard("Probe Script", "java_script", "window.p = 1;\n"))).toBe(
+      "// Probe Script\nwindow.p=1;",
+    );
+  });
+
+  it("without a compressor, assembling under compress_assets is refused with a named error", () => {
+    const noCompressor: StyleAssetDeps = { ...assemblyDeps(), compressAssets: true };
+    expect(() => assembleScriptInput(noCompressor, scriptCard("Probe Script", "java_script", "window.p = 1;\n"))).toThrow(
+      StyleAssetUnsupportedError,
+    );
+    expect(() => assembleScriptInput(noCompressor, scriptCard("Probe Script", "java_script", "window.p = 1;\n"))).toThrow(
+      /scriptCompressor/,
+    );
+  });
+
+  it("a leaf Uglifier cannot parse stops with Ruby's JavaScript::SyntaxError message", () => {
+    expect(() => assembleScriptInput(compressingDeps(), scriptCard("Broken Script", "java_script", "var = ;\n"))).toThrow(
+      ScriptCompressionError,
+    );
+    expect(() => assembleScriptInput(compressingDeps(), scriptCard("Broken Script", "java_script", "var = ;\n"))).toThrow(
+      /^JavaScript::SyntaxError \(Broken Script\): /,
+    );
   });
 });
 
@@ -363,5 +438,26 @@ describe("script assets on the write path", () => {
     await expect(
       assertStyleCompilerFor(ctx, DeckoName.parse("*all+*style"), ids.list),
     ).rejects.toThrow(/scssCompiler/);
+  });
+
+  it("under compress_assets without a compressor, the script saves are refused, with a named error", async () => {
+    const ctx = { ...context(compileCoffee), compressAssets: true };
+    await expect(
+      assertStyleCompilerFor(ctx, DeckoName.parse("Some Js Card"), ids.javaScript),
+    ).rejects.toThrow(/scriptCompressor/);
+    await expect(
+      assertStyleCompilerFor(ctx, DeckoName.parse("Some Coffee Card"), ids.coffeeScript),
+    ).rejects.toThrow(/scriptCompressor/);
+    await expect(
+      assertStyleCompilerFor(ctx, DeckoName.parse("*all+*script"), ids.list),
+    ).rejects.toThrow(/scriptCompressor/);
+    // with the compressor the same saves go ahead
+    const armed = { ...ctx, compressScript: uglifyHarmonyCompile };
+    await expect(
+      assertStyleCompilerFor(armed, DeckoName.parse("Some Js Card"), ids.javaScript),
+    ).resolves.toBeUndefined();
+    await expect(
+      assertStyleCompilerFor(armed, DeckoName.parse("*all+*script"), ids.list),
+    ).resolves.toBeUndefined();
   });
 });
