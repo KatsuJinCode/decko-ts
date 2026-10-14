@@ -1,3 +1,3 @@
 {
-  "password-digest": "The port's default password policy stores PBKDF2-HMAC-SHA256 where Ruby stores its salted SHA-1, and replaces a legacy digest with a PBKDF2 hash at sign-in (docs/SECURITY.md, Passwords). Ruby cannot produce or verify that value, so only the digest value of a +*password card may differ; every other byte is graded."
+  "password-digest": "One column: cards.db_content of a +*password card, when it holds a password digest. The port's default policy stores PBKDF2-HMAC-SHA256 where Ruby stores salted SHA-1 and rewrites a legacy digest at sign-in, where Ruby writes nothing (docs/SECURITY.md, Passwords). Ruby cannot produce or verify that value. Every other column, row and table is graded, including card_changes."
 }
