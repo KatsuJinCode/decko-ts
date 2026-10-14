@@ -155,8 +155,19 @@ module DeckoRubyMods
     # Declarations the shim accepts and records but does not act on.
     def include_set(*); end
     def assign_type(*); end
-    def basket(*); end
     def add_to_basket(*); end
+
+    # Card::Set basket (lib/card/set/basket.rb): recorded, not acted on.
+    def basket
+      @basket ||= Hash.new { |h, k| h[k] = [] }
+    end
+
+    # ActiveSupport's Module#delegate, which set files use for card methods.
+    def delegate(*methods, to:, **_opts)
+      methods.each do |m|
+        define_method(m) { |*a, &b| send(to).send(m, *a, &b) }
+      end
+    end
   end
 
   module FormatModule
@@ -189,6 +200,12 @@ module DeckoRubyMods
 
     def before(*); end
     def wrapper(*); end
+
+    def delegate(*methods, to:, **_opts)
+      methods.each do |m|
+        define_method(m) { |*a, &b| send(to).send(m, *a, &b) }
+      end
+    end
   end
 
   # The format object a view block runs on (`self` in a view body).
