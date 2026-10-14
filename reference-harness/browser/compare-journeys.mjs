@@ -27,7 +27,7 @@ function parseArgs(argv) {
 const load = (dir) =>
   Object.fromEntries(
     readdirSync(dir)
-      .filter((f) => f.endsWith(".json") && f !== "run-meta.json")
+      .filter((f) => f.endsWith(".json") && !f.startsWith("run-meta"))
       .map((f) => {
         const r = JSON.parse(readFileSync(path.join(dir, f), "utf8"));
         return [r.id, r];
