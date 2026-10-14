@@ -259,3 +259,62 @@ describe("defineMod through the ModLoader", () => {
     expect(loader.cardAccessorDeclarations()).toEqual([]);
   });
 });
+
+// The worked example in docs/mod-dsl.md, kept in step with the document.
+describe("the docs/mod-dsl.md worked example", () => {
+  const WORD_LIMIT = 1000;
+  const wordCount = (text: string): number => text.split(/\s+/).filter(Boolean).length;
+  const predicates = {
+    "long_content?": (card: { dbContent?: string }): boolean => wordCount(card.dbContent ?? "") > WORD_LIMIT,
+  } as const;
+  const cardModWordCount = defineMod("card-mod-word_count", { group: "custom" }, ({ set }) => {
+    set("all/word_count", ({ format }) => {
+      format("html", ({ view }) => {
+        view("word_count", { cache: "never" }, (ctx) => {
+          const count = wordCount(ctx.fmt.renderRaw());
+          return `<span class="word-count">${count} words</span>`;
+        });
+      });
+    });
+    set("type/basic", ({ event }) => {
+      event(
+        "note_long_content",
+        "integrate",
+        { on: "save", changed: "db_content", when: "long_content?" },
+        () => undefined,
+      );
+    });
+  });
+
+  it("the view counts words; the predicate answers past the limit", () => {
+    const viewFn = cardModWordCount.setModules![0]!.formats!["html"]!.views![0]!.viewFn;
+    const ctx = { fmt: { renderRaw: () => "three little words" } } as unknown as Parameters<ViewFn>[0];
+    expect(viewFn(ctx)).toBe('<span class="word-count">3 words</span>');
+    expect(predicates["long_content?"]({ dbContent: "word ".repeat(1001) })).toBe(true);
+    expect(predicates["long_content?"]({ dbContent: "short" })).toBe(false);
+  });
+
+  it("loads as a deck-local mod after the gem mods, as the document shows", async () => {
+    const { defaultDeckSources, portedBundleOrder } = await import(
+      "../../../src/card/mod-loader/default-mod-deck.js"
+    );
+    const deck = new ModLoader([...defaultDeckSources(), { manifest: cardModWordCount }], {});
+    try {
+      deck.resolveOrder({ gemMods: portedBundleOrder(), deckModDirs: [{ listing: ["word_count"] }] });
+      const report = deck.load();
+      expect(report.modNames.at(-1)).toBe("word_count");
+      expect(report.registeredViews).toContain("word_count");
+      expect(deck.viewConfigFor("word_count")).toMatchObject({ cache: "never" });
+      expect(deck.eventRegistry().forEvent("note_long_content")).toMatchObject({
+        at: "integrate",
+        on: ["save"],
+        changed: ["db_content"],
+        when: "long_content?",
+        setPath: "type/basic",
+        modName: "word_count",
+      });
+    } finally {
+      deck.reset();
+    }
+  });
+});
