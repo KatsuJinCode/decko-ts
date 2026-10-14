@@ -2,12 +2,11 @@
 
 decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are six exceptions to that parity rule, listed below, in two classes:
+There are six exceptions to that parity rule, listed below, in three classes:
 
 1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials, forge a request under a visitor's session, write to the deck's storage without permission), the port does not copy it. Divergences 1, 3, 5 and 6.
 2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 2 and 4.
-
-Every entry is a place where following Ruby exactly would be a security defect rather than parity, so there is no third class: the port does not diverge from Ruby for any other reason. Where Ruby denies — including on a deck that carries no read rule at all, where `permission_rule_id :read` resolves to nil and `ok_to_read?` denies (`mod/permissions/set/all/permissions.rb:139-146`) — the port denies too.
+3. **Crashes.** Where Ruby fails with an internal error, the port gives the error Ruby intended.
 
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
