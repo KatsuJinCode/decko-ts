@@ -224,6 +224,61 @@ describe("text_without_nests keeps the escaped chunk's rendered bytes (text.rb:8
   });
 });
 
+// navbar_items (mod/layout/set/all/navbar_links.rb:10-21) walks the chunks
+// under `chunk_list: :references` and its `case`'s else arm (17-19) is
+// `chunk.process_chunk` - which for an EscapedLiteral IS its interpreted
+// bytes (escaped_literal.rb:21-23). :references registers the class
+// (chunk.rb:87), so the parser never hands the raw `\[[x]]` to a Link chunk
+// and it must not become a nav item. Expected bytes from a transcription of
+// that dispatch run under Ruby 3.3.12.
+describe("navbar_links renders an escaped region inert (navbar_links.rb:10-21)", () => {
+  async function renderNavbar(content: string, typeId: number): Promise<string> {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: BASIC_TYPE_ID, name: "Basic", codename: "basic", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: MARKDOWN_TYPE_ID, name: "Markdown", codename: "markdown", typeId: BASIC_TYPE_ID });
+      await seedCard(storage, { id: 94, name: "Navbar Probe", typeId, dbContent: content });
+      // the mixed case's unescaped `[[Bar]]` nests the target, so the target
+      // has to exist for the contrast to be real (navbarLinkChunk's bare-name
+      // arm is ctx.fmt.nest, card-mod-layout.ts:605-611)
+      await seedCard(storage, { id: 95, name: "Bar", typeId: BASIC_TYPE_ID, dbContent: "bar body" });
+      storage.fetcher.installNameEnvironment();
+      await storage.fetcher.warmLexicon([BASIC_TYPE_ID, MARKDOWN_TYPE_ID, 94, 95]);
+      return await storage.engine.render("Navbar Probe", "navbar_links");
+    } finally {
+      storage.close();
+    }
+  }
+
+  it("an HtmlFormat escaped bracket is inert, and an unescaped link beside it is not", async () => {
+    // The mixed case is the one that distinguishes the arms: the escaped
+    // region reads `<span>[</span>[Foo]]` while `[[Bar]]` still walks
+    // linkChunksInText and becomes an anchor.
+    const out = await renderNavbar("nav \\[[Foo]] and [[Bar]]", BASIC_TYPE_ID);
+    expect(out).toContain("nav <span>[</span>[Foo]] and ");
+    expect(out).not.toContain('href="/Foo"');
+    expect(out).toMatch(/<a class="[^"]*" href="\/Bar"/);
+  });
+
+  it("an HtmlFormat escaped brace is inert", async () => {
+    expect(await renderNavbar("nav \\{{Foo}} end", BASIC_TYPE_ID)).toBe(
+      '<ul class="navbar-nav">nav <span>{</span>{Foo}} end</ul>',
+    );
+  });
+
+  it("a Markdown card's identity escape reads back bare", async () => {
+    expect(await renderNavbar("nav \\[[Foo]] end", MARKDOWN_TYPE_ID)).toBe(
+      '<ul class="navbar-nav">nav [[Foo]] end</ul>',
+    );
+  });
+
+  it("an escaped comment nest is not a comment and not an item", async () => {
+    expect(await renderNavbar("nav \\{{#hidden}} end", BASIC_TYPE_ID)).toBe(
+      '<ul class="navbar-nav">nav <span>{</span>{#hidden}} end</ul>',
+    );
+  });
+});
+
 describe("EscapedLiteral is not registered on the :nest_only list (chunk.rb:88)", () => {
   it("leaves the backslash as text and still chunks the braces as a Nest", async () => {
     const { storage, html } = await seedDeck();
