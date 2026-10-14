@@ -270,10 +270,11 @@ const discussionCoreView: ViewFn = (ctx) => {
   // set-scoped override, so the base owns the emulation), this override's
   // BASE_CORE capture IS that same wrapper. Appending the box HERE on top
   // of it rendered the box TWICE (two adjacent comment-box divs). Ruby's
-  // override output is exactly
-  // plain_core + "\n" + box - which is what the base branch emits - so
-  // the override delegates; the voo.show("comment_box") the titled
-  // override sets rides the inherited viz and flips the box's
+  // override output is plain_core + "\n" + box when an ancestor voo shows
+  // :comment_box, and plain_core alone otherwise (the optional: :hide
+  // render returns nil) - which is what the base branch emits - so the
+  // override delegates; the showViz("comment_box") the open/titled
+  // overrides record rides the inherited viz and flips the box's
   // optional-hidden default to shown inside that single render.
   return callBaseView(ctx, BASE_CORE, "core");
 };

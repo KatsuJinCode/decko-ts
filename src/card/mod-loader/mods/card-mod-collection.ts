@@ -270,9 +270,35 @@ function rawItemStrings(content: string): string[] {
  *  `card.item_names.count`. The headless port reads dbContent directly
  *  (the engine has no item_names helper); the count is the post-split,
  *  post-strip size. The html :count view (item.rb:179-182) and the paging
- *  helpers both consume this one count. */
+ *  helpers both consume this one count.
+ *
+ *  For a SEARCH card that reading is wrong: the card-mod-search
+ *  set/abstract/0_search.rb:20-28 module REPLACES item_names with
+ *  `returning(:name, args) { search args }` - the item list is the query
+ *  result, not the stored CQL json, and count_with_params
+ *  (0_search.rb:52-54) re-runs it with `return: :count`. The engine's
+ *  seat holds exactly that number (render.ts searchItemCount, seated in
+ *  runSearch beside the items). */
 function itemCount(ctx: ViewContext): number {
+  const count = ctx.fmt.engine?.searchItemCount?.(ctx.fmt);
+  if (count !== undefined) return count;
   return rawItemStrings(ctx.fmt.card.dbContent).length;
+}
+
+/** The count of ITEMS in `search_with_params` — the rendered window, not the
+ *  full count (fewer_results_than_limit?, paging_views.rb:11-15, compares the
+ *  limit against `search_with_params.length`). For a search card that is the
+ *  executed result list (search.rb:13-20 search_with_params); for every other
+ *  card `card.item_names` IS the content item list (item.rb:15-22), so the
+ *  content count stands. */
+function searchResultItemCount(ctx: ViewContext): number {
+  // executeSearch answers [] for any card the search warm never ran on, so
+  // the seated full count (present only for an executed search) decides
+  // which reading applies.
+  if (ctx.fmt.engine?.searchItemCount?.(ctx.fmt) !== undefined) {
+    return ctx.fmt.engine.executeSearch(ctx.fmt).length;
+  }
+  return itemCount(ctx);
 }
 
 /** item.rb:180-182 view :count (html format): `number_with_delimiter
@@ -303,8 +329,8 @@ const countView: ViewFn = (ctx) => formatWithDelimiter(itemCount(ctx));
  *  default_limit` / `contextual_param(:offset) || 0` - one
  *  contextual_param read, the key the only difference (env_search_param -
  *  the Rails request env - first, then voo.cql[:key]). The headless port
- *  reads from voo.opts[key] (the render's render_opt); the default is 0
- *  when no override. */
+ *  reads from voo.opts[key] (the render's render_opt); absent, Ruby's
+ *  `|| default_limit` decides the limit. */
 function readNumericOpt(ctx: ViewContext, key: "limit" | "offset"): number {
   const fromOpts = ctx.voo.opts[key];
   if (typeof fromOpts === "number") return fromOpts;
@@ -312,7 +338,56 @@ function readNumericOpt(ctx: ViewContext, key: "limit" | "offset"): number {
     const n = Number(fromOpts);
     return Number.isFinite(n) ? n : 0;
   }
-  return 0;
+  return key === "limit" ? defaultLimit(ctx) : 0;
+}
+
+/** paging.rb:15-17 paging_params merge the effective
+ *  `{limit:, offset:}` over the card's own cql hash
+ *  (cql_search.rb:70-74 standardized_query_args), and Ruby's `limit` is
+ *  `contextual_param(:limit) || default_limit` - so the format's
+ *  default_limit IS the limit of the paged window whenever no render opt
+ *  overrides it.
+ *
+ *  default_limit, by format (paging.rb:41-43 plus the format blocks):
+ *  - search cards (card-mod-search set/abstract/cql_search.rb:80-94:
+ *    `card_content_limit || super`, in both the base and the html block):
+ *    the cql hash's own `limit` (cql_search.rb:85-87
+ *    `card.cql_hash&.dig :limit`) when the card declares one, else the
+ *    format default. A cql `limit: 0` is Ruby-truthy and means unlimited,
+ *    and so does a `limit` of 0 for the offset fallback - Ruby's `||`
+ *    never sees it.
+ *  - every other card: the format default (paging.rb:50-54 html
+ *    `Cardio.config.paging_limit || 20`; the base block's 100 and the
+ *    json/rss blocks' 20/25 are unreachable from a render, which is
+ *    always html).
+ */
+function defaultLimit(ctx: ViewContext): number {
+  const fmt = ctx.fmt;
+  const card = fmt.card;
+  if (card.typeCode === "search" || card.typeName === "Search") {
+    // card-content limit: cql_content is the card's cql hash, JSON-decoded
+    // (cql_search.rb:8-12). A malformed cql is BadQuery - rescued higher
+    // up (0_search.rb:66-77) - and never reaches a count, so the fallback
+    // stands.
+    let cql: Record<string, unknown> | undefined;
+    try {
+      const parsed: unknown = JSON.parse(card.dbContent);
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        cql = parsed as Record<string, unknown>;
+      }
+    } catch {
+      cql = undefined;
+    }
+    const raw = cql?.["limit"];
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    if (typeof raw === "string" && raw !== "") {
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : 20;
+    }
+  }
+  // card-mod-search lib/card/mod/search.rb:2 `config.paging_limit = 20`,
+  // read by paging.rb:51-53 `Cardio.config.paging_limit || 20`.
+  return 20;
 }
 
 /** paging.rb:24-28 total_pages: `return 1 if limit.zero?; (count - 1) / limit`.
@@ -364,11 +439,12 @@ function showPaging(ctx: ViewContext): boolean {
  *  offset.zero?; limit > offset + search_with_params.length`. Only when
  *  offset=0 do we know the count WITHOUT running the count query (the
  *  search_with_params returns items, not names - so .length matches the
- *  raw content length). In the TS port the item count comes from
- *  rawItemStrings.size which matches the canonical count. */
+ *  ITEM count: the executed search's row count for a search card, the
+ *  content item count for every other card). */
 function fewerResultsThanLimit(ctx: ViewContext): boolean {
-  if (readNumericOpt(ctx, "offset") !== 0) return false;
-  return readNumericOpt(ctx, "limit") > readNumericOpt(ctx, "offset") + itemCount(ctx);
+  const offset = readNumericOpt(ctx, "offset");
+  if (offset !== 0) return false;
+  return readNumericOpt(ctx, "limit") > offset + searchResultItemCount(ctx);
 }
 
 /** paging_views.rb:36-40 page_link_li_class status: `["page-item",
@@ -382,70 +458,87 @@ function pageLinkLiClass(status: LinkStatus): string {
 }
 
 /** paging_views.rb:46-53 page_link text, page, options:
- *  - page nil (ellipses): `<div class="page-link">TEXT</div>`.
- *  - page number: a Rails link_to with merged options. The Rails link_to
- *    emits `<a class="...card-paging-link slotter page-link" data-remote="true"
- *    data-path="JSON">TEXT</a>`. The TS port preserves the structural
- *    shape - the class chain is identical, the data-remote flag is the
- *    same, the data-path payload is the JSON-encoded path args - but the
- *    `href` is a placeholder (no Rails route helpers in the headless
- *    engine). The href is the path Rails' url_for would compute;
- *    documenting the gap is the right call here, not inventing a route. */
-function pageLink(text: string, page: number | null, options: LinkOptions, pathPayload: unknown): string {
+ *  - no page (the ellipsis, and previous/next at the edges):
+ *    `content_tag(:div, text.html_safe, class: "page-link")`.
+ *  - a page: `options.merge! class: ..., remote: true, path:
+ *    page_link_path_args(page)` then the html `link_to` (card-mod-format
+ *    set/all/links.rb:101-106): `opts[:href] ||= path opts.delete(:path)`
+ *    appends href after the merged keys, and interpret_data_opts_to_link_to
+ *    (links.rb:146-151) moves `remote` to a trailing `data-remote`. Rails
+ *    content_tag writes the hash in insertion order, so the attributes read
+ *    aria-label (paging_links.rb's option, when present), class, href,
+ *    data-remote.
+ *  The href is `path(limit:, offset:)` - the card's url path with the two
+ *  query params in hash order (paging_path_args, paging_views.rb:63-72:
+ *  `reverse_merge!(limit:, offset:)`, `merge offset: page * limit`;
+ *  extra_paging_path_args is the empty hash of paging.rb:37-39). The `&`
+ *  is escaped as `&amp;` in the attribute. */
+function pageLink(
+  text: string,
+  page: number | null,
+  options: LinkOptions,
+  urlPath: string,
+  limit: number,
+): string {
   if (page === null) {
     return `<div class="page-link">${text}</div>`;
   }
   const ariaLabel = options["aria-label"];
-  const ariaAttr =
-    typeof ariaLabel === "string" ? ` aria-label="${ariaLabel}"` : "";
-  const pathAttr = JSON.stringify(pathPayload);
+  const ariaAttr = typeof ariaLabel === "string" ? ` aria-label="${ariaLabel}"` : "";
   return (
-    `<a class="card-paging-link slotter page-link" data-remote="true"` +
-    ` data-path='${pathAttr}'${ariaAttr} href="#">${text}</a>`
+    `<a${ariaAttr} class="card-paging-link slotter page-link"` +
+    ` href="${urlPath}?limit=${limit}&amp;offset=${page * limit}" data-remote="true">${text}</a>`
   );
 }
 
 /** paging_views.rb:29-33 paging_links: `PagingLinks.new(total_pages,
  *  current_page).build 5 do |text, page, status, options|; page_link_li
- *  text, page, status, options; end`. Window=5 (the Ruby literal). */
+ *  text, page, status, options; end`. Window=5 (the Ruby literal).
+ *  page_link_li (paging_views.rb:35-40) wraps each link in
+ *  `<li class=...>`. */
 function pagingLinks(ctx: ViewContext): string[] {
   const tp = totalPages(ctx);
   const cp = currentPage(ctx);
+  const limit = readNumericOpt(ctx, "limit");
+  const urlPath = `/${ctx.fmt.card.name.urlKey}`;
   return new PagingLinks(tp, cp).build(5, (text, page, status, options) => {
     const liClass = pageLinkLiClass(status);
-    const pathArgs =
-      page !== null
-        ? { limit: readNumericOpt(ctx, "limit"), offset: page * readNumericOpt(ctx, "limit") }
-        : {};
-    const link = pageLink(text, page, options, pathArgs);
+    const link = pageLink(text, page, options, urlPath, limit);
     return `<li class="${liClass}">${link}</li>`;
   });
 }
 
-/** paging.haml:1-12 the emitted HTML. The HAML compiles to a structure
- *  where the `if show_paging?` block emits the `<nav>` only when paging
- *  is shown; the inner `<ul>` and `<div class="paging-context">` carry
- *  one whitespace-separated run of inline text "X-Y of Z" (the HAML
- *  `=` operator inside a block preserves whitespace-trimmed text).
+/** paging.haml:1-10, rendered by `view :paging, cache: :never, template:
+ *  :haml` (paging_views.rb:27). Under `- if show_paging?`:
  *
- *  The exact byte shape HAML emits is "<nav ...>...". The TS port emits
- *  a structurally equivalent layout: the HAML-emitted nav/ul/li/div
- *  nesting is faithful (the class names match the bootstrap CSS), the
- *  paging-context div carries "X-Y of Z" as text. Whitespace inside the
- *  paging-context div is normalized to single spaces to match HAML's
- *  inline-block-tag text rendering. */
+ *    %nav.nav.justify-content-between.align-items-center
+ *      %ul.pagination.paging
+ *        = paging_links.join
+ *      .paging-context
+ *        = offset + 1
+ *        = "-"
+ *        = last_item_on_page
+ *        of
+ *        = count_with_params
+ *
+ *  Haml writes class attributes single-quoted, each tag and each line of
+ *  inline content on its own line, the joined links on ONE line (`join`
+ *  with no separator), and ends the document with a newline after
+ *  `</nav>`. A hidden nav (show_paging? false) is the empty document. */
 const pagingView: ViewFn = (ctx) => {
   if (!showPaging(ctx)) return "";
-  const links = pagingLinks(ctx).join("\n");
-  const start = readNumericOpt(ctx, "offset") + 1;
-  const end = lastItemOnPage(ctx);
-  const total = itemCount(ctx);
-  const pagingContext = `${start}-${end} of ${total}`;
+  const context = [
+    String(readNumericOpt(ctx, "offset") + 1),
+    "-",
+    String(lastItemOnPage(ctx)),
+    "of",
+    String(itemCount(ctx)),
+  ].join("\n");
   return (
-    `<nav class="nav justify-content-between align-items-center">\n` +
-    `<ul class="pagination paging">\n${links}\n</ul>\n` +
-    `<div class="paging-context">\n${pagingContext}\n</div>\n` +
-    `</nav>`
+    `<nav class='nav justify-content-between align-items-center'>\n` +
+    `<ul class='pagination paging'>\n${pagingLinks(ctx).join("")}\n</ul>\n` +
+    `<div class='paging-context'>\n${context}\n</div>\n` +
+    `</nav>\n`
   );
 };
 
