@@ -172,12 +172,24 @@ HANDLERS = { "render" => :op_render, "ask" => :op_ask, "write" => :op_write, "si
 # version), so a recorded answer is only interpretable next to the interpreter
 # and platform that produced it. run.mjs copies this line into run-meta.json
 # under runs.<kind>.engine, so every capture records its own environment.
-emit("ready" => true, "protocol" => PROTOCOL, "engine" => "decko-ruby",
-     "version" => { "decko" => Gem.loaded_specs["decko"]&.version.to_s,
-                    "card" => Gem.loaded_specs["card"]&.version.to_s,
-                    "ruby" => RUBY_VERSION,
-                    "ruby_platform" => RUBY_PLATFORM,
-                    "ruby_engine" => RUBY_ENGINE })
+#
+# When card-mod-batched-nests is loaded (adapters/ruby-batched), the line also
+# names its version and whether its patches are installed and its settings on,
+# so a run graded as "Ruby with the gem" carries the evidence that it was.
+version = { "decko" => Gem.loaded_specs["decko"]&.version.to_s,
+            "card" => Gem.loaded_specs["card"]&.version.to_s,
+            "ruby" => RUBY_VERSION,
+            "ruby_platform" => RUBY_PLATFORM,
+            "ruby_engine" => RUBY_ENGINE }
+if (batched = Gem.loaded_specs["card-mod-batched-nests"])
+  version["card_mod_batched_nests"] = {
+    "version" => batched.version.to_s,
+    "installed" => Card::Fetch.ancestors.include?(Cardio::BatchedNests::Fetch),
+    "prefetch_nests" => Card.config.prefetch_nests,
+    "prefetch_machinery" => Card.config.prefetch_machinery
+  }
+end
+emit("ready" => true, "protocol" => PROTOCOL, "engine" => "decko-ruby", "version" => version)
 
 $stdin.each_line do |line|
   line = line.strip

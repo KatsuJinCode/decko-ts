@@ -112,7 +112,7 @@ varies between two stock runs, and only those values are masked:
 | Masked value | Where stock Decko produces it |
 |---|---|
 | `data-slot-id` | card-mod-format `set/all/html/wrap.rb` writes `SecureRandom.hex(10)` into every wrapped slot |
-| accordion context in `card-<key>-<context>-collapse-id` | card-mod-bootstrap `set/all/bootstrap/accordion.rb`; the dashboard passes a number that differs from process to process |
+| accordion context in `card-<key>-<context>-collapse-id` | card-mod-bootstrap `set/all/bootstrap/accordion.rb` builds the id; on the admin dashboard the context is a number that differs between two stock runs (where the caller gets it has not been traced) |
 | the `*now` card's content | the current time, to the minute |
 
 A value is masked only if the control still differs when that value alone is
@@ -128,6 +128,9 @@ Result, 2026-10-14, on a copy of `reference-harness/fixtures/synthetic-v2/deck`
 
 All three masks were needed by the control. With them, all 3,804 renders under
 the gem are byte-identical to stock.
+The check cannot see a difference inside those three values; everything
+else in every render is compared byte for byte. The raw counts agree too:
+the same 2,312 renders differ in the control as under the gem.
 
 ```bash
 # in reference-harness/oracle/app, each run on its own copy of the same deck
