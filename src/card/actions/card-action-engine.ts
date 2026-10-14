@@ -1327,8 +1327,19 @@ export class CardActionEngine {
    *  `Card::Error, "no main nest found in layout \"<name>\""` when neither
    *  its content nor the cards it nests (five levels deep,
    *  lib/card/layout/card_layout.rb:20-40) holds a {{_main}} nest. The
-   *  raise rolls the act back and answers 500; the port refuses before
-   *  writing. */
+   *  raise rolls the act back; the port refuses before writing.
+   *
+   *  The raised class is the BASE Card::Error, not ServerError. The
+   *  controller's rescue (card_controller/errors.rb:18 handle_exception,
+   *  reached because a deployed site sets rescue_all_in_controller — see
+   *  decko-0.20.0 config/environments/production.rb:1-3) reports it through
+   *  Card::Error.report, which keeps an exception that already IS a
+   *  Card::Error (card/error.rb cardify_exception, :146) rather than
+   *  rewrapping it as ServerError. The base class carries view :errors and
+   *  status_code 422 (card/error.rb:20-21), so the deployed answer is the
+   *  errors-view alert at 422 — the "ERROR" key is the class name's last
+   *  segment upcased (card/error.rb add_card_errors, :159-161) — and not the
+   *  500 Wild Card page a ServerError would give. */
   private async assertLayoutHasMainNest(
     row: CardsRow,
     content: string | null | undefined,
@@ -1352,7 +1363,7 @@ export class CardActionEngine {
     if (await hasMain(content ?? row.db_content ?? "", 0)) return;
     const name = (await this.composedNameOf(row))?.s ?? String(row.id);
     const message = `no main nest found in layout "${name}"`;
-    throw new CardActionError("server-error", message, message);
+    throw new CardActionError("user-error", message, `ERROR: ${message}`, { Error: message }, name);
   }
 
   /** initialize_because_of_type_change (card-mod-bootstrap

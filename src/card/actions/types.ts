@@ -53,7 +53,7 @@ export type CardActionErrorCode =
   | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
   | "field-required" // require_field :email (card-mod-account set/right/account.rb:8)
   | "validation-failed" // another :validate event's errors (e.g. card-mod-account password.rb:28-46)
-  | "server-error" // a Card::Error raised by a save event (status 500), e.g. a layout without a main nest
+  | "server-error" // a save event failed with an exception Ruby would cardify as Card::Error::ServerError (card/error.rb:45-56: view :server_error, status 500)
   | "recaptcha" // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
   | "user-error"; // a bare Card::Error::UserError (card-1.110.0 lib/card/error.rb:21), e.g. deleting a card that does not exist
 
