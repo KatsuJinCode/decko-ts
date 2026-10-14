@@ -71,6 +71,7 @@
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import type { AttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import {
   applySecuritySettings,
   handleWorkersWriteSurface,
@@ -106,6 +107,10 @@ export interface BunnyEdgeWriteDeck {
    *  very BunnyDbDriver the read path uses. Named only so a test can inject
    *  a distinct driver. */
   readonly driver?: SQLDatabaseDriver;
+  /** The deck's file storage (bunny-edge-files.ts: the Bunny Storage zone
+   *  under BlobAttachmentStore). Absent = uploads and stored asset outputs
+   *  fail with the engine's named rejection. */
+  readonly attachmentStore?: AttachmentStore;
 }
 
 /**
@@ -219,6 +224,7 @@ export async function mountBunnyEdgeWriteSurface(
       fetcher: deck.fetcher,
       renderEngine: deck.render,
       driver: deck.driver ?? deck.fetcher.driver,
+      ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
     },
     inbound,
     flags,
