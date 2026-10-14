@@ -346,7 +346,12 @@ async function renderPreviewEditor({ name, opts }) {
   const { RenderFormat } = await import(dist("card/render/format.js"));
   const { defaultDeckLoader } = await import(dist("card/mod-loader/default-mod-deck.js"));
   deckLoader ??= defaultDeckLoader();
-  const engine = new RenderEngine(fetcher);
+  // A render FETCH engine of its own over the same driver: seating the cache
+  // card must not seat or expire entries on the drive's shared fetcher, which
+  // the GET path answers from (read() above). The draft rows the write just
+  // stored are in the database, so this fetcher reads them directly.
+  const { FetchEngine: RenderFetch } = await import(dist("card/fetch.js"));
+  const engine = new RenderEngine(new RenderFetch(driver));
   engine.modLoader = deckLoader;
   if (actor?.id !== undefined) engine.viewer = { signedIn: true, actorId: actor.id };
   engine.expireRenderCard(name);
@@ -363,6 +368,7 @@ async function renderPreviewEditor({ name, opts }) {
 }
 
 async function call(method, path, params) {
+  if (method === "get") return read(path);
   const enc = encode(params);
   const headers = { host: "127.0.0.1", "content-type": enc.contentType };
   const c = cookieHeader();

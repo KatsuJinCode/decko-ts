@@ -1546,7 +1546,7 @@ async function dispatchWriteRequest(
       attachment !== undefined &&
       (route.verb === "create" || route.verb === "update")
     ) {
-      return await handlePreliminaryUpload(ctx, engine, route, parsed, attachment, mount);
+      return await handlePreliminaryUpload(ctx, engine, req, route, parsed, attachment, mount);
     }
     if (route.verb === "create") {
       const input = {
@@ -1917,6 +1917,7 @@ function cachedUploadActionParam(parsed: ParsedBody): string | undefined {
 async function handlePreliminaryUpload(
   ctx: WriteRouteContext,
   engine: CardActionEngine,
+  req: WriteRouteRequest,
   route: RouteMatch,
   parsed: ParsedBody,
   attachment: AttachmentInput,
@@ -1984,6 +1985,27 @@ async function handlePreliminaryUpload(
     : cacheCardName;
   if (renderName === undefined) {
     throw new CardActionError("not-found", "no *new cache card for the preliminary upload");
+  }
+  // The success hash's redirect (00_upload_cache.rb:18-24 `success << {target,
+  // type, view: "preview_editor", rev_id}` then `abort :success`), answered
+  // the way cud_success answers any success (response.rb:25-33): a PLAIN
+  // request is a hard redirect, 303 to the target's view with the draft's
+  // rev_id — the oracle's Location is
+  // http://127.0.0.1/*new_file/preview_editor?rev_id=734 for a create and
+  // /Parity_Cached_File/preview_editor?rev_id=736 for an update. Only an
+  // AJAX request (Card::Env.ajax?, the editor's fileupload) takes the soft
+  // arm: it renders the preview_editor view itself (response.rb:54-62
+  // soft_redirect -> show), which is the html decko.js swaps in
+  // (upload.js.coffee:48-51).
+  if (!isAjax(req, parsed)) {
+    return {
+      status: 303,
+      headers: {
+        Location: cardUrl(req, `/${locationName(renderName)}/preview_editor?rev_id=${actionId}`),
+        "Content-Type": "text/html; charset=utf-8",
+      },
+      body: "",
+    };
   }
   // The response renders the save's OWN post-draft state (Ruby renders the
   // in-memory success target: selected_action_id = the draft just filed —
