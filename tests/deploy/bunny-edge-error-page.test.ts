@@ -60,6 +60,7 @@ import {
   CONFIGURED_NOT_FOUND_TYPE_ID,
 } from "./fixtures/configured-deck-served-deltas.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import { EMPTY_SERVED_DELTAS } from "../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
 
 function edgeGet(pathname: string): Request {
   return new Request(`https://script-placeholder.bunny.run${pathname}`);
@@ -238,9 +239,30 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
       // No layout-rule anchors configured -> the builder reads the deck's
-      // `all` and `layout` codename cards and lays the page out in the
-      // deck's own Default Layout chrome.
-      expect(body).toContain(`<title>NoSuchCard - Test Site</title>`);
+      // `all` and `layout` codename cards (Card::Codename.id). The page must
+      // be exactly the one an operator gets by stating those two ids.
+      const idOf = async (codename: string) =>
+        Number(
+          (
+            await storage.fetcher.driver.query<{ id: number }>(
+              "SELECT id FROM cards WHERE codename = ? AND trash = 0",
+              [codename],
+            )
+          ).rows[0]?.id,
+        );
+      const stated = await handleEngineRequest(edgeGet("/NoSuchCard"), {
+        fetcher: storage.fetcher,
+        render: storage.engine,
+        servedDeltas: {
+          ...EMPTY_SERVED_DELTAS,
+          allCardId: await idOf("all"),
+          layoutPointerId: await idOf("layout"),
+        },
+      });
+      const mask = (s: string) => s.replace(/data-slot-id="[^"]*"/g, "");
+      expect(stated.status).toBe(404);
+      expect(mask(body)).toBe(mask(await stated.text()));
+      expect(body).toContain("Could not find\n<em>\nNoSuchCard\n</em>");
       expect(body).not.toContain(`<h1>Card not found</h1>`);
       // And nothing from another deck's chrome leaked into it.
       expect(body).not.toContain(String(CONFIGURED_NOT_FOUND_TYPE_ID));
