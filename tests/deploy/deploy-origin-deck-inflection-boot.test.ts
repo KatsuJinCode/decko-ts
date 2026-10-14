@@ -65,9 +65,9 @@ const SEED = `${REPO_ROOT}deploy/seed/seed.sql`;
 const ORIGINS = [
   {
     file: "deploy/worker.ts",
-    // The line that derives every keyToId entry from a name. The boot call
-    // must be ABOVE this one.
-    keyDerivationSite: 'keyToId.set(DeckoName.parse(name).key, row.id)',
+    // The worker loads cards on demand, so its keys are derived by the
+    // engine it constructs here. The boot call must be ABOVE this one.
+    keyDerivationSite: "new FetchEngine(driver)",
   },
   {
     // The boot module, not the handler: the boot moved to
