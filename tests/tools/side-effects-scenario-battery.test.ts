@@ -270,7 +270,11 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
       // virtual row, so the first request creates it and, through
       // update_referers_after_input_changed, re-stores the site stylesheet and
       // script bundles. The port refreshes assets on save only, so a read
-      // stores nothing. Porting the cautious refresh is the fix.
+      // stores nothing. Porting the cautious refresh is the fix. Two gaps
+      // feed it, and neither alone closes the step: the per-request
+      // trigger, and `style: mods` not being an inputter (it is the self
+      // card card-mod-style set/self/style_mods.rb:1, typed List, so the
+      // typeCode arm at style-asset-events.ts:191 misses it).
       { step: "get-home", fields: ["files", "virtuals", "writes"] },
       { step: "upload-cache-new-file", fields: ["actions", "location", "stamps", "status", "stored", "writes"] },
       { step: "create-from-cached-upload", fields: ["actions", "files", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
