@@ -2374,7 +2374,6 @@
 {"id":"view:admin:Note 001:edit_form","op":"render","actor":"admin","card":"Note 001","view":"edit_form"}
 {"id":"view:admin:Note 001:edit_buttons","op":"render","actor":"admin","card":"Note 001","view":"edit_buttons"}
 {"id":"view:admin:Search Page:edit_nests","op":"render","actor":"admin","card":"Search Page","view":"edit_nests"}
-{"id":"view:admin:Topic 001:edit_structure","op":"render","actor":"admin","card":"Topic 001","view":"edit_structure"}
 {"id":"view:admin:Topic 001:edit_rules","op":"render","actor":"admin","card":"Topic 001","view":"edit_rules"}
 {"id":"view:admin:Topic 001+summary:edit_inline","op":"render","actor":"admin","card":"Topic 001+summary","view":"edit_inline"}
 {"id":"view:anonymous:Topic 001+summary:edit_inline","op":"render","actor":"anonymous","card":"Topic 001+summary","view":"edit_inline"}
@@ -2417,7 +2416,6 @@
 {"id":"view:admin:*favicon:modal_nest_image","op":"render","actor":"admin","card":"*favicon","view":"modal_nest_image"}
 {"id":"view:admin:*favicon:new_image","op":"render","actor":"admin","card":"*favicon","view":"new_image"}
 {"id":"view:admin:*favicon:new_image_buttons","op":"render","actor":"admin","card":"*favicon","view":"new_image_buttons"}
-{"id":"view:admin:Report 1:preview_editor","op":"render","actor":"admin","card":"Report 1","view":"preview_editor"}
 {"id":"view:admin:Topic 001:card_select","op":"render","actor":"admin","card":"Topic 001","view":"card_select"}
 {"id":"view:admin:Topic:add_link","op":"render","actor":"admin","card":"Topic","view":"add_link"}
 {"id":"view:admin:Topic:add_button","op":"render","actor":"admin","card":"Topic","view":"add_button"}
@@ -2439,7 +2437,6 @@
 {"id":"view:admin:Nonexistent Card:compact_missing","op":"render","actor":"admin","card":"Nonexistent Card","view":"compact_missing"}
 {"id":"view:admin:Nonexistent Card:errors","op":"render","actor":"admin","card":"Nonexistent Card","view":"errors"}
 {"id":"view:admin:Note 001:server_error","op":"render","actor":"admin","card":"Note 001","view":"server_error"}
-{"id":"view:admin:Note 001:debug_server_error","op":"render","actor":"admin","card":"Note 001","view":"debug_server_error"}
 {"id":"view:admin:Home:flash","op":"render","actor":"admin","card":"Home","view":"flash"}
 {"id":"view:admin:Topic 001:history","op":"render","actor":"admin","card":"Topic 001","view":"history"}
 {"id":"view:anonymous:Topic 001:history","op":"render","actor":"anonymous","card":"Topic 001","view":"history"}
@@ -2473,13 +2470,10 @@
 {"id":"view:admin:Ada Admin:account_tab","op":"render","actor":"admin","card":"Ada Admin","view":"account_tab"}
 {"id":"view:admin:Ada Admin:closed_account","op":"render","actor":"admin","card":"Ada Admin","view":"closed_account"}
 {"id":"view:admin:Ada Admin+*account:api_key","op":"render","actor":"admin","card":"Ada Admin+*account","view":"api_key"}
-{"id":"view:admin:Ada Admin+*account:verify_url","op":"render","actor":"admin","card":"Ada Admin+*account","view":"verify_url"}
-{"id":"view:admin:Ada Admin+*account:reset_password_url","op":"render","actor":"admin","card":"Ada Admin+*account","view":"reset_password_url"}
 {"id":"view:admin:Ada Admin+*account:token_days","op":"render","actor":"admin","card":"Ada Admin+*account","view":"token_days"}
 {"id":"view:admin:Ada Admin+*account:verify_days","op":"render","actor":"admin","card":"Ada Admin+*account","view":"verify_days"}
 {"id":"view:admin:Ada Admin+*account:reset_password_days","op":"render","actor":"admin","card":"Ada Admin+*account","view":"reset_password_days"}
 {"id":"view:admin:Ada Admin+*account:token_expiry","op":"render","actor":"admin","card":"Ada Admin+*account","view":"token_expiry"}
-{"id":"view:admin:Ada Admin+*account:closure","op":"render","actor":"admin","card":"Ada Admin+*account","view":"closure"}
 {"id":"view:admin:Ada Admin+*api_key:current","op":"render","actor":"admin","card":"Ada Admin+*api_key","view":"current"}
 {"id":"view:admin:Ada Admin+*api_key:token_link","op":"render","actor":"admin","card":"Ada Admin+*api_key","view":"token_link"}
 {"id":"view:admin:Ada Admin+*api_key:buttons","op":"render","actor":"admin","card":"Ada Admin+*api_key","view":"buttons"}
@@ -2505,7 +2499,6 @@
 {"id":"view:admin:*search:search_box","op":"render","actor":"admin","card":"*search","view":"search_box"}
 {"id":"view:admin:*search:results_for_keyword","op":"render","actor":"admin","card":"*search","view":"results_for_keyword"}
 {"id":"view:admin:All Topics:search_count","op":"render","actor":"admin","card":"All Topics","view":"search_count"}
-{"id":"view:admin:All Topics:search_error","op":"render","actor":"admin","card":"All Topics","view":"search_error"}
 {"id":"view:admin:All Topics:no_search_results","op":"render","actor":"admin","card":"All Topics","view":"no_search_results"}
 {"id":"view:admin:All Topics:paging","op":"render","actor":"admin","card":"All Topics","view":"paging"}
 {"id":"view:admin:All Topics:card_list","op":"render","actor":"admin","card":"All Topics","view":"card_list"}
@@ -2531,7 +2524,6 @@
 {"id":"view:admin:style: mods:stylesheet_include_tag","op":"render","actor":"admin","card":"style: mods","view":"stylesheet_include_tag"}
 {"id":"view:admin:style: mods:remote_style_tags","op":"render","actor":"admin","card":"style: mods","view":"remote_style_tags"}
 {"id":"view:admin:*all+*script:remote_script_tags","op":"render","actor":"admin","card":"*all+*script","view":"remote_script_tags"}
-{"id":"view:admin:*all+*script:asset_output_url","op":"render","actor":"admin","card":"*all+*script","view":"asset_output_url"}
 {"id":"view:admin:*all+*style:stylesheet_path","op":"render","actor":"admin","card":"*all+*style","view":"stylesheet_path"}
 {"id":"view:admin:Report 1:source","op":"render","actor":"admin","card":"Report 1","view":"source"}
 {"id":"view:admin:Report 1:file_size","op":"render","actor":"admin","card":"Report 1","view":"file_size"}

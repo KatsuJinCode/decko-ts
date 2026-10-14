@@ -44,8 +44,19 @@ export function isDeckSidecar(name) {
   return /-shm$/.test(name) || /-wal$/.test(name);
 }
 
-/** Paths (forward slashes, relative to the fixture) of every fixture input:
- *  everything except the manifest itself, expected-output directories and
+/** A fixture's withheld set: whole operations, with their recorded oracle
+ *  answers, kept out of the public package. It lives in `withheld/` beside
+ *  the public files, in the same shapes (`withheld/ops/<kind>.jsonl`,
+ *  `withheld/<expected dir>/<kind>.jsonl[.gz]`) plus `withheld/withheld.json`
+ *  (`{label, why}`). The public files never carry a withheld operation, so the
+ *  public op list and capture are complete on their own; the withheld set,
+ *  when present, adds its operations back and every reader runs and grades
+ *  them. When it is absent every reader says so: see withheldLine. */
+export const WITHHELD_DIR = "withheld";
+
+/** Paths (forward slashes, relative to the fixture) of every public fixture
+ *  input: everything except the manifest itself, expected-output directories,
+ *  the withheld set (pinned separately, see computeWithheldIdentity) and
  *  SQLite's journal sidecars (see isDeckSidecar). */
 export function fixtureInputPaths(fixtureDir) {
   const out = [];
@@ -53,7 +64,7 @@ export function fixtureInputPaths(fixtureDir) {
     const abs = path.join(fixtureDir, rel);
     for (const entry of readdirSync(abs, { withFileTypes: true })) {
       const child = rel ? `${rel}/${entry.name}` : entry.name;
-      if (!rel && (entry.name === "MANIFEST.json" || entry.name === "expected" || entry.name.startsWith("expected-"))) continue;
+      if (!rel && (entry.name === "MANIFEST.json" || entry.name === "expected" || entry.name.startsWith("expected-") || entry.name === WITHHELD_DIR)) continue;
       if (entry.isDirectory()) walk(child);
       else if (entry.isFile()) {
         if (isDeckSidecar(entry.name)) continue;
@@ -65,16 +76,87 @@ export function fixtureInputPaths(fixtureDir) {
   return out.sort();
 }
 
-/** The fixture's current file hashes and the digest over them. */
-export function computeFixtureIdentity(fixtureDir) {
+/** The withheld set's declaration as it stands on disk: its label and why,
+ *  the operation count per kind, and the sha256 of every file (paths relative
+ *  to the withheld directory). Null when the fixture has no withheld set. */
+export function computeWithheldIdentity(fixtureDir) {
+  const dir = path.join(fixtureDir, WITHHELD_DIR);
+  if (!existsSync(dir)) return null;
+  const declarationFile = path.join(dir, "withheld.json");
+  if (!existsSync(declarationFile)) throw new Error(`${dir} has no withheld.json declaring its label and why`);
+  const { label, why } = JSON.parse(readFileSync(declarationFile, "utf8"));
+  if (!label || !why) throw new Error(`${declarationFile} must name a label and a why`);
   const files = {};
-  for (const rel of fixtureInputPaths(fixtureDir)) files[rel] = sha256(readFileSync(path.join(fixtureDir, rel)));
-  return { files, digest: digestOf(files) };
+  const walk = (rel) => {
+    for (const entry of readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+      const child = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(child);
+      else if (entry.isFile()) files[child] = sha256(readFileSync(path.join(dir, child)));
+    }
+  };
+  walk("");
+  const ops = {};
+  for (const kind of ["render", "semantics"]) {
+    const list = withheldOpsOf(fixtureDir, kind);
+    if (list) ops[kind] = list.length;
+  }
+  const scenarios = withheldScenariosOf(fixtureDir);
+  if (scenarios) ops.scenarios = scenarios.length;
+  return { label, why, ops, files: Object.fromEntries(Object.keys(files).sort().map((k) => [k, files[k]])) };
 }
 
-/** One digest over a {path: sha256} list, independent of key order. */
-export function digestOf(files) {
-  return sha256(Object.keys(files).sort().map((p) => `${p}\t${files[p]}\n`).join(""));
+/** The fixture's current public file hashes and the digest over them. The
+ *  digest also covers the withheld set's pinned hashes (`withheld` from the
+ *  manifest, or as computed when the set is present and no manifest is given),
+ *  so the set cannot be swapped without changing the fixture's identity, while
+ *  a package without the set carries the same digest. */
+export function computeFixtureIdentity(fixtureDir, withheld = computeWithheldIdentity(fixtureDir)) {
+  const files = {};
+  for (const rel of fixtureInputPaths(fixtureDir)) files[rel] = sha256(readFileSync(path.join(fixtureDir, rel)));
+  return { files, withheld, digest: digestOf(files, withheld) };
+}
+
+/** One digest over a {path: sha256} list, independent of key order. A
+ *  withheld set's files enter it under `withheld/<path>`; a fixture with no
+ *  withheld set digests exactly as before the set existed. */
+export function digestOf(files, withheld = null) {
+  const all = { ...files };
+  for (const [rel, hash] of Object.entries(withheld?.files ?? {})) all[`${WITHHELD_DIR}/${rel}`] = hash;
+  return sha256(Object.keys(all).sort().map((p) => `${p}\t${all[p]}\n`).join(""));
+}
+
+/** Withheld operations of one kind (`render` or `semantics`), or null when the
+ *  set is absent or holds none of that kind. */
+export function withheldOpsOf(fixtureDir, kind) {
+  const file = path.join(fixtureDir, WITHHELD_DIR, "ops", `${kind}.jsonl`);
+  if (!existsSync(file)) return null;
+  return readFileSync(file, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l));
+}
+
+/** Withheld scenarios, or null when the set is absent or holds none. */
+export function withheldScenariosOf(fixtureDir) {
+  const file = path.join(fixtureDir, WITHHELD_DIR, "ops", "scenarios.json");
+  if (!existsSync(file)) return null;
+  return JSON.parse(readFileSync(file, "utf8")).scenarios;
+}
+
+/** The fixture manifest's withheld declaration and whether the set is on
+ *  disk: `{label, ops: {kind: n}, total, present, dir}`, or null for a fixture
+ *  that declares none. */
+export function withheldStatus(fixtureDir) {
+  const manifestPath = path.join(fixtureDir, "MANIFEST.json");
+  const declared = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")).withheld : null;
+  if (!declared) return null;
+  const dir = path.join(fixtureDir, WITHHELD_DIR);
+  const total = Object.values(declared.ops ?? {}).reduce((n, c) => n + c, 0);
+  return { label: declared.label, ops: declared.ops ?? {}, total, present: existsSync(dir), dir };
+}
+
+/** The line every reader prints for a declared withheld set:
+ *  `[withheld: <label>] NOT RUN: <n> ops (<path>)` when the set is absent, and
+ *  the same line with RUN when it is present and its operations ran. */
+export function withheldLine(status, displayDir = status.dir) {
+  return `[withheld: ${status.label}] ${status.present ? "RUN" : "NOT RUN"}: ${status.total} ops (${displayDir.split(path.sep).join("/")})`;
 }
 
 /** Verifies a fixture tree against its MANIFEST.json. Returns the manifest's
@@ -92,15 +174,42 @@ export function verifyFixture(fixtureDir) {
   if (manifest.format !== FIXTURE_MANIFEST_FORMAT) problems.push(`fixture manifest format is ${manifest.format}, expected ${FIXTURE_MANIFEST_FORMAT}`);
   if (manifest.fixture !== path.basename(fixtureDir)) problems.push(`fixture manifest names "${manifest.fixture}", directory is "${path.basename(fixtureDir)}"`);
   const listed = manifest.files ?? {};
-  if (digestOf(listed) !== manifest.digest) problems.push("fixture manifest digest does not match its own file list");
-  const now = computeFixtureIdentity(fixtureDir);
+  const declaredWithheld = manifest.withheld ?? null;
+  if (digestOf(listed, declaredWithheld) !== manifest.digest) problems.push("fixture manifest digest does not match its own file list");
+  // The public files are checked against the manifest; the withheld set is
+  // checked file by file when it is present, and is simply not run when it is
+  // absent (every reader reports that; see withheldLine).
+  const now = computeFixtureIdentity(fixtureDir, declaredWithheld);
   for (const [rel, hash] of Object.entries(listed)) {
     if (!(rel in now.files)) problems.push(`fixture file missing: ${rel}`);
     else if (now.files[rel] !== hash) problems.push(`fixture file changed since its manifest: ${rel}`);
   }
   for (const rel of Object.keys(now.files)) if (!(rel in listed)) problems.push(`fixture file not in its manifest: ${rel}`);
+  problems.push(...withheldProblems(fixtureDir, declaredWithheld));
   problems.push(...sidecarProblems(fixtureDir));
   return { digest: manifest.digest ?? null, problems };
+}
+
+/** A present withheld set must be the one the manifest pins, file for file;
+ *  an absent one is not a problem. */
+function withheldProblems(fixtureDir, declared) {
+  if (!existsSync(path.join(fixtureDir, WITHHELD_DIR))) return [];
+  if (!declared) return [`fixture has a ${WITHHELD_DIR}/ set its manifest does not declare`];
+  let now;
+  try {
+    now = computeWithheldIdentity(fixtureDir);
+  } catch (error) {
+    return [`withheld set unreadable: ${error.message}`];
+  }
+  const problems = [];
+  const listed = declared.files ?? {};
+  for (const [rel, hash] of Object.entries(listed)) {
+    if (!(rel in now.files)) problems.push(`withheld file missing: ${rel}`);
+    else if (now.files[rel] !== hash) problems.push(`withheld file changed since its manifest: ${rel}`);
+  }
+  for (const rel of Object.keys(now.files)) if (!(rel in listed)) problems.push(`withheld file not in its manifest: ${rel}`);
+  if (JSON.stringify(now.ops) !== JSON.stringify(declared.ops ?? {})) problems.push(`withheld set holds ${JSON.stringify(now.ops)} operations, its manifest declares ${JSON.stringify(declared.ops ?? {})}`);
+  return problems;
 }
 
 /** A `-wal` left beside the deck with bytes still in it means the main file is
@@ -140,9 +249,16 @@ export function resultFiles(dir) {
   return readdirSync(dir).filter((f) => /^(render|semantics|scenarios)\.jsonl(\.gz)?$/.test(f) || f === "run-meta.json").sort();
 }
 
+/** Writes a fixture's MANIFEST.json. A withheld set is pinned from disk when it
+ *  is present; re-pinning without it (a public package) keeps the previous
+ *  manifest's withheld declaration, which it cannot re-verify, so the digest
+ *  and the readers' NOT RUN count stay what the full fixture pinned. */
 export function writeFixtureManifest(fixtureDir) {
-  const { files, digest } = computeFixtureIdentity(fixtureDir);
-  const manifest = { format: FIXTURE_MANIFEST_FORMAT, fixture: path.basename(fixtureDir), digest, files };
+  const manifestPath = path.join(fixtureDir, "MANIFEST.json");
+  const previous = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
+  const onDisk = computeWithheldIdentity(fixtureDir);
+  const { files, withheld, digest } = computeFixtureIdentity(fixtureDir, onDisk ?? previous?.withheld ?? null);
+  const manifest = { format: FIXTURE_MANIFEST_FORMAT, fixture: path.basename(fixtureDir), digest, files, ...(withheld ? { withheld } : {}) };
   writeFileSync(path.join(fixtureDir, "MANIFEST.json"), JSON.stringify(manifest, null, 2) + "\n");
   return manifest;
 }
@@ -193,6 +309,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else if (command === "check") {
     const { digest, problems } = verifyFixture(path.resolve(positional[0]));
     for (const p of problems) console.log(p);
+    const withheld = withheldStatus(path.resolve(positional[0]));
+    if (withheld) console.log(withheldLine(withheld, path.join(positional[0], WITHHELD_DIR)));
     console.log(problems.length ? `fixture INVALID (${problems.length} problems)` : `fixture intact, digest ${digest}`);
     process.exit(problems.length ? 1 : 0);
   } else if (command === "expected") {
