@@ -268,8 +268,8 @@ resulting card and the `mail` sent, and every sign-in's answer carries
 Two honesty notes belong here, because the critique asked for the boundary and
 the repository states it elsewhere:
 
-- The side-effects battery on the committed clean deck is **83 of its 88 public
-  steps matching**, 4 declared deliberate differences and 1 open, with 2 more
+- The side-effects battery on the committed clean deck is **84 of its 88 public
+  steps matching**, 3 declared deliberate differences and 1 open, with 2 more
   steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). It is not
   presented as a clean sweep.
 - The corpus figure is not purely oracle-against-oracle: fifty of its
@@ -335,7 +335,7 @@ row delta against the Ruby oracle's: of the 67 public operations, 65 are
 identical and 2 are declared deliberate differences, and 3 more are withheld
 until disclosure ([coverage-inventory.md](coverage-inventory.md), "The public
 batteries, accounted"). The 90-step scenario battery does the same for
-verdicts: of 88 public steps, 83 match, 4 are declared and 1 is open, with 2
+verdicts: of 88 public steps, 84 match, 3 are declared and 1 is open, with 2
 withheld.
 
 The deeper evidence is named but is explicitly **not** public: the production-deck
