@@ -110,14 +110,16 @@ Three further approved divergences exist, are pinned by withheld tests, and are 
   password the port already set or upgraded cannot sign in through Ruby until
   its password is set again. Full detail: approved divergence 1 above.
 - **Transaction semantics:** on Cloudflare D1 a save is atomic through a
-  compensating journal rather than `BEGIN`/`COMMIT`, other connections can
-  read a save's rows before it commits, and rolled-back ids are not reused —
-  a difference from Ruby's and plain SQLite's behavior that a migration
-  validating rows mid-import must account for. That visibility window is
-  also why write-enabled D1 is presented as evaluation/single-user grade,
-  not a supported multiuser deployment: a multiuser deployment on D1 keeps
-  writes disabled or accepts that a failed save is briefly visible mid-save.
-  Authoritative table:
+  compensating journal rather than `BEGIN`/`COMMIT`, and rolled-back ids are
+  not reused — a difference from Ruby's and plain SQLite's behavior that a
+  migration validating rows mid-import must account for. Readers on other
+  connections are not served a save's rows before it commits: a read that
+  finds a save in progress waits for it to commit or roll back, so a failed
+  save is never visible to another user, at the cost of reads waiting for
+  the save in progress. This is verified under workerd's local D1
+  (Miniflare); against hosted D1 it is checked by
+  `tools/hosted-conformance/run.mjs` (`docs/hosted-conformance.md`), which
+  has not yet been run against a hosted service. Authoritative table:
   `docs/decisions/0007-atomic-saves-and-transaction-contract.md`.
 - **Schema the port adds on top of the Ruby deck.** A deck imported from Ruby
   has none of the following; they arrive with the deploy migration chain, and

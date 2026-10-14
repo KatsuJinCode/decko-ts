@@ -32,6 +32,7 @@ import { CardActionEngine } from "../../../src/card/actions/card-action-engine.j
 import type { AttachmentStore, AttachmentStoreInput, StoredAttachment } from "../../../src/card/attachments/attachment-store.js";
 import type { SavePathIntegrationHook } from "../../../src/card/notify/types.js";
 import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import { hostedDeck } from "../../hosted/hosted-backend.js";
 import { startMockHranaServer } from "../../server/drivers/mock-hrana-server.js";
 import {
   CARDTYPE_ID,
@@ -135,7 +136,14 @@ function scratchDir(): string {
   return dir;
 }
 
+const hosted = hostedDeck();
+
 const BACKENDS: Record<string, () => Promise<Backend>> = {
+  // The hosted conformance runner (tools/hosted-conformance/) selects these
+  // cases alone, with a test-name filter of "hosted".
+  ...(hosted === undefined
+    ? {}
+    : { [hosted.label]: async () => ({ driver: await hosted.open(), observer: hosted.connect(), dispose: async () => undefined }) }),
   "local SQLite (native)": async () => {
     const path = join(scratchDir(), "deck.sqlite");
     const driver = new LocalSqliteDriver({ path });

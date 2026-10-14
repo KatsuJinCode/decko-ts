@@ -206,11 +206,13 @@ Stated plainly, with where the gap closes when it closes:
    server backed by real SQLite — never against hosted D1, sqld, Turso or
    Bunny ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md):
    "Nothing here was run against a hosted service"). No committed evidence
-   describes a production write on any host. Writes on D1 are presented
-   accordingly, as evaluation/single-user grade rather than a supported
-   multiuser deployment: until the intermediate-visibility window 0007
-   documents is closed, a multiuser D1 deployment keeps writes disabled or
-   accepts that a failed save is briefly visible mid-save.
+   describes a production write on any host. The intermediate-visibility
+   window on D1 is closed: a reader on another connection waits for a save
+   in progress instead of reading its rows, verified under Miniflare by
+   `tests/card/actions/d1-multi-user-saves.test.ts`. The runner that checks
+   the same suites against hosted D1, Turso and Bunny is
+   `tools/hosted-conformance/run.mjs` ([hosted-conformance.md](hosted-conformance.md));
+   it has been run only against local stand-ins.
 4. **Arbitrary mods.** Existing Ruby mods are not executed — the site's own
    mods are hand-ported, and the compatibility report's labels are
    declaration-level

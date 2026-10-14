@@ -60,7 +60,7 @@
 //     bounds every hop, and one bounded retry absorbs a transient hop.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
-import { TransactionGate } from "../../server/driver.js";
+import { retryWhileBusy, TransactionGate } from "../../server/driver.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -315,24 +315,28 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    */
   async transaction<R>(work: () => Promise<R>): Promise<R> {
     return this.gate.run(async () => {
-      const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
-      const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
-      if (opened.baton === undefined) {
-        // Bunny documents baton sessions but asks customers who need them to
-        // ask for them; a database without them closes every stream, and a
-        // save cannot be made atomic there. Refuse rather than write
-        // statement by statement.
-        throw new BunnyDbError(
-          "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
-        );
-      }
-      this.stream = { baton: opened.baton, url: opened.url };
-      try {
-        opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
-      } catch (error) {
-        await this.endStream(undefined).catch(() => undefined);
-        throw error;
-      }
+      // Another connection holding the write lock makes BEGIN IMMEDIATE
+      // fail at once; wait for it, up to the lock timeout.
+      await retryWhileBusy(async () => {
+        const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+        const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
+        if (opened.baton === undefined) {
+          // Bunny documents baton sessions but asks customers who need them
+          // to ask for them; a database without them closes every stream,
+          // and a save cannot be made atomic there. Refuse rather than write
+          // statement by statement.
+          throw new BunnyDbError(
+            "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
+          );
+        }
+        this.stream = { baton: opened.baton, url: opened.url };
+        try {
+          opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+        } catch (error) {
+          await this.endStream(undefined).catch(() => undefined);
+          throw error;
+        }
+      });
       let result: R;
       try {
         result = await work();

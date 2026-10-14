@@ -48,7 +48,7 @@ through a driver with no transaction rather than save non-atomically.
 | Atomic on failure | yes | yes | yes |
 | Interrupted transaction undone by | the database | the database (a dropped stream rolls back) | the next transaction, or any serving read once the lock lease is known expired (the read restores the journal before answering) |
 | Other connections see uncommitted writes | no | no | no: a serving read answers only from a batch that saw the lock free, and otherwise waits for the holder (or restores a lease-expired holder's journal first) |
-| Writers serialized | database-wide (SQLite write lock) | database-wide (SQLite write lock) | database-wide (lock row with a lease) |
+| Writers serialized | database-wide (SQLite write lock) | database-wide (SQLite write lock; a `BEGIN IMMEDIATE` refused as busy is retried with backoff up to the lock timeout) | database-wide (lock row with a lease) |
 | `batch()` atomic on its own | yes | no (a pipeline autocommits each statement) | yes |
 | Ids given back by a rollback | yes | yes | no (ids skip, as PostgreSQL sequences do) |
 
