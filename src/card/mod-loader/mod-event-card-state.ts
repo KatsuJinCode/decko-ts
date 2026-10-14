@@ -28,13 +28,43 @@
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
 import type { FetchEngine } from "../fetch.js";
-import type { ModEventCard } from "./mod-manifest.js";
+import type { ModEventCard, ModEventStage } from "./mod-manifest.js";
 
 /** The state fields predicates read (the optional, non-identity part of
  *  ModEventCard). A source returns only what its own mod's predicates
  *  consult; every other field stays absent, which reads as "unknown" to a
  *  predicate written to Ruby's semantics. */
 export type ModEventCardState = Partial<ModEventCard>;
+
+/** The assigned attributes of the save in flight, as far as a predicate's
+ *  state depends on them. Ruby reaches these as ordinary card attributes
+ *  written by `assign_attributes` / `assign_set_specific_attributes`
+ *  (card/lib/card/set/advanced_api.rb:33-38 `add_attributes`; the mount's
+ *  own writer at set/abstract/attachment.rb:93-99), so a predicate sees
+ *  them as if it had read `self`. The engine holds the save input; this is
+ *  the shape a state source may consult. */
+export interface ModEventSaveAttributes {
+  /** a mounted file rides this save (Ruby's `set_specific[:file]` /
+   *  `[:image]`, assigned through the mount's writer,
+   *  set/abstract/attachment.rb:93-99). This is the `attachment.file`
+   *  presence and the mount's dirty flag at once — `file=` (card_mount.rb
+   *  :70-74) is what makes `file_is_changing?` true. */
+  readonly attachmentRides?: boolean;
+  /** the file is mounted under this column (card_mount.rb:65-67
+   *  `attachment_name`) — "file" or "image". */
+  readonly attachmentName?: string;
+  /** `storage_type` assigned through the mount's writer
+   *  (01_storage_type.rb:40-43, which also sets @explicit_storage_type). */
+  readonly storageType?: string;
+  /** `bucket` assigned (cloud.rb:1 attr_writer). */
+  readonly bucket?: string;
+  /** `mod` assigned (coded.rb:12-14 `mod=`), absent when the save carries
+   *  none. */
+  readonly mod?: string;
+  /** `action_id_of_cached_upload` (advanced_api.rb:37 adds it as a card
+   *  attribute; 00_upload_cache.rb:84-86 reads it). */
+  readonly actionIdOfCachedUpload?: number | string;
+}
 
 /** What a source may read about the save it is populating for. This is the
  *  deck-side context Ruby reaches through the card's own accessors
@@ -49,6 +79,19 @@ export interface ModEventCardStateContext {
   /** the acting card is the act card (director/all.rb:42): true for the
    *  engine's top-level saves. */
   readonly isActCard: boolean;
+  /** the director stage this dispatch is for (director.rb:18) — the stage
+   *  Ruby is at when it evaluates this event's `when:`. A predicate whose
+   *  subject is computed earlier in the save (an attachment stored at
+   *  :finalize) reads differently at another stage. */
+  readonly stage?: ModEventStage;
+  /** the save's assigned attributes (Ruby's set_specific / the card's own
+   *  attribute writers). Absent on a dispatch with no save input of its
+   *  own. */
+  readonly saveInput?: ModEventSaveAttributes;
+  /** Cardio.config.file_storage — the deck's configured attachment
+   *  backend (carrierwave 01_storage_type.rb:20-22
+   *  `storage_type_from_config`). Undefined = :local. */
+  readonly fileStorage?: string;
   readonly driver: SQLDatabaseDriver;
   readonly lexicon: RenameSwapLexicon;
   /** The read engine, for a predicate that resolves a card shape the way

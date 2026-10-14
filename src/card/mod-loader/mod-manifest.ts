@@ -185,6 +185,11 @@ export interface ModEventCard {
   readonly name: string;
   readonly id?: number;
   readonly dbContent?: string;
+  /** db_content_before_act — the stored content this save is replacing
+   *  (the dirty tracker's pre-act column, card/lib/card/dirty.rb). The
+   *  carrierwave storage predicates compare the saved content against it
+   *  through `current` (01_storage_type.rb:12-14 `refresh true`). */
+  readonly dbContentBeforeAct?: string | null;
   /** The card's effective key (lib/card/name/all.rb:17-19) — what
    *  map_referees keys on. */
   readonly key?: string;
@@ -228,11 +233,27 @@ export interface ModEventCard {
   /** carrierwave storage_type — `coded?`/`local?`
    *  (mod/carrierwave/set/abstract/attachment/01_storage_type.rb:28-33). */
   readonly storageType?: string;
+  /** The storage_type ASSIGNED on this save (01_storage_type.rb:40-43
+   *  `storage_type=`, which also raises Ruby's @explicit_storage_type) —
+   *  read by `uncode?` (coded.rb:26-28). Absent when the save assigned
+   *  none, which is Ruby's nil. */
+  readonly explicitStorageType?: string;
+  /** The `mod` assigned on this save (coded.rb:12-14 `mod=`,
+   *  set_specific[:mod] at attachment.rb:96) — `uncode?`'s middle clause.
+   *  Absent when the save assigned none. */
+  readonly assignedMod?: string;
+  /** ENV["STORE_CODED_FILES"] (lib/carrier_wave/card_mount.rb:59-63) — the
+   *  opt-in that lets a coded attachment actually store. Undefined where
+   *  the variable is unset, which is Ruby's nil (falsy). */
+  readonly storeCodedFiles?: boolean;
   /** Whether this save carries an attached file, and whether it changed —
    *  the carrierwave attachment conditions
    *  (mod/carrierwave/set/abstract/attachment.rb:51). */
   readonly attachmentPresent?: boolean;
   readonly attachmentIsChanging?: boolean;
+  /** `action_id_of_cached_upload` as this save carries it
+   *  (00_upload_cache.rb:2, :84-86) — the two-step upload's final save. */
+  readonly actionIdOfCachedUpload?: number | string;
   /** The account mod's per-act `@setup_approved` flag
    *  (mod/account/set/type/user.rb:53) — backs `setup?` (:72). */
   readonly setupApproved?: boolean;
@@ -280,10 +301,18 @@ export interface ModEventCard {
    *  comparison, 01_storage_type.rb:49), whether this is a `web` storage
    *  card (:40/:47), whether its bucket is configured read_only
    *  (cloud.rb:118), and the attachment's own identifier content
-   *  (attachment.db_content, :40). */
+   *  (attachment.db_content, :40). `current.bucket` and `current.mod` are
+   *  Ruby's `false` for a non-cloud / non-coded card (cloud.rb:10,
+   *  coded.rb:16) — not nil — so they are typed to carry that false. */
   readonly currentStorageType?: string;
-  readonly currentStorageBucket?: string;
-  readonly currentStorageMod?: string | null;
+  readonly currentStorageBucket?: string | false;
+  readonly currentStorageMod?: string | false;
+  /** The SAVING card's own `bucket` (cloud.rb:8-11) and `mod` (coded.rb:
+   *  16-18) — the other two halves of `storage_changed?`'s three-way
+   *  comparison (01_storage_type.rb:49-53). `false` where Ruby returns
+   *  false: a non-cloud card has no bucket, a non-coded card no mod. */
+  readonly savedStorageBucket?: string | false;
+  readonly savedStorageMod?: string | false;
   readonly webStorage?: boolean;
   readonly bucketReadOnly?: boolean;
   readonly attachmentIdentifierContent?: string | null;
