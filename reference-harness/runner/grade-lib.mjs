@@ -113,8 +113,9 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
       // record when their own machinery threw) says nothing about the site
       // and stays ungraded. A recorded upstream failure - the oracle raised
       // while serving - is the upstream behavior the port must reproduce
-      // (the operator's ruling: reproducing a reproduced failure is a
-      // success, not a divergence). Identity is still the bar: the engine's
+      // (reproducing a recorded upstream failure is a success, not a
+      // divergence: a faithful port breaks where the original breaks).
+      // Identity is still the bar: the engine's
       // failure must equal the oracle's under N7 (the class's host naming
       // canonicalized) with the message byte-exact, and a match is counted
       // as a reproduced upstream failure, its own success category. Any

@@ -1,15 +1,13 @@
 # Answers to the earlier critique
 
-This document answers the critique linked from issue #1282.
+This document answers the third-party critique linked from
+[`decko-commons/decko#1282`](https://github.com/decko-commons/decko/issues/1282).
 
-The critique is third-party AI commentary on the original port proposal, not
-binding direction; binding direction comes from the upstream thread
-(`decko-commons/decko#1282`). What the Decko lead posted on that thread was a
-**link** to the critique — a ChatGPT shared conversation titled "Decko
-TypeScript Proposal Review" — not its text. The critique's full text was
-transcribed from that page into a separate record, which the published package
-excludes. The answers below follow its numbering (1-21, plus its closing
-request) and are written from what this repository actually measures.
+The critique is external commentary on the original port proposal. It is not
+binding direction: binding direction comes from the upstream thread itself. The
+answers below follow the critique's own numbering (1-21, plus its closing
+request) and are written from what this repository actually measures, so each one
+can be checked against the instrument it names.
 
 Three verdicts are used, and they are not interchangeable:
 
@@ -273,8 +271,8 @@ the repository states it elsewhere:
   steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). It is not
   presented as a clean sweep.
 - The corpus figure is not purely oracle-against-oracle: fifty of its
-  expected entries are bytes fetched from a live site running an earlier Decko on 2026-10-03
-  and 2026-10-04, not from the 0.20.0 oracle — two disjoint swap sets of 13
+  expected entries are bytes fetched from a live site running an earlier Decko,
+  not from the 0.20.0 oracle — two disjoint sets of 13
   and 37, whose entry keys were checked to be distinct — so the correct
   reading is "50 expectations are live-anchored; the remaining corpus is
   oracle-anchored"
@@ -288,7 +286,7 @@ the repository states it elsewhere:
 **Answered by a declared limitation, and a deliberate narrowing.** The criterion
 is byte parity — it is what makes "an existing deck behaves the same on either
 engine" checkable ([decisions/0001](decisions/0001-byte-parity-against-ruby-oracle.md))
-— and this repository did **not** take the reviewer's suggestion to normalise the
+— and this repository did **not** take the critique's suggestion to normalise the
 comparison into a canonical form. It went the other way: it reduced normalisation
 to the smallest set that survives evidence.
 
@@ -300,7 +298,7 @@ form, and N3 compares the class tokens inside a `class` attribute as a set.
 a write answer (the new card's id and every byte of mail text included), every
 column of every row (ids and timestamps as stored)."
 
-The reviewer's attribute-order example is therefore not normalised away — a
+The critique's attribute-order example is therefore not normalised away — a
 differently ordered attribute is a failure, which is the stricter reading.
 Attribute order still counts; only the order of the tokens *inside* a `class`
 attribute's value does not, because Ruby's own environment decides that one:
@@ -467,10 +465,10 @@ cost data as a fact, in both deploy documents, and points any bill estimate at
 the provider's own dated published rates rather than at a number in the repo
 ([docs/deploy-cloudflare.md](deploy-cloudflare.md), "Costs and energy";
 [docs/deploy-bunny.md](deploy-bunny.md)). The Bunny document is explicit that
-its own dated walkthrough "is internal tooling and not part of this repository;
-what a real deployment invoices depends on its request volume, CPU time per
-request and database usage, and no per-request time figure in that walkthrough is
-a measurement."
+its own dated walkthrough "is not included in this repository; what a real
+deployment invoices depends on its request volume, CPU time per request and
+database usage, and no per-request time figure in that walkthrough is a
+measurement."
 
 ## 20. "What I think is genuinely compelling" — the eight items to keep
 
@@ -560,7 +558,7 @@ Gate by gate, against this repository:
 
 ## The closing request: a repo-level architecture assessment mapping `card/`, `decko/`, `mod/`, `support/` into "must port / can replace / can leave behind / major unknown"
 
-**Answered, in a different and more checkable form than the review asked for.**
+**Answered, in a different and more checkable form than the critique asked for.**
 A one-time mapping is a snapshot; the repository's answer is an instrument that
 regenerates the equivalent every time, plus an architecture map.
 
@@ -575,11 +573,12 @@ regenerates the equivalent every time, plus an architecture map.
   is a generator over every installed mod's `set/` and `lib/` trees, producing a
   per-mod verdict. Its own Method section states the thresholds and, at the end,
   what no label measures.
-- A working evidence table (internal tooling, not part of this repository) is a statement-level
-  table where each contract ID maps to one row carrying Ruby truth (file and
-  line), TypeScript evidence (test file and status), and a status of **proven**,
-  **pinned-synthetic**, **divergent-documented** or **unported** — which is the
-  "major unknown" category the review asked for, given a name and a definition.
+- A working evidence table, maintained outside this repository, is a
+  statement-level table where each contract ID maps to one row carrying Ruby
+  truth (file and line), TypeScript evidence (test file and status), and a
+  status of **proven**, **pinned-synthetic**, **divergent-documented** or
+  **unported** — which is the "major unknown" category the critique raised,
+  given a name and a definition.
 - [KNOWN_FAILURES.md](../KNOWN_FAILURES.md) records the suites that fail on a
   clean clone, one row per suite with the failing assertion names and the
   prerequisite to green, so a red run is read correctly rather than excused.

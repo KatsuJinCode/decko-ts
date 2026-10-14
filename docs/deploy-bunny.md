@@ -11,12 +11,12 @@ origin server is optional and is used when the deployment needs writes or a
 signed-in session.
 
 **Costs and energy.** This repository contains no cost measurements and no
-energy measurements for any deployment topology. The only cost arithmetic
-prepared alongside this engine is a dated trial-scale walkthrough (scripting
-line only, rates as published on Bunny's pricing page on 2026-10-01), which
-is internal tooling and not part of this repository; what a real deployment
-invoices depends on its request volume, CPU time per request and database
-usage, and no per-request time figure in that walkthrough is a measurement.
+energy measurements for any deployment topology. A trial-scale cost
+walkthrough was prepared alongside this engine (scripting line only, rates as
+published on Bunny's pricing page on 2026-10-01), but it is not included in
+this repository; what a real deployment invoices depends on its request
+volume, CPU time per request and database usage, and no per-request time
+figure in that walkthrough is a measurement.
 
 ---
 
@@ -240,7 +240,7 @@ flag first to see the plan; nothing is contacted. See
 6. Check `GET /_status` on the deployed host and confirm the card count is the
    one you seeded.
 
-An origin server, if you need one, lives in the project's internal tooling
-(the server script, an nginx configuration, a Caddy configuration and a
-systemd unit), which is not part of this repository; what this repository
+An origin server, if you need one, lives in the project's deployment
+tooling (the server script, an nginx configuration, a Caddy configuration and a
+systemd unit), which is not included in this repository; what this repository
 ships for the Bunny path is the edge worker under `deploy/bunny-worker-src/`.

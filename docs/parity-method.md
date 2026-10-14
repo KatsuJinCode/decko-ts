@@ -275,16 +275,16 @@ measurement if they broke:
 
 Two corpora can be the same size and differ in content, so a corpus can be
 swapped for another between runs without anything noticing. Provenance is
-checked by hashing the staged corpus and comparing it against the digest the
+checked by hashing the corpus in use and comparing it against the digest the
 capture manifest binds. The manifest also records the SQLite header change
 counter, which the file format increments on every transaction.
 
 The check is available as a standalone read-only command that needs no
 capture, no grade and no running server, and corpus-scale suites call it
 before seeding so a verification run cannot start on swapped bytes. Outcomes
-are: verified (the live bytes match what the manifest binds), refusal (they
-differ, or the manifest is missing or unparseable while a corpus is staged),
-unbound (a corpus is present that was never photographed here — reported, not
+are: verified (the bytes on disk match what the manifest binds), refusal (they
+differ, or the manifest is missing or unparseable while a corpus is in use),
+unbound (a corpus is present that no manifest here records — reported, not
 refused, because nothing recorded can be contradicted) and absent.
 
 ### The live-anchored expectations
@@ -296,31 +296,29 @@ them must not be quoted as a pure Ruby-parity figure. **50 is the sum of two
 disjoint sets, 13 and 37** — neither a sample of the live-anchored set nor an
 upper bound on it.
 
-| Swap set | Entries | Split | Live fetch window (one host) | Manifest |
-| --- | ---: | --- | --- | --- |
-| The 13-entry view/page swap | 13 | 6 view-level, 7 page-level | one fetch window | not in the published package |
-| The 37-entry show-key swap | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | one fetch window | not in the published package |
+| Set | Entries | Split | Manifest |
+| --- | ---: | --- | --- |
+| The 13-entry view/page set | 13 | 6 view-level, 7 page-level | not in the published package |
+| The 37-entry show-key set | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-level only — `open` 18, `closed` 16, `content` 3 | not in the published package |
 
-- **Why the two counts are what they are.** The 13 is the number the swap
-  instrument for that set refuses to run without: it fails unless the verdicts
-  file holds exactly 13 `LIVE-DIFFERS` rows, and its manifest records those
-  same 13. The 37 is a separately-recorded set, named in that instrument's own
-  header:
+- **Why the two counts are what they are.** The 13 is the number the overlay
+  for that set refuses to run without: it fails unless the verdicts file holds
+  exactly 13 `LIVE-DIFFERS` rows, and its manifest records those same 13. The
+  37 is a separately-recorded set, named in that overlay's own header:
   "every view-lane entry whose residual is the conditional data-slot show
   key gets TODAY'S live response body as its expectation". Its manifest records
   37 entries, of which 4 were already byte-equal to the live body when the
-  swap ran — provenance recorded, no line changed — so 46 of the 50 entries
-  had their expectation bytes written from a live capture.
+  overlay ran — provenance recorded, no line changed — so 46 of the 50 entries
+  had their expectation bytes taken from a live fetch.
 - **The two sets are disjoint, and that was checked rather than assumed.**
   Both manifests record the entry key per entry — `name` plus `view` — and
   comparing those keys across the two manifests returns an **empty
   intersection**: none of the other set's six view-scope keys appears among the
-  37. Shard identity is not decisive here (both sets stage into separate
+  37. Shard identity is not decisive here (the sets live in separate
   directories whose shard filenames collide by number, and three shard numbers
-  appear in both sets), so the key comparison is the one that settles it.
+  appear in both), so the key comparison is the one that settles it.
   13 + 37 therefore counts 50 distinct entries, none of them twice.
-- **Source: live GETs against the one host, captured whole-body and stored
-  verbatim** (37 entries in one fetch window, 13 in another),
+- **Source: live GETs against one host, stored whole-body and verbatim**,
   including the documented per-response noise (Cloudflare `__CF$cv$params`
   tokens, per-render `data-slot-id` hashes).
 - **Era: an earlier Decko release than the 0.20.0 oracle.** The live
@@ -331,58 +329,56 @@ upper bound on it.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
-- **Policy: the rule the capture tooling applies.** Where a live capture
-  holds a page, the expectation becomes today's live bytes; the other swap
-  instrument adopted the same one ("live truth wins where the live capture
-  holds the page"). This is the policy this subsection documents. It is not a
-  claim that live outranks the oracle everywhere — each overlay is a
-  one-direction swap that refuses on state drift and records an inverse
-  manifest, so the frozen originals stay recoverable as history.
+- **Policy: the rule the overlays apply.** Where a live fetch holds a page, the
+  expectation becomes that page's bytes; the other overlay adopted the same rule
+  ("live truth wins where the live fetch holds the page"). This is the policy
+  this subsection documents. It is not a claim that live outranks the oracle
+  everywhere — each overlay is a one-direction substitution that refuses on
+  state drift and records an inverse manifest, so the original bytes stay
+  recoverable as history.
 - **The live-*derived* transforms beside them carry no live page bytes.** Two
   further reversible overlays move live-derived truth into the corpus without
   fetching a body: the asset-host prefix transform (6,552 lines changed over
   32,948 occurrences) and the denied-seam re-anchor (6,535 page-scope entries,
-  one byte range each). A fifth swap instrument rewrites
-  5 entries' `record.content` from the **local mirror rows** (the corpus
-  staging deck), not from live — so it is not one of the 50.
+  one byte range each). A fifth overlay rewrites 5 entries' `record.content`
+  from a local copy of the deck rather than from the live site — so it is not
+  one of the 50.
 - **What it means for the historical figure.** A share of the historical
   corpus's expected bytes — the 50 entries listed above — comes from the live
   site, which runs an earlier Decko, rather than from the 0.20.0 oracle. For
   those entries a replay is measuring agreement with that older deployment
-  rather than with the
-  Ruby process the rest of the corpus was captured from, so **the historical
-  corpus figure is not a pure Ruby-oracle grade.** The correct reading of
-  such a figure is: *50 expectations are live-anchored; the remaining corpus
-  is oracle-anchored.* It is not a weaker claim in the direction of being
-  flattering — live bytes are a real rendering of a real Decko deck — but it
-  is a **different** claim, and the corpus figure must say which 50. Both
-  manifests name their entries per-entry (`id` or `name` + `view`, `lane`,
-  `shard`, `line`, `liveUrl`, `liveFetchedAt`, and the before/after sha256
-  pair), so any quoted figure can be recomputed with and without them.
-- **Where the manifests live, said precisely.** All four swap manifests were
+  rather than with the Ruby process the rest of the corpus was captured from,
+  so **the historical corpus figure is not a pure Ruby-oracle grade.** The
+  correct reading of such a figure is: *50 expectations are live-anchored; the
+  remaining corpus is oracle-anchored.* It is not a weaker claim in the
+  direction of being flattering — live bytes are a real rendering of a real
+  Decko deck — but it is a **different** claim, and the corpus figure must say
+  which 50. Both manifests name their entries per-entry (`id` or `name` +
+  `view`, `lane`, `shard`, `line`, the source URL, the fetch time, and the
+  before/after sha256 pair), so any quoted figure can be recomputed with and
+  without them.
+- **Where the manifests live, said precisely.** All four manifests were
   committed alongside the capture work, so every count on this page was
   checkable at the time. **They are not in the published package**: the
-  manifest directory is on
-  the exclusion list, because 50 of the entries those manifests record are
-  whole-body bytes fetched from the live site. In the package these
-  counts are not recomputable from the tree — they are quoted measurements
-  whose instrument is described here. The corpus staging they operate on is
-  likewise not committed —
-  the repository ignores it outright — because it carries the deck's real content.
-- **What was deliberately not swapped, and why.** The instrument records its
-  exclusions in its header: the 2 `LIVE-CONFIRMS` entries keep their oracle
-  expectation (the entry fails for engine reasons, so live truth does not
-  clear it), and the 5 `record` entries keep theirs because the live site has
-  no record view surface to capture (422/403 responses, not renderings).
+  manifest directory is on the exclusion list, because 50 of the entries those
+  manifests record are whole-body bytes fetched from the live site. In the
+  package these counts are not recomputable from the tree — they are quoted
+  measurements whose method is described here. The corpus they operate on is
+  likewise not committed — the repository ignores it outright — because it
+  carries the deck's real content.
+- **What was deliberately not swapped, and why.** The overlays record their
+  exclusions in their headers: the 2 `LIVE-CONFIRMS` entries keep their oracle
+  expectation (the entry fails for engine reasons, so live truth does not clear
+  it), and the 5 `record` entries keep theirs because the live site has no
+  record view surface to fetch (422/403 responses, not renderings).
 - **One figure cited here cannot be checked in this repository.** The
-  13-entry instrument's header also refers to an earlier set of 77 swaps whose
-  bytes came from live responses. No
-  manifest for that earlier set of 77 swaps is committed in this repository,
-  and
-  none was found in any local checkout of it, so those entries cannot be
-  enumerated or tested for overlap with the 50 above. **50 is therefore the
-  proven total, and if those swaps landed in the same staging the
-  live-anchored set is larger by an unquantified amount.**
+  13-entry overlay's header also refers to an earlier set of 77 substitutions
+  whose bytes came from live responses. No manifest for that earlier set of 77
+  is committed in this repository, so those entries cannot be enumerated or
+  tested for overlap with the 50
+  above. **50 is therefore the proven total, and if those substitutions
+  landed in the same corpus the live-anchored set is larger by an unquantified
+  amount.**
 
 ---
 

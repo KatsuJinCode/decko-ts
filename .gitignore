@@ -16,10 +16,9 @@ tools/oracle/portable-mariadb/
 tools/oracle/mysql-server/
 tools/oracle/mysql-client-scratch/
 .tools-tmp/
-# benchmark corpus is a sanitized derivative of source data that is not
-# redistributed; rebuilt on demand (benchmarks/sanitize_corpus.py); never committed
+# benchmark corpus: rebuilt on demand (benchmarks/sanitize_corpus.py); never committed
 benchmarks/corpus/
-# corpus v2 sqlite + captured oracle shards: sanitized but large and
+# corpus v2 sqlite + captured oracle shards: large and
 # rebuildable (benchmarks/corpus-v2/build_corpus_v2.py, benchmarks/capture-corpus.rb)
 benchmarks/corpus-v2/bench-corpus-v2.sqlite3
 fixtures/corpus/
@@ -31,7 +30,7 @@ tools/migrate/scratch-out/
 # rebuilt on demand; never committed
 tools/corpus-anonymizer/out/
 
-# local credentials and per-developer config (data rule: never committed).
+# local credentials and machine-local config: never committed.
 # .dev.vars is Cloudflare's Workers secrets file; both are read at runtime and
 # a committed copy is a published secret.
 .env
@@ -41,7 +40,8 @@ tools/corpus-anonymizer/out/
 .dev.vars.*
 
 # local sqlite databases of any name: corpus copies, scratch decks, D1 exports.
-# The one intentional fixture stays tracked.
+# The one intentional fixture stays tracked (it is in the repository but is
+# excluded from the published package — see docs/TESTING.md).
 *.sqlite3
 *.sqlite
 !fixtures/test-corpus/test-corpus.sqlite3

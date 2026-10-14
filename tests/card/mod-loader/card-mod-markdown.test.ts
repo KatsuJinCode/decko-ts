@@ -51,7 +51,7 @@ const CODERAY_DIV =
 const CODERAY_CLOSE = "</pre></div>\n</div>\n</div>\n";
 
 const ORACLE: { source: string; html: string }[] = [
-  // round 1
+  // emphasis, headings, lists, quotes, fenced and indented code, escapes
   { source: "Hello *markdown* world", html: "<p>Hello <em>markdown</em> world</p>\n" },
   {
     source: "# Heading One\n\nBody **bold** text",
@@ -104,7 +104,7 @@ const ORACLE: { source: string; html: string }[] = [
   { source: '"Leading quote" and trailing"', html: "<p>\u201cLeading quote\u201d and trailing\u201d</p>\n" },
   { source: "the '90s and dogs' bones", html: "<p>the \u201990s and dogs\u2019 bones</p>\n" },
   { source: "{{0}} head\n\nmid {{1}} tail\n\n{{2}}", html: "<p>{{0}} head</p>\n\n<p>mid {{1}} tail</p>\n\n<p>{{2}}</p>\n" },
-  // round 2
+  // autolinks, inline code, link forms, entities, smart punctuation
   { source: "see <http://decko.org> here", html: '<p>see <a href="http://decko.org">http://decko.org</a> here</p>\n' },
   { source: "a `def foo` b", html: "<p>a <code>def foo</code> b</p>\n" },
   { source: "## Title ##\ntext", html: '<h2 id="title">Title</h2>\n<p>text</p>\n' },
@@ -131,7 +131,8 @@ const ORACLE: { source: string; html: string }[] = [
   { source: "[a](<http://x.com>)", html: '<p><a href="http://x.com">a</a></p>\n' },
   { source: "a&nbsp;b", html: "<p>a\u00a0b</p>\n" },
   { source: "Tom & Jerry > all", html: "<p>Tom &amp; Jerry &gt; all</p>\n" },
-  // round 3
+  // block boundaries: what may interrupt a paragraph, list spacing and
+  // continuation, tab-indented code, heading levels
   {
     source: "a\n\n    x\n\n    y",
     html: `<p>a</p>\n\n${CODERAY_DIV}x\n\ny\n${CODERAY_CLOSE}`,
