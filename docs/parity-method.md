@@ -323,13 +323,11 @@ upper bound on it.
   verbatim** (37 entries in one fetch window, 13 in another),
   including the documented per-response noise (Cloudflare `__CF$cv$params`
   tokens, per-render `data-slot-id` hashes).
-- **Era: the live 0.19.1 serializer, which is an *older* engine era than the
-  0.20.0 oracle.** The live deployment renders `Decko v0.19.1` in its footer
-  credit — `src/card/render/deployment-follow-live-config.ts:40-41` for the
-  note, `:108` for the value `footerDeckoVersion: "0.19.1"` — against the card
-  gem's `"0.20.0"`. Those 50 entries are therefore measured against an
-  **older engine era's output, recorded from a site, not from a 0.20.0 Ruby
-  process**: the live deployment runs behind the version this engine targets.
+- **Era: an earlier Decko release than the 0.20.0 oracle.** The live
+  deployment runs an older Decko than the card gem this engine targets. Those
+  50 entries are therefore measured against an **older engine era's output,
+  recorded from a site, not from a 0.20.0 Ruby process**: the live deployment
+  runs behind the version this engine targets.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
@@ -349,8 +347,9 @@ upper bound on it.
   staging deck), not from live — so it is not one of the 50.
 - **What it means for the historical figure.** A share of the historical
   corpus's expected bytes — the 50 entries listed above — comes from the live
-  0.19.1 site rather than from the 0.20.0 oracle. For those entries a replay
-  is measuring agreement with a 0.19.1-era deployment rather than with the
+  site, which runs an earlier Decko, rather than from the 0.20.0 oracle. For
+  those entries a replay is measuring agreement with that older deployment
+  rather than with the
   Ruby process the rest of the corpus was captured from, so **the historical
   corpus figure is not a pure Ruby-oracle grade.** The correct reading of
   such a figure is: *50 expectations are live-anchored; the remaining corpus
