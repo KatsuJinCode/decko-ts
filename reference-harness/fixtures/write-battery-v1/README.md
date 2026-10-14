@@ -22,11 +22,31 @@ batteries — only the repo's own build artifacts (dist, the LibSass program).
 | --- | --- |
 | `deck.json` | the fixture's plain-data deck description (generator output) |
 | `deck/deck.sqlite3`, `deck/files/` | the built deck: a stock `decko setup` seed with `deck.json` applied by the oracle builder, assets pre-compiled |
-| `expected/persist-steps/step-NN.json` | the Ruby oracle's state after each of the 70 write operations |
-| `expected/persist-steps/ruby-outside-delta.json` | the rows the 70 operations wrote outside the probe's own records (Ruby's whole-deck delta) |
-| `expected/persist-steps/deliberate-differences.json` | the declared engine differences on this deck (steps 7, 20, 22, 31, 67) |
-| `expected/side-effects-ruby.json` | the Ruby oracle's recorded trace of the 90 scenario steps |
-| `MANIFEST.json` | the sha256 of every file above and how each recording was made |
+| `expected/persist-steps/step-NN.json` | the Ruby oracle's state after each PUBLIC write operation (every step the withheld set does not claim) |
+| `expected/persist-steps/ruby-outside-delta.json` | the rows the operations wrote outside the probe's own records (Ruby's whole-deck delta) |
+| `expected/persist-steps/deliberate-differences.json` | the declared engine differences on this deck (step 7, and step 67) |
+| `expected/side-effects-ruby.json` | the Ruby oracle's recorded trace of the public scenario steps |
+| `withheld/steps.json` | the probe steps withheld until disclosure, and why |
+| `withheld/persist-steps/` | the Ruby oracle's recording of the FULL 70-step op list, made with the withheld set present |
+| `MANIFEST.json` | the sha256 of every public file above and how each recording was made |
+
+## The withheld step set
+
+`withheld/` is not part of this fixture's public surface and must be excluded
+from every release package. It holds the write-probe steps whose purpose is to
+reproduce a Ruby defect the public material is not cleared to carry; see each
+step's `why` in `withheld/steps.json`.
+
+The probe loads `withheld/steps.json` only when it is present. Absent it — the
+packaged case — the probe runs the public op list and prints
+`[withheld until disclosure] NOT RUN: <n> steps (<path>)`. Present it, the
+probe runs all 70 steps and compares them against `withheld/persist-steps/`.
+
+That is why the public recording is a separate cut. Every recorded dump
+carries the whole deck state, so a step that stores withheld content would
+leave it in all fifty later dumps. The public recording is therefore made over
+the public list, not trimmed out of the full one; re-record it the way
+section 4 below describes, with `withheld/steps.json` moved aside.
 
 ## How it was built and recorded
 

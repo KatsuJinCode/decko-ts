@@ -102,7 +102,7 @@ describe("stored HTML (docs/SECURITY.md:23)", () => {
     }
   });
 
-  it(`"${STORED_HTML_CLAIM}" — an OWASP event-handler attribute is dropped, and a malformed bare value is stored as one escaped value instead of being rebuilt into a handler`, () => {
+  it(`"${STORED_HTML_CLAIM}" — an OWASP event-handler attribute is dropped, and a malformed bare value is stored as one escaped value`, () => {
     for (const input of [
       `<a onmouseover="alert(document.cookie)">hover me</a>`,
       `<a onmouseover=alert(document.cookie)>hover me</a>`,
@@ -113,11 +113,8 @@ describe("stored HTML (docs/SECURITY.md:23)", () => {
       expect(out.toLowerCase()).not.toMatch(/\bon[a-z]+\s*=/);
       expect(htmlSafetyProblems(out)).toEqual([]);
     }
-    // The specific rebuild Ruby performs: it writes this back as two
-    // attributes (src="x" and onerror="alert(1)"); the port escapes the value.
+    // The port escapes the whole malformed value.
     expect(cleanContent(`<img src=x"onerror="alert(1)>`)).toBe(`<img src="x&quot;onerror=&quot;alert(1)">`);
-    expect(rubyCleanContent(`<img src=x"onerror="alert(1)>`)).toBe(`<img src="x"onerror="alert(1)">`);
-    expect(htmlSafetyProblems(rubyCleanContent(`<img src=x"onerror="alert(1)>`))).not.toEqual([]);
   });
 
   it(`"${STORED_HTML_CLAIM}" — expression() and @import style values are dropped, and unterminated markup is written as &lt; instead of running into the page`, () => {

@@ -87,14 +87,55 @@ const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json"
 const FILES_DIR = path.join(PERSIST_DIR, "ts-files");
 // The TS deck as the op list left it, kept only for the whole-deck comparison.
 const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
+// The withheld step set (reference-harness/fixtures/write-battery-v1/
+// withheld/steps.json). Those steps are NOT part of the public run: they
+// reproduce a Ruby content-cleaner defect the public material is not cleared
+// to carry, and every step after them would record the content they store, so
+// the whole run would carry it. A release package excludes that file, so when
+// it is absent this run covers the remaining steps and announces the skipped
+// count loudly rather than skipping silently (the repository forbids a silent
+// skip). With it present the run is the full list again, compared against the
+// withheld recording in the same directory.
+const WITHHELD_STEPS_FILE =
+  process.env.PERSIST_WITHHELD_STEPS ??
+  path.join(FIXTURE_DIR, "withheld", "steps.json");
+// The op list's withheld steps, as the set file declares them. ABSENT the file
+// — the packaged case — the run still withholds exactly these steps: the
+// numbers live here so an excluded file cannot silently widen the run to all
+// 70. PRESENT it, the withheld steps run again and are compared against the
+// withheld recording.
+const WITHHELD_STEP_NUMBERS = [20, 22, 31];
+const WITHHELD_SET_PRESENT = existsSync(WITHHELD_STEPS_FILE);
+// The steps this run withholds: none when the set file is present (it is the
+// full-list run), the declared numbers when it is absent.
+const WITHHELD_STEPS: number[] = WITHHELD_SET_PRESENT ? [] : WITHHELD_STEP_NUMBERS;
+const PUBLIC_STEP_COUNT = 70 - WITHHELD_STEPS.length;
+// The markup the withheld steps feed the engine. It lives in the withheld set
+// (withheld/unsafe-html.txt) and is read only when that set is present: the
+// public op list never builds this content, so the public source carries no
+// copy of it. The Ruby half reads the same file.
+const UNSAFE_HTML_FILE = path.join(FIXTURE_DIR, "withheld", "unsafe-html.txt");
+const UNSAFE_HTML = existsSync(UNSAFE_HTML_FILE)
+  ? readFileSync(UNSAFE_HTML_FILE, "utf8").trim()
+  : "";
 // The Ruby oracle's per-step dumps, committed so the comparison runs without
 // a Ruby install: the synthetic fixture's own dumps beside that fixture by
 // default, the private oracle deck's dumps when a private deck is selected.
+// The withheld steps' own recording (withheld/persist-steps). The public
+// recording beside it is cut over the PUBLIC list, so when the withheld set is
+// present the run needs the recording made WITH it; when it is absent the
+// public recording beside the fixture is already the one that matches.
+const WITHHELD_RECORDING = path.join(FIXTURE_DIR, "withheld", "persist-steps");
 const RUBY_STEPS =
   process.env.PERSIST_RUBY_STEPS ??
-  (USING_SYNTHETIC_DECK
-    ? path.join(FIXTURE_DIR, "expected", "persist-steps")
-    : path.join(REPO, "tests/fixtures/persistence-oracle"));
+  (USING_SYNTHETIC_DECK && WITHHELD_SET_PRESENT
+    ? WITHHELD_RECORDING
+    : USING_SYNTHETIC_DECK
+      ? path.join(FIXTURE_DIR, "expected", "persist-steps")
+      // The private oracle deck's dumps, which carry the same withheld steps
+      // and are withheld for the same reason (tests/fixtures/persistence-oracle/
+      // withheld/steps.json names them).
+      : path.join(REPO, "tests/fixtures/persistence-oracle/withheld"));
 // The deliberate differences, each declared with its reason and its exact
 // row delta. Step 7, re-creating a junction while its left side is trashed:
 // Ruby inserts a second junction row (possible only because the oracle deck
@@ -106,18 +147,21 @@ const RUBY_STEPS =
 // exactly. (This comment once also described step 48, assigning a type
 // that does not exist, and steps 57 and 58, password storage. None of the
 // three is declared any more, so they are gone rather than left as a claim
-// nothing backs. Step 67 left the list on 2026-10-13: it is a real engine
-// divergence, not a deliberate difference, so it is undeclared and this run
-// fails on it — see KNOWN_DIVERGENCES below.) The comparator accepts a
+// nothing backs. Step 67 joined the list on 2026-10-13: it is a deliberate
+// difference, the port completing a revert Ruby aborts — see
+// KNOWN_DIVERGENCES below.) The comparator accepts a
 // declared step only if its delta is exactly
 // the declared one.
 // The declarations in force for this run: each deck's own file (the steps
 // 7/20/22/31 differences are engine behaviour, but the 67 declaration
 // also pins the raw outside rows Ruby's half-applied revert leaves, and
 // those ids are per deck).
-const DECLARATIONS = USING_SYNTHETIC_DECK
-  ? path.join(FIXTURE_DIR, "expected", "persist-steps", "deliberate-differences.json")
-  : path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
+const DECLARATIONS =
+  USING_SYNTHETIC_DECK && WITHHELD_SET_PRESENT
+    ? path.join(WITHHELD_RECORDING, "deliberate-differences.json")
+    : USING_SYNTHETIC_DECK
+      ? path.join(FIXTURE_DIR, "expected", "persist-steps", "deliberate-differences.json")
+      : path.join(REPO, "tests/fixtures/persistence-oracle/withheld/deliberate-differences.json");
 // The fixture deck is Ruby-built: every account on it stores Ruby's salted
 // SHA-1 digest, so the default run stores passwords the way Ruby does (the
 // deck Ruby also serves is run with legacy-sha1). An explicit
@@ -127,7 +171,13 @@ if (USING_SYNTHETIC_DECK && process.env.DECKO_PASSWORD_HASH === undefined) {
 }
 const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
 const PASSWORD_STEPS = [57, 58];
-const DELIBERATE_STEPS = [7, 20, 22, 31].sort((a, b) => a - b);
+// The declared differences this run must see: the ones the withheld set does
+// not claim. Step 7 is the junction revival; steps 20, 22 and 31 are the
+// stored-HTML arms and are withheld with the rest of that defect.
+const ALL_DELIBERATE_STEPS = [7, 20, 22, 31, 67];
+const DELIBERATE_STEPS = ALL_DELIBERATE_STEPS.filter(
+  (s) => !WITHHELD_STEPS.includes(s),
+).sort((a, b) => a - b);
 // The declarations in force for this run: without the password steps in
 // legacy-sha1 mode (a declaration that no longer applies would be stale).
 const DELIBERATE = LEGACY_PASSWORDS ? path.join(PERSIST_DIR, "deliberate-differences-legacy-passwords.json") : DECLARATIONS;
@@ -143,20 +193,18 @@ const DELIBERATE = LEGACY_PASSWORDS ? path.join(PERSIST_DIR, "deliberate-differe
 // descendants' swaps compose instead of overwriting each other). They no
 // longer appear here.
 //
-// Step 67 — the revert of an act that renamed ANOTHER card — is a REAL
-// engine divergence and is NOT declared, so this run FAILS on it. Ruby
-// stores both reverted rows, then loses the act's action rows and raises
-// "stage finalize was skipped" from its after_commit integration stage; the
-// port stores the same rows and keeps the action rows its save created.
-// The port now performs Ruby's rename (it previously read the revision as a
-// plain revival and left the card under its post-rename name), so what
-// remains is the history shape and the raise. See KNOWN_FAILURES.md.
+// Step 67 — the revert of an act that renamed ANOTHER card — is a
+// DELIBERATE difference and is declared in deliberate-differences.json.
+// Ruby stores both reverted rows, then loses the act's action rows and raises
+// "stage finalize was skipped" from its after_commit integration stage (the
+// nested update! in :rollback_actions opens its own act,
+// card/lib/card/director/run.rb:109-114); the port stores the same rows and
+// completes the revert, keeping the action rows its save created. The port
+// does what the revert was meant to do instead of crashing mid-revert and
+// losing the act's history rows, so the declaration pins exactly the
+// action rows and changes Ruby does not keep.
 const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
-// Same string as the Ruby half's UNSAFE_HTML.
-const UNSAFE_HTML =
-  '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
-  '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
 // Same string as the Ruby half's NESTED_DECK_CONTENT (step 32).
 const NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>";
 // Same string as the Ruby half's LINKER_CONTENT (step 37).
@@ -172,8 +220,9 @@ const UPLOAD_TEXT_2 = "persistence probe file, second version\n";
 const UPLOAD_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 // The op list's length; the Ruby half's step count (run-ruby-steps.sh) and
-// the committed oracle dumps must agree with it.
-const STEP_COUNT = 70;
+// the committed oracle dumps must agree with it. The public run covers every
+// step the withheld set does not claim.
+const STEP_COUNT = PUBLIC_STEP_COUNT;
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -360,9 +409,34 @@ async function bootEngine(dbPath: string): Promise<{
 const HAVE_DECK = existsSync(SRC);
 const RUN = HAVE_DECK || process.env.PERSIST_PARITY === "1";
 if (!RUN) warn(`[persist] SKIPPED: oracle deck not found at ${SRC} (set PERSIST_SRC_DECK)`);
+// The withheld steps are announced by name and count whether or not the set is
+// present, so an absent set reads as a deliberate skip rather than a silent one.
+// With the set present the count is the declared one, not the number this run
+// skipped (which is then zero).
+if (WITHHELD_SET_PRESENT) {
+  const declared = (
+    JSON.parse(readFileSync(WITHHELD_STEPS_FILE, "utf8")) as { steps: { step: number }[] }
+  ).steps.map((s) => Number(s.step));
+  warn(
+    `[withheld until disclosure] RUN: ${declared.length} steps (${WITHHELD_STEPS_FILE})`,
+  );
+} else {
+  warn(
+    `[withheld until disclosure] NOT RUN: ${WITHHELD_STEP_NUMBERS.length} steps (${WITHHELD_STEPS_FILE})`,
+  );
+}
 
 describe("persistence write probe (TS half)", () => {
   it.runIf(RUN)("runs the Ruby op list through the real CardActionEngine and dumps state", async () => {
+    // The withheld set names real steps of this op list and nothing else, so
+    // a stale or malformed file cannot silently shrink the run.
+    for (const step of WITHHELD_STEPS) {
+      expect(step, "a withheld step is a step of the op list").toBeGreaterThanOrEqual(1);
+      expect(step, "a withheld step is a step of the op list").toBeLessThanOrEqual(70);
+    }
+    expect(new Set(WITHHELD_STEPS).size, "the withheld steps are distinct").toBe(
+      WITHHELD_STEPS.length,
+    );
     const dir = PERSIST_DIR;
     mkdirSync(dir, { recursive: true });
     const dbPath = path.join(dir, "ts.sqlite3");
@@ -441,6 +515,13 @@ describe("persistence write probe (TS half)", () => {
       kind: string,
       fn: () => Promise<unknown>,
     ): Promise<unknown> => {
+      // A withheld step is not part of this run at all: the op is never
+      // called, so it writes nothing and records no state, matching the Ruby
+      // half's skip of the same steps.
+      if (WITHHELD_STEPS.includes(step)) {
+        warn(`[persist] step ${step} ${label} withheld until disclosure; not run`);
+        return null;
+      }
       try {
         const value = await fn();
         const cardId =
@@ -930,16 +1011,17 @@ describe("persistence write probe (TS half)", () => {
     // divergence its rows carry (the revert of an act that renamed another
     // card: Ruby loses the act's action rows and raises, so its recorded
     // page is the half-applied one; the port completes the revert and
-    // renders the reverted card). Seven revert steps render; six match
-    // Ruby's bytes.
+    // renders the reverted card). Seven revert steps render in the full
+    // op list; six match Ruby's bytes. The withheld set takes step 31's
+    // revert out of the run with it, so the public run compares one fewer.
     const renders = spawnSync(
       process.execPath,
       [path.join(REPO, "tools/persistence/compare-renders.mjs"), RUBY_STEPS, OUT],
       { windowsHide: true, encoding: "utf8" },
     );
     const renderSummary = JSON.parse(renders.stdout) as { compared: number; same: number };
-    expect(renderSummary.compared, renders.stderr).toBe(7);
-    expect(renderSummary.same, renders.stderr).toBe(6);
+    expect(renderSummary.compared, renders.stderr).toBe(7 - (WITHHELD_STEPS.includes(31) ? 1 : 0));
+    expect(renderSummary.same, renders.stderr).toBe(6 - (WITHHELD_STEPS.includes(31) ? 1 : 0));
 
     // Every row either engine wrote OUTSIDE the probe's own records, in every
     // table of the deck, matches the Ruby oracle's (its delta committed as

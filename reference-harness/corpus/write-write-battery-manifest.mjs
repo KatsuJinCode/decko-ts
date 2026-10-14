@@ -14,7 +14,7 @@
 // section 6.
 
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,8 +37,24 @@ pinTree("deck/files");
 const steps = readdirSync(join(FIXTURE, "expected", "persist-steps"))
   .filter((f) => /^step-\d+\.json$/.test(f))
   .sort();
-if (steps.length !== 70) {
-  console.error(`expected 70 probe step files, found ${steps.length}; refusing to write the manifest`);
+// The public probe records every step the withheld set does not claim, so the
+// public recording holds 70 minus the withheld steps. The withheld recording
+// (withheld/persist-steps) holds the full 70 and is NOT pinned here: a release
+// package excludes it, and a manifest that pinned a file the package omits
+// would fail the battery's integrity gate on the package rather than here.
+const withheldStepsFile = join(FIXTURE, "withheld", "steps.json");
+// The op list's withheld steps. A release package excludes the set file, so
+// the numbers are stated here rather than read from it: the public recording
+// holds 70 minus them whether or not the file is present.
+const WITHHELD_STEP_NUMBERS = [20, 22, 31];
+const withheldCount = existsSync(withheldStepsFile)
+  ? JSON.parse(readFileSync(withheldStepsFile, "utf8")).steps.length
+  : WITHHELD_STEP_NUMBERS.length;
+const expectedPublicSteps = 70 - withheldCount;
+if (steps.length !== expectedPublicSteps) {
+  console.error(
+    `expected ${expectedPublicSteps} public probe step files (70 minus ${withheldCount} withheld), found ${steps.length}; refusing to write the manifest`,
+  );
   process.exit(1);
 }
 for (const step of steps) pin(`expected/persist-steps/${step}`);

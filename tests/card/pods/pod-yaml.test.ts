@@ -11,11 +11,12 @@
 // Each must survive read -> write byte for byte, and the stress strings,
 // written from their JSON source, must equal Psych's bytes.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { dumpYaml, loadYaml, sym, YamlMap, YamlSymbol, type YamlValue } from "../../../src/card/pods/pod-yaml.js";
+import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../fixtures/pods");
 const read = (f: string): string => readFileSync(path.join(FIXTURES, f), "utf8");
@@ -51,7 +52,14 @@ describe("pod YAML: Psych's bytes", () => {
     expect((last.get(sym("fields")) as YamlMap).get("plain key")).toBe("v");
   });
 
-  it("round-trips the oracle deck's pod byte for byte", () => {
+  // The oracle deck's pod is a private-deck artifact (it carries the withheld
+  // stored-HTML row), excluded from a release package. Absent, the test says so
+  // and skips, the repository's [corpus-gated] convention, instead of failing.
+  itOrSkipLoud(
+    !existsSync(path.join(FIXTURES, "oracle-deck-after-probe.ruby.yml")),
+    "tests/card/pods/pod-yaml.test.ts",
+    "tests/fixtures/pods/oracle-deck-after-probe.ruby.yml (a Ruby-sown deck pod; excluded from release packages)",
+  )("round-trips the oracle deck's pod byte for byte", () => {
     const text = read("oracle-deck-after-probe.ruby.yml");
     const loaded = loadYaml(text) as YamlMap[];
     expect(loaded.length).toBe(674);
