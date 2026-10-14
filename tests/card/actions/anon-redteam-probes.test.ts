@@ -452,7 +452,7 @@ describe("anonred: actor attribution", () => {
   it("signed-out write records under the anonymous codename card even when that card is renamed", async () => {
     const s = await seedBypassDeck();
     // rename the anonymous card away from its canonical name
-    await s.driver.query("UPDATE cards SET name = 'tkmbewlur', `key` = 'tkmbewlur' WHERE id = 11", []);
+    await s.driver.query("UPDATE cards SET name = 'vqhrbnl', `key` = 'vqhrbnl' WHERE id = 11", []);
     const engine = anonEngine(s);
     const result = await engine.createCard({ name: "Attribution Probe", typeId: 12 });
     const card = await s.selectOne<{ creator_id: number; updater_id: number }>(

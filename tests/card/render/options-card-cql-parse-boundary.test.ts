@@ -247,17 +247,17 @@ describe("options-card CQL parse boundary (pointer/list :open)", () => {
     try {
       await seedCardtypes(s);
       await seedSettings(s);
-      await seedCard(s, { id: 560, name: "jzuqht", typeId: 5 });
-      await seedCard(s, { id: 562, name: "cixvol", typeId: 2, dbContent: "left body" });
+      await seedCard(s, { id: 560, name: "mkstvw", typeId: 5 });
+      await seedCard(s, { id: 562, name: "pvrqdh", typeId: 2, dbContent: "left body" });
       await seedCard(s, {
         id: 561,
-        name: "cixvol+jzuqht",
+        name: "pvrqdh+mkstvw",
         leftId: 562,
         rightId: 560,
         typeId: 47,
         dbContent: "some-items",
       });
-      const html = await s.engine.render("cixvol+jzuqht", "open");
+      const html = await s.engine.render("pvrqdh+mkstvw", "open");
       expect(typeof html).toBe("string");
     } finally {
       s.close();

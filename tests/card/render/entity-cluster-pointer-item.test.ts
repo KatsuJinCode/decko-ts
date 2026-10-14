@@ -238,36 +238,36 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       });
       await seedCard(storage, { id: 709, name: "*structure", typeId: 2 });
       // The host list card with a *content options rule typing its items
-      // Tracked Item (the host is COMPOUND with right part "Tactics", so
+      // Tracked Item (the host is COMPOUND with right part "Plans", so
       // the rule walk's RIGHT-pattern candidate finds the rule) and one
       // COMPOUND item that does not exist.
-      await seedCard(storage, { id: 99245, name: "Tactics", typeId: 2 });
+      await seedCard(storage, { id: 99245, name: "Plans", typeId: 2 });
       await seedCard(storage, {
         id: 99247,
-        name: "Tactics+*right",
+        name: "Plans+*right",
         leftId: 99245,
         rightId: 700,
         typeId: 259,
       });
       await seedCard(storage, {
         id: 99248,
-        name: "Tactics+*right+*content options",
+        name: "Plans+*right+*content options",
         leftId: 99247,
         rightId: 701,
         typeId: 30,
         dbContent: '{"type":"Tracked Item"}',
       });
-      await seedCard(storage, { id: 99249, name: "Tactics Holder", typeId: 2 });
+      await seedCard(storage, { id: 99249, name: "Plans Holder", typeId: 2 });
       await seedCard(storage, {
         id: 99246,
-        name: "Tactics Holder+Tactics",
+        name: "Plans Holder+Plans",
         leftId: 99249,
         rightId: 99245,
         typeId: 47,
         dbContent: "Sample Card 112+Sample Card 160+SMD",
       });
 
-      const html = await storage.engine.render("Tactics Holder+Tactics", "content");
+      const html = await storage.engine.render("Plans Holder+Plans", "content");
 
       // The virtual/known phantom: Ruby's plain quiet denial span inside
       // the pointer-item wrap, NO mini_bar slot, NO bar body.

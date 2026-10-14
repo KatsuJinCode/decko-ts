@@ -48,7 +48,7 @@ const DECK_TITLE = "Async Head Probe Deck";
  *  "(bucket)/path/file.ext" -> the paren prefix is a credential, never
  *  emitted; the :small variant rides the extension
  *  (file_card_uploader.rb:88-117). */
-const FAVICON_SRC = "(probe_bucket)/103/3649.png";
+const FAVICON_SRC = "(probe_bucket)/12/34.png";
 const STYLE_SRC = "(probe_bucket)/assets/compiled-style.css";
 
 let storage: RenderTestStorage | undefined;
@@ -213,7 +213,7 @@ describe("the five head views through the mod (A/B)", () => {
     // URL at the :small variant; the paren credential prefix is never
     // emitted and the variant rides the extension.
     expect(await s.engine.render("Async Head Probe", "favicon_tag")).toBe(
-      `<link rel="shortcut icon" href="http://s3.amazonaws.com//files/103/3649-small.png" />`,
+      `<link rel="shortcut icon" href="http://s3.amazonaws.com//files/12/34-small.png" />`,
     );
   });
 
@@ -240,7 +240,7 @@ describe("the five head views through the mod (A/B)", () => {
     // substrings, not a six-line literal.
     expect(head.split("\n").length).toBeGreaterThanOrEqual(2);
     expect(head).toContain(`<title>Async Head Probe - ${DECK_TITLE}</title>`);
-    expect(head).toContain(`<link rel="shortcut icon" href="http://s3.amazonaws.com//files/103/3649-small.png" />`);
+    expect(head).toContain(`<link rel="shortcut icon" href="http://s3.amazonaws.com//files/12/34-small.png" />`);
   });
 });
 
@@ -274,7 +274,7 @@ describe("byte parity with the page path (the anti-drift block)", () => {
     // asset-output identifier was seeded on the wrong card). The hrefs
     // must be the real resolved URLs, not empty.
     expect(titleTag).toContain(DECK_TITLE);
-    expect(faviconTag).toContain("http://s3.amazonaws.com//files/103/3649-small.png");
+    expect(faviconTag).toContain("http://s3.amazonaws.com//files/12/34-small.png");
     expect(styleTags).toContain("http://s3.amazonaws.com//files/assets/compiled-style.css");
     // The page's own head line for the main stylesheet is the same
     // non-empty href — that is the drift this block exists to catch.

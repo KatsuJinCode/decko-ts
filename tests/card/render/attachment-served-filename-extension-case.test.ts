@@ -49,7 +49,7 @@ describe("attachment served-filename extension case (uploader extension.downcase
     // ".../79523.JPG" large
     ["(my_bucket)/18149/79523.JPG", "large", "http://s3.amazonaws.com//files/18149/79523-large.jpg"],
     // already-lowercase sources stay byte-identical
-    ["(my_bucket)/103/3649.jpg", "medium", "http://s3.amazonaws.com//files/103/3649-medium.jpg"],
+    ["(my_bucket)/12/34.jpg", "medium", "http://s3.amazonaws.com//files/12/34-medium.jpg"],
   ])(
     "cloud source %s at size %s serves %s",
     (source, size, expected) => {
@@ -64,8 +64,8 @@ describe("attachment served-filename extension case (uploader extension.downcase
   });
 
   it("favicon link tag downcases too (same uploader filename machinery)", () => {
-    expect(cloudAttachmentUrl("(my_bucket)/103/3649.JPG", "small")).toBe(
-      "http://s3.amazonaws.com//files/103/3649-small.jpg",
+    expect(cloudAttachmentUrl("(my_bucket)/12/34.JPG", "small")).toBe(
+      "http://s3.amazonaws.com//files/12/34-small.jpg",
     );
   });
 

@@ -82,7 +82,7 @@ import { debugFlag } from "../debug-flags.js";
 
 /** The carrierwave cloud attachment URL a fog storage config with an empty
  *  bucket name produces: endpoint + files_web_path ("files") + id/action.
- *  Source contents look like "(my_bucket)/103/3649.jpg" — the paren prefix
+ *  Source contents look like "(my_bucket)/12/34.jpg" — the paren prefix
  *  is the credential/bucket key, never emitted (set/abstract/attachment/
  *  cloud.rb + file_card_uploader.rb:88-117). */
 const CLOUD_URL_PREFIX = "http://s3.amazonaws.com//files/";

@@ -12,15 +12,15 @@
 //
 // The table is three uncountables (`s`, `this`, `anonymous`;
 // oracle-deck-inflections.ts:53-55) recovered from the deck's stored keys:
-// `Anonymous` -> `anonymous` (default `anonymou`), `SCarol` ->
-// `s_carol` (default `_carol`), `delete this` -> `delete_this` (default
-// `delete_thi`).
+// `Anonymous` -> `anonymous` (default `anonymou`), a camel-cased name
+// opening with a lone `S` such as `SRiver` -> `s_river` (default `_river`),
+// `delete this` -> `delete_this` (default `delete_thi`).
 //
 // WHY IT IS A RENDER DEFECT AND NOT ONLY A LOOKUP DEFECT. The derived key
 // rides straight into the slot class tokens every card emits, so an origin
 // that skips the boot renders the wrong BYTES for every card whose key the
 // table changes (an `anonymou`-keyed slot class versus `anonymous`, an
-// `s_carol` versus `_carol`).
+// `s_river` versus `_river`).
 //
 // WHICH ORIGINS. Two ship:
 //   deploy/worker.ts                              (Cloudflare Workers)
@@ -87,7 +87,7 @@ const ORIGINS = [
  *  before this pin's fix. */
 const DECK_KEYED_NAMES = [
   { name: "Anonymous", deckKey: "anonymous", defaultKey: "anonymou" },
-  { name: "SCarol", deckKey: "s_carol", defaultKey: "_carol" },
+  { name: "SRiver", deckKey: "s_river", defaultKey: "_river" },
   { name: "Sample's", deckKey: "sample_s", defaultKey: "sample_" },
   { name: "delete this", deckKey: "delete_this", defaultKey: "delete_thi" },
 ] as const;

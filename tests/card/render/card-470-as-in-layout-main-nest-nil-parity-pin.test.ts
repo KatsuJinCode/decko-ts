@@ -63,7 +63,7 @@
 // tmp/raw-ground-truth/ skips on the data reason (same shape as the fix-d6 arm).
 // The slice is seeded small (card 470 + its codename targets + the 25
 // capture-restored override ids the seeder requires) rather than with all
-// 47,235 live cards: 37 s instead of the full-corpus arm's quoted 170 s.
+// a production-size deck: 37 s instead of the full-corpus arm's quoted 170 s.
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
