@@ -139,8 +139,22 @@ function scratchDir(): string {
 
 const BACKENDS: Record<string, () => Promise<Backend>> = {
   "PostgreSQL (PGlite, native)": async () => {
-    const driver = new PostgresDriver({ client: await PGlite.create() });
-    return { driver, dispose: () => driver.close() };
+    // PGlite is one PostgreSQL session, so there is no second connection.
+    // The observer shares the session and first proves no transaction is
+    // open (inside one, now() is the transaction's start, not the
+    // statement's), so what it reads is committed.
+    const client = await PGlite.create();
+    const driver = new PostgresDriver({ client });
+    const shared = new PostgresDriver({ client, ownsClient: false });
+    const observer: SQLDatabaseDriver = {
+      query: async <T,>(sql: string, params: unknown[]) => {
+        const probe = await client.query<{ outside: boolean }>("SELECT now() = statement_timestamp() AS outside");
+        if (!probe.rows[0]?.outside) throw new Error("observer read inside an open transaction");
+        return shared.query<T>(sql, params);
+      },
+      batch: (statements) => shared.batch(statements),
+    };
+    return { driver, observer, dispose: () => driver.close() };
   },
   "local SQLite (native)": async () => {
     const path = join(scratchDir(), "deck.sqlite");
