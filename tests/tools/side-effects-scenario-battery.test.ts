@@ -21,8 +21,8 @@
 // the two account-holder rename steps live in the withheld set
 // (tools/parity-side-effects/withheld/scenarios.json, excluded from every
 // release package) and are announced on stderr when they are not run. On the
-// clean synthetic deck the recorded verdicts are 78 of 88 (75 pass + 3
-// declared + 10 mismatched). The Ruby recording is committed
+// clean synthetic deck the recorded verdicts are 75 pass + 2 declared +
+// 11 mismatched (88 steps). The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list, re-recorded
 // whenever the public list changes; this suite pins the exact current
 // verdicts, so any engine change here fails loudly. Neither engine's
@@ -190,7 +190,7 @@ describe("side-effects scenario battery (88 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 75 steps pass, the 3 steps whose reference-deck pins hold are declared, and the 10 remaining mismatches are pinned step by step", () => {
+  it("drives the TypeScript engine through the 88 public steps and compares it with the recorded Ruby trace: 75 steps pass, the 2 steps whose reference-deck pins hold are declared, and the 11 remaining mismatches are pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
