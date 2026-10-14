@@ -86,6 +86,13 @@ export interface ModViewConfig {
 
   /** denial: :blank - the view rendered when the read check denies (format/error.rb:27-31). */
   denial?: string;
+
+  /** template: :haml - Ruby renders the view from the set's template file
+   *  (<view>.haml beside the set file) instead of a block. The engine has no
+   *  HAML interpreter: a ported template view supplies its body as a view
+   *  function, and this field records that the Ruby view is template-backed
+   *  so the port can be checked against the template it transcribes. */
+  template?: string;
 }
 
 /** One `view :name, opts do ... end` inside a format block. */
@@ -467,6 +474,24 @@ export interface ModSetModuleFile {
    *  card-mod-recaptcha). Collected in load order; the *admin :warning view
    *  walks the deck list. */
   readonly basketWarnings?: readonly string[];
+
+  /** the file's `card_accessor` / `card_reader` / `card_writer` calls
+   *  (card-1.110.0 lib/card/set/trait.rb): each names a +<name> child card
+   *  the set's cards read or write through. Recorded in load order with the
+   *  set path and mod name injected (ModLoader.cardAccessorDeclarations). */
+  readonly cardAccessors?: readonly ModCardAccessor[];
+}
+
+/** One `card_accessor :name, type: :x` (reader + writer), `card_reader`
+ *  (reader only) or `card_writer` (writer only) declaration. */
+export interface ModCardAccessor {
+  /** the trait name (`card_accessor :email` -> "email"; the child card is
+   *  <card>+<name>). */
+  readonly name: string;
+  readonly reader: boolean;
+  readonly writer: boolean;
+  /** `type:` — the cardtype codename the child is created with. */
+  readonly type?: string;
 }
 
 /** One `basket[:tasks][:name] = { mod: ..., execute_policy: ... }` entry

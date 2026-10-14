@@ -101,6 +101,7 @@ import {
 import type {
   DeckoModManifest,
   ModBasketTask,
+  ModCardAccessor,
   ModEngineHost,
   ModEventRegistration,
   ModEventStage,
@@ -119,10 +120,12 @@ export { ContentOverrideRegistry, setDefaultContentOverrideRegistry, contentOver
 export type { ContentFn, RegisteredContentOverride } from "./render/content-overrides.js";
 export { modEngineHost } from "./mod-loader/mod-engine-host.js";
 export { default as cardModHelp } from "./mod-loader/mods/card-mod-help.js";
+export { defineMod } from "./mod-loader/mod-dsl.js";
+export type { ModDsl, SetDsl, FormatDsl, ViewOptions, EventOptions, AccessorOptions, ModOptions } from "./mod-loader/mod-dsl.js";
 export { setKeysToModuleChain } from "./render/set-keys-to-modules.js";
 export type { DeckoModManifest, ModEngineHost } from "./mod-loader/mod-manifest.js";
 export type { ModViewConfig, ModSetModuleFile, ModSettingOpts, ModPatternRegistration } from "./mod-loader/mod-manifest.js";
-export type { ModBasketTask } from "./mod-loader/mod-manifest.js";
+export type { ModBasketTask, ModCardAccessor } from "./mod-loader/mod-manifest.js";
 export type { ModEventRegistration, ModEventStage, ModEventTrigger, ModEventCard, ModEventFn } from "./mod-loader/mod-manifest.js";
 export type { RegisteredSetting } from "./mod-loader/mod-registrar.js";
 
@@ -136,6 +139,13 @@ export interface RegisteredBasketTask extends ModBasketTask {
 /** One `basket[:warnings] << :name` contribution. */
 export interface RegisteredBasketWarning {
   readonly warning: string;
+  readonly setPath: string;
+  readonly modName: string;
+}
+
+/** One `card_accessor` / `card_reader` / `card_writer` declaration, with the
+ *  contributing mod + set path recorded. */
+export interface RegisteredCardAccessor extends ModCardAccessor {
   readonly setPath: string;
   readonly modName: string;
 }
@@ -214,6 +224,9 @@ export class ModLoader {
    *  deck basket = core's own entries merged with these. */
   private readonly basketTaskEntries: RegisteredBasketTask[] = [];
   private readonly basketWarningEntries: RegisteredBasketWarning[] = [];
+  /** The set-module trait declarations (lib/card/set/trait.rb), in load
+   *  order. */
+  private readonly cardAccessorEntries: RegisteredCardAccessor[] = [];
 
   constructor(mods: readonly ModSource[], views: Record<string, ViewFn> = HTML_VIEWS) {
     this.views = new ViewRegistrationTable(views);
@@ -465,6 +478,14 @@ export class ModLoader {
                 modName: mod.manifest.name,
               });
             }
+            for (const accessor of file.cardAccessors ?? []) {
+              // set-module `card_accessor :name` (lib/card/set/trait.rb).
+              this.cardAccessorEntries.push({
+                ...accessor,
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+              });
+            }
           }
         }
       }
@@ -515,6 +536,7 @@ export class ModLoader {
     this.modEvents.clear();
     this.basketTaskEntries.length = 0;
     this.basketWarningEntries.length = 0;
+    this.cardAccessorEntries.length = 0;
     this.loaded = false;
   }
 
@@ -1167,6 +1189,12 @@ export class ModLoader {
    *  list the *admin :warning view walks). */
   basketWarningContributions(): readonly RegisteredBasketWarning[] {
     return this.basketWarningEntries;
+  }
+
+  /** The `card_accessor` / `card_reader` / `card_writer` declarations in
+   *  load order. */
+  cardAccessorDeclarations(): readonly RegisteredCardAccessor[] {
+    return this.cardAccessorEntries;
   }
 
   /** The concrete pattern table INCLUDING mod patterns, in lookup order.

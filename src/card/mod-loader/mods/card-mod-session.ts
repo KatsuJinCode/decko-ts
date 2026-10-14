@@ -90,21 +90,7 @@
 //   seed; its :type is even commented out in the gem) - seed files are the
 //   test; the test below seeds the same Session cardtype card
 
-import {
-  engineOwnedEvent,
-  type DeckoModManifest,
-  type ModEventFn,
-  type ModEventRegistration,
-} from "../mod-manifest.js";
-
-/** The set-module event declarations: stub-bodied, with the per-event
- *  reason on the declaration. Same shape
- *  as core-mod.ts's local helper. */
-function event(
-  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
-): ModEventRegistration {
-  return { fn: () => undefined, ...decl };
-}
+import { defineMod } from "../mod-dsl.js";
 
 // ---------------------------------------------------------------------------
 // lib/card/mod/session.rb - the Railtie config value
@@ -123,69 +109,59 @@ export const ALLOW_ANONYMOUS_COOKIES = true;
 // the manifest (one entry per set file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
 
-const cardModSession: DeckoModManifest = {
-  name: "session",
-  gemName: "card-mod-session",
-  group: "gem-defaults",
-  setModules: [
-    {
-      // card-mod-mod-session source: set/all/location_history.rb - events
-      // :discard_deleted_locations (:1-4), :save_current_location (:6-8)
-      // and the configure_successful_deletion method (:12-20). All three
-      // ride the request Env / success object / controller page cycle -
-      // no view registrations (see the header's NOT-ported list).
-      //
-      // Events — two STUBS with named reasons:
-      // - discard_deleted_locations (:finalize, on: :delete) drops the
-      //   deleted card's entries from the session location history
-      //   (configure_successful_deletion needs the delete-success
-      //   object); the visitor-session owns the history and no delete
-      //   hook reaches it.
-      // - save_current_location (Ruby `before: :show_page, on: :read`) —
-      //   the location-history MECHANISM is ported
-      //   (session/visitor-session.ts saveLocation, location_history.rb
-      //   :12-17) but the read-path EVENT hook is unwired (the port's
-      //   page views do not run card events); the declaration records
-      //   Ruby's set membership (the stage is show_page's read cycle,
-      //   outside the nine save stages — no `at:` to record).
-      setPath: "all/location_history",
-      events: [
-        event({ event: "discard_deleted_locations", at: "finalize", on: ["delete"] }),
-        // Ruby: `event :save_current_location, before: :show_page,
-        // on: :read` — a READ-path event; the surface's trigger union has
-        // no read arm, so `on:` is omitted (no trigger recorded; Ruby's
-        // read trigger rides this comment). No stage of its own: Ruby
-        // clears @stage for a before: event, and show_page is the page
-        // cycle - outside the nine save stages, so the name resolves to no
-        // registered event and the entry is a candidate in none of them
-        // (the read path runs no card events; the mechanism is ported
-        // separately, visitor-session.ts saveLocation).
-        event({ event: "save_current_location", before: "show_page" }),
-      ],
-    },
-    {
-      // card-mod-session-0.20.0/set/type/session.rb - the Session
-      // cardtype's set module: include_set Pointer (:1), the
-      // non_createable_types basket push (:3), the card-method overrides
-      // (:5-19, 21-23, 25-35, 47-53, 55-57 - the header's NOT-ported list:
-      // the TS engine has no card-method-override surface to attach them
-      // to), the store/delete-in-session events (:37-45), and the
-      // before :core hook (:59-63). Registered as Type::Session (nonbase
-      // bucket).
-      setPath: "type/session",
-      // store_in_session: the write route answers a Session create without
-      // writing (write-routes.ts isSessionTypeCreate); the content is not
-      // kept, the port having no per-visitor session store.
-      // delete_in_session — STUB, named
-      // remainder (session.rb:42-45): session_content = nil + abort
-      // :success on a Session-card DELETE; the port has no Session-card
-      // delete write path (same reason as store_in_session's route arm).
-      events: [
-        engineOwnedEvent({ event: "store_in_session", at: "prepare_to_store", on: ["save"] }),
-        event({ event: "delete_in_session", at: "prepare_to_store", on: ["delete"] }),
-      ],
-    },
-  ],
-};
+const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, ({ set }) => {
+  // card-mod-session-0.20.0/set/all/location_history.rb - events
+  // :discard_deleted_locations (:1-4), :save_current_location (:6-8)
+  // and the configure_successful_deletion method (:12-20). All three
+  // ride the request Env / success object / controller page cycle -
+  // no view registrations (see the header's NOT-ported list).
+  //
+  // Events — two STUBS (declared without a body) with named reasons:
+  // - discard_deleted_locations (:finalize, on: :delete) drops the
+  //   deleted card's entries from the session location history
+  //   (configure_successful_deletion needs the delete-success
+  //   object); the visitor-session owns the history and no delete
+  //   hook reaches it.
+  // - save_current_location (Ruby `before: :show_page, on: :read`) —
+  //   the location-history MECHANISM is ported
+  //   (session/visitor-session.ts saveLocation, location_history.rb
+  //   :12-17) but the read-path EVENT hook is unwired (the port's
+  //   page views do not run card events); the declaration records
+  //   Ruby's set membership (the stage is show_page's read cycle,
+  //   outside the nine save stages — no stage to record).
+  set("all/location_history", ({ event }) => {
+    event("discard_deleted_locations", "finalize", { on: "delete" });
+    // Ruby: `event :save_current_location, before: :show_page,
+    // on: :read` — a READ-path event; the surface's trigger union has
+    // no read arm, so `on:` is omitted (no trigger recorded; Ruby's
+    // read trigger rides this comment). No stage of its own: Ruby
+    // clears @stage for a before: event, and show_page is the page
+    // cycle - outside the nine save stages, so the name resolves to no
+    // registered event and the entry is a candidate in none of them
+    // (the read path runs no card events; the mechanism is ported
+    // separately, visitor-session.ts saveLocation).
+    event("save_current_location", { before: "show_page" });
+  });
+
+  // card-mod-session-0.20.0/set/type/session.rb - the Session
+  // cardtype's set module: include_set Pointer (:1), the
+  // non_createable_types basket push (:3), the card-method overrides
+  // (:5-19, 21-23, 25-35, 47-53, 55-57 - the header's NOT-ported list:
+  // the TS engine has no card-method-override surface to attach them
+  // to), the store/delete-in-session events (:37-45), and the
+  // before :core hook (:59-63). Registered as Type::Session (nonbase
+  // bucket).
+  set("type/session", ({ event }) => {
+    // store_in_session: the write route answers a Session create without
+    // writing (write-routes.ts isSessionTypeCreate); the content is not
+    // kept, the port having no per-visitor session store.
+    event("store_in_session", "prepare_to_store", { on: "save", engineOwned: true });
+    // delete_in_session — STUB, named remainder (session.rb:42-45):
+    // session_content = nil + abort :success on a Session-card DELETE;
+    // the port has no Session-card delete write path (same reason as
+    // store_in_session's route arm).
+    event("delete_in_session", "prepare_to_store", { on: "delete" });
+  });
+});
 
 export default cardModSession;
