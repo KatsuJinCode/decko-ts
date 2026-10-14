@@ -631,6 +631,13 @@ export class RenderEngine implements RenderEngineLike {
    *  runSearch alongside the items; read by the :card_list view's
    *   searchResultPaging seam. Cleared on resetCaches(). */
   private searchResultPagingMap = new Map<string, SearchResultPaging>();
+  /** Seated FULL result counts by search card key, for every search whose
+   *  count query ran (not only the show_paging? case): Ruby's
+   *  count_with_params (0_search.rb:52-54) is that count, and the paging
+   *  helpers read it whether or not a list render follows — the standalone
+   *  :paging view (paging_views.rb:27, template: :haml) dispatches with no
+   *  card_list around it. Cleared on resetCaches(). */
+  private searchResultCounts = new Map<string, number>();
   /** Seated counts by search card key, for a search whose cql declares
    *  `return: "count"`: Ruby's search_with_params answers an Integer and
    *  search_result_view (search_views.rb:6-13) renders :search_count
@@ -8267,6 +8274,15 @@ export class RenderEngine implements RenderEngineLike {
     return this.searchResultPagingMap.get(this.searchCacheKey(fmt.card));
   }
 
+  /** RenderEngineLike#searchItemCount — Ruby's count_with_params
+   *  (0_search.rb:52-54: `search_params.merge(return: :count)`, the search
+   *  re-run with the window zeroed) for a card whose own content is a CQL
+   *  search. Undefined for every other card and for a search whose count
+   *  query never ran (a cql the engine could not execute). */
+  searchItemCount(fmt: RenderFormat): number | undefined {
+    return this.searchResultCounts.get(this.searchCacheKey(fmt.card));
+  }
+
   /** RenderEngineLike#searchKeyword — the request's search keyword
    *  (search_params.rb:32-34 search_keyword = term_param ||
    *  search_vars&.dig(:keyword); the port carries the query vars AND the
@@ -10219,6 +10235,7 @@ export class RenderEngine implements RenderEngineLike {
     let rows: CardsRow[];
     let records: Map<number, CardRecord>;
     let paging: SearchResultPaging | undefined;
+    let searchCount: number | undefined;
     try {
       const queryOptions = {
         // The viewer's read-permission filter rides the SQL
@@ -10332,6 +10349,7 @@ export class RenderEngine implements RenderEngineLike {
         delete countStatement["offset"];
         delete countStatement["limit"];
         const count = await executeCount(this.fetcher.driver, countStatement, queryOptions);
+        searchCount = count;
         // The record carries the REQUEST's offset (paging_params' offset —
         // the focal env_search_param), not the hardcoded 0: the nav's
         // current_page math renders the requested page's state (page 2's
@@ -10409,6 +10427,16 @@ export class RenderEngine implements RenderEngineLike {
       }
       const enriched = await this.enrichAndStore(record);
       items.push(enriched);
+    }
+    // The full result count rides the seat whenever the count query ran,
+    // NOT only in the show_paging? case. show_paging? (paging_views.rb:4-9)
+    // is a FUNCTION of (limit, offset, count_with_params) — the standalone
+    // :paging view renders the nav without any list render to compare
+    // against, so its count can only come from here. count_with_params
+    // (0_search.rb:52-54 `search_params.merge(return: :count)`) is the same
+    // search with the window zeroed, so this is Ruby's value.
+    if (searchCount !== undefined) {
+      this.searchResultCounts.set(this.searchCacheKey(card), searchCount);
     }
     if (paging !== undefined) {
       this.searchResultPagingMap.set(this.searchCacheKey(card), paging);

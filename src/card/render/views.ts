@@ -1928,14 +1928,37 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
-  let box = "";
+  // card-mod-comment set/right/discussion.rb:8-10 `output [super(),
+  // render_comment_box(optional: :hide)]` - the join is output's
+  // `Array.wrap(content).flatten.compact.join "\n"` (card
+  // lib/card/format/content.rb:70-73).
+  //
+  // The second member is an OPTIONAL render. View#process (card
+  // lib/card/view.rb:68-69) starts `return if process_live_options ==
+  // :hide`: process_visibility (view/options/visibility.rb:73-77) merges the
+  // parent voo's viz hash and then enrolls the requested view at the
+  // optional setting (`viz requested_view, @optional if @optional &&
+  // !viz_hash[requested_view]`), and hide_requested_view? (:82-83) is
+  // `optional? && hide?(requested_view)`. With optional: :hide the box
+  // therefore renders only when an ancestor voo already recorded
+  // `show :comment_box` - discussion.rb:1-6 does that in :open,
+  // :open_content, :titled and :titled_content. A bare :core render records
+  // nothing, the render returns nil, compact drops it, and the core is the
+  // base content with no separator newline, for every viewer.
+  //
+  // When the box IS shown, a viewer without update permission gets the
+  // :blank denial (comment.rb:46 `denial: :blank, perms: :update`): "" is
+  // not nil, survives compact, and the separator newline stays. The catch
+  // arm is the engine with no comment mod loaded (no :comment_box view),
+  // where the member contributes nothing.
+  if (!ctx.voo.explicitShow("comment_box")) return base;
+  let box: string;
   try {
-    const result = ctx.fmt.renderView("comment_box", {}, "hide");
-    box = String(result ?? "");
+    box = str(ctx.fmt.renderView("comment_box", {}, "hide"));
   } catch {
-    box = ""; // comment mod not registered: the :update-denied blank
+    return base;
   }
-  return base + "\n" + box;
+  return [base, box].join("\n");
 };
 
 /**
@@ -5420,7 +5443,14 @@ function headerHtml(ctx: ViewContext): string {
  *  rescue, render.rb:7-14, :96-100): a raising core carries the quiet
  *  render-error span, labelled "(core view)", inside this view's own
  *  output. See RenderFormat#renderDelegated. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
+const titledContentView: ViewFn = ({ fmt, voo }) => {
+  // card-mod-comment set/right/discussion.rb:1-6: :titled_content records
+  // `voo.show :comment_box` before super(), so the core it delegates to
+  // renders the comment box (the loader-less path has no set-scoped
+  // override; openView and titledView carry the same guard).
+  if (fmt.card.name.rightName?.key === "discussion") voo.showViz("comment_box");
+  return fmt.renderDelegated("core");
+};
 
 // ---------------------------------------------------------------------------
 // card-mod-format-0.20.0 set/all/html/header.rb + set/all/html.rb + head.rb —

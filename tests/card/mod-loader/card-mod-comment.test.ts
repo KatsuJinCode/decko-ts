@@ -205,16 +205,27 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
   });
 
-  it("WITH the mod: discussion :core dispatches to base core AND appends comment_box (right/discussion.rb:8-10)", async () => {
+  it("WITH the mod: a bare discussion :core is the base core alone - the optional: :hide box renders nil (right/discussion.rb:8-10)", async () => {
     const s = storage!;
+    // `output [super(), render_comment_box(optional: :hide)]`: with no
+    // ancestor voo recording `show :comment_box`, process_visibility enrolls
+    // comment_box as :hide (card-1.110.0 lib/card/view/options/
+    // visibility.rb:73-77) and View#process returns nil (lib/card/view.rb:
+    // 68-69); output's compact drops it (lib/card/format/content.rb:70-73),
+    // so there is no box and no separator newline. The synthetic-v2 oracle
+    // records core:anonymous:Topic 001+discussion and core:admin:Topic
+    // 001+discussion as the content alone for both viewers.
     const html = await s.engine.render("Oracle Discussion Probe+discussion", "core");
-    // The base core runs first (raw content bytes); the appended
-    // comment_box body follows immediately after (no slot wrapper around
-    // the appended bytes - it's a raw concatenation, mirroring Ruby's
-    // `output [super(), render_comment_box(optional: :hide)]`).
-    expect(html).toContain("discussion junction body");
-    expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
+    expect(html).toBe("discussion junction body");
+  });
+
+  it("WITH the mod: a discussion :core under a voo that shows :comment_box joins the box with one newline (right/discussion.rb:1-10)", async () => {
+    const s = storage!;
+    // :titled_content records `voo.show :comment_box` (discussion.rb:1-6)
+    // and renders core; the box then renders and output joins the two
+    // members with "\n".
+    const html = await s.engine.render("Oracle Discussion Probe+discussion", "titled_content");
+    expect(html.startsWith('discussion junction body\n<div class="comment-box nodblclick">')).toBe(true);
   });
 
   it("WITH the mod: discussion :input falls through to base input (right/discussion.rb:12-16, non-editor branch)", async () => {

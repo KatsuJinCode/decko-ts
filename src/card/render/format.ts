@@ -3803,6 +3803,14 @@ export interface RenderEngineLike {
    *  `return: "count"` (undefined for a list search or an engine without
    *  it). The search core renders it as :search_count. */
   searchResultCount?(fmt: RenderFormat): number | undefined;
+  /** Ruby's count_with_params (card-mod-search set/abstract/0_search.rb:
+   *  52-54 `search_params.merge(return: :count)`) for a card whose own
+   *  content is a CQL search — the FULL match count, independent of the
+   *  rendered window. Undefined for a card that is not a search, and for a
+   *  search whose count query never ran. The paging helpers read it in
+   *  place of the content-item count (paging.rb:16-17), so a standalone
+   *  :paging render reports the same count as the nav inside :card_list. */
+  searchItemCount?(fmt: RenderFormat): number | undefined;
   /** Ruby's `search_keyword` (card-mod-search
    *  set/abstract/0_search/search_params.rb:32-34: `term_param ||
    *  search_vars&.dig(:keyword)`) - BOTH arms are REQUEST params, so a
