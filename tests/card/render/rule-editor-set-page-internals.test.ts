@@ -42,6 +42,7 @@ const SET_TYPE_ID = 100;
 const LIST_TYPE_ID = 101;
 const POINTER_TYPE_ID = 102;
 const SETTING_TYPE_ID = 103;
+const ROLE_TYPE_ID = 104;
 
 async function seedDeck(): Promise<void> {
   const s = storage!;
@@ -50,6 +51,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: LIST_TYPE_ID, name: "List", codename: "list" });
   await seedCard(s, { id: POINTER_TYPE_ID, name: "Pointer", codename: "pointer" });
   await seedCard(s, { id: SETTING_TYPE_ID, name: "Setting", codename: "setting" });
+  await seedCard(s, { id: ROLE_TYPE_ID, name: "Role", codename: "role" });
   // The catch-all set card.
   await seedCard(s, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   // Setting cards (the 23 the accordion iterates beyond *all itself).
@@ -95,13 +97,17 @@ async function seedDeck(): Promise<void> {
     typeId: LIST_TYPE_ID,
     dbContent: "Administrator\nAnyone\nNobody",
   });
-  // The known item targets: Administrator (a plain card) + Anyone (the
-  // role the read grant admits) + Anonymous (the default viewer's party
-  // id — statement 1 of the permission batch resolves it by codename).
-  // Role: the type Ruby's seed gives Administrator (Role is a Cardtype).
-  await seedCard(s, { id: 43, name: "Cardtype", codename: "cardtype", typeId: 43 });
-  await seedCard(s, { id: 44, name: "Role", codename: "role", typeId: 43 });
-  await seedCard(s, { id: 40, name: "Administrator", codename: "administrator", typeId: 44, dbContent: "admin body" });
+  // The known item targets: Administrator (Role-typed, as Ruby's seed makes
+  // it: card-mod-account-0.20.0 data/real.yml:35-45) + Anyone (the role the
+  // read grant admits) + Anonymous (the default viewer's party id —
+  // statement 1 of the permission batch resolves it by codename).
+  await seedCard(s, {
+    id: 40,
+    name: "Administrator",
+    codename: "administrator",
+    typeId: ROLE_TYPE_ID,
+    dbContent: "admin body",
+  });
   await seedCard(s, { id: 41, name: "Anyone", codename: "anyone" });
   await seedCard(s, { id: 42, name: "Anonymous", codename: "anonymous" });
   // The read-rule walk resolves the rule's items through card_references

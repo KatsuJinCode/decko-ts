@@ -377,7 +377,7 @@ describe("RenderEngine structured content", () => {
       root: string;
       view: string;
       levels: number;
-      /** Trips measured above the law, with their causes (see FIELD_EXTRA). */
+      /** Trips measured above the law, with their causes. */
       aboveLaw?: number;
       expectHtml: string[];
       seed: (s: RenderTestStorage) => Promise<void>;
@@ -392,16 +392,15 @@ describe("RenderEngine structured content", () => {
       await seedCard(s, { id: 108, name: "*type plus right", codename: "type_plus_right" });
       await seedCard(s, { id: 103, leftId: 100, rightId: 101 }); // Page+*type
     };
-    // A structure that nests a FIELD (+body) measures two trips above the
-    // law, both single wave rounds (measured 2026-10-14):
+    // A structure that nests a FIELD (+body) meets the law too (measured
+    // 2026-10-14). Two asks that used to cost a round of their own each ride
+    // the wave's one round:
     //  - the field's *type plus right rule candidates are depth-4 names
-    //    (Page+body+*type plus right+*structure). The wave's key join reaches
-    //    depth 3, so the depth-3 parent (Page+body+*type plus right) is asked
-    //    in a second round.
-    //  - the late structure seat for the field card probes the pair
-    //    (Page+*type+*structure, body) in a round of its own.
-    // Pinned so that folding either one shows here.
-    const FIELD_EXTRA = 2;
+    //    (Page+body+*type plus right+*structure); the wave's key join asks
+    //    every level of a name through its chain of left junctions;
+    //  - the late structure sweep walks the *structure rule card's own
+    //    content against the rule's name (Page+*type+*structure+body); the
+    //    wave asks those references prime-only, from the structure universe.
     const SHAPES: LawShape[] = [
       {
         label: "*type structure, title view (nests nothing)",
@@ -432,7 +431,6 @@ describe("RenderEngine structured content", () => {
         root: "Doc1",
         view: "core",
         levels: 1,
-        aboveLaw: FIELD_EXTRA,
         expectHtml: ["FIELD BODY"],
         seed: async (s) => {
           await seedSettings(s);
@@ -447,7 +445,6 @@ describe("RenderEngine structured content", () => {
         root: "Doc1",
         view: "core",
         levels: 2,
-        aboveLaw: FIELD_EXTRA,
         expectHtml: ["LEAF BODY"],
         seed: async (s) => {
           await seedSettings(s);
