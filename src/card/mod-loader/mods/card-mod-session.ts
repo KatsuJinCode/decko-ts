@@ -154,9 +154,13 @@ const cardModSession: DeckoModManifest = {
         // Ruby: `event :save_current_location, before: :show_page,
         // on: :read` — a READ-path event; the surface's trigger union has
         // no read arm, so `on:` is omitted (no trigger recorded; Ruby's
-        // read trigger rides this comment). No stage: show_page is the
-        // page cycle, outside the nine save stages.
-        event({ event: "save_current_location" }),
+        // read trigger rides this comment). No stage of its own: Ruby
+        // clears @stage for a before: event, and show_page is the page
+        // cycle - outside the nine save stages, so the name resolves to no
+        // registered event and the entry is a candidate in none of them
+        // (the read path runs no card events; the mechanism is ported
+        // separately, visitor-session.ts saveLocation).
+        event({ event: "save_current_location", before: "show_page" }),
       ],
     },
     {

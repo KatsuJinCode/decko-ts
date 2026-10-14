@@ -368,10 +368,12 @@ const cardModAssets: DeckoModManifest = {
       // +*asset input virtual content re-store; :20-23 on delete, before
       // clear_references — the referers walk that re-stores dependents
       // before the references die). Ruby's `before: :clear_references`
-      // hangs the event on clear_references' chain (itself a :finalize
-      // on: :delete event); the surface records the resolved stage and
-      // the engine's delete path owns the position (the check_setup
-      // precedent).
+      // clears @stage (options.rb:76) and hangs the event on
+      // clear_references' callback chain; clear_references is an ENGINE
+      // builtin (card-action-engine.ts's reference janitors), not a
+      // registered event, so the name resolves to no registry entry and
+      // the delete arm is a candidate in none of the nine save stages —
+      // the engine's delete path owns the position.
       setPath: "abstract/asset_inputter",
       events: [
         engineOwnedEvent({
@@ -384,7 +386,7 @@ const cardModAssets: DeckoModManifest = {
         }),
         engineOwnedEvent({
           event: "asset_input_changed_on_delete",
-          at: "finalize",
+          before: "clear_references",
           on: ["delete"],
           when: "asset_inputter?",
         }),

@@ -128,8 +128,10 @@ import {
 } from "../../history/change.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
 } from "../mod-manifest.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
 
 // ---------------------------------------------------------------------------
 // row shapes the reader returns (the ActiveRecord attribute surface)
@@ -923,6 +925,43 @@ export async function updaterOf(
 // ---------------------------------------------------------------------------
 // set/all/history/events.rb - the edit_conflict? guard
 // ---------------------------------------------------------------------------
+
+/** The set-module methods Ruby's `when:` conditions reach with `send`
+ *  (set/event/all.rb:82) from mod/history/set/all/history/. Each entry
+ *  cites the Ruby source; the deck-boot composition merges them into
+ *  ModEventRuntime.predicates (default-mod-deck.ts). */
+export const historyModEventPredicates = {
+  /** actionable? (events.rb:53): "can we store an action?" = history?
+   *  (history.rb:6, default true). Gates :assign_action (events.rb:15),
+   *  the initialize-stage action assignment the port's ActWriter performs. */
+  "actionable?": (card: ModEventCard): boolean => card.history !== false,
+  /** finalize_action? (events.rb:61): `actionable? && current_action` —
+   *  there is an open action to finalize. Gates :finalize_action
+   *  (events.rb:25). */
+  "finalize_action?": (card: ModEventCard): boolean =>
+    card.history !== false && card.currentAction === true,
+  /** rollback_request? (set/all/history/revision.rb:29): `history? &&
+   *  actions_to_revert.any?`. Gates :rollback_actions (events.rb:40). */
+  "rollback_request?": (card: ModEventCard): boolean =>
+    card.history !== false && card.rollbackRequested === true,
+  /** act_card? (card/lib/card/director/all.rb:42-44): `self == act_card`.
+   *  Gates :finalize_act (events.rb:48), which writes the act's summary —
+   *  an act-level, not card-level, event. */
+  "act_card?": (card: ModEventCard): boolean => card.isActCard !== false,
+  /** edit_conflict? (events.rb:65-72): the edit began from an older
+   *  revision AND someone else made the last action. The predicate form of
+   *  the isEditConflict below — it needs the deck, so it takes the ctx the
+   *  dispatcher threads through. Gates :detect_conflict (events.rb:19). */
+  "edit_conflict?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    if (ctx === undefined || card.id === undefined) return false;
+    return isEditConflict(
+      ctx.driver,
+      card.id,
+      card.lastActionIdBeforeEdit,
+      card.authCurrentId ?? -1,
+    );
+  },
+} as const;
 
 /** edit_conflict? (events.rb:65-72): the edit began from an older revision
  *  AND someone else made the last action - `last_action_id_before_edit &&

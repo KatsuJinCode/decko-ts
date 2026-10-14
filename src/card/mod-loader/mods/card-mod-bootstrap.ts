@@ -1321,15 +1321,15 @@ const cardModBootstrap: DeckoModManifest = {
       formats: { html: { views: [] } },
       events: [
         // events.rb:1-8 initialize_because_of_type_change at
-        // :prepare_to_store, on: :update, when: "changed: type"
-        // (the `changed:` predicate rides in the TS `when?` field as
-        // the "changed: type" string - the execution seam resolves
-        // it at fire time; this port pins the literal text).
+        // :prepare_to_store, on: :update, changed: :type — the
+        // `changed:` condition, NOT a `when:` predicate: the event fires
+        // only when the type column is among the changing fields
+        // (changed_condition_applies?, set/event/all.rb:69-77).
         {
           event: "initialize_because_of_type_change",
           at: "prepare_to_store",
           on: ["update"],
-          when: "changed: type",
+          changed: ["type"],
           fn: () => undefined,
         },
         // events.rb:10-12 copy_theme at :prepare_to_store,
