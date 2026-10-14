@@ -22,6 +22,7 @@ import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/dr
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { hostedDeck } from "../../hosted/hosted-backend.js";
 import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
 import { IP, JOE, seedStandardDeck, type ActionsTestStorage } from "./actions-test-storage.js";
 
@@ -60,7 +61,7 @@ async function seeded(driver: SQLDatabaseDriver): Promise<void> {
 class MidSaveFailureDriver implements SQLDatabaseDriver {
   private armed: { pattern: RegExp; onMatch: () => Promise<void> } | undefined;
   readonly transactionGuarantee;
-  constructor(private readonly inner: CloudflareD1Adapter) {
+  constructor(private readonly inner: SQLDatabaseDriver) {
     this.transactionGuarantee = inner.transactionGuarantee;
   }
   failOn(pattern: RegExp, onMatch: () => Promise<void> = async () => undefined): void {
@@ -104,7 +105,7 @@ class MidSaveFailureDriver implements SQLDatabaseDriver {
     return results;
   }
   transaction<R>(work: () => Promise<R>): Promise<R> {
-    return this.inner.transaction(work);
+    return this.inner.transaction!(work);
   }
 }
 
@@ -165,12 +166,12 @@ afterAll(async () => {
   await mf?.dispose();
 });
 
-describe("multi-user saves on D1: no reader sees a save that fails", () => {
+function multiUser(label: string, openDeck: () => Promise<() => SQLDatabaseDriver>): void {
+describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
   it("a read during a save waits for it, and after the save fails it returns the card as it was", async () => {
-    const binding = await freshBinding();
-    await seeded(new CloudflareD1Adapter(binding));
-    const writer = new MidSaveFailureDriver(new CloudflareD1Adapter(binding));
-    const reader = new CloudflareD1Adapter(binding);
+    const connect = await openDeck();
+    const writer = new MidSaveFailureDriver(connect());
+    const reader = connect();
     let paused!: () => void;
     const isPaused = new Promise<void>((resolve) => {
       paused = resolve;
@@ -198,14 +199,13 @@ describe("multi-user saves on D1: no reader sees a save that fails", () => {
   }, 120_000);
 
   it("concurrent writers with failing saves: every observation is committed, no failed content is ever read", async () => {
-    const binding = await freshBinding();
-    await seeded(new CloudflareD1Adapter(binding));
+    const connect = await openDeck();
     const WRITERS = 4;
     const SAVES_PER_WRITER = 3;
     const committed: string[] = [];
     const failed: string[] = [];
     const writers = Array.from({ length: WRITERS }, (_, w) => async () => {
-      const driver = new MidSaveFailureDriver(new CloudflareD1Adapter(binding));
+      const driver = new MidSaveFailureDriver(connect());
       for (let k = 0; k < SAVES_PER_WRITER; k++) {
         const fails = (w + k) % 2 === 1;
         const content = `${fails ? "failed" : "ok"}-w${w}-s${k}`;
@@ -226,7 +226,7 @@ describe("multi-user saves on D1: no reader sees a save that fails", () => {
     const observations: { content: string; newestChange: string | null }[] = [];
     let writing = true;
     const readers = Array.from({ length: 2 }, () => async () => {
-      const reader = new CloudflareD1Adapter(binding);
+      const reader = connect();
       while (writing) observations.push(await observe(reader));
     });
     const readerRuns = readers.map((r) => r());
@@ -242,7 +242,7 @@ describe("multi-user saves on D1: no reader sees a save that fails", () => {
       // seed content before any change committed.
       expect(seen.newestChange === null ? seen.content === "v1" : seen.content === seen.newestChange).toBe(true);
     }
-    const reader = new CloudflareD1Adapter(binding);
+    const reader = connect();
     const history = await reader.query<{ value: string }>(
       "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id WHERE a.card_id = ? AND ch.field = 2 ORDER BY ch.id",
       [CARD],
@@ -255,3 +255,20 @@ describe("multi-user saves on D1: no reader sees a save that fails", () => {
     expect(Number(journal.rows[0].c)).toBe(0);
   }, 240_000);
 });
+}
+
+multiUser("D1 (miniflare)", async () => {
+  const binding = await freshBinding();
+  await seeded(new CloudflareD1Adapter(binding));
+  return () => new CloudflareD1Adapter(binding);
+});
+
+// The hosted conformance runner (tools/hosted-conformance/) selects this
+// case alone, with a test-name filter of "hosted".
+const hosted = hostedDeck();
+if (hosted !== undefined) {
+  multiUser(hosted.label, async () => {
+    await seeded(await hosted.open());
+    return () => hosted.connect();
+  });
+}

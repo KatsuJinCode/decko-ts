@@ -29,6 +29,7 @@ import { CardActionEngine } from "../../../src/card/actions/card-action-engine.j
 import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
 import { IP, JOE, seedStandardDeck, type ActionsTestStorage } from "./actions-test-storage.js";
 import type { Actor } from "../../../src/card/actions/types.js";
+import { hostedDeck } from "../../hosted/hosted-backend.js";
 
 /** Two other signed-in editors: Ruby's detect_conflict ignores a newer
  *  revision made by the same account (events.rb edit_conflict?). */
@@ -187,6 +188,17 @@ scenarios("D1, one driver object shared by both requests", async () => {
   await seeded(driver);
   return { a: driver, b: driver, dispose: async () => undefined };
 });
+
+// The hosted conformance runner (tools/hosted-conformance/) selects this
+// case alone, with a test-name filter of "hosted".
+const hosted = hostedDeck();
+if (hosted !== undefined) {
+  scenarios(`${hosted.label}, two driver objects over one database`, async () => {
+    const a = await hosted.open();
+    await seeded(a);
+    return { a, b: hosted.connect(), dispose: async () => undefined };
+  });
+}
 
 scenarios("D1, two driver objects over one database (two isolates)", async () => {
   d1Next += 1;
