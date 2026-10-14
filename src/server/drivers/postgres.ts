@@ -535,6 +535,7 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
   }
 
   if (isCreateTable) addMissingColumnTypes(out);
+  else addSqliteNullOrdering(out);
   let postlude: string[] | undefined;
   if (isCreateTable && out.some((t) => t.text === "SERIAL PRIMARY KEY")) {
     // SQLite assigns the next id when an insert gives "id" as NULL;
@@ -559,6 +560,7 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
   // json_array_elements_text(?) needs a json argument.
   text = text.replace(/json_array_elements_text\((\$\d+)\)/g, "json_array_elements_text($1::json)");
   if (/\bWITH\s+RECURSIVE\b/i.test(text)) text = mergeRecursiveArms(text);
+  text = addRowidTieBreak(text);
   let returningId = false;
   if (insertTable !== undefined) {
     if (orIgnore && !hasOnConflict) text += " ON CONFLICT DO NOTHING";
@@ -798,4 +800,76 @@ export function configurePgTypes(types: { setTypeParser(oid: number, parse: (val
   };
   types.setTypeParser(20, toNumber); // int8
   types.setTypeParser(1700, (value) => Number(value)); // numeric
+}
+
+/** SQLite sorts NULL before every value: first under ASC, last under DESC.
+ *  PostgreSQL does the opposite by default, so every ORDER BY term gets the
+ *  explicit NULLS FIRST / NULLS LAST that keeps SQLite's order. */
+function addSqliteNullOrdering(tokens: Token[]): void {
+  const ENDS = new Set(["LIMIT", "OFFSET", "UNION", "EXCEPT", "INTERSECT", "ROWS", "RANGE", "GROUPS", "FETCH"]);
+  for (let i = 0; i < tokens.length; i++) {
+    if (!isWord(tokens[i], "ORDER") || !isWord(tokens[next(tokens, i + 1)], "BY")) continue;
+    let depth = 0;
+    let termStart = next(tokens, i + 1) + 1;
+    const close = (at: number): number => {
+      const term = tokens.slice(termStart, at).filter((t) => t.kind !== "space");
+      if (term.length === 0 || term.some((t) => isWord(t, "NULLS"))) return 0;
+      const nulls = isWord(term[term.length - 1], "DESC") ? "NULLS LAST" : "NULLS FIRST";
+      tokens.splice(at, 0, { kind: "space", text: " " }, { kind: "word", text: nulls }, { kind: "space", text: " " });
+      return 3;
+    };
+    let k = termStart;
+    for (; k < tokens.length; k++) {
+      const t = tokens[k]!;
+      if (t.text === "(") depth++;
+      else if (t.text === ")") {
+        if (depth === 0) break;
+        depth--;
+      } else if (depth === 0 && t.text === ",") {
+        k += close(k);
+        termStart = k + 1;
+      } else if (depth === 0 && t.kind === "word" && ENDS.has(t.text.toUpperCase())) break;
+      else if (depth === 0 && t.text === ";") break;
+    }
+    k += close(k);
+    i = k;
+  }
+}
+
+/**
+ * Rows that tie on every ORDER BY term come out of SQLite in rowid order
+ * (its table and index scans both visit rowids in ascending order), and the
+ * card queries the engine sorts rely on that, as Ruby's results do.
+ * PostgreSQL leaves ties in no particular order. For a top-level SELECT over
+ * `cards <alias>` whose ORDER BY does not already end in the id, the id is
+ * appended as the last term, so ties keep SQLite's order. (For cards, the
+ * rowid is the id.) A DISTINCT query gets the term only when it selects the
+ * id, as PostgreSQL requires.
+ */
+function addRowidTieBreak(text: string): string {
+  const head = /^SELECT\s+(DISTINCT\s+)?([\s\S]*?)\s+FROM\s+cards\s+(?:AS\s+)?([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(text);
+  if (head === null) return text;
+  const alias = head[3]!;
+  if (/^(WHERE|JOIN|LEFT|INNER|CROSS|ORDER|GROUP|LIMIT|ON)$/i.test(alias)) return text;
+  if (head[1] !== undefined && !new RegExp(`(^|[\\s,])${alias}\\.id\\b`).test(head[2]!)) return text;
+  // the ORDER BY at parenthesis depth zero, if any
+  let depth = 0;
+  let orderAt = -1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "'" || c === '"') {
+      const j = text.indexOf(c, i + 1);
+      i = j < 0 ? text.length : j;
+    } else if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (depth === 0 && /^ORDER\s+BY\b/i.test(text.slice(i, i + 12)) && /\s/.test(text[i - 1] ?? " ")) orderAt = i;
+  }
+  if (orderAt < 0) return text;
+  if (/\b(GROUP\s+BY|UNION|EXCEPT|INTERSECT)\b/i.test(text.slice(head[0].length))) return text;
+  const tail = text.slice(orderAt);
+  const end = /\s(LIMIT|OFFSET)\b/i.exec(tail);
+  const terms = end === null ? tail : tail.slice(0, end.index);
+  if (new RegExp(`${alias}\\.id(\\s+(ASC|DESC))?(\\s+NULLS\\s+(FIRST|LAST))?\\s*$`, "i").test(terms.trim())) return text;
+  const insertAt = orderAt + terms.length;
+  return `${text.slice(0, insertAt).trimEnd()}, ${alias}.id${text.slice(insertAt)}`;
 }
