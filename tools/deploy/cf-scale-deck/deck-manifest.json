@@ -3,7 +3,7 @@
   "refs": 531,
   "totalRows": 2809,
   "bytes": 1622567,
-  "file": "tools/deploy/cf-scale-deck/seed.sql",
+  "file": "deploy/cf-scale-deck/seed.sql",
   "dimensions": {
     "ordinary": 2000,
     "chainDepth": 32,

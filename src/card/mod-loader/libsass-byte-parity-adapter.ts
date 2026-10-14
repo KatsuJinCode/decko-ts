@@ -1,7 +1,7 @@
 // The libsass 3.6.4 byte-parity adapter: transforms OUR compiler's (dart sass)
 // CSS output into the byte conventions libsass 3.6.4 emits, so the ENGINE's
 // output itself is byte-identical with the deck's SassC renders
-// (tests/card/mod-loader/compile-engines-pin.test.ts pins the bytes).
+// (the compile-engines-pin suite (not in the public package) pins the bytes).
 //
 // Ground truth: dart sass 1.105.0 in node against libsass 3.6.4 via the
 // installed sassc-2.4.0 gem, run side by side over the same stylesheets.

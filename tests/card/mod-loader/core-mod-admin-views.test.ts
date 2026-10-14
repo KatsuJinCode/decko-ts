@@ -13,7 +13,7 @@
 // card-1.110.0 mod/core set/...) plus the two read-only structural probes
 // for the facts no source file carries (basket insertion order, spec.files
 // emptiness, config defaults, mod-card names, role-grouping shapes -
-// tests/card/mod-loader/oracle-probe-core-admin-facts.rb +
+// oracle-probe-core-admin-facts.rb (not in the public package) +
 // oracle-probe-core-mod-fetch.rb). These views are RENDERED-UNPINNED: the
 // tests prove each name dispatches (UnsupportedViewError without the mod)
 // and carries the structure the gem sources mandate; no byte verification

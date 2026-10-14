@@ -249,7 +249,7 @@ function anonEngine(s: ActionsTestStorage): CardActionEngine {
   return new CardActionEngine(s.engine, { actor: null, ipAddress: "192.0.2.7" });
 }
 
-describe("syncenv cold fidelity: the COLD divergence, flipped to Ruby (contract: docs/sync-env-cold-write-contract.md)", () => {
+describe("syncenv cold fidelity: the COLD divergence, flipped to Ruby", () => {
   it("P1 (COLD, FLIPPED TO RUBY): Editor-locked assignment side DENIES cold — no rows", async () => {
     registerSetTypeAssignment("Right::All", "phrase");
     const s = await seedPhraseDeck(true);

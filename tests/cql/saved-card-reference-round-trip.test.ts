@@ -1,6 +1,6 @@
-// The S2.3.c end-to-end round trip (docs/core/contract.md): save cards
+// The S2.3.c end-to-end round trip (the project contract, not in the public package): save cards
 // through the REAL action engine — whose reference_events writer populates
-// card_references (tests/card/conformance/write-path.test.ts scenario 08
+// card_references (the write-path suite (not in the public package) scenario 08
 // pins that row shape against the Ruby oracle rows) — then run
 // reference-based CQL (refer_to / included_by) over the saved rows,
 // resolving name values through the SAME deck lexicon the save path

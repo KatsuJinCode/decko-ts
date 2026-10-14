@@ -80,8 +80,7 @@ create-if-missing, so a re-run converges rather than duplicating cards.
 ### What is captured, and what is deliberately not
 
 Three fixture sets live under `fixtures/captured/`. **None of them is in the
-public package**: `fixtures/captured/` is on the exclusion list
-(`tools/public-candidate/exclusions.txt`), because these are captured oracles
+public package**: `fixtures/captured/` is not redistributed, because these are captured oracles
 rather than from-scratch synthetic material. They are development evidence —
 they record what Ruby produced, and the suites that read them run only where
 that material is present. The public package's replayable evidence is the

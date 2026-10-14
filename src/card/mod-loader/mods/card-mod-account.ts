@@ -74,7 +74,7 @@ import { str } from "../../render/format.js";
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
 //   src/card/auth/token.ts is a byte-parity port of
 //   card-1.110.0/lib/card/auth/token.rb, developed against the real jwt gem's
-//   own output (fixtures/captured/auth-token.json) — that pin is development
+//   own output (the captured auth-token oracle, not in the public package) — that pin is development
 //   evidence, excluded from the public package with its fixture and suite,
 //   not a check a clean clone can run — and the signing secret
 //   is injected as RenderEngine.tokenConfig, pinned in

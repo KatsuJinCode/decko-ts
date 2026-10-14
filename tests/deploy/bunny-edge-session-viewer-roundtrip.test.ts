@@ -14,7 +14,7 @@
 //
 //   2. ANONYMOUS BYTE IDENTITY — a request with no cookie produces body
 //      bytes BYTE-FOR-BYTE equal to the checked-in baseline fixture
-//      (fixtures/edge-anonymous-read-baseline-home-site-shell.html, the
+//      (tests/deploy/fixtures/edge-anonymous-read-baseline-home-site-shell.html, the
 //      full page shell the edge serves). A cookie
 //      that does NOT resolve — unknown, revoked, malformed — produces those
 //      same bytes, because all four degrade cases land on the anonymous
@@ -46,7 +46,7 @@
 //     (DECKO_LIVE_TRIAL_DB=1) covers the real Hrana wire for session rows;
 //     this suite did not run it and makes no claim about it.
 //
-// DATA: synthetic. Credentials from src/testing/generated-credentials.js.
+// DATA: synthetic. Credentials from src/testing/generated-credentials.ts.
 // No real deck content, no real account, no live service.
 
 import { readFileSync } from "node:fs";

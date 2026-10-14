@@ -2063,7 +2063,7 @@ function boardActDetails(
 }
 
 /** The board_act pieces' TEST SEAM - the composition cores the test file
- *  (tests/card/mod-loader/card-mod-history-harness-probe.test.ts)
+ *  (the history harness probe suite, not in the public package)
  *  exercises against the Ruby renderer chain. The cores are the SAME functions
  *  the view body calls (boardLeftTitleFrom / boardOverlayTitleFrom /
  *  boardSubtitleFrom / actListingOptsFromParams / actDetailsBytes'

@@ -19,7 +19,7 @@
 //        format.ts slotOptions();
 //    (b) the newer class-token order at the bar/accordion surfaces — haml
 //        static classes first, the conditional/state token last, the
-//        computed classy() output after the statics (prototype/lib/card/
+//        computed classy() output after the statics (card 1.110.0 lib/card/
 //        view/classy.rb classy() = [classes, extra_classes].join, and the
 //        haml templates place that output after their own static class
 //        list). UNSET = the older always-enroll + classy-first forms.

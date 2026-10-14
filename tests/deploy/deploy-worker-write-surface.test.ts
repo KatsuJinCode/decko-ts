@@ -3,7 +3,7 @@
 // WHAT THIS EXERCISES, AND WHERE
 //   The REAL worker.ts entry — the file wrangler.toml's `main = "worker.ts"`
 //   points at — bundled the way wrangler bundles it, booted in workerd
-//   through miniflare 5, with the REAL deploy/migrations/0001..0005 chain and
+//   through miniflare 5, with the REAL deploy/migrations/ chain (0001 through 0005) and
 //   the REAL generated account substrate (0004) applied through the D1
 //   binding. No Cloudflare account, no network: workerd is the production
 //   binary.

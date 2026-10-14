@@ -1,6 +1,6 @@
 // Tests for the fetch/cache layer (src/card/fetch.ts + src/card/fetch/*,
-// mirroring prototype/lib/card/fetch.rb, prototype/lib/card/fetch/**,
-// prototype/lib/card/cache/**)
+// mirroring card 1.110.0 lib/card/fetch.rb, card 1.110.0 lib/card/fetch/**,
+// card 1.110.0 lib/card/cache/**)
 // against real SQLite storage seeded with plain row INSERTs.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -271,9 +271,9 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
   });
 
   it("scopes reads temp-first then shared; local_only reads temp only", async () => {
-    // prototype/lib/card/cache.rb: temp is request-local, shared is
+    // card 1.110.0 lib/card/cache.rb: temp is request-local, shared is
     // cross-process; retrieve_from_cache(local_only) reads cache.temp.read ONLY
-    // (prototype/lib/card/cache/card_class.rb:13-15) and write_to_cache(local_only) writes
+    // (card 1.110.0 lib/card/cache/card_class.rb:13-15) and write_to_cache(local_only) writes
     // temp only (cache/card_class.rb:28-30).
     const store = mapStore();
     const first = await createFetchTestStorage({ sharedStore: store });

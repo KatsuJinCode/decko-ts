@@ -3,7 +3,7 @@
 //
 //   "We port your Decko site to TypeScript and tell you how many pages are not byte-identical."
 //
-// Plan: deliverables/migration-parity-tool-PLAN.md
+// The stage plan is not part of the public package.
 //
 // Status: this scaffold validates inputs, prints or runs the stage commands that already
 // exist, and fails with a named missing-inputs list. It does not yet run end-to-end against
@@ -53,7 +53,7 @@ function usage(exitCode = EXIT_OK) {
     "  node bin/migration-parity-tool.mjs run --site <slug> --targets <targets.tsv>",
     "       (--dump <file.sql> | --source <deck.sqlite>) --out <run-dir> [options]",
     "",
-    "Stages (all built from existing proven machinery; see deliverables/migration-parity-tool-PLAN.md):",
+    "Stages (all built from existing proven machinery):",
     "  1 CAPTURE  fetch the live site's public pages, byte-exact, sha256-bound (read-only GETs)",
     "  2 IMPORT   site dump -> SQLite via tools/migrate (verified count/checksum parity)",
     "  3 RENDER   boot the TS engine on the imported deck (vm-staging-server.mjs)",
@@ -279,8 +279,8 @@ if (problems.length > 0) {
   console.error("MISSING INPUTS — the migration parity tool cannot start because:");
   console.error(problems.join("\n"));
   console.error("");
-  console.error("Every stage behind this command already exists and is proven; see");
-  console.error("deliverables/migration-parity-tool-PLAN.md for paths, provenance, and gaps.");
+  console.error("Every stage behind this command already exists and is proven.");
+  console.error("The stage plan (paths, provenance, and gaps) is not part of the public package.");
   process.exit(EXIT_USAGE);
 }
 

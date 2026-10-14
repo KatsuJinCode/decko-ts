@@ -1501,7 +1501,7 @@ export class RenderEngine implements RenderEngineLike {
         await this.parseRuleTypeIds(undefined, 0);
       }
       // THE RULE SET-KEY REPAIR (oracle-pinned:
-      // fixtures/captured/search-list-views.json target 152): set keys were
+      // the captured search-list-views oracle, not in the public package target 152): set keys were
       // computed by enrichAndStore while ruleTypeIds was still undefined -
       // computeIsRule returned undefined and safeSetKeys dropped the bare
       // RULE token - and the existing-key guard (enrichAndStore's head)
@@ -4816,7 +4816,7 @@ export class RenderEngine implements RenderEngineLike {
    * and the engine emitted the same list WITHOUT ` RULE`.
    *
    * CORRECTION (oracle-pinned by
-   * fixtures/captured/form-substrate.json rule_card_head/guide): the
+   * the captured form-substrate oracle, not in the public package rule_card_head/guide): the
    * 2-part restriction below was WRONG against Ruby — standard_rule?
    * (all.rb:37-44) has NO part-count limit; the 2-part "*all+*head" is a
    * rule card exactly like the 3-part preference shape, and the async

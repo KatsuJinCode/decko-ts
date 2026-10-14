@@ -4,8 +4,8 @@ Implementation workspace for the runtime-independent Decko project, with
 TypeScript as the current implementation and first-class Ruby support as the
 architectural direction.
 
-Read the [project contract](docs/core/README.md) and the
-[commit and publication gates](docs/core/governance.md). These govern
+Read the project contract (not part of this package) and the
+commit and publication gates (not part of this package). These govern
 future work and supersede conflicting TS-only direction in older notes.
 
 ## TypeScript implementation history
@@ -378,14 +378,19 @@ Test Files  66 passed | 2 skipped (68)
      Tests  696 passed | 4 expected fail | 12 skipped (712)
 ```
 
-This is the tree's one standing total; per-stream counts in
-`docs/port-tracker.md` are historical landing-time records, not a
+Members of the net that are not redistributed with this repository print
+`[not redistributed] NOT RUN <file>` and are not run. The runner reports them
+separately, labels the run PARTIAL, and never counts them as passed.
+`STANDING_NET_REQUIRE_ALL=1` makes any such member a failure instead.
+
+This is the tree's one standing total; per-stream counts are
+historical landing-time records, not a
 current measure. What each parity instrument measures, and what the
 public package does not measure, is inventoried in
 [docs/coverage-inventory.md](docs/coverage-inventory.md). All four render-perf
 budgets are green solo (warm
 4.8ms/entry vs 25 budget, 0 cold cards; receipt
-`benchmarks/results/perf/render-perf.json`).
+the render-perf results file (not in the public package)).
 
 `npm test` runs the card-engine suite (the largest tree); the full tree
 runs with `npx vitest run`. The freshness proof that a committed write is
@@ -411,13 +416,12 @@ slope at every depth up to the renderer's 20-level ceiling.
   `npx vitest run`). Both must pass before any commit lands.
 - Ruby truth lives in the installed gems on the build machine (Ruby 3.3,
   card-1.110.0, decko-0.20.0) and, for the production schema, the
-  private production deck's mysqldump (identity withheld; see the data
-  rule in `docs/port-tracker.md`).
+  private production deck's mysqldump (identity withheld).
 - Data rule: real production-deck content never leaves the build machine.
   Sanitized, content-free structural artifacts (the corpus, the anonymized
   scale deck) are the only derivatives that exist anywhere else.
 - Nothing from this repo goes to decko-commons upstream without the
-  project owner's explicit approval (see `docs/core/governance.md`).
+  project owner's explicit approval (see the publication gates, which are not part of this package).
 
 ## Migration status
 
@@ -445,5 +449,4 @@ a declaration-level label, not a behavior claim; per-mod detail in
 `tools/compat-report/mod-compat-report.md`, contract boundary in
 `docs/decisions/0004-mods-compiled-into-the-view-registry.md`),
 the PostgreSQL read rung, the one-command migration launch path, and the
-publication hygiene pass (in progress: `tools/hygiene/`). See
-`docs/port-tracker.md` for the wave plan + per-stream notes.
+publication hygiene pass (in progress: `tools/hygiene/`).

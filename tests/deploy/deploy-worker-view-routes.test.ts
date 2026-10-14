@@ -165,7 +165,7 @@ describe("deploy worker route grammar — the alternate GET views (R4)", () => {
 
     // Ruby raises Card::Error::UserError for an unregistered view
     // (render.rb#view_method; the engine's UnsupportedViewError cites it)
-    // and Card::Error's BASE status_code is 422 (prototype/lib/card/
+    // and Card::Error's BASE status_code is 422 (card 1.110.0 lib/card/
     // error.rb:21; only ServerError :46-51 overrides to 500) — the
     // mapper answers the UserError shape on BOTH worker entries. The
     // negative half matters: a silent empty 200 would be a leak of "the

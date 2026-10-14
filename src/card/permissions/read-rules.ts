@@ -873,7 +873,7 @@ const RULE_SUFFIX_LAST_CHARS = [
  * mirror of a ~19k-card deck the legacy walk builds roughly 11k `resolved`
  * rows (enumerating about 14k join candidates) to keep ~1.5k; this one builds
  * a third as many rows from fewer candidates, and takes about half the time.
- * benchmarks/poc-live-batch/check-rule-closure-rewrite.mjs asserts the two
+ * a check script that is not in this tree asserts the two
  * return the same row set on a deck and on randomly perturbed copies of it.
  *
  * WHY THE PRUNING IS EXACT. Call a string rule-shaped (T) when it is

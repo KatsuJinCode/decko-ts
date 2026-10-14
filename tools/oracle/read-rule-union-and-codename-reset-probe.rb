@@ -11,7 +11,7 @@
 #     the rule live and the verdict equals the stored-rule twin. The corpus
 #     has zero trash=0 rows with read_rule_id NULL, which is why this arm is
 #     exercised on manufactured rows created on the copy.
-#   codename cache reset arm (prototype/lib/card/codename.rb, reset_cache):
+#   codename cache reset arm (card 1.110.0 lib/card/codename.rb, reset_cache):
 #     the codehash is an in-process memo (@codehash ||= load_codehash) with
 #     NO db fallthrough in []/id, so a raw-SQL codename change stays STALE
 #     until a real save fires the reset event, nils the memo and rebuilds.

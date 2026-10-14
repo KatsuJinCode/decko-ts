@@ -7,7 +7,7 @@
 // DATA RULE — every card name, email, password, salt, site title and body
 // below is invented. Nothing here is deck content, a real credential, or a
 // real address; credentials are minted per run by
-// src/testing/generated-credentials.js so no literal can be mistaken for a
+// src/testing/generated-credentials.ts so no literal can be mistaken for a
 // secret. The deck is the auth suite's in-memory core-schema database
 // (tests/card/auth/auth-test-storage.ts) brought up through the repository's
 // own boot-seed capability (src/card/auth/boot-seed.ts), and the stored-HTML

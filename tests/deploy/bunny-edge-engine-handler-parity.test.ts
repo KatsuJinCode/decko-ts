@@ -16,7 +16,7 @@
 // request, which beforeAll guarantees.
 //
 // Ruby truth under test (same cites as the twin parity suites):
-//   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
+//   - card 1.110.0 lib/card/error.rb:21 Card::Error base status_code = 422
 //     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
 //   - src/card/name/errors.ts the mark errors are the NotFound family
 //   - the shared surface: src/server/worker-shared-surface.ts mapRenderError
@@ -132,7 +132,7 @@ beforeAll(async () => {
   // boundary: body-mark parses in format.ts resolveNestName are outside the
   // head-guard's scope), and Ruby answers an error page for such a deck the
   // same way (wrap_and_render -> rescue_view). The row set mirrors
-  // tests/deploy/bunny-edge-error-page.ts seedShellHeadDeck (the page-head
+  // tests/deploy/bunny-edge-engine-request-error-mapping.test.ts seedShellHeadDeck (the page-head
   // codename cards, *all+*layout -> Default Layout with a body, *header,
   // *footer) over the demo schema.
   const T = "2026-09-20 00:00:00.000";

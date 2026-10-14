@@ -17,7 +17,7 @@
 // HONESTY BOUNDARY: no Ruby-oracle bytes exist for
 // any of these views. Bytes derive from the gem sources, cited inline per
 // emitter; the two read-only oracle probes
-// (tests/card/mod-loader/oracle-probe-core-admin-facts.rb,
+// (oracle-probe-core-admin-facts.rb (not in the public package),
 // oracle-probe-core-mod-fetch.rb) verified the STRUCTURAL facts sources
 // cannot carry (basket insertion order, spec emptiness, config defaults,
 // role-grouping shapes). No byte verification against oracle output is

@@ -26,8 +26,8 @@
 //      HTTP shape: a UserError (validation) is 422 - card-1.110.0
 //      lib/card/error.rb:21 (the module header's status table), the same
 //      status the other validation rejections already use.
-//      ORACLE: fixtures/captured/edit-forms.json conflict_probe - captured
-//      by tests/card/mod-loader/oracle-capture-edit-forms.rb (validation-only
+//      ORACLE: the captured edit-forms oracle, not in the public package conflict_probe - captured
+//      by oracle-capture-edit-forms.rb (not in the public package) (validation-only
 //      probe, actions 4881 -> 4881): errors_conflict == ["changes not based
 //      on latest revision"], no_write_proof true, valid_after_conflict true.
 //

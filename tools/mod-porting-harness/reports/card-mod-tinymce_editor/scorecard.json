@@ -13,7 +13,7 @@
   "probeSuite": {
     "files": [
       "tests/card/mod-loader/card-mod-tinymce_editor.test.ts",
-      "tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts"
+      "the card-mod-tinymce-editor-views suite (not in the public package)"
     ],
     "ran": true,
     "detail": "42 passed / 0 failed",

@@ -30,7 +30,7 @@
 //     re-paired heaviest-with-lightest; phase artifacts are keyed by the
 //     phase's shard list (sha8) so a re-paired schedule can never
 //     resume-skip against an earlier schedule's artifacts.
-//   - the canonical verifier spec (tools/oracle/verify-dual-lane.test.ts)
+//   - the canonical verifier spec (not in the public package)
 //     is staged into the gitignored per-worktree instrument tree when the
 //     default --spec path is used: missing -> staged, byte-identical ->
 //     kept, DIFFERING -> the run refuses (a silently overwritten
@@ -111,7 +111,7 @@
 //                         path (tmp/raw-ground-truth/scripts/
 //                         verify-dual-lane.test.ts) is treated as the staging
 //                         target of the tracked canonical
-//                         tools/oracle/verify-dual-lane.test.ts: missing ->
+//                         the canonical verifier spec: missing ->
 //                         staged, identical -> kept, differing -> REFUSED.
 //   --quiet               do not live-forward child output lines (progress
 //                       lines still stream)

@@ -5,7 +5,7 @@
 -- core Ruby decko schema: the core "sessions" table in db/schema.sqlite.sql
 -- is Rails' ActiveRecord::SessionStore infrastructure (opaque serialized
 -- blobs), while this table is the engine's own explicit token->actor
--- mapping (see docs/auth-port-notes.md for the mapping rationale and the
+-- mapping (the mapping rationale and the
 -- Ruby citations).
 --
 -- Applied by:

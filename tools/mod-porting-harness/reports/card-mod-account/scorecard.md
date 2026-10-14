@@ -6,7 +6,7 @@ State legend: green = registered + harness oracle captured + probe suite green; 
 
 Event hooks are counted, not listed: this scorecard measures whether the port REGISTERS what the gem declares, not what a hook does when it fires, so the 30 declared hook(s) appear as one aggregate row rather than an inventory of upstream hook names. The totals above count every hook individually.
 
-Probe suite: 23 passed / 0 failed (tests/card/mod-loader/card-mod-account-harness-probe.test.ts, tests/card/mod-loader/card-mod-account.test.ts)
+Probe suite: 23 passed / 0 failed (the card-mod-account-harness-probe suite (not in the public package), tests/card/mod-loader/card-mod-account.test.ts)
 
 | behavior | kind | state | ts registration | captured | evidence |
 |---|---|---|---|---|---|

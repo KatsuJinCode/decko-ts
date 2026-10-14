@@ -4,7 +4,7 @@
 // formgroups and the overlay guide), rendered through the real RenderEngine
 // and byte-compared against the recorded fixtures
 // (board-views.json / edit-views.json, produced by
-// tests/card/mod-loader/oracle-capture-edit-views.rb for the SAME two
+// oracle-capture-edit-views.rb (not in the public package) for the SAME two
 // targets ("Oracle Basics" id 605, "Home" id 521) and three fixture actor
 // keys ("bot" = signed-in admin, "tova" = signed-in member, "anonymous")
 // as the

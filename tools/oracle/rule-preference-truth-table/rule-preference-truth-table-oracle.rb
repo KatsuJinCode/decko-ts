@@ -2,7 +2,7 @@
 # `rule?` predicate.
 #
 # WHAT RUNS: the gem's own source lines, extracted VERBATIM from
-# prototype/lib/card/rule/all.rb (the tree's copy of card's
+# card 1.110.0 lib/card/rule/all.rb (the tree's copy of card's
 # lib/card/rule/all.rb) by line range (1-indexed, inclusive) and evaluated
 # onto a minimal card double:
 #

@@ -11,7 +11,7 @@
 //     (the render's closure completion must find them; absent refs are the
 //     unknown-nest path, Ruby parity, no seeding needed).
 //
-// Seeding mirrors benchmarks/load-oracle-corpus.rb through the REAL decko
+// Seeding mirrors load-oracle-corpus.rb (not in the public package) through the REAL decko
 // convention the corpus replay driver uses (see replay-shard.bench.ts):
 // simple cards store name + engine-computed key; junctions store NULL
 // name/key and resolve through left_id/right_id.

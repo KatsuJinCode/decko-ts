@@ -4,7 +4,7 @@
 //
 // The Ruby side may be given as a saved delta (the JSON this script writes
 // with its fifth argument), so the comparison runs without a Ruby install;
-// tests/fixtures/persistence-oracle/ruby-outside-delta.json is that file for
+// the withheld ruby-outside-delta fixture (not in the public package) is that file for
 // the committed op list.
 //
 // The persistence probe (compare-persist.mjs) compares the probe's own rows.

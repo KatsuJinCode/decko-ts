@@ -28,7 +28,7 @@ export interface RenderErrorPage {
 
 /**
  * Map an engine error MESSAGE to the HTTP status + page title, per the
- * vendored oracle's own status table (prototype/lib/card/error.rb):
+ * vendored oracle's own status table (card 1.110.0 lib/card/error.rb):
  *
  *   - `card not found: X`  -> 404 "Card not found"
  *     (Card::Error::NotFound, error.rb:88-89 `self.status_code = 404`)
@@ -65,7 +65,7 @@ export function mapRenderError(message: string): RenderErrorPage {
 /**
  * decodeURIComponent that returns undefined on malformed input instead of
  * throwing. The '+' is DECKO'S JOINT (Card::Name.joint,
- * prototype/lib/cardname.rb) and must survive into the name:
+ * card 1.110.0 lib/cardname.rb) and must survive into the name:
  * /Demo%20Guide+Section%20One is the junction "Demo Guide+Section One"
  * whose canonical engine key is "demo_guide+section_one" (left.key +
  * joint + right.key, name.ts #key). An earlier deploy-entry revision

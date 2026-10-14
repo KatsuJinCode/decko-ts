@@ -302,7 +302,7 @@ describe("card-mod-permissions manifest structure", () => {
         // HtmlFormat, so the perm-editor :input registers under each
         // Right::<setting> shortname - the CHAIN resolves it for
         // *X+<setting> rule cards (the rule_form_card_editor input chain;
-        // oracle-pinned in fixtures/captured/rules-views.json
+        // oracle-pinned in the captured rules-views oracle, not in the public package
         // rule_form_card_editor)
         const html = module.formats?.["html"]?.views ?? [];
         expect(html.map((v) => v.view)).toEqual(["input"]);
@@ -688,7 +688,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "Anyone" }));
     const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     // the gem-true byte shape (the 2026-09-29 rules-views-port-3
-    // oracle correction, pinned by fixtures/captured/rules-views.json
+    // oracle correction, pinned by the captured rules-views oracle, not in the public package
     // rule_form_card_editor): bootstrap's form-control class append
     // (bootstrap/form.rb:24-28) + Tags::HiddenField's autocomplete +
     // Tags::TextField's attr order (class, autocomplete, type, value,
@@ -740,7 +740,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     // "pointer-list-ul" literal (card-mod-list html_views.rb:49-51 - the
     // caller's extra_css_class argument is dead), single-quoted haml attrs,
     // and items_for_input's empty -> [""] one value-less row (html_views.rb:
-    // 115-118); pinned by fixtures/captured/rules-views.json
+    // 115-118); pinned by the captured rules-views oracle, not in the public package
     // rule_form_card_editor
     expect(out).toContain("<ul class='pointer-list-editor pointer-list-ul'>\n<li class='pointer-li mb-1'>");
   });

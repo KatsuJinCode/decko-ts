@@ -7,8 +7,8 @@
 // -----------------------------------------------------
 // The corpus-backed proofs for this class live in two specs that are BOTH
 // gated on env flags and machine-local material and SKIP when it is absent:
-//   - tests/card/render/raw-corpus-raise-leadview-pages.test.ts
-//   - tests/card/render/raw-corpus-raise-leadview-sweep.test.ts
+//   - the raw-corpus-raise-leadview-pages suite (not in the public package)
+//   - the raw-corpus-raise-leadview-sweep suite (not in the public package)
 // Both skip when the gate is unset or the corpus file is missing, so an
 // ordinary suite run reports them as skipped and a REGRESSION in either
 // mechanism is silent on any machine without the corpus. This file

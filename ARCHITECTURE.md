@@ -160,7 +160,7 @@ again in the same process — the engine is told nothing, so whatever it kept
 must notice by itself. It covers the anonymous bare-page path, the
 `/:card/:view` path and the signed-in per-actor engine, and pins that a
 signed-in render's verdicts never reach the next anonymous render.
-`tests/deploy/no-caching-decision-state.test.ts` runs the same
+A deploy-level test (not in the public package) runs the same
 two-requests-one-process shape against its own committed test fixtures.
 
 **What the stamp covers, and what it does not.** The triggers are on `cards`

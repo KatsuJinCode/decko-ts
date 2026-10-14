@@ -162,7 +162,7 @@ export async function refreshEdgeServingEngines(driver: SQLDatabaseDriver, rende
  *  by default. It costs round trips instead of saving them: the Temporary cache
  *  keeps only the last 10,000 keys of it, and the request re-reads the rest.
  *  Measured on a deck mirror: dropping it changes no byte on the 40 gate pages
- *  (benchmarks/speed-ship/gate.py) and removes its own statement plus the
+ *  (gate.py (not in the public package)) and removes its own statement plus the
  *  re-reads it caused. The deck boot's own name-environment install and
  *  codename load (above) are what the sync name readers need.
  *  DECKO_EDGE_NAME_SCAN=1 restores the scan. */

@@ -513,7 +513,7 @@ function inventoryDeckoTs() {
 // rendered view matches the Ruby oracle bytes. A mod is declared-complete
 // in the classifier's sense when the manifest exists AND the test file has
 // byte-pinning assertions (toBe(<literal-string>) per the existing pin style
-// in tests/card/mod-loader/card-mod-format.test.ts). That is still a
+// in the card-mod-format suite (not in the public package)). That is still a
 // declaration-level signal: the pins cover the views they render, not every
 // view the manifest registers.
 function inventoryModPins(gemName) {
@@ -680,7 +680,7 @@ function classify(inv, surface, pins) {
   const patternBackedModules = totalSetModules > 0 && patternsUsed.length > 0;
 
   // Byte-pin evidence from the per-mod test file: the A/B pattern
-  // (tests/card/mod-loader/card-mod-XYZ.test.ts) pins the rendered bytes
+  // pins the rendered bytes
   // against the Ruby oracle capture. >=5 byte-pins per mod is the threshold
   // for calling a mod "declared-complete" on the byte-pin criterion — below
   // that, the manifest may exist but the views are not yet byte-pinned.

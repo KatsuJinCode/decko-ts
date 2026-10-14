@@ -120,7 +120,7 @@ RStar-typed junction, left 3 / right 21, name and content NULL) composed
 difference is a property of how that deck was seeded rather than of `match`
 semantics, and it is out of scope for the dialect guard.
 
-The exclusion lives in `tests/cql/oracle-match-replay.test.ts`
+The exclusion lives in the oracle match replay suite (not in the public package)
 (`KNOWN_DIVERGENCES`, with the reasoning above) and
-`tests/exercise/rules-and-sets-5.test.ts`, so a battery that stops excluding it
+the rules-and-sets exercise suite (not in the public package), so a battery that stops excluding it
 fails rather than passing quietly.

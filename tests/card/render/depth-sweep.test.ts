@@ -9,7 +9,7 @@
 //
 // Run via: npx vitest run tests/card/render/depth-sweep.test.ts
 //
-// Reported numbers populate a JSON file under benchmarks/results/depth-sweep-ts.json.
+// Reported numbers populate a JSON results file (not in the public package).
 // That write is OPT-IN via DEPTH_SWEEP_WRITE_ARTIFACT=1: the committed
 // receipt is authoritative (docs/parity-method.md), and an unconditional
 // rewrite put a fresh measured_at + wall-ms into the tree on every suite
@@ -27,12 +27,12 @@ import { DeckoName } from "../../../src/card/name.js";
 import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
 
 // Receipt refresh is opt-in (see header): the depth-sweep assertions below
-// run on every execution; benchmarks/results/depth-sweep-ts.json is rewritten
+// run on every execution; the TS results file is rewritten
 // only when DEPTH_SWEEP_WRITE_ARTIFACT=1.
 const ARTIFACT_WRITE_REQUESTED = process.env.DEPTH_SWEEP_WRITE_ARTIFACT === "1";
 
 const DEPTHS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20];
-// Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
+// Ruby depth+3 truth, measured on the oracle app (the recorded Ruby results file, not in the public package).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
 
 async function seedChain(storage: RenderTestStorage, depth: number): Promise<void> {
@@ -182,7 +182,7 @@ describe("Depth sweep: TypeScript queries-per-render at depths 1, 2, 3, 4, 5, 6,
     } else {
       // eslint-disable-next-line no-console
       console.log(
-        "\n(receipt not refreshed: set DEPTH_SWEEP_WRITE_ARTIFACT=1 to rewrite benchmarks/results/depth-sweep-ts.json)",
+        "\n(receipt not refreshed: set DEPTH_SWEEP_WRITE_ARTIFACT=1 to rewrite the TS results file)",
       );
     }
 

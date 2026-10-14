@@ -259,8 +259,8 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     // ancestors + html_url + type nest + timestamps, wrapped by
     // page_details (url + requested_at), pretty-printed — NOT a raw row
     // dump. The byte pins live engine-side
-    // (tests/card/render/format-families-oracle.test.ts,
-    // fixtures/oracle-surfaces/json.jsonl).
+    // (the format-families-oracle suite (not in the public package),
+    // json.jsonl (not in the public package)).
     const response = await fetchPath("/Home.json");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("application/json");

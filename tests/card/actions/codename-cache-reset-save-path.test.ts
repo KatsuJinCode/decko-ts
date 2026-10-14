@@ -5,7 +5,7 @@
 // codename: it clears the cached codehash, so the NEXT codename lookup
 // reloads from the db and sees the new mapping. The memo-staleness contract
 // (no db fallthrough in []/id, codename.rb:118-120) is probed and replayed
-// in tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts.
+// in the read-rule-derive-and-codename-reset-oracle suite (not in the public package).
 //
 // What this test pins: the save path wires that reset. The registry is
 // warmed FIRST (a resolved lookup proves the codehash memo is loaded), then

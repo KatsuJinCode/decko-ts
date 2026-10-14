@@ -7,8 +7,8 @@
 // the name-algebra assertions that the upstream scenarios implicitly
 // require, against src/card/name.ts (Deckoname).
 //
-// References: prototype/lib/cardname.rb + prototype/lib/cardname/*.rb,
-// prototype/lib/card/name.rb + prototype/lib/card/name/name_variants.rb.
+// References: card 1.110.0 lib/cardname.rb + card 1.110.0 lib/cardname/*.rb,
+// card 1.110.0 lib/card/name.rb + card 1.110.0 lib/card/name/name_variants.rb.
 
 import { describe, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";

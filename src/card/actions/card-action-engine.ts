@@ -4048,7 +4048,7 @@ export class CardActionEngine {
    * post-persist walk then sees when-false via commentApplied.
    *
    * The reference pins the appended bytes
-   * (fixtures/oracle-surfaces/card-mod-comment.harness.jsonl):
+   * (card-mod-comment.harness.jsonl (not in the public package)):
    * "content\n<hr>\n<p>lines…</p>\n<div
    * class="w-comment-author">AUTHOR.....YYYY-MM-DD HH:MM:SS UTC</div>".
    */

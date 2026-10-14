@@ -274,7 +274,7 @@
       "gem": "card-mod-follow-0.20.0",
       "gemVersion": "0.20.0",
       "status": "ported",
-      "statusEvidence": "harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-follow/scorecard.md)",
+      "statusEvidence": "harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see scorecard.md (not in the public package))",
       "compatStatus": "declared-complete",
       "manifest": true,
       "harnessScorecard": "4/96 validated",
@@ -375,7 +375,7 @@
           {
             "view": "board_act",
             "source": "set/all/history_board.rb:18-26",
-            "oracle": "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against fixtures/captured/board-views.json)",
+            "oracle": "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against the captured board-views oracle, not in the public package)",
             "status": "ported, verify GREEN (harness capture + probe)"
           }
         ],
@@ -599,7 +599,7 @@
           {
             "view": "nest_editor",
             "source": "set/all/reference_editor/nest_editor.rb:10-16",
-            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured fixture fixtures/captured/tinymce-editor-views.json, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured tinymce-editor-views oracle, not in the public package, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
             "status": "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)"
           },
           {

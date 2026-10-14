@@ -69,7 +69,7 @@ function cardSql(row) {
 
 // -- type scaffold -----------------------------------------------------------
 // "Search" must exist BY NAME because the render engine dispatches search
-// cores by the card's TYPE NAME (src/card/render/render.ts SEARCH_TYPE_NAME).
+// cores by the card's TYPE NAME.
 // "Note" must exist because CQL `type: "Note"` resolves through it, and the
 // demo content cards carry type_id of the Note card. Cardtype is the type of
 // the type cards (Cardtype's type is itself, as in every real deck).
@@ -122,7 +122,7 @@ const junctionCards = [
 // type_id 2 = the Search cardtype, so the render engine executes the CQL in
 // db_content when this card's card_list view renders. The statement shape
 // ({"type": ..., "sort": "name"}) is the ORACLE-PROVEN shape from
-// tests/card/render/oracle-replay.test.ts; `type` resolves through the
+// the render oracle replay suite (not in the public package); `type` resolves through the
 // worker's primed name resolver (deploy/worker.ts).
 const searchCards = [
   { id: 20, name: "Note Index", typeId: 2, label: "the demo search card (CQL-hittable set of every Note)",

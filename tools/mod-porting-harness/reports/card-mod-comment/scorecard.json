@@ -11,9 +11,9 @@
   },
   "probeSuite": {
     "files": [
-      "tests/card/mod-loader/card-mod-comment-harness-probe.test.ts",
+      "the card-mod-comment-harness-probe suite (not in the public package)",
       "tests/card/mod-loader/card-mod-comment.test.ts",
-      "tests/card/mod-loader/card-mod-comment-save-event.test.ts"
+      "the card-mod-comment-save-event suite (not in the public package)"
     ],
     "ran": true,
     "detail": "30 passed / 0 failed",

@@ -634,7 +634,7 @@ const setStylesheetPathView: ViewFn = (ctx) => {
 };
 
 /** The style views' PROBE SURFACE - the composition cores the
- *  harness probe (tests/card/mod-loader/card-mod-style-harness-probe.test.ts)
+ *  harness probe (the card-mod-style-harness-probe suite (not in the public package))
  *  replays the static-ruby oracle against; the same functions the view
  *  bodies call. */
 export const styleProbeSurface = {
