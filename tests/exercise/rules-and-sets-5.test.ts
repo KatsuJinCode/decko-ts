@@ -658,8 +658,8 @@ describe("mods: a hand-ported Ruby mod view beyond the byte-pins", () => {
       })(join(REPO_ROOT, root));
     }
     // The converge merged the synthetic-v2 corpus, whose Ruby oracle
-    // exercises the view - the corpus gate (seconds-corpus-gate.mjs,
-    // same:true) is what makes its bytes proven now, and this walk is the
+    // exercises the view - the corpus grade (reference-harness/runner/grade.mjs
+    // over synthetic-v2) is what checks its bytes now, and this walk is the
     // guard that the coverage claim and the committed fixtures stay in sync.
     expect(mentions.every((m) => m.includes("synthetic-v2"))).toBe(true);
     expect(mentions.length).toBeGreaterThan(0);

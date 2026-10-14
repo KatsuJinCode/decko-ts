@@ -237,7 +237,7 @@ describe("plus relational", () => {
     // search ({"right_plus": ":account"}, sortless) captured the
     // cards_right_id_index ride on the subquery (232,18,1,611,617,913),
     // which the blanket id-asc pin (4e2463bf) re-sorted to 1,18,232,...
-    // and the seconds-corpus oracle bytes falsified. Reference joins and
+    // and the committed synthetic-v2 oracle bytes falsified. Reference joins and
     // lookup ties (subquery joined by its id) keep the id-asc pin; the
     // sorted-viewer tiers are e9eb6f20/07e4c1df's.
     expect(sql({ type: "Search", right_plus: "*title" })).toEqual({
