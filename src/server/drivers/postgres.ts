@@ -66,6 +66,9 @@ export class PostgresDriver implements SQLDatabaseDriver {
   private compat: Promise<void> | undefined;
   private inTransaction = false;
   private savepoint = 0;
+  /** The id the last successful INSERT produced (SQLite's
+   *  last_insert_rowid() for this connection). */
+  private lastRowId: number | undefined;
 
   constructor(options: PostgresDriverOptions) {
     this.client = options.client;
@@ -84,7 +87,10 @@ export class PostgresDriver implements SQLDatabaseDriver {
     let res: Awaited<ReturnType<PostgresClientLike["query"]>>;
     try {
       if (t.prelude !== undefined) await this.client.query(t.prelude, []);
-      res = await this.client.query(t.sql, params.map(toPgParam));
+      const text = t.sql.includes(LAST_ROWID_MARKER)
+        ? t.sql.split(LAST_ROWID_MARKER).join(this.lastRowId === undefined ? "NULL::integer" : `${this.lastRowId}`)
+        : t.sql;
+      res = await this.client.query(text, params.map(toPgParam));
     } catch (error) {
       if (sp !== undefined) await this.client.query(`ROLLBACK TO SAVEPOINT ${sp}`).catch(() => undefined);
       // Name the translated statement: the engine's SQL is SQLite dialect,
@@ -100,7 +106,10 @@ export class PostgresDriver implements SQLDatabaseDriver {
     if (t.insertTable !== undefined) {
       if (t.returningId && rows.length > 0) {
         const id = (rows[rows.length - 1] as Record<string, unknown>).id;
-        if (id !== undefined && id !== null) result.lastInsertRowId = Number(id);
+        if (id !== undefined && id !== null) {
+          result.lastInsertRowId = Number(id);
+          this.lastRowId = Number(id);
+        }
       }
       if (t.explicitId) await this.advanceSequence(t.insertTable);
     }
@@ -195,6 +204,9 @@ function normalizeRow(row: Record<string, unknown>, jsonColumns: Set<string>): R
 // ---------------------------------------------------------------------------
 // Dialect translation
 // ---------------------------------------------------------------------------
+
+/** Stands in for last_insert_rowid() until the driver fills in its value. */
+export const LAST_ROWID_MARKER = "decko_last_insert_rowid()";
 
 export interface TranslatedStatement {
   sql: string;
@@ -379,6 +391,24 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
         out.push({ kind: "ident", text: `"${t.text}"` });
         continue;
       }
+      if (u === "IS") {
+        // SQLite's `x IS [NOT] FALSE|TRUE` tests the 0/1 integers the
+        // schema stores booleans as; PostgreSQL's wants a boolean operand.
+        let k = next(tokens, i + 1);
+        const negated = isWord(tokens[k], "NOT");
+        if (negated) k = next(tokens, k + 1);
+        if (isWord(tokens[k], "FALSE") || isWord(tokens[k], "TRUE")) {
+          const value = isWord(tokens[k], "TRUE") ? 1 : 0;
+          out.push({ kind: "other", text: `IS ${negated ? "" : "NOT "}DISTINCT FROM ${value}` });
+          i = k;
+          continue;
+        }
+      }
+      if (u === "TRUE" || u === "FALSE") {
+        // SQLite's TRUE and FALSE are the integers 1 and 0.
+        out.push({ kind: "other", text: u === "TRUE" ? "1" : "0" });
+        continue;
+      }
       if (u === "ROWID" && !isCreateTable) {
         // Every table the engine addresses by rowid is keyed by an INTEGER
         // PRIMARY KEY "id", which SQLite makes the rowid alias. A bare
@@ -400,8 +430,17 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
         continue;
       }
       if (u === "LAST_INSERT_ROWID") {
-        out.push({ kind: "word", text: "lastval" });
-        continue;
+        // SQLite's connection-level last inserted rowid, as of the start of
+        // this statement. lastval() is not that: it moves with every
+        // sequence draw, including the one this very INSERT makes. The
+        // driver substitutes the id it recorded from the last INSERT.
+        const open = next(tokens, i + 1);
+        const close = next(tokens, open + 1);
+        if (tokens[open]?.text === "(" && tokens[close]?.text === ")") {
+          out.push({ kind: "other", text: LAST_ROWID_MARKER });
+          i = close;
+          continue;
+        }
       }
       if (u === "GROUP_CONCAT") {
         out.push({ kind: "word", text: "string_agg" });
