@@ -365,7 +365,9 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
   describe("DECKO_FIRST_RUN=1 alone — the window stays shut", () => {
     let booted: Awaited<ReturnType<typeof bootWorker>>;
     beforeAll(async () => {
-      booted = await bootWorker({ DECKO_FIRST_RUN: "1" });
+      // The census is under test here; the one-time setup token gate in front of
+      // it (src/server/setup-token.ts) is pinned by the deploy rehearsal.
+      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_SETUP_TOKEN: "off" });
     }, 180_000);
     afterAll(async () => {
       await booted?.dispose();
@@ -389,7 +391,8 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
   describe("DECKO_FIRST_RUN=1 with DECKO_WRITE_PATH=1 — the first-run window", () => {
     let booted: Awaited<ReturnType<typeof bootWorker>>;
     beforeAll(async () => {
-      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1" });
+      // Census under test; the setup token gate is pinned by the deploy rehearsal.
+      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1", DECKO_SETUP_TOKEN: "off" });
     }, 180_000);
     afterAll(async () => {
       await booted?.dispose();
