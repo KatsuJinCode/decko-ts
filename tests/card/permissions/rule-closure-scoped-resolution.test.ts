@@ -17,7 +17,7 @@
 // The scope's justification, in one line: every key the render path asks
 // this resolver for is a rule candidate name, and a rule candidate name
 // always ends in a task setting name — so a composed key is needed only
-// when it can end in one. Measured on the serving deck (19,482 live cards):
+// when it can end in one. Measured on the serving deck (a deck of production size):
 // whole-deck 19,474 rows / 1,074,532 response bytes / 3,789 ms against
 // rule-closure 1,489 rows / 84,379 bytes / 384 ms, agreeing on all 1,489
 // rule-shaped keys. The measurement is

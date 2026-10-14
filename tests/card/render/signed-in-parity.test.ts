@@ -337,11 +337,11 @@ describe("the page head's edit link uses the card's url key (head.rb universal_e
     const engine = { updateVerdictForCard: async () => true } as unknown as Parameters<
       typeof universalEditButtonTag
     >[0];
-    expect(await universalEditButtonTag(engine, card("ZQRglobal+Organizer(s)"))).toBe(
-      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/ZQRglobal+Organizer_s/edit" />',
+    expect(await universalEditButtonTag(engine, card("Sample Group+Organizer(s)"))).toBe(
+      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Sample_Group+Organizer_s/edit" />',
     );
-    expect(await universalEditButtonTag(engine, card("Robin Lane - Lou Shore"))).toBe(
-      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Robin_Lane_Lou_Shore/edit" />',
+    expect(await universalEditButtonTag(engine, card("Sample Person - Other Person"))).toBe(
+      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Sample_Person_Other_Person/edit" />',
     );
   });
 });

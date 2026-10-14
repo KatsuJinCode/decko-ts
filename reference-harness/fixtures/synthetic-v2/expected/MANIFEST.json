@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-expected-manifest/1",
   "fixture": "synthetic-v2",
-  "fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841",
+  "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
   "oracle": {
     "variant": "stock",
     "patches": [],
@@ -138,7 +138,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841",
+      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
       "fixture_problems": [],
       "ms_per_op": 196,
       "session_writes": {}
@@ -164,7 +164,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841",
+      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
       "fixture_problems": [],
       "ms_per_op": 0,
       "session_writes": {}
@@ -182,7 +182,7 @@
         "dirty": true
       },
       "engine": null,
-      "fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841",
+      "fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
       "fixture_problems": [],
       "steps_total": 0,
       "steps_run": 0
@@ -195,8 +195,8 @@
       "bytes": 2564710
     },
     "run-meta.json": {
-      "sha256": "6bb991947cfa604748ca1b6d4607148bdd62975d61290a362c24852d60d07418",
-      "content_sha256": "6bb991947cfa604748ca1b6d4607148bdd62975d61290a362c24852d60d07418",
+      "sha256": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c",
+      "content_sha256": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c",
       "bytes": 2073
     },
     "scenarios.jsonl": {
@@ -208,6 +208,14 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "bytes": 0
+    }
+  },
+  "provenance": {
+    "repin": {
+      "date": "2026-10-13",
+      "what": "The fixture deck lost eight empty tables that another application running on the same engine had left in it (reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs, which now drops every table stock Decko does not create); the fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture.",
+      "why": "The tables carried another application's schema, were empty, and sit outside the graded surface: render, semantics and scenario answers and every row delta are unchanged. The grade run recorded beside this manifest re-verifies the answers against the re-pinned fixture.",
+      "previous_fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841"
     }
   }
 }

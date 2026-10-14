@@ -117,8 +117,8 @@ async function seedCards(driver: LocalSqliteDriver, rows: SeedRow[]): Promise<vo
 function personPageDeckRows(): SeedRow[] {
   return [
     // -- page-shell substrate (verbatim shapes from the error-mapping suite)
-    { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 },
-    { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 },
+    { id: 8, name: "kmrtqd", codename: "anyone", typeId: 2 },
+    { id: 15, name: "vqhrbnl", codename: "anonymous", typeId: 2 },
     { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" },
     { id: 103, name: "*favicon", codename: "favicon", typeId: 19, dbContent: "(my_bucket)/103/3649.jpg" },
     { id: 400, name: "*ace", codename: "ace", typeId: 52, dbContent: "{}" },
@@ -161,7 +161,7 @@ function personPageDeckRows(): SeedRow[] {
     },
 
     // -- the person card and its REAL child junction (the control)
-    { id: 393, name: "Riley Ellery", typeId: 4, dbContent: "<p>And here we are.</p>" },
+    { id: 393, name: "Robin Ashworth", typeId: 4, dbContent: "<p>And here we are.</p>" },
     { id: 1638, name: "Item(s) Organizing", typeId: 2 },
     { id: 1743, leftId: 393, rightId: 1638, typeId: 47, dbContent: "Sample Card 113" },
 
@@ -183,7 +183,7 @@ function personPageDeckRows(): SeedRow[] {
     //    expected page shows)
     { id: 685, name: "mythosynth", typeId: 398, dbContent: "<p>mythosynth body</p>" },
     { id: 406, name: "Participant(s)", typeId: 2 },
-    { id: 690, leftId: 685, rightId: 406, typeId: 47, dbContent: "Riley Ellery" },
+    { id: 690, leftId: 685, rightId: 406, typeId: 47, dbContent: "Robin Ashworth" },
   ];
 }
 
@@ -209,14 +209,14 @@ describe("bunny edge boot renders the person page's virtual +Item(s) Listing sec
       await driver.query(
         `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
          VALUES (?, ?, ?, ?, NULL)`,
-        [690, "riley_ellery", 393, "L"],
+        [690, "robin_ashworth", 393, "L"],
       );
 
       // The REAL production boot (the entry's bootDeck delegates here);
       // first engine in the process, exactly like the entry.
       const deck = await bootCorpusDeckEngines(driver);
       const response = await handleEngineRequest(
-        edgeGet("/Riley_Ellery"),
+        edgeGet("/Robin_Ashworth"),
         deck,
       );
       expect(response.status).toBe(200);
@@ -232,7 +232,7 @@ describe("bunny edge boot renders the person page's virtual +Item(s) Listing sec
       // titled Search slot the Ruby side renders for this page.
       expect(html).toContain("TYPE_PLUS_RIGHT-person-item_s_listing");
       expect(html).toContain('data-card-type-name="Search"');
-      expect(html).toContain("riley_ellery-item_s_listing-titled-view");
+      expect(html).toContain("robin_ashworth-item_s_listing-titled-view");
       // ... and the search finds the referring project (the CQL runs with
       // the junction's own name context, _left -> the person).
       expect(html).toContain("mythosynth");

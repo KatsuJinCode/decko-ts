@@ -162,20 +162,35 @@ interface RefererRef {
 /** event :update_referer_content (reference_events.rb:7-10): rewrite the
  *  referers' content old -> new, then the descendants' referers. Callers
  *  gate on `changed: :name` (an actual rename) and pass the card's
- *  name_before_act / name pair. */
+ *  name_before_act / name pair.
+ *
+ *  `working` is the Ruby Card object's in-memory content, and it is
+ *  load-bearing. `replace_references` mutates that object
+ *  (`self.content_quietly = swap_names(...)`, reference_events.rb:48-50),
+ *  and the same referer is reached again by the descendants' pass
+ *  (each_descendant -> rename_as_descendant -> update_referer_content, :9)
+ *  — where Ruby swaps the ALREADY-SWAPPED text, finds nothing left to
+ *  change, and `db_content_changed?` (:54) stops the write. A port that
+ *  re-read the referer's column each time would instead restart from the
+ *  pre-rename bytes and let each descendant's write overwrite the last,
+ *  so the stored column ends up holding only the final descendant's
+ *  partial swap. The map is scoped to one update_referer_content walk
+ *  (one rename event); Ruby's object lives for the whole request, which
+ *  for a rename — one event per save — is the same span. */
 export async function updateRefererContent(
   deps: RenameSwapDeps,
   renamedCardId: number,
   nameBeforeAct: DeckoName,
   name: DeckoName,
 ): Promise<void> {
+  const working = new Map<number, string>();
   // reference_events.rb:8 — referers.each { |r| r.replace_references
   // name_before_act, name }.
-  await rewriteReferersOf(deps, renamedCardId, nameBeforeAct, name);
+  await rewriteReferersOf(deps, renamedCardId, nameBeforeAct, name, working);
   // reference_events.rb:9 — each_descendant { |d| d.rename_as_descendant
   // !skip_update_referers? } (the referer-content half; skip is always
   // false in this port).
-  await rewriteDescendantReferers(deps, renamedCardId, nameBeforeAct, name);
+  await rewriteDescendantReferers(deps, renamedCardId, nameBeforeAct, name, working);
 }
 
 /** event :update_referer_references_out (reference_events.rb:16-19): the
@@ -209,9 +224,10 @@ async function rewriteReferersOf(
   cardId: number,
   nameBeforeAct: DeckoName,
   name: DeckoName,
+  working: Map<number, string>,
 ): Promise<void> {
   for (const referer of await referersOf(deps, cardId)) {
-    await replaceReferences(deps, referer, nameBeforeAct, name);
+    await replaceReferences(deps, referer, nameBeforeAct, name, working);
   }
 }
 
@@ -262,20 +278,24 @@ async function referersOf(
 
 /** replace_references (reference_events.rb:48-50): swap the names in the
  *  referer's content, then the quiet write. The `unless structure` gate
- *  (:49) has no true case in this port — see the module header. */
+ *  (:49) has no true case in this port — see the module header. The swap
+ *  reads the referer's IN-MEMORY content, not its column: see the
+ *  `working` map on updateRefererContent. */
 async function replaceReferences(
   deps: RenameSwapDeps,
   referer: RefererRef,
   nameBeforeAct: DeckoName,
   name: DeckoName,
+  working: Map<number, string>,
 ): Promise<void> {
   const refererName = await composedNameOf(deps, referer);
   if (refererName === undefined) return;
+  const current = working.get(referer.id) ?? referer.db_content ?? "";
   // A list card swaps its items by name (Abstract::List#swap_names).
   const newContent = (await isListCard(deps.driver, referer.id))
-    ? swapListItems(referer.db_content, nameBeforeAct, name)
-    : swapNames(referer.db_content, nameBeforeAct, name, refererName);
-  await contentQuietlySet(deps, referer, refererName, newContent);
+    ? swapListItems(current, nameBeforeAct, name)
+    : swapNames(current, nameBeforeAct, name, refererName);
+  await contentQuietlySet(deps, referer, refererName, newContent, working);
 }
 
 /** content_quietly= (reference_events.rb:52-58): write the column only
@@ -292,8 +312,13 @@ async function contentQuietlySet(
   referer: RefererRef,
   refererName: DeckoName,
   newContent: string,
+  working: Map<number, string>,
 ): Promise<void> {
-  if (newContent === (referer.db_content ?? null)) return; // db_content_changed?
+  // db_content_changed? (:54) reads the attribute against its in-database
+  // value, and update_column (:56) clears the change — so after a write the
+  // guard compares against what this walk last stored, which is `working`.
+  if (newContent === (working.get(referer.id) ?? referer.db_content ?? null)) return;
+  working.set(referer.id, newContent);
   if (referer.card !== undefined) deps.pinStaleReferer?.(referer.card);
   await deps.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
     newContent,
@@ -433,6 +458,7 @@ async function rewriteDescendantReferers(
   renamedCardId: number,
   nameBeforeAct: DeckoName,
   name: DeckoName,
+  working: Map<number, string>,
 ): Promise<void> {
   // Collect the descendant rows (each_child's graph: left_id OR right_id,
   // descendants.rb:21-29, trash excluded) breadth-first like Ruby's walk.
@@ -487,7 +513,7 @@ async function rewriteDescendantReferers(
   }
 
   for (const rename of withNames) {
-    await rewriteReferersOf(deps, rename.id, rename.before, rename.after);
+    await rewriteReferersOf(deps, rename.id, rename.before, rename.after, working);
   }
 }
 

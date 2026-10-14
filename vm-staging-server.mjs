@@ -1269,8 +1269,8 @@ const LAYOUT_POINTER_ID = 255; // *layout set pointer (corpus)
 const ALL_CARD_ID = 274; // *all card id (corpus)
 const SELF_POINTER_ID = 264; // *self set pointer (corpus)
 
-// *all+*style → "slate skin customized" (card id 38274,
-// codename `slate_skin_customized`, bootswatch_skin type). Its
+// *all+*style → a customized skin card (a bootswatch_skin type
+// card carrying the `customized_skin` codename). Its
 // asset output is card id 45514; the corpus stores the OLDER revision in
 // db_content ("(my_bucket)/45514/9999999999.css"), but the revision the
 // served deck actually serves is 0000000001. The served stylesheet EQUALS
@@ -1434,7 +1434,7 @@ const fileCardsById = new Map();
   }
 }
 
-// Map deck-card id 38274 (slate skin customized) so the main-CSS route
+// Map the deck's main-skin card so the main-CSS route
 // can serve its SCSS source. The bucket URL itself is the public-facing
 // surface, but for the local origin we surface the source.
 const MAIN_SKIN_CARD_ID = 38274;
@@ -3237,7 +3237,7 @@ async function handleAssetFile(pathname) {
     const scss = rows[0]?.db_content ?? "";
     const banner =
       `/* decko-ts staging: serving the SCSS source for card ${MAIN_SKIN_CARD_ID} ` +
-      `(slate skin customized) at /files/~${cardId}/${actionId}.${ext}. ` +
+      `(<skin>) at /files/~${cardId}/${actionId}.${ext}. ` +
       `The compiled CSS bytes live in the live deck's cloud bucket ` +
       `(live serves /files/45514/0000000001.css; the corpus row still ` +
       `stores the older 9999999999 revision) and are not in the scrubbed corpus. */\n`;

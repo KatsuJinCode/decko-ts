@@ -71,7 +71,7 @@ export const PRODUCTION_DECK_SERVED_DELTAS: ServedEnvironmentDeltas = {
   // The footer version string this deck prints. It deliberately differs
   // from the engine gem's own 0.20.0, and nothing in the code can derive a
   // deployment's version string, so it arrives as configuration.
-  footerVersionPin: "0.19.1",
+  footerVersionPin: "0.0.0-synthetic",
   stylesheetRevision: {
     from: PRODUCTION_CSS_REVISION_FROM,
     to: PRODUCTION_CSS_REVISION_TO,

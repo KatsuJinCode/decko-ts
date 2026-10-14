@@ -57,7 +57,7 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** An unplanned page: real article content, NO one_trip_render_plans rows
  *  (the deck carries the 45 planned pages' plans; this card is not one). */
-const UNPLANNED_PAGE = "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo";
+const UNPLANNED_PAGE = "Unplanned_Page_Without_A_Plan_Row";
 /** A planned page: the demo store's plans carry it — under the live posture
  *  it must ride the SAME statement as the unplanned page, zero plan reads. */
 const PLANNED_PAGE = "Home";
