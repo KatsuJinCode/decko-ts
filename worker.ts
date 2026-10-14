@@ -316,7 +316,8 @@ export default {
     const files = env.FILES === undefined ? undefined : new R2BlobDriver(env.FILES);
     for (const message of batch.messages) {
       try {
-        await runDelayedWork(message.body as DelayedWorkMessage, { driver, files });
+        const outcome = await runDelayedWork(message.body as DelayedWorkMessage, { driver, files });
+        console.log(`delayed work done: ${JSON.stringify(outcome)}`);
         message.ack();
       } catch (error) {
         console.error("delayed work failed", error instanceof Error ? error.message : String(error));
