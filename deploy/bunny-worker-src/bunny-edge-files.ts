@@ -73,7 +73,7 @@ export function bunnyEdgeFilesDriver(env: EdgeEnvBag, fetchImpl?: FetchLike): Bl
     accessKey: password,
     ...(fetchImpl === undefined ? {} : { fetch: fetchImpl }),
   });
-  return withDraftListing(driver, { endpoint, zone, password, fetchImpl: fetchImpl ?? ((u, i) => fetch(u, i)) });
+  return withDraftListing(driver, { endpoint, zone, password, fetchImpl: fetchImpl ?? ((u, i) => fetch(u, i as RequestInit) as ReturnType<FetchLike>) });
 }
 
 /** Bunny Storage lists one directory level and the driver reports files only,

@@ -4,6 +4,7 @@
 // server, and the driver's fetch is the mock's.
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+// @ts-expect-error - the mock is plain JS with a JSDoc surface.
 import { startMockBunnyStorage } from "./mock-bunny-storage.mjs";
 import {
   BUNNY_EDGE_SWEEP_INTERVAL_MS,
