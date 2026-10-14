@@ -60,8 +60,9 @@ export interface SqlOptions {
    * match-free candidate set is fetched and the executor applies the
    * statement's own limit/offset in JS AFTER the filter — the same window
    * Ruby gets from `WHERE field REGEXP ? ... LIMIT n`. ORDER BY stays, so
-   * the JS window is taken over the statement's own ordering. Groups whose
-   * children all drop render as "" (never "()").
+   * the JS window is taken over the statement's own ordering. A group that
+   * holds a dropped match renders as "" whole (never "()", never narrowed
+   * to its portable siblings); the executor evaluates every child of it.
    */
   matchPostFilter?: boolean;
 }
@@ -90,6 +91,28 @@ export function collectMatchPostFilters(root: QueryNode): ConditionNode[] {
     }
   }
   return filters;
+}
+
+/** Alias prefix for the columns the executor reads when it re-applies the
+ *  dropped match conditions: a non-card `return` (name, id, content, ...)
+ *  selects only its own columns, which need not include the matched field.
+ *  The executor strips these after filtering. */
+export const MATCH_HELPER_PREFIX = "__cql_match_";
+
+/** The card columns the post-filter reads: the matched field of every
+ *  regexp match, and the key of the `=term`-on-name equality that shares an
+ *  OR group with one (the JS side evaluates the whole group). */
+export function matchFilterColumns(filters: ConditionNode[]): string[] {
+  const columns = new Set<string>();
+  const visit = (condition: ConditionNode): void => {
+    if (condition.kind === "match") {
+      columns.add(isRegexpMatchCondition(condition) ? condition.field : "key");
+    } else if (condition.kind === "group") {
+      condition.conditions.forEach(visit);
+    }
+  };
+  filters.forEach(visit);
+  return [...columns];
 }
 
 /** Whether any query BELOW the root carries a regexp match: dropped from
@@ -141,6 +164,16 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   // SqlStatement#fields
   const parts: string[] = [fullField(alias, query.mods.return)];
   for (const directive of orderDirectives) parts.push(directive.field);
+  // Post-filter mode: make sure the filter's columns are selected even when
+  // the return mod selects only its own (see MATCH_HELPER_PREFIX).
+  if (full && isRoot && ctx.options.matchPostFilter === true) {
+    const ret = query.mods.return;
+    if (!(ret === undefined || ret === "card" || ret === "raw" || /^_w+/.test(ret))) {
+      for (const column of matchFilterColumns(collectMatchPostFilters(query))) {
+        parts.push(`${alias}.${column} AS ${MATCH_HELPER_PREFIX}${column}`);
+      }
+    }
+  }
 
   const selectSql = `SELECT${renderedJoins(query).length > 0 ? " DISTINCT" : ""} ${parts.join(", ")}`;
   const fromSql = `FROM ${query.table} ${alias}`;
@@ -322,11 +355,15 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       // dropped group renders "" — never "()" — so the executor's WHERE
       // stays valid (SqlOptions.matchPostFilter doc).
       if (ctx.options.matchPostFilter === true) {
-        const rendered = condition.conditions
+        // A group holding a dropped match is dropped WHOLE: the executor
+        // evaluates every child in JS (execute.ts rowMatches). Keeping the
+        // portable siblings in the SQL would narrow an OR group to them —
+        // `{match: "=home"}` is `(key = ? OR db_content REGEXP ?)`, and the
+        // key half alone would lose every content-only match.
+        if (condition.conditions.some((c) => isRegexpMatchCondition(c))) return "";
+        return `(${condition.conditions
           .map((c) => renderCondition(c, query, ctx))
-          .filter((chunk) => chunk !== "");
-        if (rendered.length === 0) return "";
-        return `(${rendered.join(` ${condition.conj.toUpperCase()} `)})`;
+          .join(` ${condition.conj.toUpperCase()} `)})`;
       }
       return `(${condition.conditions
         .map((c) => renderCondition(c, query, ctx))

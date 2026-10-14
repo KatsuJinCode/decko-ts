@@ -34,6 +34,8 @@ import {
   generateSql,
   collectMatchPostFilters,
   hasNestedRegexpMatch,
+  isRegexpMatchCondition,
+  MATCH_HELPER_PREFIX,
   type SqlOptions,
 } from "./sql.js";
 import { absolutizeName, escapeRegexpCharacters } from "./normalize.js";
@@ -296,8 +298,34 @@ async function executeRowsPostFiltered(
   if (hasRootGroup(root)) throw groupedMatchRefusal();
   const { sql, params } = generateSql(root, { ...options, matchPostFilter: true });
   const result = await driver.query<CardsRow>(sql, params);
-  const filtered = applyMatchFilters(result.rows, filters);
+  let filtered = applyMatchFilters(result.rows, filters);
+  filtered = stripMatchHelpers(filtered, sql.startsWith("SELECT DISTINCT"));
   return { sql, params, rows: applyPostFilterLimitOffset(filtered, root.mods) };
+}
+
+/** Remove the helper columns the post-filter select added for a non-card
+ *  return (MATCH_HELPER_PREFIX). SELECT DISTINCT would have collapsed
+ *  duplicate rows over the original columns only, so when the statement is
+ *  DISTINCT the stripped rows are de-duplicated again, first occurrence kept
+ *  (the ordering is preserved). */
+function stripMatchHelpers(rows: CardsRow[], distinct: boolean): CardsRow[] {
+  const first = rows[0] as unknown as Record<string, unknown> | undefined;
+  if (first === undefined) return rows;
+  const helpers = Object.keys(first).filter((key) => key.startsWith(MATCH_HELPER_PREFIX));
+  if (helpers.length === 0) return rows;
+  const seen = new Set<string>();
+  const out: CardsRow[] = [];
+  for (const row of rows) {
+    const copy = { ...(row as unknown as Record<string, unknown>) };
+    for (const key of helpers) delete copy[key];
+    if (distinct) {
+      const signature = JSON.stringify(copy);
+      if (seen.has(signature)) continue;
+      seen.add(signature);
+    }
+    out.push(copy as unknown as CardsRow);
+  }
+  return out;
 }
 
 /** A GROUP BY the JS post-filter cannot honour. Ruby filters rows FIRST
@@ -323,7 +351,12 @@ function groupedMatchRefusal(): CqlBadQuery {
 function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
   switch (condition.kind) {
     case "match": {
-      const value = (row as unknown as Record<string, unknown>)[condition.field];
+      if (!isRegexpMatchCondition(condition)) {
+        // the `=term`-on-name equality (SQL: key = ?), evaluated here only
+        // when it shares an OR group with a dropped regexp match
+        return columnValue(row, "key") === condition.termKey;
+      }
+      const value = columnValue(row, condition.field);
       if (value === null || value === undefined) return false; // SQL NULL propagation
       const pattern =
         condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
@@ -340,8 +373,20 @@ function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
       return condition.conj === "or" ? results.some(Boolean) : results.every(Boolean);
     }
     default:
-      return true;
+      // a non-match sibling inside a dropped group cannot be re-applied in
+      // JS: refuse rather than guess (the parser only builds match groups)
+      throw new CqlBadQuery(
+        "match combined with another condition kind in one group requires the REGEXP UDF (unavailable on this driver); see docs/decisions/0005-cql-match-semantics.md",
+      );
   }
+}
+
+/** A column of the fetched row: the helper alias when the select added one
+ *  (non-card return), else the column itself. */
+function columnValue(row: CardsRow, column: string): unknown {
+  const record = row as unknown as Record<string, unknown>;
+  const helper = MATCH_HELPER_PREFIX + column;
+  return helper in record ? record[helper] : record[column];
 }
 
 function applyMatchFilters(rows: CardsRow[], filters: ConditionNode[]): CardsRow[] {
@@ -359,10 +404,10 @@ function applyPostFilterLimitOffset(
 ): CardsRow[] {
   const limit = toIntOrZero(mods.limit);
   const offset = toIntOrZero(mods.offset);
-  let out = rows;
-  if (offset > 0) out = out.slice(offset);
-  if (limit > 0) out = out.slice(0, limit);
-  return out;
+  // SqlStatement#limit_and_offset (sql_statement.rb:96-103): OFFSET renders
+  // only together with a positive LIMIT; an offset alone is ignored.
+  if (limit <= 0) return rows;
+  return rows.slice(offset > 0 ? offset : 0, (offset > 0 ? offset : 0) + limit);
 }
 
 function toIntOrZero(value: string | undefined): number {
@@ -452,7 +497,9 @@ async function executeCountPostFiltered(
   try {
     const { sql, params } = generateSql(root, { ...options, matchPostFilter: true });
     const result = await driver.query<CardsRow>(sql, params);
-    const count = applyMatchFilters(result.rows, filters).length;
+    // count(distinct cards.id): the row select can repeat a card (DISTINCT
+    // over its order columns), the count must not
+    const count = new Set(applyMatchFilters(result.rows, filters).map((row) => row.id)).size;
     return { sql, params, count };
   } finally {
     root.mods.return = savedReturn;

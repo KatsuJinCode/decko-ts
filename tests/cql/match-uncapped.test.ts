@@ -133,3 +133,78 @@ describe("CQL match post-filter: the complete candidate set, never a capped pref
     }
   });
 });
+// The post-filter must give Ruby's rows for the statement shapes around the
+// match, not only for the plain card select.
+describe("CQL match post-filter: statement shapes around the match", () => {
+  const CARD_SQL =
+    "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +
+    "created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, " +
+    "references_expired, trash, type_id, db_content) " +
+    "VALUES (?, ?, ?, NULL, NULL, NULL, NULL, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', 1, 1, NULL, NULL, NULL, 0, 2, ?)";
+
+  async function smallDeck(registerUdf: boolean): Promise<LocalSqliteDriver> {
+    const driver = await freshDriver(registerUdf);
+    const rows: Array<[number, string, string, string | null]> = [
+      [11, "Alpha", "alpha", "has the needle inside"],
+      [12, "Beta", "beta", "nothing here"],
+      [13, "Needle Gamma", "needle_gamma", "plain"],
+      [14, "Delta", "delta", "another needle"],
+      [15, "Epsilon", "epsilon", null],
+    ];
+    for (const [id, name, key, content] of rows) {
+      await driver.query(CARD_SQL, [id, name, key, content]);
+    }
+    return driver;
+  }
+
+  it("a non-card return still sees the matched columns, and returns only its own", async () => {
+    // `return: id` selects only cards.id; the post-filter needs name and
+    // db_content, so it selects them under helper aliases and strips them.
+    const bare = await smallDeck(false);
+    const withUdf = await smallDeck(true);
+    try {
+      for (const ret of ["id", "name", "content"]) {
+        const statement = { match: "needle", sort: "name", return: ret };
+        const a = await executeQuery(bare, statement);
+        const b = await executeQuery(withUdf, statement);
+        if ("count" in a || "count" in b) throw new Error("expected rows results");
+        expect(a.rows).toHaveLength(3);
+        expect(a.rows).toEqual(b.rows);
+        for (const row of a.rows) {
+          expect(Object.keys(row).some((key) => key.startsWith("__cql_match_"))).toBe(false);
+        }
+      }
+    } finally {
+      bare.close();
+      withUdf.close();
+    }
+  });
+
+  it("an offset without a limit is ignored, as Ruby renders no OFFSET alone", async () => {
+    // sql_statement.rb:96-103: OFFSET is appended only inside `if limit.to_i.positive?`.
+    const bare = await smallDeck(false);
+    const withUdf = await smallDeck(true);
+    try {
+      const statement = { match: "needle", sort: "name", offset: 1 };
+      const a = await executeQuery(bare, statement);
+      const b = await executeQuery(withUdf, statement);
+      if ("count" in a || "count" in b) throw new Error("expected rows results");
+      expect(a.rows.map((row) => row.id)).toEqual([11, 14, 13]);
+      expect(b.rows.map((row) => row.id)).toEqual([11, 14, 13]);
+    } finally {
+      bare.close();
+      withUdf.close();
+    }
+  });
+
+  it("match combined with group refuses loudly instead of grouping unfiltered rows", async () => {
+    const bare = await smallDeck(false);
+    try {
+      await expect(
+        executeQuery(bare, { match: "needle", group: "type_id" }),
+      ).rejects.toThrow(/group/);
+    } finally {
+      bare.close();
+    }
+  });
+});
