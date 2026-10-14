@@ -92,8 +92,9 @@ re-provision the deck with a fresh API key.
   past that length.
 - `--execute` without the written confirmation flag, which exits before any
   network call; `--teardown` without `--yes` and the exact name.
-- A payload that arms the write path without `--allow-write-path`: the
-  one-key path provisions a read-only deck.
+- A payload that arms the write path without `--allow-write-path`. With both,
+  the run provisions a writable deck: a Storage zone for its files, the
+  first-run window armed, and the one-time setup link printed at the end.
 
 ## The API calls
 

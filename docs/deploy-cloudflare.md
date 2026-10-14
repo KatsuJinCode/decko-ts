@@ -1,55 +1,76 @@
 # Deploying on Cloudflare
 
-The engine runs on Cloudflare Workers over D1. One Worker, one D1 database,
-nothing else: no KV, no R2, no queues, no cron triggers. Two routes through
-this exist — the deploy button, which provisions everything for you, and a
-manual deployment for an account you already have.
+The engine runs on Cloudflare Workers as a writable deck. A deploy is one
+Worker and four resources on your account: a D1 database (the deck), an R2
+bucket (its files), a queue and a daily cron trigger (its periodic sweep).
+Two routes lead there — the deploy button, which provisions everything for
+you, and a manual deployment for an account you already have. Either ends by
+printing the deck's one-time setup link.
 
 ---
 
 ## The deploy button
 
-The repository's README carries the **Deploy to Cloudflare** badge. Clicking
-it asks for three names — the GitHub repository Cloudflare creates in your
-account, the Worker name, and the D1 database name — and then:
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts-public)
+
+Clicking it asks you to sign in and to confirm names for the GitHub
+repository Cloudflare creates in your account, the Worker and its resources,
+and then:
 
 1. copies the source into your GitHub account;
-2. reads the root `wrangler.toml` for the resource bindings;
-3. creates a fresh D1 database on your account and writes the real database id
-   into the config in your fork;
-4. applies the migrations under `deploy/migrations/`;
-5. bundles and deploys the Worker, and gives you a `workers.dev` URL.
+2. reads the root `wrangler.toml` and creates what it binds: the D1 database
+   (`DB`), the R2 bucket (`FILES`) and the queue (`DELAYED`), writing the real
+   ids into the config in your copy, and registers the cron trigger from
+   `[triggers]`;
+3. runs `npm run deploy`: applies the migrations under `deploy/migrations/`,
+   deploys the Worker, and issues the setup token
+   (`tools/deploy/issue-setup-token.mjs`);
+4. gives you a `workers.dev` URL. The build log ends with the setup link,
+   `https://<your deck's address>/setup?token=...`.
 
-A button deploy needs the source repository to be public.
+Open the link with your deck's address in it. `/setup` creates the owner
+account; after that you sign in at `/_signin` and can create, edit and delete
+cards and upload files.
 
-**Rehearsing the button without an account.** Only steps 1 and 3 and the
-upload in step 5 need Cloudflare. `node tools/deploy/rehearse-deploy-button.mjs`
-runs everything else with the real wrangler on this machine: it copies the
-files the deploy reads, writes a database id into the copy, builds the bundle
-with `wrangler deploy --dry-run`, applies `deploy/migrations/` to a fresh local
-D1 (twice, to show the second run applies nothing), serves the Worker with
-`wrangler dev`, and checks the routes listed in the README. Every wrangler
-process runs with an empty configuration home, no API token and the
+Cloudflare documents automatic provisioning for button deploys of D1, R2 and
+Queues among other resources, and applies the cron schedules a deploy's
+`[triggers]` declares (Cloudflare, "Deploy buttons" and "Cron Triggers",
+checked 2026-10-14). A button deploy needs the source repository to be public.
+
+**The setup link.** The deck is public as soon as the deploy finishes, and
+Ruby Decko's first-run window is open to whoever reaches `/setup` first while
+the deck has no accounts. On this host `/setup` additionally requires the
+token the deploy printed (`src/server/setup-token.ts`): its SHA-256 is stored
+in `deck_setup_tokens` (migration `0010`), the raw token never is, and
+creating the owner account deletes it. With no token issued, or a wrong one,
+`/setup` answers `403`. `npm run setup-token` issues a fresh link and
+replaces the old one; re-running the deploy does the same.
+
+**Rehearsing the button without an account.** Only the copy, the resource
+creation and the upload need Cloudflare.
+`node tools/deploy/rehearse-deploy-button.mjs` runs everything else with the
+real wrangler on this machine: it checks every binding the button provisions,
+builds the bundle with `wrangler deploy --dry-run`, applies
+`deploy/migrations/` to a fresh local D1 (twice, to show the second run
+applies nothing), issues the setup token against the local database, and over
+`wrangler dev` runs the first-owner journey — `/setup` refused without the
+token, the owner created with it and the token spent, sign-in, a card
+created, a file uploaded and read back from the local R2 bucket, and the cron
+trigger firing a sweep the queue consumer runs. Every wrangler process runs
+with an empty configuration home, no API token and the
 `tools/deploy/no-external-network.mjs` preload, which refuses any connection
 off the machine and lists the attempts in the result. It prints a JSON result
 and exits 0 only when every step passed.
 
-**A button deploy is read-only.** You can browse and fetch card records; every
-write verb answers `403` and no card row is written. The one exception is
-sign-in: `POST /update/*signin` still dispatches while the write path is off
-and still records a session row, because a session is not a card — Ruby decko
-never gates sign-in behind a deploy flag, and neither does this engine. Two
-opt-in variables turn the card write surface on; see
-[operations.md](operations.md).
-Write-enabled D1 is for evaluation and single-user use, not a supported
-multiuser deployment: D1 has no interactive transactions, so while a save
-runs a concurrent reader can see its partial rows, and a save that fails
-was briefly visible before it vanished. A multiuser deployment on D1 keeps
-writes disabled or accepts that window
+**Writes on D1.** Write-enabled D1 is for evaluation and single-user use, not
+a supported multiuser deployment: D1 has no interactive transactions, so
+while a save runs a concurrent reader can see its partial rows, and a save
+that fails was briefly visible before it vanished
 ([decision 0007](decisions/0007-atomic-saves-and-transaction-contract.md)).
+Setting `DECKO_WRITE_PATH` and `DECKO_FIRST_RUN` to `"0"` and redeploying
+makes the deck serve reads only.
 
-No secret or API token is stored in the repository. The Worker reads exactly
-one thing from its environment: the D1 binding.
+No secret or API token is stored in the repository.
 
 ---
 
@@ -57,17 +78,21 @@ one thing from its environment: the D1 binding.
 
 ```bash
 npx wrangler login
-npx wrangler d1 create decko-ts    # paste the printed id into wrangler.toml
-npm run deploy
+npx wrangler d1 create decko-ts            # paste the printed id into wrangler.toml
+npx wrangler r2 bucket create decko-ts-files
+npx wrangler queues create decko-ts-delayed
+npm run deploy                             # migrations, deploy, setup link
 ```
 
-`npm run deploy` applies the migrations and then deploys the Worker. The
-migration command references the binding `DB` rather than the database name, so
-it keeps working if you rename the database on the deploy page.
+`npm run deploy` applies the migrations, deploys the Worker and prints the
+setup link. The migration command references the binding `DB` rather than the
+database name, so it keeps working if you rename the database on the deploy
+page.
 
-For local development, `npx wrangler dev` boots a local D1 through miniflare
-with the same engine; local migrations are applied with the same command plus
-`--local`.
+For local development, `npx wrangler dev` boots a local D1, R2 bucket and
+queue through miniflare with the same engine; local migrations are applied
+with the same command plus `--local`, and
+`node tools/deploy/issue-setup-token.mjs --local` issues a local setup link.
 
 ### What `wrangler.toml` holds
 
@@ -77,7 +102,10 @@ with the same engine; local migrations are applied with the same command plus
 | `compatibility_date` | Deliberately pinned. A newer date can change runtime behaviour, and this engine's acceptance criterion is byte parity with the Ruby reference, so bumping it is a parity decision rather than a packaging one. |
 | `compatibility_flags` | `nodejs_compat` |
 | `[[d1_databases]]` | `binding = "DB"`, `database_name = "decko-ts"`, and a **placeholder** `database_id` that a button deploy or a manual create replaces. `migrations_dir` points at `deploy/migrations`. |
-| `[vars]` | None active. The write-path and first-run variables are present only as commented lines. |
+| `[[r2_buckets]]` | `binding = "FILES"`, `bucket_name = "decko-ts-files"`: uploads, image renditions and compiled stylesheets, served back under `/files/` behind each card's read rule. |
+| `[[queues.producers]]`, `[[queues.consumers]]` | `binding = "DELAYED"` on the queue `decko-ts-delayed`: delayed work, consumed by the Worker's `queue` handler (`src/server/edge-delayed-work.ts`). |
+| `[triggers]` | `crons = ["17 3 * * *"]`: once a day the `scheduled` handler enqueues the sweep of expired sessions and upload drafts older than a day. |
+| `[vars]` | `DECKO_WRITE_PATH = "1"` (sign-in form, card create / update / delete) and `DECKO_FIRST_RUN = "1"` (the token-gated `/setup` window). |
 
 ### Migrations
 
@@ -87,12 +115,14 @@ with the same engine; local migrations are applied with the same command plus
 | --- | --- |
 | `0001-schema.sql` | The core schema, generated from the canonical schema file. Never edited by hand. |
 | `0002-card-text-binary-lookup-indexes.sql` | Adds the binary key and codename lookup indexes. Written with `IF NOT EXISTS`, so it is a no-op on a fresh database. |
-| `0003-demo-seed.sql` | A small browse-only demo deck. |
+| `0003-demo-seed.sql` | A small demo deck: `Home`, `Hello World`, `About`. |
 | `0003-deck-data-version-stamp.sql` | The data-version table the triggers maintain. |
 | `0004-demo-account-substrate.sql` | The account substrate: the `*account` card and its field cards, the `User` card type, and the bot and anonymous actor cards. Idempotent. Without it the deck has no account system and the setup route correctly reports that. |
 | `0005-auth-sessions.sql` | The session table, so a signed-in session survives across requests. |
 | `0006-demo-role-substrate.sql` | The role card type, the members list card, and the account roles. |
 | `0008-cards-serving-path-indexes.sql` | Indexes on the card serving path. |
+| `0009-demo-account-read-rules.sql` | The `*all+*read` catch-all and the Help Desk grants on the account fields, which keep an anonymous requester out of the owner's password digest, salt and email address. |
+| `0010-first-run-setup-token.sql` | `deck_setup_tokens`: the SHA-256 of the one-time setup token the deploy issues. |
 
 A fresh deploy therefore comes up with schema, content and an account system,
 and re-running the migrations is a no-op.
