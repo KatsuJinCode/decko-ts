@@ -208,18 +208,18 @@ describe("permfix2: Search/Date broadened prepare walk (capture_error_not_raised
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
       // The search_type-codenamed type card.
-      await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
+      await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
       // The Search card with bad JSON content.
       await seedCard(storage, {
         id: 101,
-        name: "wrjuvyhaoiwnvvnblfl",
+        name: "qvnrtbkxwlpmzhjdcf",
         typeId: 2,
         dbContent: "jjmduarnmhbvnahsoeyvmxkpec",
       });
 
       let captured: unknown;
       try {
-        await storage.engine.render("wrjuvyhaoiwnvvnblfl", "open");
+        await storage.engine.render("qvnrtbkxwlpmzhjdcf", "open");
       } catch (err) {
         captured = err;
       }
@@ -286,7 +286,7 @@ describe("permfix2: denied Search verdict issuance (searchResults stays empty on
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 1, name: "Basic", codename: "basic", typeId: 1 });
-      await seedCard(storage, { id: 2, name: "qnzkqz", codename: "search_type", typeId: 1 });
+      await seedCard(storage, { id: 2, name: "ztpmqk", codename: "search_type", typeId: 1 });
       // A Search card that has a stored read_rule_id pointing at a
       // rule the viewer does NOT have access to. The read permission
       // stream resolves readableRuleIds from the card_references

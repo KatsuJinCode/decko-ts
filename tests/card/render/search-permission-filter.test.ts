@@ -45,11 +45,11 @@
 //   18 *all plus     codename "all plus"
 //   20 News          (the type card the search's type: clause names)
 //   21-24, 28-29, 34  News items (readable through 8; one DENIED through 10)
-//   25               DENIED junction News item (left 26, right 27)
+//   25               DENIED junction bulletin item (left 26, right 27)
 //   26/27/32         junction side cards
-//   31               READABLE junction News item (left 26, right 32) —
+//   31               READABLE junction bulletin item (left 26, right 32) —
 //                    NULL name/key, sides only
-//   33               News item with NO stored read_rule_id whose live walk
+//   33               bulletin item with NO stored read_rule_id whose live walk
 //                    resolves rule 10 -> denied (invisible to the SQL id
 //                    list too: NULL read_rule_id)
 //   40               "Doc Alpha+Field X" junction, stored read rule 42

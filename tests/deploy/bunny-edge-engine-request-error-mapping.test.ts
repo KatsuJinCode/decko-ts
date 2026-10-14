@@ -70,8 +70,8 @@ function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
  *  file seed THESE ids so the process-global name environment (first
  *  FetchEngine wins, fetch.ts:155-175) and every later deck agree. */
 async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 });
-  await seedCard(storage, { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
+  await seedCard(storage, { id: 8, name: "kmrtqd", codename: "anyone", typeId: 2 });
+  await seedCard(storage, { id: 15, name: "vqhrbnl", codename: "anonymous", typeId: 2 });
   await seedCard(storage, { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" });
   await seedCard(storage, { id: 103, name: "*favicon", codename: "favicon", typeId: 19, dbContent: "(my_bucket)/103/3649.jpg" });
   await seedCard(storage, { id: 400, name: "*ace", codename: "ace", typeId: 52, dbContent: "{}" });

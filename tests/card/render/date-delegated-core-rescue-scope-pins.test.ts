@@ -55,9 +55,8 @@
 // gate) — one level too high, so the `:content` view body never ran, its
 // `wrap` never fired, the card-slot div was never emitted, and nest()'s
 // catch produced the unwrapped span labelled "(content view)". Corpus bytes
-// it did not match: card 34322 `Maturana ...+Date` (-938), 27918 `Jamie
-// McHugh ...+Date` (-908), 35469 `White Fragility ...+Date` (-606),
-// 9788 `Sample Card 098+Date` (-1727).
+// it did not match: the four Date cards whose content refuses to
+// render (-938, -908, -606, -1727).
 //
 // THE LOUD HALF IS NOT WEAKENED. format/error.rb:65-67
 //   `loud_error?` = `focal? || Card.config.raise_all_rendering_errors`;
@@ -74,7 +73,7 @@ import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 
 const DATE_CARD = "broken date card";
 const HOST_CARD = "host nests the broken date";
-/** The corpus's own content for card 34322 `Maturana ...+Date` is "1980"
+/** The corpus's own content for one of those Date cards is "1980"
  *  (verified against tmp/raw-ground-truth/bench-corpus-raw.sqlite3), which
  *  Ruby's Date.parse rejects — `parseRubyDateContent` returns null for
  *  every all-digit string by design (src/card/render/errors.ts:227-230,

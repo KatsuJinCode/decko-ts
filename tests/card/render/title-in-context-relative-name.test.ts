@@ -112,9 +112,9 @@ describe("title_in_context: relative slot titles under the page context", () => 
       leftId: 97210,
       rightId: 97213,
       typeId: 10,
-      dbContent: "AOC_Dojo_01\n",
+      dbContent: "Trial_Set_01\n",
     });
-    await seedCard(storage, { id: 97215, name: "AOC_Dojo_01", typeId: 2 });
+    await seedCard(storage, { id: 97215, name: "Trial_Set_01", typeId: 2 });
 
     const html = await storage.engine.render("Sample Card 128", "titled");
     // The item slot: absolute nest_name, name_context appended last.

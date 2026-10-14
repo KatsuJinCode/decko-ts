@@ -73,17 +73,13 @@ stable. The manifest pins the recorded bytes.
 One deliberate difference from a fresh rebuild, and it is now the only one. The
 build path recorded above and in `MANIFEST.json`'s `provenance` is the stock
 oracle (`reference-harness/oracle/build-deck.sh`, then `seed.rb`) against
-decko 0.20.0 / card 1.110.0, and that path does not create another
-application's schema. The committed deck file nevertheless carried eight empty
-`private_table_*` tables belonging to a private application that runs on the
-same engine (`private_table_1`, `private_table_2`,
-`private_table_3`, `private_table_4`,
-`private_table_5`, `private_table_6`, `private_table_7`,
-`private_table_8`) whose presence the recorded build does not explain — so
-the committed deck was not a byte-reproducible output of the recorded path. They
-are not part of the battery: every one is empty, nothing in this repository
-creates or reads them, and no recording touches them.
+decko 0.20.0 / card 1.110.0, and that path only creates the tables stock Decko
+creates. A committed deck file that carries any other table was therefore not a
+byte-reproducible output of the recorded path.
 `reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs`
-dropped them from the committed deck (2026-10-10), so the committed file is now
-what the recorded build produces. The batteries and the whole-deck comparison
-were blind to their presence either way.
+reduces every committed fixture deck to the stock schema (2026-10-10 here,
+2026-10-13 for the last fixture that still carried foreign tables), so the
+committed files are now what the recorded build produces. Those tables were
+never part of the battery: each was empty, nothing in this repository created or
+read them, and no recording touched them, so the batteries and the whole-deck
+comparison were blind to their presence either way.

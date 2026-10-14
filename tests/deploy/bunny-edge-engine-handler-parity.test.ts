@@ -208,7 +208,7 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(body).not.toContain("22281");
     expect(body).not.toContain("basic_c");
     expect(body).not.toContain("production-storage");
-    expect(body).not.toContain("Decko v0.19.1");
+    expect(body).not.toContain("Decko v0.0.0-synthetic");
   });
 
   it("an unregistered view answers the 422 UserError shape (error.rb:21)", async () => {
