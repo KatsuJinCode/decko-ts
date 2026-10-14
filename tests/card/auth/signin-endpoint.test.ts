@@ -43,6 +43,12 @@ import { CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
 import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import { ensureStagingServerDist } from "./staging-server-dist-bootstrap.js";
 
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 // The committed miniature corpus by default; the richer machine-local bench

@@ -84,6 +84,12 @@ import {
 } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
 import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
 
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SERVER_ENTRY = path.join(REPO_ROOT, "vm-staging-server.mjs");
 const SCHEMA_SQL = path.join(REPO_ROOT, "db", "schema.sqlite.sql");

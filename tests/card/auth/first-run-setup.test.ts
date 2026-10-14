@@ -45,6 +45,12 @@ import {
 } from "../../../src/server/first-run-routes.js";
 import { createRenderTestStorage, type RenderTestStorage } from "../render/render-test-storage.js";
 
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+
 // ---------------------------------------------------------------------------
 // fixture
 // ---------------------------------------------------------------------------
