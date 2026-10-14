@@ -332,7 +332,8 @@ describe("RenderEngine structured content", () => {
       //      lookup (view.rb / render.rb issue none), so the port no longer
       //      issues that candidate walk. Verified 2026-10-13 by restoring the
       //      walk temporarily: the cold count returned to 28 and 13 round
-      //      trips. The pins are now 27 statements and 12 round trips.
+      //      trips. That run's pins were 27 statements and 12 round trips
+      //      (the pin below carries the current figures).
       //  Freshness: the deck_data_version stamp read folds LAST into the
       //  cold batch (+1 statement, +0 round trips).
       //  Batched composition adds three: the compose type prime
@@ -349,8 +350,11 @@ describe("RenderEngine structured content", () => {
       //  (re-reading the prelude's type row, already composed and cached)
       //  was a redundancy and is fixed: composeAndCache marks every
       //  composed row as held for later type primes.
-      expect(cold.statements).toBe(27);
-      expect(cold.roundTrips).toBe(12);
+      // This deck carries the stock read substrate (createRenderTestStorage's
+      // default). Measured on this branch for this render: 32 statements and 16
+      // round trips before the permission-setup fold, 31 and 13 after it.
+      expect(cold.statements).toBe(31);
+      expect(cold.roundTrips).toBe(13);
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip).
       fresh.counting.reset();
