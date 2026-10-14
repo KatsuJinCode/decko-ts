@@ -771,6 +771,7 @@ export class CardActionEngine {
         // does not make the save: a blank-content subcard stores nothing
         // whatever its type).
         const blankNoop =
+          sub.fromEventField !== true &&
           (sub.content === undefined || sub.content === "") &&
           sub.attachment === undefined &&
           (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
@@ -1365,12 +1366,13 @@ export class CardActionEngine {
       throw new CardActionError("user-error", "skin stylesheets rejected", problems.join("\n"));
     }
     const subcards: Record<string, SubcardInput> = { ...input.subcards };
-    subcards["+*colors"] ??= { typeId: scssId };
-    subcards["+*variables"] ??= { typeId: scssId };
+    subcards["+*colors"] ??= { typeId: scssId, fromEventField: true };
+    subcards["+*variables"] ??= { typeId: scssId, fromEventField: true };
     if (items.length > 0) {
       subcards["+*stylesheets"] ??= {
         ...(skinListId === undefined ? {} : { typeId: skinListId }),
         content: items.join("\n"),
+        fromEventField: true,
       };
     }
     return { ...input, subcards };
@@ -1410,7 +1412,7 @@ export class CardActionEngine {
     if (scssId === undefined) return input;
     const subcards: Record<string, SubcardInput> = { ...input.subcards };
     for (const field of ["+*colors", "+*variables"]) {
-      if (subcards[field] === undefined) subcards[field] = { typeId: scssId };
+      if (subcards[field] === undefined) subcards[field] = { typeId: scssId, fromEventField: true };
     }
     return { ...input, subcards };
   }
@@ -2314,7 +2316,12 @@ export class CardActionEngine {
     } else if (result !== null && subResults.length > 0) {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
-    if (result === null && subResults.length === 0 && input.subcards !== undefined) {
+    if (
+      result === null &&
+      subResults.length === 0 &&
+      input.subcards !== undefined &&
+      writer.currentActId() === null
+    ) {
       // The save RAN (the director instantiated the posted subcards) but no
       // card changed: Ruby's update! still records the ACT on the mark —
       // one card_acts row, zero actions (the oracle probe's "one act"; the
@@ -2325,6 +2332,12 @@ export class CardActionEngine {
       // The writer's act INSERT is lazy (first persisted action), so the
       // all-no-op save inserts it here, verbatim columns. The result stays
       // null: no action exists for the integrate phase to see.
+      //
+      // currentActId() guards the one-act-per-request shape (act.rb:64-68):
+      // the mark's own no-op save is the act card, and the writer's
+      // `finalize_act` arm already left its act row (write-path.ts:400-405,
+      // `Director.act.update! card_id: id`). Ruby stores ONE act per request,
+      // so inserting here too would double the row.
       await this.fetch.driver.query(
         "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
         [

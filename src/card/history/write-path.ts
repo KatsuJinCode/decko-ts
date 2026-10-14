@@ -687,7 +687,13 @@ export class ActWriter {
     });
   }
 
-  /** The act row's id once at least one action has been persisted. */
+  /** The act row's id once at least one action has been persisted.
+   *  Also non-null when an act-card no-op save left the row by itself
+   *  (updateCard's `finalize_act` arm, write-path.ts:400-405). Callers
+   *  that insert an act of their own (the controller path's all-no-op arm)
+   *  read this first: Ruby has ONE act row per request (act.rb:64-68, the
+   *  `belongs_to :card` autosave), so a save whose act card already left
+   *  the writer its row must not add another. */
   currentActId(): number | null {
     return this.actId;
   }
