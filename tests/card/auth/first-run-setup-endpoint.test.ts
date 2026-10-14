@@ -191,12 +191,21 @@ describe("first-run /setup through the booted staging server (fresh-deck one-cli
 
 describe("first-run surface absent with the env gate off (pre-existing posture preserved)", () => {
   beforeAll(async () => {
-    makeFreshDeck(FLAG_OFF_DB);
-    // No DECKO_FIRST_RUN, no DECKO_WRITE_PATH — the historical default boot.
-    flagOff = await bootStagingServer(FLAG_OFF_DB, {
-      DECKO_FIRST_RUN: undefined,
-      DECKO_WRITE_PATH: undefined,
-    });
+    try {
+      makeFreshDeck(FLAG_OFF_DB);
+      // No DECKO_FIRST_RUN, no DECKO_WRITE_PATH — the historical default boot.
+      flagOff = await bootStagingServer(FLAG_OFF_DB, {
+        DECKO_FIRST_RUN: undefined,
+        DECKO_WRITE_PATH: undefined,
+      });
+    } catch (error) {
+      // A boot that never came up leaves nothing running and nothing on
+      // disk: afterAll does not run when beforeAll throws.
+      await stopStagingServer(flagOff);
+      flagOff = null;
+      rmSync(FLAG_OFF_DB, { force: true });
+      throw error;
+    }
   }, 120_000);
 
   it("GET /setup does not serve the setup form and POST /setup keeps the write-off 405", async () => {
@@ -215,5 +224,8 @@ describe("first-run surface absent with the env gate off (pre-existing posture p
   afterAll(async () => {
     await stopStagingServer(flagOff);
     flagOff = null;
+    // Disposable fixture only — same discipline as FIRST_RUN_DB above;
+    // without this the run left a 250 KB deck in tmp/ on every pass.
+    rmSync(FLAG_OFF_DB, { force: true });
   });
 });

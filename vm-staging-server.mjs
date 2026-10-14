@@ -1137,12 +1137,33 @@ function ensureBootValuesOrigin() {
  *
  *  Absolute, as hard_redirect's card_url (response.rb:38-41) makes it:
  *  origin + card_path(relative_path) (mod/format/set/all/path.rb:66-70,
- *  the HTML format's contextualize_path). */
+ *  the HTML format's contextualize_path).
+ *
+ *  THE MARK IS NOT PERCENT-ENCODED. Card::Path builds it from
+ *  `name.url_key` (path.rb:64-71 interpret_mark), and Cardname#url_key
+ *  already makes a URL-safe mark: word characters and `*` survive, runs
+ *  of space/underscore collapse to one "_", parts join with "+"
+ *  (cardname/lib/cardname/variants.rb:8-14 + cardname.rb:37 OK4KEY_RE).
+ *  Nothing downstream escapes it — Location#card_path returns any string
+ *  that starts with "/" untouched (card/lib/card/env/location.rb:12-21)
+ *  and redirect_to uses a full URL verbatim — so Ruby answers
+ *  "…/Mira_Member+*account/edit" with the junction's "+" and "*"
+ *  literal, where encodeURIComponent sent "%2B".
+ *
+ *  THE EMPTY MARK is Ruby's `success << ""`
+ *  (verify_and_activate_success, mod/account/set/right/account/events.rb
+ *  :87-92): Success#<< hands a String to `mark=`, process_target's
+ *  `when ""` arm keeps it (card/lib/card/env/success.rb:30-35,
+ *  success/target.rb:22-34), and to_url returns that "" unrendered
+ *  because the target is not a Card (success.rb:23-25). card_url("")
+ *  is then the site root (location.rb:12-21). */
 function successRedirect(name, view, req) {
   const host = String(req?.headers?.host ?? "").trim();
   const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
-  const mark = encodeURIComponent(name.replace(/ /g, "_"));
-  const target = `${origin}/${mark}${view ? `/${view}` : ""}`;
+  if (name === "") {
+    return { status: 303, headers: { Location: `${origin}/`, "Cache-Control": "no-store" }, body: "" };
+  }
+  const target = `${origin}/${DeckoName.parse(name).urlKey}${view ? `/${view}` : ""}`;
   return { status: 303, headers: { Location: target, "Cache-Control": "no-store" }, body: "" };
 }
 
