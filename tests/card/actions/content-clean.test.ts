@@ -17,7 +17,7 @@ const WITHHELD_SUITE = path.join(
 );
 if (!existsSync(WITHHELD_SUITE)) {
   process.stderr.write(
-    `[withheld until disclosure] NOT RUN: 4 tests (${WITHHELD_SUITE})\n`,
+    `[withheld until disclosure] NOT RUN: 7 tests (${WITHHELD_SUITE})\n`,
   );
 }
 

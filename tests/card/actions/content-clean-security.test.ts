@@ -323,39 +323,12 @@ const ORDINARY: string[] = [
   `<td colspan="2" scope="row" style="width: 10px;" data-mce-style="width: 10px;">cell</td>`,
 ];
 
-/** Where the upstream cleaner stores something other than what the author
- *  wrote, this cleaner stores what the author wrote. */
-const RUBY_MISREADS: Array<[string, string, string]> = [
-  // Ruby's search for `style=` matches inside `data-mce-style=`.
-  [
-    `<td scope="row" data-mce-style="width: 10px;">cell</td>`,
-    `<td scope="row" data-mce-style="width: 10px;" style="width: 10px;">cell</td>`,
-    `<td scope="row" data-mce-style="width: 10px;">cell</td>`,
-  ],
-  // Ruby's search for `title=` matches inside the link's query string.
-  [
-    `<a href="http://example.org/show?title=1078" title="Article">x</a>`,
-    `<a href="http://example.org/show?title=1078" title="1078"">x</a>`,
-    `<a href="http://example.org/show?title=1078" title="Article">x</a>`,
-  ],
-  // An empty attribute: Ruby writes the rest of the tag as its value.
-  [`<img src="a.png" alt="">`, `<img src="a.png" alt="""">`, `<img src="a.png">`],
-];
-
 describe("cleanContent: ordinary content is stored as Ruby stores it", () => {
   it.each(ORDINARY.map((s, i) => [i, s]))("ordinary case %i is byte-identical to Ruby", (_i, input) => {
     const out = cleanContent(input as string);
     expect(out).toBe(rubyCleanContent(input as string));
     expect(htmlSafetyProblems(out)).toEqual([]);
   });
-
-  it.each(RUBY_MISREADS.map((c, i) => [i, ...c]))(
-    "Ruby misread %i: the port stores what the author wrote",
-    (_i, input, ruby, port) => {
-      expect(rubyCleanContent(input as string)).toBe(ruby);
-      expect(cleanContent(input as string)).toBe(port);
-    },
-  );
 });
 
 describe("cleaner building blocks", () => {
