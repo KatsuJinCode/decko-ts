@@ -51,13 +51,21 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
 
   // The page shell: global settings, the layout rule and Default Layout,
   // the header and footer the layout nests.
-  await seedCard(s, { id: 55, name: "*title", codename: "title", typeId: 52, dbContent: "Test Site" });
+  // Every card below is a SETTING in Ruby, and a rule can only hang off a
+  // setting (Card::Rule::All#standard_rule?, rule/all.rb:31-34), so they all
+  // carry SettingID - the type the rule cache's SQL filters on
+  // (`settings.type_id = #{SettingID}`, lib/card/rule/cache.rb:18). *layout
+  // in particular is a setting: mod/layout/set/all/process_layout.rb:34 reads
+  // it with `card.rule_card(:layout)`, and card/mod/core/data/transform/
+  // 20180905061537_migrate_layouts.rb:5 searches rules `referred_to_by:
+  // { right: :layout }`.
+  await seedCard(s, { id: 55, name: "*title", codename: "title", typeId: 14, dbContent: "Test Site" });
   await seedCard(s, { id: 103, name: "*favicon", codename: "favicon", typeId: 19, dbContent: "(my_bucket)/103/3649.jpg" });
-  await seedCard(s, { id: 400, name: "*ace", codename: "ace", typeId: 52, dbContent: "{}" });
-  await seedCard(s, { id: 401, name: "*tiny_mce", codename: "tiny_mce", typeId: 52, dbContent: "{}" });
+  await seedCard(s, { id: 400, name: "*ace", codename: "ace", typeId: 14, dbContent: "{}" });
+  await seedCard(s, { id: 401, name: "*tiny_mce", codename: "tiny_mce", typeId: 14, dbContent: "{}" });
   await seedCard(s, { id: 50, name: "Html", codename: "html", typeId: 5 });
-  await seedCard(s, { id: 600, name: "*layout", codename: "layout", typeId: 52 });
-  await seedCard(s, { id: 22746, name: "*all+*layout", leftId: 10, rightId: 600, typeId: 52, dbContent: "Default Layout" });
+  await seedCard(s, { id: 600, name: "*layout", codename: "layout", typeId: 14 });
+  await seedCard(s, { id: 22746, name: "*all+*layout", leftId: 10, rightId: 600, typeId: 14, dbContent: "Default Layout" });
   await seedCard(s, {
     id: 22747,
     name: "Default Layout",
