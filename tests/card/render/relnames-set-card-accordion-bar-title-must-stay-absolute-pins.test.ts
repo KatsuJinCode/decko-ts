@@ -201,8 +201,27 @@ describe("relnames: the view-lane bar context seat is scoped to pointer-list ite
     // root-as-host shape; the seat's fitted behavior on that shape is
     // unchanged.
     const s = await (async () => {
-      const { createRenderTestStorage, seedCard } = await import("./render-test-storage.js");
+      const { BOOTSTRAP_READ_SUBSTRATE_IDS, createRenderTestStorage, seedCard } = await import(
+        "./render-test-storage.js"
+      );
       const store = await createRenderTestStorage();
+      // The deck's own `*all` SET card with the CQL hash a real deck's `*all`
+      // holds (reference-harness/fixtures/synthetic-v2/deck: db_content
+      // "{}"). The stock substrate's `*all` steps aside for it and the stock
+      // `*all+*read` rule repoints onto its side, so the anonymous viewer
+      // still reads the deck. The content is load-bearing: "Weapons" is a
+      // List host rendered :open, so the engine walks its options chain
+      // (options_api.rb:47-48 -> the `Card[:all]` fallback) and parses the
+      // terminal card as CQL — an EMPTY `*all` is the "can't run search with
+      // empty content" raise (cql_search.rb:29-38), a deck shape Ruby decks
+      // do not have.
+      await seedCard(store, {
+        id: 10,
+        name: "*all",
+        codename: "all",
+        typeId: BOOTSTRAP_READ_SUBSTRATE_IDS.set,
+        dbContent: "{}",
+      });
       await seedCard(store, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
       await seedCard(store, { id: 3, name: "List", codename: "list", typeId: 2 });
       await seedCard(store, { id: 4, name: "RichText", codename: "rich_text", typeId: 2 });

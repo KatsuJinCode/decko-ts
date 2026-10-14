@@ -176,6 +176,16 @@ describe("the setting card page's rule_help alert", () => {
       await storage.counting.query("DELETE FROM cards WHERE id = 250", []);
       const resolver = installHelpRules(storage.engine, storage.fetcher);
       await resolver.prepare();
+      // With *all gone the stock *all+*read rule loses its Set-typed left
+      // side, so the cache join (sets.type_id = SetID) drops it and this deck
+      // has NO read rule — which Ruby denies for an ordinary viewer
+      // (set/all/permissions.rb:139-146). The page itself is what this test
+      // is about, so it renders as the deck's bot, which Ruby's
+      // ok_to_read? admits ahead of any rule
+      // (`return true if Auth.always_ok?`, permissions.rb:140 ->
+      // auth/permissions.rb:8-13 `when DeckoBotID then true`).
+      await seedCard(storage, { id: 295, name: "Decko Bot", codename: "decko_bot" });
+      storage.engine.viewer = { signedIn: true, actorId: 295 };
       const core = await storage.engine.render("*ruleless", "core");
       expect(core).toBe("<h3>All ruleless rules that apply to</h3>\n");
     } finally {

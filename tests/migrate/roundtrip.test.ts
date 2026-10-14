@@ -91,11 +91,52 @@ function buildDeck(): string {
         dbContent: "orphan content",
       },
       { id: 8, name: "Trashed Draft", trash: 1, dbContent: "trashed body" },
+      // THE STOCK READ SUBSTRATE — the rows every real Decko deck carries,
+      // seeded here so the migrated deck is a deck Ruby would have served
+      // anonymously. `ok_to_read?` (card-mod-permissions
+      // set/all/permissions.rb:139-146) has no allowance for a deck with no
+      // read rule card: `permission_rule_id :read` resolves to nil and
+      // `Auth.as_card.read_rules_hash[nil]` is nil, so the check denies —
+      // every card of this deck rendered the denial span until these rows
+      // were here. Shapes taken from a real deck
+      // (reference-harness/fixtures/synthetic-v2/deck): the Set type card,
+      // the Set-typed `*all`, the `*read` codename card, the two party cards
+      // Anonymous/Anyone, and the `*all+*read` rule whose db_content is the
+      // party name "Anyone" and whose read_rule_id is itself.
+      //
+      // `*all`'s query content is left EMPTY here. The corpus decks carry
+      // "{}", but that is a deck that has run a search; the card itself is
+      // created empty, and this suite never renders `*all` (a set/search card
+      // is not a spot-render target: engine-bridge samples TEXT-BEARING
+      // simple cards, `db_content IS NOT NULL AND db_content != ''`). It
+      // matters because a rendered *all would be Ruby's cql path
+      // (cql_search.rb:29-38 raises on empty content).
+      { id: 101, name: "Set", codename: "set", typeId: 2 },
+      { id: 102, name: "*all", codename: "all", typeId: 101 },
+      { id: 103, name: "*read", codename: "read", typeId: 2 },
+      { id: 104, name: "Anonymous", codename: "anonymous", typeId: 2 },
+      { id: 105, name: "Anyone", codename: "anyone", typeId: 2 },
+      {
+        id: 106,
+        name: null,
+        key: null,
+        leftId: 102,
+        rightId: 103,
+        typeId: 2,
+        dbContent: "Anyone",
+        readRuleId: 106,
+        readRuleClass: "*all",
+      },
     ]),
     actsInsert([{ id: 20, cardId: 1, actorId: 1 }]),
     actionsInsert([[30, 1, 20, null, 0, 0, null]]),
     changesInsert([[40, 30, 2, "welcome to the round trip"]]),
-    referencesInsert([[50, 3, "deep_page", 4, "I", 1]]),
+    referencesInsert([
+      [50, 3, "deep_page", 4, "I", 1],
+      // The rule -> Anyone link read_rule_cache.rb's join reads (the
+      // anonymous viewer's read_rules_hash); ref_type "L" as in the real deck.
+      [51, 106, "Anyone", 105, "L", 1],
+    ]),
   ]);
 }
 
@@ -112,7 +153,8 @@ describe("dump -> import -> decko-ts engine", () => {
       ddlPath: DDL_PATH,
       deriveKey: deriveKeyWithEngine,
     });
-    expect(stats.counts["cards"]).toBe(8);
+    // 8 pipeline-fixture cards + the 6 stock read-substrate cards above.
+    expect(stats.counts["cards"]).toBe(14);
     expect(stats.errors).toEqual([]);
   }, 60000);
 
