@@ -40,6 +40,7 @@ import {
   type ModEventCardStateContext,
 } from "../../../src/card/mod-loader/mod-event-card-state.js";
 import { registerDeckModEventCardStateSources } from "../../../src/card/mod-loader/mod-event-state-sources.js";
+import { defaultDeckEventPredicates } from "../../../src/card/mod-loader/default-mod-deck.js";
 import type { ModEventCard } from "../../../src/card/mod-loader/mod-manifest.js";
 
 /** A predicate call with only the named fields set — every other field is
@@ -453,8 +454,11 @@ describe("the carrierwave state source", () => {
 // ---------------------------------------------------------------------------
 
 describe("every declared `when:` resolves", () => {
-  it("the carrierwave manifest declares no condition outside the table", () => {
-    const table = new Set(Object.keys(carrierwaveModEventPredicates));
+  // A carrierwave `when:` is answered by the deck's composed table, the same
+  // table Ruby's `send` reaches (all.rb:82). no_history? is the history mod's
+  // predicate, so it resolves there and not in carrierwaveModEventPredicates.
+  it("the carrierwave manifest declares no condition outside the deck table", () => {
+    const table = new Set(Object.keys(defaultDeckEventPredicates()));
     const unresolvable: string[] = [];
     for (const file of carrierwaveManifest.setModules ?? []) {
       for (const event of file.events ?? []) {
@@ -465,7 +469,7 @@ describe("every declared `when:` resolves", () => {
     expect(unresolvable).toEqual([]);
   });
 
-  it("the table's keys are exactly the gem's conditions (no invented ones)", () => {
-    expect(new Set(Object.keys(carrierwaveModEventPredicates)).size).toBe(13);
+  it("the carrierwave table's keys are the gem's mount conditions (no invented ones)", () => {
+    expect(new Set(Object.keys(carrierwaveModEventPredicates)).size).toBe(12);
   });
 });

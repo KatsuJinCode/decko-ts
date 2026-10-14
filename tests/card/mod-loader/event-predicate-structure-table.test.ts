@@ -540,7 +540,7 @@ describe("event when: predicates — list / collection / content / assets / hist
     it("registers one source per mod that contributes predicate state", () => {
       const mods = modEventCardStateSources().map((s) => s.modName);
       expect(new Set(mods)).toEqual(
-        new Set(["core", "history", "list", "assets"]),
+        new Set(["core", "history", "list", "assets", "carrierwave"]),
       );
     });
 
