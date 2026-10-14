@@ -565,7 +565,7 @@ async function main() {
     //
     // The corpus is opened READ-ONLY. The verified
     // mechanism on this stack (activerecord 7.2.3.2 + sqlite3 2.9.6, both read
-    // in C:/Ruby33-x64 this session) is the `readonly` connection param: the
+    // from the local interpreter's gem path) is the `readonly` connection param: the
     // resolver passes query params through verbatim into
     // SQLite3::Database.new, whose `options[:readonly]` truthiness selects
     // SQLITE_OPEN_READONLY. (A literal "?mode=ro" form does NOT

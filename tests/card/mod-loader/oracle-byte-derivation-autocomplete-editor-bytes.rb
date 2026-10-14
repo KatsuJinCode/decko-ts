@@ -1,7 +1,7 @@
 # Derives the AUTOCOMPLETE editor bytes the select-editor suite pins
 # (card-mod-list-select-editor.test.ts, the :autocomplete arm) by RUNNING
-# the pinned gem versions locally: haml-5.2.2 +
-# actionview-7.2.3.2 (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/).
+# the pinned gem versions locally: haml-5.2.2 + actionview-7.2.3.2, resolved
+# from whatever GEM_HOME / gem path the local interpreter reports.
 #
 # The template is card-mod-search-0.20.0 set/all/autocomplete/
 # autocomplete_input.haml verbatim; the call shape is the list mod's
@@ -16,7 +16,7 @@
 #   <input type="text" name="pointer_item" id="pointer_item" value="Option One" class="pointer-item-text form-control _autocomplete " data-options-card="option_values" placeholder="" />
 #   </div>
 #
-# Run: C:/Ruby33-x64/bin/ruby.exe tests/card/mod-loader/oracle-byte-derivation-autocomplete-editor-bytes.rb
+# Run: ruby tests/card/mod-loader/oracle-byte-derivation-autocomplete-editor-bytes.rb
 require "uri"
 require "cgi"
 require "action_view"

@@ -1,9 +1,10 @@
 // CQL `match` semantics, pinned from Ruby's SOURCE.
 //
 // Every expectation below is derived from the reference implementation in
-// C:/localProjects/decko-ruby-reference and cited by file:line, so the
-// assertions cannot be satisfied by whatever this port happens to emit
-// today. Each test names the Ruby rule it pins.
+// the card gem's own source (card/lib/card/query/value/match_value.rb and
+// match.rb) and cited by file:line, so the assertions cannot be satisfied
+// by whatever this port happens to emit today. Each test names the Ruby rule
+// it pins.
 //
 // The two files that define the whole of `match`:
 //

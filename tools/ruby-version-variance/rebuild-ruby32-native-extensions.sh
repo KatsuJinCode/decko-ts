@@ -13,16 +13,24 @@
 # Only the compiled artifact changes. No gem version, no gem source, no
 # Gemfile.lock entry.
 #
-#   bash rebuild-ruby32-native-extensions.sh
+#   RUBY32_HOME=/c/Ruby32-x64 bash rebuild-ruby32-native-extensions.sh
+#
+# RUBY32_HOME is the RubyInstaller 3.2 root on this host (its bin/, its
+# msys64/ toolchain, and its lib/ruby/gems/<abi>/gems). It is required rather
+# than defaulted: the point of the script is to rebuild against ONE machine's
+# toolchain, and a default would silently point at whichever install happens
+# to sit at a well-known path.
 
 set -uo pipefail
 
-RUBY_BIN="/c/Ruby32-x64/bin"
-MSYS_UCRT="/c/Ruby32-x64/msys64/ucrt64/bin"
-MSYS_USR="/c/Ruby32-x64/msys64/usr/bin"
+: "${RUBY32_HOME:?set RUBY32_HOME to the RubyInstaller 3.2 root, e.g. /c/Ruby32-x64}"
+
+RUBY_BIN="${RUBY32_HOME}/bin"
+MSYS_UCRT="${RUBY32_HOME}/msys64/ucrt64/bin"
+MSYS_USR="${RUBY32_HOME}/msys64/usr/bin"
 export PATH="$MSYS_UCRT:$MSYS_USR:$RUBY_BIN:$PATH"
 
-GEMDIR="C:/Ruby32-x64/lib/ruby/gems/3.2.0/gems"
+GEMDIR="$(cygpath -m "${RUBY32_HOME}")/lib/ruby/gems/3.2.0/gems"
 
 # Every .so under 3.2 that imports the DLL names the local toolchain lacks.
 AFFECTED="bigdecimal-4.1.3 cgi-0.5.2 erb-6.0.7 eventmachine-1.2.7 io-console-0.9.4 json-3.0.2 prism-1.9.0 racc-1.8.1 rbs-4.1.3 sassc-2.4.0 thin-2.0.1 websocket-driver-0.8.2"

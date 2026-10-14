@@ -34,9 +34,12 @@
 //       public-mod-registry.json + public-mod-registry.md.
 //
 // Zero npm deps (the tools/compat-report convention). Ruby side is
-// READ-ONLY against the installed gems; static-ruby scripts run under
-// C:/Ruby33-x64/bin/ruby.exe with scratch state only under <repo>/tmp/
-// (never another deck, never a network, never a production site).
+// READ-ONLY against the installed gems; static-ruby scripts run under the
+// interpreter named by RUBY (default `ruby`) with scratch state only under
+// <repo>/tmp/ (never another deck, never a network, never a production site).
+//
+// The gem tree comes from GEM_HOME, the same portable reference
+// tools/compat-report records; a host without it cannot run this harness.
 
 import { spawnSync } from "node:child_process";
 import {
@@ -60,8 +63,8 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = dirname(dirname(HERE)); // tools/mod-porting-harness -> repo root
-const GEM_DIR = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems";
-const RUBY = "C:/Ruby33-x64/bin/ruby.exe";
+const GEM_DIR = process.env.GEM_HOME === undefined ? "" : join(process.env.GEM_HOME, "gems");
+const RUBY = process.env.DECKO_RUBY ?? "ruby";
 const MOD_LOADER_MODS = join(REPO, "src", "card", "mod-loader", "mods");
 const TESTS_DIR = join(REPO, "tests", "card", "mod-loader");
 const ORACLE_DIR = join(REPO, "fixtures", "oracle-surfaces");
@@ -470,13 +473,15 @@ function readText(path) {
  *  { modId, gemName, gemPath }. Reads the gems dir READ-ONLY. */
 function resolveMod(modArg) {
   const id = modArg.startsWith("card-mod-") ? modArg : `card-mod-${modArg}`;
-  if (!existsSync(GEM_DIR)) die(`gem dir not found: ${GEM_DIR}`);
+  if (!existsSync(GEM_DIR)) {
+    die(`no installed gem tree: set GEM_HOME to a Ruby gem home whose gems/ holds card-mod-* (looked in ${GEM_DIR || "<unset>"})`);
+  }
   const match = readdirSync(GEM_DIR)
     .filter((n) => n === id || n.startsWith(`${id}-`))
     .sort()
     .pop();
   if (match === undefined) {
-    die(`no installed gem matching "${modArg}" under ${GEM_DIR}`);
+    die(`no installed gem matching "${modArg}" under $GEM_HOME/gems`);
   }
   return { modId: id, gemName: match, gemPath: join(GEM_DIR, match) };
 }
@@ -749,7 +754,21 @@ function surfaceMod(modId, gemName, gemPath) {
     ? walkFiles(join(gemPath, "public"), "").length
     : 0;
 
-  return { modId, gemName, gemPath, setFiles, behaviors, seeds, configs, assets, publicAssets };
+  // gemPath is recorded as the portable $GEM_HOME reference, never the
+  // absolute path on the machine that ran the harness: every other field
+  // here is gem-relative already, and the committed surface.json is read by
+  // anyone (tools/compat-report records its gem path the same way).
+  return {
+    modId,
+    gemName,
+    gemPath: `$GEM_HOME/gems/${gemName}`,
+    setFiles,
+    behaviors,
+    seeds,
+    configs,
+    assets,
+    publicAssets,
+  };
 }
 
 function surfaceMarkdown(s) {
@@ -1262,7 +1281,7 @@ function buildRegistry() {
       reMeasureMissingViews: REMEASURE.missingByMod[modId] ?? 0,
       wave1: WAVE1.status(modId),
       privateUnknown: false,
-      publicEvidence: `installed gem ${gemDir} under ${GEM_DIR}; ${license}`,
+      publicEvidence: `installed gem ${gemDir} under $GEM_HOME/gems; ${license}`,
     });
   }
 

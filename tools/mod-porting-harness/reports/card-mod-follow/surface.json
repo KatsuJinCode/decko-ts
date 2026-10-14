@@ -1,7 +1,7 @@
 {
   "modId": "card-mod-follow",
   "gemName": "card-mod-follow-0.20.0",
-  "gemPath": "C:\\Ruby33-x64\\lib\\ruby\\gems\\3.3.0\\gems\\card-mod-follow-0.20.0",
+  "gemPath": "$GEM_HOME/gems/card-mod-follow-0.20.0",
   "setFiles": [
     {
       "file": "set/abstract/follow_option.rb",
@@ -739,18 +739,18 @@
       "source": "card-mod-follow-0.20.0/data/test/rules.yml"
     },
     {
-      "id": "seed:Jonas",
+      "id": "seed:John",
       "kind": "seed",
-      "name": "Jonas",
+      "name": "John",
       "codename": null,
       "type": ":user",
       "contentSha": null,
       "source": "card-mod-follow-0.20.0/data/test/users.yml"
     },
     {
-      "id": "seed:Tova",
+      "id": "seed:Sara",
       "kind": "seed",
-      "name": "Tova",
+      "name": "Sara",
       "codename": null,
       "type": ":user",
       "contentSha": null,
@@ -910,18 +910,18 @@
       "source": "card-mod-follow-0.20.0/data/test.yml"
     },
     {
-      "id": "seed:Tova Following",
+      "id": "seed:Sara Following",
       "kind": "seed",
-      "name": "Tova Following",
+      "name": "Sara Following",
       "codename": null,
       "type": null,
       "contentSha": null,
       "source": "card-mod-follow-0.20.0/data/test.yml"
     },
     {
-      "id": "seed:Jonas Following",
+      "id": "seed:John Following",
       "kind": "seed",
-      "name": "Jonas Following",
+      "name": "John Following",
       "codename": null,
       "type": null,
       "contentSha": null,
@@ -1260,7 +1260,7 @@
       "file": "data/test/rules.yml"
     },
     {
-      "name": "Jonas",
+      "name": "John",
       "codename": null,
       "type": ":user",
       "content": null,
@@ -1268,7 +1268,7 @@
       "file": "data/test/users.yml"
     },
     {
-      "name": "Tova",
+      "name": "Sara",
       "codename": null,
       "type": ":user",
       "content": null,
@@ -1410,7 +1410,7 @@
       "file": "data/test.yml"
     },
     {
-      "name": "Tova Following",
+      "name": "Sara Following",
       "codename": null,
       "type": null,
       "content": null,
@@ -1418,7 +1418,7 @@
       "file": "data/test.yml"
     },
     {
-      "name": "Jonas Following",
+      "name": "John Following",
       "codename": null,
       "type": null,
       "content": null,
