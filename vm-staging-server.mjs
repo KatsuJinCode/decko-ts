@@ -38,8 +38,9 @@
 //        ?card[trigger]=     (set/right/account/views.rb:34-38 token_url;
 //        reset_password|     Ruby consumes it via engine_routes' explicit
 //        verify_and_activate GET alternative into card#update) — the JWT
-//        &token=<jwt>        authenticator + trigger event; 302 to the
-//                            +account edit view on success. Scoped to
+//        &token=<jwt>        authenticator + trigger event; 303 to the
+//                            +account edit view's PATH address
+//                            (/<url_key>/edit) on success. Scoped to
 //                            exactly this trigger+token shape; every other
 //                            GET stays read-only (write-routes' posture).
 //   POST /_account-password -> the +account edit form
@@ -735,8 +736,9 @@ async function handleResetRequest(req) {
  *  falls through (the write-routes module's no-GET-writes posture stands
  *  for everything outside these two trigger-gated flows).
  *
- *  Response mapping: success 302 (reset -> /<urlkey>?view=edit, the +account
- *  edit form; verify -> the card) WITH the session cookie — Ruby's
+ *  Response mapping: success 303 (reset -> /<urlkey>/edit, the +account
+ *  edit form at Ruby's PATH address; verify -> the card) WITH the session
+ *  cookie — Ruby's
  *  Auth.signin (current.rb:35-41) binds the session of the browser that
  *  clicked the link, and the edit form it lands on submits as that member;
  *  token_invalid 403 (PermissionDenied), account_not_found 404 (NotFound),
@@ -753,12 +755,12 @@ function parseAccountFlowLink(pathname, searchParams) {
   return { accountMark: decodeURIComponent(match[1]), trigger, token };
 }
 
-async function handleAccountFlowLink(flow) {
+async function handleAccountFlowLink(flow, req) {
   if (flow.trigger === "reset_password") {
     const outcome = await confirmPasswordReset(accountFlowCtx(), flow.accountMark, flow.token);
     if (outcome.ok) {
       return withSessionCookie(
-        redirect(outcome.redirectTo.name, outcome.redirectTo.view),
+        successRedirect(outcome.redirectTo.name, outcome.redirectTo.view, req),
         outcome.session.token,
       );
     }
@@ -766,7 +768,10 @@ async function handleAccountFlowLink(flow) {
   }
   const outcome = await confirmAccountVerification(accountFlowCtx(), flow.accountMark, flow.token);
   if (outcome.ok) {
-    return withSessionCookie(redirect(outcome.redirectTo.name, undefined), outcome.session.token);
+    return withSessionCookie(
+      successRedirect(outcome.redirectTo.name, undefined, req),
+      outcome.session.token,
+    );
   }
   return accountFlowErrorResponse(outcome, flow.accountMark);
 }
@@ -1116,9 +1121,29 @@ function ensureBootValuesOrigin() {
   return typeof configured === "string" && configured !== "" ? configured : "http://127.0.0.1";
 }
 
-function redirect(name, view) {
-  const target = `/${encodeURIComponent(name.replace(/ /g, "_"))}${view ? `?view=${view}` : ""}`;
-  return { status: 302, headers: { Location: target, "Cache-Control": "no-store" }, body: "" };
+/** The success redirect of a link-consumption CUD (Ruby's
+ *  card_controller/response.rb:29-33 `redirect_cud_success`):
+ *  `hard_redirect success.to_url, 303`.
+ *
+ *  The address is Success#to_url (card/lib/card/env/success.rb:23-25):
+ *  `target.format.path(params)` over the success args the event pushed, so
+ *  for `success << {id: name, view: :edit}`
+ *  (mod/account/set/right/account/events.rb:100-104) it is
+ *  Card::Path#path(view: :edit) on the account card — and Ruby's Path
+ *  answers the PATH form, not the query form
+ *  (mod/format/lib/card/path.rb:37-45 `base`: a mark AND a view render
+ *  "#{mark}/#{view}"; `view` is `opts.delete`d at :60-62, so it never
+ *  also lands in the query). Hence "/Mira_Member+*account/edit".
+ *
+ *  Absolute, as hard_redirect's card_url (response.rb:38-41) makes it:
+ *  origin + card_path(relative_path) (mod/format/set/all/path.rb:66-70,
+ *  the HTML format's contextualize_path). */
+function successRedirect(name, view, req) {
+  const host = String(req?.headers?.host ?? "").trim();
+  const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
+  const mark = encodeURIComponent(name.replace(/ /g, "_"));
+  const target = `${origin}/${mark}${view ? `/${view}` : ""}`;
+  return { status: 303, headers: { Location: target, "Cache-Control": "no-store" }, body: "" };
 }
 
 /** POST /_account-password — the +account edit form submit's staging
@@ -3816,7 +3841,7 @@ const server = http.createServer(async (req, res) => {
       // shape — trigger param present AND a token — so no other GET is a
       // write (write-routes' no-GET-writes posture stands everywhere else).
       req.resume(); // drain any verb-explicit POST body; params ride the query
-      response = await handleAccountFlowLink(flowLink);
+      response = await handleAccountFlowLink(flowLink, req);
       if (response.status >= 200 && response.status < 400) {
         expireFlowWrittenName(flowLink.accountMark);
       }

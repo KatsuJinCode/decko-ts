@@ -8,8 +8,9 @@
 //     -> the captured envelope; the reset link extracted from its bytes
 //   GET  <resetUrl>       (the EXACT link from the email — /update/<mark>?
 //        card[trigger]=reset_password&token=<jwt>)
-//     -> 302 to the +account edit view + the session cookie (the browser
-//        that clicked is signed in, Ruby's Auth.signin parity)
+//     -> 303 to the +account edit view's PATH address (/<url_key>/edit)
+//        + the session cookie (the browser that clicked is signed in,
+//        Ruby's Auth.signin parity)
 //   POST /_account-password {password} with that cookie
 //     -> the +*password validate/store events; the digest lands
 //   POST /_signin {identifier, password}
@@ -198,13 +199,18 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
 
     // 3. CONFIRM: the member clicks the EXACT link (GET; redirects manual).
     const confirmResponse = await fetch(linkLine, { redirect: "manual" });
-    expect(confirmResponse.status, await confirmResponse.text()).toBe(302);
+    expect(confirmResponse.status, await confirmResponse.text()).toBe(303);
     const location = confirmResponse.headers.get("location") ?? "";
     expect(decodeURIComponent(location)).toContain(fixture.accountMark);
     // Ruby's success redirect for `success << {id: name, view: :edit}`
-    // (account-verify-reset-flows events.rb:102) is the card's EDIT ACTION
-    // path (/Mira_Member+*account/edit), not the ?view= query form — the
-    // recorded oracle journey pins the /edit address on the reset link page.
+    // (card-mod-account-0.20.0 set/right/account/events.rb:100-104) is
+    // Success#to_url -> Card::Path#path(view: :edit) on the account card,
+    // and Card::Path answers the PATH form: a mark AND a view render
+    // "#{mark}/#{view}" (mod/format/lib/card/path.rb:37-45, the view is
+    // deleted from the opts at :60-62 so it never also lands in the query).
+    // So the browser lands on /Mira_Member+*account/edit, not on a
+    // ?view=edit address. The status is Ruby's CUD hard redirect, 303
+    // (decko/lib/card_controller/response.rb:29-33).
     expect(decodeURIComponent(location).endsWith("/edit")).toBe(true);
     const setCookie = confirmResponse.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("decko_ts_session=");
