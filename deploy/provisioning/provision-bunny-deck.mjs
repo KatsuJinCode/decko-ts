@@ -382,6 +382,8 @@ export function buildSteps(payload, { sourcePath, writePathAllowed }) {
     ` --creds <generated> (chunked /v2/pipeline writes, engine-derived keys, post-import verification)`);
   push("complete the engine schema", true, () =>
     `POST /v2/pipeline with the rest of those migrations: the data-version triggers and stamp row the render path requires (applied after the seed so the triggers do not fire once per seeded row)`);
+  push("make the deck readable (catch-all read rule)", true, () =>
+    `POST /v2/pipeline: report the deck's own *all+*read rule (an imported Ruby deck carries its own and nothing is written); when the deck has none — a source without it, or a row truncated away by the seed's LIMIT — install the stock substrate's (Set-typed *all + the 'read' setting + the Anyone party + the rule + its reference). A deck with no catch-all read rule denies every card, as Ruby does (permissions.rb:139-146), and would answer every anonymous visitor a denial`);
   push("build the engine bundle", true, () =>
     `node tools/bundle-bunny-edge-engine.mjs -> deploy/dist/bunny-edge-engine.code.json (sha256 recorded in the result sidecar)`);
   push(`create edge script "${b.script_name}" + linked pull zone "${b.pull_zone_name}"`, true, () =>
@@ -471,6 +473,102 @@ export async function applySqlStatements(pipelineUrl, dbToken, statements) {
   return { applied, skippedNoTable };
 }
 
+/** The structural shape of the catch-all read rule, as the permission
+ *  statements read it (src/card/permissions/read-rules.ts,
+ *  readPermissionStatements): a rule card whose right side is the card with
+ *  codename 'read' and whose left side is Set-typed. Returns null when the
+ *  deck carries none. Read-only. */
+const CATCH_ALL_RULE_QUERY = `SELECT r.id AS ruleId FROM cards r JOIN cards sets ON r.left_id = sets.id WHERE r.trash = 0 AND sets.trash = 0 AND r.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) ORDER BY r.id LIMIT 1`;
+const CATCH_ALL_PARTIES_QUERY = `SELECT c.name AS party FROM card_references refs JOIN cards c ON c.id = refs.referee_id WHERE refs.referer_id = ? AND c.trash = 0 ORDER BY c.id`;
+const CATCH_ALL_CARD_NAME_QUERY = `SELECT c.name AS name FROM cards c WHERE c.trash = 0 AND (c.name = 'Anyone' OR c.codename = 'anyone') ORDER BY c.id LIMIT 1`;
+
+/** Every real Ruby deck bootstraps `*all+*read` -> [[Anyone]] (card/auth/setup.rb:44;
+ *  mod/core data/fixtures/real/cards.yml cards_010) and Ruby's ok_to_read?
+ *  (card-mod-permissions set/all/permissions.rb:139-146) denies a deck that
+ *  does not: permission_rule_id :read resolves to nil and
+ *  Auth.as_card.read_rules_hash[nil] is nil, so every card answers
+ *  "Sorry, you don't have permission (read)".
+ *
+ *  An IMPORTED deck carries its own rule and its ids, and re-seeding it would
+ *  collide, so the rule is only checked and only installed when the deck has
+ *  none. The rows below are the demo substrate's, verbatim from
+ *  deploy/migrations/0004 (types and codenames) + 0006 (the roles) + 0009
+ *  (the rule and its party): every INSERT is guarded on the same unique
+ *  column the demo migrations guard (codename, key, or the side pair), so the
+ *  step is idempotent on a deck that grew the cards between the check and
+ *  the insert. */
+const READ_SUBSTRATE_STATEMENTS = [
+  // the Set type card (codename 'set' = the deck's SetID)
+  `INSERT OR IGNORE INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   SELECT 4103, 'Set', 'set', 'set', NULL, NULL, NULL, datetime('now'), datetime('now'), 1, 1, NULL, NULL, NULL, 0, 1, NULL
+    WHERE NOT EXISTS (SELECT 1 FROM cards WHERE codename = 'set')`,
+  // the *all set card (the rule's left side), typed Set
+  `INSERT OR IGNORE INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   SELECT 4105, '*all', '*all', 'all', NULL, NULL, NULL, datetime('now'), datetime('now'), 1, 1, NULL, NULL, NULL, 0, 4103, NULL
+    WHERE NOT EXISTS (SELECT 1 FROM cards WHERE codename = 'all')`,
+  // the *read setting card (the rule's right side)
+  `INSERT OR IGNORE INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   SELECT 4101, '*read', '*read', 'read', NULL, NULL, NULL, datetime('now'), datetime('now'), 1, 1, NULL, NULL, NULL, 0, 1, NULL
+    WHERE NOT EXISTS (SELECT 1 FROM cards WHERE codename = 'read')`,
+  // the Anyone party card (codename 'anyone')
+  `INSERT OR IGNORE INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   SELECT 4210, 'Anyone', 'anyone', 'anyone', NULL, NULL, NULL, datetime('now'), datetime('now'), 1, 1, NULL, NULL, NULL, 0, 1, NULL
+    WHERE NOT EXISTS (SELECT 1 FROM cards WHERE codename = 'anyone')`,
+  // *all+*read, the catch-all rule (a junction: sides only, NULL name/key)
+  `INSERT OR IGNORE INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   SELECT 4303, NULL, NULL, NULL, 4105, 4101, NULL, datetime('now'), datetime('now'), 1, 1, NULL, NULL, NULL, 0, 4105, 'Anyone'
+    WHERE NOT EXISTS (SELECT 1 FROM cards WHERE left_id = 4105 AND right_id = 4101)`,
+  // the rule's party: the reference that puts it in read_rules_hash (Ruby
+  // reads the reference graph, not the rule text)
+  `INSERT OR IGNORE INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+   SELECT 4303, '', 4210, 'L', 1
+    WHERE NOT EXISTS (SELECT 1 FROM card_references WHERE referer_id = 4303 AND referee_id = 4210)`,
+];
+
+/** Make the provisioned deck READABLE to an anonymous visitor: report the
+ *  deck's own catch-all read rule, or install the demo substrate's when it
+ *  has none. Returns { installed: false, ruleId, parties } for a deck that
+ *  already carries one. */
+export async function ensureCatchAllReadRule(pipelineUrl, dbToken) {
+  const query = async (sql, params) => {
+    const res = await fetch(pipelineUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${dbToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql, args: params } }, { type: "close" }] }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    const text = await res.text().catch(() => "");
+    let json = null;
+    try { json = JSON.parse(text); } catch { /* error below */ }
+    const entry = json?.results?.[0];
+    if (!entry || entry.type === "error" || entry.error) {
+      throw new Error(`read-rule query failed: ${entry?.error?.message ?? text.slice(0, 200)}`);
+    }
+    // Hrana pipeline entry: { type: "ok", response: { type: "execute", result: { rows } } }
+    // ("response" is the alias several drafts use; the Bunny driver decodes
+    // both — src/card/drivers/bunny-db.ts decodeStreamResult).
+    const rows = entry.response?.result?.rows ?? entry.result?.rows ?? [];
+    return rows.map((row) => {
+      const cols = entry.response?.result?.cols ?? entry.result?.cols ?? [];
+      const out = {};
+      cols.forEach((c, i) => { out[c.name] = row[i]; });
+      return out;
+    });
+  };
+  const existing = await query(CATCH_ALL_RULE_QUERY, []);
+  if (existing.length > 0) {
+    const ruleId = existing[0].ruleId;
+    const parties = (await query(CATCH_ALL_PARTIES_QUERY, [ruleId])).map((row) => row.party);
+    return { installed: false, ruleId, parties };
+  }
+  await applySqlStatements(pipelineUrl, dbToken, READ_SUBSTRATE_STATEMENTS);
+  const installed = await query(CATCH_ALL_RULE_QUERY, []);
+  if (installed.length === 0) throw new Error("catch-all read rule: installed but the permission statements cannot see it (Set-typed *all and the 'read' setting are required)");
+  const ruleId = installed[0].ruleId;
+  const parties = (await query(CATCH_ALL_PARTIES_QUERY, [ruleId])).map((row) => row.party);
+  return { installed: true, ruleId, parties };
+}
+
 /** The source tables the seed copies: those the provisioned schema has,
  *  minus the session table (sessions never travel; a moved deck signs in
  *  afresh). Returns the rest as skipped, for the log. */
@@ -530,7 +628,17 @@ export async function provisionDatabase({ dbUrl, dbToken, sourcePath, deck, repo
 
   const post = await applySqlStatements(pipelineUrl, dbToken, plan.postSeed);
   log(`engine schema completed after the seed: ${post.applied} statements (data-version triggers and stamp row)`);
-  return { migrations: plan.files, preSeedStatements: pre.applied, postSeedStatements: post.applied, seedTables: seedTables.tables };
+  const readRule = await ensureCatchAllReadRule(pipelineUrl, dbToken);
+  log(readRule.installed
+    ? `catch-all read rule installed: the deck carried none, and one without it denies every card (permissions.rb:139-146)`
+    : `catch-all read rule already present (rule card ${readRule.ruleId}, granting ${readRule.parties.join(", ")}) — the deck's own, carried by the import`);
+  return {
+    migrations: plan.files,
+    preSeedStatements: pre.applied,
+    postSeedStatements: post.applied,
+    seedTables: seedTables.tables,
+    readRule,
+  };
 }
 
 /** Fail-fast source check BEFORE any account write. The engine's substrate

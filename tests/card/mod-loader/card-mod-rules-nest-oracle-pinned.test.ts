@@ -121,13 +121,25 @@ beforeAll(async () => {
 
   await seedCard(s, { id: 7, name: "*all", codename: "all", typeId: 5 });
   await seedCard(s, { id: 6, name: "Role", codename: "role" });
+  await seedCard(s, { id: 8, name: "*anyone", codename: "anyone", typeId: 3 });
+  // The role cards come AFTER the *anyone party card: the stock substrate's
+  // read substrate puts the stock Anyone (id BOOTSTRAP...anyone) in the
+  // catch-all rule's card_references row, and the shared seed seam
+  // repoints that referee onto the first card that takes the stock Anyone
+  // over (render-test-storage.ts releaseStockCard matches on the card's
+  // NAME key too, so a role card named "Anyone" displaces it as well). The
+  // role card "Anyone" must not be that one — it is a different card from
+  // the `*anyone` party (the codename card the anonymous viewer resolves
+  // through) and the rule's grant has to land on the party. Seeded after,
+  // the stock Anyone is already displaced and repointed to id 8, so the role
+  // card is just another card of the deck, as it is in Ruby (where the
+  // Anyone ROLE card is a distinct card from the *anyone party pointer).
   const ROLE_CARDS = [
     "Administrator", "Anyone", "Anyone Signed In", "Eagle", "Help Desk", "Shark",
   ] as const;
   for (const [i, role] of ROLE_CARDS.entries()) {
     await seedCard(s, { id: 201 + i, name: role, typeId: 6 });
   }
-  await seedCard(s, { id: 8, name: "*anyone", codename: "anyone", typeId: 3 });
   await seedCard(s, { id: 9, name: "*anyone signed in", codename: "anyone_signed_in", typeId: 3 });
   await seedCard(s, { id: 14, name: "*anonymous", codename: "anonymous", typeId: 3 });
   await seedCard(s, { id: 15, name: "Cards with accounts", codename: "cards_with_account" });

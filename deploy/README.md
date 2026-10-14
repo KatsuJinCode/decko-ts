@@ -26,7 +26,7 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `migrations/0009-demo-account-read-rules.sql` | the account read rules: the `*all+*read` catch-all (granting Anyone) plus the five `<field>+*right+*read` grants real.yml gives the Help Desk role. Without them the demo deck has accounts and no read rule at all, which is the deck Ruby denies in full — `permission_rule_id :read` resolves to nil and `read_rules_hash[nil]` denies (`mod/permissions/set/all/permissions.rb:139-146`), so the deck renders nothing. **Applies after 0006** — every row is a `card_references` entry whose referee is the Help Desk role card, and applied earlier those references would name a referee that does not exist. Idempotent. Generated |
 | `seed-account-read-rules.mjs` | regenerates `migrations/0009-demo-account-read-rules.sql` |
 | `seed.mjs` | regenerates `seed/seed.sql` (synthetic demo deck) |
-| `seed/seed.sql` | 15 synthetic cards, < 10 KB (generated) |
+| `seed/seed.sql` | 15 synthetic content cards plus the stock read substrate (`*all+*read` -> Anyone), < 15 KB (generated) |
 | `launch.mjs` | earlier one-command orchestrator, superseded by `scripts/deploy/one-click-deck/`; dry-run/`--local` only, carries no write-budget gate of its own |
 | `cleanup.mjs` | deletes the Worker + D1 database (`--yes` to execute) |
 | `wrangler.scale.toml` | the separate scale-test Worker + D1 binding (`decko-ts-scale-test`); carries a placeholder `database_id` |
@@ -62,8 +62,10 @@ databases.
 ### Which chain is which (they are NOT interchangeable)
 
 This directory's own step list below applies `migrations/0001` +
-`migrations/0002` + `seed/seed.sql` — the 15-card DEV deck, whose ids are
-1..5, 10..18, 20. The one-click Deploy button applies the ROOT
+`migrations/0002` + `seed/seed.sql` — the DEV deck, whose content ids are
+1..5, 10..18, 20 plus the stock read substrate (`*all`, `*read`, `Set`,
+`Setting`, `Role`, `Anyone`, `Anonymous`, `*all+*read` at ids 6..8, 25..28,
+30; see `seed.mjs`). The one-click Deploy button applies the ROOT
 `wrangler.toml` chain instead: `migrations/0001` + `0002` + `0003` + `0004`,
 the 4-card deck plus the account substrate. The two seed files occupy the SAME
 ids, so never apply both to one database. `0004`'s own ids start at 1101 so it
@@ -168,7 +170,7 @@ node deploy/seed.mjs              # after editing the demo deck definition
 ```
 
 `seed.mjs` carries a self-imposed size tripwire: it exits non-zero if the
-generated `seed/seed.sql` reaches 1 MB (currently 8,346 bytes). That 1 MB
+generated `seed/seed.sql` reaches 1 MB (currently 13,013 bytes). That 1 MB
 is this repo's own demo-deck budget, not a platform limit — the D1 free
 plan allows far more per database. `sync-migrations.mjs` has no size check
 and no error handling at all: it copies `db/schema.sqlite.sql` (minus
