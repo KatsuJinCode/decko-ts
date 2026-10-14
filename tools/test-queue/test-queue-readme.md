@@ -54,7 +54,7 @@ node tools/test-queue/submit-test-job.mjs \
 node tools/test-queue/submit-test-job.mjs \
   --name "env-gated probe" \
   --cwd REPO_ROOT/decko-ts \
-  --cmd "npx vitest run tests/some-probe.test.ts" \
+  --cmd "npx vitest run tests/card/fetch/cache.test.ts" \
   --env MY_PROBE=1 --env OTHER_SETTING=abc
 ```
 

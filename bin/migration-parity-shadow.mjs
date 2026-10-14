@@ -46,8 +46,7 @@
 //     replay harness grades. Remaining limits are named in the report's
 //     `limitations` array.
 //
-// Docs:  (shadow section). Plan:
-// deliverables/migration-parity-tool-PLAN.md (stage table, honest gaps).
+// Docs:  (shadow section). Plan: the stage table and honest gaps are not part of the public package.
 
 import { spawn, spawnSync } from "node:child_process";
 import {

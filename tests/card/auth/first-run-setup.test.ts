@@ -2,7 +2,7 @@
 // src/server/first-run-routes.ts): the create-owner happy path, the
 // window-closed path, and the disabled-by-default path.
 //
-//   prototype/lib/card/auth/setup.rb:33-52      the census
+//   card 1.110.0 lib/card/auth/setup.rb:33-52      the census
 //   the create-side abort (the User type's setup hook)
 //   the account card shape (the account mod's seed)
 //   the email/password/salt field events

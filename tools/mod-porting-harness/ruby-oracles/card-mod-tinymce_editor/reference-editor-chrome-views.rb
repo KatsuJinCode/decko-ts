@@ -827,7 +827,7 @@ emit(behaviorId: "view:nest_editor",
      gemSource: "set/all/reference_editor/nest_editor.rb:10-16 + reference_editor.haml + _nest_editor.haml + nest_editor_tabs.rb + nest_editor_options.rb (verbatim gem methods + templates under real Haml 5.2.2 + real ActionView 7.2.4 + real cardname; blank-name arms render the placeholders, no nest seam)",
      paramsSeam: "tm_snippet_raw ABSENT -> NestParser.new nil -> the default Nest struct (name '', field? true, options [], raw '{{+ }}'); tinymce_id ABSENT -> data-tinymce-id dropped by the tag renderer",
      bytes: body1,
-     liveCrossCheck: "substring-verified against fixtures/captured/tinymce-editor-views.json rendered['#{PROBE_CARD_NAME}#nest_editor'] (#{LIVE.fetch('nest_editor').length} bytes; the fixture carries the no-write proof, card_actions 4929 unchanged)")
+     liveCrossCheck: "substring-verified against the captured tinymce-editor-views oracle, not in the public package rendered['#{PROBE_CARD_NAME}#nest_editor'] (#{LIVE.fetch('nest_editor').length} bytes; the fixture carries the no-write proof, card_actions 4929 unchanged)")
 
 # ============================================================================
 # SCENARIO 2: view :nest_editor, SEEDED-params arm (the named params seam)

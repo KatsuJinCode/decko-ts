@@ -1,7 +1,7 @@
 // typescript-source-loader.mjs -- support for the direct grade runner.
 //
 // WHAT THIS IS
-//   The measuring instrument (tools/oracle/verify-dual-lane.test.ts) is a
+//   The measuring instrument (the verify-dual-lane suite (not in the public package)) is a
 //   vitest spec, and vitest is what currently supplies the two things the
 //   engine source needs to run at all:
 //

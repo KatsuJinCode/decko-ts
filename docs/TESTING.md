@@ -118,7 +118,7 @@ To run the full parity replay you need, outside the repository:
 |---|---|---|
 | The corpus sqlite | `$DECKO_TS_CORPUS_V2`, or `fixtures/corpus/` by default | absent; the replay suites are excluded |
 | Captured shards | beside it, `shard-000000.jsonl`, `shard-000014.jsonl` | absent |
-| The email oracle bytes | `fixtures/captured/email-templates-raw-oracle.json` | absent; `fixtures/captured/` is excluded |
+| The email oracle bytes | the captured email templates oracle (not redistributed) | absent; the captured fixtures are excluded |
 
 Point the engine at them with environment variables:
 

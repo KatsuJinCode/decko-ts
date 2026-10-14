@@ -22,7 +22,7 @@
 //   2. The csv / rss / json format families, rendered through the engine and
 //      byte-compared with the committed Ruby captures in
 //      fixtures/oracle-surfaces/. Pattern-matched on
-//      tests/card/render/format-families-oracle.test.ts, which pins the same
+//      the format-families-oracle suite (not in the public package), which pins the same
 //      four captures.
 //
 // WHAT THE FORMAT CASE COMPARES, precisely. Twelve captures across the four

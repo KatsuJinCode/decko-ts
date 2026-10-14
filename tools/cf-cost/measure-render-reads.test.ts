@@ -6,7 +6,7 @@
 // Run:  npx vitest run tools/cf-cost/measure-render-reads.test.ts
 //
 // WHAT IT DOES — boots the REAL engine over the Cloudflare targeted deck
-// exactly like benchmarks/cf-scale/verify-targeted-deck.test.ts
+// exactly like the verify-targeted-deck suite (not in the public package)
 // (LocalSqliteDriver -> splitSqlStatements(db/schema.sqlite.sql) ->
 // deploy/cf-scale-deck/seed.sql -> FetchEngine -> RenderEngine), in THREE
 // phases on separate scratch databases:

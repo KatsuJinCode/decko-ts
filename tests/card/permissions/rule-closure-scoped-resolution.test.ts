@@ -21,7 +21,7 @@
 // whole-deck 19,474 rows / 1,074,532 response bytes / 3,789 ms against
 // rule-closure 1,489 rows / 84,379 bytes / 384 ms, agreeing on all 1,489
 // rule-shaped keys. The measurement is
-// benchmarks/cold-render/probe-rule-closure-statement-shapes.ts; the
+// probe-rule-closure-statement-shapes.ts (not in the public package); the
 // fixture deck here is the same contract at test scale.
 //
 // The write path deliberately keeps the whole-deck walk — set-read-rule.ts's

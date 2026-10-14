@@ -9,7 +9,7 @@
 //   baskets all/trash.rb:1-6 + self/admin.rb:1-14 initialize. The
 //   INSERTION ORDER is load order (the set loader walks set/all before
 //   set/self, path-sorted) and was verified against the live oracle deck
-//   (probe: tests/card/mod-loader/oracle-probe-core-admin-facts.rb,
+//   (probe: oracle-probe-core-admin-facts.rb (not in the public package),
 //   "basket_task_keys_in_order": [empty_trash, clear_cache,
 //   regenerate_assets, ...] — the fourth, delete_upload_tmp_files, is
 //   card-mod-carrierwave's own contribution, not this mod's).

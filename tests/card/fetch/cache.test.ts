@@ -1,6 +1,6 @@
 // Unit tests for the two-level fetch cache
-// (src/card/fetch/cache.ts, mirroring prototype/lib/card/cache.rb,
-// prototype/lib/card/cache/temporary.rb, prototype/lib/card/cache/shared.rb).
+// (src/card/fetch/cache.ts, mirroring card 1.110.0 lib/card/cache.rb,
+// card 1.110.0 lib/card/cache/temporary.rb, card 1.110.0 lib/card/cache/shared.rb).
 
 import { describe, expect, it } from "vitest";
 import {

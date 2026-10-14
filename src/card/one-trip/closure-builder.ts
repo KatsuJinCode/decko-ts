@@ -8,8 +8,7 @@
 //
 // This is the MediaWiki LinksUpdate shape (research verdict §1.7): the
 // graph becomes data once, computed at write time, so reads never
-// re-discover it. The algorithm is language-neutral (see
-// deliverables/one-trip-PORTABILITY.md); the engine-specific bits sit
+// re-discover it. The algorithm is language-neutral; the engine-specific bits sit
 // behind the seams named in types.ts (edge derivation, rule candidate
 // enumeration, search execution).
 //

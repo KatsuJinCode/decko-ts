@@ -12,7 +12,7 @@
 // ordinary write through mark interpretation (`when initial_setup? ...
 // prepare_setup_card!`). The equivalent here is routing order: under
 // first-run conditions the write branch YIELDS /setup to the first-run
-// surface, whose census (needs_setup?, prototype/lib/card/auth/setup.rb) is
+// surface, whose census (needs_setup?, card 1.110.0 lib/card/auth/setup.rb) is
 // the security boundary — an existing deck never becomes setuptable.
 //
 // Fresh-deck fixture: db/schema.sqlite.sql applied to an empty sqlite file

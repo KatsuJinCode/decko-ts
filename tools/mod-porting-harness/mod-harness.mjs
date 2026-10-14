@@ -170,7 +170,7 @@ const NAMED_REMAINDERS = {
     // the non-html formats - deploy/worker.ts:709-734 routes
     // GET /<card>.json, .csv and .rss into format-families'
     // renderFormatShow (src/card/render/format-families.ts:574), and
-    // tests/card/render/format-families-oracle.test.ts byte-compares that
+    // the format-families-oracle suite (not in the public package) byte-compares that
     // render against the Ruby oracle fixtures
     // (fixtures/oracle-surfaces/{csv,rss,rss-enabled,json}.jsonl). The
     // remainder is PER-VIEW REACHABILITY: renderFormatShow takes NO
@@ -218,11 +218,11 @@ const NAMED_REMAINDERS = {
     // WELCOME_EMAIL_TEMPLATE constants read from the gem's data/real.yml
     // at src/card/auth/account-verify-reset-flows.ts:253-306 - and their
     // DELIVERED bytes are compared against real Ruby ActionMailer output
-    // recorded by tools/oracle/mail_oracles_capture.rb:
-    // tests/card/notify/six-mail-oracles.test.ts byte-compares the envelope
+    // recorded by mail_oracles_capture.rb (not in the public package):
+    // the six-mail-oracles suite (not in the public package) byte-compares the envelope
     // {to, from, subject, text_body, html_body} for
     // signup_verification_email, password_reset_email and welcome_email
-    // against fixtures/captured/six-oracle-mails.json (all six green).
+    // against the captured six-oracle-mails, not in the public package (all six green).
     // The remainder is the registration shape, not the bytes: the
     // loop-declared view has no manifest registration to find - the
     // templates are compiled-in constants, not a view surface the
@@ -279,7 +279,7 @@ const WAVE1 = {
       {
         view: "board_act",
         source: "set/all/history_board.rb:18-26",
-        oracle: "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against fixtures/captured/board-views.json)",
+        oracle: "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against the captured board-views oracle, not in the public package)",
         status: "ported, verify GREEN (harness capture + probe)",
       },
     ],
@@ -391,7 +391,7 @@ const WAVE1 = {
       {
         view: "nest_editor",
         source: "set/all/reference_editor/nest_editor.rb:10-16",
-        oracle: "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured fixture fixtures/captured/tinymce-editor-views.json, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+        oracle: "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured tinymce-editor-views oracle, not in the public package, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
         status: "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)",
       },
       {

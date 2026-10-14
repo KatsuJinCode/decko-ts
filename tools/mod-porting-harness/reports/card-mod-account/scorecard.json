@@ -13,7 +13,7 @@
   },
   "probeSuite": {
     "files": [
-      "tests/card/mod-loader/card-mod-account-harness-probe.test.ts",
+      "the card-mod-account-harness-probe suite (not in the public package)",
       "tests/card/mod-loader/card-mod-account.test.ts"
     ],
     "ran": true,

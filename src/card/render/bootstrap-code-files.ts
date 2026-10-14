@@ -24,7 +24,7 @@
 // The scss sources are vendored byte-identically from the
 // card-mod-bootstrap-0.20.0 gem into
 // fixtures/vendor/bootstrap-scss/ (sha256-pinned in
-// tests/card/render/bootstrap-code-file-pages.test.ts), and this module
+// the bootstrap-code-file-pages suite (not in the public package)), and this module
 // lives in the ENGINE LAYER on purpose: the grading verifier runs the bare
 // engine with NO mod loader and NO deck-boot registry binding, so the
 // accessor must be reachable without either (the same reason the signup
@@ -173,7 +173,7 @@ const BOOTSTRAP_CORE_FILES: readonly string[] = [
 
 /** OverrideCodeFile#content: the files joined with "\n". On a Node host the
  *  files come from the vendored tree; on an edge runtime, from the generated
- *  snapshot of the same tree (vendor/edge-asset-source-snapshot.js) — the
+ *  snapshot of the same tree (vendor/edge-bootstrap-scss-snapshot.js) — the
  *  skin assembly reads these cards on the write path. A file in neither
  *  place is an error, never a silent empty-string substitute.
  *

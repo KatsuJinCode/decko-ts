@@ -374,7 +374,7 @@ export class Voo {
    *  `voo.show :edit_type_row` first, then the edit_form METHOD runs
    *  `voo.hide :edit_type_row` - a no-op under first-write-wins, which is
    *  why the captured data-slot lists edit_type_row under "show"
-   *  (fixtures/captured/edit-forms.json). */
+   *  (the captured edit-forms oracle, not in the public package). */
   private vizWrite(views: string | string[], setting: "show" | "hide"): void {
     const list = Array.isArray(views) ? views : [views];
     for (const view of list) {
@@ -678,8 +678,8 @@ export interface RenderFormatOptions {
    *  the bare view surface keeps the development loud behavior. */
   nestQuietErrors?: boolean;
   /** maximum nest depth — Ruby Card.config.max_depth = 20
-   *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
-   *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
+   *  (card 1.110.0 lib/cardio/railtie.rb:17; monitor_depth,
+   *  card 1.110.0 lib/card/format/error.rb:32-38). An earlier revision carried
    *  decko's old 42 default; the vendored prototype pins 20 and the
    *  adversarial probe battery graded the divergence (self-inclusion,
    *  cycle-two, nest-of-cycle all 500 at the old guard where Ruby renders
@@ -711,7 +711,7 @@ export interface RenderFormatOptions {
   isViewLaneRoot?: boolean;
 }
 
-/** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
+/** Card.config.max_depth (card 1.110.0 lib/cardio/railtie.rb:17). */
 export const RUBY_MAX_DEPTH = 20;
 
 /** The UserError monitor_depth raises (card-1.110.0 format/error.rb:33-40)

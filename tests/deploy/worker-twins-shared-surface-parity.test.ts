@@ -12,7 +12,7 @@
 // src/server/worker-shared-surface.ts and both entries now delegate to
 // it. Each pin below failed against the pre-unification entries and pins
 // the unified behavior with its Ruby cite:
-//   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
+//   - card 1.110.0 lib/card/error.rb:21 Card::Error base status_code = 422
 //     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
 //   - src/card/render/format.ts:79-81 UnsupportedViewError = the UserError
 //     raise (render.rb#view_method)

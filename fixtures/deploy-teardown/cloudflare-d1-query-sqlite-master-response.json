@@ -1,5 +1,5 @@
 {
-  "_provenance": "POST /accounts/{account_id}/d1/database/{database_id}/query — shape from the Cloudflare API reference (D1 query), fetched 2026-10-01: `result` is an array of per-statement objects with `success`, `results` and `meta { rows_read, rows_written, ... }`. READ-ONLY IN USE: the teardown sends exactly one statement, `SELECT name, type FROM sqlite_master WHERE type IN ('table','index') ORDER BY type, name`, and isReadOnlySelect() rejects anything else. The 13 tables / 33 indexes below are the counts deploy/migrations/0001-schema.sql declares (docs/one-click-cf-deploy-inventory.md:23). Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "_provenance": "POST /accounts/{account_id}/d1/database/{database_id}/query — shape from the Cloudflare API reference (D1 query), fetched 2026-10-01: `result` is an array of per-statement objects with `success`, `results` and `meta { rows_read, rows_written, ... }`. READ-ONLY IN USE: the teardown sends exactly one statement, `SELECT name, type FROM sqlite_master WHERE type IN ('table','index') ORDER BY type, name`, and isReadOnlySelect() rejects anything else. The 13 tables / 33 indexes below are the counts deploy/migrations/0001-schema.sql declares. Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
   "success": true,
   "errors": [],
   "messages": [],

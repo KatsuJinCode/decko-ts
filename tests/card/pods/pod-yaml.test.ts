@@ -4,7 +4,7 @@
 //   tests/fixtures/pods/psych-stress.yml / .json — tools/persistence/psych-stress.rb:
 //     ~100 strings covering every quoting, escaping and wrapping rule, dumped
 //     by Psych 5.1.2 as pod-shaped hashes.
-//   tests/fixtures/pods/oracle-deck-after-probe.ruby.yml — a Ruby-sown deck
+//   the oracle deck pod — a Ruby-sown deck
 //     pod (674 cards) produced by `decko sow -c '{}'` plus the persistence
 //     op list, through
 //     tools/persistence/pod-sow.rb.
@@ -58,7 +58,7 @@ describe("pod YAML: Psych's bytes", () => {
   itOrSkipLoud(
     !existsSync(path.join(FIXTURES, "oracle-deck-after-probe.ruby.yml")),
     "tests/card/pods/pod-yaml.test.ts",
-    "tests/fixtures/pods/oracle-deck-after-probe.ruby.yml (a Ruby-sown deck pod; excluded from release packages)",
+    "the oracle deck pod (a Ruby-sown deck pod; excluded from release packages)",
   )("round-trips the oracle deck's pod byte for byte", () => {
     const text = read("oracle-deck-after-probe.ruby.yml");
     const loaded = loadYaml(text) as YamlMap[];

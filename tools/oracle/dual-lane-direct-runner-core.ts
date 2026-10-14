@@ -1,6 +1,6 @@
 // dual-lane-direct-runner-core.ts -- direct grade runner. The grading protocol,
 // ported from the
-// measuring instrument tools/oracle/verify-dual-lane.test.ts, with the vitest
+// measuring instrument the verify-dual-lane suite (not in the public package), with the vitest
 // shell replaced by a plain main().
 //
 // WHAT THIS IS, AND WHY IT EXISTS

@@ -23,7 +23,7 @@
 // approximation inlined wrong. Byte gates:
 // tests/card/render/code-highlighting/coderay-byte-identity.test.ts
 // + the bootstrap code-file page pins
-// (tests/card/render/bootstrap-code-file-pages.test.ts).
+// (the bootstrap-code-file-pages suite (not in the public package)).
 
 import { HtmlTokenEncoder } from "../encoder.js";
 

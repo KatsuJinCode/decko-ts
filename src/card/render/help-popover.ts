@@ -389,7 +389,7 @@ export class HelpRulesResolver implements HelpRulesApi {
   /** rule/all.rb:33-54 `rule?` = `standard_rule? || preference?`, ported
    *  clause for clause (the same clause set render.ts computeIsRuleSync
    *  implements; oracle-pinned by
-   *  tools/oracle/rule-preference-truth-table/truth-table.jsonl, which runs
+   *  truth-table.jsonl (not in the public package), which runs
    *  the gem's own verbatim all.rb lines over the corpus facts):
    *
    *  standard_rule? (all.rb:37-40): the right part's type is Setting and the
@@ -658,7 +658,7 @@ function rubyBlank(s: string): boolean {
  *  database, the two-arm form returned the identical 4,779-id closure in
  *  170 ms; mirrored locally, 60 s+ against 17.6 s, with the two-arm set
  *  matching an independent breadth-first walk id for id. See
- *  benchmarks/cold-render/probe-reached-rules-walk-wire.ts. */
+ *  probe-reached-rules-walk-wire.ts (not in the public package). */
 function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLStatement {
   const ruleJoin =
     "FROM cards rules\n" +

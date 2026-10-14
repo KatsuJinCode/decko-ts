@@ -12,7 +12,7 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | --- | --- |
 | `wrangler.toml` | Worker + D1 binding config (`main = worker.ts`) |
 | `worker.ts` | thin Workers HTTP entry over the engine (Web-standard only) |
-| `src/worker-metrics.ts` | per-request + isolate-aggregate metrics recorder; backs `GET /__metrics` and the `X-Render-Metrics` header |
+| `deploy/src/worker-metrics.ts` | per-request + isolate-aggregate metrics recorder; backs `GET /__metrics` and the `X-Render-Metrics` header |
 | `shims/node-crypto-shim.ts` | bundle-time replacement for the engine's one `node:crypto` import |
 | `sync-migrations.mjs` | regenerates `migrations/0001-schema.sql` from `db/schema.sqlite.sql` |
 | `migrations/0001-schema.sql` | the core schema, D1-ready (generated) |

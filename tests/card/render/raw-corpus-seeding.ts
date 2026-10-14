@@ -67,7 +67,7 @@ const REPO_ROOT = path.resolve(
 // RAW_CORPUS_DB stays an `export const` DECLARED HERE on purpose: the
 // corpus-replay runner loads this module and its load contract is pinned by
 // source shape in
-// tests/tools/graded-run-must-use-the-committed-corpus-seeding.test.ts
+// the graded-run-must-use-the-committed-corpus-seeding suite (not in the public package)
 // (`/export\s+const\s+RAW_CORPUS_DB/`). Rewriting it as a bare re-export list
 // keeps the same runtime export and breaks that pin -- which is what a first
 // attempt at this change did, and what the gate caught.
@@ -468,8 +468,8 @@ export async function createRawStructureSeededStorage(
   // customized-skin card holding a large compiled-CSS block the corpus
   // lacks). The override table carries those bytes, restored from the
   // reference captures, not hand-authored:
-  // tools/oracle/extract-raw-corpus-override-rows-from-captures.mjs
-  // re-derives them from the capture files, verifies every envelope equality,
+  // The extractor that re-derives them from the capture files (not in this tree)
+  // verifies every envelope equality,
   // and writes the table applied here — to the STAGED deck only, never to the
   // sha-pinned corpus file.
   //

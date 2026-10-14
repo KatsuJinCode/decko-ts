@@ -1,5 +1,5 @@
 // The sync-peek negative-materialization hazard: the Temporary cache's
-// max-keys reset (prototype/lib/card/cache/temporary.rb#within_key_counts,
+// max-keys reset (card 1.110.0 lib/card/cache/temporary.rb#within_key_counts,
 // default 10_000 keys) evicts warm L-<key> entries mid-render; a subsequent
 // SYNC peek (DbLexicon.peekId, documented cache-only, no db fallback) went
 // through CardCache.read - temp.fetch(key) { shared.read(key) } - which

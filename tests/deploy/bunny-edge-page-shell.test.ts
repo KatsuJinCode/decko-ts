@@ -15,7 +15,7 @@
 //     served HTML document carries. That is the regression guard: no deck's
 //     private identity can leak into a deployment that configured nothing.
 //   - CONFIGURED: a synthetic deck's deltas
-//     (fixtures/configured-deck-served-deltas.ts — the same shape a
+//     (tests/deploy/fixtures/configured-deck-served-deltas.ts — the same shape a
 //     deployment sets through the environment, per the runbook), which
 //     apply exactly and reproduce a configured deployment's served bytes.
 //

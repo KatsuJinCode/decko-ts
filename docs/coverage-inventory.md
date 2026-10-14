@@ -80,7 +80,7 @@ package does NOT measure, item 6.
   full breakdown and the failure families: [parity-method.md](parity-method.md),
   `tools/corpus-failure-classes/`.
 - **Miniature fixture** (not redistributed; `fixtures/captured/` is excluded
-  from the published package): `fixtures/captured/smoke.json` — a small seeded
+  from the published package): the captured smoke oracle — a small seeded
   deck with four rendered views per card. Its consuming suites are excluded
   with it, so a clean clone does not replay this one.
 - **Reference harness** (committed): `reference-harness/fixtures/synthetic-v1/`
@@ -99,8 +99,8 @@ package does NOT measure, item 6.
   because the 1 scenario `ask` step is graded as semantics too (see "Why two
   counts of the same fixture" above).
 - **CQL batteries** (not redistributed; `fixtures/captured/` is excluded
-  from the published package): `fixtures/captured/cql-basic.json` (11
-  canonical query shapes) and `fixtures/captured/cql-mysql-match.json` (the
+  from the published package): the captured cql-basic oracle (11
+  canonical query shapes) and the captured cql-mysql-match oracle (the
   `match` battery, 30 queries, captured against a MySQL-protocol server —
   see [decisions/0005](decisions/0005-cql-match-semantics.md)).
 

@@ -10,7 +10,7 @@
 # and a nil span means NO WRAPPER while "" means `<span style="">`. Both
 # outcomes are bytes, so the port has to reproduce them exactly - which is
 # what this dump pins. Writes one JSON file; the vitest gate
-# (tests/card/render/code-highlighting/html-scanner-span-fidelity.test.ts)
+# (the html-scanner-span-fidelity suite (not in the public package))
 # asserts the TS lookup against it.
 
 require "json"

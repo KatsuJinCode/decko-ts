@@ -15,7 +15,7 @@
 // backtracking is possible). These pins hold the two contracts:
 //
 // 1. SEMANTICS: byte-identical output to the recorded PRE-FIX battery
-//    (fixtures/scanjson-key-discrimination-edge-battery.json: escaped/
+//    (tests/card/render/code-highlighting/fixtures/scanjson-key-discrimination-edge-battery.json: escaped/
 //    unicode/line-terminator/dangling-backslash edge keys plus the
 //    pathological string-value class at feasible sizes (n<=12, including
 //    n=4/8/12 records of the exact shape the time pins below use) - the

@@ -822,7 +822,7 @@ const inputView: ViewFn = (ctx) => {
 // semantics would also drop it for loader-less consumers the moment any
 // loader booted). The byte-level coverage (assembly order, override
 // content) lives in
-// tests/card/render/bootstrap-code-file-pages.test.ts.
+// the bootstrap-code-file-pages suite (not in the public package).
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1161,7 +1161,7 @@ const cardModBootstrap: DeckoModManifest = {
     // has no ComponentKlass. The port registers the carousel view as
     // a direct emitter of the Ruby byte shape;
     // see card-mod-bootstrap.ts#carouselView and
-    // tests/card/mod-loader/card-mod-bootstrap.test.ts#:carousel.
+    // the card-mod-bootstrap suite (not in the public package)#:carousel.
     passiveSetModule("all/bootstrap/accordion"),
     {
       // card-mod-bootstrap-0.20.0/set/all/bootstrap/carousel.rb

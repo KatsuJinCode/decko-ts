@@ -1,5 +1,5 @@
 // Pin: the menu help popover's rule? predicate admits EXACTLY what Ruby's
-// preference? + valid_preferer? admit (prototype/lib/card/rule/all.rb:33-54).
+// preference? + valid_preferer? admit (card 1.110.0 lib/card/rule/all.rb:33-54).
 //
 // Two families are pinned at the engine level:
 //

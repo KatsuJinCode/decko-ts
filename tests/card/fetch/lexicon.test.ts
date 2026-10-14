@@ -1,5 +1,5 @@
 // Tests for the DB-backed lexicon (src/card/fetch/lexicon.ts, mirroring
-// prototype/lib/card/fetch/lexicon.rb) against real SQLite storage.
+// card 1.110.0 lib/card/lexicon.rb) against real SQLite storage.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
