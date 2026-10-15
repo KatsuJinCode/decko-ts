@@ -52,8 +52,9 @@ async function settle(page) {
       if (process.env.HARNESS_EDITOR_SETTLE === "1") {
         await page
           .waitForFunction(() => {
-            const editors = document.querySelectorAll(".tox-tinymce");
-            return editors.length === 0 || document.querySelector(".tox-statusbar__path-item") !== null;
+            // Every editor on the page, not just the first, has finished.
+            const editors = [...document.querySelectorAll(".tox-tinymce")];
+            return editors.every((ed) => ed.querySelector(".tox-statusbar__path-item") !== null);
           }, { timeout: 8000 })
           .catch(() => {});
       }
@@ -155,6 +156,7 @@ async function setEditor(page, name, value) {
   );
   if (done === "missing") throw new Error(`no editor named ${name}`);
   if (done === "plain") await page.locator(`[name="${name}"]:not([type=hidden])`).filter({ visible: true }).first().fill(value);
+  return done;
 }
 
 async function runStep(ctx, step) {
@@ -204,7 +206,11 @@ async function runStep(ctx, step) {
       await (await locate(page, arg)).pressSequentially(String(step.value), { timeout: STEP_TIMEOUT });
       break;
     case "editor":
-      await setEditor(page, arg, String(step.value));
+      // Which editor took the content (tinymce, ace or the plain field) is
+      // part of the step's result, and the comparison grades it: an engine
+      // whose rich editor never came up must not pass by way of the plain
+      // field.
+      ctx.editorVia = await setEditor(page, arg, String(step.value));
       break;
     case "check":
       await (await locate(page, arg)).check({ timeout: STEP_TIMEOUT });
@@ -338,8 +344,9 @@ async function runJourney(engine, args, journey, spec, logFile) {
         continue;
       }
       try {
+        ctx.editorVia = undefined;
         await runStep(ctx, step);
-        result.steps.push({ i, step, outcome: "ok" });
+        result.steps.push({ i, step, outcome: "ok", ...(ctx.editorVia ? { via: ctx.editorVia } : {}) });
       } catch (err) {
         failed = true;
         result.steps.push({ i, step, outcome: "failed", error: String(err?.message ?? err).split("\n")[0] });

@@ -347,19 +347,17 @@ export function isValidDateContent(content: string): boolean {
  * (active_record.rb:80-83), which raises the uninterpolated i18n string
  * ("%{func} not implemented", en.yml:36 — no interpolation params are
  * passed). The raise escapes rescuing_bad_query (it rescues BadQuery, not
- * RuntimeError) and surfaces as the Rails debug-exceptions page with
- * status 500 — the recorded oracle bytes for every plain-keyword search.
- * The error NAME carries the raise site so the serving surface can pin
- * the debug-page composition to this exact upstream failure. */
+ * RuntimeError) to the controller, which in production mode rescues it
+ * and shows :server_error under the page layout, status 500
+ * (card_controller/errors.rb handle_exception). The error NAME carries the
+ * raise site. */
 export class UpstreamSqliteMatchError extends Error {
-  readonly requestParamsJson: string;
-  constructor(requestParamsJson: string) {
+  constructor() {
     super("%{func} not implemented");
     this.name = "UpstreamSqliteMatchError";
-    this.requestParamsJson = requestParamsJson;
   }
 }
 
-export function upstreamMatchError(requestParamsJson = "{}"): Error {
-  return new UpstreamSqliteMatchError(requestParamsJson);
+export function upstreamMatchError(): Error {
+  return new UpstreamSqliteMatchError();
 }

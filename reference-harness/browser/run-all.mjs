@@ -186,21 +186,28 @@ function writeSummary(file) {
     encoding: "utf8",
     windowsHide: true,
   }).stdout?.trim();
-  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md). Ruby
-  // 3.4 changed Hash#inspect from {"k"=>v} to {"k" => v}, and Rails' debug
-  // exceptions page prints the request parameters with it.
+  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md).
   const runtimeNote =
     rubyVersion && !rubyVersion.startsWith("3.3.")
       ? [
           "",
           `The reference ran on Ruby ${rubyVersion}; the declared oracle runtime is Ruby 3.3`,
-          "(`docs/parity-method.md`). Ruby 3.4 changed `Hash#inspect` from `{\"k\"=>v}` to",
-          "`{\"k\" => v}`, and the debug-exceptions page that stock Decko shows for a keyword",
-          "search on SQLite prints the request parameters with it. The port reproduces the",
-          "Ruby 3.3 page, so on a newer Ruby those observations differ in that one line of",
-          "text and nowhere else.",
+          "(`docs/parity-method.md`).",
         ]
       : [];
+  // How an unhandled exception is answered on each side, so the
+  // keyword-search pages are read correctly.
+  const errorPageNote = [
+    "",
+    "Error pages: both sides answer an unhandled exception the way a deployed",
+    "site does. The Ruby server runs with Decko's production error handling",
+    "(`rescue_all_in_controller` on, `consider_all_requests_local` off, as",
+    "`tools/parity-side-effects/ruby/drive.rb` sets them), so a plain keyword",
+    "search on SQLite (the `match` raise in card's ActiveRecord patch) answers",
+    "Decko's `:server_error` view under the page layout, status 500. The port's",
+    "Node host renders that page through the engine with `:server_error` as the",
+    "root view. No recorded page is copied and no comparison rule applies to it.",
+  ];
   const extra = Object.entries(args)
     .filter(([k]) => !["out", "summary", "report-only"].includes(k))
     // A checkout path is this machine's, not part of the command's meaning.
@@ -228,6 +235,7 @@ function writeSummary(file) {
     `- Comparison: ${report.journeys.pass} / ${report.journeys.graded} graded journeys pass` +
       ` (${report.journeys.total - report.journeys.graded} not graded: a journey that fails on the reference is not graded)`,
     ...runtimeNote,
+    ...errorPageNote,
     "",
     "Per graded item:",
     "",

@@ -337,16 +337,13 @@ observations are in the same canonical form before anything is compared:
 5. **B5.** The URL is compared as path and query, decoded, without the host;
    the server's own address inside text becomes `<origin>`.
 
-`compare-journeys.mjs` then applies exactly two more forms, both borrowed
-rather than renumbered:
+`compare-journeys.mjs` then applies exactly one more form, borrowed rather
+than renumbered:
 
 - **`stable`** from `runner/normalize.mjs` — the harness's **N2**: JSON object
   key order never counts and array order always does, and the per-journey
   server port in an absolute URL the deck itself builds is compared as
   `127.0.0.1:PORT`.
-- **`canonicalizeDebugPage`** — the harness's **N6** at journey grade: a
-  debug-exceptions page's backtrace frames collapse to one marker line, and
-  the frame count is recorded rather than compared.
 
 ### 4.2 The corpus instrument's rules (`N1`-`N8`)
 
@@ -724,9 +721,10 @@ serves). Both sign tokens with the same fixture secret.
 
 ### What is compared
 
-Per journey: completion (every step ran); every observation on four aspects
-(address: path, query and HTTP status; text; structure; form fields); the mail
-sent; and the row delta in Decko's card tables (N4, with timestamps and
+Per journey: completion (every step ran); which editor (TinyMCE, ace or the
+plain field) took each `editor` step's content; every observation on four
+aspects (address: path, query and HTTP status; text; structure; form fields);
+the mail sent; and the row delta in Decko's card tables (N4, with timestamps and
 password digests masked, because a browser session cannot pin both engines'
 clocks). Observations are normalised by B1-B5 (`browser/lib/observe.mjs`):
 rendered text with whitespace collapsed and relative times and dates masked;

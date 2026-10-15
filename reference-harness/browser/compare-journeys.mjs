@@ -9,6 +9,8 @@
 //   - each observation, on four aspects: address (URL and HTTP status), text
 //     (what the page says), structure (its element tree) and fields (the form
 //     controls offered);
+//   - editor: which editor (tinymce, ace or the plain field) took each
+//     editor step's content;
 //   - mail: the messages sent;
 //   - rows: the row delta left in Decko's card tables.
 // A journey passes when every item passes. Failures are grouped by cause: the
@@ -35,47 +37,6 @@ const load = (dir) =>
   );
 
 const eq = (a, b) => JSON.stringify(stable(a)) === JSON.stringify(stable(b));
-
-/**
- * The N6 instrument, journey-grade (corpus instrument rule N6, merge 47):
- * a debug-exceptions page's BACKTRACE is host-VM identity — Ruby's
- * boot-inclusive frames (40-168) against the engine's V8 throw-path stack
- * (8-10) — so the frame lines carry no graded bytes. The canonical form
- * keeps every other byte (the heading, the message, the extracted source,
- * the request parameters, the toggles) and reduces both sides' frame
- * regions to ONE marker line whose COUNT is recorded for the declared
- * residual (the ruling's don't-force-it clause: the rows re-pin with the
- * count pair, not a forced pass). Applied to BOTH sides at compare time —
- * the stored oracle observations re-canonicalize without a re-record.
- */
-function canonicalizeDebugPage(obs) {
-  if (!obs || typeof obs.text !== "string" || !Array.isArray(obs.structure)) return obs;
-  const isDebug =
-    obs.structure.some((l) => typeof l === "string" && l.includes("exception-message")) &&
-    obs.structure.some((l) => typeof l === "string" && l.includes("trace-frames"));
-  if (!isDebug) return obs;
-  const text = String(obs.text);
-  const traceStart = text.indexOf("Application Trace");
-  const paramsMarker = text.indexOf("Request Parameters:");
-  let canonicalText = text;
-  let frameCount = 0;
-  if (traceStart !== -1 && paramsMarker !== -1) {
-    const framesRegion = text.slice(traceStart, paramsMarker);
-    frameCount = (framesRegion.match(/:in `/g) ?? []).length + (framesRegion.match(/ at /g) ?? []).length;
-    // The canonical marker carries NO count: the frame count is the
-    // declared residual (Ruby's boot-inclusive backtraces vs the engine's
-    // V8 stack — the N6 dispatch's don't-force-it clause), recorded in the
-    // round receipt, never a compared byte.
-    canonicalText = text.slice(0, traceStart) + "N6#frames" + text.slice(paramsMarker);
-  }
-  // Host paths (Rails.root) are host identity: the value masks, the label
-  // stays.
-  canonicalText = canonicalText.replace(/Rails\.root: \S+/, "Rails.root: N6#root");
-  const canonicalStructure = obs.structure.map((line) =>
-    typeof line === "string" && line.includes("trace-frames") ? "a.trace-frames (N6#frames)" : line,
-  );
-  return { ...obs, text: canonicalText, structure: canonicalStructure, frameCount };
-}
 
 function firstTextDiff(a, b) {
   const wa = String(a).split(" ");
@@ -122,6 +83,9 @@ for (const [id, exp] of Object.entries(expected)) {
   }
   const failedStep = act.steps?.find((s) => s.outcome === "failed");
   add("completion", "all steps", act.completed, failedStep ? { step: failedStep.i, do: failedStep.step, error: failedStep.error } : { error: act.error });
+  // Which editor took each editor step's content (tinymce, ace, plain).
+  const vias = (r) => (r.steps ?? []).filter((s) => "editor" in s.step).map((s) => s.via ?? "(not recorded)");
+  if (vias(exp).length > 0) add("editor", "editor used", eq(vias(exp), vias(act)), { expected: vias(exp), actual: vias(act) });
   const actObs = Object.fromEntries((act.observations ?? []).map((o) => [o.label, o]));
   for (const o of exp.observations ?? []) {
     const a = actObs[o.label];
@@ -129,11 +93,9 @@ for (const [id, exp] of Object.entries(expected)) {
       for (const k of ["address", "text", "structure", "fields"]) add(k, o.label, false, { missing: "not reached" });
       continue;
     }
-    const expCanonical = canonicalizeDebugPage(o);
-    const actCanonical = canonicalizeDebugPage(a);
     add("address", o.label, o.url === a.url && o.status === a.status, { expected: `${o.status} ${o.url}`, actual: `${a.status} ${a.url}` });
-    add("text", o.label, expCanonical.text === actCanonical.text, firstTextDiff(expCanonical.text, actCanonical.text));
-    add("structure", o.label, eq(expCanonical.structure, actCanonical.structure), firstLineDiff(expCanonical.structure, actCanonical.structure));
+    add("text", o.label, o.text === a.text, firstTextDiff(o.text, a.text));
+    add("structure", o.label, eq(o.structure, a.structure), firstLineDiff(o.structure, a.structure));
     add("fields", o.label, eq(o.fields, a.fields), { expected: o.fields, actual: a.fields });
   }
   add("mail", "mail", eq(exp.mail ?? [], act.mail ?? []), {
