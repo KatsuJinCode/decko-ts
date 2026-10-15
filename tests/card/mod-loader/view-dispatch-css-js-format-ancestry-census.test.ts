@@ -1,3 +1,6 @@
+// Current surface: stock set/all/css.rb's five CSS views are registered;
+// SCSS inherits them through the surveyed format ancestry. The no-observable
+// discussion below records the historical pre-CSS-view implementation.
 // view-dispatch-css-js-format-ancestry-census.test.ts - the css/js format
 // PARENT survey pin (css-js-format-parents, 2026-10-01): the gem
 // survey that corrected HTML_DESCENDED_FORMATS (mod-loader.ts) plus the
@@ -184,9 +187,29 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
     expect([...counts.entries()].sort()).toEqual([
-      ["base", 9],
+      // 9 -> 33, html 361 -> 339 (2026-10-15): card-mod-format s all/base
+      // and all/content views filed under their Ruby format block. Ruby s
+      // `format do` block (base.rb:85-90 :core/:content, the name/date
+      // rows) files its module on Card::Format itself, so every format
+      // inherits it (format.rb format_ancestry); the html key they sat under
+      // made them unreachable from json/csv/js and mis-served rss. Still no
+      // new format key and no css/scss row. Measured on this tree.
+      // 33 -> 35, html 339 -> 338 (2026-10-15): all/error's :not_found and
+      // :bad_address are `format do` (base) views, and the csv/file/js/yaml
+      // keys carry the format-block views each. Measured on this tree.
+      // right/salt.rb:13-15 declares :raw outside any format block. The
+      // account mod now ports that base declaration (Private data).
+      ["base", 36],
+      // The five views declared by stock set/all/css.rb.
+      ["css", 5],
+      ["csv", 4],
+      // json 4 -> 8 and the new data key 10 (2026-10-15): json.rb's status,
+      // items, molecule and page views, and data.rb's ten views (json and
+      // yaml inherit data, json_format.rb / yaml_format.rb). Measured on this tree.
+      ["data", 10],
       ["email_html", 2],
       ["email_text", 3],
+      ["file", 2],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its
       // registration surface on top of the wave-1 line; the composed-deck
       // census MEASURES 329 on the merged tree (324 wave-1 tip + 5 net-new
@@ -237,24 +260,26 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :search_box_complete on the JSON arm (search.rb:70-72 — the
       // navbox typeahead's JSON the engine now serves); no new format key
       // and no css/scss row. Measured on this tree.
-      ["html", 361],
+      ["html", 338],
 
-      ["js", 2],
-      ["json", 4],
+      ["js", 3],
+      ["json", 8],
+      // rss.rb's nine non-XML declarations (including captured aliases).
+      ["rss", 9],
+      ["yaml", 1],
     ]);
   });
 
-  it("composed-deck census: zero css-keyed and zero scss-keyed registrations", () => {
-    // The css/scss render bytes live in the compile-engines leaf seam
-    // (asset-input-assembly.ts:208-215 -> sassc-coffeescript-compile-
-    // engines.ts), never in the chain — the structural half of why no
-    // css/js chain request can observe the constant.
+  it("composed-deck census: the five Ruby CSS views are inherited by SCSS", () => {
     const entries = censusEntries();
-    expect(entries.filter((e) => e.formatKey === "css").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
+    expect(entries.filter((e) => e.formatKey === "css").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([
+      "format all/css :titled", "format all/css :content", "format all/css :unknown",
+      "format all/css :import", "format all/css :url",
+    ]);
     expect(entries.filter((e) => e.formatKey === "scss").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
   });
 
-  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views", () => {
+  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views plus format all/js :source", () => {
     // Ruby files these under JsFormat ONLY (nest_image.rb:40-59
     // `format :js` on the ALL set -> register_all_set_format,
     // set/format.rb:133-137). The port serves them from the FLAT record
@@ -268,12 +293,13 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
         .map((e) => `${e.mod} ${e.setPath} :${e.view}`)
         .sort(),
     ).toEqual([
+      "format all/js :source",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor",
     ]);
   });
 
-  it("composed-deck census: the base-kind base-keyed rows are exactly follow's five notify views", () => {
+  it("composed-deck census: the base-kind base-keyed rows are follow's five notify views plus card-mod-format's base-block rows", () => {
     // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
@@ -282,6 +308,11 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     // (all/notify/base_views.rb's bare `format do` block); the miscpins
     // lane's notification-views round adds :list_of_changes + :subedits
     // on the same module. Measured on the merged tree.
+    // + card-mod-format's all/base and all/content rows (2026-10-15): the
+    // Ruby `format do` blocks (base.rb:85-90 :core/:content + the name/date/
+    // url rows; content.rb base-block :label/:closed_content/:smart_label)
+    // file on Card::Format, which every format inherits; they had been
+    // filed under html. Measured on this tree.
     const entries = censusEntries();
     expect(
       entries
@@ -294,6 +325,32 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       "follow all/notify/base_views :list_of_changes",
       "follow all/notify/base_views :subedit_notice",
       "follow all/notify/base_views :subedits",
+      "format all/base :acted_at",
+      "format all/base :blank",
+      "format all/base :codename",
+      "format all/base :content",
+      "format all/base :core",
+      "format all/base :created_at",
+      "format all/base :id",
+      "format all/base :id_url",
+      "format all/base :key",
+      "format all/base :labeled",
+      "format all/base :labeled_content",
+      "format all/base :link",
+      "format all/base :linkname",
+      "format all/base :name",
+      "format all/base :nav_link",
+      "format all/base :raw",
+      "format all/base :titled_content",
+      "format all/base :type",
+      "format all/base :updated_at",
+      "format all/base :url",
+      "format all/base :url_link",
+      "format all/content :closed_content",
+      "format all/content :label",
+      "format all/content :smart_label",
+      "format all/error :bad_address",
+      "format all/error :not_found",
     ]);
   });
 });

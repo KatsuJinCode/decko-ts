@@ -270,14 +270,11 @@ async function opRender(req: Req): Promise<Json> {
   // {"html":null} (Nonexistent Card:errors, mod: help:configurations/tasks,
   // Home:rss_links) while subedits records {"html":""} - the views differ
   // in Ruby, so the envelope preserves the engine's ViewResult verbatim.
-  // A non-html view: the port has no view dispatch for a card format (its
-  // non-html formats are served only as each format's show default, with no
-  // view argument: src/card/render/format-families.ts renderFormatShow). Refused
-  // here, as an error, so the grade records the gap instead of an answer.
-  if (req.format && req.format !== "html") {
-    throw new Error(`the port has no view dispatch for format ${req.format} (view ${req.view})`);
-  }
-  const html = req.view ? await engine.renderRaw(req.card, req.view) : await engine.renderPage(req.card);
+  // A non-html view dispatches through the format's own view chain: the
+  // engine's root format carries params.format (render.ts renderHeld), so the
+  // view resolves in that format's registrations, falling back to html.
+  const params = req.format && req.format !== "html" ? { format: req.format } : {};
+  const html = req.view ? await engine.renderRaw(req.card, req.view, params) : await engine.renderPage(req.card);
   return { html };
 }
 
@@ -502,7 +499,7 @@ for await (const line of lines) {
     emit({ id: req.id, ok: true, result: await handler(req) });
   } catch (error) {
     const e = error as Error;
-    emit({ id: req.id, ok: false, error: { class: e?.constructor?.name ?? "Error", message: String(e?.message ?? e).slice(0, 500) } });
+    emit({ id: req.id, ok: false, error: { class: (e as { rubyClass?: string } | undefined)?.rubyClass ?? e?.constructor?.name ?? "Error", message: String(e?.message ?? e).slice(0, 500) } });
   }
 }
 await driver.close?.();

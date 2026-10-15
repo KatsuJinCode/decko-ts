@@ -83,9 +83,23 @@ export function cardPath(relPath: string): string {
 /** render.rb#view_method: unknown views raise Card::Error::UserError with
  *  card-mod-format set/all/error.rb#unsupported_view_error_message (en.yml:
  *  "view (%{view}) not supported for %{cardname}"). */
+/** A Ruby runtime error a view body raises (NoMethodError, TypeError, ...).
+ *  `rubyClass` is the class name Ruby reports; the render boundary records it
+ *  as the error's class. */
+export class RubyRuntimeError extends Error {
+  readonly rubyClass: string;
+  constructor(rubyClass: string, message: string) {
+    super(message);
+    this.rubyClass = rubyClass;
+  }
+}
+
 export class UnsupportedViewError extends Error {
   readonly view: string;
   readonly cardName: string;
+  /** The class Ruby raises (card-mod-format error.rb:unsupported_view_error_message
+   *  via render.rb#view_method: Card::Error::UserError). */
+  readonly rubyClass = "Card::Error::UserError";
   constructor(view: string, cardName: string) {
     super(`view (${view}) not supported for ${cardName}`);
     this.name = "UnsupportedViewError";
@@ -515,14 +529,24 @@ export interface ViewContext {
  *  (numbers as JSON numbers, nil as null). Anything interpolated INTO
  *  another view passes through Ruby's to_s at that interpolation; only the
  *  top-level render boundary carries the raw value. */
-export type ViewResult = string | number | null;
+export type ViewResult = string | number | null | ViewRawArray | ViewRawHash;
+
+/** A raw Ruby array answer (the csv :header/:row/:body views return arrays
+ *  of cells; the render boundary carries them as JSON arrays). */
+export type ViewRawArray = ReadonlyArray<string | number | null | ViewRawArray>;
+
+/** A raw Ruby hash answer (data.rb's pod_hash/cast, json's molecule). */
+export type ViewRawHash = Readonly<Record<string, unknown>>;
 
 /** Ruby's to_s at interpolation: a view answer embedded in HTML assembly
  *  (nil.to_s is the empty string). The identity for every HTML-string view;
  *  the coercion the interpolating sites owe once view bodies may answer
  *  numbers/null. */
 export function str(result: ViewResult): string {
-  return result === null ? "" : String(result);
+  if (result === null) return "";
+  if (typeof result === "string") return result;
+  if (typeof result === "number") return String(result);
+  return Array.isArray(result) ? result.map((x) => str(x)).join(",") : String(result);
 }
 
 export type ViewFn = (ctx: ViewContext) => ViewResult;
@@ -1378,6 +1402,11 @@ export class RenderFormat {
         // it keeps its own error surface. The config half of loud_error?
         // keeps the development posture (the mod-port raise contracts)
         // fully loud.
+        // The wrap_and_render rescue is the html-lineage format's (Ruby's
+        // Format::Render runs inside HtmlFormat's show path); a non-html root
+        // (json, csv, js, css, ...) has no wrap, so its raise reaches the
+        // caller (the probes record Card::Error::UserError for them).
+        if (this.formatName !== "html" && this.formatName !== "rss" && this.formatName !== "email_html") throw error;
         if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
         return quietRenderError(error, this.card, effective, this);
       }
@@ -1633,7 +1662,9 @@ export class RenderFormat {
           ? compiledUnknownSettingForCard(this.card, requested, true)
           : compiledUnknownSettingForCard(this.card, requested);
     if (configured === true) return requested; // permission.rb:40 unknown_setting == "true"
-    if (this.isMain && this.voo === undefined) {
+    // A non-html root is the render root too (the adapter renders it bare;
+    // Ruby reaches view_for_unknown with voo.root? for every format).
+    if ((this.isMain || this.formatName !== "html") && this.voo === undefined) {
       // format/error.rb:18-25 view_for_unknown, main+root branch:
       // root.error_status = page_status_for_unknown; page_view_for_unknown —
       // html/error.rb:81-87 `ok?(:create) ? :new : super` (super = the base

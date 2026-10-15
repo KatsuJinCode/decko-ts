@@ -103,6 +103,7 @@ import type { SearchResultPaging } from "./render/search-paging.js";
 import {
   ModLoader,
   getDefaultModLoader,
+  htmlLineage,
   modGeneration,
 } from "./mod-loader.js";
 import { modEngineHost } from "./mod-loader/mod-engine-host.js";
@@ -2753,6 +2754,15 @@ export class RenderEngine implements RenderEngineLike {
     // stood before the deck registered into the shared record: the record
     // also carries the abstract sets' views for the loader-less dispatch,
     // and those reach only the sets that include them (the chain above).
+    // The compiled base table is the HTML table. Its entries reach a
+    // non-html format only through the html ancestry (rss, email_html,
+    // RssFormat/EmailHtmlFormat < HtmlFormat); every other format's class
+    // sits on Card::Format itself (css_format.rb:6, json_format.rb:6 via
+    // DataFormat, csv/js/text/file/yaml), so an html-only view has no
+    // dispatch there (Ruby's "view (X) not supported" arm).
+    if (format !== "html" && !htmlLineage(format) && format !== "email_text") {
+      return loader !== undefined ? undefined : this.views[view];
+    }
     return loader !== undefined ? baseTableEntry(view) : this.views[view];
   }
 

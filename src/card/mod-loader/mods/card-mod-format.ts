@@ -207,8 +207,8 @@ import {
   type HeadReadSet,
 } from "../../render/head-views.js";
 import { RenderFormat, wrappedTitleInner } from "../../render/format.js";
-import type { ViewContext, ViewFn } from "../../render/format.js";
-import { UnsupportedViewError } from "../../render/format.js";
+import type { ViewContext, ViewFn, ViewRawArray, ViewResult } from "../../render/format.js";
+import { RubyRuntimeError, UnsupportedViewError } from "../../render/format.js";
 // `h` here is the slot-html escape helper, not the Haml attribute pass.
 // The :url/:id_url/:url_link views read the per-render `Card::Env.origin`
 // through the engine's surface seam (`fmt.cardUrl`; see render/deck-origin.ts
@@ -223,6 +223,8 @@ import { DeckoName } from "../../name.js";
 // fn per view, so the two registrations cannot drift again.
 import {
   HTML_VIEWS,
+  contentView as baseContentView,
+  coreView as baseCoreView,
   linkView,
   navLinkView,
   unknownView as htmlErrorUnknownView,
@@ -570,6 +572,254 @@ const actedAtView: ViewFn = (ctx) =>
  *  card's dbContent) directly. */
 const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 
+// --- set/all/csv.rb (format :csv) ------------------------------------------
+
+/** csv.rb:31-33 view :header: `[%w[Name Type]]` (the localized literal). */
+const csvHeaderView: ViewFn = () => [["Name", "Type"]];
+
+/** csv.rb:35-37 view :row: `nests.map { |nest_args| nest(*nest_args) }`
+ *  with nests = [["_self", { view: :name }], ["_self", { view: :type }]]
+ *  (csv.rb:12-15): the card's own name and type views, raw. */
+const csvRowView: ViewFn = ({ fmt }) => [fmt.renderView("name"), fmt.renderView("type")] as ViewResult;
+
+/** csv.rb:21-23 view :titled: `(render_header + render_body).map { |row|
+ *  CSV.generate_line row }.join`. CSV.generate_line takes a row's cells
+ *  through #each, so a String row (a body cell that is a String, not an
+ *  array) raises Ruby's NoMethodError at that row. */
+const csvTitledView: ViewFn = ({ fmt }) => {
+  const header = csvHeaderView({ fmt } as ViewContext) as ViewRawArray;
+  const body = csvBodyRows(fmt);
+  const rows = [...header, ...body];
+  const lines: string[] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row)) {
+      throw new RubyRuntimeError("NoMethodError", "undefined method 'each' for an instance of String");
+    }
+    lines.push(row.map((cell) => csvCell(cell)).join(",") + "\n");
+  }
+  return lines.join("");
+};
+
+/** CSV.generate_line's field quoting for the cell kinds a row carries. */
+function csvCell(cell: unknown): string {
+  const text = cell === null || cell === undefined ? "" : String(cell);
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** csv.rb:27-29 view :body: `card.item_cards.map { |c| nest c }` - not yet
+ *  ported (the item walk for this card is not modelled); the view stays
+ *  unsupported rather than answering a guess. */
+function csvBodyRows(_fmt: ViewContext["fmt"]): ViewRawArray {
+  throw new UnsupportedViewError("body", _fmt.card.name.s);
+}
+
+/** csv.rb:45-47 view :unknown: `""`. */
+const csvUnknownView: ViewFn = () => "";
+
+// --- set/all/file.rb (format :file) ----------------------------------------
+
+/** file.rb:2-4 view :core: the fixed "not yet supported" literal. */
+const fileCoreView: ViewFn = () => "File rendering of this card not yet supported";
+
+/** file.rb:6-8 view :style: `nil` (the render boundary's null). */
+const fileStyleView: ViewFn = () => null;
+
+// --- set/all/js.rb (format :js) --------------------------------------------
+
+/** js.rb:6-8 view :source: `path format: :js` - the card's path with the
+ *  .js format, a full URL outside html (path.rb: "In most formats, #path
+ *  returns a full url"). */
+const jsSourceView: ViewFn = ({ fmt }) => fmt.cardUrl(`${fmt.urlKey()}.js`);
+
+// --- set/all/json.rb (format :json) ----------------------------------------
+
+/** json.rb:32-40 view :status, unknown: true, perms: :none: {key: card.key,
+ *  url_key: card.name.url_key, status: card.state} plus id when the state
+ *  is :real. card.state (states.rb:30-36): :real (stored), :virtual (a new
+ *  card that acts real by rules), :unknown (a new or read-denied card). */
+function jsonStatusView(ctx: ViewContext): ViewResult {
+  const card = ctx.fmt.card;
+  const status = card.unknown === true ? "unknown" : card.id !== undefined ? "real" : "virtual";
+  const out: Record<string, unknown> = {
+    key: card.key,
+    url_key: card.name.urlKey,
+    status,
+  };
+  if (status === "real") out["id"] = card.id;
+  return out as ViewResult;
+}
+
+/** json.rb:3-5 item_cards = nested_cards. A card whose content holds no
+ *  nest syntax has none; a card with nests is not modelled here. */
+function jsonItemCards(fmt: ViewContext["fmt"]): unknown[] {
+  if (fmt.card.dbContent.includes("{{")) throw new UnsupportedViewError("items", fmt.card.name.s);
+  return [];
+}
+
+/** json items: listing_list item_cards, view: atom (data.rb:59-61). */
+const jsonItemsView: ViewFn = ({ fmt }) => jsonItemCards(fmt) as ViewResult;
+
+/** json molecule (data.rb molecule, as a json render): atom merged with items,
+ *  links, ancestors, html_url (the card's full html path), type (the type
+ *  card's nucleus, data.rb's nest view: :nucleus), created_at and updated_at.
+ *  Ruby's JSON carries a Time as its to_s, "YYYY-MM-DD HH:MM:SS UTC". */
+const jsonMoleculeView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  const molecule: Record<string, unknown> = { ...dataAtomView(ctx) as Record<string, unknown> };
+  molecule["items"] = jsonItemCards(fmt);
+  molecule["links"] = dataLinksView(ctx);
+  molecule["ancestors"] = dataAncestorsView(ctx);
+  molecule["html_url"] = fmt.cardUrl(fmt.urlKey());
+  molecule["type"] = typeNucleus(fmt);
+  molecule["created_at"] = utcTime(card.record.createdAt);
+  molecule["updated_at"] = utcTime(card.record.updatedAt);
+  return molecule as ViewResult;
+};
+
+/** json.rb:24-26 view :page, cache: :never: page_details card: render_atom -
+ *  the atom under `card`, plus the request's url and requested_at (Time.now,
+ *  rendered as Ruby's to_s in UTC). The clock is the card wall clock seam
+ *  (wall-clock.ts), so a pinned capture reads the instant it froze. */
+const jsonPageView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const now = cardWallClockNow();
+  const requestedAt = `${now.toISOString().slice(0, 19).replace("T", " ")} UTC`;
+  return {
+    card: dataAtomView(ctx),
+    url: fmt.cardUrl(fmt.urlKey()),
+    requested_at: requestedAt,
+  } as ViewResult;
+};
+
+/** nest(card.type_card, view: :nucleus): the type card's own nucleus. */
+function typeNucleus(fmt: ViewContext["fmt"]): Record<string, unknown> {
+  const typeCard = fmt.card.typeName === undefined ? undefined : fmt.engine.fetchRenderCard(fmt.card.typeName);
+  const name = fmt.card.typeName ?? "";
+  const out: Record<string, unknown> = {
+    id: fmt.card.typeId,
+    name,
+    type: typeCard?.typeName,
+    url: fmt.cardUrl(`${DeckoName.parse(name).urlKey}.json`),
+  };
+  const code = typeCard?.record.codename;
+  if (code) out["codename"] = code;
+  return out;
+}
+
+/** An SQL timestamp rendered as Ruby's Time#to_s in UTC. */
+function utcTime(sql: string | undefined): string | undefined {
+  return sql === undefined ? undefined : `${sql} UTC`;
+}
+
+// --- set/all/data.rb (format :data; json and yaml inherit it) --------------
+
+/** data.rb:32-34 view :pod: card.pod_hash. */
+const dataPodView: ViewFn = ({ fmt }) => podHash(fmt);
+
+/** data.rb:36-38 view :core, unknown: true: `card.known? ? render_content : nil`.
+ *  render_content on a basic card is its stored content, unrendered. */
+const dataCoreView: ViewFn = ({ fmt }) => (fmt.card.id === undefined ? null : fmt.card.dbContent);
+
+/** data.rb:40-42 view :content: card.content - the stored content. */
+const dataContentView: ViewFn = ({ fmt }) => fmt.card.dbContent;
+
+/** data.rb:44-46 view :nucleus: nucleus (data.rb:82-89) - id, name, type
+ *  (the type card's name), url (path format: :json, a full URL outside
+ *  html), and codename when the card has one. */
+function dataNucleus(fmt: ViewContext["fmt"]): Record<string, unknown> {
+  const card = fmt.card;
+  const nucleus: Record<string, unknown> = {
+    id: card.id,
+    name: card.name.s,
+    type: card.typeName,
+    url: fmt.cardUrl(`${fmt.urlKey()}.json`),
+  };
+  if (card.record.codename) nucleus["codename"] = card.record.codename;
+  return nucleus;
+}
+const dataNucleusView: ViewFn = ({ fmt }) => dataNucleus(fmt) as ViewResult;
+
+/** data.rb:48-51 view :atom, unknown: true: nucleus, plus content when the
+ *  card is known and has no structure (data.rb:91-96). */
+const dataAtomView: ViewFn = ({ fmt }) => {
+  const atom = dataNucleus(fmt);
+  if (fmt.card.id !== undefined) atom["content"] = fmt.card.dbContent;
+  return atom as ViewResult;
+};
+
+/** data.rb molecule: atom merged with items, links, ancestors, html_url, type
+ *  (the type card's nucleus), created_at and updated_at. The items walk is
+ *  item_cards, which a data-format render does not define (Ruby raises
+ *  NoMethodError there), so the molecule raises that error too. */
+const dataMoleculeView: ViewFn = ({ fmt }) => {
+  throw new RubyRuntimeError("NoMethodError", "undefined method 'item_cards' for the data format");
+};
+
+/** data.rb ancestors: the card's name ancestors, each nested as its
+ *  nucleus. A simple name has none. Compound ancestors are not modelled. */
+const dataAncestorsView: ViewFn = ({ fmt }) => {
+  if (fmt.card.name.isSimple) return [];
+  throw new UnsupportedViewError("ancestors", fmt.card.name.s);
+};
+
+/** data.rb:53-56 view :cast: card.cast - {id:} for a real card. */
+const dataCastView: ViewFn = ({ fmt }) =>
+  fmt.card.id !== undefined
+    ? { id: fmt.card.id }
+    : { name: fmt.card.name.s, type_id: fmt.card.typeId ?? null, content: fmt.card.dbContent };
+
+/** data.rb:59-61 view :items, cache: :never: listing_list item_cards - the
+ *  data format defines no item_cards, so Ruby raises NoMethodError. */
+const dataItemsView: ViewFn = () => {
+  throw new RubyRuntimeError("NoMethodError", "undefined method 'item_cards' for the data format");
+};
+
+/** data.rb:63-70 view :links: card.link_chunks mapped to a json path per
+ *  referee or a link_to_resource. A card with no [[link]] chunks answers []. */
+const dataLinksView: ViewFn = ({ fmt }) => {
+  if (!fmt.card.dbContent.includes("[[")) return [];
+  throw new UnsupportedViewError("links", fmt.card.name.s);
+};
+
+// --- set/all/yaml.rb (format :yaml) ----------------------------------------
+
+/** data.rb:5-11 pod_hash: { name: pod_name, type: pod_type,
+ *  codename:, content: pod_content, fields: pod_fields }.compact_blank -
+ *  the blank values dropped. pod_name (:23-25): the simple name, or the
+ *  parts' codename_or_string for a compound. pod_type (:21-23): the type
+ *  card's codename, overridden to nil on Basic cards
+ *  (card-mod-format set/type/basic.rb:1-3, so a RichText pod carries no
+ *  type key). pod_content (:27-29): nil for a structured card. */
+function podHash(fmt: ViewContext["fmt"]): Record<string, unknown> {
+  const card = fmt.card;
+  const name = card.name.isSimple
+    ? card.name.s
+    : card.name.partNames.map((part) => part.codename ?? part.s);
+  const pod: Record<string, unknown> = {
+    name,
+    type: card.typeCode === "basic" ? undefined : card.typeCode ?? card.typeName,
+    codename: card.record.codename ?? undefined,
+    content: card.dbContent,
+    fields: {},
+  };
+  // compact_blank: nil, false, "" and empty collections are blank.
+  for (const key of Object.keys(pod)) {
+    const value = pod[key];
+    const blank =
+      value === undefined ||
+      value === null ||
+      value === "" ||
+      (typeof value === "object" && Object.keys(value as object).length === 0);
+    if (blank) delete pod[key];
+  }
+  return pod;
+}
+
+/** yaml.rb:6-8 view :core: `render_pod` - the card's pod hash (data.rb's
+ *  pod_hash). */
+const yamlCoreView: ViewFn = ({ fmt }) => podHash(fmt);
+
 /** set/all/base.rb:97-99 view :one_line_content:
  *  `with_nest_mode(:compact) { truncate render_core }` — WITHHELD from
  *  the manifest. Ruby's MRO never
@@ -718,13 +968,23 @@ const denialHtmlView: ViewFn = ({ fmt, voo }) =>
  *  safe_name when the card's name is present, or the no-name locale
  *  otherwise; both branches resolve to a single locale token. The
  *  headless port returns the locale token. */
-const notFoundView: ViewFn = () => "format.not_found_named";
+/** set/all/error.rb:18-21 view :not_found, perms: :none:
+ *  `t(:format_not_found_named, cardname: error_name)` with error_name =
+ *  card.name.present? ? safe_name : t(:format_not_found_no_name)
+ *  (en.yml:11-12). safe_name (base.rb:18-20) is the card's name. */
+const notFoundView: ViewFn = ({ fmt }) => {
+  const named = fmt.card.name.s !== "";
+  return `Could not find ${named ? h(fmt.card.name.s) : "the card requested"}.`;
+};
 
 /** set/all/error.rb:23-26 view :bad_address, perms: :none:
  *  `root.error_status = 404; t(:format_bad_address)`. The headless
  *  engine has no root.error_status surface; the locale token renders
  *  as the bare key. */
-const badAddressView: ViewFn = () => "format.bad_address";
+const badAddressView: ViewFn = ({ fmt }) => {
+  fmt.engine.pageErrorStatus = 404; // root.error_status = 404 (error.rb:23-26)
+  return "404: Bad Address"; // en.yml:3 format_bad_address
+};
 
 /** html/error.rb's :bad_address arm — `root.error_status = 404` and the
  *  rendered text "404: Bad Address" (html/error.rb's :bad_address arm).
@@ -1154,6 +1414,31 @@ const smartLabelView: ViewFn = ({ fmt }) => {
   return `${label} ${popoverLink(str(description))}`;
 };
 
+/** card-mod-format set/all/css.rb: major_comment and its five CSS views.
+ * String#length counts Unicode codepoints in Ruby, rather than UTF-16 units. */
+function cssMajorComment(comment: string): string {
+  const edge = `/* ${"-".repeat(Array.from(comment).length + 4)} */`;
+  return `${edge}\n/* - ${comment} - */\n${edge}\n\n`;
+}
+const cssCoreView: ViewFn = ({ fmt }) => fmt.renderView("core");
+const cssTitledView: ViewFn = ({ fmt }) =>
+  cssMajorComment(` Style Card: \\"${fmt.card.name.s}\\" `) + str(fmt.renderView("core"));
+const cssUnknownView: ViewFn = ({ fmt }) =>
+  cssMajorComment(`MISSING Style Card: ${fmt.card.name.s}`);
+// path.rb:55-64 uses a rooted card path with local file storage.
+const cssUrlView: ViewFn = ({ fmt }) => `/${fmt.urlKey()}.css`;
+
+/** rss.rb:68-79: these aliases capture All::Base's view blocks, not
+ * the HTML view of the same name. In particular content/open_content
+ * capture base core itself, whereas open's captured titled block calls
+ * the card's most-specific core view at render time. */
+const rssContentView: ViewFn = ({ fmt }) => fmt.processContent(str(fmt.renderView("raw")));
+const rssOpenView: ViewFn = ({ fmt }) => `${fmt.card.name.s}\n\n${str(fmt.renderView("core"))}`;
+const rssItemDescriptionView: ViewFn = ({ fmt }) => fmt.renderView("open_content");
+const rssEmptyView: ViewFn = () => "";
+const rssTitleView: ViewFn = (ctx) =>
+  `${headReadSetFromMap(ctx).titleSetting ?? ""} : ${ctx.fmt.card.name.s.replace(/^\*/, "")}`;
+
 // ---------------------------------------------------------------------------
 // set/all/html/frame.rb + set/all/html/views.rb + set/all/demo.rb
 // ---------------------------------------------------------------------------
@@ -1536,8 +1821,13 @@ const setModules: ModSetModuleFile[] = [
     // HTML_VIEWS table points at; see their docblock above).
     setPath: "all/base",
     formats: {
-      html: {
+      base: {
         views: [
+          // base.rb:85-87 view :core, compact: true (process_content _render_raw)
+          // and base.rb:88-90 view :content (_render_core): base-format views,
+          // served to every format through the base tail.
+          { view: "core", viewFn: baseCoreView, config: {} },
+          { view: "content", viewFn: baseContentView, config: {} },
           { view: "name", viewFn: nameView, config: { perms: "none" } },
           { view: "key", viewFn: keyView, config: { perms: "none" } },
           { view: "linkname", viewFn: linknameView, config: { perms: "none" } },
@@ -1607,7 +1897,7 @@ const setModules: ModSetModuleFile[] = [
     // by the render.ts smart_label prepare gate).
     setPath: "all/content",
     formats: {
-      html: {
+      base: {
         views: [
           { view: "label", viewFn: labelView, config: { perms: "none" } },
           // :closed_content is an alias to :one_line_content in
@@ -1626,24 +1916,46 @@ const setModules: ModSetModuleFile[] = [
           // its own set module below (allHtmlViewsRawOneLineContentView).
           // Same later-module-wins shape as the :one_line_content
           // All::Base withholding and the :titled precedent.
-          { view: "hidden_content_field", viewFn: hiddenContentFieldView, config: { unknown: true, cache: "never" } },
           { view: "smart_label", viewFn: smartLabelView, config: { cache: "never", unknown: true } },
+        ],
+      },
+      html: {
+        views: [
+          // content.rb:60-62 hidden_content_field lives in `format :html do`
+          { view: "hidden_content_field", viewFn: hiddenContentFieldView, config: { unknown: true, cache: "never" } },
         ],
       },
     },
   },
   {
-    // set/all/css.rb:1-36 css format block (default_nest_view, show
-    // override, view :titled, :content, :unknown, :import, :url +
-    // helper major_comment). Not ported: format-specific (no css
-    // format dispatch).
+    // set/all/css.rb: CSS-specific views; inherited by ScssFormat.
     setPath: "all/css",
+    formats: {
+      css: {
+        views: [
+          { view: "titled", viewFn: cssTitledView },
+          { view: "content", viewFn: cssCoreView },
+          { view: "unknown", viewFn: cssUnknownView },
+          { view: "import", viewFn: cssCoreView },
+          { view: "url", viewFn: cssUrlView, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   {
     // set/all/csv.rb:1-42 csv format block (nests, default_nest_view,
     // default_item_view, views :titled/:body/:row/:header/:unknown).
-    // Not ported: format-specific.
     setPath: "all/csv",
+    formats: {
+      csv: {
+        views: [
+          { view: "header", viewFn: csvHeaderView, config: {} },
+          { view: "row", viewFn: csvRowView, config: {} },
+          { view: "unknown", viewFn: csvUnknownView, config: {} },
+          { view: "titled", viewFn: csvTitledView, config: {} },
+        ],
+      },
+    },
   },
   {
     // set/all/data.rb:1-110 data format block (def cast/pod_hash/
@@ -1652,6 +1964,22 @@ const setModules: ModSetModuleFile[] = [
     // :links + nucleus/atom/molecule helpers). Not ported:
     // format-specific.
     setPath: "all/data",
+    formats: {
+      data: {
+        views: [
+          { view: "pod", viewFn: dataPodView, config: {} },
+          { view: "core", viewFn: dataCoreView, config: { unknown: true } },
+          { view: "content", viewFn: dataContentView, config: {} },
+          { view: "nucleus", viewFn: dataNucleusView, config: {} },
+          { view: "atom", viewFn: dataAtomView, config: { unknown: true } },
+          { view: "molecule", viewFn: dataMoleculeView, config: {} },
+          { view: "ancestors", viewFn: dataAncestorsView, config: {} },
+          { view: "cast", viewFn: dataCastView, config: {} },
+          { view: "items", viewFn: dataItemsView, config: { cache: "never" } },
+          { view: "links", viewFn: dataLinksView, config: {} },
+        ],
+      },
+    },
   },
   {
     // set/all/demo.rb:1-44 html format block (view :demo, :view_list
@@ -1685,6 +2013,12 @@ const setModules: ModSetModuleFile[] = [
     // branches).
     setPath: "all/error",
     formats: {
+      base: {
+        views: [
+          { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
+          { view: "bad_address", viewFn: badAddressView, config: { perms: "none" } },
+        ],
+      },
       html: {
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
@@ -1695,7 +2029,6 @@ const setModules: ModSetModuleFile[] = [
           // one_line_content/labeled_content on unknown cards).
           { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
-          { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
           { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },
           { view: "errors", viewFn: errorsView },
         ],
@@ -1735,8 +2068,15 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/all/file.rb:1-9 file format block (views :core/:style).
-    // Not ported: format-specific.
     setPath: "all/file",
+    formats: {
+      file: {
+        views: [
+          { view: "core", viewFn: fileCoreView, config: {} },
+          { view: "style", viewFn: fileStyleView, config: {} },
+        ],
+      },
+    },
   },
   {
     // set/all/haml.rb:1-75 the format block (haml/haml_partial
@@ -1805,8 +2145,13 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/all/js.rb:1-9 js format block (default_item_view, view
-    // :source). Not ported: format-specific.
+    // :source).
     setPath: "all/js",
+    formats: {
+      js: {
+        views: [{ view: "source", viewFn: jsSourceView, config: {} }],
+      },
+    },
   },
   {
     // set/all/head.rb:1-70 — the head file: basket[:head_views]
@@ -1871,6 +2216,16 @@ const setModules: ModSetModuleFile[] = [
     // :status/:page + string_with_page_details/page_details/stringify
     // helpers). Not ported: format-specific (json/jsonld dispatch).
     setPath: "all/json",
+    formats: {
+      json: {
+        views: [
+          { view: "status", viewFn: jsonStatusView, config: { unknown: true, perms: "none" } },
+          { view: "items", viewFn: jsonItemsView, config: { cache: "never" } },
+          { view: "molecule", viewFn: jsonMoleculeView, config: {} },
+          { view: "page", viewFn: jsonPageView, config: { cache: "never" } },
+        ],
+      },
+    },
   },
   {
     // set/all/jsonld.rb:1-21 jsonld format block (jsonld_supported?,
@@ -1898,8 +2253,23 @@ const setModules: ModSetModuleFile[] = [
     // override, views :feed/:feed_body/:feed_title/:feed_item/:feed_
     // item_description/:feed_description/:comment_box/:menu + raw_
     // feed_items/pub_date + open/content/open_content/closed aliases).
-    // Not ported: format-specific.
+    // XML-writing feed/feed_body/feed_item remain unported.
     setPath: "all/rss",
+    formats: {
+      rss: {
+        views: [
+          { view: "feed_title", viewFn: rssTitleView },
+          { view: "feed_description", viewFn: rssEmptyView },
+          { view: "feed_item_description", viewFn: rssItemDescriptionView },
+          { view: "comment_box", viewFn: rssEmptyView },
+          { view: "menu", viewFn: rssEmptyView },
+          { view: "open", viewFn: rssOpenView },
+          { view: "content", viewFn: rssContentView },
+          { view: "open_content", viewFn: rssContentView },
+          { view: "closed", viewFn: linkView, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   {
     // set/all/text.rb:1-26 base block (to_text/nestless_content + view
@@ -1919,8 +2289,12 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/all/yaml.rb:1-9 yaml format block (show override, view :core).
-    // Not ported: format-specific (no yaml dispatcher).
     setPath: "all/yaml",
+    formats: {
+      yaml: {
+        views: [{ view: "core", viewFn: yamlCoreView, config: {} }],
+      },
+    },
   },
   // pattern: right
   {
