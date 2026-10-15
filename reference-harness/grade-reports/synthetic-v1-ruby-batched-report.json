@@ -17,11 +17,17 @@
       "card": "1.110.0",
       "ruby": "3.4.11",
       "ruby_platform": "x64-mingw-ucrt",
-      "ruby_engine": "ruby"
+      "ruby_engine": "ruby",
+      "card_mod_batched_nests": {
+        "version": "0.1.0",
+        "installed": true,
+        "prefetch_nests": true,
+        "prefetch_machinery": true
+      }
     }
   },
   "adapter_checkout": {
-    "commit": "71b43a843884bb83834a1d13a904f034f5b22e93",
+    "commit": "ede1835db340634bcc8218cc797c30fa2b848c3e",
     "dirty": false
   },
   "verdict": "pass",
@@ -1094,5 +1100,5 @@
     "persistence": [],
     "side_effects": []
   },
-  "graded_at": "2026-10-14T22:06:15.011Z"
+  "graded_at": "2026-10-14T23:27:49.355Z"
 }

@@ -20,8 +20,9 @@ VARYING = {
   # every wrapped slot's data-slot-id attribute.
   "data-slot-id" => /data-slot-id=(["'])[0-9a-f]+\1/,
   # card-mod-bootstrap set/all/bootstrap/accordion.rb builds collapse ids as
-  # card-<key>-<context>-collapse-id; the dashboard's context is a number
-  # that differs from process to process.
+  # card-<key>-<context>-collapse-id. On the admin dashboard the context is
+  # a number that differs between two stock runs; where the caller gets that
+  # number has not been traced.
   "accordion-context" => /-(-?\d{6,})-collapse-id/,
   # the *now card renders the current time, to the minute
   "now" => /\w+day, \w+ \d+, \d{4} \d\d:\d\d [AP]M [A-Za-z ]+Time/
