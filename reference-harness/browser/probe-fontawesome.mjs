@@ -12,7 +12,8 @@ args.journeys ??= "reference-harness/browser/journeys/synthetic-v1.json";
 const engine = loadEngine(args.engine), provenance = captureProvenance(args, engine);
 if (provenance.source.dirty || provenance.buildReceipt?.sourceCommit !== provenance.source.commit || provenance.buildReceipt?.distSha256 !== provenance.artifacts.distSha256) throw new Error("probe requires clean exact-source distribution");
 mkdirSync(path.resolve(args.out), { recursive: false });
-const evidence = { format: "decko-fontawesome-browser-probe/1", provenance, engine: engine.name, complete: false, requests: [], problems: [] };
+const started = Date.now();
+const evidence = { format: "decko-fontawesome-browser-probe/1", acceptanceScope: "configured local Font Awesome CSS/font/glyph only", productionAcceptance: false, provenance, engine: engine.name, complete: false, requests: [], otherAssetFailures: [], problems: [] };
 const bytesManifest = JSON.parse(readFileSync(new URL("../../vendor/fontawesome-free-6.7.2/provenance.json", import.meta.url)));
 let host, browser;
 try {
@@ -24,6 +25,7 @@ try {
   const pending = [];
   browser.context.on("response", response => {
     const url = new URL(response.url());
+    if (response.status() >= 400 && ["script", "stylesheet", "font", "image"].includes(response.request().resourceType())) evidence.otherAssetFailures.push({ path: url.pathname, status: response.status(), type: response.request().resourceType() });
     if (url.hostname === "kit.fontawesome.com") evidence.problems.push("external kit requested");
     if (url.pathname.includes("/fontawesome-6.7.2/")) pending.push((async () => {
       const body = await response.body();
@@ -33,6 +35,9 @@ try {
       evidence.requests.push({ path: url.pathname, status: response.status(), bytes: body.length, sha256, officialBytes: official?.sha256 === sha256 });
       if (response.status() !== 200 || official?.sha256 !== sha256) evidence.problems.push(`vendor bytes/status failed: ${relative}`);
     })());
+  });
+  browser.context.on("requestfailed", request => {
+    if (["script", "stylesheet", "font", "image"].includes(request.resourceType())) evidence.otherAssetFailures.push({ path: new URL(request.url()).pathname, failure: request.failure()?.errorText, type: request.resourceType() });
   });
   browser.context.on("request", request => { if (new URL(request.url()).hostname === "kit.fontawesome.com") evidence.problems.push("external kit requested"); });
   const page = await browser.context.newPage();
@@ -54,6 +59,7 @@ try {
 finally {
   try { await browser?.close(); await host?.stop(); } catch (error) { evidence.problems.push(`owned closeout: ${error.message}`); }
   evidence.passed = evidence.complete && evidence.problems.length === 0;
+  evidence.durationMs = Date.now() - started;
   writeFileSync(path.resolve(args.out, "evidence.json"), JSON.stringify(evidence, null, 2) + "\n");
 }
 console.log(JSON.stringify({ passed: evidence.passed, problems: evidence.problems, out: args.out }));
