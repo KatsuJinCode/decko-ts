@@ -220,6 +220,13 @@ export function bootstrapFunctionsScss(): string {
   return loadStylesheets(["_functions.scss"]);
 }
 
+/** type/bootswatch_skin.rb#read_bootstrap_variables: the vendored
+ *  bootstrap `_variables.scss` the skin's `$name: value !default;` defaults
+ *  come from (colors.rb#default_value_from_bootstrap). */
+export function bootstrapVariablesScss(): string {
+  return loadStylesheets(["_variables.scss"]);
+}
+
 /** set/self/bootstrap_core.rb `def content`. */
 export function bootstrapCoreContent(_fmt: RenderFormat): string {
   return bootstrapCoreScss();

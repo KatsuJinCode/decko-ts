@@ -110,6 +110,13 @@ import { RenderFormat, UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
 import { baseTableView } from "../../render/views.js";
+import {
+  COLOR_VARIABLE_NAMES,
+  THEME_VARIABLE_NAMES,
+  renderColorsCore,
+  renderColorsInput,
+  variableGroupWithValues,
+} from "../../render/bootswatch-colors.js";
 import { superView, viewWrapInherited } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
@@ -726,6 +733,38 @@ const colorsBarMiddleView: ViewFn = () =>
   '          <i class="bg-secondary"></i>\n' +
   "        </div>\n" +
   "      </div>\n";
+
+/** colors.rb:24-26 + colors/core.haml view :core, template: :haml: the
+ *  palette rendered as three colour groups (theme colours, the first ten
+ *  colours, the rest), each a column of badges. Every variable's value comes
+ *  from the card's own SCSS content first, then the skin's *variables card,
+ *  then the vendored bootstrap defaults (bootswatch-colors.ts). */
+const colorsCoreView: ViewFn = (ctx) => {
+  const { card } = ctx.fmt;
+  const content = card.dbContent ?? "";
+  const left = card.name.isCompound
+    ? ctx.fmt.engine.fetchRenderCard(`${card.name.leftName?.s ?? ""}+*variables`)
+    : undefined;
+  const variables = left?.dbContent;
+  const colors = variableGroupWithValues(COLOR_VARIABLE_NAMES, content, variables);
+  const themeColors = variableGroupWithValues(THEME_VARIABLE_NAMES, content, variables);
+  return renderColorsCore(colors, themeColors);
+};
+
+/** colors.rb:74-76 + colors/input.haml view :input, template: :haml: the
+ *  Palette column (a colour input per colour) beside the Uses column (one
+ *  theme-colour select per theme variable). */
+const colorsInputView: ViewFn = (ctx) => {
+  const { card } = ctx.fmt;
+  const content = card.dbContent ?? "";
+  const left = card.name.isCompound
+    ? ctx.fmt.engine.fetchRenderCard(`${card.name.leftName?.s ?? ""}+*variables`)
+    : undefined;
+  const variables = left?.dbContent;
+  const colors = variableGroupWithValues(COLOR_VARIABLE_NAMES, content, variables);
+  const themeColors = variableGroupWithValues(THEME_VARIABLE_NAMES, content, variables);
+  return renderColorsInput(colors, themeColors);
+};
 
 // ---------------------------------------------------------------------------
 // set/type/bootswatch_skin.rb + html_views.rb - the one_line_content override
@@ -1390,6 +1429,10 @@ const cardModBootstrap: DeckoModManifest = {
             // (not a global flat table) scopes the registration to cards
             // whose set keys carry the anchor.
             { view: "bar_middle", viewFn: colorsBarMiddleView },
+            // colors.rb:74-76 :input and colors.rb:78-80 :core, the
+            // palette haml templates (bootswatch-colors.ts renders them).
+            { view: "input", viewFn: colorsInputView },
+            { view: "core", viewFn: colorsCoreView },
           ],
         },
       },
