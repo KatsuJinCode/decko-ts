@@ -83,7 +83,7 @@ import {
   phantomPointerListItem,
 } from "./pointer-list.js";
 import { readMiniBarCols, readBarCols, readFullBarCols } from "./bar-cols.js";
-import { permissionInheritContentHtml, ruleBarRightHtml } from "./rule-bar-right.js";
+import { permissionInheritContentHtml, permissionRuleTask, ruleBarRightHtml } from "./rule-bar-right.js";
 import { modBarRightSections, modChildAssetGroups } from "../mod-loader/mods/core-admin-runtime.js";
 import { modAssetGroupsCoreHtml } from "./haml-file-views.js";
 import { signinCoreHtml } from "./signin-core-form-view.js";
@@ -1261,7 +1261,11 @@ const coreViewBase: ViewFn = (ctx) => {
   // left card"; this call derives the context from the card's own trunk
   // instead, because the port's format does not carry nest format options.
   if (isRuleCardWithPermissionRight(fmt.card) && fmt.card.dbContent === '_left') {
-    return permissionInheritContentHtml(ctx.fmt.card.name.trunkName?.tagName?.key);
+    return permissionInheritContentHtml(
+      fmt.card.name.trunkName,
+      fmt.engine,
+      permissionRuleTask(fmt.card),
+    );
   }
   if (isPointerOrListCard(fmt.card)) {
     // Abstract::List#standard_pointer_core (card-mod-list
