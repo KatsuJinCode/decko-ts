@@ -79,11 +79,14 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
 import {
+  bindModLoaderToEngine,
   createRenderTestStorage,
   seedCard,
   seedReference,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import cardModAccount from "../../../src/card/mod-loader/mods/card-mod-account.js";
 import { quietDenial } from "../../../src/card/permissions/index.js";
 import { readPermissionOverride, updatePermissionOverride } from "../../../src/card/permissions/read-override.js";
 
@@ -191,6 +194,12 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   // Jane Person (AccountHolder via type::user) + the deny-direction pair.
   await seedCard(s, { id: 70, name: "Person", codename: "user", typeId: SET_TYPE_ID });
   await seedCard(s, { id: 45, name: "Jane Person", typeId: 70 });
+  // The "Sign up" cardtype carries the signup codename in every real deck
+  // (card-mod-account data/real.yml:172-174). The sign-in form links to it
+  // with link_to_card :signup, and Ruby raises CodenameNotFound when it is
+  // absent (card-1.110.0 lib/card/codename.rb unknown_codename!), so the
+  // deck must carry it too.
+  await seedCard(s, { id: 91, name: "Sign up", codename: "signup", typeId: SET_TYPE_ID });
   await seedCard(s, {
     id: 44, leftId: 45, rightId: 60, dbContent: "jane account row",
     readRuleId: 8, readRuleClass: "*right",
@@ -407,6 +416,21 @@ describe("right::asset_output (card-mod-assets): left.ok_to_read?", () => {
 });
 
 describe("self-set read overrides (version/signin/account_links)", () => {
+  // The sign-in form's password field is card-mod-account's right/password
+  // input view (set/right/password.rb:86-88 input_type :password). The
+  // account mod is bound for this block only: a process-wide binding breaks
+  // card resolution in the other blocks of this file.
+  let accountLoader: ModLoader | undefined;
+  beforeAll(async () => {
+    accountLoader = new ModLoader([{ manifest: cardModAccount }]);
+    await accountLoader.load();
+    bindModLoaderToEngine(storage, accountLoader);
+  });
+  afterAll(() => {
+    accountLoader?.reset();
+    if (storage !== undefined) storage.engine.modLoader = undefined;
+  });
+
   it("allows the *version card itself despite its denying stored rule", async () => {
     const s = storage!;
     // The verdict is this suite's subject. The BYTES are version.rb's own

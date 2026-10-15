@@ -201,8 +201,11 @@ describe("bunny edge engine handler — the shared read surface", () => {
     // THE UNCONFIGURED CASE, and the regression guard for the defect itself:
     // with no deltas in the environment the builder resolves this deck's
     // Default Layout from the deck's own `all` and `layout` codename cards
-    // (bunny-edge-error-page.ts resolveDefaultLayout; docs/core/contract.md
-    // S2.6.a: constants resolved from cards.codename, not assumed), so the
+    // (bunny-edge-error-page.ts resolveDefaultLayout; card-1.110.0
+    // lib/card/codename.rb:12-18, "a Card that needs specific code
+    // manipulations should be given a Codename, which will not change even if
+    // the card's name does" — the layout is reached through the deck's
+    // codename card, never by assuming a name), so the
     // page is laid out in the deck's chrome. No other deck's card id, private
     // asset URL or version pin reaches it. The minimal stub is for a deck
     // with no layout anchors and is covered in bunny-edge-error-page.test.ts.
