@@ -86,8 +86,33 @@ export interface SavedCard {
 
 const SKIN_FIELDS = new Set(["colors", "variables", "stylesheets"]);
 
+/** The cards row for one id (Ruby Card[id]), read through the fetch engine's
+ *  cache rather than a fresh query per call. lookInTrash answers a trashed
+ *  row as the raw read did. The cache is the engine's own card read path:
+ *  every write the save makes goes through expire, which drops the cached
+ *  record, so a read here sees the row as the save left it. */
 async function rowById(ctx: StyleAssetEventContext, id: number): Promise<CardsRow | undefined> {
-  return (await ctx.fetch.driver.query<CardsRow>("SELECT * FROM cards WHERE id = ?", [id])).rows[0];
+  const card = await ctx.fetch.fetchById(id, { skipVirtual: true, lookInTrash: true });
+  if (card === undefined || card.id === undefined) return undefined;
+  return {
+    id: card.id,
+    name: card.name?.s ?? null,
+    key: card.key ?? null,
+    codename: card.codename ?? null,
+    left_id: card.leftId ?? null,
+    right_id: card.rightId ?? null,
+    current_revision_id: card.currentRevisionId ?? null,
+    created_at: card.createdAt as CardsRow["created_at"],
+    updated_at: card.updatedAt as CardsRow["updated_at"],
+    creator_id: card.creatorId as number,
+    updater_id: card.updaterId as number,
+    read_rule_class: card.readRuleClass ?? null,
+    read_rule_id: card.readRuleId ?? null,
+    references_expired: card.referencesExpired ?? null,
+    trash: card.trash ? 1 : 0,
+    type_id: card.typeId as number,
+    db_content: card.dbContent ?? null,
+  };
 }
 
 async function codenameOf(ctx: StyleAssetEventContext, id: number | null | undefined): Promise<string | undefined> {
