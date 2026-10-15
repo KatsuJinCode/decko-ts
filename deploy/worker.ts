@@ -37,6 +37,8 @@ import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/
 import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
 import { RenderEngine } from "../src/card/render.js";
+import { getDefaultModLoader } from "../src/card/mod-loader.js";
+import { defaultDeckLoader } from "../src/card/mod-loader/default-mod-deck.js";
 import {
   renderFormatShow,
   type FormatEngineSurface,
@@ -160,6 +162,15 @@ async function bootDeck(env: Env): Promise<Deck> {
   const driver = new CloudflareD1Adapter(env.DB);
   observeDriverQueries(driver, recorder());
   const fetcher = new FetchEngine(driver);
+  // THE MOD DECK, loaded before the render engine exists: RenderEngine's
+  // constructor binds getDefaultModLoader(), so the engine resolves every
+  // view through the ported mods' per-set chain, as Ruby does after
+  // Cardio::Mod::Dirs loads every mod at boot (dirs.rb:54-62,
+  // loader.rb:16-21). The Node host and the Bunny edge boot the same way
+  // (vm-staging-server.mjs, deploy/bunny-worker-src/bunny-edge-deck-boot.ts).
+  // Loading builds in-memory tables and issues no query. The guard keeps a
+  // boot retried after a failed first attempt on the loader already bound.
+  if (getDefaultModLoader() === undefined) defaultDeckLoader();
   const render = new RenderEngine(fetcher);
   const resolveCardId = await primeCqlNameResolver(driver, fetcher);
   return { driver, fetcher, render, resolveCardId, primedAt: new Date().toISOString() };
