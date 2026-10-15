@@ -591,6 +591,8 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   // sets, so both type codes answer the list editor.
   pointer: { method: "list" },
   list: { method: "list" },
+  // card-mod-date set/type/date.rb:2-4 input_type :calendar
+  date: { method: "calendar" },
   // card-mod-search set/type/search_type.rb:1 `include_set Type::Json` —
   // the Search cardtype's set rides the Json set's html input override
   // (card-mod-format set/type/json.rb:32-40 input_type :ace_editor +
@@ -802,6 +804,12 @@ export const inputView: ViewFn = (ctx) => {
     // on the same tinymce_editor_input bytes (tinymce_editor.rb:9-13)
     const id = fmt.uniqueId();
     return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="${namePrefix}[content]">\n${content}</textarea>`;
+  }
+  if (method === "calendar") {
+    // card-mod-date set/all/calendar.rb:9-14 calendar_input: `text_field
+    // :content, class: "date-editor", type: "date"` (+ the bootstrap
+    // form-control append; Rails appends value/name/id after the opts)
+    return `<input class="date-editor form-control" type="date" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />`;
   }
   if (method === "text_field") {
     // editor.rb:51-53 text_field_input: class classy("d0-card-content") +

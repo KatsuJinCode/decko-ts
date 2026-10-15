@@ -36,6 +36,7 @@
 
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import type { ReadViewer } from "../../src/card/permissions/read-rules.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { edgeHostLabels } from "./edge-host-labels.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
@@ -140,6 +141,11 @@ export interface EngineRequestOptions {
    *  The live render boots its own engines over the request store, so it
    *  must boot with the same configuration the isolate's deck does. */
   servedBootOptions?: ServedBootOptions;
+  /** A resolved signed-in viewer. A signed-in page may take the live render
+   *  too: every engine the live render boots renders under this viewer, and
+   *  the render keeps nothing between requests (the kept-page store is keyed
+   *  by page alone, so it must never hold a per-viewer render). */
+  viewer?: ReadViewer;
 }
 
 /**
@@ -158,11 +164,14 @@ export function liveRenderApplies(
   pageView: string | undefined,
   historyParams: Record<string, unknown>,
 ): boolean {
-  if (options?.anonymous !== true) return false;
+  if (options?.anonymous !== true && options?.viewer === undefined) return false;
   if (request.method !== "GET" && request.method !== "HEAD") return false;
   const flag =
     options.liveRenderFlag ?? (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RENDER : undefined);
   if (flag === "0") return false;
+  // Signed-in pages also take it for path and query views (the edit page),
+  // which the anonymous path keeps on the normal render.
+  if (options?.viewer !== undefined) return Object.keys(historyParams).length === 0;
   if (!pathViewIsBareArm(url.pathname) || pageView !== undefined) return false;
   return Object.keys(historyParams).length === 0;
 }
@@ -670,11 +679,25 @@ async function dispatchEngineRequest(
     const historyParams = historyRenderParamsFromWire(parsed.params);
     const renderLive = async () =>
       (
-        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver, options?.servedBootOptions ?? {}), {
-          requestedView: pageView,
-          historyParams,
-          signal,
-        })
+        await liveRenderPage(
+          source.driver,
+          parsed.name,
+          async (driver) => {
+            const engines = await bootEdgeServingEngines(driver, options?.servedBootOptions ?? {});
+            const viewer = options?.viewer;
+            if (viewer !== undefined) {
+              engines.render.viewer = viewer;
+              engines.render.pageSession = viewer;
+            }
+            return engines;
+          },
+          {
+            requestedView: pageView,
+            historyParams,
+            signal,
+            ...(options?.viewer !== undefined ? { keep: false } : {}),
+          },
+        )
       );
     // Each arm answers the page's HTML and its status (403 when the main
     // card is read-denied: Ruby's root.error_status, format/error.rb:27-31).

@@ -91,6 +91,11 @@ import {
   type EdgeRequestProfile,
 } from "./bunny-edge-server-timing.js";
 
+/** TinyMCE's asset base as the deck's editor config names it, and the
+ *  published distribution of the same version that answers for it. */
+const TINYMCE_MOD_PREFIX = "/mod/tinymce_editor/";
+const TINYMCE_DIST_BASE = "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/";
+
 // One deck per isolate (the Workers reuse pattern worker.ts uses): the first
 // request boots the engine, later requests share the warm caches.
 let deckPromise: Promise<Deck> | undefined;
@@ -342,6 +347,18 @@ async function routeBunnyEngineRequest(
     return json(403, { error: "forbidden: this edge deploy is read-only" });
   }
 
+  // TinyMCE's lazy-loaded theme, skin, icon and plugin files. The editor
+  // resolves them under its baseURL (/mod/tinymce_editor), which Ruby serves
+  // from the mod's public folder; this host has no copy, so it redirects to
+  // the published 5.10.7 distribution the deck's editor script was built from.
+  if (url.pathname.startsWith(TINYMCE_MOD_PREFIX) && (request.method === "GET" || request.method === "HEAD")) {
+    const rest = url.pathname.slice(TINYMCE_MOD_PREFIX.length);
+    return new Response(null, {
+      status: 302,
+      headers: { location: `${TINYMCE_DIST_BASE}${rest}`, "cache-control": "public, max-age=86400" },
+    });
+  }
+
   const resolved = resolveDbConfig(env);
   if ("error" in resolved) {
     return json(500, { error: "database credentials missing", detail: resolved.error });
@@ -450,9 +467,19 @@ async function routeBunnyEngineRequest(
     request,
     env,
     async () =>
-      handleEngineRequest(request, getActorEngines().deckFor(viewer.actorId as number), {
-        budgetMs: renderBudgetMs,
-      }),
+      handleEngineRequest(
+        request,
+        { driver: getDriver(resolved, env), deck: async () => getActorEngines().deckFor(viewer.actorId as number) },
+        {
+          budgetMs: renderBudgetMs,
+          // Signed-in pages take the same batched live render the anonymous
+          // path does, under this viewer; views the live render does not
+          // cover fall back to the actor's own engine.
+          viewer,
+          liveRenderFlag: env.DECKO_LIVE_RENDER,
+          servedBootOptions: servedBootOptionsFromEnv(env),
+        },
+      ),
     resolveEdgeContentCache(env),
     { perViewer: true },
   );

@@ -184,7 +184,7 @@ export class ActorRenderEngines {
   /** The actor's engine, built on first use. */
   deckFor(actorId: number): Deck {
     const existing = this.engines.get(actorId);
-    if (existing !== undefined) return { fetcher: this.base.fetcher, render: existing };
+    if (existing !== undefined) return this.actorDeck(existing);
 
     const render = new RenderEngine(this.base.fetcher);
     // Deployment config the HOST owns (render.ts:495-505) is copied off the
@@ -215,7 +215,17 @@ export class ActorRenderEngines {
       if (!oldest.done) this.engines.delete(oldest.value);
     }
     this.engines.set(actorId, render);
-    return { fetcher: this.base.fetcher, render };
+    return this.actorDeck(render);
+  }
+
+  /** The actor's deck view. The deployment's served deltas (asset host,
+   *  stylesheet revision, script integrity) ride along from the shared deck:
+   *  without them a signed-in page keeps the engine's fog asset URLs, and
+   *  the browser blocks the stylesheet as mixed content. */
+  private actorDeck(render: RenderEngine): Deck {
+    const deck: Deck = { fetcher: this.base.fetcher, render };
+    if (this.base.servedDeltas !== undefined) deck.servedDeltas = this.base.servedDeltas;
+    return deck;
   }
 
   /** How many actor engines are warm — for the pins. */
