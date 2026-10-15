@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.dist.json",
+  "include": [
+    "src/**/*.ts",
+    "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+    "tests/server/drivers/mock-hrana-server.ts",
+    "tests/schema/better-sqlite3.d.ts"
+  ]
+}

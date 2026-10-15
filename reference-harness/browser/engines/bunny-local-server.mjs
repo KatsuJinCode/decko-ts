@@ -39,6 +39,11 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ host: "bunny-handler-node-local-hrana", productionRuntime: false }));
       return;
     }
+    if (req.url === "/__harness/runtime") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: false, objectStorageConfigured: false }));
+      return;
+    }
     if (req.url === "/__harness/mail") {
       // No invented successful delivery: the production host has no capture
       // integration here. Complete mail journeys must report that limitation.
