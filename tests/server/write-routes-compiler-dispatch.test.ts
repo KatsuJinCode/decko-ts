@@ -8,7 +8,7 @@
 // dispatches to (libsass-wasm.ts / coffee-npm-compiler.ts).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -24,6 +24,9 @@ import {
   type WriteRouteRequest,
 } from "../../src/server/write-routes.js";
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+import { libsassWasmCompiler } from "../../src/server/libsass-wasm.js";
+import type { ScssCompiler } from "../../src/card/assets/scss-compiler.js";
+import { makeWriteRouteServer } from "./write-routes-test-bridge.js";
 
 const SET_TYPE_ID = 2;
 const POINTER_TYPE_ID = 20;
@@ -69,6 +72,9 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 11, leftId: IDS.all, rightId: IDS.update, typeId: SET_TYPE_ID, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 11, IDS.signedIn, "anyone signed in");
   await byId(JOE_ID, "Joe User");
+  await byId(73, "*create", { codename: "create" });
+  await seedCard(s, { id: 74, leftId: IDS.all, rightId: 73, typeId: SET_TYPE_ID, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 74, IDS.signedIn, "anyone signed in");
   // the style asset shape (the codenames the asset events read)
   await byId(IDS.style, "*style", { codename: "style" });
   await byId(IDS.assetInput, "*asset input", { codename: "asset_input" });
@@ -104,12 +110,12 @@ function writeRequest(pathname: string, body: string): WriteRouteRequest {
   };
 }
 
-function ctxWith(compilers: { scss?: (source: string, style: string) => Promise<string> } = {}): WriteRouteContext {
+function ctxWith(compilers: { scss?: ScssCompiler } = {}): WriteRouteContext {
   return {
     ...baseCtx,
     attachmentStore: new LocalAttachmentStore(filesDir),
     ...(compilers.scss === undefined ? {} : {
-      scssCompiler: async (source: string, style: string) => compilers.scss!(source, style),
+      scssCompiler: compilers.scss,
     }),
   };
 }
@@ -171,5 +177,51 @@ describe("the write surface's compiler seam (the edge refusal gate's dispatch)",
     expect(response?.body).toContain("scssCompiler");
     expect(await outputContent()).toBe(before.output);
     expect(await ruleContent()).toBe(before.rule);
+  });
+
+  it("HTTP rejects malformed CSS before content, history or the last valid stylesheet changes", async () => {
+    await seedCard(storage, { id: 70, name: "CSS", codename: "css", typeId: SET_TYPE_ID });
+    await seedCard(storage, { id: 71, name: "HTTP CSS", typeId: 70, dbContent: ".probe { color: red; }" });
+    await seedCard(storage, { id: 72, name: "HTTP Plain", dbContent: ".probe { color:" });
+    const context = ctxWith({ scss: libsassWasmCompiler() });
+    const bridge = await makeWriteRouteServer(storage, context, { get: "record-404" });
+    const put = async (name: string, card: Record<string, unknown>, extra = {}) => fetch(`${bridge.url}/${encodeURIComponent(name)}.json`, {
+      method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${joeToken}` },
+      body: JSON.stringify({ card, ...extra }),
+    });
+    const snapshot = async () => ({
+      rows: await Promise.all(["cards", "card_actions", "card_acts", "card_changes", "card_virtuals", "card_references", "deck_data_version", "sqlite_sequence"]
+        .map(async table => [table, (await storage.counting.query(`SELECT * FROM ${table} ORDER BY rowid`, [])).rows])),
+      files: readdirSync(filesDir, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile())
+        .map(entry => join(entry.parentPath, entry.name)).sort().map(path => [path.slice(filesDir.length), readFileSync(path).toString("base64")]),
+    });
+    try {
+      expect((await put("*all+*style", { content: "HTTP CSS" })).status).toBe(200);
+      expect((await put("HTTP CSS", { content: ".probe { color: blue; }" })).status).toBe(200);
+      const identifier = await outputContent();
+      const match = /^~46\/(\d+)\.css$/.exec(identifier)!;
+      expect(readFileSync(join(filesDir, "46", `${match[1]}.css`), "utf8")).toContain(".probe{color:blue}");
+      const before = await snapshot();
+      for (const extra of [{}, { draft: "true" }]) {
+        const response = await put("HTTP CSS", { content: ".probe { color:" }, extra);
+        expect(response.status).toBe(422);
+        expect(await response.text()).toContain("content");
+        expect(await snapshot()).toEqual(before);
+      }
+      for (const [name, card] of [
+        ["HTTP Plain", { type_id: 70 }],
+        ["HTTP CSS", { content: ".probe { color: red; }", subcards: { "+nested": { type_id: 70, content: "", subcards: { "+css": { type_id: 70, content: ".probe { color:" } } } } }],
+      ] as const) {
+        const response = await put(name, card);
+        const body = await response.text();
+        expect(response.status, `${name}: ${body}`).toBe(422);
+        expect(body).toContain("content");
+        expect(await snapshot()).toEqual(before);
+      }
+      const read = await fetch(`${bridge.url}/HTTP_CSS.json`);
+      expect(await read.json()).toMatchObject({ dbContent: ".probe { color: blue; }" });
+    } finally {
+      await new Promise<void>((resolve, reject) => bridge.server.close(error => error ? reject(error) : resolve()));
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -9,6 +9,17 @@ import { AdapterSession, loadAdapterManifest } from "../../reference-harness/run
 
 const harness = fileURLToPath(new URL("../../reference-harness", import.meta.url));
 const fixture = join(harness, "fixtures/synthetic-v3-mod-probes-ruby33");
+
+function snapshot(database: string, files: string) {
+  const db = new DatabaseSync(database, { readOnly: true });
+  try {
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all();
+    const rows = tables.map(({ name }) => [name, db.prepare(`SELECT * FROM "${String(name).replaceAll('"', '""')}" ORDER BY rowid`).all()]);
+    const paths = readdirSync(files, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile())
+      .map(entry => join(entry.parentPath, entry.name)).sort();
+    return { rows, files: paths.map(path => [path.slice(files.length), readFileSync(path).toString("base64")]) };
+  } finally { db.close(); }
+}
 
 it.each(["ts", "ts-composed"])("%s adapter saves CSS through its real compiler", async (adapter) => {
   const root = mkdtempSync(join(tmpdir(), "decko-style-adapter-"));
@@ -34,6 +45,16 @@ it.each(["ts", "ts-composed"])("%s adapter saves CSS through its real compiler",
       const answer = await session.request({ op: "write", actor: "admin", action, card: "Compiler Wiring CSS", fields: { ...(action === "create" ? { type: "CSS" } : {}), content } });
       expect(answer.ok).toBe(true);
       expect(answer.result).toMatchObject({ saved: true, errors: [] });
+    }
+    const before = snapshot(database, join(root, "files"));
+    for (const request of [
+      { action: "update", card: "Compiler Wiring CSS", fields: { content: ".probe { color:" } },
+      { action: "create", card: "Rejected CSS", fields: { type: "CSS", content: ".probe { color:" } },
+      { action: "create", card: "Rejected CSS Parent", fields: { content: "parent", fields: { "Compiler Wiring CSS": { content: ".probe { color:" } } } },
+    ]) {
+      const rejected = await session.request({ op: "write", actor: "admin", ...request });
+      expect(rejected.result, JSON.stringify(request)).toMatchObject({ saved: false, errors: [{ field: "content", message: expect.stringContaining("Invalid CSS") }] });
+      expect(snapshot(database, join(root, "files"))).toEqual(before);
     }
     const persisted = new DatabaseSync(database, { readOnly: true });
     try {

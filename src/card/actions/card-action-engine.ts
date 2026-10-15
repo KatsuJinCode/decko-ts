@@ -164,6 +164,7 @@ import { emailIsValid, encryptPassword, normalizeEmail, planAccountFields } from
 import { actorBot } from "../auth/actor.js";
 import { runObserverEvents } from "../notify/observer.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
+import { renderStyleChunks } from "../assets/skin-stylesheet.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../assets/script-compressor.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
@@ -1759,6 +1760,7 @@ export class CardActionEngine {
     input = await this.applySkinCreateEvents(input, typeId);
     this.setActiveSaveAttributes(input);
     await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
+    await this.validateCssSaveTree(name, input, undefined, typeId);
     const writer = this.newWriter(actingId);
     // Ruby runs every card's finalize events after the whole act's store
     // phase, so the act card's reference janitors see the subcards' rows:
@@ -2513,6 +2515,12 @@ export class CardActionEngine {
     await this.assertNoEditConflict(row.id, input.lastActionIdBeforeEdit);
     await this.assertLayoutHasMainNest(row, input.content, resolvedTypeId);
     if (typeChanged) input = await this.applySkinTypeChange(row, input, resolvedTypeId);
+    await this.validateCssSaveTree(
+      (input.name !== undefined ? DeckoName.parse(input.name) : await this.composedNameOf(row)) ?? DeckoName.parse(""),
+      input,
+      row,
+      resolvedTypeId ?? row.type_id,
+    );
     // save_draft (mod/core/set/all/content.rb:8-15) is a :store-stage event
     // on :update when :draft? - `save_content_draft content; abort :success`.
     // The abort rolls the cards row save back, so the draft's ONLY durable
@@ -2665,20 +2673,49 @@ export class CardActionEngine {
     return result;
   }
 
+  /** Stock CSS validates changed content/type during :validate (css.rb),
+   * before the act's store phase. Check the entire submitted subtree before
+   * its first write: rejecting a late subcard must also preserve its parent.
+   * Use the host's real compiler, whose output the finalize phase will use;
+   * compilation itself writes neither card rows nor asset files. */
+  private async validateCssSaveTree(
+    name: DeckoName,
+    input: SubcardInput,
+    row?: CardsRow,
+    resolvedTypeId?: number,
+  ): Promise<void> {
+    if (input.trash === true) return;
+    const typeId = resolvedTypeId ?? (
+      input.typeId !== undefined || input.typeCode !== undefined || input.typeName !== undefined || row === undefined
+        ? await resolveTypeId(this.fetch, { ...input, name })
+        : row.type_id
+    );
+    if (!this.skipsEvent("validate_css") && (await this.fetchRowById(typeId))?.codename === "css") {
+      const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
+      if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
+        await assertStyleCompilerFor(this.styleAssetContext(undefined), name, typeId);
+        const source = renderStyleChunks(content);
+        try {
+          await this.scssCompiler!(source, "compressed");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new CardActionError("validation-failed", `Validation failed: ${message}`, `CONTENT: ${message}`, { content: message }, name.s);
+        }
+      }
+    }
+    for (const [key, sub] of Object.entries(input.subcards ?? {})) {
+      const fullName = DeckoName.parse(key.startsWith("+") ? `${name.s}${key}` : key);
+      const existing = await this.fetch.fetchByName(fullName);
+      const existingRow = existing?.id == null ? undefined : await this.fetchRowById(existing.id);
+      const liveRow = existingRow?.trash === 0 ? existingRow : undefined;
+      await this.validateCssSaveTree(sub.name === undefined ? fullName : DeckoName.parse(sub.name), sub, liveRow);
+    }
+  }
+
   /** The update save's validate-stage walk (director.rb:12-16), shared by
    *  the full update path and the DRAFT seam. Ruby runs the whole validate
-   *  stage — initialize, prepare_to_validate, the name legality/uniqueness
-   *  checks, event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55,
-   *  a :validate event) — before ANY :store-stage event, and save_draft
-   *  (mod/core/set/all/content.rb:7-10) is a :store-stage event on :update:
-   *  a guarded draft is refused in Ruby because validate already ran when
-   *  the draft aborts. Extracted so the draft seam runs the same walk
-   *  before storing (the draft branch previously returned before any
-   *  validate-stage event). The walk sees
-   *  the PRE-merge state (Ruby's card carries the ASSIGNED attributes
-   *  through these stages; this port's merges happen in the store phase —
-   *  a documented fidelity bound of the seam placement) and returns the
-   *  derived names the store phase needs. */
+   *  stage before ANY :store-stage event, including save_draft. This walk
+   *  sees the pre-merge state; the port's merges happen in the store phase. */
   private async runUpdateValidationWalk(
     row: CardsRow,
     input: UpdateCardInput,
