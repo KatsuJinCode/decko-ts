@@ -189,8 +189,28 @@ async function runStep(ctx, step) {
     case "restart":
       // Drain mail before restarting so in-memory outboxes cannot hide mail.
       ctx.mailSeen.push(...(await ctx.mail()));
-      await ctx.restart();
+      ctx.restartEvidence = await ctx.restart();
       return;
+    case "assert": {
+      if (arg.signedIn !== undefined) {
+        const signedIn = await page.locator("a.signout-link").first().isVisible();
+        if (signedIn !== arg.signedIn) throw new Error(`expected signedIn=${arg.signedIn}, observed ${signedIn}`);
+        if (!arg.signedIn && !(await (await locate(page, { field: "*password" })).isVisible())) {
+          throw new Error("credential refusal did not leave a visible sign-in password field");
+        }
+      } else {
+        const field = await locate(page, arg);
+        if (arg.checked !== undefined) {
+          const checked = await field.isChecked({ timeout: STEP_TIMEOUT });
+          if (checked !== arg.checked) throw new Error(`expected checkbox checked=${arg.checked}, observed ${checked}`);
+          return;
+        }
+        const actual = await field.inputValue({ timeout: STEP_TIMEOUT });
+        if (arg.value !== undefined && actual !== String(arg.value)) throw new Error(`field value differs: expected ${JSON.stringify(arg.value)}, observed ${JSON.stringify(actual)}`);
+        if (arg.contains !== undefined && !actual.includes(String(arg.contains))) throw new Error("persisted editor does not contain the expected content");
+      }
+      return;
+    }
     case "visit":
       await page.goto(ctx.base + arg, { waitUntil: "load", timeout: STEP_TIMEOUT });
       break;
@@ -344,6 +364,7 @@ function maskRows(rows) {
 async function runJourney(engine, args, journey, spec, logFile) {
   const result = { id: journey.id, engine: engine.name, steps: [], observations: [], completed: false };
   const server = await startEngine(engine, args.fixture, { logFile });
+  result.bootMs = server.bootMs;
   let browser;
   try {
     const before = snapshot(server.db);
@@ -395,8 +416,10 @@ async function runJourney(engine, args, journey, spec, logFile) {
       }
       try {
         ctx.editorVia = undefined;
+        ctx.restartEvidence = undefined;
+        const stepStarted = Date.now();
         await runStep(ctx, step);
-        result.steps.push({ i, step, outcome: "ok", ...(ctx.editorVia ? { via: ctx.editorVia } : {}) });
+        result.steps.push({ i, step, outcome: "ok", ms: Date.now() - stepStarted, ...(ctx.editorVia ? { via: ctx.editorVia } : {}), ...(ctx.restartEvidence ? { restart: ctx.restartEvidence } : {}) });
       } catch (err) {
         failed = true;
         result.steps.push({ i, step, outcome: "failed", error: String(err?.message ?? err).split("\n")[0] });

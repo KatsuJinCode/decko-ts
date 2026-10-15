@@ -117,31 +117,33 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     const launch = () => {
       const out = logFile ? openSync(logFile, "a") : "ignore";
       child = spawn(engine.command[0], engine.command.slice(1), {
-      cwd: engine.dir,
-      env,
-      windowsHide: true,
-      detached: process.platform !== "win32",
-      stdio: ["ignore", out, out],
+        cwd: engine.dir,
+        env,
+        windowsHide: true,
+        detached: process.platform !== "win32",
+        stdio: ["ignore", out, out],
       });
       if (typeof out === "number") closeSync(out);
     };
+    const bootStarted = Date.now();
     launch();
     const base = `http://127.0.0.1:${port}`;
     const awaitReady = async () => {
-    const deadline = Date.now() + readyTimeoutMs;
-    for (;;) {
-      if (child.exitCode !== null) throw new Error(`${engine.name} server exited with ${child.exitCode} before it was ready`);
-      try {
-        const res = await fetch(base + (engine.ready ?? "/__harness/ready"), { headers: { connection: "close" } });
-        if (res.ok) break;
-      } catch {
-        /* not listening yet */
+      const deadline = Date.now() + readyTimeoutMs;
+      for (;;) {
+        if (child.exitCode !== null) throw new Error(`${engine.name} server exited with ${child.exitCode} before it was ready`);
+        try {
+          const res = await fetch(base + (engine.ready ?? "/__harness/ready"), { headers: { connection: "close" } });
+          if (res.ok) break;
+        } catch {
+          /* not listening yet */
+        }
+        if (Date.now() > deadline) throw new Error(`${engine.name} server not ready after ${readyTimeoutMs} ms`);
+        await new Promise((r) => setTimeout(r, 500));
       }
-      if (Date.now() > deadline) throw new Error(`${engine.name} server not ready after ${readyTimeoutMs} ms`);
-      await new Promise((r) => setTimeout(r, 500));
-    }
     };
     await awaitReady();
+    const bootMs = Date.now() - bootStarted;
     const mail = async () => {
       const res = await fetch(base + "/__harness/mail", { headers: { connection: "close" } });
       return res.ok ? res.json() : [];
@@ -149,13 +151,16 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     // Restart only the process this session spawned, preserving its private
     // database/files/cache and origin. No other session's process is selected.
     const restart = async () => {
+      const previousPid = child?.pid;
       if (child && child.exitCode === null) {
         await killTree(child);
       }
+      const restarted = Date.now();
       launch();
       await awaitReady();
+      return { previousPid, pid: child.pid, bootMs: Date.now() - restarted };
     };
-    return { base, db, files, mail, stop, restart };
+    return { base, db, files, mail, stop, restart, bootMs };
   } catch (err) {
     await stop();
     throw err;

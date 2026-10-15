@@ -68,6 +68,43 @@
         },
         {
           "observe": "new email after fresh session and restart"
+        },
+        {
+          "assert": {
+            "field": "*email",
+            "value": "mira.changed@example.test"
+          }
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Fixture member pass 1#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "assert": {
+            "signedIn": false
+          }
+        },
+        {
+          "observe": "old credentials refused"
         }
       ]
     },
@@ -133,6 +170,37 @@
         },
         {
           "observe": "new password authenticated after restart"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Fixture member pass 1#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "assert": {
+            "signedIn": false
+          }
+        },
+        {
+          "observe": "old credentials refused"
         }
       ]
     },
@@ -220,6 +288,37 @@
         },
         {
           "observe": "reset password authenticated after restart"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Fixture member pass 1#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "assert": {
+            "signedIn": false
+          }
+        },
+        {
+          "observe": "old credentials refused"
         }
       ]
     },
@@ -238,13 +337,7 @@
           "signin": "admin"
         },
         {
-          "visit": "/new/Toggle"
-        },
-        {
-          "fill": {
-            "name": "card[name]"
-          },
-          "value": "*all+*captcha"
+          "visit": "/*all+*captcha?view=edit"
         },
         {
           "uncheck": {
@@ -253,7 +346,38 @@
         },
         {
           "click": {
-            "button": "Submit"
+            "button": "Save and Close"
+          }
+        },
+        {
+          "visit": "/*all+*captcha?view=edit"
+        },
+        {
+          "assert": {
+            "name": "card[content]",
+            "checked": false
+          }
+        },
+        {
+          "visit": "/Sign_up+*type+*captcha?view=edit"
+        },
+        {
+          "uncheck": {
+            "name": "card[content]"
+          }
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "visit": "/Sign_up+*type+*captcha?view=edit"
+        },
+        {
+          "assert": {
+            "name": "card[content]",
+            "checked": false
           }
         },
         {
@@ -409,6 +533,12 @@
         },
         {
           "observe": "persisted date editor value"
+        },
+        {
+          "assert": {
+            "css": "input.date-editor[type=date]",
+            "value": "2028-02-29"
+          }
         }
       ]
     },
@@ -470,6 +600,13 @@
         },
         {
           "observe": "persisted rich editor value"
+        },
+        {
+          "assert": {
+            "css": "textarea[name=\"card[content]\"]",
+            "contains": "Journey persisted rich content 20261015.",
+            "hidden": true
+          }
         }
       ]
     }
