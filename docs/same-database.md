@@ -23,6 +23,32 @@ Every statement is `CREATE ... IF NOT EXISTS` or `INSERT OR IGNORE`. Nothing
 is dropped, altered or rewritten: no column is added to a Ruby table, no
 Ruby index is removed, no Ruby row changes. A second open creates nothing.
 
+### MySQL: what the additive list contains
+
+On MySQL the same contract holds, with two entries from the table above that
+MySQL cannot express:
+
+- `cards_key_last_char_index` is created as a **functional key part**
+  (`(substr(key, -1))`) on MySQL 8.0.13 or later, and omitted on older
+  MySQL and on MariaDB (`supportsFunctionalIndexes`,
+  `src/server/same-database.ts`).
+- `cards_codename_present_index` is **omitted**: MySQL has no partial
+  indexes. Both are serving-path planner aids, so the rows read and written
+  are the same either way.
+
+Ruby's `key` and `codename` indexes already serve the engine's lookups under
+the database's own collation, so the two BINARY-collated indexes above are
+SQLite-only and are not created on MySQL.
+
+Measured 2026-10-14 on MySQL 8.4.11 (official binaries, `tools/mysql/fetch-mysql.mjs`),
+`npx vitest run tests/server/drivers/mysql-ruby-schema.test.ts`: Ruby's
+production schema (`db/schema.mysql-reference.sql`) plus the card-gem tables
+(`db/schema.mysql-card-gem.sql`) loaded on a real server, then opened with
+`openSameDatabase`. Every Ruby column, type, nullability and index is
+unchanged; the only additions are `deck_data_version`, its six triggers,
+`auth_sessions` with two indexes, and the three lookup indexes above; a
+second open creates nothing.
+
 ## Reading and writing the same rows
 
 The port reads Ruby's tables in Ruby's row shapes and writes rows Ruby
@@ -85,6 +111,40 @@ Measured 2026-10-14 on Windows, Node 24, Ruby 3.4.
    rendered by Ruby, Ruby's card rendered by the port) are the same from
    both engines, 4 of 4, and the freshness stamp moved on both engines'
    writes.
+
+4. On MySQL, the same grade with the engine served from a real MySQL 8.4.11
+   server under Ruby's own schema (`reference-harness/adapters/ts-mysql`):
+
+   ```bash
+   node tools/mysql/fetch-mysql.mjs
+   node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts-mysql/adapter.json \
+        --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
+   node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
+        --actual <resultsDir> --expected reference-harness/fixtures/synthetic-v1/expected --report <report>
+   ```
+
+   Result measured 2026-10-14, commit 4dbe07bc: persistence 16 of 16,
+   side effects 19 of 19, read-writes 8 of 8, rendering 1748 of 1754,
+   semantics 2386 of 2389, **verdict fail**. Not the 1754/2389 figure the
+   SQLite grade reaches, and the gap is stated here rather than closed:
+
+   - The 8 rendering and 3 semantics failures are all `Not Topics` — one
+     card whose search-result list comes back in a different order. That is
+     a row-tie ordering difference between SQLite's and MySQL's plans; the
+     PostgreSQL driver emulates SQLite's tie order explicitly
+     (`docs/postgres.md`), and the MySQL driver does not yet.
+   - `other tables` is 1 of 16: every write step rewrites
+     `ar_internal_metadata` rows. The cause is the harness mirror, not the
+     engine: MySQL's `datetime` column has no sub-second precision, so
+     copying the table back to the SQLite file rounds
+     `2026-10-08 05:40:30.918480` to `2026-10-08 05:40:31`. Ruby's own
+     MySQL column is the same `datetime`, so a Ruby-built database holds
+     the rounded value too; the graded SQLite file holds the fractional one.
+
+   Reproduce with the two commands above; the binaries come from
+   `tools/mysql/fetch-mysql.mjs` (cdn.mysql.com, MD5-checked) into a cache
+   directory outside the repository, and the server is started as a hidden
+   child process that ends with the adapter.
 
 ## Limits
 

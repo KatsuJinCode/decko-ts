@@ -149,9 +149,7 @@ export async function seedCard(storage: ActionsTestStorage, opts: SeedOptions): 
         // query: over a hosted HTTP database each request may run on a
         // different connection, where last_insert_rowid() is 0.
         (
-          await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE rowid = ?", [
-            insert.lastInsertRowId,
-          ])
+          await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE id = ?", [insert.lastInsertRowId])
         )?.id;
   const inserted = await storage.selectOne<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
   if (inserted === undefined) throw new Error("seedCard: insert lost");

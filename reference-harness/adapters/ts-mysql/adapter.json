@@ -1,0 +1,5 @@
+{
+  "name": "decko-ts-mysql",
+  "description": "The TypeScript port of Decko, loaded from this checkout, serving the deck from a real MySQL 8.4 server under Ruby Decko's own MySQL schema (db/schema.mysql-reference.sql).",
+  "command": ["node", "adapter.mjs"]
+}

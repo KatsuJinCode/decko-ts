@@ -159,11 +159,13 @@ export async function openSameDatabase(
   return { rubyDatabase, created, authMigrationsApplied: auth.applied };
 }
 
-/** The objects the port adds to a Ruby MySQL database. MySQL has no
- *  expression or partial indexes on the versions Ruby Decko supports, and
- *  its key/codename indexes already serve the engine's lookups under the
- *  database's own collation, so only the stamp, its triggers, the session
- *  table and the two plain lookup indexes are added. */
+/** The objects the port adds to a Ruby MySQL database. MySQL has no partial
+ *  indexes, so the SQLite partial index (cards_codename_present_index) is not
+ *  added. Its key/codename indexes already serve the engine's lookups under
+ *  the database's own collation. The objects here are additive: they never
+ *  alter a column or an index Ruby created. The expression index
+ *  cards_key_last_char_index is added only where MySQL supports functional
+ *  key parts (MYSQL_FUNCTIONAL_INDEX below). */
 export const MYSQL_PORT_OBJECTS: readonly PortSchemaObject[] = [
   {
     type: "table",
@@ -197,11 +199,31 @@ export const MYSQL_PORT_OBJECTS: readonly PortSchemaObject[] = [
   { type: "index", name: "cards_right_id_trash_index", sql: `CREATE INDEX cards_right_id_trash_index ON cards (right_id, trash)` },
 ];
 
+/** The SQLite expression index on substr("key", -1), as a MySQL functional key
+ *  part. Functional key parts need MySQL 8.0.13 or later; MariaDB has none. */
+export const MYSQL_FUNCTIONAL_INDEX: PortSchemaObject = {
+  type: "index",
+  name: "cards_key_last_char_index",
+  sql: "CREATE INDEX cards_key_last_char_index ON cards ((substr(`key`, -1)))",
+};
+
+/** Whether a server version string names a MySQL that supports functional key
+ *  parts (MySQL 8.0.13+). MariaDB reports a version with "MariaDB" in it. */
+export function supportsFunctionalIndexes(versionString: string): boolean {
+  if (/mariadb/i.test(versionString)) return false;
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(versionString.trim());
+  if (m === null) return false;
+  const [major, minor, patch] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return major > 8 || (major === 8 && (minor > 0 || patch >= 13));
+}
+
 async function openSameMysqlDatabase(driver: SQLDatabaseDriver, options: SameDatabaseOptions): Promise<SameDatabaseReport> {
   const before = await schemaNames(driver);
   const rubyDatabase = await isRubyDeckoDatabase(driver);
   const hasCardTables = before.has("cards") && before.has("card_references");
-  const objects = MYSQL_PORT_OBJECTS.filter((o) => (o.name === "auth_sessions" ? !options.skipAuthSessions : hasCardTables));
+  const version = String((await driver.query<{ v: string }>("SELECT VERSION() AS v", [])).rows[0]?.v ?? "");
+  const functional = supportsFunctionalIndexes(version) ? [MYSQL_FUNCTIONAL_INDEX] : [];
+  const objects = [...MYSQL_PORT_OBJECTS, ...functional].filter((o) => (o.name === "auth_sessions" ? !options.skipAuthSessions : hasCardTables));
   // DDL commits implicitly on MySQL, so each object is created on its own;
   // the existence check makes a rerun create nothing.
   for (const o of objects) if (!before.has(o.name)) await driver.query(o.sql, []);

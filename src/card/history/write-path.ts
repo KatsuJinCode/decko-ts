@@ -202,7 +202,7 @@ const NEW_CARD_ID_SQL = `(
           COALESCE((SELECT MAX(card_id) FROM card_actions), 0)) AS history_max,
       MAX(COALESCE((SELECT MAX(id) FROM cards), 0),
           COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'cards'), 0)) + 1 AS next_id
-  )
+  ) AS id_source
 )`;
 
 /** TRACKED_FIELDS in storage order — the order Ruby's

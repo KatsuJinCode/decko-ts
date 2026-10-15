@@ -43,12 +43,22 @@ export const MYSQL_SESSION_SETTINGS = [
  * engine issues; anything else passes through unchanged.
  */
 export function sqliteToMysql(sql: string): string {
-  return outsideQuotes(sql, (part) =>
-    part
+  // SQLite's sequence counter for a table (`sqlite_sequence`) is the table's
+  // AUTO_INCREMENT counter on MySQL: the next id the table would hand out.
+  const withSequence = sql.replace(
+    /SELECT\s+seq\s+FROM\s+sqlite_sequence\s+WHERE\s+name\s*=\s*'([^']+)'/gi,
+    "SELECT AUTO_INCREMENT AS seq FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$1'",
+  );
+  const translated = outsideQuotes(withSequence, (part) =>
+    scalarMinMax(part)
       // Words MySQL reserves that SQLite accepts as bare column names
-      // (cards.key). Quoted unless already qualified by a table alias or
-      // part of a KEY clause (PRIMARY KEY, UNIQUE KEY, ...).
-      .replace(/(?<![.\w"`])(?<!(?:PRIMARY|UNIQUE|FOREIGN|DUPLICATE)\s+)\b(key)\b(?![\w"`])/gi, '"$1"')
+      // (cards.key). Quoted unless already qualified by a table alias, or
+      // part of a KEY clause: PRIMARY KEY, UNIQUE KEY, FOREIGN KEY, DUPLICATE
+      // KEY, and an index definition in CREATE TABLE (KEY `name` (...) or
+      // KEY (...)).
+      // A quoted index name starts the next part (outsideQuotes splits there),
+      // so "followed by the end of the part" also means a name follows.
+      .replace(/(?<![.\w"`])(?<!(?:PRIMARY|UNIQUE|FOREIGN|DUPLICATE)\s+)\b(key)\b(?![\w"`])(?!\s*(?:[`(]|$))/gi, '"$1"')
       // Ruby's MySQL text columns already compare case-insensitively
       // (utf8mb3_unicode_ci), which is what SQLite's NOCASE asks for.
       .replace(/\s+COLLATE\s+NOCASE\b/gi, "")
@@ -56,6 +66,8 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\bAS\s+(?:NOT\s+)?MATERIALIZED\s*\(/gi, "AS (")
       .replace(/\bINSERT\s+OR\s+IGNORE\b/gi, "INSERT IGNORE")
       .replace(/\bINSERT\s+OR\s+REPLACE\b/gi, "REPLACE")
+      // SQLite's rowid counter keyword; MySQL's is AUTO_INCREMENT.
+      .replace(/\bAUTOINCREMENT\b/gi, "AUTO_INCREMENT")
       // CAST target types (the operand may be a quoted literal in another
       // part, so only the target is matched). A TEXT cast gets a width: a
       // recursive CTE's column takes its type from the anchor row.
@@ -63,6 +75,78 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\s+AS\s+INTEGER\s*\)/gi, " AS SIGNED)")
       .replace(/\bLIMIT\s+-1\b/gi, "LIMIT 18446744073709551615"),
   );
+  return /^\s*CREATE\s+TABLE\b/i.test(translated) ? typeUntypedColumns(translated) : translated;
+}
+
+/**
+ * SQLite's MAX(a, b) and MIN(a, b) with two or more arguments are scalar
+ * functions; MySQL's are aggregates and take one argument. The scalar form is
+ * GREATEST / LEAST on MySQL. A call with one argument (the aggregate) is left
+ * as it is.
+ */
+function scalarMinMax(text: string): string {
+  return text.replace(/\b(MAX|MIN)\s*\(/gi, (match, fn: string, offset: number) => {
+    let depth = 0;
+    let topLevelComma = false;
+    for (let i = offset + match.length - 1; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth === 0) break;
+      } else if (ch === "," && depth === 1) topLevelComma = true;
+    }
+    if (!topLevelComma) return match;
+    return fn.toUpperCase() === "MAX" ? "GREATEST(" : "LEAST(";
+  });
+}
+
+/** Table-constraint keywords: a bare word starting with one of these is not a
+ *  column definition. */
+const CONSTRAINT_WORDS = new Set(["PRIMARY", "UNIQUE", "FOREIGN", "KEY", "INDEX", "CONSTRAINT", "CHECK", "FULLTEXT", "SPATIAL"]);
+
+/**
+ * SQLite accepts a column with no declared type (`z` in `CREATE TABLE t (z)`);
+ * MySQL needs one. Such a column is given TEXT, the affinity an untyped column
+ * takes its values under in the port's PostgreSQL translation too. Only the
+ * top-level column list is read: a definition that is one bare identifier is
+ * a column, anything with parentheses or a constraint keyword is left alone.
+ */
+function typeUntypedColumns(sql: string): string {
+  const open = sql.indexOf("(");
+  if (open < 0) return sql;
+  let depth = 0;
+  let quote: string | undefined;
+  let start = open + 1;
+  let out = sql.slice(0, open + 1);
+  const flush = (end: number) => {
+    const def = sql.slice(start, end);
+    const bare = /^(\s*)("?)([A-Za-z_]\w*)\2(\s*)$/.exec(def);
+    if (bare && !CONSTRAINT_WORDS.has(bare[3].toUpperCase())) out += `${bare[1]}${bare[2]}${bare[3]}${bare[2]} TEXT${bare[4]}`;
+    else out += def;
+  };
+  for (let i = open + 1; i < sql.length; i++) {
+    const ch = sql[i];
+    if (quote) {
+      if (ch === quote) quote = undefined;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")") {
+      if (depth === 0) {
+        flush(i);
+        out += sql.slice(i);
+        return out;
+      }
+      depth--;
+    } else if (ch === "," && depth === 0) {
+      flush(i);
+      out += ",";
+      start = i + 1;
+    }
+  }
+  return sql;
 }
 
 /** Apply `rewrite` to the parts of `sql` outside quoted strings and
@@ -131,10 +215,20 @@ export class MysqlDriver implements SQLDatabaseDriver {
     idsReusedAfterRollback: false,
   };
 
+  /** The id of the last row this connection inserted with an AUTO_INCREMENT
+   *  id: SQLite's last_insert_rowid() for the connection. MySQL has no such
+   *  function, so a statement that names it reads this value. */
+  private lastRowId: number | undefined;
+
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const [result] = await this.conn.query({ sql: sqliteToMysql(sql), values: params.map(toParam) });
+    const translated = sqliteToMysql(sql).replace(
+      /last_insert_rowid\(\)/gi,
+      this.lastRowId === undefined ? "NULL" : String(this.lastRowId),
+    );
+    const [result] = await this.conn.query({ sql: translated, values: params.map(toParam) });
     if (Array.isArray(result)) return { rows: result as T[], rowsAffected: 0 };
     const header = result as ResultSetHeader;
+    if (header.insertId > 0) this.lastRowId = header.insertId;
     return { rows: [], rowsAffected: header.affectedRows, lastInsertRowId: rowIdOrOmit(header.insertId) };
   }
 
