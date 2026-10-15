@@ -5208,12 +5208,23 @@ export class CardActionEngine {
   private async assertAccountFieldLeftExists(name: DeckoName): Promise<void> {
     if (name.isSimple || name.rightName === undefined || name.leftName === undefined) return;
     const right = await this.fetch.fetchByKey(name.rightName.key);
-    if (right === undefined || right.codename !== "api_key") return;
+    const codename = right?.codename;
+    if (codename !== "api_key" && codename !== "password") return;
     const left = await this.fetch.fetchByKey(name.leftName.key);
     if (left !== undefined && left.id !== undefined) return;
-    throw new Error(
-      `cannot create ${name.s}: its left card does not exist, so the api_key right has no account to check ownership against`,
-    );
+    if (codename === "api_key") {
+      // card-mod-api_key ok_to_create? (api_key.rb) raises before the verdict:
+      // the answer is the exception itself.
+      throw new Error(
+        `cannot create ${name.s}: its left card does not exist, so the api_key right has no account to check ownership against`,
+      );
+    }
+    // card-mod-account set/right/password.rb: the password's save reads its
+    // account (left) for the salt, and with no left card that read raises in
+    // Ruby, which the save reports as a server error (Card::Error::ServerError)
+    // with nothing stored.
+    const message = `cannot create ${name.s}: its left card does not exist, so the password has no account salt to encrypt with`;
+    throw new CardActionError("server-error", message, undefined, { ServerError: message });
   }
 
   private assertAccountsHaveEmail(subcards: Record<string, SubcardInput> | undefined): void {
