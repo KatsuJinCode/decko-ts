@@ -37,6 +37,7 @@ import { str, type ViewResult } from "./format.js";
 
 import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
+import { actionTypeFromCode } from "../history/action.js";
 import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
 import { cardWallClockNow } from "../wall-clock.js";
@@ -6634,7 +6635,20 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  surfaces it in every format where no own-format arm exists
  *  (email_text :last_action's `_render_last_action_verb` delegation
  *  resolves HERE). The html arm (history) still shadows it in html. */
-export const lastActionVerbNotifyView: ViewFn = () => "edited";
+export const lastActionVerbNotifyView: ViewFn = (ctx) => {
+  // notification_act (base_views.rb:117-119): `@notification_act ||= act ||
+  // card.acts.last`. With no act the verb is 'edite' + "d". With one, its
+  // main_action (act.rb:105-107: action_on(card_id) || actions.first) gives
+  // the action type's name, "#{action_type}d" (base_views.rb:45-47).
+  const reader = ctx.fmt.engine.historyRenderReader?.();
+  const act = reader?.cardLastAct;
+  if (reader === undefined || act === undefined) return "edited";
+  const actions = reader.actionsOfAct(act.id);
+  const main =
+    actions.find((a) => a.card_id === reader.rootCardId) ?? actions[0];
+  const type = main === undefined ? undefined : actionTypeFromCode(Number(main.action_type));
+  return type === undefined ? "edited" : `${type}d`;
+};
 
 /** card-mod-follow set/all/notify/base_views.rb:4-14
  *  `view :list_of_changes, denial: :blank, cache: :never` — the
