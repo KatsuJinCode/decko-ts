@@ -529,11 +529,15 @@ async function dispatchEngineRequest(
       // clear those caches HERE, before the verdict is computed.
       const newCardDeck = await source.deck();
       await newCardDeck.render.ensureFreshness();
+      const typeName = parsed.typeId === undefined
+        ? parsed.typeName || await defaultNewCardTypeName(newCardDeck)
+        : (await newCardDeck.fetcher.fetchById(parsed.typeId))?.name?.s;
+      if (typeName === undefined) return await renderDeckoNotFoundErrorPage(newCardDeck, String(parsed.typeId));
       if (options?.viewer !== undefined) {
-        const page = await signedInNewCardPage(source, newCardDeck, parsed.typeName, options, signal);
-        return page ?? (await signedInNewCardRouteResponse(newCardDeck, parsed.typeName));
+        const page = await signedInNewCardPage(source, newCardDeck, typeName, options, signal, parsed.cardName ?? "");
+        return page ?? (await signedInNewCardRouteResponse(newCardDeck, typeName));
       }
-      return await newCardRouteResponse(newCardDeck, parsed.typeName);
+      return await newCardRouteResponse(newCardDeck, typeName);
     }
     if (parsed.kind === "notFound") {
       // THE NO-ROUTE CLASS: paths that
@@ -863,7 +867,20 @@ async function signedInNewCardPage(
   const mainAt = pageHtml.indexOf('<div id="main">');
   const main = mainAt >= 0 ? divSubtree(pageHtml, mainAt) : undefined;
   if (main === undefined) return undefined;
-  const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? typeKey.key, cardName);
+  // Use the actual mod-composed new form. In particular File/Image must
+  // dispatch carrierwave's chooser and preliminary-upload fields, Phrase
+  // its text input, and pointer types their configured editors. A generic
+  // TinyMCE textarea cannot represent these types.
+  const renderForm = async () => {
+    const engines = await bootEdgeServingEngines(source.driver, options.servedBootOptions ?? {});
+    engines.render.viewer = viewer;
+    engines.render.pageSession = viewer;
+    engines.render.renderAbsentCards = true;
+    return await engines.render.render(cardName, "new", { newCard: { typeId: typeRecord.id } });
+  };
+  const form = await (requestContextAvailable()
+    ? runInRequestContext(getNameEnvironment(), renderForm)
+    : withIsolateRenderLock(renderForm));
   const body =
     pageHtml.slice(0, mainAt) + `<div id="main">${form}</div>` + pageHtml.slice(mainAt + main.length);
   const title = `New ${escapeHtml(typeRecord.name.s)}`;

@@ -117,6 +117,42 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("renders typed attachment/structure editors and submits the legacy query-named create form through the actual handler", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  expect(admin.status).toBe(303);
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  for (const [type, mount] of [["File", "file"], ["Image", "image"]]) {
+    const response = await fetch(`${base}/new/${type}`, { headers: { cookie } });
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toMatch(new RegExp(`name=['"]card\\[${mount}\\]['"] type=['"]file['"]`));
+    expect(html).toContain('name="attachment_type_id"');
+    expect(html).toContain('name="file_card_name"');
+    expect(html).not.toContain('class="tinymce-textarea');
+  }
+  const structured = await fetch(`${base}/new/Topic`, { headers: { cookie } });
+  expect(structured.status).toBe(200);
+  expect(await structured.text()).toContain('name="card[subcards][+summary][content]"');
+  const mark = "tags+*right+*input_type";
+  const legacy = await fetch(`${base}/card/new?${new URLSearchParams({ "card[name]": mark, type: "Phrase" })}`, { headers: { cookie } });
+  expect(legacy.status).toBe(200);
+  const fields = formFields(await legacy.text(), "/card/create");
+  expect(fields["card[name]"]).toBe(mark);
+  fields["card[content]"] = "checkbox";
+  const saved = await post("/card/create", fields, cookie);
+  expect(saved.status).toBe(200);
+  const result = await saved.json() as { card_id: number; card: { name: string }; verb: string };
+  expect(result).toMatchObject({ card: { name: mark }, verb: "create" });
+  // Junction names/keys are derived from their parts, not materialized in
+  // the stock fixture's cards row. Check the returned committed row ID.
+  const persisted = (await driver.query<{ db_content: string; trash: number; left_id: number; right_id: number }>("SELECT db_content,trash,left_id,right_id FROM cards WHERE id = ?", [result.card_id])).rows;
+  expect(persisted).toHaveLength(1);
+  expect(persisted[0]).toMatchObject({ db_content: "checkbox", trash: 0 });
+  expect(persisted[0].left_id).toBeGreaterThan(0);
+  expect(persisted[0].right_id).toBeGreaterThan(0);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();

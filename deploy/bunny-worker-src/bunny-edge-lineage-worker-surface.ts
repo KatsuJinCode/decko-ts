@@ -40,7 +40,7 @@ function parsePath(
   searchParams?: URLSearchParams,
 ):
   | { name: string; view: string; params?: Record<string, string>; format?: "json" }
-  | { kind: "new"; typeName: string }
+  | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "api" }
   | { kind: "notFound" } {
   // strip trailing slash, drop leading slash
@@ -63,6 +63,19 @@ function parsePath(
   };
 
   const segments = path.split("/");
+  // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
+  // Query card params are already decoded by URLSearchParams; preserve names
+  // rather than interpreting the literal "card" as a deck card.
+  if (segments[0] === "card" && segments[1] === "new" && segments.length <= 3) {
+    const typeId = searchParams?.get("card[type_id]");
+    if (typeId !== undefined && typeId !== null && !/^\d+$/.test(typeId)) return { kind: "notFound" };
+    const cardName = searchParams?.get("card[name]") ?? (segments[2] ? decodeName(segments[2]) : "");
+    if (cardName === undefined) return { kind: "notFound" };
+    return {
+      kind: "new", typeName: searchParams?.get("type") ?? searchParams?.get("card[type]") ?? "",
+      cardName, ...(typeId ? { typeId: Number(typeId) } : {}),
+    };
+  }
   if (segments.length === 1) {
     const name = decodeName(segments[0]!);
     if (name === undefined || name === "") return { kind: "notFound" };
