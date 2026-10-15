@@ -4886,13 +4886,13 @@ function barBodyHtml(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
   let out = `<div class='${serializerFollowsLive() ? `row g-0 ${voo.classy("bar-body")}` : `${voo.classy("bar-body")} row g-0`}'>\n`;
   if (voo.show("bar_left")) {
-    out += `<div class='${voo.classy("bar-left")}'>\n${fmt.renderView("bar_left")}\n</div>\n`;
+    out += `<div class='${voo.classy("bar-left")}'>\n${str(fmt.renderView("bar_left"))}\n</div>\n`;
   }
   if (voo.show("bar_middle")) {
-    out += `<div class='${voo.classy("bar-middle")}'>\n${fmt.renderView("bar_middle")}\n</div>\n`;
+    out += `<div class='${voo.classy("bar-middle")}'>\n${str(fmt.renderView("bar_middle"))}\n</div>\n`;
   }
   if (voo.show("bar_right")) {
-    out += `<div class='${voo.classy("bar-right")}'>\n${fmt.renderView("bar_right")}\n</div>\n`;
+    out += `<div class='${voo.classy("bar-right")}'>\n${str(fmt.renderView("bar_right"))}\n</div>\n`;
   }
   out += `</div>\n`;
   return out;

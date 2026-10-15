@@ -2840,7 +2840,11 @@ const setModules: ModSetModuleFile[] = [
           { view: "raw_one_line_content", viewFn: ruleRawOneLineContentView, config: { unknown: true } },
           // set/rule/bar_view.rb:31-33 view :bar_middle, unknown: true do # rule_info end
           // (the body is a comment, so Ruby answers nil; the html is null, not "").
-          { view: "bar_middle", viewFn: () => null, config: { unknown: true } },
+          {
+            view: "bar_middle",
+            viewFn: (ctx) => (isRuleCard(ctx) ? null : ""),
+            config: { unknown: true },
+          },
         ],
       },
     },
