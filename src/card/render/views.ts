@@ -37,6 +37,7 @@ import { str, type ViewResult } from "./format.js";
 
 import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
+import { actionTypeFromCode } from "../history/action.js";
 import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
 import { cardWallClockNow } from "../wall-clock.js";
@@ -2049,6 +2050,14 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
   if (!card.name.isCompound) return undefined; // card.left would raise on a simple card
   const left = card.name.leftName;
   if (left === undefined) return undefined;
+  // set/abstract/test_context.rb:9-13: `card.left.fetch(:test_context)` is a
+  // CODENAME fetch. A deck with no card carrying the codename raises before
+  // any junction is read, and the render shows that error (the oracle's
+  // "unknown codename: test_context" on the text_message core).
+  const engine = ctx.fmt.engine;
+  if (engine.peekIdByCodename !== undefined && engine.peekIdByCodename("test_context") === undefined) {
+    throw new CodenameNotFoundError("unknown codename: test_context");
+  }
   const junction = ctx.fmt.engine.fetchRenderCard(`${left.s}+*test context`);
   if (junction === undefined || junction.unknown === true) return undefined;
   const firstItem = (junction.dbContent ?? "")
@@ -6532,20 +6541,17 @@ const homePathView: ViewFn = ({ fmt }) => {
 };
 
 /** card-mod-format set/self/home.rb view :home_url (perms: :none):
- *  `card_url ""` — the deck-root ABSOLUTE url (scheme+host+"/" in a Rails
- *  runtime). Self-set scoped in Ruby; the flat registry scopes by card key
- *  here (home_path's gate, same set). Deliberately UNCHANGED:
- *  the capture MASKS the host on this view (the page
- *  and view captures carry a bare "/" for the deck root — pinned by
- *  the card-mod-format-remaining-views suite (not in the public package)'s
- *  `home_url is the deck-root path` case), so unlike the `:url` view
- *  (whose absolute form the email-template pages pin in full) the masked
- *  root stays a path. */
+ *  `card_url ""` - Env.origin + card_path "" (location.rb:19-21): the
+ *  deck origin (Cardio.config.deck_origin, serializable.rb:20-22) followed by
+ *  the deck root. The origin is the deck's configuration: a configured deck
+ *  answers its absolute root, a requestless deck with no origin answers "/".
+ *  Set-scoped to *home like home_path (any other card raises the
+ *  unsupported-view UserError). */
 const homeUrlView: ViewFn = ({ fmt }) => {
   if (fmt.card.key !== "*home") {
     throw new UnsupportedViewError("home_url", fmt.card.name.s);
   }
-  return "/";
+  return fmt.cardUrl("");
 };
 
 // ---------------------------------------------------------------------------
@@ -6633,7 +6639,20 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  surfaces it in every format where no own-format arm exists
  *  (email_text :last_action's `_render_last_action_verb` delegation
  *  resolves HERE). The html arm (history) still shadows it in html. */
-export const lastActionVerbNotifyView: ViewFn = () => "edited";
+export const lastActionVerbNotifyView: ViewFn = (ctx) => {
+  // notification_act (base_views.rb:117-119): `@notification_act ||= act ||
+  // card.acts.last`. With no act the verb is 'edite' + "d". With one, its
+  // main_action (act.rb:105-107: action_on(card_id) || actions.first) gives
+  // the action type's name, "#{action_type}d" (base_views.rb:45-47).
+  const reader = ctx.fmt.engine.historyRenderReader?.();
+  const act = reader?.cardLastAct;
+  if (reader === undefined || act === undefined) return "edited";
+  const actions = reader.actionsOfAct(act.id);
+  const main =
+    actions.find((a) => a.card_id === reader.rootCardId) ?? actions[0];
+  const type = main === undefined ? undefined : actionTypeFromCode(Number(main.action_type));
+  return type === undefined ? "edited" : `${type}d`;
+};
 
 /** card-mod-follow set/all/notify/base_views.rb:4-14
  *  `view :list_of_changes, denial: :blank, cache: :never` — the

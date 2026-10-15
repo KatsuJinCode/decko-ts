@@ -175,6 +175,11 @@ export class Voo {
    *  data-slot has no help key; the inner help-view slot's data-slot
    *  carries the help text). */
   liveHelp: string | undefined;
+  /** voo.edit_structure = X (the same define_setter mechanics as liveTitle):
+   *  card-mod-edit reads it for the multi-card walk, and it never reaches the
+   *  slot JSON (the signin, account and sign-up views set it inside the
+   *  before-hook, and the oracle's data-slot carries no edit_structure key). */
+  liveEditStructure: unknown;
 
   /** True ONLY for the bare view-surface ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
@@ -3766,6 +3771,17 @@ export interface RenderEngineLike {
    *  root). The view then falls back to the render-card map, which is
    *  exactly its pre-M9 behaviour. */
   peekCustomizedName?(name: string): string | undefined;
+  /** The board account-tab pill class (links.rb:140-144
+   *  add_known_or_wanted_class): whether the pill target card is a live
+   *  row, resolved by the engine ASYNC PREPARE PHASE (one existence walk
+   *  per board render, the M9 seam shape). The sync account_tab view
+   *  cannot query, and its pills are built from trait NAMES the reference
+   *  closure never reaches.
+   *
+   *  Optional: undefined = not warmed for this render (an engine without
+   *  the prepare phase, or a board nested into another render); the view
+   *  then keeps its pre-pass behaviour of treating every pill as known. */
+  peekBoardPillKnown?(name: string): boolean | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
   /** options_hash (card-mod-layout set/abstract/items/options_api.rb:4-6)
@@ -3863,6 +3879,12 @@ export interface RenderEngineLike {
    *  set/type/signup/views.rb verification_links): can_approve? and the
    *  card's ok?(:delete). Undefined when not prepared (no links). */
   signupApprovalVerdict?(card: RenderCard): { approve: boolean; delete: boolean } | undefined;
+  /** card-mod-edit set/all/new.rb:150-152 new_type_permitted? for the
+   *  rendered card's OWN type: `Card.new(type_id: card.type_id).ok? :create`.
+   *  Unlike createableTypes() (the Auth.createable_types list, which
+   *  excludes the non_createable_types basket: signup, bootswatch_skin...),
+   *  this is the per-type verdict. Undefined when not prepared. */
+  currentTypeCreatable?(typeId: number): boolean | undefined;
   /** auth/permissions.rb:18-26 Auth.createable_types — the cardtype card
    *  names the viewer's create verdict admits (bot-scope cardtype search
    *  minus the non_createable_types basket codenames, then the per-type

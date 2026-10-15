@@ -1,4 +1,5 @@
 import { str } from "../../render/format.js";
+import { quietDenial } from "../../permissions/view-perms.js";
 // The card-mod-account gem (card-mod-account-0.20.0), ported through the
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
@@ -268,10 +269,13 @@ const accountCoreView: ViewFn = (ctx) => {
   // card - Card::Name#field stars codenamed fields (nesting.rb docstring),
   // so the nests are +*email/+*password (the labeled rows' values are the
   // real rows' cores: the email text and the password raw's "encrypted").
+  // card.name.field(field) (format/nesting.rb field_nest: `fullname =
+  // card.name.field(field)`): the nest is the ABSOLUTE field name, so the
+  // slot carries "<account holder>+*email", not the relative mark.
   const fieldNest = (field: string, title: string): string =>
     ctx.fmt.nest({
-      syntax: `{{+*${field}|view:labeled|title:${title}}}`,
-      name: `+*${field}`,
+      syntax: `${ctx.fmt.card.name.s}+*${field}|view:labeled|title:${title}`,
+      name: `${ctx.fmt.card.name.s}+*${field}`,
       options: { view: "labeled", title, extra: {} },
       comment: undefined,
     });
@@ -753,28 +757,32 @@ function formatCardDateSeconds(sql: string | undefined): string {
 
 // --- set/type/signup/views.rb (the signup form family) ----------------------
 
-/** views.rb:2-4 invitation?: `Auth.signed_in? && card.can_approve?`. The
- *  headless render is signed OUT (current.rb:7-9 defaults AnonymousID), and
- *  can_approve? rides the admin-approval verdict machinery the engine does
- *  not model - the SAME disclosed basis the ported signup :core's approve
- *  links carry (signupAccountLines above). The invitation arm's title is
- *  the documented contract ("Invite", en.yml:17 - the oracle's
- *  new_invitation_title_contract line), the signed-out arm is the pinned
- *  reachable one. */
-const SIGNUP_INVITE_TITLE = "Invite";
+/** views.rb:2-4 invitation?: `Auth.signed_in? && card.can_approve?`.
+ *  can_approve? (set/type/signup.rb:12-14) = `Card.new(type_id:
+ *  Card.default_accounted_type_id).ok? :create`: the viewer may create the
+ *  accounted (User) type. The engine's approval-verdict seam prepares that
+ *  create verdict per Sign up root (render.ts prepareSignupApprovalVerdicts,
+ *  through signupApprovalVerdict); unprepared (no seam) reads false, so a
+ *  view lane without the prepare phase keeps the signed-out arm. */
+function signupInvitation(fmt: ViewContext["fmt"]): boolean {
+  return (
+    fmt.engine.viewer?.signedIn === true &&
+    fmt.engine.signupApprovalVerdict?.(fmt.card)?.approve === true
+  );
+}
 
 /** views.rb:6-9 view :new, cache: :never:
  *    voo.title = invitation? ? t(:account_invite) : t(:account_sign_up)
  *    super()
  *  The super() dispatch rides the mod-view-helpers superView (the MRO
  *  chain's next :new registration - card-mod-edit's live newView,
- *  framed_create_form). en.yml:34 "Sign up"; the title rides the voo opt
- *  the title view reads (titleNoLinkView's voo.opts["title"] - the live
- *  writer Ruby's define_setter gives voo.title). */
+ *  framed_create_form). en.yml:17 "Invite" / en.yml:34 "Sign up"; the title
+ *  rides the voo opt the title view reads (titleNoLinkView's voo.opts["title"]
+ *  - the live writer Ruby's define_setter gives voo.title). */
 const signupNewView: ViewFn = (ctx) => {
-  // t(:account_sign_up); the invitation? arm ("Invite") is the disclosed
-  // remainder documented on SIGNUP_INVITE_TITLE above
-  ctx.voo.opts["title"] = "Sign up";
+  // voo.title = is a live writer (voo_api.rb define_setter), not a slot option:
+  // the title reads it, and the slot JSON never carries it.
+  ctx.voo.liveTitle = signupInvitation(ctx.fmt) ? "Invite" : "Sign up";
   // the registration's set module: the nested child file's shortname,
   // Type::Signup::Views (keyed by the type's codename, signup)
   return superView(ctx, setModuleShortname("type/signup/views"), "new");
@@ -784,19 +792,27 @@ const signupNewView: ViewFn = (ctx) => {
  *    button_formgroup do
  *      [standard_create_button, invite_button].compact
  *    end
- *  invite_button (:21-23) returns nil signed-out (invitation? false), so
- *  the compact leaves the lone create button (form_buttons.rb:184-186:
- *  submit_button class "submit-button create-submit-button",
- *  data-disable-with "Submitting" - the same bytes the edit mod's own
- *  newButtonsView pins for the standard_create_button element).
- *  button_formgroup (card-mod-edit set/all/form.rb:86-88): the
- *  "form-group button-form-group" div. */
-const signupNewButtonsHtml = (): string =>
-  `<div class="form-group button-form-group">` +
-  `<button name="button" type="submit" data-disable-with="Submitting" class="submit-button create-submit-button btn btn-primary">Submit</button>` +
-  `</div>`;
+ *  invite_button (:21-23) is the "Send Invitation" primary button when
+ *  invitation? holds, else nil (compact drops it). The create button is
+ *  form_buttons.rb:184-186 (submit_button class "submit-button
+ *  create-submit-button", data-disable-with "Submitting" - the same bytes
+ *  the edit mod's own newButtonsView pins for the standard_create_button
+ *  element). button_formgroup (card-mod-edit set/all/form.rb:86-88): the
+ *  "form-group button-form-group" div, its buttons joined "\n". */
+const signupNewButtonsHtml = (invitation = false): string => {
+  const create =
+    `<button name="button" type="submit" data-disable-with="Submitting" class="submit-button create-submit-button btn btn-primary">Submit</button>`;
+  const invite = invitation
+    ? `<button name="button" type="submit" class="btn btn-primary">Send Invitation</button>`
+    : undefined;
+  return (
+    `<div class="form-group button-form-group">` +
+    [create, invite].filter((b) => b !== undefined).join("\n") +
+    `</div>`
+  );
+};
 
-const signupNewButtonsView: ViewFn = () => signupNewButtonsHtml();
+const signupNewButtonsView: ViewFn = ({ fmt }) => signupNewButtonsHtml(signupInvitation(fmt));
 
 // --- set/abstract/account_holder.rb view :account_tab ------------------------
 
@@ -911,6 +927,7 @@ function accountBoardPillItem(
   text: string,
   trait: string,
   extraPath: Record<string, unknown> | undefined,
+  known: boolean,
 ): string {
   const cyTable: Record<string, string> = {
     roles: "role",
@@ -943,7 +960,7 @@ function accountBoardPillItem(
     // lands LAST, after the href (the graded account_tab row's attr order).
     `<li class="nav-item">` +
     `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
-    ` data-slotter-mode="override" class="slotter nav-link known-card"` +
+    ` data-slotter-mode="override" class="slotter nav-link ${known ? "known-card" : "wanted-card"}"` +
     ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
     ` data-cy="${cy}" href="${href}" data-remote="true">${text}</a></li>`
   );
@@ -961,12 +978,12 @@ function accountBoardPillItem(
  *  default_board_tab (:128-130): the accounted card's own tab (the
  *  current_account? arm the engine's board renders resolve through their
  *  own registrations). */
-const accountTabHtml = (cardName: string): string => {
+const accountTabHtml = (cardName: string, isKnown: (name: string) => boolean = () => true): string => {
   const settings = ACCOUNT_DETAILS_ITEMS.map(([text, trait, extra]) =>
-    accountBoardPillItem(cardName, text, trait, extra?.path as Record<string, unknown> | undefined),
+    accountBoardPillItem(cardName, text, trait, extra?.path as Record<string, unknown> | undefined, isKnown(`${cardName}+${trait}`)),
   );
   const content = ACCOUNT_CONTENT_ITEMS.map(([text, trait]) =>
-    accountBoardPillItem(cardName, text, trait, undefined),
+    accountBoardPillItem(cardName, text, trait, undefined, isKnown(`${cardName}+${trait}`)),
   );
   const section = (title: string, pills: readonly string[]): string =>
     `<h6 class="ms-1 mt-3">${title}</h6>${pills.join("\n")}`;
@@ -979,7 +996,8 @@ const accountTabHtml = (cardName: string): string => {
   );
 };
 
-const accountTabView: ViewFn = ({ fmt }) => accountTabHtml(fmt.card.name.s);
+const accountTabView: ViewFn = ({ fmt }) =>
+  accountTabHtml(fmt.card.name.s, (name) => fmt.engine.peekBoardPillKnown?.(name) ?? true);
 
 /** The wave-1 account views' PROBE SURFACE - the composition cores the
  *  harness probe replays the static-ruby oracle against; the same functions
@@ -1123,7 +1141,7 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
  *  (the multi-card walk the the mod-completion pass ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
-  ctx.voo.opts["edit_structure"] = [
+  ctx.voo.liveEditStructure = [
     ["+*email", { title: "email" }],
     ["+*password", { title: "password" }],
   ];
@@ -1203,7 +1221,11 @@ const setupView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const verdict = preparedSetupVerdict();
   if (verdict === undefined || verdict.open !== true) {
-    return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
+    // error.rb:28 interpolates @denied_task, which is `crud?(task) && task`
+    // (permission.rb:49): FALSE for a method-predicate perms gate, and the
+    // interpolation of false is "". So Ruby's setup denial reads
+    // "... permission (false)" - the parens carry the boolean, not a task.
+    return quietDenial("false");
   }
   return fmt.withNestMode("edit", () => {
     // voo.title = / voo.help = are LIVE writers (voo_api.rb:30-32
@@ -1267,8 +1289,10 @@ const signinEditView: ViewFn = (ctx) => {
   const voo = accountProbeSurface.signinEditVoo();
   // :159 ||= t(:account_forgot_password) - the title rides the voo opt the
   // title view reads (titleNoLinkView's voo.opts["title"])
-  if (ctx.voo.opts["title"] === undefined) ctx.voo.opts["title"] = voo.title;
-  ctx.voo.opts["edit_structure"] = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
+  // voo.title ||= t(:account_forgot_password) is a live writer (voo_api.rb
+  // define_setter): the title view reads it, the slot JSON never carries it.
+  if (ctx.voo.opts["title"] === undefined) ctx.voo.liveTitle = voo.title;
+  ctx.voo.liveEditStructure = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
   for (const hidden of voo.hide) ctx.voo.hide(hidden);
   return superView(ctx, setModuleShortname("self/signin"), "edit");
 };

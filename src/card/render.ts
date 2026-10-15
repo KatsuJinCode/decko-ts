@@ -44,6 +44,7 @@ import { ruleCacheKeyFromRow, settingCardNameForCode } from "./set-patterns/rule
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
+import { virtualSearchKnownName } from "./render/format.js";
 import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
 import {
   structureRuleUniverseStatement,
@@ -287,6 +288,11 @@ export { HTML_VIEWS };
  *  resetCaches() when it moved: no staleness window, no post-revocation
  *  leak (requirement:79). Warm-render cost: exactly ONE statement.
  *  Exported for the freshness suite's statement-identity pin. */
+/** The traits of the account board's pills (card-mod-account
+ *  set/abstract/account_holder.rb account_details_items and
+ *  account_content_items): the pill targets "<board>+<trait>". */
+const BOARD_ACCOUNT_PILL_TRAITS = ["*account", "*roles", "*follow", "*created", "*edited"] as const;
+
 export const DECK_DATA_VERSION_STATEMENT =
   'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
 export type { SettingClassWithRules } from "./render/format.js";
@@ -569,6 +575,10 @@ export class RenderEngine implements RenderEngineLike {
     string,
     { name: string; asked: readonly string[] }
   >();
+
+  /** The board account-tab pill targets' existence, by name key, written by
+   *  warmBoardPillExistence on every board render (so it is never stale). */
+  private boardPillKnownByKey = new Map<string, boolean>();
 
   /** Save-side invalidation for the enriched render-card map: after a write,
    *  BOTH layers holding the pre-save row must drop it - the fetch layer's
@@ -1695,7 +1705,14 @@ export class RenderEngine implements RenderEngineLike {
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
-    if (CREATEABLE_TYPES_VIEWS.has(view)) await this.ensureCreateableTypes();
+    if (CREATEABLE_TYPES_VIEWS.has(view)) {
+      await this.ensureCreateableTypes();
+      // new_type_permitted? reads the root's OWN type verdict (new.rb:150-152),
+      // which the list above does not carry for basket-filtered types.
+      if (view === "new" || view === "new_in_modal" || view === "simple_new" || view === "new_fields") {
+        await this.prepareCurrentTypeCreatable(record.key !== undefined ? this.renderCards.get(record.key) : undefined);
+      }
+    }
     // The configure_button permission predicate (cardtype.rb:68-70) for
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
@@ -1977,6 +1994,15 @@ export class RenderEngine implements RenderEngineLike {
     if (view === "board" || view === "cardboard") {
       await this.prepareItemForRender(`${rootCard.name.s}+*account`);
     }
+    // The account_tab view's own pills (account_holder.rb:151-166) are built
+    // from trait names, so the same warm runs when THAT view is the render's
+    // requested view, not only behind :board.
+    if (view === "account_tab") {
+      await this.warmBoardPillExistence(rootCard);
+    }
+    if (view === "content_formgroups" || view === "new" || view === "core" || view === "new_buttons") {
+      await this.warmSignupAccountFields(rootCard);
+    }
     // A junction root's OWN field rows sit in no reference closure (a
     // subcard is reachable only through its left_id), and a CODED core's
     // nests are runtime-built - the account core's labeled rows emit
@@ -1993,17 +2019,7 @@ export class RenderEngine implements RenderEngineLike {
     // AND the fresh value unreadable until the next full page load's edit
     // view re-warmed them). Every view, one batch, junction roots only.
     if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
-      const children = (await this.fetcher.driver.query<CardsRow>(
-        "SELECT * FROM cards WHERE left_id = ? AND trash = false",
-        [rootCard.id],
-      )).rows;
-      for (const row of children) {
-        const tag = row.right_id !== undefined && row.right_id !== null
-          ? this.peekNameForId(row.right_id)
-          : undefined;
-        if (tag === undefined) continue;
-        await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
-      }
+      await this.seatJunctionFieldRows(rootCard);
       await this.ensureVerdicts();
     }
     // A NEW compound-eligible root's structured-form fields (the /new/:type
@@ -2882,6 +2898,7 @@ export class RenderEngine implements RenderEngineLike {
     this.taskState = undefined;
     this.taskVerdicts.clear();
     this.signupApprovalVerdicts.clear();
+    this.currentTypeCreatableVerdicts.clear();
     this.createableTypesCache = undefined;
     this.configureVerdicts.clear();
     this.configureChecked.clear();
@@ -5870,6 +5887,62 @@ export class RenderEngine implements RenderEngineLike {
    *  not run the prepare phase for this card, or a skin nested into a render
    *  rather than being the root); the view falls back to the render-card
    *  map exactly as it did before this pass. */
+  /** Seats every stored field row of a junction root (the rows whose left is
+   *  the root), so a nest the sync view renders for a field finds the row.
+   *  Shared by the junction-root warm and the sign-up account warm below. */
+  private async seatJunctionFieldRows(rootCard: RenderCard): Promise<void> {
+    if (rootCard.id === undefined) return;
+    const children = (await this.fetcher.driver.query<CardsRow>(
+      "SELECT * FROM cards WHERE left_id = ? AND trash = false",
+      [rootCard.id],
+    )).rows;
+    for (const row of children) {
+      const tag = row.right_id !== undefined && row.right_id !== null
+        ? this.peekNameForId(row.right_id)
+        : undefined;
+      if (tag === undefined) continue;
+      await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
+    }
+  }
+
+  /** The sign-up form's account fields (card-mod-account set/type/signup/
+   *  views.rb:11-13 account_formgroups): the +*account trait's own field rows
+   *  (+*email, +*password, ...) render as nests of the sign-up card, and no
+   *  reference closure reaches them from the sign-up root. Seat them on the
+   *  sign-up root's account, the same shape as the junction-root warm. */
+  private async warmSignupAccountFields(rootCard: RenderCard): Promise<void> {
+    if (!rootCard.setKeys.split(" ").includes("TYPE-sign_up")) return;
+    const account = await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+    if (account !== undefined) await this.seatJunctionFieldRows(account);
+  }
+
+  /** The board account-tab pills (card-mod-account set/abstract/
+   *  account_holder.rb account_details_items / account_content_items): each
+   *  pill's target is "<board card>+<trait>" for these traits. Ruby's
+   *  board_link classes each pill with Card.known?(target), a live existence
+   *  answer. The prepare phase asks Card.exist? for each one. */
+  private async warmBoardPillExistence(rootCard: RenderCard): Promise<void> {
+    this.boardPillKnownByKey.clear();
+    for (const trait of BOARD_ACCOUNT_PILL_TRAITS) {
+      const name = `${rootCard.name.s}+${trait}`;
+      // Card.known? = fetch(name).present? (links.rb add_known_or_wanted_class):
+      // a stored row, or a new card the set modules make virtual. The
+      // VirtualSearch family (created, edited) answers through its cql
+      // table; the *roles right answers virtual? = new? with its own cql
+      // (card-mod-account set/right/roles.rb:3-10), so it is virtual too.
+      const virtual =
+        virtualSearchKnownName(name, this) !== undefined || trait === "*roles";
+      this.boardPillKnownByKey.set(
+        DeckoName.parse(name).key,
+        virtual || (await this.cardExists(name)),
+      );
+    }
+  }
+
+  peekBoardPillKnown(name: string): boolean | undefined {
+    return this.boardPillKnownByKey.get(DeckoName.parse(name).key);
+  }
+
   peekCustomizedName(skinName: string): string | undefined {
     return this.customizedNameBySkinKey.get(DeckoName.parse(skinName).key)?.name;
   }
@@ -7841,6 +7914,36 @@ export class RenderEngine implements RenderEngineLike {
   signupApprovalVerdict(card: RenderCard): { approve: boolean; delete: boolean } | undefined {
     if (this.readPermission?.alwaysOk) return { approve: true, delete: true };
     return this.signupApprovalVerdicts.get(card.key);
+  }
+
+  /** card-mod-edit set/all/new.rb:150-152 new_type_permitted? - the create
+   *  verdict on a virtual new card of the rendered card's own type, keyed by
+   *  type id. Prepared by the new-form views (the same walk as
+   *  taskVerdictForCard(isNew: true) that ensureCreateableTypes runs per
+   *  listed type, but for the card's own type even when the type is outside
+   *  Auth.createable_types' basket filter). */
+  private currentTypeCreatableVerdicts = new Map<number, boolean>();
+
+  currentTypeCreatable(typeId: number): boolean | undefined {
+    if (this.readPermission?.alwaysOk) return true;
+    return this.currentTypeCreatableVerdicts.get(typeId);
+  }
+
+  private async prepareCurrentTypeCreatable(card: RenderCard | undefined): Promise<void> {
+    if (card === undefined || card.typeId === undefined || this.currentTypeCreatableVerdicts.has(card.typeId)) return;
+    if (this.readPermission === undefined) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    const typeName = (await this.fetcher.fetchById(card.typeId, { skipVirtual: true }))?.name?.s;
+    const verdict = await taskVerdictForCard(
+      this.fetcher,
+      { name: "", isNew: true, typeId: card.typeId, typeName },
+      "create",
+      this.taskState,
+    );
+    this.currentTypeCreatableVerdicts.set(card.typeId, verdict === true);
   }
 
   private async prepareSignupApprovalVerdicts(card: RenderCard): Promise<void> {

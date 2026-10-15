@@ -1404,7 +1404,16 @@ export class CardActionEngine {
     const account = input.subcards?.["+*account"];
     if (account === undefined) {
       if (holderIsSignup) {
-        throw new CardActionError("user-error", "sign up without an account", "ACCOUNT: required");
+        // require_field :account (signup.rb) names the subcard field, and the
+        // missing +*account names its own missing +*email under the holder
+        // (subcards/all.rb subcard_error folds the field error onto the
+        // parent, twice: "+*email" then "+*account"). Ruby reports both.
+        throw new CardActionError(
+          "user-error",
+          "sign up without an account",
+          "ACCOUNT: required\n+*ACCOUNT: email required",
+          { account: "required", "+*account": "email required" },
+        );
       }
       return input;
     }
@@ -1700,6 +1709,7 @@ export class CardActionEngine {
     // rejection. Update and delete ride the same acting-id pattern
     // (actingIdForWrite) — Ruby's chain rules all three tasks identically.
     this.assertAccountsHaveEmail(input.subcards);
+    await this.assertAccountFieldLeftExists(name);
     const actingId = await this.actingIdForWrite();
     if (actingId === undefined) this.assertWritable();
     // extract_type_id! runs at Card.new time (type.rb:87-96), BEFORE the
@@ -1709,6 +1719,14 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // card-mod-session set/type/session.rb:37-40 event :store_in_session,
+    // :prepare_to_store, on: :save — session_content = db_content, then
+    // abort :success. The save writes no card row and sends no mail; the
+    // content lives in the visitor's session (the write route stores it).
+    const typeRow = await this.fetchRowById(typeId);
+    if (typeRow?.codename === "session") {
+      return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
+    }
     // The two-step upload's final save (00_upload_cache.rb:27-34
     // assign_attachment_on_create, after :assign_action, when
     // save_preliminary_upload?): the cached DRAFT action's stored file
@@ -2386,6 +2404,22 @@ export class CardActionEngine {
     // revert requests update a trashed card that way.
     if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    // The *signin card's :signin event (card-mod-account set/self/signin.rb:
+    // 4-6, `event :signin, :validate, on: :update`) runs on every update of
+    // the card: authenticate_or_abort reads the form's email and password
+    // first, and aborts with :email_missing / :password_missing when either
+    // is absent (signin.rb:53-56, en.yml account_email_missing /
+    // account_password_missing). The abort stores nothing. A save that
+    // carries both fields continues to the sign-in route's own authentication.
+    if (row.codename === "signin") {
+      const fields = Object.keys(input.subcards ?? {}).map((k) => k.split("+").map((p) => p.trim().toLowerCase()).pop());
+      if (!fields.includes("*email")) {
+        throw new CardActionError("user-error", "email can't be blank", undefined, { abort: "email can't be blank" });
+      }
+      if (!fields.includes("*password")) {
+        throw new CardActionError("user-error", "password can't be blank", undefined, { abort: "password can't be blank" });
+      }
     }
     // The two-step upload's replace arm (00_upload_cache.rb:36-42
     // assign_attachment_on_update, after :assign_action, when
@@ -5188,6 +5222,34 @@ export class CardActionEngine {
    *  anything is written, as Ruby's validation stage runs before the store
    *  stage. Only relative keys ("+*account") are certain to name a new
    *  account; an absolute key may name an existing one. */
+  /** card-mod-api_key set/right/api_key.rb: `ok_to_create?` is
+   *  `own_account? || super`, and own_account? walks `account_card`
+   *  (set/abstract/account_field.rb:3-5: `left.tap`). With no left card that
+   *  walk has no receiver, so Ruby raises before the permission verdict and
+   *  saves nothing. The port refuses the save the same way: an exception,
+   *  not a permission denial, and no rows. */
+  private async assertAccountFieldLeftExists(name: DeckoName): Promise<void> {
+    if (name.isSimple || name.rightName === undefined || name.leftName === undefined) return;
+    const right = await this.fetch.fetchByKey(name.rightName.key);
+    const codename = right?.codename;
+    if (codename !== "api_key" && codename !== "password") return;
+    const left = await this.fetch.fetchByKey(name.leftName.key);
+    if (left !== undefined && left.id !== undefined) return;
+    if (codename === "api_key") {
+      // card-mod-api_key ok_to_create? (api_key.rb) raises before the verdict:
+      // the answer is the exception itself.
+      throw new Error(
+        `cannot create ${name.s}: its left card does not exist, so the api_key right has no account to check ownership against`,
+      );
+    }
+    // card-mod-account set/right/password.rb: the password's save reads its
+    // account (left) for the salt, and with no left card that read raises in
+    // Ruby, which the save reports as a server error (Card::Error::ServerError)
+    // with nothing stored.
+    const message = `cannot create ${name.s}: its left card does not exist, so the password has no account salt to encrypt with`;
+    throw new CardActionError("server-error", message, undefined, { ServerError: message });
+  }
+
   private assertAccountsHaveEmail(subcards: Record<string, SubcardInput> | undefined): void {
     if (subcards === undefined) return;
     for (const [key, sub] of Object.entries(subcards)) {

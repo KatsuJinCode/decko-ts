@@ -170,6 +170,20 @@ function probeShape(index, set) {
 // The probe card is created (save/create), then updated (update), then deleted
 // (delete), as far as its `on:` needs. Steps are harness write operations:
 // { op: "write", actor, action, card, fields: { type?, content?, fields? } }.
+// The field values a write of a card in this set must carry to be valid in
+// Ruby. A right set's card is validated by its right (set/right/email.rb
+// requires an address; set/right/account.rb requires an email subcard; a
+// password must meet the password policy). A write of invalid content is an
+// error in both engines, and grades the error path, not the event, so the
+// content is chosen per right. `phase` is "" for the create, "u" for the
+// update; `key` makes the values unique across probes.
+export function fieldsFor(rightName, key, phase) {
+  if (rightName === "*email") return { content: `probe.${key}${phase}@example.test` };
+  if (rightName === "*account") return { fields: { "+*email": `probe.${key}${phase}@example.test` } };
+  if (rightName === "*password") return { content: `Probe-Password-${key}${phase}1` };
+  return { content: `probe ${key}${phase}` };
+}
+
 function probeSteps(shape, on, tag) {
   const cardFor = (shape) => {
     if (shape.kind === "plain") return { name: `Probe Plain ${tag}`, type: "RichText" };
@@ -180,13 +194,15 @@ function probeSteps(shape, on, tag) {
   const card = cardFor(shape);
   const steps = [];
   const write = (action, fields) => ({ op: "write", actor: "admin", action, card: card.name, fields });
+  const rightOf = shape.kind === "right" ? shape.rightName : shape.kind === "self" ? (card.name.split("+").pop() ?? "") : null;
   if (shape.kind === "self") {
-    steps.push(write("update", { content: `probe ${tag}` }));
+    steps.push(write("update", fieldsFor(rightOf, tag, "u")));
     return { card: card.name, steps, action: "update" };
   }
-  steps.push(write("create", card.type ? { type: card.type, content: `probe ${tag}` } : { content: `probe ${tag}` }));
+  const created = fieldsFor(rightOf, tag, "");
+  steps.push(write("create", { ...(card.type ? { type: card.type } : {}), ...created }));
   if (on === "update" || on === "save" || on === null) {
-    steps.push(write("update", { content: `probe ${tag} updated` }));
+    steps.push(write("update", fieldsFor(rightOf, tag, "u")));
   }
   if (on === "delete") {
     steps.push(write("delete", {}));
@@ -220,8 +236,10 @@ export function planEvents(index, declarations) {
       const baseName = shape.kind === "right" ? `Probe Base ${tag}+${shape.rightName}` : `Probe Base ${tag}`;
       const baseType = shape.kind === "typed" ? shape.typeName : "RichText";
       const b0 = steps.length;
-      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "create", card: baseName, fields: { type: baseType, content: `base ${tag}` } });
-      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "update", card: baseName, fields: { content: `base ${tag} updated` } });
+      const bkey = `${tag}b`;
+      const rightOfBase = shape.kind === "right" ? shape.rightName : null;
+      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "create", card: baseName, fields: { type: baseType, ...fieldsFor(rightOfBase, bkey, "") } });
+      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "update", card: baseName, fields: fieldsFor(rightOfBase, bkey, "u") });
       steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "delete", card: baseName, fields: {} });
       base = { card: baseName, steps: [b0, b0 + 2] };
     }

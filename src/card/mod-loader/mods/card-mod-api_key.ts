@@ -325,14 +325,14 @@ const generateButtonView: ViewFn = (ctx) => {
 
 /** api_key.rb:63-67 `format :json; view :token do {token: card.simple_token}
  *  end`. card.simple_token is `Card::Auth::Token.encode(accounted.id)`
- *  (api_key.rb:48-50) - a JWT encoding that requires the `jwt` gem and
- *  Card::Auth::Token. The TS port has no JWT surface; the JSON shape
- *  `{token: <encoded>}` is preserved with a sentinel so a JSON-shape test
- *  pins the format while an implementation note points at the runtime
- *  dependency. */
-const tokenJsonView: ViewFn = (ctx) => {
-  const token = "<jwt-token-pending-runtime>";
-  return `{"token":${JSON.stringify(token)}}`;
+ *  (api_key.rb:48-50). See tokenJsonView for why this view is refused. */
+const tokenJsonView: ViewFn = () => {
+  // Refused rather than answered: the token is an encoded JWT (token.ts
+  // encodeAuthToken), which is async, and a sync ViewFn cannot await it.
+  // Ruby answers this view from Card::Auth::Token.encode(accounted.id); a
+  // card with no account has no receiver for accounted.id, and Ruby raises
+  // there too. The port never emits a stand-in token.
+  throw new Error("api_key :token view: the JWT for an account needs the async token encoder, which a sync view cannot await");
 };
 
 // ---------------------------------------------------------------------------

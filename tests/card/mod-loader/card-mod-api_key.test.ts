@@ -13,13 +13,12 @@
 //   3. locale strings inlined from config/locales/en.yml: the labels
 //      the views reference (api_key_label, api_key_generate, etc.) match
 //      the en.yml byte-for-byte.
-//   4. the :token JSON view returns the documented shape `{"token":
-//      <encoded>}` (api_key.rb:63-67); the encoded value is the
-//      sentinel because the JWT path requires a live Rails runtime. No
+//   4. the :token JSON view (api_key.rb:63-67) is REFUSED, not answered:
+//      its value is a JWT from Card::Auth::Token.encode, which the port's
+//      sync view cannot await, and the port emits no stand-in token. No
 //      real api key or token is committed anywhere in this suite: every
 //      key-shaped string is the probe value the oracle capture itself
-//      used (fixtures/captured/api-key-views.json) or an angle-bracketed
-//      placeholder minted by the port.
+//      used (fixtures/captured/api-key-views.json).
 //   5. the :token_link view's href encodes format: :json + view: :token
 //      (api_key.rb:77-79).
 //   6. the :generate_button view's form carries the hidden trigger input
@@ -501,18 +500,16 @@ describe("card-mod-api_key view bodies", () => {
     );
   });
 
-  it(":token (json) returns the documented {token: <encoded>} shape (api_key.rb:63-67)", () => {
-    // format :json view :token: {token: card.simple_token}. The TS port
-    // has no JWT surface; the encoded value is an angle-bracketed
-    // placeholder minted by the port (no real token is committed). The
-    // JSON SHAPE is what we pin.
+  it(":token (json) is refused, never answered with a stand-in token (api_key.rb:63-67)", () => {
+    // format :json view :token: {token: card.simple_token}, a JWT from
+    // Card::Auth::Token.encode. The port's encoder is async and this sync
+    // view cannot await it, so the view refuses and emits no token.
     const { json } = collectViewFns(cardModApiKey);
     const view = json.get("token");
     expect(view).toBeDefined();
     const fmt = new StubFmt({ name: { s: "Joe User+*api key" }, dbContent: API_KEY_PROBE_VALUE });
     const { ctx } = makeCtx(fmt, "token");
-    const out = view!.viewFn(ctx);
-    expect(out).toBe('{"token":"<jwt-token-pending-runtime>"}');
+    expect(() => view!.viewFn(ctx)).toThrow(/async token encoder/);
   });
 
   it(":current renders a readonly text input with the api_key content (current.haml)", () => {
