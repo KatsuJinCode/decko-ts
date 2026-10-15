@@ -18,6 +18,11 @@
 //
 // Usage:
 //   node benchmarks/cf-scale/measure-workerd-cpu.mjs [--deck cf-scale|demo] [--n 40] [--json out.json]
+//     [--entry deploy/worker.ts] [--first <path>] [--cold-only]
+//
+// --entry bundles another worker file (to compare two boots); --first picks
+// the path of the isolate's first request; --cold-only stops after that
+// request and reports its CPU, D1 queries and D1 rows read.
 //
 // Windows only for the CPU counter (reads it through PowerShell's
 // Get-Process); on Linux/macOS it reads /proc or `ps` instead.
@@ -51,11 +56,14 @@ const DECKS = {
 };
 
 function parseArgs(argv) {
-  const out = { deck: "cf-scale", n: 40, json: null };
+  const out = { deck: "cf-scale", n: 40, json: null, entry: "deploy/worker.ts", first: null, coldOnly: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--deck") out.deck = argv[++i];
     else if (argv[i] === "--n") out.n = Number(argv[++i]);
     else if (argv[i] === "--json") out.json = argv[++i];
+    else if (argv[i] === "--entry") out.entry = argv[++i];
+    else if (argv[i] === "--first") out.first = argv[++i];
+    else if (argv[i] === "--cold-only") out.coldOnly = true;
   }
   return out;
 }
@@ -94,7 +102,7 @@ function processCpuMs(pid) {
   return ((Number(stat[11]) + Number(stat[12])) * 1000) / 100;
 }
 
-async function boot(deck) {
+async function boot(deck, entry) {
   const { build } = await import("vite");
   const { Miniflare, convertV4MiniflareOptions } = await import("miniflare");
   const { splitSqlStatements } = await import(pathToFileURL(join(REPO, "tools", "migrate", "import.mjs")).href);
@@ -109,7 +117,7 @@ async function boot(deck) {
       minify: false,
       target: "es2022",
       ssr: true,
-      rollupOptions: { input: join(REPO, "deploy", "worker.ts"), output: { format: "esm", entryFileNames: "cpu-worker.mjs" } },
+      rollupOptions: { input: join(REPO, entry), output: { format: "esm", entryFileNames: "cpu-worker.mjs" } },
     },
   });
   const outputs = Array.isArray(viteResult) ? viteResult : [viteResult];
@@ -150,7 +158,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const deck = DECKS[args.deck];
   if (!deck) throw new Error(`unknown deck ${args.deck}`);
-  const { mf, dispatch, workerdPid } = await boot(args.deck);
+  const { mf, dispatch, workerdPid } = await boot(args.deck, args.entry);
   const rows = [];
   try {
     // Cold isolate: the first request boots the deck (loads every card row
@@ -158,14 +166,20 @@ async function main() {
     // (15.6 ms on Windows) is small against it.
     const cold0 = processCpuMs(workerdPid);
     const coldWall0 = Date.now();
-    const coldResponse = await dispatch(deck.pages[0][1]);
+    const firstPath = args.first ?? deck.pages[0][1];
+    const coldResponse = await dispatch(firstPath);
     await coldResponse.text();
     const coldBoot = {
-      path: deck.pages[0][1],
+      path: firstPath,
       status: coldResponse.status,
       cpuMs: Number((processCpuMs(workerdPid) - cold0).toFixed(2)),
       wallMs: Date.now() - coldWall0,
     };
+    // D1 traffic of that first request: the recorder is per isolate, so its
+    // aggregate after one request is that request's own.
+    const coldMetrics = await metrics(dispatch);
+    coldBoot.d1Queries = coldMetrics?.queryCount ?? null;
+    coldBoot.d1RowsRead = coldMetrics?.rowsRead ?? null;
     console.log(JSON.stringify({ coldBoot }));
 
     // Idle baseline: CPU workerd burns with no requests over a similar span.
@@ -174,7 +188,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 3000));
     const idleMsPerSec = (processCpuMs(workerdPid) - idle0) / ((Date.now() - t0) / 1000);
 
-    for (const [label, path] of deck.pages) {
+    for (const [label, path] of args.coldOnly ? [] : deck.pages) {
       let status = 0;
       let bytes = 0;
       for (let i = 0; i < 5; i++) {
