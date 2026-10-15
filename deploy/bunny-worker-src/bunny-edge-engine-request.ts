@@ -729,7 +729,7 @@ async function dispatchEngineRequest(
     if (mapped.status === 404) {
       return renderDeckoNotFoundErrorPage(await source.deck(), parsed.name);
     }
-    return renderDeckoServerErrorPage(await source.deck(), parsed.name);
+    return renderDeckoServerErrorPage(await source.deck(), parsed.name, err);
   }
 }
 

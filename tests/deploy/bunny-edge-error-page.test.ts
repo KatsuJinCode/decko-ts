@@ -60,6 +60,7 @@ import {
   CONFIGURED_NOT_FOUND_TYPE_ID,
 } from "./fixtures/configured-deck-served-deltas.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import { EMPTY_SERVED_DELTAS } from "../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
 
 function edgeGet(pathname: string): Request {
   return new Request(`https://script-placeholder.bunny.run${pathname}`);
@@ -226,7 +227,7 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
   // other half: with no configuration, the same seeded deck serves no other
   // deck's card ids, no private asset URLs and no version pin belonging to
   // any other deck.
-  it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no recorded page ids to look up)", async () => {
+  it("an UNCONFIGURED deck's 404 resolves its layout anchors from the deck's own codenames", async () => {
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);
@@ -237,10 +238,32 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
       expect(res.status).toBe(404);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
-      // No layout-rule anchors configured -> the builder cannot resolve a
-      // default layout -> its documented fallback answers, and the error
-      // path never 500s a second time.
-      expect(body).toContain(`<h1>Card not found</h1>`);
+      // No layout-rule anchors configured -> the builder reads the deck's
+      // `all` and `layout` codename cards (Card::Codename.id). The page must
+      // be exactly the one an operator gets by stating those two ids.
+      const idOf = async (codename: string) =>
+        Number(
+          (
+            await storage.fetcher.driver.query<{ id: number }>(
+              "SELECT id FROM cards WHERE codename = ? AND trash = 0",
+              [codename],
+            )
+          ).rows[0]?.id,
+        );
+      const stated = await handleEngineRequest(edgeGet("/NoSuchCard"), {
+        fetcher: storage.fetcher,
+        render: storage.engine,
+        servedDeltas: {
+          ...EMPTY_SERVED_DELTAS,
+          allCardId: await idOf("all"),
+          layoutPointerId: await idOf("layout"),
+        },
+      });
+      const mask = (s: string) => s.replace(/data-slot-id="[^"]*"/g, "");
+      expect(stated.status).toBe(404);
+      expect(mask(body)).toBe(mask(await stated.text()));
+      expect(body).toContain("Could not find\n<em>\nNoSuchCard\n</em>");
+      expect(body).not.toContain(`<h1>Card not found</h1>`);
       // And nothing from another deck's chrome leaked into it.
       expect(body).not.toContain(String(CONFIGURED_NOT_FOUND_TYPE_ID));
       expect(body).not.toContain("basic_c");
