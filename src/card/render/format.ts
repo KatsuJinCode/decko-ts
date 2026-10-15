@@ -4573,33 +4573,13 @@ function normalizeView(view: string): string {
 }
 
 /**
- * An error reproducing a Ruby raise whose oracle page embeds the debug page
- * (html/error.rb's backtrace_link title). The engine's own V8 stack is 8-10
- * frames (Node's Error.stackTraceLimit cap included); Ruby's
- * `exception.backtrace * "<br>\n"` is boot-inclusive, 51-168 frames on the
- * corpus's debug-span ops. The N6 canonicalization (reference-harness/
- * runner/normalize.mjs) replaces each `<br>\n`-separated frame line with its
- * marker and leaves the frame COUNT as the compared invariant — the count is
- * port-owned structure the raise site must satisfy (the N6 receipt: "the
- * raise sites must emit a Ruby-shaped frame structure"). The site therefore
- * declares the oracle's measured boot-inclusive depth (the committed capture
- * at reference-harness/fixtures/synthetic-v2/expected, re-verified live on
- * the capture host), and the debug page renders that many frame lines. The
- * lines' text is host-VM identity in N6's/N7's class — canonicalized away on
- * both sides — so the emitted lines are canonical placeholders, not a
- * replay of the capture's frames (the raise-posture receipt's rule).
+ * Ruby's NoMethodError, for raise sites that reproduce an upstream failure
+ * whose oracle answer is the admin debug page (html/error.rb backtrace_link).
+ * The class and message are Ruby's; the backtrace is this engine's own stack,
+ * since a TypeScript engine has no Ruby call stack to report.
  */
-export interface RubyBacktraceError extends Error {
-  rubyBacktraceFrames: string[];
-}
-
-export function rubyBacktraceError(message: string, oracleFrameDepth: number): RubyBacktraceError {
-  const error: RubyBacktraceError = new Error(message) as RubyBacktraceError;
-  error.rubyBacktraceFrames = Array.from(
-    { length: oracleFrameDepth },
-    (_, i) => `ruby-vm:0:in \`oracle backtrace frame ${i + 1}'`,
-  );
-  return error;
+export class NoMethodError extends Error {
+  override name = "NoMethodError";
 }
 
 /** html/error.rb:47-49 `show_all_errors?`:
@@ -4630,24 +4610,16 @@ function showAllErrors(fmt: RenderFormat | undefined): boolean {
  * The message escapes once here (CGI.escapeHTML == the h() table) and once
  * more when backtrace_link builds the title attribute (Rails' content_tag
  * html_escape), which is why the capture's embedded quotes read &amp;#39;.
- * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
- * the instrument's N7 canonicalization blanks the machine-specific path
- * tokens on both sides and N6 replaces each frame line with its marker, so
- * the compared residual is the frame COUNT - the engine's V8 stack depth
- * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
- * residual). An error carrying a declared Ruby-shaped frame structure
- * (rubyBacktraceError — the raise sites that reproduce an oracle failure
- * under the reproduced-upstream-failure ruling) renders that structure
- * instead, satisfying the N6 count invariant. */
+ * The frames are the ENGINE's own stack, as Ruby embeds its own backtrace:
+ * a backtrace is the call stack of the engine that raised, so this engine
+ * reports its real V8 frames and never imitates Ruby's. The comparison masks
+ * the frame list on both sides (reference-harness N6). */
 function errorDebugPage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  const declared = (error as Partial<RubyBacktraceError>).rubyBacktraceFrames;
   const frames =
-    declared !== undefined
-      ? declared
-      : error instanceof Error && typeof error.stack === "string"
-        ? error.stack.split("\n").slice(1).map((line) => line.trim())
-        : [];
+    error instanceof Error && typeof error.stack === "string"
+      ? error.stack.split("\n").slice(1).map((line) => line.trim())
+      : [];
   return (
     "\n      <h3>Error message (visible to admin only)</h3>\n" +
     `      <p><strong>${h(message)}</strong></p>\n` +
@@ -4667,17 +4639,21 @@ function backtraceLink(card: RenderCard, error: unknown): string {
   return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
 }
 
-/** The hex object-address token Ruby's NoMethodError/NameError messages
- *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
- *  The engine has no heap addresses; the instrument's N7 canonicalization
- *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
- *  port derives a stable pseudo-address from the object's id — the
- *  inspection token stays shape-true (0x + a hex run) without pretending
- *  to be a heap pointer. Shared by the view-body raise sites that port
- *  Ruby runtime errors carrying inspected receivers. */
-export function rubyInspectionAddress(id: number | undefined): string {
-  const n = id === undefined ? 0 : (id * 0x9e3779b1) >>> 0;
-  return "0x" + n.toString(16).padStart(8, "0");
+/** The engine's own identity for an object that a ported Ruby error message
+ *  names as its receiver. Ruby's NoMethodError message embeds the receiver's
+ *  `inspect`, `#<Card:0x0000028dfcc01048>`: the class and a heap address of
+ *  the Ruby process. This engine has no Ruby heap and does not imitate one;
+ *  it names the receiver by the class that plays its part here and the
+ *  fields that identify it (`#<Card id=12 name="Ada Admin">`). The message
+ *  text around it stays Ruby's. */
+export function engineObjectIdentity(
+  className: string,
+  fields: Readonly<Record<string, string | number | undefined>>,
+): string {
+  const parts = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
+  return parts.length === 0 ? `#<${className}>` : `#<${className} ${parts.join(" ")}>`;
 }
 
 /**

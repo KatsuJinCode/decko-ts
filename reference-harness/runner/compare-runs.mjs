@@ -62,16 +62,16 @@ const captureHostValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(captureHostValues);
   return [];
 };
-/** Every backtrace frame line N6 matches in any string of a recorded line,
- *  in order: the `<br>`-separated segments inside a debug-page title's
- *  backtrace div (the div that follows the message paragraph). */
-const frameLineValues = (value) => {
+/** Every backtrace frame list N6 masks in any string of a recorded line,
+ *  in order: the whole content of a debug-page title's backtrace div (the
+ *  div that follows the message paragraph). */
+const frameListValues = (value) => {
   if (typeof value === "string")
     return debugTitle(value).flatMap((t) => {
       const m = t.match(/&lt;\/p&gt;\s*&lt;div&gt;([\s\S]*?)&lt;\/div&gt;/);
-      return m && m[1] !== "" ? m[1].split(/&lt;br&gt;\n/) : [];
+      return m ? [m[1]] : [];
     });
-  if (value !== null && typeof value === "object") return Object.values(value).flatMap(frameLineValues);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(frameListValues);
   return [];
 };
 
@@ -80,7 +80,7 @@ const maskAccounting = (result, nameA, nameB) => {
     N1: slotValues(line),
     N4: collapseValues(line),
     N5: relativeTimeValues(line),
-    N6: frameLineValues(line),
+    N6: frameListValues(line),
     N7: captureHostValues(line),
   });
   const a = counts(nameA);
@@ -148,7 +148,7 @@ const pairLine = (rule, label) => {
 console.log(pairLine("N1", "slot ids"));
 console.log(pairLine("N4", "collapse ids"));
 console.log(pairLine("N5", "relative-time spans"));
-console.log(pairLine("N6", "backtrace frame lines"));
+console.log(pairLine("N6", "backtrace frame lists"));
 console.log(pairLine("N7", "capture-host tokens in debug titles"));
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");

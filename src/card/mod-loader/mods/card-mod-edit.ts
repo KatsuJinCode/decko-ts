@@ -177,7 +177,7 @@
 //   these set modules but the methods are not callable in a headless
 //   engine (they describe the type-mod surface for the live editor)
 
-import { rubyBacktraceError, type ViewContext, type ViewFn } from "../../render/format.js";
+import { NoMethodError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
@@ -449,10 +449,7 @@ function deleteButton(fmt: ViewContext["fmt"]): string | undefined {
     structureRuleFetchInstances.has(fmt.card) &&
     (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)
   ) {
-    throw rubyBacktraceError(
-      "undefined method `rule_setting_name' for an instance of Card",
-      168,
-    );
+    throw new NoMethodError("undefined method `rule_setting_name' for an instance of Card");
   }
   const name = h(fmt.card.name.s);
   return `<a class="slotter btn btn-outline-danger ms-auto" data-confirm="Are you sure you want to delete ${name}?" href="/delete/${fmt.urlKey()}?success%5Bview%5D=just_deleted" data-remote="true">Delete</a>`;

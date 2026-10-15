@@ -149,8 +149,11 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     // view:admin:Ada Admin+*account:closure). The haml below line 25 (the
     // warning, the deletion list, the confirmed delete link) never renders
     // in stock Ruby; the loud test posture re-raises to the caller.
+    // Ruby's message ends with the receiver's heap inspection
+    // (`#<Card:0x...>`); the engine names the same receiver, the accounted
+    // card "Dana", by its own identity instead (engineObjectIdentity).
     await expect(e.render("Dana+*account", "closure")).rejects.toThrow(
-      "private method `closure_deletions' called for #<Card:0x",
+      /^private method `closure_deletions' called for #<Card id=\d+ name="Dana">$/,
     );
     e.pageSession = undefined;
   });

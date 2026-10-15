@@ -152,9 +152,11 @@ describe("card-mod-assets :asset_output_url (oracle-pinned)", () => {
     // rescued span on view:admin:*all+*script:asset_output_url; the
     // cwwrite lane's own view_*_asset_output_url captures carried the same
     // span (the earlier url pin here read the CARD-level method's bytes —
-    // `asset_output_url_after` — not the view's).
+    // `asset_output_url_after` — not the view's). Ruby names the receiver
+    // by its heap inspection (`#<Card::Format::CardActionView:0x...>`); the
+    // engine has no ActionView and names the format the lookup ran on.
     await expect(s.engine.render("*all+*style", "asset_output_url")).rejects.toThrow(
-      "undefined method `asset_output_url' for #<Card::Format::CardActionView:0x",
+      /^undefined method `asset_output_url' for #<\w+ card="\*all\+\*style">$/,
     );
   });
 
@@ -166,7 +168,7 @@ describe("card-mod-assets :asset_output_url (oracle-pinned)", () => {
     await seedCard(s, { id: 60, name: "*probe", codename: "probe", typeId: SET_TYPE_ID });
     await seedCard(s, { id: 61, name: "*probe+*style", leftId: 60, rightId: 11, typeId: 2 });
     await expect(s.engine.render("*probe+*style", "asset_output_url")).rejects.toThrow(
-      "undefined method `asset_output_url' for #<Card::Format::CardActionView:0x",
+      /^undefined method `asset_output_url' for #<\w+ card="\*probe\+\*style">$/,
     );
   });
 
