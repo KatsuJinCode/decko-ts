@@ -9,6 +9,7 @@
 // host's captured mail, drained, as [{to, subject, text}]).
 
 import http from "node:http";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -74,7 +75,7 @@ http.createServer = (...args) => {
   const wrapped = async (req, res) => {
     if (req.url === "/__harness/runtime") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ engine: "node-host", node: process.version, passwordHash: process.env.DECKO_PASSWORD_HASH ?? "default", assetRefresh: process.env.DECKO_ASSET_REFRESH ?? "default", scssCompilerConfigured: !!process.env.DECKO_SASSC, deckProfile: process.env.DECKO_DECK_PROFILE }));
+      res.end(JSON.stringify({ engine: "node-host", node: process.version, passwordHash: process.env.DECKO_PASSWORD_HASH ?? "default", assetRefresh: process.env.DECKO_ASSET_REFRESH ?? "cautious", scssCompilerConfigured: !!process.env.DECKO_SASSC, scssCompilerSha256: process.env.DECKO_SASSC ? createHash("sha256").update(readFileSync(process.env.DECKO_SASSC)).digest("hex") : null, deckProfile: process.env.DECKO_DECK_PROFILE }));
       return;
     }
     if (req.url === "/__harness/ready") {

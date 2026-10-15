@@ -45,9 +45,12 @@ export function validateJourneyEvidence(args, expected, actual) {
       const labels = (result.observations ?? []).map(o => o.label);
       const wanted = journey.steps.filter(s => Object.hasOwn(s,"observe")).map(s => s.observe);
       if (new Set(labels).size !== labels.length || !equal(labels,wanted)) problems.push(`${prefix}: missing, duplicate or unexpected observations`);
+      if (!Array.isArray(result.mail) || !result.rows || typeof result.rows !== "object") problems.push(`${prefix}: missing mail or row evidence`);
       for (const o of result.observations ?? []) {
+        if (typeof o.url !== "string" || typeof o.text !== "string" || !Array.isArray(o.structure) || !Array.isArray(o.fields)) problems.push(`${prefix}/${o.label}: incomplete observation evidence`);
         if (!Number.isInteger(o.status) || o.status >= 500 || o.status < 200) problems.push(`${prefix}/${o.label}: user-visible HTTP ${o.status}`);
       }
+      if (side === "actual" && result.provenance?.engine === "ts-production" && (result.runtime?.passwordHash !== "pbkdf2" || result.runtime?.assetRefresh !== "cautious" || !result.runtime?.scssCompilerConfigured || !/^[a-f0-9]{64}$/.test(result.runtime?.scssCompilerSha256 ?? ""))) problems.push(`${prefix}: production settings do not match PBKDF2/cautious/verified compiler configuration`);
       const p = result.provenance;
       if (!p || p.format !== "decko-browser-evidence/1") { problems.push(`${prefix}: missing provenance`); continue; }
       for (const [key, value] of Object.entries(hashes)) if (p[key] !== value) problems.push(`${prefix}: ${key} mismatch`);

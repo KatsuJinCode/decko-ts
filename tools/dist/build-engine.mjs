@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 // Build the complete engine distribution, including checked-in runtime assets.
 import { spawnSync, execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { cpSync, mkdirSync, writeFileSync, existsSync, realpathSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { sha256, treeDigest } from "../../reference-harness/browser/lib/journey-provenance.mjs";
 const repo = fileURLToPath(new URL("../..", import.meta.url));
+const output = path.resolve(repo, "dist");
+// Delete only this checkout's resolved build directory; refuse redirection.
+if (path.dirname(output) !== path.resolve(repo)) throw new Error("build output escapes checkout");
+if (existsSync(output)) {
+  if (path.resolve(realpathSync(output)) !== output) throw new Error("refusing redirected dist directory");
+  rmSync(output, { recursive: true, force: true });
+}
 const result = spawnSync(process.execPath, [path.join(repo, "node_modules/typescript/bin/tsc"), "-p", path.join(repo,"tsconfig.dist.json")], { cwd: repo, stdio: "inherit", windowsHide: true });
 if (result.status !== 0) process.exit(result.status ?? 1);
 cpSync(path.join(repo,"vendor"), path.join(repo,"dist/vendor"), { recursive: true });

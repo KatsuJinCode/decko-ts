@@ -32,6 +32,8 @@ for (const [name,change] of [
  ["HTTP500 equality",({result,write})=>{result.observations[0].status=500;write("ruby",result);write("ts",result);}],
  ["dirty candidate",({result,write})=>{result.provenance.source.dirty=true;write("ts",result);}],
  ["wrong candidate",({result,write})=>{result.provenance.source.commit="c".repeat(40);write("ts",result);}],
+ ["production settings",({result,write})=>{result.provenance.engine="ts-production";result.runtime.passwordHash="legacy-sha1";write("ts",result);}],
+ ["missing observation content",({result,write})=>{delete result.observations[0].text;write("ruby",result);write("ts",result);}],
  ["missing provenance",({result,write})=>{delete result.provenance;write("ts",result);}],
  ["stale artifact",({result,write})=>{result.provenance.buildReceipt.distSha256="d".repeat(64);write("ts",result);}],
  ["incomplete steps",({result,write})=>{result.steps.pop();write("ts",result);}],
