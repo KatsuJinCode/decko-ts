@@ -82,7 +82,8 @@ Not fixed here (the lead fixes product failures).
 ## Environmental notes (not deployment failures)
 - Font Awesome kit script (`kit.fontawesome.com`) answers 403 for 127.0.0.1 because
   the kit is registered to culturesmith.com; excluded from the console check.
-- The signed-in path re-reads the nest-index marker as "missing" at each actor
-  boot even on a deck whose marker is current (the anonymous/anonymous boot and
-  a direct readNestIndexMarker both report current); the pages still render,
-  they walk the nest closure. Observed, not fixed, not counted as a failure.
+- Signed-in boots log "[nest-index] missing" on a deck whose marker is current:
+  the anonymous boot and a direct readNestIndexMarker both read it as current,
+  while the boot that serves a signed-in request reads it as missing. The cause is
+  not isolated here; the warning is logged, the pages still render. Not counted as
+  a failure.
