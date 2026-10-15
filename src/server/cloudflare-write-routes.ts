@@ -92,6 +92,8 @@ export { handleAuthOnlyRequest };
 import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
 import { originPolicyFromEnv, type OriginPolicy } from "./request-origin.js";
 import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/auth/password-hash.js";
+import { configureSigninSecurity, signinSecurityPolicyFromEnv } from "../card/auth/signin-security.js";
+import { configureSetupToken } from "../card/auth/setup-token.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
 import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
@@ -116,6 +118,16 @@ export interface WriteSurfaceFlags {
   readonly DECKO_ORIGIN_CHECK?: string;
   /** Comma-separated extra origins allowed to post to this deck. */
   readonly DECKO_TRUSTED_ORIGINS?: string;
+  /** The one-time token first-run setup requires (auth/setup-token.ts). An
+   *  edge host generates none of its own, so /setup refuses without it. */
+  readonly DECKO_SETUP_TOKEN?: string;
+  /** Sign-in hardening (auth/signin-security.ts): "on" (default) or "off". */
+  readonly DECKO_SIGNIN_THROTTLE?: string;
+  readonly DECKO_SIGNIN_MAX_FAILURES?: string;
+  readonly DECKO_SIGNIN_MAX_ADDRESS_FAILURES?: string;
+  readonly DECKO_SIGNIN_LOCKOUT_SECONDS?: string;
+  readonly DECKO_SIGNIN_UNIFORM_FAILURE?: string;
+  readonly DECKO_SESSION_REVOCATION?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {
@@ -592,6 +604,8 @@ export async function handleWorkersWriteSurface(
  *  fails the write loudly and leaves the read surface untouched. */
 export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
   configurePasswordHashing(passwordHashPolicyFromEnv(env));
+  configureSigninSecurity(signinSecurityPolicyFromEnv(env));
+  configureSetupToken(env.DECKO_SETUP_TOKEN);
   return originPolicyFromEnv(env);
 }
 

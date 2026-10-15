@@ -28,6 +28,7 @@ import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
 import type { SQLDateTime } from "../../server/schema.js";
 import type { Actor } from "./actor.js";
 import { generateSessionToken, sha256Hex, tokensEqual } from "./session-token.js";
+import { signinSecurityPolicy } from "./signin-security.js";
 
 /** UTC datetime TEXT in ActiveRecord's form ("YYYY-MM-DD HH:MM:SS", plus
  *  ".ffffff" only when the microseconds are not zero) — the same storage
@@ -64,6 +65,9 @@ export interface SessionStoreOptions {
    *  (constant-time). Injectable so tests can prove the comparison is
    *  load-bearing (a store that skips it fails its lookups). */
   compareTokens?: (presented: string, stored: string) => boolean;
+  /** Session revocation on account change (revokedByAccountChange).
+   *  Absent: DECKO_SESSION_REVOCATION through signinSecurityPolicy(). */
+  revocation?: boolean;
 }
 
 /** One created session, as handed back to the caller: the RAW token (shown
@@ -86,12 +90,21 @@ export class SessionStore {
   private readonly clock: () => Date;
   private readonly defaultTtlSeconds: number;
   private readonly compareTokens: (presented: string, stored: string) => boolean;
+  private readonly revocation: boolean | undefined;
 
   constructor(options: SessionStoreOptions) {
     this.driver = options.driver;
     this.clock = options.now ?? (() => new Date());
     this.defaultTtlSeconds = options.defaultTtlSeconds ?? DEFAULT_SESSION_TTL_SECONDS;
     this.compareTokens = options.compareTokens ?? tokensEqual;
+    this.revocation = options.revocation;
+  }
+
+  /** The database the session rows live in. The sign-in throttle keeps its
+   *  counters beside them: on a host whose deck connection is read-only for
+   *  card writes, this is the connection that accepts auth writes. */
+  get storageDriver(): SQLDatabaseDriver {
+    return this.driver;
   }
 
   /**
@@ -138,9 +151,10 @@ export class SessionStore {
       token_hash: string;
       account_card_id: number;
       expires_at: SQLDateTime;
+      created_at: SQLDateTime;
       name: string | null;
     }>(
-      `SELECT s.token_hash, s.account_card_id, s.expires_at, c.name
+      `SELECT s.token_hash, s.account_card_id, s.expires_at, s.created_at, c.name
        FROM auth_sessions s JOIN cards c ON c.id = s.account_card_id
        WHERE s.token_hash = ?`,
       [tokenHash],
@@ -160,7 +174,41 @@ export class SessionStore {
     // JOIN already dropped dead ids; a NULL name is a broken account card
     // (user cards are simple cards) and is treated the same way.
     if (row.name === null) return null;
+    if ((this.revocation ?? signinSecurityPolicy().sessionRevocation) && (await this.revokedByAccountChange(row))) {
+      return null;
+    }
     return { id: row.account_card_id, name: row.name };
+  }
+
+  /**
+   * Session revocation (docs/SECURITY.md, divergence 4): a session ends when
+   * its account's +*status is anything but "active" (blocked, closed,
+   * unverified), or when its +*password card was updated after the session
+   * was issued. Checked on every lookup rather than at the write, so it holds
+   * whichever host or engine made the change. A holder with no +*account,
+   * or an account with no status card, is not affected. The password
+   * comparison runs at the stored timestamps' precision: a change in the
+   * same instant as the session's creation does not revoke it.
+   */
+  private async revokedByAccountChange(row: { account_card_id: number; created_at: SQLDateTime }): Promise<boolean> {
+    const createdAt = row.created_at;
+    const fields = await this.driver.query<{ field: string; db_content: string | null; updated_at: string | null }>(
+      `SELECT f.codename AS field, c.db_content, c.updated_at
+       FROM cards a
+       JOIN cards c ON c.left_id = a.id AND c.trash = 0
+       JOIN cards f ON f.id = c.right_id
+       WHERE a.left_id = ? AND a.trash = 0
+         AND a.right_id IN (SELECT id FROM cards WHERE codename = 'account' AND trash = 0)
+         AND f.codename IN ('status', 'password')`,
+      [row.account_card_id],
+    );
+    for (const field of fields.rows) {
+      if (field.field === "status" && (field.db_content ?? "") !== "active") return true;
+      if (field.field === "password" && field.updated_at !== null && String(field.updated_at) > String(createdAt)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Alias of {@link lookupSession} named for the actions layer's

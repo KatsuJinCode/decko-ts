@@ -84,6 +84,12 @@ import {
 } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
 import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
 
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SERVER_ENTRY = path.join(REPO_ROOT, "vm-staging-server.mjs");
 const SCHEMA_SQL = path.join(REPO_ROOT, "db", "schema.sqlite.sql");
@@ -95,6 +101,7 @@ const OWNER_EMAIL = generatedEmail("owner");
 const OWNER_PASSWORD = generatedPassword("Accounts3owner");
 const RESET_PASSWORD = generatedPassword("Accounts3reset");
 const TOKEN_SECRET = generatedTokenSecret();
+const SETUP_TOKEN = generatedTokenSecret();
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -153,6 +160,9 @@ async function bootWorker(dbPath: string): Promise<BootedWorker> {
       ...process.env,
       DECKO_FIRST_RUN: "1",
       DECKO_WRITE_PATH: "1",
+      // The operator-supplied one-time setup token /setup requires
+      // (docs/SECURITY.md, divergence 5).
+      DECKO_SETUP_TOKEN: SETUP_TOKEN,
       // The reset-flow claim needs the mail: capture it in-process and drain
       // it through the staging host's own debug surface. Off by default, so
       // arming it is a per-boot choice, not a default change.
@@ -323,7 +333,7 @@ describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, 
     const create = await fetch(`${worker.baseUrl}/setup`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD }).toString(),
+      body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD, setup_token: SETUP_TOKEN }).toString(),
       redirect: "manual",
     });
     expect(create.status).toBe(303);
@@ -680,6 +690,7 @@ describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, 
       body: new URLSearchParams({
         email: refusedEmail,
         password: generatedPassword("Accounts3second"),
+        setup_token: SETUP_TOKEN,
       }).toString(),
       redirect: "manual",
     });

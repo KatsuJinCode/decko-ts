@@ -86,6 +86,10 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // The freshness stamp's triggers widened from cards + card_references to
   // every card table, so a card_actions-only write moves the stamp too.
   { filename: "0010-deck-data-version-all-card-tables.sql", number: "0010" },
+  // The sign-in throttle's counter table (src/card/auth/signin-security.ts).
+  // The engine also creates it on first use; this entry provisions it up
+  // front.
+  { filename: "0011-auth-signin-throttle.sql", number: "0011" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

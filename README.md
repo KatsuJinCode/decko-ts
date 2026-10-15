@@ -163,12 +163,14 @@ either way and records a session row. The Worker does have a full write path —
 sign-in with a real
 D1-backed session, a first-run setup window, and card create / update / delete
 — but it is switched off unless you set one of two values in `wrangler.toml`
-and redeploy. Nothing is on unless you turn it on, and no secret is involved:
+and redeploy. Nothing is on unless you turn it on:
 `DECKO_WRITE_PATH = "1"` turns on card writes (and the sign-in form's route),
 `DECKO_FIRST_RUN = "1"` opens `/setup`, the one-time window that creates your
 deck's first account (it needs the write path as well, because creating that
 account is itself a card write, and it closes by itself once the account
-exists).
+exists). `/setup` also asks for a setup token you choose, so that reaching the
+new deck first is not enough to become its owner; set it as a secret with
+`npx wrangler secret put DECKO_SETUP_TOKEN` (any long random string).
 
 ```toml
 # wrangler.toml
@@ -178,7 +180,7 @@ DECKO_FIRST_RUN  = "1"
 ```
 
 Then `npm run deploy` again. `/setup` walks you through creating the owner
-account, `/_signin` signs you in, and from then on the write routes accept
+account (enter the setup token in its first field), `/_signin` signs you in, and from then on the write routes accept
 your session. Sign-in stores only a SHA-256 digest of the session token in
 D1 — the token itself is never written down — and hands you an `HttpOnly`,
 `SameSite=Lax`, `Secure` cookie that carries it.

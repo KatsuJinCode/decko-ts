@@ -88,6 +88,7 @@ endpoint reports a binding instead of variable names.
 | --- | --- |
 | `DECKO_WRITE_PATH` | Arms the write surface. See below. |
 | `DECKO_FIRST_RUN` | Arms the first-run setup surface. |
+| `DECKO_SETUP_TOKEN` | The one-time token `/setup` requires. This host generates none, so setup is refused until it is set. |
 | `DECKO_EDGE_CACHE` | Arms the response cache headers. |
 | `DECKO_EDGE_CACHE_TTL` | Shared-cache lifetime in seconds. Overrides the default when a positive integer. |
 | `DECKO_EDGE_CACHE_EPOCH` | The cache epoch value. Changing it invalidates both script-side and global cache tiers. |

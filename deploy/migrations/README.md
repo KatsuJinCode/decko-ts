@@ -32,5 +32,5 @@ re-keys those ledgers and re-applies the file under its new name. The
 collision is left in place for exactly that reason.
 
 New migrations take the next number that is neither taken nor reserved
-(currently `0011`), and their entry is added to `DEPLOY_MIGRATION_ORDER` in
+(currently `0012`), and their entry is added to `DEPLOY_MIGRATION_ORDER` in
 `src/server/deploy-migrations.ts`.

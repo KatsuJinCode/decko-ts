@@ -2,10 +2,10 @@
 
 decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are six exceptions to that parity rule. Three are listed below, in two classes; the other three are withheld until a private channel exists to disclose them responsibly.
+There are eight exceptions to that parity rule. Five are listed below, in two classes; the other three are withheld until a private channel exists to disclose them responsibly.
 
-1. **Security holes.** Where Ruby's behaviour lets one user act against another, the port does not copy it. Divergence 2.
-2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly. Divergences 1 and 3.
+1. **Security holes.** Where Ruby's behaviour lets one user act against another, the port does not copy it. Divergences 2 and 5.
+2. **Credential and secret handling.** Where Ruby stores or compares a secret in a way that is weaker than it needs to be, the port stores or compares it more strongly, or exposes it to guessing less. Divergences 1, 3 and 4.
 
 Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
 
@@ -30,34 +30,17 @@ them, the port's own behaviour on it is stated below.
 
 ## Deployment obligations the port does not meet for you
 
-These are properties of a running deployment rather than divergences from Ruby, so they are
-not on the approved-divergence list above. They are stated here because a reader deciding
-whether to expose a deck publicly has to know them, and because the port's own defaults do
-not supply them.
+These are properties of a running deployment rather than divergences from Ruby. They are
+stated here because a reader deciding whether to expose a deck publicly has to know them.
 
-### Sign-in has no rate limiting and no lockout, on any host
+### Distributed guessing is limited per address, not stopped
 
-There is no attempt counter, no per-account or per-IP throttle, no delay after a failure and
-no lockout, in the sign-in path or anywhere else. Every `POST /update/*signin` runs the
-password check, and a wrong password costs the caller one PBKDF2 derivation and the operator
-nothing. This is true of every host — Node, Cloudflare Workers and Bunny alike — because the
-engine contains no rate-limiting code to configure; a search of `src/` for a rate limit, a
-lockout or an attempt counter returns nothing. Ruby Decko does not do this either, so this is
-parity, not a regression; but parity with a brute-forceable default is still a brute-forceable
-default, and a deployment that is publicly reachable should not inherit it silently.
-
-- **What an operator does instead:** apply their edge provider's throttling in front of the
-  deck (Cloudflare WAF rate-limiting rules, Bunny's equivalent, or a reverse proxy). The
-  engine offers no hook of its own for this, so there is nothing to switch on here — it has to
-  happen at the edge.
-- **The one built-in lever is the cost of an attempt.** `DECKO_PASSWORD_PBKDF2_ITERATIONS`
-  (approved divergence 1 above) sets how expensive each guess is. Raising it makes online
-  guessing slower in proportion, and it is the only in-process control the port offers. It is
-  bounded by the runtime: Cloudflare's production Workers runtime refuses PBKDF2 above 100,000
-  iterations, so a Workers deployment cannot push the cost arbitrarily high and must rely on
-  the edge for the rest.
-- **Not covered by either:** a distributed attack spread across many source addresses is a
-  problem only edge throttling addresses, since nothing in the engine counts per IP at all.
+The sign-in throttle (divergence 4) locks an identifier after a few failures whatever the
+source, and locks a client address that fails across many identifiers. An attack spread
+across many addresses against many identifiers stays under both limits; only edge
+throttling in front of the deck (Cloudflare WAF rate-limiting rules, Bunny's equivalent, a
+reverse proxy) addresses that. The client address the Node host counts comes from
+`X-Forwarded-For` when present, which a client reaching the Node host directly can set.
 
 ## Approved divergences
 
@@ -95,6 +78,28 @@ Three further approved divergences exist, are pinned by withheld tests, and are 
 | **Why** | A timing difference can leak a secret one character at a time to a patient remote attacker. |
 | **Compatibility** | None: the results are identical, only the timing differs. |
 | **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison, including the padded-prefix case the length check exists for (`[1,2,3]` against `[1,2,3,0,0,0]`, and `"x"` against `"x\0"` through the string path); `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
+
+### 4. Sign-in: throttled, uniform in its answers, and sessions end with the credential
+
+| | |
+|---|---|
+| **Ruby** | card-mod-account's `:signin` event answers each failure by the field that failed ("Unrecognized email.", "Sorry, that account is not active.", "Wrong password"), keeps no count of attempts, and a signed-in session is not ended by a later password or status change. |
+| **Port** | **Throttle.** Failed sign-ins are counted in the deck database (table `auth_signin_throttle`, beside `auth_sessions`), per identifier (stripped and downcased, whether or not an account exists) and per client address. Five failures for one identifier, or fifty from one address, within fifteen minutes lock that scope for fifteen minutes: a locked scope is refused ("Too many failed sign-in attempts. Try again later.") before any password is checked, and no session is minted. A success clears the identifier's count. Because the counters live in the deck, the limit holds on Node, Cloudflare Workers and Bunny alike. **Uniform answer.** An unknown identifier, a wrong password and an inactive account all answer "Wrong email or password."; an unknown identifier still pays for one password derivation at the configured cost, so the answer's timing does not separate it from a wrong password. An inactive account's state is told only to a caller who has just given its correct password. The forgot-password trigger on the same card answers an unknown or inactive address with the redirect a sent reset gets, and sends nothing. **Session revocation.** Every session lookup checks the holder's `+*account`: a `+*status` other than `active` (blocked, closed, unverified), or a `+*password` card updated after the session was issued, makes the session resolve to nobody. It is checked at lookup, so it holds whichever host or engine made the change. **Secure cookie.** The Node host sets `Secure` on the session cookie, and on the cookie that clears it, when the client reached it over TLS: its own TLS socket, or `X-Forwarded-Proto: https` from a TLS-terminating proxy. The Workers and Bunny hosts already set it on https. |
+| **Why** | Without a limit every guess costs an attacker one request; without a uniform answer the sign-in form tells anyone which addresses have accounts; a session that outlives a password change or a block keeps an intruder in after the owner has acted; a session cookie without `Secure` can be sent over plain http. |
+| **Compatibility** | A legitimate user who mistypes five times waits fifteen minutes; anyone can lock a known identifier out the same way (the lock is per identifier and expires on its own). Sign-in error messages differ from Ruby's. Changing a password, including through the reset flow, ends that account's other sessions; the reset flow signs the user in again afterwards. A legacy SHA-1 digest verifies faster than a PBKDF2 derivation, so an account that has not signed in since migration is distinguishable by timing until its first sign-in upgrades it. The revocation check compares stored timestamps at their own precision: a password change in the same instant as a session's creation does not end it. |
+| **Configuration** | `DECKO_SIGNIN_THROTTLE` (`on` default, `off`); `DECKO_SIGNIN_MAX_FAILURES` (per identifier, default 5); `DECKO_SIGNIN_MAX_ADDRESS_FAILURES` (per address, default 50); `DECKO_SIGNIN_LOCKOUT_SECONDS` (window and lock length, default 900); `DECKO_SIGNIN_UNIFORM_FAILURE` (`on` default, `off` restores the per-field messages); `DECKO_SESSION_REVOCATION` (`on` default, `off`); `DECKO_COOKIE_SECURE` (`auto` default, `always` for a proxy that forwards no scheme, `never` for local http development). An invalid value fails sign-in with a message naming the setting. The Workers and Bunny hosts read these settings from their own bindings on each state-changing request, beside the password and origin settings. The reference-harness adapter sets the throttle, uniform-failure and revocation switches `off`, so its graded sign-in answers are Ruby's. `deploy/migrations/0011-auth-signin-throttle.sql` provisions the table; the engine also creates it on first use. |
+| **Tests** | `tests/card/auth/signin-hardening.test.ts` (defaults and setting errors; identical answers for unknown, wrong and inactive; the inactive state told only with the right password; the derivation an unknown identifier pays; the per-field messages when off; lock after five failures refusing even the right password, unlock after the period, unknown identifiers counted alike, case- and whitespace-insensitive keying, the per-address lock, reset on success, no table when off; revocation on a password update and on blocked, closed and unverified, unchanged and account-less holders kept, nothing revoked when off), `tests/server/session-cookie-secure.test.ts` (Secure on https and on `X-Forwarded-Proto: https`, not on plain http under `auto`, the `always` and `never` overrides, for the sign-in and sign-out cookies). Tests that check the per-field messages pin `DECKO_SIGNIN_UNIFORM_FAILURE=off` explicitly. |
+
+### 5. First-run setup requires a one-time setup token
+
+| | |
+|---|---|
+| **Ruby** | The `/setup` route is a port surface (`src/server/first-run-routes.ts`); its account census follows `Card::Auth.needs_setup?` (`lib/card/auth/setup.rb`). Ruby has no setup token. |
+| **Port** | While `DECKO_FIRST_RUN=1` and the deck has no account, `POST /setup` creates the owner only when the request carries the setup token in the form's `setup_token` field (or the JSON body's `setup_token`). The token is checked in constant time before any card is written; a missing or wrong token answers 403 with the form and creates nothing. The token in force is `DECKO_SETUP_TOKEN` when the operator sets it, on any host. Otherwise the Node host generates 32 random bytes when it starts, keeps them in memory only, and prints `[first-run] /setup requires this one-time setup token: <token>` to its console once; a restart generates a new one. The Cloudflare Workers and Bunny hosts generate none, since they have no start-up console and no memory shared between isolates, so without `DECKO_SETUP_TOKEN` they refuse setup with a message naming the setting. The token stops mattering once the owner exists: the window closes for good with the first account. |
+| **Why** | Without it, reaching a freshly deployed deck first is enough to become its owner. |
+| **Compatibility** | Scripts that post to `/setup` must send the token. Nothing outside `/setup` changes. |
+| **Configuration** | `DECKO_SETUP_TOKEN`: the operator's token (an environment variable on Node, a secret or variable binding on Workers and Bunny). Unset on Node: generated and printed at start. Unset on the edge hosts: setup refused. |
+| **Tests** | `tests/card/auth/first-run-setup.test.ts` ("the one-time setup token": missing, empty and wrong tokens refused with 403 and no account; no token available refused naming `DECKO_SETUP_TOKEN`; a generated token accepted, none generated when the operator set one; the field on the form), `tests/card/auth/first-run-setup-endpoint.test.ts` (the booted Node host prints the token; a guessed token is refused and the window stays open; the printed token creates the owner), `tests/exercise/accounts-3.test.ts` (the operator token on the Node host), `tests/deploy/deploy-worker-write-surface.test.ts` (the operator token as a Workers binding, in workerd). |
 
 ## Migration tooling
 

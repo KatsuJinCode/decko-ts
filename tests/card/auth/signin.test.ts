@@ -37,6 +37,12 @@ import {
   type AuthTestStorage,
 } from "./auth-test-storage.js";
 
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+
 // The deck's account codename ids (synthetic; resolved by codename lookup
 // exactly like the real flow resolves them).
 const IDS = {

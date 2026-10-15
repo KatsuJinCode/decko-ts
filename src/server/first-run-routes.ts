@@ -68,6 +68,11 @@
 //   two different owners never collide — which is exactly why the database
 //   permits the second owner.
 //
+//   Who may use the window: only a request carrying the one-time setup token
+//   (setup-token.ts; docs/SECURITY.md, divergence 5), checked before the
+//   create runs, so the concurrency boundary above applies only among holders
+//   of the token.
+//
 //   What this does NOT provide, beyond the boundary above: per-IP
 //   throttling, a captcha, or an idempotency key. The window closes on the
 //   first owner, so at-most-once-per-deck is the whole guarantee. Stated
@@ -102,6 +107,7 @@ import {
   type SetupClosedReason,
   type SetupWindowReason,
 } from "../card/auth/first-run-setup.js";
+import { checkSetupToken } from "../card/auth/setup-token.js";
 
 /** The route path. A staging-slice name in the `/_*` family the server
  *  already uses for its own non-card endpoints (`/_signin`, `/_signout`,
@@ -194,6 +200,13 @@ export async function handleFirstRunRequest(
       "Set up this deck",
       renderSetupFormHtml(null, "Could not read the submitted form."),
     );
+  }
+
+  // The one-time setup token (docs/SECURITY.md, divergence 5): checked
+  // before any card machinery runs, so a request without it creates nothing.
+  const token = checkSetupToken(submitted.setupToken);
+  if (!token.ok) {
+    return htmlResponse(403, "Set up this deck", renderSetupFormHtml("setup_token", token.message));
   }
 
   const outcome = await createOwnerAccount(
@@ -319,7 +332,7 @@ const CLOSED_BODY: Record<SetupWindowReason, string> = {
  * run BEFORE any card machinery is involved.
  */
 function renderSetupFormHtml(
-  errorField: "email" | "password" | null,
+  errorField: "email" | "password" | "setup_token" | null,
   errorMessage: string | null,
 ): string {
   const error =
@@ -336,6 +349,10 @@ function renderSetupFormHtml(
     `<p>Your deck is ready to go!</p>\n` +
     error +
     `<form action="${SETUP_PATH}" method="post" class="first-run-setup-form">\n` +
+    `<div class="form-group">\n` +
+    `<label for="setup_token">Setup token</label>\n` +
+    `<input type="password" name="setup_token" id="setup_token" class="form-control" autocomplete="off" />\n` +
+    `</div>\n` +
     `<div class="form-group">\n` +
     `<label for="setup_email">Email</label>\n` +
     `<input type="text" name="email" id="setup_email" class="form-control" autocomplete="username" />\n` +
@@ -361,13 +378,14 @@ function renderSetupFormHtml(
 export function parseSetupForm(
   body: string,
   contentTypeHeader: string,
-): { email: string; password: string } | null {
+): { email: string; password: string; setupToken: string } | null {
   const contentType = contentTypeHeader.split(";")[0].trim().toLowerCase();
   if (contentType === "application/x-www-form-urlencoded" || contentType === "") {
     const params = new URLSearchParams(body);
     return {
       email: params.get("email") ?? "",
       password: params.get("password") ?? "",
+      setupToken: params.get("setup_token") ?? "",
     };
   }
   if (contentType === "application/json") {
@@ -378,6 +396,7 @@ export function parseSetupForm(
       return {
         email: typeof obj["email"] === "string" ? obj["email"] : "",
         password: typeof obj["password"] === "string" ? obj["password"] : "",
+        setupToken: typeof obj["setup_token"] === "string" ? obj["setup_token"] : "",
       };
     } catch {
       return null;

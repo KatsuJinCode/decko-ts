@@ -149,11 +149,30 @@ describe("first-run /setup through the booted staging server (fresh-deck one-cli
     expect(body).toContain('name="password"');
   }, 30_000);
 
+  // docs/SECURITY.md, divergence 5: with no DECKO_SETUP_TOKEN the server
+  // generated a one-time token at boot and printed it; /setup needs it.
+  const printedSetupToken = (): string => {
+    const match = /\/setup requires this one-time setup token: ([0-9a-f]{64})/.exec(firstRun?.output ?? "");
+    if (match === null) throw new Error(`no setup token in the boot output: ${firstRun?.output}`);
+    return match[1]!;
+  };
+
+  it("POST /setup without the printed setup token is refused with 403 and leaves the window open", async () => {
+    const post = await fetch(`${firstRun?.baseUrl}/setup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD, setup_token: "guess" }).toString(),
+      redirect: "manual",
+    });
+    expect(post.status).toBe(403);
+    expect((await fetch(`${firstRun?.baseUrl}/setup`)).status).toBe(200);
+  }, 30_000);
+
   it("POST /setup creates the owner and answers 303 to sign-in — and the owner can then sign in", async () => {
     const post = await fetch(`${firstRun?.baseUrl}/setup`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD }).toString(),
+      body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD, setup_token: printedSetupToken() }).toString(),
       redirect: "manual",
     });
     // Without the first-run routing the write branch answers 403
