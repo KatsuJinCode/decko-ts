@@ -18,9 +18,13 @@
 //              content of skins and stylesheets) created, changed or
 //              deleted: the card, the content length and sha256
 //   session    who the request sequence is signed in as afterwards
-// Event order is scored separately (see below): the TypeScript engine runs
-// most event bodies as engine code rather than named mod events, so a
-// strict event-sequence verdict would fail every save for the same reason.
+// Event order counts in the verdict where Ruby's order is deterministic: for
+// the steps tools/parity-side-effects/event-order-evidence.json lists, the
+// events both engines ran must come in the same order. The TypeScript engine
+// runs most event bodies as engine code rather than named mod events, so the
+// order is compared over the events both engines ran, not over every Ruby
+// event (coverage is reported separately, as before). Steps outside that set
+// are not graded on order, and the summary names how many.
 //
 // Normalisations (and only these):
 //   - session storage: Ruby keeps sessions in a signed cookie (no row), the
@@ -291,6 +295,13 @@ function deliberateVerdict(name, diffs) {
   return broken;
 }
 
+// ---- event order in the verdict, for the steps whose Ruby order is deterministic.
+// event-order-evidence.mjs derives the set from two fresh Ruby runs and the
+// committed recording; a step outside it is not graded on order (its recorded
+// order is not established), and the summary says how many were left out.
+const orderEvidence = JSON.parse(readFileSync(new URL("./event-order-evidence.json", import.meta.url), "utf8"));
+const orderDeterministic = new Set(orderEvidence.deterministic);
+
 const rows = [];
 const n = Math.max(ruby.steps.length, ts.steps.length);
 for (let i = 0; i < n; i++) {
@@ -316,6 +327,12 @@ for (let i = 0; i < n; i++) {
   const tev = t ? eventNames(t, false) : [];
   const common = rev.filter((e) => tev.includes(e));
   const tsOrder = tev.filter((e) => common.includes(e));
+  // Event order counts in the verdict where Ruby's order is deterministic: the
+  // events both engines ran must come in the same order.
+  const orderGraded = orderDeterministic.has(name);
+  if (orderGraded && JSON.stringify(common) !== JSON.stringify(tsOrder)) {
+    diffs.events = [common.join(" > "), tsOrder.join(" > ")];
+  }
   const broken = deliberateVerdict(name, diffs);
   const verdict = broken === null ? (Object.keys(diffs).length === 0 ? "PASS" : "MISMATCH")
     : broken.length === 0 ? "DELIBERATE" : "MISMATCH";
@@ -326,6 +343,7 @@ for (let i = 0; i < n; i++) {
       ruby: rev, ts: tev, exact: JSON.stringify(rev) === JSON.stringify(tev),
       coverage: rev.length === 0 ? null : common.length / rev.length,
       orderAgrees: JSON.stringify(common) === JSON.stringify(tsOrder),
+      orderGraded,
       missingInTs: rev.filter((e) => !tev.includes(e)),
       extraInTs: tev.filter((e) => !rev.includes(e)),
     },
@@ -353,7 +371,10 @@ for (const r of rows) {
 }
 console.log(`\nSIDE EFFECTS PASS ${pass} / ${rows.length}; deliberate differences pinned ${deliberate}; mismatches ${rows.length - pass - deliberate}`);
 for (const [m, v] of Object.entries(byMod)) console.log(`  ${m.padEnd(12)} ${v.pass}/${v.total}${v.deliberate ? ` (+${v.deliberate} deliberate)` : ""}`);
-console.log(`EVENT ORDER exact ${evExact} / ${rows.length}`);
+const orderRows = rows.filter((r) => r.events.orderGraded);
+const orderBad = orderRows.filter((r) => !r.events.orderAgrees).map((r) => r.step);
+console.log(`EVENT ORDER exact ${evExact} / ${rows.length} (informational; the verdict uses the deterministic steps below)`);
+console.log(`EVENT ORDER in verdict: ${orderRows.length - orderBad.length} / ${orderRows.length} deterministic steps agree; ${rows.length - orderRows.length} not established (see event-order-evidence.json)${orderBad.length ? `; disagreeing: ${orderBad.join(", ")}` : ""}`);
 for (const [step, m] of Object.entries(imageMetrics)) {
   console.log(`IMAGES ${step}: ${Object.entries(m).map(([n, v]) => `${n} PSNR ${v.psnr} alpha ${v.alphaAgree}`).join("; ")}`);
 }

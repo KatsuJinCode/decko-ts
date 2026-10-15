@@ -172,6 +172,37 @@ frame's line number stays outside the placeholder, so the frame still counts.
 **Reproduce.** The unit tests in the `N7` block of `runner/test/normalize.test.mjs`
 cover the rule on constructed input.
 
+### Object addresses in NoMethodError messages (2026-10-15)
+
+Two of the eight withheld admin error views carry a per-process heap address in
+the error message, not only in the frames:
+
+- `view:admin:Ada Admin+*account:closure`: committed (recorded on the Ruby 3.3 install, C:/Ruby33-x64)
+  ``private method `closure_deletions' called for #<Card:0x0000028dfcc01048>``;
+  re-run (Ruby 3.3.12, same install, 2026-10-15) `... #<Card:0x0000017232247f98>`.
+- `view:admin:*all+*script:asset_output_url`: committed
+  ``undefined method `asset_output_url' for #<Card::Format::CardActionView:0x0000028dfbacaf18>``;
+  re-run `... #<Card::Format::CardActionView:0x0000017232f22128>`.
+
+The address is the receiver's heap address in the Ruby process that raised; two
+processes of the same oracle give different values. Card has no inspect of its
+own in card 1.110.0: it inherits ActiveRecord's `inspect` (`#<Card id: 611,
+name: ...>`), and the message shows the bare `#<Class:0x...>` form for it. The
+port's text names the receiver by its identity (`#<Card id=611 name="Ada Admin">`,
+`#<RenderFormat card="*all+*script">`); it has no heap, and a value for the
+address would be invented. N7 canonicalises the address to `N7#addr` inside the
+debug title on both sides, so no port emitting this text could match it
+without fabricating an address; the comparison of these two messages therefore
+stays a failure until the lead decides how that difference is graded.
+
+Reproduction: `node reference-harness/runner/run.mjs` on the Ruby 3.3 install (the
+launch environment is the operator's; the committed captures' run-meta does not name
+the version, so the match is the evidence) over the eight withheld operations.
+Against the committed captures, the re-run differs only in the N1 slot ids, the
+N6 frames (the capture checkout path) and the N7 addresses above: under N1-N8
+all eight compare identical except the two messages, which differ only in the
+address.
+
 ## N8: error class names
 
 **What varies.** When the oracle raises, its capture records the class by Ruby's
