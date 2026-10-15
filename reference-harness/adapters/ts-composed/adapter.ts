@@ -20,6 +20,12 @@ import { RenderEngine } from "../../../src/card/render.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { modEngineHost } from "../../../src/card/mod-loader/mod-engine-host.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
+import {
+  deckoBotAccountEmail,
+  jsonErrorsViewHash,
+  observedModEventRuntime,
+} from "../../../src/server/write-routes.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
@@ -63,6 +69,12 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
+// The synthetic deck is Ruby-built: every account's stored password is
+// Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so the adapter
+// pins that storage policy - under the port's modern default a sign-in would
+// upgrade the row to PBKDF2 and write a row Ruby never writes. Set before any
+// account machinery loads.
+process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 // The engine ships stock Decko's inflection rules (card 1.110.0
 // config/initializers/inflections.rb) under this name; every stock deck uses
 // them, so they are installed before any name is parsed.
@@ -371,7 +383,24 @@ async function opWrite(req: Req): Promise<Json> {
   const actor =
     req.actor === undefined || req.actor === "anonymous" ? null : { id: actorRec!.id, name: await nameOf(actorRec!) };
   const transport = new CaptureTransport("harness");
-  const engine = new CardActionEngine(fetcher, { actor, ipAddress: null, now: () => clock, notifyTransport: transport });
+  // The save runs with the serving write path's composition
+  // (handleWriteRequest, src/server/write-routes.ts): the deck's event
+  // runtime with the type-set resolver (observedModEventRuntime - without it
+  // every type-scoped event, the Number cardtype's validate_number among
+  // them, skips as set-not-applicable), and the follower-mail context (the
+  // deck origin and the Decko Bot address the notification nests render
+  // their links, unfollow URL and From rule from).
+  const engine = new CardActionEngine(fetcher, {
+    actor,
+    ipAddress: null,
+    now: () => clock,
+    notifyTransport: transport,
+    modEvents: await observedModEventRuntime({ driver, fetcher }),
+    followMail: {
+      origin: spec.environment?.origin ?? "http://deck.example",
+      deckoBotEmail: await deckoBotAccountEmail(driver),
+    },
+  });
   const fields = (req.fields ?? {}) as Record<string, unknown>;
   const input: Record<string, unknown> = {};
   if (fields.type !== undefined) input.typeName = fields.type;
@@ -402,15 +431,29 @@ async function opWrite(req: Req): Promise<Json> {
       (result as { cardId?: number })?.cardId ?? (result as { card?: { id?: number } })?.card?.id ?? undefined;
     if (id !== undefined) {
       await boot();
-      const rec = await fetcher.fetchById(id);
+      // A delete's payload card is the trashed card (Ruby's payload carries
+      // it; the row only carries the trash flag), so the fetch looks past
+      // the trash.
+      const rec = await fetcher.fetchById(id, { lookInTrash: true });
       card = rec === undefined ? null : { name: await nameOf(rec), id };
     }
   } catch (error) {
     saved = false;
-    const e = error as Error & { code?: string; field?: string; errors?: Array<{ field?: string; message?: string }> };
-    errors = Array.isArray(e.errors)
-      ? e.errors.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }))
-      : [{ field: e.code ?? e.field ?? "exception", message: e.code !== undefined ? e.message : `${e.constructor?.name ?? "Error"}: ${e.message}` }];
+    // An engine refusal reports through the serving path's JSON errors view
+    // (jsonErrorsViewHash: card-mod-format set/all/error.rb format :json
+    // view :errors, {attribute => message}). A refused update or delete
+    // still answers with the card it targeted (Ruby's payload carries it);
+    // a refused create carries none.
+    if (error instanceof CardActionError) {
+      errors = Object.entries(jsonErrorsViewHash(error, actor !== null)).map(([field, message]) => ({ field, message }));
+    } else {
+      const e = error as Error & { code?: string; field?: string; errors?: Array<{ field?: string; message?: string }> };
+      errors = Array.isArray(e.errors)
+        ? e.errors.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }))
+        : [{ field: e.code ?? e.field ?? "exception", message: e.code !== undefined ? e.message : `${e.constructor?.name ?? "Error"}: ${e.message}` }];
+    }
+    const denied = req.action === "create" ? undefined : await liveRecord(req.card).catch(() => undefined);
+    card = denied === undefined ? null : { name: await nameOf(denied), id: denied.id };
   }
   await boot();
   const mail = transport.captured().map((m) => ({

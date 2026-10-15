@@ -417,10 +417,10 @@ async function opWrite(req: Req): Promise<Json> {
   } catch (error) {
     saved = false;
     // The errors view's shape (card-mod-format set/all/error.rb format :json
-    // view :errors): {attribute => message}. The engine's denial wording is
-    // internal; Ruby words a refusal "You don't have permission to <task>
-    // <card>" and keys it :permission_denied; the guard keys :recaptcha; a
-    // duplicate name keys :name with the core_error_name_exists text. A
+    // view :errors): {attribute => message}, read through the serving
+    // path's jsonErrorsViewHash: a refusal keys :permission_denied with the
+    // engine's rule-walk wording, the guard keys :recaptcha, a duplicate
+    // name keys :name with the core_error_name_exists text. A
     // refused save still answers with the card when it exists on
     // updates/deletes (Ruby's payload carries it there) — a refused CREATE
     // carries NO card: the name the request targeted either exists untouched
@@ -430,11 +430,8 @@ async function opWrite(req: Req): Promise<Json> {
       field?: string;
       errorsByAttribute?: Record<string, string>;
     };
-    const task = req.action === "delete" ? "delete" : String(req.action ?? "update");
     if (e.errorsByAttribute !== undefined && Object.keys(e.errorsByAttribute).length > 0) {
       errors = Object.entries(e.errorsByAttribute).map(([field, message]) => ({ field, message }));
-    } else if (e.code === "permission-denied" || e.code === "anonymous-actor") {
-      errors = [{ field: "permission_denied", message: `You don't have permission to ${task} ${req.card}` }];
     } else if (e.code === "recaptcha") {
       errors = [{ field: "recaptcha", message: e.message }];
     } else if (e instanceof CardActionError) {
@@ -442,7 +439,7 @@ async function opWrite(req: Req): Promise<Json> {
       // the shown "KEY: message" lines read back as {attribute => message}
       // ("NAME: must be unique; ..." -> {name: "must be unique; ..."},
       // "CONTENT: 'x' is not numeric" -> {content: "'x' is not numeric"}).
-      const hash = jsonErrorsViewHash(e, true);
+      const hash = jsonErrorsViewHash(e, actor !== null);
       const entries = Object.entries(hash);
       if (entries.length > 0) {
         errors = entries.map(([field, message]) => ({ field, message }));
