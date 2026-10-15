@@ -224,16 +224,27 @@ fixture's expected order is `Topic 020+related`, `Topic 024+summary`, `Note
 - The same Ruby oracle on SQLite reproduces the fixture's order, and the
   plain `ts` adapter on SQLite matches it.
 
-So on PostgreSQL the port and Ruby agree for these two actors, and the
+So on PostgreSQL the port and Ruby agree for these actors, and the
 fixture's order is the SQLite engine's. The port adds no tie-break, and
 none is needed to match Ruby on the same database. The grade against the
 SQLite-recorded fixture still reports these three ops, and whether the
 instrument should grade an unordered search against the database it runs on
 is a decision for the release lead.
 
-Not settled: the `member` actor. Ruby raises `undefined method 'admin?'` for
-`Mira Member` on both SQLite and PostgreSQL with this deck (its `users` table
-is empty), while the fixture records a result for it. The port returns the
-same order as for the other actors. Ruby on PostgreSQL here ran on PGlite
-(PostgreSQL 18.6, WebAssembly) through `@electric-sql/pglite-socket`, not a
-native server.
+The member uncertainty was resolved with canonical Ruby 3.3.12, stock
+card 1.110.0/decko 0.20.0, on the unchanged synthetic-v1 fixture digest
+`7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b`.
+All three actors succeed on SQLite and PostgreSQL, with the respective
+orders above. The native stock ActiveRecord PostgreSQL schema and all 13
+fixture tables were loaded into an owned PGlite 0.5.10/PostgreSQL 18.6
+instance, accessed by the actual Ruby pg 1.7.0 driver. An empty `users`
+table does not cause the previously reported member failure: account
+identities live in cards, and this fixture has both User actors.
+See `postgres-member-evidence.json` and the reproducible
+`tools/same-database/ruby-postgres-links-probe.mjs`.
+
+The already-started complete Ruby PostgreSQL semantics capture finished
+2388/2388 operations without errors. Its exact differences from the SQLite
+recording are the three Links and three Not Topics operations. This is an
+oracle checkpoint, not a new lane overlay or a complete current port grade.
+The runtime is PostgreSQL through PGlite WebAssembly, not a native server.
