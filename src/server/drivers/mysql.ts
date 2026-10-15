@@ -46,9 +46,13 @@ export function sqliteToMysql(sql: string): string {
   const translated = outsideQuotes(sql, (part) =>
     part
       // Words MySQL reserves that SQLite accepts as bare column names
-      // (cards.key). Quoted unless already qualified by a table alias or
-      // part of a KEY clause (PRIMARY KEY, UNIQUE KEY, ...).
-      .replace(/(?<![.\w"`])(?<!(?:PRIMARY|UNIQUE|FOREIGN|DUPLICATE)\s+)\b(key)\b(?![\w"`])/gi, '"$1"')
+      // (cards.key). Quoted unless already qualified by a table alias, or
+      // part of a KEY clause: PRIMARY KEY, UNIQUE KEY, FOREIGN KEY, DUPLICATE
+      // KEY, and an index definition in CREATE TABLE (KEY `name` (...) or
+      // KEY (...)).
+      // A quoted index name starts the next part (outsideQuotes splits there),
+      // so "followed by the end of the part" also means a name follows.
+      .replace(/(?<![.\w"`])(?<!(?:PRIMARY|UNIQUE|FOREIGN|DUPLICATE)\s+)\b(key)\b(?![\w"`])(?!\s*(?:[`(]|$))/gi, '"$1"')
       // Ruby's MySQL text columns already compare case-insensitively
       // (utf8mb3_unicode_ci), which is what SQLite's NOCASE asks for.
       .replace(/\s+COLLATE\s+NOCASE\b/gi, "")

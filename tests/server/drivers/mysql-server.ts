@@ -81,6 +81,8 @@ export interface MysqlServer {
   connect(database?: string): Promise<Connection>;
   /** Shut the server down and delete its data directory. */
   stop(): Promise<void>;
+  /** Kill the server process now (synchronous; for process exit hooks). */
+  kill(): void;
 }
 
 /**
@@ -156,7 +158,11 @@ export async function startMysqlServer(): Promise<MysqlServer> {
       rmSync(datadir, { recursive: true, force: true });
     };
 
-    return { port, connect: (database?: string) => connectOnce(database), stop };
+    const kill = () => {
+      if (!exited) running.kill();
+      rmSync(datadir, { recursive: true, force: true });
+    };
+    return { port, connect: (database?: string) => connectOnce(database), stop, kill };
   } catch (error) {
     child?.kill();
     rmSync(datadir, { recursive: true, force: true });
