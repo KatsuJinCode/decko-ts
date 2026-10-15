@@ -1,17 +1,18 @@
 # Browser journeys run record
 
 - Date: 2026-10-15
-- Command: `npm run test:browser-journeys -- --shards 2`
-- Branch: `deliver/browser-journeys-51` (pushed to `origin/decko-ts`), at 274da96e
-- Base: `origin/integration-2026-10-08` (535763df)
+- Commit: 58d21f58 (branch deliver/browser-journeys-51, pushed to origin/decko-ts)
+- Base: origin/integration-2026-10-08 (535763df)
+- Command: `npm run test:browser-journeys -- --shards 2` (Ruby 2 shards, port 1 shard; memory tight)
 - Reference runtime: Ruby 3.4.11, stock Ruby Decko (decko 0.20.0, card 1.110.0)
-- Port host: the port's Node host, `vm-staging-server.mjs` with the browser-journey engine (ts-server.mjs)
-- Journeys: 51; completed on Ruby 51 / 51; completed on the port 51 / 51
-- Comparison: 50 / 51 graded journeys pass (0 not graded)
-- Declared divergence present in this run: `signin-wrong-password` (the port's uniform sign-in answer, docs/SECURITY.md divergence 4; with `DECKO_SIGNIN_UNIFORM_FAILURE=off` the same journey passes on every item against the same Ruby recording)
-- Raw results: `tmp/final-run/ruby/<journey>.json`, `tmp/final-run/ts/<journey>.json`, `tmp/final-run/report.json` (rebuildable; not committed)
+- Journeys: 51. Completed on Ruby: 51 / 51. Completed on the port: 51 / 51.
+- Conformant: 51 of 51 — 50 identical to Ruby, 1 deliberately safer per docs/SECURITY.md divergence 4 (signin-wrong-password).
+- Default run (uniform sign-in answer on, the shipped setting): 50 / 51 graded journeys pass; the one difference is the declared text item.
+- Flags-off run of signin-wrong-password (DECKO_SIGNIN_UNIFORM_FAILURE=off, same commit): passes every item against the same Ruby recording (tmp/flagsoff3/).
+- Reruns: edit-note-admin and navbox-cql-member failed once on the reference side (Ruby page.goto timeout under load, memory tight) and passed on a standalone re-run; both recordings are the re-runs.
+- Raw results: tmp/final-run3/ (not committed).
 
-## Per graded item
+## Per graded item (default run)
 
 | item | pass | total |
 |---|---|---|
@@ -28,55 +29,55 @@
 
 | journey | Ruby | port | comparison | items that differ |
 |---|---|---|---|---|
-| signin-signout-member | completed | completed | pass |  |
-| signin-wrong-password | completed | completed | fail | text:refused sign-in |
-| signin-admin-home | completed | completed | pass |  |
-| create-note-member | completed | completed | pass |  |
-| create-phrase-admin | completed | completed | pass |  |
-| create-duplicate-name-admin | completed | completed | pass |  |
-| create-invalid-number-admin | completed | completed | pass |  |
-| edit-note-admin | completed | completed | pass |  |
-| edit-phrase-save-member | completed | completed | pass |  |
-| rename-admin | completed | completed | pass |  |
-| rename-topic-with-referers-admin | completed | completed | pass |  |
-| delete-admin | completed | completed | pass |  |
-| delete-system-card-admin | completed | completed | pass |  |
-| new-topic-structured-form | completed | completed | pass |  |
-| create-structured-topic-member | completed | completed | pass |  |
-| edit-nested-summary-member | completed | completed | pass |  |
-| edit-nests-view-admin | completed | completed | pass |  |
-| default-content-in-form | completed | completed | pass |  |
-| pointer-checkbox-input | completed | completed | pass |  |
-| pointer-radio-input | completed | completed | pass |  |
-| pointer-multiselect-input | completed | completed | pass |  |
-| rule-board-admin | completed | completed | pass |  |
-| upload-file-admin | completed | completed | pass |  |
-| upload-remove-preview-admin | completed | completed | pass |  |
-| upload-image-admin | completed | completed | pass |  |
-| upload-replace-file-admin | completed | completed | pass |  |
-| upload-empty-file-refused | completed | completed | pass |  |
-| upload-file-member | completed | completed | pass |  |
-| navbox-keyword-search | completed | completed | pass |  |
-| navbox-paging | completed | completed | pass |  |
-| navbox-cql-member | completed | completed | pass |  |
-| search-filtered-anonymous | completed | completed | pass |  |
-| search-card-pages | completed | completed | pass |  |
-| denied-anonymous-read | completed | completed | pass |  |
-| denied-anonymous-create | completed | completed | pass |  |
-| denied-anonymous-edit | completed | completed | pass |  |
-| denied-member-read | completed | completed | pass |  |
-| denied-member-create | completed | completed | pass |  |
-| denied-member-edit | completed | completed | pass |  |
-| denied-member-delete | completed | completed | pass |  |
-| follow-from-board-admin | completed | completed | pass |  |
-| unfollow-from-board-member | completed | completed | pass |  |
-| unfollow-from-mail | completed | completed | pass |  |
-| account-settings-member | completed | completed | pass |  |
-| account-change-password-member | completed | completed | pass |  |
-| account-change-email-member | completed | completed | pass |  |
-| signup-anonymous | completed | completed | pass |  |
-| reset-password-request | completed | completed | pass |  |
-| edit-conflict | completed | completed | pass |  |
-| history-view-admin | completed | completed | pass |  |
-| read-pages-anonymous | completed | completed | pass |  |
+| signin-signout-member | completed | completed | identical |  |
+| signin-wrong-password | completed | completed | declared | text:refused sign-in (uniform answer, SECURITY.md divergence 4) |
+| signin-admin-home | completed | completed | identical |  |
+| create-note-member | completed | completed | identical |  |
+| create-phrase-admin | completed | completed | identical |  |
+| create-duplicate-name-admin | completed | completed | identical |  |
+| create-invalid-number-admin | completed | completed | identical |  |
+| edit-note-admin | completed | completed | identical |  |
+| edit-phrase-save-member | completed | completed | identical |  |
+| rename-admin | completed | completed | identical |  |
+| rename-topic-with-referers-admin | completed | completed | identical |  |
+| delete-admin | completed | completed | identical |  |
+| delete-system-card-admin | completed | completed | identical |  |
+| new-topic-structured-form | completed | completed | identical |  |
+| create-structured-topic-member | completed | completed | identical |  |
+| edit-nested-summary-member | completed | completed | identical |  |
+| edit-nests-view-admin | completed | completed | identical |  |
+| default-content-in-form | completed | completed | identical |  |
+| pointer-checkbox-input | completed | completed | identical |  |
+| pointer-radio-input | completed | completed | identical |  |
+| pointer-multiselect-input | completed | completed | identical |  |
+| rule-board-admin | completed | completed | identical |  |
+| upload-file-admin | completed | completed | identical |  |
+| upload-remove-preview-admin | completed | completed | identical |  |
+| upload-image-admin | completed | completed | identical |  |
+| upload-replace-file-admin | completed | completed | identical |  |
+| upload-empty-file-refused | completed | completed | identical |  |
+| upload-file-member | completed | completed | identical |  |
+| navbox-keyword-search | completed | completed | identical |  |
+| navbox-paging | completed | completed | identical |  |
+| navbox-cql-member | completed | completed | identical |  |
+| search-filtered-anonymous | completed | completed | identical |  |
+| search-card-pages | completed | completed | identical |  |
+| denied-anonymous-read | completed | completed | identical |  |
+| denied-anonymous-create | completed | completed | identical |  |
+| denied-anonymous-edit | completed | completed | identical |  |
+| denied-member-read | completed | completed | identical |  |
+| denied-member-create | completed | completed | identical |  |
+| denied-member-edit | completed | completed | identical |  |
+| denied-member-delete | completed | completed | identical |  |
+| follow-from-board-admin | completed | completed | identical |  |
+| unfollow-from-board-member | completed | completed | identical |  |
+| unfollow-from-mail | completed | completed | identical |  |
+| account-settings-member | completed | completed | identical |  |
+| account-change-password-member | completed | completed | identical |  |
+| account-change-email-member | completed | completed | identical |  |
+| signup-anonymous | completed | completed | identical |  |
+| reset-password-request | completed | completed | identical |  |
+| edit-conflict | completed | completed | identical |  |
+| history-view-admin | completed | completed | identical |  |
+| read-pages-anonymous | completed | completed | identical |  |
 
