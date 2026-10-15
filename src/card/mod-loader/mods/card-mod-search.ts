@@ -407,6 +407,13 @@ async function prepareSearchCounts(host: ModEngineHost): Promise<void> {
 function warmedCount(
   ctx: ViewContext,
 ): { count: number } | { failure: string } | undefined {
+  const currentFailure = ctx.fmt.engine.searchQueryFailure?.(ctx.fmt);
+  if (currentFailure !== undefined) return { failure: currentFailure };
+  // The real render pipeline prepares the reached search on this engine,
+  // with the current viewer and data version. Prefer it to the legacy
+  // installInto warm's process-global maps (which may belong to another deck).
+  const currentCount = ctx.fmt.engine.searchItemCount?.(ctx.fmt) ?? ctx.fmt.engine.searchResultCount?.(ctx.fmt);
+  if (currentCount !== undefined) return { count: currentCount };
   const key = ctx.fmt.card.key;
   const failure = searchCountFailures.get(key);
   if (failure !== undefined) return { failure };

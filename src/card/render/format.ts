@@ -3848,6 +3848,8 @@ export interface RenderEngineLike {
    *  `return: "count"` (undefined for a list search or an engine without
    *  it). The search core renders it as :search_count. */
   searchResultCount?(fmt: RenderFormat): number | undefined;
+  /** BadQuery rescued by the reached search's request-scoped preparation. */
+  searchQueryFailure?(fmt: RenderFormat): string | undefined;
   /** Ruby's count_with_params (card-mod-search set/abstract/0_search.rb:
    *  52-54 `search_params.merge(return: :count)`) for a card whose own
    *  content is a CQL search — the FULL match count, independent of the

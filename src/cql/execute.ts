@@ -719,7 +719,9 @@ async function foundByTargetStatement(
     const typeCodename = await fetchCodenameById(driver, row.type_id);
     if (!FOUNDBY_CQL_TYPES.has(typeCodename ?? "")) {
       // Every other type carries no statement at all.
-      throw invalidFoundByCard(targetName, typeCodename ?? "unknown");
+      // Ruby reports card.type_name, not its implementation codename.
+      const typeRow = await fetchCardRowById(driver, row.type_id);
+      throw invalidFoundByCard(targetName, typeRow?.name ?? typeCodename ?? "unknown");
     }
     if (typeCodename === "cardtype") {
       // A cardtype target selects exactly itself, ordered by name.

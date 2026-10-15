@@ -59,6 +59,7 @@ import {
   STRUCTURE_SETTING_NAME,
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
+import { CqlBadQuery } from "../cql/ast.js";
 import {
   RenderFormat,
   RUBY_MAX_DEPTH,
@@ -2901,6 +2902,7 @@ export class RenderEngine implements RenderEngineLike {
     this.searchFailures.clear();
     this.searchResultPagingMap.clear();
     this.searchCountResults.clear();
+    this.searchResultCounts.clear();
     this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
@@ -8753,6 +8755,10 @@ export class RenderEngine implements RenderEngineLike {
     return this.searchCountResults.get(this.searchCacheKey(fmt.card));
   }
 
+  searchQueryFailure(fmt: RenderFormat): string | undefined {
+    return this.searchFailures.get(this.searchCacheKey(fmt.card))?.message;
+  }
+
   /** RenderEngineLike#historyRenderReader — the render-time history seam
    *  accessor the card-mod-history views read (undefined unless THIS
    *  render's view is one of HISTORY_SEAM_VIEWS; see render-seam.ts). */
@@ -10360,7 +10366,7 @@ export class RenderEngine implements RenderEngineLike {
           // re-raises: seat an empty result (closureWarm's has(key) stays
           // true — the perf contract the prewarm pins) and record the exact
           // error. Unknown errors are NOT parse failures — rethrow.
-          if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
+          if (!(err instanceof Error) || (err.name !== BAD_QUERY_CLASS_NAME && !(err instanceof CqlBadQuery))) throw err;
           this.searchFailures.set(searchKey, err);
           this.searchResults.set(searchKey, []);
         }
@@ -10781,6 +10787,7 @@ export class RenderEngine implements RenderEngineLike {
       } else {
         rows = [];
         this.searchCountResults.set(this.searchCacheKey(card), result.count);
+        return [];
       }
       rows = await this.canonicalizeDanglingSideRows(rows);
     // Transport chunking (the batching pattern from src/card/render/prefetch.ts
@@ -10819,7 +10826,7 @@ export class RenderEngine implements RenderEngineLike {
       // list is not full" (paging.rb's fewer_results_than_limit?). An
       // offset BEYOND page 1 always shows the nav (Ruby: the nav renders
       // for every offset>0 page, even a short tail page).
-      if (limit >= 1 && (rows.length >= limit || (searchOffset ?? 0) > 0)) {
+      if ((limit >= 1 && rows.length >= limit) || (searchOffset ?? 0) > 0) {
         // Ruby builds this count from the card's cached cql hash after the
         // item search consumed its leading conjunctions
         // (src/cql/consumed-conjunctions.ts). The count query runs with the
@@ -10835,8 +10842,11 @@ export class RenderEngine implements RenderEngineLike {
         // the focal env_search_param), not the hardcoded 0: the nav's
         // current_page math renders the requested page's state (page 2's
         // « 1 2 » with 2 active and the "21 - 29 of 29" context).
-        if (count > limit) paging = { limit, offset: searchOffset ?? 0, count };
+        if (limit >= 1 && count > limit) paging = { limit, offset: searchOffset ?? 0, count };
       }
+      // A short first page (or unlimited list) is already the complete count.
+      // Reuse this actor-scoped request seat for nested count views too.
+      this.searchResultCounts.set(this.searchCacheKey(card), searchCount ?? rows.length);
     }
     const items: RenderCard[] = [];
     for (const row of rows) {
