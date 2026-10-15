@@ -1254,9 +1254,13 @@ function fieldEditorInMultiCard(
         : { form_name_prefix: prefix, show: "edit_in_form", home_view: fieldHomeView },
     ),
   );
+  // hidden_field(:type_id) on a NEW card (form.rb:124-125 editor_in_multi_card
+  // `form.hidden_field(:type_id) if card.new_card?`): the FORM BUILDER tag
+  // carries the field card's type id as its value, attributes in builder
+  // order (autocomplete, type, value, name, id - the captured subcard bytes).
   const hiddenTypeId =
     fieldCard.id === undefined
-      ? `<input type="hidden" name="${prefix}[type_id]" id="${prefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_")}_type_id" autocomplete="off" />`
+      ? `<input autocomplete="off" type="hidden"${fieldTypeId !== undefined ? ` value="${fieldTypeId}"` : ""} name="${prefix}[type_id]" id="${prefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_")}_type_id" />`
       : "";
   // the row's junction class token is the TAG's SAFE KEY (star -> X: the
   // bridge addresses `.RIGHT-Xpassword input.d0-card-content`; Ruby's
@@ -1299,7 +1303,7 @@ function fieldEditorInMultiCard(
     `</label>`;
   const editor =
     `<div class="editor content-editor">` +
-    output([conflictHtml, contentFieldHtml, hiddenTypeId || undefined]) +
+    output([conflictHtml || undefined, contentFieldHtml, hiddenTypeId || undefined]) +
     `</div>`;
   return `<div${attrs}>${label}\n${editor}</div>`;
 }
