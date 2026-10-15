@@ -837,21 +837,25 @@ function addSqliteNullOrdering(tokens: Token[]): void {
 }
 
 /**
- * Rows that tie on every ORDER BY term come out of SQLite in rowid order
- * (its table and index scans both visit rowids in ascending order), and the
- * card queries the engine sorts rely on that, as Ruby's results do.
- * PostgreSQL leaves ties in no particular order. For a top-level SELECT over
- * `cards <alias>` whose ORDER BY does not already end in the id, the id is
- * appended as the last term, so ties keep SQLite's order. (For cards, the
- * rowid is the id.) A DISTINCT query gets the term only when it selects the
- * id, as PostgreSQL requires.
+ * Rows that tie on every ORDER BY term come out of SQLite in the order its
+ * scan visited them, and the card searches the engine sorts rely on that
+ * order, as Ruby's results on the same database do. PostgreSQL leaves ties
+ * in no particular order. For a top-level SELECT over `cards <alias>`, the
+ * scan order is appended as the last ORDER BY terms:
+ *  - `<alias>.read_rule_id, <alias>.id` when the WHERE restricts
+ *    `<alias>.read_rule_id IN (...)` (SQLite reads such a query through the
+ *    read_rule_id index, which visits rows by read_rule_id, then rowid);
+ *  - otherwise `<alias>.id` (a table scan visits rows by rowid, which is
+ *    the card id).
+ * A DISTINCT query that does not select those columns is wrapped so an
+ * inner query selects them (each distinct row is one card, so adding its
+ * columns keeps the same rows) and the outer query orders by them.
  */
 function addRowidTieBreak(text: string): string {
   const head = /^SELECT\s+(DISTINCT\s+)?([\s\S]*?)\s+FROM\s+cards\s+(?:AS\s+)?([A-Za-z_][A-Za-z0-9_]*)\b/i.exec(text);
   if (head === null) return text;
   const alias = head[3]!;
   if (/^(WHERE|JOIN|LEFT|INNER|CROSS|ORDER|GROUP|LIMIT|ON)$/i.test(alias)) return text;
-  if (head[1] !== undefined && !new RegExp(`(^|[\\s,])${alias}\\.id\\b`).test(head[2]!)) return text;
   // the ORDER BY at parenthesis depth zero, if any
   let depth = 0;
   let orderAt = -1;
@@ -870,6 +874,22 @@ function addRowidTieBreak(text: string): string {
   const end = /\s(LIMIT|OFFSET)\b/i.exec(tail);
   const terms = end === null ? tail : tail.slice(0, end.index);
   if (new RegExp(`${alias}\\.id(\\s+(ASC|DESC))?(\\s+NULLS\\s+(FIRST|LAST))?\\s*$`, "i").test(terms.trim())) return text;
+  const where = text.slice(head[0].length, orderAt);
+  const scanColumns = new RegExp(`\\bWHERE\\b[\\s\\S]*\\b${alias}\\.read_rule_id\\s+IN\\s*\\(`, "i").test(where)
+    ? ["read_rule_id", "id"]
+    : ["id"];
   const insertAt = orderAt + terms.length;
-  return `${text.slice(0, insertAt).trimEnd()}, ${alias}.id${text.slice(insertAt)}`;
+  const selectedList = head[2]!;
+  const isSelected = (column: string) => new RegExp(`(^|[\\s,])${alias}\\.${column}\\s*(,|$)`).test(selectedList);
+  if (head[1] === undefined || scanColumns.every(isSelected)) {
+    return `${text.slice(0, insertAt).trimEnd()}, ${scanColumns.map((c) => `${alias}.${c}`).join(", ")}${text.slice(insertAt)}`;
+  }
+  const selected = selectedList.split(",").map((c) => c.trim());
+  if (!selected.every((c) => new RegExp(`^${alias}\\.[A-Za-z_][A-Za-z0-9_]*$`).test(c))) return text;
+  const names = selected.map((c) => c.slice(alias.length + 1));
+  const extra = scanColumns.map((c) => `${alias}.${c} AS decko_scan_${c}`).join(", ");
+  const inner = `SELECT DISTINCT ${selectedList}, ${extra} ${text.slice(head[0].search(/\s+FROM\s+/i), orderAt).trim()}`;
+  const outerTerms = terms.replace(new RegExp(`\\b${alias}\\.`, "g"), "decko_q.").trimEnd();
+  const scanTerms = scanColumns.map((c) => `decko_q.decko_scan_${c}`).join(", ");
+  return `SELECT ${names.map((n) => `decko_q.${n}`).join(", ")} FROM (${inner}) AS decko_q ${outerTerms}, ${scanTerms}${text.slice(insertAt)}`;
 }
