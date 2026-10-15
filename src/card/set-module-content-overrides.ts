@@ -126,12 +126,24 @@ export const RECORDED_NOW_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
 );
 
-/** The captured *now record.content bytes (the pin target), as the port now
- *  renders them: the same wall clock, with %Z as the zone's ABBREVIATION at
- *  that instant. The corpus photographed the Windows display name
- *  "Pacific Standard Time" for this September (PDT) instant because the
- *  capture host was Windows; Ruby prints the abbreviation, so the port does
- *  too (see src/card/deck-time-zone.ts). */
+/** NOT A CAPTURE. This is the port's own expectation for *now at
+ *  RECORDED_NOW_INSTANT in America/Los_Angeles: the wall clock plus the
+ *  zone's %Z abbreviation computed by src/card/deck-time-zone.ts ("PDT").
+ *
+ *  The recorded oracle bytes for that instant do not say "PDT". The
+ *  original capture reads "Monday, September 28, 2026 03:12 PM Pacific
+ *  Standard Time": the Windows display name, which is what the Windows
+ *  oracle prints for %Z in any zone. A recapture on 2026-10-15 with the
+ *  real oracle (reference-harness/oracle, Windows Ruby 3.4 bundle; process
+ *  TZ set explicitly; fixture clock 2026-09-19T12:00:00Z) gave
+ *  "Saturday, September 19, 2026 05:00 AM Pacific Standard Time" under
+ *  TZ=America/Los_Angeles and under TZ=PST8PDT,M3.2.0,M11.1.0, and
+ *  "...12:00 PM UTC" under TZ=UTC. So the oracle's %Z follows the OS
+ *  zone's display name, not the TZ abbreviation. Whether Ruby on Linux
+ *  prints "PDT" was not measured (no Linux Ruby bundle is installed).
+ *  Whether the port should print the display name is an open decision for
+ *  the lead; until it is made, this constant is the port's expectation and
+ *  must not be cited as Ruby's bytes. */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
 /** The zone the recorded bytes were rendered in — what reproducing those
