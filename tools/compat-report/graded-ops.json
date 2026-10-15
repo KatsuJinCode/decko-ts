@@ -21017,14 +21017,14 @@
   },
   {
    "fixture": "synthetic-v2",
-   "adapter_commit": "deb0be4faa78ff7166b3400b297bd89941f3f4bb",
+   "adapter_commit": "806d0d1c778b9d8de409b799f3aaf773b659f0cc",
    "adapter_dirty": false,
-   "graded_at": "2026-10-14T20:36:37.187Z",
+   "graded_at": "2026-10-15T08:32:48.144Z",
    "verdict": "fail",
    "rendering": {
     "graded": 2581,
-    "pass": 2520,
-    "fail": 37
+    "pass": 2555,
+    "fail": 2
    },
    "ops": {
     "page:anonymous:Topic": {
@@ -44262,7 +44262,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:member:*search": {
      "card": "*search",
@@ -44273,7 +44273,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:contractor:*search": {
      "card": "*search",
@@ -44284,7 +44284,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:admin:*search": {
      "card": "*search",
@@ -44295,7 +44295,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "core:admin:*search": {
      "card": "*search",
@@ -44306,7 +44306,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "core:anonymous:*search": {
      "card": "*search",
@@ -44317,7 +44317,7 @@
       "compound": false,
       "name": "*search"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:anonymous:*recent": {
      "card": "*recent",
@@ -44471,7 +44471,7 @@
       "compound": false,
       "name": "*account links"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:contractor:*account links": {
      "card": "*account links",
@@ -44493,7 +44493,7 @@
       "compound": false,
       "name": "*account links"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "core:admin:*account links": {
      "card": "*account links",
@@ -44867,7 +44867,7 @@
       "compound": false,
       "name": "*header"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "page:contractor:*header": {
      "card": "*header",
@@ -44889,7 +44889,7 @@
       "compound": false,
       "name": "*header"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "core:admin:*header": {
      "card": "*header",
@@ -48033,7 +48033,7 @@
       "compound": false,
       "name": "Topic 001"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Topic 001:type": {
      "card": "Topic 001",
@@ -48309,7 +48309,7 @@
       "compound": false,
       "name": "All Topics"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Topic 001:expanded_bar": {
      "card": "Topic 001",
@@ -49940,7 +49940,7 @@
       "compound": false,
       "name": "Nonexistent Card"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Note 001:server_error": {
      "card": "Note 001",
@@ -50352,7 +50352,7 @@
       "left_type": "user",
       "name": "Ada Admin+*account"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:verify_days": {
      "card": "Ada Admin+*account",
@@ -50366,7 +50366,7 @@
       "left_type": "user",
       "name": "Ada Admin+*account"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:reset_password_days": {
      "card": "Ada Admin+*account",
@@ -50380,7 +50380,7 @@
       "left_type": "user",
       "name": "Ada Admin+*account"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:token_expiry": {
      "card": "Ada Admin+*account",
@@ -50558,7 +50558,7 @@
       "compound": false,
       "name": "mod: help"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:mod: help:tasks": {
      "card": "mod: help",
@@ -50569,7 +50569,7 @@
       "compound": false,
       "name": "mod: help"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:mod: help:styles": {
      "card": "mod: help",
@@ -50591,7 +50591,7 @@
       "compound": false,
       "name": "mod: help"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:mod: help:gem_info": {
      "card": "mod: help",
@@ -50696,7 +50696,7 @@
       "compound": false,
       "name": "All Topics"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:All Topics:no_search_results": {
      "card": "All Topics",
@@ -50718,7 +50718,7 @@
       "compound": false,
       "name": "All Topics"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:All Topics:card_list": {
      "card": "All Topics",
@@ -51067,7 +51067,7 @@
       "compound": false,
       "name": "*favicon"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Plain 1:input": {
      "card": "Plain 1",
@@ -51177,7 +51177,7 @@
       "compound": false,
       "name": "Home"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Home:home_path": {
      "card": "Home",
@@ -51277,7 +51277,7 @@
       "left_type": "set",
       "name": "*all+*create"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:*all+*create:rule_form_card_editor": {
      "card": "*all+*create",
@@ -51291,7 +51291,7 @@
       "left_type": "set",
       "name": "*all+*create"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:*all+*read:quick_edit": {
      "card": "*all+*read",
@@ -51305,7 +51305,7 @@
       "left_type": "set",
       "name": "*all+*read"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:anonymous:*all+*read:quick_edit": {
      "card": "*all+*read",
@@ -51319,7 +51319,7 @@
       "left_type": "set",
       "name": "*all+*read"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:*all+*read:quick_edit_success": {
      "card": "*all+*read",
@@ -51405,7 +51405,7 @@
       "compound": false,
       "name": "Quinn Contractor"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:anonymous:*account links:sign_up": {
      "card": "*account links",
@@ -51427,7 +51427,7 @@
       "compound": false,
       "name": "*account links"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:anonymous:*account links:sign_out": {
      "card": "*account links",
@@ -51482,7 +51482,7 @@
       "compound": false,
       "name": "*admin"
      },
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Home:help_link": {
      "card": "Home",
@@ -51572,7 +51572,7 @@
       "name": "Report 1"
      },
      "withheld": true,
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Note 001:debug_server_error": {
      "card": "Note 001",
@@ -51584,7 +51584,7 @@
       "name": "Note 001"
      },
      "withheld": true,
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:verify_url": {
      "card": "Ada Admin+*account",
@@ -51599,7 +51599,7 @@
       "name": "Ada Admin+*account"
      },
      "withheld": true,
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:reset_password_url": {
      "card": "Ada Admin+*account",
@@ -51614,7 +51614,7 @@
       "name": "Ada Admin+*account"
      },
      "withheld": true,
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:Ada Admin+*account:closure": {
      "card": "Ada Admin+*account",
@@ -51641,7 +51641,7 @@
       "name": "All Topics"
      },
      "withheld": true,
-     "result": "differs"
+     "result": "identical"
     },
     "view:admin:*all+*script:asset_output_url": {
      "card": "*all+*script",

@@ -371,7 +371,7 @@ export function specificDeclarations(gemPaths) {
   return byView;
 }
 
-export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) {
+export function evaluateMod(repo, gemPath, modId, grades, specific = new Map(), probes = null) {
   const decl = gemDeclarations(gemPath);
   const tests = modTestFiles(repo, modId);
   const pinnedTests = tests.filter((t) => hasBytePins(t.src));
@@ -395,11 +395,22 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) 
             !(GENERAL.has(v.set.pattern) && (specific.get(v.view) ?? []).some((s) => setContains(s, o.set))),
         )
       : [];
-    if (ops.length) {
-      const differs = ops.filter((o) => o.result === "differs");
+    // The probe fixture's render of this declaration, on a card its set
+    // contains, is one more graded operation for it.
+    const probeView = probes?.views?.[`${v.format}:${v.view}@${v.set.file}`];
+    const probeOk = probeView && probeView.evidence !== "not-probed";
+    if (ops.length || probeOk) {
+      const all = [
+        ...ops.map((o) => ({ id: `${o.fixture}#${o.id}`, result: o.result })),
+        ...(probeOk ? [{ id: `${probes.fixture}#${probeView.op}`, result: probeView.evidence === "graded-differs" ? "differs" : "identical" }] : []),
+      ];
+      const differs = all.filter((o) => o.result === "differs");
       entry.evidence = differs.length ? "graded-differs" : "graded-identical";
-      entry.ops = ops.map((o) => `${o.fixture}#${o.id}`);
-      if (differs.length) entry.differing_ops = differs.map((o) => `${o.fixture}#${o.id}`);
+      entry.ops = all.map((o) => o.id);
+      if (differs.length) {
+        entry.differing_ops = differs.map((o) => o.id);
+        if (probeOk && probeView.evidence === "graded-differs") entry.first_difference = probes.diffs?.[probeView.op] ?? null;
+      }
       return entry;
     }
     const pins = pinnedTests.filter((t) => namesLiteral(t.src, v.view));
@@ -413,7 +424,26 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) 
   });
 
   const events = decl.events.map((e) => {
+    const probe = probes?.events?.[e];
     const named = allTestSources(repo).filter((t) => namesLiteral(t.src, e));
+    if (probe) {
+      const entry = { event: e, evidence: probe.evidence };
+      if (probe.probe) {
+        entry.probe = probe.probe;
+        entry.card = probe.card;
+        entry.on = probe.on ?? null;
+        entry.when = probe.when ?? null;
+        entry.source = probe.file;
+        if (probe.steps) entry.steps = probe.steps;
+        if (probe.differing_steps) {
+          entry.differing_steps = probe.differing_steps;
+          entry.first_difference = probes?.diffs?.[probe.differing_steps[0]] ?? null;
+        }
+      }
+      if (probe.reason) entry.reason = probe.reason;
+      if (named.length) entry.tests = named.map((t) => t.rel);
+      return entry;
+    }
     return named.length
       ? { event: e, evidence: "named", tests: named.map((t) => t.rel) }
       : { event: e, evidence: "unexercised" };
@@ -427,33 +457,164 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) 
     views_test_named: count(views, "test-named"),
     views_unexercised: count(views, "unexercised"),
     events: decl.events.length,
+    events_graded_identical: count(events, "graded-identical"),
+    events_graded_differs: count(events, "graded-differs"),
+    events_not_observed: count(events, "not-observed"),
+    events_not_probed: count(events, "not-probed"),
     events_named: count(events, "named"),
     events_unexercised: count(events, "unexercised"),
   };
-  // Only a graded operation compares the port's bytes with Ruby's. A test
-  // that names a view or event is a link for the reader, not evidence of
-  // byte-identity (the name match does not show what the test asserts, nor
-  // where its expected bytes came from), so it never completes a mod. No
-  // instrument here grades an event, so a mod that declares events cannot
-  // be complete until one does.
-  const complete =
-    summary.views_graded_identical === summary.views && summary.events === 0;
+  // Only a graded operation compares the port's bytes with Ruby's, and only a
+  // graded event probe compares the port's rows with Ruby's where the probe
+  // shows the event fired. A test that names a view or event is a pointer for
+  // the reader, never evidence, so it never completes a mod.
   const viewsComplete = summary.views_graded_identical === summary.views;
+  const eventsComplete = summary.events_graded_identical === summary.events;
   return {
     // A mod that declares neither views nor events (its behaviour lives in
     // helper methods, assets or configuration) has nothing this layer can
     // grade; calling it complete would be true only vacuously.
     status: summary.views === 0 && summary.events === 0
       ? "no-gradable-declarations"
-      : complete
+      : viewsComplete && eventsComplete
       ? "behaviour-complete"
       : viewsComplete
-        ? "views-graded-events-ungraded"
+        ? "views-graded-events-incomplete"
         : "behaviour-incomplete",
     summary,
     tests: tests.map((t) => t.rel),
     views,
     events,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// graded event probes
+// ---------------------------------------------------------------------------
+
+// The row-delta profile of one write step: per table, how many rows were
+// inserted, updated and deleted, and whether the write saved. Two probes of
+// the same shape (the probe card and its baseline card) that leave different
+// profiles differ because of what the event did.
+export function rowProfile(step) {
+  const profile = { saved: null, error: null, tables: {} };
+  if (step.error) profile.error = `${step.error.class}: ${step.error.message}`;
+  else if (step.result) profile.saved = step.result.saved ?? null;
+  for (const [table, delta] of Object.entries(step.rows ?? {})) {
+    profile.tables[table] = {
+      inserted: delta.inserted?.length ?? 0,
+      updated: delta.updated?.length ?? 0,
+      deleted: delta.deleted?.length ?? 0,
+    };
+  }
+  return profile;
+}
+
+const failedIdIsProbe = (id) => /^(probe-view:|mod-event-probes#)/.test(id);
+const sameProfile = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+// Reduce the probe fixture's grade report (reference-harness/runner/grade.mjs
+// --report on reference-harness/fixtures/synthetic-v2-mod-probes) and its
+// plan (ops/probes.json) to per-event and per-view grades.
+//
+// An event's grade is:
+//   graded-identical / graded-differs — its probe step(s) ran, Ruby's rows
+//     for them are recorded, and the port's rows (persistence) and write
+//     result (side effects) are the same / not the same.
+//   not-observed — the probe ran but Ruby's rows for it are identical to a
+//     same-shape baseline's, so nothing shows the event fired; a match there
+//     is a match of two writes that did the same nothing, and it is not
+//     counted.
+//   not-probed — the planner could not realise the declaration's set on this
+//     deck; the reason is carried.
+export function summariseProbes(repo, gradeReport, probes) {
+  const fixtureDir = join(repo, "reference-harness", "fixtures", "synthetic-v2-mod-probes");
+  const expected = readFileSync(join(fixtureDir, "expected", "scenarios.jsonl"), "utf8")
+    .split(/\r?\n/)
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l))
+    .find((s) => s.id === "mod-event-probes");
+  if (!expected) throw new Error("the probe fixture has no expected mod-event-probes scenario");
+  const failed = new Set([
+    ...(gradeReport.failures?.persistence ?? []).map((f) => f.id),
+    ...(gradeReport.failures?.side_effects ?? []).map((f) => f.id),
+  ]);
+  const stepId = (i) => `mod-event-probes#${i + 1}`;
+  const probeSteps = (range) => {
+    const [a, b] = range;
+    const out = [];
+    for (let i = a; i <= b; i++) out.push({ index: i, step: expected.steps[i], id: stepId(i) });
+    return out;
+  };
+  const baselineProfile = {};
+  for (const p of probes.events.plan) {
+    if (!p.baseline) continue;
+    for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) {
+      const label = probes.step_labels[i];
+      baselineProfile[`${p.probe}:${label.action}`] = rowProfile(expected.steps[i]);
+    }
+  }
+  const events = {};
+  for (const p of probes.events.plan) {
+    if (p.status !== "planned") {
+      events[p.event] = { evidence: "not-probed", reason: p.reason, file: p.file };
+      continue;
+    }
+    const steps = probeSteps(p.steps);
+    const differs = steps.filter((s) => failed.has(s.id));
+    const action = probes.step_labels[p.steps[0]].action;
+    const baseline = baselineProfile[`${p.probe}:${action}`] ?? null;
+    const observed = baseline
+      ? steps.some((s) => !s.step.error && !sameProfile(rowProfile(s.step), baseline))
+      : false;
+    events[p.event] = {
+      evidence: observed ? (differs.length ? "graded-differs" : "graded-identical") : "not-observed",
+      probe: p.probe,
+      card: p.card,
+      on: p.on,
+      when: p.when,
+      file: p.file,
+      steps: p.steps.map((i) => `${stepId(i)}`),
+      ...(differs.length ? { differing_steps: differs.map((s) => s.id) } : {}),
+      ...(observed ? {} : { reason: baseline ? "the probe's rows are identical to a same-shape baseline: nothing shows the event fired" : "no same-shape baseline (the event's card is the probe card itself)" }),
+    };
+  }
+  const rendered = new Set([...(gradeReport.failures?.rendering ?? []).map((f) => f.id)]);
+  // The first difference of every failing probe operation, for the report:
+  // the byte offset and a short window of the oracle's and the port's answer
+  // (or the grader's reason where there is no answer to compare).
+  const diffs = {};
+  const short = (x) => String(x ?? "").replaceAll("\n", "\\n").slice(0, 160);
+  for (const f of [...(gradeReport.failures?.rendering ?? []), ...(gradeReport.failures?.persistence ?? []), ...(gradeReport.failures?.side_effects ?? [])]) {
+    if (!failedIdIsProbe(f.id)) continue;
+    if (diffs[f.id]) continue;
+    const d = f.diff;
+    diffs[f.id] = d
+      ? `byte ${d.at}: oracle ${JSON.stringify(short(d.expected))} | port ${JSON.stringify(short(d.actual))}`
+      : f.differences?.[0]
+        ? `${f.differences[0].path}: oracle ${JSON.stringify(short(JSON.stringify(f.differences[0].expected ?? "")))} | port ${JSON.stringify(short(JSON.stringify(f.differences[0].actual ?? "")))}`
+        : f.reason;
+  }
+  const views = {};
+  for (const p of probes.render.plan) {
+    if (p.status !== "planned") {
+      views[p.decl] = { evidence: "not-probed", reason: p.reason };
+      continue;
+    }
+    views[p.decl] = { evidence: rendered.has(p.op) ? "graded-differs" : "graded-identical", op: p.op, card: p.card };
+  }
+  return {
+    diffs,
+    fixture: "synthetic-v2-mod-probes",
+    adapter_commit: gradeReport.adapter_checkout?.commit ?? null,
+    adapter_dirty: gradeReport.adapter_checkout?.dirty ?? null,
+    graded_at: gradeReport.graded_at ?? null,
+    verdict: gradeReport.verdict,
+    persistence: gradeReport.summary?.persistence ?? null,
+    side_effects: gradeReport.summary?.side_effects ?? null,
+    rendering: gradeReport.summary?.rendering ?? null,
+    events,
+    views,
   };
 }
 
