@@ -131,12 +131,14 @@ export function isDatabaseBusyError(error: unknown): boolean {
  * lock, and the transaction must wait for it, as transactions through one
  * driver object wait for each other (TransactionGate). Waits with backoff
  * up to `timeoutMs`, then fails with TransactionLockTimeoutError. Any other
- * error is rethrown at once.
+ * error is rethrown at once. An adapter whose database reports a held lock
+ * some other way passes its own `isBusy`.
  */
 export async function retryWhileBusy<R>(
   open: () => Promise<R>,
   timeoutMs: number = DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS,
   sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  isBusy: (error: unknown) => boolean = isDatabaseBusyError,
 ): Promise<R> {
   const started = Date.now();
   let delay = 5;
@@ -144,7 +146,7 @@ export async function retryWhileBusy<R>(
     try {
       return await open();
     } catch (error) {
-      if (!isDatabaseBusyError(error)) throw error;
+      if (!isBusy(error)) throw error;
       if (Date.now() - started >= timeoutMs) throw new TransactionLockTimeoutError(timeoutMs);
     }
     await sleep(delay);

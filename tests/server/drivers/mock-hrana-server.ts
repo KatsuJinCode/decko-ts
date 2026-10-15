@@ -46,6 +46,11 @@ export interface MockHranaServerOptions {
    *  path the server keeps the original single in-memory connection, and
    *  streams share it. */
   path?: string;
+  /** Report a statement that failed with SQLITE_BUSY as this in-band error
+   *  instead of SQLite's own. Bunny Database waits on a held write lock and
+   *  then gives up with { message: "Transaction timed out", code:
+   *  "TRANSACTION_TIMEOUT" } rather than answering "database is locked". */
+  busyError?: { message: string; code: string };
 }
 
 export async function startMockHranaServer(options: MockHranaServerOptions = {}): Promise<MockHranaServer> {
@@ -100,7 +105,7 @@ export async function startMockHranaServer(options: MockHranaServerOptions = {})
       } else if (!closes && options.path !== undefined) {
         conn = new Database(options.path, { timeout: 0 });
       }
-      const result = handlePipeline(conn, body, violations) as { results: unknown[] };
+      const result = handlePipeline(conn, body, violations, options.busyError) as { results: unknown[] };
       let nextBaton: string | null = null;
       if (closes) {
         if (conn !== db) conn.close();
@@ -141,13 +146,18 @@ export async function startMockHranaServer(options: MockHranaServerOptions = {})
 // Pipeline handling
 // ---------------------------------------------------------------------------
 
-function handlePipeline(db: Database, body: unknown, violations: string[]): unknown {
+function handlePipeline(
+  db: Database,
+  body: unknown,
+  violations: string[],
+  busyError?: { message: string; code: string },
+): unknown {
   const requests = (body as { requests?: unknown })?.requests;
   if (!Array.isArray(requests)) {
     violations.push("request body has no requests array");
     return { results: [{ type: "error", error: { message: "no requests array", code: "MOCK_PROTO" } }] };
   }
-  const results = requests.map((entry, i) => handleRequestEntry(db, entry, i, violations));
+  const results = requests.map((entry, i) => handleRequestEntry(db, entry, i, violations, busyError));
   return { results };
 }
 
@@ -157,7 +167,13 @@ interface WireValue {
   base64?: unknown;
 }
 
-function handleRequestEntry(db: Database, entry: unknown, index: number, violations: string[]): unknown {
+function handleRequestEntry(
+  db: Database,
+  entry: unknown,
+  index: number,
+  violations: string[],
+  busyError?: { message: string; code: string },
+): unknown {
   if (entry === null || typeof entry !== "object") {
     violations.push(`request ${index} is not an object`);
     return { type: "error", error: { message: `request ${index} is not an object`, code: "MOCK_PROTO" } };
@@ -202,6 +218,9 @@ function handleRequestEntry(db: Database, entry: unknown, index: number, violati
   } catch (e) {
     // Statement-level failures travel in-band as error results (HTTP stays
     // 200), matching how real libSQL servers report SQL errors.
+    if (busyError !== undefined && (e as { code?: unknown }).code === "SQLITE_BUSY") {
+      return { type: "error", error: { message: busyError.message, code: busyError.code } };
+    }
     return {
       type: "error",
       error: { message: (e as Error).message, code: "SQLITE_ERROR" },

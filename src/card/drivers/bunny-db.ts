@@ -60,7 +60,7 @@
 //     bounds every hop, and one bounded retry absorbs a transient hop.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
-import { retryWhileBusy, TransactionGate } from "../../server/driver.js";
+import { isDatabaseBusyError, retryWhileBusy, TransactionGate } from "../../server/driver.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -316,27 +316,34 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   async transaction<R>(work: () => Promise<R>): Promise<R> {
     return this.gate.run(async () => {
       // Another connection holding the write lock makes BEGIN IMMEDIATE
-      // fail at once; wait for it, up to the lock timeout.
-      await retryWhileBusy(async () => {
-        const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
-        const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
-        if (opened.baton === undefined) {
-          // Bunny documents baton sessions but asks customers who need them
-          // to ask for them; a database without them closes every stream,
-          // and a save cannot be made atomic there. Refuse rather than write
-          // statement by statement.
-          throw new BunnyDbError(
-            "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
-          );
-        }
-        this.stream = { baton: opened.baton, url: opened.url };
-        try {
-          opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
-        } catch (error) {
-          await this.endStream(undefined).catch(() => undefined);
-          throw error;
-        }
-      });
+      // fail; wait for it, up to the lock timeout. Only BEGIN is retried:
+      // the same answer to a statement inside the transaction means the
+      // save failed, and it surfaces from work().
+      await retryWhileBusy(
+        async () => {
+          const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+          const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
+          if (opened.baton !== undefined) this.stream = { baton: opened.baton, url: opened.url };
+          try {
+            opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+          } catch (error) {
+            await this.endStream(undefined).catch(() => undefined);
+            throw error;
+          }
+          if (opened.baton === undefined) {
+            // Bunny documents baton sessions but asks customers who need them
+            // to ask for them; a database without them closes every stream,
+            // and a save cannot be made atomic there. Refuse rather than write
+            // statement by statement.
+            throw new BunnyDbError(
+              "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
+            );
+          }
+        },
+        undefined,
+        undefined,
+        isBunnyBeginBusy,
+      );
       let result: R;
       try {
         result = await work();
@@ -917,6 +924,16 @@ function isRetryablePipelineError(error: BunnyDbError): boolean {
   if (error.code !== undefined) return false;
   if (error.status === undefined) return false;
   return error.status === 429 || (error.status >= 500 && error.status <= 599);
+}
+
+/** Whether a failed BEGIN IMMEDIATE means another connection holds the write
+ *  lock. Besides SQLite's "database is locked", Bunny Database waits on the
+ *  lock and then answers "Transaction timed out" with code
+ *  TRANSACTION_TIMEOUT (observed on a real Bunny database with two writers,
+ *  docs/hosted-conformance.md). Used for BEGIN only. */
+function isBunnyBeginBusy(error: unknown): boolean {
+  if (error instanceof BunnyDbError && error.code === "TRANSACTION_TIMEOUT") return true;
+  return isDatabaseBusyError(error);
 }
 
 /** Promise-returning sleep. Deliberately not a busy wait: the retry exists to

@@ -209,6 +209,21 @@ for (const [label, make] of [
   });
 }
 
+// The same, with the held lock reported as Bunny Database reports it:
+// "Transaction timed out" (code TRANSACTION_TIMEOUT) instead of
+// "database is locked".
+scenarios("Bunny Database driver, two driver objects, Bunny's TRANSACTION_TIMEOUT for a held lock (Hrana test server)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "decko-concurrent-"));
+  dirs.push(dir);
+  const server = await startMockHranaServer({
+    path: join(dir, "deck.sqlite"),
+    busyError: { message: "Transaction timed out", code: "TRANSACTION_TIMEOUT" },
+  });
+  const a = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+  await seeded(a);
+  return { a, b: new BunnyDbDriver({ url: server.url, timeoutMs: 0 }), dispose: () => server.close() };
+});
+
 // The hosted conformance runner (tools/hosted-conformance/) selects this
 // case alone, with a test-name filter of "hosted".
 const hosted = hostedDeck();
