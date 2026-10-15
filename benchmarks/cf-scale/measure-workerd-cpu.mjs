@@ -17,12 +17,15 @@
 // (deploy/src/worker-metrics.ts), which forwards D1's meta.rows_read.
 //
 // Usage:
-//   node benchmarks/cf-scale/measure-workerd-cpu.mjs [--deck cf-scale|demo] [--n 40] [--json out.json]
+//   node benchmarks/cf-scale/measure-workerd-cpu.mjs [--deck cf-scale|demo] [--n 40] [--batches 20] [--json out.json]
 //     [--entry deploy/worker.ts] [--first <path>] [--cold-only]
 //
 // --entry bundles another worker file (to compare two boots); --first picks
 // the path of the isolate's first request; --cold-only stops after that
-// request and reports its CPU, D1 queries and D1 rows read.
+// request and reports its CPU, D1 queries and D1 rows read; --batches splits
+// each page's N requests into that many slices (default 20, min(20, n)) and
+// reports cpuMsP50/cpuMsP95 over the per-slice means, since the process
+// counter (15.6 ms ticks on Windows) cannot resolve one request.
 //
 // Windows only for the CPU counter (reads it through PowerShell's
 // Get-Process); on Linux/macOS it reads /proc or `ps` instead.
@@ -56,7 +59,7 @@ const DECKS = {
 };
 
 function parseArgs(argv) {
-  const out = { deck: "cf-scale", n: 40, json: null, entry: "deploy/worker.ts", first: null, coldOnly: false };
+  const out = { deck: "cf-scale", n: 40, json: null, entry: "deploy/worker.ts", first: null, coldOnly: false, batches: 20 };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--deck") out.deck = argv[++i];
     else if (argv[i] === "--n") out.n = Number(argv[++i]);
@@ -64,6 +67,7 @@ function parseArgs(argv) {
     else if (argv[i] === "--entry") out.entry = argv[++i];
     else if (argv[i] === "--first") out.first = argv[++i];
     else if (argv[i] === "--cold-only") out.coldOnly = true;
+    else if (argv[i] === "--batches") out.batches = Number(argv[++i]);
   }
   return out;
 }
@@ -197,16 +201,32 @@ async function main() {
         bytes = (await r.text()).length;
       }
       const m0 = await metrics(dispatch);
+      // The loop runs in --batches slices; each slice reads the process counter
+      // once, so the batch means give a distribution (p50, p95) over the page's
+      // requests. The page mean is still the delta over all N requests.
+      const batchCount = Math.max(1, Math.min(args.batches, args.n));
+      const batchSize = Math.floor(args.n / batchCount);
+      const batchMeans = [];
       const c0 = processCpuMs(workerdPid);
       const w0 = Date.now();
-      for (let i = 0; i < args.n; i++) {
-        const r = await dispatch(path);
-        await r.text();
+      let done = 0;
+      for (let b = 0; b < batchCount; b++) {
+        const size = b === batchCount - 1 ? args.n - done : batchSize;
+        const bc0 = processCpuMs(workerdPid);
+        for (let i = 0; i < size; i++) {
+          const r = await dispatch(path);
+          await r.text();
+        }
+        const bc1 = processCpuMs(workerdPid);
+        batchMeans.push((bc1 - bc0) / size);
+        done += size;
       }
       const wallS = (Date.now() - w0) / 1000;
       const c1 = processCpuMs(workerdPid);
       const m1 = await metrics(dispatch);
       const rawCpu = (c1 - c0) / args.n;
+      const sortedMeans = [...batchMeans].sort((x, y) => x - y);
+      const quantile = (p) => sortedMeans[Math.min(sortedMeans.length - 1, Math.floor(p * sortedMeans.length))];
       const idleShare = (idleMsPerSec * wallS) / args.n;
       const perReq = (a, b, k) => (a && b && a.sinceIso === b.sinceIso ? (b[k] - a[k]) / (args.n + 0) : null);
       // /__metrics itself is one request between m0 and m1; it reads no rows.
@@ -217,6 +237,12 @@ async function main() {
         bytes,
         cpuMsPerRequest: Number(rawCpu.toFixed(2)),
         cpuMsPerRequestLessIdle: Number(Math.max(0, rawCpu - idleShare).toFixed(2)),
+        // Percentiles over the batch means (each batch is about n / batches
+        // requests); null when the run has a single batch.
+        cpuMsP50: batchCount > 1 ? Number(quantile(0.5).toFixed(2)) : null,
+        cpuMsP95: batchCount > 1 ? Number(quantile(0.95).toFixed(2)) : null,
+        batches: batchCount,
+        requestsPerBatch: batchSize,
         wallMsPerRequest: Number(((wallS * 1000) / args.n).toFixed(2)),
         d1QueriesPerRequest: perReq(m0, m1, "queryCount"),
         d1RowsReadPerRequest: perReq(m0, m1, "rowsRead"),
