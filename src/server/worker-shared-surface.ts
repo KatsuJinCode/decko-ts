@@ -166,7 +166,7 @@ const HISTORY_PARAM_KEYS = [
  * silently took its no-param fallback branch, rendering the last-act view
  * for every act_id. The Bunny edge entry already had this exact
  * translation (deploy/bunny-worker-src/bunny-edge-engine-request.ts#historyRenderParamsFromWire)
- * and its seam pins; this is that same mapping promoted to the shared
+ * and its seam pins; this is that same mapping moved to the shared
  * surface so BOTH twins use one copy. Keys absent from the query are absent
  * from the result; present values pass verbatim (the views own the integer /
  * enum parsing, matching the bunny entry).

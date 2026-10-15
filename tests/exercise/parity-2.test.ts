@@ -804,8 +804,15 @@ describe("the committed write-battery recording behind the published write count
     // The public list is the 87 steps the withheld set does not claim; the
     // withheld steps are announced as NOT RUN by the battery, not listed here.
     expect(battery.steps.length).toBe(87);
+    // Seven pinned steps: four Ruby-crash and knock-on reproductions, and the
+    // three sign-in steps (signin-unknown, signin-wrong-password,
+    // reset-unknown-email), which are the approved security divergence in
+    // docs/SECURITY.md "Sign-in: throttled, uniform in its answers, and
+    // sessions end with the credential" (divergence 4). With that hardening
+    // switched off (the reference-harness adapter's settings), the battery
+    // answers 83 matching steps and 4 pinned differences.
     const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
-    expect(pins.length).toBe(4);
+    expect(pins.length).toBe(7);
 
     // The provenance: how the recordings were made, in the manifest itself.
     const provenance = manifest.provenance as Record<string, string> | undefined;
