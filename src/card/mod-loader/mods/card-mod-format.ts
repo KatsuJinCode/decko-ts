@@ -223,6 +223,8 @@ import { DeckoName } from "../../name.js";
 // fn per view, so the two registrations cannot drift again.
 import {
   HTML_VIEWS,
+  contentView as baseContentView,
+  coreView as baseCoreView,
   linkView,
   navLinkView,
   unknownView as htmlErrorUnknownView,
@@ -1541,8 +1543,13 @@ const setModules: ModSetModuleFile[] = [
     // HTML_VIEWS table points at; see their docblock above).
     setPath: "all/base",
     formats: {
-      html: {
+      base: {
         views: [
+          // base.rb:85-87 view :core, compact: true (process_content _render_raw)
+          // and base.rb:88-90 view :content (_render_core): base-format views,
+          // served to every format through the base tail.
+          { view: "core", viewFn: baseCoreView, config: {} },
+          { view: "content", viewFn: baseContentView, config: {} },
           { view: "name", viewFn: nameView, config: { perms: "none" } },
           { view: "key", viewFn: keyView, config: { perms: "none" } },
           { view: "linkname", viewFn: linknameView, config: { perms: "none" } },
@@ -1612,7 +1619,7 @@ const setModules: ModSetModuleFile[] = [
     // by the render.ts smart_label prepare gate).
     setPath: "all/content",
     formats: {
-      html: {
+      base: {
         views: [
           { view: "label", viewFn: labelView, config: { perms: "none" } },
           // :closed_content is an alias to :one_line_content in
@@ -1631,8 +1638,13 @@ const setModules: ModSetModuleFile[] = [
           // its own set module below (allHtmlViewsRawOneLineContentView).
           // Same later-module-wins shape as the :one_line_content
           // All::Base withholding and the :titled precedent.
-          { view: "hidden_content_field", viewFn: hiddenContentFieldView, config: { unknown: true, cache: "never" } },
           { view: "smart_label", viewFn: smartLabelView, config: { cache: "never", unknown: true } },
+        ],
+      },
+      html: {
+        views: [
+          // content.rb:60-62 hidden_content_field lives in `format :html do`
+          { view: "hidden_content_field", viewFn: hiddenContentFieldView, config: { unknown: true, cache: "never" } },
         ],
       },
     },

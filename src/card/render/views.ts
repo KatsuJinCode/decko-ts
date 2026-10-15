@@ -602,7 +602,7 @@ const helpLinkView: ViewFn = (ctx) => menuHelpAnchor(ctx);
 // :content (html/views.rb)
 // ---------------------------------------------------------------------------
 
-const contentView: ViewFn = ({ fmt, voo }) => {
+export const contentView: ViewFn = ({ fmt, voo }) => {
   // wrap do [render_menu(optional: :hide), render_core,
   //          render_edit_button(optional: :hide, edit: :inline)] end
   // `optional: :hide` seeds each member's viz HIDDEN on this voo
@@ -1905,7 +1905,7 @@ const commentBoxBaseView: ViewFn = (ctx) => {
   return `<div class="comment-box nodblclick">${form}</form></div>`;
 };
 
-const coreView: ViewFn = (ctx) => {
+export const coreView: ViewFn = (ctx) => {
   // set/self/signin.rb:119-125 view :core — the sign-in form. HEADLESS
   // branch (the SELF_SET_TITLE_OVERRIDES pattern, the edge signin form fix
   // 2026-10-03): the Self::Signin set module applies to the card NAMED

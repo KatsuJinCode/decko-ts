@@ -184,7 +184,14 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
     expect([...counts.entries()].sort()).toEqual([
-      ["base", 9],
+      // 9 -> 33, html 361 -> 339 (2026-10-15): card-mod-format s all/base
+      // and all/content views filed under their Ruby format block. Ruby s
+      // `format do` block (base.rb:85-90 :core/:content, the name/date
+      // rows) files its module on Card::Format itself, so every format
+      // inherits it (format.rb format_ancestry); the html key they sat under
+      // made them unreachable from json/csv/js and mis-served rss. Still no
+      // new format key and no css/scss row. Measured on this tree.
+      ["base", 33],
       ["email_html", 2],
       ["email_text", 3],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its
@@ -237,7 +244,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :search_box_complete on the JSON arm (search.rb:70-72 — the
       // navbox typeahead's JSON the engine now serves); no new format key
       // and no css/scss row. Measured on this tree.
-      ["html", 361],
+      ["html", 339],
 
       ["js", 2],
       ["json", 4],
@@ -273,7 +280,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: the base-kind base-keyed rows are exactly follow's five notify views", () => {
+  it("composed-deck census: the base-kind base-keyed rows are follow's five notify views plus card-mod-format's base-block rows", () => {
     // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
@@ -282,6 +289,11 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     // (all/notify/base_views.rb's bare `format do` block); the miscpins
     // lane's notification-views round adds :list_of_changes + :subedits
     // on the same module. Measured on the merged tree.
+    // + card-mod-format's all/base and all/content rows (2026-10-15): the
+    // Ruby `format do` blocks (base.rb:85-90 :core/:content + the name/date/
+    // url rows; content.rb base-block :label/:closed_content/:smart_label)
+    // file on Card::Format, which every format inherits; they had been
+    // filed under html. Measured on this tree.
     const entries = censusEntries();
     expect(
       entries
@@ -294,6 +306,30 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       "follow all/notify/base_views :list_of_changes",
       "follow all/notify/base_views :subedit_notice",
       "follow all/notify/base_views :subedits",
+      "format all/base :acted_at",
+      "format all/base :blank",
+      "format all/base :codename",
+      "format all/base :content",
+      "format all/base :core",
+      "format all/base :created_at",
+      "format all/base :id",
+      "format all/base :id_url",
+      "format all/base :key",
+      "format all/base :labeled",
+      "format all/base :labeled_content",
+      "format all/base :link",
+      "format all/base :linkname",
+      "format all/base :name",
+      "format all/base :nav_link",
+      "format all/base :raw",
+      "format all/base :titled_content",
+      "format all/base :type",
+      "format all/base :updated_at",
+      "format all/base :url",
+      "format all/base :url_link",
+      "format all/content :closed_content",
+      "format all/content :label",
+      "format all/content :smart_label",
     ]);
   });
 });

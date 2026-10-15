@@ -140,7 +140,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // All::Notify::BaseViews registers :list_of_changes and :subedits on
     // base, and All::Notify::HtmlViews registers both on html — four more
     // base-kind rows. Measured on the merged tree.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(158);
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(160);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
@@ -190,15 +190,17 @@ describe("flat-record format-scope census (composed deck)", () => {
     expect(spanning).toEqual([
       "compact_missing: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
+      "labeled: All::Base:base | All::Html::Views:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
       "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      "type: All::Base:base | All::Html:html",
       "unknown: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly seven views", () => {
+  it("the empty-setKeys fallback set spans more than one key for exactly fourteen views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -219,12 +221,19 @@ describe("flat-record format-scope census (composed deck)", () => {
       .sort();
     expect(spanning).toEqual([
       "compact_missing",
+      "content",
+      "core",
       "count",
+      "labeled",
       "last_action",
       "last_action_verb",
       "list_of_changes",
+      "raw",
       "subedits",
+      "titled_content",
+      "type",
       "unknown",
+      "url_link",
     ]);
   });
 
@@ -262,7 +271,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       .sort();
     expect(kindSpanning).toEqual([
       "bar_middle",
+      "content",
       "content_formgroups",
+      "core",
       "count",
       "customize_button",
       "edit",

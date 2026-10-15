@@ -91,7 +91,7 @@ import { registerModRuleSeed } from "./mod-loader/mod-rule-seeds.js";
 const HTML_DESCENDED_FORMATS = new Set(["rss", "email_html"]);
 
 /** Whether a format's class descends from HtmlFormat (or is it). */
-function htmlLineage(format: string): boolean {
+export function htmlLineage(format: string): boolean {
   return format === "html" || HTML_DESCENDED_FORMATS.has(format);
 }
 import {
