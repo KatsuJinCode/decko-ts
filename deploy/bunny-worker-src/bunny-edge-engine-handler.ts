@@ -256,9 +256,10 @@ async function routeBunnyEngineRequest(
 ): Promise<Response> {
   // Decko routes GET /delete/:mark to the delete action (the edit form's
   // Delete button is a confirm-guarded remote GET link); the write surface
-  // takes deletes as DELETE. *signin keeps its own sign-out handling.
+  // takes deletes as DELETE. The navbar's Sign out link is GET
+  // /delete/*signin, which the surface signs out as a DELETE too.
   const deletePath = new URL(request.url).pathname;
-  if (request.method === "GET" && /^\/delete\/[^/]+$/.test(deletePath) && !/^\/delete\/\*signin$/i.test(deletePath)) {
+  if (request.method === "GET" && /^\/delete\/[^/]+$/.test(deletePath)) {
     request = new Request(request.url, { method: "DELETE", headers: request.headers });
   }
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
@@ -512,27 +513,64 @@ async function routeBunnyEngineRequest(
 async function nameMatchResponse(request: Request, url: URL, deck: Deck): Promise<Response | null> {
   if (request.method !== "GET") return null;
   const path = decodeURIComponent(url.pathname);
-  if (!/\+by[ _]name\.json$/i.test(path)) return null;
+  if (!path.endsWith(".json")) return null;
   const view = url.searchParams.get("view");
-  if (view !== "name_match" && view !== "name_complete") return null;
-  const term = (url.searchParams.get("term") ?? "").trim().toLowerCase();
-  const limit = 8;
-  const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const names: string[] = [];
-  const pick = async (pattern: string, exclude: string[]) => {
-    const notIn = exclude.length > 0 ? ` and name not in (${exclude.map(() => "?").join(",")})` : "";
-    const result = await deck.fetcher.driver.query<{ name: string }>(
-      `select name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${notIn} order by name limit ?`,
-      [pattern, ...exclude, limit - names.length],
-    );
-    for (const row of result.rows) names.push(row.name);
-  };
-  await pick(`${like(term)}%`, []);
-  if (view === "name_match" && term !== "" && names.length < limit) await pick(`%${like(term)}%`, [...names]);
-  return new Response(JSON.stringify(names), {
+  const searchBox = /^\/\*search\/search_box_complete\.json$/i.test(path) || view === "search_box_complete";
+  if (!searchBox && view !== "name_match" && view !== "name_complete") return null;
+  const rawTerm = (url.searchParams.get("term") ?? url.searchParams.get("query[keyword]") ?? "").trim();
+  const names = await matchingCardNames(deck, rawTerm.toLowerCase(), view !== "name_complete");
+  const body = searchBox ? searchBoxItems(rawTerm, names) : names;
+  return new Response(JSON.stringify(body), {
     status: 200,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
+}
+
+/** Up to 8 live card names: prefix matches first, then (when `contains`)
+ *  names containing the term, each group ordered by name — Ruby's
+ *  complete_or_match_search. */
+async function matchingCardNames(deck: Deck, term: string, contains: boolean): Promise<string[]> {
+  const limit = 8;
+  const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const names: string[] = [];
+  const pick = async (pattern: string) => {
+    const notIn = names.length > 0 ? ` and name not in (${names.map(() => "?").join(",")})` : "";
+    const result = await deck.fetcher.driver.query<{ name: string }>(
+      `select name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${notIn} order by name limit ?`,
+      [pattern, ...names, limit - names.length],
+    );
+    for (const row of result.rows) names.push(row.name);
+  };
+  await pick(`${like(term)}%`);
+  if (contains && term !== "" && names.length < limit) await pick(`%${like(term)}%`);
+  return names;
+}
+
+/** card-mod-search set/self/search.rb search_box_complete: the search item,
+ *  the add item when no card has the exact name, then the goto items. */
+function searchBoxItems(term: string, names: string[]): Array<Record<string, string>> {
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const item = (kind: string, icon: string, label: string) =>
+    `<div class='autocomplete-item-${kind} autocomplete-item'>\n<div class='autocomplete-icon'>\n` +
+    `<i class="notranslate material-icons">${icon}</i>\n</div>\n<div class='autocomplete-label'>\n${esc(label)}\n</div>\n</div>\n`;
+  const slug = (name: string) => name.replace(/ /g, "_");
+  const items: Array<Record<string, string>> = [];
+  if (term === "") return items;
+  items.push({
+    url: `/*search?query%5Bkeyword%5D=${encodeURIComponent(term)}`,
+    action: "search",
+    value: term,
+    label: item("search", "search", term),
+  });
+  const exact = names.find((n) => n.toLowerCase() === term.toLowerCase());
+  if (exact === undefined) {
+    items.push({ url: `/${encodeURIComponent(slug(term))}`, action: "add", value: term, label: item("add", "add", term) });
+  }
+  const goto = exact === undefined ? names : [exact, ...names.filter((n) => n !== exact)];
+  for (const name of goto) {
+    items.push({ url: `/${encodeURIComponent(slug(name))}`, action: "goto", value: name, label: item("goto", "arrow_forward", name) });
+  }
+  return items;
 }
 
 /** The sweep's files dependency: the storage zone's driver, or nothing. */

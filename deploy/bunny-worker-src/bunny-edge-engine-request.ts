@@ -778,7 +778,7 @@ async function dispatchEngineRequest(
           // The slotter's modal mode appends the answer to body and shows it.
           const typeRecord = await deck.fetcher.fetchByKey(DeckoName.parse(typeName).key, { skipVirtual: true }).catch(() => undefined);
           if (typeRecord?.id !== undefined && typeRecord.name !== undefined) {
-            const cardName = url.searchParams.get("card[name]") ?? parsed.name.replace(/_/g, " ");
+            const cardName = url.searchParams.get("card[name]") ?? newCardNameFor(parsed.name);
             const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? undefined, cardName);
             return html(
               200,
@@ -787,7 +787,7 @@ async function dispatchEngineRequest(
             );
           }
         }
-        const page = await signedInNewCardPage(source, deck, typeName, options, signal, parsed.name.replace(/_/g, " "))
+        const page = await signedInNewCardPage(source, deck, typeName, options, signal, newCardNameFor(parsed.name))
           .catch(() => undefined);
         if (page !== undefined) return page;
       }
@@ -864,6 +864,13 @@ async function signedInNewCardPage(
     pageHtml.slice(0, mainAt) + `<div id="main">${form}</div>` + pageHtml.slice(mainAt + main.length);
   const title = `New ${escapeHtml(typeRecord.name.s)}`;
   return html(200, body.replace(/<title>[^<]*?( - [^<]*)?<\/title>/, (_t, site: string | undefined) => `<title>${title}${site ?? ""}</title>`));
+}
+
+/** The name a new-card form starts with for a requested unknown card: the
+ *  card's display name, or blank for Decko's *new page. */
+function newCardNameFor(slug: string): string {
+  const name = slug.replace(/_/g, " ");
+  return name.toLowerCase() === "*new" ? "" : name;
 }
 
 /** The type a new card takes when none is given: the type of the deck's
