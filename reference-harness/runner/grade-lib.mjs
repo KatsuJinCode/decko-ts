@@ -223,6 +223,10 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   // A write step's `other_tables` are Ruby-recorded truth just like its `rows`:
   // the engine's changed non-card tables must equal the oracle's, and every
   // differing table must be declared (step id + table) or the grade fails.
+  // The declared (step, table) pairs that this grade actually saw differ. A
+  // declaration whose pair never differs is stale and fails the grade (below).
+  const otherTableStepsGraded = new Set();
+  const declaredOccurred = new Set();
   const gradeOtherTables = (id, expOtherAll, actOtherAll) => {
     const pick = (o, keep) => Object.fromEntries(Object.entries(o).filter(([t]) => keep(t)));
     const expOther = pick(expOtherAll, isOracleTable);
@@ -231,6 +235,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     const record = { id, expected: expOther, actual: actOther };
     otherTableWrites.push(record);
     otherTables.graded++;
+    otherTableStepsGraded.add(id);
     if (sameJson(expOther, actOther)) {
       record.verdict = "pass";
       otherTables.pass++;
@@ -239,6 +244,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     const tables = [...new Set([...Object.keys(expOther), ...Object.keys(actOther)])].sort();
     const differing = tables.filter((t) => !sameJson(expOther[t] ?? {}, actOther[t] ?? {}));
     const why = (t) => declared[id]?.[t];
+    for (const t of differing) if (why(t) !== undefined) declaredOccurred.add(`${id}\u0000${t}`);
     const undeclared = differing.filter((t) => why(t) === undefined);
     if (undeclared.length === 0) {
       record.verdict = "declared";
@@ -301,13 +307,41 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     });
   }
 
+  // ---- staleness: a declared difference must still occur ------------------------
+  // A declaration the grade no longer needs is a claim about the engine that is
+  // no longer true. It fails the grade, like the sibling comparators' check
+  // (tools/persistence/compare-persist.mjs, "declared-difference-absent").
+  // A (step, table) pair is stale when the step was graded and its table
+  // matched the oracle, or when no write step of this grade has that id. On a
+  // --allow-partial selection a step outside the selection is not judged.
+  const staleOtherTables = [];
+  for (const [id, tables] of Object.entries(declared)) {
+    for (const table of Object.keys(tables)) {
+      if (declaredOccurred.has(`${id}\u0000${table}`)) continue;
+      if (allowPartial && !otherTableStepsGraded.has(id)) continue;
+      staleOtherTables.push({
+        id,
+        table,
+        why: tables[table],
+        reason: otherTableStepsGraded.has(id)
+          ? "the step's table matches the oracle's: the declared difference no longer occurs"
+          : "no write step of this grade has this id: the declaration names nothing",
+      });
+    }
+  }
+  // A declared divergence that masked no value on either side of the grade no
+  // longer occurs. Not judged on a partial selection, where its steps may lie
+  // outside what was graded.
+  const staleDivergences = allowPartial ? [] : divergenceRecords.filter((d) => d.masked.length === 0).map((d) => d.name);
+  for (const d of divergenceRecords) d.stale = d.masked.length === 0 && !allowPartial;
+
   const summary = Object.fromEntries(
     KINDS.map((k) => [k, { ...tally[k], rate: tally[k].graded ? +((tally[k].pass / tally[k].graded) * 100).toFixed(2) : null }]),
   );
   // N2 (key order) is applied to every value a comparison reads, so it is
   // named whenever the grade compared anything at all.
   if (KINDS.some((k) => tally[k].graded > 0) || readWrites.graded > 0 || otherTables.graded > 0) applied.add("N2");
-  const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0 && otherTables.fail === 0;
+  const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0 && otherTables.fail === 0 && staleOtherTables.length === 0 && staleDivergences.length === 0;
   const verdict = problems.length > 0 ? "invalid" : partial.length > 0 ? (allowPartial ? "partial" : "invalid") : allPass ? "pass" : "fail";
   if (!allowPartial) problems.push(...partial.map((p) => `incomplete: ${p}`));
   // Report paths are workspace-relative: a report records where a run sat
@@ -337,6 +371,8 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     summary,
     read_writes: readWrites,
     other_tables: otherTables,
+    stale_declarations: staleOtherTables,
+    stale_divergences: staleDivergences,
     other_table_writes: otherTableWrites,
     engine_only_tables: {
       tables: [...new Set(engineOnlyWrites.map((w) => w.table))].sort(),

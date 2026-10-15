@@ -1620,11 +1620,6 @@ export class RenderFormat {
     // set-scoped + all-set declarations, and the set-scoped rows are what
     // the old flat table globalized — the exact defect this replaces.
     const fromChain = this.engine.viewUnknownSettingForCard?.(this.card, requested);
-    if (typeof process !== "undefined" && process.env.HARNESS_VERDICT_TRACE === "1" && requested === "edit") {
-      console.log(
-        `[unknown-trace] card=${this.card.name.s} setKeys=${this.card.setKeys} fromChain=${String(fromChain)} loaderBound=${this.engine.modDeckBound?.()}`,
-      );
-    }
     const loaderBound = this.engine.modDeckBound?.() === true;
     const configured =
       fromChain !== undefined

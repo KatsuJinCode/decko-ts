@@ -37,7 +37,7 @@ export function makeFixture(root) {
     }) + "\n",
   );
   const db = new DatabaseSync(path.join(dir, "deck", "deck.sqlite3"));
-  db.exec("CREATE TABLE cards (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, updated_at TEXT)");
+  db.exec("CREATE TABLE cards (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, codename TEXT, right_id INTEGER, db_content TEXT, updated_at TEXT)");
   db.exec("INSERT INTO cards (name, updated_at) VALUES ('Alpha', '2026-09-19 12:00:00'), ('Beta', '2026-09-19 12:00:00')");
   // A table outside Decko's card tables, so a write that touches it records an
   // `other_tables` delta for the grader to check.
