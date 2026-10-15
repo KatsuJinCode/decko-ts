@@ -91,6 +91,9 @@ export interface LiveRenderOptions {
   /** Keep the page's fetched rows for the next request (see KEPT PAGES).
    *  Default on; false here or env DECKO_LIVE_KEEP=0 turns it off. */
   keep?: boolean;
+  /** Partitions kept pages: renders under different scopes (e.g. one per
+   *  signed-in viewer) never share a kept entry. */
+  keepScope?: string;
 }
 
 /** One page's kept request store and the cards it needed, valid while the
@@ -109,7 +112,7 @@ let keptPages = new WeakMap<SQLDatabaseDriver, Map<string, KeptPage>>();
 const KEPT_PAGES_PER_DECK = 256;
 
 function keptKey(page: string, opts: LiveRenderOptions): string {
-  return `${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}`;
+  return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}`;
 }
 
 /** Take a page's kept entry out of the map: a request owns it exclusively
