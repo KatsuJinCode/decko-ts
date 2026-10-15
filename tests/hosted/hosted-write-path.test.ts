@@ -344,7 +344,7 @@ function runAtomicSaveScenarios(
     }, HOSTED_TIMEOUT);
 
     it("an update that succeeds writes its history rows", async () => {
-      const updated = await deck.engine().updateCard({ cardId: 50, content: "Pudding, with more sauce" });
+      const updated = await deck.engine().updateCard({ cardId: 50, content: "Pudding, with more custard" });
       if (updated === null) throw new Error("the update did not save");
       const { cardId } = updated;
       const actions = await deck.driver.query<{ action_type: number }>(
@@ -358,7 +358,7 @@ function runAtomicSaveScenarios(
       );
       expect(changes.rows.length).toBeGreaterThan(0);
       const row = await deck.driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = ?", [cardId]);
-      expect(row.rows[0].db_content).toContain("with more sauce");
+      expect(row.rows[0].db_content).toContain("with more custard");
     }, HOSTED_TIMEOUT);
 
     it("revert undoes a committed update and records the revert in the history", async () => {
