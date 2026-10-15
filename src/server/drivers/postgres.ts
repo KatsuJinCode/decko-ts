@@ -880,7 +880,7 @@ function addRowidTieBreak(text: string): string {
     : ["id"];
   const insertAt = orderAt + terms.length;
   const selectedList = head[2]!;
-  const isSelected = (column: string) => new RegExp(`(^|[\\s,])${alias}\\.${column}\\s*(,|$)`).test(selectedList);
+  const isSelected = (column: string) => new RegExp(`(^|[\\s,])${alias}\\.(${column}|\\*)\\s*(,|$)`).test(selectedList);
   if (head[1] === undefined || scanColumns.every(isSelected)) {
     return `${text.slice(0, insertAt).trimEnd()}, ${scanColumns.map((c) => `${alias}.${c}`).join(", ")}${text.slice(insertAt)}`;
   }
