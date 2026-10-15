@@ -39,6 +39,7 @@
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
+    "build:nest-index": "node tools/deploy/build-nest-index.mjs",
     "deploy": "npm run db:migrations:apply && npx wrangler deploy && npm run setup-token",
     "setup-token": "node tools/deploy/issue-setup-token.mjs --remote",
     "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs",

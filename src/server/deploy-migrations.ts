@@ -95,6 +95,10 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // prints the /setup link carrying it; src/card/auth/setup-token.ts accepts it beside
   // DECKO_SETUP_TOKEN and clears it once the owner exists.
   { filename: "0012-first-run-setup-token.sql", number: "0012" },
+  // The stored nest index's build marker (src/card/nest-index.ts). The
+  // index itself is built by tools/deploy/build-nest-index.mjs after the
+  // migrations; the edge boot reads this table and never builds in a request.
+  { filename: "0013-nest-index-meta.sql", number: "0013" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

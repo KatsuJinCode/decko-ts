@@ -172,6 +172,7 @@ import { uglifyHarmonyCompile } from "./dist/src/card/assets/uglify-harmony-comp
 // themselves are ported.
 import { defaultDeckLoader } from "./dist/src/card/mod-loader/default-mod-deck.js";
 import { openSameDatabase, passwordHashModeFor } from "./dist/src/server/same-database.js";
+import { ensureNestIndex } from "./dist/src/card/nest-index.js";
 // Write path: the whole write surface lives in its own
 // module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
 import {
@@ -1502,6 +1503,13 @@ async function primeEngine(engine) {
       fetcher.lexicon.write(row.id, name, row.name);
     }
   }
+  // 3b. The stored nest index describes the content before the first render
+  //     (src/card/nest-index.ts). The step runs on the AUTH driver, which is
+  //     open writable whatever this host's browse posture is (the browse
+  //     driver above is read-only unless DECKO_WRITE_PATH=1), so a read-only
+  //     host still brings the index current at boot rather than serving by
+  //     walking its nest closure.
+  await ensureNestIndex(authDriver, engine.lexicon);
   // 4. Virtual-card rule universe: the
   //    storage factory's responsibility per
   //    src/card/fetch/virtual-cards.ts:44-49. Without this hook,
