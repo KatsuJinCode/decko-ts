@@ -211,7 +211,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "User accounts: signin, signup, the +*account cardtype, password reset, and the related closure lifecycle. Twenty-two set files across six patterns plus six haml templates; most of the gem is Rails-runtime machinery (the validate/encrypt/reset events, the Auth integration).",
     sourceFile: "src/card/mod-loader/mods/card-mod-account.ts",
-    sourceLine: 2,
+    sourceLine: 3,
   },
   {
     name: "history",

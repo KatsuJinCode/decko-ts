@@ -16,6 +16,7 @@ const { handleBunnyEngineRequest } = await fromDist("deploy/bunny-worker-src/bun
 const { setCaptureWallClock } = await fromDist("src/card/wall-clock.js");
 const { LocalSqliteDriver } = await fromDist("src/server/drivers/local-sqlite.js");
 const { runAuthMigrations } = await fromDist("src/card/auth/migrations.js");
+const { CaptureTransport } = await fromDist("src/card/notify/transport.js");
 const { startMockBunnyStorage } = await import(pathToFileURL(path.join(repo, "tests/server/mock-bunny-storage.mjs")).href);
 const { DatabaseSync } = await import("node:sqlite");
 const db = new DatabaseSync(process.env.HARNESS_DECK);
@@ -40,6 +41,12 @@ globalThis.fetch = (input, init) => {
   return originalFetch(value.startsWith(prefix) ? `http://${storage.host}/${value.slice(prefix.length)}` : input, init);
 };
 const origin = `http://127.0.0.1:${port}`;
+const outbox = new CaptureTransport("bunny-browser-local-capture");
+const services = { accountMail: {
+  transport: outbox,
+  token: { secret: "local-journey-fixture-token-secret", now: () => Math.floor(new Date(spec.clock).getTime() / 1000) },
+  origin, siteTitle: "My Deck",
+} };
 // Deliberately omit legacy-hash, asset-refresh and security overrides. This
 // host must expose production-default behavior and missing integrations.
 const env = {
@@ -62,14 +69,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === "/__harness/runtime") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: false, objectStorageConfigured: true, objectStorageProvider: "local-bunny-http-emulator" }));
+      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: true, mailProvider: "local-capture-notify-transport", objectStorageConfigured: true, objectStorageProvider: "local-bunny-http-emulator" }));
       return;
     }
     if (req.url === "/__harness/mail") {
-      // No invented successful delivery: the production host has no capture
-      // integration here. Complete mail journeys must report that limitation.
-      res.writeHead(501, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: "Bunny host mail capture is not configured" }));
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(outbox.drain().map(message => ({
+        to: String(message.to).split(",").map(value => value.trim()).filter(Boolean).sort(),
+        subject: message.subject, text: message.textBody,
+      }))));
       return;
     }
     const chunks = [];
@@ -81,7 +89,7 @@ const server = http.createServer(async (req, res) => {
     }
     const method = req.method ?? "GET";
     const request = new Request(new URL(req.url ?? "/", origin), { method, headers, ...(method === "GET" || method === "HEAD" ? {} : { body }) });
-    const response = await handleBunnyEngineRequest(request, env);
+    const response = await handleBunnyEngineRequest(request, env, services);
     res.statusCode = response.status;
     for (const [name, value] of response.headers) if (name !== "set-cookie") res.setHeader(name, value);
     const cookies = response.headers.getSetCookie();

@@ -304,8 +304,8 @@ describe("import-deck CLI - chunking + validation", () => {
     const dir = makeDir();
     const outDir = join(dir, "chunks");
     const dumpPath = writeMysqldumpFixture(dir);
-    // 7 cards + 1 card_acts = 8 rows total. chunk-rows=3 should yield 3 chunks
-    // (3 + 3 + 2) assuming the chunker groups by row budget alone.
+    // Seven cards, one act, and the derived Migra Guide -> Migra Section
+    // nest reference yield nine rows. The index is built before chunking.
     const result = runCLI([
       "--dump",
       dumpPath,
@@ -318,7 +318,7 @@ describe("import-deck CLI - chunking + validation", () => {
     expect(result.status).toBe(0);
     const chunkFiles = readdirSync(join(outDir, "chunks")).filter((f) => f.endsWith(".sql")).sort();
     // The chunker flushes when EITHER the row count or the byte budget
-    // is hit, so 8 rows / 3 rows-per-chunk = at least 3 chunks.
+    // is hit, so 9 rows / 3 rows-per-chunk = at least 3 chunks.
     expect(chunkFiles.length).toBeGreaterThanOrEqual(3);
 
     // Each chunk's row count must be at most 3 (unless it carries the tail)
@@ -326,7 +326,10 @@ describe("import-deck CLI - chunking + validation", () => {
     for (const n of report.chunks.rowsPerChunk) {
       expect(n).toBeLessThanOrEqual(3);
     }
-    expect(report.chunks.totalRows).toBe(8);
+    expect(report.target.tables.cards).toBe(7);
+    expect(report.target.tables.card_acts).toBe(1);
+    expect(report.target.tables.card_references).toBe(1);
+    expect(report.chunks.totalRows).toBe(9);
   }, 180_000);
 
   it("rejects more than one source flag", () => {
