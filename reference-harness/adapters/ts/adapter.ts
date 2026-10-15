@@ -511,7 +511,7 @@ for await (const line of lines) {
     emit({ id: req.id, ok: true, result: await handler(req) });
   } catch (error) {
     const e = error as Error;
-    emit({ id: req.id, ok: false, error: { class: e?.constructor?.name ?? "Error", message: String(e?.message ?? e).slice(0, 500) } });
+    emit({ id: req.id, ok: false, error: { class: (e as { rubyClass?: string } | undefined)?.rubyClass ?? e?.constructor?.name ?? "Error", message: String(e?.message ?? e).slice(0, 500) } });
   }
 }
 await driver.close?.();

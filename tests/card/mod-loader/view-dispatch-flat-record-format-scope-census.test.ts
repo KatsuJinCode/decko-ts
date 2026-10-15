@@ -140,11 +140,15 @@ describe("flat-record format-scope census (composed deck)", () => {
     // All::Notify::BaseViews registers :list_of_changes and :subedits on
     // base, and All::Notify::HtmlViews registers both on html — four more
     // base-kind rows. Measured on the merged tree.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(160);
+    // 160 -> 169 (non-html format dispatch, 2026-10-15): all/base's
+    // base-block views (22) and all/content's three base-block views join
+    // the base key alongside all/error's two; the csv/file/js/yaml rows
+    // are foreign-keyed, not base-kind. Measured on this tree.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(169);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
-  it("the foreign-key flat rows are exactly the eight measured rows", () => {
+  it("the foreign-key flat rows are exactly the sixteen measured rows", () => {
     // The rows the format filter refuses (mod-loader.ts registration
     // seam): kind admitted, key not html/base. Ruby files each under its
     // own format class, invisible to HtmlFormat (header citations). A
@@ -154,7 +158,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     const foreign = flatFeeders.filter(
       (e) => e.formatKey !== "html" && e.formatKey !== "base",
     );
-    expect(foreign).toHaveLength(8);
+    // 8 -> 16: all/csv :header/:row/:titled/:unknown, all/file :core/:style,
+    // all/js :source and all/yaml :core are the format-block views of the
+    // non-html formats, each keyed under its own format class
+    // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
+    expect(foreign).toHaveLength(16);
     expect(
       foreign
         .map(
@@ -167,13 +175,21 @@ describe("flat-record format-scope census (composed deck)", () => {
       "email all/email_text :compact_missing key=email_text",
       "email all/email_text :last_action key=email_text",
       "email all/email_text :unknown key=email_text",
+      "format all/csv :header key=csv",
+      "format all/csv :row key=csv",
+      "format all/csv :titled key=csv",
+      "format all/csv :unknown key=csv",
+      "format all/file :core key=file",
+      "format all/file :style key=file",
+      "format all/js :source key=js",
+      "format all/yaml :core key=yaml",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",
     ]);
   });
 
-  it("flat feeders span more than one key for exactly seven views", () => {
+  it("flat feeders span more than one key for exactly eleven views", () => {
     // Where the flat record's last-wins ORDER picks between formats at
     // all. The winners after the filter are Ruby's html/base arms (the
     // loader-level probe below pins them by identity).
@@ -188,7 +204,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       .map(([view, list]) => `${view}: ${list.map((e) => `${e.shortname}:${e.formatKey}`).join(" | ")}`)
       .sort();
     expect(spanning).toEqual([
+      "bad_address: All::Error:base | All::Error:html",
       "compact_missing: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "core: All::Base:base | All::File:file | All::Yaml:yaml",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "labeled: All::Base:base | All::Html::Views:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
@@ -196,11 +214,11 @@ describe("flat-record format-scope census (composed deck)", () => {
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "type: All::Base:base | All::Html:html",
-      "unknown: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "unknown: All::Csv:csv | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly fourteen views", () => {
+  it("the empty-setKeys fallback set spans more than one key for exactly eighteen views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -220,6 +238,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       .map(([view]) => view)
       .sort();
     expect(spanning).toEqual([
+      "bad_address",
       "compact_missing",
       "content",
       "core",
@@ -228,8 +247,11 @@ describe("flat-record format-scope census (composed deck)", () => {
       "last_action",
       "last_action_verb",
       "list_of_changes",
+      "not_found",
       "raw",
+      "source",
       "subedits",
+      "titled",
       "titled_content",
       "type",
       "unknown",
@@ -237,7 +259,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-five views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly thirty views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -293,7 +315,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       "overlay_title",
       "raw",
       "raw_one_line_content",
+      "source",
       "stylesheet_include_tag",
+      "titled",
       "titled_content",
       "type",
       "url_link",

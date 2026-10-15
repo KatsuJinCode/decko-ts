@@ -191,9 +191,14 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // inherits it (format.rb format_ancestry); the html key they sat under
       // made them unreachable from json/csv/js and mis-served rss. Still no
       // new format key and no css/scss row. Measured on this tree.
-      ["base", 33],
+      // 33 -> 35, html 339 -> 338 (2026-10-15): all/error's :not_found and
+      // :bad_address are `format do` (base) views, and the csv/file/js/yaml
+      // keys carry the format-block views each. Measured on this tree.
+      ["base", 35],
+      ["csv", 4],
       ["email_html", 2],
       ["email_text", 3],
+      ["file", 2],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its
       // registration surface on top of the wave-1 line; the composed-deck
       // census MEASURES 329 on the merged tree (324 wave-1 tip + 5 net-new
@@ -244,10 +249,11 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :search_box_complete on the JSON arm (search.rb:70-72 — the
       // navbox typeahead's JSON the engine now serves); no new format key
       // and no css/scss row. Measured on this tree.
-      ["html", 339],
+      ["html", 338],
 
-      ["js", 2],
+      ["js", 3],
       ["json", 4],
+      ["yaml", 1],
     ]);
   });
 
@@ -261,7 +267,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     expect(entries.filter((e) => e.formatKey === "scss").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
   });
 
-  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views", () => {
+  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views plus format all/js :source", () => {
     // Ruby files these under JsFormat ONLY (nest_image.rb:40-59
     // `format :js` on the ALL set -> register_all_set_format,
     // set/format.rb:133-137). The port serves them from the FLAT record
@@ -275,6 +281,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
         .map((e) => `${e.mod} ${e.setPath} :${e.view}`)
         .sort(),
     ).toEqual([
+      "format all/js :source",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor",
     ]);
@@ -330,6 +337,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       "format all/content :closed_content",
       "format all/content :label",
       "format all/content :smart_label",
+      "format all/error :bad_address",
+      "format all/error :not_found",
     ]);
   });
 });

@@ -735,10 +735,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :not_found renders the locale token (error.rb:18-21)", async () => {
+  it("WITH the mod: :not_found is the base sentence (error.rb:18-21, en.yml:11 format_not_found_named)", async () => {
+    // The base block's view is t(:format_not_found_named, cardname:) - the
+    // translated sentence, not the locale key. Ruby's html format overrides
+    // :not_found with the framed view (html/error.rb:67-73), which the
+    // known-card html render does not model; this pins the base answer that
+    // the html dispatch reaches for a known card.
     const s = storage!;
     expect(await s.engine.render("Oracle Format Probe", "not_found")).toBe(
-      "format.not_found_named",
+      "Could not find Oracle Format Probe.",
     );
   });
 
