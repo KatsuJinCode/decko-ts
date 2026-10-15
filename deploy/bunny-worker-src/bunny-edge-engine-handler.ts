@@ -41,6 +41,7 @@
 //   nothing, serveWithEdgeCache calls render() directly, no cache contact,
 //   no extra headers.
 
+import { TINYMCE_NEST_PLUGIN_JS } from "./bunny-edge-tinymce-nest-plugin.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
   bootDeck,
@@ -94,6 +95,7 @@ import {
 /** TinyMCE's asset base as the deck's editor config names it, and the
  *  published distribution of the same version that answers for it. */
 const TINYMCE_MOD_PREFIX = "/mod/tinymce_editor/";
+// (the deck's own nest plugin is served from bunny-edge-tinymce-nest-plugin.ts)
 const TINYMCE_DIST_BASE = "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/";
 
 // One deck per isolate (the Workers reuse pattern worker.ts uses): the first
@@ -353,6 +355,12 @@ async function routeBunnyEngineRequest(
   // the published 5.10.7 distribution the deck's editor script was built from.
   if (url.pathname.startsWith(TINYMCE_MOD_PREFIX) && (request.method === "GET" || request.method === "HEAD")) {
     const rest = url.pathname.slice(TINYMCE_MOD_PREFIX.length);
+    if (rest === "plugins/nest/plugin.min.js") {
+      return new Response(request.method === "HEAD" ? null : TINYMCE_NEST_PLUGIN_JS, {
+        status: 200,
+        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=86400" },
+      });
+    }
     return new Response(null, {
       status: 302,
       headers: { location: `${TINYMCE_DIST_BASE}${rest}`, "cache-control": "public, max-age=86400" },
@@ -462,6 +470,8 @@ async function routeBunnyEngineRequest(
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
+  const nameMatch = await nameMatchResponse(request, url, deck);
+  if (nameMatch !== null) return nameMatch;
   return await serveProfiled(
     profile,
     request,
@@ -485,6 +495,38 @@ async function routeBunnyEngineRequest(
   );
 }
 
+
+/** The editors' card-name autocomplete (card-mod-search
+ *  set/abstract/0_search/views.rb name_match / name_complete on the
+ *  `<anything>+by name` search card): up to AUTOCOMPLETE_LIMIT (8) names,
+ *  those starting with the term first, then those containing it, each group
+ *  by name. Answered for signed-in viewers, whom the editors serve; null when
+ *  the request is not this route. */
+async function nameMatchResponse(request: Request, url: URL, deck: Deck): Promise<Response | null> {
+  if (request.method !== "GET") return null;
+  const path = decodeURIComponent(url.pathname);
+  if (!/\+by[ _]name\.json$/i.test(path)) return null;
+  const view = url.searchParams.get("view");
+  if (view !== "name_match" && view !== "name_complete") return null;
+  const term = (url.searchParams.get("term") ?? "").trim().toLowerCase();
+  const limit = 8;
+  const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const names: string[] = [];
+  const pick = async (pattern: string, exclude: string[]) => {
+    const notIn = exclude.length > 0 ? ` and name not in (${exclude.map(() => "?").join(",")})` : "";
+    const result = await deck.fetcher.driver.query<{ name: string }>(
+      `select name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${notIn} order by name limit ?`,
+      [pattern, ...exclude, limit - names.length],
+    );
+    for (const row of result.rows) names.push(row.name);
+  };
+  await pick(`${like(term)}%`, []);
+  if (view === "name_match" && term !== "" && names.length < limit) await pick(`%${like(term)}%`, [...names]);
+  return new Response(JSON.stringify(names), {
+    status: 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
 
 /** The sweep's files dependency: the storage zone's driver, or nothing. */
 function bunnyFilesOrUndefined(env: EdgeEnv): { files: NonNullable<ReturnType<typeof bunnyEdgeFilesDriver>> } | undefined {
