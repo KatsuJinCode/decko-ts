@@ -228,7 +228,8 @@ export type ModEventSkipReason =
   | "force-skip"
   | "trigger"
   | "when-false"
-  | "set-not-applicable";
+  | "set-not-applicable"
+  | "parent-skipped";
 
 /** What one stage walk did — the dispatcher's observable surface (tests and
  *  hosts pin behavior against it instead of instrumenting bodies). */
@@ -406,64 +407,6 @@ function stageCandidates(registry: ModEventRegistry, stage: ModEventStage): Regi
   return [...direct, ...inherited];
 }
 
-/** Walk order: registration order (= Ruby's definition/load order), with the
- *  relative-ordering entries pinned IMMEDIATELY next to the target they name
- *  — an `after:` entry directly behind it, a `before:` entry directly in
- *  front of it (the documented contract, mod-manifest.ts:209-212 plus the
- *  `before:` twin).
- *
- *  Ruby gets this from ActiveSupport callback chains: every stage event
- *  becomes an `:after` callback on `"#{stage}_stage"` (options.rb:83-86) and
- *  every `before:`/`after:` event becomes one on the named event's OWN
- *  callback chain (`set_callback object_method, kind, event.name, prepend:
- *  true`, callbacks.rb:17-18), all prepended so that the `:after` chain
- *  unwinds in registration order. An `after:`/stage entry therefore runs
- *  immediately after its target's body and BEFORE the next stage event —
- *  not merely somewhere later in the list. The port reproduces that
- *  adjacency as a fixed-point reorder over the candidate list. */
-function orderCandidates(candidates: RegisteredModEvent[]): RegisteredModEvent[] {
-  const list = [...candidates];
-  const names = new Set(list.map((e) => e.event));
-  /** The entry's relation to its target, or undefined when it is a plain
-   *  stage event (or names a target that is not a candidate here). */
-  const relationOf = (event: RegisteredModEvent): { target: string; offset: 0 | 1 } | undefined => {
-    if (event.before !== undefined && names.has(event.before)) {
-      return { target: event.before, offset: 0 };
-    }
-    if (event.after !== undefined && names.has(event.after)) {
-      return { target: event.after, offset: 1 };
-    }
-    return undefined;
-  };
-  const order = (): string => list.map((e) => e.event).join(",");
-  // A before: entry registered after its target, or an after: entry
-  // registered before it, both need moving; repeating converges an entry
-  // whose target is itself relative-ordered, since the target's own move
-  // carries its dependants along in a later pass.
-  for (let pass = 0; pass <= list.length; pass++) {
-    let changed = false;
-    for (const event of list) {
-      const relation = relationOf(event);
-      if (relation === undefined) continue;
-      const targetIndex = list.findIndex((e) => e.event === relation.target);
-      const ownIndex = list.indexOf(event);
-      if (ownIndex === targetIndex + relation.offset) continue;
-      const before = order();
-      list.splice(ownIndex, 1);
-      // Removing at ownIndex shifts every later index down by one, so an
-      // insertion point past the removal lands one slot earlier.
-      const insertAt = ownIndex < targetIndex + relation.offset ? targetIndex + relation.offset - 1 : targetIndex + relation.offset;
-      list.splice(insertAt, 0, event);
-      // A move that leaves the sequence identical (the entry is already
-      // adjacent, and the offsets disagreed only because of it) is not a
-      // move - otherwise the loop would never settle.
-      if (order() !== before) changed = true;
-    }
-    if (!changed) break;
-  }
-  return list;
-}
-
 /** A host stand-in whose every member throws LOUDLY when a body reaches for
  *  a host the composition never supplied (never a silent no-op). */
 const HOST_REQUIRED: unknown = new Proxy(
@@ -498,7 +441,7 @@ export async function runModEventStage(
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
-  const candidates = orderCandidates(stageCandidates(runtime.registry, stage));
+  const candidates = stageCandidates(runtime.registry, stage);
   const fired: string[] = [];
   const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
   const failed: Array<{ event: string; error: unknown }> = [];
@@ -513,54 +456,74 @@ export async function runModEventStage(
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,
     ...(saveInput !== undefined ? { saveInput } : {}),
   };
-  for (const event of candidates) {
+  // Ruby attaches these to the target's own callback chain, inside its
+  // applicability gate. With prepend:true, before runs newest first and
+  // after runs oldest first (Event::Callbacks, callbacks.rb:14-19).
+  const children = (event: RegisteredModEvent, kind: "before" | "after") =>
+    candidates.filter(child => child[kind] === event.event);
+  const skipCallbacks = (event: RegisteredModEvent): void => {
+    for (const child of [...children(event, "before").reverse(), ...children(event, "after")]) {
+      skipped.push({ event: child.event, reason: "parent-skipped" });
+      skipCallbacks(child);
+    }
+  };
+  const runEvent = async (event: RegisteredModEvent): Promise<void> => {
     if (!onConditionApplies(event.on, card.act?.action ?? "update")) {
       skipped.push({ event: event.event, reason: "on-action" });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     if (!changedConditionApplies(event.changed ?? event.changing, card)) {
       skipped.push({ event: event.event, reason: "changed" });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     if (!skipConditionApplies(event, runtime)) {
       skipped.push({
         event: event.event,
         reason: runtime.forceSkip?.includes(event.event) ? "force-skip" : "skip",
       });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     if (!triggerConditionApplies(event, runtime)) {
       skipped.push({ event: event.event, reason: "trigger" });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     if (!(await setConditionApplies(event, runtime, card, ctx))) {
       skipped.push({ event: event.event, reason: "set-not-applicable" });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     const when = await whenConditionApplies(event, runtime, card, ctx);
     if (!when.ok) {
       skipped.push({ event: event.event, reason: when.reason ?? "when-false" });
-      continue;
+      skipCallbacks(event);
+      return;
     }
     try {
+      for (const child of children(event, "before").reverse()) await runEvent(child);
       await event.fn(card, (runtime.host ?? HOST_REQUIRED) as Parameters<
         typeof event.fn
       >[1], ctx);
       fired.push(event.event);
+      for (const child of children(event, "after")) await runEvent(child);
     } catch (error) {
-      // rescuing_if_integration (event.rb:148-152, card.rb:163-171): the
-      // rescue is decided when the method is DEFINED, from the event's OWN
-      // @stage - which options.rb:76 leaves nil for a before:/after:/around:
-      // event. So a relative-ordering event is never integration-rescued,
-      // even when it inherits an integrate stage at dispatch.
+      // Ruby wraps run_callbacks inside the target's integration rescue
+      // (event.rb:147-157). A relative callback has no rescue of its own,
+      // but its failure reaches the enclosing integration target.
       if (event.at?.includes("integrate") === true) {
         // rescuing_if_integration (card.rb:163-171): one failed integration
         // event must not harm others.
         failed.push({ event: event.event, error });
-        continue;
+        return;
       }
       throw error;
     }
+  };
+  for (const event of candidates) {
+    if (event.before === undefined && event.after === undefined) await runEvent(event);
   }
   const report: ModEventStageReport = { stage, fired, skipped, failed };
   runtime.onReport?.(report);

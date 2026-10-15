@@ -210,13 +210,10 @@ describe("mod-event dispatcher — the stage walk", () => {
     }
   });
 
-  it("does not integration-rescue a before:/after: event, though it runs in an integrate stage", async () => {
-    // event.rb:147-152 fixes the rescue at DEFINITION time from the
-    // event's own @stage, and options.rb:76 leaves @stage nil for a
-    // before:/after: event — so such an event propagates its error even
-    // when it inherits an integrate stage. mod/account/set/type/user.rb:66
-    // signin_after_setup is :integrate with its OWN stage and is rescued;
-    // the after: chain event hanging off it is not.
+  it("rescues callback failure inside its integration target's wrapper", async () => {
+    // event.rb:147-157 wraps run_callbacks in rescuing_if_integration.
+    // The relative callback has no rescue of its own; its target does.
+    // A minimal run against installed Ruby ActiveSupport confirms this.
     const boom = (): void => {
       throw new Error("boom");
     };
@@ -236,8 +233,52 @@ describe("mod-event dispatcher — the stage walk", () => {
       "integrate",
       card(),
     );
-    expect(relative.thrown).toBeInstanceOf(Error);
-    expect(relative.report.failed).toEqual([]);
+    expect(relative.thrown).toBeUndefined();
+    expect(relative.report.fired).toEqual(["chain_root"]);
+    expect(relative.report.failed.map(f => f.event)).toEqual(["chain_root"]);
+  });
+
+  it.each([
+    [{ changed: ["name"] }, {}, "changed"],
+    [{ on: ["delete"] }, {}, "on-action"],
+    [{ when: "allowed?" }, { predicates: { "allowed?": () => false } }, "when-false"],
+    [{ trigger: "required" }, {}, "trigger"],
+    [{}, { forceSkip: ["parent"] }, "force-skip"],
+    [{ skip: "allowed" }, { skip: ["parent"] }, "skip"],
+    [{ setPath: "type/css" }, { setMember: () => false }, "set-not-applicable"],
+  ] as const)("never invokes callbacks when the parent fails %j", async (gate, runtime, reason) => {
+    const calls: string[] = [];
+    const result = await run([
+      { event: "parent", at: "validate", ...gate, fn: () => { calls.push("parent"); } },
+      { event: "before", before: "parent", when: "must_not_evaluate?", fn: () => { calls.push("before"); } },
+      { event: "after", after: "parent", fn: () => { calls.push("after"); } },
+      { event: "grandchild", after: "after", fn: () => { calls.push("grandchild"); } },
+      { event: "independent", at: "validate", fn: () => { calls.push("independent"); } },
+    ], "validate", card(), runtime);
+    expect(result.thrown).toBeUndefined();
+    expect(calls).toEqual(["independent"]);
+    expect(result.report.skipped).toEqual([
+      { event: "parent", reason },
+      { event: "before", reason: "parent-skipped" },
+      { event: "after", reason: "parent-skipped" },
+      { event: "grandchild", reason: "parent-skipped" },
+    ]);
+  });
+
+  it("wraps a permitted target in nested callbacks using Ruby prepend order", async () => {
+    const calls: string[] = [];
+    const body = (name: string) => () => { calls.push(name); };
+    const result = await run([
+      { event: "target", at: "validate", changed: ["name"], fn: body("target") },
+      { event: "before_first", before: "target", fn: body("before_first") },
+      { event: "before_second", before: "target", fn: body("before_second") },
+      { event: "after_first", after: "target", fn: body("after_first") },
+      { event: "before_nested", before: "after_first", fn: body("before_nested") },
+      { event: "after_second", after: "target", fn: body("after_second") },
+    ], "validate", card({ changedFields: ["name"] }));
+    expect(result.thrown).toBeUndefined();
+    expect(calls).toEqual(["before_second", "before_first", "target", "before_nested", "after_first", "after_second"]);
+    expect(result.report.fired).toEqual(calls);
   });
 
   it("expands on: save to create+update and never delete; absent on: fires every action", async () => {
@@ -469,6 +510,19 @@ describe("mod-event dispatcher — set scoping", () => {
 });
 
 describe("mod-event dispatcher — error semantics", () => {
+  it("abandons the target and its after callbacks when a before callback fails", async () => {
+    const failure = new Error("before rejected");
+    const calls: string[] = [];
+    const result = await run([
+      { event: "target", at: "validate", fn: () => { calls.push("target"); } },
+      { event: "before", before: "target", fn: () => { calls.push("before"); throw failure; } },
+      { event: "after", after: "target", fn: () => { calls.push("after"); } },
+      { event: "later", at: "validate", fn: () => { calls.push("later"); } },
+    ], "validate", card());
+    expect(result.thrown).toBe(failure);
+    expect(calls).toEqual(["before"]);
+  });
+
   it("propagates a validation/storage-stage failure to the save", async () => {
     const boom = new Error("validator blew up");
     const order: string[] = [];
