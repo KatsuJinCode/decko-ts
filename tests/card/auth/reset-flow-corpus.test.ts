@@ -41,6 +41,7 @@ import {
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { runAuthMigrations, SessionStore, authenticateAccount } from "../../../src/card/auth/index.js";
+import { signinSecurityPolicyFromEnv } from "../../../src/card/auth/signin-security.js";
 import { CaptureTransport } from "../../../src/card/notify/transport.js";
 import {
   applyNewAccountPassword,
@@ -171,11 +172,25 @@ describeIfCorpus("password-reset flow over the corpus copy (holder 583)", () => 
     expect(write.ok, JSON.stringify(write)).toBe(true);
 
     // 6. The new password signs in through the REAL signin ladder; the old
-    //    one is dead.
-    const newSignin = await authenticateAccount(fixture.driver, fixture.info.email, NEW_PASSWORD);
+    //    one is dead. The ladder runs with the uniform answer OFF, so it
+    //    reports Ruby's per-field reasons (docs/SECURITY.md divergence 4:
+    //    with the uniform answer on, a wrong password is told
+    //    "invalid_credentials" like an unknown email; the port's reference
+    //    adapter, the Ruby-parity journey host and this test all pin the
+    //    switch off).
+    const rubyAnswers = signinSecurityPolicyFromEnv({
+      DECKO_SIGNIN_THROTTLE: "off",
+      DECKO_SIGNIN_UNIFORM_FAILURE: "off",
+    });
+    const newSignin = await authenticateAccount(fixture.driver, fixture.info.email, NEW_PASSWORD, rubyAnswers);
     expect(newSignin.ok).toBe(true);
-    const oldSignin = await authenticateAccount(fixture.driver, fixture.info.email, OLD_PASSWORD);
+    const oldSignin = await authenticateAccount(fixture.driver, fixture.info.email, OLD_PASSWORD, rubyAnswers);
     expect(oldSignin).toMatchObject({ ok: false, reason: "wrong_password" });
+    // The shipped default (uniform answers on) tells the same caller
+    // "invalid_credentials" instead: the declared divergence, docs/SECURITY.md
+    // divergence 4. The flags-off answer above is Ruby's.
+    const shippedSignin = await authenticateAccount(fixture.driver, fixture.info.email, OLD_PASSWORD);
+    expect(shippedSignin).toMatchObject({ ok: false, reason: "invalid_credentials" });
   });
 
   it("rejects a reset request for an email that owns no account (real corpus data)", async () => {

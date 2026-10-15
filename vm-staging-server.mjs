@@ -844,6 +844,7 @@ async function handleAccountFlowLink(flow, req) {
     return withSessionCookie(
       successRedirect(outcome.redirectTo.name, undefined, req),
       outcome.session.token,
+      req,
     );
   }
   return accountFlowErrorResponse(outcome, flow.accountMark);
