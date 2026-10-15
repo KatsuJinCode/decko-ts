@@ -107,6 +107,8 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
+import { nodeAfterResponse } from "./dist/src/card/delayed-job/delayed-job.js";
+import { delayingFromEnv, hostDelayedJobs } from "./dist/src/card/delayed-job/host.js";
 import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
 // The serving posture for nested render errors: Cardio's stock boot is QUIET
@@ -3396,6 +3398,33 @@ const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
  *  utf8 string round-trip would corrupt for binary payloads. */
 let followMailContext;
 
+// card-mod-delayed_job. DECKO_DELAYING=true is Ruby's config.delaying = true:
+// a save's integrate_with_delay events (the follower notice) are written as
+// delayed_jobs rows and performed by the in-process worker after the
+// response (next event-loop turn, plus a 5 s poll for rows another process
+// wrote). Unset, they run inside the request — the mod's default. Built on
+// the first write, once the follower-mail context is known, so the worker's
+// engine sends the same mail the request's engine would.
+const DELAYING = delayingFromEnv(process.env.DECKO_DELAYING);
+let delayedJobsHost;
+function delayedJobsForWrites() {
+  if (!DELAYING || !writePathEnabled()) return undefined;
+  if (delayedJobsHost === undefined) {
+    const log = (line) => process.stderr.write(`[delayed_job] ${line}\n`);
+    delayedJobsHost = hostDelayedJobs({
+      driver,
+      fetcher,
+      delaying: true,
+      afterResponse: nodeAfterResponse(log),
+      engineOptions: { notifyTransport: mailTransport, followMail: followMailContext },
+      workerName: `host:${process.env.HOSTNAME ?? "localhost"} pid:${process.pid}`,
+      log,
+    });
+    delayedJobsHost.worker.start(5000);
+  }
+  return delayedJobsHost.config;
+}
+
 async function dispatchWriteRequest(req, pathname, preReadBody) {
   let body = preReadBody;
   let bodyBytes;
@@ -3428,6 +3457,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       fetcher,
       attachmentStore,
       followMail: followMailContext,
+      ...((delayedJobs) => (delayedJobs === undefined ? {} : { delayedJobs }))(delayedJobsForWrites()),
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
       // The recaptcha seat, composed only when the
