@@ -1170,6 +1170,12 @@ async function teardownMode({ payload, resolveApi, args }) {
   console.log(`===== TEARDOWN (destructive; ids from ${basename(resultPath)}) =====`);
   const s = await api.call("DELETE", `/compute/script/${ids.script.id}`, undefined, { expect: [200, 204] });
   console.log(`DELETE /compute/script/${ids.script.id} (${ids.script.name}) -> ${s.status}`);
+  // Deleting the script leaves its linked pull zone in place (measured on
+  // the live API), so the zone the execute created is deleted by its own id.
+  if (ids.pull_zone?.id) {
+    const z = await api.call("DELETE", `/pullzone/${ids.pull_zone.id}`, undefined, { expect: [200, 204, 404] });
+    console.log(`DELETE /pullzone/${ids.pull_zone.id} (${ids.pull_zone.name}) -> ${z.status}`);
+  }
   const d = await api.call("DELETE", `/database/v1/databases/${ids.database.id}`, undefined, { expect: [200, 204] });
   console.log(`DELETE /database/v1/databases/${ids.database.id} (${ids.database.name}) -> ${d.status}`);
   if (ids.database?.group_id) {

@@ -87,19 +87,84 @@ concurrency). `tests/card/actions/atomic-saves.test.ts` injects a failure at
 each stage of a real save (subcard validation, reference write, history
 write, a child's trash, the attachment identifier) on every backend and
 compares every table before and after. `tests/card/actions/concurrent-saves.test.ts`
-runs two simultaneous saves to the same card on SQLite and D1.
+runs two simultaneous saves to the same card on SQLite, D1, libSQL and Bunny.
+`tests/card/actions/d1-multi-user-saves.test.ts` checks that no reader on
+another driver object is served a save that fails. `tools/hosted-conformance/run.mjs`
+runs these suites against hosted databases (`docs/hosted-conformance.md`).
+
+## One D1 batch per save: investigated, not adopted
+
+A D1 batch is one SQLite transaction, so a save whose writes were sent as a
+single batch would never be visible half-done. That needs every write a save
+makes to be known before any of them is sent. It is not, in this port or in
+Ruby: a save reads its own writes and branches on them. Traced on local
+SQLite (every statement issued inside `transaction()`; measured 2026-10-14,
+the four saves of a create with a subcard, an update with a subcard, a rename
+and a delete over the atomic-saves test deck):
+
+| Save | Reads | Reads after the save's first write | Write statements and batches |
+|---|---|---|---|
+| create with a subcard | 44 | 37 | 32 across the four saves |
+| update with a subcard | 25 | 18 | |
+| rename | 19 | 7 | |
+| delete | 16 | 11 | |
+
+The reads after the first write include the row just inserted (`SELECT *
+FROM cards WHERE id = ?`), `last_insert_rowid()` for the act and action ids
+the next rows carry, `COUNT(*)` over the card's own action rows, and the
+recursive name-resolution query over `cards`, which must see the parent row
+the subcard's name resolves through. Deferring the writes would mean
+answering all of those from an overlay of pending rows, which for joins and
+recursive queries is a second SQL engine in the Worker, or restructuring the
+save into plan-then-apply phases Ruby does not have. Neither keeps the port
+faithful, so the save path keeps its interactive shape.
+
+## Snapshot reads: an alternative, not adopted
+
+The read isolation D1 has (readers wait for a live save; "Readers wait for a
+live save" above) was chosen over a second design, recorded here because it
+would let readers answer during a save instead of waiting.
+
+The journal already holds, for every row a live transaction touched, the row
+as it was before (`decko_undo_*`, first entry per row). A serving read that
+finds a live, unexpired holder in the lock row could answer from that
+pre-transaction state inside one atomic batch: stash the lock (so the journal
+triggers stay off), copy the touched rows' current images to a redo table,
+restore the before-images, run the reads, put the current images back, empty
+the redo table and restore the lock. D1 runs the batch as one transaction, so
+the writer would never observe the swap and other readers would never see the
+intermediate state. Two requirements found while designing it:
+
+- `deck_data_version` must also read as its pre-transaction value. The
+  writer's statements bump it as they run, and a reader that pairs the bumped
+  stamp with pre-transaction rows would cache old content under the new
+  stamp; nothing bumps it again at commit, so that stale entry would be
+  served afterwards. The journal would have to record the stamp when it
+  takes the lock, and the snapshot batch would have to report that value and
+  restore the current one after the reads. (Waiting reads do not have this
+  problem: a read that waited sees the committed rows and the committed
+  stamp together.)
+- The swap is a write batch, so every serving read during a live save
+  becomes a write on the primary (about four row writes per touched row).
+
+Waiting reads were adopted because they need no write on the read path and
+no second copy of the deck's rows, and because a reader that waits is what
+SQLite itself does for a writer's commit in rollback-journal mode. Their cost
+is the wait: a read during a save is answered after the save ends, and a
+hung writer delays readers until its lease expires. If that wait proves too
+long on hosted D1, snapshot reads are the design to revisit.
 
 ## Implemented and verified adapters
 
-"Verified" names what the tests ran against. Nothing here was run against a
-hosted service.
+"Verified" names what the tests ran against. Hosted runs are listed with
+their date; everything else ran against local emulations.
 
 | Adapter | Implemented | Conformance suites run against |
 |---|---|---|
 | Local SQLite (`LocalSqliteDriver`) | yes | real SQLite (better-sqlite3), in memory and on disk with two connections |
-| Cloudflare D1 (`CloudflareD1Adapter`) | yes | workerd's local D1 under Miniflare; not hosted D1 |
-| libSQL over HTTP (`LibSqlHttpAdapter`) | yes | a Hrana v2 test server in this repository backed by real SQLite; not sqld, Turso or Bunny |
-| Bunny Database (`BunnyDbDriver`) | yes | the same Hrana test server; reads also against the live database in earlier deploy checks, never writes |
+| Cloudflare D1 (`CloudflareD1Adapter`) | yes | workerd's local D1 under Miniflare, including the multi-user read-isolation tests; hosted D1 on 2026-10-14 (`tests/hosted/hosted-write-path.test.ts` through a remote binding: the 7 transaction conformance cases and 10 save scenarios, all passing, on a throwaway database deleted afterwards). That hosted run predates waiting reads; the read-isolation and concurrent-save suites have not yet run on hosted D1 (`tools/hosted-conformance/run.mjs` runs them) |
+| libSQL over HTTP (`LibSqlHttpAdapter`) | yes | a Hrana v2 test server in this repository backed by real SQLite, including two writers on separate driver objects; not sqld, Turso or Bunny |
+| Bunny Database (`BunnyDbDriver`) | yes | the same Hrana test server; hosted Bunny Database on 2026-10-14 (`tools/hosted-conformance/run.mjs --target bunny` on a scratch database created, given a token and deleted with the account API key): transaction conformance and save scenarios 17 of 17 and atomic saves 11 of 11 pass; one concurrent-save case and one multi-user read-isolation case fail with Bunny's `TRANSACTION_TIMEOUT` when two writers contend, which the busy-`BEGIN` retry does not cover |
 | PostgreSQL | **no** — removed | — |
 
 **PostgreSQL.** An adapter and a SQL dialect translator existed, tested only

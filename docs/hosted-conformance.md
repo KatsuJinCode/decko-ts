@@ -21,19 +21,23 @@ left out silently.
 |---|---|---|
 | `d1` | `DECKO_HOSTED_D1_ACCOUNT_ID`, `DECKO_HOSTED_D1_API_TOKEN` (an API token with D1 edit permission) | Created with `POST /accounts/{account}/d1/database`, deleted with `DELETE /accounts/{account}/d1/database/{uuid}` |
 | `turso` | `DECKO_HOSTED_TURSO_ORG`, `DECKO_HOSTED_TURSO_API_TOKEN` (Platform API token); optional `DECKO_HOSTED_TURSO_GROUP` (default `default`) | Created with `POST /v1/organizations/{org}/databases`, a database token minted with `POST .../databases/{name}/auth/tokens`, deleted with `DELETE .../databases/{name}` |
-| `bunny` | `DECKO_HOSTED_BUNNY_URL` (`https://<id>.lite.bunnydb.net`), `DECKO_HOSTED_BUNNY_TOKEN` (full-access database token) | Supplied by the operator and must be empty; the runner refuses a database that holds any table, view or trigger, and drops everything the suites created afterwards. The database itself is not deleted. |
+| `bunny` | `DECKO_HOSTED_BUNNY_URL` (`https://<id>.lite.bunnydb.net`, a trailing slash is accepted), `DECKO_HOSTED_BUNNY_TOKEN` (full-access database token) | Supplied by the operator and must be empty; the runner refuses a database that holds any table, view or trigger, and drops everything the suites created afterwards. The database itself is not deleted. |
+| `d1-binding` | `DECKO_HOSTED_D1_NAME`, `DECKO_HOSTED_D1_ID`, `DECKO_HOSTED_ALLOW_RESET=1` (wrangler's own login) | A throwaway D1 database supplied by the operator, reached through a wrangler remote binding; emptied by the suites, not deleted. |
 
-Bunny is operator-supplied because, as of 2026-10-14, the create and delete
-database endpoints (`/database/v2/databases`) appear only in a third-party
-index of Bunny's API, not in Bunny's own reference, and database tokens are
-documented as made in the dashboard or the Bunny CLI. Scratch database names
-start with `decko-conformance-`.
+Bunny is operator-supplied. Bunny's own API reference does not document
+database management, but the account API key can do it: `POST
+/database/v1/groups`, `POST /database/v1/databases` (`{slug, group}`; a slug
+over 16 characters answers HTTP 500), `PUT
+/database/v2/databases/{id}/auth/generate` (`{"authorization":"full-access"}`)
+for the token, and `DELETE` on the database and group (used on 2026-10-14;
+`deploy/provisioning/provision-bunny-deck.mjs` uses the same calls). Scratch
+D1 and Turso database names start with `decko-conformance-`.
 
 ## What it runs
 
 | Suite | File | Cases run |
 |---|---|---|
-| transaction conformance | `tests/hosted/hosted-transactions.test.ts` (the shared `tests/server/drivers/transaction-conformance.ts`) | all |
+| transaction conformance and save scenarios | `tests/hosted/hosted-write-path.test.ts` (the shared `tests/server/drivers/transaction-conformance.ts` and the save scenarios) | all |
 | atomic saves | `tests/card/actions/atomic-saves.test.ts` | the `hosted` backend's cases |
 | concurrent saves | `tests/card/actions/concurrent-saves.test.ts` | two driver objects over the scratch database |
 | multi-user read isolation | `tests/card/actions/d1-multi-user-saves.test.ts` | a read during a failing save; concurrent writers with failing saves and readers |
@@ -85,4 +89,27 @@ the Hrana test server for both, which fails without the retry. Whether
 sqld, Turso and Bunny report a held lock the same way is what the hosted run
 shows.
 
-Nothing in this runner has yet been run against a hosted service.
+## Hosted results
+
+Bunny Database, 2026-10-14 (`node tools/hosted-conformance/run.mjs --target
+bunny` on a scratch database in `us-east-1`, primary region `LA`, no
+replicas; 526 s; exit 1):
+
+| Suite | Result |
+|---|---|
+| transaction conformance and save scenarios | PASS, 17 of 17 |
+| atomic saves | PASS, 11 of 11 |
+| concurrent saves | FAIL, 1 of 3: two unguarded updates both apply |
+| multi-user read isolation | FAIL, 1 of 2: concurrent writers with failing saves |
+| scratch database emptied | PASS |
+
+Both failures are `BunnyDb pipeline statement 0 failed: Transaction timed
+out (code TRANSACTION_TIMEOUT)`. With two writers contending, Bunny ends the
+waiting transaction with this code instead of answering `database is
+locked`, so `retryWhileBusy` does not retry it. That run also found two
+harness defects, since fixed: the runner did not accept the trailing slash
+on the URL Bunny returns, and the actions test storage read a seeded card's
+id with `last_insert_rowid()` in a separate request, which over HTTP can run
+on another connection and return 0.
+
+D1 and Turso have not been run through this runner against hosted services.
