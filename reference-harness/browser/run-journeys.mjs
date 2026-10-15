@@ -21,7 +21,7 @@ import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { recordJourneyNetwork } from "./lib/journey-network.mjs";
 import { admitJourneyOutput } from "./lib/journey-output-admission.mjs";
-import { editorReady } from "./lib/editor-ready.mjs";
+import { editorReady, richEditorsReady } from "./lib/editor-ready.mjs";
 import { captureProvenance } from "./lib/journey-provenance.mjs";
 import { snapshot, delta } from "../runner/deck-state.mjs";
 
@@ -48,19 +48,11 @@ async function settle(page) {
     quiet = busy === 0 ? quiet + 1 : 0;
     if (quiet >= 3) {
       // HARNESS_EDITOR_SETTLE=1 (the declared oracle-rerun mode): a page
-      // carrying a TinyMCE editor is observed only after the editor's init
-      // has landed (the statusbar path item renders at the end of it, up to
-      // ~2s after load — the autoresize plugin's delayed resize loop runs
-      // outside jQuery), so the snapshot reads the settled editor both
-      // engines serve.
+      // carrying a TinyMCE editor is observed only after initialization.
+      // TinyMCE runs outside jQuery; optional statusbar breadcrumbs are
+      // not a readiness boundary (empty editors may have no breadcrumb).
       if (process.env.HARNESS_EDITOR_SETTLE === "1") {
-        await page
-          .waitForFunction(() => {
-            // Every editor on the page, not just the first, has finished.
-            const editors = [...document.querySelectorAll(".tox-tinymce")];
-            return editors.every((ed) => ed.querySelector(".tox-statusbar__path-item") !== null);
-          }, { timeout: 8000 })
-          .catch(() => {});
+        await page.waitForFunction(richEditorsReady, null, { timeout: STEP_TIMEOUT });
       }
       // Images an ajax response inserted (an upload's preview) load after
       // the page's load event, and an image still loading has no size, so

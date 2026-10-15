@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { launchBrowser } from "../lib/launch.mjs";
-import { editorReady } from "../lib/editor-ready.mjs";
+import { editorReady, richEditorsReady } from "../lib/editor-ready.mjs";
 import { loadEngine, startEngine } from "../lib/engines.mjs";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
@@ -15,12 +15,17 @@ test("plain inputs are immediate and an uninitialized rich editor fails closed",
     const page = browser.context.pages()[0];
     await page.setContent('<input name="card[content]" value="12">');
     await page.waitForFunction(editorReady, ["card[content]"], { timeout: 500 });
+    await page.waitForFunction(richEditorsReady, null, { timeout: 500 });
     await page.setContent('<textarea id="rich" class="tinymce-textarea" name="card[content]">prior content</textarea>');
     await page.evaluate(() => { window.tinyMCE = { get: () => ({ initialized: false, getBody: () => document.body }) }; });
     await assert.rejects(page.waitForFunction(editorReady, ["card[content]"], { timeout: 250 }));
+    await assert.rejects(page.waitForFunction(richEditorsReady, null, { timeout: 250 }));
     assert.equal(await page.locator("textarea").inputValue(), "prior content");
     await page.evaluate(() => { window.tinyMCE = { get: () => ({ initialized: true, getBody: () => document.body }) }; });
     await page.waitForFunction(editorReady, ["card[content]"], { timeout: 500 });
+    // Empty content / disabled statusbar still has a usable initialized editor.
+    assert.equal(await page.locator(".tox-statusbar__path-item").count(), 0);
+    await page.waitForFunction(richEditorsReady, null, { timeout: 500 });
   } finally { await browser.close(); }
 });
 

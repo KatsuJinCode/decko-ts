@@ -7,3 +7,12 @@ export function editorReady([name]) {
   const editor = textarea.id && window.tinyMCE && window.tinyMCE.get(textarea.id);
   return !!editor && editor.initialized === true && !!editor.getBody();
 }
+
+// A statusbar breadcrumb depends on selection and can be disabled entirely.
+// Initialization is a property of the editor, not its optional chrome.
+export function richEditorsReady() {
+  return [...document.querySelectorAll("textarea.tinymce-textarea")].every(textarea => {
+    const editor = textarea.id && window.tinyMCE && window.tinyMCE.get(textarea.id);
+    return !!editor && editor.initialized === true && !!editor.getBody();
+  });
+}
