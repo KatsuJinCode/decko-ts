@@ -352,12 +352,10 @@ export function isValidDateContent(content: string): boolean {
  * (card_controller/errors.rb handle_exception).
  *
  * Ruby's class, not an invented one: `raise ::I18n.t(...)` with no
- * second argument raises a RuntimeError (Ruby raises a RuntimeError for
- * any String). The oracle's own capture records exactly that
- * ("CAPTURE_ERROR: RuntimeError: %{func} not implemented",
- * tests/cql/oracle-replay.test.ts), and the graded adapter reports a
- * raised error's class through its constructor name
- * (adapters/ts/adapter.mjs:519), so the class is named RuntimeError so
+ * second argument raises a RuntimeError (Ruby's Kernel#raise with a String
+ * argument raises RuntimeError; https://docs.ruby-lang.org/en/3.4/Kernel.html#method-i-raise).
+ * The graded adapter reports a raised error's class through its constructor
+ * name (reference-harness/adapters/ts/adapter.ts:526), so the class is named RuntimeError so
  * the recorded class string is the one Ruby records. The raise site is
  * identified by the message (the i18n string below, which no other raise
  * in card-1.110.0 uses), not by the class name.
