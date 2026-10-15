@@ -29,6 +29,7 @@ import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
 import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
 import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
 import { startMysqlServer, type MysqlServer } from "../../server/drivers/mysql-server.js";
+import { driverDialect } from "../../../src/server/same-database.js";
 import { PGlite } from "@electric-sql/pglite";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
@@ -118,8 +119,15 @@ interface Backend {
 
 const SCHEMA = readFileSync(fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)), "utf8");
 
+const SCHEMA_MYSQL = readFileSync(fileURLToPath(new URL("../../../db/schema.mysql-port.sql", import.meta.url)), "utf8");
+
 async function loadSchema(driver: SQLDatabaseDriver): Promise<void> {
-  for (const statement of splitSqlStatements(SCHEMA)) {
+  // The SQLite DDL carries untyped-length TEXT columns, which MySQL refuses to
+  // index without a key length, so a MySQL backend loads the port's schema in
+  // MySQL dialect (db/schema.mysql-port.sql, built by
+  // tools/mysql/build-port-schema.mjs).
+  const ddl = driverDialect(driver) === "mysql" ? SCHEMA_MYSQL : SCHEMA;
+  for (const statement of splitSqlStatements(ddl)) {
     // D1 manages foreign-key enforcement itself; the schema declares none.
     if (/^\s*PRAGMA\b/i.test(statement)) {
       await driver.query(statement, []).catch(() => undefined);
@@ -276,6 +284,9 @@ async function openDeck(make: () => Promise<Backend>): Promise<Deck> {
   const nulls = (params: unknown[]) => params.map((p) => (p === undefined ? null : p));
   const raw = backend.driver;
   const driver: SQLDatabaseDriver = {
+    // The dialect travels with the wrapper, so loadSchema picks the DDL of the
+    // backend under test (a wrapper without it reads as SQLite).
+    dialect: (raw as { dialect?: string }).dialect,
     query: (sql, params) => raw.query(sql, nulls(params)),
     batch: (statements) => raw.batch(statements.map((s) => ({ sql: s.sql, params: nulls(s.params) }))),
   };
@@ -313,16 +324,28 @@ async function openDeck(make: () => Promise<Backend>): Promise<Deck> {
         ...(opts.store !== undefined ? { attachmentStore: opts.store } : {}),
       }),
     snapshot: async () => {
+      const mysql = driverDialect(backend.driver) === "mysql";
+      // SQLite lists its tables in sqlite_master and reads each in rowid order.
+      // MySQL lists them in information_schema; a MySQL table has no rowid, so
+      // its rows are sorted here by their full text, which gives the same
+      // stable order on both snapshots that a before/after comparison needs.
       const names = (
         await backend.driver.query<{ name: string }>(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name",
+          mysql
+            ? "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME NOT LIKE '\\_cf\\_%' ORDER BY TABLE_NAME"
+            : "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name",
           [],
         )
       ).rows.map((r) => String(r.name));
       const tables: Record<string, unknown[]> = {};
       let bookkeepingRows = 0;
       for (const name of names) {
-        const rows = (await backend.driver.query(`SELECT * FROM "${name}" ORDER BY rowid`, [])).rows;
+        const rows = mysql
+          ? (await backend.driver.query(`SELECT * FROM "${name}"`, [])).rows
+              .map((r) => ({ r, key: JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? v.toString() : v)) }))
+              .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+              .map((x) => x.r)
+          : (await backend.driver.query(`SELECT * FROM "${name}" ORDER BY rowid`, [])).rows;
         if (name.startsWith("decko_tx_") || name.startsWith("decko_undo_")) {
           if (name !== "decko_tx_state") bookkeepingRows += rows.length;
           continue;
