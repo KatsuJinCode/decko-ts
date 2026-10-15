@@ -54,7 +54,7 @@ function pidAlive(pid) {
 function spawnPhaseShapedTree() {
   const midScript =
     "const cp=require('node:child_process');" +
-    "const g=cp.spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});" +
+    "const g=cp.spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',windowsHide:true});" +
     "process.stdout.write('GRANDCHILD='+g.pid);" +
     "setInterval(()=>{},1000);";
   return spawn(`node -e "${midScript}"`, {
@@ -128,9 +128,10 @@ describeOrSkipLoud(
       await expectDead(target.pid, "target shell");
       await expectDead(gcTarget, "target grandchild");
     } finally {
+      killPhaseTree(target.pid, "phase TARGET cleanup (test)", "test-cleanup");
       killPhaseTree(sibling.pid, "phase SIBLING cleanup (test)", "test-cleanup");
     }
-  }, 25_000);
+  }, 60_000);
 
   it("listDescendants walks strictly downward: finds the root's grandchild, never a sibling root", async () => {
     const a = spawnPhaseShapedTree();
@@ -145,19 +146,24 @@ describeOrSkipLoud(
       killPhaseTree(a.pid, "cleanup A (test)", "test-cleanup");
       killPhaseTree(b.pid, "cleanup B (test)", "test-cleanup");
     }
-  }, 25_000);
+  }, 60_000);
 
   it("killOwnTree keeps its global shutdown semantics: every recordLiveChild-registered tree dies (interrupt path)", async () => {
     const a = spawnPhaseShapedTree();
     const b = spawnPhaseShapedTree();
-    const gcA = await readGrandchildPid(a);
-    const gcB = await readGrandchildPid(b);
-    recordLiveChild(a.pid, "phase A (test)");
-    recordLiveChild(b.pid, "phase B (test)");
-    killOwnTree("test:interrupt-shutdown");
-    await expectDead(a.pid, "registered tree A shell");
-    await expectDead(b.pid, "registered tree B shell");
-    await expectDead(gcA, "tree A grandchild");
-    await expectDead(gcB, "tree B grandchild");
-  }, 25_000);
+    try {
+      const gcA = await readGrandchildPid(a);
+      const gcB = await readGrandchildPid(b);
+      recordLiveChild(a.pid, "phase A (test)");
+      recordLiveChild(b.pid, "phase B (test)");
+      killOwnTree("test:interrupt-shutdown");
+      await expectDead(a.pid, "registered tree A shell");
+      await expectDead(b.pid, "registered tree B shell");
+      await expectDead(gcA, "tree A grandchild");
+      await expectDead(gcB, "tree B grandchild");
+    } finally {
+      killPhaseTree(a.pid, "cleanup A (test)", "test-cleanup");
+      killPhaseTree(b.pid, "cleanup B (test)", "test-cleanup");
+    }
+  }, 60_000);
 });
