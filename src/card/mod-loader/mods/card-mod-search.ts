@@ -189,7 +189,7 @@ function rubyCqlContent(content: string | null): Record<string, unknown> {
  *  their junction names - the same reached-CTE shape the help mod's rule
  *  warm uses (a rule card reached by id has no name mark to seed name
  *  composition). */
-function searchCardsSidesStatement(searchTypeId: number): {
+export function searchCardsSidesStatement(searchTypeId: number): {
   sql: string;
   params: unknown[];
 } {

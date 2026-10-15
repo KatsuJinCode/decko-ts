@@ -147,7 +147,7 @@ export function ruleUniverseStatementBySetting(settingName: string): SQLStatemen
 
 /** The previous whole-deck top-down walk, kept for A/B measurement
  *  (DECKO_LEGACY_RULE_UNIVERSE=1). */
-function legacyRuleUniverseStatement(settingName: string): SQLStatement {
+export function legacyRuleUniverseStatement(settingName: string): SQLStatement {
   return {
     sql:
       `WITH RECURSIVE name_walk(id, composed) AS (\n` +

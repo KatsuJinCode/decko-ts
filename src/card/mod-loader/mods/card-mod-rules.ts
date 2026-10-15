@@ -1461,7 +1461,7 @@ const ruleBoardLinkView: ViewFn = (ctx) => {
  *  form returns the identical 4,779-id closure in 170 ms. Mirrored locally
  *  the IN form exceeded 60 s against 17.6 s for this one; see
  *  probe-reached-rules-walk-wire.ts (not in the public package). */
-function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
+export function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
   sql: string;
   params: unknown[];
 } {

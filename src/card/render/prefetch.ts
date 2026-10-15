@@ -411,22 +411,7 @@ export async function prefetchInclusionClosure(
   // larger than any render walks; past it the rounds fetch the rest.
   let nestIndexSlot = -1;
   if (ctx.skipClosureWalk !== true && rootRow.id > 0) {
-    preludeStatements.push({
-      sql:
-        `WITH RECURSIVE reach(id, via) AS (\n` +
-        `  SELECT ?, 'n'\n` +
-        `  UNION\n` +
-        `  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n` +
-        `   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n` +
-        `  UNION\n` +
-        `  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n` +
-        `  UNION\n` +
-        `  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n` +
-        `  LIMIT ${NEST_INDEX_LIMIT}\n` +
-        `)\n` +
-        `SELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0`,
-      params: [rootRow.id],
-    });
+    preludeStatements.push(nestIndexStatement(rootRow.id));
     nestIndexSlot = preludeStatements.length - 1;
   }
 
@@ -551,6 +536,28 @@ export async function prefetchInclusionClosure(
  *  queue, so also the rows it reads). Well above a rendered page's closure;
  *  a closure past it costs the per-level rounds for the remainder. */
 const NEST_INDEX_LIMIT = 2000;
+
+/** The stored nest index's closure statement for `rootId` (the prelude's
+ *  `reach` CTE; see the call site). Exported so the PostgreSQL conformance
+ *  tests can run this exact query shape against PGlite. */
+export function nestIndexStatement(rootId: number): SQLStatement {
+  return {
+    sql:
+      `WITH RECURSIVE reach(id, via) AS (\n` +
+      `  SELECT ?, 'n'\n` +
+      `  UNION\n` +
+      `  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n` +
+      `   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n` +
+      `  UNION\n` +
+      `  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n` +
+      `  UNION\n` +
+      `  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n` +
+      `  LIMIT ${NEST_INDEX_LIMIT}\n` +
+      `)\n` +
+      `SELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0`,
+    params: [rootId],
+  };
+}
 
 /** One closure round's asks, in the shapes driveClosure issues them. */
 interface ClosureRoundAsks {
