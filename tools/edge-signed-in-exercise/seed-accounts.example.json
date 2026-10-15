@@ -1,0 +1,24 @@
+{
+  "note": "The disposable accounts the local signed-in exercise creates in its LOCAL deck copy. Passwords are generated per run (random, 18 bytes, base64url) and written to <run dir>/credentials.json with mode 0600; they are never printed, logged, or stored here.",
+  "accounts": [
+    {
+      "name": "Harness Admin",
+      "key": "harness_admin",
+      "role": "administrator",
+      "email_pattern": "harness-admin-<4 random bytes, hex>@harness.invalid",
+      "how_created": "Person card (type `user`) + `+account` junction + `+email`, `+salt`, `+password`, `+status` fields; password hashed by the engine's own hashPassword (src/card/auth/password-hash.ts); role granted by a card_references row from the deck's existing `Administrator+*members` list to the holder card."
+    },
+    {
+      "name": "Harness Member",
+      "key": "harness_member",
+      "role": "none (signed in only, no role card)",
+      "email_pattern": "harness-member-<4 random bytes, hex>@harness.invalid",
+      "how_created": "Same row shape, with no role membership, so it is an ordinary signed-in account."
+    }
+  ],
+  "where": {
+    "deck": "<run dir>/deck.sqlite3 — a local copy of Brandon's deck rebuilt on the engine schema (tools/edge-signed-in-exercise/lib/build-local-deck.mjs). Never the Bunny database.",
+    "credentials": "<run dir>/credentials.json (mode 0600, inside tmp/, gitignored).",
+    "bunny": "The harness reads the live script's environment variables read-only (GET https://api.bunny.net/compute/script/96867) and never writes to Bunny. Only 127.0.0.1/localhost is driven; the live site is never touched."
+  }
+}
