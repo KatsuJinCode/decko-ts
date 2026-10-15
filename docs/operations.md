@@ -46,7 +46,7 @@ It reads its configuration from environment variables. Names only, no values:
 | --- | --- |
 | `DECKO_WRITE_PATH` | Arms the write path. |
 | `DECKO_FIRST_RUN` | Arms the first-run setup surface. |
-| `DECKO_SETUP_TOKEN` | The one-time token `/setup` requires. When unset, the server generates one at start and prints it to its console. |
+| `DECKO_SETUP_TOKEN` | An operator-chosen token `/setup` accepts. When unset, the Node server generates one at start and prints it to its console. A deploy-issued token (`npm run setup-token`) is accepted as well. |
 | `DECKO_COOKIE_SECURE` | `auto` (default: `Secure` on the session cookie when the client used https), `always`, or `never` for local http development. |
 | `DECKO_SIGNIN_THROTTLE`, `DECKO_SIGNIN_*`, `DECKO_SESSION_REVOCATION` | Sign-in hardening; see `docs/SECURITY.md`, divergence 4. |
 | `DECKO_ORIGIN` | Public origin used when building absolute links, for example reset tokens. |

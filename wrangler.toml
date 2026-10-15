@@ -144,9 +144,11 @@ migrations_dir = "deploy/migrations"
 #       and closes by itself once that account exists. It is NOT open to
 #       whoever arrives first: `npm run deploy` issues a one-time setup token,
 #       stores only its sha256 in D1 (deploy/migrations/0012) and prints the
-#       link `/setup?token=...` in the deploy output. Without that link /setup
-#       answers 403 (src/card/auth/setup-token.ts). `npm run setup-token` issues a
-#       fresh one.
+#       link `/setup?token=...` in the deploy output. Without a valid token
+#       /setup creates nothing and answers 403 (src/card/auth/setup-token.ts).
+#       `npm run setup-token` issues a fresh one. A token of your own, set as
+#       the secret DECKO_SETUP_TOKEN, is accepted as well; nothing needs
+#       setting for the printed link to work.
 #
 # Neither flag is a secret: they are plain [vars] values, and a fork of this
 # repo still carries nothing sensitive.

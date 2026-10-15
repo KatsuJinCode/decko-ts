@@ -69,7 +69,8 @@ interface Env {
   DECKO_FIRST_RUN?: string;
   /** "1" turns the card write path on. Both unset = the read-only deploy. */
   DECKO_WRITE_PATH?: string;
-  /** "off" opens /setup without the one-time deploy token. */
+  /** Optional operator-chosen first-run setup token (a secret), accepted
+   *  beside the deploy-issued one (src/card/auth/setup-token.ts). */
   DECKO_SETUP_TOKEN?: string;
   /** R2 binding: the deck's files (uploads and asset outputs). Optional: a
    *  deploy without it serves no files and refuses uploads by name. */
