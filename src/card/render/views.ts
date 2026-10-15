@@ -67,6 +67,8 @@ import {
 } from "./format.js";
 import { wrappedTitleInner } from "./format.js";
 import { quietRenderError } from "./format.js";
+import { virtualSearchCodenameResolverFor } from "./format.js";
+import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
 import { wantedHrefQuerySuffix } from "./format.js";
 import type { RenderCard, RenderEngineLike, SettingClassWithRules, ViewContext, ViewFn, Voo } from "./format.js";
 import {
@@ -5649,57 +5651,16 @@ function barDivHtml(ctx: ViewContext): string {
     "data-card-type-name": card.typeName,
     ...(hamlInHash ? { "data-slot-id": slotId } : {}),
   });
-  // bar.rb:66-73 bar_menu_items splits the two known-ness signals, and
-  // the capture pins them DIVERGING on one menu: the full-page link's
-  // class rides add_known_or_wanted_class (links.rb:139-143) ->
-  // Card.known?(name) = fetch(name).present? (states.rb:24-26) — and a
-  // star-right compound names a SET card (set_pattern/05_rstar.rb:15-17
-  // pattern_applies? = name.rstar?, no type requirement), so the fetch
-  // presents and the class is known-card even with no stored row; while
-  // the edit item's TEXT is `card.new? ? "create" : "edit"` (bar.rb:70,
-  // states.rb:70-74) — the INSTANCE card the nest built is still new, so
-  // the text stays "create". The capture pins exactly this mix on the
-  // Anonymous+*created rules bar: class known-card, text "create"
-  // (recapture-raw-shard-000029 Eagle:page). The engine's single
-  // `card.id === undefined` flag drove both; it drives the TEXT (and the
-  // handle_unknown query, path.rb:89-96 known_name?) while the CLASS
-  // takes the rstar carve-out. The genuinely-new simple-name bars (the
-  // phantom item menus) keep wanted/create — unaffected. The wiki-LINK
-  // path's Card.known? is the SAME class-level function and its
-  // [[Eagle+*members]] anchor is wanted-card in the capture — the class
-  // answer therefore lives ONLY here (the renderLinkChunk known arm
-  // stays warm-map + peek, view-fail V4).
-  // The carve-out is TWO-PART and LEFT-SPLIT (page42 change, $1,
-  // corpus-refined): a corpus-wide census of every full-page-link pin in
-  // expected-v2 (57,463 anchors, page+view surfaces) splits the 2-part
-  // star-right compounds by their LEFT part.
-  //   STAR-LEFT ("*all+*autoname", "*star+*default", ... - a rule-row name
-  //   "<set-marker>+<setting>"): the corpus pins the class by STORED-ROW
-  //   presence, 253/253 - the 82 known-pinned names all resolve present in
-  //   the staging corpus (*all+*create -> id 6551 family) and the 171
-  //   wanted-pinned names all resolve absent (*all+*autoname family). The
-  //   bb430e0e "fetch presents" reading is falsified for this subset: Ruby's
-  //   fetch presents no virtual card for a rule-row name without a stored
-  //   row, and the oracle pins wanted-card on those menus (recapture-raw-
-  //   shard-000000 *all:page first-diff 11074: exactly 8 wanted/known
-  //   regions, one per absent rule row, delta -8; the grade9-run4b page
-  //   entries *all/*star/*rstar/*all plus). The class therefore rides the
-  //   instance presence (card.id === undefined -> wanted), not the name
-  //   shape. The standing r16-rule-bar-and-stored-verdict-parity.test.ts
-  //   wanted-card pin (RED at 64572305 with the unsplit carve-out: 1 failed
-  //   | 3 passed) is the same pin.
-  //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): the corpus
-  //   pins known 97/97 - including five names whose staging rows are absent
-  //   (Anonymous+*created/-*edited, +*default, democracy+*referred to by,
-  //   another two-part set's +*self; the capture deck had those rows - a
-  //   seed family).
-  //   The known-class fiction stays on this subset ONLY, gated on that
-  //   seed landing (the parity-restore runbook's capture-derived creation
-  //   plan); a pure presence model here would flip the four currently-
-  //   passing entries List/Phrase/Eagle/democracy+tags.
-  // The LONGER star-right rule-row shape stays wanted via parts.length
-  // (Message+Conversation+*type plus right+*head, recapture-raw-shard-000017,
-  // delta +203 pre-fix) - unchanged.
+  // bar.rb:66-73 bar_menu_items splits two known-ness signals: the
+  // full-page link's class rides add_known_or_wanted_class (links.rb:
+  // 139-143) -> Card.known?(name) = fetch(name).present? (states.rb:24-26),
+  // while the edit item's TEXT is `card.new? ? "create" : "edit"` (bar.rb:
+  // 70, states.rb:70-74) on the instance the nest built. A virtual card
+  // fetch presents is therefore known-card with "create" text.
+  // The class follows Card.known?(name) alone: a stored row, or a virtual
+  // card fetch presents. No name shape decides it — a star-right compound
+  // without a stored row and without an applicable *structure rule is
+  // wanted, whatever its left part.
   // Card.known?(name) (states.rb:24-26) is fetch(name).present?, and fetch
   // returns VIRTUAL cards (states.rb:52-57: compound with an applicable
   // *structure rule) — an id-less compound under a structure rule is known
@@ -5707,20 +5668,32 @@ function barDivHtml(ctx: ViewContext): string {
   // A host-typed item phantom answers by name (hostTypedNameKnown): one
   // set's Tracked Item items render bar-view with a
   // wanted-card page link.
+  // Set modules that override virtual? to `new?` make a compound known with
+  // no stored row: the VirtualSearch family (card-mod-search
+  // set/abstract/virtual_search.rb:11-12, e.g. +*created) and the VirtualSet
+  // family (card-mod-rules set/abstract/virtual_set.rb:1-3, included by
+  // set/right/{self,right,type,type_plus_right}.rb). Both match the right
+  // part by codename, as Ruby's Right pattern does.
+  const codenameKey = virtualSearchCodenameResolverFor(fmt.engine);
+  const rightKey = card.name.rightName?.key;
+  const virtualSetRight =
+    rightKey !== undefined &&
+    VIRTUAL_SET_RIGHT_CODENAMES.some((codename) =>
+      (codenameKey !== undefined ? codenameKey(codename) : `*${codename}`) === rightKey,
+    );
   const virtualKnown =
     card.id === undefined &&
     card.name.isCompound &&
     (card.hostTyped === true
       ? hostTypedNameKnown(fmt, card)
-      : fmt.engine.phantomVirtualStructure?.(card.name, card.typeName, card.typeId) !== undefined);
+      : fmt.engine.phantomVirtualStructure?.(card.name, card.typeName, card.typeId) !== undefined ||
+        virtualSearchCqlFor(card.name, codenameKey) !== undefined ||
+        virtualSetRight);
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,
     card.name.s,
-    virtualKnown ||
-      (card.name.isRStar &&
-        card.name.parts.length === 2 &&
-        !(card.name.left ?? "").startsWith("*")),
+    virtualKnown,
   );
   return (
     `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${hamlInHash ? "" : ` data-slot-id="${slotId}"`}>\n` +
@@ -5729,6 +5702,10 @@ function barDivHtml(ctx: ViewContext): string {
     `</div>\n`
   );
 }
+
+/** The right codenames whose set modules include Abstract::VirtualSet
+ *  (card-mod-rules set/right/{self,right,type,type_plus_right}.rb). */
+const VIRTUAL_SET_RIGHT_CODENAMES = ["self", "right", "type", "type_plus_right"] as const;
 
 /** bar.haml + bar_menu.haml, byte-shaped: prepare_bar (bar.rb:80-91) then
  *  build_bar. */
@@ -5757,11 +5734,10 @@ function itemBarHtml(ctx: ViewContext): string {
  *  query on wanted bars (page-mechanism-census mechanism 4: 22 pages, 429
  *  regions, oracle `/X?card%5Bname%5D=Y` vs engine bare `/X`). */
 function itemBarMenuHtml(url: string, isNew = false, name = "", classRStarKnown = false): string {
-  // classRStarKnown: the bar card's name is a star-right compound — the
-  // class-level Card.known?(name) answers true for it (the RSTAR set
-  // fetch presents; see the caller's citation), so the full-page link's
-  // class and the handle_unknown query take the known arm while the edit
-  // text stays on the instance new? (`isNew`).
+  // classRStarKnown: the class-level Card.known?(name) answer for a new
+  // instance (a virtual card fetch presents; see the caller's citation), so
+  // the full-page link's class and the handle_unknown query take the known
+  // arm while the edit text stays on the instance new? (`isNew`).
   const known = isNew ? classRStarKnown : true;
   const query =
     !known && name !== "" && url !== name.replace(/ /g, "_")
