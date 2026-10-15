@@ -1,10 +1,10 @@
 {
   "format": "decko-reference-fixture-manifest/1",
   "fixture": "synthetic-v2-mod-probes",
-  "digest": "4c2357f0591e3ed9bedbb6385ef1c50a7af2c98704e58b25592eb2d72eb57a4d",
+  "digest": "fb7296c13e52ff152e06854161541931178d8abf1342b02a63e26955c0c37efc",
   "files": {
-    "deck.json": "4fe9c76756fc899f03366504776a4327a7d2f88cc95c1d1256fb49d29665aa3b",
-    "deck/deck.sqlite3": "40b48126ea905836a9d8fcb9fe5a478a3467bf688b37b0587001f9f322ccd6e1",
+    "deck.json": "1009860a4b7abab987fc38887a473fb8eef54f4f8b128e5ee3b17c959feca6db",
+    "deck/deck.sqlite3": "8075f25e2cd2cd99e1a6ba1d2129daba561654dab1f9565d262924db43f9c3ec",
     "deck/files/307/1789819200.js": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865",
     "deck/files/447/1789819200.css": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb",
     "deck/files/904/989.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",
@@ -15,9 +15,9 @@
     "files/report-2.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
     "files/report-3.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
     "files/report-4.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
-    "ops/probes.json": "958ca6c4a194cc7b6de3c527cc601cb40f3d18a8d92cf6ad7430bac6cb902724",
-    "ops/render.jsonl": "5f7bfffbee932fd808e63ebc10e99afdefeef23c98a33fd39405ab29efa655a7",
-    "ops/scenarios.json": "a317a9d1393704599721ffcdc3f9eeed907e2acc252cb82ecb4719f7490762ab",
+    "ops/probes.json": "384ac70b0704a56797bfca049cbf9a0c0f1c56d0257946c4999b352aa810f993",
+    "ops/render.jsonl": "16ce11ac7f7dfc24d02293796a1d61c092b480d71d82d65c5f055065c64255d1",
+    "ops/scenarios.json": "047cb12a444cb1b059b701e75718863d333d157e2ae2c6305b06effdfbf78605",
     "ops/semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }

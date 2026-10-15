@@ -407,7 +407,10 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map(), 
       const differs = all.filter((o) => o.result === "differs");
       entry.evidence = differs.length ? "graded-differs" : "graded-identical";
       entry.ops = all.map((o) => o.id);
-      if (differs.length) entry.differing_ops = differs.map((o) => o.id);
+      if (differs.length) {
+        entry.differing_ops = differs.map((o) => o.id);
+        if (probeOk && probeView.evidence === "graded-differs") entry.first_difference = probes.diffs?.[probeView.op] ?? null;
+      }
       return entry;
     }
     const pins = pinnedTests.filter((t) => namesLiteral(t.src, v.view));
@@ -432,7 +435,10 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map(), 
         entry.when = probe.when ?? null;
         entry.source = probe.file;
         if (probe.steps) entry.steps = probe.steps;
-        if (probe.differing_steps) entry.differing_steps = probe.differing_steps;
+        if (probe.differing_steps) {
+          entry.differing_steps = probe.differing_steps;
+          entry.first_difference = probes?.diffs?.[probe.differing_steps[0]] ?? null;
+        }
       }
       if (probe.reason) entry.reason = probe.reason;
       if (named.length) entry.tests = named.map((t) => t.rel);
@@ -504,6 +510,7 @@ export function rowProfile(step) {
   return profile;
 }
 
+const failedIdIsProbe = (id) => /^(probe-view:|mod-event-probes#)/.test(id);
 const sameProfile = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // Reduce the probe fixture's grade report (reference-harness/runner/grade.mjs
@@ -573,6 +580,21 @@ export function summariseProbes(repo, gradeReport, probes) {
     };
   }
   const rendered = new Set([...(gradeReport.failures?.rendering ?? []).map((f) => f.id)]);
+  // The first difference of every failing probe operation, for the report:
+  // the byte offset and a short window of the oracle's and the port's answer
+  // (or the grader's reason where there is no answer to compare).
+  const diffs = {};
+  const short = (x) => String(x ?? "").replaceAll("\n", "\\n").slice(0, 160);
+  for (const f of [...(gradeReport.failures?.rendering ?? []), ...(gradeReport.failures?.persistence ?? []), ...(gradeReport.failures?.side_effects ?? [])]) {
+    if (!failedIdIsProbe(f.id)) continue;
+    if (diffs[f.id]) continue;
+    const d = f.diff;
+    diffs[f.id] = d
+      ? `byte ${d.at}: oracle ${JSON.stringify(short(d.expected))} | port ${JSON.stringify(short(d.actual))}`
+      : f.differences?.[0]
+        ? `${f.differences[0].path}: oracle ${JSON.stringify(short(JSON.stringify(f.differences[0].expected ?? "")))} | port ${JSON.stringify(short(JSON.stringify(f.differences[0].actual ?? "")))}`
+        : f.reason;
+  }
   const views = {};
   for (const p of probes.render.plan) {
     if (p.status !== "planned") {
@@ -582,6 +604,7 @@ export function summariseProbes(repo, gradeReport, probes) {
     views[p.decl] = { evidence: rendered.has(p.op) ? "graded-differs" : "graded-identical", op: p.op, card: p.card };
   }
   return {
+    diffs,
     fixture: "synthetic-v2-mod-probes",
     adapter_commit: gradeReport.adapter_checkout?.commit ?? null,
     adapter_dirty: gradeReport.adapter_checkout?.dirty ?? null,
