@@ -1,6 +1,7 @@
-// Byte-parity tests for the libsass adapter: the engine's compiled css must
-// match the bytes libsass 3.6.4 emits (the deck's SassC render), not merely
-// be semantically equivalent.
+// Byte-parity tests for the SCSS compile seam: the engine's compiled css must
+// match the bytes the deck's SassC render emits (LibSass 3.6.4), not merely
+// be semantically equivalent. The seam runs the real LibSass program
+// (tools/libsass), so these tests exercise that program directly.
 //
 // Ground truth, all measured against the REAL engines:
 // - the unit expectations below are libsass 3.6.4 renders (sassc-2.4.0 gem,
@@ -8,14 +9,17 @@
 // - the corpus sweep compares the full oracle fixture
 //   fixtures/captured/compile-engines.json (captured in the live decko
 //   0.20.0 oracle app) against our pipeline output for EVERY sass pin in
-//   BOTH styles;
-// - dart-vs-libsass divergence mechanics are documented in
-//   src/card/mod-loader/libsass-byte-parity-adapter.ts.
+//   BOTH styles.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { ensureLibsassProgram } from "../../../tests/support/libsass-program.js";
 import { sasscRender } from "../../../src/card/mod-loader/sassc-coffeescript-compile-engines.js";
+
+beforeAll(() => {
+  ensureLibsassProgram();
+}, 600_000);
 
 /** [label, source, style, the exact bytes libsass 3.6.4 emits] */
 const UNIT_PINS: Array<[string, string, "compressed" | "expanded", string]> = [
@@ -111,7 +115,7 @@ const UNIT_PINS: Array<[string, string, "compressed" | "expanded", string]> = [
   ],
 ];
 
-describe("libsass byte-parity adapter - oracle-measured unit pins", () => {
+describe("SCSS compile seam (LibSass) - oracle-measured unit pins", () => {
   for (const [label, source, style, expected] of UNIT_PINS) {
     it(`${label} [${style}]`, () => {
       expect(sasscRender(source, style)).toBe(expected);
@@ -119,7 +123,7 @@ describe("libsass byte-parity adapter - oracle-measured unit pins", () => {
   }
 });
 
-describe("libsass byte-parity adapter - full oracle corpus sweep", () => {
+describe("SCSS compile seam (LibSass) - full oracle corpus sweep", () => {
   const FIXTURE = JSON.parse(
     readFileSync(
       fileURLToPath(new URL("../../../fixtures/captured/compile-engines.json", import.meta.url)),
