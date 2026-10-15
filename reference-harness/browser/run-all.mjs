@@ -186,31 +186,27 @@ function writeSummary(file) {
     encoding: "utf8",
     windowsHide: true,
   }).stdout?.trim();
-  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md). Ruby
-  // 3.4 changed Hash#inspect from {"k"=>v} to {"k" => v}, and Rails' debug
-  // exceptions page prints the request parameters with it.
+  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md).
   const runtimeNote =
     rubyVersion && !rubyVersion.startsWith("3.3.")
       ? [
           "",
           `The reference ran on Ruby ${rubyVersion}; the declared oracle runtime is Ruby 3.3`,
-          "(`docs/parity-method.md`). Ruby 3.4 changed `Hash#inspect` from `{\"k\"=>v}` to",
-          "`{\"k\" => v}`, and the debug-exceptions page that stock Decko shows for a keyword",
-          "search on SQLite prints the request parameters with it. The port writes the",
-          "Ruby 3.3 shape, so on a newer Ruby those observations differ in that line.",
+          "(`docs/parity-method.md`).",
         ]
       : [];
-  // What the port serves for that page, stated so a pass on it is not read
-  // as the port's own rendering. Open for a ruling by the release lead.
-  const debugPageNote = [
+  // How an unhandled exception is answered on each side, so the
+  // keyword-search pages are read correctly.
+  const errorPageNote = [
     "",
-    "Open question for the release lead: the port's debug-exceptions page (the",
-    "three keyword-search journeys in the table below) is not rendered by the port's own",
-    "view code. The Node host fills a copy of the page Ruby recorded",
-    "(`reference-harness/browser/templates/rails-debug-exceptions.html`) with the",
-    "request parameters in Ruby's inspect shape and the port's own V8 stack frames,",
-    "and the comparison collapses the stack-frame region on both sides (N6). No",
-    "other journey reaches that page.",
+    "Error pages: both sides answer an unhandled exception the way a deployed",
+    "site does. The Ruby server runs with Decko's production error handling",
+    "(`rescue_all_in_controller` on, `consider_all_requests_local` off, as",
+    "`tools/parity-side-effects/ruby/drive.rb` sets them), so a plain keyword",
+    "search on SQLite (the `match` raise in card's ActiveRecord patch) answers",
+    "Decko's `:server_error` view under the page layout, status 500. The port's",
+    "Node host renders that page through the engine with `:server_error` as the",
+    "root view. No recorded page is copied and no comparison rule applies to it.",
   ];
   const extra = Object.entries(args)
     .filter(([k]) => !["out", "summary", "report-only"].includes(k))
@@ -239,7 +235,7 @@ function writeSummary(file) {
     `- Comparison: ${report.journeys.pass} / ${report.journeys.graded} graded journeys pass` +
       ` (${report.journeys.total - report.journeys.graded} not graded: a journey that fails on the reference is not graded)`,
     ...runtimeNote,
-    ...debugPageNote,
+    ...errorPageNote,
     "",
     "Per graded item:",
     "",

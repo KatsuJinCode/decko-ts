@@ -313,16 +313,13 @@ observations are in the same canonical form before anything is compared:
 5. **B5.** The URL is compared as path and query, decoded, without the host;
    the server's own address inside text becomes `<origin>`.
 
-`compare-journeys.mjs` then applies exactly two more forms, both borrowed
-rather than renumbered:
+`compare-journeys.mjs` then applies exactly one more form, borrowed rather
+than renumbered:
 
 - **`stable`** from `runner/normalize.mjs` — the harness's **N2**: JSON object
   key order never counts and array order always does, and the per-journey
   server port in an absolute URL the deck itself builds is compared as
   `127.0.0.1:PORT`.
-- **`canonicalizeDebugPage`** — the harness's **N6** at journey grade: a
-  debug-exceptions page's backtrace frames collapse to one marker line, and
-  the frame count is recorded rather than compared.
 
 ### 4.2 The corpus instrument's rules (`N1`-`N8`)
 

@@ -180,7 +180,7 @@ import {
 // host seam — a full-page read of a known card stores its own URL, and the
 // write path's `*previous` / configure_successful_deletion redirects resolve
 // to the last entry.
-import { emptyVisitorSession, pageViewCookie, readVisitorSession, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
+import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
 // The recaptcha seat's host-config source: reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -2436,57 +2436,6 @@ async function resolveDefaultLayout() {
   };
 }
 
-// The reproduced-upstream keyword-search failure's serving surface: the
-// Rails debug-exceptions page (actionpack's DebugExceptions middleware
-// response, development mode), status 500. The template derives from the
-// Ruby oracle's own captured bytes for this exact failure (the SQLite
-// match raise — active_record.rb:80-83 raising the uninterpolated
-// lib_exception_not_implemented i18n string); the dynamic slots carry the
-// port's own host identity: Rails.root (the port's oracle app root), the
-// stack frames (the port's V8 throw-path stack — the N6 instrument
-// canonicalizes the frame lines and records the frame COUNT as the
-// declared residual: Ruby's boot-inclusive backtraces run 40-168 frames,
-// the engine's V8 throw-path 8-10), the request parameters (the live
-// request's params hash in Ruby's inspect shape), and the session/env
-// dumps (the visitor session's history and the request headers).
-const DEBUG_EXCEPTIONS_TEMPLATE_PATH = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "reference-harness", "browser", "templates", "rails-debug-exceptions.html",
-);
-let debugExceptionsTemplate;
-function htmlEscapeRuby(s) {
-  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-async function renderDebugExceptionsPage(error, { requestUrl, paramsJson, historyEntries, sessionToken, headers }) {
-  try {
-    debugExceptionsTemplate ??= await fs.readFile(DEBUG_EXCEPTIONS_TEMPLATE_PATH, "utf8");
-  } catch {
-    debugExceptionsTemplate = undefined;
-  }
-  if (debugExceptionsTemplate === undefined) return undefined;
-  const stackLines = (error.stack ?? "")
-    .split("\n")
-    .slice(1)
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("at "))
-    .map((line) => `      <a class="trace-frames trace-frames-0" data-exception-object="null" href="#">${htmlEscapeRuby(line)}</a>`);
-  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "reference-harness", "oracle", "app");
-  const sessionDump = [
-    `history: [${(historyEntries ?? []).map((u) => JSON.stringify(u)).join(", ")}]`,
-    `session_id: ${JSON.stringify(sessionToken ?? "")}`,
-  ].join(" ");
-  const envDump = Object.entries(headers ?? {})
-    .filter(([k]) => /^http_|remote_addr|server_name|server_protocol/i.test(k))
-    .map(([k, v]) => `${k.toUpperCase().replaceAll("-", "_")}: ${JSON.stringify(String(v))}`)
-    .join("\n");
-  return debugExceptionsTemplate
-    .replaceAll("{{ROOT}}", root.replaceAll("\\", "/"))
-    .replaceAll("{{FRAMES}}", stackLines.join("\n"))
-    .replaceAll("{{PARAMS_JSON}}", paramsJson)
-    .replaceAll("{{SESSION_DUMP}}", htmlEscapeRuby(sessionDump))
-    .replaceAll("{{ENV_DUMP}}", htmlEscapeRuby(envDump));
-}
-
 // Build and return one of the two served error shapes. Any failure inside the
 // builder falls back to the previous minimal stubs so the server's error
 // path can never 500 a second time into the handler.
@@ -2767,23 +2716,34 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         "Error (unsupported view)",
       );
     }
-    if (error instanceof Error && error.name === "UpstreamSqliteMatchError") {
-      // The reproduced-upstream keyword-search failure (the SQLite match
-      // raise — active_record.rb:80-83): the search card's render escapes
-      // rescuing_bad_query (RuntimeError is not BadQuery) and the
-      // controller's debug-exceptions middleware answers the Rails debug
-      // page, status 500 — the recorded oracle bytes for every
-      // plain-keyword search on this deck. The request info rides for the
-      // page's Request/Session/Env sections.
-      if (typeof renderDebugExceptionsPage === "function" && pageOpts.debugRequestInfo !== undefined) {
-        const debugBody = await renderDebugExceptionsPage(error, pageOpts.debugRequestInfo);
-        if (debugBody !== undefined) {
-          return {
-            status: 500,
-            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
-            body: debugBody,
-          };
-        }
+    if (STOCK_DECK && !pageOpts.bare && error instanceof Error && error.name === "UpstreamSqliteMatchError") {
+      // The keyword-search raise on SQLite (card's AbstractAdapter#match,
+      // config/initializers/02_patches/active_record.rb:80-83) escapes the
+      // search card's rescuing_bad_query. A deployed site runs with
+      // rescue_all_in_controller on, so CardController#handle_exception
+      // (decko lib/card_controller/errors.rb) reports it as a
+      // Card::Error::ServerError and shows that class's view under the
+      // card's page layout: `show :server_error, 500` (card/error.rb:46-55,
+      // *debugger off). The engine renders that page itself, the same
+      // show_with_page_layout path as every other page, with :server_error
+      // as the root view. The request's query params are not passed: the
+      // engine's page prepare would evaluate the search with them and raise
+      // again, while Ruby's :server_error view never runs the query.
+      try {
+        const { html } = await renderPageWithStatus(renderEngine, cardName, "server_error", {});
+        return {
+          status: 500,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Connection": "close",
+            "Keep-Alive": "timeout=0",
+          },
+          body: applyServedEnvironmentDeltas(html),
+        };
+      } catch (pageError) {
+        const pageMessage = pageError instanceof Error ? pageError.message : String(pageError);
+        console.error(`[vm-staging] server_error page render failed for ${cardName}: ${pageMessage}`);
       }
     }
     if (/^card not found: /.test(message)) {
@@ -3667,33 +3627,9 @@ const server = http.createServer(async (req, res) => {
     const m = /^slot\[(.+)\]$/.exec(key);
     if (m && m[1] !== "layout") slotParams[m[1]] = value;
   }
-  // The debug-exceptions page's Request/Session sections (the reproduced
-  // upstream keyword-search 500's recorded shape): the live request's
-  // params hash (Ruby inspect shape), the visitor session's history, and
-  // the request headers. Built once per request; consumed only by the
-  // match-raise surface.
-  const debugRequestInfo = (() => {
-    const parts = [];
-    if (url.searchParams.has("utf8")) parts.push('"utf8"=&gt;"✓"');
-    const queryHashPairs = [];
-    for (const [key, value] of url.searchParams) {
-      const m = /^query\[(\w+)\]$/.exec(key);
-      if (m) queryHashPairs.push(`"${m[1]}"=&gt;${JSON.stringify(value)}`);
-    }
-    if (queryHashPairs.length > 0) parts.push(`"query"=&gt;{${queryHashPairs.join(", ")}}`);
-    if (pathname.length > 1) parts.push(`"mark"=&gt;${JSON.stringify(pathname.slice(1))}`);
-    const visit = readVisitorSession(req.headers.cookie);
-    return {
-      paramsJson: `{${parts.join(", ")}}`,
-      historyEntries: visit.history ?? [],
-      sessionToken: req.headers.cookie?.match(/_[^_]*session=([^;]+)/)?.[1] ?? "",
-      headers: req.headers,
-    };
-  })();
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
     slotParams,
-    debugRequestInfo,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,

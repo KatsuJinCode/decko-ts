@@ -35,6 +35,32 @@ Card::Auth.instance_variable_set(:@needs_setup, false)
 Card::Auth::Token.send(:remove_const, :SECRET_KEY)
 Card::Auth::Token.const_set(:SECRET_KEY, "browser-scenarios-fixture-secret")
 
+# Production error handling, as a deployed site answers an unhandled
+# exception (the same two settings tools/parity-side-effects/ruby/drive.rb
+# applies, with the same guards):
+#
+#   rescue_all_in_controller  decko-0.20.0's production environment sets it
+#     true (the Railtie default and development leave it false). CardController
+#     then rescues StandardError and shows the error view for the exception's
+#     class (card_controller/errors.rb handle_exception): for a server error,
+#     card-mod-format's :server_error under the page layout, status 500.
+#   consider_all_requests_local  card-1.110.0's production environment sets
+#     it false, so nothing that escapes the controller reaches Rails' developer
+#     exception page (DebugExceptions checks show_detailed_exceptions).
+#
+# CardController registered its rescue handlers when its class body ran at
+# boot, under the development default, so the registration is repeated here.
+Cardio.config.rescue_all_in_controller = true
+Cardio.config.consider_all_requests_local = false
+CardController.rescue_from_class StandardError
+unless CardController.rescue_handlers.any? { |name, _handler| name == "StandardError" }
+  raise "rescue_all_in_controller did not take: StandardError is not rescued"
+end
+unless Cardio.application.env_config["action_dispatch.show_detailed_exceptions"] == false
+  raise "consider_all_requests_local did not take: " \
+        "show_detailed_exceptions is #{Cardio.application.env_config['action_dispatch.show_detailed_exceptions'].inspect}"
+end
+
 # Mail sent by any request thread lands in one shared list.
 MAIL = []
 MAIL_LOCK = Mutex.new
