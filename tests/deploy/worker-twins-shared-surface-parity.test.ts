@@ -294,24 +294,49 @@ describe("worker twins — shared read surface parity", () => {
     expect(deploy.status).toBe(200);
   });
 
-  it("history views ride verbatim on BOTH twins: 422 with the view named (no mod registry on either twin)", async () => {
-    // Neither worker entry loads the card-mod-history mod, so the history
-    // views raise UnsupportedViewError on BOTH — and both must answer the
-    // same UserError shape (error.rb:21) with the verbatim view. The
-    // act_id/params pass-through itself is unified in code
-    // (worker-shared-surface.ts historyViewParams, consumed by both
-    // handlers); its rendered effect is engine-side territory (the
-    // mod-loaded history pins under tests/card/), because the twins share
-    // this unloaded-mod limitation.
+  it("GET /:mark/act?act_id=<id> renders THAT act on BOTH twins (views.rb:11-13, act_listing.rb:9-12)", async () => {
+    // Ruby 0.20: `view :act` is `act_listing act_from_context`
+    // (card-mod-history-0.20.0 set/all/history/views.rb:11-13), and
+    // act_from_context returns `Act.find(params["act_id"])` when the param is
+    // present (act_listing.rb:9-12). Act.find is an unscoped primary-key
+    // lookup, so act 1 resolves and the act accordion renders: the
+    // AbsoluteActRenderer's `accordion_item` (act_renderer.rb:61-63 `render`),
+    // titled with the act's card (Home) and carrying the act's collapse id
+    // `act-id-1`. The view has no perms directive (views.rb:1-65), so the act
+    // renders wherever the card is readable.
+    //
+    // The act is a real one: a create action on Home (card 10), the row shape
+    // card-mod-history's writer produces (see the bunny seam pin's fixture).
     await driver!.query(
       "INSERT INTO card_acts (card_id, actor_id, acted_at) VALUES (10, 1, '2026-09-21 00:00:00')",
       [],
     );
+    await driver!.query(
+      "INSERT INTO card_actions (card_id, card_act_id, action_type, draft) VALUES (10, 1, 0, 0)",
+      [],
+    );
     const root = await getRoot("/Home/act?act_id=1");
     const deploy = await getDeploy("/Home/act?act_id=1");
-    expect(root.status).toBe(422);
-    expect(deploy.status).toBe(422);
-    expect(await root.text()).toContain("act");
-    expect(await deploy.text()).toContain("act");
+    expect(root.status).toBe(200);
+    expect(deploy.status).toBe(200);
+    const rootHtml = await root.text();
+    const deployHtml = await deploy.text();
+    for (const html of [rootHtml, deployHtml]) {
+      expect(html).toContain("id='act-id-1'");
+      expect(html).toContain("Home");
+      expect(html).not.toContain("Render error");
+    }
+  });
+
+  it("GET /:mark/act?act_id=<id> for an act that does not exist answers 404 on BOTH twins (act_listing.rb:12, error.rb:88-91)", async () => {
+    // act_listing.rb:12 `Act.find(act_id) || raise(Card::NotFound, "act not found")`
+    // Card::NotFound is a UserError with status_code 404 and the :not_found
+    // view (error.rb:88-91) — the same NotFound family a missing card maps to.
+    const root = await getRoot("/Home/act?act_id=999999");
+    const deploy = await getDeploy("/Home/act?act_id=999999");
+    expect(root.status).toBe(404);
+    expect(deploy.status).toBe(404);
+    expect(await root.text()).toContain("<h1>Card not found</h1>");
+    expect(await deploy.text()).toContain("<h1>Card not found</h1>");
   });
 });

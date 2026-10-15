@@ -8745,9 +8745,34 @@ export class RenderEngine implements RenderEngineLike {
             withDrafts: true,
           });
 
+    // act_from_context's Act.find (act_listing.rb:12) is an UNSCOPED
+    // primary-key lookup - unlike history_acts (act.rb:46-59) it never passes
+    // through the card's history_card_ids closure or the viewable filter.
+    // So when `?act_id=` names an act, resolve it here by id and load it
+    // through the SAME rows pipeline below (its actions, changes, cards,
+    // bootswatch warm), so actById finds it whether or not it is in the
+    // rendered card's history list. `requestedAct` stays undefined when the
+    // id does not exist: actFromContext then raises the act-not-found
+    // NotFound, exactly as `Act.find(...) || raise` does.
+    let requestedAct: HistoryActRow | undefined;
+    const requestedActId = params.actId;
+    if (requestedActId !== undefined && /^\d+$/.test(requestedActId)) {
+      const wantedId = Number(requestedActId);
+      const fromHistory = rawActs.find((a) => a.id === wantedId);
+      requestedAct =
+        fromHistory ??
+        (await driver.query<HistoryActRow>("SELECT * FROM card_acts WHERE id = ?", [wantedId]))
+          .rows[0];
+    }
+
     // The acts' actions + changes (one IN-list SELECT per table - the same
-    // rows Act#actions and Action#all_changes read, batched).
-    const actIds = rawActs.map((a) => a.id);
+    // rows Act#actions and Action#all_changes read, batched). The requested
+    // act joins the id list so its own actions load with the rest.
+    const loadedActIds = rawActs.map((a) => a.id);
+    if (requestedAct !== undefined && !loadedActIds.includes(requestedAct.id)) {
+      loadedActIds.push(requestedAct.id);
+    }
+    const actIds = loadedActIds;
     const actions =
       actIds.length === 0
         ? ([] as HistoryActionRow[])
@@ -8788,6 +8813,14 @@ export class RenderEngine implements RenderEngineLike {
     for (const action of actions) if (action.card_id !== null) involvedCardIds.add(Number(action.card_id));
     for (const act of rawActs) if (act.card_id !== null) involvedCardIds.add(Number(act.card_id));
     for (const act of rawActs) involvedCardIds.add(Number(act.actor_id));
+    // The act the `?act_id=` requested (Act.find is unscoped, so it may sit
+    // outside history_acts): its primary card and actor are read by the
+    // renderer - actView's title is @act_card.name and the subtitle links
+    // @act.actor (act_renderer.rb:46-49, :62).
+    if (requestedAct !== undefined) {
+      if (requestedAct.card_id !== null) involvedCardIds.add(Number(requestedAct.card_id));
+      involvedCardIds.add(Number(requestedAct.actor_id));
+    }
     // The card's creator: the board's :creator_credit (history_board.rb:2-8)
     // names it, and nothing else on these views may have read it.
     if (rootCard.record.creatorId !== undefined) involvedCardIds.add(Number(rootCard.record.creatorId));
@@ -8912,6 +8945,7 @@ export class RenderEngine implements RenderEngineLike {
       cardLastAct,
       cardLastAction,
       rootHistoryIds,
+      requestedAct,
     });
   }
 
@@ -8936,6 +8970,10 @@ export class RenderEngine implements RenderEngineLike {
       cardLastAct: HistoryActRow | undefined;
       cardLastAction: HistoryActionRow | undefined;
       rootHistoryIds: Set<number> | undefined;
+      /** Act.find's act for `?act_id=` (act_listing.rb:12), outside the
+       *  listing filters. Undefined when no act_id was requested or it
+       *  names no row. */
+      requestedAct: HistoryActRow | undefined;
     },
   ): Promise<HistoryRenderReader> {
     const cardId = rootCard.id;
@@ -8950,6 +8988,7 @@ export class RenderEngine implements RenderEngineLike {
       cardLastAct,
       cardLastAction,
       rootHistoryIds,
+      requestedAct,
     } = loaded;
     // Act#actions (act.rb:88-92, id order) — the fold both sources read.
     const actionsByActRaw = new Map<number, HistoryActionRow[]>();
@@ -8965,7 +9004,15 @@ export class RenderEngine implements RenderEngineLike {
         (a) => a.card_id !== null && this.deniedVerdicts.get(Number(a.card_id)) !== true,
       ),
     );
+    // Act.find (act_listing.rb:12) is the requested act's lookup, and it is
+    // indexed BY ID, so the listing filter above does not bound it: the
+    // map below carries the requested act even when none of its actions is
+    // viewable (its actions then drop out at approved_actions, as Ruby's
+    // act_renderer.rb:91-94 does).
     const actByIdMap = new Map<number, HistoryActRow>(acts.map((a) => [a.id, a]));
+    if (requestedAct !== undefined && !actByIdMap.has(requestedAct.id)) {
+      actByIdMap.set(requestedAct.id, requestedAct);
+    }
     const actionByIdMap = new Map<number, HistoryActionRow>(actions.map((a) => [a.id, a]));
     const changesByAction = new Map<number, HistoryChangeRow[]>();
     for (const change of changeRows) {
