@@ -33,10 +33,16 @@ OPTIONS
   --source <path>     deck sqlite file (REQUIRED for --execute; the browser
                       cannot pass a server path — the payload records the
                       file's name + sha256 + size for identity instead)
-  --bundle <path>     use a prebuilt bundle artifact instead of building from
-                      this tree: deploy/dist/bunny-edge-engine.code.json
+  --bundle <path>     the full engine's bundle, instead of building from this
+                      tree: deploy/dist/bunny-edge-engine.code.json
                       ({"Code":...}) or a raw bundle .js. Recorded (path +
                       sha256) in the result sidecar.
+  --read-bundle <path> the read front's bundle (deploy/dist/bunny-edge-read.code.json
+                      or raw .js); goes with --bundle, both or neither.
+  --served <path>     JSON object of "DECKO_NAME": "value" served variables, set
+                      on both scripts. Each value must be 2048 bytes or less
+                      (Bunny's per-variable limit); a longer one is refused in
+                      the plan, before any account write.
   --allow-write-path  required to arm payload.edge.write_path (the edge write
                       surface). The one-key path provisions a READ-ONLY deck.
   --protect <names>   comma-separated resource names to refuse in any mode,
@@ -51,6 +57,7 @@ WILL REFUSE (exit 2, "--"-marked reason)
   - --execute without the confirmation flag; --teardown without --yes and
     the exact name; write_path payload without --allow-write-path
   - --execute when a script/database of the same name already exists
+  - a served value over 2048 bytes, or a served name the runner sets itself
 
 RECOVERY ARTIFACT
   <payload>.result.json (written by --execute next to the payload) records

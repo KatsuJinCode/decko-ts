@@ -61,7 +61,11 @@ import {
   filesLeafVariant,
   filesNotFoundBody,
 } from "./bunny-edge-page-shell.js";
-import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
+import {
+  EMPTY_SERVED_DELTAS,
+  type ServedBootOptions,
+  type ServedEnvironmentDeltas,
+} from "./bunny-edge-served-deltas.js";
 import {
   EDGE_ERROR_PAGE_GRACE_MS,
   noRouteNotFoundResponse,
@@ -132,6 +136,10 @@ export interface EngineRequestOptions {
   anonymous?: boolean;
   /** The edge env's DECKO_LIVE_RENDER ("0" turns the live render off). */
   liveRenderFlag?: string;
+  /** The deployment's served-deltas boot options (servedBootOptionsFromEnv).
+   *  The live render boots its own engines over the request store, so it
+   *  must boot with the same configuration the isolate's deck does. */
+  servedBootOptions?: ServedBootOptions;
 }
 
 /**
@@ -662,7 +670,7 @@ async function dispatchEngineRequest(
     const historyParams = historyRenderParamsFromWire(parsed.params);
     const renderLive = async () =>
       (
-        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
+        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver, options?.servedBootOptions ?? {}), {
           requestedView: pageView,
           historyParams,
           signal,

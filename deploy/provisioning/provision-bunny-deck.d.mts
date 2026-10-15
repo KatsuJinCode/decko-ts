@@ -28,6 +28,7 @@ export const REFUSAL: {
   SOURCE_WRONG_SHAPE: "--source-wrong-shape";
   WRITE_PATH_UNALLOWED: "--write-path-not-allowed";
   RESOURCE_EXISTS: "--resource-already-exists";
+  SERVED_INVALID: "--served-variables-invalid";
 };
 
 export class ProvisionRefusal extends Error {
@@ -58,6 +59,8 @@ export interface ProvisionPayload {
     primary_region: string;
     replica_regions: string[];
     db_token_authorization: "full-access" | "read-only";
+    read_script_name?: string;
+    read_pull_zone_name?: string;
   };
   edge: {
     cache_enabled: boolean;
@@ -175,8 +178,16 @@ export interface ProvisionStep {
 
 export function buildSteps(
   payload: ProvisionPayload,
-  opts: { sourcePath: string | null; writePathAllowed: boolean },
+  opts: { sourcePath: string | null; writePathAllowed: boolean; served?: { Name: string; DefaultValue: string }[] },
 ): ProvisionStep[];
+
+/** Bunny's documented script-variable limits (bunny.net/docs/scripting/limits). */
+export const BUNNY_VARIABLE_VALUE_MAX_BYTES: number;
+export const BUNNY_SCRIPT_VARIABLES_MAX: number;
+export function servedVariablesDocumentedLimit(): { valueBytes: number; variables: number };
+
+export function validateServedVariables(raw: unknown): { Name: string; DefaultValue: string }[];
+export function loadServedVariables(path: string | null): { Name: string; DefaultValue: string }[];
 
 export interface BunnyApi {
   call(

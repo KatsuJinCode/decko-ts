@@ -448,3 +448,33 @@ export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined)
 export function servedDeltasAreEmpty(deltas: ServedEnvironmentDeltas): boolean {
   return Object.keys(deltas).length === 0;
 }
+/** The deck-boot options a deployment's served deltas imply. THE ONE PLACE
+ *  the boot reads them: bootDeck (the isolate's memoized deck) and the
+ *  request-local live render (liveRenderPage boots its own engines) both
+ *  pass this, so every page arm of an isolate renders from the same
+ *  configuration. Before this function the live arm booted with none of
+ *  them, and setDeckEnvironment (the deck's origin) was therefore installed
+ *  only by whichever deck boot ran earlier in the isolate: the first page of
+ *  a fresh isolate printed decko.rootUrl='/'. Unset fields are omitted, so
+ *  an empty delta set yields the stock boot. */
+export interface ServedBootOptions {
+  assetHost?: string;
+  phantomItemType?: PhantomTypeDelta;
+  timeZone?: string;
+  deckOrigin?: string;
+}
+
+export function servedBootOptions(deltas: ServedEnvironmentDeltas): ServedBootOptions {
+  const out: ServedBootOptions = {};
+  if (deltas.assetHost !== undefined) out.assetHost = deltas.assetHost;
+  if (deltas.phantomType !== undefined) out.phantomItemType = deltas.phantomType;
+  if (deltas.timeZone !== undefined) out.timeZone = deltas.timeZone;
+  if (deltas.deckOrigin !== undefined) out.deckOrigin = deltas.deckOrigin;
+  return out;
+}
+
+/** The boot options for an environment bag: the served deltas it configures,
+ *  as bootEdgeServingEngines takes them. */
+export function servedBootOptionsFromEnv(env: ServedDeltasEnv | undefined): ServedBootOptions {
+  return servedBootOptions(resolveServedEnvironmentDeltas(env));
+}

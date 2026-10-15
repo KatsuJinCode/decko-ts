@@ -52,6 +52,7 @@ import {
   type ResolvedDbConfig,
 } from "./bunny-edge-deck-config.js";
 export { DB_CREDENTIAL_VAR_NAMES, resolveDbConfig, type EdgeEnv } from "./bunny-edge-deck-config.js";
+import { servedBootOptionsFromEnv } from "./bunny-edge-served-deltas.js";
 export { setEdgeDbDriverFactory, type EdgeDbDriverFactory } from "./bunny-edge-deck-config.js";
 import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bunny-edge-isolate-probe.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
@@ -415,6 +416,7 @@ async function routeBunnyEngineRequest(
           // (liveRenderApplies; DECKO_LIVE_RENDER=0 turns it off).
           anonymous: true,
           liveRenderFlag: env.DECKO_LIVE_RENDER,
+          servedBootOptions: servedBootOptionsFromEnv(env),
         }),
       resolveEdgeContentCache(env),
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
