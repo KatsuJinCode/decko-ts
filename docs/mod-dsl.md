@@ -138,7 +138,7 @@ end
 The TypeScript mod:
 
 ```ts
-// src/card/mod-loader/mods/card-mod-word_count.ts
+// card-mod-word_count.ts, a new file in src/card/mod-loader/mods/
 import { defineMod } from "../mod-dsl.js";
 import type { ModEventCard } from "../mod-manifest.js";
 

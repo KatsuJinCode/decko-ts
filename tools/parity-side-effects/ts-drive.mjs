@@ -1,6 +1,6 @@
 // ts-drive.mjs -- drive the TypeScript engine with the shared operation list
 // (scenarios.json) against a LOCAL COPY of the start deck the Ruby drive
-// wrote, and emit the same JSON trace shape as ruby/drive.rb.
+// wrote, and emit the same JSON trace shape as tools/parity-side-effects/ruby/drive.rb.
 //
 //   node ts-drive.mjs <start-deck.sqlite3> <work_dir> > ts.json
 //
@@ -225,7 +225,7 @@ const accountMail = {
 const TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references",
   "card_revisions", "card_virtuals", "sessions", "users", "delayed_jobs", "auth_sessions"];
 
-// The card_virtuals rows by id (see ruby/drive.rb virtuals_snapshot): the
+// The card_virtuals rows by id (see tools/parity-side-effects/ruby/drive.rb virtuals_snapshot): the
 // asset-input card's name, the content's length and sha256.
 const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 async function virtualsSnapshot() {
@@ -488,7 +488,7 @@ async function signedInAs() {
 
 const sessionCards = () => readVisitorSession(cookieHeader()).cards;
 
-// Placeholders (see ruby/scenarios.rb): "$rev_id" is the rev_id the
+// Placeholders (see tools/parity-side-effects/ruby/scenarios.rb): "$rev_id" is the rev_id the
 // previous response named; "$create_action:<name>" the first action id
 // recorded on that card.
 async function resolvePlaceholders(value) {

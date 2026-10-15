@@ -4,7 +4,7 @@
 // 90-step side-effects battery (tests/tools/side-effects-scenario-battery.test.ts)
 // need on top of a stock Decko seed, plus the accounts the side-effects
 // drive's own setup step would otherwise create (tools/parity-side-effects/
-// ruby/drive.rb — baking them into the deck keeps that setup step idempotent,
+// tools/parity-side-effects/ruby/drive.rb — baking them into the deck keeps that setup step idempotent,
 // so the drive's start deck is the committed deck itself).
 //
 //   node reference-harness/corpus/generate-write-battery-deck.mjs <fixtureDir>

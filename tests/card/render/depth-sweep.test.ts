@@ -34,7 +34,8 @@ import { INDEXED_COLD_ROUND_TRIPS, coldRoundTripLaw } from "./round-trip-law.js"
 const ARTIFACT_WRITE_REQUESTED = process.env.DEPTH_SWEEP_WRITE_ARTIFACT === "1";
 
 const DEPTHS = Array.from({ length: RUBY_MAX_DEPTH }, (_, i) => i + 1);
-// Ruby depth+3 truth, measured on the oracle app (benchmarks/results/ruby-nesting-r1-r2.json).
+// Ruby depth+3 truth, measured on the oracle app by the R1/R2 Ruby nesting
+// benchmark (its results file is not shipped in this repository).
 const RUBY_MEASURED: Record<number, number> = { 1: 4, 2: 5, 4: 7, 8: 11, 16: 19 };
 // THE LAW (round-trip-law.ts). With the stored nest index a cold render costs
 // the three fixed round trips at every depth. Without it (content the index

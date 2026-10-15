@@ -412,7 +412,7 @@ function queueState(deckPath: string): { rows: number; locked: number; failed: n
 const CARD_NAME = "Exercise Note Alpha";
 const CARD_BODY = "Synthetic body written by the background-work probe.";
 
-describe("coverage gap: background jobs", () => {
+describe("background jobs under card-mod-delayed_job's default config", () => {
   let session: Awaited<ReturnType<typeof openDeckCopy>> | undefined;
 
   beforeAll(async () => {
@@ -424,20 +424,14 @@ describe("coverage gap: background jobs", () => {
   });
 
   it(
-    "Jobs. The delayed-job backend is not evaluated (the compatibility report marks `card-mod-delayed_job` status ignored, verdict `unported (not evaluated)`). No background job behavior is measured. -- the committed compatibility report labels it unported and not evaluated, and a card create the Ruby engine would have enqueued dispatches nothing and executes nothing: the deck's background queue stays empty, no job table grows, and nothing runs afterwards",
+    "Jobs. The delayed-job backend is ported (the compatibility report marks `card-mod-delayed_job` declared-complete as a backend port). With the mod's default config, delaying is false, so a card create runs its integrate_with_delay work in line as Ruby does: the deck's background queue stays empty, no job table grows, and nothing runs afterwards",
     async () => {
-      // --- the committed report labels it unported --------------------------
+      // --- the committed report records a backend port ----------------------
       const markdown = readFileSync(join(REPO_ROOT, "tools", "compat-report", "mod-compat-report.md"), "utf8");
       const row = markdown.split("\n").find((line) => line.includes("| `card-mod-delayed_job-"));
       expect(row).toBeDefined();
-      expect((row as string).split("|").map((cell) => cell.trim())).toContain("ignored");
-      // The report says why. The verdict is "unported (not evaluated)": the
-      // earlier "legacy-labeled per upstream maintainer guidance" wording
-      // claimed a maintainer receipt this repo cannot produce, so the label
-      // was narrowed to what is actually verifiable — the gem was not
-      // evaluated. The STATUS is still `ignored`, which is what line 432
-      // pins.
-      expect(markdown).toContain("unported (not evaluated)");
+      expect((row as string).split("|").map((cell) => cell.trim())).toContain("declared-complete");
+      expect(row).toContain("backend port (src/card/delayed-job/delayed-job.ts)");
 
       const report = JSON.parse(readFileSync(join(REPO_ROOT, "tools", "compat-report", "mod-compat-report.json"), "utf8")) as {
         mods: {
@@ -448,16 +442,16 @@ describe("coverage gap: background jobs", () => {
       };
       const delayedJob = report.mods.find((mod) => mod.gem.startsWith("card-mod-delayed_job"));
       expect(delayedJob).toBeDefined();
-      expect(delayedJob?.classification.status).toBe("ignored");
-      // A backend-only gem: no views, no set tree, no manifest, no event hook,
-      // so there is nothing in the port for a write to dispatch to.
-      expect(delayedJob?.classification.evidence).toMatch(/config-only or backend-only gem/);
+      expect(delayedJob?.classification.status).toBe("declared-complete");
+      // A backend-only gem: no views, no set tree, no manifest, no event hook.
+      // Its port is engine machinery (src/card/delayed-job), not a set module.
+      expect(delayedJob?.classification.evidence).toMatch(/no set\/ tree; the mod's surface is engine machinery/);
       expect(delayedJob?.classification.metrics.manifestExists).toBe(false);
       expect(delayedJob?.inv.counts.eventHooks).toBe(0);
       // And the composed default deck carries no delayed_job manifest.
       expect(COMPILED_IN_OR_ABSENT_MODS).toContain("delayed_job");
 
-      // --- a write the Ruby engine would have scheduled ----------------------
+      // --- a write Ruby runs in line with delaying false ---------------------
       const deck = session!.deckPath;
       expect(queueState(deck)).toEqual({ rows: 0, locked: 0, failed: 0 });
 

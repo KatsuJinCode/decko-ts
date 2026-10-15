@@ -1319,7 +1319,10 @@ function buildRegistry() {
     } else if (sc !== null) {
       status = "ported";
       statusEvidence = `harness scorecard, 0 RED: ${sc.totals.validated}/${sc.totals.behaviors} harness-oracle-validated, ${sc.totals.standingNet} pinned by the mod's standing suite${sc.totals.namedRemainder ? `, ${sc.totals.namedRemainder} named-remainder(s) (see the scorecard rows)` : ``} (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
-    } else if (manifestExists && compatStatus === "declared-complete") {
+    } else if (compatStatus === "declared-complete" && (manifestExists || c?.classification?.metrics?.setModules === 0)) {
+      // A gem with no set/ tree has no manifest by construction; its port is
+      // engine machinery, and the compat report's declared-complete verdict
+      // names that port and its guarding test file.
       status = "ported";
       statusEvidence = c?.classification?.verdict ?? "compat report declared-complete + manifest present (harness not yet run)";
     } else {

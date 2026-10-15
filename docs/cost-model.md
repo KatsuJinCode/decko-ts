@@ -21,7 +21,9 @@ D1 is I/O wait, not CPU.
 
 ## How CPU per page was measured
 
-`node benchmarks/cf-scale/measure-workerd-cpu.mjs --deck cf-scale --n 200`
+The measuring script, `measure-workerd-cpu.mjs --deck cf-scale --n 200`, belongs
+to the cf-scale benchmark set, which is not shipped in this repository; the
+method is described here so the measurement can be repeated.
 
 The script bundles `deploy/worker.ts` the way wrangler does, boots it in
 miniflare's workerd (the runtime Cloudflare runs), loads
@@ -100,8 +102,8 @@ Measured with the worker's own `/__metrics` recorder, which forwards D1's
 `meta.rows_read`:
 
 - Warm page: 1 query, 1 row read (freshness check), every page above.
-- Cold boot: the control batch in `benchmarks/cf-scale/probe-expectations.json`
-  (5 requests including one boot, recorded 2026-09-24) read 82,004 rows, so a
+- Cold boot: the cf-scale benchmark set's recorded control batch (not shipped;
+  5 requests including one boot, recorded 2026-09-24) read 82,004 rows, so a
   boot reads on the order of 80,000 rows on this deck.
 
 Daily budget arithmetic at 5,000,000 rows read:

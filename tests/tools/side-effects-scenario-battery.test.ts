@@ -29,7 +29,7 @@
 // full-list recording with every public verdict unchanged; this suite pins the exact current
 // verdicts, so any engine change here fails loudly.
 //
-// THE RECORDING'S ENVIRONMENT. ruby/drive.rb boots the oracle under
+// THE RECORDING'S ENVIRONMENT. tools/parity-side-effects/ruby/drive.rb boots the oracle under
 // RAILS_ENV=production with the stock production configuration (the harness
 // arrangements in drive.rb keep files, mail and network local and touch no
 // rendering or asset setting): rescue_all_in_controller true and consider_all_requests_local

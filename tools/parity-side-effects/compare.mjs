@@ -29,7 +29,7 @@
 //   - error pages: Ruby renders errors inside the deck layout, the port as a
 //     bare page; only the message text is compared. A server error is the
 //     deployed "Wild Card!" block on both sides (the recording runs Ruby the
-//     way a deployed site does, see ruby/drive.rb), so it is compared by that
+//     way a deployed site does, see tools/parity-side-effects/ruby/drive.rb), so it is compared by that
 //     block, not by an exception message.
 //   - HTML entities decoded, whitespace collapsed.
 //   - mail bodies: account-token values replaced by <token> (signed with
