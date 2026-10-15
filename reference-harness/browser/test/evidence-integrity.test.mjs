@@ -41,3 +41,12 @@ for (const [name,change] of [
  ["Ruby34",({result,write})=>{result.runtime.ruby="3.4.11";write("ruby",result);}],
  ["comparison mismatch",({result,write})=>{result.observations[0].text="wrong";write("ts",result);}],
 ]) test(`${name} fails closed`,()=>fixture(ctx=>{change(ctx);const r=ctx.run();assert.equal(r.status,1,r.stdout+r.stderr);}));
+test("matching HTTP200 failure pages fail explicit product postconditions",()=>fixture(({root,result,write,run})=>{
+ result.steps[1].step.expect={status:200,textIncludes:["Created successfully"]};
+ const journeys=path.join(root,"journeys.json");
+ writeFileSync(journeys,JSON.stringify({journeys:[{id:"home",steps:result.steps.map(s=>s.step)}]}));
+ result.provenance.journeysSha256=sha256(readFileSync(journeys));
+ result.observations[0].text="Sorry, nothing was created";
+ write("ruby",result);write("ts",result);
+ const r=run();assert.equal(r.status,1);assert.match(r.stderr,/product text missing/);
+}));

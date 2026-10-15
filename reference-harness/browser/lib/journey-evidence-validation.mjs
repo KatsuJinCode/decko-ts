@@ -29,7 +29,10 @@ export function validateJourneyEvidence(args, expected, actual) {
   if (new Set(ids).size !== ids.length) problems.push("duplicate journey definition ids");
   if (!ids.length) problems.push("empty journey selection");
   if (filter) problems.push("partial selection is diagnostic only");
-  const hashes = { journeysSha256: sha256(definitionBytes), fixtureSha256: treeDigest(fixture instanceof URL ? fileURLToPath(fixture) : path.resolve(fixture)) };
+  const contractsPath = args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url);
+  const contractBytes = readFileSync(contractsPath);
+  const contracts = JSON.parse(contractBytes).journeys;
+  const hashes = { contractsSha256: sha256(contractBytes), journeysSha256: sha256(definitionBytes), fixtureSha256: treeDigest(fixture instanceof URL ? fileURLToPath(fixture) : path.resolve(fixture)) };
   const candidate = args.candidate;
   if (!/^[a-f0-9]{40}$/.test(candidate ?? "")) problems.push("--candidate must name the exact full source commit");
   for (const [side, loaded] of [["reference", expected], ["actual", actual]]) {
@@ -51,9 +54,20 @@ export function validateJourneyEvidence(args, expected, actual) {
         if (!Number.isInteger(o.status) || o.status >= 500 || o.status < 200) problems.push(`${prefix}/${o.label}: user-visible HTTP ${o.status}`);
       }
       if (side === "actual" && result.provenance?.engine === "ts-production" && (result.runtime?.passwordHash !== "pbkdf2" || result.runtime?.assetRefresh !== "cautious" || !result.runtime?.scssCompilerConfigured || !/^[a-f0-9]{64}$/.test(result.runtime?.scssCompilerSha256 ?? ""))) problems.push(`${prefix}: production settings do not match PBKDF2/cautious/verified compiler configuration`);
+      if (side === "actual") {
+        const observations = new Map((result.observations ?? []).map(o => [o.label,o]));
+        const required = { ...(contracts[journey.id] ?? {}), ...Object.fromEntries(journey.steps.filter(s => s.observe && s.expect).map(s => [s.observe,s.expect])) };
+        for (const [label, expectation] of Object.entries(required)) {
+          const observation = observations.get(label);
+          if (!observation) { problems.push(`${prefix}/${label}: product observation missing`); continue; }
+          if (expectation.status !== undefined && expectation.status !== observation.status) problems.push(`${prefix}/${label}: product expected HTTP ${expectation.status}, got ${observation.status}`);
+          for (const text of expectation.textIncludes ?? []) if (!observation.text?.includes(text)) problems.push(`${prefix}/${label}: product text missing ${JSON.stringify(text)}`);
+          for (const text of expectation.textExcludes ?? []) if (observation.text?.includes(text)) problems.push(`${prefix}/${label}: product failure text present ${JSON.stringify(text)}`);
+        }
+      }
       const p = result.provenance;
       if (!p || p.format !== "decko-browser-evidence/1") { problems.push(`${prefix}: missing provenance`); continue; }
-      for (const [key, value] of Object.entries(hashes)) if (p[key] !== value) problems.push(`${prefix}: ${key} mismatch`);
+      for (const [key, value] of Object.entries(hashes).filter(([key]) => key !== "contractsSha256")) if (p[key] !== value) problems.push(`${prefix}: ${key} mismatch`);
       if (p.source?.dirty !== false) problems.push(`${prefix}: source was dirty`);
       if (!/^[a-f0-9]{40}$/.test(p.source?.commit ?? "")) problems.push(`${prefix}: invalid source commit`);
       if (side === "actual" && p.source?.commit !== candidate) problems.push(`${prefix}: wrong candidate commit`);

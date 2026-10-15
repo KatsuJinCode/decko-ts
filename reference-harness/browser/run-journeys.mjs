@@ -19,6 +19,7 @@ import path from "node:path";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
+import { recordJourneyNetwork } from "./lib/journey-network.mjs";
 import { captureProvenance } from "./lib/journey-provenance.mjs";
 import { snapshot, delta } from "../runner/deck-state.mjs";
 
@@ -370,6 +371,7 @@ async function runJourney(engine, args, journey, spec, logFile) {
     ctx.freshSession = async () => {
       await browser.close();
       browser = await launchBrowser();
+      recordJourneyNetwork(browser.context, result);
       const next = browser.context.pages()[0] ?? (await browser.context.newPage());
       next.setDefaultTimeout(STEP_TIMEOUT);
       next.on("dialog", d => d.accept().catch(() => {}));
@@ -379,6 +381,7 @@ async function runJourney(engine, args, journey, spec, logFile) {
       ctx.page = next;
       ctx.windows = { main: next };
     };
+    recordJourneyNetwork(browser.context, result);
     // The HTTP status of the last page load in any window.
     browser.context.on("response", (r) => {
       if (r.request().isNavigationRequest() && r.frame() === r.frame().page().mainFrame()) ctx.lastStatus = r.status();
