@@ -3184,14 +3184,32 @@ export class CardActionEngine {
    *  references the save itself just wrote or cleared. */
   private async bumpAncestorTimestamps(cardIds: readonly number[]): Promise<void> {
     const driver = this.fetch.driver;
-    const nestersOf = async (id: number): Promise<number[]> =>
-      (
-        await driver.query<{ referer_id: number }>(
-          `SELECT DISTINCT referer_id FROM card_references
-           WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT NULL`,
-          [id],
-        )
-      ).rows.map((r) => Number(r.referer_id));
+    // The nesters of every card one level up the walk are read in ONE batch
+    // per level (a read-only walk: no write runs between these reads, so the
+    // answers are the ones the per-card reads would give, in the same order).
+    const nesterSql = `SELECT DISTINCT referer_id FROM card_references
+           WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT NULL`;
+    const nesterRows = new Map<number, number[]>();
+    const prefetchNesters = async (ids: readonly number[]): Promise<void> => {
+      const todo = [...new Set(ids)].filter((id) => !nesterRows.has(id));
+      if (todo.length === 0) return;
+      const results = await driver.batch(todo.map((id) => ({ sql: nesterSql, params: [id] })));
+      todo.forEach((id, i) => {
+        nesterRows.set(id, results[i].rows.map((r) => Number((r as { referer_id: number }).referer_id)));
+      });
+    };
+    const nestersOf = async (id: number): Promise<number[]> => {
+      const known = nesterRows.get(id);
+      if (known !== undefined) return known;
+      await prefetchNesters([id]);
+      return nesterRows.get(id) ?? [];
+    };
+    // Level-by-level prefetch: the walk reads nesters of cards at levels 0..5.
+    let frontier = [...new Set(cardIds)];
+    for (let level = 0; level <= 5 && frontier.length > 0; level += 1) {
+      await prefetchNesters(frontier);
+      frontier = frontier.flatMap((id) => nesterRows.get(id) ?? []);
+    }
     const isLive = async (id: number): Promise<boolean> => {
       const row = await this.fetchRowById(id);
       return row !== undefined && row.trash === 0;
