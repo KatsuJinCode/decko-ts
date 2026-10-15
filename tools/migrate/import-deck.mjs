@@ -489,6 +489,33 @@ async function* readStagingRows(targetTableNames) {
   }
 }
 
+// The stored nest index, built here rather than on the target deck's first
+// request: it is derived from the imported content, and the D1 deploy path
+// (deploy/migrations 0013 + tools/deploy/build-nest-index.mjs) is where the
+// marker table comes from on the target. The build runs against the staging
+// DB BEFORE the chunked seed is written, so the uploaded deck lands with its
+// index already describing its content; without it the deck serves by walking
+// its nest closure (same bytes, one round trip per level). Skipped with
+// DECKO_SKIP_NEST_INDEX=1 for a staging DB that is about to be discarded.
+if (process.env.DECKO_SKIP_NEST_INDEX === "1") {
+  console.log("\nnest index: skipped (DECKO_SKIP_NEST_INDEX=1)");
+} else {
+  const built = spawnSync(
+    process.execPath,
+    [path.join(REPO_ROOT, "tools", "deploy", "build-nest-index.mjs"), "--db", stagingPath, "--json"],
+    { encoding: "utf8", windowsHide: true, timeout: 60 * 60 * 1000 },
+  );
+  const builtOut = `${built.stdout ?? ""}${built.stderr ?? ""}`.trim();
+  if (built.status === 0) {
+    console.log(`\nnest index: built (${builtOut.split("\n").slice(-1)[0]})`);
+  } else {
+    // Not fatal to the import: the deck is complete without the index, it
+    // just costs round trips. Said loudly, and the run continues.
+    console.warn(`\nnest index: NOT built (exit ${built.status}) - the deck will be served by walking its nest closure`);
+    if (builtOut) console.warn(`  ${builtOut.split("\n").slice(-3).join("\n  ")}`);
+  }
+}
+
 const chunkStartedAt = Date.now();
 const chunkResult = await writeChunkedSeed({
   rows: readStagingRows(targetTables),

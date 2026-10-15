@@ -1495,10 +1495,12 @@ async function primeEngine(engine) {
     }
   }
   // 3b. The stored nest index describes the content before the first render
-  //     (src/card/nest-index.ts). A read-only host cannot write the rows, so it
-  //     serves the deck as it stands and the render walks any level the index
-  //     does not describe.
-  if (writePathEnabled()) await ensureNestIndex(driver, engine.lexicon);
+  //     (src/card/nest-index.ts). The step runs on the AUTH driver, which is
+  //     open writable whatever this host's browse posture is (the browse
+  //     driver above is read-only unless DECKO_WRITE_PATH=1), so a read-only
+  //     host still brings the index current at boot rather than serving by
+  //     walking its nest closure.
+  await ensureNestIndex(authDriver, engine.lexicon);
   // 4. Virtual-card rule universe: the
   //    storage factory's responsibility per
   //    src/card/fetch/virtual-cards.ts:44-49. Without this hook,

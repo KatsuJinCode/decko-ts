@@ -36,6 +36,7 @@
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/d1.js";
 import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
+import { readNestIndexMarker } from "../src/card/nest-index.js";
 import { RenderEngine } from "../src/card/render.js";
 import { getDefaultModLoader } from "../src/card/mod-loader.js";
 import { defaultDeckLoader } from "../src/card/mod-loader/default-mod-deck.js";
@@ -188,6 +189,18 @@ async function bootDeck(env: Env): Promise<Deck> {
       contents: structureUniverseFromResults(universeResult),
       ruleTypeIds: structureRuleTypesFromResults(universeResult),
     });
+  }
+  // The stored nest index, read-only (src/card/nest-index.ts). A request never
+  // builds it: a deck whose marker is missing or stale renders by walking its
+  // nest closure (the same bytes, one round trip per level) until the build
+  // step (tools/deploy/build-nest-index.mjs) brings it current. Said loudly.
+  {
+    const marker = await readNestIndexMarker(driver);
+    if (marker.state !== "current") {
+      console.warn(
+        `[nest-index] ${marker.state} (version ${marker.version ?? "none"}): this deck serves by walking its nest closure until tools/deploy/build-nest-index.mjs has run`,
+      );
+    }
   }
   return {
     driver,

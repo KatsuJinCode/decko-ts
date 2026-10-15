@@ -132,12 +132,6 @@ interface ShapeResult {
   byteIdentical: boolean;
 }
 
-/** NEST_INDEX_LIMIT (prefetch.ts): the pool the prelude's index statement is
- *  bounded to. Past it the rounds fetch the rest, so the constant law is
- *  stated for closures at or under it - the claim the file header above
- *  makes, and the one the shapes below are chosen to sit inside. */
-const NEST_INDEX_LIMIT = 2000;
-
 /** Measure one shape in one posture.
  *  'built': the engine's own build from content alone (the boot the hosts run).
  *  'hand': the same content, with the index the write path would leave written
@@ -305,11 +299,11 @@ function treeShape(depth: number, fanout: number): ShapeSpec {
 }
 
 /** The sweep: every depth for chains, every width for fans, and the trees a
- *  deck of this shape can hold inside the pool limit. */
+ *  deck of this shape can hold. */
 function shapeSpecs(): ShapeSpec[] {
   const specs: ShapeSpec[] = [];
   for (const depth of DEPTHS) specs.push(chainShape(depth));
-  for (const fanout of [10, 20, 50, 100, 200]) specs.push(fanShape(fanout));
+  for (const fanout of [10, 20, 50, 100, 200, 2000]) specs.push(fanShape(fanout));
   for (const [depth, fanout] of [
     [2, 10],
     [3, 10],
@@ -317,8 +311,9 @@ function shapeSpecs(): ShapeSpec[] {
     [6, 3],
     [8, 2],
     [12, 2],
+    [3, 13], // 2,380 cards: past the former 2,000-row pool cap
   ] as const) {
-    if (treeCards(depth, fanout) <= NEST_INDEX_LIMIT) specs.push(treeShape(depth, fanout));
+    specs.push(treeShape(depth, fanout));
   }
   return specs;
 }
@@ -523,7 +518,7 @@ function printTable(title: string, rows: SweepRow[]): void {
 
 // The shape sweep, the part the release promise is stated over: every shape
 // (chains, fans, trees), every depth 1 through 20, widths up to 200 and trees
-// up to the pool limit, from content alone and from a hand-seeded index.
+// with no closure cap, from content alone and from a hand-seeded index.
 describe("Shape sweep: three round trips per cold render, whatever the shape", () => {
   it(
     "chains, fans and trees cost three round trips once the engine has built the index",
@@ -595,7 +590,6 @@ describe("Shape sweep: three round trips per cold render, whatever the shape", (
               "local better-sqlite3 over production-schema DDL; synthetic chains, fans and trees",
             axes: {
               round_trips: "driver calls: query() + batch() each count ONE",
-              pool_limit: NEST_INDEX_LIMIT,
               walked_round_trips: "the same deck with its 'I' rows deleted (the per-level walk)",
               byte_identical: "indexed render vs walked render, byte for byte",
             },

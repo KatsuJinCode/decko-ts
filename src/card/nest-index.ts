@@ -9,52 +9,59 @@
 // render costs three round trips at any depth and any width - provided the
 // rows describe the nests.
 //
-// WHO KEEPS THE ROWS CURRENT. Two arms, and a gap this module closes:
+// WHO KEEPS THE ROWS CURRENT. Two arms:
 //
 //   1. The save path (card-action-engine.ts maybeRefreshReferencesOut, the
 //      :finalize `changed: :content` event body) rewrites a card's rows on
 //      every save whose db_content actually changed, and the referee side
 //      (refresh-references-in.ts) fills referee_id once the referee exists.
-//      That arm is the write path's, and it is not what this module adds.
 //   2. A deck that arrived by another road - a Ruby-built deck whose rows
 //      are older than its content, a deck imported straight into its
-//      database, a database provisioned before the events ran, a deck whose
-//      content was written by a migration or a seed - has content the rows
-//      do not describe. Then the render walks the closure level by level and
-//      costs one round trip per level, whatever its width.
+//      database, a database provisioned before the events ran, content
+//      written by a migration or a seed - has content the rows do not
+//      describe. Its render then walks the closure level by level, one round
+//      trip per level.
 //
-// So: ensureNestIndex rebuilds the whole 'I' index from the stored content
-// when the deck has not been built by this version, and the hosts call it at
-// boot (src/card/pods/deck.ts, the Node host, deploy/worker.ts, the Bunny
-// edge boot). It runs the SAME interpretation the save path runs
-// (refreshReferencesOut), so the rows it writes are the rows a save would
-// have written; it never writes a row the write path would not write, and a
-// rebuild therefore cannot change a render's bytes - it only changes how many
-// round trips that render costs.
+// So ensureNestIndex rebuilds the 'I' index from the stored content when the
+// deck's marker is missing or stale. WHO CALLS IT, AND WHERE:
+//   - Node hosts and the pods tools: at boot, on a writable connection.
+//   - Cloudflare D1 and Bunny: from the one-shot build step (tools/deploy/
+//     build-nest-index.mjs, run by the deploy chain and by the import tool),
+//     NEVER inside a request. A request-serving boot calls only
+//     readNestIndexMarker, which reads and writes nothing, and logs loudly
+//     when the marker says the index is not current.
 //
-// THE MARKER. nest_index_meta is a port-added table in the same spirit as
-// deck_data_version (src/server/freshness-stamp.ts): additive, idempotent,
-// installed on a deck that lacks it, never read by the render path. It
-// records the index BUILD VERSION - bump it when the interpretation above
-// changes and every deck rebuilds on its next open. It is not a trust
-// signal: a deck whose content is written behind the write path keeps the
-// version it had, exactly as a deck's freshness stamp keeps moving only
-// through the triggers.
+// The rebuild runs the SAME interpretation the save path runs
+// (refreshReferencesOut), so the rows it writes are the rows a save would have
+// written. It can change what a render costs, never what it renders.
+//
+// THE MARKER. nest_index_meta (meta_key, meta_value) is a port-added table,
+// installed additively and idempotently on every dialect this module runs on
+// (SQLite and D1, MySQL, PostgreSQL). It records the index build version.
+// Bump NEST_INDEX_BUILD_VERSION when the interpretation above changes and
+// every deck rebuilds on its next open or build.
 
 import type { SQLDatabaseDriver } from "../server/driver.js";
+import { PostgresDriver } from "../server/drivers/postgres.js";
+import { driverDialect } from "../server/same-database.js";
 import { DeckoName } from "./name.js";
 import { refreshReferencesOut, type ReferenceLexicon } from "./actions/refresh-references-out.js";
 
 /** Bump when the interpretation of content into 'I' rows changes: every
- *  deck then rebuilds its index on its next open. */
+ *  deck then rebuilds its index on its next open or build step. */
 export const NEST_INDEX_BUILD_VERSION = 1;
 
+/** The marker table. Its statements are the same on SQLite (D1 included),
+ *  MySQL and PostgreSQL; the columns are not `key`/`value`, which MySQL
+ *  reserves. Migration 0013-nest-index-meta.sql creates it on D1. */
 export const NEST_INDEX_META_TABLE = "nest_index_meta";
 
-export const NEST_INDEX_META_DDL = `CREATE TABLE IF NOT EXISTS ${NEST_INDEX_META_TABLE} (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-)`;
+export const NEST_INDEX_META_DDL =
+  `CREATE TABLE IF NOT EXISTS ${NEST_INDEX_META_TABLE} (` +
+  `meta_key VARCHAR(64) NOT NULL PRIMARY KEY, ` +
+  `meta_value VARCHAR(255) NOT NULL)`;
+
+const BUILD_VERSION_KEY = "build_version";
 
 /** The subset of DbLexicon the rebuild needs: the referee resolution of the
  *  write path (ReferenceLexicon#id) plus the referer's own name, which a
@@ -73,9 +80,60 @@ export interface NestIndexInstall {
   readonly scanned: number;
 }
 
+/** What a boot can say about a deck's index without writing anything. */
+export interface NestIndexMarker {
+  /** 'current': built by this version. 'stale': built by an older version.
+   *  'missing': no marker table, or no marker row (never built). */
+  readonly state: "current" | "stale" | "missing";
+  /** The recorded build version, when there is one. */
+  readonly version?: number;
+}
+
 /** Cards read per batch. The scan is one WHERE over cards; the read is cut
  *  into batches so a 50k-card deck never holds every content in memory. */
 const SCAN_BATCH = 2000;
+
+type MetaDialect = "sqlite" | "mysql" | "postgres";
+
+function metaDialect(driver: SQLDatabaseDriver): MetaDialect {
+  if (driver instanceof PostgresDriver) return "postgres";
+  return driverDialect(driver);
+}
+
+async function tableExists(driver: SQLDatabaseDriver, table: string): Promise<boolean> {
+  const dialect = metaDialect(driver);
+  const sql =
+    dialect === "sqlite"
+      ? `SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?`
+      : dialect === "mysql"
+        ? `SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`
+        : `SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = ?`;
+  const row = await driver.query<{ n: number }>(sql, [table]);
+  return Number(row.rows[0]?.n ?? 0) > 0;
+}
+
+async function readBuildVersion(driver: SQLDatabaseDriver): Promise<number | undefined> {
+  const row = await driver.query<{ meta_value: string }>(
+    `SELECT meta_value FROM ${NEST_INDEX_META_TABLE} WHERE meta_key = ?`,
+    [BUILD_VERSION_KEY],
+  );
+  const value = row.rows[0]?.meta_value;
+  return value === undefined ? undefined : Number(value);
+}
+
+/**
+ * The boot's cheap check. Reads the marker and writes nothing, so a read-only
+ * host, and a worker that must not build inside a request, can both call it.
+ * A 'missing' or 'stale' answer means the deck is served by walking the
+ * closure (correct bytes, more round trips) until the build step brings the
+ * index current; the caller is expected to say so loudly.
+ */
+export async function readNestIndexMarker(driver: SQLDatabaseDriver): Promise<NestIndexMarker> {
+  if (!(await tableExists(driver, NEST_INDEX_META_TABLE))) return { state: "missing" };
+  const version = await readBuildVersion(driver);
+  if (version === undefined) return { state: "missing" };
+  return version === NEST_INDEX_BUILD_VERSION ? { state: "current", version } : { state: "stale", version };
+}
 
 /**
  * Ensures the stored nest index describes the deck's content. Idempotent and
@@ -92,8 +150,10 @@ export async function ensureNestIndex(
   driver: SQLDatabaseDriver,
   lexicon: NestIndexLexicon,
 ): Promise<NestIndexInstall> {
-  const version = await ensureMetaTable(driver);
-  if (version === NEST_INDEX_BUILD_VERSION) return { state: "current", dropped: 0, scanned: 0 };
+  await driver.query(NEST_INDEX_META_DDL, []);
+  if ((await readBuildVersion(driver)) === NEST_INDEX_BUILD_VERSION) {
+    return { state: "current", dropped: 0, scanned: 0 };
+  }
 
   // The index is derived data: the whole 'I' set is dropped, then every card
   // whose content carries a nest is re-parsed exactly as a save parses it.
@@ -122,30 +182,14 @@ export async function ensureNestIndex(
       await refreshReferencesOut(driver, lexicon, id, name, row.db_content);
     }
   }
-  await writeMetaVersion(driver, NEST_INDEX_BUILD_VERSION);
+  await writeBuildVersion(driver, NEST_INDEX_BUILD_VERSION);
   return { state: "built", dropped, scanned: rows.length };
 }
 
-async function ensureMetaTable(driver: SQLDatabaseDriver): Promise<number> {
-  const exists = await driver.query<{ n: number }>(
-    `SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?`,
-    [NEST_INDEX_META_TABLE],
-  );
-  const present = Number(exists.rows[0]?.n ?? 0) > 0;
-  if (present) {
-    const row = await driver.query<{ value: string }>(
-      `SELECT value FROM ${NEST_INDEX_META_TABLE} WHERE key = 'build_version'`,
-      [],
-    );
-    return Number(row.rows[0]?.value ?? 0);
-  }
-  await driver.query(NEST_INDEX_META_DDL, []);
-  return 0;
-}
-
-async function writeMetaVersion(driver: SQLDatabaseDriver, version: number): Promise<void> {
-  await driver.query(`DELETE FROM ${NEST_INDEX_META_TABLE} WHERE key = 'build_version'`, []);
-  await driver.query(`INSERT INTO ${NEST_INDEX_META_TABLE} (key, value) VALUES ('build_version', ?)`, [
+async function writeBuildVersion(driver: SQLDatabaseDriver, version: number): Promise<void> {
+  await driver.query(`DELETE FROM ${NEST_INDEX_META_TABLE} WHERE meta_key = ?`, [BUILD_VERSION_KEY]);
+  await driver.query(`INSERT INTO ${NEST_INDEX_META_TABLE} (meta_key, meta_value) VALUES (?, ?)`, [
+    BUILD_VERSION_KEY,
     String(version),
   ]);
 }
