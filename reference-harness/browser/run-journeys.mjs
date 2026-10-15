@@ -406,7 +406,10 @@ async function runJourney(engine, args, journey, spec, logFile) {
       }
     }
     result.completed = !failed;
-    result.mail = [...ctx.mailSeen, ...(await server.mail())].map((m) => ({
+    let finalMail = [];
+    try { finalMail = await server.mail(); }
+    catch (error) { result.completed = false; result.error = `mail observation failed: ${error.message}`; }
+    result.mail = [...ctx.mailSeen, ...finalMail].map((m) => ({
       to: m.to,
       subject: m.subject,
       text: String(m.text ?? "").replace(/[ \t]+$/gm, "").replace(/\r\n/g, "\n").trim(),

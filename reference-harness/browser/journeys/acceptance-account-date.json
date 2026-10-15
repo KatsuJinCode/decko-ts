@@ -5,130 +5,473 @@
   "journeys": [
     {
       "id": "account-email-login-persistence",
-      "covers": ["email change", "new email login", "fresh profile", "host restart"],
+      "covers": [
+        "email change",
+        "new email login",
+        "fresh profile",
+        "host restart"
+      ],
       "steps": [
-        {"signin": "member"},
-        {"visit": "/Mira_Member+*account?view=edit"},
-        {"fill": {"field": "*email"}, "value": "mira.changed@example.test"},
-        {"click": {"button": "Save and Close"}},
-        {"observe": "email saved"},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/*signin"},
-        {"fill": {"field": "*email"}, "value": "mira.changed@example.test"},
-        {"fill": {"field": "*password"}, "value": "Fixture member pass 1#"},
-        {"click": {"button": "Sign in"}},
-        {"wait": {"css": "a.signout-link"}},
-        {"visit": "/Mira_Member+*account?view=edit"},
-        {"observe": "new email after fresh session and restart"}
+        {
+          "signin": "member"
+        },
+        {
+          "visit": "/Mira_Member+*account?view=edit"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.changed@example.test"
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "observe": "email saved"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.changed@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Fixture member pass 1#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "wait": {
+            "css": "a.signout-link"
+          }
+        },
+        {
+          "visit": "/Mira_Member+*account?view=edit"
+        },
+        {
+          "observe": "new email after fresh session and restart"
+        }
       ]
     },
     {
       "id": "account-password-login-persistence",
-      "covers": ["password change", "new password login", "fresh profile", "host restart"],
+      "covers": [
+        "password change",
+        "new password login",
+        "fresh profile",
+        "host restart"
+      ],
       "steps": [
-        {"signin": "member"},
-        {"visit": "/Mira_Member+*account?view=edit"},
-        {"fill": {"field": "*password"}, "value": "Journey new pass 7#"},
-        {"click": {"button": "Save and Close"}},
-        {"observe": "password saved"},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/*signin"},
-        {"fill": {"field": "*email"}, "value": "mira.member@example.test"},
-        {"fill": {"field": "*password"}, "value": "Journey new pass 7#"},
-        {"click": {"button": "Sign in"}},
-        {"wait": {"css": "a.signout-link"}},
-        {"observe": "new password authenticated after restart"}
+        {
+          "signin": "member"
+        },
+        {
+          "visit": "/Mira_Member+*account?view=edit"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey new pass 7#"
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "observe": "password saved"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey new pass 7#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "wait": {
+            "css": "a.signout-link"
+          }
+        },
+        {
+          "observe": "new password authenticated after restart"
+        }
       ]
     },
     {
       "id": "account-reset-password-complete",
-      "covers": ["reset mail", "token link", "new password", "fresh login", "host restart"],
+      "covers": [
+        "reset mail",
+        "token link",
+        "new password",
+        "fresh login",
+        "host restart"
+      ],
       "steps": [
-        {"visit": "/*signin"},
-        {"click": {"link": "Reset password"}},
-        {"fill": {"field": "*email", "within": ".modal"}, "value": "mira.member@example.test"},
-        {"click": {"button": "Reset password", "within": ".modal"}},
-        {"mail_link": {"subject": "reset", "contains": "token"}},
-        {"observe": "reset account form"},
-        {"fill": {"field": "*password"}, "value": "Journey reset pass 8#"},
-        {"click": {"button": "Save and Close"}},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/*signin"},
-        {"fill": {"field": "*email"}, "value": "mira.member@example.test"},
-        {"fill": {"field": "*password"}, "value": "Journey reset pass 8#"},
-        {"click": {"button": "Sign in"}},
-        {"wait": {"css": "a.signout-link"}},
-        {"observe": "reset password authenticated after restart"}
+        {
+          "visit": "/*signin"
+        },
+        {
+          "click": {
+            "link": "Reset password"
+          }
+        },
+        {
+          "fill": {
+            "field": "*email",
+            "within": ".modal"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "click": {
+            "button": "Reset password",
+            "within": ".modal"
+          }
+        },
+        {
+          "mail_link": {
+            "subject": "reset",
+            "contains": "token"
+          }
+        },
+        {
+          "observe": "reset account form"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey reset pass 8#"
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "mira.member@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey reset pass 8#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "wait": {
+            "css": "a.signout-link"
+          }
+        },
+        {
+          "observe": "reset password authenticated after restart"
+        }
       ]
     },
     {
       "id": "account-signup-activation-complete",
-      "covers": ["signup", "activation email", "token link", "fresh login", "host restart"],
+      "covers": [
+        "signup",
+        "activation email",
+        "token link",
+        "fresh login",
+        "host restart",
+        "administrator configures captcha off in private test deck"
+      ],
       "steps": [
-        {"visit": "/"},
-        {"click": {"link": "Sign up"}},
-        {"fill": {"name": "card[name]"}, "value": "Journey New User"},
-        {"fill": {"field": "*email"}, "value": "journey.new@example.test"},
-        {"fill": {"field": "*password"}, "value": "Journey signup pass 9#"},
-        {"click": {"button": "Submit"}},
-        {"observe": "signup submitted"},
-        {"mail_link": {"subject": "[Aa]ctivat|[Vv]erif", "contains": "token"}},
-        {"observe": "activation result"},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/*signin"},
-        {"fill": {"field": "*email"}, "value": "journey.new@example.test"},
-        {"fill": {"field": "*password"}, "value": "Journey signup pass 9#"},
-        {"click": {"button": "Sign in"}},
-        {"wait": {"css": "a.signout-link"}},
-        {"visit": "/Journey_New_User"},
-        {"observe": "activated user after restart"}
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/new/Toggle"
+        },
+        {
+          "fill": {
+            "name": "card[name]"
+          },
+          "value": "*all+*captcha"
+        },
+        {
+          "uncheck": {
+            "name": "card[content]"
+          }
+        },
+        {
+          "click": {
+            "button": "Submit"
+          }
+        },
+        {
+          "observe": "captcha off configured by administrator"
+        },
+        {
+          "click": {
+            "link": "Sign out"
+          }
+        },
+        {
+          "visit": "/"
+        },
+        {
+          "click": {
+            "link": "Sign up"
+          }
+        },
+        {
+          "fill": {
+            "name": "card[name]"
+          },
+          "value": "Journey New User"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "journey.new@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey signup pass 9#"
+        },
+        {
+          "click": {
+            "button": "Submit"
+          }
+        },
+        {
+          "observe": "signup submitted"
+        },
+        {
+          "mail_link": {
+            "subject": "[Aa]ctivat|[Vv]erif",
+            "contains": "token"
+          }
+        },
+        {
+          "observe": "activation result"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/*signin"
+        },
+        {
+          "fill": {
+            "field": "*email"
+          },
+          "value": "journey.new@example.test"
+        },
+        {
+          "fill": {
+            "field": "*password"
+          },
+          "value": "Journey signup pass 9#"
+        },
+        {
+          "click": {
+            "button": "Sign in"
+          }
+        },
+        {
+          "wait": {
+            "css": "a.signout-link"
+          }
+        },
+        {
+          "visit": "/Journey_New_User"
+        },
+        {
+          "observe": "activated user after restart"
+        }
       ]
     },
     {
       "id": "date-edit-persistence",
-      "covers": ["native date input", "Date display", "fresh profile", "host restart", "saved form value"],
+      "covers": [
+        "native date input",
+        "Date display",
+        "fresh profile",
+        "host restart",
+        "saved form value"
+      ],
       "steps": [
-        {"signin": "admin"},
-        {"visit": "/Date_1?view=edit"},
-        {"observe": "date editor before"},
-        {"fill": {"css": "input.date-editor[type=date]"}, "value": "2028-02-29"},
-        {"click": {"button": "Save and Close"}},
-        {"wait": {"text": "February 29, 2028"}},
-        {"observe": "saved leap day"},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/Date_1"},
-        {"wait": {"text": "February 29, 2028"}},
-        {"observe": "leap day after restart"},
-        {"signin": "admin"},
-        {"visit": "/Date_1?view=edit"},
-        {"observe": "persisted date editor value"}
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/Date_1?view=edit"
+        },
+        {
+          "observe": "date editor before"
+        },
+        {
+          "fill": {
+            "css": "input.date-editor[type=date]"
+          },
+          "value": "2028-02-29"
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "wait": {
+            "text": "February 29, 2028"
+          }
+        },
+        {
+          "observe": "saved leap day"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/Date_1"
+        },
+        {
+          "wait": {
+            "text": "February 29, 2028"
+          }
+        },
+        {
+          "observe": "leap day after restart"
+        },
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/Date_1?view=edit"
+        },
+        {
+          "observe": "persisted date editor value"
+        }
       ]
     },
     {
       "id": "rich-editor-save-persistence",
-      "covers": ["rich editor", "content saved", "fresh profile", "host restart", "edit form reload"],
+      "covers": [
+        "rich editor",
+        "content saved",
+        "fresh profile",
+        "host restart",
+        "edit form reload"
+      ],
       "steps": [
-        {"signin": "admin"},
-        {"visit": "/Note_001?view=edit"},
-        {"editor": "card[content]", "value": "<p>Journey persisted rich content 20261015.</p>"},
-        {"click": {"button": "Save and Close"}},
-        {"wait": {"text": "Journey persisted rich content 20261015."}},
-        {"observe": "saved rich content"},
-        {"fresh_session": true},
-        {"restart": true},
-        {"visit": "/Note_001"},
-        {"wait": {"text": "Journey persisted rich content 20261015."}},
-        {"observe": "rich content after restart"},
-        {"signin": "admin"},
-        {"visit": "/Note_001?view=edit"},
-        {"observe": "persisted rich editor value"}
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/Note_001?view=edit"
+        },
+        {
+          "editor": "card[content]",
+          "value": "<p>Journey persisted rich content 20261015.</p>"
+        },
+        {
+          "click": {
+            "button": "Save and Close"
+          }
+        },
+        {
+          "wait": {
+            "text": "Journey persisted rich content 20261015."
+          }
+        },
+        {
+          "observe": "saved rich content"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "restart": true
+        },
+        {
+          "visit": "/Note_001"
+        },
+        {
+          "wait": {
+            "text": "Journey persisted rich content 20261015."
+          }
+        },
+        {
+          "observe": "rich content after restart"
+        },
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/Note_001?view=edit"
+        },
+        {
+          "observe": "persisted rich editor value"
+        }
       ]
     }
   ]
 }
-

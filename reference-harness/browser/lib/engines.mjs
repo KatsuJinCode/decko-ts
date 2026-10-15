@@ -105,7 +105,7 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     for (;;) {
       if (child.exitCode !== null) throw new Error(`${engine.name} server exited with ${child.exitCode} before it was ready`);
       try {
-        const res = await fetch(base + (engine.ready ?? "/__harness/ready"));
+        const res = await fetch(base + (engine.ready ?? "/__harness/ready"), { headers: { connection: "close" } });
         if (res.ok) break;
       } catch {
         /* not listening yet */
@@ -116,7 +116,7 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     };
     await awaitReady();
     const mail = async () => {
-      const res = await fetch(base + "/__harness/mail");
+      const res = await fetch(base + "/__harness/mail", { headers: { connection: "close" } });
       return res.ok ? res.json() : [];
     };
     // Restart only the process this session spawned, preserving its private
