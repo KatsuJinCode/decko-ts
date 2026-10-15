@@ -210,6 +210,42 @@ describe("mod-event dispatcher — the stage walk", () => {
     }
   });
 
+  it.each([
+    [{ event: "self", after: "self", fn: noop }],
+    [{ event: "a", after: "b", fn: noop }, { event: "b", before: "a", fn: noop }],
+  ])("rejects callback cycles even when no stage root exists: %j", async (...decls) => {
+    const result = await run(decls, "validate", card());
+    expect(result.thrown).toBeInstanceOf(Error);
+    expect(String(result.thrown)).toContain("callback cycle");
+  });
+
+  it("rejects unknown callback targets instead of silently executing zero events", async () => {
+    const result = await run([{ event: "orphan", before: "missing_target", fn: noop }], "validate", card());
+    expect(String(result.thrown)).toContain("Invalid event callback target 'missing_target'");
+  });
+
+  it("attaches callbacks once to the definition belonging to the card's set", async () => {
+    const calls: string[] = [];
+    const result = await run([
+      { event: "target", at: "validate", setPath: "type/css", fn: () => { calls.push("css"); } },
+      { event: "target", at: "validate", setPath: "type/scss", fn: () => { calls.push("scss"); } },
+      { event: "callback", after: "target", fn: () => { calls.push("callback"); } },
+    ], "validate", card(), { setMember: path => path === "type/scss" });
+    expect(result.thrown).toBeUndefined();
+    expect(calls).toEqual(["scss", "callback"]);
+  });
+
+  it("refuses ambiguous applicable definitions before any callback runs", async () => {
+    const calls: string[] = [];
+    const result = await run([
+      { event: "target", at: "validate", fn: () => { calls.push("one"); } },
+      { event: "target", at: "validate", fn: () => { calls.push("two"); } },
+      { event: "callback", after: "target", fn: () => { calls.push("callback"); } },
+    ], "validate", card());
+    expect(String(result.thrown)).toContain("Ruby module precedence is not established");
+    expect(calls).toEqual([]);
+  });
+
   it("rescues callback failure inside its integration target's wrapper", async () => {
     // event.rb:147-157 wraps run_callbacks in rescuing_if_integration.
     // The relative callback has no rescue of its own; its target does.

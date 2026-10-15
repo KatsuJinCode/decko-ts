@@ -19,6 +19,17 @@ callback still evaluates its own gates. Before callbacks run in reverse
 registration order; after callbacks run in registration order. Nested
 callbacks remain inside their target's invocation and failure handling.
 
+The graph check rejects cycles and unknown target names even without a
+stage root, using iterative traversal rather than recursive graph expansion.
+`select_action`, `show_page` and `act` are explicit valid external chains
+defined by stock `Card` (`lib/card.rb:181`), not orphan save events. The
+composed default registry has 162 entries, no duplicate names, and two
+external-target declarations (`save_current_location` and
+`select_file_revision`). When disjoint sets define the same event name,
+callbacks attach once to the applicable definition. Multiple simultaneously
+applicable definitions fail loudly: Ruby module precedence for that case is
+not established here. This limitation is preferable to firing both bodies.
+
 A small installed-Ruby ActiveSupport control (absolute Ruby33 executable,
 no Decko/Rails boot, 7.94s) independently returned:
 
@@ -45,7 +56,8 @@ git diff --check
 ```
 
 The driver stdout was saved as `tmp/side-effects-battery-after/ts.json`.
-All 65 focused tests passed in 8.15s; TypeScript and whitespace checks
+The initial 65 focused tests passed in 8.15s. After the graph audit, 70
+focused tests passed in 5.77s; TypeScript passed again. Whitespace checks
 passed; all 734 test files classified. Tests include negative controls for
 all seven parent gates, nested callback order and a failed before callback
 preventing the target and later callbacks.

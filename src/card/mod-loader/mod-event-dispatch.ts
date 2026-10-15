@@ -382,29 +382,34 @@ async function setConditionApplies(
  *  (options.rb:76 keeps @stage nil for before:-/after:-registered events —
  *  "after, before, or around will override stage configuration"). */
 function stageCandidates(registry: ModEventRegistry, stage: ModEventStage): RegisteredModEvent[] {
-  const direct = registry.forStage(stage);
-  if (direct.length === 0) return [];
-  const byName = new Map(registry.all().map((e) => [e.event, e]));
-  const directNames = new Set(direct.map((e) => e.event));
+  const all = registry.all();
+  const byName = new Map<string, RegisteredModEvent[]>();
+  for (const event of all) byName.set(event.event, [...(byName.get(event.event) ?? []), event]);
+  // Card defines these non-stage callback chains (card-1.110.0/lib/card.rb:181).
+  // They are valid roots, but are driven by page/revision/act entry points.
+  const external = new Set(["select_action", "show_page", "act"]);
   const relativeTo = (event: RegisteredModEvent): string | undefined =>
     event.after ?? event.before;
   const rootsInStage = (event: RegisteredModEvent): boolean => {
-    const seen = new Set<string>([event.event]);
-    let cursor: RegisteredModEvent | undefined = event;
-    while (cursor !== undefined) {
-      const next = relativeTo(cursor);
-      if (next === undefined) break;
-      if (seen.has(next)) return false; // before/after cycle: not runnable
-      seen.add(next);
-      cursor = byName.get(next);
-      if (cursor === undefined) return false; // target never registered
+    // Iterative traversal validates every definition, including branches
+    // outside the requested stage, without recursive graph expansion.
+    const pending = [{ entry: event, path: [event.event] }];
+    let matches = false;
+    while (pending.length) {
+      const { entry, path } = pending.pop()!;
+      const next = relativeTo(entry);
+      if (next === undefined) { matches ||= entry.at === stage; continue; }
+      if (path.includes(next)) throw new Error(`Invalid event callback cycle: ${[...path, next].join(" -> ")}`);
+      const targets = byName.get(next);
+      if (targets === undefined) {
+        if (!external.has(next)) throw new Error(`Invalid event callback target '${next}' for '${entry.event}' (${entry.setPath})`);
+        continue;
+      }
+      for (const target of targets) pending.push({ entry: target, path: [...path, next] });
     }
-    return cursor !== undefined && directNames.has(cursor.event);
+    return matches;
   };
-  const inherited = registry
-    .all()
-    .filter((e) => e.at === undefined && relativeTo(e) !== undefined && rootsInStage(e));
-  return [...direct, ...inherited];
+  return all.filter(rootsInStage);
 }
 
 /** A host stand-in whose every member throws LOUDLY when a body reaches for
@@ -441,7 +446,7 @@ export async function runModEventStage(
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
-  const candidates = stageCandidates(runtime.registry, stage);
+  const stageEntries = stageCandidates(runtime.registry, stage);
   const fired: string[] = [];
   const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
   const failed: Array<{ event: string; error: unknown }> = [];
@@ -456,6 +461,22 @@ export async function runModEventStage(
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,
     ...(saveInput !== undefined ? { saveInput } : {}),
   };
+  // Distinct set modules may define the same method. Resolve disjoint set
+  // membership before attaching callbacks; never attach one callback to
+  // several applicable definitions and invent a Ruby module precedence.
+  const selected = new Map<string, RegisteredModEvent>();
+  for (const event of stageEntries) {
+    if (selected.has(event.event)) continue;
+    const definitions = stageEntries.filter(entry => entry.event === event.event);
+    if (definitions.length === 1) { selected.set(event.event, event); continue; }
+    const applicable: RegisteredModEvent[] = [];
+    for (const definition of definitions) {
+      if (await setConditionApplies(definition, runtime, card, ctx)) applicable.push(definition);
+    }
+    if (applicable.length > 1) throw new Error(`Ambiguous event callback method '${event.event}': multiple applicable definitions (${applicable.map(entry => entry.setPath).join(", ")}); Ruby module precedence is not established`);
+    selected.set(event.event, applicable[0] ?? event);
+  }
+  const candidates = stageEntries.filter(event => selected.get(event.event) === event);
   // Ruby attaches these to the target's own callback chain, inside its
   // applicability gate. With prepend:true, before runs newest first and
   // after runs oldest first (Event::Callbacks, callbacks.rb:14-19).
@@ -467,7 +488,9 @@ export async function runModEventStage(
       skipCallbacks(child);
     }
   };
+  const active = new Set<RegisteredModEvent>();
   const runEvent = async (event: RegisteredModEvent): Promise<void> => {
+    if (active.has(event)) throw new Error(`Invalid event callback recursion at '${event.event}'`);
     if (!onConditionApplies(event.on, card.act?.action ?? "update")) {
       skipped.push({ event: event.event, reason: "on-action" });
       skipCallbacks(event);
@@ -503,6 +526,7 @@ export async function runModEventStage(
       return;
     }
     try {
+      active.add(event);
       for (const child of children(event, "before").reverse()) await runEvent(child);
       await event.fn(card, (runtime.host ?? HOST_REQUIRED) as Parameters<
         typeof event.fn
@@ -520,6 +544,8 @@ export async function runModEventStage(
         return;
       }
       throw error;
+    } finally {
+      active.delete(event);
     }
   };
   for (const event of candidates) {
