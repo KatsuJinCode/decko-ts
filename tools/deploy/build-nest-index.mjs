@@ -11,72 +11,125 @@
 // index current, and it runs from the deploy chain and the import tool, not
 // from a request.
 //
-// It calls bootDeck, which primes the name lexicon and then calls
-// ensureNestIndex (src/card/nest-index.ts): the same build a Node host does at
-// boot, on the same deck file. Idempotent — a deck already at this build
-// version costs one marker read and writes nothing.
+// THE SAME BUILD, THREE DATABASES.
+//   --db <file.sqlite3>            a local SQLite deck (bootDeck, the Node host's path)
+//   --d1-account A --d1-database D a deployed Cloudflare D1, over the REST API;
+//                                  CLOUDFLARE_API_TOKEN must carry D1 edit rights
+//   --d1-local <dir> [--d1-name N] a local Miniflare D1 under <dir> (tests, rehearsal)
+// Each reaches the database through the engine's own adapter and runs the same
+// ensureNestIndex (src/card/nest-index.ts). Idempotent: a deck already at this
+// build version costs one marker read and writes nothing.
 //
-// Usage:
-//   node tools/deploy/build-nest-index.mjs --db <deck.sqlite3> [--json]
-//   node tools/deploy/build-nest-index.mjs --db <deck.sqlite3> --json > report.json
+// The compiled engine ships as dist/. Build it first: `npm run build:engine`
+// (npx tsc -p tsconfig.json --outDir dist ...), or the deploy chain's build.
 //
-// --db is a local SQLite file (a D1 export or a local deck). For a deployed
-// D1 database, run it against an export of the deck and re-upload, or call
-// ensureNestIndex through the same build with a D1 driver; this script does
-// not reach into a remote database by itself.
+// Exit status: 0 when the marker says current after the run, 1 otherwise,
+// 2 for a usage or load error.
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { d1HttpBinding, miniflareBinding, buildNestIndexOnBinding } from "./d1-binding.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
+const DIST = path.join(REPO, "dist");
 
-function fail(message) {
+function fail(message, code = 2) {
   process.stderr.write(`[build-nest-index] ${message}\n`);
-  process.exit(2);
+  process.exit(code);
 }
 
-const args = process.argv.slice(2);
-const json = args.includes("--json");
-const dbIndex = args.indexOf("--db");
-const db = dbIndex === -1 ? undefined : args[dbIndex + 1];
-if (db === undefined) fail("usage: node tools/deploy/build-nest-index.mjs --db <deck.sqlite3> [--json]");
-const dbPath = path.resolve(db);
-
-// The engine ships as compiled JS (dist/); the deploy chain builds it
-// (`npx tsc -p tsconfig.engine.json`) before this step runs.
-const require = createRequire(import.meta.url);
-let bootDeck;
-try {
-  ({ bootDeck } = require(path.join(REPO, "dist/src/card/pods/deck.js")));
-} catch (err) {
-  fail(
-    `cannot load the compiled engine at dist/src/card/pods/deck.js - build it first (npx tsc -p tsconfig.engine.json): ${err.message}`,
-  );
+function argValue(args, flag) {
+  const i = args.indexOf(flag);
+  return i === -1 ? undefined : args[i + 1];
 }
 
-const started = Date.now();
-let result;
-try {
-  const deck = await bootDeck(dbPath);
-  try {
-    const { readNestIndexMarker } = require(path.join(REPO, "dist/src/card/nest-index.js"));
-    result = await readNestIndexMarker(deck.driver);
-  } finally {
-    deck.close();
+const USAGE =
+  "usage: node tools/deploy/build-nest-index.mjs (--db <deck.sqlite3> | --d1-account <id> --d1-database <id> | --d1-local <dir> [--d1-name <name>]) [--json]";
+
+/** Runs one build and returns the report. Exported for the tests. */
+export async function runBuild(target) {
+  const started = Date.now();
+  if (target.kind === "sqlite") {
+    const require = createRequire(import.meta.url);
+    let bootDeck;
+    let readNestIndexMarker;
+    try {
+      ({ bootDeck } = require(path.join(DIST, "src/card/pods/deck.js")));
+      ({ readNestIndexMarker } = require(path.join(DIST, "src/card/nest-index.js")));
+    } catch (err) {
+      throw Object.assign(new Error(`cannot load the compiled engine from ${DIST}: ${err.message}`), { usage: true });
+    }
+    const deck = await bootDeck(target.path);
+    try {
+      const marker = await readNestIndexMarker(deck.driver);
+      return { database: target.path, ...marker, elapsed_ms: Date.now() - started };
+    } finally {
+      deck.close();
+    }
   }
-} catch (err) {
-  fail(`${dbPath}: ${err?.stack ?? err}`);
+  if (target.kind === "d1") {
+    const { binding, dispose, label } = target.open();
+    try {
+      const { install, marker } = await buildNestIndexOnBinding(await binding, DIST);
+      return { database: label, ...marker, build: install, elapsed_ms: Date.now() - started };
+    } finally {
+      if (dispose) await dispose();
+    }
+  }
+  throw new Error(`unknown target ${target.kind}`);
 }
 
-const report = { database: dbPath, ...result, elapsed_ms: Date.now() - started };
-if (json) {
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-} else {
-  const { database, ...rest } = report;
-  process.stdout.write(
-    `[build-nest-index] ${database}: ${rest.state ?? "unknown"}${rest.version === undefined ? "" : ` (version ${rest.version})`} in ${rest.elapsed_ms} ms\n`,
-  );
+async function main() {
+  const args = process.argv.slice(2);
+  const json = args.includes("--json");
+  let target;
+  if (argValue(args, "--db") !== undefined) {
+    target = { kind: "sqlite", path: path.resolve(argValue(args, "--db")) };
+  } else if (argValue(args, "--d1-account") !== undefined) {
+    const accountId = argValue(args, "--d1-account");
+    const databaseId = argValue(args, "--d1-database");
+    if (databaseId === undefined) fail(USAGE);
+    target = {
+      kind: "d1",
+      label: `d1:${databaseId}`,
+      open: () => ({ binding: d1HttpBinding({ accountId, databaseId }), label: `d1:${databaseId}` }),
+    };
+  } else if (argValue(args, "--d1-local") !== undefined) {
+    const persistDir = path.resolve(argValue(args, "--d1-local"));
+    const dbName = argValue(args, "--d1-name") ?? "decko-nest-index";
+    target = {
+      kind: "d1",
+      label: `miniflare:${dbName}`,
+      open: () => {
+        const opened = miniflareBinding({ persistDir, dbName });
+        return {
+          binding: opened.then((m) => m.binding),
+          dispose: () => opened.then((m) => m.dispose()),
+          label: `miniflare:${dbName}`,
+        };
+      },
+    };
+  } else {
+    fail(USAGE);
+  }
+
+  let report;
+  try {
+    report = await runBuild(target);
+  } catch (err) {
+    fail(`${target.label ?? target.path}: ${err?.stack ?? err}`, err?.usage ? 2 : 1);
+  }
+  if (json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
+    const version = report.version === undefined ? "" : ` (version ${report.version})`;
+    process.stdout.write(`[build-nest-index] ${report.database}: ${report.state ?? "unknown"}${version} in ${report.elapsed_ms} ms\n`);
+  }
+  if (report.state !== "current") process.exitCode = 1;
 }
-if (report.state !== "current") process.exitCode = 1;
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await main();
+}
