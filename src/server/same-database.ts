@@ -73,7 +73,21 @@ export interface SameDatabaseOptions {
   readonly skipAuthSessions?: boolean;
 }
 
+/** The SQL dialect a driver speaks; drivers other than SQLite name theirs. */
+export function driverDialect(driver: SQLDatabaseDriver): "sqlite" | "mysql" {
+  return (driver as { dialect?: string }).dialect === "mysql" ? "mysql" : "sqlite";
+}
+
 async function schemaNames(driver: SQLDatabaseDriver): Promise<Set<string>> {
+  if (driverDialect(driver) === "mysql") {
+    const rows = await driver.query<{ name: string }>(
+      `SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()
+       UNION SELECT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()
+       UNION SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE()`,
+      [],
+    );
+    return new Set(rows.rows.map((r) => String(r.name)));
+  }
   const rows = await driver.query<{ name: string }>(
     `SELECT name FROM sqlite_master WHERE type IN ('table', 'index', 'trigger') AND name NOT LIKE 'sqlite_%'`,
     [],
@@ -113,6 +127,7 @@ export async function openSameDatabase(
   driver: SQLDatabaseDriver,
   options: SameDatabaseOptions = {},
 ): Promise<SameDatabaseReport> {
+  if (driverDialect(driver) === "mysql") return openSameMysqlDatabase(driver, options);
   const before = await schemaNames(driver);
   const rubyDatabase = await isRubyDeckoDatabase(driver);
   // An empty file (a fresh deck the host seeds after this call) has no card
@@ -142,6 +157,58 @@ export async function openSameDatabase(
   const after = await schemaNames(driver);
   const created = [...after].filter((n) => !before.has(n)).sort();
   return { rubyDatabase, created, authMigrationsApplied: auth.applied };
+}
+
+/** The objects the port adds to a Ruby MySQL database. MySQL has no
+ *  expression or partial indexes on the versions Ruby Decko supports, and
+ *  its key/codename indexes already serve the engine's lookups under the
+ *  database's own collation, so only the stamp, its triggers, the session
+ *  table and the two plain lookup indexes are added. */
+export const MYSQL_PORT_OBJECTS: readonly PortSchemaObject[] = [
+  {
+    type: "table",
+    name: "deck_data_version",
+    sql: `CREATE TABLE IF NOT EXISTS deck_data_version (id INT NOT NULL PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0) ENGINE=InnoDB`,
+  },
+  ...(["cards", "card_references"] as const).flatMap((table) =>
+    (["ins", "upd", "del"] as const).map((op): PortSchemaObject => {
+      const event = op === "ins" ? "INSERT" : op === "upd" ? "UPDATE" : "DELETE";
+      const name = `${table}_bump_deck_data_version_${op}`;
+      return {
+        type: "trigger",
+        name,
+        sql: `CREATE TRIGGER ${name} AFTER ${event} ON ${table} FOR EACH ROW UPDATE deck_data_version SET version = version + 1 WHERE id = 1`,
+      };
+    }),
+  ),
+  {
+    type: "table",
+    name: "auth_sessions",
+    sql: `CREATE TABLE IF NOT EXISTS auth_sessions (
+  token_hash CHAR(64) NOT NULL PRIMARY KEY,
+  account_card_id INT NOT NULL,
+  created_at VARCHAR(23) NOT NULL,
+  expires_at VARCHAR(23) NOT NULL,
+  INDEX index_auth_sessions_on_account_card_id (account_card_id),
+  INDEX index_auth_sessions_on_expires_at (expires_at)
+) ENGINE=InnoDB`,
+  },
+  { type: "index", name: "cards_name_trash_index", sql: `CREATE INDEX cards_name_trash_index ON cards (name, trash)` },
+  { type: "index", name: "cards_right_id_trash_index", sql: `CREATE INDEX cards_right_id_trash_index ON cards (right_id, trash)` },
+];
+
+async function openSameMysqlDatabase(driver: SQLDatabaseDriver, options: SameDatabaseOptions): Promise<SameDatabaseReport> {
+  const before = await schemaNames(driver);
+  const rubyDatabase = await isRubyDeckoDatabase(driver);
+  const hasCardTables = before.has("cards") && before.has("card_references");
+  const objects = MYSQL_PORT_OBJECTS.filter((o) => (o.name === "auth_sessions" ? !options.skipAuthSessions : hasCardTables));
+  // DDL commits implicitly on MySQL, so each object is created on its own;
+  // the existence check makes a rerun create nothing.
+  for (const o of objects) if (!before.has(o.name)) await driver.query(o.sql, []);
+  if (hasCardTables) await driver.query(`INSERT IGNORE INTO deck_data_version (id, version) VALUES (1, 0)`, []);
+  const after = await schemaNames(driver);
+  const created = [...after].filter((n) => !before.has(n)).sort();
+  return { rubyDatabase, created, authMigrationsApplied: [] };
 }
 
 /**

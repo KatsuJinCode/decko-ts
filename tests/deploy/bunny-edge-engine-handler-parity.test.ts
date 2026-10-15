@@ -197,12 +197,15 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(await response.text()).not.toContain("only synthetic demo content");
   });
 
-  it("a missing card answers 404 the minimal not_found stub on an UNCONFIGURED deployment", async () => {
-    // THE UNCONFIGURED CASE, and the regression
-    // guard for the defect itself: with no deltas in the environment the
-    // builder has no layout-rule anchors to resolve this deck's Default
-    // Layout with, so its documented fallback answers — and no other deck's
-    // card id, private asset URL or version pin reaches it.
+  it("a missing card answers 404 with the deck's own not-found chrome on an UNCONFIGURED deployment", async () => {
+    // THE UNCONFIGURED CASE, and the regression guard for the defect itself:
+    // with no deltas in the environment the builder resolves this deck's
+    // Default Layout from the deck's own `all` and `layout` codename cards
+    // (bunny-edge-error-page.ts resolveDefaultLayout; docs/core/contract.md
+    // S2.6.a: constants resolved from cards.codename, not assumed), so the
+    // page is laid out in the deck's chrome. No other deck's card id, private
+    // asset URL or version pin reaches it. The minimal stub is for a deck
+    // with no layout anchors and is covered in bunny-edge-error-page.test.ts.
     //
     // This runs FIRST in the suite on purpose. The handler memoizes ONE deck
     // per isolate (`deckPromise` in bunny-edge-engine-handler.ts), and the
@@ -215,7 +218,16 @@ describe("bunny edge engine handler — the shared read surface", () => {
     const response = await get("/No+Such+Card");
     expect(response.status).toBe(404);
     const body = await response.text();
-    expect(body).toContain("<h1>Card not found</h1>");
+    // The staging host's recorded not_found slot (vm-staging-server.mjs
+    // renderDeckoErrorPage, error.rb:88-89 NotFound 404) carried in the
+    // deck's own Default Layout chrome, not the minimal stub: the not_found
+    // card slot renders with its "Not Found" card title and "Could not find"
+    // the unknown card's name, inside the deck's stock chrome.
+    expect(body).toContain("card-slot not_found-view");
+    expect(body).toContain('title="Not Found"');
+    expect(body).toContain("Could not find");
+    expect(body).toContain("Test Site");
+    expect(body).not.toContain("<h1>Card not found</h1>");
     expect(body).not.toContain("22281");
     expect(body).not.toContain("basic_c");
     expect(body).not.toContain("production-storage");

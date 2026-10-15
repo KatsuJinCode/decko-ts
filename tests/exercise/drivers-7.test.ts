@@ -649,7 +649,7 @@ const W = {
   editor: 90,
 } as const;
 
-const SETUP_ENV = ["DECKO_FIRST_RUN", "DECKO_WRITE_PATH"] as const;
+const SETUP_ENV = ["DECKO_FIRST_RUN", "DECKO_WRITE_PATH", "DECKO_SETUP_TOKEN"] as const;
 const priorSetupEnv = new Map<string, string | undefined>();
 
 afterEach(() => {
@@ -860,6 +860,11 @@ describe("the origin check on state-changing requests", () => {
   it(`${ORIGIN_CLAIM} — a cross-site first-run setup POST creates no account`, async () => {
     setSetupEnv("DECKO_FIRST_RUN", "1");
     setSetupEnv("DECKO_WRITE_PATH", "1");
+    // The one-time setup token (docs/SECURITY.md, divergence 5) is required
+    // on every setup POST. It is presented in both posts below, so the only
+    // thing that differs between them is the Origin header.
+    const setupToken = "origin-check-setup-token";
+    setSetupEnv("DECKO_SETUP_TOKEN", setupToken);
     const storage = writeDeck!;
     const post = (headers: Record<string, string>) =>
       handleFirstRunRequest(
@@ -869,7 +874,7 @@ describe("the origin check on state-changing requests", () => {
           pathname: SETUP_PATH,
           host: HOST,
           headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
-          body: "email=owner%40example.com&password=Abcdef1%21",
+          body: `email=owner%40example.com&password=Abcdef1%21&setup_token=${encodeURIComponent(setupToken)}`,
         },
       );
 

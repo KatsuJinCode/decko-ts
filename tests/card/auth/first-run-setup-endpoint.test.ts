@@ -85,9 +85,21 @@ async function bootStagingServer(
   await ensureStagingServerDist();
   const port = await reserveEphemeralPort();
   const baseUrl = `http://127.0.0.1:${port}`;
+  // The printed-token contract below needs the boot to GENERATE its token
+  // (docs/SECURITY.md, divergence 5). An operator DECKO_SETUP_TOKEN in the
+  // host environment is in force instead and suppresses the printed line
+  // (src/card/auth/setup-token.ts armGeneratedSetupToken), so the inherited
+  // value is stripped here. A test that wants the operator token passes it
+  // explicitly in `env`.
+  const childEnv: Record<string, string | undefined> = { ...process.env };
+  delete childEnv["DECKO_SETUP_TOKEN"];
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) delete childEnv[key];
+    else childEnv[key] = value;
+  }
   const child = spawn(process.execPath, [SERVER_ENTRY, dbPath, String(port)], {
     cwd: REPO_ROOT,
-    env: { ...process.env, ...env },
+    env: childEnv as NodeJS.ProcessEnv,
     stdio: ["ignore", "pipe", "pipe"],
   });
   let output = "";

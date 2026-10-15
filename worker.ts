@@ -9,6 +9,8 @@
 //   DB       D1 — the deck
 //   FILES    R2 — uploads, image renditions and stored asset outputs
 //   DELAYED  Queue — delayed work, consumed by the `queue` handler below
+//   DELAYED_JOBS Queue — card-mod-delayed_job's work-off signal, the same
+//              `queue` handler below, told apart by the queue's name
 //   cron     the `scheduled` handler below enqueues the periodic sweep
 //
 // Runtime seam (src/server/drivers/d1.ts): the engine never imports vendor
@@ -23,6 +25,13 @@
 // tests/deploy/worker-twins-shared-surface-parity.test.ts.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
+import {
+  cloudflareAfterResponse,
+  handleDelayedJobQueueBatch,
+  type QueueProducer,
+  type WaitUntilContext,
+} from "./src/card/delayed-job/delayed-job.js";
+import { delayingFromEnv, hostDelayedJobs } from "./src/card/delayed-job/host.js";
 import { FetchEngine } from "./src/card/fetch.js";
 import {
   CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
@@ -71,14 +80,39 @@ interface Env {
   DECKO_FIRST_RUN?: string;
   /** "1" turns the card write path on. Both unset = the read-only deploy. */
   DECKO_WRITE_PATH?: string;
-  /** Optional operator-chosen first-run setup token (a secret), accepted
+/** Optional operator-chosen first-run setup token (a secret), accepted
    *  beside the deploy-issued one (src/card/auth/setup-token.ts). */
   DECKO_SETUP_TOKEN?: string;
   /** R2 binding: the deck's files (uploads and asset outputs). Optional: a
    *  deploy without it serves no files and refuses uploads by name. */
   FILES?: R2BucketLike;
-  /** Queue producer binding for delayed work. Optional. */
+  /** Queue producer binding for delayed work (the cron sweep's queue,
+   *  src/server/edge-delayed-work.ts). Optional. */
   DELAYED?: QueueProducerLike;
+  /** Cardio.config.delaying: "true" queues integrate_with_delay events as
+   *  delayed_jobs rows in D1 (card-mod-delayed_job). Unset = Ruby's default,
+   *  the events run in the request. */
+  DECKO_DELAYING?: string;
+  /** The card-mod-delayed_job Queues producer ([[queues.producers]] in
+   *  wrangler.toml). Absent: the worker runs under ctx.waitUntil instead. */
+  DELAYED_JOBS?: QueueProducer;
+}
+
+/** The queue name of the card-mod-delayed_job producer (wrangler.toml
+ *  [[queues.producers]] DELAYED_JOBS). The shared queue() handler uses it to
+ *  tell a delayed-job batch from the cron sweep's batch. */
+const DELAYED_JOBS_QUEUE = "decko-ts-delayed-jobs";
+
+/** The delayed-job wiring for one request (the ExecutionContext is
+ *  per-request; the rows live in D1, so nothing is kept between requests). */
+function workersDelayedJobs(env: Env, deck: Deck, ctx: WaitUntilContext | undefined) {
+  return hostDelayedJobs({
+    driver: new CloudflareD1Adapter(env.DB),
+    fetcher: deck.fetcher,
+    delaying: delayingFromEnv(env.DECKO_DELAYING) && ctx !== undefined,
+    afterResponse: cloudflareAfterResponse(ctx ?? { waitUntil: () => {} }, env.DELAYED_JOBS),
+    workerName: "cloudflare-worker",
+  });
 }
 
 interface Deck {
@@ -320,10 +354,18 @@ export default {
     await runDelayedWork(message, { driver: new CloudflareD1Adapter(env.DB), files: env.FILES === undefined ? undefined : new R2BlobDriver(env.FILES) });
   },
 
-  /** Queue consumer (wrangler.toml [[queues.consumers]]). A message that
-   *  throws is retried by the platform; one that is not delayed work at all
-   *  is acknowledged and logged rather than retried forever. */
-  async queue(batch: { messages: ReadonlyArray<{ body: unknown; ack(): void; retry(): void }> }, env: Env): Promise<void> {
+  /** Queue consumer for BOTH bound queues (wrangler.toml [[queues.consumers]]).
+   *  The cron sweep's DELAYED messages and the delayed-job producer's
+   *  DELAYED_JOBS messages arrive at the same handler, so the queue name picks
+   *  the work; the D1 row is the job either way, so a lost or repeated message
+   *  never loses or repeats one. A message that throws is retried by the
+   *  platform rather than acknowledged. */
+  async queue(batch: { queue: string; messages: ReadonlyArray<{ body: unknown; ack(): void; retry(): void }> }, env: Env): Promise<void> {
+    if (batch.queue === DELAYED_JOBS_QUEUE) {
+      const deck = await getDeck(env);
+      await handleDelayedJobQueueBatch(batch, workersDelayedJobs(env, deck, undefined).worker);
+      return;
+    }
     const driver = new CloudflareD1Adapter(env.DB);
     const files = env.FILES === undefined ? undefined : new R2BlobDriver(env.FILES);
     for (const message of batch.messages) {
@@ -338,7 +380,7 @@ export default {
     }
   },
 
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: WaitUntilContext): Promise<Response> {
     const url = new URL(request.url);
     const attachmentStore = attachmentStoreFor(env);
 
@@ -365,6 +407,10 @@ export default {
           fetcher: surfaceDeck.fetcher,
           renderEngine: surfaceDeck.render,
           ...(attachmentStore === undefined ? {} : { attachmentStore }),
+          ...((): { delayedJobs?: NonNullable<ReturnType<typeof workersDelayedJobs>["config"]> } => {
+            const config = workersDelayedJobs(env, surfaceDeck, ctx).config;
+            return config === undefined ? {} : { delayedJobs: config };
+          })(),
         },
         inbound,
         env,

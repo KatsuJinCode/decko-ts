@@ -2,14 +2,17 @@
 //
 //   node tools/ruby-mods/compare.mjs <port-out.json> <oracle-out.json>
 //
-// The one normalization is the harness's: data-slot-id values are random per
-// render on both sides (adapter.rb SLOTLESS), so they are blanked.
+// The one normalization is the harness's rule N1, applied with the harness's
+// own pattern (reference-harness/runner/normalize.mjs SLOT_ID): a
+// data-slot-id attribute of exactly 20 lowercase hex digits is random per
+// render on both sides. Nothing else is rewritten.
 import { readFileSync } from "node:fs";
+import { SLOT_ID } from "../../reference-harness/runner/normalize.mjs";
 
 const [portPath, oraclePath] = process.argv.slice(2);
 const port = JSON.parse(readFileSync(portPath, "utf8"));
 const oracle = JSON.parse(readFileSync(oraclePath, "utf8"));
-const slotless = (s) => s.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, "data-slot-id=$1$1");
+const slotless = (s) => s.replace(SLOT_ID, "data-slot-id=$1$1");
 
 let same = 0;
 let differ = 0;

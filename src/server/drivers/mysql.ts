@@ -1,0 +1,174 @@
+// mysql.ts — the engine's SQL driver over MySQL / MariaDB (mysql2).
+//
+// Ruby Decko's production databases are MySQL. This driver lets the port
+// open such a database as it is (see src/server/same-database.ts and
+// docs/same-database.md): it speaks to Ruby's own tables and translates
+// the engine's SQLite-dialect statements into MySQL at the edge.
+//
+// The session runs with sql_mode PIPES_AS_CONCAT and ANSI_QUOTES, so the
+// engine's `||` concatenation and double-quoted identifiers mean in MySQL
+// what they mean in SQLite, and with the UTC time zone. The remaining
+// SQLite-only forms are rewritten by `sqliteToMysql` (below); a form it does
+// not know is sent as is and fails with MySQL's own error, never silently.
+//
+// One connection, so the engine's single-writer assumptions hold as they do
+// on the local SQLite driver; transactions are serialized by TransactionGate.
+import type { Connection, ConnectionOptions, ResultSetHeader } from "mysql2/promise";
+import { createConnection } from "mysql2/promise";
+import {
+  TransactionGate,
+  rowIdOrOmit,
+  type SQLDatabaseDriver,
+  type SQLQueryResult,
+  type SQLStatement,
+  type SQLTransactionGuarantee,
+} from "../driver.js";
+
+export interface MysqlDriverOptions {
+  readonly host?: string;
+  readonly port?: number;
+  readonly user?: string;
+  readonly password?: string;
+  readonly database: string;
+}
+
+/** Session settings every connection runs with (see the header). */
+export const MYSQL_SESSION_SETTINGS = [
+  "SET SESSION sql_mode = 'PIPES_AS_CONCAT,ANSI_QUOTES,STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'",
+  "SET SESSION time_zone = '+00:00'",
+];
+
+/**
+ * Rewrite one SQLite-dialect statement into MySQL. Covers the forms the
+ * engine issues; anything else passes through unchanged.
+ */
+export function sqliteToMysql(sql: string): string {
+  return outsideQuotes(sql, (part) =>
+    part
+      // Words MySQL reserves that SQLite accepts as bare column names
+      // (cards.key). Quoted unless already qualified by a table alias or
+      // part of a KEY clause (PRIMARY KEY, UNIQUE KEY, ...).
+      .replace(/(?<![.\w"`])(?<!(?:PRIMARY|UNIQUE|FOREIGN|DUPLICATE)\s+)\b(key)\b(?![\w"`])/gi, '"$1"')
+      // Ruby's MySQL text columns already compare case-insensitively
+      // (utf8mb3_unicode_ci), which is what SQLite's NOCASE asks for.
+      .replace(/\s+COLLATE\s+NOCASE\b/gi, "")
+      // SQLite's CTE planner hint; MySQL plans the CTE itself.
+      .replace(/\bAS\s+(?:NOT\s+)?MATERIALIZED\s*\(/gi, "AS (")
+      .replace(/\bINSERT\s+OR\s+IGNORE\b/gi, "INSERT IGNORE")
+      .replace(/\bINSERT\s+OR\s+REPLACE\b/gi, "REPLACE")
+      // CAST target types (the operand may be a quoted literal in another
+      // part, so only the target is matched). A TEXT cast gets a width: a
+      // recursive CTE's column takes its type from the anchor row.
+      .replace(/\s+AS\s+TEXT\s*\)/gi, " AS CHAR(10000))")
+      .replace(/\s+AS\s+INTEGER\s*\)/gi, " AS SIGNED)")
+      .replace(/\bLIMIT\s+-1\b/gi, "LIMIT 18446744073709551615"),
+  );
+}
+
+/** Apply `rewrite` to the parts of `sql` outside quoted strings and
+ *  identifiers ('...', "...", `...`), leaving the quoted parts untouched. */
+function outsideQuotes(sql: string, rewrite: (part: string) => string): string {
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const next = sql.slice(i).search(/['"`]/);
+    if (next < 0) {
+      out += rewrite(sql.slice(i));
+      break;
+    }
+    out += rewrite(sql.slice(i, i + next));
+    const q = sql[i + next];
+    let j = i + next + 1;
+    while (j < sql.length) {
+      if (sql[j] === q) {
+        if (sql[j + 1] === q) j += 2;
+        else break;
+      } else j++;
+    }
+    out += sql.slice(i + next, j + 1);
+    i = j + 1;
+  }
+  return out;
+}
+
+const toParam = (value: unknown): unknown => (typeof value === "bigint" ? value.toString() : value);
+
+export class MysqlDriver implements SQLDatabaseDriver {
+  /** The dialect this driver speaks (read by same-database.ts). */
+  readonly dialect = "mysql";
+
+  private constructor(private readonly conn: Connection) {}
+
+  /** Open a connection and apply the session settings. */
+  static async connect(options: MysqlDriverOptions): Promise<MysqlDriver> {
+    const config: ConnectionOptions = {
+      host: options.host ?? "127.0.0.1",
+      port: options.port ?? 3306,
+      user: options.user ?? "root",
+      password: options.password,
+      database: options.database,
+      // Datetimes come back as the strings Ruby wrote, the shape the engine
+      // reads from SQLite; large integers as numbers when they fit.
+      dateStrings: true,
+      supportBigNumbers: true,
+      charset: "utf8mb4",
+    };
+    const conn = await createConnection(config);
+    for (const sql of MYSQL_SESSION_SETTINGS) await conn.query(sql);
+    return new MysqlDriver(conn);
+  }
+
+  private inTransaction = false;
+  private readonly gate = new TransactionGate();
+
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "native",
+    atomicOnFailure: true,
+    crashRecovery: "database",
+    readersIsolated: true,
+    serializedWriters: "driver-object",
+    atomicBatch: true,
+    idsReusedAfterRollback: false,
+  };
+
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    const [result] = await this.conn.query({ sql: sqliteToMysql(sql), values: params.map(toParam) });
+    if (Array.isArray(result)) return { rows: result as T[], rowsAffected: 0 };
+    const header = result as ResultSetHeader;
+    return { rows: [], rowsAffected: header.affectedRows, lastInsertRowId: rowIdOrOmit(header.insertId) };
+  }
+
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    if (statements.length === 0) return [];
+    if (this.inTransaction) return this.runAll(statements);
+    return this.transaction(() => this.runAll(statements));
+  }
+
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    if (this.inTransaction) return work();
+    return this.gate.run(async () => {
+      await this.conn.query("START TRANSACTION");
+      this.inTransaction = true;
+      try {
+        const result = await work();
+        await this.conn.query("COMMIT");
+        return result;
+      } catch (error) {
+        await this.conn.query("ROLLBACK").catch(() => undefined);
+        throw error;
+      } finally {
+        this.inTransaction = false;
+      }
+    });
+  }
+
+  async close(): Promise<void> {
+    await this.conn.end();
+  }
+
+  private async runAll(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    const out: SQLQueryResult[] = [];
+    for (const s of statements) out.push(await this.query(s.sql, s.params));
+    return out;
+  }
+}

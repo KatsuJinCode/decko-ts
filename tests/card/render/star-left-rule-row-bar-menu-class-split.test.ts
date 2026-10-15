@@ -7,9 +7,13 @@
 //   present row renders known-card.
 //
 //   non-star-left compounds ("Anonymous+*created", "mod X+*script", ...) —
-//   known-card EVEN WHEN no stored row exists: the class-level known
-//   fiction is deliberate on this subset (a content-left compound's menu
-//   must not read as a missing page).
+//   known-card EVEN WHEN no stored row exists, because Ruby's Card.known?
+//   is fetch(name).present?, and a compound whose right part is a set
+//   family card is virtual (card-mod-search virtual_search.rb `virtual?`
+//   = new?; card-mod-rules virtual_set.rb). That family is matched by the
+//   right card's codename (Right pattern, set/pattern/base.rb anchor
+//   codenames), so the deck must hold the stock "*created" card with codename
+//   "created" (card-mod-search data/real.yml), as every Ruby deck does.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -32,6 +36,9 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 3, name: "List", codename: "list" });
   await seedCard(s, { id: 4, name: "RichText", codename: "rich_text" });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: SET_TYPE_ID, dbContent: "{}" });
+  // The stock *created card (card-mod-search data/real.yml). Its codename is
+  // what makes +*created compounds the VirtualSearch family in Ruby.
+  await seedCard(s, { id: 25, name: "*created", codename: "created", typeId: SETTING_TYPE_ID });
   const settings: Array<[number, string, string]> = [
     [20, "*read", "read"],
     [21, "*default", "default"],
@@ -84,9 +91,10 @@ describe("2-part rstar bar-menu class splits by left part", () => {
     expect(slot).not.toContain(`wanted-card" href="/*all+*create"`);
   });
 
-  it("non-star-left absent rule row (Anonymous+*created shape) keeps the known-class fiction (the deliberate known-fiction subset)", async () => {
-    // The host card nests the absent name as a bar; its menu must stay
-    // known-card — the deliberate known-fiction on this subset.
+  it("non-star-left absent rule row (Anonymous+*created) is known-card through the VirtualSearch family (no stored row)", async () => {
+    // The host card nests the absent name as a bar. Ruby's Card.known? is
+    // true for it: the +*created right is the VirtualSearch family, so the
+    // card is virtual (new?) and its menu link is known-card.
     const html = await storage!.engine.render("Anon Host", "content");
     expect(html).toContain(`data-card-name="Anonymous+*created"`);
     expect(html).toContain("full-page-link known-card");

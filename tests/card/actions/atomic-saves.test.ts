@@ -26,6 +26,8 @@ import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/drivers/d1.js";
 import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
 import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { PGlite } from "@electric-sql/pglite";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
@@ -144,6 +146,24 @@ const BACKENDS: Record<string, () => Promise<Backend>> = {
   ...(hosted === undefined
     ? {}
     : { [hosted.label]: async () => ({ driver: await hosted.open(), observer: hosted.connect(), dispose: async () => undefined }) }),
+  "PostgreSQL (PGlite, native)": async () => {
+    // PGlite is one PostgreSQL session, so there is no second connection.
+    // The observer shares the session and first proves no writing
+    // transaction is open (one that has written holds a transaction id), so
+    // what it reads is committed.
+    const client = await PGlite.create();
+    const driver = new PostgresDriver({ client });
+    const shared = new PostgresDriver({ client, ownsClient: false });
+    const observer: SQLDatabaseDriver = {
+      query: async <T,>(sql: string, params: unknown[]) => {
+        const probe = await client.query<{ outside: boolean }>("SELECT pg_current_xact_id_if_assigned() IS NULL AS outside");
+        if (!probe.rows[0]?.outside) throw new Error("observer read inside an open transaction");
+        return shared.query<T>(sql, params);
+      },
+      batch: (statements) => shared.batch(statements),
+    };
+    return { driver, observer, dispose: () => driver.close() };
+  },
   "local SQLite (native)": async () => {
     const path = join(scratchDir(), "deck.sqlite");
     const driver = new LocalSqliteDriver({ path });

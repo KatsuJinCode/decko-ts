@@ -9,17 +9,25 @@
 //     ./node_modules/vitest/vitest.mjs run --root . \
 //     benchmarks/perf/render-only.test.ts
 
-import { expect, it } from "vitest";
+import { expect } from "vitest";
+import { existsSync } from "node:fs";
 import Database from "better-sqlite3";
 import {
   createStructureSeededStorageFor,
   readShardLines,
 } from "../../tests/card/render/structure-corpus-seeding.js";
 import { prewarmStaticDeck } from "../corpus-v2/prewarm-static-deck.js";
+import { itOrSkipLoud } from "../../tests/support/describe-with-corpus.js";
 
-it("renders the shard-0 huge-content :closed view once", { timeout: 600_000 }, async () => {
+const CORPUS_DB = "benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
+
+itOrSkipLoud(
+  !existsSync(CORPUS_DB),
+  "benchmarks/perf/render-only.test.ts",
+  `the rich corpus database ${CORPUS_DB} is absent (not redistributed; see docs/TESTING.md)`,
+)("renders the shard-0 huge-content :closed view once", { timeout: 600_000 }, async () => {
   const corpus = new Database(
-    "benchmarks/corpus-v2/bench-corpus-v2.sqlite3",
+    CORPUS_DB,
     { readonly: true },
   );
   const ids = (corpus
