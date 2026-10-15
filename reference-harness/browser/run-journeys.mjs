@@ -182,6 +182,14 @@ async function runStep(ctx, step) {
   const [kind] = Object.keys(step).filter((k) => k !== "note");
   const arg = step[kind];
   switch (kind) {
+    case "fresh_session":
+      await ctx.freshSession();
+      return;
+    case "restart":
+      // Drain mail before restarting so in-memory outboxes cannot hide mail.
+      ctx.mailSeen.push(...(await ctx.mail()));
+      await ctx.restart();
+      return;
     case "visit":
       await page.goto(ctx.base + arg, { waitUntil: "load", timeout: STEP_TIMEOUT });
       break;
@@ -357,6 +365,19 @@ async function runJourney(engine, args, journey, spec, logFile) {
       mail: server.mail,
       mailSeen: [],
       htmlDir: args.html === "1" ? path.join(args.out, journey.id) : null,
+    };
+    ctx.restart = server.restart;
+    ctx.freshSession = async () => {
+      await browser.close();
+      browser = await launchBrowser();
+      const next = browser.context.pages()[0] ?? (await browser.context.newPage());
+      next.setDefaultTimeout(STEP_TIMEOUT);
+      next.on("dialog", d => d.accept().catch(() => {}));
+      browser.context.on("response", r => {
+        if (r.request().isNavigationRequest() && r.frame() === r.frame().page().mainFrame()) ctx.lastStatus = r.status();
+      });
+      ctx.page = next;
+      ctx.windows = { main: next };
     };
     // The HTTP status of the last page load in any window.
     browser.context.on("response", (r) => {

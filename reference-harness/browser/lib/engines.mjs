@@ -80,22 +80,27 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     const port = await freePort();
     const env = {
       ...process.env,
+      ...engine.env,
       HARNESS_DECK: fwd(db),
       HARNESS_FILES: fwd(files),
       HARNESS_DECK_JSON: fwd(path.resolve(fixtureDir, "deck.json")),
       HARNESS_WORK: fwd(work),
       HARNESS_PORT: String(port),
     };
-    const out = logFile ? openSync(logFile, "a") : "ignore";
-    child = spawn(engine.command[0], engine.command.slice(1), {
+    const launch = () => {
+      const out = logFile ? openSync(logFile, "a") : "ignore";
+      child = spawn(engine.command[0], engine.command.slice(1), {
       cwd: engine.dir,
       env,
       windowsHide: true,
       detached: process.platform !== "win32",
       stdio: ["ignore", out, out],
-    });
-    if (typeof out === "number") closeSync(out);
+      });
+      if (typeof out === "number") closeSync(out);
+    };
+    launch();
     const base = `http://127.0.0.1:${port}`;
+    const awaitReady = async () => {
     const deadline = Date.now() + readyTimeoutMs;
     for (;;) {
       if (child.exitCode !== null) throw new Error(`${engine.name} server exited with ${child.exitCode} before it was ready`);
@@ -108,11 +113,24 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
       if (Date.now() > deadline) throw new Error(`${engine.name} server not ready after ${readyTimeoutMs} ms`);
       await new Promise((r) => setTimeout(r, 500));
     }
+    };
+    await awaitReady();
     const mail = async () => {
       const res = await fetch(base + "/__harness/mail");
       return res.ok ? res.json() : [];
     };
-    return { base, db, files, mail, stop };
+    // Restart only the process this session spawned, preserving its private
+    // database/files/cache and origin. No other session's process is selected.
+    const restart = async () => {
+      if (child && child.exitCode === null) {
+        const exited = new Promise(resolve => child.once("close", resolve));
+        killTree(child.pid);
+        await exited;
+      }
+      launch();
+      await awaitReady();
+    };
+    return { base, db, files, mail, stop, restart };
   } catch (err) {
     await stop();
     throw err;
