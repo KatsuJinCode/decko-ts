@@ -568,17 +568,29 @@ export function summariseProbes(repo, gradeReport, probes) {
     // the same scenario: the probe’s step is compared with the baseline’s step of
     // the same action.
     const baselineFor = {};
+    const prefixFor = (start, end, card) => labels.slice(start, end + 1).filter((label) => label.card === card).map((label) => label.action);
     if (p.baseline) {
-      for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) baselineFor[labels[i].action] = rowProfile(scenario.steps[i]);
+      for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) {
+        if (labels[i].card !== p.baseline.card) continue;
+        baselineFor[labels[i].action] = { profile: rowProfile(scenario.steps[i]), prefix: prefixFor(p.baseline.steps[0], i, p.baseline.card) };
+      }
     }
-    const observed = steps.some((s) => {
+    let preparationMismatch = false;
+    const abstractMembershipUnknown = /^(set\/abstract\/|lib\/)/.test(p.file ?? "");
+    const effectDiffers = steps.some((s) => {
       const action = labels[s.index].action;
       // Setup writes are not evidence for an event declared on another action.
       if (p.on && p.on !== "save" && p.on !== action) return false;
       if (p.on === "save" && action !== "create" && action !== "update") return false;
       const b = baselineFor[action];
-      return b && !b.error && !s.step.error && !sameProfile(rowProfile(s.step), b);
+      if (!b) return false;
+      if (!sameProfile(b.prefix, prefixFor(p.steps[0], s.index, p.card))) {
+        preparationMismatch = true;
+        return false;
+      }
+      return !b.profile.error && !s.step.error && !sameProfile(rowProfile(s.step), b.profile);
     });
+    const observed = effectDiffers && !abstractMembershipUnknown;
     const baseline = p.baseline ? true : null;
     events[p.event] = {
       evidence: observed ? (differs.length ? "graded-differs" : "graded-identical") : "not-observed",
@@ -590,7 +602,11 @@ export function summariseProbes(repo, gradeReport, probes) {
       file: p.file,
       steps: steps.map((s) => s.id),
       ...(differs.length ? { differing_steps: differs.map((s) => s.id) } : {}),
-      ...(observed ? {} : { reason: baseline ? "the probe's rows are identical to a same-shape baseline: nothing shows the event fired" : "no same-shape baseline (the event's card is the probe card itself)" }),
+      ...(observed ? {} : { reason: preparationMismatch
+        ? "baseline and probe have different action histories; their row-profile difference cannot establish the target event"
+        : abstractMembershipUnknown
+          ? "the probe does not establish membership in the declaring abstract module or execution of its target callback"
+          : baseline ? "the probe's rows are identical to a same-shape baseline: nothing shows the event fired" : "no same-shape baseline (the event's card is the probe card itself)" }),
     };
   }
   const rendered = new Set([...(gradeReport.failures?.rendering ?? []).map((f) => f.id)]);

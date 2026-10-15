@@ -90,13 +90,14 @@ test("User creation carries actual nested account/email/password writes", () => 
 });
 
 const step = (count) => ({ result: { saved: true }, rows: { cards: { inserted: Array.from({ length: count }, () => ({})), updated: [], deleted: [] } } });
-function eventEvidence(on, baseline, setup, action, { fixtureName = "synthetic-v2-mod-probes", legacy = false } = {}) {
+function eventEvidence(on, baseline, setup, action, { fixtureName = "synthetic-v2-mod-probes", legacy = false, file = "set/all/example.rb" } = {}) {
   const root = mkdtempSync(join(tmpdir(), "decko-mod-probe-test-"));
   try {
     const expected = join(root, "reference-harness/fixtures", fixtureName, "expected");
     mkdirSync(expected, { recursive: true });
     writeFileSync(join(expected, "scenarios.jsonl"), JSON.stringify({ id: legacy ? "mod-event-probes" : "probe-e1", steps: [...baseline, setup, action] }) + "\n");
-    const probes = { render: { plan: [] }, events: { plan: [{ status: "planned", event: "example", scenario: "probe-e1", probe: "e1", on, steps: [2, 3], baseline: { steps: [0, 1] }, labels: [{ action: "create" }, { action: on }, { action: "create" }, { action: on }] }] } };
+    const baseLabels = baseline.length === 3 ? [{ action: "create" }, { action: "update" }, { action: on }] : [{ action: "create" }, { action: on }];
+    const probes = { render: { plan: [] }, events: { plan: [{ status: "planned", event: "example", file, scenario: "probe-e1", probe: "e1", on, steps: [baseline.length, baseline.length + 1], baseline: { steps: [0, baseline.length - 1] }, labels: [...baseLabels, { action: "create" }, { action: on }] }] } };
     if (legacy) {
       probes.step_labels = probes.events.plan[0].labels;
       delete probes.events.plan[0].labels;
@@ -110,6 +111,14 @@ function eventEvidence(on, baseline, setup, action, { fixtureName = "synthetic-v
 
 test("setup creation cannot prove a delete event fired", () => {
   assert.equal(eventEvidence("delete", [step(1), step(0)], step(2), step(0)), "not-observed");
+});
+
+test("an extra baseline update cannot prove a delete event fired", () => {
+  assert.equal(eventEvidence("delete", [step(1), step(1), step(0)], step(1), step(1)), "not-observed");
+});
+
+test("a plain-card row difference cannot establish an abstract callback", () => {
+  assert.equal(eventEvidence("update", [step(1), step(0)], step(1), step(1), { file: "set/abstract/attachment/local.rb" }), "not-observed");
 });
 
 test("an update is compared with its update baseline", () => {
