@@ -700,7 +700,9 @@ async function dispatchEngineRequest(
             requestedView: pageView,
             historyParams,
             signal,
-            ...(options?.viewer !== undefined ? { keep: false } : {}),
+            // Signed-in renders keep their rows per viewer: a kept entry is
+            // never shared across viewers or with the anonymous path.
+            ...(options?.viewer !== undefined ? { keepScope: `viewer:${String(options.viewer.actorId)}` } : {}),
           },
         )
       );
@@ -714,7 +716,9 @@ async function dispatchEngineRequest(
           // environment, name memos, boot bundle), so live renders in one
           // isolate run side by side and never take the lock. Its passes'
           // environments stay inside the context.
-          await runInRequestContext(getNameEnvironment(), renderLive)
+          await (options?.viewer !== undefined
+            ? withSignedInRenderSlot(() => runInRequestContext(getNameEnvironment(), renderLive))
+            : runInRequestContext(getNameEnvironment(), renderLive))
         : await withIsolateRenderLock(async () => {
             try {
               return await renderLive();
@@ -886,6 +890,16 @@ async function defaultNewCardTypeName(deck: Deck): Promise<string> {
     // fall through to Basic
   }
   return "Basic";
+}
+
+/** One signed-in live render at a time per isolate. Each boots its own
+ *  engines over its own request store; several at once exhausted the
+ *  isolate and every in-flight request failed together. */
+let signedInRenderChain: Promise<unknown> = Promise.resolve();
+function withSignedInRenderSlot<T>(fn: () => Promise<T>): Promise<T> {
+  const run = signedInRenderChain.then(fn, fn);
+  signedInRenderChain = run.catch(() => undefined);
+  return run;
 }
 
 /** Rails' request.xhr?: X-Requested-With carries XMLHttpRequest. */
