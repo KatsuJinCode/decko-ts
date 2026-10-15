@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T00:17:47.329Z",
+  "generatedAt": "2026-10-15T04:59:43.962Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -237,7 +237,6 @@
       "pills_static",
       "pointer_core",
       "pop_out_modal_link",
-      "popover",
       "preview_editor",
       "progress_bar",
       "quick_edit",
@@ -427,7 +426,7 @@
           "tests/card/mod-loader/card-mod-account-events.test.ts",
           "tests/card/mod-loader/card-mod-account-fields.test.ts",
           "tests/card/mod-loader/card-mod-account-forms.test.ts",
-          "tests/card/mod-loader/card-mod-account-harness-probe.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-account.test.ts"
         ],
         "views": [
@@ -804,7 +803,7 @@
             "evidence": "named",
             "tests": [
               "tests/card/mod-loader/card-mod-account-events.test.ts",
-              "tests/card/mod-loader/card-mod-account-harness-probe.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -863,7 +862,7 @@
             "event": "send_reset_password_token",
             "evidence": "named",
             "tests": [
-              "tests/card/auth/reset-flow-endpoint.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-account-events.test.ts",
               "tests/card/mod-loader/mod-event-dispatch.test.ts"
             ]
@@ -918,8 +917,8 @@
               "tests/card/mod-loader/card-mod-account-events.test.ts",
               "tests/card/mod-loader/card-mod-account-forms.test.ts",
               "tests/card/mod-loader/card-mod-account.test.ts",
-              "tests/card/mod-loader/card-mod-layout.test.ts",
-              "tests/card/mod-loader/core-mod-admin-views-2-pin.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/mod-event-dispatch.test.ts",
               "tests/card/mod-loader/signin-core-form-view.test.ts",
               "tests/card/permissions/mod-set-ok-to-read-overrides.test.ts",
@@ -1187,7 +1186,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-ace-editor-input.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-ace_editor.test.ts"
         ],
         "views": [],
@@ -1274,7 +1273,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-api_key.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -1304,7 +1303,7 @@
             "set": "set/right/api_key.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-api_key.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -1345,7 +1344,7 @@
             "set": "set/right/api_key.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-api_key.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -1355,7 +1354,7 @@
             "set": "set/right/api_key.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-api_key.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -1375,7 +1374,7 @@
             "set": "set/right/api_key.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-api_key.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           }
         ],
@@ -1384,7 +1383,7 @@
             "event": "generate_api_key",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-api_key.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-small-mods-events.test.ts"
             ]
           },
@@ -4893,7 +4892,7 @@
         },
         "tests": [
           "tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts",
-          "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -4954,7 +4953,7 @@
             "set": "set/type_plus_right/bootswatch_skin/colors.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -4995,7 +4994,7 @@
             "set": "set/type_plus_right/bootswatch_skin/colors.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -5005,7 +5004,7 @@
             "set": "set/type/bootswatch_skin.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -5015,7 +5014,7 @@
             "set": "set/type/bootswatch_skin.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -5025,7 +5024,7 @@
             "set": "set/type/bootswatch_skin/html_views.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -5044,21 +5043,21 @@
             "event": "copy_theme",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "initialize_because_of_type_change",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "translate_variables_to_scss",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-small-mods-events.test.ts"
             ]
           },
@@ -5066,14 +5065,14 @@
             "event": "update_skin_asset_input",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "use_as_current_skin",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-small-mods-events.test.ts"
             ]
           },
@@ -5081,7 +5080,7 @@
             "event": "validate_theme_template",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-bootstrap.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           }
         ]
@@ -5164,7 +5163,7 @@
       "classification": {
         "status": "declared-complete",
         "verdict": "6 mod-specific view(s) declared: content_changes, full_width, input, link_tag, preview_editor, source",
-        "evidence": "8/8 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=36 it(), byte-pins=21",
+        "evidence": "8/8 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=38 it(), byte-pins=22",
         "metrics": {
           "htmlViewsDeclared": 8,
           "htmlViewsCovered": 8,
@@ -5193,8 +5192,8 @@
           "manifestExists": true,
           "manifestViewsDeclared": 10,
           "testExists": true,
-          "testCount": 36,
-          "bytePins": 21
+          "testCount": 38,
+          "bytePins": 22
         }
       },
       "behaviour": {
@@ -5753,8 +5752,8 @@
           "image_complete"
         ],
         "testExists": true,
-        "testCount": 36,
-        "bytePins": 21
+        "testCount": 38,
+        "bytePins": 22
       }
     },
     {
@@ -5763,7 +5762,7 @@
       "classification": {
         "status": "declared-complete",
         "verdict": "2 mod-specific view(s) declared: count, paging — 1 declared view name(s) NOT in the implemented surface: paging_urls",
-        "evidence": "2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=16",
+        "evidence": "2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=17",
         "metrics": {
           "htmlViewsDeclared": 3,
           "htmlViewsCovered": 2,
@@ -5791,7 +5790,7 @@
           "manifestViewsDeclared": 2,
           "testExists": true,
           "testCount": 22,
-          "bytePins": 16
+          "bytePins": 17
         }
       },
       "behaviour": {
@@ -5913,16 +5912,16 @@
         ],
         "testExists": true,
         "testCount": 22,
-        "bytePins": 16
+        "bytePins": 17
       }
     },
     {
       "gem": "card-mod-comment-0.20.0",
       "version": "0.20.0",
       "classification": {
-        "status": "partial",
-        "verdict": "mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=4/12",
-        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=12 it(), byte-pins=4",
+        "status": "declared-complete",
+        "verdict": "manifest + byte-pinned test (5 pins across 13 it()): comment_box, open, open_content, titled, titled_content, core, ... — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+        "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=13 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 0,
           "htmlViewsCovered": 0,
@@ -5947,8 +5946,8 @@
           "manifestExists": true,
           "manifestViewsDeclared": 7,
           "testExists": true,
-          "testCount": 12,
-          "bytePins": 4
+          "testCount": 13,
+          "bytePins": 5
         }
       },
       "behaviour": {
@@ -5964,8 +5963,8 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-comment-harness-probe.test.ts",
-          "tests/card/mod-loader/card-mod-comment-save-event.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-comment.test.ts"
         ],
         "views": [
@@ -6093,8 +6092,8 @@
           "input"
         ],
         "testExists": true,
-        "testCount": 12,
-        "bytePins": 4
+        "testCount": 13,
+        "bytePins": 5
       }
     },
     {
@@ -6149,7 +6148,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-content.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -9045,7 +9044,7 @@
             "set": "set/right/default.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-content.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -9055,7 +9054,7 @@
             "set": "set/right/structure.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-content.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           }
         ],
@@ -9190,7 +9189,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-date.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -9301,7 +9300,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-defaults-and-delayed-job-ignored-no-port-surface.test.ts"
+          "tests/card/mod-loader/card-mod-defaults-ignored-and-delayed-job-backend-port.test.ts"
         ],
         "views": [],
         "events": []
@@ -9496,7 +9495,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-edit-forms.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-edit-views.test.ts",
           "tests/card/mod-loader/card-mod-edit.test.ts"
         ],
@@ -10133,7 +10132,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-email.test.ts"
         ],
         "views": [
@@ -10154,7 +10153,7 @@
             "set": "set/abstract/test_context.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -10204,7 +10203,7 @@
             "set": "set/right/html_message.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-email.test.ts"
             ]
           },
@@ -11633,7 +11632,7 @@
             "set": "set/right/text_message.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -11786,11 +11785,11 @@
           "views_test_named": 6,
           "views_unexercised": 1,
           "events": 10,
-          "events_named": 3,
-          "events_unexercised": 7
+          "events_named": 4,
+          "events_unexercised": 6
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-follow-views.test.ts",
           "tests/card/mod-loader/card-mod-follow.test.ts"
         ],
@@ -11936,7 +11935,7 @@
             "set": "set/type_plus_right/user/follow.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -12071,7 +12070,10 @@
           },
           {
             "event": "notify_followers_after_save",
-            "evidence": "unexercised"
+            "evidence": "named",
+            "tests": [
+              "tests/card/delayed-job/delayed-job.test.ts"
+            ]
           },
           {
             "event": "silence_notifications",
@@ -12225,13 +12227,13 @@
         },
         "tests": [
           "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-          "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-format-head-header-views.test.ts",
           "tests/card/mod-loader/card-mod-format-hidden-content-field-view.test.ts",
-          "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-format-smart-label.test.ts",
           "tests/card/mod-loader/card-mod-format-toggle-raises.test.ts",
-          "tests/card/mod-loader/card-mod-format.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -13803,7 +13805,7 @@
             "set": "set/self/home.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -13946,7 +13948,7 @@
             "set": "set/type/html.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14117,7 +14119,7 @@
             "set": "set/type/uri.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14137,8 +14139,8 @@
             "set": "set/all/css.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14155,8 +14157,8 @@
             "set": "set/all/css.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14167,7 +14169,7 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-head-header-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14177,7 +14179,7 @@
             "set": "set/all/css.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14211,8 +14213,8 @@
             "set": "set/all/csv.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14223,7 +14225,7 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-head-header-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14254,8 +14256,8 @@
             "set": "set/all/data.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14266,9 +14268,9 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14314,9 +14316,9 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14366,7 +14368,7 @@
             "set": "set/type/mod.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14467,9 +14469,9 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14762,7 +14764,7 @@
             "set": "set/type/html.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14835,7 +14837,7 @@
             "set": "set/all/title.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14895,9 +14897,9 @@
             "set": "set/type/cardtype.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14944,7 +14946,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14954,7 +14956,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14964,7 +14966,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14974,7 +14976,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -14991,7 +14993,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15008,7 +15010,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15018,7 +15020,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15042,7 +15044,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15052,7 +15054,7 @@
             "set": "set/all/error.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15069,7 +15071,7 @@
             "set": "set/all/rss.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15086,8 +15088,8 @@
             "set": "set/all/rss.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15140,7 +15142,7 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-head-header-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15157,7 +15159,7 @@
             "set": "set/all/rss.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15168,9 +15170,9 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -15181,9 +15183,9 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
-              "tests/card/mod-loader/card-mod-format-harness-probe.test.ts",
-              "tests/card/mod-loader/card-mod-format-remaining-views.test.ts",
-              "tests/card/mod-loader/card-mod-format.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           }
         ],
@@ -15493,16 +15495,18 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "5 mod-specific view(s) declared: guide, help, help_text, lead, popover",
-        "evidence": "5/5 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=8",
+        "verdict": "4 mod-specific view(s) declared: guide, help, help_text, lead — 1 declared view name(s) NOT in the implemented surface: popover",
+        "evidence": "4/5 html views in HTML_VIEWS∪mod-manifests (4/5 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=8",
         "metrics": {
           "htmlViewsDeclared": 5,
-          "htmlViewsCovered": 5,
-          "htmlViewsMissing": 0,
-          "htmlViewsMissingNames": [],
+          "htmlViewsCovered": 4,
+          "htmlViewsMissing": 1,
+          "htmlViewsMissingNames": [
+            "popover"
+          ],
           "specificViewsDeclared": 5,
-          "specificViewsCovered": 5,
-          "specificViewsCoverage": 100,
+          "specificViewsCovered": 4,
+          "specificViewsCoverage": 80,
           "patternsUsed": [
             "all",
             "right",
@@ -15514,12 +15518,12 @@
             "self"
           ],
           "patternsCoverage": 100,
-          "viewsCoverage": 100,
+          "viewsCoverage": 80,
           "setModules": 6,
           "libRbFiles": 0,
           "hamlFiles": 0,
           "manifestExists": true,
-          "manifestViewsDeclared": 5,
+          "manifestViewsDeclared": 0,
           "testExists": true,
           "testCount": 14,
           "bytePins": 8
@@ -15538,7 +15542,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-help.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -15632,13 +15636,7 @@
       },
       "pins": {
         "manifestExists": true,
-        "manifestViews": [
-          "help",
-          "help_text",
-          "lead",
-          "guide",
-          "popover"
-        ],
+        "manifestViews": [],
         "testExists": true,
         "testCount": 14,
         "bytePins": 8
@@ -15690,10 +15688,10 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-history-harness-probe.test.ts",
-          "tests/card/mod-loader/card-mod-history-ladder-views.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-history-updater-of-seam.test.ts",
-          "tests/card/mod-loader/card-mod-history-views.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-history.test.ts"
         ],
         "views": [
@@ -15835,8 +15833,8 @@
             "set": "set/all/history/export.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-history-ladder-views.test.ts",
-              "tests/card/mod-loader/card-mod-history-views.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-history.test.ts"
             ]
           }
@@ -16018,6 +16016,7 @@
             "evidence": "named",
             "tests": [
               "tests/card/mod-loader/card-mod-integrate.test.ts",
+              "tests/card/mod-loader/mod-dsl.test.ts",
               "tests/server/write-routes-serving-mod-composition.test.ts"
             ]
           },
@@ -16126,7 +16125,7 @@
         },
         "tests": [
           "tests/card/mod-loader/card-mod-layout-mycard-views.test.ts",
-          "tests/card/mod-loader/card-mod-layout.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -16136,7 +16135,7 @@
             "set": "set/self/head.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16156,7 +16155,7 @@
             "set": "set/right/head.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16215,7 +16214,7 @@
             "set": "set/right/head.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16225,7 +16224,7 @@
             "set": "set/self/head.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16328,7 +16327,7 @@
             "set": "set/self/dropdown_divider.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16348,7 +16347,7 @@
             "set": "set/self/dropdown_divider.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16368,7 +16367,7 @@
             "set": "set/type/html.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16378,7 +16377,7 @@
             "set": "set/right/head.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-layout.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -16641,7 +16640,7 @@
         "tests": [
           "tests/card/mod-loader/card-mod-list-checkbox-editor.test.ts",
           "tests/card/mod-loader/card-mod-list-select-editor.test.ts",
-          "tests/card/mod-loader/card-mod-list.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -18069,7 +18068,7 @@
             "set": "set/abstract/01_list/other_views.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -18093,7 +18092,7 @@
             "set": "set/abstract/01_list/other_views.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -19559,7 +19558,7 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-list-select-editor.test.ts",
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -19570,7 +19569,7 @@
             "evidence": "test-named",
             "tests": [
               "tests/card/mod-loader/card-mod-list-select-editor.test.ts",
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -19657,7 +19656,7 @@
             "set": "set/abstract/01_list/other_views.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
@@ -19673,35 +19672,35 @@
             "event": "add_and_drop_items",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "delist",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "insert_item_event",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "validate_item_type",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           },
           {
             "event": "validate_item_uniqueness",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-list.test.ts"
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
             ]
           }
         ]
@@ -19808,7 +19807,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (15 pins across 14 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+        "verdict": "manifest + byte-pinned test (15 pins across 14 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 1,
@@ -19830,7 +19829,7 @@
           "libRbFiles": 0,
           "hamlFiles": 0,
           "manifestExists": true,
-          "manifestViewsDeclared": 1,
+          "manifestViewsDeclared": 0,
           "testExists": true,
           "testCount": 14,
           "bytePins": 15
@@ -19896,9 +19895,7 @@
       },
       "pins": {
         "manifestExists": true,
-        "manifestViews": [
-          "core"
-        ],
+        "manifestViews": [],
         "testExists": true,
         "testCount": 14,
         "bytePins": 15
@@ -21421,7 +21418,8 @@
             "evidence": "named",
             "tests": [
               "tests/card/mod-loader/card-mod-account-events.test.ts",
-              "tests/card/mod-loader/card-mod-permissions.test.ts"
+              "tests/card/mod-loader/card-mod-permissions.test.ts",
+              "tests/card/mod-loader/mod-dsl.test.ts"
             ]
           },
           {
@@ -21589,10 +21587,13 @@
               "tests/card/actions/anon-redteam-probes.test.ts",
               "tests/card/actions/anonymous-create-permission.test.ts",
               "tests/card/actions/rule-content-walk.test.ts",
+              "tests/card/mod-loader/card-mod-comment.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts",
               "tests/card/mod-loader/card-mod-recaptcha.test.ts",
               "tests/card/mod-loader/default-mod-deck.test.ts",
               "tests/card/render/mod-bar-right-section-list-bytes.test.ts",
+              "tests/card/render/signed-in-parity.test.ts",
               "tests/server/write-routes-anonymous-permission-pins.test.ts",
               "tests/server/write-routes-recaptcha-seat.test.ts",
               "tests/server/write-routes-serving-mod-composition.test.ts"
@@ -21725,10 +21726,10 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-rules-nest-oracle-pinned.test.ts",
-          "tests/card/mod-loader/card-mod-rules-views-2.test.ts",
-          "tests/card/mod-loader/card-mod-rules-views-3.test.ts",
-          "tests/card/mod-loader/card-mod-rules-views.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-rules.test.ts"
         ],
         "views": [
@@ -25469,7 +25470,7 @@
       "classification": {
         "status": "declared-complete",
         "verdict": "11 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... — 9 declared view name(s) NOT in the implemented surface: body, complete, feed_body, feed_item_description, molecule, name_complete, name_match, search_box, ...",
-        "evidence": "14/23 html views in HTML_VIEWS∪mod-manifests (11/20 mod-specific); mod-loader pins: manifest=yes, test=28 it(), byte-pins=5",
+        "evidence": "14/23 html views in HTML_VIEWS∪mod-manifests (11/20 mod-specific); mod-loader pins: manifest=yes, test=30 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 23,
           "htmlViewsCovered": 14,
@@ -25510,7 +25511,7 @@
           "manifestExists": true,
           "manifestViewsDeclared": 10,
           "testExists": true,
-          "testCount": 28,
+          "testCount": 30,
           "bytePins": 5
         }
       },
@@ -25527,7 +25528,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-search-list-oracle-pinned.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-search-read-scope.test.ts",
           "tests/card/mod-loader/card-mod-search.test.ts"
         ],
@@ -28788,7 +28789,7 @@
           "add_autocomplete_item"
         ],
         "testExists": true,
-        "testCount": 28,
+        "testCount": 30,
         "bytePins": 5
       }
     },
@@ -28848,7 +28849,8 @@
             "event": "delete_in_session",
             "evidence": "named",
             "tests": [
-              "tests/card/mod-loader/card-mod-small-mods-events.test.ts"
+              "tests/card/mod-loader/card-mod-small-mods-events.test.ts",
+              "tests/card/mod-loader/mod-dsl.test.ts"
             ]
           },
           {
@@ -28871,6 +28873,7 @@
             "evidence": "named",
             "tests": [
               "tests/card/mod-loader/card-mod-small-mods-events.test.ts",
+              "tests/card/mod-loader/mod-dsl.test.ts",
               "tests/card/mod-loader/mod-event-dispatch.test.ts"
             ]
           }
@@ -28971,7 +28974,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-style-harness-probe.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-style.test.ts"
         ],
         "views": [
@@ -30731,7 +30734,7 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-tabs.test.ts"
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)"
         ],
         "views": [
           {
@@ -30882,8 +30885,8 @@
           "events_unexercised": 0
         },
         "tests": [
-          "tests/card/mod-loader/card-mod-tinymce-editor-harness-probe.test.ts",
-          "tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
+          "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
           "tests/card/mod-loader/card-mod-tinymce_editor.test.ts"
         ],
         "views": [
@@ -30984,7 +30987,7 @@
             "set": "set/all/reference_editor/nest_image.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-tinymce_editor.test.ts"
             ]
           },
@@ -30995,7 +30998,7 @@
             "set": "set/all/reference_editor/nest_image.rb",
             "evidence": "test-named",
             "tests": [
-              "tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts",
+              "a withheld test file (it reads the private real-site fixtures, which are not redistributed)",
               "tests/card/mod-loader/card-mod-tinymce_editor.test.ts"
             ]
           }

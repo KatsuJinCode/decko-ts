@@ -56,6 +56,25 @@ const OUTPUT_MD = join(HERE, "mod-compat-report.md");
 const OUTPUT_JSON = join(HERE, "mod-compat-report.json");
 const GRADED_OPS = join(HERE, "graded-ops.json");
 
+// Test files that read the real-site fixtures and are withheld from the public
+// package. The counts that come from them are still reported; their names are
+// not. Each path is replaced in the written report by WITHHELD_TEXT. The list
+// is withheld-tests.json beside this file; the export's pathRefs gate fails if
+// a report names a path that is absent from the shipped tree.
+const WITHHELD_TEXT = "a withheld test file (it reads the private real-site fixtures, which are not redistributed)";
+const WITHHELD = new Set(JSON.parse(readFileSync(join(HERE, "withheld-tests.json"), "utf8")).paths);
+function redact(text) {
+  let out = text;
+  for (const p of WITHHELD) out = out.split(p).join(WITHHELD_TEXT);
+  return out;
+}
+function redactDeep(v) {
+  if (typeof v === "string") return redact(v);
+  if (Array.isArray(v)) return v.map(redactDeep);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, redactDeep(x)]));
+  return v;
+}
+
 // The 9 concrete set patterns registered by card-1.110.0 mod/core/set_pattern.
 // (src/card/set-patterns/registry.ts PATTERN_TABLE - frozen, lookup-order.)
 const IMPLEMENTED_PATTERNS = [
@@ -1126,11 +1145,11 @@ function main() {
   };
 
   if (wantJson) {
-    writeFileSync(OUTPUT_JSON, JSON.stringify(report, null, 2));
+    writeFileSync(OUTPUT_JSON, JSON.stringify(redactDeep(report), null, 2));
     process.stderr.write(`wrote ${OUTPUT_JSON}\n`);
   }
   if (wantMd) {
-    writeFileSync(OUTPUT_MD, renderMd(report));
+    writeFileSync(OUTPUT_MD, redact(renderMd(report)));
     process.stderr.write(`wrote ${OUTPUT_MD}\n`);
   }
 }
