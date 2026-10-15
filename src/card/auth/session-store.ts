@@ -230,6 +230,48 @@ export class SessionStore {
     return result.rowsAffected > 0;
   }
 
+  /**
+   * The updated_at of the signed-in holder's own +*password card, read for a
+   * write request before it runs. Undefined when the token matches no live
+   * session; null when the account has no password card.
+   */
+  async ownPasswordUpdatedAt(token: string): Promise<string | null | undefined> {
+    const tokenHash = await sha256Hex(token);
+    const session = await this.driver.query<{ account_card_id: number }>(
+      "SELECT account_card_id FROM auth_sessions WHERE token_hash = ?",
+      [tokenHash],
+    );
+    const accountCardId = session.rows[0]?.account_card_id;
+    if (accountCardId === undefined) return undefined;
+    const password = await this.driver.query<{ updated_at: string | null }>(
+      `SELECT c.updated_at
+       FROM cards a
+       JOIN cards c ON c.left_id = a.id AND c.trash = 0
+       JOIN cards f ON f.id = c.right_id
+       WHERE a.left_id = ? AND a.trash = 0
+         AND a.right_id IN (SELECT id FROM cards WHERE codename = 'account' AND trash = 0)
+         AND f.codename = 'password'`,
+      [accountCardId],
+    );
+    return password.rows[0]?.updated_at ?? null;
+  }
+
+  /**
+   * The session that changed its own holder's password keeps working: the
+   * password change ends that account's OTHER sessions (docs/SECURITY.md
+   * divergence 4), as Ruby's session survives the save that made it. The
+   * token's created_at is moved to the password card's new updated_at, which
+   * the revocation check (revokedByAccountChange) does not treat as later.
+   * Called after a write with the value ownPasswordUpdatedAt read before it.
+   */
+  async keepSessionAcrossOwnPasswordChange(token: string, before: string | null | undefined): Promise<void> {
+    if (before === undefined) return;
+    const after = await this.ownPasswordUpdatedAt(token);
+    if (after === undefined || after === null || after === before) return;
+    const tokenHash = await sha256Hex(token);
+    await this.driver.query("UPDATE auth_sessions SET created_at = ? WHERE token_hash = ?", [after, tokenHash]);
+  }
+
   private nowString(): SQLDateTime {
     return sqlDateTime(this.clock());
   }
