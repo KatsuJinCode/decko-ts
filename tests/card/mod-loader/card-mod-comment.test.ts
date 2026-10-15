@@ -18,6 +18,8 @@
 //   - Oracle Comment Probe (any card; all/comment applies to every card)
 //   - The bare discussion card (the seed data/real.yml's "discussion")
 
+import { setRenderRecaptchaConfig } from "../../../src/card/render/render-recaptcha-config.js";
+import { registerModRuleSeed } from "../../../src/card/mod-loader/mod-rule-seeds.js";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
@@ -161,7 +163,16 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     // UPDATE branch with the recaptcha wrap and the form-control author
     // field. The probe carries no *update rule, and this deck's no-rule
     // update verdict allows it.
-    const html = await s.engine.render("Oracle Comment Probe", "comment_box");
+    // A deck with recaptcha keys configured and the mod's *all+*captcha
+    // toggle (data/real.yml): the engine carries no key of its own.
+    setRenderRecaptchaConfig({ siteKey: "test-site-key", secretKey: "test-secret-key" });
+    registerModRuleSeed("recaptcha", "*all+*captcha", "1");
+    let html: string;
+    try {
+      html = await s.engine.render("Oracle Comment Probe", "comment_box");
+    } finally {
+      setRenderRecaptchaConfig(undefined);
+    }
     expect(html).toContain('<div class="comment-box nodblclick">');
     expect(html).toContain('id="edit_card_210" data-recaptcha="on" action="/update/Oracle_Comment_Probe"');
     expect(html).toContain('<input type="hidden" name="_method" value="patch" autocomplete="off" />');

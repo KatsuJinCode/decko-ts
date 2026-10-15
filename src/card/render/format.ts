@@ -5206,7 +5206,7 @@ export function escapeLiteralForCard(
  *  family's right part (pattern/base.rb:21-29 keys the pattern on the
  *  right card's codename). Undefined engine hooks answer undefined, and
  *  virtualSearchCqlFor falls back to the stock seed's keys. */
-function virtualSearchCodenameResolverFor(
+export function virtualSearchCodenameResolverFor(
   engine: RenderEngineLike | undefined,
 ): ((codename: string) => string | undefined) | undefined {
   if (engine?.peekIdByCodename === undefined || engine.peekRegisteredNameForId === undefined) {

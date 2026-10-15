@@ -2,6 +2,8 @@
 // that anonymous rendering never exercises. Each case pins Ruby's bytes for
 // the signed-in actor and the anonymous counterpart where both exist.
 
+import { setRenderRecaptchaConfig } from "../../../src/card/render/render-recaptcha-config.js";
+import { registerModRuleSeed } from "../../../src/card/mod-loader/mod-rule-seeds.js";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createRenderTestStorage,
@@ -435,8 +437,19 @@ describe("signed-in shapes rendered through the engine", () => {
     expect(member).toContain(
       '</textarea>\n<div class="comment-buttons"><button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>',
     );
-    const anonymous = await new RenderEngine(new FetchEngine(storage!.counting)).render("Topic+discussion", "titled_content");
+    // The anonymous arm needs a deck with recaptcha keys configured (a stock
+    // deck boots on the mod's development keys) and the mod's *all+*captcha
+    // toggle (data/real.yml); the engine carries no key of its own.
+    setRenderRecaptchaConfig({ siteKey: "test-site-key", secretKey: "test-secret-key" });
+    registerModRuleSeed("recaptcha", "*all+*captcha", "1");
+    let anonymous: string;
+    try {
+      anonymous = await new RenderEngine(new FetchEngine(storage!.counting)).render("Topic+discussion", "titled_content");
+    } finally {
+      setRenderRecaptchaConfig(undefined);
+    }
     expect(anonymous).toContain('id="edit_card_61" data-recaptcha="on"');
+    expect(anonymous).toContain('data-site-key="test-site-key"');
     expect(anonymous).toContain("My Name is:");
   });
 

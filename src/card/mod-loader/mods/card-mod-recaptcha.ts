@@ -851,7 +851,10 @@ const cardModRecaptcha: DeckoModManifest = {
       // rule-seed registry (mod-rule-seeds.ts) for the form-side gate's
       // synchronous read; the validate side resolves the same answer from
       // storage, where the serving boot seeds these rows.
-      ruleSeeds: [{ name: "signup+*type+*captcha", content: "1" }],
+      ruleSeeds: [
+        { name: "*all+*captcha", content: "1" },
+        { name: "signup+*type+*captcha", content: "1" },
+      ],
       events: [
         {
           event: "recaptcha",

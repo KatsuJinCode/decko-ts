@@ -37,6 +37,8 @@ import {
 } from "../../../src/card/mod-loader/mods/core-admin-runtime.js";
 import { demoViewSelect } from "../../../src/card/mod-loader/mods/card-mod-format.js";
 import type { ViewContext } from "../../../src/card/render/format.js";
+import { setRenderRecaptchaConfig } from "../../../src/card/render/render-recaptcha-config.js";
+import { registerModRuleSeed } from "../../../src/card/mod-loader/mod-rule-seeds.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -170,7 +172,12 @@ describe("card-mod-format harness probe: view :demo (the wave-1 oracle replay)",
     const options = listLine!.codenames!
       .map((c) => `<option${c === "core" ? ' selected="selected"' : ""} value="${c}">${c}</option>`)
       .join("\n");
+    // The captured deck's configured recaptcha key and its *all+*captcha
+    // toggle (card-mod-recaptcha data/real.yml), installed through the
+    // host's render-side config seam: the engine carries no key of its own.
     const key = "6LSYNTHETICCAPTUREKEY000000000000000000B";
+    setRenderRecaptchaConfig({ siteKey: key, secretKey: "test-secret-key" });
+    registerModRuleSeed("recaptcha", "*all+*captcha", "1");
     const expected =
       `<form class="card-form slotter" id="edit_card_30" data-recaptcha="on" action="/Sample_Basic" accept-charset="UTF-8" data-remote="true" method="post">` +
       `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
@@ -179,7 +186,11 @@ describe("card-mod-format harness probe: view :demo (the wave-1 oracle replay)",
       `<script src="https://www.google.com/recaptcha/api.js?render=${key}"></script>\n` +
       `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value="" data-site-key="${key}" data-action="get" class="_recaptcha-token" autocomplete="off" />` +
       `<select name="demo_view" id="demo_view" class="_submit-on-select">${options}</select></form>`;
-    expect(demoViewSelect(probeCtx())).toEqual(expected);
+    try {
+      expect(demoViewSelect(probeCtx())).toEqual(expected);
+    } finally {
+      setRenderRecaptchaConfig(undefined);
+    }
   });
 
   it("replays options_for_select (the selected marker on :core)", () => {

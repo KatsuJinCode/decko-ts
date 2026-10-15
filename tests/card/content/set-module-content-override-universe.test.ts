@@ -31,13 +31,13 @@ import {
   setDeckTimeZone,
 } from "../../../src/card/deck-time-zone.js";
 
-import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 
 import {
   RECORDED_NOW_INSTANT,
   formatCardDayofwkMinTz,
   listInputOptionsContent,
-  capturedModObjects,
+  deckModObjects,
   modItemCodesContent,
   ORACLE_CAPTURE_NOW_BYTES,
   resolveSetModuleContent,
@@ -95,16 +95,17 @@ describe("set-module content override universe (card-level record path)", () => 
   });
 
   it("Self::Mod answers one Object#to_s '_mod' line per loaded mod in bundle order (mod/core/set/self/mod.rb:4-6)", () => {
+    // Cardio.mods is the running deck's mod list: bind the default deck and
+    // expect one line per mod its loader resolved.
+    const names = defaultDeckLoader().modNames();
     const answer = resolveSetModuleContent(
       card({ key: "mod", name: "mod", codename: "mod", partCodenames: ["mod"] }),
     );
     expect(answer).toBeDefined();
     const lines = (answer as string).split("\n");
-    // The expectation carries 34 lines — the deck's loaded
-    // mods — and the bundle order is ORACLE_BUNDLE_ORDER.
-    expect(lines.length).toBe(34);
+    expect(lines.length).toBe(names.length);
     expect(lines[0]).toMatch(/_mod$/);
-    expect(lines[33]).toMatch(/_mod$/);
+    expect(lines[names.length - 1]).toMatch(/_mod$/);
     // SHAPE FIDELITY: the reference line IS "#<Cardio::Mod:0xADDR>_mod" —
     // Object#to_s of a mod whose class defines no #to_s — and the renderer
     // emits the same template with a genuine per-process opaque id. The VALUE
@@ -213,19 +214,18 @@ describe("set-module content override universe (card-level record path)", () => 
     );
   });
 
-  it("modItemCodesContent mirrors Cardio.mods bundle order", () => {
-    const lines = modItemCodesContent().split("\n");
-    expect(lines.length).toBe(34);
-    // Every line is Object#to_s of the mod at that position, so the ORDER is
-    // carried by capturedModObjects rather than by the bytes (Object#to_s
-    // prints the address, not the name) — which is why the mod object carries
-    // its name alongside the per-process identity. The ordering is pinned in
+  it("modItemCodesContent mirrors Cardio.mods: the deck's resolved mod order", () => {
+    // Cardio.mods = Mod.dirs.mods (lib/cardio.rb:48-50): the running deck's
+    // mods. Every line is Object#to_s of the mod at that position, so the
+    // ORDER is carried by deckModObjects rather than by the bytes (Object#to_s
+    // prints the address, not the name). The ordering is pinned in
     // mod-object-address-shape-parity.test.ts.
-    const mods = capturedModObjects();
-    expect(mods.map((m) => m.name)).toEqual([...ORACLE_BUNDLE_ORDER]);
+    const names = defaultDeckLoader().modNames();
+    const lines = modItemCodesContent().split("\n");
+    expect(lines.length).toBe(names.length);
+    const mods = deckModObjects();
+    expect(mods.map((m) => m.name)).toEqual(names);
     expect(mods[0].name).toBe("core");
-    expect(mods[1].name).toBe("collection");
-    expect(mods[33].name).toBe("defaults");
   });
 
   it("listInputOptionsContent applies the captured basket order via to_pointer_content", () => {
