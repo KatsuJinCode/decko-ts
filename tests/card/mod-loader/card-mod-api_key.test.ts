@@ -13,13 +13,12 @@
 //   3. locale strings inlined from config/locales/en.yml: the labels
 //      the views reference (api_key_label, api_key_generate, etc.) match
 //      the en.yml byte-for-byte.
-//   4. the :token JSON view returns the documented shape `{"token":
-//      <encoded>}` (api_key.rb:63-67); the encoded value is the
-//      sentinel because the JWT path requires a live Rails runtime. No
+//   4. the :token JSON view (api_key.rb:63-67) is REFUSED, not answered:
+//      its value is a JWT from Card::Auth::Token.encode, which the port's
+//      sync view cannot await, and the port emits no stand-in token. No
 //      real api key or token is committed anywhere in this suite: every
 //      key-shaped string is the probe value the oracle capture itself
-//      used (fixtures/captured/api-key-views.json) or an angle-bracketed
-//      placeholder minted by the port.
+//      used (fixtures/captured/api-key-views.json).
 //   5. the :token_link view's href encodes format: :json + view: :token
 //      (api_key.rb:77-79).
 //   6. the :generate_button view's form carries the hidden trigger input
