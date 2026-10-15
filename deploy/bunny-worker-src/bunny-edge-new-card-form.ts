@@ -175,6 +175,70 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
   );
 }
 
+/** The signed-in viewer's new-card form: name, the type preset as a hidden
+ *  field, and the content editor for the type (the calendar input for Date,
+ *  the TinyMCE textarea otherwise). Creation permission is enforced by the
+ *  write surface on submit. */
+export function signedInNewCardFormBodyHtml(typeName: string, typeId: number, typeCode: string | undefined): string {
+  const contentEditor =
+    typeCode === "date"
+      ? `<input class="date-editor form-control" type="date" value="" name="card[content]" id="card_content" />`
+      : `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="new-card-content" name="card[content]">\n</textarea>`;
+  const form = createFormShell({} as ViewContext, {
+    htmlAttrs: [["data-main-success", MAIN_SUCCESS_ATTR]],
+    success: { mark: "_self" },
+    body:
+      `<div class="d-flex justify-content-between">` +
+      `<div class="w-100">` +
+      `<div class="form-group card-editor">` +
+      `<label for="card_name"><span class="card-title" title="Name">Name</span></label>` +
+      `<div class="editor name-editor">` +
+      `<input class="d0-card-name form-control" type="text" value="" name="card[name]" id="card_name" />` +
+      `</div></div>` +
+      `<input type="hidden" name="name_prompt" id="name_prompt" value="true" autocomplete="off" />` +
+      `<input type="hidden" name="card[type_id]" id="card_type_id" value="${typeId}" autocomplete="off" />` +
+      `<fieldset class="card-editor editor"><div class="editor content-editor">${contentEditor}</div></fieldset>` +
+      `<div class="form-group">` +
+      `<button name="button" type="submit" class="submit-button create-submit-button btn btn-primary" data-disable-with="Submitting">Submit</button>` +
+      `<a class="cancel-button ms-4 btn btn-secondary" data-cy="cancel" href="/">Cancel</a>` +
+      `</div>` +
+      `</div></div>`,
+  });
+  const title = h(`New ${typeName}`);
+  return (
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h1 class="d0-card-header-title">` +
+    `<span class="card-title" title="${title}">${title}</span></h1></div>\n` +
+    `\n` +
+    `<div class="d0-card-body card-body card-text">${form}</div>` +
+    `</div>`
+  );
+}
+
+/** The signed-in /new/:type answer: the generic new-card form in the
+ *  signed-in chrome. */
+export async function signedInNewCardRouteResponse(deck: NewCardFormDeck, typeName: string): Promise<Response> {
+  const typeKey = DeckoName.parse(typeName);
+  let typeRecord: Awaited<ReturnType<FetchEngine["fetchByKey"]>> | undefined;
+  try {
+    typeRecord = await deck.fetcher.fetchByKey(typeKey.key, { skipVirtual: true });
+  } catch {
+    typeRecord = undefined;
+  }
+  if (typeRecord === undefined || typeRecord.name === undefined || typeRecord.id === undefined) {
+    return await renderDeckoNotFoundErrorPage(deck, typeName);
+  }
+  const body = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? typeKey.key);
+  return await renderFullChromeErrorPage(deck, {
+    status: 200,
+    viewHtml: body,
+    cardName: typeKey.urlKey,
+    fallbackHtml: layoutPage(`New ${typeRecord.name.s}`, body),
+    graceMs: EDGE_ERROR_PAGE_GRACE_MS,
+  });
+}
+
 /** The loud_denial body region (card-mod-format set/all/html/error.rb
  *  :191-213): the framed "Sorry!" + the signed-out viewer's
  *  sign-in-or-sign-up line with format_denied_task ("to %{denied_task} this"

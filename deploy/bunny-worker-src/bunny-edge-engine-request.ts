@@ -37,6 +37,7 @@
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import type { ReadViewer } from "../../src/card/permissions/read-rules.js";
+import { DeckoName } from "../../src/card/name.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { edgeHostLabels } from "./edge-host-labels.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
@@ -74,7 +75,7 @@ import {
   renderDeckoServerErrorPage,
   renderFullChromeErrorPage,
 } from "./bunny-edge-error-page.js";
-import { newCardRouteResponse } from "./bunny-edge-new-card-form.js";
+import { newCardRouteResponse, signedInNewCardFormBodyHtml, signedInNewCardRouteResponse } from "./bunny-edge-new-card-form.js";
 
 /** The deck the engine request renders through; booted once per isolate by
  *  the entry (getDeck) and passed in, so this module never touches env or
@@ -528,6 +529,10 @@ async function dispatchEngineRequest(
       // clear those caches HERE, before the verdict is computed.
       const newCardDeck = await source.deck();
       await newCardDeck.render.ensureFreshness();
+      if (options?.viewer !== undefined) {
+        const page = await signedInNewCardPage(source, newCardDeck, parsed.typeName, options, signal);
+        return page ?? (await signedInNewCardRouteResponse(newCardDeck, parsed.typeName));
+      }
       return await newCardRouteResponse(newCardDeck, parsed.typeName);
     }
     if (parsed.kind === "notFound") {
@@ -719,10 +724,10 @@ async function dispatchEngineRequest(
               (await source.deck()).fetcher.installNameEnvironment?.();
             }
           });
-    return html(
-      page.status,
-      applyServedEnvironmentDeltas(page.html, deckServedDeltas(await source.deck())),
-    );
+    const pageHtml = applyServedEnvironmentDeltas(page.html, deckServedDeltas(await source.deck()));
+    // Signed-in only: those responses bypass every shared cache, whose keys
+    // carry no X-Requested-With.
+    return html(page.status, options?.viewer !== undefined && isXhr(request) ? ajaxSlotFromPage(pageHtml) : pageHtml);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Status mapping aligned with the CF worker's render path
@@ -777,6 +782,98 @@ export { historyRenderParamsFromWire };
  *  "open" default there, not a requested view. Mirrors the grammar
  *  worker.ts parsePath dispatched: strip trailing + leading slashes, one
  *  segment (or zero) = bare; an api dispatch never reaches the page path. */
+/** The signed-in /new/:type page: the type card's page, live-rendered under
+ *  the viewer so the chrome and decko.signed_in are the session's, with the
+ *  new-card form in place of the main slot. undefined when the type does not
+ *  resolve or the page has no main slot (the caller falls back). */
+async function signedInNewCardPage(
+  source: DeferredDeck,
+  deck: Deck,
+  typeName: string,
+  options: EngineRequestOptions,
+  signal: AbortSignal | undefined,
+): Promise<Response | undefined> {
+  const viewer = options.viewer;
+  if (viewer === undefined) return undefined;
+  const typeKey = DeckoName.parse(typeName);
+  const typeRecord = await deck.fetcher.fetchByKey(typeKey.key, { skipVirtual: true }).catch(() => undefined);
+  if (typeRecord === undefined || typeRecord.name === undefined || typeRecord.id === undefined) return undefined;
+  const render = (base: string) => () =>
+    liveRenderPage(
+      source.driver,
+      base,
+      async (driver) => {
+        const engines = await bootEdgeServingEngines(driver, options.servedBootOptions ?? {});
+        engines.render.viewer = viewer;
+        engines.render.pageSession = viewer;
+        return engines;
+      },
+      // The cheapest main view: the slot is replaced by the form, and a
+      // cardtype's own page lists every card of the type.
+      { signal, keep: false, requestedView: "link" },
+    );
+  const renderChrome = (base: string) =>
+    requestContextAvailable()
+      ? runInRequestContext(getNameEnvironment(), render(base))
+      : withIsolateRenderLock(render(base));
+  // The type card carries the type's own chrome; Home is the fallback when
+  // the type card's page does not render.
+  let page: Awaited<ReturnType<typeof liveRenderPage>>;
+  try {
+    page = await renderChrome(typeRecord.name.s);
+  } catch {
+    try {
+      page = await renderChrome("Home");
+    } catch {
+      return undefined;
+    }
+  }
+  const pageHtml = applyServedEnvironmentDeltas(page.html, deckServedDeltas(deck));
+  const mainAt = pageHtml.indexOf('<div id="main">');
+  const main = mainAt >= 0 ? divSubtree(pageHtml, mainAt) : undefined;
+  if (main === undefined) return undefined;
+  const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? typeKey.key);
+  const body =
+    pageHtml.slice(0, mainAt) + `<div id="main">${form}</div>` + pageHtml.slice(mainAt + main.length);
+  const title = `New ${escapeHtml(typeRecord.name.s)}`;
+  return html(200, body.replace(/<title>[^<]*?( - [^<]*)?<\/title>/, (_t, site: string | undefined) => `<title>${title}${site ?? ""}</title>`));
+}
+
+/** Rails' request.xhr?: X-Requested-With carries XMLHttpRequest. */
+function isXhr(request: Request): boolean {
+  return /XMLHttpRequest/i.test(request.headers.get("x-requested-with") ?? "");
+}
+
+/** The outer HTML of the <div> whose open tag starts at `start`, by
+ *  counting nested div tags; undefined when it never closes. */
+function divSubtree(pageHtml: string, start: number): string | undefined {
+  const tag = /<\/?div\b[^>]*>/gi;
+  tag.lastIndex = start;
+  let depth = 0;
+  for (let m = tag.exec(pageHtml); m !== null; m = tag.exec(pageHtml)) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return pageHtml.slice(start, m.index + m[0].length);
+  }
+  return undefined;
+}
+
+/** An ajax GET answers without the layout, as Card::Env.ajax? does: the
+ *  modal slot when the page carries a filled one (the slotter's modal mode
+ *  appends it to body and shows it), otherwise the main slot's contents. */
+function ajaxSlotFromPage(pageHtml: string): string {
+  const modalAt = pageHtml.search(/<div class='modal fade _modal-slot'/);
+  if (modalAt >= 0) {
+    const modal = divSubtree(pageHtml, modalAt);
+    if (modal !== undefined && /class=['"]modal-body['"]>\s*<div/.test(modal)) return modal;
+  }
+  const mainAt = pageHtml.indexOf('<div id="main">');
+  if (mainAt >= 0) {
+    const main = divSubtree(pageHtml, mainAt);
+    if (main !== undefined) return main.slice('<div id="main">'.length, -"</div>".length);
+  }
+  return pageHtml;
+}
+
 function pathViewIsBareArm(pathname: string): boolean {
   const segments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
   return segments.length <= 1;
