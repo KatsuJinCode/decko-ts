@@ -1544,6 +1544,16 @@ export const editView: ViewFn = ({ fmt, voo }) => {
       [fmt.renderView("help", { skip_perms: true }), fmt.renderView("edit_form", { skip_perms: true })].join("\n"),
     ),
   );
+  return editModalWrapper(fmt, body);
+};
+
+/** The edit view's wrap config (edit_content.rb:29-32 `wrap: { modal: {
+ *  footer: "", size: :edit_modal_size (:large), title: :render_title,
+ *  menu: :edit_modal_menu } }`) applied around a body. Any view that
+ *  overrides `edit` and calls render :open inherits this wrap: Ruby's
+ *  override replaces only the block, so the wrapper is applied to the new
+ *  body (the User+*follow edit view, user/follow.rb:14-16, is the case). */
+export function editModalWrapper(fmt: ViewContext["fmt"], body: string): string {
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
   out += "<div class='modal-dialog modal-dialog-centered modal-lg'>\n";
@@ -1558,7 +1568,7 @@ export const editView: ViewFn = ({ fmt, voo }) => {
   // \n (the bytes end "</div>\n" x4 including the body close)
   out += "</div>\n</div>\n</div>\n";
   return out;
-};
+}
 
 // ---------------------------------------------------------------------------
 // the NAME-EDITOR and TYPE-SHIFT surfaces - the views

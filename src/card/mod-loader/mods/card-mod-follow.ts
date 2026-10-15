@@ -176,7 +176,7 @@ import {
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
-import { modSlotWrap } from "../mod-view-helpers.js";
+import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
 import { HTML_VIEWS, lastActionVerbNotifyView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
 import { safeSetKeys } from "../../render/set-keys.js";
@@ -208,7 +208,6 @@ function event(
   return { fn: () => undefined, ...decl };
 }
 import {
-  buttonTag,
   cardFormOpen,
   CARD_FORM_CLOSE,
   followPath,
@@ -222,7 +221,7 @@ import type {
 } from "../../follow/follow-render-seam.js";
 import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
-import { followButton } from "./card-mod-edit.js";
+import { editModalWrapper, followButton } from "./card-mod-edit.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -288,7 +287,7 @@ const followingStatusView: ViewFn = () => "No following preference";
 // the empty string makes the pointer show its items without a body line.
 // ---------------------------------------------------------------------------
 
-const followingOneLineContentView: ViewFn = () => "";
+const followingOneLineContentView: ViewFn = (ctx) => viewWrapInherited(ctx, "one_line_content", "");
 
 // ---------------------------------------------------------------------------
 // set/type_plus_right/user/follow.rb:23-25 view :one_line_content do "" end.
@@ -296,10 +295,15 @@ const followingOneLineContentView: ViewFn = () => "";
 // Empty override for the [User]+*follow card - same idiom as the
 // following card (a virtual pointer whose content is dynamic; the
 // empty one_line_content keeps the pointer's mini_bar view from
-// rendering a body line below the items).
+// rendering a body line below the items). The base view (card-mod-format
+// set/all/html/views.rb:29-32) carries `wrap: { div: { class: "text-muted"
+// } }`, and Ruby's override REPLACES only the body - the inherited wrap
+// still renders, so the empty override answers `<div class="text-muted">
+// </div>`, the same unconditional wrapper allHtmlViewsOneLineContentView
+// composes (an empty body inside the same div).
 // ---------------------------------------------------------------------------
 
-const userFollowOneLineContentView: ViewFn = () => "";
+const userFollowOneLineContentView: ViewFn = (ctx) => viewWrapInherited(ctx, "one_line_content", "");
 
 // ---------------------------------------------------------------------------
 // set/type_plus_right/user/follow.rb:27-29 view :edit do render :open end.
@@ -312,7 +316,9 @@ const userFollowOneLineContentView: ViewFn = () => "";
 // :open view dispatch is a single renderView call.
 // ---------------------------------------------------------------------------
 
-const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
+// The override's body is `render :open`; the inherited edit wrap (modal, see
+// editModalWrapper) is applied around it, so the answer is the modal.
+const userFollowEditView: ViewFn = ({ fmt }) => editModalWrapper(fmt, str(fmt.renderView("open")));
 
 // ---------------------------------------------------------------------------
 // set/self/follow_defaults.rb:24-30 view :confirm_update_all.
@@ -743,27 +749,44 @@ const userFollowCoreView: ViewFn = (ctx) => {
 const followDefaultsEditButtonsView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const confirm = fmt.renderView("confirm_update_all");
-  const submitAndUpdate = buttonTag("Submit and update all users", {
-    name: "card[trigger]",
-    value: "update_follow_rules",
-    class: "follow-updater",
-    data: { "disable-with": "Updating" },
+  // button_tag emits its name/type defaults first, then the options in the
+  // order the Ruby call site's hash carries them (data-disable-with rides the
+  // data: hash ahead of value and class). The attribute order is pinned by the
+  // Ruby oracle, so the tags are assembled from ordered pairs here.
+  const submitAndUpdate = orderedButton("Submit and update all users", [
+    ["name", "card[trigger]"],
+    ["type", "submit"],
+    ["data-disable-with", "Updating"],
+    ["value", "update_follow_rules"],
+    ["class", "follow-updater btn btn-primary"],
+  ]);
+  const simple = orderedButton("Submit", [
+    ["name", "button"],
+    ["type", "submit"],
+    ["class", "follow btn btn-primary"],
+  ]);
+  // cancel_button (card-mod-edit set/all/form_elements.rb:67-75): the href the
+  // caller gave, then class (btn btn-secondary + the slotter strategy), then
+  // data-remote.
+  const cancelHref = followPath(fmt.card.name.urlKey, {
+    view: "edit",
+    query: { id: String(fmt.card.id) },
   });
-  const simple = buttonTag("Submit", { class: "follow" });
-  const cancel = linkTo(
-    "Cancel",
-    followPath(fmt.card.name.urlKey, {
-      view: "edit",
-      query: { id: String(fmt.card.id) },
-    }),
-  );
+  const cancel = `<a href="${cancelHref}" class="btn btn-secondary slotter" data-remote="true">Cancel</a>`;
+  // wrap_with :div (button_formgroup) adds no leading newline; the confirm
+  // block ends the line the group opens on.
   return (
     confirm +
-    `\n<div class="form-group button-form-group">` +
+    `<div class="form-group button-form-group">` +
     output([submitAndUpdate, simple, cancel]) +
     `</div>`
   );
 };
+
+/** button_tag with its attribute pairs in the caller's emitted order. */
+function orderedButton(text: string, attrs: Array<[string, string]>): string {
+  return `<button ${attrs.map(([k, v]) => `${k}="${v}"`).join(" ")}>${text}</button>`;
+}
 
 // ===========================================================================
 // the remaining follow views.
@@ -1188,7 +1211,9 @@ function userFollowErrorsPermissionArm(cardName: string): {
  *    ...permission_denied -> the sign-in frame... else super()
  *  card.errors is ActiveRecord error state - the headless engine's render
  *  path carries none (a fetched card never holds errors), so `return
- *  unless card.errors.any?` is the arm EVERY engine render hits: nil -> "".
+ *  unless card.errors.any?` is the arm EVERY engine render hits: nil. The
+ *  view answers nil (ViewResult null), which the render boundary carries
+ *  verbatim as {"html":null} (the composed adapter's renderRaw).
  *  The permission arm (userFollowErrorsPermissionArm) is the failed-save
  *  re-render's; the super() arm dispatches the chain's all-set definition
  *  (card-mod-format set/all/error.rb:28-30, "Problem:\n\n" + error_
@@ -1197,9 +1222,10 @@ function userFollowErrorsPermissionArm(cardName: string): {
  *  exactly that definition). Registering the view is Ruby-true: the chain
  *  dispatch already picks the most specific set module. */
 const userFollowErrorsView: ViewFn = (ctx) => {
-  // the engine models no card-error state: errors.any? is false
+  // the engine models no card-error state: errors.any? is false, so the
+  // `return unless` arm answers nil.
   void ctx;
-  return "";
+  return null;
 };
 
 /** The follow views' TEST SEAM - the composition cores the test file

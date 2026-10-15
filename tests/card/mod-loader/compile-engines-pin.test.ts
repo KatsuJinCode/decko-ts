@@ -36,18 +36,17 @@
 //   which normalizes no_wrap: to {bare:} and calls the identical JS
 //   compiler). Capture-verified byte-exact on every corpus source, both
 //   no_wrap arms.
-// - sass@1.105.0 (Dart Sass) - stands in for the deck's SassC/libsass
-//   3.6.x. The libsass-vs-dart byte divergences are normalized in TWO
-//   layers so the ENGINE's output is byte-identical with libsass 3.6.4 on
-//   the whole corpus: the input BOM strip + trailing newline here, and the
-//   post-compile parity adapter
-//   (src/card/mod-loader/libsass-byte-parity-adapter.ts). The divergence-
-//   class catalogue and its residuals live in
-//    and the adapter header.
+// - The Sass compile is the REAL LibSass 3.6.4 program (tools/libsass,
+//   built from the sassc 2.4.0 gem's bundled source), so its output is the
+//   deck's SassC render byte for byte; no normalization layer runs. An earlier
+//   version compiled with Dart Sass and rewrote the output toward LibSass's
+//   conventions; the class catalogue below names the mechanisms such a
+//   rewrite had to cover, and every pin here now matches without one.
 
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { ensureLibsassProgram } from "../../../tests/support/libsass-program.js";
 import { describeOrSkipLoud } from "../../../tests/support/describe-with-corpus.js";
 import {
   compressCss,
@@ -121,11 +120,12 @@ function pin(rel: string) {
   return p;
 }
 
-// The corpus pins whose oracle bytes exercise the dart-vs-libsass divergence
-// classes (number canonicalization, escape decoding, attribute quotes, BOM,
-// blank-line separation). Each entry names the mechanism; the parity adapter
-// in src/card/mod-loader/libsass-byte-parity-adapter.ts normalizes all of
-// them, so these pins assert byte equality through the full pipeline.
+// The corpus pins whose oracle bytes exercise the divergence classes
+// (number canonicalization, escape decoding, attribute quotes, BOM,
+// blank-line separation) between a canonicalizing compiler and LibSass's
+// authored-text-preserving one. Each entry names the mechanism; the real
+// LibSass program gets every one of them right by construction, so these
+// pins assert byte equality through the full pipeline.
 const DISCLOSED_SASS_DIVERGENCES: Record<string, string> = {
   "jquery_ui_smoothness.css":
     "dart :compressed re-canonicalizes numbers and colors (e.g. authored '-.25em' -> '-0.25em', 'black' -> '#000'); libsass preserves the authored token",
@@ -204,6 +204,10 @@ describe("CoffeeScript compile (02_coffee_script.rb:20-22) - byte-exact pins", (
 });
 
 describe("SassC compile (01_css.rb compress/compile, 02_scss.rb compile_scss)", () => {
+  beforeAll(() => {
+    // the compile seam runs the real LibSass 3.6.4 program
+    ensureLibsassProgram();
+  }, 600_000);
   it("css/scss :compressed - GREEN on sources free of the disclosed divergence classes", () => {
     const green = ["decko_bootstrap.scss", "jquery_ui_decko.scss", "material_icons.css"];
     for (const rel of green) {
@@ -213,12 +217,14 @@ describe("SassC compile (01_css.rb compress/compile, 02_scss.rb compile_scss)", 
     }
   });
 
-  it("css/scss :compressed - divergence pins through the parity adapter (byte-exact)", () => {
+  it("css/scss :compressed - every pin through the real LibSass program (byte-exact)", () => {
     for (const [rel, mechanism] of Object.entries(DISCLOSED_SASS_DIVERGENCES)) {
       const p = pin(rel);
       expect(p.sassc_compressed, rel).toBeDefined();
       const compiled = sasscRender(p.source, "compressed");
-      // The adapter normalizes the named mechanism; the bytes must match.
+      // The program IS libsass 3.6.4, the engine sassc 2.4.0 drives, so the
+      // bytes must match; DISCLOSED_SASS_DIVERGENCES names the mechanisms that
+      // used to be normalized by hand and now need no normalization.
       expect(compiled, `${rel}: ${mechanism}`).toBe(p.sassc_compressed);
     }
   });
@@ -232,16 +238,16 @@ describe("SassC compile (01_css.rb compress/compile, 02_scss.rb compile_scss)", 
     }
   });
 
-  it("scss :expanded - blank-line separation pin through the parity adapter (byte-exact)", () => {
+  it("scss :expanded - blank-line separation pin through the real LibSass program (byte-exact)", () => {
     const mechanism = DISCLOSED_SASS_DIVERGENCES["account.scss"] as string;
     const p = pin("account.scss");
     expect(compileScss(p.source), `account.scss: ${mechanism}`).toBe(p.sassc_expanded);
   });
 
   it("the compress quirk: compressCss compiles BOTH compress? arms to style :compressed (the dead _style param)", () => {
-    // Sources chosen free of the disclosed dart-divergence classes so this
-    // pin isolates the QUIRK (the arms' byte-identity), not the compiler
-    // divergence (covered by the adapter-normalized pins above). smoothness's quirk
+    // Sources chosen free of the divergence classes so this pin isolates the
+    // QUIRK (the arms' byte-identity), not the compiler divergence (covered
+    // by the pins above). smoothness's quirk
     // proof deck-side is the :compiled == :compressed equality pin below.
     for (const rel of ["decko_bootstrap.scss", "jquery_ui_decko.scss", "material_icons.css"]) {
       const p = pin(rel);
@@ -282,9 +288,8 @@ describe("SassC compile (01_css.rb compress/compile, 02_scss.rb compile_scss)", 
     // Oracle: "CAPTURE_ERROR: SassC::SyntaxError: Error: Undefined variable:
     // \"$white\"." - a real deck asset that only compiles inside the skin
     // compile where bootstrap's variables exist. The byte-level error MESSAGES
-    // diverge (dart: "Undefined variable." with its own span format; libsass:
-    // 'Undefined variable: "$white"') - not deck-pinned (no deck-resident
-    // source renders this error), so the pin is the THROW itself.
+    // differ between compilers - not deck-pinned (no deck-resident source
+    // renders this error), so the pin is the THROW itself.
     expect(() => sasscRender(p.source, "compressed")).toThrow();
     expect(() => compileScss(p.source)).toThrow();
   });

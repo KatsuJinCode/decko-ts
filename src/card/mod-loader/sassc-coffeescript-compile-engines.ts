@@ -47,37 +47,20 @@
 // changes to the pre-existing tree:
 //
 // - coffeescript@1.12.2: the byte-exact parity engine described in point 3.
-// - sass@1.105.0 (Dart Sass): the closest maintained Sass compiler available.
-//   npm carries no libsass 3.6.x binding usable on Node 24 (node-sass 9 wraps
-//   libsass 3.5.5 with no Node 24 prebuilds; the @amoo-miki/node-sass
-//   9.0.0-libsass-3.6.5 fork fails its native node-gyp build), while the Ruby
-//   engine compiles through sassc 2.4.0 / libsass 3.6.4 (gem Makefile
-//   LIBSASS_VERSION). The libsass-versus-dart byte divergences are normalized
-//   in two layers:
-//   a. BOM - libsass strips a leading U+FEFF from the input, dart carries it
-//      through into the output. The input is therefore stripped before
-//      compiling.
-//   b. Trailing newline - libsass appends "\n" to every non-empty render in
-//      both :compressed and :expanded, and dart never does. A comment-only
-//      source compiles to "" under both, so the newline is appended only
-//      when the compiled css is non-empty.
-//   c. Everything else is normalized by the post-compile byte adapter
-//      (libsass-byte-parity-adapter.ts). dart canonicalizes numbers (leading
-//      zeros stripped or added, trailing zeros and exponents re-formatted),
-//      colors (keywords to hex, hex shortened and lowercased), string escapes
-//      (decoded, case lost), attribute-selector quotes (stripped) and calc
-//      padding (stripped); it reorders nothing and separates hoisted
-//      top-level rules with a single newline in :expanded. libsass 3.6.4, by
-//      contrast, preserves the authored token text verbatim and reorders
-//      compound selectors into category order. The adapter restores the
-//      authored forms from the source (the pipeline holds it) and applies
-//      libsass's own conventions. Residuals that output bytes cannot recover
-//      are listed in the adapter header.
+// - The Sass compile is the REAL LibSass 3.6.4 (the sassc 2.4.0 gem's bundled
+//   source, vendored unmodified under tools/libsass/libsass), built as the
+//   sassc-stdin program (tools/libsass/sassc-stdin.c) and run per compile. It
+//   is the same engine the Ruby oracle's SassC::Engine renders with, so its
+//   bytes are the oracle's bytes. An earlier version compiled with Dart Sass
+//   and rewrote the output toward LibSass's conventions; that rewrite matched
+//   only the inputs it was fitted to, so it was removed. The program is found
+//   at DECKO_SASSC when set, otherwise at tools/libsass/build/sassc-stdin
+//   (built by tools/libsass/build-native.mjs).
 
 import { readdirSync, statSync } from "node:fs";
-import { compileString, type OutputStyle } from "sass";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { compile as coffeeCompile } from "coffeescript";
-import { adaptDartCssToLibsassBytes } from "./libsass-byte-parity-adapter.js";
 
 /** SassC::Engine style strings (01_css.rb:69-73 style: :compressed,
  *  02_scss.rb:12-14 default :expanded). */
@@ -85,47 +68,58 @@ export type SasscStyle = "compressed" | "expanded" | "nested" | "compact";
 
 /** Sass compile failure. Ruby's surface raises Card::Error
  *  (css_compression_error, 01_css.rb:75-85), or Card::Error carrying a
- *  "SassC::SyntaxError (name:backtrace)" message (02_scss.rb:16-19). The two
- *  compilers format their error spans differently, so the message bytes are
- *  not interchangeable; this surface is pinned as a throw rather than as
- *  bytes (compile-engines-pin.test.ts). */
+ *  "SassC::SyntaxError (name:backtrace)" message (02_scss.rb:16-19). The
+ *  compile seam's LibSass error text is carried on this surface; the
+ *  message bytes are pinned as a throw rather than as CSS
+ *  (compile-engines-pin.test.ts). */
 export class SasscCompileError extends Error {
   readonly sourceName: string;
 
-  constructor(sourceName: string, cause: unknown) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    super(
-      `SassC compile failed for ${sourceName} (libsass would raise Card::Error here; ` +
-        `the dart-vs-libsass error message bytes diverge and are not pinned): ${detail.split("\n")[0]}`,
-    );
+  constructor(sourceName: string, detail: string) {
+    super(`SassC compile failed for ${sourceName}: ${detail.split("\n")[0]}`);
     this.name = "SasscCompileError";
     this.sourceName = sourceName;
   }
 }
 
-/** libsass appends "\n" to every non-empty render, in both styles; dart
- *  never emits it. A comment-only source compiles to "" under libsass, which
- *  is why the empty case is passed through untouched. */
-function libsassTrailingNewline(css: string): string {
-  return css === "" ? css : `${css}\n`;
+/** The sassc-stdin program: LibSass 3.6.4 built from the sassc 2.4.0 gem's
+ *  bundled source (tools/libsass/build-native.mjs). DECKO_SASSC names it when
+ *  set (the vm-staging-server convention); otherwise the build default. */
+function libsassProgram(): string {
+  const named = process.env["DECKO_SASSC"];
+  if (named !== undefined && named !== "") return named;
+  const exe = process.platform === "win32" ? ".exe" : "";
+  return fileURLToPath(
+    new URL(`../../../tools/libsass/build/sassc-stdin${exe}`, import.meta.url),
+  );
 }
 
 /** SassC::Engine.new(input, style:).render for a string input (the deck
- *  compiles card/file CONTENT strings, never files with import paths).
- *  Normalizations: (a) input BOM strip + (b) trailing newline here, and
- *  (c) the full libsass byte-convention adapter over the dart output (see
- *  libsass-byte-parity-adapter.ts). */
+ *  compiles card/file CONTENT strings, never files with import paths). The
+ *  program's options are SassC::Engine's own for a string template: a data
+ *  context, no filename, no precision override, no include paths (load_paths
+ *  is empty, so Ruby's option_set_include_path is never reached), no source
+ *  comments, no source map, and the given output style (sassc-stdin.c). Its
+ *  stdout IS the render: no post-processing of any kind. */
 export function sasscRender(input: string, style: SasscStyle = "compressed"): string {
-  // (a) libsass strips a leading U+FEFF; dart carries it into the output.
-  const stripped = input.startsWith("\uFEFF") ? input.slice(1) : input;
-  let css: string;
-  try {
-    css = compileString(stripped, { style: style as OutputStyle }).css;
-  } catch (cause) {
-    throw new SasscCompileError("(inline source)", cause);
+  // SassC::Engine#render returns @template.dup for an empty template.
+  if (input === "") return "";
+  const program = libsassProgram();
+  const run = spawnSync(program, [style], {
+    input,
+    windowsHide: true,
+    maxBuffer: 1 << 28,
+  });
+  if (run.error !== undefined) {
+    throw new SasscCompileError(
+      "(inline source)",
+      `the LibSass program at ${program} could not run: ${run.error.message}`,
+    );
   }
-  const adapted = adaptDartCssToLibsassBytes(css, stripped, style);
-  return libsassTrailingNewline(adapted);
+  if (run.status !== 0) {
+    throw new SasscCompileError("(inline source)", run.stderr.toString("utf8").trim() || `exit ${run.status}`);
+  }
+  return run.stdout.toString("utf8");
 }
 
 /** 01_css.rb:63-67 compress - the css-format compress path. The compress?

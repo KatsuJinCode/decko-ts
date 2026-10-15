@@ -38,6 +38,7 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
 
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
@@ -232,13 +233,13 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     expect(html).toBe("No following preference");
   });
 
-  it("WITH the mod: :one_line_content on +*following renders the empty string (right/following.rb:24-26)", async () => {
+  it("WITH only the follow mod: :one_line_content on +*following has no inherited format wrap", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Following Probe+following", "one_line_content");
     expect(html).toBe("");
   });
 
-  it("WITH the mod: :one_line_content on User+follow renders the empty string (type_plus_right/user/follow.rb:23-25)", async () => {
+  it("WITH only the follow mod: :one_line_content on User+follow has no inherited format wrap", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle User Probe+follow", "one_line_content");
     expect(html).toBe("");
@@ -345,5 +346,19 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     expect(typeof html).toBe("string");
     expect(html.length).toBeGreaterThan(0);
     expect(html).toContain("card-slot");
+  });
+
+  it("WITH the format ancestor: both empty follow views retain Ruby's declared wrap", async () => {
+    const s = storage!;
+    loader!.reset();
+    loader = new ModLoader([{ manifest: cardModFormat }, { manifest: cardModFollow }]);
+    loader.load();
+    bindModLoaderToEngine(s, loader);
+    await loader.installInto(modEngineHost(s.engine, s.fetcher));
+    // Stock probe-view:201 and :202 in synthetic-v2-mod-probes. The empty
+    // bodies inherit all/html/views.rb:29-30's wrap from the format mod.
+    for (const card of ["Oracle Following Probe+following", "Oracle User Probe+follow"]) {
+      expect(await s.engine.render(card, "one_line_content")).toBe('<div class="text-muted"></div>');
+    }
   });
 });
