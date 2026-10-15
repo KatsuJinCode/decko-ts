@@ -64,7 +64,7 @@ on first use and puts on the session's search path ahead of `pg_catalog`.
 | an insert that names `id` | the sequence is moved past the inserted id |
 | untyped column, `datetime(6)`, `varchar(n)`, `text(n)` | `TEXT` (times stay in the port's text form, byte for byte) |
 | `boolean`, `TRUE`, `FALSE` | `INTEGER`, `1`, `0` |
-| `x IS [NOT] TRUE` / `FALSE` | `x IS [NOT] DISTINCT FROM 1` / `0` |
+| `x IS [NOT] TRUE` / `FALSE` on any operand (integer, text, boolean, expression) | `decko_sqlite.is_true(x)` / `is_false(x)`, with SQLite's truth: non-zero numbers, a text's numeric prefix, NULL neither true nor false; `IS NOT` negates |
 | `INSERT OR IGNORE` | `INSERT ... ON CONFLICT DO NOTHING` |
 | `last_insert_rowid()` | the id the driver recorded from the previous INSERT (SQLite's per-connection value) |
 | `x COLLATE NOCASE = ?` | `lower(x) = lower($n)`; in an index, the collation is dropped (keys are stored lower-case) |
@@ -74,10 +74,11 @@ on first use and puts on the session's search path ahead of `pg_catalog`.
 | `rowid` | `id`; `ORDER BY rowid` on a table without an id becomes `ORDER BY 1` |
 | `json_each(?)`, `json_object`, `json_array` | `json_array_elements_text(?::json)`, `json_build_object`, `json_build_array` |
 | `substr` with a negative start, scalar `max(a, b)` / `min(a, b)`, `instr`, `char`, `json_extract`, `json_group_array` | functions in `decko_sqlite` with SQLite's semantics |
-| comparing an integer column with text (an id against a JSON-list element) | `=` and `<>` operators in `decko_sqlite` |
+| comparing an integer column with text (an id against a JSON-list element) | `=`, `<>`, `<`, `<=`, `>`, `>=` operators in `decko_sqlite`, both directions, with SQLite's affinity rule: text that spells a number compares as that number, other text is larger than any integer |
 | `sqlite_master`, `sqlite_sequence` | views in `decko_sqlite` over the PostgreSQL catalog |
 | `CREATE TRIGGER ... BEGIN ... END` | a PL/pgSQL trigger function and a row trigger |
 | a recursive CTE with several recursive arms | one recursive arm that reads the CTE once and feeds each row to every arm through `CROSS JOIN LATERAL` |
+| a bare bind parameter in a recursive CTE's anchor (`SELECT $1, 'n'`) | `CAST($1 AS type)`, the type the recursive term's column has, read from the database's column catalog |
 | mixed-case unquoted identifiers (`AS partyId`) | quoted, so result column names keep their case |
 | `PRAGMA` | skipped |
 
@@ -100,9 +101,14 @@ loudly. Errors carry the translated PostgreSQL text.
 
 Known limits:
 
-- `x IS TRUE` assumes `x` is a 0/1 integer column. It does not translate
-  correctly when `x` is a boolean expression.
-- The integer-to-text comparison operators cover `=` and `<>` only.
+- An integer column compared with a bind parameter that holds text is
+  typed by PostgreSQL from the column, so the parameter must parse as an
+  integer. SQLite compares the number the text spells. The operators
+  below apply where the text side is a value (another column, a literal
+  cast to text, a `json_each` element), which is the shape the engine's
+  integer-versus-text comparisons have. A text literal in that position is
+  typed the same way (`1 = '1.0'` fails); a comparison of two literals is
+  not translated.
 - The tie-order rule models SQLite's plans for the card queries the engine
   issues. It is not a general emulation of SQLite's query planner.
 
@@ -136,7 +142,7 @@ checkout:
 
 - Driver and transaction conformance, plus the translation checks:
   `npx vitest run tests/server/drivers/postgres-pglite.test.ts`
-  (16 tests).
+  (18 tests).
 - Atomic saves: `npx vitest run tests/card/actions/atomic-saves.test.ts`.
   The 11 scenarios pass on the `PostgreSQL (PGlite, native)` backend
   alongside the other backends (55 tests). PGlite is a single session, so
@@ -152,21 +158,34 @@ checkout:
   node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 --actual <resultsDir>
   ```
 
-  Result on the branch's own tree: rendering 1754/1754, semantics 2389/2389,
-  persistence 16/16, side effects 19/19, read writes 8/8, other tables 12/12,
-  verdict pass.
+  Measured 2026-10-15 at commit 5a44ac5c (`fix/postgres-full-grade`, on the
+  integration line's base 535763df), with no uncommitted changes, so the
+  grade is a release grade: rendering 1754/1754, semantics 2389/2389,
+  persistence 16/16, side effects 19/19, read writes 8/8, other tables
+  12/12, verdict pass. The plain `ts` adapter
+  (`reference-harness/adapters/ts/adapter.json`) gives the same figures on the
+  same commit.
 
-  Not reproduced on the release line integration tip (fd141df9, which merges
-  this branch with the release line's newer `src/card/render/prefetch.ts`).
-  There the same grade gives rendering 12/1754, verdict fail, and every page
-  and view render fails with PostgreSQL's error `recursive query "reach"
-  column 1 has type text in non-recursive term but type integer overall`. The
-  `reach` recursive CTE in `prefetch.ts` seeds its anchor with a bare bind
-  parameter (`SELECT $1, 'n'`), which PostgreSQL types as text. Casting that
-  anchor to INTEGER runs correctly on PGlite. The translator does not yet do
-  this, and no test in `tests/server/drivers/postgres-pglite.test.ts` covers
-  the recursive CTE shape. Semantics, persistence, side effects, read writes
-  and other tables still pass on the integration tip.
+  Before this commit the same grade on the integration line's tip
+  (535763df) rendered 12/1754: every page and view failed with PostgreSQL's
+  error `recursive query "reach" column 1 has type text in non-recursive term
+  but type integer overall`. The `reach` CTE in `prefetch.ts` seeds its anchor
+  with a bare bind parameter, which PostgreSQL types as text. The translator
+  now types such a parameter from the recursive term's column.
+
+  Recursive and CTE statements: every `WITH RECURSIVE` the engine issues is
+  run on PGlite by `tests/server/drivers/postgres-recursive-ctes.test.ts`
+  (21 tests, 2026-10-15, 5a44ac5c): the inclusion nest index, the rule and
+  search sides, the help and script sides, both rule-universe walks, the
+  one-trip inline discovery walk, the rule-key universe and closures, and the
+  rstar member walk. The attached side-file form of the one-trip walk is
+  SQLite's `ATTACH` and has no PostgreSQL form; the engine runs the inline form
+  on PostgreSQL. The semantics of `IS TRUE` and of integer-versus-text
+  comparisons are checked against SQLite's own answers in
+  `tests/server/drivers/postgres-pglite.test.ts` (18 tests in that file).
+  Atomic saves (`tests/card/actions/atomic-saves.test.ts`, 55 tests) and the
+  dump importer (`tests/tools/migrate/pg-dump-import.test.ts`, 3 tests) pass
+  on the same commit.
 
   The `ts-postgres` adapter is the `ts` adapter with the engine on
   PostgreSQL. The harness grades persistence by reading the deck's SQLite

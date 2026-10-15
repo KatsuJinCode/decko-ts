@@ -659,7 +659,7 @@ function rubyBlank(s: string): boolean {
  *  170 ms; mirrored locally, 60 s+ against 17.6 s, with the two-arm set
  *  matching an independent breadth-first walk id for id. See
  *  probe-reached-rules-walk-wire.ts (not in the public package). */
-function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLStatement {
+export function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLStatement {
   const ruleJoin =
     "FROM cards rules\n" +
     "  JOIN cards sets ON rules.left_id = sets.id\n" +

@@ -459,7 +459,7 @@ const remoteScriptTagsView: ViewFn = (ctx) => {
  *  set-anchored rules ("*all+*script") AND the mod-anchored ones
  *  ("mod: X+*script", whose left cards are Mod-typed; the real deck lists
  *  them as the rule card's items). */
-function scriptRuleSidesStatement(settingTypeId: number): {
+export function scriptRuleSidesStatement(settingTypeId: number): {
   sql: string;
   params: unknown[];
 } {

@@ -64,6 +64,10 @@ export class PostgresDriver implements SQLDatabaseDriver {
    *  AUTOINCREMENT DDL, or discovered on first explicit-id insert). */
   private readonly sequencedTables = new Map<string, boolean>();
   private compat: Promise<void> | undefined;
+  /** The public schema's column types, read from information_schema when a
+   *  recursive CTE needs them (see typeRecursiveAnchorParams). */
+  private schemaTypeCache: SchemaTypes | undefined;
+  private schemaTypesStale = true;
   private inTransaction = false;
   private savepoint = 0;
   /** The id the last successful INSERT produced (SQLite's
@@ -77,7 +81,11 @@ export class PostgresDriver implements SQLDatabaseDriver {
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     await this.ensureCompat();
-    const t = translateSqliteToPostgres(sql);
+    // Only a recursive CTE needs the column types (its anchor typing); the
+    // catalog is read once and again after DDL, never per statement.
+    const types = /\bWITH\s+RECURSIVE\b/i.test(sql) ? await this.schemaTypes() : undefined;
+    const t = translateSqliteToPostgres(sql, types);
+    if (/^\s*(CREATE|ALTER|DROP)\b/i.test(sql)) this.schemaTypesStale = true;
     if (t.skip) return { rows: [], rowsAffected: 0 };
     // Inside a transaction a failed statement would abort the whole
     // PostgreSQL transaction; SQLite undoes only the statement. A savepoint
@@ -139,6 +147,27 @@ export class PostgresDriver implements SQLDatabaseDriver {
         throw error;
       }
     });
+  }
+
+  /** The public schema's column types, read from the catalog on first need
+   *  and again after the driver has run DDL. */
+  private async schemaTypes(): Promise<SchemaTypes> {
+    if (this.schemaTypeCache !== undefined && !this.schemaTypesStale) return this.schemaTypeCache;
+    const res = await this.client.query(
+      `SELECT table_name::text AS table_name, column_name::text AS column_name, data_type::text AS data_type ` +
+        `FROM information_schema.columns WHERE table_schema = 'public'`,
+      [],
+    );
+    const types: SchemaTypes = new Map();
+    for (const row of res.rows) {
+      const table = String(row.table_name);
+      let columns = types.get(table);
+      if (columns === undefined) types.set(table, (columns = new Map()));
+      columns.set(String(row.column_name), String(row.data_type));
+    }
+    this.schemaTypeCache = types;
+    this.schemaTypesStale = false;
+    return types;
   }
 
   /** Installs the SQLite compatibility schema once per driver and puts it
@@ -315,7 +344,7 @@ function unquote(t: Token): string {
  *  - A plain INSERT into a table gets `RETURNING id` when it has one, so the
  *    driver can report lastInsertRowId.
  */
-export function translateSqliteToPostgres(sql: string): TranslatedStatement {
+export function translateSqliteToPostgres(sql: string, types?: SchemaTypes): TranslatedStatement {
   const tokens = tokenize(sql);
   const first = next(tokens, 0);
   if (isWord(tokens[first], "PRAGMA")) return { sql, skip: true };
@@ -392,16 +421,23 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
         continue;
       }
       if (u === "IS") {
-        // SQLite's `x IS [NOT] FALSE|TRUE` tests the 0/1 integers the
-        // schema stores booleans as; PostgreSQL's wants a boolean operand.
+        // SQLite's `x IS [NOT] TRUE|FALSE` tests the value's truth (any
+        // non-zero number, any non-empty numeric prefix of text), for any
+        // operand type. PostgreSQL's IS TRUE takes only a boolean, so the
+        // operand goes through decko_sqlite.is_true / is_false, which apply
+        // SQLite's truth for each type.
         let k = next(tokens, i + 1);
         const negated = isWord(tokens[k], "NOT");
         if (negated) k = next(tokens, k + 1);
         if (isWord(tokens[k], "FALSE") || isWord(tokens[k], "TRUE")) {
-          const value = isWord(tokens[k], "TRUE") ? 1 : 0;
-          out.push({ kind: "other", text: `IS ${negated ? "" : "NOT "}DISTINCT FROM ${value}` });
-          i = k;
-          continue;
+          const start = operandStart(out);
+          if (start >= 0) {
+            const operand = out.splice(start).map((x) => x.text).join("").trim();
+            const fn = isWord(tokens[k], "TRUE") ? "is_true" : "is_false";
+            out.push({ kind: "other", text: `${negated ? "NOT " : ""}decko_sqlite.${fn}(${operand})` });
+            i = k;
+            continue;
+          }
         }
       }
       if (u === "TRUE" || u === "FALSE") {
@@ -559,7 +595,7 @@ export function translateSqliteToPostgres(sql: string): TranslatedStatement {
   text = text.replace(/ORDER BY rowid\b/gi, "ORDER BY 1");
   // json_array_elements_text(?) needs a json argument.
   text = text.replace(/json_array_elements_text\((\$\d+)\)/g, "json_array_elements_text($1::json)");
-  if (/\bWITH\s+RECURSIVE\b/i.test(text)) text = mergeRecursiveArms(text);
+  if (/\bWITH\s+RECURSIVE\b/i.test(text)) text = mergeRecursiveArms(typeRecursiveAnchorParams(text, types));
   text = addRowidTieBreak(text);
   let returningId = false;
   if (insertTable !== undefined) {
@@ -621,6 +657,45 @@ function translateTrigger(sql: string): TranslatedStatement | undefined {
   };
 }
 
+/** Keywords that can precede a parenthesized group without naming a function. */
+const NOT_A_FUNCTION = new Set([
+  "AND", "OR", "NOT", "WHERE", "ON", "WHEN", "THEN", "ELSE", "CASE", "SELECT", "IN", "EXISTS", "HAVING",
+  "BY", "AS", "IS", "VALUES", "SET", "RETURNING", "JOIN", "USING", "FROM", "UNION", "EXCEPT", "INTERSECT",
+]);
+
+/**
+ * Index in `out` where the expression ending just before the current token
+ * starts: a column or qualified column, a literal or parameter, a
+ * parenthesized group, or a function call (the name in front of its
+ * parenthesis). -1 when no such operand precedes.
+ */
+function operandStart(out: Token[]): number {
+  const last = prev(out, out.length - 1);
+  if (last < 0) return -1;
+  const t = out[last]!;
+  if (t.text === ")") {
+    let depth = 0;
+    for (let j = last; j >= 0; j--) {
+      if (out[j]!.text === ")") depth++;
+      else if (out[j]!.text === "(") {
+        depth--;
+        if (depth === 0) {
+          const p = prev(out, j - 1);
+          const named = p >= 0 && (out[p]!.kind === "word" || out[p]!.kind === "ident");
+          return named && !NOT_A_FUNCTION.has(out[p]!.text.toUpperCase()) ? p : j;
+        }
+      }
+    }
+    return -1;
+  }
+  if (t.kind === "word" || t.kind === "ident" || t.kind === "string" || t.kind === "other" && /^\$\d+$|^lower\(/.test(t.text)) {
+    let s = last;
+    while (s - 2 >= 0 && out[s - 1]?.text === "." && (out[s - 2]!.kind === "word" || out[s - 2]!.kind === "ident")) s -= 2;
+    return s;
+  }
+  return -1;
+}
+
 /** Whether the CROSS JOIN at `joinAt` carries an ON clause of its own. */
 function crossJoinHasOn(tokens: Token[], joinAt: number): boolean {
   let depth = 0;
@@ -641,6 +716,73 @@ function crossJoinHasOn(tokens: Token[], joinAt: number): boolean {
   }
   return false;
 }
+
+/** SQLite's truth for each value type the schema and the engine's SQL can
+ *  hand `IS TRUE` / `IS FALSE`: a boolean is itself, a number is non-zero, and
+ *  text is true when it has a non-zero numeric prefix (SQLite's `CAST(text AS
+ *  NUMERIC)` on the prefix — `x IS TRUE` on a key column is what SQLite does).
+ *  NULL is not true and is not false (`IS NOT TRUE` is true for NULL, as in
+ *  SQLite). The functions are overloaded per type, so any operand resolves. */
+const TRUTH_FUNCTION_SQL =
+  `CREATE OR REPLACE FUNCTION decko_sqlite.is_true(v boolean) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$ SELECT COALESCE(v, false) $f$;\n` +
+  `CREATE OR REPLACE FUNCTION decko_sqlite.is_false(v boolean) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$ SELECT COALESCE(NOT v, false) $f$;\n` +
+  ["integer", "bigint", "numeric", "double precision"].map(
+    (type) =>
+      `CREATE OR REPLACE FUNCTION decko_sqlite.is_true(v ${type}) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$ SELECT COALESCE(v <> 0, false) $f$;\n` +
+      `CREATE OR REPLACE FUNCTION decko_sqlite.is_false(v ${type}) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$ SELECT COALESCE(v = 0, false) $f$;`,
+  ).join("\n") +
+  `CREATE OR REPLACE FUNCTION decko_sqlite.is_true(v text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$\n` +
+  `  SELECT CASE WHEN substring(v FROM '^\\s*[-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?') = '' THEN false ELSE COALESCE(substring(v FROM '^\\s*[-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?')::numeric <> 0, false) END $f$;\n` +
+  `CREATE OR REPLACE FUNCTION decko_sqlite.is_false(v text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $f$\n` +
+  `  SELECT v IS NOT NULL AND NOT decko_sqlite.is_true(v) $f$;`;
+
+/** The six comparison operators between an integer column and a text value,
+ *  with SQLite's affinity rule (comparing an integer and text that looks like
+ *  a number compares the NUMBER; other text makes the integer smaller), so
+ *  `x < '10'`, `x = '7.0'` and `x > 'abc'` answer as SQLite does rather than
+ *  as a text spelling of the integer would. The text/int direction reuses the
+ *  int/text functions with the comparison flipped. NULL yields NULL, as in
+ *  SQL. Each operator is created once per database (CREATE OPERATOR has no
+ *  OR REPLACE; the function bodies are replaced so an older snapshot's
+ *  semantics are refreshed). */
+const COMPARE_OPERATORS = ["=", "<>", "<", "<=", ">", ">="] as const;
+/** int <op> text, with SQLite's affinity rule, as SQL expressions over
+ *  `n` (the text, parsed) and `i` (the integer). */
+const INT_TEXT_BODY: Record<(typeof COMPARE_OPERATORS)[number], string> = {
+  "=": "SELECT CASE WHEN n.v IS NULL THEN false ELSE i::numeric = n.v END",
+  "<>": "SELECT CASE WHEN n.v IS NULL THEN true ELSE i::numeric <> n.v END",
+  "<": "SELECT CASE WHEN n.v IS NULL THEN true ELSE i::numeric < n.v END",
+  "<=": "SELECT CASE WHEN n.v IS NULL THEN true ELSE i::numeric <= n.v END",
+  ">": "SELECT CASE WHEN n.v IS NULL THEN false ELSE i::numeric > n.v END",
+  ">=": "SELECT CASE WHEN n.v IS NULL THEN false ELSE i::numeric >= n.v END",
+};
+/** The operator's name as an identifier (`=` is not part of one). */
+const OP_NAME: Record<string, string> = { "=": "eq", "<>": "ne", "<": "lt", "<=": "le", ">": "gt", ">=": "ge" };
+const FLIPPED: Record<string, string> = { "=": "=", "<>": "<>", "<": ">", "<=": ">=", ">": "<", ">=": "<=" };
+const COMPARE_OPERATOR_SQL = [
+  `CREATE OR REPLACE FUNCTION decko_sqlite.text_numeric(v text) RETURNS numeric LANGUAGE sql IMMUTABLE STRICT AS $f$\n` +
+    `  SELECT CASE WHEN substring(v FROM '^\\s*[-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?') = '' THEN NULL ELSE substring(v FROM '^\\s*[-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?')::numeric END $f$;`,
+  // The int/text functions first: a text/int function's body names one of
+  // them, and SQL function bodies are checked when they are created.
+  ...COMPARE_OPERATORS.map(
+    (op) =>
+      `CREATE OR REPLACE FUNCTION decko_sqlite.int_${OP_NAME[op]}_text(i integer, t text) RETURNS boolean LANGUAGE sql IMMUTABLE STRICT AS $f$\n` +
+      `  ${INT_TEXT_BODY[op]} FROM (SELECT decko_sqlite.text_numeric(t) AS v) n $f$;`,
+  ),
+  ...COMPARE_OPERATORS.map(
+    (op) =>
+      `CREATE OR REPLACE FUNCTION decko_sqlite.text_${OP_NAME[op]}_int(t text, i integer) RETURNS boolean LANGUAGE sql IMMUTABLE STRICT AS $f$\n` +
+      `  SELECT decko_sqlite.int_${OP_NAME[FLIPPED[op]!]}_text(i, t) $f$;`,
+  ),
+  ...COMPARE_OPERATORS.map(
+    (op) =>
+      `DO $o$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_operator o JOIN pg_namespace n ON n.oid = o.oprnamespace WHERE n.nspname = 'decko_sqlite' AND o.oprname = '${op}' AND o.oprleft = 'integer'::regtype AND o.oprright = 'text'::regtype) THEN\n` +
+      `  CREATE OPERATOR decko_sqlite.${op} (LEFTARG = integer, RIGHTARG = text, FUNCTION = decko_sqlite.int_${OP_NAME[op]}_text);\n` +
+      `  CREATE OPERATOR decko_sqlite.${op} (LEFTARG = text, RIGHTARG = integer, FUNCTION = decko_sqlite.text_${OP_NAME[op]}_int);\n` +
+      `END IF;\n` +
+      `END $o$;`,
+  ),
+].join("\n");
 
 /**
  * The SQLite built-ins the engine's SQL calls, defined in PostgreSQL with
@@ -679,17 +821,9 @@ DO $d$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'decko_sqlite' AND p.proname = 'json_group_array') THEN
     CREATE AGGREGATE decko_sqlite.json_group_array(anyelement) (SFUNC = decko_sqlite.json_group_array_step, STYPE = jsonb, FINALFUNC = decko_sqlite.json_group_array_final, INITCOND = '[]');
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_operator o JOIN pg_namespace n ON n.oid = o.oprnamespace WHERE n.nspname = 'decko_sqlite' AND o.oprname = '=') THEN
-    CREATE FUNCTION decko_sqlite.int_eq_text(a integer, b text) RETURNS boolean LANGUAGE sql IMMUTABLE AS 'SELECT a::text = b';
-    CREATE FUNCTION decko_sqlite.text_eq_int(a text, b integer) RETURNS boolean LANGUAGE sql IMMUTABLE AS 'SELECT a = b::text';
-    CREATE FUNCTION decko_sqlite.int_ne_text(a integer, b text) RETURNS boolean LANGUAGE sql IMMUTABLE AS 'SELECT a::text <> b';
-    CREATE FUNCTION decko_sqlite.text_ne_int(a text, b integer) RETURNS boolean LANGUAGE sql IMMUTABLE AS 'SELECT a <> b::text';
-    CREATE OPERATOR decko_sqlite.= (LEFTARG = integer, RIGHTARG = text, FUNCTION = decko_sqlite.int_eq_text);
-    CREATE OPERATOR decko_sqlite.= (LEFTARG = text, RIGHTARG = integer, FUNCTION = decko_sqlite.text_eq_int);
-    CREATE OPERATOR decko_sqlite.<> (LEFTARG = integer, RIGHTARG = text, FUNCTION = decko_sqlite.int_ne_text);
-    CREATE OPERATOR decko_sqlite.<> (LEFTARG = text, RIGHTARG = integer, FUNCTION = decko_sqlite.text_ne_int);
-  END IF;
 END $d$;
+${COMPARE_OPERATOR_SQL}
+${TRUTH_FUNCTION_SQL}
 CREATE OR REPLACE VIEW decko_sqlite.sqlite_sequence AS
   SELECT regexp_replace(sequencename::text, '_id_seq$', '') AS name, last_value AS seq FROM pg_sequences WHERE schemaname = 'public';
 CREATE OR REPLACE VIEW decko_sqlite.sqlite_master AS
@@ -740,6 +874,129 @@ function splitUnionArms(body: string): { arms: string[]; ops: string[] } {
   }
   arms.push(body.slice(start).trim());
   return { arms, ops };
+}
+
+/** The public schema's column types: table name -> column name -> the
+ *  PostgreSQL type name (information_schema.columns.data_type, e.g.
+ *  "integer", "text", "double precision"). The driver loads it; the
+ *  translator reads it to type recursive-CTE anchors. */
+export type SchemaTypes = Map<string, Map<string, string>>;
+
+/** Words that end a FROM item or an arm's select list (never an alias). */
+const CLAUSE_WORDS = new Set([
+  "ON", "JOIN", "WHERE", "LEFT", "RIGHT", "FULL", "INNER", "OUTER", "CROSS", "NATURAL", "GROUP", "ORDER",
+  "HAVING", "LIMIT", "OFFSET", "UNION", "EXCEPT", "INTERSECT", "USING", "WINDOW", "AND", "OR",
+]);
+
+/** Splits one non-recursive or recursive arm `SELECT items [FROM ...]` into
+ *  its select items and the clause text that follows them. */
+function splitSelectItems(arm: string): { items: string[]; rest: string } | undefined {
+  const head = /^SELECT\s+/i.exec(arm);
+  if (head === null || /^SELECT\s+DISTINCT\b/i.test(arm)) return undefined;
+  const items: string[] = [];
+  let depth = 0;
+  let start = head[0].length;
+  let i = start;
+  for (; i < arm.length; i++) {
+    const c = arm[i]!;
+    if (c === "'" || c === '"') {
+      const j = arm.indexOf(c, i + 1);
+      if (j < 0) return undefined;
+      i = j;
+    } else if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (depth === 0 && c === ",") {
+      items.push(arm.slice(start, i).trim());
+      start = i + 1;
+    } else if (depth === 0 && /\s/.test(arm[i - 1] ?? " ") && /^(FROM|WHERE|GROUP|ORDER|LIMIT|HAVING|WINDOW)\b/i.test(arm.slice(i))) {
+      break;
+    }
+  }
+  items.push(arm.slice(start, i).trim());
+  return { items, rest: arm.slice(i) };
+}
+
+/** The FROM/JOIN items of an arm: alias (or bare table name) -> table name. */
+function fromAliases(arm: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const re = /\b(?:FROM|JOIN)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?(?:\s+(?:AS\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?)?/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(arm)) !== null) {
+    const table = m[1]!;
+    const alias = m[2] !== undefined && !CLAUSE_WORDS.has(m[2].toUpperCase()) ? m[2] : table;
+    out.set(alias, table);
+  }
+  return out;
+}
+
+/** The PostgreSQL type of one select item of a recursive arm, when the item
+ *  is a literal, a CAST, or a column whose type the schema records. */
+function selectItemType(item: string, aliases: Map<string, string>, types: SchemaTypes, cteName: string): string | undefined {
+  if (/^'([^']|'')*'$/.test(item)) return "text";
+  if (/^-?\d+$/.test(item)) return "integer";
+  const cast = /^CAST\s*\(.*\s+AS\s+([A-Za-z][A-Za-z ]*?)\s*\)$/i.exec(item);
+  if (cast !== null) return cast[1]!.toLowerCase();
+  const col = /^(?:("?)([A-Za-z_][A-Za-z0-9_]*)\1\.)?"?([A-Za-z_][A-Za-z0-9_]*)"?$/.exec(item);
+  if (col === null) return undefined;
+  const qualifier = col[2];
+  const column = col[3]!;
+  const candidates = qualifier !== undefined
+    ? [aliases.get(qualifier)].filter((t): t is string => t !== undefined && t !== cteName)
+    : [...new Set(aliases.values())].filter((t) => t !== cteName && types.get(t)?.has(column) === true);
+  if (candidates.length !== 1) return undefined;
+  return types.get(candidates[0]!)?.get(column);
+}
+
+/**
+ * PostgreSQL types an untyped bind parameter in a SELECT list as text. In a
+ * recursive CTE the seed term fixes the column types of the whole CTE, so a
+ * bare `$n` in the seed's select list, where the recursive term fills that
+ * position from an integer column, fails: "recursive query ... column 1 has
+ * type text in non-recursive term but type integer overall". SQLite has no
+ * such rule, so the translator supplies the type the recursive term already
+ * has: a bare `$n` (optionally `AS name`) in a seed arm's select list becomes
+ * `CAST($n AS type)` when the recursive arm's select item at the same
+ * position is a literal, a CAST, or a column the schema types. Anything not
+ * resolvable is left unchanged and fails loudly in PostgreSQL.
+ */
+function typeRecursiveAnchorParams(text: string, types: SchemaTypes | undefined): string {
+  const cte = /(?:WITH\s+RECURSIVE\s+|,\s*)("?[A-Za-z_][A-Za-z0-9_]*"?)\s*\(([^()]*)\)\s+AS\s+(?:(?:NOT\s+)?MATERIALIZED\s+)?\(/gi;
+  let m: RegExpExecArray | null;
+  const edits: Array<[number, number, string]> = [];
+  while ((m = cte.exec(text)) !== null) {
+    const name = m[1]!.replace(/"/g, "");
+    const open = m.index + m[0].length - 1;
+    const close = closingParen(text, open);
+    if (close < 0) continue;
+    const { arms, ops } = splitUnionArms(text.slice(open + 1, close));
+    const ref = new RegExp(`\\b(FROM|JOIN)\\s+"?${name}"?(?![A-Za-z0-9_])`, "i");
+    const firstRecursive = arms.findIndex((a) => ref.test(a));
+    if (firstRecursive < 1) continue;
+    const recursive = splitSelectItems(arms[firstRecursive]!);
+    if (recursive === undefined) continue;
+    const aliases = fromAliases(arms[firstRecursive]!);
+    const recursiveTypes = recursive.items.map((item) => selectItemType(item, aliases, types ?? new Map(), name));
+    const rebuilt = arms.slice(0, firstRecursive).map((arm) => {
+      const seed = splitSelectItems(arm);
+      if (seed === undefined) return arm;
+      let changed = false;
+      const items = seed.items.map((item, k) => {
+        const bare = /^\$(\d+)(\s+AS\s+.+)?$/i.exec(item);
+        const type = recursiveTypes[k];
+        if (bare === null || type === undefined) return item;
+        changed = true;
+        return `CAST($${bare[1]} AS ${type})${bare[2] ?? ""}`;
+      });
+      return changed ? `SELECT ${items.join(", ")}${seed.rest}` : arm;
+    });
+    if (rebuilt.every((arm, k) => arm === arms[k])) continue;
+    const all = [...rebuilt, ...arms.slice(firstRecursive)];
+    const body = all.map((a, k) => (k === 0 ? a : `${ops[k - 1]} ${a}`)).join(" ");
+    edits.push([open + 1, close, body]);
+  }
+  let out = text;
+  for (const [a, b, replacement] of edits.reverse()) out = out.slice(0, a) + replacement + out.slice(b);
+  return out;
 }
 
 /**

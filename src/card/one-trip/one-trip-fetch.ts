@@ -223,7 +223,7 @@ export const ONE_TRIP_INLINE_CARDS_PER_CHUNK = 100;
  *  discovery phase, with the store qualifier DROPPED (inline = the tables
  *  are in this database). V2: this phase executes in EXACTLY ONE statement
  *  per seat — the head's; nothing else in the fetch may carry it. */
-function inlineStoreCteSql(): string {
+export function inlineStoreCteSql(): string {
   return `WITH RECURSIVE walk(id) AS (
   SELECT id FROM cards WHERE "key" = ? AND trash = 0
   UNION

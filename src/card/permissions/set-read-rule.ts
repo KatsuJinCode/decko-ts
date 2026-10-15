@@ -495,6 +495,19 @@ export async function cascadeReadRuleAfterRuleSave(
  * the switch is total; anything else fails loudly rather than silently
  * returning no members.
  */
+/** The `rstar` set's members: the cards whose right part is a star-prefixed
+ *  card. Exported so the PostgreSQL conformance tests run this exact text. */
+export const STAR_PREFIXED_MEMBERS_STATEMENT =
+  `WITH RECURSIVE star_prefixed(id) AS (\n` +
+  `  SELECT id FROM cards WHERE trash = 0 AND "key" LIKE '*%'\n` +
+  `  UNION\n` +
+  `  SELECT j.id FROM star_prefixed s\n` +
+  `    JOIN cards j ON j.left_id = s.id AND j.trash = 0\n` +
+  `)\n` +
+  `SELECT cards.id FROM cards\n` +
+  `  JOIN star_prefixed sp ON sp.id = cards.right_id\n` +
+  ` WHERE cards.trash = 0 AND cards.right_id IS NOT NULL`;
+
 async function setMemberIds(
   deps: ReadRuleWriteDeps,
   setRow: CardsRow,
@@ -521,18 +534,7 @@ async function setMemberIds(
       // multi-pass universe composition; the previous whole-deck
       // composed-key CTE re-read the deck per recursion pass to learn the
       // same set).
-      const r = await deps.driver.query<{ id: number }>(
-        `WITH RECURSIVE star_prefixed(id) AS (\n` +
-          `  SELECT id FROM cards WHERE trash = 0 AND "key" LIKE '*%'\n` +
-          `  UNION\n` +
-          `  SELECT j.id FROM star_prefixed s\n` +
-          `    JOIN cards j ON j.left_id = s.id AND j.trash = 0\n` +
-          `)\n` +
-          `SELECT cards.id FROM cards\n` +
-          `  JOIN star_prefixed sp ON sp.id = cards.right_id\n` +
-          ` WHERE cards.trash = 0 AND cards.right_id IS NOT NULL`,
-        [],
-      );
+      const r = await deps.driver.query<{ id: number }>(STAR_PREFIXED_MEMBERS_STATEMENT, []);
       return r.rows.map((row) => row.id);
     }
     case "rule":
