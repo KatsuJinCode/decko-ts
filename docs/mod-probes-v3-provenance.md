@@ -2,6 +2,10 @@
 
 This fixture versions the isolated event plan and Ruby 3.3.12 reference capture.
 It does not replace the published `synthetic-v2-mod-probes` fixture.
+The published v2 tree is restored byte for byte from `e51125a9`. The isolated
+Ruby 3.4.11 capture is retained unchanged under
+`expected-historical-ruby34/`, with its original source manifest and metadata
+hash. That directory is historical evidence, not canonical expectations for v3.
 
 The original v2 input digest at commit `e51125a9` is
 `54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726`.
@@ -22,3 +26,7 @@ name from the storage name. It is not a new execution.
 
 Expected output is accepted only after a full Ruby 3.3.12 capture, followed by a
 full port grade. No match rate is claimed by the fixture's existence alone.
+
+Verification of the versioning reconciliation: both fixture manifests match
+their inputs, the v2 tree has no difference from `e51125a9`, and all 131 runner
+tests passed in 77.960 seconds.
