@@ -1,0 +1,1257 @@
+{
+  "scope": "Local production Node browser acceptance; no exact six-case Ruby parity or hosted Bunny claim",
+  "rawDirectory": "tmp/journey-complete-stable-provider/ts-production",
+  "engine": "ts-production",
+  "fixture": "synthetic-v1",
+  "provenance": {
+    "buildReceipt": {
+      "sourceCommit": "f0c91b5a6432c28f091fe37091ce698395286fc5",
+      "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "distSha256": "dc0e153b7c46e4e073ce41c4213aae044845f447f3d1558eea1ff1a0587b3e71",
+      "builtAt": "2026-10-15T23:10:47.825Z"
+    },
+    "format": "decko-browser-evidence/1",
+    "runId": "e0bd5b0f-fc9c-42e1-9768-86456924fe80",
+    "startedAt": "2026-10-15T23:10:49.160Z",
+    "source": {
+      "commit": "f0c91b5a6432c28f091fe37091ce698395286fc5",
+      "dirty": false,
+      "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "artifacts": {
+      "distSha256": "dc0e153b7c46e4e073ce41c4213aae044845f447f3d1558eea1ff1a0587b3e71"
+    },
+    "fixtureSha256": "066062bd09c25629d43691461a23bf37580e5cfe63cf68780fc4dfea2384f8aa",
+    "journeysSha256": "194f0e7e83e8e59d08fccb35899960a1607c8cda3034314ae7012bb0a3bfc05b",
+    "engineSha256": "bd569905e4412f627a619bd58a0514a1cf6a348441d30af5c4e44102cee4972c",
+    "engine": "ts-production",
+    "selection": {
+      "filter": null,
+      "shard": "0/1"
+    },
+    "runner": {
+      "node": "v24.19.0",
+      "platform": "win32",
+      "editorSettle": "1",
+      "offline": null
+    }
+  },
+  "completedAt": "2026-10-15T23:15:11.251Z",
+  "journeys": [
+    {
+      "id": "account-email-login-persistence",
+      "completed": true,
+      "ms": 27356
+    },
+    {
+      "id": "account-password-login-persistence",
+      "completed": true,
+      "ms": 34074
+    },
+    {
+      "id": "account-reset-password-complete",
+      "completed": true,
+      "ms": 26790
+    },
+    {
+      "id": "account-signup-activation-complete",
+      "completed": true,
+      "ms": 49213
+    },
+    {
+      "id": "date-edit-persistence",
+      "completed": true,
+      "ms": 62149
+    },
+    {
+      "id": "rich-editor-save-persistence",
+      "completed": true,
+      "ms": 62083
+    }
+  ],
+  "results": [
+    {
+      "id": "account-email-login-persistence",
+      "completed": true,
+      "ms": 27356,
+      "sha256": "51824300cf898fdecfd8356a741f77063181af68fbcc92dbdf895b83c5ed23e3",
+      "observations": [
+        {
+          "label": "email saved",
+          "status": 200,
+          "mainText": "Mira Member+*account email mira.changed@example.test password encrypted"
+        },
+        {
+          "label": "new email after fresh session and restart",
+          "status": 200,
+          "mainText": "Mira Member+*account email mira.changed@example.test password encrypted"
+        },
+        {
+          "label": "old credentials refused",
+          "status": 200,
+          "mainText": "Sign In email password visibility_off Reset password Sign in ...or sign up! Problems with *signin SIGNIN: Wrong email or password."
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/update/*signin",
+          "method": "POST",
+          "status": 422,
+          "resourceType": "xhr",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    },
+    {
+      "id": "account-password-login-persistence",
+      "completed": true,
+      "ms": 34074,
+      "sha256": "6ddac426648d1b69368f071a8f495e4f68c876935d375ca7a0521df11bd1f2eb",
+      "observations": [
+        {
+          "label": "password saved",
+          "status": 200,
+          "mainText": "Mira Member+*account email mira.member@example.test password encrypted"
+        },
+        {
+          "label": "new password authenticated after restart",
+          "status": 200,
+          "mainText": "Welcome, Card Shark! Things to sink your teeth into: Structure Add new Cardtype Style Configure Skin Card and more..."
+        },
+        {
+          "label": "old credentials refused",
+          "status": 200,
+          "mainText": "Sign In email password visibility_off Reset password Sign in ...or sign up! Problems with *signin SIGNIN: Wrong email or password."
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/update/*signin",
+          "method": "POST",
+          "status": 422,
+          "resourceType": "xhr",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    },
+    {
+      "id": "account-reset-password-complete",
+      "completed": true,
+      "ms": 26790,
+      "sha256": "3c074a358cb4dc7f9591d50305d35ebf7fc7d32a0eb95aaf6d2e86a9b9cc4b0e",
+      "observations": [
+        {
+          "label": "reset account form",
+          "status": 200,
+          "mainText": "Mira Member+*account email mira.member@example.test password encrypted"
+        },
+        {
+          "label": "reset password authenticated after restart",
+          "status": 200,
+          "mainText": "Welcome, Card Shark! Things to sink your teeth into: Structure Add new Cardtype Style Configure Skin Card and more..."
+        },
+        {
+          "label": "old credentials refused",
+          "status": 200,
+          "mainText": "Sign In email password visibility_off Reset password Sign in ...or sign up! Problems with *signin SIGNIN: Wrong email or password."
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/update/*signin",
+          "method": "POST",
+          "status": 422,
+          "resourceType": "xhr",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    },
+    {
+      "id": "account-signup-activation-complete",
+      "completed": true,
+      "ms": 49213,
+      "sha256": "05f7c37f028007fad04c85c0d39691962310a9f06b7ad459c2ea6e0b12007378",
+      "observations": [
+        {
+          "label": "captcha off configured by administrator",
+          "status": 200,
+          "mainText": "Sign up+*type+*captcha no"
+        },
+        {
+          "label": "signup submitted",
+          "status": 200,
+          "mainText": "Journey New User Journey New User signed up on <time> 23:12:47"
+        },
+        {
+          "label": "administrator reviews pending signup",
+          "status": 200,
+          "mainText": "Journey New User Journey New User signed up on <time> 23:12:47 A verification email has been sent to journey.new@example.test Send verification email Approve without verification Deny and delete"
+        },
+        {
+          "label": "administrator sent verification email",
+          "status": 200,
+          "mainText": "Journey New User Journey New User signed up on <time> 23:12:47 A verification email has been sent to journey.new@example.test Resend verification email Approve without verification Deny and delete"
+        },
+        {
+          "label": "activation result",
+          "status": 200,
+          "mainText": "Welcome, Card Shark! Things to sink your teeth into: Structure Add new Cardtype Style Configure Skin Card and more..."
+        },
+        {
+          "label": "activated user after restart",
+          "status": 200,
+          "mainText": "Journey New User Journey New User signed up on <time> 23:12:47 A verification email has been sent to journey.new@example.test Send verification email Approve without verification Deny and delete"
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    },
+    {
+      "id": "date-edit-persistence",
+      "completed": true,
+      "ms": 62149,
+      "sha256": "377e36b393166610f171cb2c0d39e4f6a27ea93ac4239e9185b403991ed5d894",
+      "observations": [
+        {
+          "label": "date editor before",
+          "status": 200,
+          "mainText": "Date 1 <time>"
+        },
+        {
+          "label": "saved leap day",
+          "status": 200,
+          "mainText": "Date 1 <time>"
+        },
+        {
+          "label": "leap day after restart",
+          "status": 200,
+          "mainText": "Date 1 <time>"
+        },
+        {
+          "label": "persisted date editor value",
+          "status": 200,
+          "mainText": "Date 1 <time>"
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    },
+    {
+      "id": "rich-editor-save-persistence",
+      "completed": true,
+      "ms": 62083,
+      "sha256": "de2e68fc9819cfb483cd09f69c7bf345bb010b04c4094f3a4db51204fc86fa69",
+      "observations": [
+        {
+          "label": "saved rich content",
+          "status": 200,
+          "mainText": "Note 001 Journey persisted rich content 20261015."
+        },
+        {
+          "label": "rich content after restart",
+          "status": 200,
+          "mainText": "Note 001 Journey persisted rich content 20261015."
+        },
+        {
+          "label": "persisted rich editor value",
+          "status": 200,
+          "mainText": "Note 001 Journey persisted rich content 20261015."
+        }
+      ],
+      "runtime": {
+        "engine": "node-host",
+        "node": "v24.19.0",
+        "passwordHash": "pbkdf2",
+        "assetRefresh": "cautious",
+        "scssCompilerConfigured": true,
+        "scssCompilerSha256": "ca84a1f0c254e4f9b1a40b232258ed599724fceaf532f0da003caeb641539ac2",
+        "deckProfile": "stock"
+      },
+      "networkFailures": [
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:favicon/carrierwave-small.png",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "other",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "local",
+          "path": "/files/:logo/carrierwave.svg",
+          "method": "GET",
+          "status": 404,
+          "resourceType": "image",
+          "navigation": false
+        },
+        {
+          "origin": "kit.fontawesome.com",
+          "path": "/1366963381.js",
+          "method": "GET",
+          "status": 403,
+          "resourceType": "script",
+          "navigation": false
+        }
+      ],
+      "failedSteps": []
+    }
+  ]
+}
