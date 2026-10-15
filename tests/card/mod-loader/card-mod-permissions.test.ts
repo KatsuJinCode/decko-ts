@@ -649,10 +649,12 @@ describe("the exported :core override (abstract/permission.rb:14-20, not registe
     expect(out).toBe('<span class="inherit-perm">Inherit from left card</span>');
   });
 
-  it("renders the who_can links inside the span in a self-set context (permission.rb:113-122)", () => {
-    // set_context "A+B+*self": ancestor = trunk.trunk = "A"; who_can(:read)
-    // resolves the ancestor's first existing "<set>+*read" rule card via
-    // ruleNamesForCard's candidate walk ("A+*self+*read" first)
+  it("renders bare Inherit for a non-empty who_can list in a self-set context (permission.rb:113-122)", () => {
+    // set_context "A+B+*self": ancestor = trunk.trunk = "A"; who_can(:read) is
+    // the ancestor's first existing "<set>+*read" rule card's item list
+    // (ruleNamesForCard candidate walk: "A+*self+*read" first). Ruby's map
+    // block raises on its first element (args undefined) and permission.rb:121
+    // rescues to the bare marker - never a links form.
     const ancestor = cardLike("A", { typeName: "RichText", typeId: 100, id: 5 });
     const rule = cardLike("A+*self+*read", { dbContent: "Anyone\nAdministrators" });
     const fmt = new StubFmt(cardLike("A+B+*self+*read", { dbContent: "_left" }), {
@@ -660,11 +662,20 @@ describe("the exported :core override (abstract/permission.rb:14-20, not registe
       "A+*self+*read": rule,
     });
     const out = permissionCoreView(makeCtx(fmt, "core", { set_context: "A+B+*self" }));
-    expect(out).toBe(
-      '<span class="inherit-perm">Inherit ( ' +
-        '<a href="/Anyone">Anyone</a>, <a href="/Administrators">Administrators</a>' +
-        " )</span>",
-    );
+    expect(out).toBe('<span class="inherit-perm">Inherit</span>');
+  });
+
+  it("renders the empty-list paren form in a self-set context (permission.rb:116-119)", () => {
+    // An ancestor rule with NO items: the map block never runs, the join is
+    // "", and the interpolation is "Inherit ( " + "" + " )" - two spaces.
+    const ancestor = cardLike("A", { typeName: "RichText", typeId: 100, id: 5 });
+    const rule = cardLike("A+*self+*read", { dbContent: "" });
+    const fmt = new StubFmt(cardLike("A+B+*self+*read", { dbContent: "_left" }), {
+      "A": ancestor,
+      "A+*self+*read": rule,
+    });
+    const out = permissionCoreView(makeCtx(fmt, "core", { set_context: "A+B+*self" }));
+    expect(out).toBe('<span class="inherit-perm">Inherit (  )</span>');
   });
 
   it("rescues any resolution failure to the bare Inherit bytes (permission.rb:120-121)", () => {

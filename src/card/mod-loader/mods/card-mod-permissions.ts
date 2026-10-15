@@ -118,8 +118,7 @@
 import { UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE } from "../../set-patterns/registry.js";
-import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
-import type { PatternCardInput } from "../../set-patterns/types.js";
+import { permissionInheritContentHtml, permissionRuleTask } from "../../render/rule-bar-right.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
 import { h } from "../../render/slot-html.js";
 import type {
@@ -212,67 +211,11 @@ function inheriting(ctx: ViewContext): boolean {
  *  "set_context" opt (undefined outside the rule editor - the common
  *  render path). */
 function coreInheritContent(ctx: ViewContext): string {
-  const setContext = typeof ctx.voo.opts["set_context"] === "string"
-    ? (ctx.voo.opts["set_context"] as string)
-    : undefined;
-  const text = inContextOfSelfSet(setContext)
-    ? coreInheritForSelfSet(ctx, setContext as string)
-    : "Inherit from left card";
-  return `<span class="inherit-perm">${text}</span>`;
-}
-
-/** permission.rb:107-111 in_context_of_self_set?: the set context's tag is
- *  the *self card. */
-function inContextOfSelfSet(setContext: string | undefined): boolean {
-  if (setContext === undefined) return false;
-  return DeckoName.parse(setContext).tagName.key === "*self";
-}
-
-/** permission.rb:113-122 core_inherit_for_content_for_self_set: the
- *  ancestor's who_can(task) rendered as ", "-joined card links. task is the
- *  rule card's tag codename ("read" for "+*read" - data/real.yml:1-16);
- *  who_can (permissions.rb:47-49) reads the ancestor's "<set>+*<task>"
- *  rule card's items - resolved through the engine's render-card map via
- *  ruleNamesForCard (the rule-cache walk, lib/card/rule/all.rb:9-15).
- *  ANY failure renders "Inherit" - permission.rb:120-121
- *  `rescue StandardError` ("Inherit"). */
-function coreInheritForSelfSet(ctx: ViewContext, setContext: string): string {
-  try {
-    const task = ctx.fmt.card.name.tagName.s.replace(/^\*/, "");
-    const contextName = DeckoName.parse(setContext);
-    const ancestorName = contextName.trunkName.trunkName;
-    const ancestor = ctx.fmt.engine.fetchRenderCard(ancestorName.s);
-    if (ancestor === undefined) return "Inherit";
-    const input: PatternCardInput = {
-      name: ancestor.name.s,
-      id: ancestor.id,
-      typeId: ancestor.typeId,
-      typeName: ancestor.typeName,
-    };
-    let ruleCard: RenderCard | undefined;
-    for (const candidate of ruleNamesForCard(input, `*${task}`)) {
-      const record = ctx.fmt.engine.fetchRenderCard(candidate);
-      if (record !== undefined) {
-        ruleCard = record;
-        break;
-      }
-    }
-    if (ruleCard === undefined) return "Inherit";
-    const links = rawItemStrings(ruleCard.dbContent)
-      .filter((item) => item.length > 0)
-      .map((item) => {
-        const itemCard = ctx.fmt.engine.fetchRenderCard(item);
-        // link_to_card card_id, nil (permission.rb:117): the label falls
-        // back to the card's name; target rides args[:target] (absent on
-        // this path - no target attribute).
-        const label = itemCard?.name.s ?? item;
-        return `<a href="/${h(DeckoName.parse(label).urlKey)}">${h(label)}</a>`;
-      })
-      .join(", ");
-    return `Inherit ( ${links} )`;
-  } catch {
-    return "Inherit"; // permission.rb:120-121 rescue StandardError
-  }
+  const setContextOpt = ctx.voo.opts["set_context"];
+  const setContext = typeof setContextOpt === "string" ? DeckoName.parse(setContextOpt) : undefined;
+  // ONE decision for both surfaces (the bar's and this one): the shared
+  // marker in rule-bar-right.ts, which owns the permission.rb:98-122 table.
+  return permissionInheritContentHtml(setContext, ctx.fmt.engine, permissionRuleTask(ctx.fmt.card));
 }
 
 // ---------------------------------------------------------------------------

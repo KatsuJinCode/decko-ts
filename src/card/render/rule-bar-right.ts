@@ -28,6 +28,7 @@ import { str, type ViewResult } from "../render/format.js";
 
 import type { RenderCard, RenderEngineLike } from "./format.js";
 import { DeckoName } from "../name.js";
+import { selfSetInheritText, whoCanItemCount } from "../permissions/who-can.js";
 import { CodenameNotFoundError, NameNotFoundError, UnsupportedIdentifierError } from "../name/errors.js";
 import { h } from "./slot-html.js";
 import { stripTags } from "./nest-syntax.js";
@@ -138,8 +139,8 @@ function ruleOneLineContent(
    *  `set_context: card.name.trunk_name` — the trunk of the BAR-RENDERED
    *  (outer, often virtual) rule card, NOT the substituted existing rule's
    *  own set. permission.rb:107-111 in_context_of_self_set? reads exactly
-   *  this @set_context (`@set_context.to_name.tag_name.key == :self key`). */
-  setContextTag?: string,
+   *  this @set_context. */
+  setContext?: DeckoName,
 ): string {
   if (rightSetting === "*default") {
     const raw = card.dbContent;
@@ -164,6 +165,23 @@ function ruleOneLineContent(
     const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
     return truncated === stripped ? truncated : h(truncated);
   }
+  // Permission rights (card-mod-permissions set/right/{create,read,update,
+  // delete}.rb include Abstract::Permission): the right set's one_line_content
+  // (set/abstract/permission.rb:22-24) is `render_core items: { view: :link }`,
+  // which dispatches to the permission :core (permission.rb:14-20): content
+  // "_left" -> core_inherit_content, anything else -> :pointer_core, the whole
+  // item list as the pointer-list wrapper. The right set outranks the type
+  // module, the same precedence the *default arm above relies on, so this arm
+  // sits ahead of the toggle and list arms and does NOT depend on the card's
+  // type: a card carrying a permission right takes it whatever its cardtype.
+  if (isPermissionRightSetting(rightSetting)) {
+    if (card.dbContent === "_left") {
+      // core_inherit_content (permission.rb:98-105): see permissionInheritContentHtml
+      // for the set-context branch and the who_can walk.
+      return permissionInheritContentHtml(setContext, engine, permissionRuleTask(card));
+    }
+    return pointerListOneLineContent(card, engine);
+  }
   // Toggle-type cards: the compact-mode one_line_content routes through
   // the card's content view (card-mod-format set/type/toggle.rb), which
   // renders the truthy/falsy display string ("yes" / "no") rather than
@@ -178,47 +196,11 @@ function ruleOneLineContent(
     }
     return "yes";
   }
-  // Abstract::List overrides :one_line_content for pointer/list cards —
-  // but only rule cards whose right setting is a permission right wrap
-  // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
-  // cards take the Abstract::List METHOD path (below).
+  // Abstract::List overrides :one_line_content for pointer/list cards
+  // (card-mod-list set/abstract/01_list/html_views.rb:19-21). The permission
+  // rights were dispatched above; what reaches here is a non-permission
+  // pointer/list card.
   if (isPointerOrListCard(card)) {
-    // card-mod-permissions-0.20.0 set/abstract/permission.rb:98-105
-    // `core_inherit_content`: when a permission rule (right is one of
-    // *create / *read / *update / *delete) carries the magic content
-    // "_left", Ruby renders the bar_right as
-    // `<span class="inherit-perm">Inherit from left card</span>` — the
-    // pointer list of explicit names is replaced with the inheritance
-    // marker (the upstream left card's permission verdict wins). Pinned
-    // at recapture-raw:*read:render:open:_all_plus+Xread where the
-    // bar_right body shows exactly this span. Emitted ahead of the
-    // pointerListOneLineContent branch because that branch would
-    // otherwise render an empty pointer-list wrapper (raw items = []
-    // for dbContent "_left" — that string isn't a comma-separated
-    // item list).
-    if (
-      card.dbContent === "_left" &&
-      isPermissionRightSetting(rightSetting)
-    ) {
-      // core_inherit_content (permission.rb:98-105): the set-context
-      // branches — in_context_of_self_set? (permission.rb:107-110) tests
-      // the @set_context the NEST carried (bar_view.rb:63-66:
-      // `set_context: card.name.trunk_name`, the bar-rendered rule card's
-      // trunk — e.g. `CM 20110918-19+Narrative+*self+*update`'s trunk
-      // `CM 20110918-19+Narrative+*self`, tag *self) — NOT the substituted
-      // existing rule's own set (the stored winner often lives under a
-      // broader set; its trunk tag decided this branch wrongly and every
-      // *self-set rule list rendered "Inherit from left card" where the
-      // oracle renders "Inherit"). The self-set context runs the who_can
-      // links block (permission.rb:112-122), which raises and rescues to
-      // bare "Inherit" whenever the ancestor's permission rule lists any
-      // item; see permissionInheritContentHtml for the full case analysis
-      // and the one case (an empty item list) not yet ported.
-      return permissionInheritContentHtml(setContextTag);
-    }
-    if (isPermissionRightSetting(rightSetting)) {
-      return pointerListOneLineContent(card, engine);
-    }
     // Non-permission pointer/list rule cards ride the Abstract::List
     // METHOD one_line_content (card-mod-list-0.20.0 set/abstract/
     // 01_list/html_views.rb:99-105): count == 1 -> card.first_name —
@@ -396,17 +378,21 @@ function referencesOnlyCoreText(raw: string): string {
  *    is built;
  *  - `view :bar_right` (the one_line_content twin, below).
  *
- *  ONE implementation, so the two surfaces cannot drift. `setContextTag`
- *  is the @set_context the nest carried (bar_view.rb:63-66,
- *  `set_context: card.name.trunk_name`), read at each call site as
- *  `card.name.trunkName?.tagName?.key`.
+ *  ONE implementation, so the two surfaces cannot drift. `setContext` is the
+ *  @set_context the nest carried (bar_view.rb:63-66,
+ *  `set_context: card.name.trunk_name`); `task` is the rule card's tag
+ *  codename (permission.rb:114 `card.tag.codename`); `engine` answers the
+ *  `who_can` walk through the render-card map (whose closure the render
+ *  prepare phase warms - a rule card the render never touched is not in
+ *  the map and the walk answers Ruby's rescued "Inherit", the same
+ *  NoMethodError `Card.fetch nil` produces there).
  *
- *  `in_context_of_self_set?` (permission.rb:107-110) tests that context's
+ *  `in_context_of_self_set?` (permission.rb:107-111) tests the context's
  *  tag against `Card[:self].key`; every other context is the plain
  *  "Inherit from left card" string.
  *
  *  The self-set context runs core_inherit_for_content_for_self_set
- *  (permission.rb:112-122):
+ *  (permission.rb:113-122):
  *
  *    ancestor = Card[@set_context.trunk_name.trunk_name]
  *    links = ancestor.who_can(task).map do |card_id|
@@ -428,16 +414,37 @@ function referencesOnlyCoreText(raw: string): string {
  *  - a rule whose item list is empty: the block never runs and Ruby
  *    renders "Inherit (  )".
  *
- *  This function renders "Inherit" for the self-set context, which is
- *  Ruby's output in every case except the last. The empty-item-list case
- *  needs the ancestor's permission_rule_id walk (permissions.rb:52-72) in
- *  the synchronous render path, which the engine does not provide yet; it
- *  is an open gap, not a decided difference. */
-export function permissionInheritContentHtml(setContextTag: string | undefined): string {
-  if (setContextTag === "*self" || setContextTag === "self") {
-    return `<span class="inherit-perm">Inherit</span>`;
+ *  The count that separates the last case from the third is computed by
+ *  whoCanItemCount (permissions/who-can.ts), which walks the same
+ *  permission_rule_id / item_cards path Ruby does; only the count is
+ *  needed, because a non-empty list can never render links. */
+export function permissionInheritContentHtml(
+  setContext: DeckoName | undefined,
+  engine?: RenderEngineLike,
+  task?: string,
+): string {
+  if (setContext === undefined) {
+    return `<span class="inherit-perm">Inherit from left card</span>`;
   }
-  return `<span class="inherit-perm">Inherit from left card</span>`;
+  const tagKey = setContext.tagName?.key;
+  if (tagKey !== "*self" && tagKey !== "self") {
+    return `<span class="inherit-perm">Inherit from left card</span>`;
+  }
+  // permission.rb:115-116: `Card[@set_context.trunk_name.trunk_name]`.
+  const ancestorName = setContext.trunkName?.trunkName;
+  const outcome =
+    ancestorName === undefined || task === undefined
+      ? { kind: "absent" as const }
+      : whoCanItemCount(engine, ancestorName, task);
+  return `<span class="inherit-perm">${selfSetInheritText(outcome)}</span>`;
+}
+
+/** permission.rb:114 `card.tag.codename` — the rule card's task
+ *  ("*read" -> "read"), the action `who_can` is asked about. */
+export function permissionRuleTask(card: RenderCard): string | undefined {
+  const tag = card.name.isCompound ? card.name.tagName.s : undefined;
+  if (tag === undefined || !tag.startsWith("*") || tag.length < 2) return undefined;
+  return tag.slice(1).replace(/\s+/g, "_");
 }
 
 export function ruleBarRightHtml(
@@ -465,13 +472,13 @@ export function ruleBarRightHtml(
   const existing = card.id === undefined ? engine?.existingRuleFor?.(card.key) : undefined;
   if (existing !== undefined) oneLineCard = existing;
   const rightSetting = oneLineCard.name.rightName?.s;
-  const setContextTag = card.name.trunkName?.tagName?.key;
+  const setContext = card.name.trunkName;
   const inner = ruleOneLineContent(
     oneLineCard,
     rightSetting,
     engine,
     renderCoreText,
-    setContextTag,
+    setContext,
   );
   // The nested existing rule's own view gate: a read-denied existing rule
   // (e.g. *all+*default, stored read rule "Anyone Signed In") renders the

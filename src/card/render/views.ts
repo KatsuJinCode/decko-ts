@@ -1253,15 +1253,19 @@ const coreViewBase: ViewFn = (ctx) => {
   // The set-context branch is the SAME one rule-bar-right.ts already
   // implements, and for the same reason: `in_context_of_self_set?`
   // (permission.rb:107-110) tests the @set_context the nest carried
-  // (bar_view.rb:63-66, `set_context: card.name.trunk_name`); the who_can
-  // links block rescues to bare "Inherit" whenever the ancestor's rule
-  // lists any item (see permissionInheritContentHtml). Open gap: Ruby's
-  // @set_context is a format option that only the bar_right nest passes,
-  // so a core render outside that nest has none and renders "Inherit from
-  // left card"; this call derives the context from the card's own trunk
-  // instead, because the port's format does not carry nest format options.
+  // (bar_view.rb:63-66, `set_context: card.name.trunk_name`), and the
+  // who_can walk behind it decides the text (permission.rb:113-122). This
+  // call is the CORE view, which Ruby reaches through every nest that does
+  // NOT pass set_context (bar_bottom nests it as `view: :core`,
+  // bar_view.rb:31-36; a card's own page core likewise), so @set_context is
+  // nil here and `in_context_of_self_set?` returns false — "Inherit from
+  // left card", whatever the card's trunk is. The engine's format does not
+  // carry nest format options, so passing the card's own trunk here was a
+  // stand-in that made a self-set `_left` rule in a core render answer
+  // "Inherit"; Ruby answers "Inherit from left card" there. Only the bar's
+  // one_line_content nest (rule-bar-right.ts) passes a context.
   if (isRuleCardWithPermissionRight(fmt.card) && fmt.card.dbContent === '_left') {
-    return permissionInheritContentHtml(ctx.fmt.card.name.trunkName?.tagName?.key);
+    return permissionInheritContentHtml(undefined);
   }
   if (isPointerOrListCard(fmt.card)) {
     // Abstract::List#standard_pointer_core (card-mod-list

@@ -65,6 +65,7 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 import { permissionInheritContentHtml } from "../../../src/card/render/rule-bar-right.js";
+import { DeckoName } from "../../../src/card/name.js";
 import { modAssetGroups } from "../../../src/card/mod-loader/mods/core-admin-runtime.js";
 
 let storage: RenderTestStorage | undefined;
@@ -169,13 +170,13 @@ describe("a permission rule card's :core branches on its own content (permission
     // the nest carried; the self-set context renders the LINKS form whose
     // who_can walk RESCUES to the bare marker (permission.rb:121). Both
     // surfaces now read this one function.
-    expect(permissionInheritContentHtml("*self")).toBe(
+    expect(permissionInheritContentHtml(DeckoName.parse("A+B+*self"))).toBe(
       '<span class="inherit-perm">Inherit</span>',
     );
-    expect(permissionInheritContentHtml("self")).toBe(
+    expect(permissionInheritContentHtml(DeckoName.parse("A+B+*self"), undefined, "read")).toBe(
       '<span class="inherit-perm">Inherit</span>',
     );
-    expect(permissionInheritContentHtml("*read")).toBe(
+    expect(permissionInheritContentHtml(DeckoName.parse("A+B+*read"))).toBe(
       '<span class="inherit-perm">Inherit from left card</span>',
     );
     expect(permissionInheritContentHtml(undefined)).toBe(
