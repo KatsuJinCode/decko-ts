@@ -1126,46 +1126,10 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "create",
-     "card": "Probe Base e30+*api key",
-     "fields": {
-      "type": "RichText",
-      "content": "base e30"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "update",
-     "card": "Probe Base e30+*api key",
+     "card": "Administrator+*members",
      "fields": {
-      "content": "base e30 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "delete",
-     "card": "Probe Base e30+*api key",
-     "fields": {}
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "create",
-     "card": "Probe e30+*api key",
-     "fields": {
-      "type": "RichText",
       "content": "probe e30"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe e30+*api key",
-     "fields": {
-      "content": "probe e30 updated"
      }
     },
     {
@@ -1217,7 +1181,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e32",
+     "card": "Probe Base e32+*api key",
      "fields": {
       "type": "RichText",
       "content": "base e32"
@@ -1227,7 +1191,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e32",
+     "card": "Probe Base e32+*api key",
      "fields": {
       "content": "base e32 updated"
      }
@@ -1236,14 +1200,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e32",
+     "card": "Probe Base e32+*api key",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e32",
+     "card": "Probe e32+*api key",
      "fields": {
       "type": "RichText",
       "content": "probe e32"
@@ -1253,7 +1217,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e32",
+     "card": "Probe e32+*api key",
      "fields": {
       "content": "probe e32 updated"
      }
@@ -1297,9 +1261,11 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e33",
-     "fields": {}
+     "fields": {
+      "content": "probe e33 updated"
+     }
     },
     {
      "op": "write",
@@ -1340,11 +1306,9 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
+     "action": "delete",
      "card": "Probe Plain e34",
-     "fields": {
-      "content": "probe e34 updated"
-     }
+     "fields": {}
     },
     {
      "op": "write",
@@ -1395,7 +1359,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e36+*asset output",
+     "card": "Probe Base e36",
      "fields": {
       "type": "RichText",
       "content": "base e36"
@@ -1405,7 +1369,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e36+*asset output",
+     "card": "Probe Base e36",
      "fields": {
       "content": "base e36 updated"
      }
@@ -1414,14 +1378,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e36+*asset output",
+     "card": "Probe Base e36",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e36+*asset output",
+     "card": "Probe Plain e36",
      "fields": {
       "type": "RichText",
       "content": "probe e36"
@@ -1430,15 +1394,17 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
-     "card": "Probe e36+*asset output",
-     "fields": {}
+     "action": "update",
+     "card": "Probe Plain e36",
+     "fields": {
+      "content": "probe e36 updated"
+     }
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e37",
+     "card": "Probe Base e37+*asset output",
      "fields": {
       "type": "RichText",
       "content": "base e37"
@@ -1448,7 +1414,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e37",
+     "card": "Probe Base e37+*asset output",
      "fields": {
       "content": "base e37 updated"
      }
@@ -1457,14 +1423,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e37",
+     "card": "Probe Base e37+*asset output",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e37",
+     "card": "Probe e37+*asset output",
      "fields": {
       "type": "RichText",
       "content": "probe e37"
@@ -1473,11 +1439,9 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe Plain e37",
-     "fields": {
-      "content": "probe e37 updated"
-     }
+     "action": "delete",
+     "card": "Probe e37+*asset output",
+     "fields": {}
     },
     {
      "op": "write",
@@ -1485,7 +1449,7 @@
      "action": "create",
      "card": "Probe Base e38",
      "fields": {
-      "type": "Bootswatch skin",
+      "type": "RichText",
       "content": "base e38"
      }
     },
@@ -1509,9 +1473,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Bootswatch skin e38",
+     "card": "Probe Plain e38",
      "fields": {
-      "type": "Bootswatch skin",
+      "type": "RichText",
       "content": "probe e38"
      }
     },
@@ -1519,7 +1483,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Bootswatch skin e38",
+     "card": "Probe Plain e38",
      "fields": {
       "content": "probe e38 updated"
      }
@@ -1558,6 +1522,15 @@
      "fields": {
       "type": "Bootswatch skin",
       "content": "probe e39"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe Bootswatch skin e39",
+     "fields": {
+      "content": "probe e39 updated"
      }
     },
     {
@@ -1635,19 +1608,10 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe Bootswatch skin e41",
-     "fields": {
-      "content": "probe e41 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "create",
      "card": "Probe Base e42",
      "fields": {
-      "type": "RichText",
+      "type": "Bootswatch skin",
       "content": "base e42"
      }
     },
@@ -1671,9 +1635,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e42",
+     "card": "Probe Bootswatch skin e42",
      "fields": {
-      "type": "RichText",
+      "type": "Bootswatch skin",
       "content": "probe e42"
      }
     },
@@ -1681,7 +1645,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e42",
+     "card": "Probe Bootswatch skin e42",
      "fields": {
       "content": "probe e42 updated"
      }
@@ -1689,36 +1653,9 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "create",
-     "card": "Probe Base e43",
-     "fields": {
-      "type": "RichText",
-      "content": "base e43"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "update",
-     "card": "Probe Base e43",
+     "card": "cerulean skin+*colors",
      "fields": {
-      "content": "base e43 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "delete",
-     "card": "Probe Base e43",
-     "fields": {}
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "create",
-     "card": "Probe Plain e43",
-     "fields": {
-      "type": "RichText",
       "content": "probe e43"
      }
     },
@@ -1842,6 +1779,15 @@
     {
      "op": "write",
      "actor": "admin",
+     "action": "update",
+     "card": "Probe Plain e46",
+     "fields": {
+      "content": "probe e46 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
      "action": "create",
      "card": "Probe Base e47",
      "fields": {
@@ -1878,15 +1824,6 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe Plain e47",
-     "fields": {
-      "content": "probe e47 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "create",
      "card": "Probe Base e48",
      "fields": {
@@ -1918,15 +1855,6 @@
      "fields": {
       "type": "RichText",
       "content": "probe e48"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe Plain e48",
-     "fields": {
-      "content": "probe e48 updated"
      }
     },
     {
@@ -2148,6 +2076,15 @@
     {
      "op": "write",
      "actor": "admin",
+     "action": "update",
+     "card": "Probe Plain e53",
+     "fields": {
+      "content": "probe e53 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
      "action": "create",
      "card": "Probe Base e54",
      "fields": {
@@ -2184,9 +2121,11 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e54",
-     "fields": {}
+     "fields": {
+      "content": "probe e54 updated"
+     }
     },
     {
      "op": "write",
@@ -2222,15 +2161,6 @@
      "fields": {
       "type": "RichText",
       "content": "probe e55"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe Plain e55",
-     "fields": {
-      "content": "probe e55 updated"
      }
     },
     {
@@ -2272,11 +2202,9 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
+     "action": "delete",
      "card": "Probe Plain e56",
-     "fields": {
-      "content": "probe e56 updated"
-     }
+     "fields": {}
     },
     {
      "op": "write",
@@ -2407,6 +2335,15 @@
     {
      "op": "write",
      "actor": "admin",
+     "action": "update",
+     "card": "Probe Plain e59",
+     "fields": {
+      "content": "probe e59 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
      "action": "create",
      "card": "Probe Base e60",
      "fields": {
@@ -2488,17 +2425,8 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe Plain e61",
-     "fields": {
-      "content": "probe e61 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "create",
-     "card": "Probe Base e62+*structure",
+     "card": "Probe Base e62",
      "fields": {
       "type": "RichText",
       "content": "base e62"
@@ -2508,7 +2436,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e62+*structure",
+     "card": "Probe Base e62",
      "fields": {
       "content": "base e62 updated"
      }
@@ -2517,14 +2445,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e62+*structure",
+     "card": "Probe Base e62",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e62+*structure",
+     "card": "Probe Plain e62",
      "fields": {
       "type": "RichText",
       "content": "probe e62"
@@ -2534,7 +2462,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe e62+*structure",
+     "card": "Probe Plain e62",
      "fields": {
       "content": "probe e62 updated"
      }
@@ -2543,7 +2471,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e63+*structure",
+     "card": "Probe Base e63",
      "fields": {
       "type": "RichText",
       "content": "base e63"
@@ -2553,7 +2481,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e63+*structure",
+     "card": "Probe Base e63",
      "fields": {
       "content": "base e63 updated"
      }
@@ -2562,14 +2490,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e63+*structure",
+     "card": "Probe Base e63",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e63+*structure",
+     "card": "Probe Plain e63",
      "fields": {
       "type": "RichText",
       "content": "probe e63"
@@ -2579,7 +2507,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe e63+*structure",
+     "card": "Probe Plain e63",
      "fields": {
       "content": "probe e63 updated"
      }
@@ -2633,7 +2561,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e65",
+     "card": "Probe Base e65+*structure",
      "fields": {
       "type": "RichText",
       "content": "base e65"
@@ -2643,7 +2571,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e65",
+     "card": "Probe Base e65+*structure",
      "fields": {
       "content": "base e65 updated"
      }
@@ -2652,14 +2580,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e65",
+     "card": "Probe Base e65+*structure",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e65",
+     "card": "Probe e65+*structure",
      "fields": {
       "type": "RichText",
       "content": "probe e65"
@@ -2669,7 +2597,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e65",
+     "card": "Probe e65+*structure",
      "fields": {
       "content": "probe e65 updated"
      }
@@ -2678,7 +2606,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e66",
+     "card": "Probe Base e66+*structure",
      "fields": {
       "type": "RichText",
       "content": "base e66"
@@ -2688,7 +2616,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e66",
+     "card": "Probe Base e66+*structure",
      "fields": {
       "content": "base e66 updated"
      }
@@ -2697,14 +2625,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e66",
+     "card": "Probe Base e66+*structure",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e66",
+     "card": "Probe e66+*structure",
      "fields": {
       "type": "RichText",
       "content": "probe e66"
@@ -2714,7 +2642,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e66",
+     "card": "Probe e66+*structure",
      "fields": {
       "content": "probe e66 updated"
      }
@@ -2848,9 +2776,11 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e69",
-     "fields": {}
+     "fields": {
+      "content": "probe e69 updated"
+     }
     },
     {
      "op": "write",
@@ -2891,15 +2821,17 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e70",
-     "fields": {}
+     "fields": {
+      "content": "probe e70 updated"
+     }
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e71+*follow",
+     "card": "Probe Base e71",
      "fields": {
       "type": "RichText",
       "content": "base e71"
@@ -2909,7 +2841,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e71+*follow",
+     "card": "Probe Base e71",
      "fields": {
       "content": "base e71 updated"
      }
@@ -2918,14 +2850,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e71+*follow",
+     "card": "Probe Base e71",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e71+*follow",
+     "card": "Probe Plain e71",
      "fields": {
       "type": "RichText",
       "content": "probe e71"
@@ -2934,17 +2866,15 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe e71+*follow",
-     "fields": {
-      "content": "probe e71 updated"
-     }
+     "action": "delete",
+     "card": "Probe Plain e71",
+     "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e72+*follow fields",
+     "card": "Probe Base e72",
      "fields": {
       "type": "RichText",
       "content": "base e72"
@@ -2954,7 +2884,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e72+*follow fields",
+     "card": "Probe Base e72",
      "fields": {
       "content": "base e72 updated"
      }
@@ -2963,14 +2893,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e72+*follow fields",
+     "card": "Probe Base e72",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e72+*follow fields",
+     "card": "Probe Plain e72",
      "fields": {
       "type": "RichText",
       "content": "probe e72"
@@ -2979,28 +2909,62 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe e72+*follow fields",
+     "action": "delete",
+     "card": "Probe Plain e72",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Base e73+*follow",
      "fields": {
-      "content": "probe e72 updated"
+      "type": "RichText",
+      "content": "base e73"
      }
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "*follow defaults",
+     "card": "Probe Base e73+*follow",
      "fields": {
+      "content": "base e73 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "delete",
+     "card": "Probe Base e73+*follow",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe e73+*follow",
+     "fields": {
+      "type": "RichText",
       "content": "probe e73"
      }
     },
     {
      "op": "write",
      "actor": "admin",
-     "action": "create",
-     "card": "Probe Base e74",
+     "action": "update",
+     "card": "Probe e73+*follow",
      "fields": {
-      "type": "Set",
+      "content": "probe e73 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Base e74+*follow fields",
+     "fields": {
+      "type": "RichText",
       "content": "base e74"
      }
     },
@@ -3008,7 +2972,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e74",
+     "card": "Probe Base e74+*follow fields",
      "fields": {
       "content": "base e74 updated"
      }
@@ -3017,62 +2981,35 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e74",
+     "card": "Probe Base e74+*follow fields",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Set e74",
+     "card": "Probe e74+*follow fields",
      "fields": {
-      "type": "Set",
+      "type": "RichText",
       "content": "probe e74"
      }
     },
     {
      "op": "write",
      "actor": "admin",
-     "action": "create",
-     "card": "Probe Base e75",
+     "action": "update",
+     "card": "Probe e74+*follow fields",
      "fields": {
-      "type": "JSON",
-      "content": "base e75"
+      "content": "probe e74 updated"
      }
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e75",
+     "card": "*follow defaults",
      "fields": {
-      "content": "base e75 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "delete",
-     "card": "Probe Base e75",
-     "fields": {}
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "create",
-     "card": "Probe JSON e75",
-     "fields": {
-      "type": "JSON",
       "content": "probe e75"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe JSON e75",
-     "fields": {
-      "content": "probe e75 updated"
      }
     },
     {
@@ -3081,7 +3018,7 @@
      "action": "create",
      "card": "Probe Base e76",
      "fields": {
-      "type": "Number",
+      "type": "Set",
       "content": "base e76"
      }
     },
@@ -3105,19 +3042,10 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Number e76",
+     "card": "Probe Set e76",
      "fields": {
-      "type": "Number",
+      "type": "Set",
       "content": "probe e76"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe Number e76",
-     "fields": {
-      "content": "probe e76 updated"
      }
     },
     {
@@ -3126,7 +3054,7 @@
      "action": "create",
      "card": "Probe Base e77",
      "fields": {
-      "type": "RichText",
+      "type": "JSON",
       "content": "base e77"
      }
     },
@@ -3150,9 +3078,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e77",
+     "card": "Probe JSON e77",
      "fields": {
-      "type": "RichText",
+      "type": "JSON",
       "content": "probe e77"
      }
     },
@@ -3160,7 +3088,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e77",
+     "card": "Probe JSON e77",
      "fields": {
       "content": "probe e77 updated"
      }
@@ -3171,7 +3099,7 @@
      "action": "create",
      "card": "Probe Base e78",
      "fields": {
-      "type": "RichText",
+      "type": "Number",
       "content": "base e78"
      }
     },
@@ -3195,9 +3123,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e78",
+     "card": "Probe Number e78",
      "fields": {
-      "type": "RichText",
+      "type": "Number",
       "content": "probe e78"
      }
     },
@@ -3205,7 +3133,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e78",
+     "card": "Probe Number e78",
      "fields": {
       "content": "probe e78 updated"
      }
@@ -3429,15 +3357,17 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e83",
-     "fields": {}
+     "fields": {
+      "content": "probe e83 updated"
+     }
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e84+*enabled roles",
+     "card": "Probe Base e84",
      "fields": {
       "type": "RichText",
       "content": "base e84"
@@ -3447,7 +3377,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e84+*enabled roles",
+     "card": "Probe Base e84",
      "fields": {
       "content": "base e84 updated"
      }
@@ -3456,14 +3386,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e84+*enabled roles",
+     "card": "Probe Base e84",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e84+*enabled roles",
+     "card": "Probe Plain e84",
      "fields": {
       "type": "RichText",
       "content": "probe e84"
@@ -3473,7 +3403,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe e84+*enabled roles",
+     "card": "Probe Plain e84",
      "fields": {
       "content": "probe e84 updated"
      }
@@ -3482,7 +3412,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e85+*enabled roles",
+     "card": "Probe Base e85",
      "fields": {
       "type": "RichText",
       "content": "base e85"
@@ -3492,7 +3422,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e85+*enabled roles",
+     "card": "Probe Base e85",
      "fields": {
       "content": "base e85 updated"
      }
@@ -3501,14 +3431,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e85+*enabled roles",
+     "card": "Probe Base e85",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e85+*enabled roles",
+     "card": "Probe Plain e85",
      "fields": {
       "type": "RichText",
       "content": "probe e85"
@@ -3517,19 +3447,17 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
-     "card": "Probe e85+*enabled roles",
-     "fields": {
-      "content": "probe e85 updated"
-     }
+     "action": "delete",
+     "card": "Probe Plain e85",
+     "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e86",
+     "card": "Probe Base e86+*enabled roles",
      "fields": {
-      "type": "Layout",
+      "type": "RichText",
       "content": "base e86"
      }
     },
@@ -3537,7 +3465,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e86",
+     "card": "Probe Base e86+*enabled roles",
      "fields": {
       "content": "base e86 updated"
      }
@@ -3546,16 +3474,16 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e86",
+     "card": "Probe Base e86+*enabled roles",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Layout e86",
+     "card": "Probe e86+*enabled roles",
      "fields": {
-      "type": "Layout",
+      "type": "RichText",
       "content": "probe e86"
      }
     },
@@ -3563,7 +3491,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Layout e86",
+     "card": "Probe e86+*enabled roles",
      "fields": {
       "content": "probe e86 updated"
      }
@@ -3572,7 +3500,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e87",
+     "card": "Probe Base e87+*enabled roles",
      "fields": {
       "type": "RichText",
       "content": "base e87"
@@ -3582,7 +3510,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e87",
+     "card": "Probe Base e87+*enabled roles",
      "fields": {
       "content": "base e87 updated"
      }
@@ -3591,14 +3519,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e87",
+     "card": "Probe Base e87+*enabled roles",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e87",
+     "card": "Probe e87+*enabled roles",
      "fields": {
       "type": "RichText",
       "content": "probe e87"
@@ -3608,7 +3536,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e87",
+     "card": "Probe e87+*enabled roles",
      "fields": {
       "content": "probe e87 updated"
      }
@@ -3619,7 +3547,7 @@
      "action": "create",
      "card": "Probe Base e88",
      "fields": {
-      "type": "RichText",
+      "type": "Layout",
       "content": "base e88"
      }
     },
@@ -3643,9 +3571,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e88",
+     "card": "Probe Layout e88",
      "fields": {
-      "type": "RichText",
+      "type": "Layout",
       "content": "probe e88"
      }
     },
@@ -3653,7 +3581,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e88",
+     "card": "Probe Layout e88",
      "fields": {
       "content": "probe e88 updated"
      }
@@ -3787,9 +3715,11 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "delete",
+     "action": "update",
      "card": "Probe Plain e91",
-     "fields": {}
+     "fields": {
+      "content": "probe e91 updated"
+     }
     },
     {
      "op": "write",
@@ -3875,11 +3805,9 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "update",
+     "action": "delete",
      "card": "Probe Plain e93",
-     "fields": {
-      "content": "probe e93 updated"
-     }
+     "fields": {}
     },
     {
      "op": "write",
@@ -4065,7 +3993,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e98+*read",
+     "card": "Probe Base e98",
      "fields": {
       "type": "RichText",
       "content": "base e98"
@@ -4075,7 +4003,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e98+*read",
+     "card": "Probe Base e98",
      "fields": {
       "content": "base e98 updated"
      }
@@ -4084,14 +4012,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e98+*read",
+     "card": "Probe Base e98",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe e98+*read",
+     "card": "Probe Plain e98",
      "fields": {
       "type": "RichText",
       "content": "probe e98"
@@ -4101,7 +4029,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe e98+*read",
+     "card": "Probe Plain e98",
      "fields": {
       "content": "probe e98 updated"
      }
@@ -4155,7 +4083,7 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Base e100",
+     "card": "Probe Base e100+*read",
      "fields": {
       "type": "RichText",
       "content": "base e100"
@@ -4165,7 +4093,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Base e100",
+     "card": "Probe Base e100+*read",
      "fields": {
       "content": "base e100 updated"
      }
@@ -4174,14 +4102,14 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Base e100",
+     "card": "Probe Base e100+*read",
      "fields": {}
     },
     {
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e100",
+     "card": "Probe e100+*read",
      "fields": {
       "type": "RichText",
       "content": "probe e100"
@@ -4191,7 +4119,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e100",
+     "card": "Probe e100+*read",
      "fields": {
       "content": "probe e100 updated"
      }
@@ -4247,7 +4175,7 @@
      "action": "create",
      "card": "Probe Base e102",
      "fields": {
-      "type": "CoffeeScript",
+      "type": "RichText",
       "content": "base e102"
      }
     },
@@ -4271,9 +4199,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe CoffeeScript e102",
+     "card": "Probe Plain e102",
      "fields": {
-      "type": "CoffeeScript",
+      "type": "RichText",
       "content": "probe e102"
      }
     },
@@ -4281,7 +4209,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe CoffeeScript e102",
+     "card": "Probe Plain e102",
      "fields": {
       "content": "probe e102 updated"
      }
@@ -4292,7 +4220,7 @@
      "action": "create",
      "card": "Probe Base e103",
      "fields": {
-      "type": "JavaScript",
+      "type": "RichText",
       "content": "base e103"
      }
     },
@@ -4316,9 +4244,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe JavaScript e103",
+     "card": "Probe Plain e103",
      "fields": {
-      "type": "JavaScript",
+      "type": "RichText",
       "content": "probe e103"
      }
     },
@@ -4326,7 +4254,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe JavaScript e103",
+     "card": "Probe Plain e103",
      "fields": {
       "content": "probe e103 updated"
      }
@@ -4334,45 +4262,11 @@
     {
      "op": "write",
      "actor": "admin",
-     "action": "create",
-     "card": "Probe Base e104",
-     "fields": {
-      "type": "RichText",
-      "content": "base e104"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
      "action": "update",
-     "card": "Probe Base e104",
+     "card": "*all+*read",
      "fields": {
-      "content": "base e104 updated"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "delete",
-     "card": "Probe Base e104",
-     "fields": {}
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "create",
-     "card": "Probe Plain e104",
-     "fields": {
-      "type": "RichText",
       "content": "probe e104"
      }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "delete",
-     "card": "Probe Plain e104",
-     "fields": {}
     },
     {
      "op": "write",
@@ -4380,7 +4274,7 @@
      "action": "create",
      "card": "Probe Base e105",
      "fields": {
-      "type": "RichText",
+      "type": "CoffeeScript",
       "content": "base e105"
      }
     },
@@ -4404,10 +4298,19 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e105",
+     "card": "Probe CoffeeScript e105",
      "fields": {
-      "type": "RichText",
+      "type": "CoffeeScript",
       "content": "probe e105"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe CoffeeScript e105",
+     "fields": {
+      "content": "probe e105 updated"
      }
     },
     {
@@ -4416,7 +4319,7 @@
      "action": "create",
      "card": "Probe Base e106",
      "fields": {
-      "type": "Session",
+      "type": "JavaScript",
       "content": "base e106"
      }
     },
@@ -4440,9 +4343,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Session e106",
+     "card": "Probe JavaScript e106",
      "fields": {
-      "type": "Session",
+      "type": "JavaScript",
       "content": "probe e106"
      }
     },
@@ -4450,7 +4353,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Session e106",
+     "card": "Probe JavaScript e106",
      "fields": {
       "content": "probe e106 updated"
      }
@@ -4461,7 +4364,7 @@
      "action": "create",
      "card": "Probe Base e107",
      "fields": {
-      "type": "Session",
+      "type": "RichText",
       "content": "base e107"
      }
     },
@@ -4485,9 +4388,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Session e107",
+     "card": "Probe Plain e107",
      "fields": {
-      "type": "Session",
+      "type": "RichText",
       "content": "probe e107"
      }
     },
@@ -4495,7 +4398,7 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Session e107",
+     "card": "Probe Plain e107",
      "fields": {}
     },
     {
@@ -4504,7 +4407,7 @@
      "action": "create",
      "card": "Probe Base e108",
      "fields": {
-      "type": "CSS",
+      "type": "RichText",
       "content": "base e108"
      }
     },
@@ -4528,19 +4431,10 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe CSS e108",
+     "card": "Probe Plain e108",
      "fields": {
-      "type": "CSS",
+      "type": "RichText",
       "content": "probe e108"
-     }
-    },
-    {
-     "op": "write",
-     "actor": "admin",
-     "action": "update",
-     "card": "Probe CSS e108",
-     "fields": {
-      "content": "probe e108 updated"
      }
     },
     {
@@ -4549,7 +4443,7 @@
      "action": "create",
      "card": "Probe Base e109",
      "fields": {
-      "type": "SCSS",
+      "type": "Session",
       "content": "base e109"
      }
     },
@@ -4573,9 +4467,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe SCSS e109",
+     "card": "Probe Session e109",
      "fields": {
-      "type": "SCSS",
+      "type": "Session",
       "content": "probe e109"
      }
     },
@@ -4583,7 +4477,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe SCSS e109",
+     "card": "Probe Session e109",
      "fields": {
       "content": "probe e109 updated"
      }
@@ -4594,7 +4488,7 @@
      "action": "create",
      "card": "Probe Base e110",
      "fields": {
-      "type": "Skin",
+      "type": "Session",
       "content": "base e110"
      }
     },
@@ -4618,9 +4512,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Skin e110",
+     "card": "Probe Session e110",
      "fields": {
-      "type": "Skin",
+      "type": "Session",
       "content": "probe e110"
      }
     },
@@ -4628,7 +4522,7 @@
      "op": "write",
      "actor": "admin",
      "action": "delete",
-     "card": "Probe Skin e110",
+     "card": "Probe Session e110",
      "fields": {}
     },
     {
@@ -4637,7 +4531,7 @@
      "action": "create",
      "card": "Probe Base e111",
      "fields": {
-      "type": "RichText",
+      "type": "CSS",
       "content": "base e111"
      }
     },
@@ -4661,9 +4555,9 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e111",
+     "card": "Probe CSS e111",
      "fields": {
-      "type": "RichText",
+      "type": "CSS",
       "content": "probe e111"
      }
     },
@@ -4671,7 +4565,7 @@
      "op": "write",
      "actor": "admin",
      "action": "update",
-     "card": "Probe Plain e111",
+     "card": "Probe CSS e111",
      "fields": {
       "content": "probe e111 updated"
      }
@@ -4682,7 +4576,7 @@
      "action": "create",
      "card": "Probe Base e112",
      "fields": {
-      "type": "RichText",
+      "type": "SCSS",
       "content": "base e112"
      }
     },
@@ -4706,17 +4600,150 @@
      "op": "write",
      "actor": "admin",
      "action": "create",
-     "card": "Probe Plain e112",
+     "card": "Probe SCSS e112",
      "fields": {
-      "type": "RichText",
+      "type": "SCSS",
       "content": "probe e112"
      }
     },
     {
      "op": "write",
      "actor": "admin",
+     "action": "update",
+     "card": "Probe SCSS e112",
+     "fields": {
+      "content": "probe e112 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Base e113",
+     "fields": {
+      "type": "Skin",
+      "content": "base e113"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe Base e113",
+     "fields": {
+      "content": "base e113 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
      "action": "delete",
-     "card": "Probe Plain e112",
+     "card": "Probe Base e113",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Skin e113",
+     "fields": {
+      "type": "Skin",
+      "content": "probe e113"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "delete",
+     "card": "Probe Skin e113",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Base e114",
+     "fields": {
+      "type": "RichText",
+      "content": "base e114"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe Base e114",
+     "fields": {
+      "content": "base e114 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "delete",
+     "card": "Probe Base e114",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Plain e114",
+     "fields": {
+      "type": "RichText",
+      "content": "probe e114"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe Plain e114",
+     "fields": {
+      "content": "probe e114 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Base e115",
+     "fields": {
+      "type": "RichText",
+      "content": "base e115"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "update",
+     "card": "Probe Base e115",
+     "fields": {
+      "content": "base e115 updated"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "delete",
+     "card": "Probe Base e115",
+     "fields": {}
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "create",
+     "card": "Probe Plain e115",
+     "fields": {
+      "type": "RichText",
+      "content": "probe e115"
+     }
+    },
+    {
+     "op": "write",
+     "actor": "admin",
+     "action": "delete",
+     "card": "Probe Plain e115",
      "fields": {}
     }
    ]

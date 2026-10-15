@@ -1,6 +1,6 @@
 {
   "format": "decko-reference-deck/1",
-  "name": "synthetic-v2",
+  "name": "synthetic-v2-mod-probes",
   "generator": {
     "script": "reference-harness/corpus/generate-deck.mjs",
     "version": 2
@@ -1617,6 +1617,20 @@
       "name": "Note+*type+*help",
       "type": "RichText",
       "content": "<p>A note records an observation.</p>"
+    },
+    {
+      "name": "Probe Signup",
+      "type": "Sign up",
+      "content": "probe",
+      "fields": {
+        "+*account": {
+          "fields": {
+            "+*email": "probe.signup@example.test",
+            "+*password": "Probe-Password-1"
+          }
+        }
+      }
     }
-  ]
+  ],
+  "built_from": "reference-harness/fixtures/synthetic-v2/deck/deck.sqlite3 with the card(s) below applied by reference-harness/oracle/build-deck.rb (decko setup cannot create the mod symlinks on this machine)"
 }

@@ -50,12 +50,16 @@ SLOTLESS = /data-slot-id=(["'])\h+\1/.freeze
 # ---- render -----------------------------------------------------------------
 def op_render(req)
   card = Card.fetch(req.fetch("card"), new: {})
+  # req["format"] names the card format the view belongs to (html when absent):
+  # a non-html view (json, csv, rss, css, ...) renders through that format's
+  # own view block, as Ruby's card.format(:json).render(:view) does.
+  format = (req["format"] || "html").to_sym
   html =
     with_production_render do
       if req["view"]
-        card.format(:html).render(req["view"].to_sym)
+        card.format(format).render(req["view"].to_sym)
       else
-        card.format(:html).show(nil, {})
+        card.format(format).show(nil, {})
       end
     end
   { "html" => html }
