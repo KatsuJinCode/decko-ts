@@ -1399,7 +1399,16 @@ export class CardActionEngine {
     const account = input.subcards?.["+*account"];
     if (account === undefined) {
       if (holderIsSignup) {
-        throw new CardActionError("user-error", "sign up without an account", "ACCOUNT: required");
+        // require_field :account (signup.rb) names the subcard field, and the
+        // missing +*account names its own missing +*email under the holder
+        // (subcards/all.rb subcard_error folds the field error onto the
+        // parent, twice: "+*email" then "+*account"). Ruby reports both.
+        throw new CardActionError(
+          "user-error",
+          "sign up without an account",
+          "ACCOUNT: required\n+*ACCOUNT: email required",
+          { account: "required", "+*account": "email required" },
+        );
       }
       return input;
     }
@@ -1705,6 +1714,14 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // card-mod-session set/type/session.rb:37-40 event :store_in_session,
+    // :prepare_to_store, on: :save — session_content = db_content, then
+    // abort :success. The save writes no card row and sends no mail; the
+    // content lives in the visitor's session (the write route stores it).
+    const typeRow = await this.fetchRowById(typeId);
+    if (typeRow?.codename === "session") {
+      return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
+    }
     // The two-step upload's final save (00_upload_cache.rb:27-34
     // assign_attachment_on_create, after :assign_action, when
     // save_preliminary_upload?): the cached DRAFT action's stored file
