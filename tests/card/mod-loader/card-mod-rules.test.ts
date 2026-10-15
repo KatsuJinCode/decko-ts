@@ -204,12 +204,13 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     expect(textAt).toBeGreaterThan(-1);
     expect(richTextAt).toBeGreaterThan(textAt);
     expect(dataAt).toBeGreaterThan(richTextAt);
-    // every GROUP name without a card nests as an unknown card -> "" bytes
-    // (format/error.rb:23); the Template section's three type cards
-    // ("Notification template", "Email template", "Twitter template") are
-    // unseeded, so their names appear nowhere.
-    expect(html).not.toContain("Notification template");
-    expect(html).not.toContain("Twitter template");
+    // every GROUP name without a card nests with the :bar view, which takes
+    // the unknown substitution :mini_bar (bar_and_box set/all/bar.rb:9-18).
+    // The Template section's unseeded type cards therefore render their
+    // mini bar with the name (oracle: synthetic-v2-mod-probes probe-view:444,
+    // "twitter_template-mini_bar-view" data-card-name="Twitter template").
+    expect(html).toContain("twitter_template-mini_bar-view");
+    expect(html).toContain('data-card-name="Twitter template"');
   });
 
   it("WITH the mod: :rule_help on a rule card renders the rule-instruction alert over the registry text (help.rb:36-38's FIRST operand)", async () => {
@@ -664,8 +665,12 @@ describe("card-mod-rules exported view bodies (stub harness)", () => {
   });
 
   it("setOneLineContentView: set cards render the bare empty string (set/type/set/html_views.rb:21-23)", () => {
+    // A real render card carries its set keys; the chain walk reads them.
     const setCard = new StubFmt(
-      cardLike("RichText+*self", { id: 23, typeCode: "set", typeName: "Set", typeId: 13 }),
+      Object.assign(
+        cardLike("RichText+*self", { id: 23, typeCode: "set", typeName: "Set", typeId: 13 }),
+        { setKeys: "ALL ALL_PLUS TYPE-set SELF-Xself" },
+      ),
       deck,
     );
     expect(setOneLineContentView(makeCtx(setCard, "one_line_content"))).toBe("");

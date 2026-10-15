@@ -132,6 +132,7 @@ import type {
   ModEventRegistration,
   ModEventStage,
   ModSetModuleFile,
+  ModViewWrapSpec,
 } from "./mod-loader/mod-manifest.js";
 import type { ContentFn } from "./render/content-overrides.js";
 import type { RegisteredModEvent } from "./mod-loader/mod-event-registry.js";
@@ -1167,6 +1168,24 @@ export class ModLoader {
    *  Undefined = no module in the card's chain declares the setting (the
    *  caller substitutes :unknown; format/error.rb:23 `setting_view ||
    *  :unknown`). */
+  /** Ruby's view_setting(:wrap, view) (card-1.110.0 lib/card/format/render.rb:55-57):
+   *  `try "_view_<view>__wrap"` on the card's format class. The method is
+   *  defined on the set module that declared the wrap, and the most specific
+   *  chain module that declares one answers, whichever module supplied the
+   *  view body. A declaration of `wrap: {}` answers "no wrap" and stops the
+   *  walk. Undefined = no module in the chain declares a wrap. */
+  viewWrapForCard(
+    setKeys: string,
+    view: string,
+    format: string = "html",
+  ): ModViewWrapSpec | undefined {
+    for (const entry of this.viewChain(setKeys, view, format)) {
+      const wrap = this.viewConfigs.configForModule(entry.setModule, view)?.wrap;
+      if (wrap !== undefined && typeof wrap === "object" && !Array.isArray(wrap)) return wrap;
+    }
+    return undefined;
+  }
+
   viewUnknownSettingForCard(
     setKeys: string,
     view: string,

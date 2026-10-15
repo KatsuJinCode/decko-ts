@@ -22,6 +22,23 @@ function slotId(card: ViewContext["fmt"]["card"], view: string): string {
 }
 
 /**
+ * Ruby's view_setting(:wrap, view) applied to a view body (format/render.rb
+ * wrap_and_render + wrapper.rb). Ruby resolves the wrap per view NAME along
+ * the card's set chain, so a body supplied by a more specific module is
+ * wrapped by the wrap the nearest declaring module carries (for example a
+ * rule card's :one_line_content body from card-mod-content is wrapped by
+ * card-mod-rules' `text-muted one-line` declaration). The render pipeline
+ * applies no wrap configs, so the body applies its inherited wrap here.
+ * `wrap: {}` answers "no wrap" and returns the body unchanged.
+ */
+export function viewWrapInherited(ctx: ViewContext, view: string, body: string): string {
+  const spec = getDefaultModLoader()?.viewWrapForCard(ctx.fmt.card.setKeys, view);
+  const div = spec?.["div"];
+  if (div === undefined) return body;
+  return `<div${emitAttrs({ class: div.class })}>${body}</div>`;
+}
+
+/**
  * The slot wrapper (wrap.rb:11-14 -> slot_attributes -> content_tag :div).
  * Attribute order and shapes match the core slotWrap exactly: id, class
  * (card-slot, <view>-view, set keys + classy extras), the data attributes in

@@ -2927,10 +2927,10 @@ const editNestsView: ViewFn = (ctx) =>
  *  :edit`. The structure resolution walks the card's set candidates over the
  *  SEATED render cards (the inputTypeRuleContent idiom - ruleNamesForCard +
  *  fetchRenderCard, the render.ts warm seats the candidates for this view),
- *  NOT the engine's structure universe: on a warm-closure engine the
- *  universe never loads (the mod prepare seats the closure before the first
- *  render, so the cold batch's parseStructureContents never runs), and the
- *  seated walk answers without it. The FIRST EXISTING candidate wins, the
+ *  NOT the engine's structure universe: the seated walk answers from the
+ *  candidates this render already holds, so this view does not depend on
+ *  the universe (a warm-closure first render still loads it for the sync
+ *  readers that do, see render.ts). The FIRST EXISTING candidate wins, the
  *  structure_rule_card nils the "_self" rule after Ruby's strip
  *  (templating.rb:44-47); that arm and the no-candidate arm answer nil like
  *  the `return unless card.structure` guard, so a structure-less card's

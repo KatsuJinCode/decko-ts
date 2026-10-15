@@ -36,7 +36,10 @@ describe("chain registrations the edge serves", () => {
     expect(head("ALL TYPE-setting SELF-x", "one_line_content")?.setModule).toBe("Type::Setting");
     // toggle.rb overrides the one_line_content METHOD only.
     expect(head("ALL TYPE-toggle SELF-x", "one_line_content")?.setModule).toBe("All::Html::Views");
-    const ctx = { fmt: { card: { typeCode: "set", name: { s: "x" } } } } as unknown as ViewContext;
+    // A real render card carries its set keys; the inherited wrap walks them.
+    const ctx = {
+      fmt: { card: { typeCode: "set", name: { s: "x" }, setKeys: "ALL TYPE-set SELF-x" } },
+    } as unknown as ViewContext;
     expect(head("ALL TYPE-set SELF-x", "one_line_content")!.viewFn(ctx)).toBe("");
   });
 

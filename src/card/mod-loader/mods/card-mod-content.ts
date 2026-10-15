@@ -103,7 +103,7 @@
 // - data/real.yml + data/test.yml + config/admin.yml: rails (admin
 //   settings surface, seed data)
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
+import { str, type ViewContext, type ViewFn } from "../../render/format.js";
 import type {
   DeckoModManifest,
   ModEventCard,
@@ -111,7 +111,7 @@ import type {
   ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
-import { superView } from "../mod-view-helpers.js";
+import { superView, viewWrapInherited } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
 /** The set-module event declarations:
@@ -220,14 +220,12 @@ const readOnlyInputView: ViewFn = () => "Content can't be edited.";
  *  '<em>empty</em>'}"`. Ruby's String#present? = non-blank and not
  *  empty - so a missing dbContent renders "<type> : <em>empty</em>";
  *  a present one renders "<type> : <raw>". */
-const defaultOneLineContentView: ViewFn = ({ fmt }: ViewContext) => {
-  const card = fmt.card;
+const defaultOneLineContentView: ViewFn = (ctx: ViewContext) => {
+  const card = ctx.fmt.card;
   const typeName = card.typeName ?? "Card";
   const raw = card.dbContent ?? "";
-  if (raw.trim() === "") {
-    return `${typeName} : <em>empty</em>`;
-  }
-  return `${typeName} : ${raw}`;
+  const body = raw.trim() === "" ? `${typeName} : <em>empty</em>` : `${typeName} : ${raw}`;
+  return viewWrapInherited(ctx, "one_line_content", body);
 };
 
 /** set/right/structure.rb:13-16 view :one_line_content:
@@ -237,11 +235,11 @@ const defaultOneLineContentView: ViewFn = ({ fmt }: ViewContext) => {
  *  composes the same shape from card.typeName + card.dbContent (the
  *  view_method for :type/:raw already exists in HTML_VIEWS via the
  *  rule-set module; here we hit the direct fields). */
-const structureOneLineContentView: ViewFn = ({ fmt }: ViewContext) => {
-  const card = fmt.card;
-  const typeName = card.typeName ?? "Card";
+const structureOneLineContentView: ViewFn = (ctx: ViewContext) => {
+  const card = ctx.fmt.card;
   const raw = card.dbContent ?? "";
-  return `${typeName} : ${raw}`;
+  const typeLink = str(ctx.fmt.renderView("type"));
+  return viewWrapInherited(ctx, "one_line_content", `${typeLink} : ${raw}`);
 };
 
 // ---------------------------------------------------------------------------

@@ -351,6 +351,10 @@ const CREATEABLE_TYPES_VIEWS = new Set([
   "quick_edit_setting_list",
   "quick_edit",
   "edit_rules",
+  // card-mod-rules set/self/cardtype.rb:2-9 :grouped_list builds the
+  // "Custom" group from All::CardtypeGroups#custom_types =
+  // Auth.createable_types minus the grouped types (cardtype_groups.rb:23-31).
+  "grouped_list",
 ]);
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
@@ -1607,6 +1611,20 @@ export class RenderEngine implements RenderEngineLike {
     if (stampCold && this.deckDataVersion === undefined) {
       this.deckDataVersion = await this.readDeckDataVersion();
     }
+    // The structure universe (*structure rule templates, the default-rule
+    // universe) rides the cold batch ONLY. A render whose root closure is
+    // already warm (the boot warm seats it) skips that batch, so a first
+    // render that never hit a cold closure left structureContents undefined:
+    // every sync structure reader then answered "no rule" (cardStructure in
+    // the edit mod, applyStructureContent, phantomVirtualStructure), and the
+    // same board that a prior cold request had completed rendered its
+    // +summary editor missing. The parse is the defensive standalone branch
+    // parseStructureContents already documents for this shape. It runs once
+    // per engine, only while the universe is absent; later renders read the
+    // loaded universe from memory.
+    if (structureCold && this.structureContents === undefined) {
+      await this.parseStructureContents(undefined, 0);
+    }
     if (permissionCold) await this.ensureReadPermission(foldedResults, seatGateRows);
     // THE CLOSURE HALF OF THE SWEEP SURFACE (renderSeats' doc): the render's
     // sweeps must also process the cards THIS render's root closure reaches
@@ -1621,9 +1639,10 @@ export class RenderEngine implements RenderEngineLike {
     for (const key of this.closureSurface(record)) this.renderSeats.add(key);
     // Structured content pass #1: the prefetched closure (Ruby resolves the
     // template at Card#content time — every view reads the substituted
-    // accessor; templating.rb#structure). On every first-render path this
-    // also parses the *default universe (folded, or the defensive standalone
-    // batch), so the new-child type preload below can run right after.
+    // accessor; templating.rb#structure). By this point the universe is
+    // parsed on every first-render path (folded with the cold batch, or the
+    // defensive standalone load above), so the *default universe is here for
+    // the new-child type preload below.
     await this.applyStructureContent();
     await this.preloadDefaultTypeNames();
     // Unknown nest-target read verdicts (the closure walk's fetch misses:

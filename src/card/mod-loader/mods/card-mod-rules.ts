@@ -137,7 +137,7 @@ import { cardFormShell, submitButton } from "../mod-form-substrate.js";
 import { typeField, typeFormgroup } from "./card-mod-edit.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import { getDefaultModLoader } from "../../mod-loader.js";
-import { modSlotWrap } from "../mod-view-helpers.js";
+import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
@@ -281,7 +281,7 @@ const inputView: ViewFn = (ctx) => {
  *  so it shadows no other card's :one_line_content). */
 export function setOneLineContentView(ctx: ViewContext): string {
   assertSetCard(ctx, "one_line_content");
-  return "";
+  return viewWrapInherited(ctx, "one_line_content", "");
 }
 
 // ---------------------------------------------------------------------------
@@ -303,12 +303,11 @@ const CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
 
 /** set/all/cardtype_groups.rb:23-31 custom_types:
  *  `Auth.createable_types` minus the types GROUP_MAP already classifies.
- *  The headless engine has no Auth surface (no session, no roles); the
- *  ported createable list is therefore the empty list, which makes the
- *  "Custom" group skip exactly as Ruby's `next if type_list.empty?` does
- *  for the frozen empty array (cardtype_groups.rb:6). */
-function customTypes(): readonly string[] {
-  return [];
+ *  The viewer's createable list is RenderFormat#createableTypes (the engine
+ *  answer for the signed-in actor). */
+function customTypes(ctx: ViewContext): readonly string[] {
+  const grouped = new Set(Object.values(CARDTYPE_GROUPS).flat());
+  return ctx.fmt.createableTypes().filter((typeName) => !grouped.has(typeName));
 }
 
 /** set/self/cardtype.rb:2-9 view :grouped_list:
@@ -331,7 +330,7 @@ const groupedListView: ViewFn = (ctx) => {
   }
   const sections: string[] = [];
   for (const [group, types] of Object.entries(CARDTYPE_GROUPS)) {
-    const typeList = group === "Custom" ? customTypes() : types;
+    const typeList = group === "Custom" ? customTypes(ctx) : types;
     if (typeList.length === 0) continue; // cardtype.rb:5 next if type_list.empty?
     const listing = typeList.map((typeName) => listingItem(ctx, typeName));
     sections.push(`<h5>${group}</h5>`);
@@ -345,8 +344,16 @@ const groupedListView: ViewFn = (ctx) => {
  *  unknown-card nest ("" via the :unknown substitution). */
 function listingItem(ctx: ViewContext, typeName: string): string {
   const target = ctx.fmt.engine.fetchRenderCard(typeName);
-  if (target === undefined) return "";
-  return ctx.fmt.nestRecord(target, "titled");
+  // format/html item view: default_item_view is :bar (set/all/html.rb:21-23)
+  // and wrap_item in the html format is `<div class="item-<view>">` (set/all/
+  // item.rb:184-186), so every listed item carries the item-bar wrap.
+  // An absent card still nests by name: its :bar view takes the unknown
+  // substitution (bar_and_box set/all/bar.rb:9 unknown: :mini_bar).
+  const rendered =
+    target !== undefined
+      ? ctx.fmt.nestRecord(target, "bar")
+      : ctx.fmt.nest({ syntax: `{{${typeName}|view:bar}}`, name: typeName, options: { view: "bar", extra: {} }, comment: undefined });
+  return `<div class="item-bar">${rendered}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -625,7 +632,7 @@ function ruleOneLineInner(ctx: ViewContext, rightSetting: string | undefined): s
  *  the stub harness; the engine dispatch uses this function via the
  *  rule/bar_view setModule format block below. */
 const ruleOneLineContentViewFn: ViewFn = (ctx) => {
-  return ruleBarRightHtml(ctx.fmt.card, ctx.fmt.engine, (card) => {
+  const body = ruleBarRightHtml(ctx.fmt.card, ctx.fmt.engine, (card) => {
     const sub = new RenderFormat(card, ctx.fmt.engine, {
       parent: ctx.fmt,
       maxDepth: ctx.fmt.maxDepth,
@@ -646,6 +653,7 @@ const ruleOneLineContentViewFn: ViewFn = (ctx) => {
       throw error;
     }
   });
+  return viewWrapInherited(ctx, "one_line_content", str(body));
 }
 
 /** The body dispatch. Ruby's format content.rb:43-45 / 47-49:
@@ -2828,8 +2836,15 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: {
         views: [
-          { view: "one_line_content", viewFn: ruleOneLineContentViewFn, config: { unknown: true } },
+          { view: "one_line_content", viewFn: ruleOneLineContentViewFn, config: { unknown: true, wrap: { div: { class: "text-muted one-line" } } } },
           { view: "raw_one_line_content", viewFn: ruleRawOneLineContentView, config: { unknown: true } },
+          // set/rule/bar_view.rb:31-33 view :bar_middle, unknown: true do # rule_info end
+          // (the body is a comment, so Ruby answers nil; the html is null, not "").
+          {
+            view: "bar_middle",
+            viewFn: (ctx) => (isRuleCard(ctx) ? null : ""),
+            config: { unknown: true },
+          },
         ],
       },
     },
@@ -2970,7 +2985,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "set_label", viewFn: setLabelView },
           { view: "input", viewFn: inputView },
           // html_views.rb:21-23 view :one_line_content, wrap: {}
-          { view: "one_line_content", viewFn: setOneLineContentView },
+          { view: "one_line_content", viewFn: setOneLineContentView, config: { wrap: {} } },
         ],
       },
     },
@@ -3082,7 +3097,7 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "rule_help", viewFn: ruleHelpView },
           // setting.rb:63-65 view :one_line_content: render_rule_help
-          { view: "one_line_content", viewFn: (ctx) => ctx.fmt.renderView("rule_help") },
+          { view: "one_line_content", viewFn: (ctx) => viewWrapInherited(ctx, "one_line_content", str(ctx.fmt.renderView("rule_help"))) },
         ],
       },
     },
