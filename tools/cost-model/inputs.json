@@ -1,0 +1,189 @@
+{
+  "_comment": [
+    "Single input file for tools/cost-model/model.mjs. Nothing in the cost",
+    "model is typed in the script. Prices carry the source URL and the date",
+    "they were read (2026-10-14, through the search gateway). Measurements",
+    "name the repo file they come from. Where the value is typed here it",
+    "carries text_contains, the exact text that must appear in that file;",
+    "where the value is read from a JSON file in the repo, json_path or",
+    "json_table says which field. tests/tools/cost-model.test.ts fails when",
+    "any of these disagree with the repo."
+  ],
+  "schema_version": 1,
+  "prices_read_date": "2026-10-14",
+  "fx": {
+    "eur_usd": {
+      "value": 1.1195,
+      "as_of": "2026-10-14",
+      "source": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
+      "note": "ECB euro foreign exchange reference rate, 14 October 2026."
+    }
+  },
+  "prices": {
+    "cloudflare_workers": {
+      "free": {
+        "requests_per_day": 100000,
+        "cpu_ms_per_invocation": 10
+      },
+      "paid": {
+        "plan_usd_per_month": 5,
+        "included_requests_per_month": 10000000,
+        "included_cpu_ms_per_month": 30000000,
+        "usd_per_million_requests_over_included": 0.3,
+        "usd_per_million_cpu_ms_over_included": 0.02
+      },
+      "source": "https://developers.cloudflare.com/workers/platform/pricing/",
+      "limits_source": "https://developers.cloudflare.com/workers/platform/limits/",
+      "note": "CPU is active CPU per invocation; time awaiting D1 is not CPU and is not billed as CPU."
+    },
+    "cloudflare_d1": {
+      "free": {
+        "rows_read_per_day": 5000000,
+        "rows_written_per_day": 100000,
+        "storage_gb_total": 5
+      },
+      "paid": {
+        "included_rows_read_per_month": 25000000000,
+        "included_rows_written_per_month": 50000000,
+        "included_storage_gb": 5,
+        "usd_per_million_rows_read_over_included": 0.001,
+        "usd_per_million_rows_written_over_included": 1.0,
+        "usd_per_gb_month_storage_over_included": 0.75
+      },
+      "source": "https://developers.cloudflare.com/workers/platform/pricing/",
+      "limits_source": "https://developers.cloudflare.com/d1/platform/pricing/",
+      "note": "D1 bills rows read and rows written, not query round trips. Free-plan daily quotas reset at 00:00 UTC; storage is account-wide."
+    },
+    "cloudflare_r2": {
+      "usd_per_gb_month_storage": 0.015,
+      "source": "https://www.cloudflare.com/pricing.md",
+      "note": "Recorded for completeness. The measured deck has no blob rows (see measurements.deck.blob_mentions), so the model's R2 line is $0."
+    },
+    "bunny": {
+      "account_minimum_usd_per_month": 1,
+      "edge_scripting": {
+        "usd_per_million_requests": 0.2,
+        "usd_per_1000_cpu_seconds": 0.02
+      },
+      "database": {
+        "usd_per_billion_rows_read": 0.3,
+        "usd_per_million_rows_written": 0.3,
+        "usd_per_gb_month_per_region": 0.1,
+        "note": "https://bunny.net/database/ says the product is in public preview and free; the listed usage rates are used as the priced basis here."
+      },
+      "cdn_standard_eu_na_usd_per_gb": 0.01,
+      "source": "https://bunny.net/docs/scripting/pricing",
+      "pricing_source": "https://bunny.net/pricing/",
+      "database_source": "https://bunny.net/database/",
+      "note": "Edge Scripting bills requests in 1,000,000 increments and CPU in 1,000-second increments, from the first request. CDN bills bandwidth only."
+    },
+    "hetzner_cx23_eu": {
+      "vcpus": 2,
+      "vcpu_kind": "shared",
+      "ram_gb": 4,
+      "eur_per_month_excl_vat": 5.49,
+      "included_outbound_tb": 20,
+      "eur_per_tb_over_included": 1.0,
+      "source": "https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/",
+      "specs_source": "https://www.hetzner.com/news/new-cloud-plans/",
+      "note": "CX23 replaced CX22 in Hetzner's 15 June 2026 price adjustment. EU price, excluding VAT."
+    }
+  },
+  "measurements": {
+    "deck": {
+      "manifest_file": "deploy/cf-scale-deck/deck-manifest.json",
+      "cards_json_path": "cards",
+      "references_json_path": "refs",
+      "storage_bytes_json_path": "bytes",
+      "seed_file": "deploy/cf-scale-deck/seed.sql",
+      "seed_text_contains": "-- 2287 cards, 532 references.",
+      "blob_mentions": 0,
+      "blob_mentions_note": "Case-insensitive count of the word blob in seed_file, checked by the test."
+    },
+    "warm_home": {
+      "bytes_per_response": 3607,
+      "workerd_process_cpu_ms_low": 7.6,
+      "workerd_process_cpu_ms_high": 9.1,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "| Home `/` | 3,607 | 7.6 – 9.1 | 0.6 | yes |"
+    },
+    "local_harness_floor_cpu_ms": {
+      "value": 3.05,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "returning 500 bytes, 1.2 ms returning 30 KB, and 3.05 ms when it also issues"
+    },
+    "cold_home_first_request": {
+      "workerd_process_cpu_ms": 78,
+      "d1_queries": 27,
+      "d1_rows_read": 151,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "| `/`, on-demand worker | 78 (all four runs) | 27 | 151 |"
+    },
+    "warm_d1": {
+      "queries_per_page": 1,
+      "rows_read_per_page": 1,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "- Warm page: 1 query, 1 row read (freshness check), every page above."
+    },
+    "uncached_render": {
+      "source_file": "tools/cf-cost/measure-render-reads-results.json",
+      "json_table": "table",
+      "render_key": "render",
+      "statements_key": "stmts",
+      "rows_key": "rows_AFTER_IDX_ANALYZE",
+      "pages": {
+        "home": "home",
+        "point_read": "point-read (Scale Page 173x)",
+        "depth_32_chain": "depth-32 chain (Depth Root)",
+        "pointer_500": "500-item pointer (Big Pointer)"
+      },
+      "convention": "EQP plan-shape + rows-matched upper-bound accounting, D1 rows_read-aligned; NOT rows-examined telemetry (recorded in the file's own convention field).",
+      "note": "A per-render cold query plan with the database reached on every render. Not measured CPU: the file holds rows and statements only."
+    },
+    "cold_boots_per_day_ceiling": {
+      "value": 60,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "day, provided isolates live long enough to keep boots under ~60 a day."
+    },
+    "ruby_cpu_ms_per_page": {
+      "value": 401.1,
+      "port_cpu_ms_per_page": 6.07,
+      "source_file": "docs/cost-model.md",
+      "text_contains": "Ruby Decko 0.20.0 spent 401 ms of CPU per page and the port 6.1 ms: a ratio",
+      "detail_commit": "102916e7098e095a46a9507e6a7ecfac01c2d5be",
+      "detail_file": "benchmarks/energy/README.md",
+      "detail_note": "The precise figure (401.1 ms) is in that file at the commit above. benchmarks/energy is not on this branch. The Ruby side ran in development mode with Rails.env switched to production per render, so 401 ms is an upper estimate."
+    }
+  },
+  "assumptions": {
+    "days_per_month": {
+      "value": 30,
+      "basis": "Monthly = 30 days. Free-plan daily quotas are multiplied by this."
+    },
+    "cpu_basis_warm": {
+      "value": "measurements.warm_home.workerd_process_cpu_ms_high",
+      "basis": "The model bills the upper end of the measured warm home-page CPU for every view. It includes the 3.05 ms local harness floor that production does not bill, so it overstates production CPU."
+    },
+    "cpu_basis_uncached": {
+      "value": "measurements.warm_home.workerd_process_cpu_ms_high",
+      "basis": "Assumed. No uncached CPU was measured; the uncached scenario reuses the warm CPU and so understates uncached CPU."
+    },
+    "cold_boot_cpu_basis": {
+      "value": "measurements.cold_home_first_request.workerd_process_cpu_ms",
+      "basis": "Measured first-request CPU, home page, upper bound."
+    },
+    "ruby_host_cpu_headroom": {
+      "value": 0.5,
+      "basis": "Assumed: at most half of the two shared vCPUs of a CX23 is available to the Ruby app. The 401 ms was measured on a desktop CPU, not a shared vCPU, so host capacity is an estimate."
+    },
+    "decimal_gigabyte": {
+      "value": 1000000000,
+      "basis": "Convention: 1 GB = 10^9 bytes, as CDN providers quote it."
+    },
+    "rows_written_per_view": {
+      "value": 0,
+      "basis": "Assumed: the cost is for page views (reads). Writes are not in the per-page measurements."
+    }
+  },
+  "traffic_levels_views_per_month": [100000, 1000000, 3000000, 10000000, 50000000]
+}
