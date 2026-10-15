@@ -2,7 +2,11 @@
   "_comment": [
     "Single input file for tools/cost-model/model.mjs. Nothing in the cost",
     "model is typed in the script. Prices carry the source URL and the date",
-    "they were read (2026-10-14, through the search gateway). Measurements",
+    "they were read (2026-10-14, through the search gateway). The gateway's",
+    "extract command saves pages to a path this machine cannot read, so these",
+    "prices come from its search answers, which cite the URL; the page text",
+    "itself was not checked here (see the system issue 261015-search-gateway-",
+    "extract-unreadable.md). Measurements",
     "name the repo file they come from. Where the value is typed here it",
     "carries text_contains, the exact text that must appear in that file;",
     "where the value is read from a JSON file in the repo, json_path or",
