@@ -53,7 +53,7 @@ function mysqldPath(): string {
 
 /** Runs inside the watchdog process: when its stdin (the parent's pipe) ends,
  *  the parent is gone, so the MySQL server it started must end too. */
-const WATCHDOG = `process.stdin.on("end",()=>{const p=+process.argv[1];try{process.kill(p,9)}catch(e){};process.exit(0)});process.stdin.on("close",()=>process.exit(0));process.stdin.resume();`;
+const WATCHDOG = `let ended=false;const end=()=>{if(ended)return;ended=true;const p=+process.argv[1];if(process.platform==="win32"){require("node:child_process").spawnSync("taskkill",["/pid",String(p),"/t","/f"],{windowsHide:true,stdio:"ignore"})}else{try{process.kill(p,9)}catch(e){}};process.exit(0)};process.stdin.on("end",end);process.stdin.on("close",end);process.stdin.resume();`;
 
 /** End a process and its descendants (Windows: taskkill /t /f), synchronously:
  *  mysqld keeps its data directory locked until it has ended, so the directory
@@ -106,6 +106,8 @@ async function freePort(): Promise<number> {
 }
 
 export interface MysqlServer {
+  /** This server's owned scratch directory, including its data subdirectory. */
+  readonly datadir: string;
   /** The TCP port the server listens on, on 127.0.0.1. */
   readonly port: number;
   /** The mysqld process id. */
@@ -144,6 +146,9 @@ export async function startMysqlServer(): Promise<MysqlServer> {
       mysqld,
       [
         "--no-defaults",
+        // Otherwise Windows returns the RESTART monitor's PID, not the
+        // listening server's PID, and killing it can orphan the real server.
+        ...(process.platform === "win32" ? ["--no-monitor"] : []),
         `--basedir=${basedir}`,
         `--datadir=${join(datadir, "data")}`,
         `--port=${port}`,
@@ -207,7 +212,7 @@ export async function startMysqlServer(): Promise<MysqlServer> {
       endWatchdog();
       removeDatadir(datadir);
     };
-    return { port, pid: running.pid ?? 0, connect: (database?: string) => connectOnce(database), stop, kill };
+    return { datadir, port, pid: running.pid ?? 0, connect: (database?: string) => connectOnce(database), stop, kill };
   } catch (error) {
     child?.kill();
     rmSync(datadir, { recursive: true, force: true });
