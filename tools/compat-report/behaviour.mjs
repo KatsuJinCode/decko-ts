@@ -37,7 +37,7 @@
 // but which declares events is "views-graded-events-ungraded".
 
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const HTML_LIKE = new Set(["html", "base"]);
@@ -510,7 +510,7 @@ export function rowProfile(step) {
   return profile;
 }
 
-const failedIdIsProbe = (id) => /^(probe-view:|probe-e\d+#)/.test(id);
+const failedIdIsProbe = (id) => /^(probe-view:|probe-e\d+#|mod-event-probes#)/.test(id);
 const sameProfile = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // Reduce the probe fixture's grade report (reference-harness/runner/grade.mjs
@@ -531,7 +531,9 @@ export function summariseProbes(repo, gradeReport, probes) {
   if (!["pass", "fail"].includes(gradeReport.verdict)) {
     throw new Error(`probe evidence requires a complete valid grade, got ${gradeReport.verdict}`);
   }
-  const fixtureDir = join(repo, "reference-harness", "fixtures", "synthetic-v2-mod-probes");
+  const fixtureName = gradeReport.fixture ?? "synthetic-v2-mod-probes";
+  if (basename(fixtureName) !== fixtureName) throw new Error("probe grade fixture must be a directory name");
+  const fixtureDir = join(repo, "reference-harness", "fixtures", fixtureName);
   // Every probe is its own scenario (a fresh session on a fresh deck copy), so
   // the expected answers are looked up per probe: a probe's ids depend only on
   // that probe.
@@ -552,9 +554,13 @@ export function summariseProbes(repo, gradeReport, probes) {
       events[p.event] = { evidence: "not-probed", reason: p.reason, file: p.file };
       continue;
     }
-    const scenario = expected.get(p.scenario);
-    if (!scenario) throw new Error(`no expected scenario ${p.scenario}`);
-    const stepId = (i) => `${p.scenario}#${i + 1}`;
+    // Published v2 plans used one monolithic scenario and global labels.
+    // Keep them readable without changing their operation lists or captures.
+    const scenarioId = p.scenario ?? "mod-event-probes";
+    const labels = p.labels ?? probes.step_labels;
+    const scenario = expected.get(scenarioId);
+    if (!scenario) throw new Error(`no expected scenario ${scenarioId}`);
+    const stepId = (i) => `${scenarioId}#${i + 1}`;
     const steps = [];
     for (let i = p.steps[0]; i <= p.steps[1]; i++) steps.push({ index: i, step: scenario.steps[i], id: stepId(i) });
     const differs = steps.filter((s) => failed.has(s.id));
@@ -563,10 +569,10 @@ export function summariseProbes(repo, gradeReport, probes) {
     // the same action.
     const baselineFor = {};
     if (p.baseline) {
-      for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) baselineFor[p.labels[i].action] = rowProfile(scenario.steps[i]);
+      for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) baselineFor[labels[i].action] = rowProfile(scenario.steps[i]);
     }
     const observed = steps.some((s) => {
-      const action = p.labels[s.index].action;
+      const action = labels[s.index].action;
       // Setup writes are not evidence for an event declared on another action.
       if (p.on && p.on !== "save" && p.on !== action) return false;
       if (p.on === "save" && action !== "create" && action !== "update") return false;
@@ -577,7 +583,7 @@ export function summariseProbes(repo, gradeReport, probes) {
     events[p.event] = {
       evidence: observed ? (differs.length ? "graded-differs" : "graded-identical") : "not-observed",
       probe: p.probe,
-      scenario: p.scenario,
+      scenario: scenarioId,
       card: p.card,
       on: p.on,
       when: p.when,
@@ -613,7 +619,7 @@ export function summariseProbes(repo, gradeReport, probes) {
   }
   return {
     diffs,
-    fixture: "synthetic-v2-mod-probes",
+    fixture: fixtureName,
     adapter_commit: gradeReport.adapter_checkout?.commit ?? null,
     adapter_dirty: gradeReport.adapter_checkout?.dirty ?? null,
     graded_at: gradeReport.graded_at ?? null,

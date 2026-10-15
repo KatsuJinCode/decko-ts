@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -7,6 +7,8 @@ import { planEvents } from "../../../tools/compat-report/behaviour-probes.mjs";
 import { summariseProbes } from "../../../tools/compat-report/behaviour.mjs";
 import { normalizeForRecord, normalizeHtml } from "../normalize.mjs";
 import { makeFixture, runFake } from "./helpers.mjs";
+import { writeFixtureManifest } from "../manifest.mjs";
+import { importCapture } from "../../../tools/compat-report/import-probe-capture.mjs";
 
 test("each event gets a separate scenario with action-specific baselines", () => {
   const declarations = ["create", "update", "delete"].map((on) => ({ event: `on_${on}`, on, set: { pattern: "all" }, file: "set/all/example.rb" }));
@@ -45,6 +47,38 @@ test("concurrent fresh sessions preserve sequential scenario bytes and output or
   }
 });
 
+test("fixture-name imports prove input identity and preserve original capture provenance", () => {
+  const root = mkdtempSync(join(tmpdir(), "decko-probe-import-test-"));
+  try {
+    const sourceFixture = makeFixture(root);
+    const targetFixture = join(root, "tiny-v2");
+    cpSync(sourceFixture, targetFixture, { recursive: true });
+    writeFixtureManifest(targetFixture);
+    const capture = join(root, "capture");
+    const run = runFake(sourceFixture, capture);
+    assert.equal(run.status, 0, run.stderr);
+    const original = readFileSync(join(capture, "run-meta.json"));
+    const out = join(root, "imported");
+    const provenance = importCapture({ sourceFixture, targetFixture, capture, out, role: "actual" });
+    assert.equal(provenance.source_fixture, "tiny-v1");
+    assert.equal(provenance.target_fixture, "tiny-v2");
+    assert.equal(provenance.source_fixture_digest, provenance.target_fixture_digest);
+    assert.deepEqual(readFileSync(join(out, "capture-provenance/run-meta.original.json")), original);
+    assert.deepEqual(readFileSync(join(out, "scenarios.jsonl")), readFileSync(join(capture, "scenarios.jsonl")));
+    assert.throws(() => importCapture({ sourceFixture, targetFixture, capture, out: join(root, "not-oracle") }), /not the canonical Ruby/);
+    const meta = JSON.parse(original);
+    meta.runs.scenarios.selection = { filter: "x" };
+    writeFileSync(join(capture, "run-meta.json"), JSON.stringify(meta));
+    assert.throws(() => importCapture({ sourceFixture, targetFixture, capture, out: join(root, "partial"), role: "actual" }), /incomplete or filtered/);
+    writeFileSync(join(capture, "run-meta.json"), original);
+    writeFileSync(join(targetFixture, "ops/render.jsonl"), "");
+    writeFixtureManifest(targetFixture);
+    assert.throws(() => importCapture({ sourceFixture, targetFixture, capture, out: join(root, "changed"), role: "actual" }), /input hashes differ/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("User creation carries actual nested account/email/password writes", () => {
   const index = { cards: [{ name: "User", facts: { codename: "user", compound: false, type: "cardtype" } }] };
   const { scenarios } = planEvents(index, [{ event: "account", on: "create", set: { pattern: "type", anchor: "user" } }]);
@@ -56,14 +90,19 @@ test("User creation carries actual nested account/email/password writes", () => 
 });
 
 const step = (count) => ({ result: { saved: true }, rows: { cards: { inserted: Array.from({ length: count }, () => ({})), updated: [], deleted: [] } } });
-function eventEvidence(on, baseline, setup, action) {
+function eventEvidence(on, baseline, setup, action, { fixtureName = "synthetic-v2-mod-probes", legacy = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "decko-mod-probe-test-"));
   try {
-    const expected = join(root, "reference-harness/fixtures/synthetic-v2-mod-probes/expected");
+    const expected = join(root, "reference-harness/fixtures", fixtureName, "expected");
     mkdirSync(expected, { recursive: true });
-    writeFileSync(join(expected, "scenarios.jsonl"), JSON.stringify({ id: "probe-e1", steps: [...baseline, setup, action] }) + "\n");
+    writeFileSync(join(expected, "scenarios.jsonl"), JSON.stringify({ id: legacy ? "mod-event-probes" : "probe-e1", steps: [...baseline, setup, action] }) + "\n");
     const probes = { render: { plan: [] }, events: { plan: [{ status: "planned", event: "example", scenario: "probe-e1", probe: "e1", on, steps: [2, 3], baseline: { steps: [0, 1] }, labels: [{ action: "create" }, { action: on }, { action: "create" }, { action: on }] }] } };
-    return summariseProbes(root, { verdict: "pass", failures: {}, summary: {} }, probes).events.example.evidence;
+    if (legacy) {
+      probes.step_labels = probes.events.plan[0].labels;
+      delete probes.events.plan[0].labels;
+      delete probes.events.plan[0].scenario;
+    }
+    return summariseProbes(root, { fixture: fixtureName, verdict: "pass", failures: {}, summary: {} }, probes).events.example.evidence;
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -75,6 +114,11 @@ test("setup creation cannot prove a delete event fired", () => {
 
 test("an update is compared with its update baseline", () => {
   assert.equal(eventEvidence("update", [step(1), step(0)], step(1), step(1)), "graded-identical");
+});
+
+test("versioned fixtures and published monolithic plans remain readable", () => {
+  assert.equal(eventEvidence("update", [step(1), step(0)], step(1), step(1), { fixtureName: "synthetic-v3-mod-probes-ruby33" }), "graded-identical");
+  assert.equal(eventEvidence("update", [step(1), step(0)], step(1), step(1), { legacy: true }), "graded-identical");
 });
 
 test("a baseline exception cannot prove an event fired", () => {

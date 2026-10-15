@@ -1,0 +1,556 @@
+{"id":"probe-view:1:closure@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"closure"}
+{"id":"probe-view:2:raw@set/right/password.rb","op":"render","actor":"admin","card":"Ada Admin+*account+*password","view":"raw"}
+{"id":"probe-view:3:raw@set/right/salt.rb","op":"render","actor":"admin","card":"Sign up+*account+*salt","view":"raw"}
+{"id":"probe-view:4:raw@set/type_plus_right/user/email.rb","op":"render","actor":"admin","card":"Probe User+*email","view":"raw"}
+{"id":"probe-view:5:reset_password_days@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"reset_password_days"}
+{"id":"probe-view:6:reset_password_url@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"reset_password_url"}
+{"id":"probe-view:7:token_days@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"token_days"}
+{"id":"probe-view:8:token_expiry@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"token_expiry"}
+{"id":"probe-view:9:verify_days@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"verify_days"}
+{"id":"probe-view:10:verify_url@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"verify_url"}
+{"id":"probe-view:11:account_tab@set/abstract/account_holder.rb","op":"render","actor":"admin","card":"Decko Bot","view":"account_tab"}
+{"id":"probe-view:12:closed_account@set/abstract/account_holder.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed_account"}
+{"id":"probe-view:13:configs@set/type/role.rb","op":"render","actor":"admin","card":"Anyone","view":"configs"}
+{"id":"probe-view:14:content_formgroups@set/type/signup/views.rb","op":"render","actor":"admin","card":"Probe Signup","view":"content_formgroups"}
+{"id":"probe-view:15:core@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"core"}
+{"id":"probe-view:16:core@set/right/password.rb","op":"render","actor":"admin","card":"Ada Admin+*account+*password","view":"core"}
+{"id":"probe-view:17:core@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"core"}
+{"id":"probe-view:18:core@set/type/signup/views.rb","op":"render","actor":"admin","card":"Probe Signup","view":"core"}
+{"id":"probe-view:19:edit_buttons@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"edit_buttons"}
+{"id":"probe-view:20:edit@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"edit"}
+{"id":"probe-view:21:link_with_checkbox@set/type/role.rb","op":"render","actor":"admin","card":"Anyone","view":"link_with_checkbox"}
+{"id":"probe-view:22:new_buttons@set/type/signup/views.rb","op":"render","actor":"admin","card":"Probe Signup","view":"new_buttons"}
+{"id":"probe-view:23:new@set/type/signup/views.rb","op":"render","actor":"admin","card":"Probe Signup","view":"new"}
+{"id":"probe-view:24:one_line_content@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"one_line_content"}
+{"id":"probe-view:25:open_content@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"open_content"}
+{"id":"probe-view:26:open@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"open"}
+{"id":"probe-view:27:reset_password_success@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"reset_password_success"}
+{"id":"probe-view:28:setup@set/type/user.rb","op":"render","actor":"admin","card":"Ada Admin","view":"setup"}
+{"id":"probe-view:29:title@set/self/signin.rb","op":"render","actor":"admin","card":"*signin","view":"title"}
+{"id":"probe-view:30:token_expiry@set/right/account/views.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"token_expiry"}
+{"id":"probe-view:31:api_key@set/right/account.rb","op":"render","actor":"admin","card":"Sign up+*account","view":"api_key"}
+{"id":"probe-view:32:buttons@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"buttons"}
+{"id":"probe-view:33:content@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"content"}
+{"id":"probe-view:34:core@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"core"}
+{"id":"probe-view:35:current@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"current"}
+{"id":"probe-view:36:generate_button@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"generate_button"}
+{"id":"probe-view:37:titled_content@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"titled_content"}
+{"id":"probe-view:38:titled@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"titled"}
+{"id":"probe-view:39:token_link@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"token_link"}
+{"id":"probe-view:40:token@set/right/api_key.rb","op":"render","actor":"admin","card":"Quinn Contractor+*api key","view":"token","format":"json"}
+{"id":"probe-view:41:asset_output_url@set/abstract/asset_outputter.rb","op":"render","actor":"admin","card":"Decko Bot","view":"asset_output_url"}
+{"id":"probe-view:42:not_found@set/right/asset_output.rb","op":"render","actor":"admin","card":"*all+*script+*asset output","view":"not_found"}
+{"id":"probe-view:43:core@set/abstract/01_manifest_group.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:44:core@set/abstract/mod_assets.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:45:javascript_include_tag@set/abstract/asset_file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"javascript_include_tag"}
+{"id":"probe-view:46:box_bottom@set/all/box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box_bottom"}
+{"id":"probe-view:47:box_middle@set/all/box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box_middle"}
+{"id":"probe-view:48:box_top@set/all/box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box_top"}
+{"id":"probe-view:49:box@set/all/box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box"}
+{"id":"probe-view:50:accordion_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"accordion_bar"}
+{"id":"probe-view:51:bar_body@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_body"}
+{"id":"probe-view:52:bar_bottom@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_bottom"}
+{"id":"probe-view:53:bar_left@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_left"}
+{"id":"probe-view:54:bar_menu@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_menu"}
+{"id":"probe-view:55:bar_middle@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_middle"}
+{"id":"probe-view:56:bar_right@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_right"}
+{"id":"probe-view:57:bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar"}
+{"id":"probe-view:58:boxed_link@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"boxed_link"}
+{"id":"probe-view:59:boxed@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"boxed"}
+{"id":"probe-view:60:closed_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed_bar"}
+{"id":"probe-view:61:closed@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed"}
+{"id":"probe-view:62:expanded_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"expanded_bar"}
+{"id":"probe-view:63:full_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"full_bar"}
+{"id":"probe-view:64:mini_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"mini_bar"}
+{"id":"probe-view:65:open_bar@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open_bar"}
+{"id":"probe-view:66:open@set/all/bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open"}
+{"id":"probe-view:67:bar_bottom@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"bar_bottom"}
+{"id":"probe-view:68:bar_left@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"bar_left"}
+{"id":"probe-view:69:bar_middle@set/type_plus_right/bootswatch_skin/colors.rb","op":"render","actor":"admin","card":"cerulean skin+*colors","view":"bar_middle"}
+{"id":"probe-view:70:bar_right@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"bar_right"}
+{"id":"probe-view:71:carousel@set/all/bootstrap/carousel.rb","op":"render","actor":"admin","card":"Decko Bot","view":"carousel"}
+{"id":"probe-view:72:core@set/type_plus_right/bootswatch_skin/colors.rb","op":"render","actor":"admin","card":"cerulean skin+*colors","view":"core"}
+{"id":"probe-view:73:core@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"core"}
+{"id":"probe-view:74:customize_button@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"customize_button"}
+{"id":"probe-view:75:icons@set/all/bootstrap/icon.rb","op":"render","actor":"admin","card":"Decko Bot","view":"icons"}
+{"id":"probe-view:76:input@set/type_plus_right/bootswatch_skin/colors.rb","op":"render","actor":"admin","card":"cerulean skin+*colors","view":"input"}
+{"id":"probe-view:77:input@set/type/bootswatch_skin.rb","op":"render","actor":"admin","card":"cerulean skin","view":"input"}
+{"id":"probe-view:78:one_line_content@set/type/bootswatch_skin.rb","op":"render","actor":"admin","card":"cerulean skin","view":"one_line_content"}
+{"id":"probe-view:79:one_line_content@set/type/bootswatch_skin/html_views.rb","op":"render","actor":"admin","card":"cerulean skin","view":"one_line_content"}
+{"id":"probe-view:80:progress_bar@set/abstract/progress_bar.rb","op":"render","actor":"admin","card":"Decko Bot","view":"progress_bar"}
+{"id":"probe-view:81:core@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"core"}
+{"id":"probe-view:82:inline@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"inline"}
+{"id":"probe-view:83:one_line_content@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"one_line_content"}
+{"id":"probe-view:84:source@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"source"}
+{"id":"probe-view:85:source@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"source"}
+{"id":"probe-view:86:content@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"content","format":"css"}
+{"id":"probe-view:87:core@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"core","format":"css"}
+{"id":"probe-view:88:inline@set/type/image.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"inline","format":"email_html"}
+{"id":"probe-view:89:core@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"core","format":"file"}
+{"id":"probe-view:90:content_changes@set/type/image/html_views.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"content_changes"}
+{"id":"probe-view:91:core@set/self/new_file.rb","op":"render","actor":"admin","card":"*new file","view":"core"}
+{"id":"probe-view:92:core@set/self/new_image.rb","op":"render","actor":"admin","card":"*new image","view":"core"}
+{"id":"probe-view:93:core@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"core"}
+{"id":"probe-view:94:core@set/type/image/html_views.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"core"}
+{"id":"probe-view:95:full_width@set/type/image/html_views.rb","op":"render","actor":"admin","card":"Image+*right+*default","view":"full_width"}
+{"id":"probe-view:96:input@set/self/new_file.rb","op":"render","actor":"admin","card":"*new file","view":"input"}
+{"id":"probe-view:97:input@set/self/new_image.rb","op":"render","actor":"admin","card":"*new image","view":"input"}
+{"id":"probe-view:98:input@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"input"}
+{"id":"probe-view:99:link_tag@set/self/favicon.rb","op":"render","actor":"admin","card":"*favicon","view":"link_tag"}
+{"id":"probe-view:100:preview_editor@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"preview_editor"}
+{"id":"probe-view:101:source@set/self/favicon.rb","op":"render","actor":"admin","card":"*favicon","view":"source"}
+{"id":"probe-view:102:source@set/self/new_file.rb","op":"render","actor":"admin","card":"*new file","view":"source"}
+{"id":"probe-view:103:source@set/self/new_image.rb","op":"render","actor":"admin","card":"*new image","view":"source"}
+{"id":"probe-view:104:content@set/type/file.rb","op":"render","actor":"admin","card":"*new file","view":"content","format":"json"}
+{"id":"probe-view:105:image_complete@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"image_complete","format":"json"}
+{"id":"probe-view:106:count@set/all/item.rb","op":"render","actor":"admin","card":"Decko Bot","view":"count"}
+{"id":"probe-view:107:count@set/all/item.rb","op":"render","actor":"admin","card":"Decko Bot","view":"count"}
+{"id":"probe-view:108:paging@set/abstract/paging/paging_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"paging"}
+{"id":"probe-view:109:paging_urls@set/abstract/paging/paging_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"paging_urls","format":"json"}
+{"id":"probe-view:110:paging_urls@set/abstract/paging/paging_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"paging_urls","format":"jsonld"}
+{"id":"probe-view:111:comment_box@set/all/comment.rb","op":"render","actor":"admin","card":"Decko Bot","view":"comment_box"}
+{"id":"probe-view:112:core@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"core"}
+{"id":"probe-view:113:input@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"input"}
+{"id":"probe-view:114:open_content@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"open_content"}
+{"id":"probe-view:115:open@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"open"}
+{"id":"probe-view:116:titled_content@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"titled_content"}
+{"id":"probe-view:117:titled@set/right/discussion.rb","op":"render","actor":"admin","card":"Topic 001+discussion","view":"titled"}
+{"id":"probe-view:118:bar_middle@set/abstract/01_code_content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar_middle"}
+{"id":"probe-view:119:core@set/abstract/haml_file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:120:core@set/abstract/templated_nests.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:121:file_size@set/abstract/02_code_file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"file_size"}
+{"id":"probe-view:122:input@set/abstract/01_code_content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:123:input@set/abstract/haml_file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:124:input@set/abstract/read_only.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:125:one_line_content@set/right/default.rb","op":"render","actor":"admin","card":"*all+*default","view":"one_line_content"}
+{"id":"probe-view:126:one_line_content@set/right/structure.rb","op":"render","actor":"admin","card":"Cardtype+*type+*structure","view":"one_line_content"}
+{"id":"probe-view:127:core@set/type/date.rb","op":"render","actor":"admin","card":"Date 1","view":"core"}
+{"id":"probe-view:128:template_nest@set/all/template_nest.rb","op":"render","actor":"admin","card":"Decko Bot","view":"template_nest"}
+{"id":"probe-view:129:board_type_formgroup@set/all/edit_type.rb","op":"render","actor":"admin","card":"Decko Bot","view":"board_type_formgroup"}
+{"id":"probe-view:130:board@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"board"}
+{"id":"probe-view:131:cardboard@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"cardboard"}
+{"id":"probe-view:132:conflict_tracker@set/all/form.rb","op":"render","actor":"admin","card":"Decko Bot","view":"conflict_tracker"}
+{"id":"probe-view:133:content_formgroup@set/all/form.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content_formgroup"}
+{"id":"probe-view:134:content_formgroups@set/all/form.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content_formgroups"}
+{"id":"probe-view:135:edit_buttons@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_buttons"}
+{"id":"probe-view:136:edit_form@set/all/edit_content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_form"}
+{"id":"probe-view:137:edit_in_form@set/all/form.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_in_form"}
+{"id":"probe-view:138:edit_inline_buttons@set/all/edit_inline.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_inline_buttons"}
+{"id":"probe-view:139:edit_inline@set/all/edit_inline.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_inline"}
+{"id":"probe-view:140:edit_name_row@set/all/edit_inline.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_name_row"}
+{"id":"probe-view:141:edit_name@set/all/edit_name.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_name"}
+{"id":"probe-view:142:edit_nests@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_nests"}
+{"id":"probe-view:143:edit_row@set/all/edit_inline.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_row"}
+{"id":"probe-view:144:edit_rules@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_rules"}
+{"id":"probe-view:145:edit_structure@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_structure"}
+{"id":"probe-view:146:edit_type_form@set/all/edit_type.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_type_form"}
+{"id":"probe-view:147:edit_type_row@set/all/edit_type.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_type_row"}
+{"id":"probe-view:148:edit_type@set/all/edit_type.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_type"}
+{"id":"probe-view:149:edit@set/all/edit_content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit"}
+{"id":"probe-view:150:engage_tab@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"engage_tab"}
+{"id":"probe-view:151:follow_section@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"follow_section"}
+{"id":"probe-view:152:guide_tab@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"guide_tab"}
+{"id":"probe-view:153:history_tab@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"history_tab"}
+{"id":"probe-view:154:input@set/all/editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:155:just_deleted@set/all/editing.rb","op":"render","actor":"admin","card":"Decko Bot","view":"just_deleted"}
+{"id":"probe-view:156:name_form@set/all/edit_name.rb","op":"render","actor":"admin","card":"Decko Bot","view":"name_form"}
+{"id":"probe-view:157:name_formgroup@set/all/form.rb","op":"render","actor":"admin","card":"Decko Bot","view":"name_formgroup"}
+{"id":"probe-view:158:new_buttons@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_buttons"}
+{"id":"probe-view:159:new_fields@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_fields"}
+{"id":"probe-view:160:new_in_modal_buttons@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_in_modal_buttons"}
+{"id":"probe-view:161:new_in_modal@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_in_modal"}
+{"id":"probe-view:162:new_type_formgroup@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_type_formgroup"}
+{"id":"probe-view:163:new@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new"}
+{"id":"probe-view:164:overlay_guide@set/all/overlay_guide.rb","op":"render","actor":"admin","card":"Decko Bot","view":"overlay_guide"}
+{"id":"probe-view:165:read_form@set/all/formgroup.rb","op":"render","actor":"admin","card":"Decko Bot","view":"read_form"}
+{"id":"probe-view:166:read_formgroup@set/all/formgroup.rb","op":"render","actor":"admin","card":"Decko Bot","view":"read_formgroup"}
+{"id":"probe-view:167:related_tab@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"related_tab"}
+{"id":"probe-view:168:rules_tab@set/all/board/tab_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"rules_tab"}
+{"id":"probe-view:169:simple_new@set/all/new.rb","op":"render","actor":"admin","card":"Decko Bot","view":"simple_new"}
+{"id":"probe-view:170:type_formgroup@set/all/edit_type.rb","op":"render","actor":"admin","card":"Decko Bot","view":"type_formgroup"}
+{"id":"probe-view:171:compact_missing@set/all/email_html.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compact_missing","format":"email_html"}
+{"id":"probe-view:172:core@set/abstract/test_context.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"email_html"}
+{"id":"probe-view:173:unknown@set/all/email_html.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown","format":"email_html"}
+{"id":"probe-view:174:compact_missing@set/all/email_text.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compact_missing","format":"email_text"}
+{"id":"probe-view:175:last_action@set/all/email_text.rb","op":"render","actor":"admin","card":"Decko Bot","view":"last_action","format":"email_text"}
+{"id":"probe-view:176:unknown@set/all/email_text.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown","format":"email_text"}
+{"id":"probe-view:177:content@set/right/html_message.rb","op":"render","actor":"admin","card":"verification email+*html message","view":"content"}
+{"id":"probe-view:178:core@set/abstract/test_context.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:179:core@set/right/text_message.rb","op":"render","actor":"admin","card":"verification email+*text message","view":"core"}
+{"id":"probe-view:180:core@set/type/email_template/html.rb","op":"render","actor":"admin","card":"welcome email","view":"core"}
+{"id":"probe-view:181:email_page@set/all/email_html.rb","op":"render","actor":"admin","card":"Decko Bot","view":"email_page"}
+{"id":"probe-view:182:followed@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"followed"}
+{"id":"probe-view:183:follower@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"follower"}
+{"id":"probe-view:184:last_action_verb@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"last_action_verb"}
+{"id":"probe-view:185:list_of_changes@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"list_of_changes"}
+{"id":"probe-view:186:subedit_notice@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"subedit_notice"}
+{"id":"probe-view:187:subedits@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"subedits"}
+{"id":"probe-view:188:unfollow_url@set/all/notify/base_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unfollow_url"}
+{"id":"probe-view:189:confirm_update_all@set/self/follow_defaults.rb","op":"render","actor":"admin","card":"*follow defaults","view":"confirm_update_all"}
+{"id":"probe-view:190:core@set/right/followers.rb","op":"render","actor":"admin","card":"Ada Admin+*followers","view":"core"}
+{"id":"probe-view:191:core@set/right/following.rb","op":"render","actor":"admin","card":"Ada Admin+*following","view":"core"}
+{"id":"probe-view:192:core@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"core"}
+{"id":"probe-view:193:edit_buttons@set/self/follow_defaults.rb","op":"render","actor":"admin","card":"*follow defaults","view":"edit_buttons"}
+{"id":"probe-view:194:edit@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"edit"}
+{"id":"probe-view:195:errors@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"errors"}
+{"id":"probe-view:196:follow_button@set/all/follow/follow_link_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"follow_button"}
+{"id":"probe-view:197:follow_item@set/right/follow.rb","op":"render","actor":"admin","card":"*all+Mira Member+*follow","view":"follow_item"}
+{"id":"probe-view:198:follow_status@set/right/follow.rb","op":"render","actor":"admin","card":"*all+Mira Member+*follow","view":"follow_status"}
+{"id":"probe-view:199:follow_tab@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"follow_tab"}
+{"id":"probe-view:200:ignore_tab@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"ignore_tab"}
+{"id":"probe-view:201:one_line_content@set/right/following.rb","op":"render","actor":"admin","card":"Ada Admin+*following","view":"one_line_content"}
+{"id":"probe-view:202:one_line_content@set/type_plus_right/user/follow.rb","op":"render","actor":"admin","card":"Ada Admin+*follow","view":"one_line_content"}
+{"id":"probe-view:203:rule_editor@set/right/following.rb","op":"render","actor":"admin","card":"Ada Admin+*following","view":"rule_editor"}
+{"id":"probe-view:204:status@set/right/following.rb","op":"render","actor":"admin","card":"Ada Admin+*following","view":"status"}
+{"id":"probe-view:205:follow_status@set/all/follow/follow_link_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"follow_status","format":"json"}
+{"id":"probe-view:206:acted_at@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"acted_at"}
+{"id":"probe-view:207:bad_address@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bad_address"}
+{"id":"probe-view:208:blank@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"blank"}
+{"id":"probe-view:209:closed_content@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed_content"}
+{"id":"probe-view:210:closed@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed"}
+{"id":"probe-view:211:codename@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"codename"}
+{"id":"probe-view:212:compact_missing@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compact_missing"}
+{"id":"probe-view:213:content@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content"}
+{"id":"probe-view:214:core@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:215:core@set/type/toggle.rb","op":"render","actor":"admin","card":"*all+*captcha","view":"core"}
+{"id":"probe-view:216:created_at@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"created_at"}
+{"id":"probe-view:217:denial@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"denial"}
+{"id":"probe-view:218:errors@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"errors"}
+{"id":"probe-view:219:home_path@set/self/home.rb","op":"render","actor":"admin","card":"*home","view":"home_path"}
+{"id":"probe-view:220:home_url@set/self/home.rb","op":"render","actor":"admin","card":"*home","view":"home_url"}
+{"id":"probe-view:221:id_url@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"id_url"}
+{"id":"probe-view:222:id@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"id"}
+{"id":"probe-view:223:key@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"key"}
+{"id":"probe-view:224:label@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"label"}
+{"id":"probe-view:225:labeled_content@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"labeled_content"}
+{"id":"probe-view:226:labeled@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"labeled"}
+{"id":"probe-view:227:link@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"link"}
+{"id":"probe-view:228:linkname@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"linkname"}
+{"id":"probe-view:229:name@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"name"}
+{"id":"probe-view:230:nav_link@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nav_link"}
+{"id":"probe-view:231:not_found@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"not_found"}
+{"id":"probe-view:232:one_line_content@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:233:one_line_content@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:234:one_line_content@set/type/html.rb","op":"render","actor":"admin","card":"*all+*head","view":"one_line_content"}
+{"id":"probe-view:235:open_content@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open_content"}
+{"id":"probe-view:236:open@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open"}
+{"id":"probe-view:237:page_title@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"page_title"}
+{"id":"probe-view:238:raw_one_line_content@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"raw_one_line_content"}
+{"id":"probe-view:239:raw@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"raw"}
+{"id":"probe-view:240:server_error@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"server_error"}
+{"id":"probe-view:241:smart_label@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"smart_label"}
+{"id":"probe-view:242:text_without_nests@set/all/text.rb","op":"render","actor":"admin","card":"Decko Bot","view":"text_without_nests"}
+{"id":"probe-view:243:title_link@set/type/uri.rb","op":"render","actor":"admin","card":"Example Site","view":"title_link"}
+{"id":"probe-view:244:title@set/all/title.rb","op":"render","actor":"admin","card":"Decko Bot","view":"title"}
+{"id":"probe-view:245:titled_content@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled_content"}
+{"id":"probe-view:246:titled@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled"}
+{"id":"probe-view:247:type@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"type"}
+{"id":"probe-view:248:unknown@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown"}
+{"id":"probe-view:249:updated_at@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"updated_at"}
+{"id":"probe-view:250:url_link@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"url_link"}
+{"id":"probe-view:251:url_link@set/type/uri.rb","op":"render","actor":"admin","card":"Example Site","view":"url_link"}
+{"id":"probe-view:252:url@set/all/base.rb","op":"render","actor":"admin","card":"Decko Bot","view":"url"}
+{"id":"probe-view:253:content@set/all/css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"css"}
+{"id":"probe-view:254:import@set/all/css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"import","format":"css"}
+{"id":"probe-view:255:titled@set/all/css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled","format":"css"}
+{"id":"probe-view:256:unknown@set/all/css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown","format":"css"}
+{"id":"probe-view:257:url@set/all/css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"url","format":"css"}
+{"id":"probe-view:258:body@set/all/csv.rb","op":"render","actor":"admin","card":"Decko Bot","view":"body","format":"csv"}
+{"id":"probe-view:259:header@set/all/csv.rb","op":"render","actor":"admin","card":"Decko Bot","view":"header","format":"csv"}
+{"id":"probe-view:260:row@set/all/csv.rb","op":"render","actor":"admin","card":"Decko Bot","view":"row","format":"csv"}
+{"id":"probe-view:261:titled@set/all/csv.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled","format":"csv"}
+{"id":"probe-view:262:unknown@set/all/csv.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown","format":"csv"}
+{"id":"probe-view:263:ancestors@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"ancestors","format":"data"}
+{"id":"probe-view:264:atom@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"atom","format":"data"}
+{"id":"probe-view:265:cast@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"cast","format":"data"}
+{"id":"probe-view:266:content@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"data"}
+{"id":"probe-view:267:core@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"data"}
+{"id":"probe-view:268:items@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"items","format":"data"}
+{"id":"probe-view:269:links@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"links","format":"data"}
+{"id":"probe-view:270:molecule@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"molecule","format":"data"}
+{"id":"probe-view:271:nucleus@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nucleus","format":"data"}
+{"id":"probe-view:272:pod@set/all/data.rb","op":"render","actor":"admin","card":"Decko Bot","view":"pod","format":"data"}
+{"id":"probe-view:273:core@set/all/file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"file"}
+{"id":"probe-view:274:style@set/all/file.rb","op":"render","actor":"admin","card":"Decko Bot","view":"style","format":"file"}
+{"id":"probe-view:275:add_button@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"add_button"}
+{"id":"probe-view:276:add_link@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"add_link"}
+{"id":"probe-view:277:add_url@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"add_url"}
+{"id":"probe-view:278:admin@set/type/mod.rb","op":"render","actor":"admin","card":"mod: core","view":"admin"}
+{"id":"probe-view:279:bar_right@set/type/mod.rb","op":"render","actor":"admin","card":"mod: core","view":"bar_right"}
+{"id":"probe-view:280:board_link@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"board_link"}
+{"id":"probe-view:281:compact_missing@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compact_missing"}
+{"id":"probe-view:282:configure_button@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"configure_button"}
+{"id":"probe-view:283:configure_link@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"configure_link"}
+{"id":"probe-view:284:conflict@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"conflict"}
+{"id":"probe-view:285:content_panel@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content_panel"}
+{"id":"probe-view:286:content_with_title@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content_with_title"}
+{"id":"probe-view:287:content@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content"}
+{"id":"probe-view:288:core@set/type/json.rb","op":"render","actor":"admin","card":"*Ace","view":"core"}
+{"id":"probe-view:289:core@set/type/plain_text.rb","op":"render","actor":"admin","card":"verification email+*text message","view":"core"}
+{"id":"probe-view:290:core@set/type/uri.rb","op":"render","actor":"admin","card":"Example Site","view":"core"}
+{"id":"probe-view:291:debug_server_error@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"debug_server_error"}
+{"id":"probe-view:292:demo@set/all/demo.rb","op":"render","actor":"admin","card":"Decko Bot","view":"demo"}
+{"id":"probe-view:293:denial@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"denial"}
+{"id":"probe-view:294:edit_button@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_button"}
+{"id":"probe-view:295:edit_link@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"edit_link"}
+{"id":"probe-view:296:errors@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"errors"}
+{"id":"probe-view:297:favicon_tag@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"favicon_tag"}
+{"id":"probe-view:298:flash@set/all/html/frame.rb","op":"render","actor":"admin","card":"Decko Bot","view":"flash"}
+{"id":"probe-view:299:full_page_link@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"full_page_link"}
+{"id":"probe-view:300:head@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"head"}
+{"id":"probe-view:301:header_title@set/all/html/header.rb","op":"render","actor":"admin","card":"Decko Bot","view":"header_title"}
+{"id":"probe-view:302:header@set/all/html/header.rb","op":"render","actor":"admin","card":"Decko Bot","view":"header"}
+{"id":"probe-view:303:help_link@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"help_link"}
+{"id":"probe-view:304:hidden_content_field@set/all/content.rb","op":"render","actor":"admin","card":"Decko Bot","view":"hidden_content_field"}
+{"id":"probe-view:305:input@set/type/toggle.rb","op":"render","actor":"admin","card":"*all+*captcha","view":"input"}
+{"id":"probe-view:306:labeled_editor@set/type/toggle.rb","op":"render","actor":"admin","card":"*all+*captcha","view":"labeled_editor"}
+{"id":"probe-view:307:labeled@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"labeled"}
+{"id":"probe-view:308:menu_block@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"menu_block"}
+{"id":"probe-view:309:menu@set/all/html/menu.rb","op":"render","actor":"admin","card":"Decko Bot","view":"menu"}
+{"id":"probe-view:310:meta_tags@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"meta_tags"}
+{"id":"probe-view:311:mini_unknown@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"mini_unknown"}
+{"id":"probe-view:312:not_found@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"not_found"}
+{"id":"probe-view:313:one_line_content@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:314:one_line_content@set/type/html.rb","op":"render","actor":"admin","card":"*all+*head","view":"one_line_content"}
+{"id":"probe-view:315:page_title_tag@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"page_title_tag"}
+{"id":"probe-view:316:raw_one_line_content@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"raw_one_line_content"}
+{"id":"probe-view:317:rss_links@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"rss_links"}
+{"id":"probe-view:318:server_error@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"server_error"}
+{"id":"probe-view:319:short_content@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"short_content"}
+{"id":"probe-view:320:stylesheet_tags@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"stylesheet_tags"}
+{"id":"probe-view:321:title_link@set/all/title.rb","op":"render","actor":"admin","card":"Decko Bot","view":"title_link"}
+{"id":"probe-view:322:title_no_link@set/all/title.rb","op":"render","actor":"admin","card":"Decko Bot","view":"title_no_link"}
+{"id":"probe-view:323:title@set/all/title.rb","op":"render","actor":"admin","card":"Decko Bot","view":"title"}
+{"id":"probe-view:324:titled@set/all/html/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled"}
+{"id":"probe-view:325:type_info@set/all/html.rb","op":"render","actor":"admin","card":"Decko Bot","view":"type_info"}
+{"id":"probe-view:326:type@set/all/html.rb","op":"render","actor":"admin","card":"Decko Bot","view":"type"}
+{"id":"probe-view:327:type@set/type/cardtype.rb","op":"render","actor":"admin","card":"RichText","view":"type"}
+{"id":"probe-view:328:universal_edit_button@set/all/html/head.rb","op":"render","actor":"admin","card":"Decko Bot","view":"universal_edit_button"}
+{"id":"probe-view:329:unknown@set/all/html/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"unknown"}
+{"id":"probe-view:330:view_list@set/all/demo.rb","op":"render","actor":"admin","card":"Decko Bot","view":"view_list"}
+{"id":"probe-view:331:source@set/all/js.rb","op":"render","actor":"admin","card":"Decko Bot","view":"source","format":"js"}
+{"id":"probe-view:332:bad_address@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bad_address","format":"json"}
+{"id":"probe-view:333:denial@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"denial","format":"json"}
+{"id":"probe-view:334:errors@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"errors","format":"json"}
+{"id":"probe-view:335:not_found@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"not_found","format":"json"}
+{"id":"probe-view:336:page@set/all/json.rb","op":"render","actor":"admin","card":"Decko Bot","view":"page","format":"json"}
+{"id":"probe-view:337:server_error@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"server_error","format":"json"}
+{"id":"probe-view:338:status@set/all/json.rb","op":"render","actor":"admin","card":"Decko Bot","view":"status","format":"json"}
+{"id":"probe-view:339:denial@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"denial","format":"jsonld"}
+{"id":"probe-view:340:errors@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"errors","format":"jsonld"}
+{"id":"probe-view:341:format_unsupported@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"format_unsupported","format":"jsonld"}
+{"id":"probe-view:342:items@set/all/jsonld.rb","op":"render","actor":"admin","card":"Decko Bot","view":"items","format":"jsonld"}
+{"id":"probe-view:343:not_found@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"not_found","format":"jsonld"}
+{"id":"probe-view:344:server_error@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"server_error","format":"jsonld"}
+{"id":"probe-view:345:test@set/all/error.rb","op":"render","actor":"admin","card":"Decko Bot","view":"test","format":"jsonld"}
+{"id":"probe-view:346:closed@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"closed","format":"rss"}
+{"id":"probe-view:347:comment_box@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"comment_box","format":"rss"}
+{"id":"probe-view:348:content@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"rss"}
+{"id":"probe-view:349:feed_body@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_body","format":"rss"}
+{"id":"probe-view:350:feed_description@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_description","format":"rss"}
+{"id":"probe-view:351:feed_item_description@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_item_description","format":"rss"}
+{"id":"probe-view:352:feed_item@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_item","format":"rss"}
+{"id":"probe-view:353:feed_title@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_title","format":"rss"}
+{"id":"probe-view:354:feed@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed","format":"rss"}
+{"id":"probe-view:355:menu@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"menu","format":"rss"}
+{"id":"probe-view:356:open_content@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open_content","format":"rss"}
+{"id":"probe-view:357:open@set/all/rss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open","format":"rss"}
+{"id":"probe-view:358:core@set/all/text.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"text"}
+{"id":"probe-view:359:core@set/all/yaml.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"yaml"}
+{"id":"probe-view:360:guide@set/all/guide.rb","op":"render","actor":"admin","card":"Decko Bot","view":"guide"}
+{"id":"probe-view:361:help_text@set/all/help.rb","op":"render","actor":"admin","card":"Decko Bot","view":"help_text"}
+{"id":"probe-view:362:help@set/all/help.rb","op":"render","actor":"admin","card":"Decko Bot","view":"help"}
+{"id":"probe-view:363:lead@set/all/help.rb","op":"render","actor":"admin","card":"Decko Bot","view":"lead"}
+{"id":"probe-view:364:popover@set/right/help.rb","op":"render","actor":"admin","card":"*created+*right+*help","view":"popover"}
+{"id":"probe-view:365:act_legend@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"act_legend"}
+{"id":"probe-view:366:act@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"act"}
+{"id":"probe-view:367:action_expanded@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"action_expanded"}
+{"id":"probe-view:368:action_summary@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"action_summary"}
+{"id":"probe-view:369:board_act@set/all/history_board.rb","op":"render","actor":"admin","card":"Decko Bot","view":"board_act"}
+{"id":"probe-view:370:change@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"change"}
+{"id":"probe-view:371:creator_credit@set/all/history_board.rb","op":"render","actor":"admin","card":"Decko Bot","view":"creator_credit"}
+{"id":"probe-view:372:draft_legend@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"draft_legend"}
+{"id":"probe-view:373:history@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"history"}
+{"id":"probe-view:374:last_action_verb@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"last_action_verb"}
+{"id":"probe-view:375:last_action@set/all/history/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"last_action"}
+{"id":"probe-view:376:updated_by@set/all/history_board.rb","op":"render","actor":"admin","card":"Decko Bot","view":"updated_by"}
+{"id":"probe-view:377:actions@set/all/history/export.rb","op":"render","actor":"admin","card":"Decko Bot","view":"actions","format":"json"}
+{"id":"probe-view:378:history@set/all/history/export.rb","op":"render","actor":"admin","card":"Decko Bot","view":"history","format":"json"}
+{"id":"probe-view:379:bar_bottom@set/self/head.rb","op":"render","actor":"admin","card":"*head","view":"bar_bottom"}
+{"id":"probe-view:380:close_modal_link@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"close_modal_link"}
+{"id":"probe-view:381:core@set/right/head.rb","op":"render","actor":"admin","card":"*all+*head","view":"core"}
+{"id":"probe-view:382:core@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"core"}
+{"id":"probe-view:383:core@set/self/head.rb","op":"render","actor":"admin","card":"*head","view":"core"}
+{"id":"probe-view:384:core@set/type/layout_type.rb","op":"render","actor":"admin","card":"Default Layout","view":"core"}
+{"id":"probe-view:385:head_content@set/right/head.rb","op":"render","actor":"admin","card":"*all+*head","view":"head_content"}
+{"id":"probe-view:386:input@set/self/head.rb","op":"render","actor":"admin","card":"*head","view":"input"}
+{"id":"probe-view:387:invite@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"invite"}
+{"id":"probe-view:388:modal_footer@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_footer"}
+{"id":"probe-view:389:modal_link@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_link"}
+{"id":"probe-view:390:modal_menu@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_menu"}
+{"id":"probe-view:391:modal_title@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_title"}
+{"id":"probe-view:392:modal@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal"}
+{"id":"probe-view:393:my_card@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"my_card"}
+{"id":"probe-view:394:nav_item@set/abstract/items.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nav_item"}
+{"id":"probe-view:395:nav_item@set/all/navbar_links.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nav_item"}
+{"id":"probe-view:396:nav_link_in_dropdown@set/all/navbar_links.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nav_link_in_dropdown"}
+{"id":"probe-view:397:navbar_links@set/all/navbar_links.rb","op":"render","actor":"admin","card":"Decko Bot","view":"navbar_links"}
+{"id":"probe-view:398:navbar_links@set/type/html.rb","op":"render","actor":"admin","card":"*all+*head","view":"navbar_links"}
+{"id":"probe-view:399:one_line_content@set/right/head.rb","op":"render","actor":"admin","card":"*all+*head","view":"one_line_content"}
+{"id":"probe-view:400:overlay_header@set/all/overlay.rb","op":"render","actor":"admin","card":"Decko Bot","view":"overlay_header"}
+{"id":"probe-view:401:overlay_help_link@set/all/overlay.rb","op":"render","actor":"admin","card":"Decko Bot","view":"overlay_help_link"}
+{"id":"probe-view:402:overlay_menu@set/all/overlay.rb","op":"render","actor":"admin","card":"Decko Bot","view":"overlay_menu"}
+{"id":"probe-view:403:overlay_title@set/all/overlay.rb","op":"render","actor":"admin","card":"Decko Bot","view":"overlay_title"}
+{"id":"probe-view:404:pop_out_modal_link@set/all/modal.rb","op":"render","actor":"admin","card":"Decko Bot","view":"pop_out_modal_link"}
+{"id":"probe-view:405:sign_in@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"sign_in"}
+{"id":"probe-view:406:sign_out@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"sign_out"}
+{"id":"probe-view:407:sign_up@set/self/account_links.rb","op":"render","actor":"admin","card":"*account links","view":"sign_up"}
+{"id":"probe-view:408:core@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:409:content@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"css"}
+{"id":"probe-view:410:titled@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"titled","format":"css"}
+{"id":"probe-view:411:core@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"csv"}
+{"id":"probe-view:412:content@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"data"}
+{"id":"probe-view:413:core@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"data"}
+{"id":"probe-view:414:autocomplete@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"autocomplete"}
+{"id":"probe-view:415:checkbox@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"checkbox"}
+{"id":"probe-view:416:core@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:417:input@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:418:input@set/type/link_list.rb","op":"render","actor":"admin","card":"*main menu","view":"input"}
+{"id":"probe-view:419:input@set/type/nest_list.rb","op":"render","actor":"admin","card":"*structure+*right+*default","view":"input"}
+{"id":"probe-view:420:list@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"list"}
+{"id":"probe-view:421:multiselect@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"multiselect"}
+{"id":"probe-view:422:nest_list_input@set/type/nest_list.rb","op":"render","actor":"admin","card":"*structure+*right+*default","view":"nest_list_input"}
+{"id":"probe-view:423:one_line_content@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:424:radio@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"radio"}
+{"id":"probe-view:425:select@set/abstract/01_list/html_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"select"}
+{"id":"probe-view:426:view_list@set/abstract/01_list.rb","op":"render","actor":"admin","card":"Decko Bot","view":"view_list"}
+{"id":"probe-view:427:core@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"js"}
+{"id":"probe-view:428:content@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"content","format":"json"}
+{"id":"probe-view:429:links@set/abstract/01_list/other_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"links","format":"json"}
+{"id":"probe-view:430:core@set/type/markdown.rb","op":"render","actor":"admin","card":"*all+*guide","view":"core"}
+{"id":"probe-view:431:core@set/abstract/permission.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:432:input@set/abstract/permission.rb","op":"render","actor":"admin","card":"Decko Bot","view":"input"}
+{"id":"probe-view:433:one_line_content@set/abstract/permission.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:434:pointer_core@set/abstract/permission.rb","op":"render","actor":"admin","card":"Decko Bot","view":"pointer_core"}
+{"id":"probe-view:435:core@set/self/recaptcha_settings.rb","op":"render","actor":"admin","card":"*recaptcha settings","view":"core"}
+{"id":"probe-view:436:core@set/type/setting.rb","op":"render","actor":"admin","card":"*default","view":"core","format":"data"}
+{"id":"probe-view:437:accordion_bar_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"accordion_bar_list"}
+{"id":"probe-view:438:accordion_rule_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"accordion_rule_list"}
+{"id":"probe-view:439:bar_bottom@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"bar_bottom"}
+{"id":"probe-view:440:bar_middle@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"bar_middle"}
+{"id":"probe-view:441:bar_right@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"bar_right"}
+{"id":"probe-view:442:bar_setting_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"bar_setting_list"}
+{"id":"probe-view:443:bar@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"bar"}
+{"id":"probe-view:444:board_rules_tab@set/type/set/html_views/filtered_rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"board_rules_tab"}
+{"id":"probe-view:445:card_select@set/all/set_select.rb","op":"render","actor":"admin","card":"Decko Bot","view":"card_select"}
+{"id":"probe-view:446:core@set/rule/html_views.rb","op":"render","actor":"admin","card":"*all+*read","view":"core"}
+{"id":"probe-view:447:core@set/type/set/html_views.rb","op":"render","actor":"admin","card":"*all","view":"core"}
+{"id":"probe-view:448:core@set/type/setting.rb","op":"render","actor":"admin","card":"*default","view":"core"}
+{"id":"probe-view:449:filtered_accordion_rule_list@set/type/set/html_views/filtered_rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"filtered_accordion_rule_list"}
+{"id":"probe-view:450:grouped_list@set/self/cardtype.rb","op":"render","actor":"admin","card":"Cardtype","view":"grouped_list"}
+{"id":"probe-view:451:help_text@set/rule/board_rules_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"help_text"}
+{"id":"probe-view:452:input@set/type/set/html_views.rb","op":"render","actor":"admin","card":"*all","view":"input"}
+{"id":"probe-view:453:modal_nest_rules@set/type/set/html_views/filtered_rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"modal_nest_rules"}
+{"id":"probe-view:454:modal_pill_setting_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"modal_pill_setting_list"}
+{"id":"probe-view:455:modal_rule@set/rule/board_rules_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"modal_rule"}
+{"id":"probe-view:456:nest_rules@set/type/set/html_views/filtered_rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"nest_rules"}
+{"id":"probe-view:457:one_line_content@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"one_line_content"}
+{"id":"probe-view:458:one_line_content@set/type/set/html_views.rb","op":"render","actor":"admin","card":"*all","view":"one_line_content"}
+{"id":"probe-view:459:one_line_content@set/type/setting.rb","op":"render","actor":"admin","card":"*default","view":"one_line_content"}
+{"id":"probe-view:460:overlay_rule_list_link@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"overlay_rule_list_link"}
+{"id":"probe-view:461:overlay_rule@set/rule/board_rules_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"overlay_rule"}
+{"id":"probe-view:462:overlay_title@set/rule/board_rules_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"overlay_title"}
+{"id":"probe-view:463:pill_setting_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"pill_setting_list"}
+{"id":"probe-view:464:quick_edit_setting_list@set/type/set/html_views/rule_lists.rb","op":"render","actor":"admin","card":"*all","view":"quick_edit_setting_list"}
+{"id":"probe-view:465:quick_edit_success@set/rule/quick_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"quick_edit_success"}
+{"id":"probe-view:466:quick_edit@set/rule/quick_editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"quick_edit"}
+{"id":"probe-view:467:raw_one_line_content@set/rule/bar_view.rb","op":"render","actor":"admin","card":"*all+*read","view":"raw_one_line_content"}
+{"id":"probe-view:468:rule_board_link@set/rule/editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_board_link"}
+{"id":"probe-view:469:rule_edit@set/rule/editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_edit"}
+{"id":"probe-view:470:rule_form_card_editor@set/rule/rule_form.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_form_card_editor"}
+{"id":"probe-view:471:rule_form@set/rule/rule_form.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_form"}
+{"id":"probe-view:472:rule_help@set/rule/editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_help"}
+{"id":"probe-view:473:rule_help@set/type/setting.rb","op":"render","actor":"admin","card":"*default","view":"rule_help"}
+{"id":"probe-view:474:rule_nest_editor_link@set/rule/editor.rb","op":"render","actor":"admin","card":"*all+*read","view":"rule_nest_editor_link"}
+{"id":"probe-view:475:set_label@set/type/set/html_views.rb","op":"render","actor":"admin","card":"*all","view":"set_label"}
+{"id":"probe-view:476:template_link@set/type/set/html_views/template.rb","op":"render","actor":"admin","card":"*all","view":"template_link"}
+{"id":"probe-view:477:core@set/abstract/02_coffee_script.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:478:core@set/abstract/00_script.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:479:javascript_include_tag@set/abstract/00_script.rb","op":"render","actor":"admin","card":"Decko Bot","view":"javascript_include_tag"}
+{"id":"probe-view:480:javascript_include_tag@set/all/head_javascript.rb","op":"render","actor":"admin","card":"Decko Bot","view":"javascript_include_tag"}
+{"id":"probe-view:481:javascript_include_tag@set/right/script.rb","op":"render","actor":"admin","card":"*all+*script","view":"javascript_include_tag"}
+{"id":"probe-view:482:javascript_tags@set/all/head_javascript.rb","op":"render","actor":"admin","card":"Decko Bot","view":"javascript_tags"}
+{"id":"probe-view:483:remote_script_tags@set/type_plus_right/mod/script.rb","op":"render","actor":"admin","card":"mod: format+*script","view":"remote_script_tags"}
+{"id":"probe-view:484:remote_script_tags@set/type_plus_right/set/script.rb","op":"render","actor":"admin","card":"*all+*script","view":"remote_script_tags"}
+{"id":"probe-view:485:script_calls@set/all/head_javascript.rb","op":"render","actor":"admin","card":"Decko Bot","view":"script_calls"}
+{"id":"probe-view:486:script_variables@set/all/head_javascript.rb","op":"render","actor":"admin","card":"Decko Bot","view":"script_variables"}
+{"id":"probe-view:487:compressed@set/abstract/00_script.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compressed","format":"js"}
+{"id":"probe-view:488:core@set/abstract/01_java_script.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"js"}
+{"id":"probe-view:489:core@set/abstract/script_group.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"js"}
+{"id":"probe-view:490:card_list@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"card_list"}
+{"id":"probe-view:491:core@set/abstract/search_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:492:count@set/abstract/0_search.rb","op":"render","actor":"admin","card":"Decko Bot","view":"count"}
+{"id":"probe-view:493:no_search_results@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"no_search_results"}
+{"id":"probe-view:494:search_count@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"search_count"}
+{"id":"probe-view:495:search_error@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"search_error"}
+{"id":"probe-view:496:search_error@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"search_error"}
+{"id":"probe-view:497:title@set/self/recent.rb","op":"render","actor":"admin","card":"*recent","view":"title"}
+{"id":"probe-view:498:body@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"body","format":"csv"}
+{"id":"probe-view:499:card_list@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"card_list","format":"data"}
+{"id":"probe-view:500:add_autocomplete_item@set/all/autocomplete.rb","op":"render","actor":"admin","card":"Decko Bot","view":"add_autocomplete_item"}
+{"id":"probe-view:501:bar@set/abstract/search_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"bar"}
+{"id":"probe-view:502:card_list@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"card_list"}
+{"id":"probe-view:503:checkbox_list@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"checkbox_list"}
+{"id":"probe-view:504:core@set/abstract/search_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:505:core@set/self/recent.rb","op":"render","actor":"admin","card":"*recent","view":"core"}
+{"id":"probe-view:506:core@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"core"}
+{"id":"probe-view:507:count@set/abstract/0_search.rb","op":"render","actor":"admin","card":"Decko Bot","view":"count"}
+{"id":"probe-view:508:goto_autocomplete_item@set/all/autocomplete.rb","op":"render","actor":"admin","card":"Decko Bot","view":"goto_autocomplete_item"}
+{"id":"probe-view:509:no_search_results@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"no_search_results"}
+{"id":"probe-view:510:one_line_content@set/abstract/search_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"one_line_content"}
+{"id":"probe-view:511:results_for_keyword@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"results_for_keyword"}
+{"id":"probe-view:512:search_box@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"search_box"}
+{"id":"probe-view:513:title@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"title"}
+{"id":"probe-view:514:complete@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"complete","format":"json"}
+{"id":"probe-view:515:molecule@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"molecule","format":"json"}
+{"id":"probe-view:516:name_complete@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"name_complete","format":"json"}
+{"id":"probe-view:517:name_match@set/abstract/0_search/views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"name_match","format":"json"}
+{"id":"probe-view:518:search_box_complete@set/self/search.rb","op":"render","actor":"admin","card":"*search","view":"search_box_complete","format":"json"}
+{"id":"probe-view:519:select2_option@set/all/autocomplete.rb","op":"render","actor":"admin","card":"Decko Bot","view":"select2_option","format":"json"}
+{"id":"probe-view:520:feed_body@set/abstract/search_views.rb","op":"render","actor":"admin","card":"Decko Bot","view":"feed_body","format":"rss"}
+{"id":"probe-view:521:feed_item_description@set/self/recent.rb","op":"render","actor":"admin","card":"*recent","view":"feed_item_description","format":"rss"}
+{"id":"probe-view:522:compiled@set/abstract/01_css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compiled","format":"css"}
+{"id":"probe-view:523:compiled@set/abstract/02_scss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compiled","format":"css"}
+{"id":"probe-view:524:compressed@set/abstract/01_css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"compressed","format":"css"}
+{"id":"probe-view:525:concat@set/type/skin.rb","op":"render","actor":"admin","card":"Probe Skin","view":"concat","format":"css"}
+{"id":"probe-view:526:core@set/abstract/02_scss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"css"}
+{"id":"probe-view:527:import@set/abstract/01_css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"import","format":"css"}
+{"id":"probe-view:528:box_bottom@set/abstract/skin_box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box_bottom"}
+{"id":"probe-view:529:box_middle@set/abstract/skin_box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box_middle"}
+{"id":"probe-view:530:box@set/abstract/skin_box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"box"}
+{"id":"probe-view:531:core@set/abstract/01_css.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core"}
+{"id":"probe-view:532:customize_button@set/abstract/skin_box.rb","op":"render","actor":"admin","card":"Decko Bot","view":"customize_button"}
+{"id":"probe-view:533:remote_include_tags@set/type_plus_right/mod/style.rb","op":"render","actor":"admin","card":"mod: format+*style","view":"remote_include_tags"}
+{"id":"probe-view:534:remote_style_tags@set/self/style_mods.rb","op":"render","actor":"admin","card":"style: mods","view":"remote_style_tags"}
+{"id":"probe-view:535:stylesheet_include_tag@set/abstract/style_group.rb","op":"render","actor":"admin","card":"Decko Bot","view":"stylesheet_include_tag"}
+{"id":"probe-view:536:stylesheet_include_tag@set/type_plus_right/mod/style.rb","op":"render","actor":"admin","card":"mod: format+*style","view":"stylesheet_include_tag"}
+{"id":"probe-view:537:stylesheet_path@set/type_plus_right/set/style.rb","op":"render","actor":"admin","card":"*all+*style","view":"stylesheet_path"}
+{"id":"probe-view:538:core@set/abstract/02_scss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"scss"}
+{"id":"probe-view:539:core@set/abstract/style_group.rb","op":"render","actor":"admin","card":"Decko Bot","view":"core","format":"scss"}
+{"id":"probe-view:540:labeled@set/abstract/02_scss.rb","op":"render","actor":"admin","card":"Decko Bot","view":"labeled","format":"scss"}
+{"id":"probe-view:541:pills_static@set/all/tabs.rb","op":"render","actor":"admin","card":"Decko Bot","view":"pills_static"}
+{"id":"probe-view:542:pills@set/all/tabs.rb","op":"render","actor":"admin","card":"Decko Bot","view":"pills"}
+{"id":"probe-view:543:tabs_static@set/all/tabs.rb","op":"render","actor":"admin","card":"Decko Bot","view":"tabs_static"}
+{"id":"probe-view:544:tabs@set/abstract/tabs.rb","op":"render","actor":"admin","card":"Decko Bot","view":"tabs"}
+{"id":"probe-view:545:tabs@set/all/tabs.rb","op":"render","actor":"admin","card":"Decko Bot","view":"tabs"}
+{"id":"probe-view:546:link_editor@set/all/reference_editor/link_editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"link_editor"}
+{"id":"probe-view:547:modal_link_editor@set/all/reference_editor/link_editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_link_editor"}
+{"id":"probe-view:548:modal_nest_editor@set/all/reference_editor/nest_editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_nest_editor"}
+{"id":"probe-view:549:modal_nest_image@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"modal_nest_image"}
+{"id":"probe-view:550:nest_content@set/all/reference_editor/nest_editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nest_content"}
+{"id":"probe-view:551:nest_editor@set/all/reference_editor/nest_editor.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nest_editor"}
+{"id":"probe-view:552:nest_image@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"nest_image"}
+{"id":"probe-view:553:new_image_buttons@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_image_buttons"}
+{"id":"probe-view:554:new_image@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"new_image"}
+{"id":"probe-view:555:change_create_to_update@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"change_create_to_update","format":"js"}
+{"id":"probe-view:556:open_nest_editor@set/all/reference_editor/nest_image.rb","op":"render","actor":"admin","card":"Decko Bot","view":"open_nest_editor","format":"js"}
