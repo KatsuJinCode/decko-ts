@@ -20,6 +20,7 @@ import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { recordJourneyNetwork } from "./lib/journey-network.mjs";
+import { admitJourneyOutput } from "./lib/journey-output-admission.mjs";
 import { captureProvenance } from "./lib/journey-provenance.mjs";
 import { snapshot, delta } from "../runner/deck-state.mjs";
 
@@ -466,7 +467,7 @@ if (!(shardCount >= 1 && shardIndex >= 0 && shardIndex < shardCount)) throw new 
 const suffix = shardCount > 1 ? `.shard-${shardIndex}` : "";
 mkdirSync(args.out, { recursive: true });
 const logFile = path.join(args.out, `server${suffix}.log`);
-writeFileSync(logFile, "");
+admitJourneyOutput({ out: args.out, suffix, runId: provenance.runId, ids: journeys.filter((j, index) => index % shardCount === shardIndex && (!filter || filter.test(j.id))).map(j => j.id) });
 const summary = [];
 for (const [index, journey] of journeys.entries()) {
   if (index % shardCount !== shardIndex) continue;

@@ -384,9 +384,7 @@
           "observe": "captcha off configured by administrator"
         },
         {
-          "click": {
-            "link": "Sign out"
-          }
+          "fresh_session": true
         },
         {
           "visit": "/"
