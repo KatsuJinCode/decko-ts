@@ -112,4 +112,29 @@ on the URL Bunny returns, and the actions test storage read a seeded card's
 id with `last_insert_rowid()` in a separate request, which over HTTP can run
 on another connection and return 0.
 
+`BunnyDbDriver` now treats `TRANSACTION_TIMEOUT` in answer to `BEGIN
+IMMEDIATE` as a held lock and retries it within the transaction lock
+timeout; the same code on any later statement surfaces as a failed save.
+`tests/card/drivers/bunny-db-transaction-timeout.test.ts` and a
+concurrent-saves scenario reproduce Bunny's answer on the Hrana test server.
+
+Bunny Database, 2026-10-14, after that change (same command, a new scratch
+database in `us-east-1`, primary region `LA`, no replicas; 410 s; exit 1;
+the database and its group were deleted afterwards):
+
+| Suite | Result |
+|---|---|
+| transaction conformance and save scenarios | PASS, 17 of 17 |
+| atomic saves | PASS, 11 of 11 |
+| concurrent saves | PASS, 3 of 3 |
+| multi-user read isolation | FAIL, 1 of 2: concurrent writers with failing saves |
+| scratch database emptied | PASS |
+
+The remaining failure is again `Transaction timed out (code
+TRANSACTION_TIMEOUT)`, after 21.8 s, in the case with four writers and two
+readers. It is not a `BEGIN` that ran out of retries (that ends in
+`TransactionLockTimeoutError` after 30 s), so Bunny reported it on a
+statement after `BEGIN` or on a stand-alone statement; the runner's output
+does not show which. Not yet investigated.
+
 D1 and Turso have not been run through this runner against hosted services.
