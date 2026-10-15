@@ -43,7 +43,7 @@ export const MYSQL_SESSION_SETTINGS = [
  * engine issues; anything else passes through unchanged.
  */
 export function sqliteToMysql(sql: string): string {
-  return outsideQuotes(sql, (part) =>
+  const translated = outsideQuotes(sql, (part) =>
     part
       // Words MySQL reserves that SQLite accepts as bare column names
       // (cards.key). Quoted unless already qualified by a table alias or
@@ -56,6 +56,8 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\bAS\s+(?:NOT\s+)?MATERIALIZED\s*\(/gi, "AS (")
       .replace(/\bINSERT\s+OR\s+IGNORE\b/gi, "INSERT IGNORE")
       .replace(/\bINSERT\s+OR\s+REPLACE\b/gi, "REPLACE")
+      // SQLite's rowid counter keyword; MySQL's is AUTO_INCREMENT.
+      .replace(/\bAUTOINCREMENT\b/gi, "AUTO_INCREMENT")
       // CAST target types (the operand may be a quoted literal in another
       // part, so only the target is matched). A TEXT cast gets a width: a
       // recursive CTE's column takes its type from the anchor row.
@@ -63,6 +65,55 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\s+AS\s+INTEGER\s*\)/gi, " AS SIGNED)")
       .replace(/\bLIMIT\s+-1\b/gi, "LIMIT 18446744073709551615"),
   );
+  return /^\s*CREATE\s+TABLE\b/i.test(translated) ? typeUntypedColumns(translated) : translated;
+}
+
+/** Table-constraint keywords: a bare word starting with one of these is not a
+ *  column definition. */
+const CONSTRAINT_WORDS = new Set(["PRIMARY", "UNIQUE", "FOREIGN", "KEY", "INDEX", "CONSTRAINT", "CHECK", "FULLTEXT", "SPATIAL"]);
+
+/**
+ * SQLite accepts a column with no declared type (`z` in `CREATE TABLE t (z)`);
+ * MySQL needs one. Such a column is given TEXT, the affinity an untyped column
+ * takes its values under in the port's PostgreSQL translation too. Only the
+ * top-level column list is read: a definition that is one bare identifier is
+ * a column, anything with parentheses or a constraint keyword is left alone.
+ */
+function typeUntypedColumns(sql: string): string {
+  const open = sql.indexOf("(");
+  if (open < 0) return sql;
+  let depth = 0;
+  let quote: string | undefined;
+  let start = open + 1;
+  let out = sql.slice(0, open + 1);
+  const flush = (end: number) => {
+    const def = sql.slice(start, end);
+    const bare = /^(\s*)("?)([A-Za-z_]\w*)\2(\s*)$/.exec(def);
+    if (bare && !CONSTRAINT_WORDS.has(bare[3].toUpperCase())) out += `${bare[1]}${bare[2]}${bare[3]}${bare[2]} TEXT${bare[4]}`;
+    else out += def;
+  };
+  for (let i = open + 1; i < sql.length; i++) {
+    const ch = sql[i];
+    if (quote) {
+      if (ch === quote) quote = undefined;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")") {
+      if (depth === 0) {
+        flush(i);
+        out += sql.slice(i);
+        return out;
+      }
+      depth--;
+    } else if (ch === "," && depth === 0) {
+      flush(i);
+      out += ",";
+      start = i + 1;
+    }
+  }
+  return sql;
 }
 
 /** Apply `rewrite` to the parts of `sql` outside quoted strings and
