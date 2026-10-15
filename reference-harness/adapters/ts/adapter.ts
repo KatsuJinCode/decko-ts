@@ -380,6 +380,22 @@ async function opAsk(req: Req): Promise<Json> {
 }
 
 // ---- write -----------------------------------------------------------------------
+// A subcard value is a string (its content) or an object: {content, fields}
+// where fields are its own subcards (the nesting deck.json and the sign-up
+// form use, e.g. "+*account": {"fields": {"+*email": "..."}}).
+function subcardsFrom(hash: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(hash).map(([k, v]) => {
+      if (v === null || typeof v !== "object") return [k, { content: String(v) }];
+      const o = v as Record<string, unknown>;
+      const sub: Record<string, unknown> = {};
+      if (o.content !== undefined) sub.content = String(o.content);
+      if (o.fields !== undefined) sub.subcards = subcardsFrom(o.fields as Record<string, unknown>);
+      return [k, sub];
+    }),
+  );
+}
+
 async function opWrite(req: Req): Promise<Json> {
   const actorRec = await actorRecord(req.actor);
   const actor =
@@ -408,9 +424,7 @@ async function opWrite(req: Req): Promise<Json> {
   if (fields.type !== undefined) input.typeName = fields.type;
   if (fields.content !== undefined) input.content = fields.content;
   if (fields.fields !== undefined) {
-    input.subcards = Object.fromEntries(
-      Object.entries(fields.fields as Record<string, unknown>).map(([k, v]) => [k, { content: String(v) }]),
-    );
+    input.subcards = subcardsFrom(fields.fields as Record<string, unknown>);
   }
   let saved = true;
   let errors: Json[] = [];

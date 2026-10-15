@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-fixture-manifest/1",
   "fixture": "synthetic-v2-mod-probes",
-  "digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
+  "digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
   "files": {
     "deck.json": "8a3fb5fd9ec83aed338fef0f7b426ee65c348e2a4851211bb0e647cf79cc8efd",
     "deck/deck.sqlite3": "1bd49e6fb97063a2df49445a01579b124e5cf39ad7f46f11761eb9d9e76872ec",
@@ -15,9 +15,9 @@
     "files/report-2.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
     "files/report-3.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
     "files/report-4.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
-    "ops/probes.json": "97b0351a3fb299e50cf4e94ef054498eac0928bd9ed15ac6a0dcbfb507af6185",
+    "ops/probes.json": "5f8686202eda27748bf05c01d78458899e74618f263b360efff5c465fb40e137",
     "ops/render.jsonl": "595ae6e3789cddaf31d032df8b9419b6567948936e619d0902101099068481c3",
-    "ops/scenarios.json": "d45b90f56439f9b679c31cf097254e9d99e6bb02c5cf9e241ac2d88ded355c4e",
+    "ops/scenarios.json": "7a8cee05114e3db80c886f8e99a3b36ef92ed1aa6c55188a8d96d0d2d3cbe1e9",
     "ops/semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }

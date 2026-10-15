@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-expected-manifest/1",
   "fixture": "synthetic-v2-mod-probes",
-  "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
+  "fixture_digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
   "oracle": {
     "variant": "stock",
     "patches": [],
@@ -118,15 +118,15 @@
   },
   "runs": {
     "render": {
-      "started": "2026-10-15T14:32:02.042Z",
-      "finished": "2026-10-15T14:35:12.415Z",
+      "started": "2026-10-15T19:41:53.819Z",
+      "finished": "2026-10-15T19:45:04.802Z",
       "complete": true,
       "selection": null,
       "ops_total": 556,
       "ops_run": 556,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
+        "commit": "e51125a9c1d454f12a706723b38f1a9f99e253f6",
         "dirty": true
       },
       "engine": {
@@ -141,9 +141,9 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
+      "fixture_digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
       "fixture_problems": [],
-      "ms_per_op": 297,
+      "ms_per_op": 280,
       "session_writes": {
         "cards": {
           "inserted": [],
@@ -163,15 +163,15 @@
       }
     },
     "semantics": {
-      "started": "2026-10-15T14:35:12.416Z",
-      "finished": "2026-10-15T14:35:44.452Z",
+      "started": "2026-10-15T19:45:04.804Z",
+      "finished": "2026-10-15T19:45:27.768Z",
       "complete": true,
       "selection": null,
       "ops_total": 0,
       "ops_run": 0,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
+        "commit": "e51125a9c1d454f12a706723b38f1a9f99e253f6",
         "dirty": true
       },
       "engine": {
@@ -186,21 +186,21 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
+      "fixture_digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
       "fixture_problems": [],
       "ms_per_op": 0,
       "session_writes": {}
     },
     "scenarios": {
-      "started": "2026-10-15T14:35:44.455Z",
-      "finished": "2026-10-15T14:53:01.566Z",
+      "started": "2026-10-15T19:45:27.770Z",
+      "finished": "2026-10-15T20:38:25.037Z",
       "complete": true,
       "selection": null,
-      "ops_total": 1,
-      "ops_run": 1,
+      "ops_total": 115,
+      "ops_run": 115,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
+        "commit": "e51125a9c1d454f12a706723b38f1a9f99e253f6",
         "dirty": true
       },
       "engine": {
@@ -215,27 +215,27 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
+      "fixture_digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
       "fixture_problems": [],
-      "steps_total": 530,
-      "steps_run": 530
+      "steps_total": 535,
+      "steps_run": 535
     }
   },
   "files": {
     "render.jsonl": {
-      "sha256": "913335d27f786b96a27d3db17d87541eb729a553603f21d0da1e14ab8f4efe6a",
-      "content_sha256": "913335d27f786b96a27d3db17d87541eb729a553603f21d0da1e14ab8f4efe6a",
-      "bytes": 1321712
+      "sha256": "82b9baa8f221890ddc894907222369053e18da5db883a6e3dc749cc3a8d644a7",
+      "content_sha256": "82b9baa8f221890ddc894907222369053e18da5db883a6e3dc749cc3a8d644a7",
+      "bytes": 1192691
     },
     "run-meta.json": {
-      "sha256": "86f54cf2d058df28bf17f91ca0f6e7654c68a6e80d018f8b4d07e6b725aba8e3",
-      "content_sha256": "86f54cf2d058df28bf17f91ca0f6e7654c68a6e80d018f8b4d07e6b725aba8e3",
-      "bytes": 2888
+      "sha256": "5bea451e7f071d802b688c713143f9d0d6358efa072f0f21f26a22eade2f23eb",
+      "content_sha256": "5bea451e7f071d802b688c713143f9d0d6358efa072f0f21f26a22eade2f23eb",
+      "bytes": 2892
     },
     "scenarios.jsonl": {
-      "sha256": "990f4a542bd3fbd3ff485b61b263dc710309d79f8a70102d1d5e14a3c9480e46",
-      "content_sha256": "990f4a542bd3fbd3ff485b61b263dc710309d79f8a70102d1d5e14a3c9480e46",
-      "bytes": 3627046
+      "sha256": "da0b761464dc4786345b5da92cec5b122b01c7555983bff036e7e02b3c9b4c43",
+      "content_sha256": "da0b761464dc4786345b5da92cec5b122b01c7555983bff036e7e02b3c9b4c43",
+      "bytes": 4151335
     },
     "semantics.jsonl": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

@@ -510,7 +510,7 @@ export function rowProfile(step) {
   return profile;
 }
 
-const failedIdIsProbe = (id) => /^(probe-view:|mod-event-probes#)/.test(id);
+const failedIdIsProbe = (id) => /^(probe-view:|probe-e\d+#)/.test(id);
 const sameProfile = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // Reduce the probe fixture's grade report (reference-harness/runner/grade.mjs
@@ -528,53 +528,61 @@ const sameProfile = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 //   not-probed — the planner could not realise the declaration's set on this
 //     deck; the reason is carried.
 export function summariseProbes(repo, gradeReport, probes) {
+  if (!["pass", "fail"].includes(gradeReport.verdict)) {
+    throw new Error(`probe evidence requires a complete valid grade, got ${gradeReport.verdict}`);
+  }
   const fixtureDir = join(repo, "reference-harness", "fixtures", "synthetic-v2-mod-probes");
-  const expected = readFileSync(join(fixtureDir, "expected", "scenarios.jsonl"), "utf8")
-    .split(/\r?\n/)
-    .filter((l) => l.trim())
-    .map((l) => JSON.parse(l))
-    .find((s) => s.id === "mod-event-probes");
-  if (!expected) throw new Error("the probe fixture has no expected mod-event-probes scenario");
+  // Every probe is its own scenario (a fresh session on a fresh deck copy), so
+  // the expected answers are looked up per probe: a probe's ids depend only on
+  // that probe.
+  const expected = new Map(
+    readFileSync(join(fixtureDir, "expected", "scenarios.jsonl"), "utf8")
+      .split(/\r?\n/)
+      .filter((l) => l.trim())
+      .map((l) => JSON.parse(l))
+      .map((sc) => [sc.id, sc]),
+  );
   const failed = new Set([
     ...(gradeReport.failures?.persistence ?? []).map((f) => f.id),
     ...(gradeReport.failures?.side_effects ?? []).map((f) => f.id),
   ]);
-  const stepId = (i) => `mod-event-probes#${i + 1}`;
-  const probeSteps = (range) => {
-    const [a, b] = range;
-    const out = [];
-    for (let i = a; i <= b; i++) out.push({ index: i, step: expected.steps[i], id: stepId(i) });
-    return out;
-  };
-  const baselineProfile = {};
-  for (const p of probes.events.plan) {
-    if (!p.baseline) continue;
-    for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) {
-      const label = probes.step_labels[i];
-      baselineProfile[`${p.probe}:${label.action}`] = rowProfile(expected.steps[i]);
-    }
-  }
   const events = {};
   for (const p of probes.events.plan) {
     if (p.status !== "planned") {
       events[p.event] = { evidence: "not-probed", reason: p.reason, file: p.file };
       continue;
     }
-    const steps = probeSteps(p.steps);
+    const scenario = expected.get(p.scenario);
+    if (!scenario) throw new Error(`no expected scenario ${p.scenario}`);
+    const stepId = (i) => `${p.scenario}#${i + 1}`;
+    const steps = [];
+    for (let i = p.steps[0]; i <= p.steps[1]; i++) steps.push({ index: i, step: scenario.steps[i], id: stepId(i) });
     const differs = steps.filter((s) => failed.has(s.id));
-    const action = probes.step_labels[p.steps[0]].action;
-    const baseline = baselineProfile[`${p.probe}:${action}`] ?? null;
-    const observed = baseline
-      ? steps.some((s) => !s.step.error && !sameProfile(rowProfile(s.step), baseline))
-      : false;
+    // The baseline's profile for each action (create, update, delete), read from
+    // the same scenario: the probe’s step is compared with the baseline’s step of
+    // the same action.
+    const baselineFor = {};
+    if (p.baseline) {
+      for (let i = p.baseline.steps[0]; i <= p.baseline.steps[1]; i++) baselineFor[p.labels[i].action] = rowProfile(scenario.steps[i]);
+    }
+    const observed = steps.some((s) => {
+      const action = p.labels[s.index].action;
+      // Setup writes are not evidence for an event declared on another action.
+      if (p.on && p.on !== "save" && p.on !== action) return false;
+      if (p.on === "save" && action !== "create" && action !== "update") return false;
+      const b = baselineFor[action];
+      return b && !b.error && !s.step.error && !sameProfile(rowProfile(s.step), b);
+    });
+    const baseline = p.baseline ? true : null;
     events[p.event] = {
       evidence: observed ? (differs.length ? "graded-differs" : "graded-identical") : "not-observed",
       probe: p.probe,
+      scenario: p.scenario,
       card: p.card,
       on: p.on,
       when: p.when,
       file: p.file,
-      steps: p.steps.map((i) => `${stepId(i)}`),
+      steps: steps.map((s) => s.id),
       ...(differs.length ? { differing_steps: differs.map((s) => s.id) } : {}),
       ...(observed ? {} : { reason: baseline ? "the probe's rows are identical to a same-shape baseline: nothing shows the event fired" : "no same-shape baseline (the event's card is the probe card itself)" }),
     };

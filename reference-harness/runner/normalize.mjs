@@ -223,20 +223,27 @@ const BACKTRACE_DIV = /(&lt;\/p&gt;\s*&lt;div&gt;)([\s\S]*?)(&lt;\/div&gt;)/;
  *  tokens become placeholders, then the backtrace frame list inside the
  *  div becomes N6#frames - everything outside the div's content stays
  *  exact. */
-function canonicalizeDebugTitle(body, note) {
-  return body
-    .replace(CAPTURE_HOST_PATH, () => {
+function canonicalizeDebugTitle(body, note, on) {
+  // N7 first (the capture host's path and heap tokens), then N6 (the frame
+  // list inside the backtrace div). Each fires only when its rule is on.
+  let out = body;
+  if (on("N7")) {
+    out = out.replace(CAPTURE_HOST_PATH, () => {
       note("N7");
       return "N7#path";
-    })
-    .replace(HEAP_ADDRESS, () => {
+    });
+    out = out.replace(HEAP_ADDRESS, () => {
       note("N7");
       return "N7#addr";
-    })
-    .replace(BACKTRACE_DIV, (_, pre, _frames, post) => {
+    });
+  }
+  if (on("N6")) {
+    out = out.replace(BACKTRACE_DIV, (_, pre, _frames, post) => {
       note("N6");
       return pre + FRAME_MARKER + post;
     });
+  }
+  return out;
 }
 
 /**
@@ -258,14 +265,21 @@ function canonicalizeDebugTitle(body, note) {
  * A form whose pattern never occurs is never named, so a grade reports only
  * the forms it reached.
  */
-export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
+export function normalizeHtml(html, { classTokenOrder = true, applied, rules } = {}) {
   if (typeof html !== "string") return html;
+  // rules, when given, limits which canonical forms may fire: "N6" records an
+  // answer with only the debug-title forms (the backtrace frames and the
+  // capture host paths) masked, so the recorded bytes carry no machine path.
+  // Every rule the caller leaves out is a no-op, so a grade (which normalises
+  // both sides with the full set) compares the same bytes it compared before.
+  const on = (rule) => !rules || rules.includes(rule);
   const note = (rule) => {
-    if (applied) applied.add(rule);
+    if (applied && on(rule)) applied.add(rule);
   };
   const seen = new Map();
   const collapse = (text) =>
     text.replace(COLLAPSE_ID, (_, pre, digits, post) => {
+      if (!on("N4")) return `${pre}${digits}${post}`;
       note("N4");
       let k = seen.get(digits);
       if (k === undefined) {
@@ -275,13 +289,14 @@ export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
       return `${pre}${k}${post}`;
     });
   const elapse = (text) =>
-    text.replace(RELATIVE_TIME, () => {
+    text.replace(RELATIVE_TIME, (match) => {
+      if (!on("N5")) return match;
       note("N5");
       return "N5#elapsed";
     });
   // N9 first: an object address is masked before N7's heap-address rule would
   // see the same digits inside a debug title, so each mask names its own rule.
-  const nine = (text) => maskHtmlAddresses(text, note);
+  const nine = (text) => on("N9") ? maskHtmlAddresses(text, note) : text;
   let out = "";
   let i = 0;
   const lower = html.toLowerCase();
@@ -336,7 +351,7 @@ export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
     }
     const tagEnd = j >= html.length ? html.length : j + 1;
     const tagText = html.slice(i, tagEnd);
-    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine);
+    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine, on);
     i = tagEnd;
     // A raw text element's body is text, not markup: copied verbatim,
     // whatever it contains. xmp closes like the others, at its end tag;
@@ -380,7 +395,7 @@ function maskHtmlAddresses(text, note) {
 /** Applies the attribute-level rules inside one tag's text. Walks the
  *  attribute region the way the HTML tokenizer does — names, `=`, quoted or
  *  unquoted values — and copies every byte no rule rewrites. */
-function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine) {
+function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine, on) {
   let out = "";
   let k = 1; // past `<`
   while (k < tagText.length && !isWhitespace(tagText[k]) && tagText[k] !== ">" && tagText[k] !== "/") k++;
@@ -419,19 +434,19 @@ function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note
       const isTitle = name.toLowerCase() === "title";
       let next = nine(value); // N9 first, so N7's heap rule never claims the address
       if (name === "data-slot-id" && /^[0-9a-f]{20}$/.test(value)) {
-        next = "SLOT"; // N1: the exact mask shape, and nothing looser
+        next = on("N1") ? "SLOT" : value; // N1: the exact mask shape, and nothing looser
         note("N1");
       } else {
         if (isClass && classTokenOrder) {
           // N3 reaches a class attribute with two or more tokens
           if (value.split(/[ \t\n\r\f]+/).filter((t) => t !== "").length >= 2) note("N3");
-          next = sortClassTokens(value);
+          if (on("N3")) next = sortClassTokens(value);
         }
-        next = collapse(next); // N4, shape only, seen-map shared with the text regions
-        next = elapse(next); // N5, shape only
+        if (on("N4")) next = collapse(next); // N4, shape only, seen-map shared with the text regions
+        if (on("N5")) next = elapse(next); // N5, shape only
       }
       if (isTitle && ERROR_SPAN_TITLE.test(next)) {
-        next = canonicalizeDebugTitle(next, note); // N7 then N6
+        next = canonicalizeDebugTitle(next, note, on); // N7 then N6
       }
       out += q + next + (closeQ === -1 ? "" : q);
       k = closeQ === -1 ? tagText.length : closeQ + 1;
@@ -479,6 +494,15 @@ export function sortClassTokens(value) {
  *  class-token order is on its own). */
 export function normalizeRender(result, options) {
   return result && typeof result === "object" && typeof result.html === "string" ? { ...result, html: normalizeHtml(result.html, options) } : result;
+}
+
+// A render answer recorded with the debug-title forms only (N6, N7): the
+// backtrace frames and the capture host paths never reach the recorded bytes.
+// The grader normalises both sides again with the full rule set, so a recorded
+// answer is graded exactly as it would have been recorded raw.
+export const RECORD_TIME_RULES = ["N6", "N7"];
+export function normalizeForRecord(result) {
+  return normalizeRender(result, { rules: RECORD_TIME_RULES });
 }
 
 /** Stable JSON: object keys sorted, so key order never counts; leaf strings

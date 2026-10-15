@@ -16,6 +16,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { normalizeForRecord } from "./normalize.mjs";
 import { AdapterSession, loadAdapterManifest } from "./adapter-process.mjs";
 import { rawDelta, snapshot, splitDelta } from "./deck-state.mjs";
 import { WITHHELD_DIR, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
@@ -27,6 +28,8 @@ const manifest = loadAdapterManifest(args.adapter);
 const fixture = path.resolve(args.fixture);
 const outDir = path.resolve(args.out);
 const kinds = (args.kinds ?? "render,semantics,scenarios").split(",");
+const scenarioWorkers = Number(args["scenario-workers"] ?? 1);
+if (!Number.isSafeInteger(scenarioWorkers) || scenarioWorkers < 1) throw new Error("--scenario-workers must be a positive integer");
 for (const k of kinds) if (!["render", "semantics", "scenarios"].includes(k)) throw new Error(`unknown kind ${k}`);
 const filter = args.filter ? new RegExp(args.filter) : null;
 const limit = args.limit ? Number(args.limit) : Infinity;
@@ -93,13 +96,22 @@ function convertToRollbackJournal(dbPath) {
 }
 
 async function withSession(root, fn) {
+  const started = Date.now();
   const stage = stageDeck(root);
+  stage.timings = { stage_ms: Date.now() - started };
   const session = new AdapterSession(manifest, stage.env, { log });
   try {
+    const bootStarted = Date.now();
     const hello = await session.start();
-    return await fn(session, stage, hello);
+    stage.timings.boot_ms = Date.now() - bootStarted;
+    const operationsStarted = Date.now();
+    const result = await fn(session, stage, hello);
+    stage.timings.operations_ms = Date.now() - operationsStarted;
+    return result;
   } finally {
+    const closeStarted = Date.now();
     await session.close();
+    stage.timings.close_ms = Date.now() - closeStarted;
     removeQuietly(stage.work);
   }
 }
@@ -151,7 +163,7 @@ try {
       for (const op of ops) {
         const { id, ...body } = op;
         const answer = await session.request(body);
-        appendFileSync(outFile, JSON.stringify({ id, ...(answer.ok ? { result: answer.result } : { error: answer.error }) }) + "\n");
+        appendFileSync(outFile, JSON.stringify({ id, ...(answer.ok ? { result: normalizeForRecord(answer.result) } : { error: answer.error }) }) + "\n");
         if (++run.ops_run % 100 === 0) log(`${kind} ${run.ops_run}/${ops.length} ${((Date.now() - t0) / run.ops_run).toFixed(0)} ms/op`);
       }
       run.ms_per_op = ops.length ? Math.round((Date.now() - t0) / ops.length) : 0;
@@ -169,7 +181,7 @@ try {
   if (kinds.includes("scenarios")) {
     const all = [...JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8")).scenarios, ...(withheldScenariosOf(fixture) ?? [])];
     const scenarios = all.filter((s) => !filter || filter.test(s.id)).slice(0, limit);
-    const run = beginKind("scenarios", all.length, { steps_total: all.reduce((n, s) => n + s.steps.length, 0), steps_run: 0 });
+    const run = beginKind("scenarios", all.length, { steps_total: all.reduce((n, s) => n + s.steps.length, 0), steps_run: 0, session_timings: [] });
     const outFile = path.join(outDir, "scenarios.jsonl");
     writeFileSync(outFile, "");
     if (scenarios.length === 0) {
@@ -181,8 +193,17 @@ try {
         run.engine = hello;
       });
     }
-    for (const scenario of scenarios) {
+    let nextScenario = 0;
+    let nextOutput = 0;
+    let firstError;
+    const completed = new Map();
+    run.scenario_workers = Math.min(scenarioWorkers, scenarios.length);
+    const worker = async () => {
+    while (!firstError && nextScenario < scenarios.length) {
+      const index = nextScenario++;
+      const scenario = scenarios[index];
       const steps = await withSession(root, async (session, stage, hello) => {
+        run.session_timings.push({ id: scenario.id, timings: stage.timings });
         run.engine ??= hello;
         if (JSON.stringify(run.engine) !== JSON.stringify(hello)) run.engine_changed = true;
         const results = [];
@@ -191,7 +212,7 @@ try {
           const answer = await session.request(step);
           const { rows, other } = splitDelta(rawDelta(before, snapshot(stage.db)));
           results.push({
-            ...(answer.ok ? { result: answer.result } : { error: answer.error }),
+            ...(answer.ok ? { result: normalizeForRecord(answer.result) } : { error: answer.error }),
             // Raw row delta in Decko's card tables (graded as persistence),
             // and any other table the step changed (graded too: a write's
             // must equal the oracle's, a read's the oracle's empty).
@@ -202,10 +223,20 @@ try {
         }
         return results;
       });
-      appendFileSync(outFile, JSON.stringify({ id: scenario.id, steps }) + "\n");
+      completed.set(index, { id: scenario.id, steps });
+      while (completed.has(nextOutput)) {
+        appendFileSync(outFile, JSON.stringify(completed.get(nextOutput)) + "\n");
+        completed.delete(nextOutput++);
+      }
       run.ops_run++;
       log(`scenario ${scenario.id}: ${steps.length} steps`);
+      saveMeta();
     }
+    };
+    // All workers own fresh deck/files/processes. On failure, stop assigning
+    // work and await every owned session's cleanup before removing the root.
+    await Promise.all(Array.from({ length: run.scenario_workers }, () => worker().catch((error) => { firstError ??= error; })));
+    if (firstError) throw firstError;
     run.finished = new Date().toISOString();
     run.complete = run.ops_run === scenarios.length;
     saveMeta();

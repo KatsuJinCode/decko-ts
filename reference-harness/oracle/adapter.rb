@@ -112,13 +112,25 @@ def op_ask(req)
 end
 
 # ---- write ------------------------------------------------------------------
+# A subcard value is a string (its content) or a hash: {"content", "fields"}
+# where "fields" are its own subcards, as deck.json and build-deck.rb nest them.
+def subcards_from(hash)
+  hash.to_h.transform_values do |v|
+    next { content: v.to_s } unless v.is_a?(Hash)
+    args = {}
+    args[:content] = v["content"].to_s if v.key?("content")
+    args[:subcards] = subcards_from(v["fields"]) if v["fields"]
+    args
+  end
+end
+
 def write_args(fields)
   args = {}
   fields.to_h.each do |key, value|
     case key
     when "type" then args[:type_id] = Card.fetch(value)&.id || raise(ArgumentError, "unknown type #{value}")
     when "content", "name" then args[key.to_sym] = value
-    when "fields" then args[:subcards] = value.transform_values { |v| { content: v.to_s } }
+    when "fields" then args[:subcards] = subcards_from(value)
     else raise ArgumentError, "unknown write field #{key}"
     end
   end

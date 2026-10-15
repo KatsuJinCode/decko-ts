@@ -12,8 +12,8 @@
 //                    (view@file), on the first deck card that the declaring
 //                    file's set contains, as admin. Attribution is the same
 //                    setContains rule behaviour.mjs uses to credit a view.
-//   scenarios.json   one scenario, "mod-event-probes": a baseline create,
-//                    update and delete per shape, then for every event
+//   scenarios.json   one isolated scenario per event: baseline create,
+//                    update and delete for its shape, then the event
 //                    declaration a probe on a card its set contains, performing
 //                    the write its `on:` names. Each write is one step, so its
 //                    row delta is graded on its own.
@@ -151,7 +151,10 @@ function probeShape(index, set) {
   if (set.pattern === "type_plus_right") {
     const c = index.cards.find((x) => x.facts.compound && x.facts.left_type === set.anchor && x.facts.right === set.sub);
     if (!c) return { kind: "none", reason: `no card of type ${set.anchor} with right ${set.sub} in the deck` };
-    return { kind: "self", cardName: c.name };
+    const leftType = index.cards.find((x) => x.facts.codename === set.anchor && !x.facts.compound && x.facts.type === "cardtype");
+    const right = index.cards.find((x) => x.facts.codename === set.sub && !x.facts.compound && (x.name ?? "").startsWith("*"));
+    if (!leftType || !right) return { kind: "self", cardName: c.name };
+    return { kind: "compound", cardName: c.name, leftTypeName: leftType.name, leftTypeCode: set.anchor, rightName: right.name };
   }
   if (set.pattern === "rule") {
     const c = index.cards.find((x) => x.facts.compound && x.facts.left_type === "set" && (x.facts.right_name ?? "").startsWith("*"));
@@ -177,6 +180,12 @@ function probeShape(index, set) {
 // error in both engines, and grades the error path, not the event, so the
 // content is chosen per right. `phase` is "" for the create, "u" for the
 // update; `key` makes the values unique across probes.
+const ACCOUNT_TYPES = new Set(["Sign up", "User"]);
+export function accountFor(typeName, key) {
+  if (!ACCOUNT_TYPES.has(typeName)) return {};
+  return { fields: { "+*account": { fields: { "+*email": `probe.${key}.acct@example.test`, "+*password": `Probe-Password-${key}1` } } } };
+}
+
 export function fieldsFor(rightName, key, phase) {
   if (rightName === "*email") return { content: `probe.${key}${phase}@example.test` };
   if (rightName === "*account") return { fields: { "+*email": `probe.${key}${phase}@example.test` } };
@@ -194,13 +203,14 @@ function probeSteps(shape, on, tag) {
   const card = cardFor(shape);
   const steps = [];
   const write = (action, fields) => ({ op: "write", actor: "admin", action, card: card.name, fields });
-  const rightOf = shape.kind === "right" ? shape.rightName : shape.kind === "self" ? (card.name.split("+").pop() ?? "") : null;
-  if (shape.kind === "self") {
+  const rightOf = shape.kind === "right" || shape.kind === "compound" ? shape.rightName : shape.kind === "self" ? (card.name.split("+").pop() ?? "") : null;
+  if (shape.kind === "self" || shape.kind === "compound") {
     steps.push(write("update", fieldsFor(rightOf, tag, "u")));
     return { card: card.name, steps, action: "update" };
   }
   const created = fieldsFor(rightOf, tag, "");
-  steps.push(write("create", { ...(card.type ? { type: card.type } : {}), ...created }));
+  const acct = accountFor(card.type, `${tag}c`);
+  steps.push(write("create", { ...(card.type ? { type: card.type } : {}), ...created, ...acct }));
   if (on === "update" || on === "save" || on === null) {
     steps.push(write("update", fieldsFor(rightOf, tag, "u")));
   }
@@ -210,14 +220,14 @@ function probeSteps(shape, on, tag) {
   return { card: card.name, steps, action: on ?? "create" };
 }
 
+// Each event probe is its own scenario: a fresh session on a fresh copy of the
+// deck, so the ids a probe's writes take (card ids, card_act ids, revision
+// ids) depend only on that probe, never on an earlier probe's divergence.
+// A probe scenario is its same-shape baseline (create, update, delete on a card
+// of the probe's shape) followed by the probe's own writes.
 export function planEvents(index, declarations) {
-  const steps = [];
+  const scenarios = [];
   const plan = [];
-  // Baselines: the same write shapes on a card that carries no declaration of
-  // its own (a plain Basic card), so an event's effect can be seen against it.
-  steps.push({ tag: "baseline:create", op: "write", actor: "admin", action: "create", card: "Probe Baseline Plain", fields: { type: "RichText", content: "baseline" } });
-  steps.push({ tag: "baseline:update", op: "write", actor: "admin", action: "update", card: "Probe Baseline Plain", fields: { content: "baseline updated" } });
-  steps.push({ tag: "baseline:delete", op: "write", actor: "admin", action: "delete", card: "Probe Baseline Plain", fields: {} });
   let n = 0;
   for (const d of declarations) {
     const shape = probeShape(index, d.set);
@@ -227,25 +237,41 @@ export function planEvents(index, declarations) {
     }
     n++;
     const tag = `e${n}`;
+    const steps = [];
     // A same-shape baseline: create, update and delete a card of the probe's
     // shape under a name that is not the probe's. The probe's rows are read
-    // against it, so a row the event adds is seen. Shapes with no baseline
-    // (the self card, which is the event's own card) are recorded as such.
+    // against it, so a row the event adds is seen. The self card is the
+    // event's own card, so it has no baseline and is recorded as such.
     let base = null;
-    if (shape.kind !== "self") {
+    if (shape.kind === "compound") {
+      const leftName = `Probe BaseL ${tag}`;
+      const compound = `${leftName}+${shape.rightName}`;
+      const bkey = `${tag}b`;
+      // A User needs its account and the account's email to be created (the
+      // account set's own validation): the nested subcard.
+      const leftFields =
+        shape.leftTypeName === "User"
+          ? { type: shape.leftTypeName, content: `base ${tag}`, fields: { "+*account": { fields: { "+*email": `probe.${bkey}.left@example.test`, "+*password": `Probe-Password-${tag}1` } } } }
+          : { type: shape.leftTypeName, content: `base ${tag}` };
+      steps.push({ op: "write", actor: "admin", action: "create", card: leftName, fields: leftFields });
+      steps.push({ op: "write", actor: "admin", action: "create", card: compound, fields: fieldsFor(shape.rightName, bkey, "") });
+      steps.push({ op: "write", actor: "admin", action: "update", card: compound, fields: fieldsFor(shape.rightName, bkey, "u") });
+      steps.push({ op: "write", actor: "admin", action: "delete", card: compound, fields: {} });
+      base = { card: compound, steps: [0, 3] };
+    } else if (shape.kind !== "self") {
       const baseName = shape.kind === "right" ? `Probe Base ${tag}+${shape.rightName}` : `Probe Base ${tag}`;
       const baseType = shape.kind === "typed" ? shape.typeName : "RichText";
-      const b0 = steps.length;
       const bkey = `${tag}b`;
       const rightOfBase = shape.kind === "right" ? shape.rightName : null;
-      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "create", card: baseName, fields: { type: baseType, ...fieldsFor(rightOfBase, bkey, "") } });
-      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "update", card: baseName, fields: fieldsFor(rightOfBase, bkey, "u") });
-      steps.push({ tag: `base:${tag}`, probe: tag, op: "write", actor: "admin", action: "delete", card: baseName, fields: {} });
-      base = { card: baseName, steps: [b0, b0 + 2] };
+      steps.push({ op: "write", actor: "admin", action: "create", card: baseName, fields: { type: baseType, ...fieldsFor(rightOfBase, bkey, ""), ...accountFor(baseType, `${bkey}`) } });
+      steps.push({ op: "write", actor: "admin", action: "update", card: baseName, fields: fieldsFor(rightOfBase, bkey, "u") });
+      steps.push({ op: "write", actor: "admin", action: "delete", card: baseName, fields: {} });
+      base = { card: baseName, steps: [0, 2] };
     }
     const p = probeSteps(shape, d.on, tag);
     const first = steps.length;
-    for (const s of p.steps) steps.push({ tag: `${d.event}`, probe: tag, ...s });
+    for (const s of p.steps) steps.push(s);
+    scenarios.push({ id: `probe-${tag}`, steps });
     plan.push({
       event: d.event,
       file: d.file,
@@ -253,12 +279,14 @@ export function planEvents(index, declarations) {
       on: d.on,
       when: d.when,
       probe: tag,
+      scenario: `probe-${tag}`,
       card: p.card,
       steps: [first, steps.length - 1],
+      labels: steps.map((x) => ({ action: x.action, card: x.card })),
       baseline: base,
     });
   }
-  return { steps, plan };
+  return { scenarios, plan };
 }
 
 // ---------------------------------------------------------------------------
@@ -286,17 +314,15 @@ export function writePlan({ fixtureDir, gemRoot, outDir }) {
   const p = planAll({ dbPath: join(fixtureDir, "deck", "deck.sqlite3"), gemRoot });
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, "render.jsonl"), p.renders.ops.map((o) => JSON.stringify(o)).join("\n") + "\n");
-  // Scenario steps carry only the operation; the labels live in probes.json.
-  const steps = p.events.steps.map(({ tag, probe, ...s }) => s);
-  writeFileSync(join(outDir, "scenarios.json"), JSON.stringify({ scenarios: [{ id: "mod-event-probes", steps }] }, null, 1) + "\n");
+  // One scenario per event probe: a fresh session on a fresh deck copy each.
+  writeFileSync(join(outDir, "scenarios.json"), JSON.stringify({ scenarios: p.events.scenarios }, null, 1) + "\n");
   writeFileSync(
     join(outDir, "probes.json"),
     JSON.stringify(
       {
         format: "decko-mod-behaviour-probes/1",
         render: { planned: p.renders.ops.length, plan: p.renders.plan },
-        events: { steps: p.events.steps.length, plan: p.events.plan },
-        step_labels: p.events.steps.map((s, i) => ({ index: i, label: s.tag, probe: s.probe ?? null, action: s.action, card: s.card })),
+        events: { scenarios: p.events.scenarios.length, plan: p.events.plan },
       },
       null,
       1,
@@ -359,7 +385,7 @@ if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && c
   const planned = p.events.plan.filter((x) => x.status === "planned").length;
   process.stdout.write(
     `render ops: ${p.renders.ops.length} (of ${p.renders.plan.length} html-like declarations; ${p.renders.plan.filter((x) => x.status !== "planned").length} without a card)\n` +
-      `event probes: ${planned} of ${p.events.plan.length} event declarations; ${p.events.steps.length} scenario steps\n`,
+      `event probes: ${planned} of ${p.events.plan.length} event declarations, one scenario each (${p.events.scenarios.reduce((n, x) => n + x.steps.length, 0)} steps)\n`,
   );
 } else if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && (cmd === "grade" || cmd === "grades")) {
   const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
