@@ -205,6 +205,38 @@ This document does not describe them.
 
 **Reproduce.** Section B runs the engine and grades it.
 
+### Six admin views that fail in stock Ruby Decko 0.20.0
+
+Six of the eight withheld operations record an admin render of a view that
+raises in stock Ruby Decko 0.20.0. The recorded answer is the admin error span
+around Ruby's debug page. Each of these is a reproduced upstream failure: the
+engine raises from the same precondition that makes Ruby fail, checked by the
+ported code, and the Ruby source line below is where Ruby's own backtrace puts
+the failure.
+
+| Operation | Ruby failure | Ruby source line | Condition the engine checks |
+| --- | --- | --- | --- |
+| `view:admin:Report 1:preview_editor` | NoMethodError `undefined method 'gsub' for nil` | card-mod-carrierwave-0.20.0 `set/type/file.rb:145` (`cached_upload_card_name`, called from `preview_editor.haml` line 2) | the request carries no `:attachment_upload` param |
+| `view:admin:Note 001:debug_server_error` | NameError `uninitialized constant Card::Set::All::Html::Error::BetterErrors` | card-mod-format-0.20.0 `set/all/html/error.rb:5` | the installed gem set has no card-mod-monkey, the gem that loads better_errors |
+| `view:admin:Ada Admin+*account:verify_url` | JWT::DecodeError `HMAC key cannot be empty` | jwt-2.10.3 `lib/jwt/jwa/hmac.rb:40` (`ensure_valid_key!`), raised at `lib/jwt/jwa/signing_algorithm.rb:39` | the token secret (Rails' `secret_key_base`) is empty |
+| `view:admin:Ada Admin+*account:reset_password_url` | as `verify_url` | as `verify_url` | as `verify_url` |
+| `view:admin:Ada Admin+*account:closure` | NoMethodError `private method 'closure_deletions' called for #<Card:0x...>` | card-mod-account-0.20.0 `set/right/account/closure.haml:25`, raised through activemodel-7.2.4 `attribute_methods.rb:509` (`method_missing`) | the accounted card exists, so the explicit-receiver call meets a private method; a missing one is `nil.closure_deletions` |
+| `view:admin:*all+*script:asset_output_url` | NoMethodError `undefined method 'asset_output_url' for #<Card::Format::CardActionView:0x...>` | card-mod-assets-0.20.0 `set/abstract/asset_outputter.rb:62`, raised at card-1.110.0 `lib/card/format/method_delegation.rb:73` (`delegate_to_action_view`) | the format the bare call resolves on defines no `asset_output_url` |
+
+Ruby's messages for `closure` and `asset_output_url` end with the receiver's
+`inspect`: a class name and a heap address. The engine does not imitate that
+format. It names the receiver by its own identity, `#<Card id=611 name="Ada Admin">`
+and `#<RenderFormat card="*all+*script">`. N7 replaces the heap address on the
+Ruby side with `N7#addr`, but the class name and the text around it still
+differ, so these two operations grade as differing.
+
+**Measured** (engine run, composed adapter, withheld set present, 2026-10-14):
+four of the six (`preview_editor`, `debug_server_error`, `verify_url`,
+`reset_password_url`) are identical after N6 and N7. `closure` and
+`asset_output_url` differ only in the receiver identity inside the message.
+The rendering total is 2,555 of 2,581; the two operations are the only
+`view / admin` differences (672 of 674).
+
 ## Reproduction
 
 The commands below run from the repository root. Keep scratch outputs outside
