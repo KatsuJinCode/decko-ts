@@ -3771,6 +3771,17 @@ export interface RenderEngineLike {
    *  root). The view then falls back to the render-card map, which is
    *  exactly its pre-M9 behaviour. */
   peekCustomizedName?(name: string): string | undefined;
+  /** The board account-tab pill class (links.rb:140-144
+   *  add_known_or_wanted_class): whether the pill target card is a live
+   *  row, resolved by the engine ASYNC PREPARE PHASE (one existence walk
+   *  per board render, the M9 seam shape). The sync account_tab view
+   *  cannot query, and its pills are built from trait NAMES the reference
+   *  closure never reaches.
+   *
+   *  Optional: undefined = not warmed for this render (an engine without
+   *  the prepare phase, or a board nested into another render); the view
+   *  then keeps its pre-pass behaviour of treating every pill as known. */
+  peekBoardPillKnown?(name: string): boolean | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
   /** options_hash (card-mod-layout set/abstract/items/options_api.rb:4-6)

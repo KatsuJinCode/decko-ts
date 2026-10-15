@@ -911,6 +911,7 @@ function accountBoardPillItem(
   text: string,
   trait: string,
   extraPath: Record<string, unknown> | undefined,
+  known: boolean,
 ): string {
   const cyTable: Record<string, string> = {
     roles: "role",
@@ -943,7 +944,7 @@ function accountBoardPillItem(
     // lands LAST, after the href (the graded account_tab row's attr order).
     `<li class="nav-item">` +
     `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
-    ` data-slotter-mode="override" class="slotter nav-link known-card"` +
+    ` data-slotter-mode="override" class="slotter nav-link ${known ? "known-card" : "wanted-card"}"` +
     ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
     ` data-cy="${cy}" href="${href}" data-remote="true">${text}</a></li>`
   );
@@ -961,12 +962,12 @@ function accountBoardPillItem(
  *  default_board_tab (:128-130): the accounted card's own tab (the
  *  current_account? arm the engine's board renders resolve through their
  *  own registrations). */
-const accountTabHtml = (cardName: string): string => {
+const accountTabHtml = (cardName: string, isKnown: (name: string) => boolean = () => true): string => {
   const settings = ACCOUNT_DETAILS_ITEMS.map(([text, trait, extra]) =>
-    accountBoardPillItem(cardName, text, trait, extra?.path as Record<string, unknown> | undefined),
+    accountBoardPillItem(cardName, text, trait, extra?.path as Record<string, unknown> | undefined, isKnown(`${cardName}+${trait}`)),
   );
   const content = ACCOUNT_CONTENT_ITEMS.map(([text, trait]) =>
-    accountBoardPillItem(cardName, text, trait, undefined),
+    accountBoardPillItem(cardName, text, trait, undefined, isKnown(`${cardName}+${trait}`)),
   );
   const section = (title: string, pills: readonly string[]): string =>
     `<h6 class="ms-1 mt-3">${title}</h6>${pills.join("\n")}`;
@@ -979,7 +980,8 @@ const accountTabHtml = (cardName: string): string => {
   );
 };
 
-const accountTabView: ViewFn = ({ fmt }) => accountTabHtml(fmt.card.name.s);
+const accountTabView: ViewFn = ({ fmt }) =>
+  accountTabHtml(fmt.card.name.s, (name) => fmt.engine.peekBoardPillKnown?.(name) ?? true);
 
 /** The wave-1 account views' PROBE SURFACE - the composition cores the
  *  harness probe replays the static-ruby oracle against; the same functions

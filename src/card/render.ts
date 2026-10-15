@@ -44,6 +44,7 @@ import { ruleCacheKeyFromRow, settingCardNameForCode } from "./set-patterns/rule
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
+import { virtualSearchKnownName } from "./render/format.js";
 import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
 import {
   structureRuleUniverseStatement,
@@ -287,6 +288,11 @@ export { HTML_VIEWS };
  *  resetCaches() when it moved: no staleness window, no post-revocation
  *  leak (requirement:79). Warm-render cost: exactly ONE statement.
  *  Exported for the freshness suite's statement-identity pin. */
+/** The traits of the account board's pills (card-mod-account
+ *  set/abstract/account_holder.rb account_details_items and
+ *  account_content_items): the pill targets "<board>+<trait>". */
+const BOARD_ACCOUNT_PILL_TRAITS = ["*account", "*roles", "*follow", "*created", "*edited"] as const;
+
 export const DECK_DATA_VERSION_STATEMENT =
   'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
 export type { SettingClassWithRules } from "./render/format.js";
@@ -569,6 +575,10 @@ export class RenderEngine implements RenderEngineLike {
     string,
     { name: string; asked: readonly string[] }
   >();
+
+  /** The board account-tab pill targets' existence, by name key, written by
+   *  warmBoardPillExistence on every board render (so it is never stale). */
+  private boardPillKnownByKey = new Map<string, boolean>();
 
   /** Save-side invalidation for the enriched render-card map: after a write,
    *  BOTH layers holding the pre-save row must drop it - the fetch layer's
@@ -1976,6 +1986,12 @@ export class RenderEngine implements RenderEngineLike {
     // (prepareItemForRender undefined on the miss) and the tab stays off.
     if (view === "board" || view === "cardboard") {
       await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+    }
+    // The account_tab view's own pills (account_holder.rb:151-166) are built
+    // from trait names, so the same warm runs when THAT view is the render's
+    // requested view, not only behind :board.
+    if (view === "account_tab") {
+      await this.warmBoardPillExistence(rootCard);
     }
     // A junction root's OWN field rows sit in no reference closure (a
     // subcard is reachable only through its left_id), and a CODED core's
@@ -5870,6 +5886,33 @@ export class RenderEngine implements RenderEngineLike {
    *  not run the prepare phase for this card, or a skin nested into a render
    *  rather than being the root); the view falls back to the render-card
    *  map exactly as it did before this pass. */
+  /** The board account-tab pills (card-mod-account set/abstract/
+   *  account_holder.rb account_details_items / account_content_items): each
+   *  pill's target is "<board card>+<trait>" for these traits. Ruby's
+   *  board_link classes each pill with Card.known?(target), a live existence
+   *  answer. The prepare phase asks Card.exist? for each one. */
+  private async warmBoardPillExistence(rootCard: RenderCard): Promise<void> {
+    this.boardPillKnownByKey.clear();
+    for (const trait of BOARD_ACCOUNT_PILL_TRAITS) {
+      const name = `${rootCard.name.s}+${trait}`;
+      // Card.known? = fetch(name).present? (links.rb add_known_or_wanted_class):
+      // a stored row, or a new card the set modules make virtual. The
+      // VirtualSearch family (created, edited) answers through its cql
+      // table; the *roles right answers virtual? = new? with its own cql
+      // (card-mod-account set/right/roles.rb:3-10), so it is virtual too.
+      const virtual =
+        virtualSearchKnownName(name, this) !== undefined || trait === "*roles";
+      this.boardPillKnownByKey.set(
+        DeckoName.parse(name).key,
+        virtual || (await this.cardExists(name)),
+      );
+    }
+  }
+
+  peekBoardPillKnown(name: string): boolean | undefined {
+    return this.boardPillKnownByKey.get(DeckoName.parse(name).key);
+  }
+
   peekCustomizedName(skinName: string): string | undefined {
     return this.customizedNameBySkinKey.get(DeckoName.parse(skinName).key)?.name;
   }
