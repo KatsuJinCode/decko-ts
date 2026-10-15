@@ -135,6 +135,7 @@ function beginKind(kind, opsTotal, extra = {}) {
     ops_total: opsTotal,
     ops_run: 0,
     adapter: manifest.name,
+    lane: manifest.lane ?? null,
     adapter_checkout: checkout,
     engine: null,
     fixture_digest: fixtureCheck.digest,
