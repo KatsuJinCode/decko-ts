@@ -113,6 +113,7 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
 import type { ModEngineHost, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { warmRuleCards } from "./rule-card-warm.js";
+import { viewWrapInherited } from "../mod-view-helpers.js";
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -804,7 +805,7 @@ const rightHeadOneLineContentView: ViewFn = (ctx) => {
   }
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return truncate(stripTags(fmt.renderRaw()), length, "...");
+  return viewWrapInherited(ctx, "one_line_content", truncate(stripTags(fmt.renderRaw()), length, "..."));
 };
 
 // ---------------------------------------------------------------------------

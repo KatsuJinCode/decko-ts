@@ -67,9 +67,11 @@ describe("type_plus_right/bootswatch_skin/colors bar_middle", () => {
   it("renders the colors.rb heredoc literal byte-for-byte on a skin +*colors card", async () => {
     const s = storage!;
     const html = await s.engine.render(`${SKIN}+*colors`, "bar_middle");
+    // Ruby's heredoc body starts at the first line after `<<-HTML`, so the
+    // bytes begin with the six-space indent (oracle: synthetic-v2-mod-probes
+    // probe-view:68 bar_middle, colors.rb:102-122).
     expect(html).toBe(
-      "\n" +
-        '      <div class="colorpicker-element">\n' +
+      '      <div class="colorpicker-element">\n' +
         '        <div class="input-group-addon">\n' +
         '          <span class="bg-body border p-1">Text</span>\n' +
         '          <span class="bg-dark text-light border p-1">Nav</span>\n' +

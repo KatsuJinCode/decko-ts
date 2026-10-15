@@ -61,6 +61,10 @@ export type { ModEventContext };
  * view_opts.rb:52). Absent fields mirror absent settings: the view renders
  * with Ruby's defaults (no substitution, permission-checked, default cache).
  */
+/** Ruby's `wrap: { div: { class: "..." } }` view setting (or `{}`, which
+ *  answers "no wrap" and still stops the MRO walk). */
+export type ModViewWrapSpec = Readonly<Record<string, Readonly<{ class?: string }>>>;
+
 export interface ModViewConfig {
   /**
    * unknown: true renders the view AS REQUESTED on unknown cards;
@@ -82,7 +86,7 @@ export interface ModViewConfig {
   cache?: string;
 
   /** wrap: :slot etc. - wrappers applied by the render pipeline (voo_api.rb:167-177). */
-  wrap?: string | string[];
+  wrap?: string | string[] | ModViewWrapSpec;
 
   /** denial: :blank - the view rendered when the read check denies (format/error.rb:27-31). */
   denial?: string;

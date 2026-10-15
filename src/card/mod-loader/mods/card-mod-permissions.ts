@@ -115,7 +115,8 @@
 // card-mod-integrate pins as OBSERVER_EVENT_DECLARATIONS for the same
 // reason.
 
-import { UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
+import { viewWrapInherited } from "../mod-view-helpers.js";
+import { str, UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
@@ -363,7 +364,7 @@ const pointerCoreView: ViewFn = (ctx) => {
  *  cache: :never config. */
 const oneLineContentView: ViewFn = (ctx) => {
   assertPermissionRule(ctx, "one_line_content");
-  return ctx.fmt.renderView("core", { items: { view: "link" } });
+  return viewWrapInherited(ctx, "one_line_content", str(ctx.fmt.renderView("core", { items: { view: "link" } })));
 };
 
 // ---------------------------------------------------------------------------

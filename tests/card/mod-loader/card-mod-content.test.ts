@@ -62,6 +62,7 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModContent from "../../../src/card/mod-loader/mods/card-mod-content.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
 
 // Oracle byte-pinning for the Abstract::CodeContent / Abstract::HamlFile /
 // Abstract::ReadOnly :input chain (card-mod-content set/abstract/01_code_
@@ -232,21 +233,24 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :one_line_content renders Right::Structure's last-registered shape (right/structure.rb:13-16)", async () => {
+  it("WITH the mod: :one_line_content renders Right::Structure's shape (right/structure.rb:13-16)", async () => {
     const s = storage!;
-    // right/structure.rb:13-16: "#{_render_type} : #{_render_raw}" - the
-    // TS port composes from card.typeName + card.dbContent. The last-
-    // registered :one_line_content wins (right/structure sorts after
-    // right/default in path order), so this is the shape on every
-    // probe regardless of which right set module applied. Both probes
-    // are setting-typed (typeId=14 -> *setting), so typeName is
-    // "*setting" (the name of the type card, not its codename).
-    expect(
-      await s.engine.render("Oracle One-Line Probe+*default", "one_line_content"),
-    ).toBe("*setting : default rule body");
-    expect(
-      await s.engine.render("Oracle One-Line Probe+*structure", "one_line_content"),
-    ).toBe("*setting : structure rule body");
+    // right/structure.rb:13-16: "#{_render_type} : #{_render_raw}". _render_type
+    // is the :type view (card-mod-format), so this case binds the format mod
+    // alongside content and restores the content-only loader afterwards. The
+    // body is wrapped by the chain's first declared wrap (all/html/views.rb:
+    // 29-32, div.text-muted), as Ruby wraps a view body with view_setting(:wrap).
+    const withFormat = new ModLoader([{ manifest: cardModFormat }, { manifest: cardModContent }]);
+    withFormat.load();
+    bindModLoaderToEngine(s, withFormat);
+    try {
+      const structure = await s.engine.render("Oracle One-Line Probe+*structure", "one_line_content");
+      expect(structure).toMatch(
+        /^<div class="text-muted"><a class="cardtype known-card" href="[^"]*">[^<]*<\/a> : structure rule body<\/div>$/,
+      );
+    } finally {
+      bindModLoaderToEngine(s, loader!);
+    }
   });
 
   it("WITH the mod: every set module from the gem tree is in the basket", () => {

@@ -232,7 +232,7 @@ import type {
   DeckoModManifest,
   ModSetModuleFile,
 } from "../mod-manifest.js";
-import { modSlotWrap } from "../mod-view-helpers.js";
+import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
 import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
 import { CardActionError } from "../../actions/types.js";
@@ -1229,10 +1229,15 @@ const shortContentView: ViewFn = ({ fmt }) => {
  *  All::ZzCarrierwavePolymorphic's :one_line_content must answer the
  *  All-set html arm (the Ruby chain walk for a non-Image card), never
  *  the Type::Image icon render — one definition, no drift. */
-export const allHtmlViewsOneLineContentView: ViewFn = ({ fmt, voo }) => {
+export const allHtmlViewsOneLineContentView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return `<div class="text-muted">${truncate(stripTags(str(fmt.renderView("core"))), length, "...")}</div>`;
+  return viewWrapInherited(
+    ctx,
+    "one_line_content",
+    truncate(stripTags(str(fmt.renderView("core"))), length, "..."),
+  );
 };
 
 /** set/all/demo.rb:8-12 view :view_list:
@@ -1796,7 +1801,7 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           { view: "short_content", viewFn: shortContentView },
-          { view: "one_line_content", viewFn: allHtmlViewsOneLineContentView, config: { unknown: "mini_unknown" } },
+          { view: "one_line_content", viewFn: allHtmlViewsOneLineContentView, config: { unknown: "mini_unknown", wrap: { div: { class: "text-muted" } } } },
           { view: "raw_one_line_content", viewFn: allHtmlViewsRawOneLineContentView, config: { unknown: "mini_unknown" } },
           { view: "labeled", viewFn: htmlLabeledView, config: { unknown: "labeled", cache: "yes" } },
         ],

@@ -110,7 +110,7 @@ import { RenderFormat, UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
 import { baseTableView } from "../../render/views.js";
-import { superView } from "../mod-view-helpers.js";
+import { superView, viewWrapInherited } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
   ModEventFn,
@@ -695,7 +695,7 @@ const iconsView: ViewFn = (ctx) => {
  *  rule-bar :bar_right is ALSO "" for a plain non-rule card, but this
  *  registration is the mod's own view — the Ruby shape — not a reliance
  *  on that coincidence.) */
-const bootswatchBarRightView: ViewFn = () => "";
+const bootswatchBarRightView: ViewFn = () => null;
 
 // ---------------------------------------------------------------------------
 // type_plus_right/bootswatch_skin/colors.rb —
@@ -718,7 +718,6 @@ const bootswatchBarRightView: ViewFn = () => "";
  *  before-view hook surface (the same remainder the skin html_views'
  *  before :box names). */
 const colorsBarMiddleView: ViewFn = () =>
-  "\n" +
   '      <div class="colorpicker-element">\n' +
   '        <div class="input-group-addon">\n' +
   '          <span class="bg-body border p-1">Text</span>\n' +
@@ -737,7 +736,7 @@ const colorsBarMiddleView: ViewFn = () =>
  *  Both files redefine the view for the bootswatch_skin type - the html
  *  views file (the more specific module) wins for type+html-format cards.
  *  The output is the empty string regardless of the card's content. */
-const oneLineContentView: ViewFn = (_ctx) => "";
+const oneLineContentView: ViewFn = (ctx) => viewWrapInherited(ctx, "one_line_content", "");
 
 
 /** bootswatch_skin/html_views.rb:69-73 `view :bar_bottom do

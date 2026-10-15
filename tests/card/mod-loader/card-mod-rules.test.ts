@@ -664,8 +664,12 @@ describe("card-mod-rules exported view bodies (stub harness)", () => {
   });
 
   it("setOneLineContentView: set cards render the bare empty string (set/type/set/html_views.rb:21-23)", () => {
+    // A real render card carries its set keys; the chain walk reads them.
     const setCard = new StubFmt(
-      cardLike("RichText+*self", { id: 23, typeCode: "set", typeName: "Set", typeId: 13 }),
+      Object.assign(
+        cardLike("RichText+*self", { id: 23, typeCode: "set", typeName: "Set", typeId: 13 }),
+        { setKeys: "ALL ALL_PLUS TYPE-set SELF-Xself" },
+      ),
       deck,
     );
     expect(setOneLineContentView(makeCtx(setCard, "one_line_content"))).toBe("");
