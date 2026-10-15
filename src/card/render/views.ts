@@ -2045,6 +2045,14 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
   if (!card.name.isCompound) return undefined; // card.left would raise on a simple card
   const left = card.name.leftName;
   if (left === undefined) return undefined;
+  // set/abstract/test_context.rb:9-13: `card.left.fetch(:test_context)` is a
+  // CODENAME fetch. A deck with no card carrying the codename raises before
+  // any junction is read, and the render shows that error (the oracle's
+  // "unknown codename: test_context" on the text_message core).
+  const engine = ctx.fmt.engine;
+  if (engine.peekIdByCodename !== undefined && engine.peekIdByCodename("test_context") === undefined) {
+    throw new CodenameNotFoundError("unknown codename: test_context");
+  }
   const junction = ctx.fmt.engine.fetchRenderCard(`${left.s}+*test context`);
   if (junction === undefined || junction.unknown === true) return undefined;
   const firstItem = (junction.dbContent ?? "")
