@@ -27,11 +27,11 @@
       "battery": [
         {
           "label": "home",
-          "statements": 24,
-          "estRows": 13749,
+          "statements": 23,
+          "estRows": 13745,
           "top": [
             {
-              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, '' FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
+              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, CAST('' AS TEXT) FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
               "plan": "CO-ROUTINE up | SETUP | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | MATERIALIZE setting | SCAN cards | SCAN setting | RECURSIVE STEP | SCAN u | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SEARCH rk USING INTEGER PRIMARY KEY (rowid=?) | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | SCAN setting | BLOOM FILTER ON u (rid=?) | SEARCH u USING AUTOMATIC COVERING INDEX (rid=?) | SEARCH b USING INTEGER PRIMARY KEY (rowid=?) | SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 6 | SCAN setting",
               "execs": 2,
               "estRowsEach": 2288,
@@ -71,12 +71,12 @@
               "basis": "SCAN(cards)=2287"
             },
             {
-              "sql": "SELECT DISTINCT j.* FROM cards j\n  JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n  JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n WHERE j.trash = 0",
-              "plan": "SEARCH l USING COVERING INDEX cards_key_index (key=?) | SEARCH r USING COVERING INDEX cards_key_index (key=?) | SEARCH j USING INDEX index_cards_on_left_id_and_right_id (left_id=? AND right_id=?) | USE TEMP B-TREE FOR DISTINCT",
-              "execs": 2,
+              "sql": "WITH RECURSIVE reached(id) AS (\n  SELECT rules.id FROM cards rules\n  JOIN cards sets ON rules.left_id = sets.id\n  JOIN cards settings ON rules.right_id = settings.id\nWHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help'\n  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n  UNION\n  SELECT j.left_id FROM reached r\n    JOIN cards j ON j.id = r.id AND j.trash = 0\n    WHERE j.left_id IS NOT NULL\n  UNION\n  SELECT j.right_id FROM reached r\n    JOIN cards j ON j.id = r.id AND j.trash = 0\n    WHERE j.right_id IS NOT NULL\n  UNION\n  SELECT j.type_id FROM reached r\n    JOIN cards j ON j.id = r.id\n    WHERE j.type_id IS NOT NULL\n)\nSELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
+              "plan": "SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reached | SETUP | SEARCH settings USING INDEX cards_type_id_index (type_id=?) | SEARCH rules USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SEARCH sets USING INTEGER PRIMARY KEY (rowid=?) | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN r | SEARCH j USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN r | SEARCH j USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN r | SEARCH j USING INTEGER PRIMARY KEY (rowid=?) | SCAN reached",
+              "execs": 1,
               "estRowsEach": 3,
-              "estRowsTotal": 6,
-              "basis": "uniq(cards_key_index)=1 + uniq(cards_key_index)=1 + uniq(index_cards_on_left_id_and_right_id)=1"
+              "estRowsTotal": 3,
+              "basis": "pk=1 + cards_type_id_index.type_id=2281=2 + cards_right_id_trash_index.right_id=2281=0 + SCAN(r)=0 + SCAN(r)=0 + SCAN(r)=0 + SCAN(reached)=0"
             }
           ]
         },
@@ -110,8 +110,8 @@
               "basis": "pk=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -137,8 +137,8 @@
         },
         {
           "label": "depth-32 chain (Depth Root)",
-          "statements": 38,
-          "estRows": 2326,
+          "statements": 13,
+          "estRows": 2302,
           "top": [
             {
               "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
@@ -151,9 +151,9 @@
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
               "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
-              "execs": 31,
+              "execs": 6,
               "estRowsEach": 1,
-              "estRowsTotal": 31,
+              "estRowsTotal": 6,
               "basis": "uniq(cards_key_index)=1"
             },
             {
@@ -173,16 +173,16 @@
               "basis": "pk=1 + uniq(cards_key_index)=1"
             },
             {
-              "sql": "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1",
-              "plan": "SEARCH deck_data_version USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
               "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "pk=1"
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2070=1 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1",
+              "plan": "SEARCH deck_data_version USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -192,8 +192,8 @@
         },
         {
           "label": "500-item pointer (Big Pointer)",
-          "statements": 15,
-          "estRows": 2304,
+          "statements": 16,
+          "estRows": 2805,
           "top": [
             {
               "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
@@ -202,6 +202,14 @@
               "estRowsEach": 2287,
               "estRowsTotal": 2287,
               "basis": "SCAN(cards)=2287"
+            },
+            {
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
+              "execs": 1,
+              "estRowsEach": 501,
+              "estRowsTotal": 501,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2072=500 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             },
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
@@ -234,21 +242,13 @@
               "estRowsEach": 1,
               "estRowsTotal": 1,
               "basis": "pk=1"
-            },
-            {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
-              "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "pk=1"
             }
           ]
         },
         {
           "label": "CQL list (All Scale Page Probe)",
-          "statements": 13,
-          "estRows": 4587,
+          "statements": 14,
+          "estRows": 4588,
           "top": [
             {
               "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
@@ -291,8 +291,8 @@
               "basis": "pk=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -330,8 +330,8 @@
               "basis": "pk=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -385,8 +385,8 @@
               "basis": "pk=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -531,8 +531,8 @@
       "battery": [
         {
           "label": "home",
-          "statements": 24,
-          "estRows": 2327,
+          "statements": 23,
+          "estRows": 2323,
           "top": [
             {
               "sql": "WITH RECURSIVE\nanc(id) AS (\n  SELECT r.left_id FROM cards r\n    JOIN cards st ON st.id = r.right_id\n    WHERE +r.trash = 0 AND st.\"key\" IN (?, ?, ?, ?)\n      AND r.left_id IS NOT NULL\n  UNION\n  SELECT j.left_id FROM anc a\n    JOIN cards j ON j.id = a.id\n    WHERE j.left_id IS NOT NULL\n),\ntc(id) AS MATERIALIZED (\n  SELECT c.id FROM cards c\n    WHERE substr(c.\"key\", -1) IN ('d', 'D', 'e', 'E')\n      AND (c.\"key\" LIKE '%+*read' OR c.\"key\" LIKE '*read'\n        OR c.\"key\" LIKE '%+*create' OR c.\"key\" LIKE '*create'\n        OR c.\"key\" LIKE '%+*update' OR c.\"key\" LIKE '*update'\n        OR c.\"key\" LIKE '%+*delete' OR c.\"key\" LIKE '*delete')\n),\ntl(parent, child) AS MATERIALIZED (\n  SELECT j.id, j.left_id FROM tc CROSS JOIN cards j ON j.right_id = tc.id\n    WHERE j.left_id IS NOT NULL\n),\nd(id) AS (\n  SELECT child FROM tl\n  UNION\n  SELECT c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n),\ndl(parent, child) AS MATERIALIZED (\n  SELECT c.id, c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n),\ndr(parent, child) AS MATERIALIZED (\n  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n),\ndtl(parent, child) AS MATERIALIZED (\n  SELECT parent, child FROM dl\n  UNION\n  SELECT parent, child FROM tl\n),\nresolved(id, ckey, content) AS (\n  SELECT c.id, c.\"key\", c.db_content FROM anc CROSS JOIN cards c ON c.id = anc.id\n    WHERE c.\"key\" IS NOT NULL AND +c.trash = 0\n  UNION\n  SELECT c.id, c.\"key\", c.db_content FROM tc CROSS JOIN cards c ON c.id = tc.id\n    WHERE c.\"key\" IS NOT NULL AND +c.trash = 0\n      AND (c.\"key\" LIKE '%+*read' OR c.\"key\" LIKE '%+*create' OR c.\"key\" LIKE '%+*update' OR c.\"key\" LIKE '%+*delete')\n  UNION\n  SELECT j.id, l.ckey || '+' || r.\"key\", j.db_content FROM resolved l\n    JOIN dtl ON dtl.child = l.id\n    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n    JOIN cards r ON r.id = j.right_id AND r.\"key\" IS NOT NULL\n  UNION\n  SELECT j.id, l.\"key\" || '+' || r.ckey, j.db_content FROM resolved r\n    JOIN dr ON dr.child = r.id\n    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n    JOIN cards l ON l.id = j.left_id AND l.\"key\" IS NOT NULL\n  UNION\n  SELECT j.id, l.\"key\" || '+' || r.ckey, j.db_content FROM resolved r\n    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n    JOIN cards l ON l.id = j.left_id AND l.\"key\" IS NOT NULL\n    WHERE ('+' || r.ckey) LIKE '%+*read' OR ('+' || r.ckey) LIKE '%+*create' OR ('+' || r.ckey) LIKE '%+*update' OR ('+' || r.ckey) LIKE '%+*delete'\n)\nSELECT rs.ckey, rs.id, rs.content FROM resolved rs\nWHERE rs.ckey LIKE '%+*read' OR rs.ckey LIKE '%+*create' OR rs.ckey LIKE '%+*update' OR rs.ckey LIKE '%+*delete'",
@@ -543,15 +543,7 @@
               "basis": "pk=1 + uniq(cards_key_binary_index)=1 + cards_right_id_trash_index.right_id=*read=0 + cards_key_last_char_index(expression)<=2287 + cards_right_id_trash_index.right_id=*read=0 + cards_right_id_trash_index.right_id=*read=0 + SCAN(a)=0 + SCAN(anc)=0 + SCAN(tc)=0 + SCAN(tc)=0 + SCAN(tl)=0 + SCAN(d)=0 + SCAN(d)=0 + SCAN(d)=0 + SCAN(dl)=0 + SCAN(tl)=0 + SCAN(l)=0 + SCAN(d)=0 + SCAN(r)=0 + SCAN(r)=0 + SCAN(rs)=0"
             },
             {
-              "sql": "SELECT DISTINCT j.* FROM cards j\n  JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n  JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n WHERE j.trash = 0",
-              "plan": "SEARCH l USING COVERING INDEX cards_key_index (key=?) | SEARCH r USING COVERING INDEX cards_key_index (key=?) | SEARCH j USING INDEX index_cards_on_left_id_and_right_id (left_id=? AND right_id=?) | USE TEMP B-TREE FOR DISTINCT",
-              "execs": 2,
-              "estRowsEach": 3,
-              "estRowsTotal": 6,
-              "basis": "uniq(cards_key_index)=1 + uniq(cards_key_index)=1 + uniq(index_cards_on_left_id_and_right_id)=1"
-            },
-            {
-              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, '' FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
+              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, CAST('' AS TEXT) FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
               "plan": "CO-ROUTINE up | SETUP | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | MATERIALIZE setting | MULTI-INDEX OR | INDEX 1 | SEARCH cards USING INDEX cards_key_binary_index (key=?) | INDEX 2 | SEARCH cards USING INDEX cards_name_trash_index (name=? AND trash=?) | USE TEMP B-TREE FOR ORDER BY | SCAN setting | RECURSIVE STEP | SCAN u | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SEARCH rk USING INTEGER PRIMARY KEY (rowid=?) | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | SCAN setting | BLOOM FILTER ON u (rid=?) | SEARCH u USING AUTOMATIC COVERING INDEX (rid=?) | SEARCH b USING INTEGER PRIMARY KEY (rowid=?) | SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 6 | SCAN setting",
               "execs": 2,
               "estRowsEach": 2,
@@ -581,6 +573,14 @@
               "estRowsEach": 3,
               "estRowsTotal": 3,
               "basis": "pk=1 + cards_type_id_index.type_id=2281=2 + cards_right_id_trash_index.right_id=2281=0"
+            },
+            {
+              "sql": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+              "plan": "SEARCH t EXISTS USING COVERING INDEX cards_codename_binary_index (codename=? AND rowid=?) | SEARCH c USING INDEX cards_key_index (key=?)",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "uniq(cards_codename_binary_index)=1 + uniq(cards_key_index)=1"
             }
           ]
         },
@@ -622,8 +622,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -641,15 +641,15 @@
         },
         {
           "label": "depth-32 chain (Depth Root)",
-          "statements": 38,
-          "estRows": 41,
+          "statements": 13,
+          "estRows": 17,
           "top": [
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
               "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
-              "execs": 31,
+              "execs": 6,
               "estRowsEach": 1,
-              "estRowsTotal": 31,
+              "estRowsTotal": 6,
               "basis": "uniq(cards_key_index)=1"
             },
             {
@@ -669,6 +669,14 @@
               "basis": "uniq(cards_codename_binary_index)=1 + uniq(cards_key_index)=1"
             },
             {
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2070=1 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
+            },
+            {
               "sql": "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1",
               "plan": "SEARCH deck_data_version USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
@@ -683,22 +691,22 @@
               "estRowsEach": 1,
               "estRowsTotal": 1,
               "basis": "uniq(cards_key_binary_index)=1"
-            },
-            {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
-              "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "pk=1"
             }
           ]
         },
         {
           "label": "500-item pointer (Big Pointer)",
-          "statements": 15,
-          "estRows": 20,
+          "statements": 16,
+          "estRows": 521,
           "top": [
+            {
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
+              "execs": 1,
+              "estRowsEach": 501,
+              "estRowsTotal": 501,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2072=500 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
+            },
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
               "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
@@ -738,21 +746,13 @@
               "estRowsEach": 1,
               "estRowsTotal": 1,
               "basis": "pk=1"
-            },
-            {
-              "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
-              "plan": "SEARCH cards USING INDEX cards_key_binary_index (key=?)",
-              "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "uniq(cards_key_binary_index)=1"
             }
           ]
         },
         {
           "label": "CQL list (All Scale Page Probe)",
-          "statements": 13,
-          "estRows": 20,
+          "statements": 14,
+          "estRows": 21,
           "top": [
             {
               "sql": "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
@@ -842,8 +842,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -897,8 +897,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1035,8 +1035,8 @@
       "battery": [
         {
           "label": "home",
-          "statements": 24,
-          "estRows": 2323,
+          "statements": 23,
+          "estRows": 2321,
           "top": [
             {
               "sql": "WITH RECURSIVE\nanc(id) AS (\n  SELECT r.left_id FROM cards r\n    JOIN cards st ON st.id = r.right_id\n    WHERE +r.trash = 0 AND st.\"key\" IN (?, ?, ?, ?)\n      AND r.left_id IS NOT NULL\n  UNION\n  SELECT j.left_id FROM anc a\n    JOIN cards j ON j.id = a.id\n    WHERE j.left_id IS NOT NULL\n),\ntc(id) AS MATERIALIZED (\n  SELECT c.id FROM cards c\n    WHERE substr(c.\"key\", -1) IN ('d', 'D', 'e', 'E')\n      AND (c.\"key\" LIKE '%+*read' OR c.\"key\" LIKE '*read'\n        OR c.\"key\" LIKE '%+*create' OR c.\"key\" LIKE '*create'\n        OR c.\"key\" LIKE '%+*update' OR c.\"key\" LIKE '*update'\n        OR c.\"key\" LIKE '%+*delete' OR c.\"key\" LIKE '*delete')\n),\ntl(parent, child) AS MATERIALIZED (\n  SELECT j.id, j.left_id FROM tc CROSS JOIN cards j ON j.right_id = tc.id\n    WHERE j.left_id IS NOT NULL\n),\nd(id) AS (\n  SELECT child FROM tl\n  UNION\n  SELECT c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n),\ndl(parent, child) AS MATERIALIZED (\n  SELECT c.id, c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n),\ndr(parent, child) AS MATERIALIZED (\n  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n),\ndtl(parent, child) AS MATERIALIZED (\n  SELECT parent, child FROM dl\n  UNION\n  SELECT parent, child FROM tl\n),\nresolved(id, ckey, content) AS (\n  SELECT c.id, c.\"key\", c.db_content FROM anc CROSS JOIN cards c ON c.id = anc.id\n    WHERE c.\"key\" IS NOT NULL AND +c.trash = 0\n  UNION\n  SELECT c.id, c.\"key\", c.db_content FROM tc CROSS JOIN cards c ON c.id = tc.id\n    WHERE c.\"key\" IS NOT NULL AND +c.trash = 0\n      AND (c.\"key\" LIKE '%+*read' OR c.\"key\" LIKE '%+*create' OR c.\"key\" LIKE '%+*update' OR c.\"key\" LIKE '%+*delete')\n  UNION\n  SELECT j.id, l.ckey || '+' || r.\"key\", j.db_content FROM resolved l\n    JOIN dtl ON dtl.child = l.id\n    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n    JOIN cards r ON r.id = j.right_id AND r.\"key\" IS NOT NULL\n  UNION\n  SELECT j.id, l.\"key\" || '+' || r.ckey, j.db_content FROM resolved r\n    JOIN dr ON dr.child = r.id\n    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n    JOIN cards l ON l.id = j.left_id AND l.\"key\" IS NOT NULL\n  UNION\n  SELECT j.id, l.\"key\" || '+' || r.ckey, j.db_content FROM resolved r\n    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n    JOIN cards l ON l.id = j.left_id AND l.\"key\" IS NOT NULL\n    WHERE ('+' || r.ckey) LIKE '%+*read' OR ('+' || r.ckey) LIKE '%+*create' OR ('+' || r.ckey) LIKE '%+*update' OR ('+' || r.ckey) LIKE '%+*delete'\n)\nSELECT rs.ckey, rs.id, rs.content FROM resolved rs\nWHERE rs.ckey LIKE '%+*read' OR rs.ckey LIKE '%+*create' OR rs.ckey LIKE '%+*update' OR rs.ckey LIKE '%+*delete'",
@@ -1047,20 +1047,12 @@
               "basis": "pk=1 + uniq(cards_key_binary_index)=1 + cards_right_id_index.right_id=*read=0 + cards_key_last_char_index(expression)<=2287 + cards_right_id_index.right_id=*read=0 + cards_right_id_index.right_id=*read=0 + SCAN(a)=0 + SCAN(anc)=0 + SCAN(tc)=0 + SCAN(tc)=0 + SCAN(tl)=0 + SCAN(d)=0 + SCAN(d)=0 + SCAN(d)=0 + SCAN(dl)=0 + SCAN(tl)=0 + SCAN(l)=0 + SCAN(d)=0 + SCAN(r)=0 + SCAN(r)=0 + SCAN(rs)=0"
             },
             {
-              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, '' FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
+              "sql": "WITH RECURSIVE\nsetting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1),\nrules(rid, lid, db_content, type_id) AS (\n  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\nup(rid, cur, suffix) AS (\n  SELECT rid, lid, CAST('' AS TEXT) FROM rules\n  UNION ALL\n  SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix\n  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n  WHERE c.left_id IS NOT NULL)\nSELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> ''\n         THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key,\n  rules.db_content AS db_content, rules.type_id AS rule_type_id\nFROM up u\nJOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL\nJOIN rules ON rules.rid = u.rid\nJOIN cards st ON st.id = (SELECT id FROM setting)\nORDER BY rules.rid",
               "plan": "CO-ROUTINE up | SETUP | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | MATERIALIZE setting | MULTI-INDEX OR | INDEX 1 | SEARCH cards USING INDEX cards_key_binary_index (key=?) | INDEX 2 | SEARCH cards USING INDEX cards_name_trash_index (name=? AND trash=?) | USE TEMP B-TREE FOR ORDER BY | SCAN setting | RECURSIVE STEP | SCAN u | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SEARCH rk USING INTEGER PRIMARY KEY (rowid=?) | SEARCH r USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | SCAN setting | BLOOM FILTER ON u (rid=?) | SEARCH u USING AUTOMATIC COVERING INDEX (rid=?) | SEARCH b USING INTEGER PRIMARY KEY (rowid=?) | SEARCH st USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 6 | SCAN setting",
               "execs": 2,
               "estRowsEach": 2,
               "estRowsTotal": 4,
               "basis": "pk=1 + cards_right_id_trash_index.right_id=*structure=0 + uniq(cards_key_binary_index)=1 + cards_name_trash_index.name=*structure=0 + cards_right_id_trash_index.right_id=*structure=0 + SCAN(setting)=0 + SCAN(u)=0 + SCAN(setting)=0 + SCAN(setting)=0"
-            },
-            {
-              "sql": "SELECT DISTINCT j.* FROM cards j\n  JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n  JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?)\n WHERE j.trash = 0",
-              "plan": "SEARCH r USING COVERING INDEX cards_key_index (key=?) | SEARCH j USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SEARCH l USING INTEGER PRIMARY KEY (rowid=?) | USE TEMP B-TREE FOR DISTINCT",
-              "execs": 2,
-              "estRowsEach": 2,
-              "estRowsTotal": 4,
-              "basis": "pk=1 + uniq(cards_key_index)=1 + cards_right_id_trash_index.right_id=*all=0"
             },
             {
               "sql": "WITH RECURSIVE reached(id) AS (\n  SELECT rules.id FROM cards rules\n  JOIN cards sets ON rules.left_id = sets.id\n  JOIN cards settings ON rules.right_id = settings.id\nWHERE sets.type_id = ? AND settings.type_id = ? AND settings.codename = 'help'\n  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n  UNION\n  SELECT j.left_id FROM reached r\n    JOIN cards j ON j.id = r.id AND j.trash = 0\n    WHERE j.left_id IS NOT NULL\n  UNION\n  SELECT j.right_id FROM reached r\n    JOIN cards j ON j.id = r.id AND j.trash = 0\n    WHERE j.right_id IS NOT NULL\n  UNION\n  SELECT j.type_id FROM reached r\n    JOIN cards j ON j.id = r.id\n    WHERE j.type_id IS NOT NULL\n)\nSELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (SELECT id FROM reached)",
@@ -1085,6 +1077,14 @@
               "estRowsEach": 3,
               "estRowsTotal": 3,
               "basis": "pk=1 + cards_right_id_trash_index.right_id=undefined=0 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1 + card_references_referer_id_index.referer_id=undefined=0"
+            },
+            {
+              "sql": "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id =   (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+              "plan": "SEARCH cards USING INDEX cards_right_id_trash_index (right_id=? AND trash=?) | SCALAR SUBQUERY 2 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INDEX cards_codename_binary_index (codename=?)",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "cards_right_id_trash_index.right_id=undefined=0 + uniq(cards_codename_binary_index)=1 + uniq(cards_codename_binary_index)=1"
             }
           ]
         },
@@ -1110,8 +1110,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1134,27 +1134,35 @@
               "basis": "uniq(cards_key_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
-              "basis": "pk=1"
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=181=0 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             }
           ]
         },
         {
           "label": "depth-32 chain (Depth Root)",
-          "statements": 38,
-          "estRows": 38,
+          "statements": 13,
+          "estRows": 14,
           "top": [
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0",
               "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
-              "execs": 31,
+              "execs": 6,
               "estRowsEach": 1,
-              "estRowsTotal": 31,
+              "estRowsTotal": 6,
               "basis": "uniq(cards_key_index)=1"
+            },
+            {
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
+              "execs": 1,
+              "estRowsEach": 2,
+              "estRowsTotal": 2,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2070=1 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             },
             {
               "sql": "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1",
@@ -1173,8 +1181,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1187,22 +1195,22 @@
               "estRowsEach": 1,
               "estRowsTotal": 1,
               "basis": "cards_left_id_index.left_id=2070=1 + cards_codename_present_index.codename=2070=0 + cards_codename_present_index.codename=2070=0"
-            },
-            {
-              "sql": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
-              "plan": "SEARCH t EXISTS USING COVERING INDEX cards_codename_present_index (codename=? AND id=?) | SEARCH c USING INDEX cards_key_index (key=?)",
-              "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "cards_codename_present_index.codename=6=0 + uniq(cards_key_index)=1"
             }
           ]
         },
         {
           "label": "500-item pointer (Big Pointer)",
-          "statements": 15,
-          "estRows": 15,
+          "statements": 16,
+          "estRows": 516,
           "top": [
+            {
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
+              "execs": 1,
+              "estRowsEach": 501,
+              "estRowsTotal": 501,
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2072=500 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
+            },
             {
               "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
               "plan": "SEARCH cards USING INDEX cards_key_index (key=?)",
@@ -1236,27 +1244,19 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
               "basis": "pk=1"
-            },
-            {
-              "sql": "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
-              "plan": "SEARCH t EXISTS USING COVERING INDEX cards_codename_present_index (codename=? AND id=?) | SEARCH c USING INDEX cards_key_index (key=?)",
-              "execs": 1,
-              "estRowsEach": 1,
-              "estRowsTotal": 1,
-              "basis": "cards_codename_present_index.codename=7=0 + uniq(cards_key_index)=1"
             }
           ]
         },
         {
           "label": "CQL list (All Scale Page Probe)",
-          "statements": 13,
-          "estRows": 14,
+          "statements": 14,
+          "estRows": 15,
           "top": [
             {
               "sql": "SELECT DISTINCT j.* FROM cards j\n  JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?)\n  JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?)\n WHERE j.trash = 0",
@@ -1291,8 +1291,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1330,8 +1330,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1354,12 +1354,12 @@
               "basis": "uniq(cards_key_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
-              "basis": "pk=1"
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2135=0 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             }
           ]
         },
@@ -1385,8 +1385,8 @@
               "basis": "uniq(cards_key_binary_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "SELECT * FROM cards WHERE id IN (?, (SELECT type_id FROM cards WHERE id = ? AND trash = 0)) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | SCALAR SUBQUERY 1 | SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
@@ -1409,12 +1409,12 @@
               "basis": "uniq(cards_key_index)=1"
             },
             {
-              "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
-              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?)",
+              "sql": "WITH RECURSIVE reach(id, via) AS (\n  SELECT ?, 'n'\n  UNION\n  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n  UNION\n  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n  UNION\n  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n)\nSELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0",
+              "plan": "SEARCH cards USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 5 | MATERIALIZE reach | SETUP | SCAN CONSTANT ROW | RECURSIVE STEP | COMPOUND QUERY | LEFT-MOST SUBQUERY | SCAN reach | SEARCH refs USING INDEX card_references_referer_id_index (referer_id=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | UNION ALL | SCAN reach | SEARCH c USING INTEGER PRIMARY KEY (rowid=?) | SCAN reach",
               "execs": 1,
               "estRowsEach": 1,
               "estRowsTotal": 1,
-              "basis": "pk=1"
+              "basis": "pk=1 + card_references_referer_id_index.referer_id=2073=0 + SCAN(CONSTANT)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0 + SCAN(reach)=0"
             }
           ]
         }
@@ -1515,10 +1515,10 @@
   "table": [
     {
       "render": "home",
-      "stmts": 24,
-      "rows_BEFORE": 13749,
-      "rows_AFTER_IDX": 2327,
-      "rows_AFTER_IDX_ANALYZE": 2323
+      "stmts": 23,
+      "rows_BEFORE": 13745,
+      "rows_AFTER_IDX": 2323,
+      "rows_AFTER_IDX_ANALYZE": 2321
     },
     {
       "render": "point-read (Scale Page 173x)",
@@ -1529,24 +1529,24 @@
     },
     {
       "render": "depth-32 chain (Depth Root)",
-      "stmts": 38,
-      "rows_BEFORE": 2326,
-      "rows_AFTER_IDX": 41,
-      "rows_AFTER_IDX_ANALYZE": 38
+      "stmts": 13,
+      "rows_BEFORE": 2302,
+      "rows_AFTER_IDX": 17,
+      "rows_AFTER_IDX_ANALYZE": 14
     },
     {
       "render": "500-item pointer (Big Pointer)",
-      "stmts": 15,
-      "rows_BEFORE": 2304,
-      "rows_AFTER_IDX": 20,
-      "rows_AFTER_IDX_ANALYZE": 15
+      "stmts": 16,
+      "rows_BEFORE": 2805,
+      "rows_AFTER_IDX": 521,
+      "rows_AFTER_IDX_ANALYZE": 516
     },
     {
       "render": "CQL list (All Scale Page Probe)",
-      "stmts": 13,
-      "rows_BEFORE": 4587,
-      "rows_AFTER_IDX": 20,
-      "rows_AFTER_IDX_ANALYZE": 14
+      "stmts": 14,
+      "rows_BEFORE": 4588,
+      "rows_AFTER_IDX": 21,
+      "rows_AFTER_IDX_ANALYZE": 15
     },
     {
       "render": "denied (Restricted Page 7)",

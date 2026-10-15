@@ -323,7 +323,7 @@ export function renderMarkdown(b) {
   lines.push("");
   lines.push(`- Warm: ${n(b.cfFree.warm.maxViewsPerMonth)} views a month, limited by ${b.cfFree.warm.binding}. The requests cap is ${n(b.cfFree.warm.reqCap)} (100,000 a day for ${b.days} days); D1 rows read at ${n(inp.measurements.warm_d1.rows_read_per_page)} row per view stays far under the 5,000,000-a-day quota.`);
   lines.push(`- Uncached: ${n(b.cfFree.uncached.maxViewsPerMonth)} views a month, limited by ${b.cfFree.uncached.binding}, because the D1 quota of 5,000,000 rows a day covers about ${n(Math.floor(5e6 / b.scenarios[1].rowsPerView))} home renders a day at ${n(b.scenarios[1].rowsPerView)} rows each.`);
-  lines.push("- A warm view costs one D1 query. An uncached view costs the statements in the plan estimate (24 for the home page).");
+  lines.push(`- A warm view costs one D1 query. An uncached view costs the statements in the plan estimate (${b.scenarios[1].statementsPerView} for the home page).`);
   lines.push("");
   lines.push("### How each figure is computed");
   lines.push("");
