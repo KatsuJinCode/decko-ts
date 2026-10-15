@@ -914,7 +914,7 @@ function multiCardEditor(ctx: ViewContext): boolean {
   const { voo } = ctx;
   return (
     voo.opts["structure"] !== undefined ||
-    voo.opts["edit_structure"] !== undefined ||
+    voo.liveEditStructure !== undefined ||
     cardStructure(ctx) !== undefined
   );
 }
@@ -962,7 +962,7 @@ function cardStructure(
  *  [nest_name, chunk options]. */
 function multiCardEdit(ctx: ViewContext, fieldsOnly: boolean): string {
   const { fmt, voo } = ctx;
-  const editStructure = voo.opts["edit_structure"] as
+  const editStructure = voo.liveEditStructure as
     | Array<[string, Record<string, unknown>]>
     | undefined;
   let fieldConfigs: Array<[string, Record<string, unknown>]>;

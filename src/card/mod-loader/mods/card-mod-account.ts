@@ -1141,7 +1141,7 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
  *  (the multi-card walk the the mod-completion pass ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
-  ctx.voo.opts["edit_structure"] = [
+  ctx.voo.liveEditStructure = [
     ["+*email", { title: "email" }],
     ["+*password", { title: "password" }],
   ];
@@ -1289,8 +1289,10 @@ const signinEditView: ViewFn = (ctx) => {
   const voo = accountProbeSurface.signinEditVoo();
   // :159 ||= t(:account_forgot_password) - the title rides the voo opt the
   // title view reads (titleNoLinkView's voo.opts["title"])
-  if (ctx.voo.opts["title"] === undefined) ctx.voo.opts["title"] = voo.title;
-  ctx.voo.opts["edit_structure"] = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
+  // voo.title ||= t(:account_forgot_password) is a live writer (voo_api.rb
+  // define_setter): the title view reads it, the slot JSON never carries it.
+  if (ctx.voo.opts["title"] === undefined) ctx.voo.liveTitle = voo.title;
+  ctx.voo.liveEditStructure = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
   for (const hidden of voo.hide) ctx.voo.hide(hidden);
   return superView(ctx, setModuleShortname("self/signin"), "edit");
 };

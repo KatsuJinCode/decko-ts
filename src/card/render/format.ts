@@ -175,6 +175,11 @@ export class Voo {
    *  data-slot has no help key; the inner help-view slot's data-slot
    *  carries the help text). */
   liveHelp: string | undefined;
+  /** voo.edit_structure = X (the same define_setter mechanics as liveTitle):
+   *  card-mod-edit reads it for the multi-card walk, and it never reaches the
+   *  slot JSON (the signin, account and sign-up views set it inside the
+   *  before-hook, and the oracle's data-slot carries no edit_structure key). */
+  liveEditStructure: unknown;
 
   /** True ONLY for the bare view-surface ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
