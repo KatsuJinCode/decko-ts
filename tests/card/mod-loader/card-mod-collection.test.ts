@@ -196,7 +196,7 @@ describe("card-mod-collection through the mod loader", () => {
     it("raises NoMethodError on a plain card, as Ruby's card.count does (views.rb:126)", async () => {
       const s = storage!;
       await expect(s.engine.render("Collection Count Many", "count")).rejects.toThrow(
-        /^undefined method 'count' for #<Card id=\d+ name="Collection Count Many">$/,
+        /^undefined method 'count' for #<Card:0x[0-9a-f]{16}>$/,
       );
     });
 
@@ -208,7 +208,7 @@ describe("card-mod-collection through the mod loader", () => {
     it("raises NoMethodError on a plain card, as Ruby's card.count does (views.rb:126)", async () => {
       const s = storage!;
       await expect(s.engine.render("Collection Count Many", "count")).rejects.toThrow(
-        /^undefined method 'count' for #<Card id=\d+ name="Collection Count Many">$/,
+        /^undefined method 'count' for #<Card:0x[0-9a-f]{16}>$/,
       );
     });
   });

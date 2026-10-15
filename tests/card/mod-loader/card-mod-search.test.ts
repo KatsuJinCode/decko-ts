@@ -682,7 +682,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
       // A plain card reaches All::Item's count, which calls the format's
       // `card.count` (views.rb:126): Ruby raises NoMethodError on the card.
       await expect(s.engine.render("Item One", "count")).rejects.toThrow(
-        /^undefined method 'count' for #<Card id=\d+ name="Item One">$/,
+        /^undefined method 'count' for #<Card:0x[0-9a-f]{16}>$/,
       );
       // Search cards still resolve the warm count, not the item split
       expect(await s.engine.render("A Search", "count")).toBe("3");

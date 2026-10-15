@@ -76,7 +76,7 @@ import { rawItemStrings } from "../../render/pointer-list.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import type { CardRecord } from "../../fetch/card-record.js";
 import { h, cgiEscape } from "../../render/slot-html.js";
-import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
+import { NoMethodError, rubyDefaultInspect, stableIdentity } from "../../render/format.js";
 import type {
   DeckoModManifest,
 } from "../mod-manifest.js";
@@ -523,7 +523,7 @@ function staticTabsArgsMiss(ctx: ViewContext): never {
   const args = (ctx.fmt as unknown as { args?: unknown }).args;
   if (args !== undefined) return itemViewOptions(ctx, {}) as never;
   throw new NoMethodError(
-    `undefined method 'args' for ${engineObjectIdentity("Card::Format::CardActionView", {})}`,
+    `undefined method 'args' for ${rubyDefaultInspect("Card::Format::CardActionView", stableIdentity(ctx.fmt.card.name.s))}`,
   );
 }
 

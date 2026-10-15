@@ -49,7 +49,7 @@
 //   no views.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
+import { NoMethodError, rubyDefaultInspect, stableIdentity } from "../../render/format.js";
 import type {
   DeckoModManifest,
   ModEventCard,
@@ -329,7 +329,7 @@ const countView: ViewFn = (ctx) => {
   // search mod's view handles those before this one is reached.
   const card = ctx.fmt.card;
   throw new NoMethodError(
-    `undefined method 'count' for ${engineObjectIdentity("Card", { id: card.id, name: card.name.s })}`,
+    `undefined method 'count' for ${rubyDefaultInspect("Card", card.id ?? stableIdentity(card.name.s))}`,
   );
 };
 
