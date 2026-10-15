@@ -3504,6 +3504,14 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       driver,
       fetcher,
       attachmentStore,
+      // Signup approval/creation uses the general write route's triggered
+      // account-mail integration, alongside the dedicated reset endpoints.
+      accountMail: {
+        transport: mailTransport,
+        token: TOKEN_CONFIG,
+        origin: DECKO_ORIGIN,
+        siteTitle: SITE_TITLE,
+      },
       followMail: followMailContext,
       ...((delayedJobs) => (delayedJobs === undefined ? {} : { delayedJobs }))(delayedJobsForWrites()),
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
