@@ -26,7 +26,7 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateMod, evaluateSeedMod, loadGrades, saveGrades, specificDeclarations, summariseGrade } from "./behaviour.mjs";
+import { evaluateMod, evaluateSeedMod, loadGrades, saveGrades, specificDeclarations, summariseGrade, summariseProbes } from "./behaviour.mjs";
 
 // ---------------------------------------------------------------------------
 // config
@@ -55,6 +55,11 @@ const PERMS_DIR = join(REPO, "src", "card", "permissions");
 const OUTPUT_MD = join(HERE, "mod-compat-report.md");
 const OUTPUT_JSON = join(HERE, "mod-compat-report.json");
 const GRADED_OPS = join(HERE, "graded-ops.json");
+const GRADED_PROBES = join(HERE, "graded-probes.json");
+function loadProbeGrade(path) {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, "utf8")).grade ?? null;
+}
 
 // Test files that read the real-site fixtures and are withheld from the public
 // package. The counts that come from them are still reported; their names are
@@ -898,16 +903,25 @@ function renderBehaviourMd(report) {
   const notEvaluated = report.mods.filter((m) => m.classification.status === "ignored" && !m.seed);
   lines.push("## Behavioural verdict");
   lines.push("");
-  const viewsDone = evaluated.filter((m) => m.behaviour.status === "views-graded-events-ungraded");
+  const viewsDone = evaluated.filter((m) => m.behaviour.status === "views-graded-events-incomplete");
   const nothing = evaluated.filter((m) => m.behaviour.status === "no-gradable-declarations");
+  const sums = evaluated.map((m) => m.behaviour.summary);
+  const total = (k) => sums.reduce((n, s) => n + s[k], 0);
+  const probes = report.probe_grade;
   lines.push(
-    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. A further **${viewsDone.length}** have every declared view graded identical to Ruby but declare events that no instrument here grades: ${viewsDone.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Declaring neither views nor events, so nothing here grades them: ${nothing.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
+    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. Across them, ${total("views_graded_identical")} of ${total("views")} declared views are rendered by a graded operation and byte-identical to Ruby's captured answer, ${total("views_graded_differs")} are graded and differ, ${total("views_unexercised")} are exercised by no operation, and ${total("events_graded_identical")} of ${total("events")} declared events are graded on the rows they leave, identical to Ruby's (${total("events_graded_differs")} differ, ${total("events_not_observed")} ran but show no effect against a same-shape baseline, ${total("events_not_probed")} could not be realised as a probe on this deck). A further **${viewsDone.length}** have every declared view graded identical to Ruby but an event that no probe here observes: ${viewsDone.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Declaring neither views nor events, so nothing here grades them: ${nothing.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
   );
   lines.push("");
   lines.push(
-    "A mod is **behaviour-complete** only when every view it declares (any format) is rendered by at least one graded operation and every such operation is byte-identical to Ruby's captured answer (after the grader's N1-N8 rules), and it declares no event: no instrument here grades an event. A test that names a view (`test-named`) or an event (`named`) is listed as a pointer and never counts, because a name match shows neither what the test asserts nor where its expected bytes came from. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html, so no view declared in another format is graded yet.",
+    "A mod is **behaviour-complete** only when every view it declares (any format) is rendered by at least one graded operation and every such operation is byte-identical to Ruby's captured answer (after the grader's N1-N8 rules), AND every event it declares is run as a probe on the deck and leaves the rows Ruby's leaves. A test that names a view (`test-named`) or an event (`named`) is listed as a pointer and never counts, because a name match shows neither what the test asserts nor where its expected bytes came from. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading.",
   );
   lines.push("");
+  if (probes) {
+    lines.push(
+      `The event probes are the \`${probes.fixture}\` fixture (\`reference-harness/fixtures/${probes.fixture}\`): the same synthetic-v2 deck, one write scenario whose steps create, update and delete a probe card for each event declaration (and the same three writes on a card of the same shape as its baseline), with Ruby's answers captured by the oracle adapter. Each step is graded for persistence (the rows the write leaves) and side effects (saved, errors, mail). An event is counted only where its probe's rows DIFFER from the baseline's - a probe whose rows match the baseline shows the event did not fire, and two writes that both did nothing are not a match of behaviour. Engine commit ${probes.adapter_commit}${probes.adapter_dirty ? " (dirty)" : ""}, graded ${probes.graded_at}: persistence ${probes.persistence ? `${probes.persistence.pass}/${probes.persistence.graded}` : "n/a"}, side effects ${probes.side_effects ? `${probes.side_effects.pass}/${probes.side_effects.graded}` : "n/a"}, rendering ${probes.rendering ? `${probes.rendering.pass}/${probes.rendering.graded}` : "n/a"}.`,
+    );
+    lines.push("");
+  }
   lines.push("Grades this verdict rests on (`tools/compat-report/graded-ops.json`):");
   lines.push("");
   for (const g of report.grades ?? []) {
@@ -916,16 +930,16 @@ function renderBehaviourMd(report) {
   }
   if (!(report.grades ?? []).length) lines.push("- (none recorded: every view counts as ungraded)");
   lines.push("");
-  lines.push("| mod | behaviour | views | graded identical | graded differs | test-named, not counted | unexercised views | events (none graded) | events named by a test, not counted | events no test names |");
-  lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|");
+  lines.push("| mod | behaviour | views | graded identical | graded differs | test-named, not counted | unexercised views | events | graded identical rows | graded differing rows | ran, no effect seen | no probe possible | named by a test, not counted | unexercised |");
+  lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|----------------------:|---------------------:|--------------------:|-----------------:|-----------------------------:|------------:|");
   for (const m of report.mods) {
     if (m.classification.status === "ignored") {
-      lines.push(`| \`${m.gem}\` | ${m.seed ? "seed only (see below)" : "not evaluated"} | | | | | | | | |`);
+      lines.push(`| \`${m.gem}\` | ${m.seed ? "seed only (see below)" : "not evaluated"} | | | | | | | | | | | | |`);
       continue;
     }
     const s = m.behaviour.summary;
     lines.push(
-      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_test_named} | ${s.views_unexercised} | ${s.events} | ${s.events_named} | ${s.events_unexercised} |`,
+      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_test_named} | ${s.views_unexercised} | ${s.events} | ${s.events_graded_identical ?? 0} | ${s.events_graded_differs ?? 0} | ${s.events_not_observed ?? 0} | ${s.events_not_probed ?? 0} | ${s.events_named} | ${s.events_unexercised} |`,
     );
   }
   lines.push("");
@@ -961,6 +975,19 @@ function renderBehaviourMd(report) {
     lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}`).join(", ") || "(none)"}`);
     lines.push(`- views only named by a test, not graded: ${b.views.filter((v) => v.evidence === "test-named").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
+    const evs = b.events;
+    lines.push(
+      `- events graded identical (rows): ${evs.filter((e) => e.evidence === "graded-identical").map((e) => `${e.event} [${e.source ?? ""}] probe ${e.probe} on ${e.card} (${e.on ?? "no on:"})`).join("; ") || "(none)"}`,
+    );
+    lines.push(
+      `- events graded but differing rows: ${evs.filter((e) => e.evidence === "graded-differs").map((e) => `${e.event} [${e.source ?? ""}] differs at ${(e.differing_steps ?? []).join("; ")}`).join("; ") || "(none)"}`,
+    );
+    lines.push(
+      `- events run with no effect seen against the baseline: ${evs.filter((e) => e.evidence === "not-observed").map((e) => `${e.event} [${e.source ?? ""}]`).join(", ") || "(none)"}`,
+    );
+    lines.push(
+      `- events with no probe: ${evs.filter((e) => e.evidence === "not-probed").map((e) => `${e.event} [${e.source ?? ""}]: ${e.reason ?? ""}`).join("; ") || "(none)"}`,
+    );
     lines.push(`- events unexercised: ${unexE.map((e) => e.event).join(", ") || "(none)"}`);
     lines.push("");
   }
@@ -995,7 +1022,7 @@ function renderMd(report) {
   );
   lines.push("");
   lines.push(
-    "**What these labels measure: declarations only.** \"declared-complete\" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
+    "**What these labels measure: declarations only.** \"declared-complete\" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. They do NOT measure behaviour: that is the Behavioural verdict below, which grades each declared view and event against Ruby. Non-html formats (json, css, email, rss, csv) are rendered by no instrument here. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
   );
   lines.push("");
   lines.push(...renderBehaviourMd(report));
@@ -1108,6 +1135,20 @@ function main() {
     process.stderr.write(`wrote ${GRADED_OPS}\n`);
   }
 
+  // --probes <grade.json> <plan.json>: the graded event and view probes
+  // (behaviour.mjs summariseProbes), recorded in graded-probes.json.
+  let probeGrade = loadProbeGrade(GRADED_PROBES);
+  const pi = argv.indexOf("--probes");
+  if (pi >= 0) {
+    const gradePath = argv[pi + 1];
+    const planPath = argv[pi + 2];
+    const grade = JSON.parse(readText(gradePath));
+    const plan = JSON.parse(readText(planPath));
+    probeGrade = summariseProbes(REPO, grade, plan);
+    writeFileSync(GRADED_PROBES, JSON.stringify({ format: "decko-ts-graded-probes/1", grade: probeGrade }, null, 1) + "\n");
+    process.stderr.write(`wrote ${GRADED_PROBES}\n`);
+  }
+
   const gems = listGemDirs(GEM_DIR);
   const surface = inventoryDeckoTs();
   const specific = specificDeclarations(gems.map((g) => g.path));
@@ -1116,7 +1157,7 @@ function main() {
     const pins = inventoryModPins(g.name);
     const cls = classify(inv, surface, pins);
     const modId = g.name.replace(/-0\.\d+\.\d+$/, "");
-    const behaviour = evaluateMod(REPO, g.path, modId, grades, specific);
+    const behaviour = evaluateMod(REPO, g.path, modId, grades, specific, probeGrade);
     // A gem with no set/ tree but a seed dump is evaluated by its seed.
     const seed = cls.status === "ignored" ? evaluateSeedMod(REPO, g.path) : null;
     return { gem: g.name, version: g.version, classification: cls, behaviour, ...(seed ? { seed } : {}), inv, pins };
@@ -1124,6 +1165,7 @@ function main() {
 
   const report = {
     generatedAt: new Date().toISOString(),
+    probe_grade: probeGrade,
     gemDir: "$GEM_HOME",
     // portable placeholder, per the header comment: the report must stay
     // portable across machines, so it records no absolute checkout path.
