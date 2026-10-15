@@ -100,6 +100,9 @@ import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
 import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
+import { RenderEngine } from "../card/render.js";
+import { SessionStore } from "../card/auth/session-store.js";
+import { readSessionCookie } from "./write-routes.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
@@ -144,6 +147,7 @@ export interface WorkersWriteEnv extends WriteSurfaceFlags {
 export interface WorkersRenderEngine {
   render(name: string, view: string): Promise<string>;
   expireRenderCard(name: string): void;
+  readonly imageCdnHost?: string;
 }
 
 export interface WorkersWriteContext {
@@ -486,6 +490,20 @@ async function mountWrite(
         ctx.fetcher.expireName(name);
         ctx.renderEngine.expireRenderCard(name);
         return ctx.renderEngine.render(name, "titled");
+      },
+      // carrierwave's real two-step upload answers with its preview_editor,
+      // including the draft action's hidden save field. Render under this
+      // request's account; never mutate the shared anonymous engine's viewer.
+      renderPreviewEditor: async ({ name, opts }) => {
+        const token = readSessionCookie(req.headers.cookie);
+        const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
+        if (actor === null) throw new Error("upload preview requires the authenticated request session");
+        ctx.fetcher.expireName(name);
+        const render = new RenderEngine(ctx.fetcher);
+        render.viewer = { signedIn: true, actorId: actor.id };
+        render.pageSession = render.viewer;
+        render.imageCdnHost = ctx.renderEngine.imageCdnHost;
+        return await render.render(name, "preview_editor", { viewOpts: opts });
       },
       // The edge compilers (the scssCompiler / coffeeCompiler seams): the
       // WebAssembly LibSass and the npm coffeescript package, so stylesheet

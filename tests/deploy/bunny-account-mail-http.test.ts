@@ -13,8 +13,12 @@ import { CaptureTransport } from "../../src/card/notify/transport.js";
 import { handleBunnyEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-handler.js";
 import type { WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
+// @ts-expect-error - the owned HTTP emulator has a JSDoc JavaScript surface.
+import { startMockBunnyStorage } from "../server/mock-bunny-storage.mjs";
 
 let root: string, hrana: MockHranaServer, driver: BunnyDbDriver, http: Server, base: string;
+let storage: Awaited<ReturnType<typeof startMockBunnyStorage>>;
+const originalFetch = globalThis.fetch;
 const services: { accountMail?: WorkersWriteContext["accountMail"] } = {};
 const outbox = new CaptureTransport("owned-local-outbox");
 beforeAll(async () => {
@@ -25,7 +29,13 @@ beforeAll(async () => {
   driver = new BunnyDbDriver({ url: hrana.url, authToken: "owned-test" });
   await runAuthMigrations(driver);
   await ensureFreshnessStamp(driver);
-  const env = { DECKO_DB_URL: hrana.url, DECKO_DB_TOKEN: "owned-test", DECKO_WRITE_PATH: "1", DECKO_EDGE_DECK_PROFILE: "stock" };
+  storage = await startMockBunnyStorage({ filesRoot: path.join(root, "files") });
+  globalThis.fetch = (input, init) => {
+    const value = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const prefix = `https://${storage.host}/`;
+    return originalFetch(value.startsWith(prefix) ? `http://${storage.host}/${value.slice(prefix.length)}` : input, init);
+  };
+  const env = { DECKO_DB_URL: hrana.url, DECKO_DB_TOKEN: "owned-test", DECKO_WRITE_PATH: "1", DECKO_EDGE_DECK_PROFILE: "stock", DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host };
   http = createServer(async (req, res) => {
     try {
       const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
@@ -42,6 +52,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await new Promise<void>(resolve => http?.close(() => resolve()));
   await hrana?.close();
+  await storage?.stop();
+  globalThis.fetch = originalFetch;
   if (root) { expect(path.dirname(root)).toBe(path.resolve(os.tmpdir())); expect(path.basename(root).startsWith("decko-bunny-mail-test-")).toBe(true); rmSync(root, { recursive: true, force: true }); }
 });
 async function snapshot() {
@@ -114,6 +126,33 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const fresh = await signin("edge.signup@example.test", "Edge signup pass 7#");
   expect(fresh.status).toBe(303);
   expect(fresh.headers.get("set-cookie")).toMatch(/decko_ts_session=[^;]+/);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
+it("uploads real bytes, renders the actual selected draft preview and saves/downloads the cached attachment", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  expect(admin.status).toBe(303);
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const typeId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='file'", [])).rows[0].id;
+  const bytes = "Owned real upload contents.\n";
+  const data = new FormData();
+  data.append("card[type_id]", String(typeId));
+  data.append("attachment_upload", "card[file]");
+  data.append("card[file]", new Blob([bytes], { type: "text/plain" }), "owned-minutes.txt");
+  const uploaded = await fetch(base + "/card/create", { method: "POST", redirect: "manual", headers: { cookie, origin: base, "x-requested-with": "XMLHttpRequest" }, body: data });
+  const preview = await uploaded.text();
+  expect(uploaded.status, preview).toBe(200);
+  expect(preview).toContain("owned-minutes.txt");
+  const selected = /name=['"]card\[action_id_of_cached_upload\]['"][^>]*value=['"](\d+)['"]/.exec(preview)?.[1];
+  expect(selected).toMatch(/^\d+$/);
+  const saved = await post("/card/create", { "card[name]": "Owned HTTP Upload", "card[type_id]": String(typeId), "card[action_id_of_cached_upload]": selected! }, cookie);
+  expect(saved.status).toBe(200);
+  const result = await saved.json() as { card_id: number };
+  const card = (await driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [result.card_id])).rows[0];
+  expect(card.db_content).toMatch(new RegExp(`^~${result.card_id}/\\d+\\.txt$`));
+  const download = await fetch(`${base}/files/${card.db_content}`, { headers: { cookie } });
+  expect(download.status).toBe(200);
+  expect(await download.text()).toBe(bytes);
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
