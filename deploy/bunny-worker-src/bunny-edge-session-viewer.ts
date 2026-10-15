@@ -192,6 +192,7 @@ export class ActorRenderEngines {
     // silently lose the CDN host or the token secret the anonymous engine
     // was given.
     render.imageCdnHost = this.base.render.imageCdnHost;
+    render.fontAwesomeAssetMode = this.base.render.fontAwesomeAssetMode;
     render.tokenConfig = this.base.render.tokenConfig;
     render.fileStorage = this.base.render.fileStorage;
     // The deck's phantom (unknown item) type is host-deployment config on

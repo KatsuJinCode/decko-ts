@@ -42,6 +42,8 @@
 //   no extra headers.
 
 import { TINYMCE_NEST_PLUGIN_JS } from "./bunny-edge-tinymce-nest-plugin.js";
+import { serveFontAwesomeAsset } from "../../src/server/font-awesome-assets.js";
+import { configureFontAwesomeMode } from "../../src/card/render/font-awesome.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
   bootDeck,
@@ -141,6 +143,7 @@ function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
     const boot0 = Date.now();
     deckPromise = bootDeck(config, env)
       .then((deck) => {
+        deck.render.fontAwesomeAssetMode = configureFontAwesomeMode(env.DECKO_FONT_AWESOME);
         probeRecordBoot(Date.now() - boot0);
         // The actor engine registry hangs off the booted deck exactly as the
         // lineage entry's sync boot did (bunny-edge-engine-entry.ts:238):
@@ -267,6 +270,8 @@ async function routeBunnyEngineRequest(
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
   const url = new URL(request.url);
+  const vendorAsset = serveFontAwesomeAsset(request);
+  if (vendorAsset !== undefined) return vendorAsset;
   if (url.pathname.replace(/\/+$/, "") === "/_status") {
     // Ahead of the write surface, as it always was: /_status is a read route
     // the surface does not own, and answering it here keeps its bytes

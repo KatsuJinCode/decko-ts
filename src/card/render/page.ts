@@ -1,4 +1,5 @@
 import { str, type ViewResult } from "./format.js";
+import { fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "./font-awesome.js";
 // The page renderer: TypeScript port of the html-format show path —
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
 // live-serving page assembly the bare view-function renderer does not do.
@@ -1214,7 +1215,7 @@ async function globalSettingContent(
 async function javascriptTags(engine: RenderEngine): Promise<string> {
   const scriptUrl = await assetOutputUrl(engine, "script");
   return [
-    applyScriptIntegrity(REMOTE_SCRIPT_TAGS),
+    applyScriptIntegrity(REMOTE_SCRIPT_TAGS.replace(STOCK_FONT_AWESOME_TAG, fontAwesomeHeadTag(engine.fontAwesomeAssetMode))),
     `<!-- MAIN DECKO JAVASCRIPT -->`,
     `<script src="${scriptUrl}"></script>`,
   ].join("\n");

@@ -52,6 +52,7 @@ const env = {
   DECKO_DECK_ORIGIN: origin,
   DECKO_ORIGIN: origin,
   DECKO_WRITE_PATH: "1",
+  DECKO_FONT_AWESOME: process.env.DECKO_FONT_AWESOME ?? "local",
   DECKO_TOKEN_SECRET: "local-journey-fixture-token-secret",
   DECKO_STORAGE_ZONE: storage.zone,
   DECKO_STORAGE_PASSWORD: storage.password,
@@ -66,7 +67,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === "/__harness/runtime") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: true, mailProvider: "local-capture-notify-transport", objectStorageConfigured: true, objectStorageProvider: "local-bunny-http-emulator" }));
+      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: true, mailProvider: "local-capture-notify-transport", fontAwesomeAssetMode: env.DECKO_FONT_AWESOME, fontAwesomeVersion: env.DECKO_FONT_AWESOME === "local" ? "6.7.2" : null, objectStorageConfigured: true, objectStorageProvider: "local-bunny-http-emulator" }));
       return;
     }
     if (req.url === "/__harness/mail") {

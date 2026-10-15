@@ -850,6 +850,8 @@ export class RenderEngine implements RenderEngineLike {
    *  RenderEngineLike.imageCdnHost). Host-deployment config; undefined =
    *  host-relative /files URLs. */
   imageCdnHost: string | undefined;
+  /** Deployment-owned icon assets; undefined preserves the stock gem kit. */
+  fontAwesomeAssetMode?: "local";
   /** The deck's PHANTOM item type — the type an unknown (record-less)
    *  pointer/list item carries when no host item type resolves one.
    *

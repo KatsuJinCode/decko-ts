@@ -4278,6 +4278,7 @@ export interface RenderEngineLike {
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
    *  fog bucket host), never derivable from the corpus. */
   readonly imageCdnHost?: string | undefined;
+  readonly fontAwesomeAssetMode?: "local";
   /** The deck's phantom (unknown pointer/list item) type identity — the deck
    *  config form of Ruby's `*all+*default` template type (see
    *  PhantomItemType). undefined = the deck configures no such rule and its

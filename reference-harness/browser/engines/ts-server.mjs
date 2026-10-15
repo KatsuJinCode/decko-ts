@@ -49,6 +49,8 @@ process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
 // deltas Ruby never writes. Ruby-side parity is the engine behavior under
 // test; the production PBKDF2 default is a host decision, not an engine one.
 const productionProfile = process.argv.includes("--production");
+if (productionProfile) process.env.DECKO_FONT_AWESOME ??= "local";
+else process.env.DECKO_FONT_AWESOME = "stock";
 if (!productionProfile) process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 else process.env.DECKO_PASSWORD_HASH ??= "pbkdf2";
 // A fresh deck served as stock Decko serves it (see vm-staging-server.mjs).
@@ -77,7 +79,7 @@ http.createServer = (...args) => {
   const wrapped = async (req, res) => {
     if (req.url === "/__harness/runtime") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ engine: "node-host", node: process.version, passwordHash: process.env.DECKO_PASSWORD_HASH ?? "default", assetRefresh: process.env.DECKO_ASSET_REFRESH ?? "cautious", scssCompilerConfigured: !!process.env.DECKO_SASSC, scssCompilerSha256: process.env.DECKO_SASSC ? createHash("sha256").update(readFileSync(process.env.DECKO_SASSC)).digest("hex") : null, deckProfile: process.env.DECKO_DECK_PROFILE }));
+      res.end(JSON.stringify({ engine: "node-host", node: process.version, passwordHash: process.env.DECKO_PASSWORD_HASH ?? "default", assetRefresh: process.env.DECKO_ASSET_REFRESH ?? "cautious", scssCompilerConfigured: !!process.env.DECKO_SASSC, scssCompilerSha256: process.env.DECKO_SASSC ? createHash("sha256").update(readFileSync(process.env.DECKO_SASSC)).digest("hex") : null, fontAwesomeAssetMode: process.env.DECKO_FONT_AWESOME ?? "stock", fontAwesomeVersion: process.env.DECKO_FONT_AWESOME === "local" ? "6.7.2" : null, deckProfile: process.env.DECKO_DECK_PROFILE }));
       return;
     }
     if (req.url === "/__harness/ready") {

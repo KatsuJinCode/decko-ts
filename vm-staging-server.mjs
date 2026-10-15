@@ -127,6 +127,8 @@ import { RenderEngine } from "./dist/src/card/render.js";
 // is the FOCAL arm (error.rb:69-73 loud_error re-raises) and does not
 // change — only nested/delegated rescues go quiet.
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
+import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
+import { configureFontAwesomeMode } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
@@ -1337,6 +1339,7 @@ const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 // composes them (dirs.rb:54-62), and the mod views ARE its serving.
 defaultDeckLoader();
 const render = new RenderEngine(fetcher);
+render.fontAwesomeAssetMode = configureFontAwesomeMode(process.env.DECKO_FONT_AWESOME);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
 render.tokenConfig = TOKEN_CONFIG;
@@ -3044,6 +3047,7 @@ function engineForActor(actorId) {
   if (engine === undefined) {
     engine = new RenderEngine(fetcher);
     engine.imageCdnHost = render.imageCdnHost;
+    engine.fontAwesomeAssetMode = render.fontAwesomeAssetMode;
     engine.renderAbsentCards = render.renderAbsentCards;
     engine.tokenConfig = TOKEN_CONFIG;
     engine.viewer = { signedIn: true, actorId };
@@ -3745,6 +3749,12 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
+  const vendorAsset = serveFontAwesomeAsset(new Request(url, { method: req.method }));
+  if (vendorAsset !== undefined) {
+    res.writeHead(vendorAsset.status, Object.fromEntries(vendorAsset.headers));
+    res.end(req.method === "HEAD" ? undefined : Buffer.from(await vendorAsset.arrayBuffer()));
+    return;
+  }
   // The requested view (?view=/ ?v= — rest.rb view_from_params: the first
   // PRESENT param of [:view, :v] is the root show view). Absent/blank -> the
   // page default.

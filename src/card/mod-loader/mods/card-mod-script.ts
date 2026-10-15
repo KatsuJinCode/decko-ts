@@ -1,3 +1,4 @@
+import { fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
 // The card-mod-script gem (card-mod-script-0.20.0), ported through the mod
 // loader.
 //
@@ -425,7 +426,7 @@ function remoteScriptTagsOfModCard(ctx: ViewContext): string {
   // hashes minus integrity (the oracle's tags carry crossorigin /
   // referrerpolicy only).
   const pinned = MOD_REMOTE_SCRIPT_TAGS[card.name.leftName?.s ?? ""];
-  return pinned === undefined ? "" : pinned.join("\n");
+  return pinned === undefined ? "" : pinned.join("\n").replace(STOCK_FONT_AWESOME_TAG, fontAwesomeHeadTag(ctx.fmt.engine.fontAwesomeAssetMode));
 }
 
 /** view :remote_script_tags - the two type_plus_right layers. Ruby defines

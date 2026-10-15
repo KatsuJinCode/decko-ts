@@ -226,3 +226,12 @@ the WebAssembly module the edge write surfaces load. The directory carries the
 MIT license text and the provenance of those sources beside the built module
 (`vendor/libsass-wasm/LICENSE`, `vendor/libsass-wasm/PROVENANCE.md`); MIT is
 compatible with this project's GPL-3.0-or-later terms.
+
+### `vendor/fontawesome-free-6.7.2/` — self-hosted icon styles and fonts
+
+Font Awesome Free 6.7.2, copyright Fonticons, Inc., from the official
+`@fortawesome/fontawesome-free` npm distribution. CSS is MIT; font files
+are SIL OFL 1.1, with Reserved Font Name "Font Awesome". Upstream's full
+distributed LICENSE.txt, attribution, package integrity and extracted-byte
+hashes are retained alongside the exact CSS/font bytes. No Pro assets or
+private Kit credentials are included. See that directory's PROVENANCE.md.
