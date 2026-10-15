@@ -152,8 +152,21 @@ checkout:
   node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 --actual <resultsDir>
   ```
 
-  Result: rendering 1754/1754, semantics 2389/2389, persistence 16/16,
-  side effects 19/19, read writes 8/8, other tables 12/12, verdict pass.
+  Result on the branch's own tree: rendering 1754/1754, semantics 2389/2389,
+  persistence 16/16, side effects 19/19, read writes 8/8, other tables 12/12,
+  verdict pass.
+
+  Not reproduced on the release line integration tip (fd141df9, which merges
+  this branch with the release line's newer `src/card/render/prefetch.ts`).
+  There the same grade gives rendering 12/1754, verdict fail, and every page
+  and view render fails with PostgreSQL's error `recursive query "reach"
+  column 1 has type text in non-recursive term but type integer overall`. The
+  `reach` recursive CTE in `prefetch.ts` seeds its anchor with a bare bind
+  parameter (`SELECT $1, 'n'`), which PostgreSQL types as text. Casting that
+  anchor to INTEGER runs correctly on PGlite. The translator does not yet do
+  this, and no test in `tests/server/drivers/postgres-pglite.test.ts` covers
+  the recursive CTE shape. Semantics, persistence, side effects, read writes
+  and other tables still pass on the integration tip.
 
   The `ts-postgres` adapter is the `ts` adapter with the engine on
   PostgreSQL. The harness grades persistence by reading the deck's SQLite
