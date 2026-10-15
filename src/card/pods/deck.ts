@@ -20,6 +20,7 @@ import {
 import { createVirtualCardLookup } from "../fetch/virtual-cards.js";
 import { registerSqliteRegexpFunction } from "../../cql/sqlite-regexp.js";
 import { ensureFreshnessStamp } from "../../server/freshness-stamp.js";
+import { ensureNestIndex } from "../nest-index.js";
 
 type Row = Record<string, unknown>;
 
@@ -73,6 +74,42 @@ export async function bootDeck(
       DeckoName.parse(name),
       row.left_id === null ? String(row.name) : [Number(row.left_id), Number(row.right_id)],
     );
+  }
+  // The stored nest index describes the content before any render reads it
+  // (src/card/nest-index.ts): a deck built by another road is re-derived here,
+  // and a deck already built costs one marker read. A READ-ONLY open still
+  // builds it: the step is one write the host is allowed to make at boot, so
+  // a second writable handle to the same file is opened for it and closed
+  // again. When that cannot be opened - a read-only medium, a locked file -
+  // the host is told, loudly, that it is serving by walking the nest closure
+  // (the same bytes, one round trip per level) rather than quietly paying it.
+  {
+    const indexDriver = opts.readonly === true ? new LocalSqliteDriver({ path: dbPath }) : driver;
+    let indexOwned = opts.readonly === true;
+    try {
+      await ensureNestIndex(indexDriver, fetcher.lexicon);
+      if (indexOwned) indexDriver.close();
+    } catch (err) {
+      if (indexOwned) {
+        try {
+          indexDriver.close();
+        } catch {
+          // best-effort: the open handle is what failed, not the close
+        }
+        indexOwned = false;
+      }
+      if (opts.readonly === true) {
+        process.stderr.write(
+          `[nest-index] could not build the stored nest index on a read-only open of ${dbPath}: ` +
+            `${err instanceof Error ? err.message : String(err)}
+` +
+            "[nest-index] this deck will be served by walking its nest closure (same bytes, one round trip per level) " +
+            "until it can be built; run tools/deploy/build-nest-index.mjs on it.\\n",
+        );
+      } else {
+        throw err;
+      }
+    }
   }
   const [universe] = await driver.batch([structureRuleUniverseStatement()]);
   fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {

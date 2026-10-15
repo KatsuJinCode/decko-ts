@@ -56,7 +56,7 @@ export function generateSalt(now: Date): string {
  *  validation adds for a password, in its order; empty when it passes. */
 export function passwordErrors(password: string): string[] {
   const errors: string[] = [];
-  if ([...password].length < 8) errors.push("Password must be 8 characters or longer");
+  if ([...password].length < 8) errors.push("must be 8 characters or longer");
   const missing: string[] = [];
   if (!/[a-z]/.test(password)) missing.push("a lower case letter");
   if (!/[A-Z]/.test(password)) missing.push("an upper case letter");
@@ -65,7 +65,7 @@ export function passwordErrors(password: string): string[] {
   if (missing.length > 0) {
     const text =
       missing.length > 2 ? `${missing.slice(0, -1).join(", ")}, and ${missing[missing.length - 1]}` : missing.join(" and ");
-    errors.push(`Password must contain ${text}`);
+    errors.push(`must contain ${text}`);
   }
   return errors;
 }

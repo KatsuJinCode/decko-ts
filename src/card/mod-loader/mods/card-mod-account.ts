@@ -285,6 +285,12 @@ const accountCoreView: ViewFn = (ctx) => {
  *  the literal string. The password hash is NEVER rendered. */
 const passwordRawView: ViewFn = () => "encrypted";
 
+/** set/right/salt.rb:13-15 view :raw — `t :account_private_data`; en.yml:28
+ *  carries `private_data: Private data` under the account scope, so the bytes
+ *  are the literal string. The salt is NEVER rendered, to any reader: the
+ *  same rule the password's own :raw follows (password.rb:53-55). */
+const saltRawView: ViewFn = () => "Private data";
+
 /** all/password_input.rb:2-4 password_input + password_input.haml, through
  *  right/password.rb:86-88's `def input_type; :password end` (the editor
  *  dispatch reaches password_field's editor the same way editor.rb's
@@ -1513,9 +1519,14 @@ const setModules: ModSetModuleFile[] = [
   { setPath: "right/roles" },
   {
     // set/right/salt.rb:13-15 view :raw (base, returns t :account_private_
-    // data). Not ported: rails i18n. :3 `assign_type :phrase`.
+    // data). :3 `assign_type :phrase`.
     setPath: "right/salt",
     assignsType: "phrase",
+    formats: {
+      base: {
+        views: [{ view: "raw", viewFn: saltRawView }],
+      },
+    },
   },
   {
     // set/right/status.rb:6-10 html format input_type method override.

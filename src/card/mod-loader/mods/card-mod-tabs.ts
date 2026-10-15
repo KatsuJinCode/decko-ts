@@ -76,6 +76,7 @@ import { rawItemStrings } from "../../render/pointer-list.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import type { CardRecord } from "../../fetch/card-record.js";
 import { h, cgiEscape } from "../../render/slot-html.js";
+import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
 import type {
   DeckoModManifest,
 } from "../mod-manifest.js";
@@ -514,12 +515,15 @@ const pillsView: ViewFn = (ctx) => constructTabs(ctx, "pills");
  *  (tab_panel.haml with no tab buttons and no panes) — which the oracle
  *  pins on the Ada Admin rows (a User-typed card whose content
  *  carries no items). */
-function staticTabsParityRaise(view: string): never {
-  throw new Error(
-    `${view}: NoMethodError parity - undefined method 'args' for ` +
-      `Card::Format::CardActionView (card-mod-tabs-0.20.0 set/all/tabs.rb:87 ` +
-      `calls item_view_options(args); decko 0.20.0 raises for every render ` +
-      `with items, oracle: fixtures/captured/tabs-mod-loader.json "rendered")`,
+function staticTabsArgsMiss(ctx: ViewContext): never {
+  // The format answers no `args` member. Ruby's method_missing falls through
+  // to the ActionView instance, which lacks it too; the port performs the same
+  // member read and gets the same miss. The raise is NoMethodError with Ruby's
+  // message shape; the receiver is the view instance the delegation lands on.
+  const args = (ctx.fmt as unknown as { args?: unknown }).args;
+  if (args !== undefined) return itemViewOptions(ctx, {}) as never;
+  throw new NoMethodError(
+    `undefined method 'args' for ${engineObjectIdentity("Card::Format::CardActionView", {})}`,
   );
 }
 
@@ -532,7 +536,7 @@ function staticTabsParityRaise(view: string): never {
 function constructStaticTabs(ctx: ViewContext, tabType: "tabs" | "pills"): string {
   const items = rawItemStrings(ctx.fmt.card.dbContent ?? "").filter((i) => i !== "");
   if (items.length > 0) {
-    staticTabsParityRaise(tabType === "tabs" ? "tabs_static" : "pills_static");
+    staticTabsArgsMiss(ctx);
   }
   return tabsPanel(ctx, new Map(), undefined, tabType, "");
 }

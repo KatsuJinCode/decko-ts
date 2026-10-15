@@ -10,16 +10,16 @@ structure, form fields), the mail sent and the row delta in the card tables.
 
 ## Last run
 
+Conformance: 51 of 51 conformant. 50 identical to Ruby; 1 deliberately safer per docs/SECURITY.md divergence 4 (`signin-wrong-password`, the uniform sign-in answer). That journey matches Ruby on every item with `DECKO_SIGNIN_UNIFORM_FAILURE=off`. The default run counts 50 / 51 graded journeys passing; the one difference is the declared text item. The run record is docs/runs/browser-journeys-2026-10-15.md (commit 58d21f58).
+
 - Date: 2026-10-15
-- Command: `npm run test:browser-journeys -- --shards 2`
+- Commit: 58d21f58
+- Command: `npm run test:browser-journeys -- --shards 2` (Ruby 2 shards, port 1 shard; memory tight)
 - Reference runtime: Ruby 3.4.11
 - Journeys: 51
 - Completed on Ruby: 51 / 51
 - Completed on the port: 51 / 51
-- Comparison: 50 / 51 graded journeys pass (0 not graded: a journey that fails on the reference is not graded)
-
-The reference ran on Ruby 3.4.11; the declared oracle runtime is Ruby 3.3
-(`docs/parity-method.md`).
+- Comparison (default run, uniform sign-in answer on): 50 / 51 graded journeys pass (0 not graded). Flags-off check of the one declared difference: 1 / 1 pass.
 
 Error pages: both sides answer an unhandled exception the way a deployed
 site does. The Ruby server runs with Decko's production error handling
@@ -101,17 +101,9 @@ Per graded item:
 
 ## Declared divergence (reported apart from the matches)
 
-`signin-wrong-password` is not counted among the matches above. It differs in one
-text item: a wrong password is answered "Wrong email or password." by the port and
-"Wrong password" by Ruby. The port gives that uniform answer on purpose, as
-docs/SECURITY.md divergence 4 (sign-in: uniform in its answers) records.
+`signin-wrong-password` differs in one text item: a wrong password is answered "Wrong email or password." by the port and "Wrong password" by Ruby. The port gives the uniform answer on purpose, as docs/SECURITY.md divergence 4 (sign-in: uniform in its answers) records.
 
-Proof that this is the only difference: the same journey on the port with
-DECKO_SIGNIN_UNIFORM_FAILURE=off (the per-field messages Ruby gives) passes every
-item (completion, address, text, structure, fields) against the same Ruby recording
-from this run: 2026-10-15, run-journeys.mjs with the ts engine and the filter
-^signin-wrong-password$, then compare-journeys.mjs reporting 1 / 1 pass. The default
-run leaves the flag on, so the journey stays failing here by design.
+Proof that this is the only difference: the same journey on the port with DECKO_SIGNIN_UNIFORM_FAILURE=off passes every item (completion, address, text, structure, fields) against the same Ruby recording from this run (run-journeys.mjs with the ts engine, the filter ^signin-wrong-password$, then compare-journeys.mjs reporting 1 / 1 pass). The default run leaves the flag on, so the journey stays failing there by design.
 
 ## Reproducing
 

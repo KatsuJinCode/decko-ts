@@ -407,8 +407,9 @@ export async function prefetchInclusionClosure(
   // `via` keeps nest edges and side edges apart: nests are followed only out
   // of cards reached BY a nest (the rounds scan only those cards' content),
   // sides out of every reached card. UNION over (id, via) terminates on a
-  // cyclic graph. The LIMIT bounds the pool on a deck whose closure is
-  // larger than any render walks; past it the rounds fetch the rest.
+  // cyclic graph. There is no row cap: the whole closure rides this one
+  // statement, so a cold render costs the same round trips at any closure
+  // size. Its memory is the closure rows the render holds in its caches.
   let nestIndexSlot = -1;
   if (ctx.skipClosureWalk !== true && rootRow.id > 0) {
     preludeStatements.push(nestIndexStatement(rootRow.id));
@@ -532,14 +533,13 @@ export async function prefetchInclusionClosure(
   return stats;
 }
 
-/** Upper bound on the rows the nest-index statement walks (the recursive
- *  queue, so also the rows it reads). Well above a rendered page's closure;
- *  a closure past it costs the per-level rounds for the remainder. */
-const NEST_INDEX_LIMIT = 2000;
-
 /** The stored nest index's closure statement for `rootId` (the prelude's
  *  `reach` CTE; see the call site). Exported so the PostgreSQL conformance
- *  tests can run this exact query shape against PGlite. */
+ *  tests can run this exact query shape against PGlite.
+ *
+ *  There is no row cap: the whole closure rides this one statement, so a
+ *  cold render costs the same round trips at any closure size. Its memory
+ *  is the closure rows the render holds in its caches. */
 export function nestIndexStatement(rootId: number): SQLStatement {
   return {
     sql:
@@ -552,13 +552,11 @@ export function nestIndexStatement(rootId: number): SQLStatement {
       `  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n` +
       `  UNION\n` +
       `  SELECT c.right_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.right_id IS NOT NULL\n` +
-      `  LIMIT ${NEST_INDEX_LIMIT}\n` +
       `)\n` +
       `SELECT * FROM cards WHERE id IN (SELECT id FROM reach) AND trash = 0`,
     params: [rootId],
   };
 }
-
 /** One closure round's asks, in the shapes driveClosure issues them. */
 interface ClosureRoundAsks {
   simpleKeys: string[];

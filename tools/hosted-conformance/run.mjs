@@ -13,10 +13,14 @@
 // Platform API that starts the in-repo Hrana test server per database, and
 // that Hrana server in place of a Bunny database.
 //
+// Each suite's table row carries writers, writes and lost writes counted at
+// the engine's driver seam (tests/hosted/hosted-counters.ts), and every run
+// is recorded as JSON under tools/hosted-conformance/results/.
+//
 // Exit status is 0 only when every suite of every target that ran passed.
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -323,28 +327,77 @@ async function startLocalStandIns() {
 // Running the suites
 // ---------------------------------------------------------------------------
 
-function runSuite(suite, targetEnv) {
+/** Exit status of a Windows process that aborted in native code
+ *  (STATUS_STACK_BUFFER_OVERRUN, 0xC0000409). Node 24 on Windows prints
+ *  "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c"
+ *  and exits this way when a process ends while a libuv async handle is
+ *  closing (nodejs/node#56645); the cause is outside this suite's code. The
+ *  runner runs the suite again, up to MAX_ATTEMPTS in all, and reports every
+ *  abort in its table and in the JSON record. */
+const PLATFORM_ABORT = 3221226505;
+const MAX_ATTEMPTS = 3;
+
+function runSuiteOnce(suite, suiteEnv) {
   const args = [join(REPO, "node_modules/vitest/vitest.mjs"), "run", suite.file];
   if (suite.filter) args.push("-t", suite.filter);
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, args, { cwd: REPO, env: { ...env, ...targetEnv }, windowsHide: true });
+    const child = spawn(process.execPath, args, { cwd: REPO, env: { ...env, ...suiteEnv }, windowsHide: true });
     let out = "";
     child.stdout.on("data", (c) => (out += c));
     child.stderr.on("data", (c) => (out += c));
     child.on("close", (code) => {
       const plain = out.replace(/\u001b\[[0-9;]*m/g, "");
       const tests = /Tests\s+([^\n]+)/.exec(plain)?.[1]?.trim() ?? "no summary";
-      const passed = Number(/(\d+) passed/.exec(tests)?.[1] ?? 0);
-      const ok = code === 0 && passed > 0;
-      resolve({ ok, tests, log: plain });
+      resolve({ exitCode: code, tests, log: plain });
     });
   });
+}
+
+function readCounters(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function runSuite(suite, targetEnv) {
+  const scratch = mkdtempSync(join(tmpdir(), "decko-hosted-suite-"));
+  try {
+    const aborts = [];
+    for (let attempt = 1; ; attempt++) {
+      const countersFile = join(scratch, `counters-${attempt}.json`);
+      const run = await runSuiteOnce(suite, { ...targetEnv, DECKO_HOSTED_COUNTERS_FILE: countersFile });
+      const passed = Number(/(\d+) passed/.exec(run.tests)?.[1] ?? 0);
+      if (run.exitCode === PLATFORM_ABORT && attempt < MAX_ATTEMPTS) {
+        aborts.push(attempt);
+        process.stderr.write(`[hosted-conformance] ${suite.name}: attempt ${attempt} aborted (0xC0000409), running it again\n`);
+        continue;
+      }
+      return {
+        ok: run.exitCode === 0 && passed > 0,
+        tests: run.tests,
+        log: run.log,
+        aborts: aborts.length + (run.exitCode === PLATFORM_ABORT ? 1 : 0),
+        counters: readCounters(countersFile),
+      };
+    }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+/** One table row. `counters` is the suite's counts (tests/hosted/hosted-counters.ts)
+ *  for suite rows and null for the rest. */
+function row(target, suite, status, counters = null) {
+  return { target, suite, status, counters };
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const standIns = args.local ? await startLocalStandIns() : undefined;
   const rows = [];
+  const started = new Date();
   let failed = false;
   try {
     for (const name of args.targets) {
@@ -352,7 +405,7 @@ async function main() {
       if (target === undefined) throw new Error(`unknown target ${name} (d1, turso, bunny, d1-binding)`);
       const absent = missing(target.needs);
       if (absent.length > 0) {
-        for (const suite of SUITES) rows.push([name, suite.name, `SKIPPED (no credentials: ${absent.join(", ")})`]);
+        for (const suite of SUITES) rows.push(row(name, suite.name, `SKIPPED (no credentials: ${absent.join(", ")})`));
         continue;
       }
       let scratch;
@@ -360,7 +413,7 @@ async function main() {
         scratch = await target.create();
       } catch (error) {
         failed = true;
-        rows.push([name, "scratch database", `FAIL: ${String(error.message ?? error)}`]);
+        rows.push(row(name, "scratch database", `FAIL: ${String(error.message ?? error)}`));
         continue;
       }
       try {
@@ -371,31 +424,77 @@ async function main() {
             failed = true;
             process.stderr.write(result.log.split("\n").filter((l) => /FAIL|Error|expected|×/.test(l)).slice(0, 40).join("\n") + "\n");
           }
-          rows.push([name, suite.name, `${result.ok ? "PASS" : "FAIL"} (${result.tests})`]);
+          const abortNote = result.aborts > 0 ? `, ${result.aborts} platform abort${result.aborts === 1 ? "" : "s"} (0xC0000409) before this run` : "";
+          const counters = result.counters ?? { missing: true };
+          rows.push(row(name, suite.name, `${result.ok ? "PASS" : "FAIL"} (${result.tests}${abortNote})`, counters));
         }
       } finally {
         try {
           await scratch.teardown();
-          rows.push([name, "scratch database removed", "PASS"]);
+          rows.push(row(name, "scratch database removed", "PASS"));
         } catch (error) {
           failed = true;
-          rows.push([name, "scratch database removed", `FAIL: ${String(error.message ?? error)}`]);
+          rows.push(row(name, "scratch database removed", `FAIL: ${String(error.message ?? error)}`));
         }
       }
-      for (const n of NOT_PORTED) rows.push([name, n.name, `NOT RUN (${n.reason})`]);
+      for (const n of NOT_PORTED) rows.push(row(name, n.name, `NOT RUN (${n.reason})`));
     }
     if (standIns !== undefined) {
       const left = standIns.leftovers();
       const clean = left.d1 === 0 && left.turso === 0;
       if (!clean) failed = true;
-      rows.push(["local", "stand-in databases left after teardown", clean ? "PASS (none)" : `FAIL (${JSON.stringify(left)})`]);
+      rows.push(row("local", "stand-in databases left after teardown", clean ? "PASS (none)" : `FAIL (${JSON.stringify(left)})`));
     }
   } finally {
     await standIns?.close();
   }
-  const width = [0, 1].map((i) => Math.max(...rows.map((r) => r[i].length)));
-  console.log(`hosted conformance (${args.local ? "local stand-ins" : "hosted services"})`);
-  for (const r of rows) console.log(`${r[0].padEnd(width[0])}  ${r[1].padEnd(width[1])}  ${r[2]}`);
+
+  const mode = args.local ? "local stand-ins" : "hosted services";
+  const suiteRows = rows.filter((r) => r.counters !== null);
+  const totals = {
+    writers: Math.max(0, ...suiteRows.map((r) => r.counters.writers ?? 0)),
+    writes: suiteRows.reduce((n, r) => n + (r.counters.writes ?? 0), 0),
+    lostWrites: suiteRows.reduce((n, r) => n + (r.counters.lostWrites ?? 0), 0),
+    suitesPassed: suiteRows.filter((r) => r.status.startsWith("PASS")).length,
+    suitesRun: suiteRows.length,
+  };
+  const cells = rows.map((r) => {
+    const c = r.counters;
+    const dash = (v) => (c === null || c.missing ? "-" : String(v));
+    return [r.target, r.suite, dash(c?.writers), dash(c?.writes), dash(c?.lostWrites), r.status];
+  });
+  const head = ["target", "suite", "writers", "writes", "lost writes", "status"];
+  const width = head.map((h, i) => Math.max(h.length, ...cells.map((r) => r[i].length)));
+  const line = (r) => r.map((v, i) => (i === r.length - 1 ? v : v.padEnd(width[i]))).join("  ");
+  console.log(`hosted conformance (${mode})`);
+  console.log(line(head));
+  for (const r of cells) console.log(line(r));
+  console.log(
+    `totals: writers ${totals.writers} (max in any case), writes ${totals.writes}, lost writes ${totals.lostWrites}, ` +
+      `suites passed ${totals.suitesPassed}/${totals.suitesRun}`,
+  );
+
+  const resultsDir = join(REPO, "tools/hosted-conformance/results");
+  mkdirSync(resultsDir, { recursive: true });
+  const stamp = started.toISOString().replace(/[:.]/g, "-");
+  const resultFile = join(resultsDir, `${stamp}-${args.local ? "local" : "hosted"}-${args.targets.join("+")}.json`);
+  writeFileSync(
+    resultFile,
+    JSON.stringify(
+      {
+        startedAt: started.toISOString(),
+        finishedAt: new Date().toISOString(),
+        mode,
+        targets: args.targets,
+        exitStatus: failed ? 1 : 0,
+        totals,
+        rows: rows.map((r) => ({ target: r.target, suite: r.suite, status: r.status, counters: r.counters })),
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  console.log(`result record: ${resultFile}`);
   process.exitCode = failed ? 1 : 0;
 }
 

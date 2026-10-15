@@ -53,9 +53,10 @@ try {
   const pub = await api("POST", `/compute/script/${scriptId}/publish`, { Note: "save timing" });
   if (pub.status >= 300) throw new Error(`publish HTTP ${pub.status}`);
   const details = await api("GET", `/compute/script/${scriptId}`);
+  // Bunny returns DefaultHostname with its scheme already ("https://<id>.bunny.run").
   const host = details.json.DefaultHostname ?? details.json.defaultHostname;
   if (!host) throw new Error("no DefaultHostname after publish");
-  const base = `https://${host}`;
+  const base = /^https?:\/\//.test(host) ? host.replace(/\/+$/, "") : `https://${host}`;
   // The edge may need a moment after publish; retry the seed route.
   let seedStatus = 0;
   let seedBody = "";

@@ -83,3 +83,7 @@ vitest.gate.generated.ts
 *.sqlite3-shm
 *.sqlite-wal
 *.sqlite-shm
+
+# hosted conformance run records (tools/hosted-conformance/): one JSON file per
+# run, written fresh every time; never committed
+tools/hosted-conformance/results/

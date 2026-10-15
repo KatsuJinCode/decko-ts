@@ -62,6 +62,27 @@ in every table:
 
 Each needs its storage made driver-selectable before it can run here.
 
+## Counters
+
+Every run prints, per suite, three counts taken at the engine's driver seam
+(`SQLDatabaseDriver`; `tests/hosted/hosted-counters.ts`, wrapped around each
+driver `tests/hosted/hosted-backend.ts` hands to a suite):
+
+- **writers**: the most writers in flight at once in any one case. A writer
+  is a `transaction()` call or an INSERT, UPDATE, DELETE or REPLACE outside
+  one.
+- **writes**: write statements that committed. Includes the statements a
+  suite issues to seed its deck; the runner's own database reset is not
+  counted.
+- **lost writes**: write statements that succeeded but whose transaction
+  did not commit, plus rolled-back INSERTs whose row still holds the image
+  they wrote (read back by rowid; expected 0).
+
+Each run also writes its counts as JSON to
+`tools/hosted-conformance/results/` (not committed). A suite that aborts with
+exit status 0xC0000409 is run again, up to three attempts in all; the table
+says how many aborts preceded the result.
+
 ## Local verification
 
 ```bash
@@ -132,6 +153,90 @@ the database and its group were deleted afterwards):
 
 The remaining failure is again `Transaction timed out (code
 TRANSACTION_TIMEOUT)`, in the case with four writers and two readers.
+
+### Measured 2026-10-15: Brandon's account, counters, save timing
+
+Scope: one budgeted session on Brandon's own Bunny account (paid per
+operation). Scratch databases were created for the run and deleted afterwards
+by exact name. Nothing on Brandon's existing resources changed.
+
+**Conformance with counters** (`node tools/hosted-conformance/run.mjs --target
+bunny` on `feat/hosted-runner-counters` at `85dd897d`, a scratch database in
+`us-east-1`, primary region `LA`, no replicas; 2026-10-15 14:25 to 14:36 UTC;
+exit 0; result record kept outside the repository):
+
+| Suite | Result | Writers | Writes | Lost writes | Left-over rows | Read-back errors |
+|---|---|---|---|---|---|---|
+| transaction conformance and save scenarios | PASS, 17 of 17 | 1 | 84 | 40 | 0 | 0 |
+| atomic saves | PASS, 11 of 11 (44 skipped by the `hosted` filter) | 1 | 56 | 50 | 0 | 0 |
+| concurrent saves | PASS, 3 of 3 (18 skipped) | 2 | 89 | 0 | 0 | 0 |
+| multi-user read isolation | PASS, 2 of 2 (2 skipped) | 4 | 64 | 31 | 0 | 0 |
+
+Totals: 33 passed, 64 skipped, 0 failed. Writers 4 (most in flight in one
+case), writes 293, lost writes 121, suites passed 4 of 4.
+
+Reading the lost-write figure: the counter in the runner's own definition
+(see Counters above) counts every write statement whose transaction did not
+commit. The failure-injection cases roll back on purpose, so most of the 121
+are expected. The check that detects data actually lost, rolled-back rows
+still present in the database, is 0 in every suite, and read-back errors and
+partial batch failures are 0. The lost-write column is therefore not evidence
+of data loss.
+
+The multi-user read isolation suite passed in this run. It failed in the
+2026-10-14 run above. This run used `85dd897d`, which is not the integration
+head, and the cause of the difference is not separated here.
+
+The write probe, scenario battery and sign-in suite did not run (not yet
+driver-selectable, as the runner prints).
+
+**Save timing from the edge** (`tools/bunny-edge-save-timing`, built from
+`perf/bunny-save-pipeline` at `bbc1c8f9`, deployed as a Bunny Edge Script
+against a scratch database seeded with the synthetic minimum deck of 14 cards,
+run once, and deleted with its pull zone; 2026-10-15). The first attempt
+failed before any save ran: the tool prepended a second `https://` to the
+hostname Bunny already returns, and the fix is in the commit that adds this
+section.
+
+| Save | Round trips | Total ms | In-transaction ms | In-transaction round trips |
+|---|---|---|---|---|
+| create-plain | 28 | 344 | 316 | 26 |
+| create-links | 25 | 307 | 259 | 23 |
+| create-subcard | 58 | 452 | 420 | 54 |
+| update-content | 18 | 139 | 118 | 16 |
+| update-content-links | 19 | 153 | 137 | 17 |
+| update-rename | 28 | 219 | 201 | 26 |
+| update-noop | 8 | 58 | 57 | 8 |
+
+Totals: 184 round trips, 1,672 ms across the seven saves. The subcard save
+(create-subcard, which creates a parent and a child) took 452 ms and 58 round
+trips against Bunny's 5-second limit. This measurement is against a 14-card
+synthetic seed, not Brandon's deck, so it is a lower bound on a real save's
+cost, not an estimate of one.
+
+**Not done in this session**
+
+- Time to first byte (p50 and p95 over about 50 graded requests): not run. It
+  needs a deployed engine on a scratch database, which this session did not
+  reach within its time budget.
+- One-click deploy, live proof (`fix/bunny-deploy-from-real-site` at
+  `6f5e5a6a`): not run. It creates two scripts and two pull zones on the
+  account, and the time budget did not cover a cold-start comparison and
+  teardown.
+- Planner statistics on cs-deck (one `ANALYZE` to restore `sqlite_stat1`):
+  not run. No database token for cs-deck is stored in
+  `library/data/secrets.env`. Obtaining one means generating a new auth token
+  on cs-deck, which can invalidate the token the live site uses, so that step
+  is waiting on the operator's decision.
+
+**Account state**
+
+Before and after the session (read through the account API): edge scripts
+unchanged (five, the same IDs), pull zones unchanged (six, the same IDs),
+databases unchanged (cs-deck and cs-edge-deck). Billed usage for the month
+rose by $0.0000061, against a predicted ceiling of $0.001. Scratch databases
+(`dkmeas1015`, `dkmeas1016`) and their groups were deleted, and the listing
+after deletion shows only the protected resources.
 Running that case alone on fresh scratch databases (2026-10-14, four runs,
 failing in two) showed where: on a statement inside an open save
 transaction (`DELETE FROM card_references WHERE referer_id = ?`), 5,067 ms
@@ -157,3 +262,85 @@ the database, can still exceed Bunny's 5-second limit and fail. Fewer round
 trips per save is the remedy.
 
 D1 and Turso have not been run through this runner against hosted services.
+
+## Cloudflare D1 run, 2026-10-15
+
+Command: `node tools/hosted-conformance/run.mjs --target d1`, run from
+`85dd897d` (the runner with writer, write and lost-write counters), against a
+scratch D1 database created by the runner on a Cloudflare account and removed
+by it (the runner reported `scratch database removed: PASS`). Run on Node
+24.19.0 on Windows x64. The run took 14 minutes 9 seconds. No worker crash
+(`0xC0000409`) occurred, and no retry was needed.
+
+The runner's scratch-database name was changed in the scratch copy only, from
+`decko-conformance-` to `decko-test-conformance-`, to meet a naming rule. That
+change is not committed and does not affect what the suites do.
+
+| Suite | Hosted cases | Result | Writers | Committed writes | Rolled-back statements |
+|---|---:|---|---:|---:|---:|
+| transaction conformance and save scenarios | 17 | 17 passed | 1 | 84 | 40 |
+| atomic saves | 11 | 11 passed (44 local cases skipped) | 1 | 56 | 50 |
+| concurrent saves | 3 | 1 passed, 2 failed | 2 | 89 | 0 |
+| multi-user read isolation | 2 | 2 passed (2 local cases skipped) | 4 | 78 | 21 |
+
+Hosted total: 31 of 33 cases passed. Maximum concurrent writers in any case: 4.
+
+Correctness counters, which are the ones that show partial or leftover
+writes: `leftoverRows` 0, `readBackErrors` 0 and `batchPartialFailures` 0 in
+every suite.
+
+The write probe, scenario battery and sign-in suite do not run against a
+hosted database yet (`NOT RUN`, reasons in the runner output).
+
+### What the "lost writes" column counts
+
+`tests/hosted/hosted-counters.ts` defines a lost write as a write statement
+that succeeded but whose transaction did not commit, because the unit of work
+threw or the commit failed. The suites deliberately roll back many
+transactions, so the column above counts rolled-back statements, not lost
+data. The run's total is 111. It must not be published as a count of lost
+writes without this definition. The counter named for partial or leftover
+rows is the one that bears on data loss, and it is zero.
+
+### Finding: two of three concurrent-save cases fail
+
+File: `tests/card/actions/concurrent-saves.test.ts`, suite
+`concurrent saves: hosted d1-http, two driver objects over one database`.
+Both failing cases reproduce the same shape in the opposite order from what
+the test expects: the save issued first is the one refused. The third case
+passes. This is one run; it has not yet been repeated.
+
+1. **Two updates of the same revision: the first wins** (test name: "the
+   first wins, the second is refused as an edit conflict").
+   - Setup, sequential: one engine updates the card with content
+     `base revision`. Then the last action id on the card is read.
+   - Concurrent, two engines over one database, both sending
+     `lastActionIdBeforeEdit` set to that same id:
+     - engine A, editor one, content `editor one`;
+     - engine B, editor two, content `editor two`.
+   - Expected: A fulfilled, B rejected with "not based on latest revision",
+     the card reads `editor one`, and `editor two` is absent from the history.
+   - Observed: A rejected, B fulfilled (`expected 'rejected' to be
+     'fulfilled'`).
+
+2. **Two creates of one new name** (test name: "one card, and the second
+   save is refused").
+   - Concurrent, two engines over one database:
+     - engine A, `createCard` with name `Raced Name`, content `one`;
+     - engine B, `createCard` with name `Raced Name`, content `two`.
+   - Expected: statuses `[fulfilled, rejected]`, and one row with content
+     `one`.
+   - Observed: statuses `[rejected, fulfilled]` (`expected ['rejected',
+     'fulfilled'] to deeply equal ['fulfilled', 'rejected']`). The card row
+     assertion was not reached.
+
+Not captured: the rejection reason for the refused save in either case. The
+test asserts only status, so the run's output does not say why the first save
+was refused. The next step is to re-run this suite alone against a scratch
+database with the reason recorded, to show whether the refusal is the
+edit-conflict check, a driver error or a D1 batch failure. Until then the
+cause is unknown, and the post must not state that concurrent saves are safe
+on D1.
+
+Record: the JSON record of this run is kept outside the repository. The
+counters above are copied from its `rows` field.

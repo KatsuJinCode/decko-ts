@@ -50,6 +50,7 @@ import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 import { setDeckTimeZone } from "../../src/card/deck-time-zone.js";
 import { setDeckEnvironment } from "../../src/card/render/deck-origin.js";
+import { readNestIndexMarker } from "../../src/card/nest-index.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -132,6 +133,19 @@ export async function bootCorpusDeckEngines(
     contents: structureUniverseFromResults(universeResult),
     ruleTypeIds: structureRuleTypesFromResults(universeResult),
   });
+
+  // The stored nest index, read-only (src/card/nest-index.ts). A request never
+  // builds it: a deck whose marker is missing or stale renders by walking its
+  // nest closure (the same bytes, one round trip per level) until the build
+  // step (tools/deploy/build-nest-index.mjs) brings it current. Said loudly.
+  {
+    const marker = await readNestIndexMarker(driver);
+    if (marker.state !== "current") {
+      console.warn(
+        `[nest-index] ${marker.state} (version ${marker.version ?? "none"}): this deck serves by walking its nest closure until tools/deploy/build-nest-index.mjs has run`,
+      );
+    }
+  }
 
   return { fetcher, render };
 }

@@ -449,7 +449,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     // harness adapters set it false), so the raise surfaces here verbatim
     // instead of as the span.
     await expect(s.engine.render("A Search", "search_error")).rejects.toThrow(
-      /undefined method `message' for an instance of Array/,
+      /undefined method 'message' for an instance of Array/,
     );
   });
 
@@ -679,9 +679,11 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     bindModLoaderToEngine(storage!, bothLoader);
     setDefaultModLoader(bothLoader);
     try {
-      // Item One's dbContent "one body" -> the All::Item item count 1
-      // (card-mod-collection item.rb:104-106 itemCount)
-      expect(await s.engine.render("Item One", "count")).toBe("1");
+      // A plain card reaches All::Item's count, which calls the format's
+      // `card.count` (views.rb:126): Ruby raises NoMethodError on the card.
+      await expect(s.engine.render("Item One", "count")).rejects.toThrow(
+        /^undefined method 'count' for #<Card id=\d+ name="Item One">$/,
+      );
       // Search cards still resolve the warm count, not the item split
       expect(await s.engine.render("A Search", "count")).toBe("3");
     } finally {
