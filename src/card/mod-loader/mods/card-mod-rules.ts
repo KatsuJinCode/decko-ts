@@ -303,12 +303,11 @@ const CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
 
 /** set/all/cardtype_groups.rb:23-31 custom_types:
  *  `Auth.createable_types` minus the types GROUP_MAP already classifies.
- *  The headless engine has no Auth surface (no session, no roles); the
- *  ported createable list is therefore the empty list, which makes the
- *  "Custom" group skip exactly as Ruby's `next if type_list.empty?` does
- *  for the frozen empty array (cardtype_groups.rb:6). */
-function customTypes(): readonly string[] {
-  return [];
+ *  The viewer's createable list is RenderFormat#createableTypes (the engine
+ *  answer for the signed-in actor). */
+function customTypes(ctx: ViewContext): readonly string[] {
+  const grouped = new Set(Object.values(CARDTYPE_GROUPS).flat());
+  return ctx.fmt.createableTypes().filter((typeName) => !grouped.has(typeName));
 }
 
 /** set/self/cardtype.rb:2-9 view :grouped_list:
@@ -331,7 +330,7 @@ const groupedListView: ViewFn = (ctx) => {
   }
   const sections: string[] = [];
   for (const [group, types] of Object.entries(CARDTYPE_GROUPS)) {
-    const typeList = group === "Custom" ? customTypes() : types;
+    const typeList = group === "Custom" ? customTypes(ctx) : types;
     if (typeList.length === 0) continue; // cardtype.rb:5 next if type_list.empty?
     const listing = typeList.map((typeName) => listingItem(ctx, typeName));
     sections.push(`<h5>${group}</h5>`);
@@ -345,8 +344,16 @@ const groupedListView: ViewFn = (ctx) => {
  *  unknown-card nest ("" via the :unknown substitution). */
 function listingItem(ctx: ViewContext, typeName: string): string {
   const target = ctx.fmt.engine.fetchRenderCard(typeName);
-  if (target === undefined) return "";
-  return ctx.fmt.nestRecord(target, "titled");
+  // format/html item view: default_item_view is :bar (set/all/html.rb:21-23)
+  // and wrap_item in the html format is `<div class="item-<view>">` (set/all/
+  // item.rb:184-186), so every listed item carries the item-bar wrap.
+  // An absent card still nests by name: its :bar view takes the unknown
+  // substitution (bar_and_box set/all/bar.rb:9 unknown: :mini_bar).
+  const rendered =
+    target !== undefined
+      ? ctx.fmt.nestRecord(target, "bar")
+      : ctx.fmt.nest({ syntax: `{{${typeName}|view:bar}}`, name: typeName, options: { view: "bar", extra: {} }, comment: undefined });
+  return `<div class="item-bar">${rendered}</div>`;
 }
 
 // ---------------------------------------------------------------------------

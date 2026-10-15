@@ -344,6 +344,10 @@ const CREATEABLE_TYPES_VIEWS = new Set([
   "quick_edit_setting_list",
   "quick_edit",
   "edit_rules",
+  // card-mod-rules set/self/cardtype.rb:2-9 :grouped_list builds the
+  // "Custom" group from All::CardtypeGroups#custom_types =
+  // Auth.createable_types minus the grouped types (cardtype_groups.rb:23-31).
+  "grouped_list",
 ]);
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id
