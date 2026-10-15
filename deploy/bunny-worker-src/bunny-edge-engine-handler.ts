@@ -62,7 +62,7 @@ import {
   bunnyEdgeWriteFlags,
   mountBunnyEdgeWriteSurface,
 } from "./bunny-edge-signin-session-surface.js";
-import { applySecuritySettings } from "../../src/server/cloudflare-write-routes.js";
+import { applySecuritySettings, type WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
 import { handleAttachmentRoute } from "../../src/server/file-routes.js";
 import type { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import {
@@ -222,6 +222,7 @@ function getActorEngines(): ActorRenderEngines {
 export async function handleBunnyEngineRequest(
   request: Request,
   env: EdgeEnv,
+  services: { accountMail?: WorkersWriteContext["accountMail"] } = {},
 ): Promise<Response> {
   const profile = startEdgeRequestProfile();
   if (probeArmed(env)) {
@@ -232,7 +233,7 @@ export async function handleBunnyEngineRequest(
       const driver = new BunnyDbDriver({ url: cfg.url, authToken: cfg.authToken, fetchImpl: edgeDbTimingFetch() });
       return (sql: string) => driver.query(sql, []);
     });
-    const response = probed ?? (await routeBunnyEngineRequest(request, env, profile));
+    const response = probed ?? (await routeBunnyEngineRequest(request, env, profile, services));
     try {
       response.headers.set("x-decko-isolate", probeHeaderValue());
     } catch {
@@ -240,7 +241,7 @@ export async function handleBunnyEngineRequest(
     }
     return applyEdgeServerTimingHeader(profile, response);
   }
-  const response = await routeBunnyEngineRequest(request, env, profile);
+  const response = await routeBunnyEngineRequest(request, env, profile, services);
   return applyEdgeServerTimingHeader(profile, response);
 }
 
@@ -253,6 +254,7 @@ async function routeBunnyEngineRequest(
   request: Request,
   env: EdgeEnv,
   profile: EdgeRequestProfile,
+  services: { accountMail?: WorkersWriteContext["accountMail"] },
 ): Promise<Response> {
   // Decko routes GET /delete/:mark to the delete action (the edit form's
   // Delete button is a confirm-guarded remote GET link); the write surface
@@ -342,7 +344,7 @@ async function routeBunnyEngineRequest(
       }
       const attachmentStore = bunnyEdgeAttachmentStore(env);
       const surface = await mountBunnyEdgeWriteSurface(
-        attachmentStore === undefined ? writeDeck : { ...writeDeck, attachmentStore },
+        { ...writeDeck, ...(attachmentStore === undefined ? {} : { attachmentStore }), ...(services.accountMail === undefined ? {} : { accountMail: services.accountMail }) },
         request,
         env,
       );

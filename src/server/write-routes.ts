@@ -106,6 +106,8 @@ import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { signinSecurityPolicy } from "../card/auth/signin-security.js";
 import {
+  confirmAccountVerification,
+  confirmPasswordReset,
   sendAccountVerificationToken,
   sendAccountWelcomeEmail,
   sendResetPasswordToken,
@@ -1523,6 +1525,26 @@ async function dispatchWriteRequest(
   const route = matchRoute(method, req.pathname);
   if (route === null) return null;
 
+  // Stock account emails are GET links. Delegate their authentication and
+  // state changes to the existing token flow, before cookie-based writes.
+  if (opts?.authOnly !== true && method === "GET" && route.verb === "update" && route.mark !== undefined &&
+      (parsed.card["trigger"] === "reset_password" || parsed.card["trigger"] === "verify_and_activate")) {
+    if (ctx.accountMail === undefined) return { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, body: "account mail is not configured on this host" };
+    const flow = { ...ctx.accountMail, driver: ctx.driver, fetcher: ctx.fetcher, sessions: new SessionStore({ driver: ctx.driver }) };
+    const token = new URLSearchParams(req.search ?? "").get("token") ?? "";
+    const mark = markToName(route.mark);
+    const outcome = parsed.card["trigger"] === "reset_password"
+      ? await confirmPasswordReset(flow, mark, token)
+      : await confirmAccountVerification(flow, mark, token);
+    if (!outcome.ok) return {
+      status: outcome.kind === "token_invalid" ? 403 : outcome.kind === "account_not_found" ? 404 : 422,
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, body: outcome.message,
+    };
+    const prefix = (ctx.accountMail.relativeUrlRoot ?? "").replace(/\/$/, "");
+    const target = outcome.redirectTo.name === "" ? `${prefix}/` : `${prefix}/${DeckoName.parse(outcome.redirectTo.name).urlKey}${outcome.redirectTo.view ? `/${outcome.redirectTo.view}` : ""}`;
+    return { status: 303, headers: { Location: cardUrl(req, target), "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token, sessionCookieSecure(req)) }, body: "", expiryName: outcome.holder.name };
+  }
+
   // Same-origin check (request-origin.ts; docs/SECURITY.md): every write
   // route and the sign-in action. A security divergence: Ruby checks nothing.
   const originVerdict = checkRequestOrigin(
@@ -1671,6 +1693,7 @@ async function dispatchWriteRequest(
           successTargetPath(parsed, input.name, visit),
         );
       }
+      await assertSignupMailConfigured(ctx, engine, input);
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
       await requestSignupVerification(ctx, name, input.subcards);
@@ -2214,6 +2237,18 @@ async function isSessionTypeCreate(
   return type !== undefined && !type.trash && type.codename === "session";
 }
 
+async function assertSignupMailConfigured(
+  ctx: WriteRouteContext,
+  engine: CardActionEngine,
+  input: { typeName?: string; typeId?: number },
+): Promise<void> {
+  if (ctx.accountMail !== undefined) return;
+  const type = input.typeId !== undefined ? await ctx.fetcher.fetchById(input.typeId) : input.typeName !== undefined ? await ctx.fetcher.fetchByName(input.typeName) : undefined;
+  if (type?.codename !== "signup") return;
+  const userId = await ctx.fetcher.codenames.id("user");
+  if (userId !== undefined && await engine.mayCreateCardOfType(userId)) throw new CardActionError("user-error", "account mail is not configured on this host", "ACCOUNT: account mail is not configured on this host");
+}
+
 /** request_verification (card-mod-account set/type/signup.rb): a sign-up
  *  its creator can approve starts "unverified", and the account's
  *  send_verification_email event mails the verification link at
@@ -2282,6 +2317,7 @@ async function approveSignup(
   if (accountedTypeId === undefined || !(await engine.mayCreateCardOfType(accountedTypeId))) {
     throw new CardActionError("user-error", "illegal approval", "ABORT: illegal approval");
   }
+  if (withVerification && ctx.accountMail === undefined) throw new CardActionError("user-error", "account mail is not configured on this host", "ACCOUNT: account mail is not configured on this host");
   const accountMail = ctx.accountMail;
   const flow = accountMail === undefined
     ? undefined

@@ -85,6 +85,7 @@ import {
   handleWriteRequest,
   SESSION_COOKIE_NAME,
   type WriteRouteResponse,
+  type WriteRouteContext,
 } from "./write-routes.js";
 // Re-exported so the second host (the Bunny edge surface) imports the
 // auth-only dispatch from THIS module, the one it already depends on —
@@ -146,6 +147,9 @@ export interface WorkersRenderEngine {
 }
 
 export interface WorkersWriteContext {
+  /** Explicit production transport + token configuration; absent never
+   * claims that a required verification email was sent. */
+  readonly accountMail?: WriteRouteContext["accountMail"];
   /** The host's warm FetchEngine — the SAME one the read path uses, so a
    *  post-save expiry reaches the bytes the read path will serve next. */
   readonly fetcher: FetchEngine;
@@ -474,6 +478,7 @@ async function mountWrite(
       fetcher: ctx.fetcher,
       ipAddress: req.ipAddress,
       originPolicy,
+      ...(ctx.accountMail === undefined ? {} : { accountMail: ctx.accountMail, notifyTransport: ctx.accountMail.transport }),
       // The ajax soft redirect re-renders the SAVED card through the host's
       // render engine. Expiry must come first — without it the slot render
       // reads the pre-save warm maps (post-save-cache-expiry.ts).
@@ -584,7 +589,16 @@ export async function handleWorkersWriteSurface(
     return signinFormPage();
   }
 
-  if (readMethod) return null;
+  if (readMethod) {
+    // The account module emits real GET update links for approval and its
+    // email tokens. Keep unrelated reads and the disarmed posture untouched.
+    const trigger = new URLSearchParams(req.search ?? "").get("card[trigger]");
+    if (write && req.method === "GET" && /^\/(?:card\/)?update\/[^/]+$/.test(req.pathname) &&
+        ["reset_password", "verify_and_activate", "approve_with_verification", "approve_without_verification"].includes(trigger ?? "")) {
+      return mountWrite(ctx, resolveDriver(ctx, env), req, applySecuritySettings(env));
+    }
+    return null;
+  }
   const originPolicy = applySecuritySettings(env);
   if (!write) {
     // AUTH IS NOT A CARD WRITE: with the write path off, the login action

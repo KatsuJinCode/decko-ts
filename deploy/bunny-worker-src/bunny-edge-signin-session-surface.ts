@@ -81,6 +81,7 @@ import {
   WORKERS_SIGNIN_PATH,
   type WorkersWriteRequest,
   type WriteSurfaceFlags,
+  type WorkersWriteContext,
 } from "../../src/server/cloudflare-write-routes.js";
 
 /** Environment bag; on the edge this is process.env, in tests a plain
@@ -101,6 +102,7 @@ export { WORKERS_SIGNIN_PATH as BUNNY_EDGE_SIGNIN_PATH };
  *  path so a post-save expiry reaches the bytes the read path serves next)
  *  and the driver the sessions are written through. */
 export interface BunnyEdgeWriteDeck {
+  readonly accountMail?: WorkersWriteContext["accountMail"];
   readonly fetcher: FetchEngine;
   readonly render: RenderEngine;
   /** The storage seam. Defaults to fetcher.driver, which on this edge is the
@@ -232,6 +234,7 @@ export async function mountBunnyEdgeWriteSurface(
       renderEngine: deck.render,
       driver: deck.driver ?? deck.fetcher.driver,
       ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
+      ...(deck.accountMail === undefined ? {} : { accountMail: deck.accountMail }),
     },
     inbound,
     flags,
