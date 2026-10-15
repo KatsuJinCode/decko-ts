@@ -27,6 +27,8 @@ import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/dr
 import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
 import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
 import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import { startMysqlServer, type MysqlServer } from "../../server/drivers/mysql-server.js";
 import { PGlite } from "@electric-sql/pglite";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../../src/server/driver.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
@@ -132,6 +134,14 @@ let d1Counter = 0;
 const D1_DATABASES = 16;
 const scratchDirs: string[] = [];
 
+/** One MySQL server for the whole file; each backend gets its own database. */
+let mysqlStart: Promise<MysqlServer> | undefined;
+let mysqlDatabaseCounter = 0;
+function mysqlServer(): Promise<MysqlServer> {
+  mysqlStart ??= startMysqlServer();
+  return mysqlStart;
+}
+
 function scratchDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "decko-atomic-"));
   scratchDirs.push(dir);
@@ -146,6 +156,23 @@ const BACKENDS: Record<string, () => Promise<Backend>> = {
   ...(hosted === undefined
     ? {}
     : { [hosted.label]: async () => ({ driver: await hosted.open(), observer: hosted.connect(), dispose: async () => undefined }) }),
+  "MySQL 8.4 (native)": async () => {
+    // A real MySQL server (official binaries; tests/server/drivers/mysql-server.ts).
+    // The observer is a second connection to the same database, so it sees
+    // only what the engine has committed.
+    const server = await mysqlServer();
+    mysqlDatabaseCounter += 1;
+    const database = `atomic_${mysqlDatabaseCounter}`;
+    const admin = await server.connect();
+    try {
+      await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci`);
+    } finally {
+      await admin.end();
+    }
+    const driver = await MysqlDriver.connect({ port: server.port, database });
+    const observer = await MysqlDriver.connect({ port: server.port, database });
+    return { driver, observer, dispose: async () => { await driver.close(); await observer.close(); } };
+  },
   "PostgreSQL (PGlite, native)": async () => {
     // PGlite is one PostgreSQL session, so there is no second connection.
     // The observer shares the session and first proves no writing
@@ -215,6 +242,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mf?.dispose();
+  const server = await mysqlStart?.catch(() => undefined);
+  await server?.stop();
   for (const dir of scratchDirs) rmSync(dir, { recursive: true, force: true });
 });
 
