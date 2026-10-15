@@ -179,7 +179,12 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
  *  field, and the content editor for the type (the calendar input for Date,
  *  the TinyMCE textarea otherwise). Creation permission is enforced by the
  *  write surface on submit. */
-export function signedInNewCardFormBodyHtml(typeName: string, typeId: number, typeCode: string | undefined): string {
+export function signedInNewCardFormBodyHtml(
+  typeName: string,
+  typeId: number,
+  typeCode: string | undefined,
+  cardName = "",
+): string {
   const contentEditor =
     typeCode === "date"
       ? `<input class="date-editor form-control" type="date" value="" name="card[content]" id="card_content" />`
@@ -193,7 +198,7 @@ export function signedInNewCardFormBodyHtml(typeName: string, typeId: number, ty
       `<div class="form-group card-editor">` +
       `<label for="card_name"><span class="card-title" title="Name">Name</span></label>` +
       `<div class="editor name-editor">` +
-      `<input class="d0-card-name form-control" type="text" value="" name="card[name]" id="card_name" />` +
+      `<input class="d0-card-name form-control" type="text" value="${h(cardName)}" name="card[name]" id="card_name" />` +
       `</div></div>` +
       `<input type="hidden" name="name_prompt" id="name_prompt" value="true" autocomplete="off" />` +
       `<input type="hidden" name="card[type_id]" id="card_type_id" value="${typeId}" autocomplete="off" />` +

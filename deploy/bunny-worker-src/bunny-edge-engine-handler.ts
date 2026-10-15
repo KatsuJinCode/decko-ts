@@ -254,6 +254,13 @@ async function routeBunnyEngineRequest(
   env: EdgeEnv,
   profile: EdgeRequestProfile,
 ): Promise<Response> {
+  // Decko routes GET /delete/:mark to the delete action (the edit form's
+  // Delete button is a confirm-guarded remote GET link); the write surface
+  // takes deletes as DELETE. *signin keeps its own sign-out handling.
+  const deletePath = new URL(request.url).pathname;
+  if (request.method === "GET" && /^\/delete\/[^/]+$/.test(deletePath) && !/^\/delete\/\*signin$/i.test(deletePath)) {
+    request = new Request(request.url, { method: "DELETE", headers: request.headers });
+  }
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
   const url = new URL(request.url);

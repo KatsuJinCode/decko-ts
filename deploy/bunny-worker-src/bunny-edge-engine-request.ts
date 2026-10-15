@@ -765,6 +765,32 @@ async function dispatchEngineRequest(
       );
     }
     if (mapped.status === 404) {
+      // A signed-in viewer reaching an unknown card gets the new-card form
+      // with the name filled in (page_view_for_unknown's :new for a viewer
+      // who may create), typed by the deck's *all+*default rule.
+      // Action routes (/delete/x, /update/x, ...) are never a card to create.
+      const firstSegment = url.pathname.split("/").filter(Boolean)[0]?.toLowerCase() ?? "";
+      const actionRoute = ["create", "read", "update", "delete", "card"].includes(firstSegment);
+      if (options?.viewer !== undefined && !actionRoute) {
+        const deck = await source.deck();
+        const typeName = await defaultNewCardTypeName(deck);
+        if (isXhr(request)) {
+          // The slotter's modal mode appends the answer to body and shows it.
+          const typeRecord = await deck.fetcher.fetchByKey(DeckoName.parse(typeName).key, { skipVirtual: true }).catch(() => undefined);
+          if (typeRecord?.id !== undefined && typeRecord.name !== undefined) {
+            const cardName = url.searchParams.get("card[name]") ?? parsed.name.replace(/_/g, " ");
+            const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? undefined, cardName);
+            return html(
+              200,
+              `<div class='modal fade _modal-slot' role='dialog'><div class='modal-dialog modal-dialog-centered modal-lg'>` +
+                `<div class='modal-content'><div class='modal-body'>${form}</div></div></div></div>`,
+            );
+          }
+        }
+        const page = await signedInNewCardPage(source, deck, typeName, options, signal, parsed.name.replace(/_/g, " "))
+          .catch(() => undefined);
+        if (page !== undefined) return page;
+      }
       return renderDeckoNotFoundErrorPage(await source.deck(), parsed.name);
     }
     return renderDeckoServerErrorPage(await source.deck(), parsed.name, err);
@@ -792,6 +818,7 @@ async function signedInNewCardPage(
   typeName: string,
   options: EngineRequestOptions,
   signal: AbortSignal | undefined,
+  cardName = "",
 ): Promise<Response | undefined> {
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
@@ -832,11 +859,26 @@ async function signedInNewCardPage(
   const mainAt = pageHtml.indexOf('<div id="main">');
   const main = mainAt >= 0 ? divSubtree(pageHtml, mainAt) : undefined;
   if (main === undefined) return undefined;
-  const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? typeKey.key);
+  const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? typeKey.key, cardName);
   const body =
     pageHtml.slice(0, mainAt) + `<div id="main">${form}</div>` + pageHtml.slice(mainAt + main.length);
   const title = `New ${escapeHtml(typeRecord.name.s)}`;
   return html(200, body.replace(/<title>[^<]*?( - [^<]*)?<\/title>/, (_t, site: string | undefined) => `<title>${title}${site ?? ""}</title>`));
+}
+
+/** The type a new card takes when none is given: the type of the deck's
+ *  *all+*default rule card, else Basic. */
+async function defaultNewCardTypeName(deck: Deck): Promise<string> {
+  try {
+    const rule = await deck.fetcher.fetchByKey(DeckoName.parse("*all+*default").key, { skipVirtual: true });
+    if (rule?.typeId !== undefined) {
+      const type = await deck.fetcher.fetchById(rule.typeId);
+      if (type?.name !== undefined) return type.name.s;
+    }
+  } catch {
+    // fall through to Basic
+  }
+  return "Basic";
 }
 
 /** Rails' request.xhr?: X-Requested-With carries XMLHttpRequest. */
