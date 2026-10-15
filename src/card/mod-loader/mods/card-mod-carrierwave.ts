@@ -1,4 +1,4 @@
-import { str } from "../../render/format.js";
+import { NoMethodError, str } from "../../render/format.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
@@ -616,12 +616,17 @@ const imageInputView: ViewFn = (ctx) => {
  *  cached_upload]")`. The editor context rides render opts (the request
  *  params' port at the composition layer); the standard editor form posts
  *  "card[<mount>]" names, whose gsub output is invariant:
- *  "card[action_id_of_cached_upload]". The caller raises on the missing
- *  param before reaching here (the round-trip surface always passes it). */
+ *  "card[action_id_of_cached_upload]". Outside the two-step upload round
+ *  trip the param is absent, Ruby's `params[:attachment_upload]` is nil and
+ *  `nil.gsub` raises NoMethodError "undefined method `gsub' for nil" at
+ *  card-mod-carrierwave-0.20.0 set/type/file.rb:145; the port raises on the
+ *  same absent param. */
 function cachedUploadCardName(ctx: ViewContext): string {
   const raw = ctx.voo.opts["attachment_upload"];
-  const value = typeof raw === "string" && raw !== "" ? raw : "card[file]";
-  return value.replace(/\[\w+\]$/, "[action_id_of_cached_upload]");
+  if (typeof raw !== "string") {
+    throw new NoMethodError("undefined method `gsub' for nil");
+  }
+  return raw.replace(/\[\w+\]$/, "[action_id_of_cached_upload]");
 }
 
 /** set/type/file.rb:127-129 format :html view :preview_editor, cache:
@@ -639,13 +644,13 @@ function cachedUploadCardName(ctx: ViewContext): string {
  *  (file.rb:144-146): `Card::Env.params[:attachment_upload].gsub(...)` —
  *  outside the two-step upload round trip the request params carry no
  *  :attachment_upload, so the gsub lands on nil and the view raises
- *  NoMethodError "undefined method `gsub' for nil". The
+ *  NoMethodError "undefined method `gsub' for nil" (file.rb:145). The port
+ *  raises from its cachedUploadCardName on the same absent param. The
  *  round-trip surface passes the param and keeps the editor bytes below. */
 const filePreviewEditorView: ViewFn = (ctx) => {
-  const uploadParam = ctx.voo.opts["attachment_upload"];
-  if (typeof uploadParam !== "string" || uploadParam === "") {
-    throw new Error("undefined method `gsub' for nil");
-  }
+  // preview_editor.haml line 2 is the first Ruby the template evaluates;
+  // it raises there when the request carries no :attachment_upload.
+  const uploadCardName = cachedUploadCardName(ctx);
   const card = ctx.fmt.card;
   // The hidden input's value is the selected action id. Ruby resolves it
   // through the success round trip: prepare_attachment's success hash
@@ -679,7 +684,7 @@ const filePreviewEditorView: ViewFn = (ctx) => {
     : 0;
   return (
     "<div class='chosen-file'>\n" +
-    `<input name='${h(cachedUploadCardName(ctx))}' type='hidden' value='${actionId ?? ""}'>\n` +
+    `<input name='${h(uploadCardName)}' type='hidden' value='${actionId ?? ""}'>\n` +
     "<div class='d-flex'>\n" +
     previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file", preliminaryIdentifier) +
     "<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n" +

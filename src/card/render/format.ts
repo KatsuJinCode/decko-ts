@@ -4639,17 +4639,21 @@ function backtraceLink(card: RenderCard, error: unknown): string {
   return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
 }
 
-/** The hex object-address token Ruby's NoMethodError/NameError messages
- *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
- *  The engine has no heap addresses; the instrument's N7 canonicalization
- *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
- *  port derives a stable pseudo-address from the object's id — the
- *  inspection token stays shape-true (0x + a hex run) without pretending
- *  to be a heap pointer. Shared by the view-body raise sites that port
- *  Ruby runtime errors carrying inspected receivers. */
-export function rubyInspectionAddress(id: number | undefined): string {
-  const n = id === undefined ? 0 : (id * 0x9e3779b1) >>> 0;
-  return "0x" + n.toString(16).padStart(8, "0");
+/** The engine's own identity for an object that a ported Ruby error message
+ *  names as its receiver. Ruby's NoMethodError message embeds the receiver's
+ *  `inspect`, `#<Card:0x0000028dfcc01048>`: the class and a heap address of
+ *  the Ruby process. This engine has no Ruby heap and does not imitate one;
+ *  it names the receiver by the class that plays its part here and the
+ *  fields that identify it (`#<Card id=12 name="Ada Admin">`). The message
+ *  text around it stays Ruby's. */
+export function engineObjectIdentity(
+  className: string,
+  fields: Readonly<Record<string, string | number | undefined>>,
+): string {
+  const parts = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
+  return parts.length === 0 ? `#<${className}>` : `#<${className} ${parts.join(" ")}>`;
 }
 
 /**

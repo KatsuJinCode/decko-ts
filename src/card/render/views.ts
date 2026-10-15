@@ -6747,11 +6747,13 @@ export const resetPasswordUrlView: ViewFn = (ctx) => tokenUrlBody(ctx);
 function tokenUrlBody(ctx: ViewContext): string {
   const secret = ctx.fmt.engine.tokenConfig?.secret;
   if (typeof secret !== "string" || secret === "") {
-    // jwt-2.10.3 lib/jwt/jwa/hmac.rb:40 ensure_valid_key! —
-    // `raise_verify_error!('HMAC key cannot be empty')` (jwa/signing_algorithm.rb:38
-    // raises JWT::DecodeError; the MESSAGE is what the corpus pins — the
-    // gem class is not a Decko UserError, so the quiet rescue takes the
-    // lib_error_rendering arm).
+    // The same precondition jwt checks before signing: jwt-2.10.3
+    // lib/jwt/jwa/hmac.rb:40 ensure_valid_key! (reached from hmac.rb:19
+    // sign) calls `raise_verify_error!('HMAC key cannot be empty')`, which
+    // raises at lib/jwt/jwa/signing_algorithm.rb:39. The key is Rails'
+    // secret_key_base (card-1.110.0 lib/card/auth/token.rb:7); a deck
+    // without one has an empty key. The gem class is not a Decko UserError,
+    // so the quiet rescue takes the lib_error_rendering arm.
     throw new Error("HMAC key cannot be empty");
   }
   return "";

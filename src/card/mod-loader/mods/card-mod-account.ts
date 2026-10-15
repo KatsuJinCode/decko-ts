@@ -153,7 +153,7 @@ import {
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
-import { rubyInspectionAddress } from "../../render/format.js";
+import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { getNameEnvironment } from "../../name/environment.js";
@@ -510,18 +510,31 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
  *  view:admin:Ada Admin+*account:closure, where the quiet non-focal rescue
  *  renders the admin debug span around it). The haml below line 25 (the
  *  deletion list, the close button) never renders in stock Ruby, so the
- *  port raises from the same point; the inspection address is the engine's
- *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
- *  N7 blanks the hex on both sides). The deletion WALK itself stays ported
- *  in accountFollowBundle (the follow surface reads it); close_account's
- *  own internal call (:77) is in-object and never hits the visibility
- *  boundary. */
+ *  port reaches the same call and fails on the same condition: the
+ *  receiver `card.accounted` (the +*account card's left) is resolved first;
+ *  a missing left is Ruby's `nil.closure_deletions` (undefined method for
+ *  nil), and a present one is an explicit-receiver call to a private
+ *  method. The receiver is named by the engine's own identity
+ *  (engineObjectIdentity), not Ruby's heap inspection. The deletion WALK
+ *  itself stays ported in accountFollowBundle (the follow surface reads
+ *  it); close_account's own internal call (:77) is in-object and never hits
+ *  the visibility boundary.
+ *
+ *  Ruby source of the failure: card-mod-account-0.20.0
+ *  set/right/account/closure.haml:25 (the explicit-receiver call), raised
+ *  through activemodel-7.2.4 attribute_methods.rb:509 method_missing. */
 const closureView: ViewFn = (ctx) => {
-  const accountedId = ctx.fmt.card.record.leftId;
-  throw new Error(
-    "private method `closure_deletions' called for #<Card:" +
-      rubyInspectionAddress(accountedId) +
-      ">",
+  const card = ctx.fmt.card;
+  const accountedId = card.record.leftId;
+  const accountedName = card.name.left;
+  if (accountedId === undefined || accountedName === undefined) {
+    throw new NoMethodError("undefined method `closure_deletions' for nil");
+  }
+  // account_holder.rb:81 `private` precedes `def closure_deletions`
+  // (:87-89); an explicit receiver cannot call it.
+  throw new NoMethodError(
+    "private method `closure_deletions' called for " +
+      engineObjectIdentity("Card", { id: accountedId, name: accountedName }),
   );
 };
 
