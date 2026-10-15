@@ -196,3 +196,44 @@ checkout:
 
   The persistence figures therefore grade the state the engine left in
   PostgreSQL.
+
+### Tie order of an unordered search
+
+Three semantics ops grade `search:<actor>:Links To Topic 001` (`{link_to:
+"Topic 001"}`) as failing on the `ts-postgres` adapter: PostgreSQL returns
+`Note 001`, `Note 031`, `Topic 020+related`, `Topic 024+summary`, where the
+fixture's expected order is `Topic 020+related`, `Topic 024+summary`, `Note
+001`, `Note 031`. The CQL statement has no sort token, so Ruby emits no
+`ORDER BY` and the row order is whatever the engine's plan yields. Measured
+2026-10-15 at `29ea3192`:
+
+- Ruby's SQL for the statement is the same text on both engines:
+  `SELECT DISTINCT c0.name, c0.left_id, c0.right_id FROM cards c0 JOIN
+  card_references cr1 ON c0.id = cr1.referer_id WHERE (cr1.ref_type = 'L' AND
+  cr1.referee_id = 655) AND c0.trash is false AND c0.read_rule_id IN (...)`.
+- On SQLite the plan is an index search on `card_references_referee_id_index`
+  and a `TEMP B-TREE FOR DISTINCT`, which yields `Topic 020+related` first.
+  On PostgreSQL it is a bitmap scan on `card_references_ref_type_index` and
+  an explicit sort on the DISTINCT columns, which yields `Note 001` first.
+- The stock Ruby oracle, run on PostgreSQL with its own schema (its
+  dumper's `boolean` columns), returns `Note 001, Note 031, Topic 020+related,
+  Topic 024+summary` for the anonymous and admin actors. The port on
+  PostgreSQL returns the same. The port's statement differs from Ruby's only
+  in its translation (`decko_sqlite.is_false(c0.trash)` for `trash is false`,
+  bound parameters), and it is the same statement the port issues on SQLite.
+- The same Ruby oracle on SQLite reproduces the fixture's order, and the
+  plain `ts` adapter on SQLite matches it.
+
+So on PostgreSQL the port and Ruby agree for these two actors, and the
+fixture's order is the SQLite engine's. The port adds no tie-break, and
+none is needed to match Ruby on the same database. The grade against the
+SQLite-recorded fixture still reports these three ops, and whether the
+instrument should grade an unordered search against the database it runs on
+is a decision for the release lead.
+
+Not settled: the `member` actor. Ruby raises `undefined method 'admin?'` for
+`Mira Member` on both SQLite and PostgreSQL with this deck (its `users` table
+is empty), while the fixture records a result for it. The port returns the
+same order as for the other actors. Ruby on PostgreSQL here ran on PGlite
+(PostgreSQL 18.6, WebAssembly) through `@electric-sql/pglite-socket`, not a
+native server.
