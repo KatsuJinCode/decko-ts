@@ -41,6 +41,7 @@
 //   nothing, serveWithEdgeCache calls render() directly, no cache contact,
 //   no extra headers.
 
+import { TINYMCE_NEST_PLUGIN_JS } from "./bunny-edge-tinymce-nest-plugin.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
   bootDeck,
@@ -90,6 +91,12 @@ import {
   startEdgeRequestProfile,
   type EdgeRequestProfile,
 } from "./bunny-edge-server-timing.js";
+
+/** TinyMCE's asset base as the deck's editor config names it, and the
+ *  published distribution of the same version that answers for it. */
+const TINYMCE_MOD_PREFIX = "/mod/tinymce_editor/";
+// (the deck's own nest plugin is served from bunny-edge-tinymce-nest-plugin.ts)
+const TINYMCE_DIST_BASE = "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/";
 
 // One deck per isolate (the Workers reuse pattern worker.ts uses): the first
 // request boots the engine, later requests share the warm caches.
@@ -247,6 +254,14 @@ async function routeBunnyEngineRequest(
   env: EdgeEnv,
   profile: EdgeRequestProfile,
 ): Promise<Response> {
+  // Decko routes GET /delete/:mark to the delete action (the edit form's
+  // Delete button is a confirm-guarded remote GET link); the write surface
+  // takes deletes as DELETE. The navbar's Sign out link is GET
+  // /delete/*signin, which the surface signs out as a DELETE too.
+  const deletePath = new URL(request.url).pathname;
+  if (request.method === "GET" && /^\/delete\/[^/]+$/.test(deletePath)) {
+    request = new Request(request.url, { method: "DELETE", headers: request.headers });
+  }
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
   const url = new URL(request.url);
@@ -340,6 +355,24 @@ async function routeBunnyEngineRequest(
     // route the surface owns). This is the read-only edge's original answer,
     // unchanged and still reached with no driver work behind it.
     return json(403, { error: "forbidden: this edge deploy is read-only" });
+  }
+
+  // TinyMCE's lazy-loaded theme, skin, icon and plugin files. The editor
+  // resolves them under its baseURL (/mod/tinymce_editor), which Ruby serves
+  // from the mod's public folder; this host has no copy, so it redirects to
+  // the published 5.10.7 distribution the deck's editor script was built from.
+  if (url.pathname.startsWith(TINYMCE_MOD_PREFIX) && (request.method === "GET" || request.method === "HEAD")) {
+    const rest = url.pathname.slice(TINYMCE_MOD_PREFIX.length);
+    if (rest === "plugins/nest/plugin.min.js") {
+      return new Response(request.method === "HEAD" ? null : TINYMCE_NEST_PLUGIN_JS, {
+        status: 200,
+        headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "public, max-age=86400" },
+      });
+    }
+    return new Response(null, {
+      status: 302,
+      headers: { location: `${TINYMCE_DIST_BASE}${rest}`, "cache-control": "public, max-age=86400" },
+    });
   }
 
   const resolved = resolveDbConfig(env);
@@ -445,19 +478,86 @@ async function routeBunnyEngineRequest(
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
+  const nameMatch = await nameMatchResponse(request, url, getActorEngines().deckFor(viewer.actorId as number));
+  if (nameMatch !== null) return nameMatch;
   return await serveProfiled(
     profile,
     request,
     env,
     async () =>
-      handleEngineRequest(request, getActorEngines().deckFor(viewer.actorId as number), {
-        budgetMs: renderBudgetMs,
-      }),
+      handleEngineRequest(
+        request,
+        { driver: getDriver(resolved, env), deck: async () => getActorEngines().deckFor(viewer.actorId as number) },
+        {
+          budgetMs: renderBudgetMs,
+          // Signed-in pages take the same batched live render the anonymous
+          // path does, under this viewer; views the live render does not
+          // cover fall back to the actor's own engine.
+          viewer,
+          liveRenderFlag: env.DECKO_LIVE_RENDER,
+          servedBootOptions: servedBootOptionsFromEnv(env),
+        },
+      ),
     resolveEdgeContentCache(env),
     { perViewer: true },
   );
 }
 
+
+/** The editors' card-name autocomplete (card-mod-search
+ *  set/abstract/0_search/views.rb name_match / name_complete on the
+ *  `<anything>+by name` search card): up to AUTOCOMPLETE_LIMIT (8) names,
+ *  those starting with the term first, then those containing it, each group
+ *  by name. Answered for signed-in viewers, whom the editors serve; null when
+ *  the request is not this route. */
+async function nameMatchResponse(request: Request, url: URL, deck: Deck): Promise<Response | null> {
+  if (request.method !== "GET") return null;
+  const path = decodeURIComponent(url.pathname);
+  if (!path.endsWith(".json")) return null;
+  const view = url.searchParams.get("view");
+  // Search-box items use the engine's Ruby-backed search view: it owns
+  // create permission, exact-name handling, prefix matching and item URLs.
+  if (view !== "name_match" && view !== "name_complete") return null;
+  await deck.render.ensureFreshness();
+  const rawTerm = (url.searchParams.get("term") ?? url.searchParams.get("query[keyword]") ?? "").trim();
+  const names = await matchingCardNames(deck, rawTerm.toLowerCase(), view !== "name_complete");
+  return new Response(JSON.stringify(names), {
+    status: 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+
+/** Up to 8 live card names: prefix matches first, then (when `contains`)
+ *  names containing the term, each group ordered by name — Ruby's
+ *  complete_or_match_search. */
+async function matchingCardNames(deck: Deck, term: string, contains: boolean): Promise<string[]> {
+  const limit = 8;
+  const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const names: string[] = [];
+  const scope = await deck.render.cqlPermissionOptions();
+  const readRuleSql = scope.alwaysOk ? "" : ` and read_rule_id in (${scope.readRuleIds.map(() => "?").join(",") || "NULL"})`;
+  const pick = async (pattern: string) => {
+    const excluded = [...names];
+    const notIn = excluded.length > 0 ? ` and name not in (${excluded.map(() => "?").join(",")})` : "";
+    let offset = 0;
+    while (names.length < limit) {
+      const result = await deck.fetcher.driver.query<{ id: number; name: string }>(
+        `select id, name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${readRuleSql}${notIn} order by name limit ? offset ?`,
+        [pattern, ...(scope.alwaysOk ? [] : scope.readRuleIds), ...excluded, limit, offset],
+      );
+      for (const row of result.rows) {
+        const record = await deck.fetcher.fetchById(row.id);
+        if (record !== undefined && await deck.render.canReadCard(record)) names.push(row.name);
+        if (names.length === limit) break;
+      }
+      if (result.rows.length < limit) break;
+      offset += result.rows.length;
+    }
+  };
+  await pick(`${like(term)}%`);
+  if (contains && term !== "" && names.length < limit) await pick(`%${like(term)}%`);
+  return names;
+}
 
 /** The sweep's files dependency: the storage zone's driver, or nothing. */
 function bunnyFilesOrUndefined(env: EdgeEnv): { files: NonNullable<ReturnType<typeof bunnyEdgeFilesDriver>> } | undefined {

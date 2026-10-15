@@ -5,6 +5,9 @@
   "license": "GPL-3.0-or-later",
   "description": "TypeScript implementation of the Decko card engine. A derivative work of decko-commons/decko (card 1.110.0 / decko 0.20.0), licensed GPL-3.0-or-later; see NOTICE. Parity against the Ruby engine is byte-for-byte and is re-measured per release — see README for the current measured figure and how to reproduce it. Edge-native (Cloudflare D1, libSQL/Bunny).",
   "type": "module",
+  "allowScripts": {
+    "better-sqlite3@13.0.3": false
+  },
   "engines": {
     "node": ">=22.5"
   },

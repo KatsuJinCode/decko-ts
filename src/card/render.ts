@@ -10919,10 +10919,16 @@ export class RenderEngine implements RenderEngineLike {
       // same ladder runSearch rides) + the verdict re-check the search
       // results walk applies: the SQL filter excludes stored read_rule_id
       // denials, live-rule-walk rows re-judge through canReadCard.
-      const records = await this.prefetchSearchResultRows(result.rows);
       const seenKeys = new Set<string>();
       for (const row of result.rows) {
-        const record = records.get(row.id);
+        // return:name projects only name/left_id/right_id, never id.
+        // Resolve the selected name through the normal fetch ladder before
+        // applying the view verdict; an id-based prefetch silently loses
+        // every result in this projection.
+        const selected = await composeCardRecord(row, this.fetcher.lexicon);
+        const record = selected.name === undefined
+          ? undefined
+          : await this.fetcher.fetchByName(selected.name.s);
         if (record === undefined) continue;
         if (!(await this.canReadCard(record))) continue;
         if (record.name === undefined) continue;

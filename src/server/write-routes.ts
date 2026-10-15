@@ -828,6 +828,13 @@ function effectiveMethod(method: string, parsed: ParsedBody): string {
 /** Card::Env.ajax? (env/serializable.rb:24): `request&.xhr? ||
  *  params[:simulate_xhr]`, where xhr? is Rails'
  *  X-Requested-With contains XMLHttpRequest (actionpack request.rb:290-294). */
+/** DECKO_AJAX_SAVE_REDIRECT=1 (process env): ajax saves answer with the
+ *  hard-redirect JSON rather than a re-rendered slot. */
+function ajaxSaveRedirects(): boolean {
+  const env = typeof process !== "undefined" ? process.env : undefined;
+  return env?.DECKO_AJAX_SAVE_REDIRECT === "1";
+}
+
 function isAjax(req: WriteRouteRequest, parsed: ParsedBody): boolean {
   if (parsed.simulateXhr) return true;
   return /XMLHttpRequest/i.test(req.headers["x-requested-with"] ?? "");
@@ -1908,6 +1915,16 @@ async function dispatchWriteRequest(
               ? cardUrl(req, previousRedirect)
               : cardUrl(req, `/${locationName(successName!)}`),
         }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    if (!json && isAjax(req, parsed) && saved.verb !== "delete" && ajaxSaveRedirects()) {
+      // DECKO_AJAX_SAVE_REDIRECT=1: answer an ajax save with the hard-redirect
+      // JSON instead of re-rendering the slot, so the browser reloads the
+      // card's page through the host's page path.
+      return {
+        ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName ?? name)}`) }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };
