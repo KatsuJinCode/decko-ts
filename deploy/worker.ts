@@ -63,6 +63,7 @@ import {
   mapRenderError,
   queryViewFromUrl,
 } from "../src/server/worker-shared-surface.js";
+import type { HistoryRenderParams } from "../src/card/history/render-seam.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
 interface Env {
@@ -525,7 +526,7 @@ async function renderCardPage(
   deck: Deck,
   cardName: string,
   requestedView = OPEN_VIEW,
-  params: Record<string, string> = {},
+  params: HistoryRenderParams = {},
 ): Promise<Response> {
   try {
     await warmMark(deck, cardName);

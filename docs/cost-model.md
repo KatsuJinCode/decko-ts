@@ -101,7 +101,9 @@ side effects 19/19, read writes 8/8, other tables 12/12).
 First request on a fresh isolate, measured 2026-10-14 (Windows x64, Node
 24.19, miniflare 5 / workerd), four isolates per row:
 
-`node benchmarks/cf-scale/measure-workerd-cpu.mjs --cold-only --first <path> [--entry <worker file>]`
+`node measure-workerd-cpu.mjs --cold-only --first <path> [--entry <worker file>]`
+(the cf-scale benchmark set's measuring script, which is not shipped, as
+described above)
 
 | First request | workerd process CPU ms (upper bound) | D1 queries | D1 rows read |
 | --- | --- | --- | --- |

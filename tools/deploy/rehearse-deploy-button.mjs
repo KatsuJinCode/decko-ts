@@ -98,7 +98,8 @@ const REQUIRED_BINDINGS = [
   { what: "first-run window on", pattern: /^DECKO_FIRST_RUN\s*=\s*"1"/m },
 ];
 
-const OWNER = { email: "owner@example.com", password: "Rehearsal-passw0rd-2026" };
+// The rehearsal's owner password is generated for each run, so no credential literal ships.
+const OWNER = { email: "owner@example.com", password: `Rehearsal-${randomUUID()}` };
 
 function cookieFrom(res) {
   const all = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [res.headers.get("set-cookie") ?? ""];
