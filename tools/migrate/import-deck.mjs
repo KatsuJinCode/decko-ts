@@ -36,10 +36,25 @@ import { existsSync, statSync, mkdirSync, rmSync, readFileSync, writeFileSync } 
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { LocalSqliteToolDriver } from "./import.mjs";
+import { LocalSqliteToolDriver, ENGINE_OWNED_TABLES } from "./import.mjs";
 import { importFromSqlite } from "./generalized-import.mjs";
 import { dumpRows } from "./parse-dump.mjs";
 import { deckSeedRows } from "./deck-seed-parser.mjs";
+import { openSourceSqlite, inventorySource, sourceTableRows } from "./source-sqlite.mjs";
+
+// A SQLite source read as a row stream, so it can take the same dedup
+// path as a dump or seed. Tables are read in name order, one at a time.
+async function* sqliteSourceRows(file, tables) {
+  const db = openSourceSqlite(file);
+  try {
+    const wanted = new Set(tables);
+    for (const name of Object.keys(inventorySource(db)).sort()) {
+      if (wanted.has(name)) yield* sourceTableRows(db, name);
+    }
+  } finally {
+    db.close();
+  }
+}
 import { writeChunkedSeed, readTableColumns } from "./d1-chunker.mjs";
 import { buildReport, writeReport } from "./d1-validator.mjs";
 
@@ -76,6 +91,12 @@ function usage(exitCode = 0) {
     "  --tables <a,b,c>     Restrict to these tables (default: every table the DDL declares)",
     "  --quiet              No progress output",
     "  --strict             Exit nonzero when validation checks fail",
+    "  --dedup              SQLite source: ingest through the streaming dedup path",
+    "                       (the same UNIQUE-index collision policy the dump and",
+    "                       seed paths apply) instead of generalized-import",
+    "  --rebuild-keys       Streaming path: recompute the key of every card that stores",
+    "                       a name from that name with the port's Card::Name#key, then",
+    "                       apply the key collision policy; reports how many changed",
     "",
     "The JSON report is content-free (ids, counts, hashes - never card names/content).",
   ];
@@ -101,6 +122,8 @@ function parseArgs(argv) {
     tables: undefined,
     quiet: false,
     strict: false,
+    dedup: false,
+    rebuildKeys: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -127,6 +150,8 @@ function parseArgs(argv) {
       case "--tables": opts.tables = val().split(",").map((s) => s.trim()); break;
       case "--quiet": opts.quiet = true; break;
       case "--strict": opts.strict = true; break;
+      case "--dedup": opts.dedup = true; break;
+      case "--rebuild-keys": opts.rebuildKeys = true; break;
       case "--help": case "-h": usage(0); break;
       default:
         console.error(`unknown argument: ${a}`);
@@ -139,6 +164,10 @@ function parseArgs(argv) {
     usage(1);
   }
   if (!opts.outDir) usage(1);
+  if (opts.rebuildKeys && opts.source !== undefined && !opts.dedup) {
+    console.error("--rebuild-keys with --source requires --dedup (the streaming path)");
+    usage(1);
+  }
   return opts;
 }
 
@@ -195,7 +224,7 @@ let stagingStats = { rowsEmitted: 0, elapsedMs: 0, errors: [] };
 // real source-vs-staging check, not a value against itself.
 let streamedCardsCount = 0;
 
-if (sourceKind === "sqlite") {
+if (sourceKind === "sqlite" && !opts.dedup) {
   // Use the existing generalized-import.mjs: it already handles schema
   // mapping and writes rows directly into the target DB.
   console.log("\ningest: SQLite source -> staging DB (generalized-import)");
@@ -227,7 +256,9 @@ if (sourceKind === "sqlite") {
   const rowsIter =
     sourceKind === "mysqldump"
       ? dumpRows(sourcePath, { tables: targetTables })
-      : deckSeedRows(sourcePath, { tables: targetTables });
+      : sourceKind === "sqlite"
+        ? sqliteSourceRows(sourcePath, targetTables)
+        : deckSeedRows(sourcePath, { tables: targetTables });
 
   // Apply the schema's pragmas + CREATE TABLEs.
   const { parseTargetSchema } = await import("./import.mjs");
@@ -236,6 +267,13 @@ if (sourceKind === "sqlite") {
   for (const stmt of schema.createTables) await stagingDriver.query(stmt, []);
 
   const { mapRowToTarget } = await import("./schema-map.mjs");
+  // --rebuild-keys: Ruby stores Card::Name#key of the name in every simple
+  // card's key column. A source whose keys were written by something else
+  // has them recomputed here, before the collision policy below sees them.
+  // Compound cards store NULL name and key (the Lexicon composes them), so
+  // only rows carrying a name are touched.
+  const deriveKey = opts.rebuildKeys ? await (await import("./load-derive-key.mjs")).loadDeriveKey() : undefined;
+  const rebuiltKeys = { examined: 0, changed: 0, caseOnly: 0 };
   // Deduplicate by (table, id) when the table has an id column. Real
   // decko data is unique on id, but dump files produced by lossy
   // sanitization passes can carry duplicate rows. Skipping the
@@ -255,6 +293,9 @@ if (sourceKind === "sqlite") {
   const nulledKeyDuplicates = new Map(); // table -> count
   const nulledLRDuplicates = new Map(); // table -> count
   const nulledCodenameDuplicates = new Map(); // table -> count
+  // The key and codename UNIQUE INDEXes are COLLATE NOCASE, which folds
+  // ASCII letters only; the seen-sets compare under the same folding.
+  const nocaseFold = (v) => (typeof v === "string" ? v.replace(/[A-Z]/g, (c) => c.toLowerCase()) : v);
   function getSeen(t, m) {
     let s = m.get(t);
     if (s === undefined) { s = new Set(); m.set(t, s); }
@@ -290,15 +331,29 @@ if (sourceKind === "sqlite") {
     // on the duplicate row so the UNIQUE INDEX does not reject it; the row
     // itself still lands and the count is reported.
     const keyIdx = mapped.columns.indexOf("key");
+    if (deriveKey !== undefined && row.table === "cards" && keyIdx >= 0) {
+      const name = mapped.values[mapped.columns.indexOf("name")];
+      if (typeof name === "string" && name !== "") {
+        rebuiltKeys.examined += 1;
+        const before = mapped.values[keyIdx];
+        const after = deriveKey(name);
+        if (after !== before) {
+          rebuiltKeys.changed += 1;
+          if (typeof before === "string" && before.toLowerCase() === after.toLowerCase()) rebuiltKeys.caseOnly += 1;
+          mapped.values[keyIdx] = after;
+        }
+      }
+    }
     if (keyIdx >= 0) {
       const key = mapped.values[keyIdx];
       if (key !== null && key !== undefined) {
         const seen = getSeen(row.table, seenKeys);
-        if (seen.has(key)) {
+        const folded = nocaseFold(key);
+        if (seen.has(folded)) {
           mapped.values[keyIdx] = null;
           nulledKeyDuplicates.set(row.table, (nulledKeyDuplicates.get(row.table) ?? 0) + 1);
         } else {
-          seen.add(key);
+          seen.add(folded);
         }
       }
     }
@@ -332,11 +387,12 @@ if (sourceKind === "sqlite") {
       const cn = mapped.values[cnIdx];
       if (cn !== null && cn !== undefined) {
         const seen = getSeen(row.table, seenCodenames);
-        if (seen.has(cn)) {
+        const folded = nocaseFold(cn);
+        if (seen.has(folded)) {
           mapped.values[cnIdx] = null;
           nulledCodenameDuplicates.set(row.table, (nulledCodenameDuplicates.get(row.table) ?? 0) + 1);
         } else {
-          seen.add(cn);
+          seen.add(folded);
         }
       }
     }
@@ -356,6 +412,11 @@ if (sourceKind === "sqlite") {
   }
   await flush();
   for (const stmt of schema.createIndexes) await stagingDriver.query(stmt, []);
+  // [ENGINE-FRESHNESS]: the stamp row and its triggers go in after the load,
+  // as parseTargetSchema documents, so the render path's freshness read
+  // finds its row and later writes bump it.
+  for (const stmt of schema.postLoadStatements) await stagingDriver.query(stmt, []);
+  for (const stmt of schema.createTriggers) await stagingDriver.query(stmt, []);
   // Planner statistics, after the rows are in and after the indexes exist.
   // Without them SQLite estimates every equality alike and can pick a
   // low-selectivity index, reading far more rows than the query needs.
@@ -366,6 +427,10 @@ if (sourceKind === "sqlite") {
     const total = [...skippedDuplicates.values()].reduce((a, b) => a + b, 0);
     console.log(`  duplicate-id skip: ${total} rows (per-table: ${JSON.stringify(Object.fromEntries(skippedDuplicates))})`);
     stagingStats.skippedDuplicates = Object.fromEntries(skippedDuplicates);
+  }
+  if (deriveKey !== undefined) {
+    console.log(`  rebuilt keys: ${rebuiltKeys.changed} of ${rebuiltKeys.examined} named cards changed (${rebuiltKeys.caseOnly} in letter case only)`);
+    stagingStats.rebuiltKeys = rebuiltKeys;
   }
   if (nulledKeyDuplicates.size > 0) {
     const total = [...nulledKeyDuplicates.values()].reduce((a, b) => a + b, 0);
@@ -397,10 +462,12 @@ console.log(
 console.log("\nchunk: staging DB -> chunked D1-ready SQL");
 
 async function* readStagingRows(targetTableNames) {
-  // Stream every row of every target table, in name-sorted order.
+  // Stream every row of every target table, in name-sorted order. Engine-
+  // owned tables (the freshness stamp) come from the target schema, not
+  // from the chunks.
   const targetTableSet = new Set(targetTableNames);
   const sortedTables = Object.keys(tableColumns)
-    .filter((t) => targetTableSet.has(t))
+    .filter((t) => targetTableSet.has(t) && !ENGINE_OWNED_TABLES.includes(t))
     .sort();
   for (const table of sortedTables) {
   const cols = tableColumns[table];
@@ -551,6 +618,9 @@ if (stagingStats.skippedDuplicates !== undefined) {
   report.warnings.push(
     `deduped ${Object.values(stagingStats.skippedDuplicates).reduce((a, b) => a + b, 0)} rows whose id collided with a previously-ingested row in the same table (a sanitization artifact of the source deck)`,
   );
+}
+if (stagingStats.rebuiltKeys !== undefined) {
+  report.rebuiltKeys = stagingStats.rebuiltKeys;
 }
 if (stagingStats.nulledKeyDuplicates !== undefined) {
   report.nulledKeyDuplicates = stagingStats.nulledKeyDuplicates;

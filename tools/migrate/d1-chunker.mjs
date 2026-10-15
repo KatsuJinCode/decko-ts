@@ -43,6 +43,10 @@ export function quoteValue(v) {
     return String(v);
   }
   if (typeof v === "string") {
+    // SQL text is NUL-terminated when executed, so a string carrying a NUL
+    // character cannot be a quoted literal: it is written as its UTF-8
+    // bytes and cast back to TEXT, which stores the identical value.
+    if (v.includes("\u0000")) return `CAST(X'${Buffer.from(v, "utf8").toString("hex")}' AS TEXT)`;
     return `'${v.replace(/'/g, "''")}'`;
   }
   if (v instanceof Uint8Array) {
