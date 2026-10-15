@@ -76,6 +76,7 @@
 // answered as a read. It now answers 403 unless the operator opts in. No GET
 // or HEAD response changes; this only removes the method-blind conflation.
 
+import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./drivers/d1.js";
@@ -152,10 +153,13 @@ export interface WorkersWriteContext {
   /** Overrides the D1 adapter the surface would build from env.DB. Tests
    *  pass the LocalSqliteDriver here; the Worker never does. */
   readonly driver?: SQLDatabaseDriver;
-  /** The attachment storage seam: the host's bucket (R2 on Cloudflare,
+/** The attachment storage seam: the host's bucket (R2 on Cloudflare,
    *  Bunny Storage on Bunny) under BlobAttachmentStore. Absent = uploads and
    *  stored asset outputs fail with the engine's named rejection. */
   readonly attachmentStore?: AttachmentStore;
+  /** card-mod-delayed_job: when the deploy sets DECKO_DELAYING, the
+   *  integrate_with_delay events of each save are queued (worker.ts). */
+  readonly delayedJobs?: DelayedJobsConfig;
 }
 
 /** One inbound request, normalized off the Web Request. Same field names and
@@ -495,6 +499,9 @@ async function mountWrite(
       // that binds no bucket passes nothing, and an upload fails with the
       // engine's named rejection rather than silently writing nothing.
       ...(ctx.attachmentStore === undefined ? {} : { attachmentStore: ctx.attachmentStore }),
+      // card-mod-delayed_job: with DECKO_DELAYING set, the integrate_with_delay
+      // events of a save are queued for the Queues consumer (worker.ts).
+      ...(ctx.delayedJobs === undefined ? {} : { delayedJobs: ctx.delayedJobs }),
     },
     {
       method: req.method,
@@ -627,7 +634,7 @@ export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
  *  nothing with the host's read adapter and warms nothing. DB is optional in
  *  the env bag this takes: a flags-only host supplies ctx.driver, and
  *  neither being present is the write path's own named error. */
-function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
+export function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
   if (ctx.driver !== undefined) return ctx.driver;
   if (env.DB === undefined) {
     throw new Error(

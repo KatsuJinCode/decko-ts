@@ -152,9 +152,31 @@ migrations_dir = "deploy/migrations"
 #
 # Neither flag is a secret: they are plain [vars] values, and a fork of this
 # repo still carries nothing sensitive.
+#
+# DECKO_DELAYING is Ruby's Cardio.config.delaying (card-mod-delayed_job). On,
+# a save's integrate_with_delay events (the follower notice) are written as
+# delayed_jobs rows in D1 and performed after the response: the request sends
+# a message on the DELAYED_JOBS queue below and this Worker's queue() handler
+# works the table off. Without the queue binding the Worker runs them under
+# ctx.waitUntil instead. Set it to "false" to run them inside the request, as
+# a Decko deck does with the mod's default config. See docs/delayed-jobs.md.
 [vars]
 DECKO_WRITE_PATH = "1"
 DECKO_FIRST_RUN = "1"
+DECKO_DELAYING = "true"
+
+# The delayed-job producer and consumer. The message only says "work the
+# table off": the job itself is the D1 row, so a lost or repeated message never
+# loses or repeats a job. A button deploy creates the queue; for a manual
+# deploy, `npx wrangler queues create decko-ts-delayed-jobs`.
+[[queues.producers]]
+binding = "DELAYED_JOBS"
+queue = "decko-ts-delayed-jobs"
+
+[[queues.consumers]]
+queue = "decko-ts-delayed-jobs"
+max_batch_size = 10
+max_batch_timeout = 5
 
 # The deck's files: uploads, image renditions and the stored asset outputs
 # (the site stylesheet the style asset events write on save). Keyed exactly as
