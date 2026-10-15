@@ -124,6 +124,11 @@
             }
           }
         }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed, so this answer (\"Unrecognized email.\") says the address has no account; the port answers every sign-in failure with \"Wrong email or password.\" and still pays one password derivation for an unknown identifier. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers.",
+        "ruby": { "errors": "SIGNIN: Unrecognized email." },
+        "ts": { "errors": "SIGNIN: Wrong email or password." }
       }
     },
     {
@@ -142,6 +147,11 @@
             }
           }
         }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed (\"Wrong password\"); the port answers every sign-in failure, a wrong password among them, with \"Wrong email or password.\", so the answer says nothing about whether the address has an account. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers.",
+        "ruby": { "errors": "SIGNIN: Wrong password" },
+        "ts": { "errors": "SIGNIN: Wrong email or password." }
       }
     },
     {
@@ -538,6 +548,11 @@
         "success": {
           "view": "reset_password_success"
         }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). The forgot-password trigger answers an unknown address with the redirect a sent reset gets, and sends nothing. Ruby answers 422 \"EMAIL: not recognized\" and fires send_reset_password_token, which finds no account; the port answers 303 to /*signin/reset_password_success and sends nothing. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's answer.",
+        "ruby": { "status": "422", "location": "-", "errors": "EMAIL: not recognized" },
+        "ts": { "status": "303", "location": "/*signin/reset_password_success", "errors": "" }
       }
     },
     {
