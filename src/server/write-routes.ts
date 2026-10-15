@@ -1554,6 +1554,13 @@ async function dispatchWriteRequest(
   // cookie session (auth/current.rb:50-63); unresolvable = Anonymous.
   const sessionToken =
     tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
+  // The holder's password card before this write: a save that changes it
+  // ends the other sessions of the account, and keeps this one (see the
+  // keepSessionAcrossOwnPasswordChange call after the write).
+  const passwordBefore =
+    sessionToken === null
+      ? undefined
+      : await new SessionStore({ driver: ctx.driver }).ownPasswordUpdatedAt(sessionToken);
 
   const engine = await createCardActionEngineForSession(ctx.fetcher, ctx.driver, sessionToken, {
     ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1",
@@ -1792,6 +1799,10 @@ async function dispatchWriteRequest(
         recaptchaToken: parsed.recaptchaToken,
       });
       name = markName;
+    }
+
+    if (sessionToken !== null) {
+      await new SessionStore({ driver: ctx.driver }).keepSessionAcrossOwnPasswordChange(sessionToken, passwordBefore);
     }
 
     const saved = {
