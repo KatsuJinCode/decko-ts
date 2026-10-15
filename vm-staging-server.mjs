@@ -129,6 +129,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
+import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
@@ -2794,7 +2795,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         "Error (unsupported view)",
       );
     }
-    if (STOCK_DECK && !pageOpts.bare && error instanceof Error && error.name === "UpstreamSqliteMatchError") {
+    if (STOCK_DECK && !pageOpts.bare && isUpstreamMatchError(error)) {
       // The keyword-search raise on SQLite (card's AbstractAdapter#match,
       // config/initializers/02_patches/active_record.rb:80-83) escapes the
       // search card's rescuing_bad_query. A deployed site runs with

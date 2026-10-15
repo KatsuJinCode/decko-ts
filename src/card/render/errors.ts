@@ -349,15 +349,44 @@ export function isValidDateContent(content: string): boolean {
  * passed). The raise escapes rescuing_bad_query (it rescues BadQuery, not
  * RuntimeError) to the controller, which in production mode rescues it
  * and shows :server_error under the page layout, status 500
- * (card_controller/errors.rb handle_exception). The error NAME carries the
- * raise site. */
-export class UpstreamSqliteMatchError extends Error {
+ * (card_controller/errors.rb handle_exception).
+ *
+ * Ruby's class, not an invented one: `raise ::I18n.t(...)` with no
+ * second argument raises a RuntimeError (Ruby raises a RuntimeError for
+ * any String). The oracle's own capture records exactly that
+ * ("CAPTURE_ERROR: RuntimeError: %{func} not implemented",
+ * tests/cql/oracle-replay.test.ts), and the graded adapter reports a
+ * raised error's class through its constructor name
+ * (adapters/ts/adapter.mjs:519), so the class is named RuntimeError so
+ * the recorded class string is the one Ruby records. The raise site is
+ * identified by the message (the i18n string below, which no other raise
+ * in card-1.110.0 uses), not by the class name.
+ *
+ * MESSAGE. card-1.110.0/config/initializers/02_patches/active_record.rb:80-83
+ * raises `::I18n.t(:lib_exception_not_implemented)` with no interpolation
+ * parameters, so the raw template "%{func} not implemented" is what
+ * I18n returns (card-1.110.0/config/locales/en.yml:36) and therefore
+ * what Ruby raises. The port's copy of the class is the only place that
+ * string lives; it is the value, not a substitute for a translation. */
+
+/** The error class Ruby raises for the SQLite `match`; the raise site. */
+export class RuntimeError extends Error {
   constructor() {
     super("%{func} not implemented");
-    this.name = "UpstreamSqliteMatchError";
+    this.name = "RuntimeError";
   }
 }
 
+/** Ruby raises one i18n string for the un-implemented adapter `match`
+ *  (the en.yml value above); a RuntimeError carrying it is that raise. */
+export function isUpstreamMatchError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.name === "RuntimeError" &&
+    error.message === "%{func} not implemented"
+  );
+}
+
 export function upstreamMatchError(): Error {
-  return new UpstreamSqliteMatchError();
+  return new RuntimeError();
 }

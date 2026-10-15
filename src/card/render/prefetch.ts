@@ -1012,17 +1012,27 @@ async function driveClosure(
   /** Composed keys with a cached record - "this name resolves". */
   const known = new Set<string>();
   /** Names retired for good, keyed by the same string `pending` holds.
-   *  A name lands here when one of its side keys is EMPTY: `cards` carries
-   *  no row with key = '' (`SELECT COUNT(*) FROM cards WHERE key = ''`
-   *  = 0; the `key IS NULL` rows are side-less junctions that a
-   *  `COLLATE NOCASE IN (...)` list never matches anyway), so the name can
-   *  NEVER resolve through the row path. Before the fold such a name stayed
-   *  in `pending` forever — seedKeys admits no empty key, and the round's
-   *  drain removes a name only once its key reached `known` — so the loop
-   *  re-issued byte-identical statements until MAX_CLOSURE_ROUNDS ran out.
-   *  Retiring the name changes no rendered byte: the render already answers unknown for
-   *  it (the unknown-card substitution), which is what the empty-padded
-   *  IN-lists produced too. */
+   *  A name lands here when Ruby's own lookup could not have answered it.
+   *  Ruby's resolution is in Card::Fetch::Retrieve:
+   *  `retrieval_from_db_query_base` queries the `key` column only for a
+   *  SIMPLE name (`mark_type == :key && mark.simple?`); every compound name
+   *  goes through `id_from_mark` -> `Lexicon.id(mark_value)`, and
+   *  Card::Lexicon#id returns nil for a blank name
+   *  (`return if name.blank?`, lexicon.rb:20-21), so `name_to_lex`
+   *  (lexicon.rb:112-118) cannot produce a side id for an empty side and
+   *  the compound name has no junction row to find. That is the reason a
+   *  name with an empty side key can NEVER resolve — the port's rule, not a
+   *  judgement about rendered bytes.
+   *
+   *  A compound card is also never stored with a `key` value in Ruby:
+   *  Card::Name::All#key= writes the column only for a simple name
+   *  (`name.simple? ? newkey : nil`, name/all.rb:64-70), so there is no
+   *  key row for a junction to match either.
+   *
+   *  Before the fold such a name stayed in `pending` forever — seedKeys
+   *  admits no empty key, and the round's drain removes a name only once its
+   *  key reached `known` — so the loop re-issued byte-identical statements
+   *  until MAX_CLOSURE_ROUNDS ran out. */
   const dead = new Set<string>();
   /** Composed key -> row id (junction side-id joins need the ids). */
   const knownIds = new Map<string, number>();
@@ -1144,7 +1154,8 @@ async function driveClosure(
       // Four provable negatives, all keyed on facts the round itself
       // established (see the `dead` doc above and the post-round marking
       // below):
-      //   (a) an empty side key — no card carries key = '';
+      //   (a) an empty side key — Card::Lexicon#id is nil for a blank side
+      //       (lexicon.rb:20-21), so no side id exists (see the `dead` doc);
       //   (b) a side that already went negative — the junction row needs
       //       that side's row to exist at all;
       //   (c) a pair whose junction row missed once BOTH sides resolved;
