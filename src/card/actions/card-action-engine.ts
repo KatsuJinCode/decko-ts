@@ -155,7 +155,7 @@ import {
 import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attachment-store.js";
 import { supportsTransactions } from "../../server/driver.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
-import { encryptPassword, planAccountFields } from "../auth/account-fields.js";
+import { emailIsValid, encryptPassword, normalizeEmail, planAccountFields } from "../auth/account-fields.js";
 import { actorBot } from "../auth/actor.js";
 import { runObserverEvents } from "../notify/observer.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
@@ -2166,6 +2166,11 @@ export class CardActionEngine {
       }
       input.content = await storedPasswordValue(input.content, await this.accountSalt(sides.leftId), this.passwordHashing);
     }
+    // The +*email save's validate events (right/email.rb:7-32): a +*email
+    // card is only stored with a well-formed, downcased, unique address.
+    if (rightCode === "email" && input.content != null && input.attachment === undefined && sides.rightId !== null) {
+      input.content = await this.validatedEmailContent(input.content, sides.rightId, null);
+    }
     // require_field :email (set/right/account.rb:8): an account is created
     // only with its +*email, named in this save's subcards or already stored.
     if (rightCode === "account") {
@@ -2175,7 +2180,15 @@ export class CardActionEngine {
       const stored =
         !named && (await this.fetch.lexicon.id(DeckoName.parse(`${name.s}+*email`))) !== undefined;
       if (!named && !stored) {
-        throw new CardActionError("field-required", "Validation failed: Email required");
+        // require_field :email is errors.add :email, :required, so the JSON
+        // errors view reports { email: "required" } and the HTML error view
+        // shows "EMAIL: required".
+        throw new CardActionError(
+          "field-required",
+          "Validation failed: Email required",
+          "EMAIL: required",
+          { email: "required" },
+        );
       }
     }
     const created = await writer.createCard({
@@ -2820,6 +2833,9 @@ export class CardActionEngine {
         throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
       }
       input.content = await storedPasswordValue(input.content, await this.accountSalt(before.left_id), this.passwordHashing);
+    }
+    if (updateRightCode === "email" && input.content !== undefined && input.attachment === undefined && before.right_id !== null) {
+      input.content = await this.validatedEmailContent(input.content, before.right_id, row.id);
     }
     if (input.content !== undefined) after.db_content = input.content;
     // add_comment (comment.rb:4-12) at the SP position — the pending
@@ -5036,6 +5052,30 @@ export class CardActionEngine {
       await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
     ).rows[0];
     if (Number(left?.n ?? 0) === 0) await driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
+  }
+
+  /** The +*email save's validate stage (card-mod-account set/right/email.rb):
+   *  downcase_email at :prepare_to_validate downcases, validate_email at
+   *  :validate strips and applies the address grammar, validate_unique_email
+   *  (after it) adds the duplicate error when another +*email holds the same
+   *  content. Both errors land on :content, so the later one replaces the
+   *  earlier in Ruby's errors hash. Returns the content the save must store. */
+  private async validatedEmailContent(raw: string, rightId: number, selfId: number | null): Promise<string> {
+    const content = normalizeEmail(raw);
+    if (content === "") return content;
+    let message: string | null = null;
+    if (!emailIsValid(content)) message = "must be valid address";
+    const taken = (
+      await this.fetch.driver.query<{ id: number }>(
+        "SELECT id FROM cards WHERE right_id = ? AND db_content = ? AND trash = 0 AND id IS NOT ? LIMIT 1",
+        [rightId, content, selfId],
+      )
+    ).rows;
+    if (taken.length > 0) message = "must be unique";
+    if (message === null) return content;
+    throw new CardActionError("validation-failed", `Validation failed: ${message}`, `CONTENT: ${message}`, {
+      content: message,
+    });
   }
 
   /** Salts generated for accounts created in this engine's acts, by account
