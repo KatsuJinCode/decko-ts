@@ -29,6 +29,8 @@ import {
   setPbkdf2IterationLimit,
 } from "./src/card/auth/password-hash.js";
 import { RenderEngine } from "./src/card/render.js";
+import { getDefaultModLoader } from "./src/card/mod-loader.js";
+import { defaultDeckLoader } from "./src/card/mod-loader/default-mod-deck.js";
 import { R2BlobDriver, type R2BucketLike } from "./src/blob/r2.js";
 import { BlobAttachmentStore } from "./src/card/attachments/attachment-store.js";
 import { handleAttachmentRoute } from "./src/server/file-routes.js";
@@ -110,6 +112,15 @@ async function bootDeck(env: Env): Promise<Deck> {
   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const driver = new CloudflareD1Adapter(env.DB);
   const fetcher = new FetchEngine(driver);
+  // THE MOD DECK, loaded before the render engine exists (RenderEngine's
+  // constructor binds getDefaultModLoader()): reads and the write surface's
+  // GET arms render through the ported mods' per-set chain, and the save
+  // path's event runtime (write-routes.ts servingModEventRuntime) walks the
+  // same loader instead of loading a second, event-only copy. Ruby loads
+  // every mod at boot (dirs.rb:54-62, loader.rb:16-21); the Node host and
+  // the Bunny edge do the same. No query; the guard keeps a retried boot on
+  // the loader already bound.
+  if (getDefaultModLoader() === undefined) defaultDeckLoader();
   const render = new RenderEngine(fetcher);
   // The sync name environment (mark URLs /~<id> and /:<codename>) reads
   // only warm caches; install + warm at boot or the marks 500.
