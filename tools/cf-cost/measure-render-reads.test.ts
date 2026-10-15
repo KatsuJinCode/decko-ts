@@ -381,7 +381,13 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
     }
     console.log("How D1's rows_written meter attributes CREATE INDEX backfill is verifiable only against the deployed D1 database; the entry arithmetic above is the SQLite-side bound.");
 
-    writeFileSync(join(REPO, "tools", "cf-cost", "measure-render-reads-results.json"), JSON.stringify({
+    // The results are the measurement, and they are compared with the
+    // committed copy, never written over it: cost-model.test.ts reads that
+    // copy, and a test that rewrites a tracked input makes whichever test
+    // reads it second see different numbers. Regenerating the committed copy
+    // is an explicit act: DECKO_WRITE_CF_COST_RESULTS=1.
+    const committedPath = join(REPO, "tools", "cf-cost", "measure-render-reads-results.json");
+    const results = JSON.parse(JSON.stringify({
       convention: "EQP plan-shape + rows-matched upper-bound accounting, x1, D1 rows_read-aligned; NOT rows-examined telemetry",
       phases: [before, afterIdx, afterAnalyze].map((p) => ({
         phase: p.phase, statsPresent: p.statsPresent, sizes: p.sizes, indexes: p.indexes,
@@ -394,8 +400,25 @@ describe("cf-cost measure-render-reads (D1 index fix proof)", () => {
         targetedDeck: { cards: before.sizes.cards, ongoingInsertDelta: importDeltaTargeted },
         corpusCopy: backfill,
       },
-    }, null, 2));
-    // cleanup: scratch DBs are rebuildable; keep the results JSON only
+    }));
+    if (process.env.DECKO_WRITE_CF_COST_RESULTS === "1") {
+      writeFileSync(committedPath, JSON.stringify(results, null, 2) + "\n");
+    } else {
+      // Machine-local timings (the corpus copy's index builds) are not part of
+      // the comparison; everything else is deterministic on the committed deck.
+      const stable = (o: Record<string, unknown>) => {
+        const { writeAccounting, ...rest } = o as { writeAccounting: { targetedDeck: unknown } };
+        return { ...rest, writeAccounting: { targetedDeck: writeAccounting.targetedDeck } };
+      };
+      const committed = JSON.parse(readFileSync(committedPath, "utf8")) as Record<string, unknown>;
+      expect(
+        stable(results),
+        "tools/cf-cost/measure-render-reads-results.json is stale against the engine; " +
+          "regenerate it with DECKO_WRITE_CF_COST_RESULTS=1 npx vitest run tools/cf-cost/measure-render-reads.test.ts, " +
+          "then review the changed figures and regenerate docs/cost-model.md",
+      ).toEqual(stable(committed));
+    }
+    // cleanup: scratch DBs are rebuildable
     for (const f of ["cf-cost-before.sqlite3", "cf-cost-after-idx.sqlite3", "cf-cost-after-analyze.sqlite3"]) {
       rmSync(join(REPO, "tmp", f), { force: true });
     }
