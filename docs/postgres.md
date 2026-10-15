@@ -106,7 +106,9 @@ Known limits:
   integer. SQLite compares the number the text spells. The operators
   below apply where the text side is a value (another column, a literal
   cast to text, a `json_each` element), which is the shape the engine's
-  integer-versus-text comparisons have.
+  integer-versus-text comparisons have. A text literal in that position is
+  typed the same way (`1 = '1.0'` fails); a comparison of two literals is
+  not translated.
 - The tie-order rule models SQLite's plans for the card queries the engine
   issues. It is not a general emulation of SQLite's query planner.
 
