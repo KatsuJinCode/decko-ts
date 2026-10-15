@@ -26,6 +26,7 @@
 // the port is first built into dist/ (tsc -p tsconfig.json, plus the vendored
 // asset-source snapshots the dist modules import).
 
+import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -73,13 +74,7 @@ function runNode(script, scriptArgs, label) {
 // already in <out> and rewrites the summary.
 const reportOnly = args["report-only"] === "1";
 if (!reportOnly && args.build !== "0") {
-  step("build the port into dist/", process.execPath, [path.join(repo, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], { cwd: repo });
-  // tsc emits only dist/src/**; the dist modules also import the generated
-  // asset-source snapshots from vendor/.
-  mkdirSync(path.join(repo, "dist", "vendor"), { recursive: true });
-  for (const f of readdirSync(path.join(repo, "vendor")).filter((f) => /^edge-.*-snapshot\.js$/.test(f))) {
-    copyFileSync(path.join(repo, "vendor", f), path.join(repo, "dist", "vendor", f));
-  }
+  step("build the complete engine distribution", process.execPath, [path.join(repo, "tools/dist/build-engine.mjs")], { cwd: repo });
 }
 
 // The mods' public files (TinyMCE's theme, ace's modes) must be in place
@@ -104,6 +99,7 @@ const filter = args.filter ? ["--filter", args.filter] : [];
 const shards = { ruby: Number(args.shards ?? 4), ts: Number(args["ts-shards"] ?? 1) };
 if (!reportOnly) console.log(`\n== journeys on ruby (${shards.ruby} shards) and ts (${shards.ts} shards)`);
 const runs = [];
+const runId = randomUUID();
 for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
   for (let k = 0; k < shards[engine]; k++) {
     runs.push(
@@ -115,6 +111,7 @@ for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
           "--journeys", journeysFile,
           "--out", path.join(out, engine),
           "--shard", `${k}/${shards[engine]}`,
+          "--run-id", runId,
           ...filter,
         ],
         shards[engine] > 1 ? `${engine} ${k}` : engine,
@@ -124,12 +121,16 @@ for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
 }
 await Promise.all(runs);
 
-step("comparison", process.execPath, [
+const comparison = spawnSync(process.execPath, [
   path.join(here, "compare-journeys.mjs"),
   "--expected", path.join(out, "ruby"),
   "--actual", path.join(out, "ts"),
   "--report", path.join(out, "report.json"),
-]);
+  "--journeys", journeysFile, "--fixture", fixture,
+  "--candidate", args.candidate ?? spawnSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8", windowsHide: true }).stdout.trim(),
+  ...filter,
+], { stdio: "inherit", windowsHide: true });
+if (comparison.status !== 0) process.exitCode = comparison.status ?? 1;
 
 if (args.summary) {
   writeSummary(path.resolve(args.summary));

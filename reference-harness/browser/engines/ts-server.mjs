@@ -47,7 +47,9 @@ process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
 // the Ruby oracle, and the port's PBKDF2 upgrade at sign-in would write row
 // deltas Ruby never writes. Ruby-side parity is the engine behavior under
 // test; the production PBKDF2 default is a host decision, not an engine one.
-process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
+const productionProfile = process.argv.includes("--production");
+if (!productionProfile) process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
+else process.env.DECKO_PASSWORD_HASH ??= "pbkdf2";
 // A fresh deck served as stock Decko serves it (see vm-staging-server.mjs).
 process.env.DECKO_DECK_PROFILE = "stock";
 // The asset refresh is never run, as the Ruby server sets Cardio.config.asset_refresh
@@ -55,7 +57,7 @@ process.env.DECKO_DECK_PROFILE = "stock";
 // build compiled the script and style outputs, and a render never rewrites them.
 // A cautious refresh here would compile the skin with an SCSS compiler this
 // harness does not configure, and would write rows the reference never writes.
-process.env.DECKO_ASSET_REFRESH ??= "never";
+if (!productionProfile) process.env.DECKO_ASSET_REFRESH ??= "never";
 // The mods' public files (TinyMCE's theme, ace's modes): the same files the
 // Ruby oracle app serves from public/mod/<mod> (decko setup links each mod's
 // public directory). run-all forwards its --decko checkout here; otherwise
@@ -70,6 +72,11 @@ const realCreateServer = http.createServer;
 http.createServer = (...args) => {
   const listener = args.find((a) => typeof a === "function");
   const wrapped = async (req, res) => {
+    if (req.url === "/__harness/runtime") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ engine: "node-host", node: process.version, passwordHash: process.env.DECKO_PASSWORD_HASH ?? "default", assetRefresh: process.env.DECKO_ASSET_REFRESH ?? "default", scssCompilerConfigured: !!process.env.DECKO_SASSC, deckProfile: process.env.DECKO_DECK_PROFILE }));
+      return;
+    }
     if (req.url === "/__harness/ready") {
       res.writeHead(200, { "content-type": "text/plain" });
       res.end("ready");

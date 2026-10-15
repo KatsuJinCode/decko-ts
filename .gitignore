@@ -87,3 +87,6 @@ vitest.gate.generated.ts
 # hosted conformance run records (tools/hosted-conformance/): one JSON file per
 # run, written fresh every time; never committed
 tools/hosted-conformance/results/
+
+# Local build receipts and isolated diagnostic output
+/.runtime/

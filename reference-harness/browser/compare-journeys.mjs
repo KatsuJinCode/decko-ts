@@ -18,6 +18,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { validateJourneyEvidence, loadJourneyResults } from "./lib/journey-evidence-validation.mjs";
 import { stable } from "../runner/normalize.mjs";
 
 function parseArgs(argv) {
@@ -25,16 +26,6 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 2) args[argv[i].replace(/^--/, "")] = argv[i + 1];
   return args;
 }
-
-const load = (dir) =>
-  Object.fromEntries(
-    readdirSync(dir)
-      .filter((f) => f.endsWith(".json") && !f.startsWith("run-meta"))
-      .map((f) => {
-        const r = JSON.parse(readFileSync(path.join(dir, f), "utf8"));
-        return [r.id, r];
-      }),
-  );
 
 const eq = (a, b) => JSON.stringify(stable(a)) === JSON.stringify(stable(b));
 
@@ -60,12 +51,17 @@ function rowSummary(rows) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const expected = load(args.expected);
-const actual = existsSync(args.actual) ? load(args.actual) : {};
+const expectedLoaded = loadJourneyResults(args.expected);
+const actualLoaded = loadJourneyResults(args.actual);
+const expected = expectedLoaded.results;
+const actual = actualLoaded.results;
+const validation = validateJourneyEvidence(args, expectedLoaded, actualLoaded);
 const items = [];
 const journeys = [];
 
-for (const [id, exp] of Object.entries(expected)) {
+for (const id of validation.ids) {
+  const exp = expected[id];
+  if (!exp) { journeys.push({ id, status: "reference-missing" }); continue; }
   const act = actual[id];
   const jItems = [];
   const add = (kind, label, pass, detail) => {
@@ -137,6 +133,11 @@ for (const it of items.filter((i) => !i.pass)) {
 
 const graded = journeys.filter((j) => j.status === "pass" || j.status === "fail");
 const report = {
+  integrity: validation,
+  verdict: validation.problems.length === 0 && journeys.length > 0 && journeys.every(j => j.status === "pass") ? "pass" : "fail",
+  evidenceValid: validation.problems.length === 0,
+  productionAcceptance: false,
+  scope: "Isolated host journey comparison; deployed-site acceptance requires its own target evidence.",
   journeys: { pass: graded.filter((j) => j.status === "pass").length, graded: graded.length, total: journeys.length },
   kinds,
   perJourney: journeys,
@@ -150,3 +151,6 @@ for (const [k, v] of Object.entries(kinds)) console.log(`  ${k.padEnd(10)} ${v.p
 for (const j of journeys) if (j.status !== "pass") console.log(`  ${j.status.padEnd(16)} ${j.id}${j.failed ? "  " + j.failed.join(", ") : ""}`);
 console.log("causes:");
 for (const c of report.causes) console.log(`  ${String(c.count).padStart(3)}  ${c.cause}`);
+
+for (const problem of validation.problems) console.error(`evidence invalid: ${problem}`);
+if (report.verdict !== "pass") process.exitCode = 1;

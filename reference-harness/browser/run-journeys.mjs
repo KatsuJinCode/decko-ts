@@ -19,6 +19,7 @@ import path from "node:path";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
+import { captureProvenance } from "./lib/journey-provenance.mjs";
 import { snapshot, delta } from "../runner/deck-state.mjs";
 
 function parseArgs(argv) {
@@ -338,7 +339,9 @@ async function runJourney(engine, args, journey, spec, logFile) {
   try {
     const before = snapshot(server.db);
     await server.mail(); // drain anything the boot sent
+    result.runtime = await fetch(server.base + "/__harness/runtime").then(r => r.ok ? r.json() : null).catch(() => null);
     browser = await launchBrowser();
+    result.browserVersion = browser.version;
     const page = browser.context.pages()[0] ?? (await browser.context.newPage());
     page.setDefaultTimeout(STEP_TIMEOUT);
     const ctx = {
@@ -402,6 +405,7 @@ const args = parseArgs(process.argv.slice(2));
 const engine = loadEngine(args.engine);
 const spec = JSON.parse(readFileSync(path.join(args.fixture, "deck.json"), "utf8"));
 const { journeys } = JSON.parse(readFileSync(args.journeys, "utf8"));
+const provenance = captureProvenance(args, engine);
 const filter = args.filter ? new RegExp(args.filter) : null;
 // --shard K/N runs every Nth journey starting at K (0-based), so N runner
 // processes can share one --out directory: each journey still gets its own
@@ -424,6 +428,7 @@ for (const [index, journey] of journeys.entries()) {
   } catch (err) {
     result = { id: journey.id, engine: engine.name, error: String(err?.message ?? err), completed: false, steps: [], observations: [] };
   }
+  result.provenance = provenance;
   result.ms = Date.now() - t0;
   writeFileSync(path.join(args.out, `${journey.id}.json`), JSON.stringify(result, null, 1));
   const failedStep = result.steps.find((s) => s.outcome === "failed");
@@ -432,4 +437,4 @@ for (const [index, journey] of journeys.entries()) {
   appendFileSync(path.join(args.out, `progress${suffix}.txt`), line + "\n");
   summary.push({ id: journey.id, completed: result.completed, ms: result.ms });
 }
-writeFileSync(path.join(args.out, `run-meta${suffix}.json`), JSON.stringify({ engine: engine.name, fixture: path.basename(args.fixture), journeys: summary }, null, 1));
+writeFileSync(path.join(args.out, `run-meta${suffix}.json`), JSON.stringify({ engine: engine.name, fixture: path.basename(args.fixture), provenance, completedAt: new Date().toISOString(), journeys: summary }, null, 1));

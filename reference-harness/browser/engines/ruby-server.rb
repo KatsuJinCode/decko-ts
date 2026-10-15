@@ -82,6 +82,7 @@ class HarnessPaths
 
   def call(env)
     case env["PATH_INFO"]
+    when "/__harness/runtime" then [200, { "content-type" => "application/json" }, [JSON.generate({ engine: "ruby", ruby: RUBY_VERSION, card: Gem.loaded_specs["card"].version.to_s, decko: Gem.loaded_specs["decko"].version.to_s })]]
     when "/__harness/ready" then [200, { "content-type" => "text/plain" }, ["ready"]]
     when "/__harness/mail"
       mail = MAIL_LOCK.synchronize { MAIL.dup.tap { MAIL.clear } }

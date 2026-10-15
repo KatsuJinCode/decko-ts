@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+// Build the complete engine distribution, including checked-in runtime assets.
+import { spawnSync, execFileSync } from "node:child_process";
+import { cpSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { sha256, treeDigest } from "../../reference-harness/browser/lib/journey-provenance.mjs";
+const repo = fileURLToPath(new URL("../..", import.meta.url));
+const result = spawnSync(process.execPath, [path.join(repo, "node_modules/typescript/bin/tsc"), "-p", path.join(repo,"tsconfig.dist.json")], { cwd: repo, stdio: "inherit", windowsHide: true });
+if (result.status !== 0) process.exit(result.status ?? 1);
+cpSync(path.join(repo,"vendor"), path.join(repo,"dist/vendor"), { recursive: true });
+// Import the real static consumers. Missing runtime assets must fail the build.
+await import(new URL("../../dist/src/card/render/bootstrap-code-files.js", import.meta.url));
+await import(new URL("../../dist/src/server/libsass-wasm.js", import.meta.url));
+const git = (...args) => execFileSync("git", ["-C",repo,...args], { encoding:"utf8", windowsHide:true }).trim();
+mkdirSync(path.join(repo,".runtime"), { recursive:true });
+writeFileSync(path.join(repo,".runtime/browser-build.json"), JSON.stringify({ sourceCommit:git("rev-parse","HEAD"), sourceDiffSha256:sha256(git("diff","HEAD","--binary")), distSha256:treeDigest(path.join(repo,"dist")), builtAt:new Date().toISOString() },null,2)+"\n");
+console.log("Engine distribution built; static snapshot and compiler imports verified.");

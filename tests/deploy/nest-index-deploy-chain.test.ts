@@ -11,7 +11,7 @@ describe("explicit deploy-time nest-index preparation", () => {
     expect(scripts.deploy.split(" && ")).toEqual([
       "npm run db:migrations:apply", "npm run build:engine", "npm run build:nest-index:remote", "npx wrangler deploy", "npm run setup-token",
     ]);
-    expect(scripts["build:engine"]).toBe("tsc -p tsconfig.dist.json");
+    expect(scripts["build:engine"]).toBe("node tools/dist/build-engine.mjs");
     expect(scripts["build:nest-index:remote"]).toBe("node tools/deploy/build-nest-index.mjs --remote");
   });
 

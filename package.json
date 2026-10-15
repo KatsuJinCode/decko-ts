@@ -43,7 +43,7 @@
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
     "build:nest-index": "node tools/deploy/build-nest-index.mjs",
-    "build:engine": "tsc -p tsconfig.dist.json",
+    "build:engine": "node tools/dist/build-engine.mjs",
     "build:nest-index:remote": "node tools/deploy/build-nest-index.mjs --remote",
     "deploy": "npm run db:migrations:apply && npm run build:engine && npm run build:nest-index:remote && npx wrangler deploy && npm run setup-token",
     "setup-token": "node tools/deploy/issue-setup-token.mjs --remote",

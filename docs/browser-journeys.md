@@ -1,5 +1,7 @@
 # Browser journeys
 
+Historical parity evidence only: the recorded run used commit58d21f58, Ruby3.4.11 and the Node host's legacy-SHA1/asset-refresh-never profile. It does not establish current candidate, Ruby3.3, production-password/assets, edge-host or live-site acceptance. The old comparator lacked completeness/provenance/nonzero-failure controls; its counts require revalidation. Current comparisons fail closed on missing/extra/duplicate results, definition/fixture/source/build identity, step/observation completeness and HTTP500 user failures.
+
 The journeys in `reference-harness/browser/journeys/synthetic-v1.json` are user
 flows written as plain data. Each one runs in a hidden (headless) browser with
 a throwaway profile, on a fresh copy of the synthetic deck, once against stock
