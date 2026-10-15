@@ -8,63 +8,118 @@ not redistributed; only aggregate figures are recorded here.
 Reproduce:
 
 ```
-node tools/migrate/prove-deck-migration.mjs --deck <deck.sqlite> --work <scratch-dir> [--summary <file.json>]
+node tools/migrate/prove-deck-migration.mjs --deck <deck.sqlite> --work <scratch-dir> --rebuild-keys [--summary <file.json>]
 ```
 
 The script copies the deck into the scratch directory (sha256 checked),
-imports it with `import-deck.mjs --dedup` at the 500-row / 1 MiB chunk
-recipe, lands the chunks in a D1 database inside a local Miniflare instance,
+imports it with `import-deck.mjs --dedup --rebuild-keys` at the 500-row /
+1 MiB chunk recipe, lands the chunks in a D1 database inside a local
+Miniflare instance (then adds the freshness stamp row and its triggers),
 reads every row back through the D1 binding, compares each `cards` and
 `card_references` row column by column against the source, renders every
-non-trashed card through the port's RenderEngine, and deletes the scratch
-directory.
+non-trashed card through the port's RenderEngine in the `page` and `core`
+views, and deletes the scratch directory.
 
-## Figures
+## Rebuilt keys
+
+Ruby stores `Card::Name#key` of the name in every simple card's `key`
+column, and both Ruby and the port find cards by that key. In this deck
+5,508 of the 9,739 simple cards stored a key that is not the key of their
+name (649 of those differ only in letter case), so no card could be found
+by name and nothing rendered.
+
+`--rebuild-keys` recomputes the key of every card that stores a name with
+the port's name algebra (`src/card/name.ts` under the deck inflection
+table, the same function the serving engine uses), before the key
+collision policy runs. On this deck:
+
+| | |
+|---|---|
+| Named (simple) cards examined | 9,739 |
+| Keys changed | 5,508 (649 in letter case only) |
+| Keys set to NULL by the collision policy afterwards | 0 |
+
+Compound cards store NULL name and key, as Ruby's do; the Lexicon composes
+them from `left_id` / `right_id`, so they are not touched.
+
+## Row verification
 
 | Step | Result |
 |---|---|
 | Rows imported | 606,355 (49,829 cards + 556,526 references) |
 | Chunks | 1,275 |
-| Import (ingest + chunk + validate) | 75.5 s |
-| D1 schema + apply all chunks | 19.3 s |
-| Row verification, both stores | 19.0 s |
 | Cards present in staging SQLite / D1 | 49,829 / 49,829 (0 missing) |
 | References present in staging SQLite / D1 | 556,526 / 556,526 (0 missing) |
 | Reference rows differing from source | 0 in SQLite, 0 in D1 |
-| Card rows differing from source | 1,046 in SQLite, the same 1,046 in D1 |
+| Card rows differing from source | 0 in SQLite, 0 in D1 |
+| Card keys rebuilt (counted apart from differences) | 5,508 in SQLite, 5,508 in D1 |
 | File and image cards | 1,350 |
 
-The 1,046 differing card rows fall in exactly two columns:
+Each source value is compared after it is given the target column's
+declared type affinity, as SQLite does on insert. This matters for
+`references_expired`: 1,037 source rows store it as TEXT, the target column
+is INTEGER (Ruby's MySQL column is `int`), and the stored value is the same
+integer. A key cell counts as rebuilt only when the target holds exactly the
+key the verifier recomputes from the source name.
 
-- `references_expired`, 1,037 rows: the source stores the value as TEXT; the
-  target column is INTEGER (Ruby's MySQL column is `int`), so SQLite stores
-  the same number as an integer. The verifier compares storage class as well
-  as value, so these count as differences.
-- `key`, 9 rows: the source holds nine pairs of keys that differ only in
-  ASCII letter case. The target's `cards_key_index` is COLLATE NOCASE, as
-  Ruby's `utf8mb3_unicode_ci` index is, so the second key of each pair is
-  set to NULL by the importer's documented collision policy.
+The nine case-only key pairs that the collision policy had to resolve
+without `--rebuild-keys` no longer collide once keys are derived from names.
 
 The source also carries 20 cards whose `left_id` names no card; they are
 carried over unchanged.
 
-## Rendering: not yet proven on this deck
+## Rendering
 
-All 47,235 non-trashed cards were rendered through the `content` view:
-0 rendered, 47,097 raised "card not found", 138 had no composable name.
-Render time was 322 s.
+All 47,235 non-trashed cards were attempted. 9 have no composable name
+(a part is missing from the deck) and were not rendered.
 
-The cause is in the deck, not in the migration: the port finds cards by
-key, and in this deck 5,508 of the 9,739 simple cards store a `key` that is
-not the key Ruby's name algorithm derives from the card's name (649 of them
-differ only in letter case). Lookups by name therefore miss.
+| View | Rendered | Errors | Error classes | Bytes |
+|---|---|---|---|---|
+| `page` | 47,204 | 22 | `UnsupportedViewError` 10, `Date::Error` 7, `UnknownLayoutError` 5 | 733,246,401 |
+| `core` | 47,217 | 9 | `Date::Error` 7, `NoMethodError` 1, `Error` 1 | 108,675,088 |
+
+Every error class above is the port's reproduction of a raise Ruby makes on
+the same input, with Ruby's class name and message:
+
+- `Date::Error`: a Date-type card whose content is not a parseable date
+  (Ruby's `Date.parse`).
+- `UnsupportedViewError`: Ruby's `Card::Error::UserError` for a view the
+  card's set does not support.
+- `UnknownLayoutError`: a layout rule that names a layout card the deck
+  does not hold (Ruby's `Card::Error::UserError`).
+- `NoMethodError`: a card whose content is a layout template, rendered
+  outside a page (`main.rendered` on nil in Ruby's nesting code).
+- `Error` ("card not found"): a live compound card whose left side is a
+  simple row (no `left_id`) with a `+` in its name. Its composed name
+  parses as a three-part name, and Ruby's `Lexicon#lex_to_id` resolves a
+  compound name through `(left_id, right_id)` pairs, which the deck does
+  not hold for this one. The deck has 23 such simple rows.
+
+Live compound cards with a trashed part (43 in this deck) all render in
+both views.
+
+None of these was a port defect, so no change to `src/` was made; the
+byte-identity grade on the synthetic-v1 corpus cannot have moved from
+1754/2389/16/19/8/12.
+
+The importer's own validation report says `allChecksPass: false`; the
+only failing check is the 20 source cards whose `left_id` names no card.
 
 No byte comparison against the Ruby oracle was possible: the locally held
-oracle captures are of a different deck.
+oracle captures are of a different deck. These figures show that every card
+renders or raises one of the port's reproductions of a Ruby raise; the
+attribution of each raise above comes from reading the port and the Ruby
+source, not from running Ruby on this deck, and none of it shows the bytes
+equal Ruby's.
 
-## What remains
+## Timings
 
-Rendering this deck needs its keys rebuilt from names with the port's name
-algorithm (`deriveKeyWithEngine`), which is what Ruby stores for every card.
-That is a deliberate change to source data, so it is recorded here rather
-than applied.
+| Step | Time |
+|---|---|
+| Import (ingest + rebuild keys + chunk + validate) | 45.0 s |
+| D1 schema + apply all chunks + stamp | 17.6 s |
+| Row verification, both stores | 15.8 s |
+| Render, both views | 1,383.4 s (page 996.9 s, core 372.1 s) |
+
+Two complete runs gave identical row and render figures, rendered bytes
+included; the timings are from the second.
