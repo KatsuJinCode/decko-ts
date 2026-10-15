@@ -90,6 +90,32 @@ import { registerModRuleSeed } from "./mod-loader/mod-rule-seeds.js";
  *  misses reach the base record, never the html chain. */
 const HTML_DESCENDED_FORMATS = new Set(["rss", "email_html"]);
 
+/** The Ruby superclass of each non-base format class (card-mod-format
+ *  lib/card/format/*_format.rb): rss and email_html < html; json, yaml and
+ *  xml < data; jsonld < json (jsonld_format.rb:6); scss < css. A format
+ *  absent from the table sits on Card::Format itself. */
+const FORMAT_PARENT: Readonly<Record<string, string>> = {
+  rss: "html",
+  email_html: "html",
+  json: "data",
+  yaml: "data",
+  xml: "data",
+  jsonld: "json",
+  scss: "css",
+};
+
+/** The format's class chain above it, most specific first, without base:
+ *  jsonld -> [jsonld, json, data]; rss -> [rss, html]. */
+export function formatLineage(format: string): string[] {
+  const out: string[] = [format];
+  let parent = FORMAT_PARENT[format];
+  while (parent !== undefined && !out.includes(parent)) {
+    out.push(parent);
+    parent = FORMAT_PARENT[parent];
+  }
+  return out;
+}
+
 /** Whether a format's class descends from HtmlFormat (or is it). */
 export function htmlLineage(format: string): boolean {
   return format === "html" || HTML_DESCENDED_FORMATS.has(format);
@@ -721,16 +747,12 @@ export class ModLoader {
     // :core re-enter itself (the text-message card's html :core
     // dispatches email_text's :core). email_html DOES descend and keeps
     // the fallback.
-    if (
-      out.length === 0 &&
-      format !== "html" &&
-      HTML_DESCENDED_FORMATS.has(format)
-    ) {
-      // the recursion carries the html level AND (through its own base
-      // tail, below) the base level - Ruby's MRO for an html-descended
-      // format (RssFormat/EmailHtmlFormat < HtmlFormat < Format) is
-      // [own] ++ [html] ++ [base]
-      return this.viewChain(setKeys, view, "html");
+    if (out.length === 0 && FORMAT_PARENT[format] !== undefined) {
+      // the recursion carries the parent level AND (through its own base
+      // tail, below) the base level - Ruby's MRO for a format with a
+      // superclass (RssFormat < HtmlFormat, JsonldFormat < JsonFormat <
+      // DataFormat) is [own] ++ [parent...] ++ [base]
+      return this.viewChain(setKeys, view, FORMAT_PARENT[format]!);
     }
     // BASE-FORMAT TAIL: the bare
     // `format do` block files its module on Card::Format ITSELF
@@ -772,13 +794,11 @@ export class ModLoader {
    *  120-144). An email_text render therefore never dispatches a module's
    *  html :core, and an html render never a json-only view. */
   private anchoredViewFor(shortname: string, view: string, format: string): ViewFn | undefined {
-    return (
-      this.viewChains.viewForFormat(shortname, view, format) ??
-      (format !== "html" && HTML_DESCENDED_FORMATS.has(format)
-        ? this.viewChains.viewForFormat(shortname, view, "html")
-        : undefined) ??
-      (format !== "base" ? this.viewChains.viewForFormat(shortname, view, "base") : undefined)
-    );
+    for (const level of formatLineage(format)) {
+      const fn = this.viewChains.viewForFormat(shortname, view, level);
+      if (fn !== undefined) return fn;
+    }
+    return format !== "base" ? this.viewChains.viewForFormat(shortname, view, "base") : undefined;
   }
 
   /** One set-key token's contribution to a view chain: its own set

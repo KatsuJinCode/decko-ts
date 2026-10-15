@@ -631,6 +631,157 @@ const fileStyleView: ViewFn = () => null;
  *  returns a full url"). */
 const jsSourceView: ViewFn = ({ fmt }) => fmt.cardUrl(`${fmt.urlKey()}.js`);
 
+// --- set/all/json.rb (format :json) ----------------------------------------
+
+/** json.rb:32-40 view :status, unknown: true, perms: :none: {key: card.key,
+ *  url_key: card.name.url_key, status: card.state} plus id when the state
+ *  is :real. card.state (states.rb:30-36): :real (stored), :virtual (a new
+ *  card that acts real by rules), :unknown (a new or read-denied card). */
+function jsonStatusView(ctx: ViewContext): ViewResult {
+  const card = ctx.fmt.card;
+  const status = card.unknown === true ? "unknown" : card.id !== undefined ? "real" : "virtual";
+  const out: Record<string, unknown> = {
+    key: card.key,
+    url_key: card.name.urlKey,
+    status,
+  };
+  if (status === "real") out["id"] = card.id;
+  return out as ViewResult;
+}
+
+/** json.rb:3-5 item_cards = nested_cards. A card whose content holds no
+ *  nest syntax has none; a card with nests is not modelled here. */
+function jsonItemCards(fmt: ViewContext["fmt"]): unknown[] {
+  if (fmt.card.dbContent.includes("{{")) throw new UnsupportedViewError("items", fmt.card.name.s);
+  return [];
+}
+
+/** json items: listing_list item_cards, view: atom (data.rb:59-61). */
+const jsonItemsView: ViewFn = ({ fmt }) => jsonItemCards(fmt) as ViewResult;
+
+/** json molecule (data.rb molecule, as a json render): atom merged with items,
+ *  links, ancestors, html_url (the card's full html path), type (the type
+ *  card's nucleus, data.rb's nest view: :nucleus), created_at and updated_at.
+ *  Ruby's JSON carries a Time as its to_s, "YYYY-MM-DD HH:MM:SS UTC". */
+const jsonMoleculeView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const card = fmt.card;
+  const molecule: Record<string, unknown> = { ...dataAtomView(ctx) as Record<string, unknown> };
+  molecule["items"] = jsonItemCards(fmt);
+  molecule["links"] = dataLinksView(ctx);
+  molecule["ancestors"] = dataAncestorsView(ctx);
+  molecule["html_url"] = fmt.cardUrl(fmt.urlKey());
+  molecule["type"] = typeNucleus(fmt);
+  molecule["created_at"] = utcTime(card.record.createdAt);
+  molecule["updated_at"] = utcTime(card.record.updatedAt);
+  return molecule as ViewResult;
+};
+
+/** json.rb:24-26 view :page, cache: :never: page_details card: render_atom -
+ *  the atom under `card`, plus the request's url and requested_at (Time.now,
+ *  rendered as Ruby's to_s in UTC). The clock is the card wall clock seam
+ *  (wall-clock.ts), so a pinned capture reads the instant it froze. */
+const jsonPageView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const now = cardWallClockNow();
+  const requestedAt = `${now.toISOString().slice(0, 19).replace("T", " ")} UTC`;
+  return {
+    card: dataAtomView(ctx),
+    url: fmt.cardUrl(fmt.urlKey()),
+    requested_at: requestedAt,
+  } as ViewResult;
+};
+
+/** nest(card.type_card, view: :nucleus): the type card's own nucleus. */
+function typeNucleus(fmt: ViewContext["fmt"]): Record<string, unknown> {
+  const typeCard = fmt.card.typeName === undefined ? undefined : fmt.engine.fetchRenderCard(fmt.card.typeName);
+  const name = fmt.card.typeName ?? "";
+  const out: Record<string, unknown> = {
+    id: fmt.card.typeId,
+    name,
+    type: typeCard?.typeName,
+    url: fmt.cardUrl(`${DeckoName.parse(name).urlKey}.json`),
+  };
+  const code = typeCard?.record.codename;
+  if (code) out["codename"] = code;
+  return out;
+}
+
+/** An SQL timestamp rendered as Ruby's Time#to_s in UTC. */
+function utcTime(sql: string | undefined): string | undefined {
+  return sql === undefined ? undefined : `${sql} UTC`;
+}
+
+// --- set/all/data.rb (format :data; json and yaml inherit it) --------------
+
+/** data.rb:32-34 view :pod: card.pod_hash. */
+const dataPodView: ViewFn = ({ fmt }) => podHash(fmt);
+
+/** data.rb:36-38 view :core, unknown: true: `card.known? ? render_content : nil`.
+ *  render_content on a basic card is its stored content, unrendered. */
+const dataCoreView: ViewFn = ({ fmt }) => (fmt.card.id === undefined ? null : fmt.card.dbContent);
+
+/** data.rb:40-42 view :content: card.content - the stored content. */
+const dataContentView: ViewFn = ({ fmt }) => fmt.card.dbContent;
+
+/** data.rb:44-46 view :nucleus: nucleus (data.rb:82-89) - id, name, type
+ *  (the type card's name), url (path format: :json, a full URL outside
+ *  html), and codename when the card has one. */
+function dataNucleus(fmt: ViewContext["fmt"]): Record<string, unknown> {
+  const card = fmt.card;
+  const nucleus: Record<string, unknown> = {
+    id: card.id,
+    name: card.name.s,
+    type: card.typeName,
+    url: fmt.cardUrl(`${fmt.urlKey()}.json`),
+  };
+  if (card.record.codename) nucleus["codename"] = card.record.codename;
+  return nucleus;
+}
+const dataNucleusView: ViewFn = ({ fmt }) => dataNucleus(fmt) as ViewResult;
+
+/** data.rb:48-51 view :atom, unknown: true: nucleus, plus content when the
+ *  card is known and has no structure (data.rb:91-96). */
+const dataAtomView: ViewFn = ({ fmt }) => {
+  const atom = dataNucleus(fmt);
+  if (fmt.card.id !== undefined) atom["content"] = fmt.card.dbContent;
+  return atom as ViewResult;
+};
+
+/** data.rb molecule: atom merged with items, links, ancestors, html_url, type
+ *  (the type card's nucleus), created_at and updated_at. The items walk is
+ *  item_cards, which a data-format render does not define (Ruby raises
+ *  NoMethodError there), so the molecule raises that error too. */
+const dataMoleculeView: ViewFn = ({ fmt }) => {
+  throw new RubyRuntimeError("NoMethodError", "undefined method 'item_cards' for the data format");
+};
+
+/** data.rb ancestors: the card's name ancestors, each nested as its
+ *  nucleus. A simple name has none. Compound ancestors are not modelled. */
+const dataAncestorsView: ViewFn = ({ fmt }) => {
+  if (fmt.card.name.isSimple) return [];
+  throw new UnsupportedViewError("ancestors", fmt.card.name.s);
+};
+
+/** data.rb:53-56 view :cast: card.cast - {id:} for a real card. */
+const dataCastView: ViewFn = ({ fmt }) =>
+  fmt.card.id !== undefined
+    ? { id: fmt.card.id }
+    : { name: fmt.card.name.s, type_id: fmt.card.typeId ?? null, content: fmt.card.dbContent };
+
+/** data.rb:59-61 view :items, cache: :never: listing_list item_cards - the
+ *  data format defines no item_cards, so Ruby raises NoMethodError. */
+const dataItemsView: ViewFn = () => {
+  throw new RubyRuntimeError("NoMethodError", "undefined method 'item_cards' for the data format");
+};
+
+/** data.rb:63-70 view :links: card.link_chunks mapped to a json path per
+ *  referee or a link_to_resource. A card with no [[link]] chunks answers []. */
+const dataLinksView: ViewFn = ({ fmt }) => {
+  if (!fmt.card.dbContent.includes("[[")) return [];
+  throw new UnsupportedViewError("links", fmt.card.name.s);
+};
+
 // --- set/all/yaml.rb (format :yaml) ----------------------------------------
 
 /** data.rb:5-11 pod_hash: { name: pod_name, type: pod_type,
@@ -1780,6 +1931,22 @@ const setModules: ModSetModuleFile[] = [
     // :links + nucleus/atom/molecule helpers). Not ported:
     // format-specific.
     setPath: "all/data",
+    formats: {
+      data: {
+        views: [
+          { view: "pod", viewFn: dataPodView, config: {} },
+          { view: "core", viewFn: dataCoreView, config: { unknown: true } },
+          { view: "content", viewFn: dataContentView, config: {} },
+          { view: "nucleus", viewFn: dataNucleusView, config: {} },
+          { view: "atom", viewFn: dataAtomView, config: { unknown: true } },
+          { view: "molecule", viewFn: dataMoleculeView, config: {} },
+          { view: "ancestors", viewFn: dataAncestorsView, config: {} },
+          { view: "cast", viewFn: dataCastView, config: {} },
+          { view: "items", viewFn: dataItemsView, config: { cache: "never" } },
+          { view: "links", viewFn: dataLinksView, config: {} },
+        ],
+      },
+    },
   },
   {
     // set/all/demo.rb:1-44 html format block (view :demo, :view_list
@@ -2016,6 +2183,16 @@ const setModules: ModSetModuleFile[] = [
     // :status/:page + string_with_page_details/page_details/stringify
     // helpers). Not ported: format-specific (json/jsonld dispatch).
     setPath: "all/json",
+    formats: {
+      json: {
+        views: [
+          { view: "status", viewFn: jsonStatusView, config: { unknown: true, perms: "none" } },
+          { view: "items", viewFn: jsonItemsView, config: { cache: "never" } },
+          { view: "molecule", viewFn: jsonMoleculeView, config: {} },
+          { view: "page", viewFn: jsonPageView, config: { cache: "never" } },
+        ],
+      },
+    },
   },
   {
     // set/all/jsonld.rb:1-21 jsonld format block (jsonld_supported?,

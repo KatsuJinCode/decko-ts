@@ -196,6 +196,10 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // keys carry the format-block views each. Measured on this tree.
       ["base", 35],
       ["csv", 4],
+      // json 4 -> 8 and the new data key 10 (2026-10-15): json.rb's status,
+      // items, molecule and page views, and data.rb's ten views (json and
+      // yaml inherit data, json_format.rb / yaml_format.rb). Measured on this tree.
+      ["data", 10],
       ["email_html", 2],
       ["email_text", 3],
       ["file", 2],
@@ -252,7 +256,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       ["html", 338],
 
       ["js", 3],
-      ["json", 4],
+      ["json", 8],
       ["yaml", 1],
     ]);
   });
