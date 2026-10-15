@@ -27,7 +27,7 @@ const REPO = fileURLToPath(new URL("../../", import.meta.url));
 /** The suites, each run with the hosted target in its environment. A
  *  filter of "hosted" selects a shared suite's hosted cases only. */
 const SUITES = [
-  { name: "transaction conformance", file: "tests/hosted/hosted-transactions.test.ts" },
+  { name: "transaction conformance and save scenarios", file: "tests/hosted/hosted-write-path.test.ts" },
   { name: "atomic saves", file: "tests/card/actions/atomic-saves.test.ts", filter: "hosted" },
   { name: "concurrent saves", file: "tests/card/actions/concurrent-saves.test.ts", filter: "hosted" },
   { name: "multi-user read isolation", file: "tests/card/actions/d1-multi-user-saves.test.ts", filter: "hosted" },
@@ -48,6 +48,10 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--local") out.local = true;
     else if (argv[i] === "--target") out.targets = argv[++i] === "all" ? ["d1", "turso", "bunny"] : argv[i].split(",");
+    else if (argv[i] === "--help") {
+      console.log("node tools/hosted-conformance/run.mjs [--local] [--target all|d1,turso,bunny,d1-binding]");
+      process.exit(0);
+    }
     else throw new Error(`unknown argument ${argv[i]}`);
   }
   return out;
@@ -85,7 +89,12 @@ const TARGETS = {
       const uuid = created?.result?.uuid;
       if (!uuid) throw new Error("D1 create database: no result.uuid in the response");
       return {
-        env: { DECKO_HOSTED_TARGET: "d1-http", DECKO_HOSTED_D1_QUERY_URL: `${root}/${uuid}/query`, DECKO_HOSTED_D1_API_TOKEN: token },
+        env: {
+          DECKO_HOSTED_TARGET: "d1-http",
+          DECKO_HOSTED_D1_QUERY_URL: `${root}/${uuid}/query`,
+          DECKO_HOSTED_D1_API_TOKEN: token,
+          DECKO_HOSTED_ALLOW_RESET: "1", // created by this run
+        },
         teardown: () => call("DELETE", `${root}/${uuid}`, token),
       };
     },
@@ -105,7 +114,15 @@ const TARGETS = {
         const minted = await call("POST", `${root}/${name}/auth/tokens`, token, {});
         if (!minted?.jwt) throw new Error("Turso create token: no jwt in the response");
         const scheme = env.DECKO_HOSTED_TURSO_DB_SCHEME || "https";
-        return { env: { DECKO_HOSTED_TARGET: "libsql", DECKO_HOSTED_DB_URL: `${scheme}://${hostname}`, DECKO_HOSTED_DB_TOKEN: minted.jwt }, teardown };
+        return {
+          env: {
+            DECKO_HOSTED_TARGET: "libsql",
+            DECKO_HOSTED_DB_URL: `${scheme}://${hostname}`,
+            DECKO_HOSTED_DB_TOKEN: minted.jwt,
+            DECKO_HOSTED_ALLOW_RESET: "1", // created by this run
+          },
+          teardown,
+        };
       } catch (error) {
         await teardown().catch(() => undefined);
         throw error;
@@ -126,10 +143,31 @@ const TARGETS = {
       const names = await hranaObjects(url, token);
       if (names.length > 0) throw new Error(`refusing a non-empty Bunny database (${names.length} objects); supply an empty scratch database`);
       return {
-        env: { DECKO_HOSTED_TARGET: "bunny", DECKO_HOSTED_DB_URL: url, DECKO_HOSTED_DB_TOKEN: token },
+        env: { DECKO_HOSTED_TARGET: "bunny", DECKO_HOSTED_DB_URL: url, DECKO_HOSTED_DB_TOKEN: token, DECKO_HOSTED_ALLOW_RESET: "1" }, // found empty above
         teardown: () => emptyHranaDatabase(url, token),
       };
     },
+  },
+};
+
+/** A wrangler remote binding to an operator-supplied throwaway D1 database
+ *  (wrangler's own login; no API token). The runner cannot see into it
+ *  without wrangler, so the operator states it is throwaway by setting
+ *  DECKO_HOSTED_ALLOW_RESET=1; tests/hosted/hosted-backend.ts refuses a
+ *  non-empty database without it. The database is emptied by the suites,
+ *  not deleted. */
+TARGETS["d1-binding"] = {
+  needs: ["DECKO_HOSTED_D1_NAME", "DECKO_HOSTED_D1_ID", "DECKO_HOSTED_ALLOW_RESET"],
+  async create() {
+    return {
+      env: {
+        DECKO_HOSTED_TARGET: "d1-binding",
+        DECKO_HOSTED_D1_NAME: env.DECKO_HOSTED_D1_NAME,
+        DECKO_HOSTED_D1_ID: env.DECKO_HOSTED_D1_ID,
+        DECKO_HOSTED_ALLOW_RESET: env.DECKO_HOSTED_ALLOW_RESET,
+      },
+      teardown: async () => undefined,
+    };
   },
 };
 
@@ -149,7 +187,7 @@ async function hrana(url, token, statements) {
 
 async function hranaObjects(url, token) {
   const [result] = await hrana(url, token, [
-    "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND type IN ('table','view','trigger')",
+    "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' AND type IN ('table','view','trigger')",
   ]);
   return result.rows.map((row) => ({ type: row[0].value, name: row[1].value }));
 }
@@ -311,7 +349,7 @@ async function main() {
   try {
     for (const name of args.targets) {
       const target = TARGETS[name];
-      if (target === undefined) throw new Error(`unknown target ${name} (d1, turso, bunny)`);
+      if (target === undefined) throw new Error(`unknown target ${name} (d1, turso, bunny, d1-binding)`);
       const absent = missing(target.needs);
       if (absent.length > 0) {
         for (const suite of SUITES) rows.push([name, suite.name, `SKIPPED (no credentials: ${absent.join(", ")})`]);
