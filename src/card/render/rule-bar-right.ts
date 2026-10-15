@@ -127,8 +127,31 @@ function pointerListOneLineItem(name: string, engine?: RenderEngineLike): string
   );
 }
 
-/** The one-line inner content for a persisted rule card, per the dispatch
- *  above. `rightSetting` is the card name's right part (the rule's setting
+/** The one-line inner content for a persisted rule card.
+ *
+ *  DISPATCH ORDER, derived from Ruby's set-module precedence (card-1.110.0
+ *  lib/card/set/pattern/all.rb:44-54 set_modules / set_format_modules): the
+ *  concrete patterns, most specific first, are
+ *    Self > TypePlusRight > Right > Rule > RStar > Star > Type > AllPlus > All
+ *  (mod/core/set_pattern/01-09; register inserts at index 0 and set_modules
+ *  takes [0..-2].reverse, so the later include - the more specific pattern -
+ *  wins). For a rule card E ("S+*right+*setting") the candidates that define
+ *  one_line_content are:
+ *    1. Right::<setting> view (default, structure, head, following, and the
+ *       four permissions via Abstract::Permission) - ranks above Rule;
+ *    2. Rule view (card-mod-rules set/rule/bar_view.rb:15-22) - ranks above
+ *       every Type view, and its body calls the one_line_content METHOD;
+ *    3. the METHOD chain: Type methods (Type::Toggle short_content,
+ *       Abstract::List count/first_name) before All truncate(strip_tags(
+ *       render_core)). A card has one type, so the two Type methods are
+ *       exclusive.
+ *  The Type VIEWS (Type::Html, Type::Image, bootswatch skin, Abstract::List,
+ *  Abstract::Search) rank BELOW Rule and are unreachable for a rule card's
+ *  bar one-line, so they are not arms here. The Markdown and Search arms are
+ *  the base METHOD with the core input each type's render_core supplies
+ *  (kramdown; raw dbContent via rule/html_views.rb:7-8).
+ *
+ *  `rightSetting` is the card name's right part (the rule's setting
  *  name, e.g. "*default"); undefined for simple names (not rule cards). */
 function ruleOneLineContent(
   card: RenderCard,
@@ -164,6 +187,12 @@ function ruleOneLineContent(
     const stripped = stripTags(card.dbContent);
     const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
     return truncated === stripped ? truncated : h(truncated);
+  }
+  // Right::Following (card-mod-follow set/right/following.rb:28-30):
+  // `view :one_line_content do "" end`. The right set's view outranks the
+  // rule set's bar view, so the empty string is the one-line inner content.
+  if (rightSetting === "*following") {
+    return "";
   }
   // Permission rights (card-mod-permissions set/right/{create,read,update,
   // delete}.rb include Abstract::Permission): the right set's one_line_content
