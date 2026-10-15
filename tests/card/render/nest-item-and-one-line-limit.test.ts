@@ -101,6 +101,22 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     expect(html).toContain('<div class="pointer-list">');
     expect(html).not.toContain("...");
   });
+
+  it("a *following right rule card's one-line is the empty string inside the bar wrapper (follow set/right/following.rb:28-30)", () => {
+    // Right::Following's `view :one_line_content do "" end` ranks above the
+    // rule set's bar view, so the nested one-line is "" and the bar wrapper is
+    // the only markup left - the text the 61 chars would otherwise cut to is
+    // never reached.
+    const html = ruleBarRightHtml(
+      ({
+        name: { s: "User+*following", rightName: { s: "*following" } },
+        setKeys: "type PlusRight RULE",
+        typeName: "Basic",
+        dbContent: "b".repeat(61),
+      }) as unknown as RenderCard,
+    );
+    expect(html).toBe('<div class="text-muted one-line"></div>');
+  });
 });
 
 describe("rule bar one-line for list/pointer typeCode dispatches to pointer-list body", () => {
