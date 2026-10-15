@@ -119,7 +119,9 @@ const TARGETS = {
     // again afterwards.
     needs: ["DECKO_HOSTED_BUNNY_URL", "DECKO_HOSTED_BUNNY_TOKEN"],
     async create() {
-      const url = env.DECKO_HOSTED_BUNNY_URL.replace(/\/v2\/pipeline\/?$/, "");
+      // Bunny's create-database response gives the URL with a trailing slash;
+      // `${url}/v2/pipeline` built from it answers 404.
+      const url = env.DECKO_HOSTED_BUNNY_URL.replace(/\/+$/, "").replace(/\/v2\/pipeline$/, "");
       const token = env.DECKO_HOSTED_BUNNY_TOKEN;
       const names = await hranaObjects(url, token);
       if (names.length > 0) throw new Error(`refusing a non-empty Bunny database (${names.length} objects); supply an empty scratch database`);

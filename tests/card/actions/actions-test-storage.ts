@@ -116,7 +116,7 @@ export async function seedCard(storage: ActionsTestStorage, opts: SeedOptions): 
     type_id: opts.typeId ?? RICH_TEXT_ID,
     db_content: opts.dbContent ?? null,
   };
-  await storage.driver.query(
+  const insert = await storage.driver.query(
     `INSERT INTO cards
        (id, name, key, codename, left_id, right_id, current_revision_id,
         created_at, updated_at, creator_id, updater_id, read_rule_class,
@@ -145,10 +145,13 @@ export async function seedCard(storage: ActionsTestStorage, opts: SeedOptions): 
   const id =
     row.id !== undefined
       ? row.id
-      : (
-          await storage.selectOne<{ id: number }>(
-            "SELECT id FROM cards WHERE rowid = last_insert_rowid()",
-          )
+      : // The insert's own result, not last_insert_rowid() in a later
+        // query: over a hosted HTTP database each request may run on a
+        // different connection, where last_insert_rowid() is 0.
+        (
+          await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE rowid = ?", [
+            insert.lastInsertRowId,
+          ])
         )?.id;
   const inserted = await storage.selectOne<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
   if (inserted === undefined) throw new Error("seedCard: insert lost");
