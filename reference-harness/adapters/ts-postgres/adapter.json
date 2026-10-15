@@ -1,0 +1,5 @@
+{
+  "name": "decko-ts-postgres",
+  "description": "The TypeScript port of Decko, loaded from this checkout, serving the deck from PostgreSQL (PGlite).",
+  "command": ["node", "adapter.mjs"]
+}
