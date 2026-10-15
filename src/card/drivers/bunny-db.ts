@@ -655,7 +655,10 @@ function toHranaStmt(sql: string, params: unknown[]): HranaStmtBody {
 }
 
 function toHranaWireValue(value: unknown): HranaWireValue {
-  if (value === null) return { type: "null" };
+  // An unset parameter binds as NULL, as the local driver's better-sqlite3
+  // binding does (src/server/drivers/local-sqlite.ts), so both drivers store
+  // the same row for the same call.
+  if (value === null || value === undefined) return { type: "null" };
   if (typeof value === "bigint") {
     if (value < MIN_I64 || value > MAX_I64) {
       throw new RangeError(
