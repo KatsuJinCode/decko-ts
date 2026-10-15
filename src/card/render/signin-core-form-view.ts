@@ -178,7 +178,8 @@ export function signinCoreHtml(ctx: ViewContext): string {
   // before :core (signin.rb:116): the voo's edit_structure, so the
   // content_formgroups dispatch takes multi_card_edit's EXPLICIT arm.
   const editStructure = [signinField("email"), signinField("password")];
-  const body = fmt.withNestMode("edit", () => coreHaml(ctx, editStructure));
+  ctx.voo.liveEditStructure = editStructure;
+  const body = fmt.withNestMode("edit", () => coreHaml(ctx));
   return cardFormShell(ctx, {
     formClass: "card-form slotter autosave",
     id: `edit_card_${fmt.card.id}`,
@@ -194,17 +195,14 @@ export function signinCoreHtml(ctx: ViewContext): string {
  *  the buttons div (`.reset-password-link`, `.signin-button`,
  *  `.signup-button`). Haml: each line emits its output followed by "\n";
  *  static tags keep their literal quoting. */
-function coreHaml(
-  ctx: ViewContext,
-  editStructure: Array<[string, Record<string, unknown>]>,
-): string {
+function coreHaml(ctx: ViewContext): string {
   const { fmt } = ctx;
   // `_render_content_formgroups` (form.rb:4-7 view :content_formgroups):
   // `wrap_with :fieldset, edit_slot, class: classy("card-editor", "editor")`
   // - edit_slot's multi_card_edit arm renders the edit_structure fields.
   // The structure rides this view's own voo (the seat the account family's
   // before :content_formgroups hooks write).
-  const fields = fmt.renderView("content_formgroups", { edit_structure: editStructure });
+  const fields = fmt.renderView("content_formgroups");
   return (
     `<div class='signin-fields'>\n` +
     `${fields}\n` +

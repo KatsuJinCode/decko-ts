@@ -1292,7 +1292,9 @@ const signinEditView: ViewFn = (ctx) => {
   // voo.title ||= t(:account_forgot_password) is a live writer (voo_api.rb
   // define_setter): the title view reads it, the slot JSON never carries it.
   if (ctx.voo.opts["title"] === undefined) ctx.voo.liveTitle = voo.title;
-  ctx.voo.liveEditStructure = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => ({ ...f }));
+  ctx.voo.liveEditStructure = voo.editStructure.map((f: { name: string; title: string; view: string; skipPerms: boolean }) => [
+    f.name, { title: f.title, view: f.view, skip_perms: f.skipPerms },
+  ]);
   for (const hidden of voo.hide) ctx.voo.hide(hidden);
   return superView(ctx, setModuleShortname("self/signin"), "edit");
 };

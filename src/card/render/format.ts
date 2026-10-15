@@ -220,6 +220,9 @@ export class Voo {
     this.requestedView = requestedView;
     this.opts = opts;
     this.viewLaneRoot = viewLaneRoot;
+    // options.rb keymap[:heir] includes edit_structure. A before hook's
+    // live assignment must reach delegated form views on this format.
+    this.liveEditStructure = opts["edit_structure"] ?? parent?.liveEditStructure;
     // view/options/key_lists.rb heir_keys (= keymap[:both] + keymap[:heir])
     // + voo_api.rb:135-143 inherit_options_from_parent!: a child voo
     // inherits the parent's value for every heir key it did not set itself
