@@ -14,6 +14,10 @@
 //     change recorded in its history.
 //  3. Every successful save is in the final state and history; no failed
 //     save left a row behind.
+//  4. On a database that ends over-long transactions (Bunny Database, 5 s),
+//     a save it ends fails whole, like any other failed save: its content is
+//     never read and is not in the history. No other error is admitted, and
+//     at least one save must commit.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -72,6 +76,12 @@ class MidSaveFailureDriver implements SQLDatabaseDriver {
   failAfterContentWrite(onMatch: () => Promise<void>): void {
     this.afterContent = onMatch;
   }
+  /** Clears an injection a save did not reach (it failed earlier). */
+  disarm(): void {
+    this.armed = undefined;
+    this.afterContent = undefined;
+    this.contentWritten = false;
+  }
   private afterContent: (() => Promise<void>) | undefined;
   private contentWritten = false;
   private async check(sql: string): Promise<void> {
@@ -123,18 +133,17 @@ function engineOver(driver: SQLDatabaseDriver, start: number): CardActionEngine 
 /** The card's content and the newest content change in its history, read
  *  in one batch (one atomic read on D1). */
 async function observe(reader: SQLDatabaseDriver): Promise<{ content: string; newestChange: string | null }> {
-  const [card, change] = await reader.batch([
-    { sql: "SELECT db_content FROM cards WHERE id = ?", params: [CARD] },
-    {
-      sql:
-        "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id " +
-        "WHERE a.card_id = ? AND ch.field = 2 ORDER BY ch.id DESC LIMIT 1",
-      params: [CARD],
-    },
-  ]);
-  const row = card.rows[0] as { db_content: string };
-  const newest = change.rows[0] as { value: string } | undefined;
-  return { content: row.db_content, newestChange: newest?.value ?? null };
+  // One statement, so both values come from one snapshot. A batch is two
+  // reads on a driver whose batch is not atomic (libSQL, Bunny), and a save
+  // committing between them would pair content and history from different
+  // committed states.
+  const result = await reader.query<{ db_content: string; newest: string | null }>(
+    "SELECT c.db_content, (SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id " +
+      "WHERE a.card_id = c.id AND ch.field = 2 ORDER BY ch.id DESC LIMIT 1) AS newest FROM cards c WHERE c.id = ?",
+    [CARD],
+  );
+  const row = result.rows[0];
+  return { content: row.db_content, newestChange: row.newest ?? null };
 }
 
 async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
@@ -167,7 +176,13 @@ afterAll(async () => {
   await mf?.dispose();
 });
 
-function multiUser(label: string, openDeck: () => Promise<() => SQLDatabaseDriver>): void {
+interface DatabaseLimits {
+  /** The error a database answers with when it ends a transaction that has
+   *  run past its time limit. A save it ends fails whole. */
+  transactionEnded?: RegExp;
+}
+
+function multiUser(label: string, openDeck: () => Promise<() => SQLDatabaseDriver>, limits: DatabaseLimits = {}): void {
 describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
   it("a read during a save waits for it, and after the save fails it returns the card as it was", async () => {
     const connect = await openDeck();
@@ -209,22 +224,40 @@ describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
     const SAVES_PER_WRITER = 3;
     const committed: string[] = [];
     const failed: string[] = [];
+    /** Saves the database ended for running past its transaction limit. */
+    const ended: string[] = [];
     const writers = Array.from({ length: WRITERS }, (_, w) => async () => {
       const driver = new MidSaveFailureDriver(connect());
       for (let k = 0; k < SAVES_PER_WRITER; k++) {
         const fails = (w + k) % 2 === 1;
         const content = `${fails ? "failed" : "ok"}-w${w}-s${k}`;
+        const save = () => engineOver(driver, Date.parse("2026-10-14T00:00:00Z") + w * 1e6 + k * 1e4).updateCard({ cardId: CARD, content });
         if (fails) {
           // Dies after its card row and act are written, with a pause so
           // readers have time to look.
           driver.failAfterContentWrite(() => new Promise((resolve) => setTimeout(resolve, 30)));
-          await expect(engineOver(driver, Date.parse("2026-10-14T00:00:00Z") + w * 1e6 + k * 1e4).updateCard({ cardId: CARD, content })).rejects.toThrow(
-            /injected failure/,
+          const error = await save().then(
+            () => undefined,
+            (e: unknown) => e,
           );
+          driver.disarm();
+          if (limits.transactionEnded?.test(String(error)) !== true) expect(String(error)).toMatch(/injected failure/);
           failed.push(content);
         } else {
-          await engineOver(driver, Date.parse("2026-10-14T00:00:00Z") + w * 1e6 + k * 1e4).updateCard({ cardId: CARD, content });
-          committed.push(content);
+          const error = await save().then(
+            () => undefined,
+            (e: unknown) => e,
+          );
+          if (error === undefined) {
+            committed.push(content);
+          } else {
+            // Only the database's own end of an over-long transaction is
+            // admitted, and the save must then have failed whole.
+            expect(limits.transactionEnded, String(error)).toBeDefined();
+            expect(String(error)).toMatch(limits.transactionEnded!);
+            driver.disarm();
+            ended.push(content);
+          }
         }
       }
     });
@@ -240,9 +273,11 @@ describe(`multi-user saves: ${label}: no reader sees a save that fails`, () => {
     await Promise.all(readerRuns);
 
     expect(failed.length).toBeGreaterThan(0);
+    expect(committed.length).toBeGreaterThan(0);
     expect(observations.length).toBeGreaterThan(0);
     for (const seen of observations) {
       expect(seen.content.startsWith("failed-")).toBe(false);
+      expect(ended).not.toContain(seen.content);
       // Committed state: the content is the newest recorded change, or the
       // seed content before any change committed.
       expect(seen.newestChange === null ? seen.content === "v1" : seen.content === seen.newestChange).toBe(true);
@@ -274,8 +309,20 @@ multiUser("D1 (miniflare)", async () => {
 // case alone, with a test-name filter of "hosted".
 const hosted = hostedDeck();
 if (hosted !== undefined) {
-  multiUser(hosted.label, async () => {
-    await seeded(await hosted.open());
-    return () => hosted.connect();
-  });
+  multiUser(
+    hosted.label,
+    async () => {
+      await seeded(await hosted.open());
+      return () => hosted.connect();
+    },
+    // Bunny Database ends an interactive transaction after 5 seconds
+    // ("Interactive transactions ... with a 5-second timeout",
+    // bunny.net/docs/database/connect/typescript) and answers the next
+    // statement with TRANSACTION_TIMEOUT. A save reached from far from the
+    // database measured 1.7 to 4.0 s, and one under four writers ran past
+    // 5 s. Ruby Decko saves inside an ActiveRecord transaction, where a
+    // database error raises and rolls the whole transaction back: the save
+    // fails and writes nothing. That is the expectation here too.
+    hosted.target === "bunny" ? { transactionEnded: /TRANSACTION_TIMEOUT/ } : {},
+  );
 }

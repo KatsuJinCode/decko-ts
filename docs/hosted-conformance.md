@@ -131,10 +131,29 @@ the database and its group were deleted afterwards):
 | scratch database emptied | PASS |
 
 The remaining failure is again `Transaction timed out (code
-TRANSACTION_TIMEOUT)`, after 21.8 s, in the case with four writers and two
-readers. It is not a `BEGIN` that ran out of retries (that ends in
-`TransactionLockTimeoutError` after 30 s), so Bunny reported it on a
-statement after `BEGIN` or on a stand-alone statement; the runner's output
-does not show which. Not yet investigated.
+TRANSACTION_TIMEOUT)`, in the case with four writers and two readers.
+Running that case alone on fresh scratch databases (2026-10-14, four runs,
+failing in two) showed where: on a statement inside an open save
+transaction (`DELETE FROM card_references WHERE referer_id = ?`), 5,067 ms
+after its `BEGIN`. Bunny documents a 5-second limit on an interactive
+transaction ("with a 5-second timeout",
+bunny.net/docs/database/connect/typescript). Each statement of a save is
+one round trip, and saves from this machine to the database measured 1.7
+to 4.0 s, so under four writers one occasionally runs past the limit.
+`BunnyDbDriver` reports the transaction's age and the refused statement in
+that error.
+
+A save Bunny ends this way fails whole, as a Ruby Decko save fails when
+the database raises inside its ActiveRecord transaction. The multi-user
+case now expects that on Bunny: such a save's content is never read and is
+not in the history, no other error is admitted, and at least one save must
+commit. The same runs found that the case's reader read the card and its
+newest change in two statements, which on a non-atomic batch (libSQL,
+Bunny) can pair two different committed states; it now reads both in one
+statement. With both changes the case passed on a fresh scratch database.
+
+Not addressed: a save that needs more round trips, or runs farther from
+the database, can still exceed Bunny's 5-second limit and fail. Fewer round
+trips per save is the remedy.
 
 D1 and Turso have not been run through this runner against hosted services.
