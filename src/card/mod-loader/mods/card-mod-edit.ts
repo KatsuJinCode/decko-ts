@@ -2657,13 +2657,21 @@ export function createCardBodyShell(
 
 export const newView: ViewFn = (ctx) => {
   withCreateContext(ctx);
-  const form = createCardForm(
+  // frame.rb:19-21 with_frame: add_name_context runs BEFORE the body, so the
+  // form's own field slots carry the name context. The form is built
+  // inside the frame's body, not before it.
+  return framedView(
     ctx,
-    ` data-main-success="{&quot;redirect&quot;:true}"`,
-    hiddenFieldTag("success[mark]", newSuccessMark(ctx)),
-    createFormWithAlertGuide(ctx),
+    "new",
+    () =>
+      createCardForm(
+        ctx,
+        ` data-main-success="{&quot;redirect&quot;:true}"`,
+        hiddenFieldTag("success[mark]", newSuccessMark(ctx)),
+        createFormWithAlertGuide(ctx),
+      ),
+    { showHelp: true },
   );
-  return framedView(ctx, "new", () => form, { showHelp: true });
 };
 
 /** new.rb:8-17 view :new_in_modal, perms: :create, unknown: true,

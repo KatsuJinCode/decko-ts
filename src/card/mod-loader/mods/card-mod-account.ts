@@ -1,4 +1,5 @@
 import { str } from "../../render/format.js";
+import { quietDenial } from "../../permissions/view-perms.js";
 // The card-mod-account gem (card-mod-account-0.20.0), ported through the
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
@@ -779,7 +780,9 @@ function signupInvitation(fmt: ViewContext["fmt"]): boolean {
  *  rides the voo opt the title view reads (titleNoLinkView's voo.opts["title"]
  *  - the live writer Ruby's define_setter gives voo.title). */
 const signupNewView: ViewFn = (ctx) => {
-  ctx.voo.opts["title"] = signupInvitation(ctx.fmt) ? "Invite" : "Sign up";
+  // voo.title = is a live writer (voo_api.rb define_setter), not a slot option:
+  // the title reads it, and the slot JSON never carries it.
+  ctx.voo.liveTitle = signupInvitation(ctx.fmt) ? "Invite" : "Sign up";
   // the registration's set module: the nested child file's shortname,
   // Type::Signup::Views (keyed by the type's codename, signup)
   return superView(ctx, setModuleShortname("type/signup/views"), "new");
@@ -1218,7 +1221,11 @@ const setupView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const verdict = preparedSetupVerdict();
   if (verdict === undefined || verdict.open !== true) {
-    return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
+    // error.rb:28 interpolates @denied_task, which is `crud?(task) && task`
+    // (permission.rb:49): FALSE for a method-predicate perms gate, and the
+    // interpolation of false is "". So Ruby's setup denial reads
+    // "... permission (false)" - the parens carry the boolean, not a task.
+    return quietDenial("false");
   }
   return fmt.withNestMode("edit", () => {
     // voo.title = / voo.help = are LIVE writers (voo_api.rb:30-32
