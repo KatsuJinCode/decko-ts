@@ -5,7 +5,7 @@
 //   node --test reference-harness/runner/test/
 
 import assert from "node:assert/strict";
-import { appendFileSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { gradeRun } from "../grade-lib.mjs";
@@ -212,6 +212,112 @@ describe("write steps' other tables (the other_tables grade)", () => {
       const declared = gradeRun({ fixture: cap.fixture, actual: dir, declaredOtherTables: { "create-then-render#1": { sessions: "engine bookkeeping" } } });
       assert.equal(declared.verdict, "pass");
       assert.equal(declared.other_tables.declared, 1);
+    } finally {
+      t.cleanup();
+    }
+  });
+});
+
+describe("lane overlays: a lane's own recorded expectations replace the base for the ops it holds", () => {
+  // A tiny fixture with an overlay for one lane. The overlay is the base
+  // expectation with one render result changed, as a lane recording would differ.
+  const laneSetup = () => {
+    const t = scratch();
+    const cap = makeCapturedFixture(t.dir);
+    const overlay = path.join(cap.fixture, "expected-lanes", "lanex");
+    mkdirSync(overlay, { recursive: true });
+    for (const f of ["run-meta.json"]) {
+      if (existsSync(path.join(cap.expected, f))) cpSync(path.join(cap.expected, f), path.join(overlay, f));
+    }
+    const renderPath = path.join(overlay, "render.jsonl");
+    const lines = readFileSync(path.join(cap.expected, "render.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const changed = lines[0];
+    lines[0] = { ...changed, result: { ...changed.result, html: `${changed.result.html} LANE` } };
+    writeFileSync(renderPath, JSON.stringify(lines[0]) + "\n");
+    writeExpectedManifest(cap.fixture, overlay, { lane: "lanex", laneDb: "test 1" });
+    return { t, cap, overlay, changedId: changed.id };
+  };
+
+  it("a run recorded on the lane grades against the overlay for the ops it holds, and the base for the rest", () => {
+    const { t, cap, changedId } = laneSetup();
+    try {
+      // The actual run answers as the overlay does: it passes on the lane.
+      const laneRun = copyDir(cap.actual, path.join(t.dir, "lane-run"));
+      const meta = JSON.parse(readFileSync(path.join(laneRun, "run-meta.json"), "utf8"));
+      for (const r of Object.values(meta.runs)) r.lane = "lanex";
+      writeJson(path.join(laneRun, "run-meta.json"), meta);
+      const replaced = JSON.parse(readFileSync(path.join(laneRun, "render.jsonl"), "utf8").trim().split("\n")[0]);
+      assert.equal(replaced.id, changedId);
+      const lines = readFileSync(path.join(laneRun, "render.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+      lines[0] = { ...lines[0], result: { ...lines[0].result, html: `${lines[0].result.html} LANE` } };
+      writeFileSync(path.join(laneRun, "render.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+      const report = gradeRun({ fixture: cap.fixture, actual: laneRun, lane: "lanex" });
+      assert.equal(report.verdict, "pass", JSON.stringify(report.problems));
+      assert.equal(report.lane.name, "lanex");
+      assert.equal(report.lane.overlay_ops.render >= 1, true, "the overlay supplied at least the changed op");
+      // The same run graded as the base (no lane) fails on the op the overlay changed.
+      const base = gradeRun({ fixture: cap.fixture, actual: laneRun, lane: null });
+      assert.equal(base.verdict, "fail");
+      assert.ok(base.failures.rendering.some((f) => f.id === changedId));
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("a run on a lane is refused when the overlay is missing its own identity or the fixture digest changed", () => {
+    const { t, cap, overlay } = laneSetup();
+    try {
+      const m = JSON.parse(readFileSync(path.join(overlay, "MANIFEST.json"), "utf8"));
+      writeJson(path.join(overlay, "MANIFEST.json"), { ...m, lane: { name: "other" } });
+      const report = gradeRun({ fixture: cap.fixture, actual: cap.actual, lane: "lanex" });
+      assert.ok(report.problems.some((p) => /overlay manifest names lane/.test(p)), JSON.stringify(report.problems));
+      assert.equal(report.verdict, "invalid");
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("a lane with no overlay grades every op on the base and says so", () => {
+    const { t, cap } = laneSetup();
+    try {
+      const report = gradeRun({ fixture: cap.fixture, actual: cap.actual, lane: "absent" });
+      assert.equal(report.verdict, "pass");
+      assert.ok(report.warnings.some((w) => /lane absent: no overlay directory/.test(w)));
+      assert.deepEqual(report.lane.overlay_ops, { render: 0, semantics: 0, scenarios: 0 });
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("a changed overlay file is invalid rather than a new expectation", () => {
+    const { t, cap, overlay } = laneSetup();
+    try {
+      appendFileSync(path.join(overlay, "render.jsonl"), "\n");
+      const report = gradeRun({ fixture: cap.fixture, actual: cap.actual, lane: "lanex" });
+      assert.equal(report.verdict, "invalid");
+      assert.ok(report.problems.some((p) => /overlay file changed since its manifest/.test(p)));
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("the lane does not excuse a port answer that differs from its oracle", () => {
+    const { t, cap, changedId } = laneSetup();
+    try {
+      const report = gradeRun({ fixture: cap.fixture, actual: cap.actual, lane: "lanex" });
+      assert.equal(report.verdict, "fail");
+      assert.ok(report.failures.rendering.some((f) => f.id === changedId));
+    } finally {
+      t.cleanup();
+    }
+  });
+
+  it("the CLI refuses a lane different from the run's recorded database", () => {
+    const { t, cap } = laneSetup();
+    try {
+      const response = gradeCli(["--fixture", cap.fixture, "--actual", cap.actual, "--lane", "lanex"]);
+      assert.equal(response.status, 2);
+      assert.match(response.stdout, /NOT A GRADE: --lane lanex/);
     } finally {
       t.cleanup();
     }

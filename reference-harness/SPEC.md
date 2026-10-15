@@ -696,6 +696,41 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
 - **Oracle**: expected outputs record the oracle's versions, variant and
   contract in their manifest. Capturing against another Decko release makes a
   new fixture name.
+- **Lane expectations** (`expected-lanes/<lane>/`, release-lead decision,
+  2026-10-15): "For database lanes other than SQLite (MySQL, PostgreSQL),
+  expected answers come from Ruby Decko running on that same database. Where
+  Ruby's SQL leaves row order to the database (no ORDER BY, or ties under an
+  ORDER BY), the order the database returns is Ruby's real behaviour on that
+  lane. Lane expectations are recorded by running the oracle on that database,
+  and are never copied from the port."
+
+  A lane's overlay lives in `fixtures/<fixture>/expected-lanes/<lane>/`, in
+  the expected-output shape (`<kind>.jsonl[.gz]`, `run-meta.json`,
+  `MANIFEST.json`), recorded by running the stock oracle on that database. The
+  overlay holds every op whose lane result differs from the base expectation
+  under the grader; every op it does not hold falls back to the base
+  expectation. Its manifest carries `lane.name`, `lane.db` (the database engine
+  and version), `lane.oracle_tables` (the oracle's tables on that database, read
+  from the lane's own schema; the grader compares those tables and reports every
+  other table as engine-only), and a `provenance.lane` block naming the oracle,
+  the run it came from, the rule for which ops it holds and the measured causes.
+  `manifest.mjs expected --lane <name> --lane-db <engine/version>` writes it.
+  The grader takes the lane from `run-meta.json` (recorded from the adapter's
+  `lane` field) or from `--lane`, refuses a `--lane` that disagrees with the
+  recording, validates the overlay against its own manifest, the fixture digest
+  and its file hashes, and reports `lane.overlay_ops` per kind.
+
+  The overlay is a lane's expectations, not a lane's excuses: an operation the
+  port answers differently from the oracle on the same database still fails. A
+  port difference is a finding, never an overlay entry.
+
+  `synthetic-v1` has a `mysql` lane (`expected-lanes/mysql/`), recorded on
+  MySQL 8.4.11 with the pinned Ruby 3.3.12 oracle
+  (`reference-harness/adapters/ruby-mysql`). It holds 6 render, 3 semantics and
+  11 scenario ops: the `Not Topics` search's ties (6 render, 3 semantics) and
+  the id allocation of the scenario writes (MySQL's auto-increment hands out
+  ids the SQLite recording does not; the port's own id allocation on that lane
+  diverges and is recorded in `KNOWN_FAILURES.md`).
 
 ## 7. Writing an adapter for another engine
 

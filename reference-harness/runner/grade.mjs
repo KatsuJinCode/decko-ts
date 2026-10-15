@@ -35,6 +35,7 @@
 // development; it still exits 2.
 
 import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { EXIT, KINDS, gradeRun } from "./grade-lib.mjs";
 
 const argv = process.argv.slice(2);
@@ -56,6 +57,28 @@ if (args["declared-divergences"]) {
   declaredDivergences = JSON.parse(readFileSync(args["declared-divergences"], "utf8"));
 }
 
+// The lane: named by --lane, or else the lane the results were recorded on
+// (run-meta's lane, null on the SQLite lane). A named lane that disagrees with
+// the recording is refused.
+const recordedLane = (() => {
+  // A missing or unreadable run-meta.json is the grader's refusal to report, not
+  // this lookup's: gradeRun names it, so the lookup says nothing.
+  let meta;
+  try {
+    meta = JSON.parse(readFileSync(path.join(args.actual, "run-meta.json"), "utf8"));
+  } catch {
+    return null;
+  }
+  const lanes = [...new Set(Object.values(meta.runs ?? {}).map((r) => r.lane ?? null))];
+  if (lanes.length > 1) throw new Error(`results mix lanes: ${JSON.stringify(lanes)}`);
+  return lanes[0] ?? null;
+})();
+const lane = args.lane ?? recordedLane;
+if (args.lane !== undefined && args.lane !== recordedLane) {
+  console.log(`NOT A GRADE: --lane ${args.lane} but the results were recorded on lane ${JSON.stringify(recordedLane)}`);
+  process.exit(EXIT.invalid);
+}
+
 const report = gradeRun({
   fixture: args.fixture,
   actual: args.actual,
@@ -64,6 +87,7 @@ const report = gradeRun({
   classTokenOrder: !args["no-class-token-order"],
   declaredOtherTables,
   declaredDivergences,
+  lane,
 });
 report.graded_at = new Date().toISOString();
 if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 2) + "\n");

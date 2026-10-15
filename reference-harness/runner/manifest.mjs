@@ -13,7 +13,7 @@
 //
 //   node reference-harness/runner/manifest.mjs fixture <fixtureDir>            write MANIFEST.json
 //   node reference-harness/runner/manifest.mjs check <fixtureDir>              verify it (exit 1 on mismatch)
-//   node reference-harness/runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name>] [--patches <patches.json>] [--provenance <provenance.json>]
+//   node reference-harness/runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name>] [--patches <patches.json>] [--provenance <provenance.json>] [--lane <name> --lane-db <engine/version>]
 //
 // See reference-harness/SPEC.md, "Fixture identity" and "The Ruby oracle".
 
@@ -53,6 +53,23 @@ export function isDeckSidecar(name) {
  *  when present, adds its operations back and every reader runs and grades
  *  them. When it is absent every reader says so: see withheldLine. */
 export const WITHHELD_DIR = "withheld";
+/**
+ * Per-lane expected outputs. Where Ruby's SQL leaves row order to the database
+ * (no ORDER BY, or ties under one), the order the database returns is Ruby's
+ * real behaviour ON THAT LANE, and the SQLite-recorded expectation does not hold
+ * there. A lane's expectations live in `expected-lanes/<lane>/`, in the
+ * expected-output shape, recorded by running the stock oracle on that database
+ * (never copied from the port). The grader reads the overlay for the lane a run
+ * names and falls back to the base expectation for every op the overlay does
+ * not carry.
+ */
+export const LANES_DIR = "expected-lanes";
+
+/** The lane's overlay directory for a fixture's expected outputs. */
+export function laneExpectedDir(fixtureDir, lane) {
+  if (typeof lane !== "string" || !/^[a-z][a-z0-9-]*$/.test(lane)) throw new TypeError(`lane must be a lowercase name, got ${JSON.stringify(lane)}`);
+  return path.join(fixtureDir, LANES_DIR, lane);
+}
 
 /** Paths (forward slashes, relative to the fixture) of every public fixture
  *  input: everything except the manifest itself, expected-output directories,
@@ -268,7 +285,7 @@ export function writeFixtureManifest(fixtureDir) {
  * oracle contract. A patched variant must list its patches; the stock
  * oracle must list none.
  */
-export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stock", patches = [], contractPath, provenance } = {}) {
+export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stock", patches = [], contractPath, provenance, lane = null, laneDb = null, laneOracleTables = null } = {}) {
   if (variant === "stock" && patches.length > 0) throw new Error("the stock oracle carries no patches; name a variant");
   if (variant !== "stock" && patches.length === 0) throw new Error(`variant "${variant}" must list the patches it applies`);
   const fixture = verifyFixture(fixtureDir);
@@ -289,6 +306,7 @@ export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stoc
     engine: meta.engine,
     runs: meta.runs,
     files,
+    ...(lane !== null ? { lane: { name: lane, db: laneDb, ...(laneOracleTables ? { oracle_tables: [...laneOracleTables].sort() } : {}) } } : {}),
     ...(provenance ? { provenance } : {}),
   };
   writeFileSync(path.join(expectedDir, "MANIFEST.json"), JSON.stringify(manifest, null, 2) + "\n");
@@ -316,7 +334,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else if (command === "expected") {
     const patches = opts.patches ? JSON.parse(readFileSync(opts.patches, "utf8")) : [];
     const provenance = opts.provenance ? JSON.parse(readFileSync(opts.provenance, "utf8")) : undefined;
-    const m = writeExpectedManifest(path.resolve(positional[0]), path.resolve(positional[1]), { variant: opts.variant ?? "stock", patches, provenance });
+    const m = writeExpectedManifest(path.resolve(positional[0]), path.resolve(positional[1]), {
+      variant: opts.variant ?? "stock",
+      patches,
+      provenance,
+      lane: opts.lane ?? null,
+      laneDb: opts["lane-db"] ?? null,
+    });
     console.log(`${m.fixture} expected (${m.oracle.variant}): ${Object.keys(m.files).length} files`);
   } else {
     console.error("usage: manifest.mjs fixture <fixtureDir> | check <fixtureDir> | expected <fixtureDir> <expectedDir> [--variant <name> --patches <file>]");

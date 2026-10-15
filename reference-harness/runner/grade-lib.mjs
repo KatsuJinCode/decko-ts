@@ -10,7 +10,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { gunzipSync } from "node:zlib";
-import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
+import { EXPECTED_MANIFEST_FORMAT, WITHHELD_DIR, laneExpectedDir, resultFiles, storedFileHashes, verifyFixture, withheldLine, withheldOpsOf, withheldScenariosOf, withheldStatus } from "./manifest.mjs";
 import { RULE_ORDER, normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
 import { maskPasswordDigests, passwordDigestContext, validateDeclaredDivergences } from "./divergences.mjs";
 
@@ -36,12 +36,18 @@ export const EXIT = { pass: 0, fail: 1, invalid: 2, partial: 2 };
  * `{ "create-then-render#1": { "sessions": "why the engine's row differs" } }`.
  * A difference named here is graded as declared (recorded, with its why, in
  * the report); every other difference fails the grade.
+ * `lane` names the database lane the run was made on (see manifest.mjs,
+ * LANES_DIR). When given, the lane's overlay expectations replace the base
+ * expectations for exactly the ops the overlay carries; every other op is graded
+ * against the base expectation. The overlay is validated against its own
+ * manifest, the fixture digest and its file hashes, and the report names how
+ * many ops each kind took from it.
  * `declaredDivergences` names divergences the engine configuration makes on
  * purpose (divergences.mjs), `{ "password-digest": "why" }`: the values each
  * one describes are masked in the expected and actual row deltas alike before
  * they are compared, and every masked value is listed in the report.
  */
-export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {}, declaredDivergences = {} }) {
+export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {}, declaredDivergences = {}, lane = null }) {
   const declared = validateDeclaredOtherTables(declaredOtherTables);
   const divergences = validateDeclaredDivergences(declaredDivergences);
   // The canonical forms this grade actually reached (see normalizeHtml): the
@@ -104,6 +110,17 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   const withheld = withheldStatus(fixtureDir);
   const withheldExpectedDir = withheld?.present ? path.join(withheld.dir, path.basename(expectedDir)) : null;
   const exp = loadResults(expectedDir, "expected", ops, problems, problems, withheldExpectedDir);
+  // ---- lane overlay: the lane's own recorded expectations for the ops it carries.
+  const laneOverlay = lane === null ? null : loadLaneOverlay(fixtureDir, lane, digest, ops, problems, warnings);
+  const laneCounts = { render: 0, semantics: 0, scenarios: 0 };
+  if (laneOverlay) {
+    for (const kind of ["render", "semantics", "scenarios"]) {
+      for (const [id, line] of laneOverlay[kind]) {
+        exp[kind].set(id, line);
+        laneCounts[kind]++;
+      }
+    }
+  }
 
   // ---- actual results: metadata, identity, completeness ------------------------
   const metaRead = readJson(path.join(actualDir, "run-meta.json"));
@@ -128,7 +145,10 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   // Tables the oracle's schema does not have at all hold no row Ruby reads or
   // writes, so they are not part of the comparison. Their writes are reported
   // in their own field, never counted as a match or a declared difference.
-  const oracleTables = oracleSchemaTables(fixtureDir);
+  // A lane's overlay names the oracle's tables on that database (the lane's own
+  // schema, recorded from it); the base lane reads them from the fixture's deck.
+  const laneTables = laneOverlay?.oracleTables ?? null;
+  const oracleTables = laneTables ? new Set(laneTables) : oracleSchemaTables(fixtureDir);
   if (oracleTables === undefined) warnings.push("fixture: no built deck to read the oracle's schema from; every table is compared");
   const engineOnlyWrites = [];
   const isOracleTable = (t) => oracleTables === undefined || oracleTables.has(t);
@@ -355,6 +375,9 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
   return {
     fixture: path.basename(fixtureDir),
     fixture_digest: digest,
+    // The lane the expectations were read for, and how many ops each kind took
+    // from the lane's overlay (the rest are the base expectation's).
+    ...(lane !== null ? { lane: { name: lane, overlay_ops: laneCounts, overlay: laneOverlay ? workspaceRelative(laneExpectedDir(fixtureDir, lane)) : null } } : {}),
     // A declared withheld set: whether its operations were part of this grade.
     ...(withheld ? { withheld: { label: withheld.label, ops: withheld.total, run: withheld.present, line: withheldLine(withheld, workspaceRelative(path.join(fixtureDir, WITHHELD_DIR))) } } : {}),
     actual: workspaceRelative(actualDir),
@@ -381,6 +404,41 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, clas
     failures,
     reproduced,
   };
+}
+
+/**
+ * A lane's overlay expectations, validated. Returns the overlay's lines per
+ * kind (id -> line), or null when the lane has no overlay (the base expectations
+ * then grade every op, and the report and warnings say so).
+ */
+function loadLaneOverlay(fixtureDir, lane, digest, ops, problems, warnings) {
+  const dir = laneExpectedDir(fixtureDir, lane);
+  if (!existsSync(dir)) {
+    warnings.push(`lane ${lane}: no overlay directory; the base expectations grade every op`);
+    return null;
+  }
+  const read = readJson(path.join(dir, "MANIFEST.json"));
+  if (!read.ok) {
+    problems.push(`lane ${lane}: ${read.error}`);
+    return null;
+  }
+  const m = read.value;
+  if (m.format !== EXPECTED_MANIFEST_FORMAT) problems.push(`lane ${lane}: manifest format is ${m.format}, expected ${EXPECTED_MANIFEST_FORMAT}`);
+  if (m.fixture !== path.basename(fixtureDir)) problems.push(`lane ${lane}: overlay captured for fixture "${m.fixture}", not "${path.basename(fixtureDir)}"`);
+  if (digest && m.fixture_digest !== digest) problems.push(`lane ${lane}: overlay captured on fixture digest ${m.fixture_digest}, fixture is ${digest}`);
+  if (m.lane?.name !== lane) problems.push(`lane ${lane}: overlay manifest names lane ${JSON.stringify(m.lane?.name)}`);
+  if (m.oracle?.variant !== "stock") problems.push(`lane ${lane}: overlay must be recorded on the stock oracle, manifest says ${JSON.stringify(m.oracle?.variant)}`);
+  for (const [file, h] of Object.entries(m.files ?? {})) {
+    const abs = path.join(dir, file);
+    if (!existsSync(abs)) problems.push(`lane ${lane}: overlay file missing: ${file}`);
+    else if (storedFileHashes(abs).sha256 !== h.sha256) problems.push(`lane ${lane}: overlay file changed since its manifest: ${file}`);
+  }
+  if (existsSync(dir)) for (const f of resultFiles(dir)) if (!(f in (m.files ?? {}))) problems.push(`lane ${lane}: overlay file not in its manifest: ${f}`);
+  const overlayProblems = [];
+  const loaded = loadResults(dir, `lane ${lane}`, ops, overlayProblems, [], null);
+  problems.push(...overlayProblems);
+  if (!Array.isArray(m.lane?.oracle_tables)) warnings.push(`lane ${lane}: overlay names no oracle tables; the fixture deck's schema is used`);
+  return { ...loaded, oracleTables: Array.isArray(m.lane?.oracle_tables) ? m.lane.oracle_tables : null };
 }
 
 /**

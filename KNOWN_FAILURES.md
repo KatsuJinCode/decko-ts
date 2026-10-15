@@ -39,3 +39,25 @@ believing it; if it fails alone, it is a real failure and belongs in the table.
 ## The side-effects battery now reports five event-order mismatches
 
 `tests/tools/side-effects-scenario-battery.test.ts` asserts 80 pass, 7 declared, no mismatch. Since the verdict counts event order where Ruby's order is deterministic (tools/parity-side-effects/event-order-evidence.json; compare.mjs), the battery reports 75 pass, 7 declared and 5 mismatches. The five are real differences in the order the port dispatches the same events, not a harness fault: `admin-create-skin`, `admin-use-skin`, `admin-update-scss`, `admin-update-current-skin-colors`, `admin-update-current-skin-colors-again`. For example Ruby runs `check_permissions` before `validate_key` in the skin-colour updates, the port the reverse, and Ruby runs `expire_related` before `refresh_references_out` in `admin-use-skin`, the port the reverse. The battery test is left failing on purpose: its pinned expectation is the earlier, weaker verdict, and changing it to the port's current output would hide the finding. Closing it is a port change to event dispatch order.
+
+## The MySQL lane: the port's id allocation diverges from Ruby's
+
+The recorded 2026-10-15 MySQL 8.4.11 runs use the pinned Ruby 3.3.12
+oracle. `tools/same-database/mysql-lane-compare.mjs` compares rendering and
+semantics only: Ruby and the port agree on 1752 of 1752 render and 2388 of
+2388 semantics operations. It does not establish scenario parity.
+The lane overlay `fixtures/synthetic-v1/expected-lanes/mysql/` holds 6
+render, 3 semantics and 11 scenario answers copied byte-for-byte from the
+recorded stock Ruby-on-MySQL run. These are Ruby's lane expectations,
+including the `Not Topics` ties and the scenario writes' ids. Grading the
+recorded port run against those expectations fails:
+rendering 1754 of 1754, semantics 2389 of 2389, but persistence 4 of 16 and
+side effects 15 of 19. The failures are the write steps' card ids, the same
+card created on the same database with a different id: `create-tag-as-member`
+Ruby 916, port 911; `create-memo-member-then-read-denied-anonymous` Ruby 915,
+port 911; `create-compound-on-new-left` Ruby 919, port 913; and the rows that
+name those ids. The mechanism is not yet established: Ruby's ids come from
+MySQL's auto-increment counter, which InnoDB advances on a rolled-back insert,
+while the port computes the next id from the current rows
+(`src/card/history/write-path.ts`). The finding is left open, not declared and
+not overlaid.
