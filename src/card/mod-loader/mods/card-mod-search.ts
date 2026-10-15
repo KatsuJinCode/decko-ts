@@ -603,16 +603,22 @@ const searchErrorView: ViewFn = (ctx) => {
   // The receiver's class is the search's result shape: a count cql collapses
   // to Integer (cql_search.rb:3-5 cql_hash + Run#alter_result, the same
   // verdict search_count's cqlReturnCount walk computes), anything else is
-  // the result Array. `.message` is missing on both.
+  // the result Array. Both are read here as the values Ruby holds, and the
+  // `.message` member is looked up on that value: neither has one, so the
+  // lookup misses and NoMethodError is raised by that miss.
   let cqlReturnCount = false;
   try {
     cqlReturnCount = rubyCqlContent(ctx.fmt.card.dbContent ?? "")["return"] === "count";
   } catch {
     // unreachable: a BadQuery cql warms as a failure (the branch above)
   }
-  throw new NoMethodError(
-    `undefined method \`message' for an instance of ${cqlReturnCount ? "Integer" : "Array"}`,
-  );
+  const result: unknown = cqlReturnCount ? warmed.count : ctx.fmt.engine.executeSearch(ctx.fmt);
+  const className = cqlReturnCount ? "Integer" : "Array";
+  const message = (result as { message?: unknown } | null)?.message;
+  if (message === undefined) {
+    throw new NoMethodError(`undefined method 'message' for an instance of ${className}`);
+  }
+  return `${className} :: ${String(message)} :: ${ctx.fmt.card.dbContent ?? ""}`;
 };
 
 // ---------------------------------------------------------------------------

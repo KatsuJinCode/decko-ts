@@ -49,6 +49,7 @@
 //   no views.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
 import type {
   DeckoModManifest,
   ModEventCard,
@@ -319,7 +320,18 @@ function formatWithDelimiter(n: number): string {
  *  later format :html block wins (registrar/view_definition.rb#18-21:
  *  reopening the module replaces define_method). The TS mod loader
  *  collapses this to a single registered :count, with the html body. */
-const countView: ViewFn = (ctx) => formatWithDelimiter(itemCount(ctx));
+const countView: ViewFn = (ctx) => {
+  // item.rb:180-182 `number_with_delimiter try(:count)`. The format's count
+  // (set/all/html/views.rb:125-127) is `@count ||= card.count`, and a plain
+  // card has no `count` method: Ruby's `try` reaches that format method and
+  // the call raises NoMethodError on the card. Only a search card answers
+  // (card-mod-search set/abstract/0_search.rb defines Card#count), and the
+  // search mod's view handles those before this one is reached.
+  const card = ctx.fmt.card;
+  throw new NoMethodError(
+    `undefined method 'count' for ${engineObjectIdentity("Card", { id: card.id, name: card.name.s })}`,
+  );
+};
 
 // ---------------------------------------------------------------------------
 // set/abstract/paging.rb - the limit/offset/count helpers

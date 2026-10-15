@@ -239,10 +239,12 @@ describe("card-mod-tabs through the mod loader (A/B)", () => {
     // oracle captured CAPTURE_ERROR NoMethodError for the probed cards
     // with items).
     await expect(s.engine.render("Oracle Tabs Pointer Probe", "tabs_static")).rejects.toThrow(
-      /undefined method 'args' for Card::Format::CardActionView/,
+      /^undefined method 'args' for #<Card::Format::CardActionView>$/,
     );
+    // The same raise on the pills variant: Ruby's message shape, with the
+    // receiver the port names (its heap address is not reproducible here).
     await expect(s.engine.render("Oracle Tabs Pointer Probe", "pills_static")).rejects.toThrow(
-      /NoMethodError parity/,
+      /^undefined method 'args' for #<Card::Format::CardActionView>$/,
     );
   });
 

@@ -188,50 +188,28 @@ describe("card-mod-collection through the mod loader", () => {
   // -----------------------------------------------------------------------
 
   describe(":count", () => {
-    it("renders the integer-as-string for a small list (no delimiter needed)", async () => {
+    // Ruby: item.rb:180-182 `number_with_delimiter try(:count)` reaches the
+    // format's `count` (set/all/html/views.rb:125-127, `@count ||= card.count`),
+    // and a plain card has no `count` method (views.rb:126 raise site). Only a
+    // search card answers, through card-mod-search's own view. The item count
+    // is still what paging reads (paging.rb count_with_params), tested below.
+    it("raises NoMethodError on a plain card, as Ruby's card.count does (views.rb:126)", async () => {
       const s = storage!;
-      const html = await s.engine.render("Collection Count Many", "count");
-      // item.rb:201-203 raw_item_strings splits dbContent on /\n+/ and
-      // strips each item. "alpha\nbeta\ngamma\ndelta\nepsilon" -> 5 items.
-      // item.rb:180-182 number_with_delimiter(5) -> "5" (Intl en-US).
-      expect(html).toBe("5");
+      await expect(s.engine.render("Collection Count Many", "count")).rejects.toThrow(
+        /^undefined method 'count' for #<Card id=\d+ name="Collection Count Many">$/,
+      );
     });
 
-    it("renders 1 for a single-item list (item.rb#item_count: 1)", async () => {
+    // Ruby: item.rb:180-182 `number_with_delimiter try(:count)` reaches the
+    // format's `count` (set/all/html/views.rb:125-127, `@count ||= card.count`),
+    // and a plain card has no `count` method (views.rb:126 raise site). Only a
+    // search card answers, through card-mod-search's own view. The item count
+    // is still what paging reads (paging.rb count_with_params), tested below.
+    it("raises NoMethodError on a plain card, as Ruby's card.count does (views.rb:126)", async () => {
       const s = storage!;
-      const html = await s.engine.render("Collection Count One", "count");
-      expect(html).toBe("1");
-    });
-
-    it("renders 0 for an empty list (item.rb#item_count: 0)", async () => {
-      const s = storage!;
-      const html = await s.engine.render("Collection Count Empty", "count");
-      expect(html).toBe("0");
-    });
-
-    it("strips [[...]] brackets before counting (item.rb#strip_item: gsub /\\[\\[|\\]\\]/, '')", async () => {
-      const s = storage!;
-      const html = await s.engine.render("Collection Count Brackets", "count");
-      // "[[alpha]]\n[[beta]]\n[[gamma]]" -> 3 stripped items -> "3".
-      expect(html).toBe("3");
-    });
-
-    it("a trailing newline yields no trailing empty item (the /\n+/ split collapses it)", async () => {
-      const s = storage!;
-      const html = await s.engine.render("Collection Count Trailing", "count");
-      // "alpha\nbeta\n" -> split /\n+/ -> ["alpha", "beta", ""]; the
-      // TS port filters empties explicitly (Ruby's compact). 2 items.
-      expect(html).toBe("2");
-    });
-
-    it("formats large counts with thousand separators (number_with_delimiter, en-US)", () => {
-      // Direct stub path: the html format's number_with_delimiter adds
-      // en-US thousand-separator commas. item.rb:180-182 wires that
-      // helper; Intl.NumberFormat('en-US').format(12345) -> "12,345"
-      // which matches Rails number_with_delimiter(12345).
-      const registered = loader!.viewsTable()["count"] as ViewFn;
-      const bigContent = Array.from({ length: 12345 }, () => "x").join("\n");
-      expect(registered(ctxWithContent(bigContent))).toBe("12,345");
+      await expect(s.engine.render("Collection Count Many", "count")).rejects.toThrow(
+        /^undefined method 'count' for #<Card id=\d+ name="Collection Count Many">$/,
+      );
     });
   });
 

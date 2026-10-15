@@ -83,6 +83,7 @@
 import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
+import { CodenameNotFoundError } from "../../name/errors.js";
 import { warmRuleCards } from "./rule-card-warm.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
@@ -858,7 +859,7 @@ function nestListInputHtml(ctx: ViewContext): string {
  *  the link chunk's title = link_text || the fully-stripped name
  *  (card-mod-content lib/card/content/chunk/link.rb:32). */
 function linkListInputHtml(ctx: ViewContext): string {
-  const items = linkListItemsForInput(ctx.fmt.card.dbContent);
+  const items = linkListItemsForInput(ctx, ctx.fmt.card.dbContent);
   const ulClasses = ctx.voo.classy("pointer-list-editor", "pointer-link-list-ul");
   const optionsCard = autocompleteOptionsCard(ctx);
   const header =
@@ -924,15 +925,37 @@ function nestListItemsForInput(content: string): [string, string | undefined][] 
  *  chunks - referee_name (the part before the pipe) zipped with
  *  item_titles(false) (link_list.rb:8-14): the chunk title = link_text ||
  *  the fully-stripped name (link.rb:32). Empty content yields [["", ""]]. */
-function linkListItemsForInput(content: string): [string, string | undefined][] {
+function linkListItemsForInput(
+  ctx: ViewContext,
+  content: string,
+): [string, string | undefined][] {
   const pairs: [string, string | undefined][] = [];
   for (const match of content.matchAll(/\[\[([^\]]+)\]\]/g)) {
     const inner = match[1] ?? "";
     const pipe = inner.indexOf("|");
-    if (pipe === -1) pairs.push([inner, inner]);
-    else pairs.push([inner.slice(0, pipe), inner.slice(pipe + 1)]);
+    const target = pipe === -1 ? inner : inner.slice(0, pipe);
+    // item_names context: :raw (item.rb clean_item_name) reads the item as a
+    // Card::Name: a codename mark (":getting_started_links") names the card
+    // that holds the codename, so the input shows that card's name.
+    const name = resolveItemMark(ctx, target);
+    if (pipe === -1) pairs.push([name, name]);
+    else pairs.push([name, inner.slice(pipe + 1)]);
   }
   return pairs.length === 0 ? [["", ""]] : pairs;
+}
+
+/** Card::Name's codename mark (lib/card/name.rb): ":codename" resolves to the
+ *  registered name of the card holding it. Any other item is its own name.
+ *  An unknown codename raises, as Card::Name does (CodenameNotFoundError). */
+function resolveItemMark(ctx: ViewContext, target: string): string {
+  const mark = /^:([A-Za-z0-9_?!]+)$/.exec(target);
+  if (mark === null) return target;
+  const id = ctx.fmt.engine.peekIdByCodename?.(mark[1] as string);
+  const name = id === undefined ? undefined : ctx.fmt.engine.peekRegisteredNameForId?.(id);
+  if (name === undefined) {
+    throw new CodenameNotFoundError(`codename doesn't exist: ${mark[1]}`);
+  }
+  return name;
 }
 
 /** The _reference_list_input_row partial (set/type/_reference_list_input_row.haml),
