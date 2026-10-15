@@ -265,6 +265,14 @@ graded as declared, recorded in the report (`other_tables`, with its why),
 and does not fail; an undeclared one fails the grade even when every answer
 matches. Every write step whose non-card tables changed is listed in the
 report (`other_table_writes`), with its verdict: pass, declared, or fail.
+Declared differences are counted in their own field, never in the pass
+count, and a declaration that no longer occurs is stale and fails the grade:
+a (step, table) pair whose table matches the oracle, or that names no write
+step of the grade, and a declared divergence that masked no value on either
+side (report fields `stale_declarations`, `stale_divergences`), like the
+sibling comparator's `declared-difference-absent` check
+(`tools/persistence/compare-persist.mjs`). On a `--allow-partial` selection
+a declaration whose step was not graded is not judged stale.
 
 The comparison covers every table that exists in the oracle's schema, read
 from the fixture's built deck (`deck/deck.sqlite3`). A table only the
@@ -279,7 +287,8 @@ cannot produce names that divergence with `--declared-divergences`, a JSON map
 of divergence name to why. Each name is defined in `runner/divergences.mjs`;
 the grader masks exactly the values it describes in the expected and actual
 row deltas alike, compares everything else as usual, and lists every masked
-value in the report (`declared_divergences`). The one defined divergence is
+value in the report (`declared_divergences`). A divergence that masked no
+value in the grade is stale and fails it, like a stale (step, table) pair. The one defined divergence is
 `password-digest`, and it is one column wide: `cards.db_content` of a
 `+*password` card when the value is a password digest of either scheme. An
 update of such a row whose only changed column is that digest is left with no
@@ -430,8 +439,14 @@ Two kinds of rule:
    oracle defines, and no port can honestly emit another engine's stack.
    The div itself, the heading, the error message (with N7) and every byte
    outside the div still compare byte for byte. On `synthetic-v2` the rule
-   acts on the eight withheld admin error-view operations and changes the
-   grade of all eight; see NORMALIZATION-EVIDENCE.md.
+   acts on the debug-page operations — the eight withheld admin error-view
+   operations and the public debug-page operations added on 2026-10-15
+   (item 24), which raise errors that are not security-related — and changes
+   their grade; see NORMALIZATION-EVIDENCE.md.
+
+   **Release-lead decision, 2026-10-15** (recorded verbatim, `recovery/release/FAKED-PARITY-AUDIT.md` item 2; the widening of a normalisation rule is the lead's to make, SUBAGENT-GOAL.md):
+
+   > A backtrace is the call stack of whichever engine raised; its frames name that engine's own files and cannot be produced by a second implementation without fabrication. The comparison therefore masks the backtrace frame list on both sides and compares everything else in the error page byte for byte: the error class, the message, and the surrounding page. Fabricating frames to match is forbidden (SUBAGENT-GOAL.md).
 7. **N7 (canonical form over capture-host content).** In rendered HTML,
    inside a render-error span's `title` attribute that begins with the Ruby
    debug page marker (`&lt;h3&gt;Error message (visible to admin only)
@@ -478,8 +493,10 @@ of one oracle, so their evidence is oracle-versus-engine pairs on the fixture.
 Two findings there bear on this section. The composed adapter freezes the
 capture clock, so on the shipped capture N5 changes no grade outcome. The
 debug-page operations that N6 and N7 act on are the fixture's withheld set
-(`fixtures/synthetic-v2/withheld`), outside the public package; a checkout
-that holds the set re-measures them with the commands given there.
+(`fixtures/synthetic-v2/withheld`) and the public debug-page operations added
+on 2026-10-15 (item 24); the public operations are graded in every checkout,
+and a checkout that holds the withheld set re-measures the rest with the
+commands given there.
 
 N3 is not a mask and needs no nondeterminism evidence — it erases nothing,
 and it canonicalises rather than hides. Its evidence is the environment

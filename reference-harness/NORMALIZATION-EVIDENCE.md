@@ -123,6 +123,17 @@ still fails.
 This is the one mask that does not rest on two-run variation (SPEC section 4.2):
 the oracle's backtrace is stable between runs, but no other engine has it.
 
+**Release-lead decision, 2026-10-15.** The lead has ruled on this rule in
+writing (`recovery/release/FAKED-PARITY-AUDIT.md`, item 2 — the ruling that
+SUBAGENT-GOAL.md reserves to the lead, since N6 widens a normalisation rule).
+Verbatim:
+
+> A backtrace is the call stack of whichever engine raised; its frames name that engine's own files and cannot be produced by a second implementation without fabrication. The comparison therefore masks the backtrace frame list on both sides and compares everything else in the error page byte for byte: the error class, the message, and the surrounding page. Fabricating frames to match is forbidden (SUBAGENT-GOAL.md).
+
+So the mask is not the harness's own choice: it is the instrument the release
+lead chose for a difference no port can close honestly, and the engine
+fabricates nothing to close it.
+
 **Measured facts** (2026-10-14, composed adapter, checkout holding the withheld set).
 
 - shipped: no operation in the public capture renders a debug page, so N6 changes no public grade.

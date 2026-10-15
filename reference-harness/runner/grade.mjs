@@ -81,6 +81,9 @@ if (report.verdict === "invalid") {
 if (report.verdict === "partial") console.log(`PARTIAL RUN, not a grade: ${report.partial.join("; ")}`);
 console.log(`normalization: ${report.normalization.join(", ")}`);
 for (const d of report.declared_divergences) console.log(`declared divergence ${d.name}: ${d.masked.length} value(s) masked - ${d.why}`);
+if (report.stale_divergences.length > 0) {
+  for (const name of report.stale_divergences) console.log(`STALE declared divergence ${name}: it masked no value in this run; the declaration no longer occurs, so the grade fails`);
+}
 for (const k of KINDS) {
   const s = report.summary[k];
   console.log(`${k.padEnd(13)} ${String(s.pass).padStart(5)} / ${String(s.graded).padEnd(5)} ${s.rate === null ? "-" : s.rate + "%"}` +
@@ -93,10 +96,11 @@ console.log(`${"read writes".padEnd(13)} ${String(rw.pass).padStart(5)} / ${Stri
 for (const f of rw.failures) console.log(`    ${f.id}: ${f.reason}`);
 const ot = report.other_tables;
 if (ot.graded > 0 || ot.fail > 0) {
-  const declaredNote = ot.declared ? ` (+${ot.declared} declared)` : "";
-  console.log(`${"other tables".padEnd(13)} ${String(ot.pass).padStart(5)} / ${String(ot.graded).padEnd(5)} write steps whose non-card tables match the oracle's${declaredNote}`);
+  // Declared differences are reported beside the pass count, never inside it.
+  console.log(`${"other tables".padEnd(13)} ${String(ot.pass).padStart(5)} / ${String(ot.graded).padEnd(5)} write steps whose non-card tables match the oracle's; ${ot.declared} declared difference(s), not counted as passes`);
   for (const f of ot.failures) console.log(`    ${f.id}: ${f.reason} (${f.tables.join(", ")})`);
 }
+for (const s of report.stale_declarations) console.log(`STALE declared difference ${s.id} / ${s.table}: ${s.reason} (declared: ${s.why})`);
 const eo = report.engine_only_tables;
 if (eo && eo.tables.length > 0) {
   console.log(`${"engine-only".padEnd(13)} ${eo.tables.join(", ")}: tables the oracle's schema does not have, written by ${new Set(eo.writes.map((w) => w.id)).size} write step(s); not compared`);

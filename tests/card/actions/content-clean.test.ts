@@ -1,5 +1,12 @@
 // Card content cleaning: the port's own output on ordinary and hostile markup.
 //
+// REGRESSION TEST, NOT PARITY EVIDENCE. Every expected string below was written
+// from this port's own cleaner, so the suite pins what the port does today and
+// fails when that changes. It does not show that the port matches Ruby Decko's
+// content cleaner; parity for that is measured by the withheld set and the
+// reference-harness grade, and no document may cite this file as parity.
+// (FAKED-PARITY-AUDIT.md item 14.)
+//
 // A further set of assertions is not part of the public package (see the
 // "Reporting a vulnerability" section of docs/SECURITY.md). A release package
 // excludes that file, so when it is absent this suite says so on stderr.

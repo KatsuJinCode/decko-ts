@@ -169,6 +169,34 @@ describe("write steps' other tables (the other_tables grade)", () => {
     }
   });
 
+  it("a declared difference that no longer occurs is stale and fails the grade (item 25)", () => {
+    // The engine's delta matches the oracle's, so the declaration says nothing true.
+    const dir = copyGood();
+    const declared = { "create-then-render#1": { sessions: "the engine keeps its own session rows" } };
+    const report = grade(dir, { declaredOtherTables: declared });
+    assert.equal(report.verdict, "fail");
+    assert.deepEqual(report.stale_declarations.map((s) => [s.id, s.table]), [["create-then-render#1", "sessions"]]);
+    const file = path.join(tmp.dir, "stale-declared.json");
+    writeJson(file, declared);
+    const cli = gradeCli(["--fixture", fixture, "--actual", dir, "--declared-other-tables", file]);
+    assert.equal(cli.status, 1);
+    assert.match(cli.stdout, /STALE declared difference create-then-render#1 \/ sessions/);
+  });
+
+  it("a declaration naming a step this fixture does not have is stale too", () => {
+    const dir = copyGood();
+    const report = grade(dir, { declaredOtherTables: { "no-such-step#1": { sessions: "names nothing" } } });
+    assert.equal(report.verdict, "fail");
+    assert.equal(report.stale_declarations[0].id, "no-such-step#1");
+  });
+
+  it("a declared divergence that masks nothing is stale and fails the grade (item 25)", () => {
+    const dir = copyGood();
+    const report = grade(dir, { declaredDivergences: { "password-digest": "one column of a password card" } });
+    assert.equal(report.verdict, "fail");
+    assert.deepEqual(report.stale_divergences, ["password-digest"]);
+  });
+
   it("a write that really touches a non-card table is graded: equal deltas pass, a changed delta fails or is declared", () => {
     const t = scratch();
     try {
