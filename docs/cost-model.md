@@ -396,7 +396,8 @@ What happened, in order:
    could not be created from this token either. The button as documented
    would fail at this step on this account.
 3. A probe with only the R2 binding removed (queues, D1 and vars unchanged)
-   deployed and served `https://decko-test-button.decko-brandon.workers.dev`.
+   deployed and served its temporary Worker URL. Account-specific deployment
+   identifiers are omitted here; the original run record is retained privately.
 
 What the deployed site did:
 
@@ -424,8 +425,7 @@ that question needs a run with a token supplied by other means.
 
 All scratch resources were removed afterwards (queue consumers, then Worker,
 then queues, then D1 database). A read-only listing confirms the account
-holds only `decko-brandon` (D1) and `decko-brandon-trial` (Worker), which
-were not touched.
+holds only the pre-existing D1 database and Worker, which were not touched.
 
 ### Account usage for this run, read through the API
 

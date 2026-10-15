@@ -154,11 +154,11 @@ the database and its group were deleted afterwards):
 The remaining failure is again `Transaction timed out (code
 TRANSACTION_TIMEOUT)`, in the case with four writers and two readers.
 
-### Measured 2026-10-15: Brandon's account, counters, save timing
+### Measured 2026-10-15: account counters and save timing
 
-Scope: one budgeted session on Brandon's own Bunny account (paid per
+Scope: one budgeted session on the site owner's Bunny account (paid per
 operation). Scratch databases were created for the run and deleted afterwards
-by exact name. Nothing on Brandon's existing resources changed.
+by exact name. Nothing on the account's existing resources changed.
 
 **Conformance with counters** (`node tools/hosted-conformance/run.mjs --target
 bunny` on `feat/hosted-runner-counters` at `85dd897d`, a scratch database in
@@ -211,7 +211,7 @@ section.
 Totals: 184 round trips, 1,672 ms across the seven saves. The subcard save
 (create-subcard, which creates a parent and a child) took 452 ms and 58 round
 trips against Bunny's 5-second limit. This measurement is against a 14-card
-synthetic seed, not Brandon's deck, so it is a lower bound on a real save's
+synthetic seed, rather than the full site deck, so it is a lower bound on a real save's
 cost, not an estimate of one.
 
 **Not done in this session**

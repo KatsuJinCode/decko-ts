@@ -70,7 +70,7 @@ const PAGES: ReadonlyArray<{ name: string; view: string }> = [
   { name: "History", view: "history" },
   { name: "Home", view: "one_line_content" },
   { name: "*all+*read", view: "one_line_content" },
-  { name: "Demo Bot", view: "count" },
+  { name: "Note Index", view: "count" },
 ];
 
 function d1Shim(driver: LocalSqliteDriver): D1DatabaseLike {
@@ -234,7 +234,7 @@ describe("Cloudflare Worker entries render through the composed mod deck", () =>
     const key = `${name}/${view}`;
     it(`${key} depends on a mod, and both Workers render the Node host's bytes`, () => {
       const node = nodeRendered.get(key)!;
-      expect(node.startsWith("200 ")).toBe(true);
+      expect(node.startsWith("200 "), `${key}: ${node}`).toBe(true);
       // The page's bytes come from a mod: an engine with no loader renders
       // something else.
       expect(unboundRendered.get(key)).not.toBe(node);
