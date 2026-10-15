@@ -183,6 +183,34 @@ describe("sqliteToMysql dialect translation", () => {
     expect(sqliteToMysql("INSERT INTO t (z) VALUES ('a, b')")).toBe("INSERT INTO t (z) VALUES ('a, b')");
   });
 
+  it("maps SQLite's scalar MAX/MIN (two or more arguments) to GREATEST/LEAST and leaves aggregates alone", () => {
+    expect(sqliteToMysql("SELECT MAX(a, b) AS m, MIN(COALESCE((SELECT 1), 0), 2) AS n")).toBe(
+      "SELECT GREATEST(a, b) AS m, LEAST(COALESCE((SELECT 1), 0), 2) AS n",
+    );
+    expect(sqliteToMysql("SELECT MAX(id) FROM cards")).toBe("SELECT MAX(id) FROM cards");
+  });
+
+  it("reads sqlite_sequence as the table's AUTO_INCREMENT counter", () => {
+    expect(sqliteToMysql("SELECT seq FROM sqlite_sequence WHERE name = 'cards'")).toBe(
+      "SELECT AUTO_INCREMENT AS seq FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cards'",
+    );
+  });
+
+  it("answers last_insert_rowid() with the id the connection's last insert took", async () => {
+    const { driver, dispose } = await freshDatabase();
+    try {
+      await driver.query("CREATE TABLE conf_rowid (id INTEGER PRIMARY KEY AUTOINCREMENT, s TEXT)", []);
+      await driver.query("INSERT INTO conf_rowid (s) VALUES ('a')", []);
+      const r = await driver.query<{ id: number | null }>("SELECT last_insert_rowid() AS id", []);
+      expect(Number(r.rows[0].id)).toBe(1);
+      await driver.query("INSERT INTO conf_rowid (s) VALUES ('b')", []);
+      const after = await driver.query<{ id: number | null }>("SELECT last_insert_rowid() AS id", []);
+      expect(Number(after.rows[0].id)).toBe(2);
+    } finally {
+      await dispose();
+    }
+  });
+
   it("passes unknown forms through unchanged so MySQL reports them", () => {
     expect(sqliteToMysql("SELECT sqlite_version_that_does_not_exist()")).toBe("SELECT sqlite_version_that_does_not_exist()");
   });

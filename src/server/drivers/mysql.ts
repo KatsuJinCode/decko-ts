@@ -43,8 +43,14 @@ export const MYSQL_SESSION_SETTINGS = [
  * engine issues; anything else passes through unchanged.
  */
 export function sqliteToMysql(sql: string): string {
-  const translated = outsideQuotes(sql, (part) =>
-    part
+  // SQLite's sequence counter for a table (`sqlite_sequence`) is the table's
+  // AUTO_INCREMENT counter on MySQL: the next id the table would hand out.
+  const withSequence = sql.replace(
+    /SELECT\s+seq\s+FROM\s+sqlite_sequence\s+WHERE\s+name\s*=\s*'([^']+)'/gi,
+    "SELECT AUTO_INCREMENT AS seq FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '$1'",
+  );
+  const translated = outsideQuotes(withSequence, (part) =>
+    scalarMinMax(part)
       // Words MySQL reserves that SQLite accepts as bare column names
       // (cards.key). Quoted unless already qualified by a table alias, or
       // part of a KEY clause: PRIMARY KEY, UNIQUE KEY, FOREIGN KEY, DUPLICATE
@@ -70,6 +76,29 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\bLIMIT\s+-1\b/gi, "LIMIT 18446744073709551615"),
   );
   return /^\s*CREATE\s+TABLE\b/i.test(translated) ? typeUntypedColumns(translated) : translated;
+}
+
+/**
+ * SQLite's MAX(a, b) and MIN(a, b) with two or more arguments are scalar
+ * functions; MySQL's are aggregates and take one argument. The scalar form is
+ * GREATEST / LEAST on MySQL. A call with one argument (the aggregate) is left
+ * as it is.
+ */
+function scalarMinMax(text: string): string {
+  return text.replace(/\b(MAX|MIN)\s*\(/gi, (match, fn: string, offset: number) => {
+    let depth = 0;
+    let topLevelComma = false;
+    for (let i = offset + match.length - 1; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === "(") depth++;
+      else if (ch === ")") {
+        depth--;
+        if (depth === 0) break;
+      } else if (ch === "," && depth === 1) topLevelComma = true;
+    }
+    if (!topLevelComma) return match;
+    return fn.toUpperCase() === "MAX" ? "GREATEST(" : "LEAST(";
+  });
 }
 
 /** Table-constraint keywords: a bare word starting with one of these is not a
@@ -186,10 +215,20 @@ export class MysqlDriver implements SQLDatabaseDriver {
     idsReusedAfterRollback: false,
   };
 
+  /** The id of the last row this connection inserted with an AUTO_INCREMENT
+   *  id: SQLite's last_insert_rowid() for the connection. MySQL has no such
+   *  function, so a statement that names it reads this value. */
+  private lastRowId: number | undefined;
+
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const [result] = await this.conn.query({ sql: sqliteToMysql(sql), values: params.map(toParam) });
+    const translated = sqliteToMysql(sql).replace(
+      /last_insert_rowid\(\)/gi,
+      this.lastRowId === undefined ? "NULL" : String(this.lastRowId),
+    );
+    const [result] = await this.conn.query({ sql: translated, values: params.map(toParam) });
     if (Array.isArray(result)) return { rows: result as T[], rowsAffected: 0 };
     const header = result as ResultSetHeader;
+    if (header.insertId > 0) this.lastRowId = header.insertId;
     return { rows: [], rowsAffected: header.affectedRows, lastInsertRowId: rowIdOrOmit(header.insertId) };
   }
 
