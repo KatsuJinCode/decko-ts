@@ -140,6 +140,15 @@ function cardAssetOutputUrl(ctx: ViewContext): string {
  * The CARD-level method keeps its port in cardAssetOutputUrl, which the
  * :not_found live branch calls. */
 const assetOutputUrlView: ViewFn = (ctx) => {
+  // The set's module includes Abstract::AssetOutputter (script/style set
+  // modules: set/type_plus_right/set/script.rb:1, style set), so on a card
+  // of those sets the bare call resolves to the outputter's card method
+  // (asset_outputter.rb:78), which answers "" when no output file exists.
+  // Any other card has no such method and raises as before.
+  if (ctx.fmt.card.setKeys.includes("TYPE_PLUS_RIGHT-set-Xstyle") ||
+    ctx.fmt.card.setKeys.includes("TYPE_PLUS_RIGHT-set-Xscript")) {
+    return cardAssetOutputUrl(ctx);
+  }
   const format = ctx.fmt as unknown as Record<string, unknown>;
   const method = format["asset_output_url"];
   if (typeof method === "function") return String(method.call(ctx.fmt));
