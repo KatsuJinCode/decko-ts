@@ -143,7 +143,7 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     expect(anchored.length).toBeGreaterThan(0);
   });
 
-  it("the non-html anchored registrations are exactly the three json census rows", () => {
+  it("the non-html anchored registrations are the three json rows and account's base raw view", () => {
     // Measured census pin. Ruby files each of these ONLY under
     // JsonFormat (json_format.rb:6), so their json dispatch is faithful
     // and no other format ever dispatched them (no json renderView
@@ -163,6 +163,9 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
       ),
     ).toEqual([
       "search self/search :search_box_complete key=json",
+      // Stock card-mod-account set/right/salt.rb declares raw outside a
+      // format block; the base registration is intentional.
+      "account right/salt :raw key=base",
       "carrierwave self/search :image_complete key=json",
       "api_key right/api_key :token key=json",
     ]);
@@ -217,6 +220,6 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     // counts ride every failure diff). A NEW key under an anchored set
     // fails here and names itself - the same re-adjudication signal.
     const keys = new Set(anchored.map((e) => e.formatKey));
-    expect([...keys].sort()).toEqual(["html", "json"]);
+    expect([...keys].sort()).toEqual(["base", "html", "json"]);
   });
 });

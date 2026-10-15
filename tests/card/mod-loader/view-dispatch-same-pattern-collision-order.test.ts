@@ -321,18 +321,19 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
     // (mod-loader.ts viewChain) headed by the follow module - NOT the
     // flat record, whose format-blind last-wins serves history's
     // html verb, which is exactly what this pin must not answer. The
-    // probe card's last act is an UPDATE act; the notify arm is act-blind
-    // on the render path, so the bytes are 'edite'+'d' - NOT the history
-    // anchor's edited-link and NOT the update-act's "updated".
+    // probe card's last act is an UPDATE act. Stock base_views.rb:117-119
+    // resolves notification_act from `act || card.acts.last`, so the
+    // notification verb is "updated", without the history HTML anchor.
     const entry = loader!.viewChain("ALL", "last_action", "email_text")[0]!;
     expect(entry.setModule).toBe("All::EmailText");
     const verbChain = loader!.viewChain("ALL", "last_action_verb", "email_text");
     expect(verbChain[0]!.setModule).toBe("All::Notify::BaseViews");
-    expect(verbChain[0]!.viewFn({ fmt: undefined as never } as never)).toBe("edited");
+    // Exercise the selected body through a real format below. The notify
+    // view consults its engine; an undefined-format fake is not a caller.
     const card = await storage!.engine.prepareItemForRender("Dispatch Order Trio Probe");
     expect(card).toBeDefined();
     const fmt = new RenderFormat(card!, storage!.engine, { formatName: "email_text" });
-    expect(fmt.renderView("last_action")).toBe("edited");
+    expect(fmt.renderView("last_action")).toBe("updated");
   });
 
   it("html :last_action_verb dispatches the history arm over the base arm (own format beats base)", () => {

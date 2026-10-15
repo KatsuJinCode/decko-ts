@@ -36,8 +36,11 @@ import {
 import {
   ModLoader,
   modEngineHost,
+  getDefaultModLoader,
+  setDefaultModLoader,
 } from "../../../src/card/mod-loader.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
 import {
   contextualizePath,
   storageTypeFromContent,
@@ -302,6 +305,20 @@ describe("image :content_changes (set/type/image/html_views.rb:49-51)", () => {
 });
 
 describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)", () => {
+  let formatLoader: ModLoader;
+  let previousLoader: ReturnType<typeof getDefaultModLoader>;
+  beforeAll(() => {
+    // The inherited wrap belongs to card-mod-format, not carrierwave.
+    // Load that actual provider rather than relying on an unconditional div.
+    previousLoader = getDefaultModLoader();
+    formatLoader = new ModLoader([{ manifest: cardModFormat }]);
+    formatLoader.load();
+    setDefaultModLoader(formatLoader);
+  });
+  afterAll(() => {
+    formatLoader.reset();
+    setDefaultModLoader(previousLoader);
+  });
   // The view's gem home is set/type/image.rb — a Type::Image set — so ONLY
   // an image-typed card dispatches the icon-sized core render. The
   // polymorphic device ("all/zz_carrierwave_polymorphic") is ALL-scoped by

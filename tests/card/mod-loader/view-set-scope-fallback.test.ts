@@ -158,6 +158,7 @@ beforeAll(async () => {
   // card is a JUNCTION row (left + right), the shape
   // card-mod-api_key.test.ts:712-722 seeds.
   await seedCard(s, { id: 300, name: "*html_message", codename: "html_message", typeId: 13 });
+  await seedCard(s, { id: 301, name: "*test context", codename: "test_context", typeId: 13 });
   await seedCard(s, { id: 302, name: "Message Probe", typeId: 2, dbContent: "note body" });
   await seedCard(s, { id: 303, leftId: 302, rightId: 300, typeId: 2 });
   await seedCard(s, { id: 601, name: "Plain Probe", dbContent: "plain body" });

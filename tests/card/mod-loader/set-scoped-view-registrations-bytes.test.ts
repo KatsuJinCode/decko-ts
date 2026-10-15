@@ -47,6 +47,10 @@ beforeAll(async () => {
   // The *html_message right card, then a compound card that carries it
   // (the junction row shape card-mod-api_key.test.ts:712-722 seeds).
   await seedCard(s, { id: 300, name: "*html_message", codename: "html_message", typeId: 13 });
+  // The real email contextualizer resolves this codename before checking
+  // whether the left card has a context field. An absent field is valid;
+  // an absent codename is an invalid incomplete-deck fixture.
+  await seedCard(s, { id: 301, name: "*test context", codename: "test_context", typeId: 13 });
   await seedCard(s, { id: 302, name: "Message Probe", typeId: 2, dbContent: "note body" });
   await seedCard(s, { id: 303, leftId: 302, rightId: 300, typeId: 2 });
   await seedCard(s, { id: 601, name: "Plain Probe", dbContent: "plain body" });

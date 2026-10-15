@@ -260,7 +260,10 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :search_box_complete on the JSON arm (search.rb:70-72 — the
       // navbox typeahead's JSON the engine now serves); no new format key
       // and no css/scss row. Measured on this tree.
-      ["html", 338],
+      // Four stock declarations recovered since the prior census:
+      // bootstrap type_plus_right/bootswatch_skin/colors input/core,
+      // layout self/head core, and follow type_plus_right/user/follow edit.
+      ["html", 342],
 
       ["js", 3],
       ["json", 8],
