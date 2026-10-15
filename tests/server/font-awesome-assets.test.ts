@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { serveFontAwesomeAsset } from "../../src/server/font-awesome-assets.js";
 import { configureFontAwesomeMode, FONT_AWESOME_ASSET_PREFIX, fontAwesomeHeadTag } from "../../src/card/render/font-awesome.js";
 import { handleBunnyEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-handler.js";
+import { serveBootstrapFontAsset } from "../../src/server/bootstrap-font-assets.js";
 
 const provenance = JSON.parse(readFileSync(new URL("../../vendor/fontawesome-free-6.7.2/provenance.json", import.meta.url), "utf8"));
 describe("pinned self-hosted Font Awesome assets", () => {
@@ -39,5 +40,20 @@ describe("pinned self-hosted Font Awesome assets", () => {
     expect(serveFontAwesomeAsset(request("css/%61ll.min.css"))!.status).toBe(404);
     expect(serveFontAwesomeAsset(request("css/all.min.css", "POST"))!.status).toBe(405);
     expect(serveFontAwesomeAsset(new Request("https://local.test/mod/unrelated.js"))).toBeUndefined();
+  });
+  it("serves the exact stock Bootstrap WOFF/WOFF2 referenced by compiled CSS", async () => {
+    const stock = JSON.parse(readFileSync(new URL("../../vendor/decko-bootstrap-fonts/provenance.json", import.meta.url), "utf8"));
+    for (const file of stock.files) {
+      const url = `https://local.test/mod/bootstrap/fonts/${file.path.split("/").at(-1)}?24e3eb84d0bcaf83d77f904c78ac1f47`;
+      const response = await handleBunnyEngineRequest(new Request(url), {});
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toMatch(/^font\/woff2?$/);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      expect(bytes.length).toBe(file.bytes);
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(file.sha256);
+      expect(serveBootstrapFontAsset(new Request(url, { method: "HEAD" }))!.body).toBeNull();
+      expect(serveBootstrapFontAsset(new Request(url, { method: "POST" }))!.status).toBe(405);
+    }
+    expect(serveBootstrapFontAsset(new Request("https://local.test/mod/bootstrap/fonts/other.woff2"))).toBeUndefined();
   });
 });

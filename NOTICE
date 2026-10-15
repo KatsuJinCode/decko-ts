@@ -241,3 +241,10 @@ private Kit credentials are included. See that directory's PROVENANCE.md.
 These exact assets come from card-mod-carrierwave0.20.0, part of the GPL-3.0-or-later
 Decko upstream attributed above. The directory records source filenames,
 sizes and SHA-256 hashes; the project's GPL LICENSE applies.
+
+### `vendor/decko-bootstrap-fonts/` — Bootstrap Icons fonts
+
+Exact font bytes from card-mod-bootstrap0.20.0's public files, from the
+MIT-licensed Bootstrap Icons project (https://github.com/twbs/icons).
+The upstream MIT copyright/license notice is retained in LICENSE.md;
+source filenames and hashes are recorded in provenance.json.

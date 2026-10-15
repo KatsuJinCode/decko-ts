@@ -128,6 +128,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 // change — only nested/delegated rescues go quiet.
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
+import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { configureFontAwesomeMode } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
@@ -3750,7 +3751,8 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
-  const vendorAsset = serveFontAwesomeAsset(new Request(url, { method: req.method }));
+  const vendorRequest = new Request(url, { method: req.method });
+  const vendorAsset = serveFontAwesomeAsset(vendorRequest) ?? serveBootstrapFontAsset(vendorRequest);
   if (vendorAsset !== undefined) {
     res.writeHead(vendorAsset.status, Object.fromEntries(vendorAsset.headers));
     res.end(req.method === "HEAD" ? undefined : Buffer.from(await vendorAsset.arrayBuffer()));
