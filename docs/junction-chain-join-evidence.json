@@ -1,0 +1,200 @@
+{
+  "local_query": {
+    "complete": true,
+    "source_sha256": "623f5fcbfdbdde6e38d6a5b179e33a23c04cd1f4ec35c85779f2ee5ee6c66afd",
+    "capture_sha256": "ad03277f39052ed4be1166067a215bdc12b256c84add94668500169c30821a39",
+    "parameter_count": 60,
+    "measurements": [
+      {
+        "stats": false,
+        "kind": "original",
+        "ms": 104179.52339999999,
+        "rows": 1,
+        "selected_cards": 0,
+        "byte_length": 26,
+        "rows_sha256": "c178aee1aa35e80854d0e151a8c475763669f08b6c2c2d130f76c30c8f39c4f7",
+        "identical_bytes": true,
+        "plan": [
+          "CO-ROUTINE __s",
+          "SCAN p1",
+          "SEARCH c2 USING INDEX cards_right_id_trash_index (right_id=? AND trash=?)",
+          "BLOOM FILTER ON p2 (trash=?)",
+          "SEARCH p2 USING AUTOMATIC PARTIAL COVERING INDEX (trash=?)",
+          "SEARCH c3 USING INDEX index_cards_on_left_id_and_right_id (left_id=? AND right_id=?)",
+          "BLOOM FILTER ON p3 (trash=?)",
+          "SEARCH p3 USING AUTOMATIC PARTIAL COVERING INDEX (trash=?)",
+          "SEARCH c4 USING INDEX index_cards_on_left_id_and_right_id (left_id=? AND right_id=?)",
+          "BLOOM FILTER ON p0 (id=? AND trash=?)",
+          "SEARCH p0 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "USE TEMP B-TREE FOR DISTINCT",
+          "SCAN __s"
+        ]
+      },
+      {
+        "stats": false,
+        "kind": "fixed",
+        "ms": 108.40490000000864,
+        "rows": 1,
+        "selected_cards": 0,
+        "byte_length": 26,
+        "rows_sha256": "c178aee1aa35e80854d0e151a8c475763669f08b6c2c2d130f76c30c8f39c4f7",
+        "identical_bytes": true,
+        "plan": [
+          "CO-ROUTINE __s",
+          "SCAN c4 USING INDEX cards_right_id_trash_index",
+          "BLOOM FILTER ON c3 (id=? AND trash=?)",
+          "SEARCH c3 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "BLOOM FILTER ON c2 (id=? AND trash=?)",
+          "SEARCH c2 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "BLOOM FILTER ON p0 (id=? AND trash=?)",
+          "SEARCH p0 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "BLOOM FILTER ON p1 (id=? AND trash=?)",
+          "SEARCH p1 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "BLOOM FILTER ON p2 (id=? AND trash=?)",
+          "SEARCH p2 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "BLOOM FILTER ON p3 (id=? AND trash=?)",
+          "SEARCH p3 USING AUTOMATIC PARTIAL COVERING INDEX (id=? AND trash=?)",
+          "USE TEMP B-TREE FOR DISTINCT",
+          "SCAN __s"
+        ]
+      },
+      {
+        "stats": true,
+        "kind": "original",
+        "ms": 145.03650000000198,
+        "rows": 1,
+        "selected_cards": 0,
+        "byte_length": 26,
+        "rows_sha256": "c178aee1aa35e80854d0e151a8c475763669f08b6c2c2d130f76c30c8f39c4f7",
+        "identical_bytes": true,
+        "plan": [
+          "CO-ROUTINE __s",
+          "SCAN p0",
+          "SEARCH c2 USING INDEX cards_left_id_index (left_id=?)",
+          "BLOOM FILTER ON c3 (left_id=?)",
+          "SEARCH c3 USING INDEX cards_left_id_index (left_id=?)",
+          "BLOOM FILTER ON c4 (left_id=?)",
+          "SEARCH c4 USING INDEX cards_left_id_index (left_id=?)",
+          "BLOOM FILTER ON p1 (id=?)",
+          "SEARCH p1 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p2 (id=?)",
+          "SEARCH p2 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p3 (id=?)",
+          "SEARCH p3 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "USE TEMP B-TREE FOR DISTINCT",
+          "SCAN __s"
+        ]
+      },
+      {
+        "stats": true,
+        "kind": "fixed",
+        "ms": 96.98500000000058,
+        "rows": 1,
+        "selected_cards": 0,
+        "byte_length": 26,
+        "rows_sha256": "c178aee1aa35e80854d0e151a8c475763669f08b6c2c2d130f76c30c8f39c4f7",
+        "identical_bytes": true,
+        "plan": [
+          "CO-ROUTINE __s",
+          "SCAN c4",
+          "BLOOM FILTER ON c3 (id=?)",
+          "SEARCH c3 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON c2 (id=?)",
+          "SEARCH c2 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p0 (id=?)",
+          "SEARCH p0 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p1 (id=?)",
+          "SEARCH p1 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p2 (id=?)",
+          "SEARCH p2 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "BLOOM FILTER ON p3 (id=?)",
+          "SEARCH p3 USING AUTOMATIC PARTIAL COVERING INDEX (id=?)",
+          "USE TEMP B-TREE FOR DISTINCT",
+          "SCAN __s"
+        ]
+      }
+    ],
+    "copied_sha256": "623f5fcbfdbdde6e38d6a5b179e33a23c04cd1f4ec35c85779f2ee5ee6c66afd",
+    "cards": 21670,
+    "sqlite": "3.53.4",
+    "schema_indexes_sha256": "7859ccb1b4fff75a29449df10cf0f66059bd63fc64bafc1bb82c8ffe6061ccb6",
+    "schema_indexes_applied": 16,
+    "source_sha256_after": "623f5fcbfdbdde6e38d6a5b179e33a23c04cd1f4ec35c85779f2ee5ee6c66afd"
+  },
+  "synthetic": {
+    "ts": {
+      "verdict": "pass",
+      "fixture": "synthetic-v1",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+      "summary": {
+        "rendering": {
+          "graded": 1754,
+          "pass": 1754,
+          "fail": 0
+        },
+        "semantics": {
+          "graded": 2389,
+          "pass": 2389,
+          "fail": 0
+        },
+        "persistence": {
+          "graded": 16,
+          "pass": 16,
+          "fail": 0
+        },
+        "side_effects": {
+          "graded": 19,
+          "pass": 19,
+          "fail": 0
+        }
+      },
+      "read_writes": {
+        "graded": 8,
+        "pass": 8,
+        "fail": 0
+      },
+      "other_tables": {
+        "graded": 12,
+        "pass": 12,
+        "fail": 0
+      }
+    },
+    "composed": {
+      "verdict": "pass",
+      "fixture": "synthetic-v1",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+      "summary": {
+        "rendering": {
+          "graded": 1754,
+          "pass": 1754,
+          "fail": 0
+        },
+        "semantics": {
+          "graded": 2389,
+          "pass": 2389,
+          "fail": 0
+        },
+        "persistence": {
+          "graded": 16,
+          "pass": 16,
+          "fail": 0
+        },
+        "side_effects": {
+          "graded": 19,
+          "pass": 19,
+          "fail": 0
+        }
+      },
+      "read_writes": {
+        "graded": 8,
+        "pass": 8,
+        "fail": 0
+      },
+      "other_tables": {
+        "graded": 12,
+        "pass": 12,
+        "fail": 0
+      }
+    }
+  }
+}

@@ -4464,13 +4464,18 @@ export class RenderEngine implements RenderEngineLike {
           const asks = byDepth.get(depth)!;
           // c<depth> is the asked card, c<n> its left junction of depth n down
           // to c2; p0 is c2's left, p<n> (n >= 1) is c<n+1>'s right.
+          // Keep the asked card outermost, then follow primary keys. Without
+          // planner statistics SQLite can otherwise start with independent
+          // part tables and form a large cross product before testing the
+          // OR-of-key-tuples. CROSS JOIN fixes loop order without changing
+          // predicates or requiring ANALYZE on an existing deck.
           const joins: string[] = [];
           for (let n = depth - 1; n >= 2; n--) {
-            joins.push(`  JOIN cards c${n} ON c${n}.id = c${n + 1}.left_id AND c${n}.trash = 0\n`);
+            joins.push(`  CROSS JOIN cards c${n} ON c${n}.id = c${n + 1}.left_id AND c${n}.trash = 0\n`);
           }
-          joins.push(`  JOIN cards p0 ON p0.id = c2.left_id AND p0.trash = 0\n`);
+          joins.push(`  CROSS JOIN cards p0 ON p0.id = c2.left_id AND p0.trash = 0\n`);
           for (let n = 1; n < depth; n++) {
-            joins.push(`  JOIN cards p${n} ON p${n}.id = c${n + 1}.right_id AND p${n}.trash = 0\n`);
+            joins.push(`  CROSS JOIN cards p${n} ON p${n}.id = c${n + 1}.right_id AND p${n}.trash = 0\n`);
           }
           const clause =
             "(" + Array.from({ length: depth }, (_, n) => `p${n}."key" COLLATE NOCASE = ?`).join(" AND ") + ")";
