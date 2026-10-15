@@ -19,18 +19,28 @@ structure, form fields), the mail sent and the row delta in the card tables.
 - Comparison: 48 / 51 graded journeys pass (0 not graded: a journey that fails on the reference is not graded)
 
 The reference ran on Ruby 3.4.11; the declared oracle runtime is Ruby 3.3
-(`docs/parity-method.md`). Ruby 3.4 changed `Hash#inspect` from `{"k"=>v}` to
-`{"k" => v}`, and the debug-exceptions page that stock Decko shows for a keyword
-search on SQLite prints the request parameters with it. The port writes the
-Ruby 3.3 shape, so on a newer Ruby those observations differ in that line.
+(`docs/parity-method.md`).
 
-Open question for the release lead: the port's debug-exceptions page (the
-three keyword-search journeys in the table below) is not rendered by the port's own
-view code. The Node host fills a copy of the page Ruby recorded
-(`reference-harness/browser/templates/rails-debug-exceptions.html`) with the
-request parameters in Ruby's inspect shape and the port's own V8 stack frames,
-and the comparison collapses the stack-frame region on both sides (N6). No
-other journey reaches that page.
+These counts predate a change to how both sides answer an unhandled exception,
+and are not yet re-measured. In that run the Ruby server used development error
+handling, so a keyword search on SQLite (which raises in card's
+`AbstractAdapter#match`) answered with Rails' debug-exceptions page, and the
+port's host filled a recorded copy of that page. Both sides now run with Decko's
+production error handling. The Ruby server sets `rescue_all_in_controller` and
+clears `consider_all_requests_local`, as `tools/parity-side-effects/ruby/drive.rb`
+does. Stock Decko then shows the search card's `:server_error` view under the
+page layout with status 500. The port's host renders the same page through the
+engine. The recorded template and the comparison rule written only for it
+(N6 at journey grade) have been removed.
+
+What has been re-measured since: on 2026-10-14, `navbox-keyword-search` was
+recorded on Ruby with production error handling (`run-journeys.mjs --filter
+'^navbox-keyword-search$'`) and on the port, and `compare-journeys.mjs` passes
+it on every item. The `navbox-paging` and `search-filtered-anonymous` journeys
+were run on the port only. Both answered the same production page, but they
+have no fresh Ruby recording yet. The full suite has not been rerun since the
+change. The table below is the earlier run, and its three keyword-search rows
+describe the old debug page.
 
 Per graded item:
 
