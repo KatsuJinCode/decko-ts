@@ -1965,6 +1965,18 @@ export class RenderEngine implements RenderEngineLike {
     if (view === "search_box_complete") {
       await this.prepareSearchBoxComplete(rootCard);
     }
+    // The board's ACCOUNT-TAB visibility (card-mod-account
+    // set/abstract/account_holder.rb:139-141 `show_account_tab?` =
+    // `card.account?` = `account.real?`, account_holder.rb:5-7
+    // `fetch :account, new: {}`): the +*account junction is reachable only
+    // through the card's left_id, so no reference closure reaches it and
+    // the sync tab_visibility walk could not see the row. Seat it here, on
+    // the two views whose root draws the tab surface (:board and its
+    // :cardboard alias). A card with no account row warms nothing
+    // (prepareItemForRender undefined on the miss) and the tab stays off.
+    if (view === "board" || view === "cardboard") {
+      await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+    }
     // A junction root's OWN field rows sit in no reference closure (a
     // subcard is reachable only through its left_id), and a CODED core's
     // nests are runtime-built - the account core's labeled rows emit
