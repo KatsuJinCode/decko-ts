@@ -14,11 +14,19 @@ const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON, "utf8"));
 const { startMockHranaServer } = await fromDist("tests/server/drivers/mock-hrana-server.js");
 const { handleBunnyEngineRequest } = await fromDist("deploy/bunny-worker-src/bunny-edge-engine-handler.js");
 const { setCaptureWallClock } = await fromDist("src/card/wall-clock.js");
+const { LocalSqliteDriver } = await fromDist("src/server/drivers/local-sqlite.js");
+const { runAuthMigrations } = await fromDist("src/card/auth/migrations.js");
 const { DatabaseSync } = await import("node:sqlite");
 const db = new DatabaseSync(process.env.HARNESS_DECK);
 try {
   db.exec("CREATE TABLE IF NOT EXISTS deck_data_version (id INTEGER PRIMARY KEY, version INTEGER NOT NULL); INSERT OR IGNORE INTO deck_data_version (id,version) VALUES (1,0)");
 } finally { db.close(); }
+// The Ruby fixture predates the port's session table. Apply the real, shared
+// auth migration, just as provisioning does; do not manufacture session rows.
+const provisioningDriver = new LocalSqliteDriver({ path: process.env.HARNESS_DECK });
+try {
+  await runAuthMigrations(provisioningDriver, { migrationsDir: path.join(repo, "db", "migrations") });
+} finally { provisioningDriver.close(); }
 setCaptureWallClock(new Date(spec.clock));
 const hrana = await startMockHranaServer({ path: process.env.HARNESS_DECK });
 const origin = `http://127.0.0.1:${port}`;
