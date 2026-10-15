@@ -159,6 +159,23 @@ async function setEditor(page, name, value) {
   return done;
 }
 
+/**
+ * A sign-in step has succeeded only when the page the browser now shows
+ * offers the signed-in user's Sign out link (the navbar's `a.signout-link`
+ * on both engines). A sign-in refused on either side leaves that link out,
+ * and the step fails here with the actor's name, so the journey records the
+ * failed sign-in and does not grade later pages as anonymous.
+ */
+async function assertSignedIn(page, label, actor) {
+  const link = page.locator("a.signout-link").first();
+  try {
+    await link.waitFor({ state: "attached", timeout: STEP_TIMEOUT });
+  } catch {
+    const url = page.url();
+    throw new Error(`sign-in as ${label} (${actor.card ?? actor.email}) did not take: no Sign out link at ${url}`);
+  }
+}
+
 async function runStep(ctx, step) {
   const { page, fixtureDir, actors } = ctx;
   const [kind] = Object.keys(step).filter((k) => k !== "note");
@@ -182,6 +199,11 @@ async function runStep(ctx, step) {
           maxRedirects: 0,
         });
         await page.goto(ctx.base + "/", { waitUntil: "load", timeout: STEP_TIMEOUT });
+        // A sign-in that did not take leaves the deck answering as anonymous
+        // on every later request. The step then fails here, on THIS side, so
+        // the record says "the sign-in failed" rather than grading the rest
+        // of the journey as anonymous pages.
+        await assertSignedIn(page, arg, a);
         break;
       }
       await page.goto(ctx.base + "/*signin", { waitUntil: "load", timeout: STEP_TIMEOUT });
@@ -194,6 +216,7 @@ async function runStep(ctx, step) {
       await page
         .waitForURL((u) => !decodeURIComponent(u.pathname).endsWith("*signin"), { timeout: STEP_TIMEOUT })
         .catch(() => {});
+      await assertSignedIn(page, arg, a);
       break;
     }
     case "click":

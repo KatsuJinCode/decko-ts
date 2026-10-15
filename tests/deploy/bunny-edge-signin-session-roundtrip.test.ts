@@ -46,6 +46,7 @@ import { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import { sha256Hex } from "../../src/card/auth/session-token.js";
+import { DeckoName } from "../../src/card/name.js";
 import {
   generatedEmail,
   generatedPassword,
@@ -113,7 +114,7 @@ function insertCodenameCard(driver: BunnyDbDriver, id: number, codename: string,
         created_at, updated_at, creator_id, updater_id,
         read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
      VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, 1, NULL)`,
-    [id, name, name.toLowerCase().replace(/[^a-z0-9]+/g, "_"), codename, TS, TS],
+    [id, name, DeckoName.parse(name).key, codename, TS, TS],
   );
 }
 
@@ -130,8 +131,8 @@ function insertCompoundCard(
        (id, name, key, codename, left_id, right_id, current_revision_id,
         created_at, updated_at, creator_id, updater_id,
         read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-     VALUES (?, ?, NULL, NULL, ?, ?, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, 1, ?)`,
-    [id, name, leftId, rightId, TS, TS, content],
+     VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, 1, ?)`,
+    [id, name, DeckoName.parse(name).key, leftId, rightId, TS, TS, content],
   );
 }
 
@@ -173,6 +174,27 @@ function signinFormRequest(
     "success[redirect]": "true",
     "success[mark]": "*previous",
     "card[subcards][+*email][content]": email,
+    "card[subcards][+*password][content]": password,
+  }).toString();
+  return new Request(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", ...extraHeaders },
+    body,
+  });
+}
+
+/** The account card's save form: the +*password subcard under the
+ *  +*account junction, with the Rails method override and a success target,
+ *  as the account edit form posts it. `extraHeaders` carries the session
+ *  cookie the write rides. */
+function accountPasswordFormRequest(
+  password: string,
+  url: string,
+  extraHeaders: Record<string, string> = {},
+): Request {
+  const body = new URLSearchParams({
+    "_method": "patch",
+    "success[mark]": "_self",
     "card[subcards][+*password][content]": password,
   }).toString();
   return new Request(url, {
@@ -339,6 +361,75 @@ describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
     expect(await sessions.revokeSession(token)).toBe(true);
     expect(await sessions.lookupSession(token)).toBeNull();
   });
+
+  it("the session that changes the account's password keeps working on the edge; the account's other session ends", async () => {
+    // The account card's save form, as Decko's account form posts it (the
+    // +*password subcard under the +*account junction), carried by the
+    // session a fresh sign-in mints. The other session for the same account
+    // is a second sign-in, so the check is over two REAL rows.
+    const first = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const firstToken = cookieToken(first!.headers.get("set-cookie"));
+    const second = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const secondToken = cookieToken(second!.headers.get("set-cookie"));
+    expect(secondToken).not.toBe(firstToken);
+    const sessions = new SessionStore({ driver });
+    expect(await sessions.lookupSession(firstToken)).toEqual({ id: HOLDER.id, name: HOLDER.name });
+
+    const newPassword = generatedPassword("bunny-edge-changed");
+    const saved = await updatePasswordThroughTheEdge(newPassword, firstToken);
+    expect(saved.ok, JSON.stringify(saved)).toBe(true);
+
+    // The session that made the change still resolves; the account's other
+    // session does not (docs/SECURITY.md divergence 4).
+    expect(await sessions.lookupSession(firstToken)).toEqual({ id: HOLDER.id, name: HOLDER.name });
+    expect(await sessions.lookupSession(secondToken)).toBeNull();
+
+    // The later tests sign in with the seeded password: put the seeded digest back.
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+  });
+
+  /** The account card's +*password save through the edge surface. The
+   *  engine's own save path is what is under test, so the write rides the
+   *  UPDATE branch: the account card exists and carries a type, exactly as
+   *  a deck built by a setup does. Returns the engine's own result so a
+   *  refused save reports its own reason. */
+  async function updatePasswordThroughTheEdge(
+    password: string,
+    token: string,
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    // The save's type resolution (type-resolution.ts:391-407) walks the
+    // *all+*default rule card for the default type (card/type.rb:3-5); the
+    // synthetic substrate seeds none, so the rule and the type it names are
+    // added here — the same rows a deck's seed carries.
+    await insertCodenameCard(driver, 9006, "all", "*all");
+    await insertCodenameCard(driver, 9007, "default", "*default");
+    await insertCodenameCard(driver, 9008, "cardtype", "*cardtype");
+    // The holder is a User (type card codename "user"), so the account
+    // field override (read-override.ts ownAccountVerdict) lets the holder
+    // write their own +*account subcards: Ruby's own_account? (account_field.rb).
+    await insertCodenameCard(driver, 9011, "user", "User");
+    await driver.query("UPDATE cards SET type_id = 9011 WHERE id = ?", [HOLDER.id]);
+    await insertCompoundCard(driver, 9009, "*all+*default", 9006, 9007, null);
+    await driver.query("UPDATE cards SET type_id = 9008 WHERE id = 9009", []);
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      accountPasswordFormRequest(password, `https://edge.example/update/${HOLDER.name}+*account`, {
+        cookie: `decko_ts_session=${token}`,
+      }),
+      { ...ARMED, DECKO_ORIGIN_CHECK: "off" },
+    );
+    if (response === null) return { ok: false, reason: "no response" };
+    if (response.status >= 400) return { ok: false, reason: `status ${response.status}: ${(await response.clone().text()).slice(0, 300)}` };
+    return { ok: true };
+  }
 
   it("a wrong password writes NO session row (the failure ladder short-circuits)", async () => {
     const before = Number(
