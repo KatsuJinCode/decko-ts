@@ -5,7 +5,7 @@
 // loads one itself, the Ruby adapter needs the deck loaded first, see
 // reference-harness/adapters/ruby-mysql). Every op is compared under the
 // grader's normalization (normalizeRender for renders, stable JSON for
-// semantics), with the per-request random data-slot-id blanked.
+// semantics). N1 handles the per-request random data-slot-id value.
 //
 //   node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ruby-mysql/adapter.json \
 //        --fixture reference-harness/fixtures/synthetic-v1 --out <rubyOut> --kinds render,semantics
@@ -46,9 +46,20 @@ const loadGz = (p) =>
     .split("\n")
     .filter(Boolean)
     .map((l) => JSON.parse(l));
-const blankSlot = (s) => s.replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, "data-slot-id=X");
 const key = (kind, r) =>
-  kind === "render" ? blankSlot(JSON.stringify(normalizeRender(r.result))) : JSON.stringify(stable(r.result));
+  kind === "render" ? JSON.stringify(normalizeRender(r.result)) : JSON.stringify(stable(r.result));
+
+function indexRecords(records, label) {
+  const indexed = new Map();
+  for (const record of records) {
+    if (typeof record.id !== "string" || !record.id || !Object.hasOwn(record, "result")) {
+      throw new Error(`${label}: every record must have an id and result`);
+    }
+    if (indexed.has(record.id)) throw new Error(`${label}: duplicate operation ${record.id}`);
+    indexed.set(record.id, record);
+  }
+  return indexed;
+}
 
 const expected = {
   render: loadGz(resolve(fixture, "expected/render.jsonl.gz")),
@@ -57,11 +68,12 @@ const expected = {
 
 const out = {};
 for (const kind of ["render", "semantics"]) {
-  const R = new Map(load(resolve(rubyOut, `${kind}.jsonl`)).map((r) => [r.id, r]));
-  const P = new Map(load(resolve(portOut, `${kind}.jsonl`)).map((r) => [r.id, r]));
-  const E = new Map(expected[kind].map((r) => [r.id, r]));
+  const R = indexRecords(load(resolve(rubyOut, `${kind}.jsonl`)), `ruby ${kind}`);
+  const P = indexRecords(load(resolve(portOut, `${kind}.jsonl`)), `port ${kind}`);
+  const E = indexRecords(expected[kind], `expected ${kind}`);
   const stats = { ops: E.size, ruby_ran: R.size, port_ran: P.size, ruby_eq_port: 0, ruby_eq_expected: 0, port_eq_expected: 0 };
   const differs = [];
+  const mismatches = [];
   for (const [id, e] of E) {
     const r = R.get(id);
     const p = P.get(id);
@@ -72,10 +84,24 @@ for (const kind of ["render", "semantics"]) {
     const rp = kr === kp;
     const pe = kp === ke;
     if (rp) stats.ruby_eq_port++;
+    else mismatches.push(id);
     if (kr === ke) stats.ruby_eq_expected++;
     if (pe) stats.port_eq_expected++;
     if (rp && !pe) differs.push(id);
   }
-  out[kind] = { ...stats, ruby_eq_port_expected_differs: differs.length, sample: differs.slice(0, 10) };
+  out[kind] = {
+    ...stats,
+    ruby_eq_port_expected_differs: differs.length,
+    sample: differs.slice(0, 10),
+    mismatches,
+    missing_ruby: [...E.keys()].filter((id) => !R.has(id)),
+    missing_port: [...E.keys()].filter((id) => !P.has(id)),
+    extra_ruby: [...R.keys()].filter((id) => !E.has(id)),
+    extra_port: [...P.keys()].filter((id) => !E.has(id)),
+  };
 }
 console.log(JSON.stringify(out, null, 1));
+process.exitCode = Object.values(out).every((stats) =>
+  stats.ruby_ran === stats.ops && stats.port_ran === stats.ops &&
+  stats.ruby_eq_port === stats.ops && stats.extra_ruby.length === 0 && stats.extra_port.length === 0,
+) ? 0 : 1;
