@@ -76,6 +76,7 @@ export function validateJourneyEvidence(args, expected, actual) {
       const p = result.provenance;
       if (!p || p.format !== "decko-browser-evidence/1") { problems.push(`${prefix}: missing provenance`); continue; }
       for (const [key, value] of Object.entries(hashes).filter(([key]) => key !== "contractsSha256")) if (p[key] !== value) problems.push(`${prefix}: ${key} mismatch`);
+      if (p.contractsSha256 && p.contractsSha256 !== hashes.contractsSha256) problems.push(`${prefix}: captured product contract hash differs from evaluated policy`);
       if (p.source?.dirty !== false) problems.push(`${prefix}: source was dirty`);
       if (!/^[a-f0-9]{40}$/.test(p.source?.commit ?? "")) problems.push(`${prefix}: invalid source commit`);
       if (side === "actual" && p.source?.commit !== candidate) problems.push(`${prefix}: wrong candidate commit`);

@@ -35,6 +35,7 @@ export function captureProvenance(args, engine) {
     artifacts: { distSha256: treeDigest(path.join(repo, "dist")) },
     fixtureSha256: treeDigest(path.resolve(args.fixture)),
     journeysSha256: sha256(readFileSync(args.journeys)),
+    contractsSha256: existsSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url)) ? sha256(readFileSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url))) : null,
     engineSha256: sha256(readFileSync(args.engine)), engine: engine.name,
     selection: { filter: args.filter ?? null, shard: args.shard ?? "0/1" },
     runner: { node: process.version, platform: process.platform, editorSettle: process.env.HARNESS_EDITOR_SETTLE ?? null, offline: process.env.HARNESS_OFFLINE ?? null },
