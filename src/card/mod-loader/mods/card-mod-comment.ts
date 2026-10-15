@@ -54,7 +54,7 @@
 //   the format comment_author's two arms (commentWithSignature /
 //   commentSignature / commentAuthorFor below).
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
+import { str, type ViewContext, type ViewFn } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
 import type { DeckoModManifest, ModEventCard } from "../mod-manifest.js";
@@ -223,14 +223,15 @@ const discussionOpenView: ViewFn = (ctx) => {
   return callBaseView(ctx, BASE_OPEN, "open");
 };
 
-/** discussion.rb:1-6 view :open_content, unknown: true. The html format
- *  has no base :open_content view; super() would raise NoMethodError in
- *  Ruby for a discussion card rendered at this view too. The headless
- *  port preserves the semantic shape - show comment_box and emit empty
- *  bytes when no base view exists. */
+/** discussion.rb:1-6 view :open_content, unknown: true. `voo.show
+ *  :comment_box; super()`; the html base's `open_content` is `_render_core`
+ *  (card-mod-format set/all/base.rb:92-94), which dispatches to the most
+ *  specific `core` - this card's own (discussion.rb:8-10 core), so the
+ *  comment_box the show registered is in the answer. `_render_core` is an
+ *  UNDERSCORE call (skip_perms), so the core renders as requested. */
 const discussionOpenContentView: ViewFn = (ctx) => {
   ctx.voo.showViz("comment_box");
-  return callBaseView(ctx, BASE_INPUT ?? HTML_VIEWS["content"], "open_content");
+  return str(ctx.fmt.renderView("core", { skip_perms: true }));
 };
 
 /** discussion.rb:1-6 view :titled, unknown: true. */

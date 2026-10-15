@@ -221,7 +221,7 @@ import type {
 } from "../../follow/follow-render-seam.js";
 import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
-import { followButton } from "./card-mod-edit.js";
+import { editModalWrapper, followButton } from "./card-mod-edit.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -316,7 +316,9 @@ const userFollowOneLineContentView: ViewFn = () => '<div class="text-muted"></di
 // :open view dispatch is a single renderView call.
 // ---------------------------------------------------------------------------
 
-const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
+// The override's body is `render :open`; the inherited edit wrap (modal, see
+// editModalWrapper) is applied around it, so the answer is the modal.
+const userFollowEditView: ViewFn = ({ fmt }) => editModalWrapper(fmt, str(fmt.renderView("open")));
 
 // ---------------------------------------------------------------------------
 // set/self/follow_defaults.rb:24-30 view :confirm_update_all.
