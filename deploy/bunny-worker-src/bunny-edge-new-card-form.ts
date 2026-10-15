@@ -71,17 +71,17 @@ const MAIN_SUCCESS_ATTR = '{"redirect":true}'.replace(/"/g, "&quot;");
 /** The signup form's account-field editors, modeled byte-for-byte on the
  *  recorded sign-in form's shapes (signin-core-form-view.ts
  *  signinFieldGroup — the SAME account-mod editor partials render both
- *  forms), keyed to the UNNAMED new card's subcards ("+*email" /
- *  "+*password"; the structural fallbacks are the account mod's own
+ *  forms), nested under the new holder's +*account subcard as
+ *  account_holder.rb account_formgroups fields_for does. The structural fallbacks are the account mod's own
  *  invariants: both rights are Phrase-typed, type_id 52). */
 function accountFieldGroup(field: "email" | "password"): string {
   const safeRight = field === "email" ? "Xemail" : "Xpassword";
   const setKeys =
     `ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-${safeRight} TYPE_PLUS_RIGHT-rich_text-${safeRight}`;
-  const contentName = `card[subcards][+*${field}][content]`;
-  const contentId = `card_subcards___${field}_content`;
-  const typeIdName = `card[subcards][+*${field}][type_id]`;
-  const typeIdId = `card_subcards___${field}_type_id`;
+  const contentName = `card[subcards][+*account][subcards][+*${field}][content]`;
+  const contentId = `card_subcards___account_subcards___${field}_content`;
+  const typeIdName = `card[subcards][+*account][subcards][+*${field}][type_id]`;
+  const typeIdId = `card_subcards___account_subcards___${field}_type_id`;
   const subName = `+*${field}`;
   const label =
     `<label for="${contentId}"><span class="card-title" title="${field}">${field}</span>\n` +

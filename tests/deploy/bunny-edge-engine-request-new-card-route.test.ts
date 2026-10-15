@@ -143,8 +143,8 @@ describe("bunny edge — the /new/:type arm (route-gaps lane)", () => {
       // The account formgroups: the oracle-pinned email/password editor
       // shapes (the same editors the sign-in form capture pins), keyed to
       // the unnamed new card's subcards.
-      expect(body).toContain(`name="card[subcards][+*email][content]"`);
-      expect(body).toContain(`name="card[subcards][+*password][content]"`);
+      expect(body).toContain(`name="card[subcards][+*account][subcards][+*email][content]"`);
+      expect(body).toContain(`name="card[subcards][+*account][subcards][+*password][content]"`);
       expect(body).toContain(`_pw-input`);
       // The buttons (standard_create_button + standard_cancel_button).
       expect(body).toContain(`create-submit-button`);

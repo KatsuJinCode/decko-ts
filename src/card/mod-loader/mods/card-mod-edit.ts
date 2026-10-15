@@ -1396,7 +1396,19 @@ export const contentFormgroupsView: ViewFn = (ctx) => {
  *  _render_content_formgroups, _render(voo.buttons_view || :edit_buttons)])
  *  - newline-joined, the nil dropped. home_view rides the edit_type_row
  *  voo (the edit_type_row slot JSON carries it). */
-export const editFormView: ViewFn = ({ fmt, voo }) => {
+// all/editing.rb's nil helper stubs are overridden by self/signin.rb:191-197.
+// These are form helpers, not views: emitting only the visible email editor
+// causes the browser to post a normal login with a missing password.
+function editSuccess(ctx: ViewContext): Record<string, string> | undefined {
+  return ctx.fmt.card.record.codename === "signin" ? { view: "reset_password_success" } : undefined;
+}
+function editViewHidden(ctx: ViewContext): string | undefined {
+  return ctx.fmt.card.record.codename === "signin"
+    ? hiddenFieldTag("card[trigger]", "send_reset_password_token") : undefined;
+}
+
+export const editFormView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
   voo.showViz("edit_type_row"); // the view body's voo.show :edit_type_row
   voo.hide("edit_type_row"); // edit_form's own hide - first-write no-op
   // edit_content.rb:2-7 view :edit_form, wrap: :slot: `voo.show
@@ -1410,9 +1422,10 @@ export const editFormView: ViewFn = ({ fmt, voo }) => {
     ` action="/update/${fmt.urlKey()}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    successTags(editSuccess(ctx)) +
     fmt.withNestMode("edit", () =>
       output([
-        undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
+        editViewHidden(ctx),
       // The form body's renders are UNDERSCORE calls in Ruby
       // (edit_content.rb:20-22 `_render_edit_type_row`,
       // `_render_content_formgroups`): skip_perms rides the render args
@@ -2776,7 +2789,8 @@ const editInlineButtonsView: ViewFn = ({ fmt, voo }) =>
  *  edit_success (editing.rb:31-33 stub) is nil -> success_tags "".
  *  The slot wrap is the view-config wrap (post-body: the JSON
  *  carries hide:[name_formgroup, type_formgroup]). */
-const editInlineView: ViewFn = ({ fmt, voo }) => {
+const editInlineView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
   fmt.addNameContext();
   voo.hide("name_formgroup");
   voo.hide("type_formgroup");
@@ -2785,8 +2799,9 @@ const editInlineView: ViewFn = ({ fmt, voo }) => {
     ` action="/update/${fmt.urlKey()}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    successTags(editSuccess(ctx)) +
     output([
-      undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
+      editViewHidden(ctx),
       fmt.renderView("content_formgroups"),
       fmt.renderView(
         voo.opts["buttons_view"] === undefined

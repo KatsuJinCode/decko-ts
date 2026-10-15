@@ -49,6 +49,20 @@ async function snapshot() {
 }
 const post = (pathname: string, fields: Record<string, string>, cookie?: string) => fetch(base + pathname, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json", origin: base, ...(cookie ? { cookie } : {}) }, body: new URLSearchParams(fields) });
 const signin = (email: string, password: string) => post("/update/*signin", { "card[subcards][+*email][content]": email, "card[subcards][+*password][content]": password });
+// Submit the actual rendered controls. Hidden routing fields must come from
+// the application form, so a working hand-authored request cannot mask a broken UI.
+function formFields(html: string, action: string): Record<string, string> {
+  // Layout chrome also contains hidden new/signin forms. The focal form
+  // follows them in the document, as the real browser's visible controls do.
+  const form = [...html.matchAll(/<form\b[^>]*>[\s\S]*?<\/form>/g)].filter(([value]) => value.includes(`action="${action}"`)).at(-1)?.[0];
+  expect(form, `rendered form ${action}`).toBeDefined();
+  const fields: Record<string, string> = {};
+  for (const [input] of form!.matchAll(/<input\b[^>]*>/g)) {
+    const name = /\bname="([^"]+)"/.exec(input)?.[1];
+    if (name) fields[name] = /\bvalue="([^"]*)"/.exec(input)?.[1] ?? "";
+  }
+  return fields;
+}
 
 it("refuses missing mail without writes; delivers real verification tokens through the handler and authenticates a fresh session", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
@@ -56,7 +70,15 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
   expect(cookie).toMatch(/decko_ts_session=[^;]+/);
   const signupId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='signup'", [])).rows[0].id;
-  const form = { "card[name]": "Edge Mail Signup", "card[type_id]": String(signupId), "card[subcards][+*account][subcards][+*email][content]": "edge.signup@example.test", "card[subcards][+*account][subcards][+*password][content]": "Edge signup pass 7#" };
+  const signupPage = await fetch(base + "/new/Sign_up");
+  expect(signupPage.status).toBe(200);
+  const form = formFields(await signupPage.text(), "/card/create");
+  expect(form["card[type_id]"]).toBe(String(signupId));
+  expect(Object.hasOwn(form, "card[subcards][+*account][subcards][+*email][content]")).toBe(true);
+  expect(Object.hasOwn(form, "card[subcards][+*account][subcards][+*password][content]")).toBe(true);
+  form["card[name]"] = "Edge Mail Signup";
+  form["card[subcards][+*account][subcards][+*email][content]"] = "edge.signup@example.test";
+  form["card[subcards][+*account][subcards][+*password][content]"] = "Edge signup pass 7#";
   const before = await snapshot();
   const missing = await post("/card/create", form, cookie);
   expect(missing.status).toBe(422);
@@ -98,11 +120,12 @@ it("refuses missing mail without writes; delivers real verification tokens throu
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();
-  const fields = {
-    _method: "patch", "success[view]": "reset_password_success",
-    "card[trigger]": "send_reset_password_token",
-    "card[subcards][+*email][content]": "mira.member@example.test",
-  };
+  const resetPage = await fetch(base + "/*signin/edit");
+  expect(resetPage.status).toBe(200);
+  const fields = formFields(await resetPage.text(), "/update/*signin");
+  expect(fields["card[trigger]"]).toBe("send_reset_password_token");
+  expect(fields["success[view]"]).toBe("reset_password_success");
+  fields["card[subcards][+*email][content]"] = "mira.member@example.test";
   const crossSite = await fetch(base + "/update/*signin", {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://attacker.example" },
     body: new URLSearchParams(fields), redirect: "manual",
