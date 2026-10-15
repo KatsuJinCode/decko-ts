@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { runAuthMigrations } from "../../src/card/auth/index.js";
+import { ensureFreshnessStamp } from "../../src/server/freshness-stamp.js";
 import { CaptureTransport } from "../../src/card/notify/transport.js";
 import { handleBunnyEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-handler.js";
 import type { WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
@@ -23,6 +24,7 @@ beforeAll(async () => {
   hrana = await startMockHranaServer({ path: database });
   driver = new BunnyDbDriver({ url: hrana.url, authToken: "owned-test" });
   await runAuthMigrations(driver);
+  await ensureFreshnessStamp(driver);
   const env = { DECKO_DB_URL: hrana.url, DECKO_DB_TOKEN: "owned-test", DECKO_WRITE_PATH: "1", DECKO_EDGE_DECK_PROFILE: "stock" };
   http = createServer(async (req, res) => {
     try {
@@ -90,5 +92,48 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const fresh = await signin("edge.signup@example.test", "Edge signup pass 7#");
   expect(fresh.status).toBe(303);
   expect(fresh.headers.get("set-cookie")).toMatch(/decko_ts_session=[^;]+/);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
+it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
+  services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
+  outbox.drain();
+  const fields = {
+    _method: "patch", "success[view]": "reset_password_success",
+    "card[trigger]": "send_reset_password_token",
+    "card[subcards][+*email][content]": "mira.member@example.test",
+  };
+  const crossSite = await fetch(base + "/update/*signin", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://attacker.example" },
+    body: new URLSearchParams(fields), redirect: "manual",
+  });
+  expect(crossSite.status).toBe(403);
+  expect(outbox.count()).toBe(0);
+  const requested = await post("/update/*signin", fields);
+  expect(requested.status).toBe(200);
+  expect(await requested.json()).toMatchObject({ redirect: `${base}/*signin/reset_password_success` });
+  const mail = outbox.drain().filter(m => m.to === "mira.member@example.test" && /reset/i.test(m.subject));
+  expect(mail).toHaveLength(1);
+  const link = mail[0].textBody.match(/https?:\/\/[^\s<>]+/)![0];
+  const confirmed = await fetch(link, { redirect: "manual" });
+  expect(confirmed.status).toBe(303);
+  expect(confirmed.headers.get("location")).toBe(`${base}/Mira_Member+*account/edit`);
+  const cookie = confirmed.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  expect(cookie).toMatch(/decko_ts_session=[^;]+/);
+  const form = await fetch(confirmed.headers.get("location")!, { headers: { cookie } });
+  expect(form.status).toBe(200);
+  expect(await form.text()).toContain('name="card[subcards][+*password][content]"');
+  const changed = await post("/update/Mira_Member+*account", {
+    _method: "patch", "card[subcards][+*password][content]": "Edge reset pass 8#",
+  }, cookie);
+  expect(changed.status).toBe(200);
+  const fresh = await signin("mira.member@example.test", "Edge reset pass 8#");
+  expect(fresh.status).toBe(303);
+  expect(fresh.headers.get("set-cookie")).toMatch(/decko_ts_session=[^;]+/);
+  const old = await signin("mira.member@example.test", "Fixture member pass 1#");
+  expect(old.status).toBe(422);
+  expect(old.headers.get("set-cookie") ?? "").not.toMatch(/decko_ts_session=[^;]+/);
+  // Production uniform-failure policy deliberately conceals which field failed.
+  expect(await old.json()).toMatchObject({ error_status: 422, errors: { error: "Wrong email or password." } });
   expect(hrana.violations).toEqual([]);
 }, 60_000);
