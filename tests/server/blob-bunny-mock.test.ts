@@ -8,6 +8,8 @@
 // pinned facts rather than surprises at deploy time.
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import { join } from "node:path";
+import { scratchDir, removeScratchDir } from "../support/scratch-dir.mjs";
 import { BunnyError, BunnyStorageBlobDriver } from "../../src/blob/bunny-storage.js";
 import { runBlobConformance } from "./blob-conformance.js";
 // @ts-expect-error - the mock is plain JS with a JSDoc surface.
@@ -49,6 +51,27 @@ describe("BunnyStorageBlobDriver (local mock of the Storage HTTP API)", () => {
       fetch: target.fetch,
     });
   }
+
+  it("retains uploaded bytes and deletion across a local provider restart", async () => {
+    const root = scratchDir("bunny-storage-restart-");
+    let active: Mock | undefined;
+    try {
+      const filesRoot = join(root, "files");
+      active = await startMockBunnyStorage({ filesRoot });
+      await driverOver(active).put("307/asset.js", new Uint8Array([1, 2, 3]));
+      await driverOver(active).put("discard/file.txt", new Uint8Array([4]));
+      await driverOver(active).delete("discard/file.txt");
+      await active.stop();
+      active = undefined;
+      active = await startMockBunnyStorage({ filesRoot });
+      expect(await driverOver(active).getBytes("307/asset.js")).toEqual(new Uint8Array([1, 2, 3]));
+      expect(await driverOver(active).getBytes("discard/file.txt")).toBeUndefined();
+      expect(() => active!.reset()).toThrow(/staged-root owner/);
+    } finally {
+      await active?.stop();
+      removeScratchDir(root);
+    }
+  });
 
   // -------------------------------------------------------------------
   // Provider differences — pinned, not worked around

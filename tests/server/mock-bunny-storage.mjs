@@ -19,16 +19,47 @@
 // 405 for HEAD is what proves it.
 
 import { createServer } from "node:http";
+import { mkdirSync, readdirSync, lstatSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
+import path from "node:path";
 
 /** Keys sorted, so the listing's order is deterministic. */
 class MemoryZone {
-  constructor() {
+  constructor(filesRoot) {
     /** @type {Map<string, {bytes: Buffer, lastChanged: string, dateCreated: string, guid: string}>} */
     this.objects = new Map();
     this.guidCounter = 0;
+    this.filesRoot = filesRoot === undefined ? undefined : path.resolve(filesRoot);
+    if (this.filesRoot !== undefined) {
+      const load = directory => {
+        for (const name of readdirSync(directory).sort()) {
+          const file = path.join(directory, name);
+          const stat = lstatSync(file);
+          if (stat.isSymbolicLink()) throw new Error("persistent mock storage cannot traverse links");
+          if (stat.isDirectory()) load(file);
+          else {
+            const key = path.relative(this.filesRoot, file).replaceAll("\\", "/");
+            this.objects.set(key, { bytes: readFileSync(file), lastChanged: stat.mtime.toISOString(), dateCreated: stat.birthtime.toISOString(), guid: `guid-${++this.guidCounter}` });
+          }
+        }
+      };
+      mkdirSync(this.filesRoot, { recursive: true });
+      load(this.filesRoot);
+    }
+  }
+
+  localPath(key) {
+    if (this.filesRoot === undefined) return undefined;
+    const file = path.resolve(this.filesRoot, key);
+    if (!file.startsWith(this.filesRoot + path.sep) || key.split(/[\\/]/).some(part => part === "..")) throw new Error("storage key escapes its staged root");
+    return file;
   }
 
   put(key, bytes) {
+    const file = this.localPath(key);
+    if (file !== undefined) {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, bytes);
+    }
     const now = new Date().toISOString();
     this.guidCounter += 1;
     this.objects.set(key, {
@@ -40,6 +71,10 @@ class MemoryZone {
   }
 
   delete(key) {
+    if (this.objects.has(key)) {
+      const file = this.localPath(key);
+      if (file !== undefined) unlinkSync(file);
+    }
     return this.objects.delete(key);
   }
 
@@ -99,9 +134,9 @@ class MemoryZone {
  * assert on the wire shape (the AccessKey header, the region host, the
  * method) rather than only on the adapter's return values.
  */
-export async function startMockBunnyStorage({ zone = "test-zone", password = "test-password" } = {}) {
+export async function startMockBunnyStorage({ zone = "test-zone", password = "test-password", filesRoot } = {}) {
   /** @type {MemoryZone} */
-  let zone1 = new MemoryZone();
+  let zone1 = new MemoryZone(filesRoot);
   /** @type {{method: string, path: string, headers: Record<string, string>, accessKeyPresent: boolean}[]} */
   const requests = [];
 
@@ -213,6 +248,7 @@ export async function startMockBunnyStorage({ zone = "test-zone", password = "te
     /** Make the next N reads of a path fail with a status, to pin how
      *  the adapter reports a provider error rather than a miss. */
     reset: () => {
+      if (filesRoot !== undefined) throw new Error("persistent mock storage must be reset by its staged-root owner");
       zone1 = new MemoryZone();
       requests.length = 0;
     },

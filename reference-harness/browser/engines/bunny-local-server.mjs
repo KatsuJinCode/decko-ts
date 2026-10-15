@@ -16,6 +16,7 @@ const { handleBunnyEngineRequest } = await fromDist("deploy/bunny-worker-src/bun
 const { setCaptureWallClock } = await fromDist("src/card/wall-clock.js");
 const { LocalSqliteDriver } = await fromDist("src/server/drivers/local-sqlite.js");
 const { runAuthMigrations } = await fromDist("src/card/auth/migrations.js");
+const { startMockBunnyStorage } = await import(pathToFileURL(path.join(repo, "tests/server/mock-bunny-storage.mjs")).href);
 const { DatabaseSync } = await import("node:sqlite");
 const db = new DatabaseSync(process.env.HARNESS_DECK);
 try {
@@ -29,6 +30,15 @@ try {
 } finally { provisioningDriver.close(); }
 setCaptureWallClock(new Date(spec.clock));
 const hrana = await startMockHranaServer({ path: process.env.HARNESS_DECK });
+const storage = await startMockBunnyStorage({ filesRoot: process.env.HARNESS_FILES });
+// Match the existing storage conformance harness's transport substitution:
+// only this owned loopback provider's HTTPS origin is mapped to local HTTP.
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => {
+  const value = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+  const prefix = `https://${storage.host}/`;
+  return originalFetch(value.startsWith(prefix) ? `http://${storage.host}/${value.slice(prefix.length)}` : input, init);
+};
 const origin = `http://127.0.0.1:${port}`;
 // Deliberately omit legacy-hash, asset-refresh and security overrides. This
 // host must expose production-default behavior and missing integrations.
@@ -39,6 +49,9 @@ const env = {
   DECKO_ORIGIN: origin,
   DECKO_WRITE_PATH: "1",
   DECKO_TOKEN_SECRET: "local-journey-fixture-token-secret",
+  DECKO_STORAGE_ZONE: storage.zone,
+  DECKO_STORAGE_PASSWORD: storage.password,
+  DECKO_STORAGE_HOST: storage.host,
 };
 const server = http.createServer(async (req, res) => {
   try {
@@ -49,7 +62,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === "/__harness/runtime") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: false, objectStorageConfigured: false }));
+      res.end(JSON.stringify({ engine: "bunny-handler-node-local-hrana", node: process.version, productionRuntime: false, passwordHash: "pbkdf2-default", assetRefresh: "host-default", mailConfigured: false, objectStorageConfigured: true, objectStorageProvider: "local-bunny-http-emulator" }));
       return;
     }
     if (req.url === "/__harness/mail") {
@@ -81,6 +94,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.listen(port, "127.0.0.1");
-async function close() { server.close(); await hrana.close(); }
+async function close() { server.close(); await hrana.close(); await storage.stop(); }
 process.once("SIGTERM", () => { void close(); });
 process.once("SIGINT", () => { void close(); });
