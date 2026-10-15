@@ -1,0 +1,73 @@
+// Local HTTP entry for browser journeys through the actual Bunny handler.
+// The journey runner owns the staged database, files and this child process.
+// No production credentials, deployments or database connections are used.
+import http from "node:http";
+import { readFileSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
+
+const repo = fileURLToPath(new URL("../../..", import.meta.url));
+const fromDist = name => import(pathToFileURL(path.join(repo, "dist", name)).href);
+const port = Number(process.env.HARNESS_PORT);
+if (!Number.isInteger(port) || port <= 0 || !process.env.HARNESS_DECK) throw new Error("runner-owned deck and port are required");
+const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON, "utf8"));
+const { startMockHranaServer } = await fromDist("tests/server/drivers/mock-hrana-server.js");
+const { handleBunnyEngineRequest } = await fromDist("deploy/bunny-worker-src/bunny-edge-engine-handler.js");
+const { setCaptureWallClock } = await fromDist("src/card/wall-clock.js");
+const { DatabaseSync } = await import("node:sqlite");
+const db = new DatabaseSync(process.env.HARNESS_DECK);
+try {
+  db.exec("CREATE TABLE IF NOT EXISTS deck_data_version (id INTEGER PRIMARY KEY, version INTEGER NOT NULL); INSERT OR IGNORE INTO deck_data_version (id,version) VALUES (1,0)");
+} finally { db.close(); }
+setCaptureWallClock(new Date(spec.clock));
+const hrana = await startMockHranaServer({ path: process.env.HARNESS_DECK });
+const origin = `http://127.0.0.1:${port}`;
+// Deliberately omit legacy-hash, asset-refresh and security overrides. This
+// host must expose production-default behavior and missing integrations.
+const env = {
+  DECKO_DB_URL: hrana.url,
+  DECKO_DB_TOKEN: "local-journey-only",
+  DECKO_DECK_ORIGIN: origin,
+  DECKO_ORIGIN: origin,
+  DECKO_WRITE_PATH: "1",
+  DECKO_TOKEN_SECRET: "local-journey-fixture-token-secret",
+};
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.url === "/__harness/ready") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ host: "bunny-handler-node-local-hrana", productionRuntime: false }));
+      return;
+    }
+    if (req.url === "/__harness/mail") {
+      // No invented successful delivery: the production host has no capture
+      // integration here. Complete mail journeys must report that limitation.
+      res.writeHead(501, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Bunny host mail capture is not configured" }));
+      return;
+    }
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(req.headers)) {
+      for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) headers.append(name, item);
+    }
+    const method = req.method ?? "GET";
+    const request = new Request(new URL(req.url ?? "/", origin), { method, headers, ...(method === "GET" || method === "HEAD" ? {} : { body }) });
+    const response = await handleBunnyEngineRequest(request, env);
+    res.statusCode = response.status;
+    for (const [name, value] of response.headers) if (name !== "set-cookie") res.setHeader(name, value);
+    const cookies = response.headers.getSetCookie();
+    if (cookies.length) res.setHeader("set-cookie", cookies);
+    res.end(method === "HEAD" ? undefined : Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    console.error(error instanceof Error ? error.stack : String(error));
+    if (!res.headersSent) res.writeHead(500, { "content-type": "text/plain" });
+    res.end("Local Bunny handler failed; see owned server log");
+  }
+});
+server.listen(port, "127.0.0.1");
+async function close() { server.close(); await hrana.close(); }
+process.once("SIGTERM", () => { void close(); });
+process.once("SIGINT", () => { void close(); });
