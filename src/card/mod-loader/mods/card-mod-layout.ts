@@ -828,6 +828,30 @@ const headInputView: ViewFn = (ctx) => {
 const headBarBottomView: ViewFn = (ctx) =>
   isSelfHeadCard(ctx.fmt.card) ? "" : baseBarBottom(ctx);
 
+/** self/head.rb:9-17 view :core, cache: :never:
+ *  `escape_in_main { nest root.card, view: :head }` — when *head is rendered
+ *  in the main body of a page the head HTML is escaped, otherwise (in the
+ *  head tag, the usual place) it renders unescaped. escape_in_main is
+ *  `main? ? (h yield) : yield` (self/head.rb:19-21).
+ *
+ *  The root card is the card the render was requested for; a *head render
+ *  requested at the top level IS the root, so the nest is this card's own
+ *  :head view (card-mod-format set/all/html/head.rb:31-33: the basket of
+ *  head views joined by "\n"). A *head nested inside another card's content
+ *  would nest the ROOT card's head instead, which needs the root accessor
+ *  this engine's format does not carry — a top-level-only port of the view,
+ *  noted on the registration below.
+ *
+ *  Registered on Self::Head ONLY: for a compound card carrying a *head RIGHT
+ *  the chain walks to Right::Head's own :core (right/head.rb:16-18), which
+ *  is the CodeRay-highlighted rendering. */
+const headCoreView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  if (!isSelfHeadCard(fmt.card)) return baseCore(ctx);
+  const head = fmt.renderView("head");
+  return fmt.isMain ? h(str(head)) : head;
+};
+
 // ---------------------------------------------------------------------------
 // set/self/account_links.rb - the four account LINK views (the shapes below
 // are derived from the Ruby source).
@@ -1197,6 +1221,11 @@ const cardModLayout: DeckoModManifest = {
       formats: {
         html: {
           views: [
+            // self/head.rb:9-17 :core (nest root.card, view: :head,
+            // escaped when this format is the page main). Registered here
+            // so the chain reaches it for the SELF pattern's *head;
+            // Right::Head has its own :core (right/head.rb:16-18).
+            { view: "core", viewFn: headCoreView, config: { cache: "never" } },
             { view: "input", viewFn: headInputView },
             { view: "bar_bottom", viewFn: headBarBottomView },
           ],
