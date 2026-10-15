@@ -114,12 +114,6 @@ export interface QueryNode {
   context: string;
   /** conditions interpreted directly on this query (AbstractQuery @conditions) */
   conditions: ConditionNode[];
-  /** Set by the executor's foundBy resolution pass: this statement's rows
-   *  are constrained by an `id IN (resolved ids)` found_by condition. The
-   *  SQL generator reads it for the ORDER BY tie emission — Ruby's
-   *  captured found_by listings sort stable (id-asc ties) while the other
-   *  sorted shapes' captured emission follows the primary's direction. */
-  foundByResolved?: boolean;
   /** joins created by ties on this query (AbstractQuery @joins), creation order */
   joins: JoinNode[];
   /** nested queries, creation order (AbstractQuery @subqueries) */
