@@ -12,7 +12,7 @@
 // GET /__harness/mail with the mail sent since the last call (a JSON list of
 // {to, subject, text}), drained on read.
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, openSync, closeSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -36,17 +36,40 @@ async function freePort() {
   });
 }
 
-function killTree(pid) {
-  if (!pid) return;
+async function killTree(child) {
+  // The ChildProcess is the handle returned by this session's spawn. Never
+  // enumerate/select another application's PID for lifecycle control.
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  if (!Number.isInteger(child.pid)) throw new Error("owned engine has no process identity");
+  let timer;
+  const closed = new Promise(resolve => child.once("close", resolve));
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`owned engine ${child.pid} did not close within 10 seconds`)), 10_000);
+  });
+  try {
   if (process.platform === "win32") {
-    spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+    const taskkill = path.join(process.env.SystemRoot ?? "C:/Windows", "System32/taskkill.exe");
+    const termination = new Promise((resolve, reject) => {
+      const command = spawn(taskkill, ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+      let diagnostic = "";
+      command.stdout.on("data", b => diagnostic += b);
+      command.stderr.on("data", b => diagnostic += b);
+      command.once("error", reject);
+      command.once("close", code => {
+        if (code === 0 || child.exitCode !== null || child.signalCode !== null) resolve();
+        else reject(new Error(`taskkill failed for owned engine ${child.pid} (exit ${code}): ${diagnostic.trim()}`));
+      });
+    });
+    await Promise.race([termination, deadline]);
   } else {
     try {
-      process.kill(-pid, "SIGKILL");
-    } catch {
-      /* already gone */
+      process.kill(-child.pid, "SIGKILL");
+    } catch (error) {
+      if (error.code !== "ESRCH") throw error;
     }
   }
+    await Promise.race([closed, deadline]);
+  } finally { clearTimeout(timer); }
 }
 
 /**
@@ -58,15 +81,19 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
   const root = mkdtempSync(path.join(os.tmpdir(), `decko-browser-${engine.name}-`));
   let child;
   const stop = async () => {
-    if (child && child.exitCode === null) killTree(child.pid);
+    await killTree(child);
+    if (path.dirname(root) !== path.resolve(os.tmpdir()) || !path.basename(root).startsWith(`decko-browser-${engine.name}-`)) throw new Error("refusing escaped session cleanup path");
+    let cleanupError;
     for (let i = 0; i < 20; i++) {
       try {
         rmSync(root, { recursive: true, force: true });
-        break;
-      } catch {
+        return;
+      } catch (error) {
+        cleanupError = error;
         await new Promise((r) => setTimeout(r, 250));
       }
     }
+    throw new Error(`owned engine closed but session cleanup failed: ${cleanupError?.message}`);
   };
   try {
     const db = path.join(root, "deck.sqlite3");
@@ -123,9 +150,7 @@ export async function startEngine(engine, fixtureDir, { logFile, readyTimeoutMs 
     // database/files/cache and origin. No other session's process is selected.
     const restart = async () => {
       if (child && child.exitCode === null) {
-        const exited = new Promise(resolve => child.once("close", resolve));
-        killTree(child.pid);
-        await exited;
+        await killTree(child);
       }
       launch();
       await awaitReady();
