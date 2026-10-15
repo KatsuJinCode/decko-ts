@@ -101,6 +101,7 @@ endpoint reports a binding instead of variable names.
 | `DECKO_EDGE_RENDER_BUDGET_MS` | Per-render budget in milliseconds. |
 | `DECKO_EDGE_PIPELINE_TIMEOUT_MS` | Per-pipeline database request timeout. |
 | `DECKO_LIVE_RENDER` | Arms the live render path. |
+| `DECKO_TRUSTED_ORIGINS` | The origins a write or sign-in request may come from. On a two-script deployment this is the read front's own address, on both scripts. |
 | `DECKO_ONE_TRIP` | Arms the one-trip payload. See below. |
 | `DECKO_ONE_TRIP_STORE` | Path to the derived store, or the inline sentinel. |
 | `SPACES_ASSET_HOST` | Host for compiled assets. |
@@ -249,11 +250,30 @@ and separately tested but is not wired into the write path.
 
 ## Deploying
 
-**With one command.** `deploy/provisioning/` automates the steps below for
-the full engine bundle: open `one-key-provisioning-page.html`, make your
-choices, download the payload, and run `provision-bunny-deck.mjs` with one
-Bunny API key. It creates the database, builds the schema, seeds your deck,
-creates and publishes the script, and checks `/_status`. For a writable deck
+**With one command.** `deploy/provisioning/` automates the steps below:
+open `one-key-provisioning-page.html`, make your choices, download the
+payload, and run `provision-bunny-deck.mjs` with one Bunny API key. It
+creates the database, builds the schema, seeds your deck, and creates and
+publishes TWO scripts, as a live deployment is wired: a read-only front
+(`<script_name>-read`, the 1.6 MB read bundle) that answers anonymous page
+reads, and the full engine (the 7.5 MB bundle) it forwards sign-in, writes,
+`/setup` and every request carrying a session cookie to. The front holds a
+read-only database token; the full engine holds the payload's. Each script has
+its own pull zone. It checks `/_status` on both. A cold Bunny isolate loads
+only the bundle its request needs, which is why the front exists: a single
+7.5 MB script answered empty HTTP 400s on heavier pages under cold starts.
+`--teardown` removes both scripts, both zones, the database and the group.
+
+**Served identity (the site's look and asset config).** Pass it with
+`--served <file.json>`: one object of `"DECKO_NAME": "value"` pairs, the loose
+variables listed in section 3b of `deploy/bunny-edge-deployment-runbook.md`.
+Bunny stores at most **2 KB per script variable value** and 128 variables per
+script (bunny.net/docs/scripting/limits, read 2026-10-14). The runner refuses
+any value over 2 KB in the plan, before any account write, and names the
+variable and its size. This is why the one-variable `DECKO_SERVED_DELTAS` blob
+is not the form to use on Bunny: a real deck's identity is 3.6 KB as one blob,
+and such a script answered HTTP 400 on every request on 2026-10-14, while the
+same values as loose variables (the largest 1.6 KB) served correctly. For a writable deck
 (`write_path` in the payload and `--allow-write-path` on the command line) it
 also creates the Storage zone and sets its variables, arms
 `DECKO_WRITE_PATH` and `DECKO_FIRST_RUN`, and, once the deck answers, issues

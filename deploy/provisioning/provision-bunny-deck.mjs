@@ -126,6 +126,7 @@ export const REFUSAL = {
   SOURCE_WRONG_SHAPE: "--source-wrong-shape",
   WRITE_PATH_UNALLOWED: "--write-path-not-allowed",
   RESOURCE_EXISTS: "--resource-already-exists",
+  SERVED_INVALID: "--served-variables-invalid",
 };
 
 export class ProvisionRefusal extends Error {
@@ -147,7 +148,7 @@ export function parseArgs(argv) {
     confirmation: false, yes: false, name: null,
     creds: process.env.BUNNY_CREDS_FILE ?? null,
     apiKey: process.env.BUNNY_API_KEY ?? null,
-    source: null, allowWritePath: false, bundle: null, protect: [],
+    source: null, allowWritePath: false, bundle: null, readBundle: null, served: null, protect: [],
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -166,6 +167,8 @@ export function parseArgs(argv) {
       case "--source": args.source = next(); break;
       case "--allow-write-path": args.allowWritePath = true; break;
       case "--bundle": args.bundle = next(); break;
+      case "--read-bundle": args.readBundle = next(); break;
+      case "--served": args.served = next(); break;
       case "--protect":
         args.protect.push(...String(next() ?? "").split(",").map((n) => n.trim()).filter(Boolean));
         break;
@@ -282,6 +285,20 @@ export function validatePayload(raw, { protectedNames = protectedResourceNames()
     }
   }
 
+  // The read front's names default from the full engine's (schema v1 payloads
+  // written before the front existed carry neither field).
+  const readScriptName = bunny.read_script_name ?? `${bunny.script_name}-read`;
+  const readPullZoneName = bunny.read_pull_zone_name ?? `${bunny.pull_zone_name}-read`;
+  for (const [f, v] of [["read_script_name", readScriptName], ["read_pull_zone_name", readPullZoneName]]) {
+    if (typeof v !== "string" || !NAME_RE.test(v)) {
+      errors.push(`bunny.${f} must match ${NAME_RE.source} (lowercase dns-safe)`);
+    } else if (protectedNames.has(v)) {
+      throw new ProvisionRefusal(REFUSAL.PROTECTED_NAME,
+        `bunny.${f}="${v}" is a protected resource name. This runner only creates NEW resources; pick a different name.`,
+        { field: `bunny.${f}`, name: v });
+    }
+  }
+
   const edge = p.edge ?? {};
   if (typeof edge.cache_enabled !== "boolean") errors.push("edge.cache_enabled must be a boolean");
   if (!Number.isInteger(edge.cache_ttl_seconds) || edge.cache_ttl_seconds < 1 || edge.cache_ttl_seconds > 2592000) {
@@ -316,6 +333,8 @@ export function validatePayload(raw, { protectedNames = protectedResourceNames()
     bunny: {
       script_name: bunny.script_name,
       pull_zone_name: bunny.pull_zone_name,
+      read_script_name: readScriptName,
+      read_pull_zone_name: readPullZoneName,
       db_group_name: bunny.db_group_name,
       db_name: bunny.db_name,
       storage_region: bunny.storage_region,
@@ -351,17 +370,104 @@ export function loadPayload(path, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// served variables — the deck's served identity, one loose variable per value
+// ---------------------------------------------------------------------------
+
+/** Bunny's documented script limits (bunny.net/docs/scripting/limits, read
+ *  through the search gateway 2026-10-14): one script variable value holds at
+ *  most 2 KB, and a script has at most 128 variables. The 2026-10-14 deck's
+ *  3.6 KB DECKO_SERVED_DELTAS blob made both of its scripts answer HTTP 400 on
+ *  every request; the same values as loose variables (the largest 1.6 KB)
+ *  served correctly. The engine parses a blob of that size, so the failure is
+ *  the platform's limit, and this runner refuses an oversized value before
+ *  any account write rather than deploy a script that cannot answer. */
+export const BUNNY_VARIABLE_VALUE_MAX_BYTES = 2048;
+export const BUNNY_SCRIPT_VARIABLES_MAX = 128;
+
+/** The same two limits as a record, for the plan line and the docs' test. */
+export function servedVariablesDocumentedLimit() {
+  return { valueBytes: BUNNY_VARIABLE_VALUE_MAX_BYTES, variables: BUNNY_SCRIPT_VARIABLES_MAX };
+}
+
+/** Variables the runner sets itself from the payload and the resources it
+ *  creates; a served file may not name them. */
+const RUNNER_MANAGED_VARIABLES = new Set([
+  "DECKO_EDGE_CACHE", "DECKO_EDGE_CACHE_TTL", "DECKO_EDGE_CACHE_EPOCH",
+  "DECKO_EDGE_RENDER_BUDGET_MS", "DECKO_EDGE_FULL_URL", "DECKO_TRUSTED_ORIGINS",
+  "DECKO_WRITE_PATH", "DECKO_FIRST_RUN", "DECKO_STORAGE_ZONE", "DECKO_STORAGE_HOST",
+  "DECKO_STORAGE_PASSWORD", "BUNNY_DATABASE_URL", "BUNNY_DATABASE_AUTH_TOKEN",
+]);
+
+/** Validate a served-variables object ({ "DECKO_...": "value" }) and return
+ *  the variable list both scripts carry. Every problem is reported at once;
+ *  an oversized value names the variable, its size and the limit. */
+export function validateServedVariables(raw) {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ProvisionRefusal(REFUSAL.SERVED_INVALID,
+      `served variables must be a JSON object of "DECKO_NAME": "value" pairs`);
+  }
+  const errors = [];
+  const entries = Object.entries(raw);
+  for (const [name, value] of entries) {
+    if (!/^DECKO_[A-Z0-9_]+$/.test(name)) {
+      errors.push(`${name}: a served variable is named DECKO_ followed by uppercase letters, digits or underscores`);
+    }
+    if (RUNNER_MANAGED_VARIABLES.has(name)) {
+      errors.push(`${name}: the runner sets this variable itself; remove it from the served file`);
+    }
+    if (typeof value !== "string") {
+      errors.push(`${name}: the value must be a string`);
+      continue;
+    }
+    const bytes = Buffer.byteLength(value, "utf8");
+    if (bytes > BUNNY_VARIABLE_VALUE_MAX_BYTES) {
+      const hint = name === "DECKO_SERVED_DELTAS"
+        ? " The JSON blob form is one variable, so it cannot carry a deck's whole identity: write each field as its own loose variable (docs/deploy-bunny.md, \"Served identity\")."
+        : " Split this value across loose variables (docs/deploy-bunny.md, \"Served identity\").";
+      errors.push(`${name} is ${bytes} bytes; Bunny stores at most ${BUNNY_VARIABLE_VALUE_MAX_BYTES} bytes per script variable, and a longer value makes the script answer HTTP 400 on every request.${hint}`);
+    }
+  }
+  // The runner adds up to 8 of its own variables to each script.
+  if (entries.length + 8 > BUNNY_SCRIPT_VARIABLES_MAX) {
+    errors.push(`${entries.length} served variables plus the runner's own exceed Bunny's ${BUNNY_SCRIPT_VARIABLES_MAX} variables per script`);
+  }
+  if (errors.length > 0) {
+    throw new ProvisionRefusal(REFUSAL.SERVED_INVALID,
+      `served variables failed the Bunny script limits:\n  - ${errors.join("\n  - ")}`, { errors });
+  }
+  return entries.map(([Name, DefaultValue]) => ({ Name, DefaultValue }));
+}
+
+/** Read and validate a --served file. Absent = no served identity (a stock
+ *  deck). */
+export function loadServedVariables(path) {
+  if (!path) return [];
+  if (!existsSync(path)) {
+    throw new ProvisionRefusal(REFUSAL.SERVED_INVALID, `served variables file not found: ${path}`);
+  }
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    throw new ProvisionRefusal(REFUSAL.SERVED_INVALID, `served variables file is not valid JSON: ${e.message}`);
+  }
+  return validateServedVariables(raw);
+}
+
+// ---------------------------------------------------------------------------
 // the plan — single source of truth for PLAN printing and EXECUTE running
 // ---------------------------------------------------------------------------
 
 /** Build the ordered step list from a validated payload. Each step names the
  *  exact HTTP call (or child command) and whether it writes. PLAN prints
  *  these; EXECUTE runs them in order. */
-export function buildSteps(payload, { sourcePath, writePathAllowed }) {
+export function buildSteps(payload, { sourcePath, writePathAllowed, served = [] }) {
   const b = payload.bunny;
   const d = payload.deck;
   const steps = [];
   const push = (name, writes, describe) => steps.push({ name, writes, describe });
+  const readScript = b.read_script_name ?? `${b.script_name}-read`;
+  const readZone = b.read_pull_zone_name ?? `${b.pull_zone_name}-read`;
 
   push("resolve account key", false, () =>
     `key resolved from creds/env (masked in output; never stored)`);
@@ -386,29 +492,35 @@ export function buildSteps(payload, { sourcePath, writePathAllowed }) {
     `POST /v2/pipeline: report the deck's own *all+*read rule (an imported Ruby deck carries its own and nothing is written); when the deck has none — a source without it, or a row truncated away by the seed's LIMIT — install the stock substrate's (Set-typed *all + the 'read' setting + the Anyone party + the rule + its reference). A deck with no catch-all read rule denies every card, as Ruby does (permissions.rb:139-146), and would answer every anonymous visitor a denial`);
   push("build the engine bundle", true, () =>
     `node tools/bundle-bunny-edge-engine.mjs -> deploy/dist/bunny-edge-engine.code.json (sha256 recorded in the result sidecar)`);
-  push(`create edge script "${b.script_name}" + linked pull zone "${b.pull_zone_name}"`, true, () =>
+  push(`create edge script "${b.script_name}" + linked pull zone "${b.pull_zone_name}" (the full engine)`, true, () =>
     `POST /compute/script AddEdgeScriptModel {Name, Code, ScriptType:1, CreateLinkedPullZone:true, LinkedPullZoneName:"${b.pull_zone_name}"} -> 201`);
+  push(`create read front "${readScript}" + linked pull zone "${readZone}"`, true, () =>
+    `POST /compute/script (the read-only bundle deploy/dist/bunny-edge-read.code.json): anonymous GET/HEAD page reads served here; sign-in, writes, /setup and any request with a session cookie forwarded to the full engine (DECKO_EDGE_FULL_URL)`);
+  push("issue a read-only database token for the read front", true, () =>
+    `PUT /database/v2/databases/{id}/auth/generate {"authorization":"read-only"} (the front reads; only the full engine writes)`);
   if (writePathAllowed && payload.edge.write_path) {
     push(`create storage zone "${b.script_name}-files"`, true, () =>
       `POST /storagezone {"Name":"${b.script_name}-files","Region":"${b.storage_zone_region ?? "DE"}"} -> StorageZone {Id, Password, StorageHostname}: the deck's files (uploads, renditions, compiled stylesheets)`);
   }
   push("set database credentials as script secrets", true, () =>
-    `POST /compute/script/{id}/secrets x2 (BUNNY_DATABASE_URL, BUNNY_DATABASE_AUTH_TOKEN — the documented pair the entry resolves first)`);
-  push("apply edge options as script variables", true, () =>
+    `POST /compute/script/{id}/secrets on both scripts (BUNNY_DATABASE_URL + token; the front gets a read-only token, the full engine the payload's authorization)`);
+  push("apply edge options as script variables on both scripts", true, () =>
     `POST /compute/script/{id}/variables/add (DECKO_EDGE_CACHE=${payload.edge.cache_enabled ? 1 : 0}` +
     (payload.edge.cache_enabled
       ? `, DECKO_EDGE_CACHE_TTL=${payload.edge.cache_ttl_seconds}, DECKO_EDGE_CACHE_EPOCH=${payload.edge.cache_epoch}`
       : "") +
-    `, DECKO_EDGE_RENDER_BUDGET_MS=${payload.edge.render_budget_ms}` +
+    `, DECKO_EDGE_RENDER_BUDGET_MS=${payload.edge.render_budget_ms}, DECKO_TRUSTED_ORIGINS=https://${readScript}.bunny.run` +
+    `, DECKO_EDGE_FULL_URL=https://${b.script_name}.bunny.run on the front` +
+    (served.length > 0 ? `, and ${served.length} served variable(s) from --served (each <= ${BUNNY_VARIABLE_VALUE_MAX_BYTES} bytes)` : "") +
     (writePathAllowed && payload.edge.write_path
-      ? `, DECKO_WRITE_PATH=1, DECKO_FIRST_RUN=1, DECKO_STORAGE_ZONE, DECKO_STORAGE_HOST; DECKO_STORAGE_PASSWORD as a secret`
+      ? `, DECKO_WRITE_PATH=1, DECKO_FIRST_RUN=1, DECKO_STORAGE_ZONE, DECKO_STORAGE_HOST; DECKO_STORAGE_PASSWORD as a secret on the full engine`
       : "") + `)`);
   if (payload.edge.cache_enabled) {
-    push("flip the linked zone off SmartCache (origin-header caching)", true, () =>
+    push("flip both linked zones off SmartCache (origin-header caching)", true, () =>
       `POST /pullzone/{zoneId} {"EnableSmartCache":false} — SmartCache rewrites responses no-cache and defeats header and L2 caching (measured)`);
   }
-  push("publish the script", true, () =>
-    `POST /compute/script/{id}/publish {"Note":"one-key provision <date>"} -> 204; effective immediately`);
+  push("publish both scripts", true, () =>
+    `POST /compute/script/{id}/publish {"Note":"one-key provision <date>"} -> 204; effective immediately (the read front first, then the full engine it forwards to)`);
   push("verify the new deck responds", false, () =>
     `poll GET https://<DefaultHostname>/_status until {"ok":true} (60 s budget), then GET / sanity`);
   if (writePathAllowed && payload.edge.write_path) {
@@ -750,7 +862,7 @@ export function normalizeHostname(hostname) {
 // modes
 // ---------------------------------------------------------------------------
 
-function printPlan({ payload, steps, sourcePath, payloadPath }) {
+function printPlan({ payload, steps, sourcePath, payloadPath, served = [] }) {
   const b = payload.bunny;
   console.log(`
 ================ PLAN — executes NOTHING remote ================
@@ -766,6 +878,8 @@ database       : ${b.db_name} in group ${b.db_group_name}
 deck source    : ${payload.deck.source_name} (sha256 ${payload.deck.source_sha256.slice(0, 12)}..., ${payload.deck.source_bytes} bytes)
                  local path for this run: ${sourcePath ?? "(REQUIRED --source before --execute)"}
                  seed: ${payload.deck.limit > 0 ? `<= ${payload.deck.limit} rows/table` : "whole deck"}${payload.deck.tables ? `, tables ${payload.deck.tables}` : ", all tables"}
+scripts        : the full engine ${b.script_name} (pull zone ${b.pull_zone_name}) and the read front ${b.read_script_name ?? b.script_name + "-read"} (pull zone ${b.read_pull_zone_name ?? b.pull_zone_name + "-read"}); the front forwards writes, sign-in and cookie requests to the full engine
+served variables: ${served.length === 0 ? "none (--served not given: a stock deck)" : served.map((v) => v.Name).join(", ") + " (each within " + BUNNY_VARIABLE_VALUE_MAX_BYTES + " bytes)"}
 edge options   : cache ${payload.edge.cache_enabled ? `ON ttl=${payload.edge.cache_ttl_seconds}s epoch=${payload.edge.cache_epoch}` : "off"}, render budget ${payload.edge.render_budget_ms} ms, write path ${payload.edge.write_path ? "ARMED (needs --allow-write-path)" : "off (read-only deck)"}
 
 steps (--execute performs these in order; plan prints only):
@@ -795,11 +909,14 @@ async function listExistingResources(api) {
 
 function refuseIfAnyExists(payload, { scriptList, dbList }) {
   const b = payload.bunny;
-  const scriptHit = scriptList.find((s) => (s.Name ?? s.name) === b.script_name);
-  if (scriptHit) {
-    throw new ProvisionRefusal(REFUSAL.RESOURCE_EXISTS,
-      `an edge script named "${b.script_name}" already exists (Id ${scriptHit.Id ?? scriptHit.id}). ` +
-      `This runner creates new resources only; pick a new name (or --teardown the old one).`);
+  const names = [b.script_name, b.read_script_name ?? `${b.script_name}-read`];
+  for (const name of names) {
+    const scriptHit = scriptList.find((s) => (s.Name ?? s.name) === name);
+    if (scriptHit) {
+      throw new ProvisionRefusal(REFUSAL.RESOURCE_EXISTS,
+        `an edge script named "${name}" already exists (Id ${scriptHit.Id ?? scriptHit.id}). ` +
+        `This runner creates new resources only; pick a new name (or --teardown the old one).`);
+    }
   }
   const dbHit = dbList.find((x) => (x.name ?? x.Name) === b.db_name);
   if (dbHit) {
@@ -808,11 +925,12 @@ function refuseIfAnyExists(payload, { scriptList, dbList }) {
   }
 }
 
-async function executeMode({ payload, resolveApi, args, sourcePath }) {
+async function executeMode({ payload, resolveApi, args, sourcePath, served = [] }) {
   if (!args.confirmation) {
     throw new ProvisionRefusal(REFUSAL.CONFIRMATION_MISSING,
-      "--execute creates a database group + database + edge script + pull zone on the account " +
-      "the key belongs to, writes deck rows into the database, and publishes a live script. " +
+      "--execute creates a database group + database + TWO edge scripts (a read front and the full " +
+      "engine) with their pull zones on the account " +
+      "the key belongs to, writes deck rows into the database, and publishes the live scripts. " +
       "Re-run with --i-understand-this-writes-to-my-bunny-account to confirm. " +
       "Run with no mode flag first to see the full plan.");
   }
@@ -880,61 +998,104 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
   if (!dbId || !dbUrl) throw new Error(`database create returned no id/url: ${JSON.stringify(db).slice(0, 300)}`);
   console.log(`database created: ${b.db_name} = ${dbId} (host ...${hostSuffixOfDbUrl(dbUrl).slice(-40)})`);
 
-  // 3. token — API-generated, never printed
+  // 3. tokens — API-generated, never printed. The full engine gets the
+  // payload's authorization; the read front gets read-only, since it only
+  // answers anonymous reads and forwards every write (as the hand-built deck).
   const tokenRes = await api.call("PUT", `/database/v2/databases/${dbId}/auth/generate`,
     { authorization: b.db_token_authorization }, { expect: [200] });
   const dbToken = tokenRes.json?.token;
   if (!dbToken) throw new Error("auth/generate returned no token");
   console.log(`database token generated (${b.db_token_authorization}, ${dbToken.length} chars, not displayed)`);
+  const readTokenRes = await api.call("PUT", `/database/v2/databases/${dbId}/auth/generate`,
+    { authorization: "read-only" }, { expect: [200] });
+  const readDbToken = readTokenRes.json?.token;
+  if (!readDbToken) throw new Error("auth/generate (read-only) returned no token");
+  console.log(`read-only database token generated for the read front (${readDbToken.length} chars, not displayed)`);
 
   // 3b-4. schema, seed, then triggers and the stamp row (see provisionDatabase)
   const dbStats = await provisionDatabase({ dbUrl, dbToken, sourcePath, deck: payload.deck, repoRoot });
   console.log(`seed complete (${dbStats.seedTables.length} tables)`);
 
-  // 5. bundle — the tree's own build, or a caller-provided artifact via
-  // --bundle (a deploy/dist/bunny-edge-engine.code.json {"Code":...} payload
-  // or a raw bundle .js). The flag exists so a provision can serve a bundle
-  // built elsewhere (for example a release carrying fixes the local tree
-  // predates); its path and sha256 are recorded in the result sidecar.
+  // 5. bundles — the tree's own build (both scripts come from one build), or
+  // caller-provided artifacts via --bundle (the full engine) and --read-bundle
+  // (the read front): a deploy/dist/*.code.json {"Code":...} payload or a raw
+  // bundle .js. Their paths and sha256 are recorded in the result sidecar.
   let code;
+  let readCode;
   let bundleShaSource;
-  if (args.bundle) {
-    if (!existsSync(args.bundle)) {
-      throw new ProvisionRefusal(REFUSAL.SOURCE_MISSING, `--bundle file not found: ${args.bundle}`);
+  let readBundleShaSource;
+  if (args.bundle || args.readBundle) {
+    if (!args.bundle || !args.readBundle) {
+      throw new ProvisionRefusal(REFUSAL.SOURCE_MISSING,
+        "--bundle and --read-bundle go together: the run needs both the full engine and the read front");
     }
-    const raw = readFileSync(args.bundle, "utf8");
-    let parsed = null;
-    try { parsed = JSON.parse(raw); } catch { /* raw bundle text */ }
-    code = parsed?.Code ?? raw;
+    for (const [flag, path] of [["--bundle", args.bundle], ["--read-bundle", args.readBundle]]) {
+      if (!existsSync(path)) {
+        throw new ProvisionRefusal(REFUSAL.SOURCE_MISSING, `${flag} file not found: ${path}`);
+      }
+    }
+    const readOne = (path) => {
+      const raw = readFileSync(path, "utf8");
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch { /* raw bundle text */ }
+      return parsed?.Code ?? raw;
+    };
+    code = readOne(args.bundle);
+    readCode = readOne(args.readBundle);
     bundleShaSource = resolve(args.bundle);
-    console.log(`bundle: provided via --bundle ${args.bundle} (${code.length} chars)`);
+    readBundleShaSource = resolve(args.readBundle);
+    console.log(`bundles: provided via --bundle and --read-bundle (${code.length} and ${readCode.length} chars)`);
   } else {
     const bundler = join(repoRoot, "tools", "bundle-bunny-edge-engine.mjs");
     const bundleRun = spawnSync(process.execPath, [bundler], { cwd: repoRoot, stdio: "inherit", windowsHide: true });
     if (bundleRun.status !== 0) throw new Error(`bundle failed (exit ${bundleRun.status})`);
-    const codeJsonPath = join(repoRoot, "deploy", "dist", "bunny-edge-engine.code.json");
-    code = JSON.parse(readFileSync(codeJsonPath, "utf8")).Code;
-    bundleShaSource = codeJsonPath;
+    const distDir = join(repoRoot, "deploy", "dist");
+    bundleShaSource = join(distDir, "bunny-edge-engine.code.json");
+    readBundleShaSource = join(distDir, "bunny-edge-read.code.json");
+    code = JSON.parse(readFileSync(bundleShaSource, "utf8")).Code;
+    readCode = JSON.parse(readFileSync(readBundleShaSource, "utf8")).Code;
   }
   const codeSha256 = createHash("sha256").update(code).digest("hex");
-  console.log(`bundle ready: ${code.length} chars, sha256 ${codeSha256.slice(0, 16)}...`);
+  const readCodeSha256 = createHash("sha256").update(readCode).digest("hex");
+  console.log(`bundles ready: full ${code.length} chars sha256 ${codeSha256.slice(0, 16)}..., read front ${readCode.length} chars sha256 ${readCodeSha256.slice(0, 16)}...`);
 
-  // 6. script + linked pull zone
-  const scriptRes = await api.call("POST", "/compute/script", {
-    Name: b.script_name,
-    Code: code,
-    ScriptType: 1, // EdgeScriptTypes CDN == the standalone type
-    CreateLinkedPullZone: true,
-    LinkedPullZoneName: b.pull_zone_name,
-  }, { expect: [200, 201] });
-  const script = scriptRes.json ?? {};
-  const scriptId = script.Id ?? script.id;
-  if (!scriptId) throw new Error(`script create returned no Id: ${JSON.stringify(script).slice(0, 300)}`);
-  const zoneId = script.LinkedPullZones?.[0]?.Id ?? script.LinkedPullZones?.[0]?.id ?? null;
+  // 6. the two scripts, each with its linked pull zone. The full engine is
+  // created first; the read front's forward target and the full engine's
+  // trusted origin name each other's hostnames, so both are set after both
+  // exist and before either is published.
+  const readScriptName = b.read_script_name ?? `${b.script_name}-read`;
+  const readZoneName = b.read_pull_zone_name ?? `${b.pull_zone_name}-read`;
+  const createScript = async (name, zone, scriptCode) => {
+    const res = await api.call("POST", "/compute/script", {
+      Name: name,
+      Code: scriptCode,
+      ScriptType: 1, // EdgeScriptTypes CDN == the standalone type
+      CreateLinkedPullZone: true,
+      LinkedPullZoneName: zone,
+    }, { expect: [200, 201] });
+    const json = res.json ?? {};
+    const id = json.Id ?? json.id;
+    if (!id) throw new Error(`script create (${name}) returned no Id: ${JSON.stringify(json).slice(0, 300)}`);
+    const zoneId = json.LinkedPullZones?.[0]?.Id ?? json.LinkedPullZones?.[0]?.id ?? null;
+    return { id, name, zoneId, zoneName: zone };
+  };
+  const full = await createScript(b.script_name, b.pull_zone_name, code);
   scriptCreated = true; // past this point a real provisioned thing exists — no auto-rollback
-  console.log(`script created: ${b.script_name} = ${scriptId}${zoneId ? `, linked pull zone = ${zoneId}` : " (no linked zone in response — caching step will need it)"}`);
+  console.log(`script created: ${full.name} = ${full.id}${full.zoneId ? `, linked pull zone = ${full.zoneId}` : " (no linked zone in response — caching step will need it)"}`);
+  const front = await createScript(readScriptName, readZoneName, readCode);
+  console.log(`script created: ${front.name} = ${front.id}${front.zoneId ? `, linked pull zone = ${front.zoneId}` : ""} (read front)`);
+  const hostOf = async (id) => {
+    const d = await api.call("GET", `/compute/script/${id}`, undefined, { expect: [200] });
+    const h = normalizeHostname(d.json?.DefaultHostname ?? d.json?.defaultHostname ?? "");
+    if (!h) throw new Error(`script ${id} detail carried no DefaultHostname: ${JSON.stringify(d.json).slice(0, 300)}`);
+    return h;
+  };
+  const fullHost = await hostOf(full.id);
+  const frontHost = await hostOf(front.id);
+  const fullBase = `https://${fullHost}`;
+  const frontBase = `https://${frontHost}`;
 
-  // 6b. the files: a storage zone for a writable deck
+  // 6b. the files: a storage zone for a writable deck (attached to the full engine)
   const writable = payload.edge.write_path === true;
   let storage = null;
   if (writable) {
@@ -946,70 +1107,95 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
     console.log(`storage zone created: ${zoneName} = ${z.Id} (${storage.host}; password not displayed)`);
   }
 
-  // 7. secrets — the documented pair, first resolved by the entry
-  for (const secret of [
-    { Name: "BUNNY_DATABASE_URL", Secret: dbUrl },
-    { Name: "BUNNY_DATABASE_AUTH_TOKEN", Secret: dbToken },
-    ...(storage ? [{ Name: "DECKO_STORAGE_PASSWORD", Secret: storage.password }] : []),
+  // 7. secrets — the documented pair on each script, first resolved by the entry
+  for (const [script, token, extra] of [
+    [full, dbToken, storage ? [{ Name: "DECKO_STORAGE_PASSWORD", Secret: storage.password }] : []],
+    [front, readDbToken, []],
   ]) {
-    const r = await api.call("POST", `/compute/script/${scriptId}/secrets`, secret, { expect: [200, 201, 204] });
-    console.log(`secret ${secret.Name} set -> ${r.status}`);
+    for (const secret of [
+      { Name: "BUNNY_DATABASE_URL", Secret: dbUrl },
+      { Name: "BUNNY_DATABASE_AUTH_TOKEN", Secret: token },
+      ...extra,
+    ]) {
+      const r = await api.call("POST", `/compute/script/${script.id}/secrets`, secret, { expect: [200, 201, 204] });
+      console.log(`secret ${secret.Name} on ${script.name} set -> ${r.status}`);
+    }
   }
 
-  // 8. variables — the edge options
-  const variables = [
+  // 8. variables — the edge options, the served identity and the wiring, on
+  // both scripts. The served variables were checked against Bunny's limits in
+  // the plan, before any account write.
+  const edgeVariables = [
     { Name: "DECKO_EDGE_CACHE", Required: false, DefaultValue: payload.edge.cache_enabled ? "1" : "0" },
     ...(payload.edge.cache_enabled ? [
       { Name: "DECKO_EDGE_CACHE_TTL", Required: false, DefaultValue: String(payload.edge.cache_ttl_seconds) },
       { Name: "DECKO_EDGE_CACHE_EPOCH", Required: false, DefaultValue: String(payload.edge.cache_epoch) },
     ] : []),
     { Name: "DECKO_EDGE_RENDER_BUDGET_MS", Required: false, DefaultValue: String(payload.edge.render_budget_ms) },
+    ...served,
+  ];
+  const fullVariables = [
+    ...edgeVariables,
+    { Name: "DECKO_TRUSTED_ORIGINS", Required: false, DefaultValue: frontBase },
   ];
   if (payload.edge.write_path) {
-    variables.push({ Name: "DECKO_WRITE_PATH", Required: false, DefaultValue: "1" });
-    variables.push({ Name: "DECKO_FIRST_RUN", Required: false, DefaultValue: "1" });
+    fullVariables.push({ Name: "DECKO_WRITE_PATH", Required: false, DefaultValue: "1" });
+    fullVariables.push({ Name: "DECKO_FIRST_RUN", Required: false, DefaultValue: "1" });
   }
   if (storage) {
-    variables.push({ Name: "DECKO_STORAGE_ZONE", Required: false, DefaultValue: storage.name });
-    variables.push({ Name: "DECKO_STORAGE_HOST", Required: false, DefaultValue: storage.host });
+    fullVariables.push({ Name: "DECKO_STORAGE_ZONE", Required: false, DefaultValue: storage.name });
+    fullVariables.push({ Name: "DECKO_STORAGE_HOST", Required: false, DefaultValue: storage.host });
   }
-  for (const v of variables) {
-    const r = await api.call("POST", `/compute/script/${scriptId}/variables/add`, v, { expect: [200, 201] });
-    console.log(`variable ${v.Name}=${v.DefaultValue} -> ${r.status}`);
+  const frontVariables = [
+    ...edgeVariables,
+    { Name: "DECKO_TRUSTED_ORIGINS", Required: false, DefaultValue: frontBase },
+    { Name: "DECKO_EDGE_FULL_URL", Required: false, DefaultValue: fullBase },
+  ];
+  for (const [script, variables] of [[full, fullVariables], [front, frontVariables]]) {
+    for (const v of variables) {
+      const r = await api.call("POST", `/compute/script/${script.id}/variables/add`, v, { expect: [200, 201] });
+      console.log(`variable ${v.Name} on ${script.name} -> ${r.status}`);
+    }
   }
 
-  // 9. zone flip — SmartCache defeats origin-header caching (measured)
+  // 9. zone flips — SmartCache defeats origin-header caching (measured)
   if (payload.edge.cache_enabled) {
-    if (!zoneId) throw new Error("caching is on but the script response carried no LinkedPullZones[0].Id");
-    const flip = await api.call("POST", `/pullzone/${zoneId}`, { EnableSmartCache: false }, { expect: [200, 204] });
-    console.log(`zone ${zoneId} EnableSmartCache=false -> ${flip.status} (respect-origin caching)`);
+    for (const script of [full, front]) {
+      if (!script.zoneId) throw new Error(`caching is on but ${script.name} carried no LinkedPullZones[0].Id`);
+      const flip = await api.call("POST", `/pullzone/${script.zoneId}`, { EnableSmartCache: false }, { expect: [200, 204] });
+      console.log(`zone ${script.zoneId} (${script.name}) EnableSmartCache=false -> ${flip.status} (respect-origin caching)`);
+    }
   }
 
-  // 10. publish
-  const pub = await api.call("POST", `/compute/script/${scriptId}/publish`,
-    { Note: `one-key provision ${startedIso}` }, { expect: [204] });
-  console.log(`published -> ${pub.status}`);
-
-  // 11. verify /_status
-  const details = await api.call("GET", `/compute/script/${scriptId}`, undefined, { expect: [200] });
-  const hostname = normalizeHostname(details.json?.DefaultHostname ?? details.json?.defaultHostname ?? "");
-  if (!hostname) throw new Error(`script detail carried no DefaultHostname: ${JSON.stringify(details.json).slice(0, 300)}`);
-  const base = `https://${hostname}`;
-  let statusOk = false;
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    try {
-      const r = await fetch(`${base}/_status`, { signal: AbortSignal.timeout(10_000) });
-      if (r.status === 200) {
-        const body = await r.json().catch(() => ({}));
-        if (body.ok === true) { statusOk = true; break; }
-      }
-    } catch { /* poll through transient DNS/TLS while the zone propagates */ }
-    await new Promise((r) => setTimeout(r, 3_000));
+  // 10. publish — the read front first, then the full engine it forwards to
+  for (const script of [front, full]) {
+    const pub = await api.call("POST", `/compute/script/${script.id}/publish`,
+      { Note: `one-key provision ${startedIso}` }, { expect: [204] });
+    console.log(`published ${script.name} -> ${pub.status}`);
   }
-  console.log(statusOk
-    ? `VERIFY: ${base}/_status -> {"ok":true} — the deck is LIVE`
-    : `VERIFY: /_status did not answer ok within 60 s — the publish is real; check propagation/logs at dash.bunny.net before retrying anything`);
+
+  // 11. verify /_status on both scripts (60 s budget each)
+  const pollStatus = async (base) => {
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch(`${base}/_status`, { signal: AbortSignal.timeout(10_000) });
+        if (r.status === 200) {
+          const body = await r.json().catch(() => ({}));
+          if (body.ok === true) return true;
+        }
+      } catch { /* poll through transient DNS/TLS while the zone propagates */ }
+      await new Promise((r) => setTimeout(r, 3_000));
+    }
+    return false;
+  };
+  const fullStatusOk = await pollStatus(fullBase);
+  const statusOk = await pollStatus(frontBase);
+  const base = frontBase;
+  const hostname = frontHost;
+  console.log(fullStatusOk && statusOk
+    ? `VERIFY: ${frontBase}/_status and ${fullBase}/_status -> {"ok":true} — the deck is LIVE at ${frontBase}`
+    : `VERIFY: /_status did not answer ok within 60 s (read front ${statusOk}, full engine ${fullStatusOk}) — the publish is real; check propagation/logs at dash.bunny.net before retrying anything`);
 
   // 11b. the first-run setup token: the deck is public now, so /setup opens
   // only for the link printed below (src/card/auth/setup-token.ts)
@@ -1030,6 +1216,7 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
     provisioned_at: startedIso,
     completed_at: new Date().toISOString(),
     verified_status_ok: statusOk,
+    verified_status_ok_full_engine: fullStatusOk,
     source: {
       name: payload.deck.source_name,
       sha256: payload.deck.source_sha256,
@@ -1037,23 +1224,38 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
       local_path_used: resolve(sourcePath),
     },
     bundle: { chars: code.length, sha256: codeSha256, source: bundleShaSource },
+    read_bundle: { chars: readCode.length, sha256: readCodeSha256, source: readBundleShaSource },
+    served_variables: {
+      count: served.length,
+      names: served.map((v) => v.Name),
+      // Names and value hashes only: the values are the deck's own public
+      // configuration, and they live in the --served file, which the
+      // recovery record names so the deck can be re-provisioned with them.
+      sha256: served.map((v) => ({ name: v.Name, sha256: createHash("sha256").update(v.DefaultValue).digest("hex") })),
+      file: args.served ? resolve(args.served) : null,
+    },
     bunny: {
-      script: { id: scriptId, name: b.script_name },
-      pull_zone: zoneId ? { id: zoneId, name: b.pull_zone_name } : null,
+      script: { id: full.id, name: b.script_name },
+      pull_zone: full.zoneId ? { id: full.zoneId, name: b.pull_zone_name } : null,
+      read_front_script: { id: front.id, name: readScriptName },
+      read_front_pull_zone: front.zoneId ? { id: front.zoneId, name: readZoneName } : null,
       storage_zone: storage ? { id: storage.id, name: storage.name, host: storage.host } : null,
       database: { id: dbId, name: b.db_name, url: dbUrl, group_id: createdGroupId, group_name: b.db_group_name },
       hostname,
       base_url: base,
+      full_engine_hostname: fullHost,
+      full_engine_base_url: fullBase,
     },
-    secrets_note: "the database token is NOT in this file; regenerate via the Bunny API or dashboard Access page",
+    secrets_note: "the database tokens are NOT in this file; regenerate via the Bunny API or dashboard Access page",
   };
   writeFileSync(resultPath, JSON.stringify(result, null, 2) + "\n");
   console.log(`result sidecar written: ${resultPath}`);
   console.log(`
-LIVE RUN COMPLETE: ${base}
-Recovery artifact: keep ${args.payload} + ${basename(resultPath)} together —
+LIVE RUN COMPLETE: ${base}  (read front)
+Full engine: ${fullBase} (serves sign-in, signed-in pages and writes; the front forwards them)
+Recovery artifact: keep ${args.payload} + ${basename(resultPath)}${args.served ? " + the --served file" : ""} together —
 they re-provision this deck (names, ids, bundle + source hashes) with a fresh
-API key and no other input. Neither file holds a secret.
+API key and no other input. None of them holds a secret.
 `);
   if (setupLink) {
     console.log(`First-run setup link (one use; it creates your deck's owner account):
@@ -1089,17 +1291,27 @@ Anyone holding this link can claim the deck until you use it, so open it now.
 async function verifyMode({ payload, resolveApi, args }) {
   const { api } = resolveApi();
   const b = payload.bunny;
+  const readName = b.read_script_name ?? `${b.script_name}-read`;
   const { scriptList, dbList } = await listExistingResources(api);
   const script = scriptList.find((s) => (s.Name ?? s.name) === b.script_name);
+  const front = scriptList.find((s) => (s.Name ?? s.name) === readName);
   const db = dbList.find((x) => (x.name ?? x.Name) === b.db_name);
   const checks = [];
-  checks.push(["script exists", script != null, script ? `Id ${script.Id ?? script.id}` : "not found"]);
+  checks.push(["full engine script exists", script != null, script ? `Id ${script.Id ?? script.id}` : "not found"]);
+  checks.push(["read front script exists", front != null, front ? `Id ${front.Id ?? front.id}` : "not found"]);
   checks.push(["database exists", db != null, db ? `${db.id ?? db.Id}` : "not found"]);
   let hostname = null;
+  if (front) {
+    const details = await api.call("GET", `/compute/script/${front.Id ?? front.id}`, undefined, { expect: [200] });
+    hostname = details.json?.DefaultHostname ? normalizeHostname(details.json.DefaultHostname) : null;
+    const vars = details.json?.EdgeScriptVariables ?? [];
+    const fullUrl = vars.find((v) => v.Name === "DECKO_EDGE_FULL_URL");
+    checks.push(["read front DECKO_EDGE_FULL_URL variable", fullUrl != null,
+      fullUrl ? `DefaultValue=${fullUrl.DefaultValue}` : "absent (the front cannot forward)"]);
+  }
   if (script) {
     const scriptId = script.Id ?? script.id;
     const details = await api.call("GET", `/compute/script/${scriptId}`, undefined, { expect: [200] });
-    hostname = details.json?.DefaultHostname ? normalizeHostname(details.json.DefaultHostname) : null;
     const vars = details.json?.EdgeScriptVariables ?? [];
     const cacheVar = vars.find((v) => v.Name === "DECKO_EDGE_CACHE");
     checks.push(["DECKO_EDGE_CACHE variable", cacheVar != null,
@@ -1113,13 +1325,13 @@ async function verifyMode({ payload, resolveApi, args }) {
     try {
       const r = await fetch(`${base}/_status`, { signal: AbortSignal.timeout(10_000) });
       const body = await r.json().catch(() => ({}));
-      checks.push(["/_status", r.status === 200 && body.ok === true,
+      checks.push(["/_status through the read front", r.status === 200 && body.ok === true,
         `HTTP ${r.status} ok=${String(body.ok)} card_count=${String(body.database?.card_count ?? "?")}`]);
     } catch (e) {
-      checks.push(["/_status", false, String(e).slice(0, 120)]);
+      checks.push(["/_status through the read front", false, String(e).slice(0, 120)]);
     }
   } else {
-    checks.push(["/_status", false, "no DefaultHostname (script missing or not created by this flow)"]);
+    checks.push(["/_status through the read front", false, "no DefaultHostname (script missing or not created by this flow)"]);
   }
   const resultPath = `${args.payload.replace(/\.json$/i, "")}.result.json`;
   if (existsSync(resultPath)) {
@@ -1168,6 +1380,18 @@ async function teardownMode({ payload, resolveApi, args }) {
   }
   const { api } = resolveApi();
   console.log(`===== TEARDOWN (destructive; ids from ${basename(resultPath)}) =====`);
+  // The read front first, then the full engine: the front forwards to the
+  // full script, so removing the full one first would leave the front
+  // answering 500s until it is gone too. A sidecar from a run before the
+  // front existed has no read_front_script — nothing to delete for it.
+  if (ids.read_front_script?.id) {
+    const f = await api.call("DELETE", `/compute/script/${ids.read_front_script.id}`, undefined, { expect: [200, 204] });
+    console.log(`DELETE /compute/script/${ids.read_front_script.id} (${ids.read_front_script.name}, read front) -> ${f.status}`);
+  }
+  if (ids.read_front_pull_zone?.id) {
+    const z = await api.call("DELETE", `/pullzone/${ids.read_front_pull_zone.id}`, undefined, { expect: [200, 204, 404] });
+    console.log(`DELETE /pullzone/${ids.read_front_pull_zone.id} (${ids.read_front_pull_zone.name}) -> ${z.status}`);
+  }
   const s = await api.call("DELETE", `/compute/script/${ids.script.id}`, undefined, { expect: [200, 204] });
   console.log(`DELETE /compute/script/${ids.script.id} (${ids.script.name}) -> ${s.status}`);
   // Deleting the script leaves its linked pull zone in place (measured on
@@ -1215,10 +1439,15 @@ async function main() {
   try {
     const payload = loadPayload(args.payload, { protectedNames: protectedResourceNames(args.protect) });
     const sourcePath = args.source ?? null;
-    const steps = buildSteps(payload, { sourcePath, writePathAllowed: args.allowWritePath });
+    // Read (and check against Bunny's script-variable limits) before the
+    // plan, so an oversized served value is refused with no network call and
+    // no account write — a script whose variable is too long answers HTTP
+    // 400 on every request.
+    const served = loadServedVariables(args.served);
+    const steps = buildSteps(payload, { sourcePath, writePathAllowed: args.allowWritePath, served });
 
     if (!args.execute && !args.verify && !args.teardown) {
-      printPlan({ payload, steps, sourcePath, payloadPath: args.payload });
+      printPlan({ payload, steps, sourcePath, payloadPath: args.payload, served });
       return;
     }
 
@@ -1232,7 +1461,7 @@ async function main() {
     };
 
     if (args.execute) {
-      await executeMode({ payload, resolveApi, args, sourcePath });
+      await executeMode({ payload, resolveApi, args, sourcePath, served });
     } else if (args.verify) {
       await verifyMode({ payload, resolveApi, args });
     } else {
