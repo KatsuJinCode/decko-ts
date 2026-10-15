@@ -116,7 +116,7 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     const s = storage!;
     const html = await s.engine.render("*signin", "edit_buttons");
     expect(html).toBe(
-      `<button type="submit" class="_close-modal-on-success btn btn-primary">Reset password</button>`,
+      `<button name="button" type="submit" class="_close-modal-on-success btn btn-primary">Reset password</button>`,
     );
   });
 

@@ -2000,6 +2000,9 @@ export class RenderEngine implements RenderEngineLike {
     if (view === "account_tab") {
       await this.warmBoardPillExistence(rootCard);
     }
+    if (view === "content_formgroups" || view === "new" || view === "core" || view === "new_buttons") {
+      await this.warmSignupAccountFields(rootCard);
+    }
     // A junction root's OWN field rows sit in no reference closure (a
     // subcard is reachable only through its left_id), and a CODED core's
     // nests are runtime-built - the account core's labeled rows emit
@@ -2016,17 +2019,7 @@ export class RenderEngine implements RenderEngineLike {
     // AND the fresh value unreadable until the next full page load's edit
     // view re-warmed them). Every view, one batch, junction roots only.
     if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
-      const children = (await this.fetcher.driver.query<CardsRow>(
-        "SELECT * FROM cards WHERE left_id = ? AND trash = false",
-        [rootCard.id],
-      )).rows;
-      for (const row of children) {
-        const tag = row.right_id !== undefined && row.right_id !== null
-          ? this.peekNameForId(row.right_id)
-          : undefined;
-        if (tag === undefined) continue;
-        await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
-      }
+      await this.seatJunctionFieldRows(rootCard);
       await this.ensureVerdicts();
     }
     // A NEW compound-eligible root's structured-form fields (the /new/:type
@@ -5894,6 +5887,35 @@ export class RenderEngine implements RenderEngineLike {
    *  not run the prepare phase for this card, or a skin nested into a render
    *  rather than being the root); the view falls back to the render-card
    *  map exactly as it did before this pass. */
+  /** Seats every stored field row of a junction root (the rows whose left is
+   *  the root), so a nest the sync view renders for a field finds the row.
+   *  Shared by the junction-root warm and the sign-up account warm below. */
+  private async seatJunctionFieldRows(rootCard: RenderCard): Promise<void> {
+    if (rootCard.id === undefined) return;
+    const children = (await this.fetcher.driver.query<CardsRow>(
+      "SELECT * FROM cards WHERE left_id = ? AND trash = false",
+      [rootCard.id],
+    )).rows;
+    for (const row of children) {
+      const tag = row.right_id !== undefined && row.right_id !== null
+        ? this.peekNameForId(row.right_id)
+        : undefined;
+      if (tag === undefined) continue;
+      await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
+    }
+  }
+
+  /** The sign-up form's account fields (card-mod-account set/type/signup/
+   *  views.rb:11-13 account_formgroups): the +*account trait's own field rows
+   *  (+*email, +*password, ...) render as nests of the sign-up card, and no
+   *  reference closure reaches them from the sign-up root. Seat them on the
+   *  sign-up root's account, the same shape as the junction-root warm. */
+  private async warmSignupAccountFields(rootCard: RenderCard): Promise<void> {
+    if (!rootCard.setKeys.split(" ").includes("TYPE-sign_up")) return;
+    const account = await this.prepareItemForRender(`${rootCard.name.s}+*account`);
+    if (account !== undefined) await this.seatJunctionFieldRows(account);
+  }
+
   /** The board account-tab pills (card-mod-account set/abstract/
    *  account_holder.rb account_details_items / account_content_items): each
    *  pill's target is "<board card>+<trait>" for these traits. Ruby's

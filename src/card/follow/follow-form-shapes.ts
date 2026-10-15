@@ -176,8 +176,10 @@ export function buttonTag(
   const cls = [opts.class, "btn", `btn-${situation}`]
     .filter((c) => c !== undefined && c !== "")
     .join(" ");
-  let attrs = `type="${opts.type ?? "submit"}"`;
-  if (opts.name !== undefined) attrs += ` name="${opts.name}"`;
+  // Rails' button_tag (ActionView::Helpers::FormTagHelper) merges the given
+  // options over {name: "button", type: "submit"}, so name comes first and
+  // the button is named "button" when the caller gives no name.
+  let attrs = `name="${opts.name ?? "button"}" type="${opts.type ?? "submit"}"`;
   if (opts.value !== undefined) attrs += ` value="${opts.value}"`;
   attrs += ` class="${cls}"`;
   if (opts.ariaLabel !== undefined) attrs += ` aria-label="${opts.ariaLabel}"`;

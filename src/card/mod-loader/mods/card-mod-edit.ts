@@ -1001,18 +1001,25 @@ function multiCardEdit(ctx: ViewContext, fieldsOnly: boolean): string {
       .map(([name, options]) => fieldEditorInMultiCard(ctx, name, options))
       .join("\n");
   }
+  // nest name, options (form.rb:119-121): the configs from voo.edit_structure
+  // are the caller's own options hash, so the slot carries their title and no
+  // nest_syntax (a programmatic nest has none). The implicit configs come from
+  // the structure's chunks (chunk.rb:63-70), whose options hold the chunk's
+  // nest_syntax (chunk/nest.rb:23), so only they carry it.
+  const explicit = editStructure !== undefined;
   return fieldConfigs
     .map(([name, options]) => {
       const opts = { ...(options ?? {}) };
       const view = typeof opts["view"] === "string" ? opts["view"] : "";
+      const title = typeof opts["title"] === "string" ? opts["title"] : undefined;
       const optList = view !== "" ? `|${view}` : "";
       return str(
         fmt.nest({
           syntax: `{{${name}${optList}}}`,
           name,
-          options: { view: view !== "" ? view : undefined, extra: {} },
+          options: { view: view !== "" ? view : undefined, title, extra: {} },
           comment: undefined,
-          chunkNestSyntax: `${name}${optList}`,
+          ...(explicit ? {} : { chunkNestSyntax: `${name}${optList}` }),
         }),
       );
     })
@@ -1310,9 +1317,14 @@ function normalizedEditFieldMark(
   cardish: string,
   options: Record<string, unknown>,
 ): string {
+  // normalized_edit_field_config (:125-139): a RELATIVE field mark,
+  // absolute or compound, normalizes to card.name.field(cardish). A mark
+  // that is already "+field" (the account family's before-hook tuples) is a
+  // RELATIVE mark whose field is that codename, so it joins the card's name
+  // too — "+*email" on "Sign up+*account" is "Sign up+*account+*email".
   if (options["absolute"] === true || cardish.startsWith("+")) {
     delete options["absolute"];
-    return cardish;
+    return cardish.startsWith("+") ? fmt.card.name.s + cardish : cardish;
   }
   return fmt.card.name.field(cardish);
 }

@@ -268,10 +268,13 @@ const accountCoreView: ViewFn = (ctx) => {
   // card - Card::Name#field stars codenamed fields (nesting.rb docstring),
   // so the nests are +*email/+*password (the labeled rows' values are the
   // real rows' cores: the email text and the password raw's "encrypted").
+  // card.name.field(field) (format/nesting.rb field_nest: `fullname =
+  // card.name.field(field)`): the nest is the ABSOLUTE field name, so the
+  // slot carries "<account holder>+*email", not the relative mark.
   const fieldNest = (field: string, title: string): string =>
     ctx.fmt.nest({
-      syntax: `{{+*${field}|view:labeled|title:${title}}}`,
-      name: `+*${field}`,
+      syntax: `${ctx.fmt.card.name.s}+*${field}|view:labeled|title:${title}`,
+      name: `${ctx.fmt.card.name.s}+*${field}`,
       options: { view: "labeled", title, extra: {} },
       comment: undefined,
     });
