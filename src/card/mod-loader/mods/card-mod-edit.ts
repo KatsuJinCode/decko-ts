@@ -151,7 +151,8 @@
 //   :new_in_modal_buttons, :new_type_formgroup PORTED (the edit-views port,
 //   see above); the unnamed-card arms and the params surfaces
 //   (params[:name_prompt]/params[:type]) are the page layer's remainders
-//   ; the *thanks rule read falls back to "_self" (NEW_SUCCESS_MARK)
+//   ; the *thanks rule read (new_success's mark) is ported (newSuccessMark -
+//   the rule-card walk + db_content, the "_self" fallback when no rule)
 // - all/overlay_guide.rb:overlay_guide PORTED (the haml
 //   template bytes + the inlined guide helper set)
 // - all/template_nest.rb :template_nest field_only branch - PORTED
@@ -195,7 +196,7 @@ import { modRuleSeedContentForCandidate } from "../mod-rule-seeds.js";
 import { renderRecaptchaConfig } from "../../render/render-recaptcha-config.js";
 import { recaptchaFormOn, recaptchaHiddenFormTags } from "./card-mod-recaptcha.js";
 import { timeAgoInWords, actSummaryBadge } from "./card-mod-history.js";
-import { ruleSidesStatement } from "./rule-card-warm.js";
+import { ruleSidesStatement, warmRuleCards } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import type {
   DeckoModManifest,
@@ -2254,8 +2255,14 @@ function isTemplateCard(fmt: ViewContext["fmt"]): boolean {
  *  so the port reads the current type's membership. Requires the prepare
  *  gate (CREATEABLE_TYPES_VIEWS carries this view's family). */
 function newTypePermitted(ctx: ViewContext): boolean {
-  const typeName = ctx.fmt.card.typeName;
-  return typeName !== undefined && ctx.fmt.createableTypes().includes(typeName);
+  const { fmt } = ctx;
+  // The per-type verdict the engine prepares for the new-form views
+  // (render.ts prepareCurrentTypeCreatable). Without it, fall back to the
+  // createable_types list membership.
+  const own = fmt.card.typeId === undefined ? undefined : fmt.engine.currentTypeCreatable?.(fmt.card.typeId);
+  if (own !== undefined) return own;
+  const typeName = fmt.card.typeName;
+  return typeName !== undefined && fmt.createableTypes().includes(typeName);
 }
 
 /** new.rb:99 new_view_hidden - the override stub (nil, dropped by
@@ -2306,10 +2313,36 @@ function newInModalTitle(ctx: ViewContext): string {
   return newNamePrompt(ctx) ? newViewTitle(ctx) : str(ctx.fmt.renderView("title"));
 }
 
-/** new.rb:93-95 new_success: `{ mark: card.rule(:thanks) || "_self" }` -
- *  the *thanks rule read is the rails rule machinery (the shipped cards
- *  carry no *thanks rule); the port answers the _self fallback. */
-const NEW_SUCCESS_MARK = "_self";
+/** new.rb:93-95 new_success: `{ mark: card.rule(:thanks) || "_self" }`.
+ *  card.rule(:thanks) = `rule_card(:thanks, skip_modules: true)&.db_content`
+ *  (card-1.110.0 lib/card/rule/all.rb:5-7): the most specific *thanks rule
+ *  card for the card, its content (e.g. "Sign up+*type+*thanks" carries
+ *  "signup_success"). Only a nil answer (no rule card) falls back to "_self";
+ *  an empty content is a real answer. The candidate walk is the same
+ *  ruleNamesForCard walk guideRuleCard uses; the rule cards are warmed by
+ *  the edit mod's prepareEngine (warmRuleCards "thanks"). */
+function newSuccessMark(ctx: ViewContext): string {
+  const card = ctx.fmt.card;
+  const input: PatternCardInput = {
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    typeName: card.typeName,
+    ...(card.id === undefined ? { isNew: true } : {}),
+  };
+  if (card.name.isCompound) {
+    const leftKey = card.name.leftName?.key;
+    const left =
+      leftKey !== undefined ? ctx.fmt.engine.fetchRenderCard(leftKey) : undefined;
+    input.leftTypeName = left?.typeName;
+  }
+  for (const candidate of ruleNamesForCard(input, "*thanks")) {
+    const rule = ctx.fmt.engine.fetchRenderCard(candidate);
+    if (rule === undefined) continue; // no rule at this pattern
+    return rule.dbContent ?? "_self"; // rule(:thanks) nil -> the "_self" fallback
+  }
+  return "_self";
+}
 
 /** form.rb:186-200 card_form (the Symbol-action :create shape the
  *  create forms share): class "card-form slotter" (slotter unless
@@ -2615,7 +2648,7 @@ export const newView: ViewFn = (ctx) => {
   const form = createCardForm(
     ctx,
     ` data-main-success="{&quot;redirect&quot;:true}"`,
-    hiddenFieldTag("success[mark]", NEW_SUCCESS_MARK),
+    hiddenFieldTag("success[mark]", newSuccessMark(ctx)),
     createFormWithAlertGuide(ctx),
   );
   return framedView(ctx, "new", () => form, { showHelp: true });
@@ -4433,8 +4466,9 @@ const setModules: ModSetModuleFile[] = [
     // cancel_create_path/standard_create_button are inlined in the view
     // fns. NOT ported: the unnamed-card arms (the engine renders no
     // unnamed cards - the oracle's new_card surface documents them),
-    // the params surfaces (params[:name_prompt]/params[:type]), the
-    // *thanks rule read (new_success's fallback "_self" is inlined).
+    // the params surfaces (params[:name_prompt]/params[:type]).
+    // new_success IS ported (newSuccessMark: the *thanks rule-card walk
+    // over db_content, "_self" when the rule is nil).
     setPath: "all/new",
     formats: {
       html: {
@@ -4554,12 +4588,24 @@ const setModules: ModSetModuleFile[] = [
   },
 ];
 
+/** The edit mod's boot warm: the *input type rules (prepareInputTypeRules)
+ *  and the *thanks rules new_success reads (rule-card-warm.ts, the same
+ *  one-batch shape card-mod-help warms *help/*guide with). */
+async function prepareEditRules(host: ModEngineHost): Promise<void> {
+  await prepareInputTypeRules(host);
+  await host.codenames.ensureLoaded(); // memoized; first call only
+  const setTypeId = host.codenames.peekId("set");
+  const settingTypeId = host.codenames.peekId("setting");
+  if (setTypeId === undefined || settingTypeId === undefined) return; // degenerate deck
+  await warmRuleCards(host, setTypeId, settingTypeId, ["thanks"]);
+}
+
 const cardModEdit: DeckoModManifest = {
   name: "edit",
   gemName: "card-mod-edit",
   group: "gem",
   setModules,
-  prepareEngine: prepareInputTypeRules,
+  prepareEngine: prepareEditRules,
 };
 
 export default cardModEdit;

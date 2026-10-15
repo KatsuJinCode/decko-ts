@@ -6528,20 +6528,17 @@ const homePathView: ViewFn = ({ fmt }) => {
 };
 
 /** card-mod-format set/self/home.rb view :home_url (perms: :none):
- *  `card_url ""` — the deck-root ABSOLUTE url (scheme+host+"/" in a Rails
- *  runtime). Self-set scoped in Ruby; the flat registry scopes by card key
- *  here (home_path's gate, same set). Deliberately UNCHANGED:
- *  the capture MASKS the host on this view (the page
- *  and view captures carry a bare "/" for the deck root — pinned by
- *  the card-mod-format-remaining-views suite (not in the public package)'s
- *  `home_url is the deck-root path` case), so unlike the `:url` view
- *  (whose absolute form the email-template pages pin in full) the masked
- *  root stays a path. */
+ *  `card_url ""` - Env.origin + card_path "" (location.rb:19-21): the
+ *  deck origin (Cardio.config.deck_origin, serializable.rb:20-22) followed by
+ *  the deck root. The origin is the deck's configuration: a configured deck
+ *  answers its absolute root, a requestless deck with no origin answers "/".
+ *  Set-scoped to *home like home_path (any other card raises the
+ *  unsupported-view UserError). */
 const homeUrlView: ViewFn = ({ fmt }) => {
   if (fmt.card.key !== "*home") {
     throw new UnsupportedViewError("home_url", fmt.card.name.s);
   }
-  return "/";
+  return fmt.cardUrl("");
 };
 
 // ---------------------------------------------------------------------------
