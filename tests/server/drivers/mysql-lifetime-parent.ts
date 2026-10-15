@@ -2,9 +2,13 @@
 // its pid, and then waits. The test force-kills this process without letting
 // it run any exit hook, and checks that the server does not outlive it.
 
-import { startMysqlServer } from "./mysql-server.ts";
+// The import path is held in a variable so Node runs the TypeScript directly
+// (type stripping) without the typecheck's extension rules.
+const serverModule = new URL("./mysql-server.ts", import.meta.url).href;
+const { startMysqlServer } = (await import(serverModule)) as {
+  startMysqlServer: () => Promise<{ pid: number }>;
+};
 
 const server = await startMysqlServer();
-const pid = server.pid;
-process.stdout.write(`READY ${pid}\n`);
+process.stdout.write(`READY ${server.pid}\n`);
 setInterval(() => undefined, 60_000);

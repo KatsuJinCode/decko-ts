@@ -197,7 +197,7 @@ export async function startMysqlServer(): Promise<MysqlServer> {
       }
       const gone = Date.now() + 30_000;
       while (!exited && Date.now() < gone) await new Promise((r) => setTimeout(r, 100));
-      if (!exited) killTree(running.pid);
+      if (!exited && running.pid !== undefined) killTree(running.pid);
       endWatchdog();
       removeDatadir(datadir);
     };
