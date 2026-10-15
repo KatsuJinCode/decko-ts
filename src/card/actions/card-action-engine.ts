@@ -240,6 +240,11 @@ interface DeferredReferenceFinalize {
   thunks?: ReadonlyArray<readonly [string, () => Promise<void>]>;
 }
 
+interface PreparedCreateValidation {
+  input: CreateCardInput;
+  typeId: number;
+}
+
 /** The attachment mounts by type codename — the two sets that include
  *  Abstract::Attachment and therefore run its events: `attachment :file`
  *  (card-mod-carrierwave set/type/file.rb:1, File cards codename `file`)
@@ -876,6 +881,41 @@ export class CardActionEngine {
    *  that changes nothing produces no action (events.rb:34-37). A
    *  trashed name REVIVES through the create path (pull_from_trash!,
    *  trash.rb:57-62). */
+  private subcardCreateInput(name: string, sub: SubcardInput, superActionId?: number | null): CreateCardInput {
+    return {
+      name, subcards: sub.subcards, content: sub.content,
+      typeId: sub.typeId, typeCode: sub.typeCode, typeName: sub.typeName,
+      attachment: sub.attachment, superActionId,
+      ...(sub.history === false ? { history: false } : {}),
+      ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
+    };
+  }
+
+  private blankNewSubcard(sub: SubcardInput): boolean {
+    return sub.fromEventField !== true && (sub.content === undefined || sub.content === "") &&
+      sub.attachment === undefined && (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
+  }
+
+  /** Validate new submitted descendants while the parent is still unstored.
+   * Keep the prepared attributes so validation bodies never execute twice. */
+  private async prepareNewSubcards(
+    mainName: DeckoName,
+    subcards: Record<string, SubcardInput> | undefined,
+    prepared: WeakMap<SubcardInput, PreparedCreateValidation>,
+    deferEventFields = false,
+  ): Promise<void> {
+    for (const [key, sub] of Object.entries(subcards ?? {})) {
+      if (prepared.has(sub) || (deferEventFields && sub.fromEventField === true)) continue;
+      const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
+      const existing = await this.fetch.fetchByName(name);
+      if (existing !== undefined && !existing.trash) continue;
+      if (this.blankNewSubcard(sub)) continue;
+      const state = await this.prepareCreateValidation(this.subcardCreateInput(name, sub));
+      prepared.set(sub, state);
+      await this.prepareNewSubcards(DeckoName.parse(name), state.input.subcards, prepared, deferEventFields);
+    }
+  }
+
   private async saveSubcardsInWriter(
     writer: ActWriter,
     mainName: DeckoName | undefined,
@@ -883,6 +923,7 @@ export class CardActionEngine {
     superActionId: number | null,
     finalizeQueue?: (() => Promise<void>)[],
     deferredSubFinalizes?: DeferredReferenceFinalize[],
+    prepared?: WeakMap<SubcardInput, PreparedCreateValidation>,
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
@@ -961,6 +1002,7 @@ export class CardActionEngine {
               updated?.actionId ?? superActionId,
               finalizeQueue,
               deferredSubFinalizes,
+              prepared,
             )),
           );
         }
@@ -974,11 +1016,7 @@ export class CardActionEngine {
         // *default-template type riding the hidden type_id input; the type
         // does not make the save: a blank-content subcard stores nothing
         // whatever its type).
-        const blankNoop =
-          sub.fromEventField !== true &&
-          (sub.content === undefined || sub.content === "") &&
-          sub.attachment === undefined &&
-          (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
+        const blankNoop = this.blankNewSubcard(sub);
         if (blankNoop) continue;
         // The subcard's own reference FINALIZE defers until after its own
         // subcards save below — Ruby's stage order again (the subcard's
@@ -986,21 +1024,8 @@ export class CardActionEngine {
         const subReferenceFinalize: DeferredReferenceFinalize = {};
         const created = await this.createInWriter(
           writer,
-          {
-            name: fullName,
-            // the subcard's own subcards ride along so its validation sees
-            // them (require_field); they are saved below, after it
-            ...(sub.subcards !== undefined ? { subcards: sub.subcards } : {}),
-            content: sub.content,
-            typeId: sub.typeId,
-            typeCode: sub.typeCode,
-            typeName: sub.typeName,
-            attachment: sub.attachment,
-            superActionId,
-            ...(sub.history === false ? { history: false } : {}),
-            ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
-          },
-          { isActCard: false, deferFinalize: subReferenceFinalize },
+          this.subcardCreateInput(fullName, sub, superActionId),
+          { isActCard: false, deferFinalize: subReferenceFinalize, prepared: prepared?.get(sub), preparedSubcards: prepared },
         );
         // The stash lands HERE, before the card's own subcards recurse: the
         // deferred events run in store order (the oracle's reference-row ids
@@ -1030,6 +1055,7 @@ export class CardActionEngine {
               sub.history === false ? superActionId : created.actionId,
               finalizeQueue,
               deferredSubFinalizes,
+              prepared,
             )),
           );
         }
@@ -1761,6 +1787,10 @@ export class CardActionEngine {
     this.setActiveSaveAttributes(input);
     await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     await this.validateCssSaveTree(name, input, undefined, typeId);
+    const prepared = await this.prepareCreateValidation(input, typeId);
+    input = prepared.input;
+    const preparedSubcards = new WeakMap<SubcardInput, PreparedCreateValidation>();
+    await this.prepareNewSubcards(name, input.subcards, preparedSubcards, true);
     const writer = this.newWriter(actingId);
     // Ruby runs every card's finalize events after the whole act's store
     // phase, so the act card's reference janitors see the subcards' rows:
@@ -1782,6 +1812,8 @@ export class CardActionEngine {
         isActCard: true,
         resolvedTypeId: typeId,
         deferFinalize: referenceFinalize,
+        prepared,
+        preparedSubcards,
       });
     } catch (error) {
       await this.dropUnfilledActions(writer);
@@ -1791,7 +1823,7 @@ export class CardActionEngine {
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
     const deferredSubFinalizes: DeferredReferenceFinalize[] = [];
-    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue, deferredSubFinalizes);
+    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue, deferredSubFinalizes, preparedSubcards);
     await this.ensureAccountDefaults(writer, name, result.cardId, result.actionId, subResults);
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
@@ -1854,21 +1886,7 @@ export class CardActionEngine {
    *  Lexicon entries) — an inline finalize parses the template content
    *  before the subcards exist and emits partial "P" rows Ruby never
    *  writes. Absent (every other caller): finalize runs inline, unchanged. */
-  private async createInWriter(
-    writer: ActWriter,
-    input: CreateCardInput,
-    opts: {
-      isActCard: boolean;
-      resolvedTypeId?: number;
-      /** When provided, the card's reference FINALIZE events (the
-       *  refresh_references_out/in built-ins) are not run inline; the box
-       *  receives them and the caller runs runDeferredReferenceFinalize
-       *  after the act's store-stage writes complete — Ruby's stage order
-       *  (director/phases.rb: store, then finalize; the subcards save
-       *  inside the store stage). */
-      deferFinalize?: DeferredReferenceFinalize;
-    },
-  ): Promise<ActionResult> {
+  private async prepareCreateValidation(input: CreateCardInput, resolvedTypeId?: number): Promise<PreparedCreateValidation> {
     const name = DeckoName.parse(input.name ?? "");
     // A +*password card's content is validated and stored encrypted (the
     // sign-up plan's password arrives encrypted already).
@@ -1885,7 +1903,7 @@ export class CardActionEngine {
     // land — the seams are the point.
     // The event card's type: the resolved type once known (type-scoped set
     // modules, e.g. set/type/number.rb's :validate_number, apply by it).
-    let eventTypeId = opts.resolvedTypeId;
+    let eventTypeId = resolvedTypeId;
     const validationCard = (): ModEventCard =>
       this.eventCard({
         name,
@@ -1899,7 +1917,7 @@ export class CardActionEngine {
     await this.dispatchEventStage("prepare_to_validate", validationCard());
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
     const typeId =
-      opts.resolvedTypeId ??
+      resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
     // The validate-stage event card reads this variable (the closure below):
     // once the form's type resolution lands, the type-scoped set modules'
@@ -1947,6 +1965,35 @@ export class CardActionEngine {
     );
     await this.dispatchEventStage("validate", validationCard());
 
+    return { input, typeId };
+  }
+
+  private async createInWriter(
+    writer: ActWriter,
+    input: CreateCardInput,
+    opts: {
+      isActCard: boolean;
+      resolvedTypeId?: number;
+      prepared?: PreparedCreateValidation;
+      preparedSubcards?: WeakMap<SubcardInput, PreparedCreateValidation>;
+      /** When provided, the card's reference FINALIZE events (the
+       *  refresh_references_out/in built-ins) are not run inline; the box
+       *  receives them and the caller runs runDeferredReferenceFinalize
+       *  after the act's store-stage writes complete — Ruby's stage order
+       *  (director/phases.rb: store, then finalize; the subcards save
+       *  inside the store stage). */
+      deferFinalize?: DeferredReferenceFinalize;
+    },
+  ): Promise<ActionResult> {
+    const prepared = opts.prepared ?? await this.prepareCreateValidation(input, opts.resolvedTypeId);
+    input = { ...prepared.input, superActionId: input.superActionId };
+    const typeId = prepared.typeId;
+    const name = DeckoName.parse(input.name ?? "");
+    const validationCard = (): ModEventCard => this.eventCard({
+      name, key: name.key, dbContent: input.content, dbContentBeforeAct: null,
+      action: "create", typeId,
+    });
+
     // A compound card's own action row is saved before the side subcards
     // its create makes (ActWriter.reserveAction has the Ruby mechanism), so
     // it is reserved here and filled by the row write below. A history-less
@@ -1983,6 +2030,12 @@ export class CardActionEngine {
       input.content = c;
     });
     await this.dispatchEventStage("prepare_to_store", validationCard());
+    // copy_theme creates its fields during prepare_to_store. Unlike posted
+    // descendants, those fields validate here, after their generating event
+    // and before the parent's store body (stock create-skin trace).
+    if (opts.preparedSubcards !== undefined) {
+      await this.prepareNewSubcards(name, input.subcards, opts.preparedSubcards);
+    }
     // set_content (:store, content.rb:1-5): prepare_db_content cleans the
     // stored HTML before the row write.
     if (input.content != null && input.attachment === undefined) {
@@ -2388,7 +2441,34 @@ export class CardActionEngine {
     return [...(this.modEvents?.skip ?? []), ...this.saveSkip];
   }
 
-  private async updateCardInner(input: UpdateCardInput): Promise<ActionResult | null> {
+  /** The required skin finalize event saves its rule inside the skin's act.
+   * Its own unchanged save still runs storage/finalize before that event. */
+  async useAsCurrentSkin(cardId: number): Promise<ActionResult | null> {
+    return this.atomicSave(async () => {
+      const skin = await this.fetchRowById(cardId);
+      if (skin === undefined || (await this.fetchRowById(skin.type_id))?.codename !== "bootswatch_skin") {
+        throw new CardActionError("user-error", "use_as_current_skin requires a Bootswatch skin");
+      }
+      const name = await this.composedNameOf(skin);
+      const style = await this.fetch.fetchByName("*all+*style");
+      if (style?.id === undefined || name === undefined) throw new CardActionError("not-found", "no *all+*style rule card");
+      let result: ActionResult | null = null;
+      await this.updateCardInner({ cardId }, {
+        walkNoopLifecycle: true,
+        finalize: async writer => {
+          result = await this.updateCardInner({ cardId: style.id!, content: name.s, withinOtherAct: true }, { writer, isActCard: false });
+        },
+      });
+      return result;
+    });
+  }
+
+  private async updateCardInner(input: UpdateCardInput, lifecycle: {
+    writer?: ActWriter;
+    isActCard?: boolean;
+    walkNoopLifecycle?: boolean;
+    finalize?: (writer: ActWriter) => Promise<void>;
+  } = {}): Promise<ActionResult | null> {
     // The anonymous-update arm: same chain as create — ok_to_update?
     // (permissions.rb:148-153 permit(:update) + the type-change clause)
     // has NO signed-in clause; an anonymous session's Auth.as_id IS the
@@ -2550,11 +2630,15 @@ export class CardActionEngine {
       (input.name !== undefined ? DeckoName.parse(input.name) : await this.composedNameOf(row)) ?? DeckoName.parse(""),
       resolvedTypeId ?? row.type_id,
     );
-    const writer = this.newWriter(actingId);
+    const writer = lifecycle.writer ?? this.newWriter(actingId);
     // The act card's finalize defers past the subcard saves (Ruby's finalize
     // phase runs after the whole act's store — see the create path).
     const finalizeQueue: (() => Promise<void>)[] = [];
-    let result = await this.updateInWriter(writer, row, input, resolvedTypeId, { finalizeQueue });
+    let result = await this.updateInWriter(writer, row, input, resolvedTypeId, {
+      finalizeQueue,
+      isActCard: lifecycle.isActCard,
+      walkNoopLifecycle: lifecycle.walkNoopLifecycle,
+    });
     // subcards.rb:1-16: the subcards ride this save's act — the multiedit
     // shape (the plusses in the main card's form submission). Ruby saves
     // them within the supercard's Director run (director/store.rb:37-58);
@@ -2670,6 +2754,7 @@ export class CardActionEngine {
         withinOtherAct: input.withinOtherAct === true,
       });
     });
+    await lifecycle.finalize?.(writer);
     return result;
   }
 
@@ -2817,7 +2902,7 @@ export class CardActionEngine {
     row: CardsRow,
     input: UpdateCardInput,
     preResolvedTypeId?: number,
-    opts: { isActCard?: boolean; finalizeQueue?: (() => Promise<void>)[] } = {},
+    opts: { isActCard?: boolean; finalizeQueue?: (() => Promise<void>)[]; walkNoopLifecycle?: boolean } = {},
   ): Promise<ActionResult | null> {
     const before = cardFieldStateFromRow(row);
     const after: CardFieldState = { ...before };
@@ -3081,6 +3166,16 @@ export class CardActionEngine {
       reservedActionId,
     });
     if (saved === null) {
+      if (opts.walkNoopLifecycle === true) {
+        const event = this.eventCard({ name: currentName, id: row.id, key: currentKey,
+          dbContent: after.db_content, dbContentBeforeAct: before.db_content,
+          action: "update", actId: writer.currentActId() ?? undefined, typeId: after.type_id,
+          trash: false, nameBeforeAct: currentName?.s, changedFields: updateChangedFields });
+        await this.dispatchEventStage("prepare_to_store", event);
+        await this.dispatchEventStage("store", event);
+        await this.expireAfterWrite({ cardId: row.id, nameAfter: currentName, verb: "update" });
+        await this.runFinalizeEvents(event, []);
+      }
       // The mark itself was POSTED (it is the update target): the director's
       // set_stamper assigned its updater_id/updated_at at instantiation, so
       // a no-op mark save still stamps its row (no action, no change rows) —

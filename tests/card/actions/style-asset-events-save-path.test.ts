@@ -10,6 +10,8 @@ import { join } from "node:path";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
+import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
 import {
   createActionsTestStorage,
   seedCard,
@@ -62,6 +64,32 @@ function engine(scssCompiler?: (source: string) => Promise<string>) {
 }
 
 describe("the save path's style asset events", () => {
+  it("using a skin finalizes its own unchanged save before updating the rule in one act", async () => {
+    await seedCard(storage, { id: 450, name: "*variables", codename: "variables" });
+    await seedCard(storage, { id: 451, name: "Probe Skin+*variables", leftId: ids.skin, rightId: 450,
+      typeId: ids.scss, dbContent: "body { color: red; }" });
+    const order: string[] = [];
+    const registry = new ModEventRegistry();
+    for (const stage of ["store", "finalize", "integrate"] as const) registry.register({
+      event: `observe_${stage}`, at: stage, modName: "phase_control", setPath: "all/phase_control",
+      fn: card => { order.push(`${stage}:${card.name}`); },
+    });
+    const actsBefore = await storage.count("card_acts");
+    const result = await new CardActionEngine(storage.engine, {
+      actor: JOE, now: fakeClock(), attachmentStore: new LocalAttachmentStore(filesDir),
+      scssCompiler: libsassWasmCompiler(), modEvents: { registry },
+    }).useAsCurrentSkin(ids.skin);
+    expect(result?.cardId).toBe(ids.allStyle);
+    expect(order.indexOf("finalize:Probe Skin")).toBeLessThan(order.indexOf("store:*all+*style"));
+    expect(order.indexOf("integrate:~420")).toBeLessThan(order.indexOf("integrate:*all+*style"));
+    expect(await storage.count("card_acts")).toBe(actsBefore + 1);
+    expect((await storage.selectOne<{ card_id: number }>("SELECT card_id FROM card_acts ORDER BY id DESC LIMIT 1"))?.card_id).toBe(ids.skin);
+    expect(await storage.selectOne("SELECT id FROM card_actions WHERE card_id = ?", [ids.skin])).toBeUndefined();
+    expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id = ?", [ids.allStyle]))?.db_content).toBe("Probe Skin");
+    const output = await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id = ?", [ids.output]);
+    const match = /^~431\/(\d+)\.css$/.exec(output!.db_content)!;
+    expect(readFileSync(join(filesDir, "431", `${match[1]}.css`), "utf8")).toContain("body{color:red}");
+  });
   it("updating *all+*style stores the compiled skin as the asset output card's file, with no action of its own", async () => {
     const sources: string[] = [];
     const result = await engine(async (source) => {

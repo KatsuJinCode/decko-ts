@@ -1748,10 +1748,7 @@ async function dispatchWriteRequest(
         // changes nothing (its act stays empty) and the event saves the
         // *all+*style rule with the skin's name, inside that act.
         name = existing.name?.s ?? updateName;
-        await engine.assertMayUpdate(existing.id);
-        const style = await lookupLiveCard(ctx.fetcher, "*all+*style");
-        if (style === undefined) throw new CardActionError("not-found", "no *all+*style rule card");
-        result = await engine.updateCard({ cardId: style.id, content: name, withinOtherAct: true });
+        result = await engine.useAsCurrentSkin(existing.id);
       } else if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
