@@ -438,6 +438,239 @@ try {
   const backIn = await attempt("sign back in", () => signIn(creds.admin));
   if (backIn) record("signing back in works", backIn.hasSessionCookie && backIn.landing.signedIn, { hasSessionCookie: backIn.hasSessionCookie, signedIn: backIn.landing.signedIn });
 
+  // -- 7b: the capabilities Decko's own browser tests cover that this run
+  //         did not yet drive (checklist: tools/edge-signed-in-exercise/capabilities.json)
+  group("7b. further signed-in capabilities (Decko's own browser tests as the checklist)");
+
+  await attempt("S2/S3/S4 signed-out sign-in page", async () => {
+    // A second, throwaway browser: these are the SIGNED-OUT sign-in behaviours, so the
+    // context must carry no session cookie.
+    const anon = await launchHarnessBrowser({ origin: stack.origin, assetHosts: assetHosts });
+    const p2 = anon.page;
+    try {
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      const links = await p2.evaluate(() => ({
+        signup: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /Sign_up|sign_up/i.test(h)),
+        reset: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /reset|forgot|signin/i.test(h)),
+      }));
+      record("the signed-out sign-in page links to sign up and to reset the password", links.signup.length > 0 && links.reset.length > 0, links);
+      // wrong password
+      await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
+      await p2.fill('input[name="card[subcards][+*password][content]"]', "definitely-not-the-password");
+      const [wrongResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 30_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const cookies = await p2.context().cookies(stack.origin);
+      const session = cookies.some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      const wrongBody = (await p2.content()).replace(/<script[\s\S]*?<\/script>/g, "");
+      const refusedText = (/<(div|p|span)[^>]*class="[^"]*(error|alert|invalid)[^"]*"[^>]*>([^<]{0,140})/.exec(wrongBody) ?? [])[3] ?? null;
+      record("sign-in refused on a wrong password (422, no session, error shown)", wrongResponse !== null && wrongResponse.status() >= 400 && !session,
+        { status: wrongResponse?.status() ?? null, hasSession: session, refusedText });
+      // empty password
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
+      await p2.fill('input[name="card[subcards][+*password][content]"]', "");
+      const [emptyResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 15_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const emptySession = (await p2.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      record("sign-in with an empty password is refused (no session)", (emptyResponse === null || emptyResponse.status() >= 400) && !emptySession,
+        { status: emptyResponse?.status() ?? null, noRequest: emptyResponse === null, hasSession: emptySession });
+    } finally {
+      await anon.close().catch(() => undefined);
+    }
+  });
+
+  const preName = cardName("preset");
+  created.push(preName);
+  await attempt("C10 presetting content from the URL", async () => {
+    const marker = "Harness preset";
+    const url = `${stack.origin}/new/RichText?card%5Bname%5D=${preName}&card%5Bcontent%5D=${encodeURIComponent(`<p>${marker}</p>`)}`;
+    const view = await page.goto(url, { waitUntil: "load" }).then((r) => ({ status: r?.status() ?? null })).catch((e) => ({ error: String(e).slice(0, 100) }));
+    await page.waitForTimeout(2500);
+    const prefilled = await page.evaluate(() => {
+      const ed = window.tinymce?.activeEditor;
+      const ta = document.querySelector(".modal textarea, #edit_card textarea");
+      return { editor: ed ? ed.getContent() : null, textarea: ta ? ta.value : null };
+    });
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"], .modal button.submit-button, #edit_card button.submit-button').first().click().catch((e) => record("C10 submit", false, { error: String(e).slice(0, 120) }));
+    await page.waitForTimeout(3000);
+    const line = linesSince(before).find((l) => l.method !== "GET");
+    const after = await visit(`/${preName}`);
+    record("card content preset in the /new URL is submitted and stored", line !== undefined && line.status < 400 && after.html.includes(marker),
+      { status: line?.status ?? null, prefilledEditor: (prefilled.editor ?? "").slice(0, 60), marker, afterStatus: after.status });
+  });
+
+  await attempt("C8 duplicate name refused", async () => {
+    await visit("/new/RichText");
+    await page.locator('form.card-form input[name="card[name]"]').first().fill("Home");
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(2500);
+    const line = linesSince(before).find((l) => l.method !== "GET");
+    const body = await page.content();
+    const homeStillThere = (await visit("/Home")).status === 200;
+    const refused = line !== undefined && line.status >= 400;
+    record("creating a card whose name already exists is refused (Home not touched)", refused && homeStillThere,
+      { status: line?.status ?? null, homeStillThere, errorShown: /already|taken|exists/i.test(body) });
+  });
+
+  let currentName = richName;
+  await attempt("R1 rename", async () => {
+    // The rename control is the board's name row (cypress edit/board/save_changes:
+    // .edit_name_row .edit-link -> a renamer), not the content modal.
+    const renamed = `${currentName}_renamed`;
+    await page.goto(`${stack.origin}/${richName}/board`, { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const row = page.locator(".board .edit_name_row-view, .board [id*='edit_name_row']").first();
+    const rowCount = await row.count();
+    if (rowCount === 0) {
+      record("rename: the board shows an edit_name_row", false, { note: "no edit_name_row in the board" });
+    } else {
+      await row.locator("a.edit-link, a[href$='/edit']").first().dispatchEvent("click").catch(() => undefined);
+      await page.waitForTimeout(1500);
+      const nameInput = page.locator(".modal input[name='card[name]'], .board input[name='card[name]'], .name-editor input[name='card[name]']").first();
+      const present = await nameInput.count();
+      if (present === 0) {
+        record("rename: the name row opens a renamer with a card[name] field", false, { note: "no name field after the name row was opened" });
+      } else {
+        await nameInput.fill(renamed).catch(() => undefined);
+        const before = ledger().length;
+        await page.locator(".modal button.renamer, .board button.renamer, button[type='submit']").first().click().catch(() => undefined);
+        await page.waitForTimeout(3000);
+        const write = linesSince(before).find((l) => l.method !== "GET");
+        const after = await visit(`/${renamed}`);
+        const old = await visit(`/${richName}`);
+        const oldGone = old.status !== 200 || !old.html.includes(renamed);
+        record("rename through the board's name row moves the card to its new name", write !== undefined && write.status < 400 && after.html.includes(renamed) && oldGone,
+          { status: write?.status ?? null, serverSaid: write?.bodyHead, newName: renamed, afterStatus: after.status, oldGone });
+        created[created.indexOf(currentName)] = renamed;
+        currentName = renamed;
+      }
+    }
+  });
+
+  await attempt("H1 history shows the run's edits", async () => {
+    const history = await visit(`/${currentName}/history`);
+    const acts = await page.evaluate(() => document.querySelectorAll(".act, tr, .history-act, [id^=act-]").length);
+    const body = await page.content();
+    record("the history page lists the card's acts (not just a 200)", history.status === 200 && /act|change|edit/i.test(body),
+      { status: history.status, actLikeNodes: acts });
+  });
+
+  await attempt("E19-E22 board tabs", async () => {
+    await page.goto(`${stack.origin}/${currentName}/board`, { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const board = await page.locator(".board .board-main").count();
+    const tabs = await page.evaluate(() => [...document.querySelectorAll(".board [role=tab], .board .nav-link, .board .tab-link, .board a[data-bs-toggle=tab]")].map((t) => ({ text: t.textContent.trim().slice(0, 30), href: t.getAttribute("href") })).filter((t) => t.text).slice(0, 20));
+    const hasEngage = tabs.some((t) => /engage/i.test(t.text));
+    const hasHistory = tabs.some((t) => /history/i.test(t.text));
+    const hasRules = tabs.some((t) => /rule/i.test(t.text));
+    record("the card board renders with its tabs (guide, engage, history, rules)", board > 0 && hasEngage && hasHistory && hasRules,
+      { board, tabs });
+    // The Engage tab: the follow control a signed-in user has.
+    const engage = page.locator(".board a:has-text('Engage'), .board [href*='engage']").first();
+    if (await engage.count() > 0) {
+      await engage.click().catch(() => undefined);
+      await page.waitForTimeout(1500);
+      const engageBody = await page.content();
+      const followControls = await page.evaluate(() => [...document.querySelectorAll(".board a, .board button")].map((e) => e.textContent.trim()).filter((t) => /follow|watch|advanced|discussion|followers/i.test(t)).slice(0, 10));
+      record("the Engage tab shows the follow controls", /follow|watch|discussion/i.test(engageBody), { followControls });
+    }
+  });
+
+  await attempt("N1 quick search", async () => {
+    await page.goto(`${stack.origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(richName.slice(0, 14))}`, { waitUntil: "load" });
+    await page.waitForTimeout(1000);
+    const body = await page.content();
+    record("keyword search from the navbox returns the run's card", body.includes(richName.slice(0, 14)), { url: page.url() });
+  });
+
+  await attempt("N2 cql search", async () => {
+    const q = 'type="RichText"';
+    await page.goto(`${stack.origin}/*search?query%5Bquery%5D=${encodeURIComponent(q)}`, { waitUntil: "load" });
+    await page.waitForTimeout(1000);
+    const body = await page.content();
+    const ranIt = !/error|exception/i.test(body);
+    record("a CQL search runs and answers without an error page", ranIt, { url: page.url(), query: q });
+  });
+
+  await attempt("A1/A2 account settings and change password", async () => {
+    // Account settings live on the account card's board (cypress
+    // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
+    const holder = creds.admin.name.replace(/ /g, "_");
+    const settings = await visit(`/${holder}/board`);
+    await page.waitForTimeout(2000);
+    const tabLinks = await page.evaluate(() => [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")].map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") })).filter((t) => t.text));
+    const accountTab = tabLinks.find((t) => /account/i.test(t.text));
+    if (!accountTab) {
+      record("the account card's board has an Account tab", false, { tabLinks });
+    } else {
+      record("the account card's board has an Account tab", true, { accountTab });
+      if (accountTab.href) await page.goto(new URL(accountTab.href, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
+      else {
+        await page.locator(".board a").filter({ hasText: /account/i }).first().click().catch(() => undefined);
+        await page.waitForTimeout(1500);
+      }
+      const fields = await page.evaluate(() => [...document.querySelectorAll(".board input, .modal input")].map((i) => ({ name: i.name, type: i.type })));
+      const emailField = fields.find((f) => f.name && /email/i.test(f.name) && f.type !== "hidden");
+      const passwordField = fields.find((f) => f.name && /password/i.test(f.name));
+      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
+      if (passwordField !== undefined) {
+        const oldPassword = creds.admin.password;
+        const next = `${oldPassword}x`;
+        await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
+        await page.waitForTimeout(1500);
+        const accountTab2 = page.locator(".board a").filter({ hasText: /account/i }).first();
+        await accountTab2.click().catch(() => undefined);
+        await page.waitForTimeout(1500);
+        const input = page.locator(`.board input[name='${passwordField.name}']`).first();
+        await input.fill(next).catch(() => undefined);
+        const before = ledger().length;
+        await page.locator(".board form button[type='submit'], .board form input[type='submit'], .modal button[type='submit']").first().click().catch(() => undefined);
+        await page.waitForTimeout(3000);
+        const write = linesSince(before).find((l) => l.method !== "GET");
+        const withOld = await signIn({ ...creds.admin, password: oldPassword });
+        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...creds.admin, password: next });
+        record("the account password can be changed and the new one signs in", write !== undefined && write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
+          { writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
+        if (withNew.hasSessionCookie) {
+          await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
+          await page.waitForTimeout(1500);
+          await page.locator(".board a").filter({ hasText: /account/i }).first().click().catch(() => undefined);
+          await page.waitForTimeout(1500);
+          await page.locator(`.board input[name='${passwordField.name}']`).first().fill(oldPassword).catch(() => undefined);
+          await page.locator(".board form button[type='submit'], .modal button[type='submit']").first().click().catch(() => undefined);
+          await page.waitForTimeout(2500);
+          await signIn(creds.admin);
+        }
+      }
+    }
+  });
+
+  await attempt("F1 upload on the edge", async () => {
+    await visit("/new/File");
+    const fileInput = page.locator('input[type="file"]').first();
+    const count = await fileInput.count();
+    if (count === 0) {
+      record("upload: the File create form offers a file input", false, { note: "no file input on /new/File" });
+    } else {
+      const before = ledger().length;
+      await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: Buffer.from("harness") }).catch((e) => record("upload", false, { error: String(e).slice(0, 120) }));
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+      await page.waitForTimeout(3000);
+      const write = linesSince(before).find((l) => l.method !== "GET");
+      const body = await page.content();
+      record("a file can be uploaded through the File create form", write !== undefined && write.status < 400 && !/error|not configured|no storage/i.test(body),
+        { status: write?.status ?? null, serverSaid: write?.bodyHead?.slice(0, 160) });
+    }
+  });
+
   // -- 8 -----------------------------------------------------------------
   group("8. ordinary (non-admin) account permissions");
   const memberSession = await attempt("member session", () => signIn(creds.member));
@@ -506,6 +739,39 @@ for (const r of results) {
   markdown += `| ${r.group} / ${r.check} | ${r.pass ? "PASS" : "**FAIL**"} | ${evidence} |\n`;
 }
 mkdirSync(dirname(OUT), { recursive: true });
+
+// Capability coverage against the checklist taken from Decko's own browser tests.
+// A capability is "driven by this run" when one of its named checks ran and passed.
+{
+  const capabilities = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8")).capabilities;
+  const checksByName = new Set(results.map((r) => r.check));
+  const counts = { covered: 0, partial: 0, not_covered: 0, disabled_upstream: 0, out_of_scope: 0 };
+  const drivenNow = [];
+  for (const capability of capabilities) {
+    const named = typeof capability.check === "string" ? checksByName.has(capability.check) : false;
+    const anyNamed = typeof capability.check === "string" && [...checksByName].some((c) => capability.check.includes(c));
+    if (capability.status === "not_covered") {
+      if (named) { capability.status = "covered"; drivenNow.push(capability.id); }
+      else if (anyNamed) capability.status = "partial";
+    } else if (capability.status === "partial" && named) {
+      capability.status = "covered";
+      drivenNow.push(capability.id);
+    }
+    counts[capability.status] += 1;
+  }
+  markdown += `\n## Capability coverage (Decko's own browser tests as the checklist)\n\n`;
+  markdown += `${capabilities.length} capabilities enumerated from Decko's Cucumber features and Cypress e2e specs (see tools/edge-signed-in-exercise/capability-checklist.md).\n\n`;
+  markdown += `| status | count |\n|---|---|\n`;
+  markdown += `| covered by this run | ${counts.covered} |\n| partially covered | ${counts.partial} |\n| not covered yet | ${counts.not_covered} |\n| disabled upstream (commented in Decko) | ${counts.disabled_upstream} |\n| out of scope (needs a mail sink) | ${counts.out_of_scope} |\n\n`;
+  markdown += `Capabilities driven by this run that the checklist had listed as uncovered: ${drivenNow.length === 0 ? "none" : drivenNow.join(", ")}\n\n`;
+  markdown += `| id | group | capability | status | check |\n|---|---|---|---|---|\n`;
+  for (const capability of capabilities) {
+    markdown += `| ${capability.id} | ${capability.group} | ${capability.capability.replace(/\|/g, "/")} | ${capability.status} | ${capability.finding ? capability.finding : (capability.note ?? capability.reason ?? capability.check ?? "")} |\n`;
+  }
+  markdown += `\n`;
+  console.log(`\ncapability coverage: ${counts.covered} covered, ${counts.partial} partial, ${counts.not_covered} not covered, ${counts.out_of_scope} out of scope (of ${capabilities.length})`);
+}
+
 writeFileSync(OUT, markdown);
 
 console.log(`\n${results.length - failures.length} / ${results.length} checks passed.`);

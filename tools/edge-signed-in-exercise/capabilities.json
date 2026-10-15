@@ -1,0 +1,923 @@
+{
+  "note": "Every capability a signed-in Decko user has, taken from Decko's own browser tests (the reference checkout's Cypress specs under spec/cypress/e2e and its Cucumber features under features/, source C:/localProjects/decko-ruby-reference/decko) and from this repo's 51 user journeys (reference-harness/browser/journeys/synthetic-v1.json). The gems in decko-ruby-oracle-gems ship no spec or feature directories. status: covered = a check in tools/edge-signed-in-exercise.mjs observes it; partial = some of it is observed; not_covered = no check yet; disabled_upstream = the upstream test is commented out; out_of_scope = needs something the local harness cannot provide, with the reason given.",
+  "sources": {
+    "cucumber": "decko-ruby-reference/decko/features/*.feature (active scenarios only)",
+    "cypress": "decko-ruby-reference/decko/spec/cypress/e2e (it/specify blocks)",
+    "journeys": "reference-harness/browser/journeys/synthetic-v1.json"
+  },
+  "capabilities": [
+    {
+      "id": "S1",
+      "group": "session",
+      "capability": "Sign in with email and password, landing signed in on /",
+      "sources": [
+        "cypress signin_spec",
+        "journeys signin-admin-home"
+      ],
+      "status": "covered",
+      "check": "admin signs in through the sign-in form and stays signed in"
+    },
+    {
+      "id": "S2",
+      "group": "session",
+      "capability": "Sign in refused on a wrong password",
+      "sources": [
+        "cypress signin_spec 'requires valid email and password'",
+        "journeys signin-wrong-password"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "S3",
+      "group": "session",
+      "capability": "Sign in requires email and password (form validation)",
+      "sources": [
+        "cypress signin_spec 'requires email', 'requires password'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "S4",
+      "group": "session",
+      "capability": "Sign-in link to sign up, and link to reset password",
+      "sources": [
+        "cypress signin_spec 'links to /new/Sign_up', 'links to reset password'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "S5",
+      "group": "session",
+      "capability": "Redirect to the sign-in page when a signed-out user opens a gated page",
+      "sources": [
+        "cypress signin_redirect_spec"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "S6",
+      "group": "session",
+      "capability": "Stay signed in across navigation, Back, reload, leaving and returning",
+      "sources": [
+        "journeys signin-admin-home"
+      ],
+      "status": "covered",
+      "check": "stays signed in across navigation / after browser Back / after reload / after leaving the site and returning"
+    },
+    {
+      "id": "S7",
+      "group": "session",
+      "capability": "Sign out, then sign back in",
+      "sources": [
+        "cucumber signup 'signing out and back in'",
+        "journeys signin-signout-member"
+      ],
+      "status": "covered",
+      "check": "GET /_signout revokes the session / signing back in works"
+    },
+    {
+      "id": "S8",
+      "group": "session",
+      "capability": "Sign out link in the navbar signs the user out",
+      "sources": [
+        "journeys signin-signout-member"
+      ],
+      "status": "partial",
+      "check": "the Sign out link is NOT a /delete/*signin link (FAILS: it is)",
+      "finding": "navbar Sign out is /delete/*signin, which 404s on the edge"
+    },
+    {
+      "id": "S9",
+      "group": "session",
+      "capability": "First-run setup of the first admin account",
+      "sources": [
+        "cucumber setup 'Shark visits site for first time'",
+        "cypress user/setup_spec"
+      ],
+      "status": "out_of_scope",
+      "reason": "one-time setup of a fresh deck; Brandon's deck is already set up"
+    },
+    {
+      "id": "C1",
+      "group": "create",
+      "capability": "Create a RichText card through /new/RichText and land on it",
+      "sources": [
+        "journeys create-note-member"
+      ],
+      "status": "covered",
+      "check": "create a RichText card via /new/RichText and land on it"
+    },
+    {
+      "id": "C2",
+      "group": "create",
+      "capability": "Create a Basic and a Date card through /new/<Type>",
+      "sources": [
+        "journeys create-phrase-admin",
+        "cypress presetting"
+      ],
+      "status": "covered",
+      "check": "create route shows signed-in chrome and a card form: /new/Basic, /new/Date"
+    },
+    {
+      "id": "C3",
+      "group": "create",
+      "capability": "Open an unknown card name (/Name, /Name/new, ?view=new) as a create form",
+      "sources": [
+        "cypress reference"
+      ],
+      "status": "covered",
+      "check": "create route ... unknown card name, /new, ?view=new"
+    },
+    {
+      "id": "C4",
+      "group": "create",
+      "capability": "/card/new create form",
+      "sources": [
+        "journeys"
+      ],
+      "status": "covered",
+      "check": "create route shows ...: /card/new"
+    },
+    {
+      "id": "C5",
+      "group": "create",
+      "capability": "Navbar and Opportunities add links present",
+      "sources": [
+        "journeys"
+      ],
+      "status": "covered",
+      "check": "the Opportunities dropdown and navbar add links are present"
+    },
+    {
+      "id": "C6",
+      "group": "create",
+      "capability": "Search for a nonexistent name offers a create link",
+      "sources": [
+        "journeys"
+      ],
+      "status": "covered",
+      "check": "search for a nonexistent name offers a create link"
+    },
+    {
+      "id": "C7",
+      "group": "create",
+      "capability": "Create a plain-input card through the editor",
+      "sources": [
+        "journeys create-phrase-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C8",
+      "group": "create",
+      "capability": "Duplicate name refused in the editor (validation error)",
+      "sources": [
+        "journeys create-duplicate-name-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C9",
+      "group": "create",
+      "capability": "Invalid number refused in the editor",
+      "sources": [
+        "journeys create-invalid-number-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C10",
+      "group": "create",
+      "capability": "Presetting card content from the URL (?card[content]=...)",
+      "sources": [
+        "cypress create/presetting 'presetting content in url'"
+      ],
+      "status": "not_covered",
+      "finding": "URL presets ignored: the new-card form hardcodes an empty name and content"
+    },
+    {
+      "id": "C11",
+      "group": "create",
+      "capability": "Autoname cardtype (name generated on save)",
+      "sources": [
+        "cypress create/presetting 'simple cardtype autoname'",
+        "cypress reference 'simple cardtype autoname'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C12",
+      "group": "create",
+      "capability": "Create a new structured card with its subcards (New structured card)",
+      "sources": [
+        "cucumber structure 'New structured card'",
+        "journeys new-topic-structured-form"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C13",
+      "group": "create",
+      "capability": "Create and edit a templated card",
+      "sources": [
+        "cucumber structure 'Create and edit templated card'",
+        "journeys create-structured-topic-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C14",
+      "group": "create",
+      "capability": "Default content from a rule fills the new form",
+      "sources": [
+        "cucumber structure 'Default on a ranking set'",
+        "journeys default-content-in-form"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C15",
+      "group": "create",
+      "capability": "Radio input in a new card",
+      "sources": [
+        "cucumber pointer_inputs 'radio input'",
+        "cypress edit/pointer 'create with select input'",
+        "journeys pointer-radio-input"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C16",
+      "group": "create",
+      "capability": "Checkbox input in a new card",
+      "sources": [
+        "cucumber pointer_inputs 'checkbox input'",
+        "journeys pointer-checkbox-input"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C17",
+      "group": "create",
+      "capability": "Multiselect input in a new card",
+      "sources": [
+        "cucumber pointer_inputs 'multiselect input'",
+        "cypress edit/pointer 'create with multiselect input'",
+        "journeys pointer-multiselect-input"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "C18",
+      "group": "create",
+      "capability": "Select input in a structured card",
+      "sources": [
+        "cypress edit/pointer 'create a structured card including select input'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E1",
+      "group": "edit",
+      "capability": "Edit a Date card in the modal; save and restore",
+      "sources": [
+        "cypress edit/edit_content 'edit content modal'"
+      ],
+      "status": "covered",
+      "check": "edit opens as a modal ... / saving the new date ... / restored"
+    },
+    {
+      "id": "E2",
+      "group": "edit",
+      "capability": "Edit a RichText card with TinyMCE: save persists, content shown",
+      "sources": [
+        "cypress edit/nest_editor",
+        "journeys edit-note-admin"
+      ],
+      "status": "covered",
+      "check": "saving the RichText card persists / the saved RichText content is on the page"
+    },
+    {
+      "id": "E3",
+      "group": "edit",
+      "capability": "TinyMCE loads with its nest plugin and toolbar",
+      "sources": [
+        "cypress edit/nest_editor"
+      ],
+      "status": "covered",
+      "check": "TinyMCE loads / the nest button is present / nest plugin served"
+    },
+    {
+      "id": "E4",
+      "group": "edit",
+      "capability": "Nest button opens the Nest dialog; typing a card name returns suggestions",
+      "sources": [
+        "cypress edit/nest_editor 'nest editor'",
+        "journeys edit-nests-view-admin"
+      ],
+      "status": "covered",
+      "check": "the {{}} button opens the Nest dialog / typing a card name returns suggestions"
+    },
+    {
+      "id": "E5",
+      "group": "edit",
+      "capability": "Insert a nested card from the Nest dialog and save it",
+      "sources": [
+        "cypress edit/nest_editor 'nest editor'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E6",
+      "group": "edit",
+      "capability": "Link button ([[ ]]) inserts a link",
+      "sources": [
+        "cypress edit/nest_editor",
+        "journeys edit-note-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E7",
+      "group": "edit",
+      "capability": "Nest rules editor",
+      "sources": [
+        "cypress edit/nest_editor 'nest rules editor'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E8",
+      "group": "edit",
+      "capability": "Nest image editor",
+      "sources": [
+        "cypress edit/nest_editor 'nest image editor'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E9",
+      "group": "edit",
+      "capability": "Nest list editor",
+      "sources": [
+        "cypress edit/nest_editor 'nest list editor'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E10",
+      "group": "edit",
+      "capability": "Edit a plain-input card; save",
+      "sources": [
+        "journeys edit-phrase-save-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E11",
+      "group": "edit",
+      "capability": "Edit a nested summary with plusses",
+      "sources": [
+        "journeys edit-nested-summary-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E12",
+      "group": "edit",
+      "capability": "Edit type of a card in the board",
+      "sources": [
+        "cypress edit/edit_type 'edit type in board'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E13",
+      "group": "edit",
+      "capability": "Edit type for a new card",
+      "sources": [
+        "cypress edit/edit_type 'edit type for new card'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E14",
+      "group": "edit",
+      "capability": "Edit type for a rule",
+      "sources": [
+        "cypress edit/edit_type 'edit type for rule'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E15",
+      "group": "edit",
+      "capability": "Save and Close updates the main slot",
+      "sources": [
+        "cypress edit/board/save_changes"
+      ],
+      "status": "partial",
+      "check": "saving the new date answers a write / the page shows the new date (Save and Close is the button used)"
+    },
+    {
+      "id": "E16",
+      "group": "edit",
+      "capability": "Save (without close) updates the main slot",
+      "sources": [
+        "cypress edit/board/save_changes 'save'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E17",
+      "group": "edit",
+      "capability": "Save after a name change updates the origin slot",
+      "sources": [
+        "cypress edit/board/save_changes 'updates origin slot after name change'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E18",
+      "group": "edit",
+      "capability": "Two edits at the same time: second save refused (conflict)",
+      "sources": [
+        "cucumber conflict (2 scenarios)",
+        "journeys edit-conflict"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E19",
+      "group": "edit",
+      "capability": "Edit board: account tab, change email",
+      "sources": [
+        "cypress edit/board/account_tab"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E20",
+      "group": "edit",
+      "capability": "Edit board: engage tab (follow button, advanced, all followed cards, followers, discussion)",
+      "sources": [
+        "cypress edit/board/engage_tab (6 specs)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E21",
+      "group": "edit",
+      "capability": "Edit board: history tab lists changes in pills",
+      "sources": [
+        "cypress edit/board/history_tab"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E22",
+      "group": "edit",
+      "capability": "Edit board: rules tab (no set selected; warns when set 'all' selected)",
+      "sources": [
+        "cypress edit/board/rules_tab (2 specs)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "E23",
+      "group": "edit",
+      "capability": "Pointer editing (change a pointer's selection and save)",
+      "sources": [
+        "cypress edit/pointer 'editing pointers'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "R1",
+      "group": "rename-delete",
+      "capability": "Rename a card through the editor; referers updated",
+      "sources": [
+        "journeys rename-admin",
+        "journeys rename-topic-with-referers-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "R2",
+      "group": "rename-delete",
+      "capability": "Delete a card through the editor; the card is gone",
+      "sources": [
+        "journeys delete-admin"
+      ],
+      "status": "covered",
+      "check": "the delete removes the card (trashed, content gone, new-card page shown)"
+    },
+    {
+      "id": "R3",
+      "group": "rename-delete",
+      "capability": "Delete via the Delete link never creates a card named delete…",
+      "sources": [
+        "harness requirement"
+      ],
+      "status": "covered",
+      "check": "no card named delete… was created by this run"
+    },
+    {
+      "id": "R4",
+      "group": "rename-delete",
+      "capability": "Refuse to delete a system card",
+      "sources": [
+        "journeys delete-system-card-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "R5",
+      "group": "rename-delete",
+      "capability": "Member delete refused with a clear message",
+      "sources": [
+        "journeys denied-member-delete"
+      ],
+      "status": "covered",
+      "check": "a member's delete attempt is refused with a clear message, not a form"
+    },
+    {
+      "id": "P1",
+      "group": "permissions",
+      "capability": "Member denied read of a restricted card",
+      "sources": [
+        "journeys denied-member-read"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "P2",
+      "group": "permissions",
+      "capability": "Member denied create of a restricted type",
+      "sources": [
+        "journeys denied-member-create"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "P3",
+      "group": "permissions",
+      "capability": "Member denied edit of a restricted card",
+      "sources": [
+        "journeys denied-member-edit"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "P4",
+      "group": "permissions",
+      "capability": "Rules: default setting and plus-card override",
+      "sources": [
+        "cypress rules 'default setting and plus card override'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "P5",
+      "group": "permissions",
+      "capability": "Rules: *right Set, *type_plus_right Set, Self Set",
+      "sources": [
+        "cypress rules (3 specs)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "P6",
+      "group": "permissions",
+      "capability": "Rule board: administrator sets read/write rules",
+      "sources": [
+        "journeys rule-board-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F1",
+      "group": "files",
+      "capability": "Upload a file (/files route after upload)",
+      "sources": [
+        "cucumber attach 'Uploading a file'",
+        "journeys upload-file-admin"
+      ],
+      "status": "not_covered",
+      "note": "the live edge environment carries no DECKO_STORAGE_* variables; expected to fail on the edge, to be confirmed",
+      "finding": "/new/File has no file input; the generic new-card form has no file branch"
+    },
+    {
+      "id": "F2",
+      "group": "files",
+      "capability": "Remove an upload from the preview",
+      "sources": [
+        "cucumber attach 'remove the upload'",
+        "journeys upload-remove-preview-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F3",
+      "group": "files",
+      "capability": "Upload and change an image",
+      "sources": [
+        "cucumber attach 'Uploading and changing an image'",
+        "journeys upload-image-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F4",
+      "group": "files",
+      "capability": "Change a coded image",
+      "sources": [
+        "cucumber attach 'Changing a coded image'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F5",
+      "group": "files",
+      "capability": "Empty file refused",
+      "sources": [
+        "cucumber attach 'Block creating a new empty file'",
+        "journeys upload-empty-file-refused"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F6",
+      "group": "files",
+      "capability": "Upload a file as a field in a form; update it; submit without updating",
+      "sources": [
+        "cucumber attach (3 form scenarios)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F7",
+      "group": "files",
+      "capability": "Member uploads a file",
+      "sources": [
+        "journeys upload-file-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "F8",
+      "group": "files",
+      "capability": "Replace an uploaded file",
+      "sources": [
+        "journeys upload-replace-file-admin"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N1",
+      "group": "search",
+      "capability": "Quick (keyword) search from the navbox",
+      "sources": [
+        "cucumber navbox 'quick search'",
+        "journeys navbox-keyword-search"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N2",
+      "group": "search",
+      "capability": "CQL search",
+      "sources": [
+        "cucumber navbox 'cql search'",
+        "journeys navbox-cql-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N3",
+      "group": "search",
+      "capability": "Paging through search results",
+      "sources": [
+        "cucumber navbox 'paging'",
+        "journeys navbox-paging",
+        "cypress paging (2 specs)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N4",
+      "group": "search",
+      "capability": "Search card pages (search card paging)",
+      "sources": [
+        "journeys search-card-pages"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N5",
+      "group": "search",
+      "capability": "Changes link lists recently updated cards, newest first",
+      "sources": [
+        "journeys (Changes navbar)"
+      ],
+      "status": "covered",
+      "check": "the Changes link (/*search) lists cards / lists the cards this run created first"
+    },
+    {
+      "id": "N6",
+      "group": "search",
+      "capability": "Search for a nonexistent name offers a create link",
+      "sources": [
+        "journeys"
+      ],
+      "status": "covered",
+      "check": "search for a nonexistent name offers a create link"
+    },
+    {
+      "id": "N7",
+      "group": "search",
+      "capability": "Name-match autocomplete for card names",
+      "sources": [
+        "journeys (editor nest dialog)"
+      ],
+      "status": "covered",
+      "check": "typing a card name returns suggestions"
+    },
+    {
+      "id": "N8",
+      "group": "search",
+      "capability": "Visit a card with the simple layout",
+      "sources": [
+        "cypress layouts 'visit card with simple layout'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N9",
+      "group": "search",
+      "capability": "Visit a User card with the user layout",
+      "sources": [
+        "cypress layouts 'visit User card with user layout'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N10",
+      "group": "search",
+      "capability": "Read pages with nests, links, files, chains and loops",
+      "sources": [
+        "journeys read-pages-anonymous (also signed in)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "N11",
+      "group": "search",
+      "capability": "Reference links and card references render",
+      "sources": [
+        "cypress reference"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "H1",
+      "group": "history",
+      "capability": "View a card's history page",
+      "sources": [
+        "journeys history-view-admin",
+        "cypress history_tab"
+      ],
+      "status": "partial",
+      "check": "a card's history view renders (status only; the act list is not graded)"
+    },
+    {
+      "id": "H2",
+      "group": "history",
+      "capability": "Expand an act and roll back by 'Save as current'",
+      "sources": [
+        "cucumber history.feature (COMMENTED OUT upstream)"
+      ],
+      "status": "disabled_upstream",
+      "note": "not graded; still a capability a signed-in editor has"
+    },
+    {
+      "id": "W1",
+      "group": "follow",
+      "capability": "Follow a card from the board",
+      "sources": [
+        "journeys follow-from-board-admin",
+        "cypress engage_tab 'follow button'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "W2",
+      "group": "follow",
+      "capability": "Unfollow from the board",
+      "sources": [
+        "journeys unfollow-from-board-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "W3",
+      "group": "follow",
+      "capability": "Watch a card and a type card",
+      "sources": [
+        "cucumber notifications (3 scenarios)"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "W4",
+      "group": "follow",
+      "capability": "Followers list and 'all followed cards' view",
+      "sources": [
+        "cypress engage_tab 'followers', 'all followed cards'"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "W5",
+      "group": "follow",
+      "capability": "Watcher notified of updates to included and plus cards (mail)",
+      "sources": [
+        "cucumber update_includers (6 scenarios)",
+        "journeys edit-note-admin (follower mail)"
+      ],
+      "status": "out_of_scope",
+      "reason": "the local harness does not run an SMTP sink; mail content and count are graded by Decko's own specs, not in the browser"
+    },
+    {
+      "id": "W6",
+      "group": "follow",
+      "capability": "Unfollow link in the email",
+      "sources": [
+        "cucumber notifications",
+        "journeys unfollow-from-mail"
+      ],
+      "status": "out_of_scope",
+      "reason": "needs a received email; no mail sink in the local harness"
+    },
+    {
+      "id": "A1",
+      "group": "account",
+      "capability": "Open the account settings page",
+      "sources": [
+        "journeys account-settings-member"
+      ],
+      "status": "not_covered",
+      "finding": "the account board renders no Account tab, so email and password cannot be changed from the edge"
+    },
+    {
+      "id": "A2",
+      "group": "account",
+      "capability": "Change password, then sign in with the new password",
+      "sources": [
+        "journeys account-change-password-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "A3",
+      "group": "account",
+      "capability": "Change email",
+      "sources": [
+        "journeys account-change-email-member"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "A4",
+      "group": "account",
+      "capability": "Sign up for a new account (anonymous), then sign in",
+      "sources": [
+        "cucumber signup 'Signing up (without approval)'",
+        "journeys signup-anonymous"
+      ],
+      "status": "not_covered"
+    },
+    {
+      "id": "A5",
+      "group": "account",
+      "capability": "Request a password reset (mail link)",
+      "sources": [
+        "cucumber reset_password 'Resetting password'",
+        "journeys reset-password-request"
+      ],
+      "status": "out_of_scope",
+      "reason": "the reset link arrives by mail; no mail sink locally"
+    },
+    {
+      "id": "M1",
+      "group": "editor",
+      "capability": "Rich text editor toolbar (formats, lists, table, insert menu)",
+      "sources": [
+        "cypress edit/nest_editor"
+      ],
+      "status": "partial",
+      "check": "TinyMCE loads for the RichText editor"
+    }
+  ],
+  "summary_note": "Counts are recomputed by the run record. out_of_scope entries need an SMTP sink or a received mail and are not browser-checkable on the local harness."
+}
