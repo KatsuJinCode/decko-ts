@@ -1630,7 +1630,48 @@
           }
         }
       }
+    },
+    {
+      "name": "Probe User",
+      "type": "User",
+      "content": "probe",
+      "fields": {
+        "+*account": {
+          "fields": {
+            "+*email": "probe.user@example.test",
+            "+*password": "Probe-Password-1"
+          }
+        }
+      }
+    },
+    {
+      "name": "Probe Topic",
+      "type": "Topic",
+      "content": "probe"
+    },
+    {
+      "name": "Probe Followed",
+      "type": "Topic",
+      "content": "probe",
+      "fields": {
+        "+*follow": "*always"
+      }
+    },
+    {
+      "name": "Probe Skin",
+      "type": "Skin",
+      "content": "probe"
+    },
+    {
+      "name": "Ada Admin+*following"
+    },
+    {
+      "name": "Ada Admin+*followers"
+    },
+    {
+      "name": "Probe User+*email",
+      "content": "probe.user.email@example.test"
     }
   ],
-  "built_from": "reference-harness/fixtures/synthetic-v2/deck/deck.sqlite3 with the card(s) below applied by reference-harness/oracle/build-deck.rb (decko setup cannot create the mod symlinks on this machine)"
+  "built_from": "reference-harness/fixtures/synthetic-v2/deck/deck.sqlite3 with the cards below applied by tools/compat-report/probe-deck.mjs through the Ruby oracle's adapter (decko setup cannot create the mod symlinks on this machine)"
 }
