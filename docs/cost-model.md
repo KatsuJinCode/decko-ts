@@ -61,7 +61,7 @@ with no workerd plumbing.
 | Mod-view card | 3,775 | 7.7 – 8.4 | — | yes |
 | 32-deep nest chain | 35,212 | 10.6 – 12.3 | 3.6 | yes after the ~3 ms floor |
 | 16 KB card body | 30,372 | 10.2 (was 38.4 before the fix) | 2.7 (was 22.8) | yes after the floor |
-| 500-item pointer | 64,392 | 15.9 – 20.8 | 9.8 (8.7 after the name-key memo) | no: borderline at best |
+| 500-item pointer | 64,392 | 15.9 – 20.8; 10.0 on 2026-10-14 after the name-key memo | 9.8 (8.7 after the name-key memo) | borderline |
 
 Before the fix, the 16 KB body spent ~20 ms in `findUriMatch`, which rescanned
 the whole remaining text with all three URI prefix regexps for every
@@ -76,25 +76,55 @@ inside the run-to-run noise of this machine.
 
 ## Cold isolate
 
-The first request an isolate serves boots the deck: it loads every card row
-into in-isolate caches. Measured: 172 – 188 ms of workerd process CPU for that
-one request on the cf-scale deck (78 – 125 ms of engine CPU in Node). That is
-far over 10 ms. Profiling shows the boot is dominated by parsing all 2,287
-stored names into keys (once for the CQL key index, once for the lexicon);
-each name is now parsed once (commit "Parse each stored name once while
-booting the worker deck"), which does not bring it near 10 ms. Every later request
-in the same isolate reuses the caches and issues one D1 query (the
-data-version freshness check, 1 row read).
+The worker boot no longer loads the deck. It installs the name-environment
+adapters, loads the codename table and the virtual-card rule universe, and
+nothing else; each request then loads the cards it renders through the
+engine's batched prefetch and point reads (commit "Load cards on demand in
+the worker instead of indexing the deck at boot"). `/api/query` still builds
+the full name index on its first use, because the CQL name resolver is
+synchronous; page routes never pay for it.
 
-Cloudflare tolerates occasional overshoot on the free plan but does not
-promise it; a deck that depends on that tolerance is not a guaranteed $0
-deck. Making the boot fit is the open engineering item: load the deck lazily
-(per card reached) instead of whole, or ship the warm caches as a prebuilt
-snapshot so the boot is a parse, not a scan. Two constraints for that work:
-the stored `key` column cannot simply replace the computed key, because a
-deck seeded with a naive key (the cf-scale deck's `Scale Page 1X`) would
-resolve differently; and a JSON snapshot of 2,300 cards is itself a few
-milliseconds to parse, so lazy per-card loading is the more likely fit.
+A stored `key` that differs from the key this engine computes (the cf-scale
+deck stores `Anonymous` as `anonymou`, written without the card gem's
+inflection table) is handled by an opt-in lexicon fallback the worker
+enables: a simple-name key miss asks once more by stored name and accepts
+the row only when that name's computed key equals the requested key.
+
+Rendered output is unchanged: the same 21 requests (the nine benchmark
+pages, mark, missing, compound, csv and view routes, `/Anonymous` variants
+and two `/api/query` statements) through the previous and the new worker,
+each on a fresh isolate, give identical status and bytes once the random
+slot ids and the request timestamp are masked. The synthetic-v1 grade is
+unchanged (rendering 1754/1754, semantics 2389/2389, persistence 16/16,
+side effects 19/19, read writes 8/8, other tables 12/12).
+
+First request on a fresh isolate, measured 2026-10-14 (Windows x64, Node
+24.19, miniflare 5 / workerd), four isolates per row:
+
+`node benchmarks/cf-scale/measure-workerd-cpu.mjs --cold-only --first <path> [--entry <worker file>]`
+
+| First request | workerd process CPU ms (upper bound) | D1 queries | D1 rows read |
+| --- | --- | --- | --- |
+| `/`, previous worker (full-deck boot) | 109 – 203 | 28 | 2,438 |
+| `/`, on-demand worker | 78 (all four runs) | 27 | 151 |
+| `/Big Pointer`, previous worker | 172 – 266 | 35 | 3,439 |
+| `/Big Pointer`, on-demand worker | 141 – 250 | 35 | 1,153 |
+
+The single-request counter ticks every 15.6 ms, so each figure is a
+multiple of that tick. The first request still does not fit 10 ms. What
+remains is not the deck index: the same pages cost 6.3 ms (home) and
+10.0 ms (500-item pointer) warm under the same harness, so the cold
+overshoot is the first execution of a large bundle (V8 compiling and
+optimizing code on first use) plus the local D1 emulation of the first
+request's 27 – 35 queries, both of which this process counter includes.
+Separating the two needs a measurement that does not exist yet: engine CPU
+of the first request in Node against the in-memory D1 shim. Until it
+exists, "the first request fits the free plan" is not established.
+
+Every later request in the same isolate issues one D1 query (the
+data-version freshness check, 1 row read). Cloudflare tolerates occasional
+overshoot on the free plan but does not promise it; a deck that depends on
+that tolerance is not a guaranteed $0 deck.
 
 ## D1 reads per page
 
@@ -102,26 +132,28 @@ Measured with the worker's own `/__metrics` recorder, which forwards D1's
 `meta.rows_read`:
 
 - Warm page: 1 query, 1 row read (freshness check), every page above.
-- Cold boot: the cf-scale benchmark set's recorded control batch (not shipped;
-  5 requests including one boot, recorded 2026-09-24) read 82,004 rows, so a
+- First request on a fresh isolate (on-demand worker): 151 rows for `/`,
+  1,153 for the 500-item pointer (table above).
+- Cold boot before on-demand loading: the cf-scale benchmark set's recorded control batch
+  (not shipped; 5 requests including one boot, recorded 2026-09-24) read 82,004 rows, so a
   boot reads on the order of 80,000 rows on this deck.
 
 Daily budget arithmetic at 5,000,000 rows read:
 
 - Warm traffic alone: 5,000,000 page views; the 100,000 requests/day Worker
   limit binds first.
-- Each cold boot costs ~80,000 rows, so the budget covers ~60 boots a day with
-  no other reads. Isolate lifetime decides whether that is enough: at
-  100,000 requests/day and ~60 boots, each isolate must serve ~1,600 requests
-  on average.
+- A cold start now reads what its first page reads (151 – 1,153 rows on this
+  deck) instead of the whole deck, so cold starts no longer bind the daily
+  read budget.
 
 ## What fits $0 today
 
 - Reads: a deck of this size (~2,300 cards) at up to 100,000 page views a
   day, provided isolates live long enough to keep boots under ~60 a day.
 - CPU: ordinary pages, JSON, denied cards, nest chains and long bodies fit
-  10 ms warm. Pages that render hundreds of items (the 500-item pointer) do
-  not reliably fit. The cold boot does not fit.
+  10 ms warm. Pages that render hundreds of items (the 500-item pointer) are
+  borderline. The first request on a fresh isolate does not fit (78 ms upper
+  bound for the home page).
 
 ## Energy versus Ruby Decko
 
@@ -142,6 +174,7 @@ energy, not a power reading.
    before D1 reads, at 1 row per warm page).
 3. Pages: single-card pages, JSON, denied cards, a 32-deep nest chain and a
    16 KB body fit 10 ms warm. List pages naming ~500 cards do not reliably fit.
-4. Cold starts: each costs ~170 – 190 ms CPU and ~80,000 D1 rows; the free
-   plan does not guarantee that a request this far over 10 ms is served, and
-   the daily read budget allows about 60 of them.
+4. Cold starts: the first request costs 78 ms (home) to 141 – 250 ms (500-item
+   pointer) of workerd process CPU, an upper bound, and reads only what that
+   page reads; the free plan does not guarantee that a request this far over
+   10 ms is served.
