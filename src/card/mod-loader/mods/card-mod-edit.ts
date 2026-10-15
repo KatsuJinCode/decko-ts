@@ -2866,10 +2866,10 @@ const editNestsView: ViewFn = (ctx) =>
  *  universe never loads (the mod prepare seats the closure before the first
  *  render, so the cold batch's parseStructureContents never runs), and the
  *  seated walk answers without it. The FIRST EXISTING candidate wins, the
- *  structure_rule_card arms nil it (content null, or "_self" after Ruby's
- *  strip - templating.rb:44-47's ternary); those arms keep the disclosed
- *  "" stub (the shipped :edit_structure op renders a structured card
- *  whose rule content is neither).
+ *  structure_rule_card nils the "_self" rule after Ruby's strip
+ *  (templating.rb:44-47); that arm and the no-candidate arm answer nil like
+ *  the `return unless card.structure` guard, so a structure-less card's
+ *  :edit_structure renders null (Ruby's `return` value), not "".
  *
  *  The nest target is the STRUCTURE RULE CARD the way Ruby fetches it:
  *  `rule_card :structure, skip_modules: true` (templating.rb:44-47) -
@@ -2904,12 +2904,12 @@ const editStructureView: ViewFn = (ctx) => {
     if (ruleCard === undefined) continue; // no rule at this pattern
     const content = ruleCard.dbContent;
     if (content !== undefined && content.trim() === "_self") {
-      return ""; // structure_rule_card nils the "_self" rule (templating.rb:46); the null-content arm keeps the stub too
+      return null; // structure_rule_card nils the "_self" rule (templating.rb:46): `return unless card.structure` returns nil
     }
     structureRuleFetchInstances.add(ruleCard);
     return ctx.fmt.nestRecord(ruleCard, "edit");
   }
-  return ""; // `return unless card.structure` - the structure-less stub arm
+  return null; // `return unless card.structure` - the bare return is nil
 };
 
 /** board/tab_views.rb:47-49 view :guide_tab, unknown: true:
@@ -2962,9 +2962,10 @@ const overlayGuideView: ViewFn = (ctx) => {
 // The byte shapes here follow the Ruby board emitter chain.
 
 /** board.rb:2-7 BOARD_TABS (the frozen constant; "Account" maps to
- *  :account_tab but tab_visibility.rb:16-17 `show_account_tab?` is
- *  constant false, so the visible list never carries it). */
+ *  :account_tab, whose visibility card-mod-account's
+ *  abstract/account_holder.rb:139-141 overrides to `card.account?`). */
 const BOARD_TABS: ReadonlyArray<readonly [string, string]> = [
+  ["Account", "account_tab"],
   ["Guide", "guide_tab"],
   ["Engage", "engage_tab"],
   ["History", "history_tab"],
@@ -3150,7 +3151,9 @@ const BOARD_TABS_SENTINEL = "\u0000board-tabs-active\u0000";
  *  predicates: engage = real? && (show_follow? || show_discussion?);
  *  history/related = real?; rules = true; guide = guide.present?
  *  (guide.rb:10-16's helper - the guide helper's non-empty bytes);
- *  account = false. show_follow? (card-mod-follow follow_link_views.rb:6-8)
+ *  account = false IN THIS FILE, but card-mod-account's
+ *  abstract/account_holder.rb:139-141 overrides it to `card.account?`.
+ *  show_follow? (card-mod-follow follow_link_views.rb:6-8)
  *  = Auth.signed_in? && !card.new_card? && followable? (follow.rb:2-3,
  *  the true override). show_discussion? (tab_visibility.rb:60-64) =
  *  the discussion card's update/read ok - the discussion card is a NEW
@@ -3169,8 +3172,21 @@ function visibleBoardTabs(ctx: ViewContext): ReadonlyArray<readonly [string, str
     if (view === "engage_tab") return showEngage;
     if (view === "history_tab" || view === "related_tab") return real;
     if (view === "rules_tab") return true;
-    return false; // account_tab: show_account_tab? is constant false
+    return showAccountTab(ctx); // account_holder.rb:139-141 overrides tab_visibility.rb:16-17
   });
+}
+
+/** account_holder.rb:139-141 show_account_tab? = `card.account?`;
+ *  account_holder.rb:5-7,11-13 `def account; fetch :account, new: {}; end`
+ *  / `def account?; account.real?; end` - the "+*account" junction is
+ *  REAL only when the row exists. The row is seated by the board's
+ *  prepare-phase warm (render.ts), so the sync read is the seated map.
+ *  A new card answers false (the fabricated new: {} card is not real). */
+function showAccountTab(ctx: ViewContext): boolean {
+  const { fmt } = ctx;
+  if (fmt.card.id === undefined) return false; // new_card?
+  const account = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  return account !== undefined && account.id !== undefined;
 }
 
 /** tab_visibility.rb:60-64 show_discussion? - the engine surface answers
@@ -3195,10 +3211,15 @@ function showDiscussionTab(ctx: ViewContext): boolean {
 function boardTabsView(ctx: ViewContext): string {
   const { fmt } = ctx;
   const visible = visibleBoardTabs(ctx);
+  // board.rb:88-90 default_board_tab, as account_holder.rb:128-130 overrides
+  // it: current_account? (the viewer IS this account) -> :account_tab, else
+  // show_guide_tab? ? :guide_tab : :engage_tab.
+  const currentAccount =
+    fmt.card.id !== undefined && fmt.engine.viewer?.actorId === fmt.card.id;
   const activeName =
+    (currentAccount ? visible.find(([, view]) => view === "account_tab")?.[0] : undefined) ??
     visible.find(([, view]) => view === "guide_tab")?.[0] ??
     visible.find(([, view]) => view === "engage_tab")?.[0] ??
-    visible[0]?.[0] ??
     "";
   const activeView = BOARD_TABS.find(([t]) => t === activeName)?.[1] ?? "";
   // the tab ids ride the chain-shared unique_id counter (tab.rb:87-89
@@ -3310,25 +3331,11 @@ const RELATED_BY_CONTENT: ReadonlyArray<readonly [string, string]> = [
   ["references in", "*referred_to_by"],
 ];
 
-/** cardname.rb generate_key's singularize for the pill texts (the fixed
- *  RELATED_ITEMS vocabulary + the type label). */
-function pillCyKey(text: string): string {
-  const table: Record<string, string> = {
-    children: "child",
-    "links out": "link_out",
-    "links in": "link_in",
-    nests: "nest",
-    "nested by": "nested_by",
-    "references out": "reference_out",
-    "references in": "reference_in",
-  };
-  // "RichText cards": underscore splits the CamelCase run then Rails
-  // singularizes - rich_text_cards -> rich_text_card
-  return table[text] ?? "rich_text_card";
-}
-
-function boardPillItem(text: string, markUrlKey: string, cyKey?: string): string {
-  const cy = `${cyKey ?? pillCyKey(text)}-pill`;
+function boardPillItem(text: string, markUrlKey: string): string {
+  // board_pills.rb:25-27 `opts["data-cy"] = "#{text.to_name.key}-pill"` -
+  // the name key of the label (cardname generate_key: underscore + Rails
+  // singularize, so "links out" -> link_out, "RichText cards" -> rich_text_card).
+  const cy = `${DeckoName.parse(text).key}-pill`;
   return (
     `<li class="nav-item">` +
     `<a data-slot-selector="${BOARD_SLOT_SELECTOR_ESC}" data-slotter-mode="override"` +
@@ -3359,27 +3366,19 @@ export const relatedTabView: ViewFn = ({ fmt }) => {
     }),
   ]);
   // related_by_type_items (related_section.rb:31-33): the absolute
-  // "<Type>+*type+by_name" mark. The pill's data-cy keys on the CARD'S OWN
-  // TYPE ("Topic cards" -> topic_card-pill; the row carries
-  // topic_card for the Topic-typed card — the hardcoded rich_text_card
-  // fallback was the RichText label only).
+  // "<Type>+*type+by_name" mark. The pill's data-cy keys on the LABEL TEXT,
+  // `"#{card.type} cards".to_name.key` (board_pills.rb:25-27) - and
+  // card.type is the TYPE CARD's name, not its codename: the RichText
+  // type card is the one whose codename is `basic`, and Ruby's
+  // rich_text_card-pill keys on the "RichText" NAME ("Topic cards" ->
+  // topic_card-pill the same way).
   const typeName = fmt.card.typeName ?? "";
-  // Rails' underscore (ActiveSupport Inflector.underscore): CamelCase runs
-  // split before the downcase — "RichText" -> "rich_text", "Topic" ->
-  // "topic" (the rich_text_card-pill carries the split).
-  const typeCode =
-    fmt.card.typeCode ??
-    typeName
-      .replace(/([A-Z])/g, "_$1")
-      .replace(/^_/, "")
-      .toLowerCase();
   sections.push([
     "by type",
     [
       boardPillItem(
         `${typeName} cards`,
         DeckoName.parse(`${typeName}+*type+by_name`).urlKey,
-        `${typeCode}_card`,
       ),
     ],
   ]);
@@ -3447,18 +3446,20 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
               ),
             );
       const ago = agoDate === undefined ? "" : `${timeAgoInWords(agoDate)} ago`;
-      // summary: ActRenderer#summary (act_renderer.rb:37-41 + 96-103) - the
-      // act's APPROVED ACTIONS' per-type icons, the same composition the
-      // accordion's header badge renders (actSummaryBadge). NOT
-      // act.action_on(card.id): the on-this-card lookup is
+      // summary: BoardActRenderer#right_title = summary (act_renderer.rb:37-41
+      // + 96-103) over `actions`, which for the relative renderer is
+      // Act#actions_affecting(@card) (relative_act_renderer.rb:46-48,
+      // act.rb:122-127): only the act's actions on the rendered card or
+      // its history cards. Counting every action of the act instead would
+      // print the seed act's 599 creates on the render root. The approved
+      // filter (act_renderer.rb:91-94) is applied inside actSummaryBadge.
+      // NOT act.action_on(card.id): the on-this-card lookup is
       // last_action_verb's mechanism - a family act (+summary, +tags)
-      // carries no action on the render root, and the earlier lookup
-      // defaulted every non-root pill to the edit icon where the oracle
-      // carries add_circle for all four of the act's pills.
+      // carries no action on the render root.
       const summary =
         reader === undefined
           ? ""
-          : actSummaryBadge(reader, reader.actionsOfAct(Number(act.id)));
+          : actSummaryBadge(reader, reader.actionsAffecting(Number(act.id), reader.rootCardId!));
       const title =
         `<div class="me-2">#${thisSeq} ${h(actorName)} <small>${ago}</small></div>` +
         `<div class="ms-auto act-summary">${summary}</div>`;
