@@ -7,12 +7,7 @@ import { h } from "./slot-html.js";
 import { modSlotWrap } from "../mod-loader/mod-view-helpers.js";
 import { cardFormShell } from "../mod-loader/mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "../mod-loader/mods/core-mod.js";
-import { recaptchaSiteKey } from "./deployment-follow-live-config.js";
-
-/** Fallback recaptcha site key, used when the deployment configures none
- *  (a recaptcha site key is public — it ships in served HTML; the comment
- *  box in views.ts carries the same value). */
-const CAPTURE_RECAPTCHA_SITE_KEY = "6LSYNTHETICCAPTUREKEY000000000000000000B";
+import { cardFormRecaptcha } from "../mod-loader/mods/card-mod-edit.js";
 
 /** set/all/demo.rb:23-25 demo_view - `Env.params[:demo_view] || :core`.
  *  The headless render has no Env.params surface (flashView's disclosed
@@ -33,8 +28,8 @@ const DEMO_VIEW_DEFAULT = "core";
  *  - for the anonymous reader card-mod-recaptcha's overrides add
  *    data-recaptcha="on" after the id and append recaptcha_token(:get) to
  *    the hidden tags, the script and the token input joined by output's
- *    newline. The engine renders the anonymous arm, and the site key is
- *    the deployment's, falling back to the constant above;
+ *    newline. The gate and the site key are recaptcha?(opts) and the
+ *    deployment's configured key (cardFormRecaptcha), with no fallback;
  *  - options_for_select marks the selected option in place and joins the
  *    options with a newline;
  *  - select_tag's class is the caller's verbatim "_submit-on-select". */
@@ -48,17 +43,14 @@ export const demoViewSelect = (ctx: ViewContext): string => {
     )
     .join("\n");
   const select = `<select name="demo_view" id="demo_view" class="_submit-on-select">${options}</select>`;
-  const siteKey = recaptchaSiteKey() ?? CAPTURE_RECAPTCHA_SITE_KEY;
-  // card-mod-recaptcha set/all/recaptcha.rb recaptcha_on? (:16-23):
-  // `!Auth.signed_in?` — the wrap (data-recaptcha="on" in the form opts,
-  // recaptcha_token(:get) in the hidden tags) renders only for a signed-out
-  // session. A signed-in viewer therefore takes the recaptcha_on? false
-  // path: no attribute, no script, no token input — the same gate the
-  // comment box's wrap already applies.
-  const signedIn =
-    ctx.fmt.engine?.viewer?.signedIn === true || ctx.fmt.engine?.pageSession?.signedIn === true;
-  const recaptchaAttrs: Array<[string, string]> = signedIn ? [] : [["data-recaptcha", "on"]];
-  const recaptchaToken = signedIn
+  // card-mod-recaptcha set/all/recaptcha.rb recaptcha?(opts) (:101-103):
+  // the wrap (data-recaptcha="on" in the form opts, recaptcha_token(:get)
+  // in the hidden tags) renders only when recaptcha_on? holds (:16-23 —
+  // configured keys, a signed-out session, the *captcha rule on); the same
+  // gate the comment box's wrap applies.
+  const { on: recaptchaOnForm, siteKey } = cardFormRecaptcha(ctx);
+  const recaptchaAttrs: Array<[string, string]> = recaptchaOnForm ? [["data-recaptcha", "on"]] : [];
+  const recaptchaToken = !recaptchaOnForm
     ? ""
     : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></script>\n` +
       `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +

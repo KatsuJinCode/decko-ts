@@ -188,8 +188,8 @@ export function footerDeckoVersion(): string | undefined {
   return config?.footerDeckoVersion;
 }
 
-/** The deployment's recaptcha site key, or undefined (keep the built-in
- *  fallback key). */
+/** The deployment's recaptcha site key, or undefined (the host's render-side
+ *  recaptcha config decides; there is no built-in fallback key). */
 export function recaptchaSiteKey(): string | undefined {
   return config?.recaptchaSiteKey;
 }

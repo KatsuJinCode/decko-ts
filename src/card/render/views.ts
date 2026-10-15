@@ -41,7 +41,7 @@ import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
 import { cardWallClockNow } from "../wall-clock.js";
 import { searchPagingNav } from "./search-paging.js";
-import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./deployment-follow-live-config.js";
+import { footerDeckoVersion, serializerFollowsLive } from "./deployment-follow-live-config.js";
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { recentChangesCoreBytes } from "../mod-loader/mods/card-mod-history.js";
@@ -101,7 +101,7 @@ import { registerBuiltInContentOverride, resolveContentOverride, resolveContentO
 import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mods/card-mod-date.js";
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
-import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
+import { cardFormRecaptcha, templateNestView } from "../mod-loader/mods/card-mod-edit.js";
 // The board/edit flat seam (the 422 surface): the loader-bound board bytes the
 // oracle pins (the captured board-views oracle, not in the public package) and the edit bytes
 // (the captured edit-forms oracle, not in the public package) rode chain dispatch — a set/all/*
@@ -1762,9 +1762,9 @@ export function templateLinkSetNameFromParts(
  *  the recaptcha script + token hidden, the form-control author field with
  *  value="Anonymous").
  *
- *  RECAPTCHA_SITE_KEY is the deck's live env config — NOT in the corpus DB
- *  (verified: no cards row carries it); the capture bytes are the only
- *  source, and the key is public by construction (it ships in served HTML).
+ *  The site key and the wrap gate are the card_form's recaptcha?(opts)
+ *  (card-mod-edit cardFormRecaptcha): the key is the deployment's
+ *  configured Card.config.recaptcha_site_key, with no built-in fallback.
  *  data-action="update" rides the form action name (comment.rb:48-49
  *  action = card.new_card? ? :create : :update).
  *
@@ -1776,7 +1776,6 @@ export function templateLinkSetNameFromParts(
  *  chain dispatch shares this body (card-mod-comment.ts commentBoxView)
  *  and the signed-in board arms pin it; the captured corpus is
  *  anonymous-only, so those bytes stay capture-exact. */
-const RECAPTCHA_SITE_KEY = "6LSYNTHETICCAPTUREKEY000000000000000000B";
 
 /** comment.rb:74-77 comment_author_label: NIL when Auth.signed_in?
  *  (comment_buttons' array rides output()'s compact — content.rb:70-72 —
@@ -1797,7 +1796,8 @@ function commentAuthorLabelHtml(
   return anonymousLabelHtml;
 }
 
-const commentBoxBaseView: ViewFn = ({ fmt }) => {
+const commentBoxBaseView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
   const card = fmt.card;
   // comment.rb:46-48 `view :comment_box, denial: :blank, unknown: true,
   // perms: :update` — the view's OWN permission gate, and the corpus pins
@@ -1866,17 +1866,14 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // seated stored discussion card, so the strict contract denies exactly
   // the captured blanks.
   if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
-  const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
-  // card-mod-recaptcha set/all/recaptcha.rb recaptcha_on?: `!Auth.signed_in?`
-  // — the wrap (the form's data-recaptcha attribute, the api script and the
-  // token hidden) renders only for a signed-out session. The anonymous arm
-  // stays the recapture's byte-for-byte (shard-000005); the signed-in arm is
-  // the comment.rb shape the signed-in parity pins (no wrap, no author
-  // field — commentAuthorLabelHtml's nil arm below).
-  const signedIn =
-    fmt.engine.viewer?.signedIn === true || fmt.engine.pageSession?.signedIn === true;
-  const recaptchaAttr = signedIn ? "" : ` data-recaptcha="on"`;
-  const recaptchaHidden = signedIn
+  // card-mod-recaptcha set/all/recaptcha.rb recaptcha?(opts) — the wrap (the
+  // form's data-recaptcha attribute, the api script and the token hidden)
+  // renders only when recaptcha_on? holds: configured keys, a signed-out
+  // session, the *captcha rule on. The signed-in arm is the comment.rb shape
+  // (no wrap, no author field — commentAuthorLabelHtml's nil arm below).
+  const { on: recaptchaOnForm, siteKey } = cardFormRecaptcha(ctx);
+  const recaptchaAttr = recaptchaOnForm ? ` data-recaptcha="on"` : "";
+  const recaptchaHidden = !recaptchaOnForm
     ? ""
     : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
 ` +

@@ -178,7 +178,7 @@
 //   engine (they describe the type-mod surface for the live editor)
 
 import { rubyBacktraceError, type ViewContext, type ViewFn } from "../../render/format.js";
-import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
+import { recaptchaSiteKey, serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { RenderFormat, str, type ViewResult } from "../../render/format.js";
@@ -2405,6 +2405,38 @@ function captchaRuleSeedFor(ctx: ViewContext): string | undefined {
     if (seeded !== undefined) return seeded;
   }
   return undefined;
+}
+
+/** set/all/recaptcha.rb:101-103 `recaptcha?(opts)` for a card_form a view
+ *  builds outside createCardForm (the comment box, the demo view select),
+ *  plus the site key `recaptcha_token` emits (`Card.config.
+ *  recaptcha_site_key`, :79/:86). The key is the deployment's configured
+ *  value: the follow-live deployment config when it sets one, else the
+ *  host's render-side recaptcha config (the same Card.config analogue the
+ *  write path's guard runs on; the host resolves Ruby's card -> config ->
+ *  deprecated -> development-default chain, config/late/recaptcha.rb, at
+ *  boot). With no configured key `recaptcha_keys?` is false and no form is
+ *  armed - there is no built-in fallback key. */
+export function cardFormRecaptcha(
+  ctx: ViewContext,
+  recaptchaOpt?: unknown,
+): { on: boolean; siteKey: string } {
+  const renderConfig = renderRecaptchaConfig();
+  const siteKey = recaptchaSiteKey() ?? renderConfig?.siteKey;
+  const on = recaptchaFormOn(
+    {
+      siteKey,
+      secretKey: renderConfig?.secretKey,
+      envController: true,
+      signedIn:
+        ctx.fmt.engine?.viewer?.signedIn === true || ctx.fmt.engine?.pageSession?.signedIn === true,
+      alwaysOk: false,
+      needsSetup: false,
+      captchaRuleContent: captchaRuleSeedFor(ctx),
+    },
+    recaptchaOpt,
+  );
+  return { on, siteKey: siteKey ?? "" };
 }
 
 /** new.rb:71-75 create_form_with_alert_guide:
