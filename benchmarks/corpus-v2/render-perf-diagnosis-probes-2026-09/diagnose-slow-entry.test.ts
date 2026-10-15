@@ -10,11 +10,32 @@ import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard } from "../../../tests/card/render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render.js";
+import { describeOrSkipLoud } from "../../../tests/support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const CORPUS_DB = path.join(REPO_ROOT, "benchmarks", "corpus-v2", "bench-corpus-v2.sqlite3");
 const SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
+const SHARD_GLOB = /^shard-\d{6}\.jsonl$/;
+
+/** The shard this run would time: the CORPUS_SHARD opt-in, else the first present shard. */
+function resolveShardName(): string | undefined {
+  const requested = process.env.CORPUS_SHARD;
+  if (requested) return requested;
+  return existsSync(SHARD_DIR)
+    ? readdirSync(SHARD_DIR).filter((f) => SHARD_GLOB.test(f)).sort()[0]
+    : undefined;
+}
+
+// The gate is the absence of this diagnostic's data: the corpus sqlite it reads
+// card rows from, and the shard it replays (the CORPUS_SHARD opt-in if set,
+// otherwise the first shard present). If either is missing, no entry can be
+// timed, so the suite skips loudly and the message names what is absent.
+const shardName = resolveShardName();
+const shardAbsent =
+  shardName === undefined ||
+  !existsSync(path.join(SHARD_DIR, shardName)) ||
+  !existsSync(CORPUS_DB);
 
 interface ShardLine {
   id: number;
@@ -24,12 +45,14 @@ interface ShardLine {
   error?: unknown;
 }
 
-describe("diagnose: per-entry corpus replay timing", () => {
+describeOrSkipLoud(
+  shardAbsent,
+  "benchmarks/corpus-v2/render-perf-diagnosis-probes-2026-09/diagnose-slow-entry.test.ts",
+  `the rich corpus is absent — expected ${CORPUS_DB} and a shard-NNNNNN.jsonl under ${SHARD_DIR}` +
+    (shardName ? ` (CORPUS_SHARD=${shardName} is not present)` : " (no shard files present)"),
+)("diagnose: per-entry corpus replay timing", () => {
   it("finds the slowest entries on the requested shard", { timeout: 1_800_000 }, async () => {
-    const requested = process.env.CORPUS_SHARD;
-    const shards = existsSync(SHARD_DIR) ? readdirSync(SHARD_DIR).filter((f) => /^shard-\d{6}\.jsonl$/.test(f)).sort() : [];
-    const shardName = requested ?? shards[0];
-    const shardPath = path.join(SHARD_DIR, shardName);
+    const shardPath = path.join(SHARD_DIR, shardName!);
     const lines: ShardLine[] = readFileSync(shardPath, "utf8")
       .split("\n")
       .filter((l) => l.trim() !== "")
