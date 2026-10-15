@@ -98,6 +98,10 @@ export function assertSourceShape(
   sourcePath: string,
 ): Promise<{ cards: number; hasDbContent: boolean }>;
 
+/** A fresh first-run setup token: the token, its /setup path, and the SQL
+ *  that stores only its sha256 in deck_setup_tokens (migration 0010). */
+export function setupTokenIssue(now?: Date): { token: string; path: string; statements: string[] };
+
 /** The deploy migrations a provisioned deck needs, in filename order:
  *  everything in the directory except the demo-content migrations. */
 export function engineMigrationFiles(migrationsDir: string): string[];

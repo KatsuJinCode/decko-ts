@@ -58,6 +58,12 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { Actor } from "./actor.js";
 import { SessionStore, type SessionCreation } from "./session-store.js";
 import { checkPassword, hashPassword, passwordHashPolicy } from "./password-hash.js";
+import {
+  SigninThrottle,
+  signinScopes,
+  signinSecurityPolicy,
+  type SigninSecurityPolicy,
+} from "./signin-security.js";
 
 /** Ruby String#strip's exact character set (ASCII whitespace + NUL). */
 const RUBY_STRIP_RE = /^[ \t\r\n\f\v\0]+|[ \t\r\n\f\v\0]+$/g;
@@ -215,7 +221,12 @@ export type SigninFailureReason =
   | "wrong_password"
   | "account_system_absent"
   | "account_card_unresolvable"
-  | "password_hash_unsupported";
+  | "password_hash_unsupported"
+  // Port-only (signin-security.ts): the uniform answer for an unknown
+  // identifier, an inactive account or a wrong password, and the throttle's
+  // refusal.
+  | "invalid_credentials"
+  | "throttled";
 
 export interface SigninFailure {
   ok: false;
@@ -237,6 +248,8 @@ const SIGNIN_MESSAGES: Record<SigninFailureReason, string> = {
   account_card_unresolvable: "The account card for this session could not be resolved.",
   password_hash_unsupported:
     "This server cannot check this account's password: its stored hash needs more PBKDF2 iterations than this runtime allows. Reset the password to sign in here.",
+  invalid_credentials: "Wrong email or password.",
+  throttled: "Too many failed sign-in attempts. Try again later.",
 };
 
 function failure(reason: SigninFailureReason): SigninFailure {
@@ -266,6 +279,7 @@ export async function authenticateAccount(
   driver: SQLDatabaseDriver,
   identifier: string,
   password: string,
+  security: SigninSecurityPolicy = signinSecurityPolicy(),
 ): Promise<{ ok: true; account: AuthenticatedAccount } | SigninFailure> {
   // authenticate_or_abort (:42-46): blank identifier -> :email_missing,
   // blank password -> :password_missing (checked on the RAW field content,
@@ -285,25 +299,43 @@ export async function authenticateAccount(
   const junction =
     (await findJunctionByEmail(driver, ids, id)) ??
     (await findJunctionByName(driver, ids, id));
-  if (junction === undefined) return failure("unknown_email");
-
-  // account&.active? (auth.rb:23): status child content == "active"
-  // (right/account.rb:43-45 generated predicates). A MISSING status card is
-  // not "active" — nil == "active" is false in Ruby too.
-  const status = await accountFieldContent(driver, ids, junction.id, "status");
-  if (status !== "active") return failure("not_active");
+  const policy = passwordHashPolicy();
+  if (junction === undefined) {
+    // Uniform failure (docs/SECURITY.md, divergence 4): an unknown
+    // identifier pays for one password derivation at the configured cost,
+    // as a real check would, and answers as a wrong password does.
+    if (!security.uniformFailure) return failure("unknown_email");
+    await hashPassword(rubyStrip(password), "", policy);
+    return failure("invalid_credentials");
+  }
 
   // password_valid? (auth.rb:27-29): stored digest == encrypt(
   // password.strip, salt). Missing salt card -> "" (the nil-interpolation
   // parity documented in the module header); missing password card -> the
   // stored digest is "" which no password can match (Ruby: nil == String is
   // false).
-  const storedDigest = (await accountFieldContent(driver, ids, junction.id, "password")) ?? "";
-  const salt = (await accountFieldContent(driver, ids, junction.id, "salt")) ?? "";
-  const policy = passwordHashPolicy();
-  const check = await checkPassword(storedDigest, rubyStrip(password), salt, policy);
+  const checkStoredPassword = async () => {
+    const storedDigest = (await accountFieldContent(driver, ids, junction.id, "password")) ?? "";
+    const salt = (await accountFieldContent(driver, ids, junction.id, "salt")) ?? "";
+    return { salt, check: await checkPassword(storedDigest, rubyStrip(password), salt, policy) };
+  };
+
+  // account&.active? (auth.rb:23): status child content == "active"
+  // (right/account.rb:43-45 generated predicates). A MISSING status card is
+  // not "active" — nil == "active" is false in Ruby too.
+  const status = await accountFieldContent(driver, ids, junction.id, "status");
+  if (status !== "active") {
+    if (!security.uniformFailure) return failure("not_active");
+    // Under the uniform policy the inactive state is told only to a caller
+    // who has just proved the password; anyone else gets the uniform answer
+    // after the same derivation a wrong password costs.
+    const { check } = await checkStoredPassword();
+    return failure(check.ok ? "not_active" : "invalid_credentials");
+  }
+
+  const { salt, check } = await checkStoredPassword();
   if (check.unsupported !== undefined) return failure("password_hash_unsupported");
-  if (!check.ok) return failure("wrong_password");
+  if (!check.ok) return failure(security.uniformFailure ? "invalid_credentials" : "wrong_password");
   // Upgrade on sign-in (docs/SECURITY.md, "Passwords"): a legacy SHA-1
   // digest, or a PBKDF2 hash with fewer iterations than configured, is
   // replaced now that the plaintext is known to be right (the stripped
@@ -392,9 +424,35 @@ export async function signinAccount(
   sessions: SessionStore,
   identifier: string,
   password: string,
+  options: { clientAddress?: string; now?: () => Date; security?: SigninSecurityPolicy } = {},
 ): Promise<SigninOutcome> {
-  const result = await authenticateAccount(driver, identifier, password);
-  if (!result.ok) return result;
+  const security = options.security ?? signinSecurityPolicy();
+  // The throttle (docs/SECURITY.md, divergence 4): a locked scope is refused
+  // before any password is checked; failures that reach authentication are
+  // counted against the identifier and the client address. Blank fields are
+  // answered before the throttle and never counted.
+  const throttle =
+    security.throttle && rubyStrip(identifier) !== "" && password !== ""
+      ? new SigninThrottle(sessions.storageDriver, security, options.now)
+      : undefined;
+  const scopes = signinScopes(identifier, options.clientAddress);
+  if (throttle !== undefined && (await throttle.lockedUntil(scopes)) !== undefined) {
+    return failure("throttled");
+  }
+  const result = await authenticateAccount(driver, identifier, password, security);
+  if (!result.ok) {
+    if (
+      throttle !== undefined &&
+      (result.reason === "unknown_email" ||
+        result.reason === "not_active" ||
+        result.reason === "wrong_password" ||
+        result.reason === "invalid_credentials")
+    ) {
+      await throttle.recordFailure(scopes);
+    }
+    return result;
+  }
+  if (throttle !== undefined) await throttle.recordSuccess(scopes);
   const session = await sessions.createSession(result.account.holder.id);
   return { ok: true, actor: result.account.holder, session };
 }

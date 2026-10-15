@@ -71,6 +71,7 @@
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import type { AttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import {
   applySecuritySettings,
   handleWorkersWriteSurface,
@@ -106,6 +107,10 @@ export interface BunnyEdgeWriteDeck {
    *  very BunnyDbDriver the read path uses. Named only so a test can inject
    *  a distinct driver. */
   readonly driver?: SQLDatabaseDriver;
+  /** The deck's file storage (bunny-edge-files.ts: the Bunny Storage zone
+   *  under BlobAttachmentStore). Absent = uploads and stored asset outputs
+   *  fail with the engine's named rejection. */
+  readonly attachmentStore?: AttachmentStore;
 }
 
 /**
@@ -132,6 +137,13 @@ export function bunnyEdgeWriteFlags(env: BunnyEdgeEnv): WriteSurfaceFlags {
     DECKO_PASSWORD_PBKDF2_ITERATIONS: env["DECKO_PASSWORD_PBKDF2_ITERATIONS"],
     DECKO_ORIGIN_CHECK: env["DECKO_ORIGIN_CHECK"],
     DECKO_TRUSTED_ORIGINS: env["DECKO_TRUSTED_ORIGINS"],
+    DECKO_SETUP_TOKEN: env["DECKO_SETUP_TOKEN"],
+    DECKO_SIGNIN_THROTTLE: env["DECKO_SIGNIN_THROTTLE"],
+    DECKO_SIGNIN_MAX_FAILURES: env["DECKO_SIGNIN_MAX_FAILURES"],
+    DECKO_SIGNIN_MAX_ADDRESS_FAILURES: env["DECKO_SIGNIN_MAX_ADDRESS_FAILURES"],
+    DECKO_SIGNIN_LOCKOUT_SECONDS: env["DECKO_SIGNIN_LOCKOUT_SECONDS"],
+    DECKO_SIGNIN_UNIFORM_FAILURE: env["DECKO_SIGNIN_UNIFORM_FAILURE"],
+    DECKO_SESSION_REVOCATION: env["DECKO_SESSION_REVOCATION"],
   };
 }
 
@@ -219,6 +231,7 @@ export async function mountBunnyEdgeWriteSurface(
       fetcher: deck.fetcher,
       renderEngine: deck.render,
       driver: deck.driver ?? deck.fetcher.driver,
+      ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
     },
     inbound,
     flags,

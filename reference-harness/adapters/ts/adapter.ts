@@ -76,6 +76,15 @@ if (passwordHash !== "legacy-sha1" && passwordHash !== "pbkdf2") {
   throw new Error(`DECKO_HARNESS_PASSWORD_HASH must be "legacy-sha1" or "pbkdf2", got ${JSON.stringify(passwordHash)}`);
 }
 process.env.DECKO_PASSWORD_HASH = passwordHash;
+// The graded answers are Ruby's: card-mod-account names the failing field
+// of a sign-in ("Unrecognized email.", "Wrong password"), keeps no attempt
+// counter, and leaves sessions alive across password and status changes.
+// The port's hardening of all three (docs/SECURITY.md, divergence 4) is
+// switched off here so the adapter answers as Ruby does and writes no
+// throttle rows Ruby never writes.
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
+process.env.DECKO_SIGNIN_THROTTLE = "off";
+process.env.DECKO_SESSION_REVOCATION = "off";
 // The engine ships stock Decko's inflection rules (card 1.110.0
 // config/initializers/inflections.rb) under this name; every stock deck uses
 // them, so they are installed before any name is parsed.

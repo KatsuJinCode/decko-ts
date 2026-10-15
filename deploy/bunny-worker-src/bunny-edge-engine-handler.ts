@@ -61,6 +61,14 @@ import {
   mountBunnyEdgeWriteSurface,
 } from "./bunny-edge-signin-session-surface.js";
 import { applySecuritySettings } from "../../src/server/cloudflare-write-routes.js";
+import { handleAttachmentRoute } from "../../src/server/file-routes.js";
+import type { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+import {
+  EdgeSweepClock,
+  bunnyEdgeAttachmentStore,
+  bunnyEdgeFilesDriver,
+  maybeRunEdgeSweep,
+} from "./bunny-edge-files.js";
 import {
   ActorRenderEngines,
   handleEdgeSignout,
@@ -93,6 +101,31 @@ let deckPromise: Promise<Deck> | undefined;
 // field (the permission state memoizes per engine) — the same shape the
 // staging host runs at vm-staging-server.mjs:2535-2548.
 let actorEngines: ActorRenderEngines | undefined;
+
+// The periodic sweep's per-isolate clock (bunny-edge-files.ts): this host has
+// no cron trigger, so the first write-surface request of the day runs it.
+const sweepClock = new EdgeSweepClock();
+
+/** GET/HEAD /files/... — the stored bytes, served from the Bunny Storage zone
+ *  through the shared route module (src/server/file-routes.ts), gated per
+ *  request by the card's read rule; the same composition worker.ts runs over
+ *  R2. Returns null for a path the route does not own. */
+async function serveStoredFile(request: Request, deck: Deck, store: BlobAttachmentStore): Promise<Response | null> {
+  return handleAttachmentRoute(request, {
+    driver: deck.fetcher.driver,
+    fetchEngine: deck.fetcher,
+    attachmentStore: store,
+    createEngine: () => {
+      throw new Error("the Bunny edge /files route serves reads only; uploads ride the write surface");
+    },
+    canReadCard: async (cardId) => {
+      const record = await deck.fetcher.fetchById(cardId);
+      if (record === undefined) return false;
+      const typeRecord = record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+      return deck.render.canReadCard(record, typeRecord?.name?.s);
+    },
+  });
+}
 
 
 function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
@@ -283,7 +316,20 @@ async function routeBunnyEngineRequest(
     const writeConfig = resolveDbConfig(env);
     if (!("error" in writeConfig)) {
       const writeDeck = await getDeck(writeConfig, env);
-      const surface = await mountBunnyEdgeWriteSurface(writeDeck, request, env);
+      if (!isReadVerb) {
+        // The periodic sweep rides write-surface requests only, at most once
+        // a day per isolate (bunny-edge-files.ts); reads never pay for it.
+        await maybeRunEdgeSweep(sweepClock, {
+          driver: writeDeck.fetcher.driver,
+          ...(bunnyFilesOrUndefined(env) ?? {}),
+        });
+      }
+      const attachmentStore = bunnyEdgeAttachmentStore(env);
+      const surface = await mountBunnyEdgeWriteSurface(
+        attachmentStore === undefined ? writeDeck : { ...writeDeck, attachmentStore },
+        request,
+        env,
+      );
       if (surface !== null) return surface;
     }
   }
@@ -298,6 +344,17 @@ async function routeBunnyEngineRequest(
   const resolved = resolveDbConfig(env);
   if ("error" in resolved) {
     return json(500, { error: "database credentials missing", detail: resolved.error });
+  }
+
+  // Stored files (uploads, renditions, compiled stylesheets) when a storage
+  // zone is configured; otherwise the request core's own /files/ arm below
+  // answers, as it did before this host had storage.
+  if (url.pathname.startsWith("/files/")) {
+    const store = bunnyEdgeAttachmentStore(env);
+    if (store !== undefined) {
+      const served = await serveStoredFile(request, await getDeck(resolved, env), store);
+      if (served !== null) return served;
+    }
   }
 
   // Content caching (armed only under DECKO_EDGE_CACHE=1), two layers behind
@@ -399,3 +456,9 @@ async function routeBunnyEngineRequest(
   );
 }
 
+
+/** The sweep's files dependency: the storage zone's driver, or nothing. */
+function bunnyFilesOrUndefined(env: EdgeEnv): { files: NonNullable<ReturnType<typeof bunnyEdgeFilesDriver>> } | undefined {
+  const files = bunnyEdgeFilesDriver(env);
+  return files === undefined ? undefined : { files };
+}

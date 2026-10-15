@@ -2,13 +2,14 @@
 // engine code runs on Node (see tests/ for the LocalSqliteDriver wiring) and
 // on Workers via this file.
 //
-// First-time deploy recipe (one-time setup, ~2 min):
-//   1. Edit `database_id` in wrangler.toml after `wrangler d1 create`.
-//   2. `wrangler d1 execute decko-ts --file db/schema.sqlite.sql`  (DDL only)
-//   3. `wrangler d1 execute decko-ts --file db/seed.sql`           (optional)
-//   4. `wrangler deploy`
-//   5. curl https://decko-ts.<account>.workers.dev/             → "Hello world" card
-//   6. curl https://decko-ts.<account>.workers.dev/Hello_World   → renders that card
+// Deploy: `npm run deploy` (what the Deploy to Cloudflare button runs) applies
+// deploy/migrations/ to the D1 database, issues the one-time first-run setup
+// token (printed in the deploy output), and deploys this Worker with the
+// bindings wrangler.toml declares:
+//   DB       D1 — the deck
+//   FILES    R2 — uploads, image renditions and stored asset outputs
+//   DELAYED  Queue — delayed work, consumed by the `queue` handler below
+//   cron     the `scheduled` handler below enqueues the periodic sweep
 //
 // Runtime seam (src/server/drivers/d1.ts): the engine never imports vendor
 // SDKs. The D1 binding from `env` is duck-typed as D1DatabaseLike; see
@@ -28,6 +29,15 @@ import {
   setPbkdf2IterationLimit,
 } from "./src/card/auth/password-hash.js";
 import { RenderEngine } from "./src/card/render.js";
+import { R2BlobDriver, type R2BucketLike } from "./src/blob/r2.js";
+import { BlobAttachmentStore } from "./src/card/attachments/attachment-store.js";
+import { handleAttachmentRoute } from "./src/server/file-routes.js";
+import {
+  runDelayedWork,
+  sweepMessage,
+  type DelayedWorkMessage,
+  type QueueProducerLike,
+} from "./src/server/edge-delayed-work.js";
 import {
   handleWorkersWriteSurface,
   readWorkersRequest,
@@ -59,6 +69,14 @@ interface Env {
   DECKO_FIRST_RUN?: string;
   /** "1" turns the card write path on. Both unset = the read-only deploy. */
   DECKO_WRITE_PATH?: string;
+  /** Optional operator-chosen first-run setup token (a secret), accepted
+   *  beside the deploy-issued one (src/card/auth/setup-token.ts). */
+  DECKO_SETUP_TOKEN?: string;
+  /** R2 binding: the deck's files (uploads and asset outputs). Optional: a
+   *  deploy without it serves no files and refuses uploads by name. */
+  FILES?: R2BucketLike;
+  /** Queue producer binding for delayed work. Optional. */
+  DELAYED?: QueueProducerLike;
 }
 
 interface Deck {
@@ -249,9 +267,74 @@ export function layoutPage(title: string, body: string): string {
 // fetch handler — the Workers interface
 // ---------------------------------------------------------------------------
 
+/** The deck's attachment store over the R2 binding, or undefined when the
+ *  deploy binds no bucket. BlobAttachmentStore holds no state beyond the
+ *  binding, so building it per request costs nothing. */
+function attachmentStoreFor(env: Env): BlobAttachmentStore | undefined {
+  return env.FILES === undefined ? undefined : new BlobAttachmentStore(new R2BlobDriver(env.FILES));
+}
+
+/** GET/HEAD /files/... — the stored bytes, served from R2 through the same
+ *  route module the Node host composes (src/server/file-routes.ts), gated
+ *  per request by the card's read rule. Uploads do not come through here:
+ *  they are the write surface's multipart grammar. */
+async function serveFile(request: Request, env: Env, store: BlobAttachmentStore): Promise<Response | null> {
+  const deck = await getDeck(env);
+  await deck.render.ensureFreshness();
+  return handleAttachmentRoute(request, {
+    driver: new CloudflareD1Adapter(env.DB),
+    fetchEngine: deck.fetcher,
+    attachmentStore: store,
+    createEngine: () => {
+      throw new Error("the Workers /files route serves reads only; uploads ride the write surface");
+    },
+    canReadCard: async (cardId) => {
+      const record = await deck.fetcher.fetchById(cardId);
+      if (record === undefined) return false;
+      const typeRecord = record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+      return deck.render.canReadCard(record, typeRecord?.name?.s);
+    },
+  });
+}
+
 export default {
+  /** Cron trigger (wrangler.toml [triggers]): enqueue the periodic sweep,
+   *  or run it inline when no queue is bound. */
+  async scheduled(_controller: unknown, env: Env): Promise<void> {
+    const message = sweepMessage(new Date());
+    if (env.DELAYED !== undefined) {
+      await env.DELAYED.send(message);
+      return;
+    }
+    await runDelayedWork(message, { driver: new CloudflareD1Adapter(env.DB), files: env.FILES === undefined ? undefined : new R2BlobDriver(env.FILES) });
+  },
+
+  /** Queue consumer (wrangler.toml [[queues.consumers]]). A message that
+   *  throws is retried by the platform; one that is not delayed work at all
+   *  is acknowledged and logged rather than retried forever. */
+  async queue(batch: { messages: ReadonlyArray<{ body: unknown; ack(): void; retry(): void }> }, env: Env): Promise<void> {
+    const driver = new CloudflareD1Adapter(env.DB);
+    const files = env.FILES === undefined ? undefined : new R2BlobDriver(env.FILES);
+    for (const message of batch.messages) {
+      try {
+        const outcome = await runDelayedWork(message.body as DelayedWorkMessage, { driver, files });
+        console.log(`delayed work done: ${JSON.stringify(outcome)}`);
+        message.ack();
+      } catch (error) {
+        console.error("delayed work failed", error instanceof Error ? error.message : String(error));
+        message.retry();
+      }
+    }
+  },
+
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const attachmentStore = attachmentStoreFor(env);
+
+    if (attachmentStore !== undefined && (request.method === "GET" || request.method === "HEAD") && url.pathname.startsWith("/files/")) {
+      const served = await serveFile(request, env, attachmentStore);
+      if (served !== null) return served;
+    }
 
     // The WRITE surface — sign-in, the /setup first-run window, and card
     // create/update/delete. Additive and env-gated: with both flags unset,
@@ -267,7 +350,11 @@ export default {
       const surfaceDeck = await getDeck(env);
       const inbound = await readWorkersRequest(request);
       const writeResult = await handleWorkersWriteSurface(
-        { fetcher: surfaceDeck.fetcher, renderEngine: surfaceDeck.render },
+        {
+          fetcher: surfaceDeck.fetcher,
+          renderEngine: surfaceDeck.render,
+          ...(attachmentStore === undefined ? {} : { attachmentStore }),
+        },
         inbound,
         env,
       );

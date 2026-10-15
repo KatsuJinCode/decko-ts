@@ -11,7 +11,13 @@
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo — the Worker never writes a CARD to it (sign-in still records a session row)."
+        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema, a small demo deck (`Home`, `Hello World`, `About`) and the account system. Writable: sign in and create, edit or delete cards."
+      },
+      "FILES": {
+        "description": "Your deck's files. The deploy creates this R2 bucket for uploads, image renditions and the stylesheet the deck compiles when a style card is saved."
+      },
+      "DELAYED": {
+        "description": "Delayed work. The deploy creates this queue; a daily cron trigger enqueues a sweep of expired sessions and abandoned upload drafts, and the Worker consumes it."
       }
     }
   },
@@ -33,7 +39,8 @@
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
-    "deploy": "npm run db:migrations:apply && npx wrangler deploy",
+    "deploy": "npm run db:migrations:apply && npx wrangler deploy && npm run setup-token",
+    "setup-token": "node tools/deploy/issue-setup-token.mjs --remote",
     "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs",
     "test:cf-hosting": "vitest run tests/tools/d1-trickle tests/server/drivers/d1-bound-parameter-cap.test.ts tests/card/permissions/rule-closure-d1-compound-limit.test.ts tests/card/live/union-ctes-d1-compound-limit.test.ts",
     "bundle:cf-edge-engine": "node tools/bundle-cf-edge-engine.mjs"

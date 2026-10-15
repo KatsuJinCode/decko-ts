@@ -92,9 +92,12 @@ export { handleAuthOnlyRequest };
 import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
 import { originPolicyFromEnv, type OriginPolicy } from "./request-origin.js";
 import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/auth/password-hash.js";
+import { configureSigninSecurity, signinSecurityPolicyFromEnv } from "../card/auth/signin-security.js";
+import { configureSetupToken } from "../card/auth/setup-token.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
 import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
+import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
@@ -116,6 +119,18 @@ export interface WriteSurfaceFlags {
   readonly DECKO_ORIGIN_CHECK?: string;
   /** Comma-separated extra origins allowed to post to this deck. */
   readonly DECKO_TRUSTED_ORIGINS?: string;
+  /** An operator-chosen first-run setup token (auth/setup-token.ts),
+   *  accepted beside the deploy-issued one in deck_setup_tokens. Optional:
+   *  the deploy chain issues a token of its own, and an edge host generates
+   *  none, so with neither /setup refuses and names both. */
+  readonly DECKO_SETUP_TOKEN?: string;
+  /** Sign-in hardening (auth/signin-security.ts): "on" (default) or "off". */
+  readonly DECKO_SIGNIN_THROTTLE?: string;
+  readonly DECKO_SIGNIN_MAX_FAILURES?: string;
+  readonly DECKO_SIGNIN_MAX_ADDRESS_FAILURES?: string;
+  readonly DECKO_SIGNIN_LOCKOUT_SECONDS?: string;
+  readonly DECKO_SIGNIN_UNIFORM_FAILURE?: string;
+  readonly DECKO_SESSION_REVOCATION?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {
@@ -137,6 +152,10 @@ export interface WorkersWriteContext {
   /** Overrides the D1 adapter the surface would build from env.DB. Tests
    *  pass the LocalSqliteDriver here; the Worker never does. */
   readonly driver?: SQLDatabaseDriver;
+  /** The attachment storage seam: the host's bucket (R2 on Cloudflare,
+   *  Bunny Storage on Bunny) under BlobAttachmentStore. Absent = uploads and
+   *  stored asset outputs fail with the engine's named rejection. */
+  readonly attachmentStore?: AttachmentStore;
 }
 
 /** One inbound request, normalized off the Web Request. Same field names and
@@ -406,6 +425,8 @@ async function mountFirstRun(
   req: WorkersWriteRequest,
   originPolicy: OriginPolicy,
 ): Promise<WorkersWriteResponse> {
+  // The setup token gate (deploy-issued, DECKO_SETUP_TOKEN) is the engine
+  // module's, so every host checks the same sources the same way.
   const result = await handleFirstRunRequest(
     { driver, fetcher: ctx.fetcher, originPolicy },
     {
@@ -415,6 +436,7 @@ async function mountFirstRun(
       scheme: req.scheme,
       headers: req.headers,
       body: req.body,
+      ...(req.search === undefined ? {} : { search: req.search }),
     },
   );
   if (result === null) {
@@ -466,10 +488,13 @@ async function mountWrite(
       // `new Function`, which the Workers runtime refuses, so script asset
       // inputs saved here are stored unminified, as on a deck configured
       // with compress_assets false.
-      // attachmentStore is deliberately ABSENT: a Workers deployment binds no
-      // R2 bucket, so there is no storage seam to pass. An upload therefore
-      // fails with the engine's programming-error rejection rather than
-      // silently writing nothing. Disclosed rather than faked.
+      // The host's bucket (env.FILES on Cloudflare): uploads, image
+      // renditions and the stored asset outputs (the site stylesheet the
+      // style asset events write on save) land here, keyed exactly as the
+      // Node host's files directory keys them (attachment-store.ts). A host
+      // that binds no bucket passes nothing, and an upload fails with the
+      // engine's named rejection rather than silently writing nothing.
+      ...(ctx.attachmentStore === undefined ? {} : { attachmentStore: ctx.attachmentStore }),
     },
     {
       method: req.method,
@@ -592,6 +617,8 @@ export async function handleWorkersWriteSurface(
  *  fails the write loudly and leaves the read surface untouched. */
 export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
   configurePasswordHashing(passwordHashPolicyFromEnv(env));
+  configureSigninSecurity(signinSecurityPolicyFromEnv(env));
+  configureSetupToken(env.DECKO_SETUP_TOKEN);
   return originPolicyFromEnv(env);
 }
 

@@ -86,6 +86,15 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // The freshness stamp's triggers widened from cards + card_references to
   // every card table, so a card_actions-only write moves the stamp too.
   { filename: "0010-deck-data-version-all-card-tables.sql", number: "0010" },
+  // The sign-in throttle's counter table (src/card/auth/signin-security.ts).
+  // The engine also creates it on first use; this entry provisions it up
+  // front.
+  { filename: "0011-auth-signin-throttle.sql", number: "0011" },
+  // The first-run setup token table (host infrastructure, not a Decko
+  // table): the deploy chain writes the sha256 of a one-time token here and
+  // prints the /setup link carrying it; src/card/auth/setup-token.ts accepts it beside
+  // DECKO_SETUP_TOKEN and clears it once the owner exists.
+  { filename: "0012-first-run-setup-token.sql", number: "0012" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

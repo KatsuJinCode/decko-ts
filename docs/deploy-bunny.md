@@ -5,10 +5,12 @@ to Bunny Database (libSQL) over its HTTP interface. This document covers the
 bundles, the configuration the script reads, the caching switches, the
 write-surface gate and the status endpoints.
 
-The deployment footprint is two things: an Edge Scripting script and a
-Bunny Database database. No object storage, no queues, no cron triggers. An
-origin server is optional and is used when the deployment needs writes or a
-signed-in session.
+A writable deck is three things: an Edge Scripting script, a Bunny Database
+database (the deck) and a Bunny Storage zone (its files: uploads, image
+renditions and the stylesheet a saved style card compiles). The one-command
+provisioning below creates all three, arms the write surface and the
+first-run window, and prints the deck's one-time setup link. A read-only
+deck needs only the script and the database.
 
 **Costs and energy.** This repository contains no cost measurements and no
 energy measurements for any deployment topology. A trial-scale cost
@@ -88,6 +90,7 @@ endpoint reports a binding instead of variable names.
 | --- | --- |
 | `DECKO_WRITE_PATH` | Arms the write surface. See below. |
 | `DECKO_FIRST_RUN` | Arms the first-run setup surface. |
+| `DECKO_SETUP_TOKEN` | Optional. An operator-chosen setup token, accepted beside the one the provisioning issues. With neither, `/setup` is refused with a message naming both. |
 | `DECKO_EDGE_CACHE` | Arms the response cache headers. |
 | `DECKO_EDGE_CACHE_TTL` | Shared-cache lifetime in seconds. Overrides the default when a positive integer. |
 | `DECKO_EDGE_CACHE_EPOCH` | The cache epoch value. Changing it invalidates both script-side and global cache tiers. |
@@ -101,6 +104,9 @@ endpoint reports a binding instead of variable names.
 | `DECKO_ONE_TRIP` | Arms the one-trip payload. See below. |
 | `DECKO_ONE_TRIP_STORE` | Path to the derived store, or the inline sentinel. |
 | `SPACES_ASSET_HOST` | Host for compiled assets. |
+| `DECKO_STORAGE_ZONE` | The Bunny Storage zone that holds the deck's files. |
+| `DECKO_STORAGE_PASSWORD` | That zone's password, set as a script secret. Zone and password are a pair: exactly one set is a configuration error. |
+| `DECKO_STORAGE_HOST` | The zone's region endpoint host. Default `storage.bunnycdn.com`. |
 
 The origin server has its own set, including the files directory, the token
 secret, and a mail capture switch. See
@@ -126,11 +132,38 @@ Request dispatch is, in order:
    the deployment as read-only;
 5. the session-aware, cache-wrapped engine path.
 
-`DECKO_FIRST_RUN` arms the setup surface separately. Both together form the
+`DECKO_FIRST_RUN` arms the setup surface separately. It opens only for a
+request carrying the one-time setup token the provisioning issued
+(`src/card/auth/setup-token.ts`; the token's SHA-256 lives in
+`deck_setup_tokens`, migration `0012`) or the optional `DECKO_SETUP_TOKEN`,
+so a public deck cannot be claimed by whoever reaches `/setup` first; with
+no valid token it creates nothing and answers `403`. Both together form the
 fresh-deck profile: the setup surface without the write path renders a form
 whose submission cannot succeed, and the write path without the setup surface
 enables writes on a deck with no way to create its first account. See
 [operations.md](operations.md) for what that profile does and does not cover.
+
+---
+
+## Files and the periodic sweep
+
+`deploy/bunny-worker-src/bunny-edge-files.ts` puts the deck's files in the
+Storage zone named by `DECKO_STORAGE_ZONE`, under the same attachment store
+the Cloudflare host uses over R2, and serves `GET`/`HEAD /files/...` back from
+it behind each card's read rule. With no zone configured, uploads fail with
+the engine's named rejection.
+
+Bunny Edge Scripting has no cron trigger and no queue, so the sweep the
+Cloudflare deploy runs daily (expired sign-in sessions, upload drafts older
+than a day; `src/server/edge-delayed-work.ts`) runs here on the first
+write-surface request (any non-`GET`/`HEAD`) an isolate serves, and then at
+most once a day per isolate. Reads never run it. The sweep is idempotent, so
+two isolates sweeping on the same day do redundant work, not wrong work, and
+a failed sweep is logged without failing the request that carried it. Bunny
+Storage lists one directory level, and drafts sit one level below `tmp/`, so
+the sweep's listing walks those directories through the Storage API.
+`tests/server/bunny-edge-files.test.ts` covers this against the local mock of
+the Storage API.
 
 ---
 
@@ -220,8 +253,19 @@ and separately tested but is not wired into the write path.
 the full engine bundle: open `one-key-provisioning-page.html`, make your
 choices, download the payload, and run `provision-bunny-deck.mjs` with one
 Bunny API key. It creates the database, builds the schema, seeds your deck,
-creates and publishes the script, and checks `/_status`. Run it without a mode
-flag first to see the plan; nothing is contacted. See
+creates and publishes the script, and checks `/_status`. For a writable deck
+(`write_path` in the payload and `--allow-write-path` on the command line) it
+also creates the Storage zone and sets its variables, arms
+`DECKO_WRITE_PATH` and `DECKO_FIRST_RUN`, and, once the deck answers, issues
+the setup token and prints the link as the last thing in its output:
+
+    First-run setup link (one use; it creates your deck's owner account):
+      https://<the deck's hostname>/setup?token=...
+
+Open it to create the owner account. Run the script without a mode flag first
+to see the plan; nothing is contacted. The plan and the token SQL are covered
+offline by `tests/deploy/bunny-provision-writable.test.ts`; the live run
+itself needs a Bunny account and has not been exercised by that test. See
 `deploy/provisioning/README-one-key-provisioning.md`.
 
 **By hand:**
@@ -235,9 +279,12 @@ flag first to see the plan; nothing is contacted. See
    `deploy/migrations/`.
 4. Create the scripts and upload each payload to its script endpoint.
 5. Set the gates you want: the write path and first-run variables only for a
-   deployment that serves writes, the cache variables only for a deployment
-   that wants them.
-6. Check `GET /_status` on the deployed host and confirm the card count is the
+   deployment that serves writes, the storage-zone variables for its files,
+   the cache variables only for a deployment that wants them.
+6. For a writable deck, issue the setup token: store the SHA-256 of a random
+   token in `deck_setup_tokens` (the provisioning script's `setupTokenIssue`
+   produces the SQL) and open `/setup?token=<token>`.
+7. Check `GET /_status` on the deployed host and confirm the card count is the
    one you seeded.
 
 An origin server, if you need one, lives in the project's deployment

@@ -136,6 +136,7 @@ import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 // for every request when the flag is unset, so the unarmed staging server
 // behaves exactly as it did before this module existed.
 import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/server/first-run-routes.js";
+import { armGeneratedSetupToken } from "./dist/src/card/auth/setup-token.js";
 // The same-origin check every state-changing request passes (docs/SECURITY.md,
 // "Cross-site requests"): DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS, read at boot.
 import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy } from "./dist/src/server/request-origin.js";
@@ -176,6 +177,7 @@ import {
   readSessionCookie,
   sessionCookieHeader,
   clearedSessionCookieHeader,
+  sessionCookieSecure,
 } from "./dist/src/server/write-routes.js";
 // The visitor session's cookie-carried location history (card-mod-session
 // set/all/location_history.rb): pageViewCookie is the save_current_location
@@ -663,6 +665,17 @@ if (firstRunEnabled() && writePathEnabled()) {
     );
   }
 }
+// The one-time setup token (docs/SECURITY.md, divergence 5): with first-run
+// setup on, /setup accepts only a request carrying it. Without an operator
+// DECKO_SETUP_TOKEN, one is generated now and printed here, once.
+if (firstRunEnabled()) {
+  const setupToken = armGeneratedSetupToken();
+  console.log(
+    setupToken === undefined
+      ? "[first-run] /setup requires the token set in DECKO_SETUP_TOKEN"
+      : `[first-run] /setup requires this one-time setup token: ${setupToken}`,
+  );
+}
 const sessions = new SessionStore({ driver: authDriver });
 
 // ---------------------------------------------------------------------------
@@ -809,6 +822,7 @@ async function handleAccountFlowLink(flow, req) {
       return withSessionCookie(
         successRedirect(outcome.redirectTo.name, outcome.redirectTo.view, req),
         outcome.session.token,
+        req,
       );
     }
     return accountFlowErrorResponse(outcome, flow.accountMark);
@@ -823,11 +837,18 @@ async function handleAccountFlowLink(flow, req) {
   return accountFlowErrorResponse(outcome, flow.accountMark);
 }
 
-function withSessionCookie(response, sessionToken) {
+function withSessionCookie(response, sessionToken, req) {
   return {
     ...response,
-    headers: { ...response.headers, "Set-Cookie": sessionCookieHeader(sessionToken) },
+    headers: { ...response.headers, "Set-Cookie": sessionCookieHeader(sessionToken, nodeCookieSecure(req)) },
   };
+}
+
+// Secure on the session cookie (docs/SECURITY.md, divergence 4): set when the
+// client reached this server over TLS (its own socket, or X-Forwarded-Proto
+// from a TLS-terminating proxy), or as DECKO_COOKIE_SECURE directs.
+function nodeCookieSecure(req) {
+  return sessionCookieSecure({ scheme: req.socket?.encrypted ? "https" : "http", headers: req.headers });
 }
 
 function accountFlowErrorResponse(outcome, accountMark) {
@@ -3132,7 +3153,9 @@ async function handleSignin(req) {
       error: "unsupported content type — send application/json or form-urlencoded with identifier + password",
     });
   }
-  const outcome = await signinAccount(driver, sessions, parsed.identifier, parsed.password);
+  const outcome = await signinAccount(driver, sessions, parsed.identifier, parsed.password, {
+    clientAddress: req.headers["x-forwarded-for"] ?? req.socket?.remoteAddress,
+  });
   if (!outcome.ok) {
     // Ruby's ladder surfaces the i18n message with a failure status; the
     // staging surface maps that to 401 Unauthorized.
@@ -3141,7 +3164,7 @@ async function handleSignin(req) {
   return authJsonResponse(
     200,
     { ok: true, name: outcome.actor.name },
-    { "Set-Cookie": sessionCookieHeader(outcome.session.token) },
+    { "Set-Cookie": sessionCookieHeader(outcome.session.token, nodeCookieSecure(req)) },
   );
 }
 
@@ -3152,7 +3175,7 @@ async function handleSignin(req) {
 async function handleSignout(req) {
   const token = readSessionCookie(req.headers.cookie);
   const revoked = await signoutAccount(sessions, token);
-  return authJsonResponse(200, { ok: true, revoked }, { "Set-Cookie": clearedSessionCookieHeader() });
+  return authJsonResponse(200, { ok: true, revoked }, { "Set-Cookie": clearedSessionCookieHeader(nodeCookieSecure(req)) });
 }
 
 // The sign-in form page: the served deck renders the *signin card's OWN
@@ -3620,6 +3643,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       pathname,
       search: new URL(req.url ?? "/", "http://localhost").search,
       host: req.headers.host,
+      ...(req.socket?.encrypted ? { scheme: "https" } : {}),
       headers: req.headers,
       body,
       bodyBytes,
@@ -3660,6 +3684,8 @@ async function dispatchFirstRunRequest(req, pathname, startedAt) {
       host: req.headers.host,
       headers: req.headers,
       body,
+      // The printed setup link carries its token in the query.
+      search: new URL(req.url ?? "/", "http://localhost").search,
     },
   );
   if (firstRunResponse === null) {
@@ -4017,7 +4043,7 @@ const server = http.createServer(async (req, res) => {
         status: 302,
         headers: {
           Location: "/*signin",
-          "Set-Cookie": [clearedSessionCookieHeader(), visitorSessionCookie(emptyVisitorSession())],
+          "Set-Cookie": [clearedSessionCookieHeader(nodeCookieSecure(req)), visitorSessionCookie(emptyVisitorSession())],
           "Cache-Control": "no-store",
         },
         body: "",

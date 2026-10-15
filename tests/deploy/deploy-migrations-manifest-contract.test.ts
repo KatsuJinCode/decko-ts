@@ -89,6 +89,8 @@ describe("the canonical manifest (order the external runner already applies)", (
       "0008-cards-serving-path-indexes.sql",
       "0009-demo-account-read-rules.sql",
       "0010-deck-data-version-all-card-tables.sql",
+      "0011-auth-signin-throttle.sql",
+      "0012-first-run-setup-token.sql",
     ]);
   });
 
@@ -125,6 +127,8 @@ describe("applied-set compatibility alias (old name recorded = new name applied)
       "0008-cards-serving-path-indexes.sql",
       "0009-demo-account-read-rules.sql",
       "0010-deck-data-version-all-card-tables.sql",
+      "0011-auth-signin-throttle.sql",
+      "0012-first-run-setup-token.sql",
     ]);
   });
 
@@ -150,6 +154,8 @@ describe("applied-set compatibility alias (old name recorded = new name applied)
       "0008-cards-serving-path-indexes.sql",
       "0009-demo-account-read-rules.sql",
       "0010-deck-data-version-all-card-tables.sql",
+      "0011-auth-signin-throttle.sql",
+      "0012-first-run-setup-token.sql",
     ]);
   });
 

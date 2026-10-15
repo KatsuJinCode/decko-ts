@@ -22,6 +22,7 @@
 // a plain COUNT(*) and prove nothing about the `creator_id <> DeckoBotID`
 // arm.
 
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
 import {
@@ -39,11 +40,22 @@ import {
 } from "../../../src/card/auth/index.js";
 import { checkPassword, isPbkdf2Hash } from "../../../src/card/auth/password-hash.js";
 import {
+  armGeneratedSetupToken,
+  clearGeneratedSetupToken,
+  requiredSetupToken,
+} from "../../../src/card/auth/setup-token.js";
+import {
   handleFirstRunRequest,
   parseSetupForm,
   SETUP_PATH,
 } from "../../../src/server/first-run-routes.js";
 import { createRenderTestStorage, type RenderTestStorage } from "../render/render-test-storage.js";
+
+// These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
+// email.", "Wrong password"), so they pin the uniform-failure policy off
+// (docs/SECURITY.md, divergence 4; tests/card/auth/signin-hardening.test.ts
+// covers the default).
+process.env.DECKO_SIGNIN_UNIFORM_FAILURE = "off";
 
 // ---------------------------------------------------------------------------
 // fixture
@@ -190,7 +202,9 @@ const render = await createRenderTestStorage({ bootstrapReadRules: false });
 }
 
 // env gate — set and restored per case, never cached at module load.
-const ENV_KEYS = ["DECKO_FIRST_RUN", "DECKO_WRITE_PATH"] as const;
+const ENV_KEYS = ["DECKO_FIRST_RUN", "DECKO_WRITE_PATH", "DECKO_SETUP_TOKEN"] as const;
+/** The operator setup token every armed case runs with (setup-token.ts). */
+const SETUP_TOKEN = "test-setup-token-0123456789abcdef";
 const priorEnv = new Map<string, string | undefined>();
 afterEach(() => {
   for (const key of ENV_KEYS) {
@@ -209,6 +223,7 @@ function setEnv(key: (typeof ENV_KEYS)[number], value: string | undefined): void
 function armDemoProfile(): void {
   setEnv("DECKO_FIRST_RUN", "1");
   setEnv("DECKO_WRITE_PATH", "1");
+  setEnv("DECKO_SETUP_TOKEN", SETUP_TOKEN);
 }
 
 /**
@@ -811,7 +826,7 @@ describe("the /setup route", () => {
         pathname: SETUP_PATH,
         host: "deck.example",
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: "email=owner%40example.com&password=short",
+        body: `email=owner%40example.com&password=short&setup_token=${SETUP_TOKEN}`,
       },
     );
     expect(response?.status).toBe(422);
@@ -832,7 +847,7 @@ describe("the /setup route", () => {
         pathname: SETUP_PATH,
         host: "deck.example",
         headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: "email=owner%40example.com&password=Abcdef1%21",
+        body: `email=owner%40example.com&password=Abcdef1%21&setup_token=${SETUP_TOKEN}`,
       },
     );
     expect(response?.status).toBe(303);
@@ -858,7 +873,7 @@ describe("the /setup route", () => {
           pathname: SETUP_PATH,
           host: "deck.example",
           headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
-          body: "email=owner%40example.com&password=Abcdef1%21",
+          body: `email=owner%40example.com&password=Abcdef1%21&setup_token=${SETUP_TOKEN}`,
         },
       );
     const refused = await post({ origin: "https://attacker.example" });
@@ -867,6 +882,113 @@ describe("the /setup route", () => {
     expect((await setupWindowState({ driver })).open).toBe(true);
     expect((await post({ origin: "http://deck.example" }))?.status).toBe(303);
     render.close();
+  });
+
+  // Security divergence (docs/SECURITY.md, divergence 5): owner creation
+  // needs the one-time setup token, so being first to reach /setup is not
+  // enough.
+  describe("the one-time setup token", () => {
+    const postWith = (driver: Parameters<typeof handleFirstRunRequest>[0]["driver"], fetcher: Parameters<typeof handleFirstRunRequest>[0]["fetcher"], token: string | null) =>
+      handleFirstRunRequest(
+        { driver, fetcher },
+        {
+          method: "POST",
+          pathname: SETUP_PATH,
+          host: "deck.example",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: `email=owner%40example.com&password=Abcdef1%21${token === null ? "" : `&setup_token=${encodeURIComponent(token)}`}`,
+        },
+      );
+
+    afterEach(() => clearGeneratedSetupToken());
+
+    it("refuses a POST without the token or with a wrong one, with 403, and creates no account", async () => {
+      armDemoProfile();
+      const { driver, render } = await fixture();
+      for (const token of [null, "", "wrong-token", `${SETUP_TOKEN}x`]) {
+        const response = await postWith(driver, render.fetcher, token);
+        expect(response?.status, String(token)).toBe(403);
+        expect(response?.body).toContain("setup token is missing or not correct");
+        expect(response?.body).toContain('data-field="setup_token"');
+      }
+      expect((await setupWindowState({ driver })).open).toBe(true);
+      expect((await postWith(driver, render.fetcher, SETUP_TOKEN))?.status).toBe(303);
+      render.close();
+    });
+
+    it("refuses every POST when no token is configured or generated, naming DECKO_SETUP_TOKEN", async () => {
+      armDemoProfile();
+      setEnv("DECKO_SETUP_TOKEN", undefined);
+      const { driver, render } = await fixture();
+      const response = await postWith(driver, render.fetcher, "anything");
+      expect(response?.status).toBe(403);
+      expect(response?.body).toContain("DECKO_SETUP_TOKEN");
+      expect((await setupWindowState({ driver })).open).toBe(true);
+      render.close();
+    });
+
+    it("accepts the token a host generated at boot, and generates none when the operator set one", async () => {
+      armDemoProfile();
+      expect(armGeneratedSetupToken()).toBeUndefined();
+      setEnv("DECKO_SETUP_TOKEN", undefined);
+      const generated = armGeneratedSetupToken();
+      expect(generated).toMatch(/^[0-9a-f]{64}$/);
+      expect(armGeneratedSetupToken()).not.toBe(generated);
+      const current = requiredSetupToken()!;
+      const { driver, render } = await fixture();
+      expect((await postWith(driver, render.fetcher, generated!))?.status).toBe(403);
+      expect((await postWith(driver, render.fetcher, current))?.status).toBe(303);
+      render.close();
+    });
+
+    it("renders the token field on the form", async () => {
+      armDemoProfile();
+      const { driver, render } = await fixture();
+      const response = await handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
+      );
+      expect(response?.body).toContain('name="setup_token"');
+      render.close();
+    });
+
+    it("accepts a deploy-issued token through the printed link and spends it when the owner exists", async () => {
+      armDemoProfile();
+      setEnv("DECKO_SETUP_TOKEN", undefined);
+      const { driver, render } = await fixture();
+      const issued = "deploy-issued-token-0123456789abcdef";
+      const digest = createHash("sha256").update(issued).digest("hex");
+      await driver.query(
+        `CREATE TABLE IF NOT EXISTS "deck_setup_tokens" ("token_sha256" TEXT NOT NULL PRIMARY KEY, "created_at" TEXT NOT NULL)`,
+        [],
+      );
+      await driver.query(`INSERT INTO "deck_setup_tokens" ("token_sha256", "created_at") VALUES (?, ?)`, [digest, "2026-10-14 00:00:00"]);
+      const request = (method: string, search: string, body = "") =>
+        handleFirstRunRequest(
+          { driver, fetcher: render.fetcher },
+          {
+            method,
+            pathname: SETUP_PATH,
+            host: "deck.example",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body,
+            search,
+          },
+        );
+      const stale = await request("GET", "?token=not-the-token");
+      expect(stale?.status).toBe(403);
+      expect(stale?.body).toContain("setup token is missing or not correct");
+      const form = await request("GET", `?token=${issued}`);
+      expect(form?.status).toBe(200);
+      expect(form?.body).toContain(`action="/setup?token=${issued}"`);
+      expect(form?.body).not.toContain('name="setup_token"');
+      // Without the link or the form field, a POST is refused.
+      expect((await request("POST", "", "email=owner%40example.com&password=Abcdef1%21"))?.status).toBe(403);
+      expect((await request("POST", `?token=${issued}`, "email=owner%40example.com&password=Abcdef1%21"))?.status).toBe(303);
+      const left = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "deck_setup_tokens"`, []);
+      expect(Number(left.rows[0]!.n)).toBe(0);
+      render.close();
+    });
   });
 
   it("returns null for a method it does not serve and for any other path", async () => {
@@ -893,13 +1015,15 @@ describe("the /setup route", () => {
   });
 
   it("parses both body types and refuses the ones it does not read", () => {
-    expect(parseSetupForm("email=a%40b.com&password=x", "application/x-www-form-urlencoded")).toEqual({
+    expect(parseSetupForm("email=a%40b.com&password=x&setup_token=t", "application/x-www-form-urlencoded")).toEqual({
       email: "a@b.com",
       password: "x",
+      setupToken: "t",
     });
     expect(parseSetupForm('{"email":"a@b.com","password":"x"}', "application/json")).toEqual({
       email: "a@b.com",
       password: "x",
+      setupToken: "",
     });
     expect(parseSetupForm("nope", "multipart/form-data")).toBeNull();
     expect(parseSetupForm("not json", "application/json")).toBeNull();
