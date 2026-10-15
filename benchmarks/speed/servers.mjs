@@ -100,10 +100,14 @@ export async function startRuby({ port, hopMs, threads = 5 }) {
     RUBY_THREAD_VM_STACK_SIZE: "67108864",
     RUBY_THREAD_MACHINE_STACK_SIZE: "268435456",
   };
+  // Puma is loaded from the bundle inside the same Ruby that runs Bundler.
+  // `bundle exec puma` would instead run the first `puma` launcher on PATH,
+  // which can belong to another installed Ruby (a launcher that starts its
+  // own interpreter against gems compiled for this one).
   const child = spawn(
-    "bundle",
-    ["exec", "puma", "--environment", "production", "--threads", `${threads}:${threads}`, "--bind", `tcp://127.0.0.1:${port}`, join(ROOT, "benchmarks/speed/ruby/config.ru")],
-    { cwd: join(ROOT, "reference-harness/oracle/app"), env, windowsHide: true, shell: process.platform === "win32", stdio: ["ignore", "ignore", process.env.SPEED_RUBY_LOG ? "inherit" : "ignore"] },
+    "ruby",
+    ["-S", "bundle", "exec", "ruby", "-e", "load Gem.bin_path('puma', 'puma')", "--", "--environment", "production", "--threads", `${threads}:${threads}`, "--bind", `tcp://127.0.0.1:${port}`, join(ROOT, "benchmarks/speed/ruby/config.ru")],
+    { cwd: join(ROOT, "reference-harness/oracle/app"), env, windowsHide: true, stdio: ["ignore", "ignore", process.env.SPEED_RUBY_LOG ? "inherit" : "ignore"] },
   );
   const url = `http://127.0.0.1:${port}`;
   const t0 = performance.now();
