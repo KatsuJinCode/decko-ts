@@ -250,8 +250,15 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mf?.dispose();
-  const server = await mysqlStart?.catch(() => undefined);
-  await server?.stop();
+  // The server is stopped even when a backend failed before it ever resolved,
+  // and killed on an exit hook so a hard test run cannot leave it behind.
+  if (mysqlStart !== undefined) {
+    const server = await mysqlStart.catch(() => undefined);
+    if (server !== undefined) {
+      process.once("exit", () => server.kill());
+      await server.stop();
+    }
+  }
   for (const dir of scratchDirs) rmSync(dir, { recursive: true, force: true });
 });
 
