@@ -114,7 +114,6 @@ import {
   dateError,
   emptyQueryError,
   isValidDateContent,
-  upstreamMatchError,
   BAD_QUERY_CLASS_NAME,
 } from "./render/errors.js";
 import {
@@ -10347,10 +10346,11 @@ export class RenderEngine implements RenderEngineLike {
       // dispatch boundary).
       if (this.isDenied(card)) continue;
       if (card.typeCode === SEARCH_TYPE_CODE) {
-        if (this.searchResults.has(key) || this.searchFailures.has(key)) continue;
+        const searchKey = this.searchCacheKey(card);
+        if (this.searchResults.has(searchKey) || this.searchFailures.has(searchKey)) continue;
         try {
           const items = await this.runSearch(card);
-          this.searchResults.set(key, items);
+          this.searchResults.set(searchKey, items);
           for (const item of items) {
             if (!visited.has(item.key)) queue.push(item.record);
           }
@@ -10361,8 +10361,8 @@ export class RenderEngine implements RenderEngineLike {
           // true — the perf contract the prewarm pins) and record the exact
           // error. Unknown errors are NOT parse failures — rethrow.
           if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
-          this.searchFailures.set(key, err);
-          this.searchResults.set(key, []);
+          this.searchFailures.set(searchKey, err);
+          this.searchResults.set(searchKey, []);
         }
         continue;
       }
@@ -10707,17 +10707,6 @@ export class RenderEngine implements RenderEngineLike {
         (statement as Record<string, unknown>)[key] = String(parsed);
       }
     }
-    if (
-      typeof (statement as Record<string, unknown>)["match"] === "string" &&
-      (statement as Record<string, unknown>)["match"] !== ""
-    ) {
-      // active_record.rb:80-83 (the SQLite adapter carries no match
-      // override on this deck): the match compiles through
-      // AbstractAdapter#match, which raises the uninterpolated
-      // lib_exception_not_implemented i18n string — the reproduced
-      // upstream failure the recorded keyword-search debug page pins.
-      throw upstreamMatchError();
-    }
     const searchOffset = focalSearch?.offset;
     if (searchOffset !== undefined && searchOffset > 0) {
       (statement as Record<string, unknown>)["offset"] = searchOffset;
@@ -10726,7 +10715,9 @@ export class RenderEngine implements RenderEngineLike {
     let records: Map<number, CardRecord>;
     let paging: SearchResultPaging | undefined;
     let searchCount: number | undefined;
-    try {
+    // Use the adapter-aware executor, including its exact no-UDF fallback.
+    // Query/provider errors must propagate; they are not empty result sets.
+    {
       const queryOptions = {
         // The viewer's read-permission filter rides the SQL
         // (implicitConditions' `read_rule_id IN (...)` — cqlPermissionOptions
@@ -10846,8 +10837,6 @@ export class RenderEngine implements RenderEngineLike {
         // « 1 2 » with 2 active and the "21 - 29 of 29" context).
         if (count > limit) paging = { limit, offset: searchOffset ?? 0, count };
       }
-    } catch {
-      return []; // search_error view is wave 3
     }
     const items: RenderCard[] = [];
     for (const row of rows) {

@@ -285,6 +285,9 @@ function explicitConditions(query: QueryNode, ctx: GenContext): string {
 
 /** Where#format_conditions */
 function formatConditionList(list: string[], conj: string): string {
+  // A no-UDF match is deliberately omitted and reapplied by the executor.
+  // Do not leave an empty operand beside retained type/permission clauses.
+  list = list.filter((condition) => condition !== "");
   if (list.length === 0) return "";
   if (list.length === 1) return list[0];
   return `(${list.join(` ${conj.toUpperCase()} `)})`;
