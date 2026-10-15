@@ -1,3 +1,6 @@
+// Current surface: stock set/all/css.rb's five CSS views are registered;
+// SCSS inherits them through the surveyed format ancestry. The no-observable
+// discussion below records the historical pre-CSS-view implementation.
 // view-dispatch-css-js-format-ancestry-census.test.ts - the css/js format
 // PARENT survey pin (css-js-format-parents, 2026-10-01): the gem
 // survey that corrected HTML_DESCENDED_FORMATS (mod-loader.ts) plus the
@@ -195,6 +198,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :bad_address are `format do` (base) views, and the csv/file/js/yaml
       // keys carry the format-block views each. Measured on this tree.
       ["base", 35],
+      // The five views declared by stock set/all/css.rb.
+      ["css", 5],
       ["csv", 4],
       // json 4 -> 8 and the new data key 10 (2026-10-15): json.rb's status,
       // items, molecule and page views, and data.rb's ten views (json and
@@ -261,13 +266,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: zero css-keyed and zero scss-keyed registrations", () => {
-    // The css/scss render bytes live in the compile-engines leaf seam
-    // (asset-input-assembly.ts:208-215 -> sassc-coffeescript-compile-
-    // engines.ts), never in the chain — the structural half of why no
-    // css/js chain request can observe the constant.
+  it("composed-deck census: the five Ruby CSS views are inherited by SCSS", () => {
     const entries = censusEntries();
-    expect(entries.filter((e) => e.formatKey === "css").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
+    expect(entries.filter((e) => e.formatKey === "css").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([
+      "format all/css :titled", "format all/css :content", "format all/css :unknown",
+      "format all/css :import", "format all/css :url",
+    ]);
     expect(entries.filter((e) => e.formatKey === "scss").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
   });
 

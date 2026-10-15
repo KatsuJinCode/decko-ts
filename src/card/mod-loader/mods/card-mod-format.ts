@@ -1414,6 +1414,20 @@ const smartLabelView: ViewFn = ({ fmt }) => {
   return `${label} ${popoverLink(str(description))}`;
 };
 
+/** card-mod-format set/all/css.rb: major_comment and its five CSS views.
+ * String#length counts Unicode codepoints in Ruby, rather than UTF-16 units. */
+function cssMajorComment(comment: string): string {
+  const edge = `/* ${"-".repeat(Array.from(comment).length + 4)} */`;
+  return `${edge}\n/* - ${comment} - */\n${edge}\n\n`;
+}
+const cssCoreView: ViewFn = ({ fmt }) => fmt.renderView("core");
+const cssTitledView: ViewFn = ({ fmt }) =>
+  cssMajorComment(` Style Card: \\"${fmt.card.name.s}\\" `) + str(fmt.renderView("core"));
+const cssUnknownView: ViewFn = ({ fmt }) =>
+  cssMajorComment(`MISSING Style Card: ${fmt.card.name.s}`);
+// path.rb:55-64 uses a rooted card path with local file storage.
+const cssUrlView: ViewFn = ({ fmt }) => `/${fmt.urlKey()}.css`;
+
 // ---------------------------------------------------------------------------
 // set/all/html/frame.rb + set/all/html/views.rb + set/all/demo.rb
 // ---------------------------------------------------------------------------
@@ -1903,11 +1917,19 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/css.rb:1-36 css format block (default_nest_view, show
-    // override, view :titled, :content, :unknown, :import, :url +
-    // helper major_comment). Not ported: format-specific (no css
-    // format dispatch).
+    // set/all/css.rb: CSS-specific views; inherited by ScssFormat.
     setPath: "all/css",
+    formats: {
+      css: {
+        views: [
+          { view: "titled", viewFn: cssTitledView },
+          { view: "content", viewFn: cssCoreView },
+          { view: "unknown", viewFn: cssUnknownView },
+          { view: "import", viewFn: cssCoreView },
+          { view: "url", viewFn: cssUrlView, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   {
     // set/all/csv.rb:1-42 csv format block (nests, default_nest_view,

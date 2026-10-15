@@ -146,7 +146,8 @@ describe("flat-record format-scope census (composed deck)", () => {
     // are foreign-keyed, not base-kind. Measured on this tree.
     // 169 -> 183 (json/data format views, 2026-10-15): the data and json
     // views are all-set modules under their own format keys. Measured on this tree.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(183);
+    // set/all/css.rb adds its five format-specific all-set views.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(188);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
@@ -164,7 +165,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // all/js :source and all/yaml :core are the format-block views of the
     // non-html formats, each keyed under its own format class
     // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
-    expect(foreign).toHaveLength(30);
+    expect(foreign).toHaveLength(35);
     expect(
       foreign
         .map(
@@ -177,6 +178,11 @@ describe("flat-record format-scope census (composed deck)", () => {
       "email all/email_text :compact_missing key=email_text",
       "email all/email_text :last_action key=email_text",
       "email all/email_text :unknown key=email_text",
+      "format all/css :content key=css",
+      "format all/css :import key=css",
+      "format all/css :titled key=css",
+      "format all/css :unknown key=css",
+      "format all/css :url key=css",
       "format all/csv :header key=csv",
       "format all/csv :row key=csv",
       "format all/csv :titled key=csv",
@@ -222,7 +228,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     expect(spanning).toEqual([
       "bad_address: All::Error:base | All::Error:html",
       "compact_missing: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
-      "content: All::Base:base | All::Data:data",
+      "content: All::Base:base | All::Css:css | All::Data:data",
       "core: All::Base:base | All::Data:data | All::File:file | All::Yaml:yaml",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "items: All::Data:data | All::Json:json",
@@ -232,8 +238,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "molecule: All::Data:data | All::Json:json",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      "titled: All::Css:css | All::Csv:csv",
       "type: All::Base:base | All::Html:html",
-      "unknown: All::Csv:csv | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "unknown: All::Css:css | All::Csv:csv | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "url: All::Base:base | All::Css:css",
     ]);
   });
 
@@ -277,6 +285,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "titled_content",
       "type",
       "unknown",
+      "url",
       "url_link",
     ]);
   });
