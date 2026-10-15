@@ -22,6 +22,7 @@
 // a plain COUNT(*) and prove nothing about the `creator_id <> DeckoBotID`
 // arm.
 
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
 import {
@@ -948,6 +949,44 @@ describe("the /setup route", () => {
         { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
       );
       expect(response?.body).toContain('name="setup_token"');
+      render.close();
+    });
+
+    it("accepts a deploy-issued token through the printed link and spends it when the owner exists", async () => {
+      armDemoProfile();
+      setEnv("DECKO_SETUP_TOKEN", undefined);
+      const { driver, render } = await fixture();
+      const issued = "deploy-issued-token-0123456789abcdef";
+      const digest = createHash("sha256").update(issued).digest("hex");
+      await driver.query(
+        `CREATE TABLE IF NOT EXISTS "deck_setup_tokens" ("token_sha256" TEXT NOT NULL PRIMARY KEY, "created_at" TEXT NOT NULL)`,
+        [],
+      );
+      await driver.query(`INSERT INTO "deck_setup_tokens" ("token_sha256", "created_at") VALUES (?, ?)`, [digest, "2026-10-14 00:00:00"]);
+      const request = (method: string, search: string, body = "") =>
+        handleFirstRunRequest(
+          { driver, fetcher: render.fetcher },
+          {
+            method,
+            pathname: SETUP_PATH,
+            host: "deck.example",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body,
+            search,
+          },
+        );
+      const stale = await request("GET", "?token=not-the-token");
+      expect(stale?.status).toBe(403);
+      expect(stale?.body).toContain("setup token is missing or not correct");
+      const form = await request("GET", `?token=${issued}`);
+      expect(form?.status).toBe(200);
+      expect(form?.body).toContain(`action="/setup?token=${issued}"`);
+      expect(form?.body).not.toContain('name="setup_token"');
+      // Without the link or the form field, a POST is refused.
+      expect((await request("POST", "", "email=owner%40example.com&password=Abcdef1%21"))?.status).toBe(403);
+      expect((await request("POST", `?token=${issued}`, "email=owner%40example.com&password=Abcdef1%21"))?.status).toBe(303);
+      const left = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "deck_setup_tokens"`, []);
+      expect(Number(left.rows[0]!.n)).toBe(0);
       render.close();
     });
   });

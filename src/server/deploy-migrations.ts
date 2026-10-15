@@ -90,6 +90,11 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // The engine also creates it on first use; this entry provisions it up
   // front.
   { filename: "0011-auth-signin-throttle.sql", number: "0011" },
+  // The first-run setup token table (host infrastructure, not a Decko
+  // table): the deploy chain writes the sha256 of a one-time token here and
+  // prints the /setup link carrying it; src/card/auth/setup-token.ts accepts it beside
+  // DECKO_SETUP_TOKEN and clears it once the owner exists.
+  { filename: "0012-first-run-setup-token.sql", number: "0012" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

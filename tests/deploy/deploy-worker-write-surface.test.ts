@@ -367,7 +367,9 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
   describe("DECKO_FIRST_RUN=1 alone — the window stays shut", () => {
     let booted: Awaited<ReturnType<typeof bootWorker>>;
     beforeAll(async () => {
-      booted = await bootWorker({ DECKO_FIRST_RUN: "1" });
+      // A setup token is in force, so the 404 below is the census's second
+      // gate and not the token gate (src/card/auth/setup-token.ts).
+      booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_SETUP_TOKEN: DEPLOY_SETUP_TOKEN });
     }, 180_000);
     afterAll(async () => {
       await booted?.dispose();
@@ -391,8 +393,9 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
   describe("DECKO_FIRST_RUN=1 with DECKO_WRITE_PATH=1 — the first-run window", () => {
     let booted: Awaited<ReturnType<typeof bootWorker>>;
     beforeAll(async () => {
-      // DECKO_SETUP_TOKEN: the one-time setup token an edge host needs from
-      // the operator, since it generates none (docs/SECURITY.md, divergence 5).
+      // DECKO_SETUP_TOKEN: an operator-supplied setup token, one of the
+      // sources the gate accepts (docs/SECURITY.md, divergence 5); the
+      // deploy-issued link is pinned by the deploy rehearsal.
       booted = await bootWorker({ DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1", DECKO_SETUP_TOKEN: DEPLOY_SETUP_TOKEN });
     }, 180_000);
     afterAll(async () => {

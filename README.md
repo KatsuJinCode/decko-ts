@@ -92,10 +92,9 @@ path, not by a second full grade.
 ## Deploy to Cloudflare (one-click)
 
 This is a **Deploy to Cloudflare** button. Click it and the same engine you
-read about below runs on Cloudflare Workers against a D1 database in your own
-account. You need no terminal, no Node install, and no Cloudflare setup first.
-What the button deploys is a **read-only four-card demo deck**; a writable deck
-takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
+read about below runs on Cloudflare Workers in your own account, as a deck you
+can sign in to and edit. You need no terminal, no Node install, and no
+Cloudflare setup first.
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts-public)
 
@@ -103,87 +102,84 @@ takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
 
 1. **You sign in, and you pick the names.** Cloudflare opens a setup page.
    You sign in to your Cloudflare account, then choose — or accept the
-   default for — three names: the new repository Cloudflare will create in
-   your GitHub account, the Worker, and the D1 database.
+   defaults for — the new repository Cloudflare will create in your GitHub
+   account, the Worker, and the resources listed in the next step.
 2. **Cloudflare copies the source into your account.** Your own copy of this
    repo lands in your GitHub account, so what gets deployed is yours, and you
    can keep developing it.
-3. **Cloudflare creates the database.** It reads `wrangler.toml`, finds the
-   one D1 binding, creates a fresh database on your account, and writes the
-   real database id into the config in your copy. Nothing is shared with
-   anyone else's account.
-4. **Cloudflare creates the schema, the demo content, and the account
-   system, then deploys.** It installs the repo and runs the migrations in
-   `deploy/migrations/`: the core schema, a four-card demo deck, then the
-   account substrate (card-mod-account's account cards plus the Decko Bot and
-   Anonymous actor cards) so the deck has an account to sign in against, then
-   `0009-demo-account-read-rules.sql` — the `*all+*read` catch-all and the
-   Help Desk grants for the account fields, which are what keep an anonymous
-   requester out of the owner's password digest, salt and email address.
-   Then it bundles and deploys the Worker.
-5. **You get a URL.** The Worker shows up in your Cloudflare dashboard under
-   **Workers & Pages** with a `https://<worker-name>.<your-subdomain>.workers.dev`
-   address. Open it and you are in the deck.
+3. **Cloudflare creates the resources.** It reads `wrangler.toml` and creates,
+   on your account:
+   - a **D1 database** (`DB`) — the deck itself;
+   - an **R2 bucket** (`FILES`) — uploaded files, image renditions and the
+     stylesheet the deck compiles when a style card is saved;
+   - a **queue** (`DELAYED`) and a **daily cron trigger** — the periodic sweep
+     that deletes expired sign-in sessions and abandoned upload drafts.
 
-Nothing above needs a Cloudflare API token typed into the repo. There are no
-secrets in `wrangler.toml`: the only *binding* the deployed Worker reads from
-its environment is the D1 one. It also reads the two plain `[vars]` flags
-described next (`DECKO_WRITE_PATH` and `DECKO_FIRST_RUN`), which are not
-secrets and which a deploy from the button leaves unset.
+   It writes the real ids into the config in your copy. Nothing is shared
+   with anyone else's account.
+4. **Cloudflare builds and deploys.** It runs `npm run deploy`, which applies
+   the migrations in `deploy/migrations/` (the core schema, a small demo deck
+   — `Home`, `Hello World`, `About` — and the account system with its read
+   rules), deploys the Worker, and as its last step issues your deck's
+   **one-time setup link**.
+5. **You open the setup link.** The deploy's build log (in the dashboard:
+   **Workers & Pages** → your Worker → **Deployments** → the build) ends with
 
-### What you get: a browse-only demo deck
+   ```
+   First-run setup link (one use; it creates your deck's owner account):
+     https://<your deck's address>/setup?token=...
+   ```
 
-Four cards, already there, that you can read:
+   Replace `<your deck's address>` with the Worker's
+   `https://<worker-name>.<your-subdomain>.workers.dev` address and open it.
+   `/setup` creates the deck's owner account and signs you in; from then on
+   you can create, edit and delete cards and upload files.
+
+### Why there is a setup link
+
+A deployed deck is public the moment the deploy finishes. Ruby Decko gives
+its first-run window to whoever reaches `/setup` first while the deck has no
+accounts; on a public URL that is a race against anyone who finds it. So
+`/setup` here also requires the token the deploy printed. Only the token's
+SHA-256 is stored (in D1); the link works once, and the token is deleted when
+the owner account is created. Without a valid token `/setup` creates nothing
+and answers `403`. If you would rather choose the token yourself, set it as a
+secret (`npx wrangler secret put DECKO_SETUP_TOKEN`) and enter it in the
+form's setup token field; the gate accepts either. A Node deck started
+without `DECKO_SETUP_TOKEN` prints a token of its own at boot
+([docs/SECURITY.md](docs/SECURITY.md), divergence 5).
+
+If you lose the link before using it, issue a fresh one — this replaces the
+old one:
+
+```bash
+npm run setup-token     # = node tools/deploy/issue-setup-token.mjs --remote
+```
+
+(Re-running the deploy from the dashboard issues a fresh link too.)
+
+### What the deck does
 
 | URL | what it is |
 | --- | --- |
 | `/` | the `Home` card |
 | `/Hello_World` | a card with body text (`_` stands for a space in a card URL; `+` joins two names into a compound card) |
 | `/About` | a card that includes `Hello World` one level down |
+| `/_signin` | sign in |
 | `/api/status` | JSON describing the running engine |
 | `/api/card/About` | the same card as a JSON record |
 
-You can browse every card and follow the inclusions, and you can ask for any
-card as JSON. **You cannot create or edit cards from the deployed demo**: the
-Worker this button ships reads, and has no card-write path — that is a
-deliberate boundary, not a missing feature. (Sign-in is the one thing that
-still works: `POST /update/*signin` records a session row, because a session
-is not a card.) The database is yours, so you can add cards
-to it yourself with the CLI, or extend `worker.ts` to write; the engine's
-write path (rules, history, saves) is where the real product starts, and it is
-not what this button turns on.
+Sign-in stores only a SHA-256 digest of the session token in D1 and hands you
+an `HttpOnly`, `SameSite=Lax`, `Secure` cookie that carries it. Uploads are
+stored in the R2 bucket and served back under `/files/` behind each card's
+read rule.
 
-### Turning the write path on (opt in, off by default)
-
-A deploy from the button is **read-only**: it can show every card and answer
-JSON for any of them, and it will refuse every attempt to change a card with
-a plain `403`. Sign-in is the deliberate exception — `/_signin` is not served
-until you arm the write path, but a `POST /update/*signin` reaches the engine
-either way and records a session row. The Worker does have a full write path —
-sign-in with a real
-D1-backed session, a first-run setup window, and card create / update / delete
-— but it is switched off unless you set one of two values in `wrangler.toml`
-and redeploy. Nothing is on unless you turn it on:
-`DECKO_WRITE_PATH = "1"` turns on card writes (and the sign-in form's route),
-`DECKO_FIRST_RUN = "1"` opens `/setup`, the one-time window that creates your
-deck's first account (it needs the write path as well, because creating that
-account is itself a card write, and it closes by itself once the account
-exists). `/setup` also asks for a setup token you choose, so that reaching the
-new deck first is not enough to become its owner; set it as a secret with
-`npx wrangler secret put DECKO_SETUP_TOKEN` (any long random string).
-
-```toml
-# wrangler.toml
-[vars]
-DECKO_WRITE_PATH = "1"
-DECKO_FIRST_RUN  = "1"
-```
-
-Then `npm run deploy` again. `/setup` walks you through creating the owner
-account (enter the setup token in its first field), `/_signin` signs you in, and from then on the write routes accept
-your session. Sign-in stores only a SHA-256 digest of the session token in
-D1 — the token itself is never written down — and hands you an `HttpOnly`,
-`SameSite=Lax`, `Secure` cookie that carries it.
+Two plain `[vars]` in `wrangler.toml` turn the write surface on, and the
+button deploy ships them on: `DECKO_WRITE_PATH = "1"` (sign-in form and card
+create / update / delete) and `DECKO_FIRST_RUN = "1"` (the `/setup` window,
+which closes by itself once the owner account exists). Set either to `"0"`
+and redeploy to turn it off; with both off the deck serves reads only and
+answers every card write with `403`. No secret is involved in any of this.
 
 Writes on D1 are for evaluation and single-user use, not a supported
 multiuser deployment. D1 has no interactive transactions, so the engine
@@ -191,34 +187,37 @@ saves there through a compensating journal
 ([decision 0007](docs/decisions/0007-atomic-saves-and-transaction-contract.md)):
 a failed save is fully undone, but while a save is running a concurrent
 reader can see its partial rows — a save that fails was briefly visible
-before it vanished. A multiuser deployment on D1 therefore either keeps
-`DECKO_WRITE_PATH` off or accepts that window; local SQLite and libSQL have
-real transactions and do not have it.
+before it vanished. Local SQLite and libSQL have real transactions and do not
+have that window.
 
-One honest thing to know before you try a card write: the demo deck that
-migration `0004` seeds ships **no create / update / delete rights at all**, so
-the engine's permission walk refuses every save with a `403`, correctly, for
-everybody including you. The route, the session, and the permission check are
-all working; the deck is simply not given permission to change itself. Adding
-that permission is deck content, so it is yours to add rather than something
-this deploy does for you.
+The rehearsal `node tools/deploy/rehearse-deploy-button.mjs` checks all of
+this offline with the real wrangler: every binding the button provisions, the
+setup token issued against the local database, `/setup` refused without it
+and accepted with it, sign-in, a card created, a file uploaded and read back
+from the local bucket, and the cron trigger firing a sweep the queue runs.
 
 ### If you would rather use the CLI
-The button automates the same two commands, run from the repo root after
+The button automates these commands, run from the repo root after
 `npx wrangler login`:
 
 ```bash
-npx wrangler d1 create decko-ts   # then paste the returned id into wrangler.toml
-npm run deploy                     # = d1 migrations apply DB --remote && wrangler deploy
+npx wrangler d1 create decko-ts            # then paste the returned id into wrangler.toml
+npx wrangler r2 bucket create decko-ts-files
+npx wrangler queues create decko-ts-delayed
+npm run deploy                             # migrations, wrangler deploy, then the setup link
 ```
 
 Doing it by hand, the paste in step 1 is yours to make — the id in
 `wrangler.toml` is a default for the button to overwrite, not a real database.
+The migration command names the **binding** (`DB`), not the database name, so
+it keeps working after you rename the database.
 
-`npm run deploy` applies everything in `deploy/migrations/` — schema, indexes,
-demo cards, account substrate, account read rules — and then deploys. The
-migration command names the **binding** (`DB`), not the database name, so it
-keeps working after you rename the database.
+### Deploying on Bunny instead
+
+[docs/deploy-bunny.md](docs/deploy-bunny.md) covers the Bunny Edge Scripting
+deploy. Its one-command provisioning creates the same writable deck: a Bunny
+Database, a Bunny Storage zone for files, the write surface and first-run
+gate armed, and the one-time setup link printed at the end of the run.
 
 ### Smoke (against a deployed Worker)
 
@@ -239,7 +238,7 @@ npx wrangler dev
 
 Miniflare 5 boots a local D1 in workerd; the engine stays the same. The local
 D1 starts empty — apply the migrations to it first if you want the demo cards
-locally:
+locally (and `node tools/deploy/issue-setup-token.mjs --local` for a local setup link):
 
 ```bash
 npx wrangler d1 migrations apply DB --local

@@ -86,7 +86,7 @@ import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -388,6 +388,10 @@ export function buildSteps(payload, { sourcePath, writePathAllowed }) {
     `node tools/bundle-bunny-edge-engine.mjs -> deploy/dist/bunny-edge-engine.code.json (sha256 recorded in the result sidecar)`);
   push(`create edge script "${b.script_name}" + linked pull zone "${b.pull_zone_name}"`, true, () =>
     `POST /compute/script AddEdgeScriptModel {Name, Code, ScriptType:1, CreateLinkedPullZone:true, LinkedPullZoneName:"${b.pull_zone_name}"} -> 201`);
+  if (writePathAllowed && payload.edge.write_path) {
+    push(`create storage zone "${b.script_name}-files"`, true, () =>
+      `POST /storagezone {"Name":"${b.script_name}-files","Region":"${b.storage_zone_region ?? "DE"}"} -> StorageZone {Id, Password, StorageHostname}: the deck's files (uploads, renditions, compiled stylesheets)`);
+  }
   push("set database credentials as script secrets", true, () =>
     `POST /compute/script/{id}/secrets x2 (BUNNY_DATABASE_URL, BUNNY_DATABASE_AUTH_TOKEN — the documented pair the entry resolves first)`);
   push("apply edge options as script variables", true, () =>
@@ -396,7 +400,9 @@ export function buildSteps(payload, { sourcePath, writePathAllowed }) {
       ? `, DECKO_EDGE_CACHE_TTL=${payload.edge.cache_ttl_seconds}, DECKO_EDGE_CACHE_EPOCH=${payload.edge.cache_epoch}`
       : "") +
     `, DECKO_EDGE_RENDER_BUDGET_MS=${payload.edge.render_budget_ms}` +
-    (writePathAllowed && payload.edge.write_path ? `, DECKO_WRITE_PATH=1` : "") + `)`);
+    (writePathAllowed && payload.edge.write_path
+      ? `, DECKO_WRITE_PATH=1, DECKO_FIRST_RUN=1, DECKO_STORAGE_ZONE, DECKO_STORAGE_HOST; DECKO_STORAGE_PASSWORD as a secret`
+      : "") + `)`);
   if (payload.edge.cache_enabled) {
     push("flip the linked zone off SmartCache (origin-header caching)", true, () =>
       `POST /pullzone/{zoneId} {"EnableSmartCache":false} — SmartCache rewrites responses no-cache and defeats header and L2 caching (measured)`);
@@ -405,9 +411,30 @@ export function buildSteps(payload, { sourcePath, writePathAllowed }) {
     `POST /compute/script/{id}/publish {"Note":"one-key provision <date>"} -> 204; effective immediately`);
   push("verify the new deck responds", false, () =>
     `poll GET https://<DefaultHostname>/_status until {"ok":true} (60 s budget), then GET / sanity`);
+  if (writePathAllowed && payload.edge.write_path) {
+    push("issue the first-run setup token", true, () =>
+      `POST /v2/pipeline: replace deck_setup_tokens (deploy/migrations/0012) with the sha256 of 32 fresh random bytes; the token itself is printed once, as the /setup link, at the end of the run`);
+  }
   push("write the recovery result sidecar", false, () =>
     `<payload>.result.json — script/zone/db/group ids, hostname, bundle sha256, source sha256; with the payload this is the deck's permanent recovery artifact (no secrets in it)`);
   return steps;
+}
+
+/** The SQL that issues a first-run setup token: only its sha256 is stored
+ *  (deploy/migrations/0012, src/card/auth/setup-token.ts), replacing any earlier
+ *  one. Both values are generated here, so inlining them is safe. */
+export function setupTokenIssue(now = new Date()) {
+  const token = randomBytes(32).toString("base64url");
+  const digest = createHash("sha256").update(token).digest("hex");
+  const createdAt = now.toISOString().slice(0, 19).replace("T", " ");
+  return {
+    token,
+    path: `/setup?token=${token}`,
+    statements: [
+      `DELETE FROM "deck_setup_tokens"`,
+      `INSERT INTO "deck_setup_tokens" ("token_sha256", "created_at") VALUES ('${digest}', '${createdAt}')`,
+    ],
+  };
 }
 
 /** The deploy migrations a provisioned deck needs: the schema (0001) and
@@ -907,10 +934,23 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
   scriptCreated = true; // past this point a real provisioned thing exists — no auto-rollback
   console.log(`script created: ${b.script_name} = ${scriptId}${zoneId ? `, linked pull zone = ${zoneId}` : " (no linked zone in response — caching step will need it)"}`);
 
+  // 6b. the files: a storage zone for a writable deck
+  const writable = payload.edge.write_path === true;
+  let storage = null;
+  if (writable) {
+    const zoneName = `${b.script_name}-files`;
+    const created = await api.call("POST", "/storagezone", { Name: zoneName, Region: b.storage_zone_region ?? "DE" }, { expect: [200, 201] });
+    const z = created.json ?? {};
+    if (!z.Id || !z.Password) throw new Error(`storage zone create returned no Id/Password: HTTP ${created.status}`);
+    storage = { id: z.Id, name: zoneName, host: z.StorageHostname || "storage.bunnycdn.com", password: z.Password };
+    console.log(`storage zone created: ${zoneName} = ${z.Id} (${storage.host}; password not displayed)`);
+  }
+
   // 7. secrets — the documented pair, first resolved by the entry
   for (const secret of [
     { Name: "BUNNY_DATABASE_URL", Secret: dbUrl },
     { Name: "BUNNY_DATABASE_AUTH_TOKEN", Secret: dbToken },
+    ...(storage ? [{ Name: "DECKO_STORAGE_PASSWORD", Secret: storage.password }] : []),
   ]) {
     const r = await api.call("POST", `/compute/script/${scriptId}/secrets`, secret, { expect: [200, 201, 204] });
     console.log(`secret ${secret.Name} set -> ${r.status}`);
@@ -927,6 +967,11 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
   ];
   if (payload.edge.write_path) {
     variables.push({ Name: "DECKO_WRITE_PATH", Required: false, DefaultValue: "1" });
+    variables.push({ Name: "DECKO_FIRST_RUN", Required: false, DefaultValue: "1" });
+  }
+  if (storage) {
+    variables.push({ Name: "DECKO_STORAGE_ZONE", Required: false, DefaultValue: storage.name });
+    variables.push({ Name: "DECKO_STORAGE_HOST", Required: false, DefaultValue: storage.host });
   }
   for (const v of variables) {
     const r = await api.call("POST", `/compute/script/${scriptId}/variables/add`, v, { expect: [200, 201] });
@@ -966,6 +1011,16 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
     ? `VERIFY: ${base}/_status -> {"ok":true} — the deck is LIVE`
     : `VERIFY: /_status did not answer ok within 60 s — the publish is real; check propagation/logs at dash.bunny.net before retrying anything`);
 
+  // 11b. the first-run setup token: the deck is public now, so /setup opens
+  // only for the link printed below (src/card/auth/setup-token.ts)
+  let setupLink = null;
+  if (writable) {
+    const issue = setupTokenIssue();
+    const issued = await applySqlStatements(`${dbUrl.replace(/^libsql:\/\//i, "https://").replace(/\/+$/, "")}/v2/pipeline`, dbToken, issue.statements);
+    if (issued.applied !== issue.statements.length) throw new Error(`setup token was not stored: ${JSON.stringify(issued).slice(0, 200)}`);
+    setupLink = `${base}${issue.path}`;
+  }
+
   // 12. result sidecar — the recovery artifact (payload + result = re-provisionable)
   const resultPath = `${args.payload.replace(/\.json$/i, "")}.result.json`;
   const result = {
@@ -985,6 +1040,7 @@ async function executeMode({ payload, resolveApi, args, sourcePath }) {
     bunny: {
       script: { id: scriptId, name: b.script_name },
       pull_zone: zoneId ? { id: zoneId, name: b.pull_zone_name } : null,
+      storage_zone: storage ? { id: storage.id, name: storage.name, host: storage.host } : null,
       database: { id: dbId, name: b.db_name, url: dbUrl, group_id: createdGroupId, group_name: b.db_group_name },
       hostname,
       base_url: base,
@@ -999,6 +1055,13 @@ Recovery artifact: keep ${args.payload} + ${basename(resultPath)} together —
 they re-provision this deck (names, ids, bundle + source hashes) with a fresh
 API key and no other input. Neither file holds a secret.
 `);
+  if (setupLink) {
+    console.log(`First-run setup link (one use; it creates your deck's owner account):
+  ${setupLink}
+
+Anyone holding this link can claim the deck until you use it, so open it now.
+`);
+  }
   return { resultPath, base };
   } catch (e) {
     if (!scriptCreated && (createdGroupId || createdDbId)) {

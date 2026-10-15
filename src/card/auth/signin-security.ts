@@ -107,7 +107,7 @@ export function signinSecurityPolicy(): SigninSecurityPolicy {
 
 /** The table the throttle keeps in the deck database. Created on first use
  *  so a deck that predates it needs no migration step; the deploy migration
- *  chain carries the same statement (deploy/migrations/0010). */
+ *  chain carries the same statement (deploy/migrations/0011). */
 export const SIGNIN_THROTTLE_DDL =
   "CREATE TABLE IF NOT EXISTS auth_signin_throttle (" +
   "scope TEXT PRIMARY KEY NOT NULL, " +

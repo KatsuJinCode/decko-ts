@@ -3684,6 +3684,8 @@ async function dispatchFirstRunRequest(req, pathname, startedAt) {
       host: req.headers.host,
       headers: req.headers,
       body,
+      // The printed setup link carries its token in the query.
+      search: new URL(req.url ?? "/", "http://localhost").search,
     },
   );
   if (firstRunResponse === null) {

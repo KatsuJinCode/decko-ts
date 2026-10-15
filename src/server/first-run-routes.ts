@@ -68,10 +68,12 @@
 //   two different owners never collide — which is exactly why the database
 //   permits the second owner.
 //
-//   Who may use the window: only a request carrying the one-time setup token
-//   (setup-token.ts; docs/SECURITY.md, divergence 5), checked before the
-//   create runs, so the concurrency boundary above applies only among holders
-//   of the token.
+//   Who may use the window: only a request carrying a valid one-time setup
+//   token (src/card/auth/setup-token.ts; docs/SECURITY.md, divergence 5) —
+//   deploy-issued, DECKO_SETUP_TOKEN, or generated at Node boot — checked
+//   before the create runs, so the concurrency boundary above applies only
+//   among holders of the token. The token rides the printed link's query
+//   (`/setup?token=...`) or the form's setup_token field.
 //
 //   What this does NOT provide, beyond the boundary above: per-IP
 //   throttling, a captcha, or an idempotency key. The window closes on the
@@ -107,7 +109,12 @@ import {
   type SetupClosedReason,
   type SetupWindowReason,
 } from "../card/auth/first-run-setup.js";
-import { checkSetupToken } from "../card/auth/setup-token.js";
+import {
+  checkSetupToken,
+  clearDeckSetupTokens,
+  presentedSetupToken,
+  SETUP_TOKEN_PARAM,
+} from "../card/auth/setup-token.js";
 
 /** The route path. A staging-slice name in the `/_*` family the server
  *  already uses for its own non-card endpoints (`/_signin`, `/_signout`,
@@ -130,6 +137,9 @@ export interface FirstRunRouteRequest {
   readonly scheme?: "http" | "https";
   readonly headers: Record<string, string | undefined>;
   readonly body: string;
+  /** The URL query string ("?token=..." or ""), where the printed setup link
+   *  carries its token. Absent: no query. */
+  readonly search?: string;
 }
 
 export interface FirstRunRouteResponse {
@@ -179,15 +189,29 @@ export async function handleFirstRunRequest(
     return notFoundResponse(window.reason);
   }
 
+  // A GET that arrives through the printed setup link is checked at once, so
+  // a stale link says so before the form is filled in; the form then posts
+  // back to the same link and does not ask for the token again. A GET without
+  // a token renders the form with its setup token field.
+  const linkToken = presentedSetupToken(req.search, undefined);
+  let formAction: string | undefined;
+  if (linkToken !== undefined) {
+    const check = await checkSetupToken(ctx.driver, linkToken);
+    if (!check.ok) {
+      return htmlResponse(403, "Set up this deck", renderSetupFormHtml("setup_token", check.message));
+    }
+    formAction = `${SETUP_PATH}?${SETUP_TOKEN_PARAM}=${encodeURIComponent(linkToken)}`;
+  }
+
   if (req.method === "GET") {
-    return htmlResponse(200, "Set up this deck", renderSetupFormHtml(null, null));
+    return htmlResponse(200, "Set up this deck", renderSetupFormHtml(null, null, formAction));
   }
 
   // Same-origin check (docs/SECURITY.md, "Cross-site requests"): the setup
   // POST creates the owner account, so another site must not submit it.
   const origin = checkRequestOrigin({ headers: req.headers, host: req.host }, ctx.originPolicy ?? defaultOriginPolicy());
   if (!origin.ok) {
-    return htmlResponse(403, "Set up this deck", renderSetupFormHtml(null, `${CROSS_ORIGIN_MESSAGE} (${origin.reason})`));
+    return htmlResponse(403, "Set up this deck", renderSetupFormHtml(null, `${CROSS_ORIGIN_MESSAGE} (${origin.reason})`, formAction));
   }
 
   const submitted = parseSetupForm(req.body, req.headers["content-type"] ?? "");
@@ -198,15 +222,15 @@ export async function handleFirstRunRequest(
     return htmlResponse(
       400,
       "Set up this deck",
-      renderSetupFormHtml(null, "Could not read the submitted form."),
+      renderSetupFormHtml(null, "Could not read the submitted form.", formAction),
     );
   }
 
   // The one-time setup token (docs/SECURITY.md, divergence 5): checked
   // before any card machinery runs, so a request without it creates nothing.
-  const token = checkSetupToken(submitted.setupToken);
+  const token = await checkSetupToken(ctx.driver, linkToken ?? presentedSetupToken(undefined, submitted.setupToken));
   if (!token.ok) {
-    return htmlResponse(403, "Set up this deck", renderSetupFormHtml("setup_token", token.message));
+    return htmlResponse(403, "Set up this deck", renderSetupFormHtml("setup_token", token.message, formAction));
   }
 
   const outcome = await createOwnerAccount(
@@ -220,12 +244,15 @@ export async function handleFirstRunRequest(
     return htmlResponse(
       422,
       "Set up this deck",
-      renderSetupFormHtml(outcome.field ?? null, outcome.message),
+      renderSetupFormHtml(outcome.field ?? null, outcome.message, formAction),
       // A validation failure is a user error -> 422; the re-render
       // carries the message against its own field.
       { "Cache-Control": "no-store" },
     );
   }
+  // The owner exists: the census closes the window from here on, and a
+  // deploy-issued token is spent.
+  await clearDeckSetupTokens(ctx.driver);
   return {
     status: 303,
     headers: {
@@ -334,6 +361,7 @@ const CLOSED_BODY: Record<SetupWindowReason, string> = {
 function renderSetupFormHtml(
   errorField: "email" | "password" | "setup_token" | null,
   errorMessage: string | null,
+  formAction: string = SETUP_PATH,
 ): string {
   const error =
     errorMessage === null
@@ -348,11 +376,15 @@ function renderSetupFormHtml(
     `<div class="d0-card-body card-body card-text">\n` +
     `<p>Your deck is ready to go!</p>\n` +
     error +
-    `<form action="${SETUP_PATH}" method="post" class="first-run-setup-form">\n` +
-    `<div class="form-group">\n` +
-    `<label for="setup_token">Setup token</label>\n` +
-    `<input type="password" name="setup_token" id="setup_token" class="form-control" autocomplete="off" />\n` +
-    `</div>\n` +
+    `<form action="${escapeHtml(formAction)}" method="post" class="first-run-setup-form">\n` +
+    // Reached through the printed setup link, the action already carries the
+    // token; otherwise the operator types it here.
+    (formAction === SETUP_PATH
+      ? `<div class="form-group">\n` +
+        `<label for="setup_token">Setup token</label>\n` +
+        `<input type="password" name="setup_token" id="setup_token" class="form-control" autocomplete="off" />\n` +
+        `</div>\n`
+      : "") +
     `<div class="form-group">\n` +
     `<label for="setup_email">Email</label>\n` +
     `<input type="text" name="email" id="setup_email" class="form-control" autocomplete="username" />\n` +
