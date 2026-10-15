@@ -15,8 +15,9 @@
 //   naming) with one placeholder, so the comparison sees only what the
 //   engines themselves decide. The surrounding bytes still count: an engine
 //   whose output differs anywhere outside the volatile span still fails.
-//   There are four: N4 (collapse ids), N5 (relative-time spans), N7
-//   (capture-host debug content), N8 (an error record's class name).
+//   There are five: N4 (collapse ids), N5 (relative-time spans), N7
+//   (capture-host debug content), N8 (an error record's class name), N9 (the
+//   address inside a default object inspect).
 //
 // Application is structural, not textual: the rules run inside a walk of the
 // HTML's real grammar, so a mask lands only where an attribute can be, a
@@ -53,16 +54,48 @@ export function canonicalErrorClass(name) {
 }
 
 /** Every canonical form, in rule order. */
-export const RULE_ORDER = ["N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8"];
+export const RULE_ORDER = ["N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9"];
+
+/**
+ * N9. The address inside a default object inspect. Ruby's default inspect of an
+ * object embeds the object's memory address, `#<Cardio::Mod:0x000001bd38e4f4c0 ...>`
+ * (rb_any_to_s, and Object#inspect with instance variables), and a
+ * NoMethodError message names its receiver that way when the receiver has a
+ * singleton class (card 1.110.0's mods extend card instances). The address is
+ * the object's heap location in the process that raised: two processes of one
+ * oracle give different values, like the N1 slot id, and no port has a Ruby
+ * heap to reproduce it. The rule masks exactly the sixteen hex digits of that
+ * address, and only where the text opens an inspect string: `#<Class:0x` followed
+ * by sixteen hex digits and the end of the address (`>`, or a space before the
+ * attributes). The class name, the attributes and every other byte compare exact,
+ * and the mask is applied on both sides. Two spellings occur: the plain form in
+ * an error record's message, and the HTML-escaped form inside a render error's
+ * debug title (`#&lt;Card:0x...&gt;`, escaped once more as an attribute value).
+ */
+export const OBJECT_ADDRESS = /#<([A-Za-z_][\w:]*):0x[0-9a-fA-F]{16}(?=[ >])/g;
+export const OBJECT_ADDRESS_ESCAPED = /(#(?:&amp;lt;|&lt;)[A-Za-z_][\w:]*):0x[0-9a-fA-F]{16}(?=&amp;gt;|&gt;| )/g;
+export const OBJECT_ADDRESS_MARKER = "N9#addr";
+
+/** N9 on a plain text string (an error message): the address becomes the marker. */
+export function maskObjectAddresses(text, applied) {
+  if (typeof text !== "string") return text;
+  return text.replace(OBJECT_ADDRESS, (_, cls) => {
+    if (applied) applied.add("N9");
+    return `#<${cls}:${OBJECT_ADDRESS_MARKER}`;
+  });
+}
 
 /** N8 on an error record: the class's host naming canonicalizes; the message
  *  and every other field compare exact. `applied`, when given, collects "N8"
- *  when the class name actually changed. */
+ *  when the class name actually changed, and "N9" when the message carried a
+ *  default object inspect whose address was masked. */
 export function normalizeErrorRecord(error, applied) {
   if (error === null || typeof error !== "object") return error;
   const cls = canonicalErrorClass(error.class);
   if (applied && cls !== error.class) applied.add("N8");
-  return { ...error, class: cls };
+  const out = { ...error, class: cls };
+  if (typeof error.message === "string") out.message = maskObjectAddresses(error.message, applied);
+  return out;
 }
 
 /** Equality for two recorded failures under N8 and N2. */
@@ -246,16 +279,19 @@ export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
       note("N5");
       return "N5#elapsed";
     });
+  // N9 first: an object address is masked before N7's heap-address rule would
+  // see the same digits inside a debug title, so each mask names its own rule.
+  const nine = (text) => maskHtmlAddresses(text, note);
   let out = "";
   let i = 0;
   const lower = html.toLowerCase();
   while (i < html.length) {
     const lt = html.indexOf("<", i);
     if (lt === -1) {
-      out += canonicalizeText(html.slice(i), collapse, elapse);
+      out += canonicalizeText(html.slice(i), collapse, elapse, nine);
       break;
     }
-    out += canonicalizeText(html.slice(i, lt), collapse, elapse);
+    out += canonicalizeText(html.slice(i, lt), collapse, elapse, nine);
     i = lt;
     // A comment, a doctype, CDATA or a processing instruction: markup, but
     // never a tag, so never a mask site. Copied verbatim.
@@ -300,7 +336,7 @@ export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
     }
     const tagEnd = j >= html.length ? html.length : j + 1;
     const tagText = html.slice(i, tagEnd);
-    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note);
+    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine);
     i = tagEnd;
     // A raw text element's body is text, not markup: copied verbatim,
     // whatever it contains. xmp closes like the others, at its end tag;
@@ -323,14 +359,28 @@ export function normalizeHtml(html, { classTokenOrder = true, applied } = {}) {
   return out;
 }
 
-function canonicalizeText(text, collapse, elapse) {
-  return elapse(collapse(text));
+function canonicalizeText(text, collapse, elapse, nine) {
+  return elapse(collapse(nine(text)));
+}
+
+/** N9 in HTML: a default object inspect's address, in the escaped spelling a
+ *  render's debug title carries and in the plain one text can carry. */
+function maskHtmlAddresses(text, note) {
+  return text
+    .replace(OBJECT_ADDRESS_ESCAPED, (_, pre) => {
+      note("N9");
+      return `${pre}:${OBJECT_ADDRESS_MARKER}`;
+    })
+    .replace(OBJECT_ADDRESS, (_, cls) => {
+      note("N9");
+      return `#<${cls}:${OBJECT_ADDRESS_MARKER}`;
+    });
 }
 
 /** Applies the attribute-level rules inside one tag's text. Walks the
  *  attribute region the way the HTML tokenizer does — names, `=`, quoted or
  *  unquoted values — and copies every byte no rule rewrites. */
-function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note) {
+function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note, nine) {
   let out = "";
   let k = 1; // past `<`
   while (k < tagText.length && !isWhitespace(tagText[k]) && tagText[k] !== ">" && tagText[k] !== "/") k++;
@@ -367,7 +417,7 @@ function normalizeTagAttributes(tagText, classTokenOrder, collapse, elapse, note
       // `class` is matched case-insensitively, as HTML attribute names are.
       const isClass = name.toLowerCase() === "class";
       const isTitle = name.toLowerCase() === "title";
-      let next = value;
+      let next = nine(value); // N9 first, so N7's heap rule never claims the address
       if (name === "data-slot-id" && /^[0-9a-f]{20}$/.test(value)) {
         next = "SLOT"; // N1: the exact mask shape, and nothing looser
         note("N1");

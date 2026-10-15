@@ -53,7 +53,7 @@
 //   with the views they target.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
+import { NoMethodError, rubyDefaultInspect, stableIdentity } from "../../render/format.js";
 import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
@@ -129,9 +129,9 @@ function cardAssetOutputUrl(ctx: ViewContext): string {
  * The engine's format defines no asset_output_url (the method lives on the
  * card, cardAssetOutputUrl), and the engine has no ActionView context with
  * helpers to delegate to, so the lookup fails as Ruby's does and raises
- * NoMethodError. The receiver is named by the engine's own identity of the
- * format object the lookup ran on (engineObjectIdentity), not Ruby's
- * CardActionView heap inspection.
+ * NoMethodError. The receiver is named in Ruby's default-inspect shape for the
+ * CardActionView the delegation lands on (rubyDefaultInspect): the class is
+ * Ruby's, the address digits are the engine's own identity (N9 masks them).
  *
  * Ruby source of the failure: card-mod-assets-0.20.0
  * set/abstract/asset_outputter.rb:62 (the bare call), raised at
@@ -145,7 +145,7 @@ const assetOutputUrlView: ViewFn = (ctx) => {
   if (typeof method === "function") return String(method.call(ctx.fmt));
   throw new NoMethodError(
     "undefined method `asset_output_url' for " +
-      engineObjectIdentity(ctx.fmt.constructor.name, { card: ctx.fmt.card.name.s }),
+      rubyDefaultInspect("Card::Format::CardActionView", stableIdentity(ctx.fmt.card.name.s)),
   );
 };
 

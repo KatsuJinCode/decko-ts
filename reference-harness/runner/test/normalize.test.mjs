@@ -428,6 +428,48 @@ describe("N8: an error record's class name, the host-language naming canonical f
   });
 });
 
+describe("N9: the address inside a default object inspect, a volatile value canonical form", () => {
+  const plain = (addr) => `private method \`closure_deletions' called for #<Card:0x${addr}>`;
+  const escapedTitle = (addr) =>
+    `<span title="&lt;p&gt;&lt;strong&gt;private method &#39;closure_deletions&#39; called for #&amp;lt;Card:0x${addr}&amp;gt;&lt;/strong&gt;">Ada</span>`;
+  const a = "000001bd38e4f4c0";
+  const b = "0000028dfcc01048";
+
+  it("masks the sixteen digits in a plain error message, on both sides, so two processes compare equal", () => {
+    const applied = new Set();
+    assert.ok(sameFailure({ class: "NoMethodError", message: plain(a) }, { class: "NoMethodError", message: plain(b) }, applied));
+    assert.ok(applied.has("N9"), "the reached form is named");
+    assert.equal(normalizeErrorRecord({ class: "X", message: plain(a) }).message, "private method `closure_deletions' called for #<Card:N9#addr>");
+  });
+
+  it("masks the address inside an html-escaped debug title and names N9", () => {
+    const applied = new Set();
+    const out = normalizeHtml(escapedTitle(a), { applied });
+    assert.equal(out, escapedTitle("N9#addr").replace("Card:0xN9#addr", "Card:N9#addr"), "the address alone becomes the marker, in the escaped spelling");
+    assert.ok(applied.has("N9"));
+    assert.ok(!applied.has("N7"), "N9 claims the address, so the heap-address rule does not also reach it");
+  });
+
+  it("the class name and the attributes after the address are compared byte for byte", () => {
+    assert.ok(!sameFailure({ class: "NoMethodError", message: plain(a) }, { class: "NoMethodError", message: plain(a).replace("Card", "Cardio::Mod") }), "another class name fails");
+    const withAttrs = (x) => `#<Card:0x${x} @name="Ada">`;
+    assert.ok(!sameFailure({ class: "E", message: withAttrs(a) }, { class: "E", message: withAttrs(a).replace('"Ada"', '"Mira"') }), "a different attribute fails");
+    assert.ok(sameFailure({ class: "E", message: withAttrs(a) }, { class: "E", message: withAttrs(b) }), "the address alone is masked");
+  });
+
+  it("only the address shape is masked: a short or a non-inspect hex run is not", () => {
+    assert.ok(!sameFailure({ class: "E", message: "#<Card:0x000001bd38e4f4c" }, { class: "E", message: "#<Card:0x000001bd38e4f4c0" }), "a fifteen-digit run is not an address");
+    assert.ok(!sameFailure({ class: "E", message: "id 0x000001bd38e4f4c0" }, { class: "E", message: "id 0x000002bd38e4f4c0" }), "a bare hex run outside an inspect string is not masked");
+    assert.ok(!sameFailure({ class: "E", message: "#<Card:0x000001bd38e4f4cg>" }, { class: "E", message: "#<Card:0x000001bd38e4f4c0>" }), "a non-hex digit is not an address");
+  });
+
+  it("a text without an inspect string is returned unchanged and names no rule", () => {
+    const applied = new Set();
+    assert.equal(normalizeHtml("<p>nothing here</p>", { applied }), "<p>nothing here</p>");
+    assert.ok(!applied.has("N9"));
+  });
+});
+
 describe("synthetic-v1: the masks are the measured nondeterminism", () => {
   const fixture = path.join(HARNESS, "fixtures", "synthetic-v1");
   const manifest = JSON.parse(readFileSync(path.join(fixture, "expected", "MANIFEST.json"), "utf8"));

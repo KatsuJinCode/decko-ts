@@ -4634,21 +4634,27 @@ function backtraceLink(card: RenderCard, error: unknown): string {
   return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
 }
 
-/** The engine's own identity for an object that a ported Ruby error message
- *  names as its receiver. Ruby's NoMethodError message embeds the receiver's
- *  `inspect`, `#<Card:0x0000028dfcc01048>`: the class and a heap address of
- *  the Ruby process. This engine has no Ruby heap and does not imitate one;
- *  it names the receiver by the class that plays its part here and the
- *  fields that identify it (`#<Card id=12 name="Ada Admin">`). The message
- *  text around it stays Ruby's. */
-export function engineObjectIdentity(
-  className: string,
-  fields: Readonly<Record<string, string | number | undefined>>,
-): string {
-  const parts = Object.entries(fields)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${key}=${JSON.stringify(value)}`);
-  return parts.length === 0 ? `#<${className}>` : `#<${className} ${parts.join(" ")}>`;
+/** Ruby's default object inspect (rb_any_to_s): `#<ClassName:0x` followed by
+ *  the object's address as sixteen hex digits, then `>`. A NoMethodError
+ *  message names its receiver this way when the receiver has a singleton class
+ *  (card 1.110.0's mods extend card instances), e.g.
+ *  `#<Card:0x000001bd38e4f4c0>`. This engine has no Ruby heap, so the sixteen
+ *  digits are the engine's own identity for the object (the card id, or
+ *  stableIdentity of the card name) written in Ruby's shape. The harness masks
+ *  exactly these digits on both sides (reference-harness N9); no Ruby byte is
+ *  copied. */
+export function rubyDefaultInspect(className: string, identity: number): string {
+  return `#<${className}:0x${identity.toString(16).padStart(16, "0")}>`;
+}
+
+/** A stable 32-bit identity for a name (FNV-1a), for an object with no card id. */
+export function stableIdentity(name: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
 }
 
 /**
