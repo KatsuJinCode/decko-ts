@@ -65,7 +65,7 @@ import {
   mountBunnyEdgeWriteSurface,
 } from "./bunny-edge-signin-session-surface.js";
 import { applySecuritySettings, type WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
-import { handleAttachmentRoute } from "../../src/server/file-routes.js";
+import { handleAttachmentRoute, handleStockCodedAttachmentRoute } from "../../src/server/file-routes.js";
 import type { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import {
   EdgeSweepClock,
@@ -391,9 +391,23 @@ async function routeBunnyEngineRequest(
   // zone is configured; otherwise the request core's own /files/ arm below
   // answers, as it did before this host had storage.
   if (url.pathname.startsWith("/files/")) {
+    const deck = await getDeck(resolved, env);
+    const fileViewer = await resolveViewerFromToken(sessionTokenFromRequest(request), new SessionStore({ driver: deck.fetcher.driver }));
+    const readDeck = fileViewer.signedIn === true ? getActorEngines().deckFor(fileViewer.actorId as number) : deck;
+    await readDeck.render.ensureFreshness();
+    const coded = await handleStockCodedAttachmentRoute(request, {
+      driver: deck.fetcher.driver, fetchEngine: deck.fetcher,
+      canReadCard: async id => {
+        const record = await deck.fetcher.fetchById(id);
+        if (!record) return false;
+        const type = record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+        return readDeck.render.canReadCard(record, type?.name?.s);
+      },
+    });
+    if (coded !== null) return coded;
     const store = bunnyEdgeAttachmentStore(env);
     if (store !== undefined) {
-      const served = await serveStoredFile(request, await getDeck(resolved, env), store);
+      const served = await serveStoredFile(request, readDeck, store);
       if (served !== null) return served;
     }
   }

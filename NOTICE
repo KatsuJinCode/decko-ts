@@ -235,3 +235,9 @@ are SIL OFL 1.1, with Reserved Font Name "Font Awesome". Upstream's full
 distributed LICENSE.txt, attribution, package integrity and extracted-byte
 hashes are retained alongside the exact CSS/font bytes. No Pro assets or
 private Kit credentials are included. See that directory's PROVENANCE.md.
+
+### `vendor/decko-coded-attachments/` — stock coded logo/favicon bytes
+
+These exact assets come from card-mod-carrierwave0.20.0, part of the GPL-3.0-or-later
+Decko upstream attributed above. The directory records source filenames,
+sizes and SHA-256 hashes; the project's GPL LICENSE applies.

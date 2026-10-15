@@ -27,8 +27,8 @@
 //
 // Named remainder (documented, not silently missing): per-request READ
 // permission on file GETs when the host provides no canReadCard;
-// cloud/web/coded storage serving (only ~local identifiers resolve to
-// bytes); variant RESIZE bytes; the upload-cache draft lifecycle (the
+// cloud/web/custom coded storage serving (stock coded logo/favicon and
+// ~local identifiers resolve to bytes); variant RESIZE bytes; the upload-cache draft lifecycle (the
 // preliminary two-step editor flow); public symlink management (a filesystem
 // optimization the route replaces by direct serving).
 
@@ -43,6 +43,7 @@ import {
 } from "../card/attachments/attachment-content.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
+import { stockCodedFile } from "../card/attachments/stock-coded-files.js";
 
 /** The db_content change-row field code (TRACKED_FIELDS index 2). */
 const DB_CONTENT_FIELD = 2;
@@ -92,6 +93,18 @@ export async function handleAttachmentRoute(
     return handleAttachmentUpload(segments[0], request, deps);
   }
   return null;
+}
+
+/** Stock mod files do not require an upload/object-storage binding. */
+export async function handleStockCodedAttachmentRoute(request: Request, deps: Pick<FileRouteDeps, "driver" | "fetchEngine" | "canReadCard">): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const segments = new URL(request.url).pathname.replace(/\/+$/, "").split("/").slice(1);
+  if (segments[0] !== "files") return null;
+  const parsed = parseFileRouteSegments(segments.slice(1));
+  if (parsed?.revId !== "carrierwave") return null;
+  const card = await resolveMark(deps, parsed.mark);
+  if (!card || (deps.canReadCard && !(await deps.canReadCard(card.id)))) return fileNotFound();
+  return (await codedFileResponse(request, parsed, card, deps)) ?? fileNotFound();
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +171,9 @@ async function handleFileGet(
     return fileNotFound();
   }
 
+  const codedResponse = await codedFileResponse(request, parsed, card, deps);
+  if (codedResponse !== undefined) return codedResponse;
+
   const revId = /^\d+$/.test(parsed.revId) ? Number.parseInt(parsed.revId, 10) : NaN;
   if (Number.isNaN(revId)) return fileNotFound();
   // File::SelectedAction skips history lookup for the current identifier
@@ -205,7 +221,10 @@ async function handleFileGet(
   // the filename arm of CarrierWave's MIME detection (CSS/JS must not be
   // emitted as text/plain when nosniff is set).
   const contentType = detectAttachmentContentType(actionComment || safeFilename(card, local.ext), bytes, null);
+  return fileResponse(request, parsed, card, local.ext, bytes, contentType);
+}
 
+function fileResponse(request: Request, parsed: ParsedFileRequest, card: ResolvedMark, ext: string, bytes: Uint8Array, contentType: string): Response {
   const headers = new Headers();
   headers.set("Content-Type", contentType);
   headers.set("Content-Length", String(bytes.length));
@@ -216,7 +235,7 @@ async function handleFileGet(
   // "file". The filename is the card's key plus the extension.
   headers.set(
     "Content-Disposition",
-    `${parsed.format === "file" ? "attachment" : "inline"}; filename="${safeFilename(card, local.ext)}"`,
+    `${parsed.format === "file" ? "attachment" : "inline"}; filename="${safeFilename(card, ext)}"`,
   );
   // UPLOADED-BYTES DEFENSES: both are response headers on this
   // one construction site, so neither can be bypassed by a route that forgot
@@ -242,6 +261,15 @@ async function handleFileGet(
     headers.set("Content-Security-Policy", "sandbox");
   }
   return new Response(request.method === "HEAD" ? undefined : new Uint8Array(bytes), { headers });
+}
+
+async function codedFileResponse(request: Request, parsed: ParsedFileRequest, card: ResolvedMark, deps: Pick<FileRouteDeps, "driver">): Promise<Response | undefined> {
+  const coded = stockCodedFile(card.dbContent, parsed.size);
+  if (!coded) return undefined;
+  // The requested card must own this current coded identifier.
+  const owner = await deps.driver.query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [coded.codename]);
+  if (owner.rows[0]?.id !== card.id || parsed.revId !== "carrierwave" || parsed.format !== coded.extension) return fileNotFound();
+  return fileResponse(request, parsed, card, coded.extension, coded.bytes, coded.extension === "svg" ? "image/svg+xml" : "image/png");
 }
 
 /** The served content types that can execute script in the deck's origin if
@@ -415,7 +443,7 @@ async function typeCodeOf(deps: FileRouteDeps, typeId: number): Promise<string |
 
 /** Mark resolution for both routes: `~<id>` by card id, `:<codename>` by
  *  codename, else by name. */
-async function resolveMark(deps: FileRouteDeps, mark: string): Promise<ResolvedMark | undefined> {
+async function resolveMark(deps: Pick<FileRouteDeps, "driver" | "fetchEngine">, mark: string): Promise<ResolvedMark | undefined> {
   if (/^~\d+$/.test(mark)) {
     const row = await deps.driver
       .query<CardsRowLite>("SELECT * FROM cards WHERE id = ? AND trash = 0", [

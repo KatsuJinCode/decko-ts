@@ -128,6 +128,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 // change — only nested/delegated rescues go quiet.
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
+import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { configureFontAwesomeMode } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -4076,6 +4077,23 @@ const server = http.createServer(async (req, res) => {
       if (assetResp !== null) {
         response = assetResp;
       } else {
+        const actorRender = actor !== null ? engineForActor(actor.id) : render;
+        await actorRender.ensureFreshness();
+        const codedResponse = await handleAttachmentRoute(new Request(url, { method: req.method }), {
+          driver, fetchEngine: fetcher, attachmentStore,
+          createEngine: () => { throw new Error("file GET does not create an action engine"); },
+          canReadCard: async id => {
+            const record = await fetcher.fetchById(id);
+            if (!record) return false;
+            const type = record.typeId !== undefined ? await fetcher.fetchById(record.typeId) : undefined;
+            return actorRender.canReadCard(record, type?.name?.s);
+          },
+        });
+        if (codedResponse !== null) {
+          res.writeHead(codedResponse.status, Object.fromEntries(codedResponse.headers));
+          res.end(req.method === "HEAD" ? undefined : Buffer.from(await codedResponse.arrayBuffer()));
+          return;
+        }
         response = htmlResponse(
           404,
           `<h1>Not found</h1><pre>No asset for ${escapeHtml(pathname)}</pre>`,

@@ -31,8 +31,10 @@ import { FetchEngine } from "../../src/card/fetch.js";
 import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
 import type { Actor, CanWriteHook } from "../../src/card/actions/types.js";
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
-import { handleAttachmentRoute, type FileRouteDeps } from "../../src/server/file-routes.js";
+import { handleAttachmentRoute, handleStockCodedAttachmentRoute, type FileRouteDeps } from "../../src/server/file-routes.js";
 import { scratchDir } from "../support/scratch-dir.mjs";
+import { createHash } from "node:crypto";
+import { codedSvgFileBytes } from "../../src/card/render/coded-attachment-files.js";
 
 // ---------------------------------------------------------------------------
 // Storage boot + synthetic fixture seeds.
@@ -801,5 +803,51 @@ describe("current file identifiers without action history (stock compiled assets
     const historical = (await handleAttachmentRoute(new Request(`http://test.test/files/~${first.id}/${first.action_id}.pdf`), makeDeps()))!;
     expect(historical.status).toBe(200);
     expectBytesEqual(await bodyBytes(historical), PDF_BYTES);
+  });
+});
+
+describe("stock coded logo and favicon attachments", () => {
+  beforeAll(async () => {
+    await seedSimpleCard(driver, { id: 70101, name: "*logo", codename: "logo", typeId: IMAGE_TYPE_ID, dbContent: ":logo/carrierwave.svg" });
+    await seedSimpleCard(driver, { id: 70102, name: "*favicon", codename: "favicon", typeId: IMAGE_TYPE_ID, dbContent: ":favicon/carrierwave.png" });
+    await seedSimpleCard(driver, { id: 70103, name: "Coded alias", typeId: IMAGE_TYPE_ID, dbContent: ":logo/carrierwave.svg" });
+  });
+
+  it("renders the exact stock inline SVG without a filesystem provider", () => {
+    const svg = codedSvgFileBytes(":logo/carrierwave.svg")!;
+    expect(createHash("sha256").update(svg).digest("hex")).toBe("312389d4825c90b0b9fe27969b333b83169e4328504115d21f2db7f04172f230");
+    expect(codedSvgFileBytes(":logo/unknown.svg")).toBeUndefined();
+  });
+
+  it("serves coded SVG and the actual small favicon with MIME/security headers and HEAD", async () => {
+    const logo = (await handleAttachmentRoute(new Request("http://test.test/files/:logo/carrierwave.svg"), makeDeps()))!;
+    expect(logo.status).toBe(200);
+    expect(logo.headers.get("content-type")).toBe("image/svg+xml");
+    expect(logo.headers.get("content-security-policy")).toBe("sandbox");
+    expect(createHash("sha256").update(Buffer.from(await logo.arrayBuffer())).digest("hex")).toBe("312389d4825c90b0b9fe27969b333b83169e4328504115d21f2db7f04172f230");
+    const favicon = (await handleAttachmentRoute(new Request("http://test.test/files/:favicon/carrierwave-small.png"), makeDeps()))!;
+    expect(favicon.status).toBe(200);
+    expect(favicon.headers.get("content-type")).toBe("image/png");
+    expect(createHash("sha256").update(Buffer.from(await favicon.arrayBuffer())).digest("hex")).toBe("cb2cd4c1b77989c7ab5c86e80296f6c7ae34a6b7414af87d38a9d26e81280b04");
+    const head = (await handleAttachmentRoute(new Request("http://test.test/files/:favicon/carrierwave-small.png", { method: "HEAD" }), makeDeps()))!;
+    expect(head.status).toBe(200);
+    expect(head.body).toBeNull();
+    expect(head.headers.get("content-length")).toBe("5914");
+    const withoutStore = await handleStockCodedAttachmentRoute(new Request("http://test.test/files/:favicon/carrierwave-small.png"), { driver, fetchEngine, canReadCard: () => true });
+    expect(withoutStore?.status).toBe(200);
+  });
+
+  it("denies read revocation, foreign coded identity, unknown module/variant/extension and replaced content", async () => {
+    let readable = true;
+    const deps = makeDeps({ canReadCard: () => readable });
+    const request = new Request("http://test.test/files/:logo/carrierwave.svg");
+    expect((await handleAttachmentRoute(request, deps))!.status).toBe(200);
+    readable = false;
+    expect((await handleAttachmentRoute(request, deps))!.status).toBe(404);
+    for (const suffix of ["~70103/carrierwave.svg", ":logo/unknown.svg", ":logo/carrierwave.png", ":favicon/carrierwave-unknown.png"]) {
+      expect((await handleAttachmentRoute(new Request(`http://test.test/files/${suffix}`), makeDeps()))!.status).toBe(404);
+    }
+    await driver.query("UPDATE cards SET db_content = '~70101/999.svg' WHERE id = 70101", []);
+    expect((await handleAttachmentRoute(request, makeDeps()))!.status).toBe(404);
   });
 });

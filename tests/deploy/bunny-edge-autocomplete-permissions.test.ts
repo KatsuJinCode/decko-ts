@@ -326,6 +326,23 @@ describe("signed-in autocomplete read permissions", () => {
     }
   });
 
+  it("serves stock coded files without storage credentials and isolates/rechecks the session read scope", async () => {
+    await driver.query("UPDATE cards SET db_content = ':favicon/carrierwave.png', read_rule_id = ?, read_rule_class = '*self' WHERE id = 103", [IDS_RULE.governedReadRule]);
+    await insertCard({ id: 10211, name: "Coded foreign alias", dbContent: ":favicon/carrierwave.png", readRuleId: IDS_RULE.catchAllRead });
+    await driver.query("UPDATE card_references SET referee_id = ?, referee_key = ? WHERE referer_id = ?", [HOLDER.id, keyOf(HOLDER.name), IDS_RULE.governedReadRule]);
+    const owner = await mintSessionToken();
+    const other = await new SessionStore({ driver }).createSession(10200);
+    for (const [token, status] of [[owner, 200], [other.token, 404], [null, 404], [owner, 200]] as const) {
+      const response = await handleBunnyEngineRequest(edgeGet("/files/:favicon/carrierwave-small.png", token ? { cookie: `decko_ts_session=${token}` } : {}), env);
+      expect(response.status).toBe(status);
+      if (status === 200) expect(createHash("sha256").update(Buffer.from(await response.arrayBuffer())).digest("hex")).toBe("cb2cd4c1b77989c7ab5c86e80296f6c7ae34a6b7414af87d38a9d26e81280b04");
+    }
+    expect((await handleBunnyEngineRequest(edgeGet("/files/~10211/carrierwave-small.png"), env)).status).toBe(404);
+    await driver.query("UPDATE card_references SET referee_id = ?, referee_key = 'anonymous' WHERE referer_id = ?", [IDS_RULE.anonymous, IDS_RULE.governedReadRule]);
+    expect((await handleBunnyEngineRequest(edgeGet("/files/:favicon/carrierwave-small.png", { cookie: `decko_ts_session=${owner}` }), env)).status).toBe(404);
+    expect((await handleBunnyEngineRequest(edgeGet("/files/:favicon/carrierwave-small.png"), env)).status).toBe(200);
+  });
+
   it("origin-checks GET /delete/*signin before revoking the session", async () => {
     const token = await mintSessionToken();
     const cookie = `decko_ts_session=${token}`;

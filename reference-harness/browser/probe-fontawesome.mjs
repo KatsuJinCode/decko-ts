@@ -50,6 +50,23 @@ try {
     return { present: true, family: style.fontFamily, content: before.content, loadedFaces: [...document.fonts].filter(font => font.status === "loaded").map(font => ({ family: font.family, weight: font.weight })) };
   });
   await Promise.all(pending);
+  if (args["stock-coded"] === "1") {
+    evidence.acceptanceScope += "; stock coded logo/favicon routes and inline logo";
+    evidence.inlineStockLogo = await page.locator(".nav-logo svg").count() > 0;
+    evidence.codedAssets = [];
+    for (const [assetPath, expectedSha] of [
+      ["/files/:logo/carrierwave.svg", "312389d4825c90b0b9fe27969b333b83169e4328504115d21f2db7f04172f230"],
+      ["/files/:favicon/carrierwave-small.png", "cb2cd4c1b77989c7ab5c86e80296f6c7ae34a6b7414af87d38a9d26e81280b04"],
+    ]) {
+      const response = await fetch(host.base + assetPath);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      evidence.codedAssets.push({ path: assetPath, status: response.status, sha256, bytes: bytes.length, stockBytes: sha256 === expectedSha });
+      if (response.status !== 200 || sha256 !== expectedSha) evidence.problems.push(`coded asset failed: ${assetPath}`);
+    }
+    if (!evidence.inlineStockLogo) evidence.problems.push("stock logo did not render inline in actual navigation");
+    if (evidence.otherAssetFailures.length) evidence.problems.push("actual page still has failed assets (preserved in receipt)");
+  }
   if (evidence.status !== 200 || !evidence.glyph.present || !evidence.glyph.family?.includes("Font Awesome") || !evidence.glyph.loadedFaces?.some(font => font.family.includes("Font Awesome"))) evidence.problems.push("actual icon view did not load the local glyph font");
   if (!evidence.requests.some(request => request.path.endsWith(".css")) || !evidence.requests.some(request => request.path.endsWith(".woff2"))) evidence.problems.push("missing CSS/font network proof");
   evidence.missingAssetStatus = (await fetch(host.base + "/mod/bootstrap/fontawesome-6.7.2/webfonts/missing.woff2")).status;

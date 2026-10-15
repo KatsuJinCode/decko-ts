@@ -1,3 +1,4 @@
+import { stockCodedFile } from "../attachments/stock-coded-files.js";
 // The CODED attachment file-content seam.
 //
 // Ruby mechanism (card-mod-carrierwave-0.20.0):
@@ -26,9 +27,9 @@
 // (Ruby would raise "can't find mod" for an unresolvable coded dir; the
 // fallback keeps the render safe, a documented divergence).
 
-// Second documented divergence: a runtime with no filesystem (workerd, the
-// Cloudflare Workers target of the one-click deploy) yields undefined too —
-// the caller's image_tag URL branch takes over. The Node reads reach fs
+// Stock logo bytes are also bundled under vendor/decko-coded-attachments,
+// so compiled Node and filesystem-free edge builds render them identically.
+// Custom coded files still require their registered Node provider. Those reads reach fs
 // through a RUNTIME process.getBuiltinModule probe instead of an import
 // statement because a static "node:fs" here is exactly what broke the deploy
 // boot (vite hoists the module's static imports to the worker bundle top;
@@ -95,6 +96,8 @@ const CODED_MOD_NAME_RE = /^:[:\w/+]+\/([^./]+)\./;
  *  is not a coded .svg this port can resolve — including on runtimes with
  *  no filesystem, where the caller's image_tag URL branch takes over. */
 export function codedSvgFileBytes(content: string | null | undefined): string | undefined {
+  const bundled = stockCodedFile(content);
+  if (bundled?.extension === "svg") return new TextDecoder().decode(bundled.bytes);
   const fs = nodeFsOrNull();
   if (fs === undefined) return undefined;
   const trimmed = (content ?? "").trim();
