@@ -330,7 +330,8 @@
         "token link",
         "fresh login",
         "host restart",
-        "administrator configures captcha off in private test deck"
+        "administrator configures captcha off in private test deck",
+        "administrator approval required by fixture create permission"
       ],
       "steps": [
         {
@@ -419,6 +420,29 @@
         },
         {
           "observe": "signup submitted"
+        },
+        {
+          "fresh_session": true
+        },
+        {
+          "signin": "admin"
+        },
+        {
+          "visit": "/Journey_New_User"
+        },
+        {
+          "observe": "administrator reviews pending signup"
+        },
+        {
+          "click": {
+            "link": "Send verification email"
+          }
+        },
+        {
+          "observe": "administrator sent verification email"
+        },
+        {
+          "fresh_session": true
         },
         {
           "mail_link": {
