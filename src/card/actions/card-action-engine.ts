@@ -59,6 +59,11 @@ import {
 import { actionTypeCode } from "../history/action.js";
 import { sqlDateTime } from "../history/act.js";
 import { DeckoName } from "../name.js";
+import {
+  CodenameNotFoundError,
+  NameNotFoundError,
+  UnsupportedIdentifierError,
+} from "../name/errors.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
 import {
@@ -4983,11 +4988,23 @@ export class CardActionEngine {
     // Role+*members is an id list (Abstract::IdList): items stored as ~<id>.
     if (rightCode === "members" && (await leftType()) === "role") {
       return standardizeIdListContent(content, async (item) => {
+        // Only an item that does not parse as a name is "names no card"
+        // (the mark or name is unresolvable). Anything else, including a
+        // driver error from the lexicon read, must fail the save.
+        let parsed: DeckoName;
         try {
-          return await this.fetch.lexicon.id(DeckoName.parse(item));
-        } catch {
-          return undefined;
+          parsed = DeckoName.parse(item);
+        } catch (error) {
+          if (
+            error instanceof NameNotFoundError ||
+            error instanceof CodenameNotFoundError ||
+            error instanceof UnsupportedIdentifierError
+          ) {
+            return undefined;
+          }
+          throw error;
         }
+        return this.fetch.lexicon.id(parsed);
       });
     }
     if (!isList && rightCode === "follow") isList = (await leftType()) === "user";
