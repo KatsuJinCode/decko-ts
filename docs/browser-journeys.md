@@ -10,9 +10,30 @@ port's Node host. The comparison then grades every observation (address, text,
 structure, form fields), the mail sent and the row delta in the card tables.
 `reference-harness/SPEC.md` section 8 defines the method.
 
-## Last run
+## Current acceptance status
 
-Conformance: 51 of 51 conformant. 50 identical to Ruby; 1 deliberately safer per docs/SECURITY.md divergence 4 (`signin-wrong-password`, the uniform sign-in answer). That journey matches Ruby on every item with `DECKO_SIGNIN_UNIFORM_FAILURE=off`. The default run counts 50 / 51 graded journeys passing; the one difference is the declared text item. The run record is docs/runs/browser-journeys-2026-10-15.md (commit 58d21f58).
+The complete current candidate and deployed site are not yet accepted. A fresh
+production Node run completed all six supplemental journeys: email change,
+password change, full reset-token/password/login, administrator-approved signup
+activation, Date editing, and initialized rich-text editing. These include
+reload, fresh authentication and server-restart assertions. They are local Node
+evidence, not six-case Ruby or hosted edge conformance. Three local Bunny-handler
+diagnostics also completed signin/signout, note creation and edit/reload; the
+full Bunny browser suite remains outstanding. Its local providers do not prove
+the deployed Bunny runtime or external mail delivery.
+
+The current Ruby 3.3 full reference capture is unfinished. Its network audit
+already records the stock external Font Awesome kit returning HTTP403; required
+asset failures remain acceptance failures even when journey steps complete.
+Current keyword search uses adapter-aware execution rather than deliberately
+reproducing the stock Ruby SQLite exception. Equal HTTP500 pages are failures.
+
+## Historical reported counts
+
+The old report labelled 51 of 51 conformant: 50 identical to Ruby and one
+declared sign-in text difference. Those historical figures were produced by the
+older profiles and comparator described above; they are not current acceptance.
+Its run record is docs/runs/browser-journeys-2026-10-15.md (commit 58d21f58).
 
 - Date: 2026-10-15
 - Commit: 58d21f58
@@ -23,13 +44,13 @@ Conformance: 51 of 51 conformant. 50 identical to Ruby; 1 deliberately safer per
 - Completed on the port: 51 / 51
 - Comparison (default run, uniform sign-in answer on): 50 / 51 graded journeys pass (0 not graded). Flags-off check of the one declared difference: 1 / 1 pass.
 
-Error pages: both sides answer an unhandled exception the way a deployed
+Historical error pages: both sides answered an unhandled exception the way a deployed
 site does. The Ruby server runs with Decko's production error handling
 (`rescue_all_in_controller` on, `consider_all_requests_local` off, as
 `tools/parity-side-effects/ruby/drive.rb` sets them), so a plain keyword
 search on SQLite (the `match` raise in card's ActiveRecord patch) answers
 Decko's `:server_error` view under the page layout, status 500. The port's
-Node host renders that page through the engine with `:server_error` as the
+Node host rendered that page through the engine with `:server_error` as the
 root view. No recorded page is copied and no comparison rule applies to it.
 
 Per graded item:
@@ -105,7 +126,10 @@ Per graded item:
 
 `signin-wrong-password` differs in one text item: a wrong password is answered "Wrong email or password." by the port and "Wrong password" by Ruby. The port gives the uniform answer on purpose, as docs/SECURITY.md divergence 4 (sign-in: uniform in its answers) records.
 
-Proof that this is the only difference: the same journey on the port with DECKO_SIGNIN_UNIFORM_FAILURE=off passes every item (completion, address, text, structure, fields) against the same Ruby recording from this run (run-journeys.mjs with the ts engine, the filter ^signin-wrong-password$, then compare-journeys.mjs reporting 1 / 1 pass). The default run leaves the flag on, so the journey stays failing there by design.
+The historical flags-off check reported 1/1 against that same old recording.
+It does not establish that this is the only current difference or that the
+complete activation, reset and persistence journeys worked. Production retains
+the uniform sign-in failure answer.
 
 ## Reproducing
 
