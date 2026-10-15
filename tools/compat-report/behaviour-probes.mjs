@@ -23,9 +23,10 @@
 // A declaration with no probe is listed with its reason and is never credited.
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { gemDeclarations, setContains, setOfFile } from "./behaviour.mjs";
+import { evaluateMod, gemDeclarations, loadGrades, setContains, setOfFile, specificDeclarations } from "./behaviour.mjs";
 
 const HTML_LIKE = new Set(["html", "base"]);
 const GENERAL = new Set(["all", "abstract", "lib"]);
@@ -275,7 +276,53 @@ export function writePlan({ fixtureDir, gemRoot, outDir }) {
   return p;
 }
 
-if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && process.argv[2] === "plan") {
+// ---------------------------------------------------------------------------
+// grading one mod
+// ---------------------------------------------------------------------------
+
+// The evidence for one mod, read from the committed grade records: the
+// per-operation view grades (graded-ops.json) and the probe grades
+// (graded-probes.json), put through the same set-membership attribution
+// evaluateMod uses. This is the report's behaviour layer for that mod alone;
+// the report is the same computation over every mod.
+export function gradeMod(repo, modId, grades, specific = new Map(), probes = null) {
+  const gems = join(gemDirFromEnv(), "gems");
+  const name = readdirSync(gems).find((n) => n === modId || n === `${modId}-0.20.0` || n.replace(/-\d+\.\d+\.\d+$/, "") === modId);
+  if (!name) throw new Error(`no installed card-mod gem matches "${modId}" under ${gems}`);
+  return { gem: name, ...evaluateMod(repo, join(gems, name), name.replace(/-\d+\.\d+\.\d+$/, ""), grades, specific, probes) };
+}
+
+function gemDirFromEnv() {
+  const gemHome = process.env.GEM_HOME;
+  if (!gemHome) throw new Error("set GEM_HOME to the Ruby gem home (e.g. C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0)");
+  return gemHome.endsWith("gems") ? join(gemHome, "..") : gemHome;
+}
+
+function reportMod(gem, b, asJson) {
+  if (asJson) {
+    process.stdout.write(JSON.stringify(b, null, 2) + "\n");
+    return;
+  }
+  const s = b.summary;
+  process.stdout.write(
+    `${gem}  ${b.status}\n` +
+      `  views: ${s.views} declared, ${s.views_graded_identical} graded identical, ${s.views_graded_differs} graded differing, ${s.views_test_named} only named by a test, ${s.views_unexercised} unexercised\n` +
+      `  events: ${s.events} declared, ${s.events_graded_identical} graded identical on rows, ${s.events_graded_differs} graded differing, ${s.events_not_observed} ran with no effect seen, ${s.events_not_probed} with no probe, ${s.events_named ?? 0} only named by a test\n`,
+  );
+  for (const v of b.views) {
+    if (v.evidence === "graded-identical") continue;
+    process.stdout.write(`  VIEW  ${v.evidence}  ${v.format}:${v.view} [${v.set}]${v.ops ? ` ops: ${v.ops.join("; ")}` : ""}${v.tests ? ` tests: ${v.tests.join(", ")}` : ""}\n`);
+  }
+  for (const e of b.events) {
+    if (e.evidence === "graded-identical") continue;
+    process.stdout.write(
+      `  EVENT ${e.evidence}  ${e.event}${e.source ? ` [${e.source}]` : ""}${e.probe ? ` probe ${e.probe} on ${e.card} (on: ${e.on ?? "none"}, when: ${e.when ?? "none"})` : ""}${e.differing_steps ? ` differs at: ${e.differing_steps.join("; ")}` : ""}${e.reason ? ` reason: ${e.reason}` : ""}${e.tests ? ` tests: ${e.tests.join(", ")}` : ""}\n`,
+    );
+  }
+}
+
+const cmd = process.argv[2];
+if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && cmd === "plan") {
   const [, , , fixtureDir, gemRoot, ...rest] = process.argv;
   const outIdx = rest.indexOf("--out");
   const outDir = outIdx >= 0 ? rest[outIdx + 1] : join(fixtureDir, "ops");
@@ -285,4 +332,30 @@ if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && p
     `render ops: ${p.renders.ops.length} (of ${p.renders.plan.length} html-like declarations; ${p.renders.plan.filter((x) => x.status !== "planned").length} without a card)\n` +
       `event probes: ${planned} of ${p.events.plan.length} event declarations; ${p.events.steps.length} scenario steps\n`,
   );
+} else if (process.argv[1] && basename(process.argv[1]) === "behaviour-probes.mjs" && (cmd === "grade" || cmd === "grades")) {
+  const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const here = dirname(fileURLToPath(import.meta.url));
+  const grades = loadGrades(join(here, "graded-ops.json"));
+  const probesFile = join(here, "graded-probes.json");
+  const probes = existsSync(probesFile) ? JSON.parse(readFileSync(probesFile, "utf8")).grade : null;
+  const gemRoot = join(gemDirFromEnv(), "gems");
+  const gemPaths = readdirSync(gemRoot).filter((n) => n.startsWith("card-mod-")).map((n) => join(gemRoot, n));
+  const specific = specificDeclarations(gemPaths);
+  const asJson = process.argv.includes("--json");
+  if (cmd === "grades") {
+    const ids = readdirSync(gemRoot).filter((n) => n.startsWith("card-mod-")).sort();
+    const rows = ids.map((n) => gradeMod(repo, n, grades, specific, probes));
+    if (asJson) {
+      process.stdout.write(JSON.stringify(rows.map((r) => ({ gem: r.gem, status: r.status, summary: r.summary })), null, 2) + "\n");
+    } else {
+      for (const r of rows) reportMod(r.gem, r, false);
+      process.stdout.write(`\nbehaviour-complete: ${rows.filter((r) => r.status === "behaviour-complete").length} of ${rows.filter((r) => r.status !== "no-gradable-declarations").length} evaluated\n`);
+    }
+  } else {
+    const modId = process.argv[3];
+    if (!modId) throw new Error("usage: behaviour-probes.mjs grade <mod> [--json]");
+    const r = gradeMod(repo, modId, grades, specific, probes);
+    reportMod(r.gem, r, asJson);
+    process.exitCode = r.status === "behaviour-complete" ? 0 : 1;
+  }
 }
