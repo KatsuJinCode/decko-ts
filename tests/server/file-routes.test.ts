@@ -722,3 +722,84 @@ describe("save enforcement", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("current file identifiers without action history (stock compiled assets)", () => {
+  const revision = 1789819200;
+  const assets = [
+    { id: 70001, name: "Compiled fixture style", fixtureId: 447, ext: ".css", mime: "text/css" },
+    { id: 70002, name: "Compiled fixture script", fixtureId: 307, ext: ".js", mime: "text/javascript" },
+  ];
+  const fixtureBytes = (id: number, ext: string) => new Uint8Array(readFileSync(
+    new URL(`../../reference-harness/fixtures/synthetic-v1/deck/files/${id}/${revision}${ext}`, import.meta.url),
+  ));
+  beforeAll(async () => {
+    for (const asset of assets) {
+      await seedSimpleCard(driver, { id: asset.id, name: asset.name, typeId: FILE_TYPE_ID, dbContent: `~${asset.id}/${revision}${asset.ext}` });
+      await store.store({ cardId: asset.id, actionId: revision, ext: asset.ext, bytes: fixtureBytes(asset.fixtureId, asset.ext) });
+    }
+  });
+
+  for (const asset of assets) {
+    it(`serves the actual fixture ${asset.ext} bytes with browser-usable MIME and no action row`, async () => {
+      expect(await queryAll(driver, "SELECT id FROM card_actions WHERE id = ?", [revision])).toEqual([]);
+      const request = new Request(`http://test.test/files/~${asset.id}/${revision}${asset.ext}`);
+      const response = (await handleAttachmentRoute(request, makeDeps({ canReadCard: () => true })))!;
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe(asset.mime);
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expectBytesEqual(await bodyBytes(response), fixtureBytes(asset.fixtureId, asset.ext));
+      const head = (await handleAttachmentRoute(new Request(request.url, { method: "HEAD" }), makeDeps()))!;
+      expect(head.status).toBe(200);
+      expect(head.headers.get("content-length")).toBe(String(fixtureBytes(asset.fixtureId, asset.ext).length));
+      expect((await head.arrayBuffer()).byteLength).toBe(0);
+    });
+  }
+
+  it("does not treat an arbitrary stored timestamp as a current or historical revision", async () => {
+    await store.store({ cardId: assets[0].id, actionId: revision - 1, ext: ".css", bytes: fixtureBytes(447, ".css") });
+    const response = (await handleAttachmentRoute(
+      new Request(`http://test.test/files/~${assets[0].id}/${revision - 1}.css`), makeDeps(),
+    ))!;
+    expect(response.status).toBe(404);
+  });
+
+  it("does not let a readable card redirect local storage to another card", async () => {
+    const id = 70003;
+    await seedSimpleCard(driver, { id, name: "Forged local asset", typeId: FILE_TYPE_ID, dbContent: `~${assets[0].id}/${revision}.css` });
+    const response = (await handleAttachmentRoute(
+      new Request(`http://test.test/files/~${id}/${revision}.css`), makeDeps({ canReadCard: cardId => cardId === id }),
+    ))!;
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects a foreign local identifier even behind a valid owned historical action", async () => {
+    const upload = (await handleAttachmentRoute(uploadRequest("Owned history cannot alias private bytes", "file", "owned.pdf", PDF_BYTES), makeDeps()))!;
+    const { id, action_id } = await upload.json() as UploadBody;
+    const foreign = `~${assets[0].id}/${revision}.css`;
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [foreign, id]);
+    await driver.query("INSERT INTO card_changes (card_action_id, field, value) VALUES (?, 2, ?)", [action_id, foreign]);
+    const response = (await handleAttachmentRoute(
+      new Request(`http://test.test/files/~${id}/${action_id}.css`), makeDeps({ canReadCard: cardId => cardId === id }),
+    ))!;
+    expect(response.status).toBe(404);
+  });
+
+  it("rechecks the read gate on a previously readable current asset", async () => {
+    let readable = true;
+    const deps = makeDeps({ canReadCard: () => readable });
+    const request = new Request(`http://test.test/files/~${assets[0].id}/${revision}.css`);
+    expect((await handleAttachmentRoute(request, deps))!.status).toBe(200);
+    readable = false;
+    expect((await handleAttachmentRoute(request, deps))!.status).toBe(404);
+  });
+
+  it("still serves owned historical bytes after a later attachment replaces them", async () => {
+    const original = (await handleAttachmentRoute(uploadRequest("History remains", "file", "history-v1.pdf", PDF_BYTES), makeDeps()))!;
+    const first = await original.json() as UploadBody;
+    const replacement = syntheticBytes("%PDF-1.5\nreplacement history\n", 400);
+    expect((await handleAttachmentRoute(uploadRequest("History remains", "file", "history-v2.pdf", replacement), makeDeps()))!.status).toBe(200);
+    const historical = (await handleAttachmentRoute(new Request(`http://test.test/files/~${first.id}/${first.action_id}.pdf`), makeDeps()))!;
+    expect(historical.status).toBe(200);
+    expectBytesEqual(await bodyBytes(historical), PDF_BYTES);
+  });
+});

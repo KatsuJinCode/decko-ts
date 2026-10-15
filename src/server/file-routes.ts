@@ -6,8 +6,9 @@
 //   current:   GET /files/:mark/:rev_id(-:size).:format
 //   DEPRECATED GET /files/:mark(-:size)-:rev_id.:format
 // `<mark>` resolves ~<card id>, :<codename>, or the card name. :rev_id
-// selects the ACTION whose db_content change names the stored file — the
-// bytes of that revision, which are not always the card's current bytes.
+// selects the current stored identifier directly (including historyless
+// asset timestamps), otherwise the owned action whose db_content change
+// names the historical bytes.
 // The response carries the file's own Content-Type, `Expires` a year out,
 // and an inline disposition (`attachment` when the request's format is
 // literally "file"). A `-size` segment selects an image VARIANT; this
@@ -159,27 +160,38 @@ async function handleFileGet(
 
   const revId = /^\d+$/.test(parsed.revId) ? Number.parseInt(parsed.revId, 10) : NaN;
   if (Number.isNaN(revId)) return fileNotFound();
-  const action = await deps.driver
-    .query<{ id: number }>(
-      "SELECT id FROM card_actions WHERE id = ? AND card_id = ? LIMIT 1",
-      [revId, card.id],
-    )
-    .then((r) => r.rows[0]);
-  if (action === undefined) return fileNotFound();
+  // File::SelectedAction skips history lookup for the current identifier
+  // (card-mod-carrierwave set/type/file.rb:4-14). Asset outputs have no
+  // history and use Time.now.to_i as this revision, not a card_actions id
+  // (card-mod-assets set/right/asset_output.rb:9; card_mount.rb:71).
+  const current = parseLocalAttachmentIdentifier(card.dbContent);
+  let local: ReturnType<typeof parseLocalAttachmentIdentifier>;
+  let actionComment: string | null = null;
+  if (current?.cardId === card.id && current.actionId === revId) {
+    local = current;
+  } else {
+    const action = await deps.driver
+      .query<{ id: number; comment: string | null }>(
+        "SELECT id, comment FROM card_actions WHERE id = ? AND card_id = ? LIMIT 1",
+        [revId, card.id],
+      )
+      .then((r) => r.rows[0]);
+    if (action === undefined) return fileNotFound();
+    actionComment = action.comment;
 
-  // The revision's identifier: its db_content change row when present
-  // (update saves), else the card column (create saves carry no change
-  // rows — the writer's first_create? lazy backfill; the column IS the
-  // create's value until the first content update).
-  const changeRow = await deps.driver
-    .query<{ value: string | null }>(
-      "SELECT value FROM card_changes WHERE card_action_id = ? AND field = ? LIMIT 1",
-      [revId, DB_CONTENT_FIELD],
-    )
-    .then((r) => r.rows[0]);
-  const identifier = changeRow?.value ?? card.dbContent ?? "";
-  const local = parseLocalAttachmentIdentifier(identifier);
-  if (local === undefined) return fileNotFound(); // web/cloud/coded: not served here
+    // Historical requests retain the owned action and its recorded content.
+    // A create without change rows still uses the current column until its
+    // first content update backfills the creation value.
+    const changeRow = await deps.driver
+      .query<{ value: string | null }>(
+        "SELECT value FROM card_changes WHERE card_action_id = ? AND field = ? LIMIT 1",
+        [revId, DB_CONTENT_FIELD],
+      )
+      .then((r) => r.rows[0]);
+    local = parseLocalAttachmentIdentifier(changeRow?.value ?? card.dbContent);
+  }
+  // An identifier cannot make a readable mark address another card's bytes.
+  if (local === undefined || local.cardId !== card.id) return fileNotFound();
 
   const bytes = await deps.attachmentStore.read(
     local.cardId,
@@ -189,13 +201,10 @@ async function handleFileGet(
   );
   if (bytes === undefined) return fileNotFound();
 
-  // The file's content type: the detection order over the stored
-  // bytes, with the action's original filename (the action comment) as
-  // the by-path arm.
-  const actionComment = await deps.driver
-    .query<{ comment: string | null }>("SELECT comment FROM card_actions WHERE id = ?", [revId])
-    .then((r) => r.rows[0]?.comment ?? null);
-  const contentType = detectAttachmentContentType(actionComment ?? "", bytes, null);
+  // Historyless assets have no action comment. Their stored extension is
+  // the filename arm of CarrierWave's MIME detection (CSS/JS must not be
+  // emitted as text/plain when nosniff is set).
+  const contentType = detectAttachmentContentType(actionComment || safeFilename(card, local.ext), bytes, null);
 
   const headers = new Headers();
   headers.set("Content-Type", contentType);
