@@ -1,0 +1,5 @@
+{
+  "name": "decko-ruby-mysql",
+  "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0) serving the deck from MySQL 8.4 (mysql2 via app/Gemfile.mysql): the reference oracle on the MySQL lane.",
+  "command": ["bash", "../../oracle/run-adapter-mysql.sh"]
+}
