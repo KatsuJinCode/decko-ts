@@ -747,28 +747,30 @@ function formatCardDateSeconds(sql: string | undefined): string {
 
 // --- set/type/signup/views.rb (the signup form family) ----------------------
 
-/** views.rb:2-4 invitation?: `Auth.signed_in? && card.can_approve?`. The
- *  headless render is signed OUT (current.rb:7-9 defaults AnonymousID), and
- *  can_approve? rides the admin-approval verdict machinery the engine does
- *  not model - the SAME disclosed basis the ported signup :core's approve
- *  links carry (signupAccountLines above). The invitation arm's title is
- *  the documented contract ("Invite", en.yml:17 - the oracle's
- *  new_invitation_title_contract line), the signed-out arm is the pinned
- *  reachable one. */
-const SIGNUP_INVITE_TITLE = "Invite";
+/** views.rb:2-4 invitation?: `Auth.signed_in? && card.can_approve?`.
+ *  can_approve? (set/type/signup.rb:12-14) = `Card.new(type_id:
+ *  Card.default_accounted_type_id).ok? :create`: the viewer may create the
+ *  accounted (User) type. The engine's approval-verdict seam prepares that
+ *  create verdict per Sign up root (render.ts prepareSignupApprovalVerdicts,
+ *  through signupApprovalVerdict); unprepared (no seam) reads false, so a
+ *  view lane without the prepare phase keeps the signed-out arm. */
+function signupInvitation(fmt: ViewContext["fmt"]): boolean {
+  return (
+    fmt.engine.viewer?.signedIn === true &&
+    fmt.engine.signupApprovalVerdict?.(fmt.card)?.approve === true
+  );
+}
 
 /** views.rb:6-9 view :new, cache: :never:
  *    voo.title = invitation? ? t(:account_invite) : t(:account_sign_up)
  *    super()
  *  The super() dispatch rides the mod-view-helpers superView (the MRO
  *  chain's next :new registration - card-mod-edit's live newView,
- *  framed_create_form). en.yml:34 "Sign up"; the title rides the voo opt
- *  the title view reads (titleNoLinkView's voo.opts["title"] - the live
- *  writer Ruby's define_setter gives voo.title). */
+ *  framed_create_form). en.yml:17 "Invite" / en.yml:34 "Sign up"; the title
+ *  rides the voo opt the title view reads (titleNoLinkView's voo.opts["title"]
+ *  - the live writer Ruby's define_setter gives voo.title). */
 const signupNewView: ViewFn = (ctx) => {
-  // t(:account_sign_up); the invitation? arm ("Invite") is the disclosed
-  // remainder documented on SIGNUP_INVITE_TITLE above
-  ctx.voo.opts["title"] = "Sign up";
+  ctx.voo.opts["title"] = signupInvitation(ctx.fmt) ? "Invite" : "Sign up";
   // the registration's set module: the nested child file's shortname,
   // Type::Signup::Views (keyed by the type's codename, signup)
   return superView(ctx, setModuleShortname("type/signup/views"), "new");
@@ -778,19 +780,27 @@ const signupNewView: ViewFn = (ctx) => {
  *    button_formgroup do
  *      [standard_create_button, invite_button].compact
  *    end
- *  invite_button (:21-23) returns nil signed-out (invitation? false), so
- *  the compact leaves the lone create button (form_buttons.rb:184-186:
- *  submit_button class "submit-button create-submit-button",
- *  data-disable-with "Submitting" - the same bytes the edit mod's own
- *  newButtonsView pins for the standard_create_button element).
- *  button_formgroup (card-mod-edit set/all/form.rb:86-88): the
- *  "form-group button-form-group" div. */
-const signupNewButtonsHtml = (): string =>
-  `<div class="form-group button-form-group">` +
-  `<button name="button" type="submit" data-disable-with="Submitting" class="submit-button create-submit-button btn btn-primary">Submit</button>` +
-  `</div>`;
+ *  invite_button (:21-23) is the "Send Invitation" primary button when
+ *  invitation? holds, else nil (compact drops it). The create button is
+ *  form_buttons.rb:184-186 (submit_button class "submit-button
+ *  create-submit-button", data-disable-with "Submitting" - the same bytes
+ *  the edit mod's own newButtonsView pins for the standard_create_button
+ *  element). button_formgroup (card-mod-edit set/all/form.rb:86-88): the
+ *  "form-group button-form-group" div, its buttons joined "\n". */
+const signupNewButtonsHtml = (invitation = false): string => {
+  const create =
+    `<button name="button" type="submit" data-disable-with="Submitting" class="submit-button create-submit-button btn btn-primary">Submit</button>`;
+  const invite = invitation
+    ? `<button name="button" type="submit" class="btn btn-primary">Send Invitation</button>`
+    : undefined;
+  return (
+    `<div class="form-group button-form-group">` +
+    [create, invite].filter((b) => b !== undefined).join("\n") +
+    `</div>`
+  );
+};
 
-const signupNewButtonsView: ViewFn = () => signupNewButtonsHtml();
+const signupNewButtonsView: ViewFn = ({ fmt }) => signupNewButtonsHtml(signupInvitation(fmt));
 
 // --- set/abstract/account_holder.rb view :account_tab ------------------------
 

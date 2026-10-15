@@ -29,6 +29,7 @@
 // where no capture exists.
 
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -168,9 +169,19 @@ function normalize(html: string): string {
 const PROBE = "Format Views Probe";
 
 describe("card-mod-format remaining views — source-derived pins", () => {
-  it("home_url is the deck-root path (set/self/home.rb:2-4; documented divergence: the engine has no host resolver, card_url '' would carry the host)", async () => {
+  it("home_url is the requestless deck root with no configured origin (set/self/home.rb:2-4; card_url '' = Env.origin + root, Env.origin empty unless deck_origin is set)", async () => {
     const s = storage!;
     expect(await s.engine.render("*home", "home_url")).toBe("/");
+  });
+
+  it("home_url carries the configured deck origin (set/self/home.rb:2-4 card_url ''; serializable.rb:20-22 Env.origin = deck_origin)", async () => {
+    const s = storage!;
+    setDeckEnvironment({ origin: "http://deck.example" });
+    try {
+      expect(await s.engine.render("*home", "home_url")).toBe("http://deck.example/");
+    } finally {
+      setDeckEnvironment(undefined);
+    }
   });
 
   it("home_url stays set-scoped like home_path — any other card raises the unsupported-view error", async () => {

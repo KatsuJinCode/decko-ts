@@ -1695,7 +1695,14 @@ export class RenderEngine implements RenderEngineLike {
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
-    if (CREATEABLE_TYPES_VIEWS.has(view)) await this.ensureCreateableTypes();
+    if (CREATEABLE_TYPES_VIEWS.has(view)) {
+      await this.ensureCreateableTypes();
+      // new_type_permitted? reads the root's OWN type verdict (new.rb:150-152),
+      // which the list above does not carry for basket-filtered types.
+      if (view === "new" || view === "new_in_modal" || view === "simple_new" || view === "new_fields") {
+        await this.prepareCurrentTypeCreatable(record.key !== undefined ? this.renderCards.get(record.key) : undefined);
+      }
+    }
     // The configure_button permission predicate (cardtype.rb:68-70) for
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
@@ -2882,6 +2889,7 @@ export class RenderEngine implements RenderEngineLike {
     this.taskState = undefined;
     this.taskVerdicts.clear();
     this.signupApprovalVerdicts.clear();
+    this.currentTypeCreatableVerdicts.clear();
     this.createableTypesCache = undefined;
     this.configureVerdicts.clear();
     this.configureChecked.clear();
@@ -7841,6 +7849,36 @@ export class RenderEngine implements RenderEngineLike {
   signupApprovalVerdict(card: RenderCard): { approve: boolean; delete: boolean } | undefined {
     if (this.readPermission?.alwaysOk) return { approve: true, delete: true };
     return this.signupApprovalVerdicts.get(card.key);
+  }
+
+  /** card-mod-edit set/all/new.rb:150-152 new_type_permitted? - the create
+   *  verdict on a virtual new card of the rendered card's own type, keyed by
+   *  type id. Prepared by the new-form views (the same walk as
+   *  taskVerdictForCard(isNew: true) that ensureCreateableTypes runs per
+   *  listed type, but for the card's own type even when the type is outside
+   *  Auth.createable_types' basket filter). */
+  private currentTypeCreatableVerdicts = new Map<number, boolean>();
+
+  currentTypeCreatable(typeId: number): boolean | undefined {
+    if (this.readPermission?.alwaysOk) return true;
+    return this.currentTypeCreatableVerdicts.get(typeId);
+  }
+
+  private async prepareCurrentTypeCreatable(card: RenderCard | undefined): Promise<void> {
+    if (card === undefined || card.typeId === undefined || this.currentTypeCreatableVerdicts.has(card.typeId)) return;
+    if (this.readPermission === undefined) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    const typeName = (await this.fetcher.fetchById(card.typeId, { skipVirtual: true }))?.name?.s;
+    const verdict = await taskVerdictForCard(
+      this.fetcher,
+      { name: "", isNew: true, typeId: card.typeId, typeName },
+      "create",
+      this.taskState,
+    );
+    this.currentTypeCreatableVerdicts.set(card.typeId, verdict === true);
   }
 
   private async prepareSignupApprovalVerdicts(card: RenderCard): Promise<void> {

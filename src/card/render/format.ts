@@ -3868,6 +3868,12 @@ export interface RenderEngineLike {
    *  set/type/signup/views.rb verification_links): can_approve? and the
    *  card's ok?(:delete). Undefined when not prepared (no links). */
   signupApprovalVerdict?(card: RenderCard): { approve: boolean; delete: boolean } | undefined;
+  /** card-mod-edit set/all/new.rb:150-152 new_type_permitted? for the
+   *  rendered card's OWN type: `Card.new(type_id: card.type_id).ok? :create`.
+   *  Unlike createableTypes() (the Auth.createable_types list, which
+   *  excludes the non_createable_types basket: signup, bootswatch_skin...),
+   *  this is the per-type verdict. Undefined when not prepared. */
+  currentTypeCreatable?(typeId: number): boolean | undefined;
   /** auth/permissions.rb:18-26 Auth.createable_types — the cardtype card
    *  names the viewer's create verdict admits (bot-scope cardtype search
    *  minus the non_createable_types basket codenames, then the per-type
