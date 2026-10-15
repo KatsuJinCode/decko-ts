@@ -1269,8 +1269,8 @@ Anyone holding this link can claim the deck until you use it, so open it now.
     if (!scriptCreated && (createdGroupId || createdDbId)) {
       console.error(`--execute failed before the script existed; rolling back this run's resources...`);
       if (createdDbId) {
-        const r = await api.call("DELETE", `/database/v1/databases/${createdDbId}`);
-        console.error(`  rollback: DELETE /database/v1/databases/${createdDbId} -> ${r.status}`);
+        const r = await api.call("DELETE", `/database/v2/databases/${createdDbId}`);
+        console.error(`  rollback: DELETE /database/v2/databases/${createdDbId} -> ${r.status}`);
       }
       if (createdGroupId) {
         const r = await api.call("DELETE", `/database/v1/groups/${createdGroupId}`);
@@ -1400,10 +1400,14 @@ async function teardownMode({ payload, resolveApi, args }) {
     const z = await api.call("DELETE", `/pullzone/${ids.pull_zone.id}`, undefined, { expect: [200, 204, 404] });
     console.log(`DELETE /pullzone/${ids.pull_zone.id} (${ids.pull_zone.name}) -> ${z.status}`);
   }
-  const d = await api.call("DELETE", `/database/v1/databases/${ids.database.id}`, undefined, { expect: [200, 204] });
-  console.log(`DELETE /database/v1/databases/${ids.database.id} (${ids.database.name}) -> ${d.status}`);
+  // The database is deleted through the v2 path: measured live on 2026-10-15,
+  // the v1 DELETE answered 401 for this key while v2 answered 200 (v1 GET by
+  // id answers 401 too; the v1 list works).
+  const d = await api.call("DELETE", `/database/v2/databases/${ids.database.id}`, undefined, { expect: [200, 204] });
+  console.log(`DELETE /database/v2/databases/${ids.database.id} (${ids.database.name}) -> ${d.status}`);
   if (ids.database?.group_id) {
-    const g = await api.call("DELETE", `/database/v1/groups/${ids.database.group_id}`, undefined, { expect: [200, 204] });
+    // 404: the group was already removed with its database.
+    const g = await api.call("DELETE", `/database/v1/groups/${ids.database.group_id}`, undefined, { expect: [200, 204, 404] });
     console.log(`DELETE /database/v1/groups/${ids.database.group_id} (${ids.database.group_name}) -> ${g.status}`);
   }
   console.log("teardown complete. The result sidecar remains as the record of what existed.");

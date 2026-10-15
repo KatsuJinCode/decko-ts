@@ -79,7 +79,7 @@ describe("validateServedVariables — the 3.6 KB blob is refused, the loose form
       DECKO_SERVED_A: "x".repeat(2100),
       DECKO_SERVED_B: "y".repeat(2100),
     }));
-    expect(refusal.detail.errors.length).toBe(2);
+    expect((refusal.detail as { errors: string[] }).errors.length).toBe(2);
   });
 
   it("refuses a name the runner sets itself, and a name outside DECKO_", () => {
@@ -110,7 +110,7 @@ describe("the read front is part of the default plan", () => {
     expect(names).toContain("issue a read-only database token for the read front");
     const publish = steps.find((s: { name: string }) => s.name === "publish both scripts");
     expect(publish).toBeDefined();
-    expect(publish.describe()).toContain("the read front first");
+    expect(publish?.describe()).toContain("the read front first");
   });
 
   it("the plan says how many served variables it will carry", () => {
@@ -118,6 +118,7 @@ describe("the read front is part of the default plan", () => {
     const served = validateServedVariables({ DECKO_SERVED_ASSET_HOST: "https://assets.example.org" });
     const steps = buildSteps(p, { sourcePath: null, writePathAllowed: false, served });
     const vars = steps.find((s: { name: string }) => s.name === "apply edge options as script variables on both scripts");
-    expect(vars.describe()).toContain("1 served variable(s) from --served");
+    expect(vars).toBeDefined();
+    expect(vars?.describe()).toContain("1 served variable(s) from --served");
   });
 });
