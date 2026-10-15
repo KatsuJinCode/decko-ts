@@ -1,5 +1,5 @@
 {
   "name": "decko-ruby",
   "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0): the reference oracle.",
-  "command": ["bash", "../../oracle/run-adapter.sh"]
+  "command": ["C:/Program Files/Git/bin/bash.exe", "../../oracle/run-adapter.sh"]
 }
