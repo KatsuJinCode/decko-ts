@@ -18,10 +18,15 @@ import { startMysqlServer, type MysqlServer } from "./mysql-server.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REFERENCE = resolve(here, "../../../db/schema.mysql-reference.sql");
+const CARD_GEM = resolve(here, "../../../db/schema.mysql-card-gem.sql");
 const RUBY_TABLES = [
   "ar_internal_metadata", "card_actions", "card_acts", "card_changes", "card_references", "card_revisions",
-  "card_virtuals", "cards", "delayed_jobs", "schema_migrations", "sessions", "transform_migrations",
+  "card_virtuals", "cards", "delayed_jobs", "schema_migrations", "sessions", "transform_migrations", "users",
 ];
+const createsFrom = (file: string): string[] => {
+  const ddl = readFileSync(file, "utf8");
+  return [...ddl.matchAll(/CREATE TABLE `[^`]+` \([\s\S]*?\) ENGINE=[^;]*;/g)].map((m) => m[0].replace(/ AUTO_INCREMENT=\d+/, ""));
+};
 
 let server: MysqlServer;
 let driver: MysqlDriver;
@@ -33,10 +38,7 @@ beforeAll(async () => {
   await admin.end();
   driver = await MysqlDriver.connect({ port: server.port, database: "ruby_deck" });
   // Ruby's CREATE TABLE statements, as the production dump records them.
-  const ddl = readFileSync(REFERENCE, "utf8");
-  const creates = [...ddl.matchAll(/CREATE TABLE `[^`]+` \([\s\S]*?\) ENGINE=[^;]*;/g)].map((m) =>
-    m[0].replace(/ AUTO_INCREMENT=\d+/, ""),
-  );
+  const creates = [...createsFrom(REFERENCE), ...createsFrom(CARD_GEM)];
   expect(creates).toHaveLength(RUBY_TABLES.length);
   for (const create of creates) await driver.query(create, []);
 }, 120_000);
@@ -81,6 +83,7 @@ describe("Ruby Decko's MySQL schema, served by the port", () => {
         "cards_bump_deck_data_version_del",
         "cards_bump_deck_data_version_ins",
         "cards_bump_deck_data_version_upd",
+        "cards_key_last_char_index",
         "cards_name_trash_index",
         "cards_right_id_trash_index",
         "deck_data_version",
@@ -95,6 +98,7 @@ describe("Ruby Decko's MySQL schema, served by the port", () => {
     // The port's two lookup indexes are the only additions to Ruby's tables.
     const added = after.filter((line) => !before.includes(line));
     expect(added).toEqual([
+      "idx cards.cards_key_last_char_index#1 null unique=false",
       "idx cards.cards_name_trash_index#1 name unique=false",
       "idx cards.cards_name_trash_index#2 trash unique=false",
       "idx cards.cards_right_id_trash_index#1 right_id unique=false",

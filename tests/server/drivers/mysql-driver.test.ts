@@ -6,6 +6,7 @@
 
 import { describe, it, expect, afterAll } from "vitest";
 import { MysqlDriver, sqliteToMysql, MYSQL_SESSION_SETTINGS } from "../../../src/server/drivers/mysql.js";
+import { supportsFunctionalIndexes } from "../../../src/server/same-database.js";
 import { runDriverConformance } from "./conformance.js";
 import { runTransactionConformance } from "./transaction-conformance.js";
 import { startMysqlServer, type MysqlServer } from "./mysql-server.js";
@@ -128,6 +129,19 @@ describe("MysqlDriver recursive CTE (the prefetch reach shape)", () => {
     } finally {
       await dispose();
     }
+  });
+});
+
+describe("MySQL version gate for the functional index", () => {
+  it("accepts MySQL 8.0.13 and later and rejects older MySQL and MariaDB", () => {
+    expect(supportsFunctionalIndexes("8.4.11")).toBe(true);
+    expect(supportsFunctionalIndexes("8.0.39")).toBe(true);
+    expect(supportsFunctionalIndexes("9.7.2")).toBe(true);
+    expect(supportsFunctionalIndexes("8.0.12")).toBe(false);
+    expect(supportsFunctionalIndexes("8.4.11-log")).toBe(true);
+    expect(supportsFunctionalIndexes("5.7.44")).toBe(false);
+    expect(supportsFunctionalIndexes("11.4.5-MariaDB")).toBe(false);
+    expect(supportsFunctionalIndexes("")).toBe(false);
   });
 });
 

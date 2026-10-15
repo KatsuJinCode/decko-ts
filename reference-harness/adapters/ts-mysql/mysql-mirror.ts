@@ -23,6 +23,7 @@ import type { MysqlDriver } from "../../../src/server/drivers/mysql.js";
 const ROWS_PER_INSERT = 200;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REFERENCE_DDL = path.join(here, "../../../db/schema.mysql-reference.sql");
+const CARD_GEM_DDL = path.join(here, "../../../db/schema.mysql-card-gem.sql");
 
 interface SqliteObject {
   type: string;
@@ -52,27 +53,29 @@ async function columnsOf(sqlite: LocalSqliteDriver, table: string): Promise<stri
   return (await sqlite.query<{ name: string }>(`PRAGMA table_info(${quote(table)})`, [])).rows.map((r) => r.name);
 }
 
-/** A SQLite table Ruby created that the production reference DDL does not carry
- *  (card-mod-account's `users`; card-1.110.0 db/schema.rb:234). ActiveRecord
- *  emits an unlimited string column on MySQL as varchar(255). */
-function mysqlShapeOfSqliteTable(sql: string): string {
-  return sql.replace(/\bvarchar(?!\s*\()/gi, "varchar(255)");
+/** The MySQL DDL of the card-gem tables outside the production reference
+ *  (db/schema.mysql-card-gem.sql: `users`, from card-1.110.0 db/schema.rb). */
+export function cardGemCreateStatements(): string[] {
+  const ddl = readFileSync(CARD_GEM_DDL, "utf8");
+  return [...ddl.matchAll(/CREATE TABLE `[^`]+` \([\s\S]*?\) ENGINE=[^;]*;/g)].map((m) =>
+    m[0].replace(/ AUTO_INCREMENT=\d+/, ""),
+  );
 }
 
-/** Creates Ruby's MySQL tables and copies every row of the SQLite file into the
- *  ones both schemas have, as stored. Triggers and indexes come from Ruby's
- *  DDL (the reference), not from the file. */
+/** Creates Ruby's MySQL tables (the production reference and the card-gem
+ *  tables) and copies every row of the SQLite file into the ones both schemas
+ *  have, as stored. Triggers and indexes come from Ruby's DDL, not the file. A
+ *  table in the file that neither DDL creates is an error, not a guess. */
 export async function loadSqliteIntoMysql(sqlite: LocalSqliteDriver, mysql: MysqlDriver): Promise<void> {
-  for (const statement of rubyMysqlCreateStatements()) await mysql.query(statement, []);
+  for (const statement of [...rubyMysqlCreateStatements(), ...cardGemCreateStatements()]) await mysql.query(statement, []);
   const mysqlTables = new Set(
     (await mysql.query<{ name: string }>("SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()", []))
       .rows.map((r) => r.name),
   );
-  for (const { name, sql } of await sqliteUserTables(sqlite)) {
-    if (!mysqlTables.has(name) && sql !== null && name !== "deck_data_version") {
-      await mysql.query(mysqlShapeOfSqliteTable(sql), []);
-      mysqlTables.add(name);
-    }
+  for (const { name } of await sqliteUserTables(sqlite)) {
+    // deck_data_version is the port's own stamp: openSameDatabase creates it on MySQL.
+    if (name === "deck_data_version") continue;
+    if (!mysqlTables.has(name)) throw new Error(`deck table ${name} has no MySQL DDL in the reference or the card-gem schema`);
     const mysqlCols = new Set(
       (
         await mysql.query<{ name: string }>(

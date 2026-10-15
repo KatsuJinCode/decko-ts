@@ -11,7 +11,7 @@
 // Every child process is spawned with windowsHide: true, so no console window
 // is shown on Windows.
 
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -51,6 +51,37 @@ function mysqldPath(): string {
   return exe;
 }
 
+/** Runs inside the watchdog process: when its stdin (the parent's pipe) ends,
+ *  the parent is gone, so the MySQL server it started must end too. */
+const WATCHDOG = `process.stdin.on("end",()=>{const p=+process.argv[1];try{process.kill(p,9)}catch(e){};process.exit(0)});process.stdin.on("close",()=>process.exit(0));process.stdin.resume();`;
+
+/** End a process and its descendants (Windows: taskkill /t /f), synchronously:
+ *  mysqld keeps its data directory locked until it has ended, so the directory
+ *  can only be removed afterwards. */
+function killTree(pid: number): void {
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(pid), "/t", "/f"], { windowsHide: true, stdio: "ignore" });
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+function removeDatadir(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  } catch {
+    /* the watchdog ends the server a moment later; nothing else holds it */
+  }
+}
+
 function runToCompletion(command: string, args: string[]): Promise<{ code: number | null; output: string }> {
   return new Promise((resolveRun, rejectRun) => {
     const child = spawn(command, args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
@@ -77,6 +108,8 @@ async function freePort(): Promise<number> {
 export interface MysqlServer {
   /** The TCP port the server listens on, on 127.0.0.1. */
   readonly port: number;
+  /** The mysqld process id. */
+  readonly pid: number;
   /** A connection as root (initialized with an empty root password). */
   connect(database?: string): Promise<Connection>;
   /** Shut the server down and delete its data directory. */
@@ -126,6 +159,16 @@ export async function startMysqlServer(): Promise<MysqlServer> {
     const running = child;
     let exited = false;
     running.on("exit", () => (exited = true));
+    // The watchdog holds the stdin pipe of this process. When this process
+    // ends by any means (including a forced kill, which runs no exit hook),
+    // the pipe closes and the watchdog ends mysqld, so no server outlives its
+    // adapter.
+    const watchdog = spawn(process.execPath, ["-e", WATCHDOG, String(running.pid)], {
+      windowsHide: true,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    watchdog.unref();
+    const endWatchdog = () => watchdog.stdin?.end();
 
     const connectOnce = (database?: string) =>
       createConnection({ host: "127.0.0.1", port, user: "root", password: "", database, charset: "utf8mb4" });
@@ -154,15 +197,17 @@ export async function startMysqlServer(): Promise<MysqlServer> {
       }
       const gone = Date.now() + 30_000;
       while (!exited && Date.now() < gone) await new Promise((r) => setTimeout(r, 100));
-      if (!exited) running.kill();
-      rmSync(datadir, { recursive: true, force: true });
+      if (!exited) killTree(running.pid);
+      endWatchdog();
+      removeDatadir(datadir);
     };
 
     const kill = () => {
-      if (!exited) running.kill();
-      rmSync(datadir, { recursive: true, force: true });
+      if (!exited && running.pid !== undefined) killTree(running.pid);
+      endWatchdog();
+      removeDatadir(datadir);
     };
-    return { port, connect: (database?: string) => connectOnce(database), stop, kill };
+    return { port, pid: running.pid ?? 0, connect: (database?: string) => connectOnce(database), stop, kill };
   } catch (error) {
     child?.kill();
     rmSync(datadir, { recursive: true, force: true });
