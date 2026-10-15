@@ -317,7 +317,7 @@ above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
 Two instruments normalise, and each has its own namespace so that one
 instrument's rule names never read as another's:
 
-- **`N1`-`N8`** — the **corpus instrument**: `runner/normalize.mjs`, which
+- **`N1`-`N9`** — the **corpus instrument**: `runner/normalize.mjs`, which
   grades this harness's op results and is the instrument every figure in a
   grade report names. These are the rules the committed expected outputs are
   compared under, and `normalize.mjs:1-18` is their prose form.
@@ -354,22 +354,25 @@ than renumbered:
   server port in an absolute URL the deck itself builds is compared as
   `127.0.0.1:PORT`.
 
-### 4.2 The corpus instrument's rules (`N1`-`N8`)
+### 4.2 The corpus instrument's rules (`N1`-`N9`)
 
 These are the rules a grade report names in its `normalization` field, and
 they are the ones the committed expected outputs were captured under. A grade
 over `synthetic-v1` applies **N1, N2 and N3** and reports exactly those three;
-N4 through N8 exist because `synthetic-v2` carries values this fixture does not
-(collapse ids, relative times, capture-host content in debug pages, and error
-class names), and they are applied when a comparison reaches them. Nothing outside that list is normalised.
+N4 through N9 exist because `synthetic-v2` carries values this fixture does not
+(collapse ids, relative times, capture-host content in debug pages, error
+class names and object addresses in inspect text), and they are applied when
+a comparison reaches them. Nothing outside that list is normalised.
 
 Two kinds of rule:
 
 - A **mask** erases a value. It is allowed only for a field shown to vary
   between two complete runs of the same oracle on the same fixture, and only
-  in that field's exact shape. The one exception is N6: a backtrace does not
-  vary between oracle runs, but it reports the raising engine's own call
-  stack, which no other engine can reproduce honestly.
+  in that field's exact shape. Two exceptions: N6, because a backtrace reports
+  the raising engine's own call stack, which no other engine can reproduce
+  honestly even though it does not vary between oracle runs; and N9, whose
+  value varies between processes exactly as the N1 slot id does but names the
+  raising process's heap, which no other engine can reproduce honestly.
 - A **canonical form** compares the same value in another encoding and
   erases nothing.
 
@@ -457,6 +460,20 @@ Two kinds of rule:
    are that machine's filesystem, not the oracle's semantics. Every byte
    outside such a title, and the error message inside it, still count. The
    frame list itself is masked by N6 above.
+9. **N9 (canonical form over the address inside a default object inspect).**
+   Anywhere in a compared value — a render's HTML (text regions and quoted
+   attribute values) or an error record's message — the sixteen hex digits of a
+   default object inspect's address become the single placeholder `N9#addr`, and
+   only there: `#<Class:0x` followed by exactly sixteen hex digits and the end of
+   the address (`>`, or a space before the attributes). Ruby's default inspect
+   embeds the object's memory address (`#<Cardio::Mod:0x000001bd38e4f4c0 ...>`),
+   which differs on every process, like the N1 slot id; no port has a Ruby heap
+   to reproduce it. The class name, the attributes after the address and every
+   other byte compare byte for byte, and the mask is applied on both sides. In a
+   render this reaches the render-error span's debug title; in an error record
+   it reaches the receiver text of a `NoMethodError` message. N9 runs before N7
+   inside a debug title, so the address is attributed to N9 and N7's heap-address
+   rule never claims it.
 8. **N8 (canonical form over the host language's class naming).** On an
    operation whose recorded result IS the failure (section 3, "What the
    grader compares"), the error record's class name canonicalizes to its
@@ -483,7 +500,7 @@ the expected outputs' manifest (`provenance.nondeterminism`), and a test
 checks that it covers exactly the masks `normalize.mjs` applies. A new mask
 needs the same evidence on the fixture that needs it.
 
-The evidence for N4 through N8 on `synthetic-v2` is in
+The evidence for N4 through N9 on `synthetic-v2` is in
 [NORMALIZATION-EVIDENCE.md](NORMALIZATION-EVIDENCE.md): for each rule, the
 values it canonicalizes, the measured facts behind it, and the commands that
 reproduce them from the shipped files. N4 (collapse ids) is evidenced by two

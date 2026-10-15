@@ -172,6 +172,50 @@ frame's line number stays outside the placeholder, so the frame still counts.
 **Reproduce.** The unit tests in the `N7` block of `runner/test/normalize.test.mjs`
 cover the rule on constructed input.
 
+### N9: object addresses in default inspect text (2026-10-15)
+
+**Release-lead decision, 2026-10-15** (recorded verbatim):
+
+> Ruby's default object inspect embeds the object's memory address (`#<Cardio::Mod:0x000001bd38e4f4c0 …>`), which differs on every process, like the random slot id. The comparison masks only the 16-hex-digit address inside a `#<Class:0x…` inspect string, on both sides. Everything else in the inspect string, the class name and the attributes, is compared byte for byte. The port must emit Ruby's exact inspect format.
+
+**What Ruby prints, measured.** Two withheld admin error views carry the address
+in the message, not only in the frames. The committed captures were recorded on
+the Ruby 3.3 install (`C:/Ruby33-x64`); a re-run on the same install on
+2026-10-15 differs from them only in slot ids, frames and these addresses:
+
+- `view:admin:Ada Admin+*account:closure`: ``private method `closure_deletions' called for #<Card:0x0000028dfcc01048>`` (committed) and `#<Card:0x0000017232247f98>` (re-run).
+- `view:admin:*all+*script:asset_output_url`: ``undefined method `asset_output_url' for #<Card::Format::CardActionView:0x0000028dfbacaf18>`` (committed) and `#<Card::Format::CardActionView:0x0000017232f22128>` (re-run).
+
+The two values differ between processes of one oracle, so the address is not an
+oracle semantic. Ruby prints the bare `#<Class:0x...>` form (the rb_any_to_s
+form, no attributes) for these receivers because they have a singleton class;
+the mods extend card instances. Measured on Ruby 3.3.12: a plain receiver
+prints `an instance of Plain`, and the same receiver after `extend` prints
+`#<Plain:0x000001fdf64e9828>`. Card itself has no inspect of its own in card
+1.110.0; it inherits ActiveRecord's long form, which Ruby does not print here.
+
+**What the port prints now.** The port writes Ruby's shape for these two
+receivers: `#<Card:0x` and `#<Card::Format::CardActionView:0x`, each followed by
+sixteen hex digits that are the engine's own identity (the card id, or a stable
+hash of the card name), then `>`. The digits are not Ruby's and are not copied
+from any capture; N9 masks them on both sides, so the class name, the closing
+`>` and the rest of the message compare byte for byte.
+
+**Where N9 applies.** Rendered HTML (text regions and quoted attribute values,
+so the escaped spelling inside a render error's debug title is covered) and an
+error record's message. It runs before N7 inside a debug title, so an address
+is attributed to N9, and N7's heap-address rule does not also claim it.
+
+**Reproduction.** `node reference-harness/runner/run.mjs` on the Ruby 3.3 oracle
+over the eight withheld operations, then `grade.mjs` (the withheld set must be
+present). Under N1 to N9 all eight compare identical; before N9 the two messages
+were the only failures, and they differed only in the address.
+
+**Tests.** `runner/test/normalize.test.mjs`, the N9 block: the plain and escaped
+spellings mask and name N9; the class name and the attributes after the address
+stay byte for byte; a fifteen-digit run, a bare hex run outside an inspect
+string, and a non-hex digit are not masked.
+
 ## N8: error class names
 
 **What varies.** When the oracle raises, its capture records the class by Ruby's

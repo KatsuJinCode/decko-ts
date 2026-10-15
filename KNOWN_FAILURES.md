@@ -35,3 +35,7 @@ believing it; if it fails alone, it is a real failure and belongs in the table.
   tests fails, a different subset each time.
 - `tests/server/blob-bunny-mock.test.ts` — runs a mock storage server on a
   loopback port, which can lose the port under load (`fetch failed`).
+
+## The side-effects battery now reports five event-order mismatches
+
+`tests/tools/side-effects-scenario-battery.test.ts` asserts 80 pass, 7 declared, no mismatch. Since the verdict counts event order where Ruby's order is deterministic (tools/parity-side-effects/event-order-evidence.json; compare.mjs), the battery reports 75 pass, 7 declared and 5 mismatches. The five are real differences in the order the port dispatches the same events, not a harness fault: `admin-create-skin`, `admin-use-skin`, `admin-update-scss`, `admin-update-current-skin-colors`, `admin-update-current-skin-colors-again`. For example Ruby runs `check_permissions` before `validate_key` in the skin-colour updates, the port the reverse, and Ruby runs `expire_related` before `refresh_references_out` in `admin-use-skin`, the port the reverse. The battery test is left failing on purpose: its pinned expectation is the earlier, weaker verdict, and changing it to the port's current output would hide the finding. Closing it is a port change to event dispatch order.

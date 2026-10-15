@@ -153,7 +153,7 @@ import {
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
-import { NoMethodError, engineObjectIdentity } from "../../render/format.js";
+import { NoMethodError, rubyDefaultInspect } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { getNameEnvironment } from "../../name/environment.js";
@@ -521,7 +521,7 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
  *  a missing left is Ruby's `nil.closure_deletions` (undefined method for
  *  nil), and a present one is an explicit-receiver call to a private
  *  method. The receiver is named by the engine's own identity
- *  (engineObjectIdentity), not Ruby's heap inspection. The deletion WALK
+ *  (rubyDefaultInspect, card id as the identity), not a heap address. The deletion WALK
  *  itself stays ported in accountFollowBundle (the follow surface reads
  *  it); close_account's own internal call (:77) is in-object and never hits
  *  the visibility boundary.
@@ -540,7 +540,7 @@ const closureView: ViewFn = (ctx) => {
   // (:87-89); an explicit receiver cannot call it.
   throw new NoMethodError(
     "private method `closure_deletions' called for " +
-      engineObjectIdentity("Card", { id: accountedId, name: accountedName }),
+      rubyDefaultInspect("Card", accountedId),
   );
 };
 
