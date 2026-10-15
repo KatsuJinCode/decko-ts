@@ -88,6 +88,20 @@ beforeAll(async () => {
     codename: "email",
     typeId: 14,
   });
+  // the *password setting card (right/password.rb's anchor). The sign-in
+  // form's field marks resolve the :password codename through the deck
+  // (signin.rb:198-203 "".to_name.field(:password)), so every deck that
+  // carries the account mod carries this codename.
+  await seedCard(s, {
+    id: 131,
+    name: "password",
+    codename: "password",
+    typeId: 14,
+  });
+  // the Sign up cardtype (the signup codename): the sign-in form's signup
+  // link resolves it (signin.rb:181-183 link_to_card :signup). Every deck
+  // with the account mod carries it.
+  await seedCard(s, { id: 132, name: "Sign up", codename: "signup", typeId: 2 });
 
   // Oracle Token Probe+account (junction: left = Oracle Token Probe,
   // right = *account setting). The right/account set module applies
