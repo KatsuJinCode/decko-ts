@@ -31,7 +31,8 @@ export function validateJourneyEvidence(args, expected, actual) {
   if (filter) problems.push("partial selection is diagnostic only");
   const contractsPath = args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url);
   const contractBytes = readFileSync(contractsPath);
-  const contracts = JSON.parse(contractBytes).journeys;
+  const productContracts = JSON.parse(contractBytes);
+  const contracts = productContracts.journeys;
   const hashes = { contractsSha256: sha256(contractBytes), journeysSha256: sha256(definitionBytes), fixtureSha256: treeDigest(fixture instanceof URL ? fileURLToPath(fixture) : path.resolve(fixture)) };
   const candidate = args.candidate;
   if (!/^[a-f0-9]{40}$/.test(candidate ?? "")) problems.push("--candidate must name the exact full source commit");
@@ -55,6 +56,13 @@ export function validateJourneyEvidence(args, expected, actual) {
       }
       if (side === "actual" && result.provenance?.engine === "ts-production" && (result.runtime?.passwordHash !== "pbkdf2" || result.runtime?.assetRefresh !== "cautious" || !result.runtime?.scssCompilerConfigured || !/^[a-f0-9]{64}$/.test(result.runtime?.scssCompilerSha256 ?? ""))) problems.push(`${prefix}: production settings do not match PBKDF2/cautious/verified compiler configuration`);
       if (side === "actual") {
+        for (const request of result.network ?? []) {
+          if (["script", "stylesheet", "font", "image"].includes(request.resourceType) && (request.failure || request.status >= 400)) problems.push(`${prefix}: required ${request.resourceType} failed ${request.status ?? request.failure} at ${request.path}`);
+        }
+        if (productContracts.network?.[journey.id]?.successfulWrites) {
+          const writes = (result.network ?? []).filter(r => ["POST", "PUT", "PATCH", "DELETE"].includes(r.method) && r.origin === "local");
+          if (!writes.length || writes.some(r => r.failure || r.status < 200 || r.status >= 400)) problems.push(`${prefix}: product requires successful recorded write requests`);
+        }
         const observations = new Map((result.observations ?? []).map(o => [o.label,o]));
         const required = { ...(contracts[journey.id] ?? {}), ...Object.fromEntries(journey.steps.filter(s => s.observe && s.expect).map(s => [s.observe,s.expect])) };
         for (const [label, expectation] of Object.entries(required)) {

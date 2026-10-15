@@ -2,17 +2,59 @@
   "about": "Product success checks applied independently of reference equality. These do not convert expected denials or invalid forms to successful user flows.",
   "journeys": {
     "signin-signout-member": {
-      "after sign-in": { "status": 200, "textIncludes": ["Mira Member", "Sign out"] },
-      "after sign-out": { "status": 200, "textIncludes": ["Sign in"], "textExcludes": ["Sign out"] }
+      "after sign-in": {
+        "status": 200,
+        "textIncludes": [
+          "Mira Member",
+          "Sign out"
+        ]
+      },
+      "after sign-out": {
+        "status": 200,
+        "textIncludes": [
+          "Sign in"
+        ],
+        "textExcludes": [
+          "Sign out"
+        ]
+      }
     },
     "create-note-member": {
-      "created note": { "status": 200, "textIncludes": ["Browser Note", "Written in a browser."] }
+      "created note": {
+        "status": 200,
+        "textIncludes": [
+          "Browser Note",
+          "Written in a browser."
+        ]
+      }
     },
     "edit-note-admin": {
-      "edited note reloaded": { "status": 200, "textIncludes": ["Edited in a browser."] }
+      "edited note reloaded": {
+        "status": 200,
+        "textIncludes": [
+          "Edited in a browser."
+        ]
+      }
     },
     "unfollow-from-mail": {
-      "after unfollow link": { "status": 200, "textExcludes": ["need permission", "Sorry!"] }
+      "after unfollow link": {
+        "status": 200,
+        "textExcludes": [
+          "need permission",
+          "Sorry!"
+        ]
+      }
+    }
+  },
+  "network": {
+    "signin-signout-member": {
+      "successfulWrites": true
+    },
+    "create-note-member": {
+      "successfulWrites": true
+    },
+    "edit-note-admin": {
+      "successfulWrites": true
     }
   }
 }
