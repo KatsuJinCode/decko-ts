@@ -253,6 +253,17 @@ describe("session revocation on account change", () => {
     });
   }
 
+  it("keeps the session that changed its own password, and ends the other sessions of the account", async () => {
+    const { sessions, token, driver } = await signedIn(true);
+    const other = await sessions.createSession(HOLDER.id);
+    const before = await sessions.ownPasswordUpdatedAt(token);
+    expect(before).toBe(TS);
+    await driver.query("UPDATE cards SET db_content = ?, updated_at = ? WHERE id = 9103", ["changed", "2999-01-01 00:00:00"]);
+    await sessions.keepSessionAcrossOwnPasswordChange(token, before);
+    expect(await sessions.lookupSession(token)).toEqual(HOLDER);
+    expect(await sessions.lookupSession(other.token)).toBeNull();
+  });
+
   it("keeps a session whose account is unchanged, and one whose holder has no account", async () => {
     const { sessions, token } = await signedIn(true);
     expect(await sessions.lookupSession(token)).toEqual(HOLDER);

@@ -580,8 +580,16 @@ const scriptCompressor = uglifyHarmonyCompile;
 // asset inputs and bundles, so it runs only on a write-armed boot, the only
 // boot whose store accepts those writes. It acts as the deck bot, so no
 // session actor is involved.
+// DECKO_ASSET_REFRESH names the mode (eager, cautious or never). The default is
+// the deployed site's cautious; the browser-journey host sets never, as the
+// Ruby oracle does (reference-harness/browser/engines/ruby-server.rb).
+const ASSET_REFRESH_MODES = new Set(["eager", "cautious", "never"]);
+const assetRefreshMode = process.env.DECKO_ASSET_REFRESH ?? "cautious";
+if (!ASSET_REFRESH_MODES.has(assetRefreshMode)) {
+  throw new Error(`DECKO_ASSET_REFRESH must be eager, cautious or never; got ${assetRefreshMode}`);
+}
 const assetReadRefresh = createReadAssetRefresh({
-  mode: "cautious",
+  mode: assetRefreshMode,
   sharedCache: true,
   refresh: () =>
     new CardActionEngine(fetcher, {
@@ -3762,8 +3770,19 @@ const server = http.createServer(async (req, res) => {
   // renders (CardController::Rest#setup, decko-0.20.0 lib/card_controller/rest.rb:33).
   // Staging-internal endpoints (/_...) and asset files (/files/...) are not
   // card requests, and a read-only boot cannot store the refresh's writes.
+  // A refresh that throws answers this request with a 500 and the error's
+  // message. It must not escape the handler: an unhandled rejection ends the
+  // whole host process, and every later request then fails to connect.
   if (req.method === "GET" && writePathEnabled() && !pathname.startsWith("/_") && !pathname.startsWith("/files/")) {
-    await assetReadRefresh.beforeRead({ explicitFile: false });
+    try {
+      await assetReadRefresh.beforeRead({ explicitFile: false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[vm-staging] asset read refresh failed for ${pathname}: ${message}`);
+      const failed = htmlResponse(500, `<h1>Server error</h1><pre>${escapeHtml(message)}</pre>`);
+      res.writeHead(failed.status, failed.headers).end(failed.body);
+      return;
+    }
   }
 
   let actor = null;
