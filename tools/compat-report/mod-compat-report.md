@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-15T04:59:43.962Z
+Generated: 2026-10-15T05:30:30.078Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 

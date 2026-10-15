@@ -1,5 +1,5 @@
 {
-  "_note": "Test files withheld from the public package because they read the private real-site fixtures (see tools/public-candidate/exclusions.txt in the release build). generate-mod-compat-report.mjs keeps their counts and names none of them in the written report.",
+  "_note": "Test files withheld from the public package because they read the private real-site fixtures. This list is itself withheld (exclusions.txt in the release build); generate-mod-compat-report.mjs keeps their counts and names none of them in the written report.",
   "paths": [
     "tests/card/auth/reset-flow-endpoint.test.ts",
     "tests/card/mod-loader/card-mod-account-harness-probe.test.ts",
@@ -10,7 +10,6 @@
     "tests/card/mod-loader/card-mod-comment-save-event.test.ts",
     "tests/card/mod-loader/card-mod-content.test.ts",
     "tests/card/mod-loader/card-mod-date.test.ts",
-    "tests/card/mod-loader/card-mod-defaults-and-delayed-job-ignored-no-port-surface.test.ts",
     "tests/card/mod-loader/card-mod-edit-forms.test.ts",
     "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts",
     "tests/card/mod-loader/card-mod-follow-harness-probe.test.ts",

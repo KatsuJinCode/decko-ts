@@ -62,7 +62,10 @@ const GRADED_OPS = join(HERE, "graded-ops.json");
 // is withheld-tests.json beside this file; the export's pathRefs gate fails if
 // a report names a path that is absent from the shipped tree.
 const WITHHELD_TEXT = "a withheld test file (it reads the private real-site fixtures, which are not redistributed)";
-const WITHHELD = new Set(JSON.parse(readFileSync(join(HERE, "withheld-tests.json"), "utf8")).paths);
+// The list itself is withheld from the public package, which has no list and so
+// names nothing; the generator needs the Ruby gems and the private fixtures anyway.
+const WITHHELD_LIST = join(HERE, "withheld-tests.json");
+const WITHHELD = new Set(existsSync(WITHHELD_LIST) ? JSON.parse(readFileSync(WITHHELD_LIST, "utf8")).paths : []);
 function redact(text) {
   let out = text;
   for (const p of WITHHELD) out = out.split(p).join(WITHHELD_TEXT);
