@@ -157,3 +157,85 @@ the database, can still exceed Bunny's 5-second limit and fail. Fewer round
 trips per save is the remedy.
 
 D1 and Turso have not been run through this runner against hosted services.
+
+## Cloudflare D1 run, 2026-10-15
+
+Command: `node tools/hosted-conformance/run.mjs --target d1`, run from
+`85dd897d` (the runner with writer, write and lost-write counters), against a
+scratch D1 database created by the runner on a Cloudflare account and removed
+by it (the runner reported `scratch database removed: PASS`). Run on Node
+24.19.0 on Windows x64. The run took 14 minutes 9 seconds. No worker crash
+(`0xC0000409`) occurred, and no retry was needed.
+
+The runner's scratch-database name was changed in the scratch copy only, from
+`decko-conformance-` to `decko-test-conformance-`, to meet a naming rule. That
+change is not committed and does not affect what the suites do.
+
+| Suite | Hosted cases | Result | Writers | Committed writes | Rolled-back statements |
+|---|---:|---|---:|---:|---:|
+| transaction conformance and save scenarios | 17 | 17 passed | 1 | 84 | 40 |
+| atomic saves | 11 | 11 passed (44 local cases skipped) | 1 | 56 | 50 |
+| concurrent saves | 3 | 1 passed, 2 failed | 2 | 89 | 0 |
+| multi-user read isolation | 2 | 2 passed (2 local cases skipped) | 4 | 78 | 21 |
+
+Hosted total: 31 of 33 cases passed. Maximum concurrent writers in any case: 4.
+
+Correctness counters, which are the ones that show partial or leftover
+writes: `leftoverRows` 0, `readBackErrors` 0 and `batchPartialFailures` 0 in
+every suite.
+
+The write probe, scenario battery and sign-in suite do not run against a
+hosted database yet (`NOT RUN`, reasons in the runner output).
+
+### What the "lost writes" column counts
+
+`tests/hosted/hosted-counters.ts` defines a lost write as a write statement
+that succeeded but whose transaction did not commit, because the unit of work
+threw or the commit failed. The suites deliberately roll back many
+transactions, so the column above counts rolled-back statements, not lost
+data. The run's total is 111. It must not be published as a count of lost
+writes without this definition. The counter named for partial or leftover
+rows is the one that bears on data loss, and it is zero.
+
+### Finding: two of three concurrent-save cases fail
+
+File: `tests/card/actions/concurrent-saves.test.ts`, suite
+`concurrent saves: hosted d1-http, two driver objects over one database`.
+Both failing cases reproduce the same shape in the opposite order from what
+the test expects: the save issued first is the one refused. The third case
+passes. This is one run; it has not yet been repeated.
+
+1. **Two updates of the same revision: the first wins** (test name: "the
+   first wins, the second is refused as an edit conflict").
+   - Setup, sequential: one engine updates the card with content
+     `base revision`. Then the last action id on the card is read.
+   - Concurrent, two engines over one database, both sending
+     `lastActionIdBeforeEdit` set to that same id:
+     - engine A, editor one, content `editor one`;
+     - engine B, editor two, content `editor two`.
+   - Expected: A fulfilled, B rejected with "not based on latest revision",
+     the card reads `editor one`, and `editor two` is absent from the history.
+   - Observed: A rejected, B fulfilled (`expected 'rejected' to be
+     'fulfilled'`).
+
+2. **Two creates of one new name** (test name: "one card, and the second
+   save is refused").
+   - Concurrent, two engines over one database:
+     - engine A, `createCard` with name `Raced Name`, content `one`;
+     - engine B, `createCard` with name `Raced Name`, content `two`.
+   - Expected: statuses `[fulfilled, rejected]`, and one row with content
+     `one`.
+   - Observed: statuses `[rejected, fulfilled]` (`expected ['rejected',
+     'fulfilled'] to deeply equal ['fulfilled', 'rejected']`). The card row
+     assertion was not reached.
+
+Not captured: the rejection reason for the refused save in either case. The
+test asserts only status, so the run's output does not say why the first save
+was refused. The next step is to re-run this suite alone against a scratch
+database with the reason recorded, to show whether the refusal is the
+edit-conflict check, a driver error or a D1 batch failure. Until then the
+cause is unknown, and the post must not state that concurrent saves are safe
+on D1.
+
+Record: the JSON record of this run is kept outside the repository. The
+counters above are copied from its `rows` field.
