@@ -487,10 +487,24 @@ const FORMAT_STEPS: { step: string; format: "csv" | "rss" | "json"; file: string
   { step: "json", format: "json", file: "json.jsonl" },
 ];
 
-/** The one error element both rss-enabled captures carry, with the part that
- *  follows the message line -- Ruby's backtrace, whose entries are this
- *  machine's gem paths -- left out. */
-const RSS_ERROR_ELEMENT_HEAD = "<error>\n\nERROR rendering RSS: #&lt;ArgumentError: wrong number of arguments (given 1, expected 0)&gt;\n\n";
+/** The tail of an rss-enabled feed that raised, split as rss.rb:31-32 builds
+ *  it: the closing frame Builder emits before the rescue
+ *  (`</description></item></channel></rss>`), the error element's head
+ *  through the message line (`<error>\n\nERROR rendering RSS: <inspect>\n\n `),
+ *  and the backtrace slot that follows, up to `</error>`. The backtrace is
+ *  the call stack of whichever engine raised, so it is the one span not
+ *  compared; the frame and the message are compared byte for byte. */
+function rssErrorTail(bytes: string): { close: string; head: string; backtrace: string } | undefined {
+  const errorAt = bytes.lastIndexOf("<error>");
+  const closeAt = bytes.lastIndexOf("</description>", errorAt);
+  const messageEnd = bytes.indexOf("\n\n ", errorAt + "<error>\n\n".length);
+  if (errorAt < 0 || closeAt < 0 || messageEnd < 0 || !bytes.endsWith("</error>")) return undefined;
+  return {
+    close: bytes.slice(closeAt, errorAt),
+    head: bytes.slice(errorAt, messageEnd + "\n\n ".length),
+    backtrace: bytes.slice(messageEnd + "\n\n ".length, bytes.length - "</error>".length),
+  };
+}
 
 /** Where each rss-enabled capture stops agreeing with the engine's answer,
  *  and why. Named, not assumed: the byte before each is compared, and the
@@ -563,7 +577,7 @@ async function compareFormat(step: string, format: "csv" | "rss" | "json", captu
     // Ruby's captured error names a class and a message; the engine raises the
     // same one, which is the answer for a step Ruby could not render either.
     const wanted = capture.error?.split(": ").slice(1).join(": ") ?? "";
-    return { ...base, verdict: "same-error-raised", ok: capture.error !== undefined && message.includes(wanted), detail: message };
+    return { ...base, verdict: "same-error-raised", ok: capture.error !== undefined && message === wanted, detail: message };
   }
   if (capture.error !== undefined) {
     return { ...base, verdict: "same-error-raised", ok: false, detail: `engine returned bytes where Ruby raised ${capture.error}` };
@@ -574,15 +588,23 @@ async function compareFormat(step: string, format: "csv" | "rss" | "json", captu
     const at = (capture.bytes ?? "").indexOf(cut?.at ?? "\u0000");
     const head = (capture.bytes ?? "").slice(0, at);
     const frameMatches = at >= 0 && out.startsWith(head);
-    const errorAt = out.indexOf(RSS_ERROR_ELEMENT_HEAD);
-    const errorExact = errorAt >= 0 && out.endsWith("</error>");
+    const wantTail = rssErrorTail(capture.bytes ?? "");
+    const gotTail = rssErrorTail(out);
+    const closeExact = wantTail !== undefined && gotTail !== undefined && gotTail.close === wantTail.close;
+    const messageExact = wantTail !== undefined && gotTail !== undefined && gotTail.head === wantTail.head;
+    const tailDetail =
+      wantTail === undefined
+        ? "Ruby's capture has no error element"
+        : gotTail === undefined
+          ? "engine output has no error element"
+          : `closing frame ${closeExact ? "identical" : `differs at ${firstDifference(wantTail.close, gotTail.close)}`}; ` +
+            `error element through the message line ${messageExact ? `identical (${wantTail.head.length} bytes)` : `differs at ${firstDifference(wantTail.head, gotTail.head)}`}; ` +
+            `backtrace slot not compared (Ruby ${wantTail.backtrace.length} bytes, engine ${gotTail.backtrace.length} bytes)`;
     return {
       ...base,
       verdict: "up-to-declared-cut",
-      ok: frameMatches && errorExact,
-      detail: `frame of ${head.length} bytes ${frameMatches ? "identical" : "differs at " + firstDifference(head, out)}; ${
-        errorExact ? "error element exact" : `error element differs at ${firstDifference(RSS_ERROR_ELEMENT_HEAD, out.slice(errorAt < 0 ? 0 : errorAt))}`
-      }; cut: ${cut?.why}`,
+      ok: frameMatches && closeExact && messageExact,
+      detail: `frame of ${head.length} bytes ${frameMatches ? "identical" : "differs at " + firstDifference(head, out)}; ${tailDetail}; cut: ${cut?.why}`,
     };
   }
 
@@ -675,8 +697,9 @@ describeOrSkipLoud(!HAVE_GRADE, "tests/exercise/parity-2.test.ts", "HAVE_GRADE")
 
       // 4 of 4 steps; 8 captures the surface can answer, 5 of them
       // byte-identical outright (1 csv, 2 rss disabled, 2 json molecule); 1
-      // raised on both sides; 2 identical to a declared cut with the error
-      // element exact; 4 name a view the format-show surface does not take.
+      // raised on both sides; 2 identical to a declared cut, with the closing
+      // frame and the error message line exact and only the backtrace slot
+      // uncompared; 4 name a view the format-show surface does not take.
       const verdicts = formatResults.reduce<Record<string, number>>((counts, r) => ({ ...counts, [r.verdict]: (counts[r.verdict] ?? 0) + 1 }), {});
       expect({ steps: byStep.size, captures: formatResults.length, verdicts }).toEqual({
         steps: 4,

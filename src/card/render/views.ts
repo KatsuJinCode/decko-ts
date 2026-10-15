@@ -1251,9 +1251,13 @@ const coreViewBase: ViewFn = (ctx) => {
   // The set-context branch is the SAME one rule-bar-right.ts already
   // implements, and for the same reason: `in_context_of_self_set?`
   // (permission.rb:107-110) tests the @set_context the nest carried
-  // (bar_view.rb:63-66, `set_context: card.name.trunk_name`), and the
-  // engine has no who_can party walk, so the self-set context always
-  // lands on the rescue form.
+  // (bar_view.rb:63-66, `set_context: card.name.trunk_name`); the who_can
+  // links block rescues to bare "Inherit" whenever the ancestor's rule
+  // lists any item (see permissionInheritContentHtml). Open gap: Ruby's
+  // @set_context is a format option that only the bar_right nest passes,
+  // so a core render outside that nest has none and renders "Inherit from
+  // left card"; this call derives the context from the card's own trunk
+  // instead, because the port's format does not carry nest format options.
   if (isRuleCardWithPermissionRight(fmt.card) && fmt.card.dbContent === '_left') {
     return permissionInheritContentHtml(ctx.fmt.card.name.trunkName?.tagName?.key);
   }

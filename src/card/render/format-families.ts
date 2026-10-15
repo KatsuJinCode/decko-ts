@@ -337,29 +337,40 @@ export async function rssFeed(
     `<description></description>` +
     `<link>${xmlEscapeText(urlBase + cardPath(card.name))}</link>`;
 
-  const prefixes: string[] = [];
+  // feed_body (rss.rb:40-46) renders each item in turn inside `@xml.item`,
+  // and feed_item (rss.rb:52-59) calls pub_date after the title and
+  // description. pub_date raises for every item on this Ruby stack, so the
+  // FIRST item's raise ends the feed: only that item's prefix is emitted.
+  // With no items feed_body emits nothing, pub_date never runs, and the
+  // feed is a valid empty channel.
+  let body = "";
   for (const item of items) {
-    prefixes.push(await rssFeedItemPrefix(item, openContent));
+    body += await rssFeedItemPrefix(item, openContent);
+    try {
+      pubDate();
+    } catch (error) {
+      return rssErrorFeed(head, body, error);
+    }
+    // unreachable while pubDate raises (behaviour 2 above)
+    body += "</item>";
   }
-  const body = prefixes.join("");
-  try {
-    pubDate();
-    // unreachable: pubDate raises on this Ruby stack (behaviour 2 above)
-    return `${head}${body}</item></channel></rss>`;
-  } catch (error) {
-    // The rescue (rss.rb:27-30): `@xml.error "\n\nERROR rendering RSS:
-    // #{e.inspect}\n\n #{e.backtrace}"` — Builder having ensure-closed
-    // </item></channel></rss> first. The backtrace is the
-    // environment-specific byte class; the port emits a one-line TS label.
-    const message = error instanceof Error ? error.message : String(error);
-    const backtraceLine =
-      "format-families.ts (TypeScript port; the Ruby capture's backtrace is " +
-      "environment-specific)";
-    return (
-      `${head}${body}</item></channel></rss>` +
-      `<error>\n\nERROR rendering RSS: ${xmlEscapeText(message)}\n\n ${backtraceLine}</error>`
-    );
-  }
+  return `${head}${body}</channel></rss>`;
+}
+
+/** The rescue arm of rss.rb:20-33 raised inside an open `<item>`. */
+function rssErrorFeed(head: string, body: string, error: unknown): string {
+  // The rescue (rss.rb:31-32): `@xml.error "\n\nERROR rendering RSS:
+  // #{e.inspect}\n\n #{e.backtrace}"` — Builder having ensure-closed
+  // </item></channel></rss> first. The backtrace is the
+  // environment-specific byte class; the port emits a one-line TS label.
+  const message = error instanceof Error ? error.message : String(error);
+  const backtraceLine =
+    "format-families.ts (TypeScript port; the Ruby capture's backtrace is " +
+    "environment-specific)";
+  return (
+    `${head}${body}</item></channel></rss>` +
+    `<error>\n\nERROR rendering RSS: ${xmlEscapeText(message)}\n\n ${backtraceLine}</error>`
+  );
 }
 
 // ---------------------------------------------------------------------------
