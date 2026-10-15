@@ -262,6 +262,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
 
       ["js", 3],
       ["json", 8],
+      // rss.rb's nine non-XML declarations (including captured aliases).
+      ["rss", 9],
       ["yaml", 1],
     ]);
   });

@@ -1428,6 +1428,17 @@ const cssUnknownView: ViewFn = ({ fmt }) =>
 // path.rb:55-64 uses a rooted card path with local file storage.
 const cssUrlView: ViewFn = ({ fmt }) => `/${fmt.urlKey()}.css`;
 
+/** rss.rb:68-79: these aliases capture All::Base's view blocks, not
+ * the HTML view of the same name. In particular content/open_content
+ * capture base core itself, whereas open's captured titled block calls
+ * the card's most-specific core view at render time. */
+const rssContentView: ViewFn = ({ fmt }) => fmt.processContent(str(fmt.renderView("raw")));
+const rssOpenView: ViewFn = ({ fmt }) => `${fmt.card.name.s}\n\n${str(fmt.renderView("core"))}`;
+const rssItemDescriptionView: ViewFn = ({ fmt }) => fmt.renderView("open_content");
+const rssEmptyView: ViewFn = () => "";
+const rssTitleView: ViewFn = (ctx) =>
+  `${headReadSetFromMap(ctx).titleSetting ?? ""} : ${ctx.fmt.card.name.s.replace(/^\*/, "")}`;
+
 // ---------------------------------------------------------------------------
 // set/all/html/frame.rb + set/all/html/views.rb + set/all/demo.rb
 // ---------------------------------------------------------------------------
@@ -2242,8 +2253,23 @@ const setModules: ModSetModuleFile[] = [
     // override, views :feed/:feed_body/:feed_title/:feed_item/:feed_
     // item_description/:feed_description/:comment_box/:menu + raw_
     // feed_items/pub_date + open/content/open_content/closed aliases).
-    // Not ported: format-specific.
+    // XML-writing feed/feed_body/feed_item remain unported.
     setPath: "all/rss",
+    formats: {
+      rss: {
+        views: [
+          { view: "feed_title", viewFn: rssTitleView },
+          { view: "feed_description", viewFn: rssEmptyView },
+          { view: "feed_item_description", viewFn: rssItemDescriptionView },
+          { view: "comment_box", viewFn: rssEmptyView },
+          { view: "menu", viewFn: rssEmptyView },
+          { view: "open", viewFn: rssOpenView },
+          { view: "content", viewFn: rssContentView },
+          { view: "open_content", viewFn: rssContentView },
+          { view: "closed", viewFn: linkView, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   {
     // set/all/text.rb:1-26 base block (to_text/nestless_content + view
