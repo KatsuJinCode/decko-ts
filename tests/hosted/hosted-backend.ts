@@ -22,7 +22,7 @@
 // DECKO_HOSTED_ALLOW_RESET=1. The runner sets it only for scratch databases
 // it created or found empty itself.
 
-import { afterAll } from "vitest";
+import { afterAll, afterEach, beforeEach } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -32,6 +32,7 @@ import { DEFAULT_JOURNALED_TABLES } from "../../src/server/drivers/undo-journal.
 import { LibSqlHttpAdapter } from "../../src/server/drivers/libsql-http.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { D1RestDatabase } from "./d1-rest.js";
+import { beginCase, countDriver, endCase, writeCounters } from "./hosted-counters.js";
 
 export type HostedTarget = "d1-http" | "d1-binding" | "libsql" | "bunny";
 
@@ -88,10 +89,20 @@ export function hostedDeck(): HostedDeck | undefined {
   } else {
     throw new Error(`DECKO_HOSTED_TARGET must be d1-http, d1-binding, libsql or bunny, not ${target}`);
   }
+  // The counters (tests/hosted/hosted-counters.ts) see the engine's calls
+  // through the drivers a suite gets. The reset below is the runner's own
+  // housekeeping and uses the raw driver, so it is not counted.
+  const counted = () => countDriver(connect());
+  beforeEach(beginCase);
+  afterEach(endCase);
+  const countersFile = process.env.DECKO_HOSTED_COUNTERS_FILE;
+  if (countersFile !== undefined && countersFile !== "") {
+    afterAll(() => writeCounters(countersFile));
+  }
   return {
     label: `hosted ${target}`,
     target,
-    connect: () => connect(),
+    connect: counted,
     open: async () => {
       await prepare();
       if (!firstOpenChecked) {
@@ -105,7 +116,7 @@ export function hostedDeck(): HostedDeck | undefined {
         firstOpenChecked = true;
       }
       await resetScratchDatabase(connect);
-      return connect();
+      return counted();
     },
   };
 }

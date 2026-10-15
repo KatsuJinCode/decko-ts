@@ -62,6 +62,27 @@ in every table:
 
 Each needs its storage made driver-selectable before it can run here.
 
+## Counters
+
+Every run prints, per suite, three counts taken at the engine's driver seam
+(`SQLDatabaseDriver`; `tests/hosted/hosted-counters.ts`, wrapped around each
+driver `tests/hosted/hosted-backend.ts` hands to a suite):
+
+- **writers**: the most writers in flight at once in any one case. A writer
+  is a `transaction()` call or an INSERT, UPDATE, DELETE or REPLACE outside
+  one.
+- **writes**: write statements that committed. Includes the statements a
+  suite issues to seed its deck; the runner's own database reset is not
+  counted.
+- **lost writes**: write statements that succeeded but whose transaction
+  did not commit, plus rolled-back INSERTs whose row still holds the image
+  they wrote (read back by rowid; expected 0).
+
+Each run also writes its counts as JSON to
+`tools/hosted-conformance/results/` (not committed). A suite that aborts with
+exit status 0xC0000409 is run again, up to three attempts in all; the table
+says how many aborts preceded the result.
+
 ## Local verification
 
 ```bash
