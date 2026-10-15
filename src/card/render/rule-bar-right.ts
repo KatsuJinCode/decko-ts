@@ -165,6 +165,23 @@ function ruleOneLineContent(
     const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
     return truncated === stripped ? truncated : h(truncated);
   }
+  // Permission rights (card-mod-permissions set/right/{create,read,update,
+  // delete}.rb include Abstract::Permission): the right set's one_line_content
+  // (set/abstract/permission.rb:22-24) is `render_core items: { view: :link }`,
+  // which dispatches to the permission :core (permission.rb:14-20): content
+  // "_left" -> core_inherit_content, anything else -> :pointer_core, the whole
+  // item list as the pointer-list wrapper. The right set outranks the type
+  // module, the same precedence the *default arm above relies on, so this arm
+  // sits ahead of the toggle and list arms and does NOT depend on the card's
+  // type: a card carrying a permission right takes it whatever its cardtype.
+  if (isPermissionRightSetting(rightSetting)) {
+    if (card.dbContent === "_left") {
+      // core_inherit_content (permission.rb:98-105): see permissionInheritContentHtml
+      // for the set-context branch and the who_can walk.
+      return permissionInheritContentHtml(setContext, engine, permissionRuleTask(card));
+    }
+    return pointerListOneLineContent(card, engine);
+  }
   // Toggle-type cards: the compact-mode one_line_content routes through
   // the card's content view (card-mod-format set/type/toggle.rb), which
   // renders the truthy/falsy display string ("yes" / "no") rather than
@@ -179,44 +196,11 @@ function ruleOneLineContent(
     }
     return "yes";
   }
-  // Abstract::List overrides :one_line_content for pointer/list cards —
-  // but only rule cards whose right setting is a permission right wrap
-  // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
-  // cards take the Abstract::List METHOD path (below).
+  // Abstract::List overrides :one_line_content for pointer/list cards
+  // (card-mod-list set/abstract/01_list/html_views.rb:19-21). The permission
+  // rights were dispatched above; what reaches here is a non-permission
+  // pointer/list card.
   if (isPointerOrListCard(card)) {
-    // card-mod-permissions-0.20.0 set/abstract/permission.rb:98-105
-    // `core_inherit_content`: when a permission rule (right is one of
-    // *create / *read / *update / *delete) carries the magic content
-    // "_left", Ruby renders the bar_right as
-    // `<span class="inherit-perm">Inherit from left card</span>` — the
-    // pointer list of explicit names is replaced with the inheritance
-    // marker (the upstream left card's permission verdict wins). Pinned
-    // at recapture-raw:*read:render:open:_all_plus+Xread where the
-    // bar_right body shows exactly this span. Emitted ahead of the
-    // pointerListOneLineContent branch because that branch would
-    // otherwise render an empty pointer-list wrapper (raw items = []
-    // for dbContent "_left" — that string isn't a comma-separated
-    // item list).
-    if (
-      card.dbContent === "_left" &&
-      isPermissionRightSetting(rightSetting)
-    ) {
-      // core_inherit_content (permission.rb:98-105): the set-context
-      // branches — in_context_of_self_set? (permission.rb:107-110) tests
-      // the @set_context the NEST carried (bar_view.rb:63-66:
-      // `set_context: card.name.trunk_name`, the bar-rendered rule card's
-      // trunk — e.g. `CM 20110918-19+Narrative+*self+*update`'s trunk
-      // `CM 20110918-19+Narrative+*self`, tag *self) — NOT the substituted
-      // existing rule's own set (the stored winner often lives under a
-      // broader set; its trunk tag decided this branch wrongly and every
-      // *self-set rule list rendered "Inherit from left card" where the
-      // oracle renders "Inherit"). The self-set context runs the who_can
-      // walk (permission.rb:113-122); see permissionInheritContentHtml.
-      return permissionInheritContentHtml(setContext, engine, permissionRuleTask(card));
-    }
-    if (isPermissionRightSetting(rightSetting)) {
-      return pointerListOneLineContent(card, engine);
-    }
     // Non-permission pointer/list rule cards ride the Abstract::List
     // METHOD one_line_content (card-mod-list-0.20.0 set/abstract/
     // 01_list/html_views.rb:99-105): count == 1 -> card.first_name —
