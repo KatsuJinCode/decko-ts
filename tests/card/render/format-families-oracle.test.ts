@@ -272,7 +272,7 @@ describe("P10 rss format family — fresh oracle pins (rss.jsonl / rss-enabled.j
     }
   });
 
-  it("*all+*read feed bytes match the enabled capture up to the labeled backtrace", async () => {
+  it("*all+*read feed bytes match the enabled capture up to the engine backtrace", async () => {
     const s = storage!;
     const out = await renderFormatShow(formatEngine(s), "*all+*read", "rss", {
       ...opts(),
@@ -286,7 +286,7 @@ describe("P10 rss format family — fresh oracle pins (rss.jsonl / rss-enabled.j
     expect(out).toContain(
       "ERROR rendering RSS: #&lt;ArgumentError: wrong number of arguments (given 1, expected 0)&gt;",
     );
-    // …and the element closes after the (labeled, TS-side) backtrace.
+    // The element closes after the raising engine's own backtrace.
     expect(out.endsWith("</error>")).toBe(true);
     expect(out).not.toContain("C:/Ruby33");
   });

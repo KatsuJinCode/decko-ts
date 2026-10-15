@@ -512,7 +512,7 @@ function rssErrorTail(bytes: string): { close: string; head: string; backtrace: 
 const RSS_DECLARED_CUTS: Record<string, { at: string; why: string }> = {
   "*all+*read": {
     at: ' ["C:/Ruby33',
-    why: "the Ruby backtrace inside the error element carries this machine's gem paths; the port replaces it with one labeled line naming itself",
+    why: "the backtrace inside the error element is the raising engine's own stack; Ruby and TypeScript record their respective call frames",
   },
   Home: {
     at: '&lt;div&gt;&lt;div class="container text-center"',

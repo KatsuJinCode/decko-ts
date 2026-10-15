@@ -17,13 +17,13 @@
 // 2. RSS `:feed` returns "RSS feeds disabled" unless Cardio.config
 //    .rss_enabled (default FALSE — lib/card/mod/format.rb:4). Enabled,
 //    the feed renders the channel + one item per raw_feed_items ([card]),
-//    and pub_date's `.to_s(:rfc822)` RAISES ArgumentError on a Ruby 7.2
+//    and pub_date's `.to_s(:rfc822)` RAISES ArgumentError on a Rails 7.2
 //    stack ("wrong number of arguments (given 1, expected 0)") — the
 //    :rfc822 argument form was removed in Rails 7.0. Builder ensure-closes
 //    the open tags and the view's rescue appends
 //    `<error>\n\nERROR rendering RSS: …\n\n <backtrace></error>` AFTER
-//    `</rss>`. The raise shape is reproduced; the backtrace lines are
-//    environment-specific and are the accepted-and-labeled byte class here.
+//    `</rss>`. The conversion enforces that API's arity; errors carry the
+//    raising engine's own stack.
 // 3. JSON show defaults to :molecule, pretty-printed (2-space), keys in
 //    Ruby's insertion order; `page_details` adds url (over the atom's
 //    .json url, keeping the key position) + requested_at. A list-family
@@ -272,7 +272,14 @@ function xmlEscapeText(s: string): string {
 /** Ruby Time#to_s (TimeWithZone default): "YYYY-MM-DD HH:MM:SS UTC" (the
  *  json molecule's created_at/updated_at/requested_at and the comment
  *  signature's clock shape). */
-export function rubyTimestamp(d: Date): string {
+export function rubyTimestamp(d: Date, ...args: unknown[]): string {
+  // ActiveSupport::TimeWithZone#to_s in Rails 7.2 takes no format argument.
+  // Validate the call rather than manufacturing a particular caller's error.
+  if (args.length !== 0) {
+    const error = new Error(`wrong number of arguments (given ${args.length}, expected 0)`);
+    error.name = "ArgumentError";
+    throw error;
+  }
   const pad = (n: number): string => (n < 10 ? `0${n}` : String(n));
   return (
     `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
@@ -280,32 +287,10 @@ export function rubyTimestamp(d: Date): string {
   );
 }
 
-/** The Rails 7.2 ArgumentError pub_date raises
- *  (time_with_zone.rb to_s(:rfc822) — the :rfc822 argument form was
- *  removed in Rails 7.0). The raise is reproduced (behaviour 2 above); the
- *  message is Ruby's verbatim inspect text and only the backtrace lines are
- *  environment-specific. */
-const PUB_DATE_INSPECT =
-  "#<ArgumentError: wrong number of arguments (given 1, expected 0)>";
-
 /** rss.rb:61-63 pub_date — `(card.updated_at || Time.zone.now).to_s(:rfc822)`
- *  raises BEFORE emitting pubDate/link/guid. */
-function pubDate(): string {
-  throw new Error(PUB_DATE_INSPECT);
-}
-
-/** rss.rb:39-50 view :feed_item — title, description (the item's
- *  :open_content), pubDate → the raise. The emitted prefix UP TO the
- *  raise is `<item><title>…</title><description>…</description>`. */
-async function rssFeedItemPrefix(
-  item: FormatCard,
-  openContent: (item: FormatCard) => Promise<string>,
-): Promise<string> {
-  const description = item.unknown ? "" : await openContent(item);
-  return (
-    `<item><title>${xmlEscapeText(item.name)}</title>` +
-    `<description>${xmlEscapeText(description)}</description>`
-  );
+ *  follows the actual timestamp selection and method-call semantics. */
+function pubDate(item: FormatCard, now: () => Date): string {
+  return rubyTimestamp(item.updatedAt ?? now(), "rfc822");
 }
 
 /** rss.rb:14-31 view :feed — the instruct + rss + channel frame, the feed
@@ -345,13 +330,16 @@ export async function rssFeed(
   // feed is a valid empty channel.
   let body = "";
   for (const item of items) {
-    body += await rssFeedItemPrefix(item, openContent);
+    body += `<item><title>${xmlEscapeText(item.name)}</title>`;
     try {
-      pubDate();
+      const description = item.unknown ? "" : await openContent(item);
+      body += `<description>${xmlEscapeText(description)}</description>`;
+      const date = pubDate(item, opts.now ?? (() => new Date()));
+      const url = xmlEscapeText(`${urlBase}${cardPath(item.name)}`);
+      body += `<pubDate>${xmlEscapeText(date)}</pubDate><link>${url}</link><guid>${url}</guid>`;
     } catch (error) {
       return rssErrorFeed(head, body, error);
     }
-    // unreachable while pubDate raises (behaviour 2 above)
     body += "</item>";
   }
   return `${head}${body}</channel></rss>`;
@@ -361,15 +349,13 @@ export async function rssFeed(
 function rssErrorFeed(head: string, body: string, error: unknown): string {
   // The rescue (rss.rb:31-32): `@xml.error "\n\nERROR rendering RSS:
   // #{e.inspect}\n\n #{e.backtrace}"` — Builder having ensure-closed
-  // </item></channel></rss> first. The backtrace is the
-  // environment-specific byte class; the port emits a one-line TS label.
-  const message = error instanceof Error ? error.message : String(error);
-  const backtraceLine =
-    "format-families.ts (TypeScript port; the Ruby capture's backtrace is " +
-    "environment-specific)";
+  // </item></channel></rss> first. Inspect is assembled from the actual
+  // error; its frames are the stack captured by this engine at the raise.
+  const message = error instanceof Error ? `#<${error.name}: ${error.message}>` : String(error);
+  const backtrace = error instanceof Error ? (error.stack?.split("\n").slice(1) ?? []) : [];
   return (
     `${head}${body}</item></channel></rss>` +
-    `<error>\n\nERROR rendering RSS: ${xmlEscapeText(message)}\n\n ${backtraceLine}</error>`
+    `<error>\n\nERROR rendering RSS: ${xmlEscapeText(message)}\n\n ${xmlEscapeText(JSON.stringify(backtrace))}</error>`
   );
 }
 
