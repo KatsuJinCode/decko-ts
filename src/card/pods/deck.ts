@@ -20,6 +20,7 @@ import {
 import { createVirtualCardLookup } from "../fetch/virtual-cards.js";
 import { registerSqliteRegexpFunction } from "../../cql/sqlite-regexp.js";
 import { ensureFreshnessStamp } from "../../server/freshness-stamp.js";
+import { ensureNestIndex } from "../nest-index.js";
 
 type Row = Record<string, unknown>;
 
@@ -74,6 +75,10 @@ export async function bootDeck(
       row.left_id === null ? String(row.name) : [Number(row.left_id), Number(row.right_id)],
     );
   }
+  // The stored nest index describes the content before any render reads it
+  // (src/card/nest-index.ts): a deck built by another road is re-derived here,
+  // and a deck already built costs one marker read.
+  if (!(opts.readonly ?? false)) await ensureNestIndex(driver, fetcher.lexicon);
   const [universe] = await driver.batch([structureRuleUniverseStatement()]);
   fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
     contents: structureUniverseFromResults(universe),

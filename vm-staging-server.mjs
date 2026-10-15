@@ -171,6 +171,7 @@ import { uglifyHarmonyCompile } from "./dist/src/card/assets/uglify-harmony-comp
 // themselves are ported.
 import { defaultDeckLoader } from "./dist/src/card/mod-loader/default-mod-deck.js";
 import { openSameDatabase, passwordHashModeFor } from "./dist/src/server/same-database.js";
+import { ensureNestIndex } from "./dist/src/card/nest-index.js";
 // Write path: the whole write surface lives in its own
 // module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
 import {
@@ -1493,6 +1494,11 @@ async function primeEngine(engine) {
       fetcher.lexicon.write(row.id, name, row.name);
     }
   }
+  // 3b. The stored nest index describes the content before the first render
+  //     (src/card/nest-index.ts). A read-only host cannot write the rows, so it
+  //     serves the deck as it stands and the render walks any level the index
+  //     does not describe.
+  if (writePathEnabled()) await ensureNestIndex(driver, engine.lexicon);
   // 4. Virtual-card rule universe: the
   //    storage factory's responsibility per
   //    src/card/fetch/virtual-cards.ts:44-49. Without this hook,
