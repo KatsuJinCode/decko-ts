@@ -66,8 +66,10 @@ if (!productionProfile) process.env.DECKO_ASSET_REFRESH ??= "never";
 // entries to the installed gems), so both engines serve the same files.
 process.env.DECKO_MOD_PUBLIC_DIR ??= path.join(repo, "reference-harness", "oracle", "app", "public");
 if (!existsSync(path.join(process.env.DECKO_MOD_PUBLIC_DIR, "mod"))) {
-  console.error(`DECKO_MOD_PUBLIC_DIR has no mod/ directory: ${process.env.DECKO_MOD_PUBLIC_DIR}`);
+  throw new Error(`DECKO_MOD_PUBLIC_DIR has no mod/ directory: ${process.env.DECKO_MOD_PUBLIC_DIR}`);
 }
+const theme = ["mod/tinymce_editor/themes/silver/theme.min.js", "mod/tinymce_editor/public/themes/silver/theme.min.js"];
+if (!theme.some(file => existsSync(path.join(process.env.DECKO_MOD_PUBLIC_DIR, file)))) throw new Error(`TinyMCE theme is unavailable in DECKO_MOD_PUBLIC_DIR: ${process.env.DECKO_MOD_PUBLIC_DIR}`);
 
 const realCreateServer = http.createServer;
 http.createServer = (...args) => {

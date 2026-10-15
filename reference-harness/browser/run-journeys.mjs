@@ -21,6 +21,7 @@ import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { recordJourneyNetwork } from "./lib/journey-network.mjs";
 import { admitJourneyOutput } from "./lib/journey-output-admission.mjs";
+import { editorReady } from "./lib/editor-ready.mjs";
 import { captureProvenance } from "./lib/journey-provenance.mjs";
 import { snapshot, delta } from "../runner/deck-state.mjs";
 
@@ -128,18 +129,10 @@ async function setEditor(page, name, value) {
   if (process.env.HARNESS_EDITOR_SETTLE === "1") {
     await page
       .waitForFunction(
-        ([n]) => {
-          const ta = document.querySelector(`textarea[name="${n}"]`);
-          // Native inputs and plain/Ace textareas have no TinyMCE instance
-          // to await. Waiting for one burns the timeout before a valid fill.
-          if (!ta) return document.querySelector(`input[name="${n}"]:not([type=hidden])`) !== null;
-          if (!ta.classList.contains("tinymce-textarea")) return true;
-          return !ta.id || (window.tinyMCE && window.tinyMCE.get(ta.id)) || !window.tinyMCE;
-        },
+        editorReady,
         [name],
         { timeout: STEP_TIMEOUT },
-      )
-      .catch(() => {});
+      );
   }
   const done = await page.evaluate(
     ([n, v]) => {
@@ -148,8 +141,10 @@ async function setEditor(page, name, value) {
       const ta = all.find((e) => e.tagName === "TEXTAREA") ?? all[0];
       if (!ta) return "missing";
       if (window.tinyMCE && ta.id && window.tinyMCE.get(ta.id)) {
-        window.tinyMCE.get(ta.id).setContent(v);
-        window.tinyMCE.get(ta.id).save();
+        const editor = window.tinyMCE.get(ta.id);
+        if (!editor.initialized || !editor.getBody()) return "uninitialized";
+        editor.setContent(v);
+        editor.save();
         return "tinymce";
       }
       const aceBox = ta.closest(".card-editor, form")?.querySelector(".ace_editor");
@@ -162,6 +157,7 @@ async function setEditor(page, name, value) {
     [name, value],
   );
   if (done === "missing") throw new Error(`no editor named ${name}`);
+  if (done === "uninitialized") throw new Error(`rich editor ${name} is not initialized`);
   if (done === "plain") await page.locator(`[name="${name}"]:not([type=hidden])`).filter({ visible: true }).first().fill(value);
   return done;
 }
@@ -419,15 +415,15 @@ async function runJourney(engine, args, journey, spec, logFile) {
         result.steps.push({ i, step, outcome: "skipped" });
         continue;
       }
+      const stepStarted = Date.now();
       try {
         ctx.editorVia = undefined;
         ctx.restartEvidence = undefined;
-        const stepStarted = Date.now();
         await runStep(ctx, step);
         result.steps.push({ i, step, outcome: "ok", ms: Date.now() - stepStarted, ...(ctx.editorVia ? { via: ctx.editorVia } : {}), ...(ctx.restartEvidence ? { restart: ctx.restartEvidence } : {}) });
       } catch (err) {
         failed = true;
-        result.steps.push({ i, step, outcome: "failed", error: String(err?.message ?? err).split("\n")[0] });
+        result.steps.push({ i, step, outcome: "failed", ms: Date.now() - stepStarted, error: String(err?.message ?? err).split("\n")[0] });
         // What the user was looking at when the step failed.
         try {
           await runStep(ctx, { observe: `failed at step ${i}` });
