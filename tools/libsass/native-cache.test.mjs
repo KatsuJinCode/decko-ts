@@ -1,17 +1,15 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cachedArtifact, identityKey, materialize, sha256 } from "./native-cache.mjs";
+import { cleanupScratch, scratchDir } from "../../tests/support/scratch-dir.mjs";
 
 // Cache coordination tests compile a tiny real C program; the production
 // LibSass parity tests separately validate the reused LibSass executable.
-const owned = [];
-afterEach(() => { for (const dir of owned.splice(0)) rmSync(dir, { recursive: true, force: true }); });
+afterEach(cleanupScratch);
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), "libsass-cache-test-"));
-  owned.push(root);
+  const root = scratchDir("libsass-cache-test-");
   const source = join(root, "probe.c");
   writeFileSync(source, '#include <stdio.h>\nint main(void){puts("real compiler output");return 0;}\n');
   const filename = process.platform === "win32" ? "probe.exe" : "probe";
