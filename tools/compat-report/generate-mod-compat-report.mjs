@@ -26,6 +26,7 @@
 import { readdirSync, readFileSync, statSync, existsSync, writeFileSync } from "node:fs";
 import { join, basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { evaluateMod, evaluateSeedMod, loadGrades, saveGrades, specificDeclarations, summariseGrade } from "./behaviour.mjs";
 
 // ---------------------------------------------------------------------------
 // config
@@ -53,6 +54,7 @@ const PERMS_DIR = join(REPO, "src", "card", "permissions");
 
 const OUTPUT_MD = join(HERE, "mod-compat-report.md");
 const OUTPUT_JSON = join(HERE, "mod-compat-report.json");
+const GRADED_OPS = join(HERE, "graded-ops.json");
 
 // The 9 concrete set patterns registered by card-1.110.0 mod/core/set_pattern.
 // (src/card/set-patterns/registry.ts PATTERN_TABLE - frozen, lookup-order.)
@@ -866,6 +868,83 @@ function classify(inv, surface, pins) {
 // report rendering
 // ---------------------------------------------------------------------------
 
+function renderBehaviourMd(report) {
+  const lines = [];
+  const evaluated = report.mods.filter((m) => m.classification.status !== "ignored");
+  const done = evaluated.filter((m) => m.behaviour.status === "behaviour-complete");
+  const seedOnly = report.mods.filter((m) => m.classification.status === "ignored" && m.seed);
+  const notEvaluated = report.mods.filter((m) => m.classification.status === "ignored" && !m.seed);
+  lines.push("## Behavioural verdict");
+  lines.push("");
+  const viewsDone = evaluated.filter((m) => m.behaviour.status === "views-graded-events-ungraded");
+  const nothing = evaluated.filter((m) => m.behaviour.status === "no-gradable-declarations");
+  lines.push(
+    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. A further **${viewsDone.length}** have every declared view graded identical to Ruby but declare events that no instrument here grades: ${viewsDone.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Declaring neither views nor events, so nothing here grades them: ${nothing.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
+  );
+  lines.push("");
+  lines.push(
+    "A mod is **behaviour-complete** only when every view it declares (any format) is rendered by at least one graded operation and every such operation is byte-identical to Ruby's captured answer (after the grader's N1-N8 rules), and it declares no event: no instrument here grades an event. A test that names a view (`test-named`) or an event (`named`) is listed as a pointer and never counts, because a name match shows neither what the test asserts nor where its expected bytes came from. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html, so no view declared in another format is graded yet.",
+  );
+  lines.push("");
+  lines.push("Grades this verdict rests on (`tools/compat-report/graded-ops.json`):");
+  lines.push("");
+  for (const g of report.grades ?? []) {
+    const r = g.rendering ? `${g.rendering.pass}/${g.rendering.graded} rendering ops identical` : "no rendering summary";
+    lines.push(`- \`${g.fixture}\`: verdict ${g.verdict}, ${r}; engine commit ${g.adapter_commit}${g.adapter_dirty ? " (dirty)" : ""}, graded ${g.graded_at}`);
+  }
+  if (!(report.grades ?? []).length) lines.push("- (none recorded: every view counts as ungraded)");
+  lines.push("");
+  lines.push("| mod | behaviour | views | graded identical | graded differs | test-named, not counted | unexercised views | events (none graded) | events named by a test, not counted | events no test names |");
+  lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|");
+  for (const m of report.mods) {
+    if (m.classification.status === "ignored") {
+      lines.push(`| \`${m.gem}\` | ${m.seed ? "seed only (see below)" : "not evaluated"} | | | | | | | | |`);
+      continue;
+    }
+    const s = m.behaviour.summary;
+    lines.push(
+      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_test_named} | ${s.views_unexercised} | ${s.events} | ${s.events_named} | ${s.events_unexercised} |`,
+    );
+  }
+  lines.push("");
+  for (const m of seedOnly) {
+    const d = m.seed.deck;
+    lines.push(`### ${m.gem}: seed comparison`);
+    lines.push("");
+    lines.push(
+      `The gem declares no views and no events; it contributes seed data. Its seeded-deck dump (\`data/fixtures/real/cards.yml\`, ${m.seed.seed_cards} live cards) is compared card by card, by key, with the \`${d.name}\` fixture deck that Ruby built, and with the port's own \`db/seed.sql\`.`,
+    );
+    lines.push("");
+    lines.push(`- present in ${d.name}: ${d.present}/${m.seed.seed_cards}; missing: ${d.missing.join(", ") || "(none)"}`);
+    lines.push(`- codename differs: ${d.codename_differs.join(", ") || "(none)"}`);
+    lines.push(`- type differs: ${d.type_differs.join(", ") || "(none)"}`);
+    lines.push(`- db_content differs (${d.content_differs.length}): ${d.content_differs.join(", ") || "(none)"}. A deck's content diverges from its seed as the deck is used (membership, recent settings, compiled asset outputs), so these are listed, not judged.`);
+    const b = m.seed.port_boot_seed;
+    lines.push(`- the port's fresh-deck seed (\`src/card/auth/boot-seed.ts\`, bootstrapFreshDeck: the core fixture plus the account-system cards): ${b.cards} cards, ${b.in_seed} of them in this seed${b.not_in_seed.length ? `; not in it: ${b.not_in_seed.join(", ")}` : ""}. **${b.seed_cards_not_booted} of this gem's ${m.seed.seed_cards} seed cards are not created by the port's own seed**: a deck the port provisions itself lacks them, and every fixture deck graded here has them only because Ruby built it (reference-harness/oracle/build-deck.rb).`);
+    lines.push(`- the port's demo seed (\`db/seed.sql\`): ${m.seed.port_seed.cards} cards, ${m.seed.port_seed.present} of them in this seed.`);
+    lines.push("");
+  }
+  lines.push("### Unexercised and differing declarations, per mod");
+  lines.push("");
+  for (const m of report.mods) {
+    if (m.classification.status === "ignored") continue;
+    const b = m.behaviour;
+    const differs = b.views.filter((v) => v.evidence === "graded-differs");
+    const unexV = b.views.filter((v) => v.evidence === "unexercised");
+    const unexE = b.events.filter((e) => e.evidence === "unexercised");
+    lines.push(`#### ${m.gem}`);
+    lines.push("");
+    lines.push(`- tests linked: ${b.tests.length ? b.tests.map((t) => `\`${t}\``).join(", ") : "(none)"}`);
+    lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} [${v.set}] (${v.ops.length} ops)`).join(", ") || "(none)"}`);
+    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}`).join(", ") || "(none)"}`);
+    lines.push(`- views only named by a test, not graded: ${b.views.filter((v) => v.evidence === "test-named").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
+    lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
+    lines.push(`- events unexercised: ${unexE.map((e) => e.event).join(", ") || "(none)"}`);
+    lines.push("");
+  }
+  return lines;
+}
+
 function renderMd(report) {
   const lines = [];
   lines.push("# card-mod compatibility report — decko-ts");
@@ -897,6 +976,7 @@ function renderMd(report) {
     "**What these labels measure: declarations only.** \"declared-complete\" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
   );
   lines.push("");
+  lines.push(...renderBehaviourMd(report));
   lines.push("## decko-ts implemented surface (truth)");
   lines.push("");
   lines.push(`- Set patterns (${report.surface.implementedPatterns.length}): ${report.surface.implementedPatterns.join(", ")}`);
@@ -984,17 +1064,40 @@ function renderMd(report) {
 // ---------------------------------------------------------------------------
 
 function main() {
-  const args = new Set(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = new Set(argv);
   const wantMd = !args.has("--json-only");
   const wantJson = !args.has("--md-only");
 
+  // --grade <report.json> (repeatable): refresh the committed graded-ops
+  // record from grade reports written by reference-harness/runner/grade.mjs.
+  const gradeReports = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--grade") gradeReports.push({ path: argv[++i], extra: null });
+    if (argv[i] === "--grade-extra")
+      gradeReports.push({ path: argv[++i], extra: { deck: "synthetic-v2", ops: join(HERE, "extra-ops.jsonl") } });
+  }
+  let grades = loadGrades(GRADED_OPS);
+  if (gradeReports.length) {
+    const fresh = gradeReports.map((g) => summariseGrade(REPO, JSON.parse(readText(g.path)), g.extra));
+    const keep = grades.filter((g) => !fresh.some((f) => f.fixture === g.fixture));
+    grades = [...keep, ...fresh].sort((a, b) => a.fixture.localeCompare(b.fixture));
+    saveGrades(GRADED_OPS, grades);
+    process.stderr.write(`wrote ${GRADED_OPS}\n`);
+  }
+
   const gems = listGemDirs(GEM_DIR);
   const surface = inventoryDeckoTs();
+  const specific = specificDeclarations(gems.map((g) => g.path));
   const mods = gems.map((g) => {
     const inv = inventoryGem(g.path, g.name);
     const pins = inventoryModPins(g.name);
     const cls = classify(inv, surface, pins);
-    return { gem: g.name, version: g.version, classification: cls, inv, pins };
+    const modId = g.name.replace(/-0\.\d+\.\d+$/, "");
+    const behaviour = evaluateMod(REPO, g.path, modId, grades, specific);
+    // A gem with no set/ tree but a seed dump is evaluated by its seed.
+    const seed = cls.status === "ignored" ? evaluateSeedMod(REPO, g.path) : null;
+    return { gem: g.name, version: g.version, classification: cls, behaviour, ...(seed ? { seed } : {}), inv, pins };
   });
 
   const report = {
@@ -1011,6 +1114,14 @@ function main() {
       hasPerms: surface.hasPerms,
     },
     legacy: [...LEGACY_MODS],
+    grades: grades.map((g) => ({
+      fixture: g.fixture,
+      adapter_commit: g.adapter_commit,
+      adapter_dirty: g.adapter_dirty,
+      graded_at: g.graded_at,
+      verdict: g.verdict,
+      rendering: g.rendering,
+    })),
     mods,
   };
 
