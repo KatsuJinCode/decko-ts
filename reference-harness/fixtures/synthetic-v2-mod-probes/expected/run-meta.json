@@ -3,15 +3,15 @@
   "fixture": "synthetic-v2-mod-probes",
   "runs": {
     "render": {
-      "started": "2026-10-15T10:08:29.413Z",
-      "finished": "2026-10-15T10:10:23.260Z",
+      "started": "2026-10-15T14:32:02.042Z",
+      "finished": "2026-10-15T14:35:12.415Z",
       "complete": true,
       "selection": null,
-      "ops_total": 549,
-      "ops_run": 549,
+      "ops_total": 556,
+      "ops_run": 556,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "806d0d1c778b9d8de409b799f3aaf773b659f0cc",
+        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
         "dirty": true
       },
       "engine": {
@@ -26,9 +26,9 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "fb7296c13e52ff152e06854161541931178d8abf1342b02a63e26955c0c37efc",
+      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
       "fixture_problems": [],
-      "ms_per_op": 176,
+      "ms_per_op": 297,
       "session_writes": {
         "cards": {
           "inserted": [],
@@ -48,15 +48,15 @@
       }
     },
     "semantics": {
-      "started": "2026-10-15T10:10:23.264Z",
-      "finished": "2026-10-15T10:10:44.908Z",
+      "started": "2026-10-15T14:35:12.416Z",
+      "finished": "2026-10-15T14:35:44.452Z",
       "complete": true,
       "selection": null,
       "ops_total": 0,
       "ops_run": 0,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "806d0d1c778b9d8de409b799f3aaf773b659f0cc",
+        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
         "dirty": true
       },
       "engine": {
@@ -71,21 +71,21 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "fb7296c13e52ff152e06854161541931178d8abf1342b02a63e26955c0c37efc",
+      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
       "fixture_problems": [],
       "ms_per_op": 0,
       "session_writes": {}
     },
     "scenarios": {
-      "started": "2026-10-15T10:10:44.910Z",
-      "finished": "2026-10-15T10:17:34.951Z",
+      "started": "2026-10-15T14:35:44.455Z",
+      "finished": "2026-10-15T14:53:01.566Z",
       "complete": true,
       "selection": null,
       "ops_total": 1,
       "ops_run": 1,
       "adapter": "decko-ruby",
       "adapter_checkout": {
-        "commit": "806d0d1c778b9d8de409b799f3aaf773b659f0cc",
+        "commit": "fecf96cacebb253ce3d8d3f8c3d89c5178854918",
         "dirty": true
       },
       "engine": {
@@ -100,7 +100,7 @@
           "ruby_engine": "ruby"
         }
       },
-      "fixture_digest": "fb7296c13e52ff152e06854161541931178d8abf1342b02a63e26955c0c37efc",
+      "fixture_digest": "54a00c175df798fcc274503e25bc26dab738d513896687b0fb57cac109443726",
       "fixture_problems": [],
       "steps_total": 530,
       "steps_run": 530
