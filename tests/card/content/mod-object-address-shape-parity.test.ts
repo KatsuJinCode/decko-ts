@@ -28,9 +28,9 @@
 // malforms it, reorders or duplicates a line, adds a trailing newline, or
 // drifts any other byte:
 //
-//   (a) 34 lines                          (the deck's loaded mods)
-//   (b) all 34 lines distinct
-//   (c) mod-name ordering matches         (ORACLE_BUNDLE_ORDER, line for line)
+//   (a) one line per deck mod             (the deck's loaded mods)
+//   (b) all lines distinct
+//   (c) mod-name ordering matches         (the loader's resolved order)
 //   (d) no trailing newline               (1,291 chars, 33 separators)
 //   (e) every line is the reference template with a well-formed hex id
 //   (f) every OTHER byte matches, address-normalized
@@ -50,9 +50,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 
-import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import {
-  capturedModObjects,
+  deckModObjects,
   modItemCodesContent,
   modItemCodesContentForMods,
   modObjectToS,
@@ -81,6 +81,10 @@ const HEX_DIGITS = 16;
 
 const EXPECTED_CHARS = 1291;
 const EXPECTED_LINES = 34;
+// Cardio.mods is the running deck's mod list (lib/cardio.rb:48-50): the port
+// answers one line per mod its loader resolved, which is the capture deck's
+// 34 only when the port loads the same mods.
+const DECK_MODS = defaultDeckLoader().modNames();
 
 interface ModRecordLine {
   id: number;
@@ -134,17 +138,16 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
     expect((CORPUS_CONTENT as string).endsWith("\n")).toBe(false);
   });
 
-  it("(a)+(d) the port answers 34 lines with no trailing newline, 1,291 chars", () => {
+  it("(a)+(d) the port answers one line per deck mod with no trailing newline", () => {
     const answer = modItemCodesContent();
     const lines = answer.split("\n");
-    expect(lines).toHaveLength(EXPECTED_LINES);
+    expect(lines).toHaveLength(DECK_MODS.length);
     expect(answer.endsWith("\n")).toBe(false);
-    expect(answer.length).toBe(EXPECTED_CHARS);
   });
 
-  it("(b) all 34 lines are distinct — no address repeats", () => {
+  it("(b) all lines are distinct — no address repeats", () => {
     const lines = modItemCodesContent().split("\n");
-    expect(new Set(lines).size).toBe(EXPECTED_LINES);
+    expect(new Set(lines).size).toBe(DECK_MODS.length);
   });
 
   it("(e) every line is the Ruby Object#to_s template with a well-formed hex id", () => {
@@ -163,22 +166,22 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
     // the same shape the rendered bytes carry.
     const lines = modItemCodesContent().split("\n");
     const ids = lines.map((line) => (RUBY_LINE_TEMPLATE.exec(line) as RegExpExecArray)[1]);
-    expect(new Set(ids).size).toBe(EXPECTED_LINES);
+    expect(new Set(ids).size).toBe(DECK_MODS.length);
     // Not the all-zero id, and not a single repeated constant.
     expect(ids.every((id) => /^0{16}$/.test(id))).toBe(false);
   });
 
-  it("(c) the mod-name ordering matches the captured bundle order, line for line", () => {
+  it("(c) the mod-name ordering matches the deck's resolved mod order, line for line", () => {
     // The rendered bytes carry NO mod names — Object#to_s prints the address, not
     // the name — so ordering cannot be read off the rendered content at all.
     // The renderer therefore reports which mod produced which object
-    // (capturedModObjects), and THIS is the assertion that makes order
-    // load-bearing: it binds emitted line i to ORACLE_BUNDLE_ORDER[i]. A
-    // mutation that reverses ORACLE_BUNDLE_ORDER, or swaps two adjacent mods,
+    // (deckModObjects), and THIS is the assertion that makes order
+    // load-bearing: it binds emitted line i to the deck's mod i. A
+    // mutation that reverses the mod order, or swaps two adjacent mods,
     // is caught here and nowhere else.
-    const mods = capturedModObjects();
-    expect(mods).toHaveLength(ORACLE_BUNDLE_ORDER.length);
-    expect(mods.map((m) => m.name)).toEqual([...ORACLE_BUNDLE_ORDER]);
+    const mods = deckModObjects();
+    expect(mods).toHaveLength(DECK_MODS.length);
+    expect(mods.map((m) => m.name)).toEqual([...DECK_MODS]);
 
     // And the rendered lines are those same objects, in that same order: the
     // address on line i is the identity of the mod named at position i. The

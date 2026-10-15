@@ -98,7 +98,7 @@ import {
   formatCardDayofwkMinTz,
 } from "./deck-time-zone.js";
 
-import { ORACLE_BUNDLE_ORDER } from "./mod-loader/default-mod-deck.js";
+import { getDefaultModLoader } from "./mod-loader.js";
 import {
   bootstrapCoreContent,
   bootstrapFunctionsContent,
@@ -200,8 +200,8 @@ const FOOT_CONTENT = "<!-- *foot is deprecated. please remove from layout -->";
  * port emits "<mod name>_mod" (see the module header) — the capture bytes'
  * "#<Cardio::Mod:0xADDR>" prefix is Object#to_s of a Cardio::Mod with no
  * #to_s, process-bound and unreproducible. The mod LIST and its order are the
- * captured bundle order (ORACLE_BUNDLE_ORDER — fixtures/captured/
- * help-mod-loader.json, the capture deck's loaded mods: 34).
+ * running deck's mods (Cardio.mods = Mod.dirs.mods, lib/cardio.rb:48-50):
+ * the bound mod loader's resolved order.
  */
 /**
  * Ruby Object#to_s as Cardio::Mod receives it. Ruby's default is "#<" + the
@@ -267,14 +267,17 @@ export function modObjectToS(mod: CardioModObject): string {
   return `#<${CARDIO_MOD_CLASS_NAME}:0x${address}>`;
 }
 
-/** The 34 mods the capture deck had loaded, as port objects, in the captured
- *  bundle order (ORACLE_BUNDLE_ORDER) — the order mod/core/set/self/mod.rb:4
- *  enumerates Cardio.mods in. Exported so the ORDER is observable from
- *  outside: the emitted bytes are all Object#to_s strings, which carry no
- *  mod name, so nothing in the rendered content could otherwise pin which
- *  mod produced which line. */
-export function capturedModObjects(): readonly CardioModObject[] {
-  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));
+/** The running deck's mods as port objects, in the order
+ *  mod/core/set/self/mod.rb:4 enumerates Cardio.mods in: lib/cardio.rb:48-50
+ *  `Mod.dirs.mods`, the mods the deck's Mod::Dirs resolved — here the bound
+ *  mod loader's resolved order. A deck with no mod loader bound runs only
+ *  the compiled-in core, so its one mod is "core". Exported so the ORDER is
+ *  observable from outside: the emitted bytes are all Object#to_s strings,
+ *  which carry no mod name, so nothing in the rendered content could
+ *  otherwise pin which mod produced which line. */
+export function deckModObjects(): readonly CardioModObject[] {
+  const names = getDefaultModLoader()?.modNames() ?? ["core"];
+  return names.map((name) => ({ name, identity: nextModIdentity() }));
 }
 
 /**
@@ -286,7 +289,7 @@ export function capturedModObjects(): readonly CardioModObject[] {
  * name, so each line is Object#to_s of a Cardio::Mod followed by "_mod".
  * to_pointer_content (config/initializers/01_core_extensions/array.rb:4-12)
  * strips one leading "[[" and one trailing "]]" — neither is present here,
- * so all 34 lines survive byte-for-byte, which is what the corpus shows.
+ * so every line survives byte-for-byte, which is what the corpus shows.
  */
 export function modItemCodesContentForMods(
   mods: readonly CardioModObject[],
@@ -295,7 +298,7 @@ export function modItemCodesContentForMods(
 }
 
 export function modItemCodesContent(): string {
-  return modItemCodesContentForMods(capturedModObjects());
+  return modItemCodesContentForMods(deckModObjects());
 }
 
 // listInputOptionsContent lives in render/content-overrides.ts (import-cycle

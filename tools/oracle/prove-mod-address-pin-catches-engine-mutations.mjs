@@ -17,7 +17,7 @@
 // baseline passes first, so "caught" cannot mean "never ran".
 //
 // The three reordering mutations are why the engine had to grow an observable
-// mod name (capturedModObjects): Object#to_s prints the address, so a reversed
+// mod name (deckModObjects): Object#to_s prints the address, so a reversed
 // list produces byte-identical content and no byte-level assertion can see it.
 //
 // Each mutation is restored and the restore is verified by sha256, so the tool
@@ -75,23 +75,23 @@ const MUTATIONS = [
     "return toPointerContent(mods.map((mod) => `${modObjectToS(mod)}_mod`));",
     "return toPointerContent(mods.map((mod) => modObjectToS(mod)));"],
   ["drift another byte: add a trailing newline",
-    "  return modItemCodesContentForMods(capturedModObjects());",
-    "  return modItemCodesContentForMods(capturedModObjects()) + String.fromCharCode(10);"],
+    "  return modItemCodesContentForMods(deckModObjects());",
+    "  return modItemCodesContentForMods(deckModObjects()) + String.fromCharCode(10);"],
   ["per-process id replaced by a constant (all 34 lines identical)",
     "function nextModIdentity(): bigint {",
     "function nextModIdentity(): bigint {\n  if (modIdentityCursor !== undefined) return modIdentityCursor;"],
   ["drop a line (34 -> 33 mods)",
-    "  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));",
-    "  return ORACLE_BUNDLE_ORDER.slice(0, -1).map((name) => ({ name, identity: nextModIdentity() }));"],
+    "  return names.map((name) => ({ name, identity: nextModIdentity() }));",
+    "  return names.slice(0, -1).map((name) => ({ name, identity: nextModIdentity() }));"],
   ["REVERSE the mod order (ordering is unobservable in the bytes)",
-    "  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));",
-    "  return [...ORACLE_BUNDLE_ORDER].reverse().map((name) => ({ name, identity: nextModIdentity() }));"],
+    "  return names.map((name) => ({ name, identity: nextModIdentity() }));",
+    "  return [...names].reverse().map((name) => ({ name, identity: nextModIdentity() }));"],
   ["SWAP two adjacent mods (same multiset, different order)",
-    "  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));",
-    "  return ORACLE_BUNDLE_ORDER.map((name, i) => ({\n    name: i === 0 ? ORACLE_BUNDLE_ORDER[1] : i === 1 ? ORACLE_BUNDLE_ORDER[0] : name,\n    identity: nextModIdentity(),\n  }));"],
+    "  return names.map((name) => ({ name, identity: nextModIdentity() }));",
+    "  return names.map((name, i) => ({\n    name: i === 0 ? names[1] : i === 1 ? names[0] : name,\n    identity: nextModIdentity(),\n  }));"],
   ["SORT the mod list instead of using the bundle order",
-    "  return ORACLE_BUNDLE_ORDER.map((name) => ({ name, identity: nextModIdentity() }));",
-    "  return [...ORACLE_BUNDLE_ORDER].sort().map((name) => ({ name, identity: nextModIdentity() }));"],
+    "  return names.map((name) => ({ name, identity: nextModIdentity() }));",
+    "  return [...names].sort().map((name) => ({ name, identity: nextModIdentity() }));"],
 ];
 
 // sanity: the UNMUTATED suite must pass, or "caught" means nothing
