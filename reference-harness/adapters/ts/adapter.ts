@@ -17,6 +17,7 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
@@ -65,6 +66,7 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
+const scssCompiler = libsassWasmCompiler();
 // The synthetic deck is Ruby-built: every account's stored password is
 // Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so this
 // configuration pins that storage policy — under the port's modern default a
@@ -409,6 +411,7 @@ async function opWrite(req: Req): Promise<Json> {
   // Bot address the follower emails render their links, unfollow URL and
   // From rule from; absent, every nest renders as its bare "_" placeholder.
   const engine = new CardActionEngine(fetcher, {
+    scssCompiler,
     actor,
     ipAddress: null,
     now: () => clock,

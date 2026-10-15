@@ -20,6 +20,7 @@ import { RenderEngine } from "../../../src/card/render.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { modEngineHost } from "../../../src/card/mod-loader/mod-engine-host.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
 import {
   deckoBotAccountEmail,
@@ -69,6 +70,7 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
+const scssCompiler = libsassWasmCompiler();
 // The synthetic deck is Ruby-built: every account's stored password is
 // Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so the adapter
 // pins that storage policy - under the port's modern default a sign-in would
@@ -411,6 +413,7 @@ async function opWrite(req: Req): Promise<Json> {
   // deck origin and the Decko Bot address the notification nests render
   // their links, unfollow URL and From rule from).
   const engine = new CardActionEngine(fetcher, {
+    scssCompiler,
     actor,
     ipAddress: null,
     now: () => clock,
