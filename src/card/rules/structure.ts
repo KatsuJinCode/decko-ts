@@ -126,7 +126,7 @@ export function ruleUniverseStatementBySetting(settingName: string): SQLStatemen
       `  SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r\n` +
       `  WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)),\n` +
       `up(rid, cur, suffix) AS (\n` +
-      `  SELECT rid, lid, '' FROM rules\n` +
+      `  SELECT rid, lid, CAST('' AS TEXT) FROM rules\n` +
       `  UNION ALL\n` +
       `  SELECT u.rid, c.left_id, '+' || COALESCE(rk."key", '') || u.suffix\n` +
       `  FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id\n` +
@@ -152,7 +152,7 @@ function legacyRuleUniverseStatement(settingName: string): SQLStatement {
     sql:
       `WITH RECURSIVE name_walk(id, composed) AS (\n` +
       `  -- Base case: simple cards (no left, no right) use their stored key\n` +
-      `  SELECT id, COALESCE("key", '')\n` +
+      `  SELECT id, CAST(COALESCE("key", '') AS TEXT)\n` +
       `  FROM cards\n` +
       `  WHERE left_id IS NULL AND right_id IS NULL\n` +
       `  UNION ALL\n` +

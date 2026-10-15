@@ -34,7 +34,7 @@ export interface MysqlDriverOptions {
 
 /** Session settings every connection runs with (see the header). */
 export const MYSQL_SESSION_SETTINGS = [
-  "SET SESSION sql_mode = 'PIPES_AS_CONCAT,ANSI_QUOTES,NO_ENGINE_SUBSTITUTION'",
+  "SET SESSION sql_mode = 'PIPES_AS_CONCAT,ANSI_QUOTES,STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION'",
   "SET SESSION time_zone = '+00:00'",
 ];
 
@@ -56,8 +56,11 @@ export function sqliteToMysql(sql: string): string {
       .replace(/\bAS\s+(?:NOT\s+)?MATERIALIZED\s*\(/gi, "AS (")
       .replace(/\bINSERT\s+OR\s+IGNORE\b/gi, "INSERT IGNORE")
       .replace(/\bINSERT\s+OR\s+REPLACE\b/gi, "REPLACE")
-      .replace(/\bCAST\(([^()]*?)\s+AS\s+TEXT\)/gi, "CAST($1 AS CHAR)")
-      .replace(/\bCAST\(([^()]*?)\s+AS\s+INTEGER\)/gi, "CAST($1 AS SIGNED)")
+      // CAST target types (the operand may be a quoted literal in another
+      // part, so only the target is matched). A TEXT cast gets a width: a
+      // recursive CTE's column takes its type from the anchor row.
+      .replace(/\s+AS\s+TEXT\s*\)/gi, " AS CHAR(10000))")
+      .replace(/\s+AS\s+INTEGER\s*\)/gi, " AS SIGNED)")
       .replace(/\bLIMIT\s+-1\b/gi, "LIMIT 18446744073709551615"),
   );
 }
