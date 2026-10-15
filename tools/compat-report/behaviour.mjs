@@ -10,11 +10,14 @@
 //              synthetic-v2) renders a view of that name, and the grade of
 //              record says whether every such operation was byte-identical to
 //              the oracle's captured answer (after the grader's N1-N8 rules).
-//   pinned   — no graded operation renders it, but one of the mod's own test
-//              files (tests/card/mod-loader/<mod>*.test.ts) names the view in
-//              a string literal and that file carries toBe('<literal>') pins.
+//   test-named — no graded operation renders it, but one of the mod's own
+//              test files (tests/card/mod-loader/<mod>*.test.ts) names the
+//              view in a string literal and that file carries
+//              toBe('<literal>') pins. A pointer for the reader only: the
+//              name match does not show what is asserted or where the
+//              expected bytes came from, so it never counts as evidence.
 //   named    — (events only) a test file anywhere under tests/ names the
-//              event in a string literal or symbol.
+//              event in a string literal. Also a pointer only.
 //   unexercised — none of the above.
 //
 // Attribution is by view name AND set membership: an operation credits a
@@ -28,8 +31,10 @@
 // declares in base format (outside any format block, or `format do`) is
 // inherited by html and is credited, every other format is not.
 //
-// A mod is behaviourally complete when every view it declares is graded-pass
-// or pinned, and every event it declares is named by a test. Nothing weaker.
+// A mod is behaviour-complete only when every view it declares is graded
+// byte-identical to Ruby by a graded operation and it declares no event (no
+// instrument here grades events). A mod whose views are all graded identical
+// but which declares events is "views-graded-events-ungraded".
 
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -399,7 +404,7 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) 
     }
     const pins = pinnedTests.filter((t) => namesLiteral(t.src, v.view));
     if (pins.length) {
-      entry.evidence = "pinned";
+      entry.evidence = "test-named";
       entry.tests = pins.map((t) => t.rel);
       return entry;
     }
@@ -419,18 +424,32 @@ export function evaluateMod(repo, gemPath, modId, grades, specific = new Map()) 
     views: decl.views.length,
     views_graded_identical: count(views, "graded-identical"),
     views_graded_differs: count(views, "graded-differs"),
-    views_pinned: count(views, "pinned"),
+    views_test_named: count(views, "test-named"),
     views_unexercised: count(views, "unexercised"),
     events: decl.events.length,
     events_named: count(events, "named"),
     events_unexercised: count(events, "unexercised"),
   };
+  // Only a graded operation compares the port's bytes with Ruby's. A test
+  // that names a view or event is a link for the reader, not evidence of
+  // byte-identity (the name match does not show what the test asserts, nor
+  // where its expected bytes came from), so it never completes a mod. No
+  // instrument here grades an event, so a mod that declares events cannot
+  // be complete until one does.
   const complete =
-    summary.views_graded_differs === 0 &&
-    summary.views_unexercised === 0 &&
-    summary.events_unexercised === 0;
+    summary.views_graded_identical === summary.views && summary.events === 0;
+  const viewsComplete = summary.views_graded_identical === summary.views;
   return {
-    status: complete ? "behaviour-complete" : "behaviour-incomplete",
+    // A mod that declares neither views nor events (its behaviour lives in
+    // helper methods, assets or configuration) has nothing this layer can
+    // grade; calling it complete would be true only vacuously.
+    status: summary.views === 0 && summary.events === 0
+      ? "no-gradable-declarations"
+      : complete
+      ? "behaviour-complete"
+      : viewsComplete
+        ? "views-graded-events-ungraded"
+        : "behaviour-incomplete",
     summary,
     tests: tests.map((t) => t.rel),
     views,

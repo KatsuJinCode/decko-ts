@@ -825,12 +825,14 @@ function renderBehaviourMd(report) {
   const notEvaluated = report.mods.filter((m) => m.classification.status === "ignored" && !m.seed);
   lines.push("## Behavioural verdict");
   lines.push("");
+  const viewsDone = evaluated.filter((m) => m.behaviour.status === "views-graded-events-ungraded");
+  const nothing = evaluated.filter((m) => m.behaviour.status === "no-gradable-declarations");
   lines.push(
-    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
+    `Behaviour-complete: **${done.length}** of ${evaluated.length} evaluated mods. A further **${viewsDone.length}** have every declared view graded identical to Ruby but declare events that no instrument here grades: ${viewsDone.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Declaring neither views nor events, so nothing here grades them: ${nothing.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Seed-only, evaluated by seed comparison: ${seedOnly.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}. Not evaluated: ${notEvaluated.map((m) => `\`${m.gem}\``).join(", ") || "(none)"}.`,
   );
   lines.push("");
   lines.push(
-    "A mod is **behaviour-complete** only when every view it declares (any format) is either rendered by a graded fixture operation with every such operation byte-identical to Ruby's captured answer, or named in a string literal by one of its own byte-pinned test files; and every event it declares is named in a string literal by some test file. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html; views declared in other formats can only be credited by tests.",
+    "A mod is **behaviour-complete** only when every view it declares (any format) is rendered by at least one graded operation and every such operation is byte-identical to Ruby's captured answer (after the grader's N1-N8 rules), and it declares no event: no instrument here grades an event. A test that names a view (`test-named`) or an event (`named`) is listed as a pointer and never counts, because a name match shows neither what the test asserts nor where its expected bytes came from. Attribution is by view name and set membership (see `tools/compat-report/behaviour.mjs`): a graded operation credits a declaration only when its card belongs to the declaring file's set; all/, lib/ and abstract/ declarations apply by name alone. Withheld operations are credited when the withheld set is present at grading. Fixture operations are all html, so no view declared in another format is graded yet.",
   );
   lines.push("");
   lines.push("Grades this verdict rests on (`tools/compat-report/graded-ops.json`):");
@@ -841,7 +843,7 @@ function renderBehaviourMd(report) {
   }
   if (!(report.grades ?? []).length) lines.push("- (none recorded: every view counts as ungraded)");
   lines.push("");
-  lines.push("| mod | behaviour | views | graded identical | graded differs | test-pinned | unexercised views | events | events named by a test | unexercised events |");
+  lines.push("| mod | behaviour | views | graded identical | graded differs | test-named, not counted | unexercised views | events (none graded) | events named by a test, not counted | events no test names |");
   lines.push("|-----|-----------|------:|-----------------:|---------------:|------------:|------------------:|-------:|-----------------------:|-------------------:|");
   for (const m of report.mods) {
     if (m.classification.status === "ignored") {
@@ -850,7 +852,7 @@ function renderBehaviourMd(report) {
     }
     const s = m.behaviour.summary;
     lines.push(
-      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_pinned} | ${s.views_unexercised} | ${s.events} | ${s.events_named} | ${s.events_unexercised} |`,
+      `| \`${m.gem}\` | ${m.behaviour.status} | ${s.views} | ${s.views_graded_identical} | ${s.views_graded_differs} | ${s.views_test_named} | ${s.views_unexercised} | ${s.events} | ${s.events_named} | ${s.events_unexercised} |`,
     );
   }
   lines.push("");
@@ -884,7 +886,7 @@ function renderBehaviourMd(report) {
     lines.push(`- tests linked: ${b.tests.length ? b.tests.map((t) => `\`${t}\``).join(", ") : "(none)"}`);
     lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} [${v.set}] (${v.ops.length} ops)`).join(", ") || "(none)"}`);
     lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}`).join(", ") || "(none)"}`);
-    lines.push(`- views test-pinned only: ${b.views.filter((v) => v.evidence === "pinned").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
+    lines.push(`- views only named by a test, not graded: ${b.views.filter((v) => v.evidence === "test-named").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     lines.push(`- events unexercised: ${unexE.map((e) => e.event).join(", ") || "(none)"}`);
     lines.push("");
