@@ -270,6 +270,13 @@ async function opRender(req: Req): Promise<Json> {
   // {"html":null} (Nonexistent Card:errors, mod: help:configurations/tasks,
   // Home:rss_links) while subedits records {"html":""} - the views differ
   // in Ruby, so the envelope preserves the engine's ViewResult verbatim.
+  // A non-html view: the port has no view dispatch for a card format (its
+  // non-html formats are served only as each format's show default, with no
+  // view argument: src/card/render/format-families.ts renderFormatShow). Refused
+  // here, as an error, so the grade records the gap instead of an answer.
+  if (req.format && req.format !== "html") {
+    throw new Error(`the port has no view dispatch for format ${req.format} (view ${req.view})`);
+  }
   const html = req.view ? await engine.renderRaw(req.card, req.view) : await engine.renderPage(req.card);
   return { html };
 }

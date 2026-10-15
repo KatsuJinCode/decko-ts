@@ -972,7 +972,7 @@ function renderBehaviourMd(report) {
     lines.push("");
     lines.push(`- tests linked: ${b.tests.length ? b.tests.map((t) => `\`${t}\``).join(", ") : "(none)"}`);
     lines.push(`- views graded identical: ${b.views.filter((v) => v.evidence === "graded-identical").map((v) => `${v.format}:${v.view} [${v.set}] (${v.ops.length} ops)`).join(", ") || "(none)"}`);
-    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}`).join(", ") || "(none)"}`);
+    lines.push(`- views graded but differing: ${differs.map((v) => `${v.format}:${v.view} [${v.set}] differs at ${v.differing_ops.join("; ")}${v.first_difference ? ` - first difference ${v.first_difference}` : ""}`).join("; ") || "(none)"}`);
     lines.push(`- views only named by a test, not graded: ${b.views.filter((v) => v.evidence === "test-named").map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     lines.push(`- views unexercised: ${unexV.map((v) => `${v.format}:${v.view} [${v.set}]`).join(", ") || "(none)"}`);
     const evs = b.events;
@@ -980,7 +980,7 @@ function renderBehaviourMd(report) {
       `- events graded identical (rows): ${evs.filter((e) => e.evidence === "graded-identical").map((e) => `${e.event} [${e.source ?? ""}] probe ${e.probe} on ${e.card} (${e.on ?? "no on:"})`).join("; ") || "(none)"}`,
     );
     lines.push(
-      `- events graded but differing rows: ${evs.filter((e) => e.evidence === "graded-differs").map((e) => `${e.event} [${e.source ?? ""}] differs at ${(e.differing_steps ?? []).join("; ")}`).join("; ") || "(none)"}`,
+      `- events graded but differing rows: ${evs.filter((e) => e.evidence === "graded-differs").map((e) => `${e.event} [${e.source ?? ""}] differs at ${(e.differing_steps ?? []).join("; ")}${e.first_difference ? ` - first difference ${e.first_difference}` : ""}`).join("; ") || "(none)"}`,
     );
     lines.push(
       `- events run with no effect seen against the baseline: ${evs.filter((e) => e.evidence === "not-observed").map((e) => `${e.event} [${e.source ?? ""}]`).join(", ") || "(none)"}`,

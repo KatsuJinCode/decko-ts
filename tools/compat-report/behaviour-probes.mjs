@@ -78,17 +78,16 @@ export function planRenders(index, declarations) {
   const plan = [];
   let n = 0;
   for (const d of declarations) {
-    if (!HTML_LIKE.has(d.format)) {
-      plan.push({ decl: `${d.format}:${d.view}@${d.set.file}`, status: "not-planned", reason: "non-html format: the render operation takes no format" });
-      continue;
-    }
     const card = index.cards.find((c) => setContains(d.set, c.facts));
     if (!card) {
       plan.push({ decl: `${d.format}:${d.view}@${d.set.file}`, status: "no-card", reason: `no deck card is in set ${d.set.pattern}/${d.set.anchor ?? ""}` });
       continue;
     }
     const id = `probe-view:${++n}:${d.view}@${d.set.file}`;
-    ops.push({ id, op: "render", actor: "admin", card: card.name, view: d.view });
+    // A non-html view names its format; the harness renders it through that
+    // format (the adapters refuse a format they cannot dispatch).
+    const format = HTML_LIKE.has(d.format) ? undefined : d.format;
+    ops.push({ id, op: "render", actor: "admin", card: card.name, view: d.view, ...(format ? { format } : {}) });
     plan.push({ decl: `${d.format}:${d.view}@${d.set.file}`, status: "planned", op: id, card: card.name });
   }
   return { ops, plan };
@@ -146,6 +145,18 @@ function probeShape(index, set) {
     const r = index.cards.find((c) => c.facts.codename === set.anchor && !c.facts.compound && (c.name ?? "").startsWith("*"));
     if (!r) return { kind: "none", reason: `no right card with codename ${set.anchor} in the deck` };
     return { kind: "right", rightName: r.name, rightCode: set.anchor };
+  }
+  // A type_plus_right set (Type+*right) and a rule set (*set+*right) name a
+  // compound card, not a card the planner may create: probe an existing one.
+  if (set.pattern === "type_plus_right") {
+    const c = index.cards.find((x) => x.facts.compound && x.facts.left_type === set.anchor && x.facts.right === set.sub);
+    if (!c) return { kind: "none", reason: `no card of type ${set.anchor} with right ${set.sub} in the deck` };
+    return { kind: "self", cardName: c.name };
+  }
+  if (set.pattern === "rule") {
+    const c = index.cards.find((x) => x.facts.compound && x.facts.left_type === "set" && (x.facts.right_name ?? "").startsWith("*"));
+    if (!c) return { kind: "none", reason: "no rule card (*set+*setting) in the deck" };
+    return { kind: "self", cardName: c.name };
   }
   if (set.pattern === "self") {
     const s = index.cards.find((c) => c.facts.codename === set.anchor && !c.facts.compound);
