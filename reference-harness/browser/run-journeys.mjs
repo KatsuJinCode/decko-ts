@@ -130,7 +130,11 @@ async function setEditor(page, name, value) {
       .waitForFunction(
         ([n]) => {
           const ta = document.querySelector(`textarea[name="${n}"]`);
-          return ta !== null && (!ta.id || (window.tinyMCE && window.tinyMCE.get(ta.id)) || !window.tinyMCE);
+          // Native inputs and plain/Ace textareas have no TinyMCE instance
+          // to await. Waiting for one burns the timeout before a valid fill.
+          if (!ta) return document.querySelector(`input[name="${n}"]:not([type=hidden])`) !== null;
+          if (!ta.classList.contains("tinymce-textarea")) return true;
+          return !ta.id || (window.tinyMCE && window.tinyMCE.get(ta.id)) || !window.tinyMCE;
         },
         [name],
         { timeout: STEP_TIMEOUT },
