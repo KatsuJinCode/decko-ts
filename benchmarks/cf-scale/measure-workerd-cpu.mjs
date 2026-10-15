@@ -59,7 +59,7 @@ const DECKS = {
 };
 
 function parseArgs(argv) {
-  const out = { deck: "cf-scale", n: 40, json: null, entry: "deploy/worker.ts", first: null, coldOnly: false, batches: 20 };
+  const out = { deck: "cf-scale", n: 40, json: null, entry: "deploy/worker.ts", first: null, coldOnly: false, batches: 20, edgeCache: false, page: null, nestIndex: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--deck") out.deck = argv[++i];
     else if (argv[i] === "--n") out.n = Number(argv[++i]);
@@ -68,6 +68,9 @@ function parseArgs(argv) {
     else if (argv[i] === "--first") out.first = argv[++i];
     else if (argv[i] === "--cold-only") out.coldOnly = true;
     else if (argv[i] === "--batches") out.batches = Number(argv[++i]);
+    else if (argv[i] === "--edge-cache") out.edgeCache = true;
+    else if (argv[i] === "--page") out.page = argv[++i];
+    else if (argv[i] === "--nest-index") out.nestIndex = true;
   }
   return out;
 }
@@ -106,7 +109,7 @@ function processCpuMs(pid) {
   return ((Number(stat[11]) + Number(stat[12])) * 1000) / 100;
 }
 
-async function boot(deck, entry) {
+async function boot(deck, entry, edgeCache = false, nestIndex = false) {
   const { build } = await import("vite");
   const { Miniflare, convertV4MiniflareOptions } = await import("miniflare");
   const { splitSqlStatements } = await import(pathToFileURL(join(REPO, "tools", "migrate", "import.mjs")).href);
@@ -134,7 +137,7 @@ async function boot(deck, entry) {
       script: bundle,
       d1Databases: { DB: "decko-cpu-measure" },
       verbose: Boolean(process.env.MEASURE_VERBOSE),
-      bindings: { METRICS_TOKEN: "local-measurement" },
+      bindings: { METRICS_TOKEN: "local-measurement", ...(edgeCache ? { DECKO_EDGE_CACHE: "1" } : {}) },
     }),
   );
   await mf.ready;
@@ -142,11 +145,19 @@ async function boot(deck, entry) {
   if (workerd.length !== 1) throw new Error(`expected one workerd child, found ${JSON.stringify(workerd)}`);
 
   const db = await mf.getD1Database("DB");
-  for (const rel of DECKS[deck].sql) {
+  // The deploy's additive migrations prepare the serving indexes and lock
+  // row. The seed remains the named benchmark deck, not the demo deck.
+  const preparation = ["deploy/migrations/0002-card-text-binary-lookup-indexes.sql", "deploy/migrations/0008-cards-serving-path-indexes.sql", "deploy/migrations/0010-deck-data-version-all-card-tables.sql", "deploy/migrations/0013-nest-index-meta.sql", "deploy/migrations/0014-undo-journal-lock-state.sql"];
+  for (const rel of [DECKS[deck].sql[0], ...preparation, ...DECKS[deck].sql.slice(1)]) {
     const statements = splitSqlStatements(readFileSync(join(REPO, rel), "utf8")).filter(Boolean);
     for (let i = 0; i < statements.length; i += 50) {
       await db.batch(statements.slice(i, i + 50).map((sql) => db.prepare(sql)));
     }
+  }
+  if (nestIndex) {
+    const { buildNestIndexOnBinding } = await import(pathToFileURL(join(REPO, "tools/deploy/d1-binding.mjs")).href);
+    const prepared = await buildNestIndexOnBinding(db, join(REPO, "dist"));
+    if (prepared.marker.state !== "current") throw new Error("local nest index did not become current");
   }
   const dispatch = (path, init) => mf.dispatchFetch(`https://decko-cpu.test${path}`, init);
   return { mf, dispatch, workerdPid: workerd[0].pid };
@@ -162,7 +173,9 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const deck = DECKS[args.deck];
   if (!deck) throw new Error(`unknown deck ${args.deck}`);
-  const { mf, dispatch, workerdPid } = await boot(args.deck, args.entry);
+  const pages = args.page === null ? deck.pages : deck.pages.filter(([label]) => label === args.page);
+  if (pages.length === 0) throw new Error(`unknown page ${args.page}`);
+  const { mf, dispatch, workerdPid } = await boot(args.deck, args.entry, args.edgeCache, args.nestIndex);
   const rows = [];
   try {
     // Cold isolate: the first request boots the deck (loads every card row
@@ -192,9 +205,10 @@ async function main() {
     await new Promise((r) => setTimeout(r, 3000));
     const idleMsPerSec = (processCpuMs(workerdPid) - idle0) / ((Date.now() - t0) / 1000);
 
-    for (const [label, path] of args.coldOnly ? [] : deck.pages) {
+    for (const [label, path] of args.coldOnly ? [] : pages) {
       let status = 0;
       let bytes = 0;
+      let lastDiag = null;
       for (let i = 0; i < 5; i++) {
         const r = await dispatch(path);
         status = r.status;
@@ -215,6 +229,7 @@ async function main() {
         const bc0 = processCpuMs(workerdPid);
         for (let i = 0; i < size; i++) {
           const r = await dispatch(path);
+          lastDiag = r.headers.get("X-Decko-Edge-Cache");
           await r.text();
         }
         const bc1 = processCpuMs(workerdPid);
@@ -244,6 +259,7 @@ async function main() {
         batches: batchCount,
         requestsPerBatch: batchSize,
         wallMsPerRequest: Number(((wallS * 1000) / args.n).toFixed(2)),
+        edgeCacheDecision: lastDiag,
         d1QueriesPerRequest: perReq(m0, m1, "queryCount"),
         d1RowsReadPerRequest: perReq(m0, m1, "rowsRead"),
       });
@@ -253,6 +269,8 @@ async function main() {
       measuredAt: new Date().toISOString(),
       deck: args.deck,
       requestsPerPage: args.n,
+      edgeCache: args.edgeCache,
+      nestIndexPrepared: args.nestIndex,
       coldBoot,
       idleCpuMsPerSecond: Number(idleMsPerSec.toFixed(2)),
       platform: `${process.platform} ${process.arch}, node ${process.version}`,

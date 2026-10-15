@@ -13,6 +13,9 @@
 //
 // THE SAME BUILD, THREE DATABASES.
 //   --db <file.sqlite3>            a local SQLite deck (bootDeck, the Node host's path)
+//   --remote                       the deployed D1 named by wrangler.toml's DB binding,
+//                                  over the REST API (CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN);
+//                                  the deploy chain's form
 //   --d1-account A --d1-database D a deployed Cloudflare D1, over the REST API;
 //                                  CLOUDFLARE_API_TOKEN must carry D1 edit rights
 //   --d1-local <dir> [--d1-name N] a local Miniflare D1 under <dir> (tests, rehearsal)
@@ -21,14 +24,14 @@
 // build version costs one marker read and writes nothing.
 //
 // The compiled engine ships as dist/. Build it first: `npm run build:engine`
-// (npx tsc -p tsconfig.json --outDir dist ...), or the deploy chain's build.
+// (tsc -p tsconfig.dist.json), or the deploy chain's build.
 //
 // Exit status: 0 when the marker says current after the run, 1 otherwise,
 // 2 for a usage or load error.
 
 import path from "node:path";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
 import { d1HttpBinding, miniflareBinding, buildNestIndexOnBinding } from "./d1-binding.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -46,18 +49,36 @@ function argValue(args, flag) {
 }
 
 const USAGE =
-  "usage: node tools/deploy/build-nest-index.mjs (--db <deck.sqlite3> | --d1-account <id> --d1-database <id> | --d1-local <dir> [--d1-name <name>]) [--json]";
+  "usage: node tools/deploy/build-nest-index.mjs (--db <deck.sqlite3> | --remote | --d1-account <id> --d1-database <id> | --d1-local <dir> [--d1-name <name>]) [--json]";
+
+/** The database id of the wrangler.toml [[d1_databases]] block whose binding is
+ *  `binding`. Fails loudly when the block is missing or still carries the
+ *  placeholder a fresh checkout ships with. Reads only; prints nothing secret. */
+export function d1DatabaseIdFromWranglerToml(tomlPath, binding) {
+  const text = readFileSync(tomlPath, "utf8");
+  for (const block of text.split(/^[ \t]*\[\[d1_databases\]\][ \t]*(?:#[^\r\n]*)?\r?$/m).slice(1)) {
+    const body = block.split(/^[ \t]*\[/m)[0];
+    const bindingMatch = /^[ \t]*binding\s*=\s*(["'])([^"']+)\1/m.exec(body);
+    if (bindingMatch?.[2] !== binding) continue;
+    const idMatch = /^[ \t]*database_id\s*=\s*(["'])([^"']+)\1/m.exec(body);
+    const id = idMatch?.[2];
+    if (id === undefined || id.startsWith("REPLACE_WITH")) {
+      throw new Error(`wrangler.toml [[d1_databases]] binding "${binding}" has no database_id; set it to the id the migrations were applied to`);
+    }
+    return id;
+  }
+  throw new Error(`wrangler.toml has no [[d1_databases]] binding "${binding}"`);
+}
 
 /** Runs one build and returns the report. Exported for the tests. */
 export async function runBuild(target) {
   const started = Date.now();
   if (target.kind === "sqlite") {
-    const require = createRequire(import.meta.url);
     let bootDeck;
     let readNestIndexMarker;
     try {
-      ({ bootDeck } = require(path.join(DIST, "src/card/pods/deck.js")));
-      ({ readNestIndexMarker } = require(path.join(DIST, "src/card/nest-index.js")));
+      ({ bootDeck } = await import(new URL(`../../dist/src/card/pods/deck.js`, import.meta.url).href));
+      ({ readNestIndexMarker } = await import(new URL(`../../dist/src/card/nest-index.js`, import.meta.url).href));
     } catch (err) {
       throw Object.assign(new Error(`cannot load the compiled engine from ${DIST}: ${err.message}`), { usage: true });
     }
@@ -91,6 +112,18 @@ async function main() {
     const accountId = argValue(args, "--d1-account");
     const databaseId = argValue(args, "--d1-database");
     if (databaseId === undefined) fail(USAGE);
+    target = {
+      kind: "d1",
+      label: `d1:${databaseId}`,
+      open: () => ({ binding: d1HttpBinding({ accountId, databaseId }), label: `d1:${databaseId}` }),
+    };
+  } else if (args.includes("--remote")) {
+    // The deploy chain's form: the database id comes from the DB binding in
+    // wrangler.toml (the one the migrations were applied to), the account id
+    // from CLOUDFLARE_ACCOUNT_ID, the token from CLOUDFLARE_API_TOKEN.
+    const databaseId = d1DatabaseIdFromWranglerToml(path.join(REPO, "wrangler.toml"), "DB");
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    if (!accountId) fail("--remote needs CLOUDFLARE_ACCOUNT_ID in the environment");
     target = {
       kind: "d1",
       label: `d1:${databaseId}`,

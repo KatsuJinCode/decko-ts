@@ -5407,6 +5407,81 @@ function absolutizeWikiTarget(target: string, context: DeckoName | undefined): s
   }
 }
 
+/** OWNER of the per-link request-scoped memos below. Like the name module's
+ *  own memo owners (name.ts ABSOLUTE_MEMO), a module-level object keys one
+ *  memo per request scope in DeckoName.requestMemo; outside a request scope
+ *  the memo is undefined and every helper computes, unchanged. The memos hold
+ *  pure functions of the link text, the context name and the context-names
+ *  list only — never of engine state, so a hit is the same answer the call
+ *  would have computed. */
+const WIKI_LINK_MEMO = {};
+
+/** One memoized call of a string-keyed pure helper, within the request scope.
+ *  Outside a scope, the helper simply runs. */
+function memoizedWikiLink(
+  kind: string,
+  key: string,
+  compute: () => string,
+): string {
+  const memo = DeckoName.requestMemo<string>(WIKI_LINK_MEMO);
+  if (memo === undefined) return compute();
+  const memoKey = JSON.stringify([kind, key]);
+  const hit = memo.get(memoKey);
+  if (hit !== undefined) return hit;
+  const value = compute();
+  memo.set(memoKey, value);
+  return value;
+}
+
+/** absolutizeWikiTarget, memoized on the target text and the context name. */
+function absolutizeWikiTargetMemoized(
+  target: string,
+  context: DeckoName | undefined,
+): string {
+  if (context === undefined) return target;
+  return memoizedWikiLink("absolutize", JSON.stringify([context.s, target]), () =>
+    absolutizeWikiTarget(target, context),
+  );
+}
+
+/** link.rb's href form of a mark: the name's url_key, or — when the name does
+ *  not parse — the authored target with its spaces folded (the call site's
+ *  catch arm, lifted here so the memo covers both branches). */
+function wikiLinkUrlKey(hrefSource: string, targetTrimmed: string): string {
+  return memoizedWikiLink("urlKey", JSON.stringify([hrefSource, targetTrimmed]), () => {
+    try {
+      return DeckoName.parse(hrefSource).urlKey;
+    } catch (err) {
+      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+        return targetTrimmed.replace(/ /g, "_");
+      }
+      throw err;
+    }
+  });
+}
+
+/** linkFallbackTitle (the fully-stripped name, or the authored target when it
+ *  does not parse) — memoized on the target text. */
+function linkFallbackTitleMemoized(target: string): string {
+  return memoizedWikiLink("fallbackTitle", target, () => linkFallbackTitle(target));
+}
+
+/** linkTitleInContext (the title absolutized against the card and relativized
+ *  against the context names) — memoized on the title, the card name and the
+ *  context-names list. All three are per-request values here (the card is the
+ *  resolved name for this link, the list is this link's nest's context), so
+ *  the key covers every input. */
+function linkTitleInContextMemoized(
+  title: string,
+  cardName: DeckoName,
+  contextNames: readonly string[],
+): string {
+  if (contextNames.length === 0) return linkTitleInContext(title, cardName, contextNames);
+  return memoizedWikiLink("title", JSON.stringify([cardName.s, contextNames, title]), () =>
+    linkTitleInContext(title, cardName, contextNames),
+  );
+}
+
 /** The name the Link chunk's NEST SUBFORMAT is built on. link.rb:71-75
  *  `format.nest referee_name, options.merge(view: :link)` hands the nest the
  *  ABSOLUTIZED target (reference.rb:11-18 `referee_raw_name.absolute_name
@@ -5624,7 +5699,7 @@ export function expandWikiLinks(
     }
     // The fetch carries the CONTEXT-RESOLVED target (reference.rb:15
     // referee_name); the label/title keep the authored bytes.
-    const fetchTarget = absolutizeWikiTarget(targetTrimmed, context);
+    const fetchTarget = absolutizeWikiTargetMemoized(targetTrimmed, context);
     const namedLink = engine?.fetchRenderCard(fetchTarget);
     // view-fail class V4: same live-existence arm as renderLinkChunk — a
     // map miss consults the codename registry's memo (peekKnownCardName)
@@ -5658,18 +5733,11 @@ export function expandWikiLinks(
       }
     }
     let href: string;
-    try {
-      // link_to_card's mark path (links.rb:75-80) — the name's url_key
-      // form: spaces fold to underscores, `$` folds too (a live card whose
-      // name carries both).
-      href = `/${DeckoName.parse(hrefSource).urlKey}`;
-    } catch (err) {
-      if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
-        href = `/${targetTrimmed.replace(/ /g, "_")}`;
-      } else {
-        throw err;
-      }
-    }
+    // link_to_card's mark path (links.rb:75-80) — the name's url_key form:
+    // spaces fold to underscores, `$` folds too (a live card whose name
+    // carries both); an unparseable mark keeps the authored target with its
+    // spaces folded (wikiLinkUrlKey carries both arms).
+    href = `/${wikiLinkUrlKey(hrefSource, targetTrimmed)}`;
     // Card::Path#handle_unknown (card-mod-format path.rb:89-96) — same
     // wanted-mark query as renderLinkChunk above (mindfulness entry 28173).
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
@@ -5681,7 +5749,7 @@ export function expandWikiLinks(
     // with no label, the contextual parts (`_left`, `_self`, ...) and the
     // blank parts are dropped (cardname variants.rb fully_stripped), so a
     // bare `[[_left]]` titles "" (the Item+short structure's `<h2>`).
-    const displayText = label !== undefined ? label.trim() : linkFallbackTitle(targetTrimmed);
+    const displayText = label !== undefined ? label.trim() : linkFallbackTitleMemoized(targetTrimmed);
     // the span's title is NOT the authored bytes — it is
     // title_in_context(voo.title) as run inside the nest subformat
     // (linkTitleInContext above). The nest's `card.name` is the resolved
@@ -5702,7 +5770,7 @@ export function expandWikiLinks(
     const titleText =
       nestCard === undefined
         ? displayText
-        : linkTitleInContext(displayText, nestCard, nestContextNames);
+        : linkTitleInContextMemoized(displayText, nestCard, nestContextNames);
     // wrapped_title (title.rb:38-44): the span's title attribute carries
     // the same bytes as the display text (voo.title — link.rb options:
     // `title: link_text || fully_stripped name`, relativized above);

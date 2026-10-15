@@ -13,14 +13,21 @@
 
 import { randomBytes } from "node:crypto";
 
-/** ERB::Util.html_escape (Rails' h): the HTML_ESCAPE map. */
+const HTML_ESCAPE_MAP: Readonly<Record<string, string>> = {
+  "&": "&amp;",
+  ">": "&gt;",
+  "<": "&lt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+const HTML_ESCAPE_CHARS = /[&<>"']/g;
+
+/** ERB::Util.html_escape (Rails' h): the HTML_ESCAPE map. One pass over the
+ *  string: every replacement emits only characters the pass never rewrites,
+ *  so the single pass is the same bytes as escaping `&` first and the rest
+ *  after it, and a string with nothing to escape comes back unchanged. */
 export function h(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/>/g, "&gt;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return s.replace(HTML_ESCAPE_CHARS, (ch) => HTML_ESCAPE_MAP[ch]!);
 }
 
 /** Ruby CGI.escape (Ruby 3.3 verified: unreserved [A-Za-z0-9_.~-] pass

@@ -59,6 +59,14 @@ const RELATIVE_FRAGMENT_REGEXP = new RegExp(`^${RELATIVE_REGEXP_SOURCE}$`);
 const RUBY_WHITESPACE = " \t\n\v\f\r";
 const RUBY_SPLIT_AROUND_JOINT = new RegExp(`[${RUBY_WHITESPACE}]*\\+[${RUBY_WHITESPACE}]*`);
 const RUBY_BLANK = new RegExp(`^[${RUBY_WHITESPACE}]*$`);
+// Built once: rubyStrip and the url_key variant run on every name construction
+// and link, and compiling these patterns on each call showed up as self time
+// in the warm-render CPU profile. String#replace resets lastIndex on a global
+// pattern, so sharing the instance is safe.
+const RUBY_EDGE_WHITESPACE = new RegExp(`^[${RUBY_WHITESPACE}]+|[${RUBY_WHITESPACE}]+$`, "g");
+const RUBY_STRIP_EDGES = new RegExp(`^[${RUBY_WHITESPACE}\0]+|[${RUBY_WHITESPACE}\0]+$`, "g");
+/** DeckoName#urlKey per instance (see the getter). */
+const URL_KEY_MEMO = new WeakMap<object, string>();
 
 /** Marks recognized by Card::Name.new / id_from_string (lib/card/name.rb). */
 const ID_MARK_REGEXP = /^~(\d+)$/;
@@ -69,10 +77,7 @@ const OK_FOR_KEY_CLASS = "\\p{L}\\p{M}\\p{Nd}\\p{Pc}";
 const NOT_OK_FOR_KEY = new RegExp(`[^${OK_FOR_KEY_CLASS}\\*]+`, "gu");
 
 function rubyStrip(str: string): string {
-  return str.replace(
-    new RegExp(`^[${RUBY_WHITESPACE}\0]+|[${RUBY_WHITESPACE}\0]+$`, "g"),
-    "",
-  );
+  return str.replace(RUBY_STRIP_EDGES, "");
 }
 
 /** Ruby String#length: character (codepoint) count. */
@@ -658,16 +663,24 @@ export class DeckoName {
 
   // ~~~~~~~~~~~~~~~~~ variants.rb ~~~~~~~~~~~~~~~~~
 
-  /** URI-friendly version; keeps case, underscores for space (variants.rb #url_key). */
+  /** URI-friendly version; keeps case, underscores for space (variants.rb #url_key).
+   *  A pure function of the instance's parts, which are fixed at construction
+   *  and never change (the instance is frozen), so each instance computes it
+   *  once. A page links the same name many times; the name cache returns the
+   *  same instance for the same text. */
   get urlKey(): string {
-    return this.nameParts
+    const known = URL_KEY_MEMO.get(this);
+    if (known !== undefined) return known;
+    const key = this.nameParts
       .map((part) => {
         const stripped = decodeHtmlEntities(part.s)
           .replace(NOT_OK_FOR_KEY, " ")
-          .replace(new RegExp(`^[${RUBY_WHITESPACE}]+|[${RUBY_WHITESPACE}]+$`, "g"), "");
+          .replace(RUBY_EDGE_WHITESPACE, "");
         return stripped.replace(/[ \t\r\n\f\v_]+/g, "_");
       })
       .join(DeckoName.JOINT);
+    URL_KEY_MEMO.set(this, key);
+    return key;
   }
 
   /** HTML-id-safe key; '*' becomes X, joint becomes '-' (variants.rb #safe_key). */

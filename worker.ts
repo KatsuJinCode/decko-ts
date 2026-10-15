@@ -25,6 +25,7 @@
 // tests/deploy/worker-twins-shared-surface-parity.test.ts.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
+import { edgeCacheArmed, edgeRouteCacheClass, readEdgeCacheStamp, resolveEdgeCache, serveWithEdgeCache } from "./deploy/src/worker-edge-cache.js";
 import {
   cloudflareAfterResponse,
   handleDelayedJobQueueBatch,
@@ -74,6 +75,8 @@ import {
 } from "./src/server/worker-shared-surface.js";
 
 interface Env {
+  DECKO_EDGE_CACHE?: string;
+  DECKO_EDGE_CACHE_TTL?: string;
   /** D1 binding declared in wrangler.toml [[d1_databases]]. */
   DB: D1DatabaseLike;
   /** "1" arms the /setup first-run window (checked together with the write path). */
@@ -257,12 +260,12 @@ function parsePath(pathname: string): ParsedPath {
 // points at, so the tests and the deployed Worker run the same code.
 export { parsePath };
 
-function html(status: number, body: string): Response {
+function html(status: number, body: string, anonymousPage = false): Response {
   return new Response(body, {
     status,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
+      "Cache-Control": anonymousPage ? "public, max-age=0" : "no-store",
     },
   });
 }
@@ -381,6 +384,17 @@ export default {
   },
 
   async fetch(request: Request, env: Env, ctx?: WaitUntilContext): Promise<Response> {
+    if (edgeCacheArmed(env) && edgeRouteCacheClass(request.method, new URL(request.url).pathname) !== "uncacheable") {
+      return serveWithEdgeCache(request, env, {
+        cache: resolveEdgeCache(),
+        stamp: () => readEdgeCacheStamp(new CloudflareD1Adapter(env.DB)),
+        render: anonymousPage => this.fetchUncached(request, env, ctx, anonymousPage),
+      });
+    }
+    return this.fetchUncached(request, env, ctx);
+  },
+
+  async fetchUncached(request: Request, env: Env, ctx?: WaitUntilContext, anonymousPage = false): Promise<Response> {
     const url = new URL(request.url);
     const attachmentStore = attachmentStoreFor(env);
 
@@ -520,7 +534,7 @@ export default {
         view,
         historyViewParams(url.searchParams),
       );
-      return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody));
+      return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody), anonymousPage && view === "open");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // The Card::Error status_code table (card 1.110.0 lib/card/error.rb),

@@ -99,6 +99,10 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // index itself is built by tools/deploy/build-nest-index.mjs after the
   // migrations; the edge boot reads this table and never builds in a request.
   { filename: "0013-nest-index-meta.sql", number: "0013" },
+  // The undo journal's lock row (src/server/drivers/undo-journal.ts). Created
+  // up front so a read on a never-written database answers in its first
+  // batch; the journal's own CREATE TABLE IF NOT EXISTS then does nothing.
+  { filename: "0014-undo-journal-lock-state.sql", number: "0014" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

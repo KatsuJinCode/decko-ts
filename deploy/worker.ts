@@ -34,6 +34,7 @@
 // docs/deploy-cloudflare.md.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/d1.js";
+import { edgeCacheArmed, edgeRouteCacheClass, readEdgeCacheStamp, resolveEdgeCache, serveWithEdgeCache } from "./src/worker-edge-cache.js";
 import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
 import { readNestIndexMarker } from "../src/card/nest-index.js";
@@ -68,6 +69,8 @@ import type { HistoryRenderParams } from "../src/card/history/render-seam.js";
 
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
 interface Env {
+  DECKO_EDGE_CACHE?: string;
+  DECKO_EDGE_CACHE_TTL?: string;
   DB: D1DatabaseLike;
   /** OPTIONAL secret binding. /__metrics answers only when this is bound and
    *  the request carries the matching token (see metricsAuthorized). Absent
@@ -423,10 +426,10 @@ const PAGE_HEAD_TAGS =
   `<script src="/assets/all-script.js" defer></script>` +
   `<script src="/assets/decko-config.js" defer></script>`;
 
-function htmlResponse(status: number, body: string): Response {
+function htmlResponse(status: number, body: string, anonymousPage = false): Response {
   return new Response(body, {
     status,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": anonymousPage ? "public, max-age=0" : "no-store" },
   });
 }
 
@@ -540,6 +543,7 @@ async function renderCardPage(
   cardName: string,
   requestedView = OPEN_VIEW,
   params: HistoryRenderParams = {},
+  anonymousPage = false,
 ): Promise<Response> {
   try {
     await warmMark(deck, cardName);
@@ -564,6 +568,7 @@ async function renderCardPage(
         `<div class="card-view" data-card="${escapeHtml(cardName)}" data-view="${escapeHtml(requestedView)}">${view}</div>` +
         `<p><a href="/${encodeURIComponent(cardName)}.json">record JSON</a> · <a href="/_status">status</a></p>` +
         `</div></article></body></html>`,
+      anonymousPage && requestedView === OPEN_VIEW,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -785,6 +790,21 @@ export default {
   },
 
   async handle(request: Request, env: Env): Promise<Response> {
+    if (edgeCacheArmed(env) && edgeRouteCacheClass(request.method, new URL(request.url).pathname) !== "uncacheable") {
+      return serveWithEdgeCache(request, env, {
+        cache: resolveEdgeCache(),
+        stamp: () => {
+          const driver = new CloudflareD1Adapter(env.DB);
+          observeDriverQueries(driver, recorder());
+          return readEdgeCacheStamp(driver);
+        },
+        render: anonymousPage => this.handleRoute(request, env, anonymousPage),
+      });
+    }
+    return this.handleRoute(request, env);
+  },
+
+  async handleRoute(request: Request, env: Env, anonymousPage = false): Promise<Response> {
     const url = new URL(request.url);
     // Normalize: drop one trailing slash ("/Home/" and "/Home" are one card).
     const pathname = url.pathname.replace(/\/+$/, "") || "/";
@@ -844,6 +864,7 @@ export default {
         HOME_CARD_NAME,
         queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
         historyViewParams(new URL(request.url).searchParams),
+        anonymousPage,
       );
     }
 
@@ -962,6 +983,7 @@ export default {
       route.name,
       route.view ?? queryViewFromUrl(new URL(request.url)) ?? OPEN_VIEW,
       historyViewParams(new URL(request.url).searchParams),
+      anonymousPage,
     );
   },
 };

@@ -58,6 +58,9 @@ const ENTITY_RE = /&(#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g;
  * when unknown.
  */
 export function decodeHtmlEntities(str: string): string {
+  // Every match of ENTITY_RE begins with "&", so a string without one has
+  // nothing to decode and comes back as the same string.
+  if (!str.includes("&")) return str;
   return str.replace(ENTITY_RE, (match, body: string) => {
     if (body.startsWith("#")) {
       const isHex = body[1] === "x" || body[1] === "X";
