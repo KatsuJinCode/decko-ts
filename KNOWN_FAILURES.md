@@ -35,12 +35,3 @@ believing it; if it fails alone, it is a real failure and belongs in the table.
   tests fails, a different subset each time.
 - `tests/server/blob-bunny-mock.test.ts` — runs a mock storage server on a
   loopback port, which can lose the port under load (`fetch failed`).
-
-## A suite that reports a failure when a prerequisite is missing
-
-`tests/tools/mod-porting-harness/format-census-view-set.test.ts` compares
-against an installed Ruby gem tree. Where that tree is present it runs and
-passes. Where it is not, Vitest still evaluates the suite's `describe.skip`
-body to collect test names, the Ruby call at the top of that body aborts, and
-the file is reported as a failed suite with no tests run, carrying the
-missing-directory message. That names a missing prerequisite, not a defect.

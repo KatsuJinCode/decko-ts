@@ -50,6 +50,12 @@ process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
 process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 // A fresh deck served as stock Decko serves it (see vm-staging-server.mjs).
 process.env.DECKO_DECK_PROFILE = "stock";
+// The asset refresh is never run, as the Ruby server sets Cardio.config.asset_refresh
+// = :never (ruby-server.rb; contract.json "assets-never-refreshed"): the deck
+// build compiled the script and style outputs, and a render never rewrites them.
+// A cautious refresh here would compile the skin with an SCSS compiler this
+// harness does not configure, and would write rows the reference never writes.
+process.env.DECKO_ASSET_REFRESH ??= "never";
 // The mods' public files (TinyMCE's theme, ace's modes): the same files the
 // Ruby oracle app serves from public/mod/<mod> (decko setup links each mod's
 // public directory). run-all forwards its --decko checkout here; otherwise

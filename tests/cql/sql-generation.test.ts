@@ -41,12 +41,12 @@ describe("single-table queries", () => {
 
   it("hash-valued type ties with conditions in WHERE and trash in ON [oracle]", () => {
     // oracle:
-    // SELECT DISTINCT c0.*, c0.id FROM cards c0
+    // SELECT DISTINCT c0.* FROM cards c0
     //  JOIN cards c1 ON c0.type_id = c1.id AND c1.trash is false  WHERE c1.codename = 'type' AND c0.trash is false
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ type: { codename: "type" } })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 JOIN cards c1 ON c0.type_id = c1.id AND c1.trash is false WHERE c1.codename = ? AND c0.trash is false ORDER BY c0.id asc",
+        "SELECT DISTINCT c0.* FROM cards c0 JOIN cards c1 ON c0.type_id = c1.id AND c1.trash is false WHERE c1.codename = ? AND c0.trash is false",
       params: ["type"],
     });
   });
@@ -155,57 +155,51 @@ describe("limit / offset / count quirks", () => {
 });
 
 describe("sorting", () => {
-  // Every SINGLE-TABLE ORDER BY carries a viewer-shaped tie-breaker
-  // (sql.ts orderDirectivesOf): Ruby declares none, so the unspecified tier
-  // is plan-shaped — it depends on how SQLite walks the table — and the
-  // reference rendering embeds two distinct shapes.
-  // Permission-filtered scans (read_rule_id IN lists) walk one loop per
-  // list value in rowid order, so their ties resolve
-  // `c0.read_rule_id asc, c0.id asc`. Always-ok scans carry no permission
-  // condition and their ties follow the primary's direction: id DESC under
-  // a descending primary, id ASC under an ascending one.
-  // JOINED statements never take the tie-breaker: with a join in flight
-  // the unspecified tier is the JOIN EMISSION order (the driving table's
-  // rowid sequence), and appending `c0.id asc` re-sorts that tier away
-  // from the reference rendering.
+  // Ruby's Order (card/query/sql_statement/order.rb) emits one directive per
+  // sort token in that token's own direction, adds each directive's field to
+  // the select list (`@fields += ", #{field}"`), and declares no tie-break.
+  // Tied rows therefore come out in whatever order SQLite's plan yields for
+  // the statement; this port emits the same directives and no id tie-breaker.
+  // Expectations below are derived from order.rb, not from running the port.
   it("ORDER_MAP mapping and default dir [oracle: sort: 'update' -> ORDER BY c0.updated_at desc]", () => {
     expect(sql({ sort: "update" }).sql).toBe(
-      "SELECT c0.*, c0.updated_at, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.id desc",
+      "SELECT c0.*, c0.updated_at FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc",
     );
   });
 
-  it("filtered scan ties read_rule_id asc, then id asc [captured: signed-in *search tie cohorts]", () => {
+  it("filtered scan emits the sort directive alone, no read_rule_id or id tie tier [order.rb]", () => {
     expect(sql({ sort: "relevance" }, { alwaysOk: false, readRuleIds: [6568, 7786] }).sql).toBe(
-      "SELECT c0.*, c0.updated_at, c0.read_rule_id, c0.id FROM cards c0 WHERE c0.trash is false AND c0.read_rule_id IN (?,?) ORDER BY c0.updated_at desc, c0.read_rule_id asc, c0.id asc",
+      "SELECT c0.*, c0.updated_at FROM cards c0 WHERE c0.trash is false AND c0.read_rule_id IN (?,?) ORDER BY c0.updated_at desc",
     );
   });
 
-  it("filtered key primary keeps the key-index tier: id asc alone [captured: Image member search NULL-key cohort]", () => {
+  it("filtered key primary emits the key directive alone [order.rb]", () => {
     expect(sql({ sort: "name" }, { alwaysOk: false, readRuleIds: [6568, 7786] }).sql).toBe(
-      "SELECT c0.*, c0.key, c0.id FROM cards c0 WHERE c0.trash is false AND c0.read_rule_id IN (?,?) ORDER BY c0.key asc, c0.id asc",
+      "SELECT c0.*, c0.key FROM cards c0 WHERE c0.trash is false AND c0.read_rule_id IN (?,?) ORDER BY c0.key asc",
     );
   });
 
   it("explicit sort_dir [oracle: ... ORDER BY c0.key desc]", () => {
     expect(sql({ return: "name", sort: "name", sort_dir: "desc" }).sql).toBe(
-      "SELECT c0.name, c0.left_id, c0.right_id, c0.key, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.key desc, c0.id desc",
+      "SELECT c0.name, c0.left_id, c0.right_id, c0.key FROM cards c0 WHERE c0.trash is false ORDER BY c0.key desc",
     );
   });
 
   it("multiple sorts with per-directive dirs [oracle: ORDER BY c0.updated_at desc, c0.key asc]", () => {
     expect(sql({ sort: ["update", "name"], sort_dir: ["desc", "asc"] }).sql).toBe(
-      "SELECT c0.*, c0.updated_at, c0.key, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.key asc, c0.id desc",
+      "SELECT c0.*, c0.updated_at, c0.key FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.key asc",
     );
   });
 
-  it("sort: id does not double the tie-breaker (the directive is already total)", () => {
+  it("sort: id emits its own directive and selects c0.id [order.rb]", () => {
     expect(sql({ sort: "id" }).sql).toBe(
       "SELECT c0.*, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.id asc",
     );
   });
 
   it("deprecated dir behaves like sort_dir [oracle]", () => {
-    expect(sql({ sort: "name", dir: "desc" }).sql).toContain("ORDER BY c0.key desc, c0.id desc");
+    expect(sql({ sort: "name", dir: "desc" }).sql).toContain("ORDER BY c0.key desc");
+    expect(sql({ sort: "name", dir: "desc" }).sql).not.toContain("c0.id");
   });
 
   it("sort hash builds the LEFT JOIN and orders by the joined field [oracle]", () => {
@@ -223,9 +217,9 @@ describe("sorting", () => {
     );
   });
 
-  it("sort_as casts the field (SQLite type approximation)", () => {
-    expect(sql({ sort: "name", sort_as: "numeric" }).sql).toContain(
-      "ORDER BY CAST(c0.key AS REAL) asc, c0.id asc",
+  it("sort_as casts the field (SQLite type approximation) [order.rb order_as]", () => {
+    expect(sql({ sort: "name", sort_as: "numeric" }).sql).toBe(
+      "SELECT c0.*, CAST(c0.key AS REAL) FROM cards c0 WHERE c0.trash is false ORDER BY CAST(c0.key AS REAL) asc",
     );
   });
 });
@@ -278,14 +272,14 @@ describe("plus relational", () => {
 describe("negation", () => {
   it("not with a hash value [oracle]", () => {
     // oracle:
-    // SELECT DISTINCT c0.*, c0.id FROM cards c0
+    // SELECT DISTINCT c0.* FROM cards c0
     //  LEFT JOIN cards c1 ON c0.id = c1.id AND c1.type_id = '-999' AND c1.trash is false  WHERE c1.id is null AND c0.trash is false
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ not: { type: "User" } })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "LEFT JOIN cards c1 ON c0.id = c1.id AND c1.type_id = ? AND c1.trash is false " +
-        "WHERE c1.id is null AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE c1.id is null AND c0.trash is false",
       params: [-999],
     });
   });
@@ -294,9 +288,9 @@ describe("negation", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ not: "Foo" })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "LEFT JOIN cards c1 ON c0.id = c1.id AND c1.id = ? AND c1.trash is false " +
-        "WHERE c1.id is null AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE c1.id is null AND c0.trash is false",
       params: [-2],
     });
   });
@@ -305,10 +299,10 @@ describe("negation", () => {
     // oracle: {not: {type: "User"}, or: [{created_by: "A"}, {not: {created_by: "B"}}]}
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ not: { type: "User" }, or: [{ created_by: "A" }, { not: { created_by: "B" } }] }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "LEFT JOIN cards c1 ON c0.id = c1.id AND c1.type_id = ? AND c1.trash is false " +
         "LEFT JOIN cards c2 ON c0.id = c2.id AND c2.creator_id = ? AND c2.trash is false " +
-        "WHERE (c1.id is null AND (c0.creator_id = ? OR c2.id is null)) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (c1.id is null AND (c0.creator_id = ? OR c2.id is null)) AND c0.trash is false",
     );
   });
 });
@@ -340,10 +334,10 @@ describe("conjunction groups", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ any: [{ edited_by: "Joe" }] })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "LEFT JOIN (card_actions cn1 JOIN card_acts cx2 ON cn1.card_act_id = cx2.id " +
         "JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false) ON c0.id = cn1.card_id " +
-        "WHERE c3.id = ? AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE c3.id = ? AND c0.trash is false",
       params: [-2],
     });
   });
@@ -352,18 +346,18 @@ describe("conjunction groups", () => {
 describe("editor / act chains", () => {
   it("edited_by [oracle]", () => {
     // oracle:
-    // SELECT DISTINCT c0.*, c0.id FROM cards c0
+    // SELECT DISTINCT c0.* FROM cards c0
     //  JOIN card_actions cn1 ON c0.id = cn1.card_id
     //  JOIN card_acts cx2 ON cn1.card_act_id = cx2.id
     //  JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false  WHERE c3.id = '-2' AND c0.trash is false
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ edited_by: "Joe" })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_actions cn1 ON c0.id = cn1.card_id " +
         "JOIN card_acts cx2 ON cn1.card_act_id = cx2.id " +
         "JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false " +
-        "WHERE c3.id = ? AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE c3.id = ? AND c0.trash is false",
       params: [-2],
     });
   });
@@ -371,33 +365,33 @@ describe("editor / act chains", () => {
   it("editor_of [oracle: cx1 / cn2 / c3 order]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ editor_of: "Joe" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_acts cx1 ON c0.id = cx1.actor_id " +
         "JOIN card_actions cn2 ON cx1.id = cn2.card_act_id " +
         "JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is false " +
-        "WHERE c3.id = ? AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE c3.id = ? AND c0.trash is false",
     );
   });
 
   it("updated_by adds the action_type condition [oracle: (cn1.action_type = 1 AND c3.id = '-2')]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ updated_by: "Joe" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_actions cn1 ON c0.id = cn1.card_id " +
         "JOIN card_acts cx2 ON cn1.card_act_id = cx2.id " +
         "JOIN cards c3 ON cx2.actor_id = c3.id AND c3.trash is false " +
-        "WHERE (cn1.action_type = 1 AND c3.id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cn1.action_type = 1 AND c3.id = ?) AND c0.trash is false",
     );
   });
 
   it("updater_of [oracle: (cn2.action_type = 1 AND c3.id = '-2')]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ updater_of: "Joe" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_acts cx1 ON c0.id = cx1.actor_id " +
         "JOIN card_actions cn2 ON cx1.id = cn2.card_act_id " +
         "JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is false " +
-        "WHERE (cn2.action_type = 1 AND c3.id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cn2.action_type = 1 AND c3.id = ?) AND c0.trash is false",
     );
   });
 
@@ -410,7 +404,7 @@ describe("editor / act chains", () => {
   it("last_editor_of ties on updater_id [oracle: JOIN cards c1 ON c0.id = c1.updater_id]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ last_editor_of: "Joe" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 JOIN cards c1 ON c0.id = c1.updater_id AND c1.trash is false WHERE c1.id = ? AND c0.trash is false ORDER BY c0.id asc",
+      "SELECT DISTINCT c0.* FROM cards c0 JOIN cards c1 ON c0.id = c1.updater_id AND c1.trash is false WHERE c1.id = ? AND c0.trash is false",
     );
   });
 });
@@ -420,9 +414,9 @@ describe("references", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ refer_to: "A" })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referer_id " +
-        "WHERE (cr1.ref_type IN (?,?) AND cr1.referee_id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cr1.ref_type IN (?,?) AND cr1.referee_id = ?) AND c0.trash is false",
       params: ["L", "I", -999],
     });
   });
@@ -431,9 +425,9 @@ describe("references", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ link_to: "A" })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referer_id " +
-        "WHERE (cr1.ref_type = ? AND cr1.referee_id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cr1.ref_type = ? AND cr1.referee_id = ?) AND c0.trash is false",
       params: ["L", -999],
     });
   });
@@ -442,10 +436,10 @@ describe("references", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ referred_to_by: { right: "A" } })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referee_id " +
         "JOIN cards c2 ON cr1.referer_id = c2.id AND c2.trash is false " +
-        "WHERE (cr1.ref_type IN (?,?) AND c2.right_id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cr1.ref_type IN (?,?) AND c2.right_id = ?) AND c0.trash is false",
       params: ["L", "I", -999],
     });
   });
@@ -454,9 +448,9 @@ describe("references", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ refer_to: ["or", 5, 6] })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referer_id " +
-        "WHERE (cr1.ref_type IN (?,?) AND cr1.referee_id in (?,?)) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cr1.ref_type IN (?,?) AND cr1.referee_id in (?,?)) AND c0.trash is false",
       params: ["L", "I", 5, 6],
     });
   });
@@ -464,21 +458,21 @@ describe("references", () => {
   it("AND lists make one join per id [oracle: cr1 + cr2]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ refer_to: [5, 6] }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referer_id " +
         "JOIN card_references cr2 ON c0.id = cr2.referer_id " +
-        "WHERE ((cr1.ref_type IN (?,?) AND cr1.referee_id = ?) AND (cr2.ref_type IN (?,?) AND cr2.referee_id = ?)) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE ((cr1.ref_type IN (?,?) AND cr1.referee_id = ?) AND (cr2.ref_type IN (?,?) AND cr2.referee_id = ?)) AND c0.trash is false",
     );
   });
 
   it("member_of [oracle: full three-join shape]", () => {
     // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
     expect(sql({ member_of: "A" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+      "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN card_references cr1 ON c0.id = cr1.referee_id " +
         "JOIN cards c2 ON cr1.referer_id = c2.id AND c2.trash is false " +
         "JOIN cards c3 ON c2.right_id = c3.id AND c3.trash is false " +
-        "WHERE (cr1.ref_type IN (?,?) AND (c2.left_id = ? AND c3.codename = ?)) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (cr1.ref_type IN (?,?) AND (c2.left_id = ? AND c3.codename = ?)) AND c0.trash is false",
     );
   });
 

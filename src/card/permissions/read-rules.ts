@@ -797,7 +797,7 @@ export function expireRuleResolutionCache(driver: SQLDatabaseDriver): void {
  * the planner OFF cards_trash_index in the seed and the recursive arms;
  * + is a value no-op.
  */
-const RULE_KEY_UNIVERSE_STATEMENT =
+export const RULE_KEY_UNIVERSE_STATEMENT =
   `WITH RECURSIVE resolved(id, ckey) AS (\n` +
   `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND +trash = 0\n` +
   `  UNION\n` +

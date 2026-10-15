@@ -419,26 +419,19 @@ describe("bunny edge history page-path seam — full chrome on the three views",
   });
 
   it("an act_id that resolves to nothing stays the engine's error contract (no silent fallback)", async () => {
-    // Ruby: act_from_context raises Card::NotFound for an unknown act_id.
-    // The port's render dispatch maps the raise to its error page through
-    // the same catch as before the seam — the param now REACHES the engine
-    // instead of being silently dropped on the wire-key floor (at base this
-    // request answered 200 with the fallback act).
-    //
-    // FOLD-11 UNION ADJUDICATION: this lane and p2-error-shell are SIBLING
-    // branches off 12bd5236 — they were never integrated on the lineage.
-    // The former toContain("act not found") asserted the bare layoutPage
-    // 500's message-in-body surface (the pre-error-shell catch shape). At
-    // the union, the p2-error-shell contract governs the 500 shape: the
-    // Wild Card full-chrome page whose body carries the message NOWHERE
-    // (the escape-falsification contract). The raise still happens and the
-    // error status still answers — the no-silent-fallback contract this pin
-    // exists for is carried by the status assertion + the chrome identity;
-    // the message-surface assertion is superseded, recorded here and in
-    // an internal work log
+    // Ruby: act_from_context raises Card::NotFound for an unknown act_id
+    // (act_listing.rb:12 `Act.find(act_id) || raise(Card::NotFound, "act not found")`).
+    // Card::NotFound is a UserError with status_code 404 and the :not_found
+    // view (error.rb:88-91) — so an unknown act answers the 404 not-found
+    // chrome, NOT the 500 server-error ("Wild Card") page. The param REACHES
+    // the engine (it is translated off the wire-key floor), so the raise
+    // happens instead of a silent fallback to the last-act body.
     const { status, body } = await getBody("/History_Probe_Renamed/act?act_id=999999999");
-    expect(status).toBeGreaterThanOrEqual(400);
-    expect(body).toContain("Wild Card");
+    expect(status).toBe(404);
+    expect(body).toContain("Could not find");
+    // the 500 server-error chrome is the WRONG surface for a NotFound
+    expect(body).not.toContain("Wild Card");
+    // no silent fallback to the no-param act body
     expect(body).not.toContain(FIXTURE.rendered["probe#act(no_param)"].slice(0, 60));
   });
 });

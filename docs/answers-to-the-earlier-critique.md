@@ -280,9 +280,12 @@ resulting card and the `mail` sent, and every sign-in's answer carries
 Two honesty notes belong here, because the critique asked for the boundary and
 the repository states it elsewhere:
 
-- The side-effects battery on the committed clean deck is **83 of its 87 public
-  steps matching**, 4 declared deliberate differences and none open, with 3 more
-  steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). It is not
+- The side-effects battery on the committed clean deck is **80 of its 87 public
+  steps matching**, 7 declared deliberate differences and none open, with 3 more
+  steps withheld until disclosure ([docs/SECURITY.md](SECURITY.md)). Three of
+  the declared differences are the approved security divergence on sign-in
+  answers (divergence 4); the other four are Ruby's own crashes and
+  wall-clock names. It is not
   presented as a clean sweep.
 - The corpus figure is not purely oracle-against-oracle: fifty of its
   expected entries are bytes fetched from a live site running an earlier Decko,
@@ -347,7 +350,7 @@ row delta against the Ruby oracle's: of the 67 public operations, 65 are
 identical and 2 are declared deliberate differences, and 3 more are withheld
 until disclosure ([coverage-inventory.md](coverage-inventory.md), "The public
 batteries, accounted"). The 90-step scenario battery does the same for
-verdicts: of 87 public steps, 83 match, 4 are declared and none is open, with 3
+verdicts: of 87 public steps, 80 match, 7 are declared and none is open, with 3
 withheld.
 
 The deeper evidence is named but is explicitly **not** public: the production-deck

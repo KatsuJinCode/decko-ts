@@ -15,6 +15,7 @@
 import type { SQLDatabaseDriver } from "./driver.js";
 import { DeckoName } from "../card/name.js";
 import type { FetchEngine } from "../card/fetch.js";
+import type { HistoryRenderParams } from "../card/history/render-seam.js";
 
 // ---------------------------------------------------------------------------
 // Error -> HTTP status mapping (the Card::Error status_code table)
@@ -55,6 +56,9 @@ export function mapRenderError(message: string): RenderErrorPage {
     return { status: 404, title: "Card not found" };
   }
   if (/^view \(/.test(message)) return { status: 422, title: "Unsupported view" };
+  // act_listing.rb:12 `Act.find(act_id) || raise(Card::NotFound, "act not found")`
+  // - Card::NotFound (error.rb:88-91) is 404 with the :not_found view.
+  if (/^act not found$/.test(message)) return { status: 404, title: "Card not found" };
   return { status: 500, title: "Render error" };
 }
 
@@ -136,11 +140,11 @@ export function queryViewFromUrl(url: URL): string | undefined {
   return undefined;
 }
 
-/** The query keys the history views read (render.ts HistoryRenderParams —
- *  act.rb's act_from_context "act_id" / "action_id" and the act-list
- *  paging keys). Other views ignore them, so passing them unconditionally
- *  is the faithful shape: Rack hands the controller ALL params and the
- *  views pick. */
+/** The wire query keys the history views read (render.ts HistoryRenderParams —
+ *  act_listing.rb:9-13 act_from_context "act_id", actions.rb:34-40
+ *  "action_id", and the act_listing_opts_from_params / paging keys).
+ *  Other views ignore them, so passing them unconditionally is the faithful
+ *  shape: Rack hands the controller ALL params and the views pick. */
 const HISTORY_PARAM_KEYS = [
   "act_id",
   "action_id",
@@ -152,19 +156,52 @@ const HISTORY_PARAM_KEYS = [
 ] as const;
 
 /**
- * Extract the history-view params from a request's query string, for the
- * render call's HistoryRenderParams argument. The root entry extracted
- * these since the history views landed; the deploy entry dropped them
- * (its render call was 2-arg, so `?act_id=` silently rendered the
- * no-param fallback). Both entries now call this and pass the result.
+ * Translate the WIRE query keys the engine's history seam actually reads.
+ *
+ * WHY THIS EXISTS: the seam's readers use camelCase fields on
+ * HistoryRenderParams (`actId`, `actionId`, ... — the URL params
+ * `act_from_context` inspects are snake_case). The worker entries parse the
+ * query string into snake_case wire keys, so without this translation
+ * `?act_id=<real>` arrived with `params.actId` undefined and act_from_context
+ * silently took its no-param fallback branch, rendering the last-act view
+ * for every act_id. The Bunny edge entry already had this exact
+ * translation (deploy/bunny-worker-src/bunny-edge-engine-request.ts#historyRenderParamsFromWire)
+ * and its seam pins; this is that same mapping moved to the shared
+ * surface so BOTH twins use one copy. Keys absent from the query are absent
+ * from the result; present values pass verbatim (the views own the integer /
+ * enum parsing, matching the bunny entry).
  */
-export function historyViewParams(searchParams: URLSearchParams): Record<string, string> {
-  const params: Record<string, string> = {};
+export function historyRenderParamsFromWire(
+  params: Record<string, string> | undefined,
+): HistoryRenderParams {
+  if (params === undefined) return {};
+  const out: HistoryRenderParams = {};
+  if (params["act_id"] !== undefined) out.actId = params["act_id"];
+  if (params["action_id"] !== undefined) out.actionId = params["action_id"];
+  if (params["act_seq"] !== undefined) out.actSeq = params["act_seq"];
+  if (params["action_view"] !== undefined) out.actionView = params["action_view"];
+  if (params["hide_diff"] !== undefined) out.hideDiff = params["hide_diff"];
+  if (params["act_context"] !== undefined) out.actContext = params["act_context"];
+  if (params["page"] !== undefined) out.page = params["page"];
+  return out;
+}
+
+/**
+ * Extract the history-view params from a request's query string, for the
+ * render call's HistoryRenderParams argument, TRANSLATED into the camelCase
+ * fields the seam reads. The root entry extracted the wire keys since the
+ * history views landed; the deploy entry dropped them (its render call was
+ * 2-arg, so `?act_id=` silently rendered the no-param fallback); and
+ * BOTH entries passed the snake_case keys straight through, so act_id was
+ * inert even once threaded. This now returns the seam's own param shape.
+ */
+export function historyViewParams(searchParams: URLSearchParams): HistoryRenderParams {
+  const wire: Record<string, string> = {};
   for (const key of HISTORY_PARAM_KEYS) {
     const value = searchParams.get(key);
-    if (value !== null) params[key] = value;
+    if (value !== null) wire[key] = value;
   }
-  return params;
+  return historyRenderParamsFromWire(wire);
 }
 
 /**

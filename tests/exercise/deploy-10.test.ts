@@ -427,8 +427,17 @@ describe("background jobs under card-mod-delayed_job's default config", () => {
     "Jobs. The delayed-job backend is ported (the compatibility report marks `card-mod-delayed_job` declared-complete as a backend port). With the mod's default config, delaying is false, so a card create runs its integrate_with_delay work in line as Ruby does: the deck's background queue stays empty, no job table grows, and nothing runs afterwards",
     async () => {
       // --- the committed report records a backend port ----------------------
+      // The classification verdict lives in the per-mod table. The report's
+      // behavioural table above it also names every mod, but its row says what
+      // the behavioural grade is, not the classification, so search only from
+      // the per-mod heading down.
       const markdown = readFileSync(join(REPO_ROOT, "tools", "compat-report", "mod-compat-report.md"), "utf8");
-      const row = markdown.split("\n").find((line) => line.includes("| `card-mod-delayed_job-"));
+      const perModStart = markdown.indexOf("\n## Per-mod report\n");
+      expect(perModStart).toBeGreaterThan(-1);
+      const row = markdown
+        .slice(perModStart)
+        .split("\n")
+        .find((line) => line.includes("| `card-mod-delayed_job-"));
       expect(row).toBeDefined();
       expect((row as string).split("|").map((cell) => cell.trim())).toContain("declared-complete");
       expect(row).toContain("backend port (src/card/delayed-job/delayed-job.ts)");

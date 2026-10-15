@@ -60,7 +60,10 @@
 //   The graded deck's zone remains the default so those bytes do not move —
 //   only the %Z LABEL changes, from the Windows display name
 //   "Pacific Standard Time" to the abbreviation Ruby prints ("PDT" for the
-//   corpus's September instants, "PST" for a winter one).
+//   corpus's September instants, "PST" for a winter one). Measured on Linux
+//   Ruby 3.3.8 at 2026-09-19T12:00:00Z: "Saturday, September 19, 2026 05:00
+//   AM PDT" under TZ=America/Los_Angeles — see ORACLE_CAPTURE_NOW_BYTES
+//   below for the Windows readings and the lead's 2026-10-15 ruling.
 //
 // Named remainders (derivation complete, NOT wired here — see the receipt):
 // - Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:44-48):
@@ -126,12 +129,41 @@ export const RECORDED_NOW_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
 );
 
-/** The captured *now record.content bytes (the pin target), as the port now
- *  renders them: the same wall clock, with %Z as the zone's ABBREVIATION at
- *  that instant. The corpus photographed the Windows display name
- *  "Pacific Standard Time" for this September (PDT) instant because the
- *  capture host was Windows; Ruby prints the abbreviation, so the port does
- *  too (see src/card/deck-time-zone.ts). */
+/** The port's expectation for *now at RECORDED_NOW_INSTANT in
+ *  America/Los_Angeles: the wall clock plus the zone's %Z abbreviation
+ *  computed by src/card/deck-time-zone.ts ("PDT").
+ *
+ *  It is NOT a capture, and the bytes a Windows oracle produces for the
+ *  same instant are not these. On Windows, strftime's %Z prints the OS
+ *  zone's DISPLAY NAME, so a September (PDT) instant reads "Pacific
+ *  Standard Time" — the Windows spelling year-round. The corpus capture
+ *  records exactly that ("Monday, September 28, 2026 03:12 PM Pacific
+ *  Standard Time"), which is why this constant once claimed capture
+ *  bytes it did not hold.
+ *
+ *  RULED ON 2026-10-15 (release lead): production Ruby Decko runs on
+ *  Linux, where %Z prints the zone ABBREVIATION, so the port keeps
+ *  "PDT". The Windows display name is an artifact of the oracle's host
+ *  OS, not upstream behaviour, and reproducing it would be copying a
+ *  host artifact into the port.
+ *
+ *  The readings behind that ruling, all at the frozen instant
+ *  2026-09-19T12:00:00Z (synthetic-v1's deck.json clock) with the
+ *  process TZ set explicitly:
+ *
+ *    - Windows oracle (reference-harness/oracle, Ruby 3.4 x64-mingw-ucrt
+ *      bundle), TZ=America/Los_Angeles and TZ=PST8PDT,M3.2.0,M11.1.0:
+ *        "Saturday, September 19, 2026 05:00 AM Pacific Standard Time"
+ *      TZ=UTC: "Saturday, September 19, 2026 12:00 PM UTC"
+ *    - Linux Ruby 3.3.8 (x86_64-linux-gnu, WSL), the same frozen instant
+ *      and the en.yml:29 format string:
+ *        TZ=America/Los_Angeles: "Saturday, September 19, 2026 05:00 AM PDT"
+ *        TZ=UTC:                "Saturday, September 19, 2026 12:00 PM UTC"
+ *
+ *  Linux is upstream's platform and prints the abbreviation, so "PDT" is
+ *  the port's correct rendering. The Windows readings are recorded here
+ *  so a future reader does not mistake the oracle's host for a
+ *  disagreement with the port. */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
 /** The zone the recorded bytes were rendered in — what reproducing those

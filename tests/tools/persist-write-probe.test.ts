@@ -103,8 +103,15 @@ const WITHHELD_STEPS_FILE =
 // numbers live here so an excluded file cannot silently widen the run to all
 // 70. PRESENT it, the withheld steps run again and are compared against the
 // withheld recording.
-const WITHHELD_STEP_NUMBERS = [20, 22, 31];
+// The public record of those numbers. It carries no step content (the content
+// is in the withheld set), so it is safe in the public package. When the set
+// file is present the numbers are read from it, and must equal this record: a
+// drifted copy here fails the run instead of silently running other steps.
+const PUBLIC_WITHHELD_STEP_NUMBERS = [20, 22, 31];
 const WITHHELD_SET_PRESENT = existsSync(WITHHELD_STEPS_FILE);
+const WITHHELD_STEP_NUMBERS: number[] = WITHHELD_SET_PRESENT
+  ? (JSON.parse(readFileSync(WITHHELD_STEPS_FILE, "utf8")) as { steps: { step: number }[] }).steps.map((s) => Number(s.step))
+  : PUBLIC_WITHHELD_STEP_NUMBERS;
 // The steps this run withholds: none when the set file is present (it is the
 // full-list run), the declared numbers when it is absent.
 const WITHHELD_STEPS: number[] = WITHHELD_SET_PRESENT ? [] : WITHHELD_STEP_NUMBERS;
@@ -169,7 +176,12 @@ const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
 const PASSWORD_STEPS = [57, 58];
 // The declared differences this run must see: the ones the withheld set does
 // not claim.
-const ALL_DELIBERATE_STEPS = [7, 20, 22, 31, 67];
+// Steps 7 and 67 are public declarations; 20, 22 and 31 are declared in the
+// withheld recording and are exercised whenever the withheld set is present
+// (WITHHELD_STEPS is then empty, so none of them is skipped). Derived from the
+// withheld step numbers, not written out twice.
+const PUBLIC_DELIBERATE_STEPS = [7, 67];
+const ALL_DELIBERATE_STEPS = [...PUBLIC_DELIBERATE_STEPS, ...WITHHELD_STEP_NUMBERS].sort((a, b) => a - b);
 const DELIBERATE_STEPS = ALL_DELIBERATE_STEPS.filter(
   (s) => !WITHHELD_STEPS.includes(s),
 ).sort((a, b) => a - b);
@@ -425,6 +437,8 @@ describe("persistence write probe (TS half)", () => {
   it.runIf(RUN)("runs the Ruby op list through the real CardActionEngine and dumps state", async () => {
     // The withheld set names real steps of this op list and nothing else, so
     // a stale or malformed file cannot silently shrink the run.
+    // Present: the set file's numbers must match the public record of them.
+    if (WITHHELD_SET_PRESENT) expect(WITHHELD_STEP_NUMBERS, "the withheld set's steps match the public record").toEqual(PUBLIC_WITHHELD_STEP_NUMBERS);
     for (const step of WITHHELD_STEPS) {
       expect(step, "a withheld step is a step of the op list").toBeGreaterThanOrEqual(1);
       expect(step, "a withheld step is a step of the op list").toBeLessThanOrEqual(70);
@@ -1000,6 +1014,9 @@ describe("persistence write probe (TS half)", () => {
       .filter((s) => (s.deliberate as { declaredFaultsMatch?: boolean } | null)?.declaredFaultsMatch === true)
       .map((s) => Number(s.step));
     expect(deliberate).toEqual(DELIBERATE_STEPS);
+    // Declared differences 20 and 22 are exercised whenever the withheld set is
+    // present: the run then withholds nothing, so both must come out declared.
+    if (WITHHELD_SET_PRESENT) expect(deliberate, "withheld set present: declared steps 20 and 22 are exercised").toEqual(expect.arrayContaining([20, 22]));
 
     // The rendered result of every revert step Ruby completed equals Ruby's,
     // byte for byte — EXCEPT step 67, whose render difference is the same

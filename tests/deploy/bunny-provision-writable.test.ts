@@ -30,7 +30,7 @@ describe("Bunny provisioning for a writable deck", () => {
     const names = steps.map((s) => s.name);
     expect(names).toContain('create storage zone "deck-files"');
     expect(names).toContain("issue the first-run setup token");
-    const vars = steps.find((s) => s.name === "apply edge options as script variables")!.describe();
+    const vars = steps.find((s) => s.name === "apply edge options as script variables on both scripts")!.describe();
     expect(vars).toMatch(/DECKO_FIRST_RUN=1/);
     expect(vars).toMatch(/DECKO_STORAGE_ZONE/);
     // The token is issued after the deck answers, so the printed link works.

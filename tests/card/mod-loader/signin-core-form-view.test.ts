@@ -68,8 +68,8 @@ beforeAll(async () => {
   });
   // the *email / *password rights and the two subcards the form's editor
   // fields address (the write path reads the same subcards on sign-in).
-  await seedCard(s, { id: 130, name: "email", codename: "email", typeId: 14 });
-  await seedCard(s, { id: 131, name: "password", codename: "password", typeId: 14 });
+  await seedCard(s, { id: 130, name: "*email", codename: "email", typeId: 14 });
+  await seedCard(s, { id: 131, name: "*password", codename: "password", typeId: 14 });
   await seedCard(s, {
     id: 19958,
     leftId: 19957,
@@ -84,6 +84,14 @@ beforeAll(async () => {
     typeId: 52,
     dbContent: "",
   });
+
+  // The Sign up cardtype the REAL deck carries — the sign-in form's signup
+  // link is derived from it (signin.rb:181-183 link_to_card :signup:
+  // Card::Name[:signup] -> the deck's signup name, then Card::Path's
+  // "new/<mark url_key>" base), so the deck must carry the card the
+  // production capture was taken from. Deck fact, not an expectation: the
+  // pinned bytes below are unchanged.
+  await seedCard(s, { id: 19961, name: "Sign up", codename: "signup", typeId: 13 });
 
   loader = new ModLoader([{ manifest: cardModAccount }]);
   await loader.load();

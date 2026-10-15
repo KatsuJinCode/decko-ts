@@ -15,6 +15,7 @@ import {
 import { oneTripWantsPayload } from "../../src/card/one-trip/render-gate.js";
 import {
   resolveServedEnvironmentDeltas,
+  servedBootOptions,
   servedDeltasAreEmpty,
 } from "./bunny-edge-served-deltas.js";
 import { json, resolveEdgePipelineTimeoutMs, type Deck } from "./bunny-edge-engine-request.js";
@@ -178,17 +179,13 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
   const servedDeltas = resolveServedEnvironmentDeltas(env);
   const engines = await bootEdgeServingEngines(driver, {
     ...(oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {}),
-    ...(servedDeltas.assetHost === undefined ? {} : { assetHost: servedDeltas.assetHost }),
-    ...(servedDeltas.phantomType === undefined ? {} : { phantomItemType: servedDeltas.phantomType }),
-    // The deck's time zone — Ruby's Time.zone,
-    // which every rendered timestamp reads instead of a hard-coded
-    // capture-host zone.
-    ...(servedDeltas.timeZone === undefined ? {} : { timeZone: servedDeltas.timeZone }),
-    // The deck's configured origin — Ruby's
-    // Cardio.config.deck_origin, which card_url prefixes onto the engine's
-    // own bytes (decko.rootUrl, the :url views). Unset, the engine renders
-    // relative URLs: no byte carries an origin nobody configured.
-    ...(servedDeltas.deckOrigin === undefined ? {} : { deckOrigin: servedDeltas.deckOrigin }),
+    // The deck's asset host, phantom type, time zone (Ruby's Time.zone) and
+    // configured origin (Ruby's Cardio.config.deck_origin, which card_url
+    // prefixes onto the engine's own bytes). servedBootOptions is the single
+    // derivation of these, shared with the request-local live render's boot
+    // (bunny-edge-engine-request.ts), so every page arm of an isolate
+    // renders from the same configuration.
+    ...servedBootOptions(servedDeltas),
   });
   return { ...engines, servedDeltas };
 }

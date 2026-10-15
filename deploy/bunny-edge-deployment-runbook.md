@@ -146,10 +146,8 @@ fall back to their minimal stubs (the documented "never 500 a second time"
 contract). That is the correct posture for any deployment that is not the
 original reference deck, and it is what a new operator gets for free.
 
-**To serve a deck's real identity instead of the stock bytes**, set
-`DECKO_SERVED_DELTAS`
-to a JSON blob of the shape below (one variable, one paste). Each field can equally be
-set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
+**To serve a deck's real identity instead of the stock bytes**, set one
+loose variable per value — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
 `DECKO_SERVED_ASSET_HOST`,
 `DECKO_SERVED_FOOTER_VERSION_PIN`, `DECKO_SERVED_STYLESHEET_FROM` /
 `_TO`, `DECKO_SERVED_SCRIPT_INTEGRITY`, `DECKO_SERVED_NOT_FOUND_TYPE_ID` /
@@ -158,12 +156,26 @@ set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
 `_POINTER_TYPE_ID`, `DECKO_SERVED_MAIN_CSS_URL` / `_MAIN_JS_URL`,
 `DECKO_SERVED_ROOT_URL`, `DECKO_SERVED_HEAD_SCRIPTS`,
 `DECKO_SERVED_LOGO_URL` / `_FAVICON_URL` / `_SITE_TITLE_DEFAULT`,
-`DECKO_SERVED_PHANTOM_TYPE_ID` / `_NAME` / `_KEY`. Where both forms are
-present the JSON wins field-by-field.
+`DECKO_SERVED_PHANTOM_TYPE_ID` / `_NAME` / `_KEY`.
 
-The values below are a filled-in example; the machine-readable copy the
-deploy suites configure when they assert a configured deployment's served
-bytes is `tests/deploy/fixtures/configured-deck-served-deltas.ts`.
+**The loose form is the one to use on Bunny.** Bunny stores at most 2 KB per
+script variable value (<https://bunny.net/docs/scripting/limits>, read
+2026-10-14). A whole deck's identity packed into the one
+`DECKO_SERVED_DELTAS` blob is 3.6 KB on a real deck: on 2026-10-14 a 3.6 KB
+`DECKO_SERVED_DELTAS` made both scripts of a live deck answer HTTP 400 on
+every request until it was deleted, while the same values as loose variables
+(the largest 1.6 KB) served correctly. The engine parses a blob of that size,
+so the limit is the platform's. The one-key runner
+(`deploy/provisioning/provision-bunny-deck.mjs --served <file.json>`) takes
+the loose form, refuses any value over 2 KB in the plan before any account
+write, and writes it to both scripts; it never packs the blob.
+
+`DECKO_SERVED_DELTAS` (the JSON blob form) is still read by the engine, and
+where both forms are present the JSON wins field-by-field — keep every value
+under 2 KB when using it on Bunny. The JSON below is a filled-in example of
+the loose variables' field names; the machine-readable copy the deploy suites
+configure when they assert a configured deployment's served bytes is
+`tests/deploy/fixtures/configured-deck-served-deltas.ts`.
 
 ```json
 {

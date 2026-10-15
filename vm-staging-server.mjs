@@ -129,6 +129,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
+import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
@@ -580,8 +581,16 @@ const scriptCompressor = uglifyHarmonyCompile;
 // asset inputs and bundles, so it runs only on a write-armed boot, the only
 // boot whose store accepts those writes. It acts as the deck bot, so no
 // session actor is involved.
+// DECKO_ASSET_REFRESH names the mode (eager, cautious or never). The default is
+// the deployed site's cautious; the browser-journey host sets never, as the
+// Ruby oracle does (reference-harness/browser/engines/ruby-server.rb).
+const ASSET_REFRESH_MODES = new Set(["eager", "cautious", "never"]);
+const assetRefreshMode = process.env.DECKO_ASSET_REFRESH ?? "cautious";
+if (!ASSET_REFRESH_MODES.has(assetRefreshMode)) {
+  throw new Error(`DECKO_ASSET_REFRESH must be eager, cautious or never; got ${assetRefreshMode}`);
+}
 const assetReadRefresh = createReadAssetRefresh({
-  mode: "cautious",
+  mode: assetRefreshMode,
   sharedCache: true,
   refresh: () =>
     new CardActionEngine(fetcher, {
@@ -2786,7 +2795,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         "Error (unsupported view)",
       );
     }
-    if (STOCK_DECK && !pageOpts.bare && error instanceof Error && error.name === "UpstreamSqliteMatchError") {
+    if (STOCK_DECK && !pageOpts.bare && isUpstreamMatchError(error)) {
       // The keyword-search raise on SQLite (card's AbstractAdapter#match,
       // config/initializers/02_patches/active_record.rb:80-83) escapes the
       // search card's rescuing_bad_query. A deployed site runs with
@@ -3762,8 +3771,19 @@ const server = http.createServer(async (req, res) => {
   // renders (CardController::Rest#setup, decko-0.20.0 lib/card_controller/rest.rb:33).
   // Staging-internal endpoints (/_...) and asset files (/files/...) are not
   // card requests, and a read-only boot cannot store the refresh's writes.
+  // A refresh that throws answers this request with a 500 and the error's
+  // message. It must not escape the handler: an unhandled rejection ends the
+  // whole host process, and every later request then fails to connect.
   if (req.method === "GET" && writePathEnabled() && !pathname.startsWith("/_") && !pathname.startsWith("/files/")) {
-    await assetReadRefresh.beforeRead({ explicitFile: false });
+    try {
+      await assetReadRefresh.beforeRead({ explicitFile: false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[vm-staging] asset read refresh failed for ${pathname}: ${message}`);
+      const failed = htmlResponse(500, `<h1>Server error</h1><pre>${escapeHtml(message)}</pre>`);
+      res.writeHead(failed.status, failed.headers).end(failed.body);
+      return;
+    }
   }
 
   let actor = null;

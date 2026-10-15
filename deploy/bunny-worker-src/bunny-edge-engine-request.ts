@@ -43,10 +43,12 @@ import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
-import { jsonViewSearchParams } from "../../src/server/worker-shared-surface.js";
+import {
+  historyRenderParamsFromWire,
+  jsonViewSearchParams,
+} from "../../src/server/worker-shared-surface.js";
 import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
-import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
 import {
   decodeName,
   mapRenderError,
@@ -59,7 +61,11 @@ import {
   filesLeafVariant,
   filesNotFoundBody,
 } from "./bunny-edge-page-shell.js";
-import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
+import {
+  EMPTY_SERVED_DELTAS,
+  type ServedBootOptions,
+  type ServedEnvironmentDeltas,
+} from "./bunny-edge-served-deltas.js";
 import {
   EDGE_ERROR_PAGE_GRACE_MS,
   noRouteNotFoundResponse,
@@ -130,6 +136,10 @@ export interface EngineRequestOptions {
   anonymous?: boolean;
   /** The edge env's DECKO_LIVE_RENDER ("0" turns the live render off). */
   liveRenderFlag?: string;
+  /** The deployment's served-deltas boot options (servedBootOptionsFromEnv).
+   *  The live render boots its own engines over the request store, so it
+   *  must boot with the same configuration the isolate's deck does. */
+  servedBootOptions?: ServedBootOptions;
 }
 
 /**
@@ -660,7 +670,7 @@ async function dispatchEngineRequest(
     const historyParams = historyRenderParamsFromWire(parsed.params);
     const renderLive = async () =>
       (
-        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
+        await liveRenderPage(source.driver, parsed.name, (driver) => bootEdgeServingEngines(driver, options?.servedBootOptions ?? {}), {
           requestedView: pageView,
           historyParams,
           signal,
@@ -733,32 +743,11 @@ async function dispatchEngineRequest(
   }
 }
 
-/** The history views' WIRE-KEY -> seam translation:
- *  worker.ts parsePath extracts the query under Ruby's param names
- *  (act_id/action_id/page/act_seq/action_view/hide_diff/act_context — the
- *  Card::Env.params keys, worker.ts:104-109), while HistoryRenderParams and
- *  the view fns read the camelCase fields (src/card/history/render-seam.ts).
- *  The bare shell passed the wire-keyed object straight through, where
- *  `reader.params.actId` was undefined for every request — the act_id
- *  filter silently inert (measured at base: ?act_id=<real> and no
- *  param rendered identical bodies). This mapping is the seam's carrier:
- *  unknown keys are dropped, absent input maps to {} (renderPageBytes's
- *  undefined-safe contract), values pass verbatim (the views' own integer/
- *  enum parsing is unchanged downstream). */
-export function historyRenderParamsFromWire(
-  params: Record<string, string> | undefined,
-): HistoryRenderParams {
-  if (params === undefined) return {};
-  const out: HistoryRenderParams = {};
-  if (params["act_id"] !== undefined) out.actId = params["act_id"];
-  if (params["action_id"] !== undefined) out.actionId = params["action_id"];
-  if (params["act_seq"] !== undefined) out.actSeq = params["act_seq"];
-  if (params["action_view"] !== undefined) out.actionView = params["action_view"];
-  if (params["hide_diff"] !== undefined) out.hideDiff = params["hide_diff"];
-  if (params["act_context"] !== undefined) out.actContext = params["act_context"];
-  if (params["page"] !== undefined) out.page = params["page"];
-  return out;
-}
+// The history views' WIRE-KEY -> seam translation lives in the shared surface
+// (src/server/worker-shared-surface.ts#historyRenderParamsFromWire) so the
+// bunny edge and both Cloudflare twins share one copy. Re-exported here for
+// the pinned seam test that imports it from this module.
+export { historyRenderParamsFromWire };
 
 /** True when the request path is the BARE single-segment card arm (/:mark,
  *  or the empty path's /Home dispatch) — parsePath's view field is its

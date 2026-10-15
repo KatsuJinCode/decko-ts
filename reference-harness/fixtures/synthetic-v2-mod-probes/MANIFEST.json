@@ -1,0 +1,23 @@
+{
+  "format": "decko-reference-fixture-manifest/1",
+  "fixture": "synthetic-v2-mod-probes",
+  "digest": "fb7296c13e52ff152e06854161541931178d8abf1342b02a63e26955c0c37efc",
+  "files": {
+    "deck.json": "1009860a4b7abab987fc38887a473fb8eef54f4f8b128e5ee3b17c959feca6db",
+    "deck/deck.sqlite3": "8075f25e2cd2cd99e1a6ba1d2129daba561654dab1f9565d262924db43f9c3ec",
+    "deck/files/307/1789819200.js": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865",
+    "deck/files/447/1789819200.css": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb",
+    "deck/files/904/989.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",
+    "deck/files/905/990.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
+    "deck/files/906/991.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
+    "deck/files/907/992.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
+    "files/report-1.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",
+    "files/report-2.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
+    "files/report-3.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
+    "files/report-4.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
+    "ops/probes.json": "384ac70b0704a56797bfca049cbf9a0c0f1c56d0257946c4999b352aa810f993",
+    "ops/render.jsonl": "16ce11ac7f7dfc24d02293796a1d61c092b480d71d82d65c5f055065c64255d1",
+    "ops/scenarios.json": "047cb12a444cb1b059b701e75718863d333d157e2ae2c6305b06effdfbf78605",
+    "ops/semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

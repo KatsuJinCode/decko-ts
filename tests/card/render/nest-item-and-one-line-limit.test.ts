@@ -51,9 +51,17 @@ describe("nest item: options fold into items.view (nest.rb:54-57)", () => {
 });
 
 describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
+  // The fixture's right is a right set with NO one_line_content of its own
+  // (card-mod-layout set/right/head.rb:12-13 is the only *layout module and
+  // it covers *head), so the walk reaches the base one_line_content method
+  // (card-mod-format set/all/content.rb:47-49). The four permission rights
+  // are NOT here: their right sets include Abstract::Permission
+  // (right/{create,read,update,delete}.rb:1), whose one_line_content
+  // (permission.rb:22-24) renders the item list instead - see the
+  // dispatch test below.
   const base = (content: string): RenderCard =>
     ({
-      name: { s: "User+*create", rightName: { s: "*create" } },
+      name: { s: "User+*layout", rightName: { s: "*layout" } },
       setKeys: "type PlusRight RULE",
       typeName: "Type",
       dbContent: content,
@@ -73,6 +81,25 @@ describe("rule bar one-line fallback truncates at 60 (content.rb:1)", () => {
     expect(html).toContain("b".repeat(57) + "...");
     expect(html).not.toContain("b".repeat(58));
     expect(html).not.toContain("b".repeat(61));
+  });
+
+  it("a permission-right rule card takes the permission one_line_content whatever its type (right set outranks type)", () => {
+    // right/create.rb:1 includes Abstract::Permission; its one_line_content
+    // (permission.rb:22-24) is render_core items: { view: :link }, and the
+    // permission :core (permission.rb:14-20) renders :pointer_core for any
+    // content that is not "_left". The card's TYPE does not enter that
+    // dispatch, so a Basic-typed *create rule still gets the pointer wrapper
+    // and never the 60-char truncation of the base method.
+    const html = ruleBarRightHtml(
+      ({
+        name: { s: "User+*create", rightName: { s: "*create" } },
+        setKeys: "type PlusRight RULE",
+        typeName: "Basic",
+        dbContent: "b".repeat(61),
+      }) as unknown as RenderCard,
+    );
+    expect(html).toContain('<div class="pointer-list">');
+    expect(html).not.toContain("...");
   });
 });
 

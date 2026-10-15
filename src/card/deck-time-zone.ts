@@ -26,6 +26,14 @@
 //      `Time.now.zone` (the OS-local zone of the machine). The port
 //      conflated them.
 //
+//      That the abbreviation is what upstream prints was measured on
+//      2026-10-15: Linux Ruby 3.3.8 (x86_64-linux-gnu — upstream's
+//      platform; the Windows oracle prints the display name instead)
+//      renders the fixture's frozen instant 2026-09-19T12:00:00Z with
+//      en.yml:29's format as "Saturday, September 19, 2026 05:00 AM PDT"
+//      under TZ=America/Los_Angeles, and "PST" for a winter instant. The
+//      lead's 2026-10-15 ruling keeps the abbreviation for that reason.
+//
 // The zone is now the DECK's, read through this module, and the abbreviation
 // is COMPUTED from the zone and the instant's offset, so a PDT instant says
 // "PDT" and a PST instant says "PST" — which is what Ruby's `%Z` does.

@@ -39,6 +39,7 @@ import {
   type ResolvedDbConfig,
 } from "./bunny-edge-deck-config.js";
 import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bunny-edge-isolate-probe.js";
+import { servedBootOptionsFromEnv } from "./bunny-edge-served-deltas.js";
 import { resolveEdgeContentCache } from "./bunny-edge-content-cache.js";
 import { getGlobalRenderCache } from "./bunny-edge-global-render-cache.js";
 import { handleEngineRequest, json, resolveEdgeRenderBudgetMs, type Deck } from "./bunny-edge-engine-request.js";
@@ -177,6 +178,7 @@ async function routeRead(request: Request, env: EdgeEnv, profile: EdgeRequestPro
         budgetMs: renderBudgetMs,
         anonymous: true,
         liveRenderFlag: env.DECKO_LIVE_RENDER,
+        servedBootOptions: servedBootOptionsFromEnv(env),
       }),
     resolveEdgeContentCache(env),
     { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },

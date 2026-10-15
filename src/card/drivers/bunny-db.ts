@@ -301,6 +301,29 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   /** The open transaction's stream (latest baton, URL to send it to). */
   private stream: { baton: string; url: string } | undefined;
   private streamTail: Promise<void> = Promise.resolve();
+  /** When the open transaction's BEGIN succeeded (Date.now()). */
+  private streamOpenedAt = 0;
+
+  /** Decodes the results of requests sent on the open transaction's
+   *  stream. Bunny Database ends an interactive transaction that has been
+   *  open for 5 seconds and answers the next statement on it with
+   *  TRANSACTION_TIMEOUT; that error says how long the transaction had been
+   *  open and which statement was refused. */
+  private decodeOnStream(results: unknown[], requests: HranaPipelineRequest[]): unknown[] {
+    return results.map((entry, i) => {
+      try {
+        return decodeStreamResult(entry, i, requests[i]);
+      } catch (error) {
+        if (!(error instanceof BunnyDbError) || error.code !== "TRANSACTION_TIMEOUT") throw error;
+        const request = requests[i];
+        const sql = request.type === "execute" ? request.stmt.sql.replace(/\s+/g, " ").slice(0, 80) : request.type;
+        throw new BunnyDbError(
+          `${error.message} after the transaction had been open ${Date.now() - this.streamOpenedAt} ms; refused statement: ${sql}`,
+          { code: error.code, statementIndex: error.statementIndex },
+        );
+      }
+    });
+  }
 
   /**
    * Runs `work` inside one libSQL transaction on a Hrana stream: a pipeline
@@ -344,6 +367,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         undefined,
         isBunnyBeginBusy,
       );
+      this.streamOpenedAt = Date.now();
       let result: R;
       try {
         result = await work();
@@ -352,8 +376,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         throw error;
       }
       try {
-        await this.endStream("COMMIT");
-      } catch (error) {
+        await this.endStream("COMMIT");      } catch (error) {
         if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
         throw error;
       }
@@ -369,7 +392,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       verb === undefined ? [{ type: "close" }] : [{ type: "execute", stmt: toHranaStmt(verb, []) }, { type: "close" }];
     try {
       const ended = await this.streamPipeline(requests, stream);
-      ended.results.forEach((entry, i) => decodeStreamResult(entry, i, requests[i]));
+      this.decodeOnStream(ended.results, requests);
     } finally {
       this.stream = undefined;
     }
@@ -389,7 +412,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       this.stream = { baton: response.baton, url: response.url };
       // Decoded after the baton is kept, so a failed statement can still be
       // rolled back on its stream.
-      return response.results.map((entry, i) => decodeStreamResult(entry, i, requests[i]));
+      return this.decodeOnStream(response.results, requests);
     });
     this.streamTail = run.then(
       () => undefined,
@@ -632,7 +655,10 @@ function toHranaStmt(sql: string, params: unknown[]): HranaStmtBody {
 }
 
 function toHranaWireValue(value: unknown): HranaWireValue {
-  if (value === null) return { type: "null" };
+  // An unset parameter binds as NULL, as the local driver's better-sqlite3
+  // binding does (src/server/drivers/local-sqlite.ts), so both drivers store
+  // the same row for the same call.
+  if (value === null || value === undefined) return { type: "null" };
   if (typeof value === "bigint") {
     if (value < MIN_I64 || value > MAX_I64) {
       throw new RangeError(

@@ -21,9 +21,12 @@
 // the three steps whose declared difference is withheld until disclosure live
 // in the withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
 // from every release package) and are announced on stderr when they are not
-// run. On the clean synthetic deck the recorded verdicts are 83 pass +
-// 4 declared + 0 mismatched (87 steps), and the assertions below name every
-// one of them. The Ruby recording is committed
+// run. On the clean synthetic deck the recorded verdicts are 80 pass +
+// 7 declared + 0 mismatched (87 steps), and the assertions below name every
+// one of them: four steps whose declared differences Ruby's own crashes or
+// wall-clock names cause, and three sign-in steps declared against
+// docs/SECURITY.md approved divergence 4 (the port's uniform sign-in and
+// forgot-password answers). The Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list: re-recorded
 // when the public list changes, or, for a withheld step, cut from the
 // full-list recording with every public verdict unchanged; this suite pins the exact current
@@ -209,7 +212,7 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     }
   }
 
-  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 83 steps pass, the 4 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
+  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 80 steps pass, the 7 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -269,6 +272,11 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     // the location history, so the deny's *previous redirect resolves to it.
     // Before the recording ran under production error handling this step
     // compared equal, because the developer page never ran that save.
+    // The three sign-in steps (signin-unknown, signin-wrong-password,
+    // reset-unknown-email) are declared against docs/SECURITY.md approved
+    // divergence 4: the port's uniform sign-in and forgot-password answers.
+    // Run with DECKO_SIGNIN_UNIFORM_FAILURE=off, the same battery returns to
+    // 83 pass / 4 declared, which is how this was attributed.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
     // get-home is declared on the script bundles' wall-clock names: Ruby
     // names a history-less output by Time.now.to_i, and its 15 script writes
@@ -279,11 +287,14 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
       "admin-create-skin-bad-parent",
       "admin-deny-signup",
       "get-home",
+      "reset-unknown-email",
       "restore-file-revision",
+      "signin-unknown",
+      "signin-wrong-password",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 83,
-      deliberate: 4,
+      pass: 80,
+      deliberate: 7,
       total: 87,
     });
 

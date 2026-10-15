@@ -10,37 +10,25 @@ structure, form fields), the mail sent and the row delta in the card tables.
 
 ## Last run
 
-- Date: 2026-10-14
-- Command: `npm run test:browser-journeys`
+- Date: 2026-10-15
+- Command: `npm run test:browser-journeys -- --shards 2`
 - Reference runtime: Ruby 3.4.11
 - Journeys: 51
 - Completed on Ruby: 51 / 51
 - Completed on the port: 51 / 51
-- Comparison: 48 / 51 graded journeys pass (0 not graded: a journey that fails on the reference is not graded)
+- Comparison: 50 / 51 graded journeys pass (0 not graded: a journey that fails on the reference is not graded)
 
 The reference ran on Ruby 3.4.11; the declared oracle runtime is Ruby 3.3
 (`docs/parity-method.md`).
 
-These counts predate a change to how both sides answer an unhandled exception,
-and are not yet re-measured. In that run the Ruby server used development error
-handling, so a keyword search on SQLite (which raises in card's
-`AbstractAdapter#match`) answered with Rails' debug-exceptions page, and the
-port's host filled a recorded copy of that page. Both sides now run with Decko's
-production error handling. The Ruby server sets `rescue_all_in_controller` and
-clears `consider_all_requests_local`, as `tools/parity-side-effects/ruby/drive.rb`
-does. Stock Decko then shows the search card's `:server_error` view under the
-page layout with status 500. The port's host renders the same page through the
-engine. The recorded template and the comparison rule written only for it
-(N6 at journey grade) have been removed.
-
-What has been re-measured since: on 2026-10-14, `navbox-keyword-search` was
-recorded on Ruby with production error handling (`run-journeys.mjs --filter
-'^navbox-keyword-search$'`) and on the port, and `compare-journeys.mjs` passes
-it on every item. The `navbox-paging` and `search-filtered-anonymous` journeys
-were run on the port only. Both answered the same production page, but they
-have no fresh Ruby recording yet. The full suite has not been rerun since the
-change. The table below is the earlier run, and its three keyword-search rows
-describe the old debug page.
+Error pages: both sides answer an unhandled exception the way a deployed
+site does. The Ruby server runs with Decko's production error handling
+(`rescue_all_in_controller` on, `consider_all_requests_local` off, as
+`tools/parity-side-effects/ruby/drive.rb` sets them), so a plain keyword
+search on SQLite (the `match` raise in card's ActiveRecord patch) answers
+Decko's `:server_error` view under the page layout, status 500. The port's
+Node host renders that page through the engine with `:server_error` as the
+root view. No recorded page is copied and no comparison rule applies to it.
 
 Per graded item:
 
@@ -48,7 +36,7 @@ Per graded item:
 |---|---|---|
 | completion | 51 | 51 |
 | address | 89 | 89 |
-| text | 86 | 89 |
+| text | 88 | 89 |
 | structure | 89 | 89 |
 | fields | 89 | 89 |
 | mail | 51 | 51 |
@@ -60,7 +48,7 @@ Per graded item:
 | journey | Ruby | port | comparison | items that differ |
 |---|---|---|---|---|
 | signin-signout-member | completed | completed | pass |  |
-| signin-wrong-password | completed | completed | pass |  |
+| signin-wrong-password | completed | completed | fail | text:refused sign-in |
 | signin-admin-home | completed | completed | pass |  |
 | create-note-member | completed | completed | pass |  |
 | create-phrase-admin | completed | completed | pass |  |
@@ -87,10 +75,10 @@ Per graded item:
 | upload-replace-file-admin | completed | completed | pass |  |
 | upload-empty-file-refused | completed | completed | pass |  |
 | upload-file-member | completed | completed | pass |  |
-| navbox-keyword-search | completed | completed | fail | text:search results |
-| navbox-paging | completed | completed | fail | text:first page |
+| navbox-keyword-search | completed | completed | pass |  |
+| navbox-paging | completed | completed | pass |  |
 | navbox-cql-member | completed | completed | pass |  |
-| search-filtered-anonymous | completed | completed | fail | text:anonymous results |
+| search-filtered-anonymous | completed | completed | pass |  |
 | search-card-pages | completed | completed | pass |  |
 | denied-anonymous-read | completed | completed | pass |  |
 | denied-anonymous-create | completed | completed | pass |  |
@@ -110,6 +98,20 @@ Per graded item:
 | edit-conflict | completed | completed | pass |  |
 | history-view-admin | completed | completed | pass |  |
 | read-pages-anonymous | completed | completed | pass |  |
+
+## Declared divergence (reported apart from the matches)
+
+`signin-wrong-password` is not counted among the matches above. It differs in one
+text item: a wrong password is answered "Wrong email or password." by the port and
+"Wrong password" by Ruby. The port gives that uniform answer on purpose, as
+docs/SECURITY.md divergence 4 (sign-in: uniform in its answers) records.
+
+Proof that this is the only difference: the same journey on the port with
+DECKO_SIGNIN_UNIFORM_FAILURE=off (the per-field messages Ruby gives) passes every
+item (completion, address, text, structure, fields) against the same Ruby recording
+from this run: 2026-10-15, run-journeys.mjs with the ts engine and the filter
+^signin-wrong-password$, then compare-journeys.mjs reporting 1 / 1 pass. The default
+run leaves the flag on, so the journey stays failing here by design.
 
 ## Reproducing
 

@@ -290,15 +290,13 @@ async function openDeck(make: () => Promise<Backend>): Promise<Deck> {
   // better-sqlite3 accepts (as NULL); the remote adapters reject it.
   const nulls = (params: unknown[]) => params.map((p) => (p === undefined ? null : p));
   const raw = backend.driver;
-  // The dialect travels with the wrapper, so loadSchema picks the DDL of the
-  // backend under test (a wrapper without it reads as SQLite).
-  const driver = Object.assign(
-    {
-      query: (sql: string, params: unknown[]) => raw.query(sql, nulls(params)),
-      batch: (statements: SQLStatement[]) => raw.batch(statements.map((s) => ({ sql: s.sql, params: nulls(s.params) }))),
-    } as SQLDatabaseDriver,
-    { dialect: (raw as { dialect?: string }).dialect },
-  );
+  const driver: SQLDatabaseDriver & { dialect?: string } = {
+    // The dialect travels with the wrapper, so loadSchema picks the DDL of the
+    // backend under test (a wrapper without it reads as SQLite).
+    dialect: (raw as { dialect?: string }).dialect,
+    query: (sql, params) => raw.query(sql, nulls(params)),
+    batch: (statements) => raw.batch(statements.map((s) => ({ sql: s.sql, params: nulls(s.params) }))),
+  };
   const storage: ActionsTestStorage = {
     driver,
     engine: fetch,
