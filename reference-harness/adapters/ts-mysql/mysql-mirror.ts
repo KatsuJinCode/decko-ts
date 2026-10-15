@@ -111,9 +111,14 @@ export async function copyMysqlIntoSqlite(mysql: MysqlDriver, sqlite: LocalSqlit
   await sqlite.transaction(async () => {
     for (const table of tables) {
       const cols = await columnsOf(sqlite, table);
-      const rows = (await mysql.query<Record<string, unknown>>(`SELECT ${cols.map(quote).join(", ")} FROM ${quote(table)}`, [])).rows;
+      const datetimeCols = new Set(await mysqlDatetimeColumns(mysql, table));
+      const mysqlRows = (await mysql.query<Record<string, unknown>>(`SELECT ${cols.map(quote).join(", ")} FROM ${quote(table)}`, [])).rows;
+      const fileRows = (await sqlite.query<Record<string, unknown>>(`SELECT ${cols.map(quote).join(", ")} FROM ${quote(table)} ORDER BY rowid`, [])).rows;
+      const out = keepFileValuesWhereEqualAtMysqlPrecision(mysqlRows, fileRows, cols, datetimeCols);
+      // A table nothing changed in is left alone, so the file keeps its own rows.
+      if (sameRows(out, fileRows, cols)) continue;
       await sqlite.query(`DELETE FROM ${quote(table)}`, []);
-      await insertRows(sqlite, table, cols, rows.map(toSqliteRow));
+      await insertRows(sqlite, table, cols, out.map(toSqliteRow));
     }
     if ((await columnsOf(sqlite, "deck_data_version")).length > 0) {
       const rows = (await mysql.query<Record<string, unknown>>(`SELECT "id", "version" FROM "deck_data_version"`, [])).rows;
@@ -121,6 +126,65 @@ export async function copyMysqlIntoSqlite(mysql: MysqlDriver, sqlite: LocalSqlit
       await insertRows(sqlite, "deck_data_version", ["id", "version"], rows.map(toSqliteRow));
     }
   });
+}
+
+/** The columns of a MySQL table declared `datetime`. */
+async function mysqlDatetimeColumns(mysql: MysqlDriver, table: string): Promise<string[]> {
+  return (
+    await mysql.query<{ name: string }>(
+      `SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND DATA_TYPE = 'datetime'`,
+      [table],
+    )
+  ).rows.map((r) => r.name);
+}
+
+/**
+ * Ruby Decko's MySQL schema declares its datetime columns `datetime` with no
+ * fractional-second precision (db/schema.mysql-reference.sql, e.g. the
+ * `created_at` of `cards`), so MySQL keeps a time to the whole second, rounding
+ * half up. A SQLite file written by Ruby keeps the fraction (the synthetic deck
+ * holds `2026-10-08 05:40:30.918480`). Copying MySQL's value back would change
+ * a value nobody wrote, so a file row whose datetime columns equal MySQL's at
+ * that precision is kept as the file has it.
+ */
+export function roundToMysqlDatetime(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const m = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(\.(\d+))?$/.exec(value);
+  if (m === null) return value;
+  const whole = m[1];
+  const fraction = m[3] ?? "";
+  if (fraction === "" || fraction[0]! < "5") return whole;
+  // Round up by one second, carrying through the date.
+  const ms = Date.parse(`${whole.replace(" ", "T")}Z`) + 1000;
+  return new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+}
+
+function keepFileValuesWhereEqualAtMysqlPrecision(
+  mysqlRows: Record<string, unknown>[],
+  fileRows: Record<string, unknown>[],
+  cols: string[],
+  datetimeCols: Set<string>,
+): Record<string, unknown>[] {
+  const pool = new Map<string, Record<string, unknown>[]>();
+  for (const row of fileRows) {
+    const key = JSON.stringify(cols.map((c) => (datetimeCols.has(c) ? roundToMysqlDatetime(row[c]) : row[c])));
+    const bucket = pool.get(key) ?? [];
+    bucket.push(row);
+    pool.set(key, bucket);
+  }
+  return mysqlRows.map((row) => {
+    const key = JSON.stringify(cols.map((c) => row[c]));
+    const kept = pool.get(key)?.shift();
+    return kept ?? row;
+  });
+}
+
+function sameRows(a: Record<string, unknown>[], b: Record<string, unknown>[], cols: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (JSON.stringify(cols.map((c) => a[i]![c])) !== JSON.stringify(cols.map((c) => b[i]![c]))) return false;
+  }
+  return true;
 }
 
 function toSqliteRow(row: Record<string, unknown>): Record<string, unknown> {

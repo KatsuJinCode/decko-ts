@@ -123,23 +123,26 @@ Measured 2026-10-14 on Windows, Node 24, Ruby 3.4.
         --actual <resultsDir> --expected reference-harness/fixtures/synthetic-v1/expected --report <report>
    ```
 
-   Result measured 2026-10-14, commit 4dbe07bc: persistence 16 of 16,
-   side effects 19 of 19, read-writes 8 of 8, rendering 1748 of 1754,
+   Result measured 2026-10-15: persistence 16 of 16, side effects 19 of 19,
+   read-writes 8 of 8, other tables 12 of 12, rendering 1748 of 1754,
    semantics 2386 of 2389, **verdict fail**. Not the 1754/2389 figure the
    SQLite grade reaches, and the gap is stated here rather than closed:
 
-   - The 8 rendering and 3 semantics failures are all `Not Topics` — one
-     card whose search-result list comes back in a different order. That is
-     a row-tie ordering difference between SQLite's and MySQL's plans; the
-     PostgreSQL driver emulates SQLite's tie order explicitly
-     (`docs/postgres.md`), and the MySQL driver does not yet.
-   - `other tables` is 1 of 16: every write step rewrites
-     `ar_internal_metadata` rows. The cause is the harness mirror, not the
-     engine: MySQL's `datetime` column has no sub-second precision, so
-     copying the table back to the SQLite file rounds
-     `2026-10-08 05:40:30.918480` to `2026-10-08 05:40:31`. Ruby's own
-     MySQL column is the same `datetime`, so a Ruby-built database holds
-     the rounded value too; the graded SQLite file holds the fractional one.
+   - The 8 rendering and 3 semantics failures are all the `Not Topics`
+     search (`sort: name`, limit 20). Its 20 names are the same set as the
+     oracle's, in a different order. The cards with NULL `name` (compound
+     names) tie on the sort key, so the order comes from the tie-break. The
+     SQLite engine pins that tie to `c0.id asc` for single-table scans
+     (`src/cql/sql.ts`, `orderDirectivesOf`). The MySQL run is not yet
+     confirmed to take the same tie-break path, and the id order of the
+     expected list has not been checked against the cards' ids. Open.
+   - The `ar_internal_metadata` datetime rounding is handled in the harness
+     mirror. MySQL keeps a `datetime` to the whole second, rounding half up
+     (`db/schema.mysql-reference.sql` declares Ruby's columns `datetime`
+     with no fractional part). A file row whose datetimes equal MySQL's at
+     that precision is kept as the file has it
+     (`reference-harness/adapters/ts-mysql/mysql-mirror.ts`,
+     `roundToMysqlDatetime`). Ruby on MySQL stores the same rounded value.
 
    Reproduce with the two commands above; the binaries come from
    `tools/mysql/fetch-mysql.mjs` (cdn.mysql.com, MD5-checked) into a cache
