@@ -209,13 +209,11 @@ function ruleOneLineContent(
       // existing rule's own set (the stored winner often lives under a
       // broader set; its trunk tag decided this branch wrongly and every
       // *self-set rule list rendered "Inherit from left card" where the
-      // oracle renders "Inherit"). The self-set context renders the LINKS
-      // form ("Inherit ( party, party )", permission.rb:114-120) whose
-      // who_can walk RESCUES to bare "Inherit" (permission.rb:121); any
-      // other set context renders "Inherit from left card". The engine has
-      // no who_can party walk, so the self-set context always lands on the
-      // rescue form — the exact bytes the corpus pinned (the Anonymous
-      // viewer's walk raised at capture time the same way).
+      // oracle renders "Inherit"). The self-set context runs the who_can
+      // links block (permission.rb:112-122), which raises and rescues to
+      // bare "Inherit" whenever the ancestor's permission rule lists any
+      // item; see permissionInheritContentHtml for the full case analysis
+      // and the one case (an empty item list) not yet ported.
       return permissionInheritContentHtml(setContextTag);
     }
     if (isPermissionRightSetting(rightSetting)) {
@@ -404,13 +402,37 @@ function referencesOnlyCoreText(raw: string): string {
  *  `card.name.trunkName?.tagName?.key`.
  *
  *  `in_context_of_self_set?` (permission.rb:107-110) tests that context's
- *  tag against `Card[:self].key`; the self-set context renders the LINKS
- *  form (permission.rb:114-120), whose who_can walk RESCUES to a bare
- *  marker (permission.rb:121). The engine has no who_can party walk, so
- *  the self-set context always lands on the rescue form — the exact
- *  bytes the corpus pinned, because the Anonymous viewer's walk raised
- *  at capture time the same way. Every other context is the plain
- *  string. */
+ *  tag against `Card[:self].key`; every other context is the plain
+ *  "Inherit from left card" string.
+ *
+ *  The self-set context runs core_inherit_for_content_for_self_set
+ *  (permission.rb:112-122):
+ *
+ *    ancestor = Card[@set_context.trunk_name.trunk_name]
+ *    links = ancestor.who_can(task).map do |card_id|
+ *      link_to_card card_id, nil, target: args[:target]
+ *    end * ", "
+ *    "Inherit ( #{links} )"
+ *  rescue StandardError
+ *    "Inherit"
+ *
+ *  Its outcome does not depend on the viewer:
+ *  - no ancestor card: `nil.who_can` raises NoMethodError -> "Inherit";
+ *  - no permission rule for the ancestor: `Card.fetch(nil)` is nil and
+ *    `nil.item_cards` raises -> "Inherit";
+ *  - a rule with at least one item: the block evaluates `args`, which no
+ *    Card::Format module defines; MethodDelegation#method_missing hands it
+ *    to the ActionView instance, which does not respond to `args` either
+ *    (checked against actionview-7.2.4: ActionView::Base has no public or
+ *    private `args`), so NoMethodError -> "Inherit";
+ *  - a rule whose item list is empty: the block never runs and Ruby
+ *    renders "Inherit (  )".
+ *
+ *  This function renders "Inherit" for the self-set context, which is
+ *  Ruby's output in every case except the last. The empty-item-list case
+ *  needs the ancestor's permission_rule_id walk (permissions.rb:52-72) in
+ *  the synchronous render path, which the engine does not provide yet; it
+ *  is an open gap, not a decided difference. */
 export function permissionInheritContentHtml(setContextTag: string | undefined): string {
   if (setContextTag === "*self" || setContextTag === "self") {
     return `<span class="inherit-perm">Inherit</span>`;
