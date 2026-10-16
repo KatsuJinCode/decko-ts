@@ -231,7 +231,10 @@ export async function ownerRequiredChecks(ctx) {
     // The delete's answer is read after the browser may already have navigated
     // away (Chromium then drops the body). A missing body is not a failure: the
     // redirect check below falls back to the page the browser ended on.
-    const responseBody = response ? await response.text().catch(() => "") : "";
+    const browserBody = response ? await response.text().catch(() => "") : "";
+    const line = linesSince(beforeOpen).find(l => new URL(l.path, O).pathname === `/delete/${name}`);
+    const responseBody = browserBody || line?.deleteResponseBody || "";
+    const responseBodySource = browserBody ? 'browser' : line?.deleteResponseBody ? 'local-host-ledger' : 'unavailable';
     let redirect = null;
     try { redirect = JSON.parse(responseBody).redirect; } catch { /* HTML slot response. */ }
     if (typeof redirect === "string") {
@@ -240,11 +243,10 @@ export async function ownerRequiredChecks(ctx) {
       await page.waitForFunction(target => [...document.querySelectorAll('.just_deleted-view')]
         .some(node => (node.getAttribute('data-card-name') ?? '').replaceAll('_', ' ') === target.replaceAll('_', ' ')), name, { timeout: 5_000 }).catch(() => undefined);
     }
-    const line = linesSince(beforeOpen).find((l) => l.path.startsWith(`/delete/${name}`));
     const after = await page.content();
     const trashed = database().prepare("SELECT trash FROM cards WHERE name = ?").get(name)?.trash === 1;
     const outcome = deleteOutcome({ html: after, name, origin: O, finalUrl: page.url(), responseBody });
-    const raw = ctx.captureEvidence(after, { check: "owner-delete-after", name, url: page.url(), responseStatus: response?.status() ?? null, responseBody, ...outcome });
+    const raw = ctx.captureEvidence(after, { check: "owner-delete-after", name, url: page.url(), responseStatus: response?.status() ?? null, responseBody, responseBodySource, hostResponseSha256: line?.deleteResponseSha256, ...outcome });
     record("row 7: the Delete button removes the card and completes the previous-page redirect or deleted confirmation, without recreating that target",
       line !== undefined && line.status < 400 && response !== null && response.status() < 400 && trashed && outcome.pageAccepted,
       { hostStatus: line?.status ?? null, trashed, showsNewCardForm: outcome.targetCreateForm, ...outcome, raw, url: page.url().slice(O.length) });
@@ -305,9 +307,8 @@ export async function ownerReplay(ctx) {
   };
 
   const stamp = Date.now().toString(36);
-  const cardtypeName = `Harness_owner_Cardtype_r${stamp}`;
   const deleteName = `Harness_owner_DeleteThisTest_r${stamp}`;
-  created.push(cardtypeName, deleteName);
+  created.push(deleteName);
 
   await attempt("owner replay", async () => {
     // signed out start
@@ -345,11 +346,16 @@ export async function ownerReplay(ctx) {
     await step("GET /*new", 200, nav("/*new"));
     await step("GET /*search", 200, nav("/*search"));
     await step("GET /Type/new", 200, nav("/Type/new"));
-    await step("POST /card/create (Cardtype)", (s) => s !== null && s < 400, async () => {
+    // The owner's /Type/new form submits the existing name Type. A new-name
+    // Cardtype create is checked separately above; this is its refusal path.
+    await step("POST /card/create (duplicate Type name)", (s, note) => s === 422 && note?.visibleError === true, async () => {
       await page.goto(`${O}/Type/new`, { waitUntil: "load" });
-      await page.locator("form.card-form input[name='card[name]']").first().fill(cardtypeName).catch(() => undefined);
+      const responded = page.waitForResponse(r => new URL(r.url()).pathname === '/card/create' && r.request().method() === 'POST', { timeout: 20_000 }).catch(() => null);
       await page.locator("form.card-form button[type='submit'], form.card-form input[type='submit']").first().click().catch(() => undefined);
-      await page.waitForTimeout(2500);
+      const response = await responded;
+      const body = response ? (await response.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '';
+      const reason = /(must be unique[^.]*|already exists[^.]*)/i.exec(body)?.[0] ?? null;
+      return { request: {method:'POST',path:'/card/create'}, summary:`status ${response?.status() ?? null}; ${reason ?? 'no error shown'}`, visibleError:reason!==null };
     });
     await step("GET /DeleteThisTest/new (owner's new card)", 200, nav(`/${deleteName}/new`));
     await step("POST /card/create (the card)", (s) => s !== null && s < 400, async () => {

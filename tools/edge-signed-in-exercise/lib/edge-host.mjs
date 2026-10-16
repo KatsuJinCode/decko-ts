@@ -136,6 +136,12 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       ms: Date.now() - started,
       serverTiming: response.headers.get("server-timing"),
       bytes: out.length,
+      // Chromium can discard an AJAX delete body when its redirect navigates.
+      // Preserve only this bounded JSON answer, bound to the exact request.
+      ...(url.pathname.startsWith('/delete/') &&
+        (response.headers.get('content-type') ?? '').includes('application/json') && out.length <= 4096
+        ? { deleteResponseBody: out.toString('utf8'), deleteResponseSha256: createHash('sha256').update(out).digest('hex') }
+        : {}),
       // The answer to a write, for the run record: what the server actually said.
       bodyHead: req.method === "GET" || req.method === "HEAD" ? undefined : out.toString("utf8").replace(/\s+/g, " ").slice(0, 240),
     };

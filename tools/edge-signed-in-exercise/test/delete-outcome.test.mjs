@@ -32,7 +32,11 @@ test('unfinished redirect, mismatched query and cross-origin redirect fail', () 
 });
 
 test('owner delete check captures exact response and after-DOM and retains status/trash refusal', async () => {
-  for (const [status, trash, expected] of [[200, 1, true], [422, 1, false], [200, 0, false]]) {
+  for (const [status, trash, bodyLost, hostBody, expected] of [
+    [200, 1, false, undefined, true], [422, 1, false, undefined, false], [200, 0, false, undefined, false],
+    [200, 1, true, '{"redirect":"https://local.test/"}', true],
+    [200, 1, true, '', false],
+  ]) {
     const html = '<form class="card-form" action="/update/Admin+*enabled_roles"></form>';
     const responseBody = '{"redirect":"https://local.test/"}';
     const created = [];
@@ -44,21 +48,22 @@ test('owner delete check captures exact response and after-DOM and retains statu
       visit: async () => ({}),
       record: (...args) => records.push(args),
       ledger: () => [],
-      linesSince: () => [{ path: '/delete/' + created[0], status }],
+      linesSince: () => [{ path: '/delete/' + created[0], status, deleteResponseBody: hostBody }],
       database: () => ({ prepare: () => ({ get: () => ({ trash }) }) }),
       captureEvidence: (after, metadata) => { captures.push({ after, metadata }); return { capture: 'owned-after' }; },
       page: {
         locator: () => ({ first: () => ({ fill: async () => {}, click: async () => {} }) }),
         waitForTimeout: async () => {}, goto: async () => {}, evaluate: async () => {},
-        waitForResponse: async () => ({ text: async () => responseBody, status: () => status }),
+        waitForResponse: async () => ({ text: async () => { if(bodyLost)throw Error('body discarded');return responseBody; }, status: () => status }),
         waitForURL: async target => assert.equal(target, base.finalUrl),
+        waitForFunction: async () => {},
         content: async () => html, url: () => base.finalUrl,
       },
     });
     assert.equal(records.length, 1);
     assert.equal(records[0][1], expected);
     assert.equal(captures[0].after, html);
-    assert.equal(captures[0].metadata.responseBody, responseBody);
+    assert.equal(captures[0].metadata.responseBody, bodyLost ? hostBody : responseBody);
     assert.equal(captures[0].metadata.responseStatus, status);
     assert.deepEqual(records[0][2].raw, { capture: 'owned-after' });
   }
