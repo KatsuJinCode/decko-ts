@@ -458,6 +458,11 @@ async function routeBunnyEngineRequest(
   const sessionToken = sessionTokenFromRequest(request);
   if (sessionToken === null) {
     profile.authMs += Math.max(0, Date.now() - auth0);
+    if (request.method === "GET" && url.pathname.endsWith(".json") &&
+        ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
+      const match = await nameMatchResponse(request, url, await getDeck(resolved, env));
+      if (match !== null) return match;
+    }
     return await serveProfiled(
       profile,
       request,
@@ -491,6 +496,8 @@ async function routeBunnyEngineRequest(
   );
   profile.authMs += Math.max(0, Date.now() - viewerAuth0);
   if (viewer.signedIn !== true) {
+    const match = await nameMatchResponse(request, url, deck);
+    if (match !== null) return match;
     return await serveProfiled(
       profile,
       request,
