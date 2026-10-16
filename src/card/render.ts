@@ -2036,6 +2036,14 @@ export class RenderEngine implements RenderEngineLike {
     // seats here, on the one view whose root renders an editor (the
     // journeys' ?view=edit surface). No-op for every other root.
     if (view === "edit") {
+      // The default loader dispatches synchronous list editors without the
+      // explicit installInto warm used by isolated mod tests. Seat the
+      // winning input rule before that dispatch, including newly saved,
+      // null-name junction rules reached through the rule cache by ID.
+      if (rootCard.unknown !== true && (rootCard.typeCode === "pointer" || rootCard.typeCode === "list")) {
+        const inputRule = await this.ruleCardForSetting(this.structurePatternInputForSync(rootCard), "input_type");
+        if (inputRule !== undefined && inputRule.name !== undefined) await this.enrichAndStore(inputRule);
+      }
       await this.ensurePointerEditorOptions(rootCard);
     }
     // The navbox typeahead's data (card-mod-search set/self/search.rb:70-72

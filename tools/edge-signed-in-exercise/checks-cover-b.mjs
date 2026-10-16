@@ -256,8 +256,14 @@ export async function runCoverBChecks(ctx) {
       await create(`${rightSet}+*right+${setting.name}`, JSON.stringify({ type: optionType, sort: "name" }), "Search");
       pointerBuilt = true;
     }
-    ensure(`${rightSet}+*right+*input type`);
-    await create(`${rightSet}+*right+*input type`, inputType, "Phrase");
+    const inputRule=ensure(`${rightSet}+*right+*input type`);
+    if(exists(inputRule)){
+      // A whole run reuses this fixture across checkbox/select/edit cases.
+      // Update the existing rule instead of silently ignoring duplicate create.
+      const updated=await page.context().request.post(stack.origin+'/update/'+encodeURIComponent(inputRule),{headers:{origin:stack.origin,accept:'application/json'},form:{'card[content]':inputType},maxRedirects:0});
+      await updated.body();
+      if(updated.status()>=400||row(inputRule)?.content!==inputType)throw Error('pointer input fixture rule update did not persist');
+    }else await create(inputRule, inputType, "Phrase");
   };
 
   await attempt("C16 a checkbox pointer input can be checked and stored", async () => {

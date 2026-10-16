@@ -328,6 +328,41 @@ it("applies a right default only when a new form has no explicit content preset"
   expect(await snapshot()).toEqual(before);
 }, 60_000);
 
+it("uses newly saved right input rules for actual Pointer edit modals", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const types = Object.fromEntries((await driver.query<{ id: number; codename: string }>("SELECT id,codename FROM cards WHERE codename IN ('basic','phrase','pointer','list')", [])).rows.map(row => [row.codename, row.id]));
+  const host = "Owned Pointer Host", right = "Owned Pointer Field", option = "Owned Pointer Option One";
+  const create = async (name: string, type: string, content: string) => {
+    const result = await post("/card/create", { "card[name]": name, "card[type_id]": String(types[type]), "card[content]": content }, cookie);
+    expect(result.status, name).toBe(200);
+  };
+  await create(host, "basic", "");
+  await create(option, "basic", "Owned pointer option body");
+  await create(`${right}+*right+*content options`, "list", `[[${option}]]`);
+  const inputRule = `${right}+*right+*input type`;
+  const name = `${host}+${right}`;
+  await create(name, "pointer", "");
+  const initial = await fetch(base + "/" + encodeURIComponent(name) + "/edit", { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+  expect(initial.status).toBe(200);
+  expect(await initial.text()).toContain('pointer-list-editor');
+  await create(inputRule, "phrase", "checkbox");
+  for (const widget of ["checkbox", "select"] as const) {
+    if (widget === "select") {
+      const updated = await post("/update/" + encodeURIComponent(inputRule), { "card[content]": widget }, cookie);
+      expect(updated.status).toBe(200);
+    }
+    const before = await snapshot();
+    const page = await fetch(base + "/" + encodeURIComponent(name) + "/edit", { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain(widget === "checkbox" ? 'type="checkbox"' : '<select');
+    expect(html).toContain(`value="${option}"`);
+    expect(html).not.toContain('pointer-list-editor');
+    expect(await snapshot()).toEqual(before);
+  }
+}, 60_000);
+
 it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
