@@ -59,6 +59,69 @@ export { LiveRenderAborted };
  *  boot). Called once per pass. */
 export type LiveEngineBoot = (driver: SQLDatabaseDriver) => Promise<{ render: RenderEngine }>;
 
+/** Sequential views in ONE request may share proven database answers,
+ *  never engines or prepared permission state. Bound to one driver/viewer
+ *  and abort signal; not a cross-request kept-page cache. */
+export class LiveRenderScope {
+  private live: LiveStoreDriver | undefined;
+  private owner: SQLDatabaseDriver | undefined;
+  private viewer: string | undefined;
+  private signal: AbortSignal | undefined;
+  private stamp: number | undefined;
+  private active = false;
+  private closed = false;
+
+  async acquire(base: SQLDatabaseDriver, viewer: string | undefined, signal: AbortSignal | undefined, create: () => LiveStoreDriver): Promise<LiveStoreDriver> {
+    if (this.closed || this.active) throw new Error("live render scope is closed or already in use");
+    if (this.owner !== undefined && (this.owner !== base || this.viewer !== viewer || this.signal !== signal)) {
+      throw new Error("live render scope cannot cross database, viewer or request boundaries");
+    }
+    this.active = true;
+    try {
+      if (Boolean(signal?.aborted)) throw new LiveRenderAborted();
+      let stamp: number | undefined;
+      try { stamp = stampOf(await base.query(BOOT_VERSION_STATEMENT, [])); }
+      catch (error) {
+        // A deck without the optional stamp still renders, but no facts
+        // cross the view boundary. Infrastructure failures remain failures.
+        if (!/no such table[^\n]*deck_data_version/i.test(String(error))) throw error;
+      }
+      if (signal?.aborted === true) throw new LiveRenderAborted();
+      if (this.live !== undefined && (stamp === undefined || stamp !== this.stamp)) {
+        this.live.close();
+        this.live = undefined;
+      }
+      const live = this.live ?? create();
+      this.owner = base;
+      this.viewer = viewer;
+      this.signal = signal;
+      this.stamp = stamp;
+      this.live = live;
+      live.beginRequest(signal);
+      live.stats.round_trips += 1;
+      live.stats.statements_sent += 1;
+      return live;
+    } catch (error) { this.active = false; throw error; }
+  }
+
+  release(completed: boolean): void {
+    this.active = false;
+    if (!completed) { this.live?.close(); this.live = undefined; }
+  }
+
+  close(): void {
+    if (this.active) throw new Error("cannot close a live render scope while a view is active");
+    this.live?.close();
+    this.live = undefined;
+    this.closed = true;
+  }
+}
+
+export async function withLiveRenderScope<T>(work: (scope: LiveRenderScope) => Promise<T>): Promise<T> {
+  const scope = new LiveRenderScope();
+  try { return await work(scope); } finally { scope.close(); }
+}
+
 export interface LiveRenderOptions {
   requestedView?: string;
   historyParams?: HistoryRenderParams;
@@ -67,6 +130,8 @@ export interface LiveRenderOptions {
   bareView?: boolean;
   /** Page prepare with the layout omitted, for a focal ajax slot refresh. */
   bareMainOpts?: Record<string, unknown>;
+  /** Request-owned facts shared by sequential views; never kept globally. */
+  requestScope?: LiveRenderScope;
   /** Collect pass 2 recording more than this many questions switches the
    *  request to full speculation. Unset here means never switch, so the choice
    *  stays with the caller; env DECKO_LIVE_AUTO_THRESHOLD overrides. */
@@ -275,7 +340,7 @@ export async function liveRenderPage(
   // KEPT PAGES (see the header). Incremental discovery keeps a discovery
   // engine across passes and is not covered.
   const keepOn =
-    opts.keep !== false && env?.DECKO_LIVE_KEEP !== "0" && !(opts.refreshDiscoveryEngine !== undefined && (opts.incremental ?? env?.DECKO_LIVE_INCREMENTAL === "1"));
+    opts.requestScope === undefined && opts.keep !== false && env?.DECKO_LIVE_KEEP !== "0" && !(opts.refreshDiscoveryEngine !== undefined && (opts.incremental ?? env?.DECKO_LIVE_INCREMENTAL === "1"));
   const key = keptKey(page, opts);
   let kept = keepOn ? takeKept(base, key) : undefined;
   // The stamp this request's rows are read under: read first when a kept
@@ -289,14 +354,15 @@ export async function liveRenderPage(
       kept = undefined;
     }
   }
-  const live =
-    kept?.live ??
-    new LiveStoreDriver(base, {
+  const createStore = () => new LiveStoreDriver(base, {
       ringAll,
       signal: opts.signal,
       compact: env?.DECKO_LIVE_COMPACT !== "0",
       identityRing: env?.DECKO_LIVE_IDENTITY_RING === "1",
     });
+  const live = opts.requestScope !== undefined
+    ? await opts.requestScope.acquire(base, opts.keepScope, opts.signal, createStore)
+    : kept?.live ?? createStore();
   if (kept !== undefined) live.beginRequest(opts.signal);
   if (keepOn && stamp !== undefined) live.stats.round_trips += 1;
   if (keepOn && stamp === undefined) live.leadStatement = { sql: BOOT_VERSION_STATEMENT, params: [] };
@@ -431,7 +497,7 @@ export async function liveRenderPage(
         }
         if (threw !== undefined) throw threw;
         completed = true;
-        return { html: html as string, status: out.engine?.pageErrorStatus ?? 200, stats: live.stats, passes, choice };
+        return { html: html as string, status: out.engine?.pageErrorStatus ?? 200, stats: { ...live.stats }, passes, choice };
       }
       if (env?.DECKO_LIVE_TRACE === "1") {
         process.stderr.write(
@@ -449,7 +515,9 @@ export async function liveRenderPage(
   } finally {
     if (stamp === undefined) stamp = stampOf(live.leadResult);
     live.leadStatement = undefined;
-    if (completed && keepOn && choice === "collect" && stamp !== undefined) {
+    if (opts.requestScope !== undefined) {
+      opts.requestScope.release(completed);
+    } else if (completed && keepOn && choice === "collect" && stamp !== undefined) {
       putKept(base, key, { live, stamp, seeds, eagerRefs, deniedRootKey });
     } else {
       live.close();

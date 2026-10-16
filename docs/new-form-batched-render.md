@@ -232,3 +232,71 @@ This establishes duplicated request-local fetch work for future bounded
 optimization. It does not turn the release lead's 3–4.5s failures into green
 or establish a median/p95. Raw `phase-report.json`, `phase-build.json`, virtual
 instrumentation build script, and unchanged HTML are preserved privately.
+
+## One-request facts shared by the shell and typed form
+
+The new-form helper now owns a sequential `LiveRenderScope` for its shell
+and form. It retains only database answers. Every render pass still boots
+fresh engines and prepares permissions for the same actor. The scope binds
+the database driver, viewer key and abort signal, rejects overlapping use,
+and closes in the helper's finally block. It disables the global kept-page
+cache. No scope crosses an HTTP request or wraps a write transaction.
+
+Before each view, the scope reads the real `deck_data_version` from the base
+driver. A changed or unavailable stamp discards every retained answer; an
+infrastructure error propagates. Prior result statistics are copied so the
+next view cannot reset an earlier result's measurements.
+
+The same approved 21,676-card source copy produced these bounded diagnostic
+measurements. These are individual observations, not median/p95 or release
+acceptance:
+
+| Form | Independent stores total | Scoped total | Scoped form phase |
+|---|---:|---:|---:|
+| Basic | 2.053s | 1.514s | 0.217s / 4 trips / 16 SQL / 72ms SQLite / 15 fetched rows |
+| RichText preset | 2.925s | 2.434s | 0.310s / 4 trips / 16 SQL / 125ms SQLite / 11 fetched rows |
+
+The form previously fetched about 9,490 rows. Each scoped view adds a real
+stamp read; this is a reduction in duplicate rows and execution work, not
+a claim of fewer total round trips. `phase-scope-report.json` and
+`phase-scope-build.json` pin the diagnostic bundle and source diff. The
+artifact's commit identifies its base; the source was dirty with this
+prototype and is not represented as a clean candidate run.
+
+The freshness proof changes a real permission rule and its party references
+in an independent committed SQLite transaction exactly between chrome and
+form. An ordinary member first receives a real create form (200). With the
+stamp moving 652→655 between phases, the same request then returns 403 and
+no create form. Omitting only version invalidation in a separate negative
+diagnostic bundle (664→667) returns a stale form with 200 and deliberately
+fails acceptance/exit 1. The unsafe diagnostic is never installed in source.
+
+This probe also exposed an existing status defect: a denied typed form
+discarded the render's status and returned 200. The helper now prepares a
+focal form and propagates its actual status. The earlier guarded-but-200
+record remains RED. The actual HTTP regression checks member denial, admin
+permission, and rejection of submission from the previously allowed form,
+with exact cards/history/sequence snapshots unchanged after the refusals.
+
+The real SQLite regression independently changes content and read-rule
+references between scoped views, verifies version movement, 403, unchanged
+prior statistics, and viewer/request isolation. Temporarily omitting the
+version check makes this regression fail on stale content (exit 1).
+
+Private raw evidence is under `tmp/newform-profile-62b26338/`:
+`scope-permission-focal-report.json` is the guarded positive;
+`scope-permission-no-version-report.json` is the failing omission control;
+`scope-permission-report.json` preserves the earlier HTTP-200 defect.
+Each has original response HTML, build metadata and logs. Source database
+SHA-256 remains `edcc11bc32a8e0b1ec3529aeb9240c6201cc7c39191e0c2ebe618795838815bc`.
+The probe's unrelated cold ID-mark rule update failed before measurements;
+that failed setup is preserved in `console-scope-permission-fixed.log` and
+is not claimed fixed. The subsequent permission probe uses the actual named
+route to isolate this scope boundary. All requests use owned loopback
+Hrana/storage emulators; no hosted runtime acceptance is asserted.
+
+The final targeted run passed all 12 tests across the actual HTTP, request
+scope, CQL capability and cancellation suites in 62.54s. TypeScript validation
+also passed. Raw phase bundles, HTML, scripts, positive and negative records,
+and test logs are preserved with a SHA-256 manifest outside the worktree at
+`C:/localProjects/brandonDojoTech/recovery/release/private-probes/newform-request-scope-c3b06650/`.

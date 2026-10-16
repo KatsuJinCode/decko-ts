@@ -42,7 +42,7 @@ import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js"
 import { edgeHostLabels } from "./edge-host-labels.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { renderPageWithStatus } from "../../src/card/render/page.js";
-import { liveRenderPage, liveRenderView } from "../../src/card/live/live-render.js";
+import { liveRenderPage, liveRenderView, withLiveRenderScope } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
 import {
@@ -877,6 +877,8 @@ async function signedInNewCardPage(
 ): Promise<Response | undefined> {
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
+  return await withLiveRenderScope(async (requestScope) => {
+  const keepScope = `new-form-viewer:${String(viewer.actorId)}`;
   const typeKey = DeckoName.parse(typeName);
   const typeRecord = await deck.fetcher.fetchByKey(typeKey.key, { skipVirtual: true }).catch(() => undefined);
   if (typeRecord === undefined || typeRecord.name === undefined || typeRecord.id === undefined) return undefined;
@@ -892,7 +894,7 @@ async function signedInNewCardPage(
       },
       // The cheapest main view: the slot is replaced by the form, and a
       // cardtype's own page lists every card of the type.
-      { signal, keep: false, requestedView: "link" },
+      { signal, keep: false, requestedView: "link", requestScope, keepScope },
     );
   const renderChrome = (base: string) =>
     requestContextAvailable()
@@ -925,16 +927,17 @@ async function signedInNewCardPage(
       engines.render.pageSession = viewer;
       engines.render.renderAbsentCards = true;
       return engines;
-    }, { signal, requestedView: "new", historyParams: { newCard: { typeId: typeRecord.id, content } } });
-    return result.html;
+    }, { signal, requestedView: "new", requestScope, keepScope, historyParams: { focalRoot: true, newCard: { typeId: typeRecord.id, content } } });
+    return result;
   };
   const form = await (requestContextAvailable()
     ? runInRequestContext(getNameEnvironment(), renderForm)
     : withIsolateRenderLock(renderForm));
   const body =
-    pageHtml.slice(0, mainAt) + `<div id="main">${form}</div>` + pageHtml.slice(mainAt + main.length);
+    pageHtml.slice(0, mainAt) + `<div id="main">${form.html}</div>` + pageHtml.slice(mainAt + main.length);
   const title = `New ${escapeHtml(typeRecord.name.s)}`;
-  return html(200, body.replace(/<title>[^<]*?( - [^<]*)?<\/title>/, (_t, site: string | undefined) => `<title>${title}${site ?? ""}</title>`));
+  return html(form.status, body.replace(/<title>[^<]*?( - [^<]*)?<\/title>/, (_t, site: string | undefined) => `<title>${title}${site ?? ""}</title>`));
+  });
 }
 
 /** The name a new-card form starts with for a requested unknown card: the

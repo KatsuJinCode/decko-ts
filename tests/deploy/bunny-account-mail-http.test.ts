@@ -300,6 +300,38 @@ it("batches the actual RichText XHR edit modal and focal slot without changing s
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("keeps typed create denials focal and actor-specific after a committed permission change", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const adminCookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const byCode = async (code: string) => (await driver.query<{ id: number; name: string }>("SELECT id,name FROM cards WHERE codename=?", [code])).rows[0];
+  const phrase = await byCode("phrase"), type = await byCode("type"), create = await byCode("create");
+  const anyone = await byCode("anyone_signed_in"), bot = await byCode("decko_bot");
+  const ruleName = `${phrase.name}+${type.name}+${create.name}`;
+  const mark = encodeURIComponent(ruleName.replaceAll(" ", "_"));
+  const rule = (await driver.query<{ id: number; db_content: string }>("SELECT r.id,r.db_content FROM cards r JOIN cards s ON s.id=r.left_id WHERE s.left_id=? AND s.right_id=? AND r.right_id=? AND r.trash=0", [phrase.id,type.id,create.id])).rows[0];
+  const ruleType = (await driver.query<{ type_id: number }>("SELECT type_id FROM cards WHERE right_id=? AND trash=0 LIMIT 1", [create.id])).rows[0].type_id;
+  expect((await post(rule ? `/update/${mark}` : "/card/create", { "card[content]": `[[${anyone.name}]]`, ...(rule ? {} : { "card[name]": ruleName, "card[type_id]": String(ruleType) }) }, adminCookie)).status).toBe(200);
+  try {
+    const member = await signin("mira.member@example.test", "Fixture member pass 1#");
+    const cookie = member.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+    const allowed = await fetch(`${base}/new/Phrase`, { headers: { cookie } });
+    expect(allowed.status).toBe(200);
+    const fields = formFields(await allowed.text(), "/card/create");
+    expect((await post(`/update/${mark}`, { "card[content]": `[[${bot.name}]]` }, adminCookie)).status).toBe(200);
+    const before = await snapshot();
+    const denied = await fetch(`${base}/new/Phrase`, { headers: { cookie } });
+    expect(denied.status).toBe(403);
+    expect(await denied.text()).toContain("Sorry!");
+    const permitted = await fetch(`${base}/new/Phrase`, { headers: { cookie: adminCookie } });
+    expect(permitted.status).toBe(200);
+    fields["card[name]"] = "Refused Stale Form";
+    expect((await post("/card/create", fields, cookie)).status).toBe(403);
+    expect(await snapshot()).toEqual(before);
+  } finally {
+    expect((await post(`/update/${mark}`, { "card[content]": rule?.db_content ?? `[[${anyone.name}]]` }, adminCookie)).status).toBe(200);
+  }
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();
