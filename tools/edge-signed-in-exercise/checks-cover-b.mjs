@@ -11,10 +11,16 @@
 // Loaded by tools/edge-signed-in-exercise.mjs through its checks-*.mjs loader;
 // the entry point is runCoverBChecks(ctx).
 
+import { focusRichEditor } from "./lib/rich-editor.mjs";
+
 const CAP = "C";
 
 /** The create form on /new/:type (the page's own form, not the navbar's roles form). */
 const MAIN_FORM = 'form#new_card[action="/card/create"], #main form.card-form, form.card-form[action*="/card/create"], form.card-form[id="new_card"]';
+
+/** A real minimal 1x1 PNG (RGBA, transparent): the Image upload posts bytes an
+ *  image card actually accepts, not a text/plain stub wearing a .png name. */
+const ONE_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 /** TinyMCE is ready once the global tinymce has an active editor. */
 async function waitForEditor(page, timeout = 30_000) {
@@ -25,6 +31,18 @@ async function waitForEditor(page, timeout = 30_000) {
     present: typeof window.tinymce !== "undefined",
     active: typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null,
   }));
+}
+
+/** The id of the editor owning the open edit modal (the runner's
+ *  focusRichEditor contract), focused and ready; null when no editor came up,
+ *  so the checks below record the miss instead of throwing. A stale global
+ *  activeEditor left by an earlier page or modal must not be graded. */
+async function openRichEditorId(page) {
+  try {
+    return await focusRichEditor(page);
+  } catch {
+    return null;
+  }
 }
 
 /** Creates a card of `type` with `content` through the create form. */
@@ -69,28 +87,30 @@ export async function runCoverBChecks(ctx) {
   const group = ctx.group ?? ((name) => console.log(`\n== ${name}`));
   const admin = creds.admin;
   const member = creds.member;
-  // A check that hits the bound above is abandoned mid-flight: its modal may
-  // still be open, a navigation may be pending, and the session may belong to
-  // the member the check signed in. Whatever it left behind would grade the
-  // next check, so a timed-out attempt quarantines before its failure is
-  // recorded: close any modal with Escape, land back on the origin home, and
-  // re-establish the admin session. Best effort — the quarantine never throws
-  // into the runner.
-  const quarantine = async () => {
-    try {
-      await page.keyboard.press("Escape").catch(() => undefined);
-      await page.goto(`${stack.origin}/`, { waitUntil: "load", timeout: 15_000 }).catch(() => undefined);
-      await signIn(admin);
-    } catch { /* the abandoned check must not break the checks after it */ }
+  // A check that hits the bound above is abandoned mid-flight: its continuation
+  // stays suspended on an await it may still finish, so nothing this module
+  // does afterwards can make the fixture's page or session safe for the next
+  // check. The runner owns the fixture and its abort protocol
+  // (fixtureState.fatalReason — the disposable run is quarantined and the
+  // owned browser closed, a fresh run continues), so a timed-out attempt marks
+  // the fixture fatal, lets the inner attempt record the failed check, then
+  // throws so runCoverBChecks exits entirely.
+  let timedOutCheck = null;
+  const attempt = async (name, fn) => {
+    const result = await ctx.attempt(name, async () => {
+      try {
+        return await bounded(Promise.resolve().then(fn), name);
+      } catch (error) {
+        if (error?.timedOut === true) {
+          timedOutCheck = name;
+          if (ctx.fixtureState) ctx.fixtureState.fatalReason = `cover-b check "${name}" did not settle within ${CHECK_BOUND_MS} ms; the fixture browser state is unowned from here`;
+        }
+        throw error;
+      }
+    });
+    if (timedOutCheck !== null) throw new Error(`cover-b aborts the rest of its checks after "${timedOutCheck}": the bound abandoned it mid-flight${ctx.fixtureState?.fatalReason ? ` (${ctx.fixtureState.fatalReason})` : ""}`);
+    return result;
   };
-  const attempt = (name, fn) => ctx.attempt(name, async () => {
-    try {
-      return await bounded(Promise.resolve().then(fn), name);
-    } catch (error) {
-      if (error?.timedOut === true) await quarantine();
-      throw error;
-    }
-  });
 
   const ensure = (name) => { if (!created.includes(name)) created.push(name); return name; };
   const exists = (name) => ctx.database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(name);
@@ -306,19 +326,22 @@ export async function runCoverBChecks(ctx) {
     await link.dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
     await page.waitForTimeout(3500);
-    const buttons = await page.evaluate(() => {
-      if (typeof window.tinymce === "undefined" || !window.tinymce.activeEditor) return [];
-      return [...window.tinymce.activeEditor.editorContainer.querySelectorAll("button, a")].map((b) => ({ label: `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.trim() })).filter((b) => b.label);
-    });
+    const editorId = await openRichEditorId(page);
+    const buttons = await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
+      if (!c) return [];
+      return [...c.querySelectorAll("button, a")].map((b) => ({ label: `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.trim() })).filter((b) => b.label);
+    }, editorId);
     const linkButton = buttons.find((b) => /\[\[|link/i.test(b.label) && !/nest|image/i.test(b.label));
     if (linkButton === undefined) {
       record("E6 the editor's link button inserts a reference that renders as a link", false, { note: "no link ([[ ]]) button in the TinyMCE toolbar", buttons: buttons.slice(0, 12) });
       return;
     }
-    await page.evaluate(() => {
-      const b = [...window.tinymce.activeEditor.editorContainer.querySelectorAll("button, a")].find((x) => /\[\[|link/i.test(`${x.getAttribute("title") ?? ""} ${x.getAttribute("aria-label") ?? ""} ${x.textContent ?? ""}`) && !/nest|image/i.test(`${x.getAttribute("title") ?? ""} ${x.textContent ?? ""}`));
+    await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
+      const b = c ? [...c.querySelectorAll("button, a")].find((x) => /\[\[|link/i.test(`${x.getAttribute("title") ?? ""} ${x.getAttribute("aria-label") ?? ""} ${x.textContent ?? ""}`) && !/nest|image/i.test(`${x.getAttribute("title") ?? ""} ${x.textContent ?? ""}`)) : undefined;
       b?.click();
-    });
+    }, editorId);
     await page.waitForTimeout(1200);
     const dialog = await page.evaluate(() => {
       const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
@@ -331,7 +354,7 @@ export async function runCoverBChecks(ctx) {
       await page.waitForTimeout(400);
       await page.locator('[role=dialog] button.primary, .mce-window .mce-primary button, .mce-dialog .mce-primary button, [role=dialog] button:has-text("Save"), [role=dialog] button:has-text("Insert"), [role=dialog] button:has-text("OK")').first().click().catch(() => undefined);
       await page.waitForTimeout(1200);
-      const content = await page.evaluate(() => window.tinymce?.activeEditor?.getContent?.() ?? "");
+      const content = await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId);
       inserted = /Home/.test(content) && /\[\[|\]\]|href=/.test(content);
       if (inserted) {
         // Ruby's expectation (edit/nest_editor + edit-note-admin): the [[Home]]
@@ -351,7 +374,7 @@ export async function runCoverBChecks(ctx) {
     // Grade the underlying reference syntax the button produces by typing it:
     // if THAT renders as a link, the defect is the button/dialog; if it does
     // not, [[references]] do not render as links at all.
-    await page.evaluate(() => window.tinymce?.activeEditor?.setContent?.("<p>[[Home]]</p>")).catch(() => undefined);
+    await page.evaluate((id) => window.tinymce?.get(id)?.setContent?.("<p>[[Home]]</p>"), editorId).catch(() => undefined);
     const before = ledger().length;
     await page.locator("#edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
     await page.waitForTimeout(2500);
@@ -370,9 +393,11 @@ export async function runCoverBChecks(ctx) {
     await link.dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
     await page.waitForTimeout(3500);
-    const opened = await page.evaluate(() => {
-      if (typeof window.tinymce === "undefined" || !window.tinymce.activeEditor) return { opened: false, reason: "no editor" };
-      const buttons = [...window.tinymce.activeEditor.editorContainer.querySelectorAll("button, a")];
+    const editorId = await openRichEditorId(page);
+    const opened = await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
+      if (!c) return { opened: false, reason: "no editor" };
+      const buttons = [...c.querySelectorAll("button, a")];
       const insert = buttons.find((b) => /^insert$/i.test((b.getAttribute("aria-label") ?? b.textContent ?? "").trim()));
       if (!insert) return { opened: false, reason: "no Insert menu button", buttons: buttons.map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
       insert.click();
@@ -380,7 +405,7 @@ export async function runCoverBChecks(ctx) {
       if (!image) return { opened: false, reason: "no Image... item after Insert", buttons: buttons.map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
       image.click();
       return { opened: true };
-    });
+    }, editorId);
     await page.waitForTimeout(1500);
     const dialog = await page.evaluate(() => {
       const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
@@ -398,7 +423,7 @@ export async function runCoverBChecks(ctx) {
         apply?.click();
       });
       await page.waitForTimeout(1000);
-      applied = /view: titled/.test(await page.evaluate(() => window.tinymce?.activeEditor?.getContent?.() ?? ""));
+      applied = /view: titled/.test(await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId));
     }
     record("E8 the nest image editor inserts a nest with view and size options",
       opened.opened && dialog.open && applied,
@@ -428,10 +453,10 @@ export async function runCoverBChecks(ctx) {
     await link.dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
     await page.waitForTimeout(3500);
-    await page.evaluate(() => window.tinymce?.activeEditor?.focus());
+    const editorId = await openRichEditorId(page);
     await page.keyboard.press("Control+End");
-    const opened = await page.evaluate(() => {
-      const c = window.tinymce?.activeEditor?.editorContainer;
+    const opened = await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
       if (!c) return { opened: false, reason: "no editor" };
       const nest = [...c.querySelectorAll("button, a")].find((b) =>
         /nest/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`) &&
@@ -439,12 +464,12 @@ export async function runCoverBChecks(ctx) {
       if (!nest) return { opened: false, reason: "no Insert/edit nest toolbar button", buttons: [...c.querySelectorAll("button, a")].map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
       nest.click();
       return { opened: true };
-    });
+    }, editorId);
     await page.waitForSelector("button._nest-apply", { timeout: 20_000 }).catch(() => undefined);
     await page.waitForTimeout(1200);
     // The wire, read at render time: Apply's data-tinymce-id names a live
     // TinyMCE instance (the one that opened the dialog).
-    const wire = await page.evaluate(() => {
+    const wire = await page.evaluate((modalEditorId) => {
       const apply = document.querySelector("button._nest-apply");
       if (!apply) return { present: false };
       const id = apply.getAttribute("data-tinymce-id");
@@ -453,17 +478,17 @@ export async function runCoverBChecks(ctx) {
         tinymceId: id,
         nonEmpty: typeof id === "string" && id.length > 0,
         resolvesEditor: Boolean(id) && typeof window.tinymce?.get === "function" && Boolean(window.tinymce.get(id)),
-        isEditorThatOpened: Boolean(id) && window.tinymce?.get?.(id) != null && window.tinymce.get(id) === window.tinymce.activeEditor,
+        isEditorThatOpened: Boolean(id) && Boolean(modalEditorId) && window.tinymce?.get?.(id) != null && window.tinymce.get(id) === window.tinymce.get(modalEditorId),
         label: (apply.textContent ?? "").trim(),
         inModalSlot: Boolean(apply.closest("._modal-slot")),
       };
-    });
+    }, editorId);
     await page.locator("input._nest-name").first().fill(target).catch(() => undefined);
     await page.waitForTimeout(600);
     const preview = await page.evaluate(() => document.querySelector("._nest-preview")?.value ?? null);
     await page.evaluate(() => document.querySelector("button._nest-apply")?.click());
     await page.waitForTimeout(1000);
-    const content = await page.evaluate(() => window.tinymce?.activeEditor?.getContent?.() ?? "");
+    const content = await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId);
     const insertedNest = content.includes(target) && content.includes("{{");
     const before = ledger().length;
     await page.locator("#edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
@@ -691,8 +716,15 @@ export async function runCoverBChecks(ctx) {
     }
     const name = ensure(cardName(expectStored ? "upload" : "empty"));
     await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+    // An Image card gets real image bytes; a text/plain buffer cannot credit
+    // the image capability no matter what the server answers.
+    const isImage = type === "Image";
+    await fileInput.setInputFiles({
+      name: isImage ? "harness.png" : "harness.txt",
+      mimeType: isImage ? "image/png" : "text/plain",
+      buffer: isImage ? Buffer.from(ONE_BY_ONE_PNG_BASE64, "base64") : Buffer.from("harness"),
+    }).catch(() => undefined);
     const before = ledger().length;
-    await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: Buffer.from("harness") }).catch(() => undefined);
     await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
     await page.waitForTimeout(3000);
     const write = linesSince(before).find((l) => l.method !== "GET");
@@ -728,29 +760,9 @@ export async function runCoverBChecks(ctx) {
     await signIn(admin);
   });
 
-  // ------------------------------------------------------------- N1, N3, N8, N11
-  group("cover-b. search, layouts and references (N1, N3, N8, N11)");
-
-  await attempt("N1 the navbox offers suggestions and Enter runs the search (results are filtered by the keyword)", async () => {
-    const name = ensure(cardName("navbox"));
-    await create(name, null, "Basic");
-    await visit("/");
-    await page.fill("#query_keyword", name);
-    await page.waitForTimeout(2000);
-    const suggestions = await page.evaluate(() => [...document.querySelectorAll(".select2-results__option, .ui-autocomplete li, .search-box-dropdown li, ._search-box-results li, .dropdown-menu.show li, .ui-menu-item")]
-      .map((li) => li.textContent.trim()).filter((t) => t.includes("Harness")).slice(0, 6));
-    await page.press("#query_keyword", "Enter");
-    await page.waitForLoadState("load").catch(() => undefined);
-    await page.waitForTimeout(1500);
-    const text = await page.evaluate(() => document.querySelector("#main")?.innerText ?? document.body.innerText);
-    // Ruby (navbox.feature quick search): the results list the typed card, and
-    // nothing that does not match the keyword.
-    const hasCard = text.includes(name);
-    const otherCards = (text.match(/Harness_[A-Za-z]+_[a-z0-9]+/g) ?? []).filter((n) => n !== name);
-    record("N1 the navbox offers suggestions and Enter runs the search (results are filtered by the keyword)",
-      suggestions.length > 0 && hasCard && otherCards.length === 0,
-      { typed: name, suggestions, url: page.url().replace(stack.origin, ""), hasCard, unrelatedResults: otherCards.slice(0, 4), text: text.replace(/\s+/g, " ").slice(0, 200) });
-  });
+  // ------------------------------------------------------------- N3, N8, N11
+  // (N1 lives in checks-navbox.mjs, which drives the navbox for real.)
+  group("cover-b. search, layouts and references (N3, N8, N11)");
 
   await attempt("N3 paging to the next page of results shows different results", async () => {
     await visit("/");
@@ -804,42 +816,8 @@ export async function runCoverBChecks(ctx) {
       visited.status === 200 && link.length > 0, { status: visited.status, linksToTarget: link });
   });
 
-  // ------------------------------------------------------------------ P1, P3
-  group("cover-b. permissions: member denied read and edit of a restricted card (P1, P3)");
-
-  const restricted = ensure("Harness_CB_Secret");
-  await attempt("P1 a member is denied read of a card the viewer-set rule restricts", async () => {
-    // Ruby's read rule: "<card>+*self+*read" whose content is the role allowed to read.
-    await signIn(admin);
-    await create(restricted, "Harness secret body", "Basic");
-    ensure(`${restricted}+*self+*read`);
-    await create(`${restricted}+*self+*read`, "Administrator", "Phrase");
-    const asAdmin = await visit(`/${restricted}`);
-    const adminSees = asAdmin.status === 200 && /Harness secret body/.test(await page.evaluate(() => document.body.innerText));
-    await signIn(member);
-    const asMember = await visit(`/${restricted}`);
-    const memberText = await page.evaluate(() => document.body.innerText);
-    const denied = /Sorry|may not|permission|not allowed|sign in/i.test(memberText) && !/Harness secret body/.test(memberText);
-    const link = await page.evaluate(() => [...document.querySelectorAll("#main a")].map((a) => a.getAttribute("href")).filter((h) => h === "/Harness_CB_Secret/edit"));
-    record("P1 a member is denied read of a card the viewer-set rule restricts (admin reads it, member does not)",
-      adminSees && denied && link.length === 0, { adminSees, memberText: memberText.slice(0, 160), denied, editLinks: link });
-    await signIn(admin);
-  });
-
-  await attempt("P3 a member is denied edit of a card the viewer-set rule restricts", async () => {
-    // Ruby's update rule: "<card>+*self+*update" = the role allowed to edit.
-    await signIn(admin);
-    ensure(`${restricted}+*self+*update`);
-    await create(`${restricted}+*self+*update`, "Administrator", "Phrase");
-    await signIn(member);
-    const editPage = await visit(`/${restricted}?view=edit`);
-    const editText = await page.evaluate(() => document.body.innerText);
-    const editorFields = await page.locator('input[name="card[content]"], textarea[name="card[content]"]').count();
-    const denied = editPage.status >= 403 || /Sorry|may not|permission|not allowed/i.test(editText);
-    record("P3 a member is denied edit of a card the update rule restricts (403 or the denial, no editor)",
-      denied && editorFields === 0, { editStatus: editPage.status, editText: editText.slice(0, 160), editorFields });
-    await signIn(admin);
-  });
+  // (P1 and P3 live in checks-permissions.mjs, which drives the read/update
+  // restrictions with real positive and negative controls.)
 
   // ------------------------------------------------------------------ P5
   group("cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)");
@@ -962,52 +940,9 @@ export async function runCoverBChecks(ctx) {
     await signIn(admin);
   });
 
-  // ------------------------------------------------------------------ A1, A3
-  group("cover-b. account: settings page and change email (A1, A3)");
-
-  await attempt("A1 the account settings page shows the signed-in member's email", async () => {
-    const holder = member.name.replace(/ /g, "_");
-    await visit(`/${holder}`);
-    const accountLink = await page.evaluate(() => [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => /account/i.test(h ?? "")));
-    const settings = await visit(accountLink ? new URL(accountLink, stack.origin).pathname : `/${holder}+*account`);
-    await page.waitForTimeout(1500);
-    const text = await page.evaluate(() => document.body.innerText);
-    const showsEmail = member.email.toLowerCase().includes(text.toLowerCase().split("\n").find((l) => l.includes("@")) ?? "@@");
-    const hasEmailSlot = /account/i.test(settings.html) && (member.email.split("@")[0].length > 0);
-    record("A1 the account settings page shows the signed-in member's email",
-      settings.status === 200 && showsEmail && hasEmailSlot,
-      { accountLink, status: settings.status, email: member.email, showsEmail, text: text.slice(0, 200) });
-  });
-
-  await attempt("A3 the account's email can be changed", async () => {
-    const holder = member.name.replace(/ /g, "_");
-    const settings = await visit(`/${holder}+*account`);
-    await page.waitForTimeout(1500);
-    const field = page.locator('#main input[name*="email"], .modal input[name*="email"], #edit_card input[name*="email"]').first();
-    if (await field.count() === 0) {
-      record("A3 the account's email can be changed", false, { status: settings.status, note: "no email field on the account page", mainText: (await page.evaluate(() => document.querySelector("#main")?.innerText ?? "")).slice(0, 200) });
-      return;
-    }
-    const original = member.email;
-    const next = `${original.split("@")[0]}.changed@example.test`;
-    await field.fill(next).catch(() => undefined);
-    const before = ledger().length;
-    await page.locator("#main button[type=submit], .modal button[type=submit], #edit_card button[type=submit]").first().click().catch(() => undefined);
-    await page.waitForTimeout(3000);
-    const write = linesSince(before).find((l) => l.method !== "GET");
-    const after = await visit(`/${holder}+*account`);
-    const stored = /changed/.test(await page.evaluate(() => document.querySelector("#main")?.innerText ?? ""));
-    record("A3 the account's email can be changed (the new address shows on the account page)",
-      write !== undefined && write.status < 400 && stored,
-      { writeStatus: write?.status ?? null, afterStatus: after.status, stored });
-    if (!stored) { /* nothing to restore: the change did not happen */ }
-    else {
-      const restore = page.locator('#main input[name*="email"], .modal input[name*="email"], #edit_card input[name*="email"]').first();
-      await restore.fill(original).catch(() => undefined);
-      await page.locator("#main button[type=submit], .modal button[type=submit], #edit_card button[type=submit]").first().click().catch(() => undefined);
-      await page.waitForTimeout(2500);
-    }
-  });
+  // (A1 and A3 live in the runner's own account journey, which changes the
+  // account email and proves both the new and the restored credential by
+  // signing in — including the mandatory restore this module never owned.)
 
   void clickAndWait;
   void CAP;
@@ -1034,12 +969,15 @@ export async function runCoverBChecks(ctx) {
     await page.locator('a.edit-link[href$="/edit"]').first().dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
     const ed = await waitForEditor(page, 20_000);
-    const nestButton = await page.evaluate(() => {
-      const c = window.tinymce?.activeEditor?.editorContainer;
+    const editorId = await openRichEditorId(page);
+    // The probe addresses the modal's own editor (tinymce.get(id)): a stale
+    // global activeEditor from an earlier page or modal must not credit it.
+    const nestButton = await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
       return c ? c.querySelectorAll("[title='Insert/edit nest'], button[title*='nest'], button[aria-label*='nest']").length : 0;
-    });
+    }, editorId);
     record("E3 TinyMCE loads with its nest plugin and toolbar", ed.active === true && nestButton > 0,
-      { editor: ed, nestButtons: nestButton });
+      { editor: ed, editorId, nestButtons: nestButton });
     await page.keyboard.press("Escape").catch(() => undefined);
   });
 
@@ -1049,11 +987,11 @@ export async function runCoverBChecks(ctx) {
     await visit(`/${name}`);
     await page.locator('a.edit-link[href$="/edit"]').first().dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
-    await waitForEditor(page, 20_000);
-    const labels = await page.evaluate(() => {
-      const c = window.tinymce?.activeEditor?.editorContainer;
+    const editorId = await openRichEditorId(page);
+    const labels = await page.evaluate((id) => {
+      const c = window.tinymce?.get(id)?.editorContainer;
       return c ? [...c.querySelectorAll("button, [role=menuitem], .tox-tbtn, .tox-mbtn")].map((b) => `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.replace(/\s+/g, " ").trim()).filter(Boolean) : [];
-    });
+    }, editorId);
     const has = (re) => labels.some((l) => re.test(l));
     const ok = has(/bold/i) && has(/bullet|numbered|list/i) && has(/table/i) && has(/insert/i) && has(/format/i);
     record("M1 Rich text editor toolbar (formats, lists, table, insert menu)", ok,
@@ -1194,7 +1132,7 @@ export async function runCoverBChecks(ctx) {
 
 export const meta = {
   topic: "cover-b",
-  capabilityIds: ["A1", "A3", "C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E18", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N1", "N11", "N3", "N5", "N8", "P1", "P3", "P5", "R1", "S2", "S3", "S4", "S5", "W1", "W3"],
+  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E18", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S2", "S3", "S4", "S5", "W1", "W3"],
 };
 
 function adaptRunnerContext(ctx) {
