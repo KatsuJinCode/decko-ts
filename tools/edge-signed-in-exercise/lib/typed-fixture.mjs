@@ -32,7 +32,7 @@ export async function createTypedFixture(ctx,{name,content='',type='RichText',as
  if(assigned)params.set('card[content]',content);
  const opened=await page.goto(stack.origin+'/new/'+encodeURIComponent(expected.name)+'?'+params,{waitUntil:'domcontentloaded',timeout:60000});
  if(opened.status()>=400)throw Error('typed fixture form refused: '+opened.status());
- const form=page.locator('form.card-form').filter({has:page.locator('input[name="card[name]"]')}).filter({has:page.locator('button[type="submit"],input[type="submit"]')}).first();
+ const form=page.locator('form.card-form').filter({has:page.locator('input[name="card[name]"]')}).filter({has:page.locator('.create-submit-button')}).first();
  const action=new URL(await form.getAttribute('action'),stack.origin);
  if(action.origin!==stack.origin||action.pathname!=='/card/create')throw Error('typed fixture form is not the local create action');
  const nameField=form.locator('input[name="card[name]"]').first();
@@ -51,7 +51,7 @@ export async function createTypedFixture(ctx,{name,content='',type='RichText',as
   else if(await field.inputValue()!==content)throw Error('hidden fixture content did not preserve the supplied value');
  }
  const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==='POST',{timeout:60000}).then(response=>({response}),error=>({error}));
- await form.locator('button[type="submit"],input[type="submit"]').first().click();
+ await form.locator('.create-submit-button').click();
  const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
  const outcome=await seen.response.json().catch(()=>null);
  if(typeof outcome?.redirect==='string'){

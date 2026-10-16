@@ -224,7 +224,8 @@ export async function runCoverBChecks(ctx) {
   group("cover-b. create: pointer inputs (checkbox, select) (C16, C18)");
 
   // Ruby's pointer_inputs.feature: "<right>+*right+*input type" picks the widget and
-  // "<right>+*right+*options" is a Search card of the option cards' type.
+  // options_api.rb uses rule_card(:content_options). Resolve its migrated
+  // name from the codename; a new ordinary *options card is not this setting.
   const rightSet = "Harness_CB_Role";
   const optionType = "Harness_CB_Option";
   const optionCards = ["Harness_CB_Pick_One", "Harness_CB_Pick_Two"];
@@ -235,7 +236,9 @@ export async function runCoverBChecks(ctx) {
       ensure(rightSet);
       await create(optionType, "", "Cardtype");
       for (const option of optionCards) await create(option, "", optionType);
-      await create(`${rightSet}+*right+*options`, JSON.stringify({ type: optionType, sort: "name" }), "Search");
+      const setting=ctx.database().prepare("SELECT name FROM cards WHERE codename='content_options' AND trash=0").get();
+      if(!setting?.name)throw Error('canonical content_options setting is unavailable');
+      await create(`${rightSet}+*right+${setting.name}`, JSON.stringify({ type: optionType, sort: "name" }), "Search");
       pointerBuilt = true;
     }
     ensure(`${rightSet}+*right+*input type`);
