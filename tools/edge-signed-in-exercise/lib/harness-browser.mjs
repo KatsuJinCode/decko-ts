@@ -18,6 +18,7 @@ import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
+import { externalBrowserRequestAllowed } from './local-policy.mjs';
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const STOCK_LAYOUT_CDNS = new Set([
@@ -90,6 +91,10 @@ export async function launchHarnessBrowser({ origin, assetHosts }) {
     (url) => /^(https?|wss?):$/.test(url.protocol) && !LOCAL_HOSTS.has(url.hostname) && !allowedAssets.has(url.hostname) && !STOCK_LAYOUT_CDNS.has(url.hostname),
     (route) => route.abort("blockedbyclient"),
   );
+  await context.route('**/*', route => {
+    const hosts = new Set([...allowedAssets, ...STOCK_LAYOUT_CDNS]);
+    return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts }) ? route.fallback() : route.abort('blockedbyclient');
+  });
   const page = await context.newPage();
   // Delete links are confirm-guarded; the harness answers the confirm as a
   // person who pressed OK, and records that it did.

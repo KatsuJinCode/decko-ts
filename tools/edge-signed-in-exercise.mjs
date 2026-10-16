@@ -22,23 +22,32 @@
 // The process exits non-zero if any check fails. Test credentials are
 // generated per run and written only to a gitignored file.
 
-import { existsSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, rmSync, readFileSync, statSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import Database from "better-sqlite3";
+import { createHash } from 'node:crypto';
 import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
-const RUN_ID = new Date().toISOString().slice(0, 10);
+const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-') + '-' + process.pid;
 const RUN_DIR = join(REPO, "tmp", `edge-signed-in-${RUN_ID}-${process.pid}`);
-const OUT = resolve(argOf("out") ?? join(REPO, "docs/runs", `edge-signed-in-exercise-${RUN_ID}.md`));
+const OUT = resolve(argOf("out") ?? join(REPO, '.runtime', 'edge-signed-in', RUN_ID, 'report.md'));
+if (existsSync(OUT) || existsSync(OUT + '.json') || existsSync(OUT + '.intent.json')) throw new Error('output already exists; use a fresh attempt destination');
+const RAW = OUT + '.raw';
+let htmlSequence = 0;
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+const provenance = { source: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain', '--untracked-files=normal') !== '', startedAt: new Date().toISOString(), productionRuntime: false };
+if (provenance.dirty) throw new Error('commit the coherent source before capability capture');
 
 // --------------------------------------------------------------- check kit
 
@@ -61,17 +70,26 @@ async function attempt(check, fn) {
 // ------------------------------------------------------------------- setup
 
 if (!existsSync(SOURCE_DECK)) throw new Error(`source deck not found: ${SOURCE_DECK}`);
+if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0) throw new Error('use an immutable database snapshot without an active WAL');
+provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
+provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signed-in-exercise/capabilities.json')));
+mkdirSync(dirname(OUT), { recursive: true });
+writeFileSync(OUT + '.intent.json', JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' });
+mkdirSync(RAW);
 mkdirSync(RUN_DIR, { recursive: true });
 
 console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
 console.log("compiling engine + rebuilding the deployed bundle");
 ensureEngineDist();
 const bundlePath = buildBundle();
+provenance.bundleSha256 = digest(readFileSync(bundlePath));
+provenance.buildReceipt = JSON.parse(readFileSync(join(REPO, '.runtime/browser-build.json'), 'utf8'));
 console.log(`bundle: ${bundlePath} (${(readFileSync(bundlePath).length / 1048576).toFixed(1)} MB)`);
 
 const localDeck = join(RUN_DIR, "deck.sqlite3");
 console.log("building the local deck on the engine schema (rows copied, indexes + ANALYZE)");
 const deckReport = await buildLocalDeck({ source: SOURCE_DECK, out: localDeck });
+if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)) throw new Error('source changed during snapshot copy; refusing mixed-state capture');
 const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
 console.log(`  cards copied: ${cardsCopied}`);
 try {
@@ -92,10 +110,12 @@ const assetHosts = [...new Set(Object.entries(liveEnv)
   .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
   .filter(Boolean))];
 
-const stack = await startStack({ deckPath: localDeck, live: liveEnv, runtimeDir: join(RUN_DIR, "runtime") });
+const stack = await startStack({ deckPath: localDeck, live: liveEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
 console.log(`local edge host: ${stack.origin}`);
 
-const browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts });
+let browser;
+try { browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts }); }
+catch (error) { await stack.close(); stack.cleanup(); throw error; }
 const page = browser.page;
 
 // ---------------------------------------------------------------- helpers
@@ -112,6 +132,9 @@ async function visit(pathname) {
   const response = await page.goto(`${stack.origin}${pathname}`, { waitUntil: "load", timeout: 60_000 });
   const wallMs = Date.now() - started;
   const html = await page.content();
+  const capture = String(++htmlSequence).padStart(3, '0');
+  writeFileSync(join(RAW, `${capture}.html`), html, { flag: 'wx' });
+  writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ pathname, status: response?.status(), url: page.url() }), { flag: 'wx' });
   const line = lastLine(pathname);
   return {
     pathname, status: response?.status() ?? null, wallMs, html,
@@ -213,12 +236,9 @@ try {
   await attempt("stylesheet and console", async () => {
     const links = await page.evaluate(() => [...document.querySelectorAll('link[rel~="stylesheet"]')].map((l) => ({ href: l.href, sheet: Boolean(l.sheet) })));
     record("deck stylesheet link resolves", links.length > 0 && links.every((l) => l.sheet), { links });
-    const mixed = browser.blocked.filter((b) => b.url.startsWith(stack.origin) || /^https:.*127\.0\.0\.1/.test(b.url));
+    const mixed = browser.blocked;
     record("no blocked or 4xx/5xx subresource on the signed-in page", mixed.length === 0, { blocked: mixed.slice(0, 6) });
-    // Font Awesome kit: kit.fontawesome.com refuses any domain other than the one the kit is registered to (culturesmith.com), so 127.0.0.1 always gets 403. Environmental; excluded from the console check and reported.
-    const kit403 = browser.blocked.filter((b) => b.url.includes("kit.fontawesome.com") && b.status === 403).length;
-    const realErrors = browser.consoleErrors.filter((e) => !/status of 403/.test(e));
-    record("no console errors on the signed-in page (Font Awesome kit 403 excluded: " + kit403 + " responses, domain-locked kit)", realErrors.length === 0, { errors: realErrors.slice(0, 6), excludedKit403: kit403 });
+    record("no console errors on the signed-in page", browser.consoleErrors.length === 0, { errors: browser.consoleErrors.slice(0, 6) });
   });
 
   // -- 3 -----------------------------------------------------------------
@@ -719,14 +739,19 @@ try {
   db.close();
   dbHandle.close();
   await browser.close().catch(() => undefined);
-  await stack.close().catch(() => undefined);
-  stack.cleanup();
+  let closed = false;
+  try { await stack.close(); closed = true; record('owned local stack closed', true, {}); }
+  catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
+  if (closed) stack.cleanup();
 }
 
 // ---------------------------------------------------------------- report
 
 const failures = results.filter((r) => !r.pass);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
+markdown += `- Source: \`${provenance.source}\`, clean; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
+markdown += `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
+markdown += `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;
 markdown += `- Command: \`node tools/edge-signed-in-exercise.mjs\`\n`;
 markdown += `- Artifact: \`deploy/dist/bunny-edge-engine.bundle.js\`, rebuilt from source, run against a LOCAL deck copy on the engine schema\n`;
 markdown += `- Deck source (local, never Bunny): \`${basename(SOURCE_DECK)}\`, ${cardsCopied} cards copied\n`;
@@ -742,23 +767,16 @@ mkdirSync(dirname(OUT), { recursive: true });
 
 // Capability coverage against the checklist taken from Decko's own browser tests.
 // A capability is "driven by this run" when one of its named checks ran and passed.
+let capabilityCoverage;
 {
-  const capabilities = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8")).capabilities;
-  const checksByName = new Set(results.map((r) => r.check));
+  const capabilities = verifiedCapabilities(JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8")).capabilities, results);
   const counts = { covered: 0, partial: 0, not_covered: 0, disabled_upstream: 0, out_of_scope: 0 };
   const drivenNow = [];
   for (const capability of capabilities) {
-    const named = typeof capability.check === "string" ? checksByName.has(capability.check) : false;
-    const anyNamed = typeof capability.check === "string" && [...checksByName].some((c) => capability.check.includes(c));
-    if (capability.status === "not_covered") {
-      if (named) { capability.status = "covered"; drivenNow.push(capability.id); }
-      else if (anyNamed) capability.status = "partial";
-    } else if (capability.status === "partial" && named) {
-      capability.status = "covered";
-      drivenNow.push(capability.id);
-    }
+    if (capability.status === 'covered') drivenNow.push(capability.id);
     counts[capability.status] += 1;
   }
+  capabilityCoverage = { counts, capabilities };
   markdown += `\n## Capability coverage (Decko's own browser tests as the checklist)\n\n`;
   markdown += `${capabilities.length} capabilities enumerated from Decko's Cucumber features and Cypress e2e specs (see tools/edge-signed-in-exercise/capability-checklist.md).\n\n`;
   markdown += `| status | count |\n|---|---|\n`;
@@ -772,7 +790,10 @@ mkdirSync(dirname(OUT), { recursive: true });
   console.log(`\ncapability coverage: ${counts.covered} covered, ${counts.partial} partial, ${counts.not_covered} not covered, ${counts.out_of_scope} out of scope (of ${capabilities.length})`);
 }
 
-writeFileSync(OUT, markdown);
+const coverageIncomplete = capabilityCoverage.counts.not_covered > 0 || capabilityCoverage.counts.partial > 0 || capabilityCoverage.counts.out_of_scope > 0;
+markdown += `\nComplete capability acceptance: ${!coverageIncomplete && failures.length === 0 ? 'pass' : 'incomplete or failed'}. Unrun capabilities are never credited.\n`;
+writeFileSync(OUT, markdown, { flag: 'wx' });
+writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), failedRequests: browser.blocked, consoleErrors: browser.consoleErrors }, null, 2) + '\n', { flag: 'wx' });
 
 console.log(`\n${results.length - failures.length} / ${results.length} checks passed.`);
 if (failures.length > 0) {
@@ -782,4 +803,4 @@ if (failures.length > 0) {
 console.log(`run record: ${OUT}`);
 if (hasFlag("keep")) console.log(`run directory kept: ${RUN_DIR} (credentials: ${credentialsPath})`);
 else rmSync(RUN_DIR, { recursive: true, force: true });
-process.exit(failures.length === 0 ? 0 : 1);
+process.exit(failures.length === 0 && !coverageIncomplete ? 0 : 1);

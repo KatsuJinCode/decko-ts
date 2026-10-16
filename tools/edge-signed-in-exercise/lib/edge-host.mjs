@@ -50,7 +50,7 @@ function ensureCertificate(runtimeDir) {
       "-keyout", key, "-out", cert, "-days", "2",
       "-subj", "/CN=127.0.0.1",
       "-addext", "subjectAltName=IP:127.0.0.1,DNS:localhost",
-    ], { stdio: "ignore" });
+    ], { stdio: "ignore", windowsHide: true });
   }
   return { key: readAll(key), cert: readAll(cert) };
 }
@@ -68,6 +68,11 @@ export async function startEdgeHost({ bundlePath, runtimeDir, env, host = "127.0
   const staged = stageBundle(bundlePath, runtimeDir);
   const tls = ensureCertificate(runtimeDir);
 
+  // This is the harness's own Node process. The bundle reads process.env;
+  // remove ambient provider credentials as well as refusing live input creds.
+  for (const key of Object.keys(process.env)) {
+    if (/^(?:DECKO_|BUNNY_|AWS_|S3_)/.test(key) && !(key in env)) delete process.env[key];
+  }
   for (const [k, v] of Object.entries(env)) process.env[k] = v;
   await import(pathToFileURL(staged).href);
   const { captured } = await import(pathToFileURL(join(runtimeDir, SHIM_DIR, "index.mjs")).href);

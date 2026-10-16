@@ -3,17 +3,19 @@
 //   local deck copy (engine schema, Brandon's rows)  -> lib/local-hrana.mjs
 //   deploy/dist/bunny-edge-engine.bundle.js          -> lib/edge-host.mjs (HTTPS)
 //
-// The environment the bundle sees is the LIVE script's variable set, read
-// read-only from the Bunny API (GET /compute/script/96867, names and values in
-// memory only, never printed), minus the database credentials, plus the local
-// database endpoint and this harness's own origin.
+// Only named noncredential render settings come from the read-only live
+// configuration. Database, storage and origin settings belong to this local
+// run. The bundle executes on Node with an SDK shim, not the vendor runtime.
 
-import { readFileSync, existsSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { readFileSync, mkdirSync, rmSync } from "node:fs";
+import { join, resolve, dirname, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { startLocalHrana } from "./local-hrana.mjs";
 import { startEdgeHost } from "./edge-host.mjs";
+export { localEnv } from "./local-policy.mjs";
+import { localEnv } from "./local-policy.mjs";
+import { startMockBunnyStorage } from '../../../tests/server/mock-bunny-storage.mjs';
 
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const LIVE_SCRIPT_ID = 96867;
@@ -35,33 +37,9 @@ export async function readLiveScriptEnv(secretsPath) {
   return { env, names: Object.keys(env).sort() };
 }
 
-/** The database and origin settings are local; everything else is the live value. */
-export function localEnv({ live, dbUrl, origin }) {
-  const env = { ...live };
-  delete env.DECKO_DB_URL;
-  delete env.DECKO_DB_TOKEN;
-  delete env.DECKO_TRUSTED_ORIGINS;
-  return {
-    ...env,
-    DECKO_DB_URL: dbUrl,
-    DECKO_DB_TOKEN: "local-only-not-a-credential",
-    DECKO_TRUSTED_ORIGINS: origin,
-    // Local posture: the same write gate the live script arms.
-    DECKO_WRITE_PATH: "1",
-  };
-}
-
 /** Compiles the engine and vendors the asset snapshots the nest-index tool needs. */
 export function ensureEngineDist() {
-  if (!existsSync(join(REPO, "dist/src/card/nest-index.js"))) {
-    execFileSync("npx", ["tsc", "-p", "tsconfig.json", "--outDir", "dist"], { cwd: REPO, stdio: "ignore", shell: true, timeout: 600_000 });
-  }
-  mkdirSync(join(REPO, "dist/vendor"), { recursive: true });
-  for (const name of ["edge-style-source-snapshot.js", "edge-script-source-snapshot.js", "edge-bootstrap-scss-snapshot.js"]) {
-    const src = join(REPO, "vendor", name);
-    const dst = join(REPO, "dist/vendor", name);
-    if (!existsSync(dst)) copyFileSync(src, dst);
-  }
+  execFileSync(process.execPath, [join(REPO, 'tools/dist/build-engine.mjs'), '--browser-hosts'], { cwd: REPO, stdio: 'inherit', windowsHide: true, timeout: 120_000 });
 }
 
 /** Rebuilds the bundle from source, the same build the deploy uses. */
@@ -74,28 +52,50 @@ export function buildBundle() {
  * Starts the stack on the given local deck file.
  * @returns {Promise<{ origin: string, hrana: any, host: any, bundlePath: string, close: () => Promise<void>, cleanup: () => void }>}
  */
-export async function startStack({ deckPath, live, runtimeDir }) {
+export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle() }) {
+  const inside = relative(join(REPO, 'tmp'), resolve(runtimeDir));
+  if (!inside || inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error('runtime must be an owned child of this repository tmp');
   mkdirSync(runtimeDir, { recursive: true });
   const hrana = await startLocalHrana({ dbPath: deckPath });
+  let storage;
+  let host;
+  const originalFetch = globalThis.fetch;
+  try {
+  storage = await startMockBunnyStorage({ filesRoot: join(runtimeDir, 'storage-files') });
+  const storagePrefix = `https://${storage.host}/`;
+  globalThis.fetch = (input, init) => {
+    const value = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    return originalFetch(value.startsWith(storagePrefix) ? `http://${storage.host}/${value.slice(storagePrefix.length)}` : input, init);
+  };
   // The origin is only known once the TLS listener binds, so start the host
   // with a placeholder, then set the trusted origin on the bundle's env.
-  const bundlePath = buildBundle();
-  const host = await startEdgeHost({
+  host = await startEdgeHost({
     bundlePath,
     runtimeDir: join(runtimeDir, "edge"),
-    env: localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),
+    env: { ...localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),
+      DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host },
   });
   const origin = host.url;
   process.env.DECKO_TRUSTED_ORIGINS = origin;
+  process.env.DECKO_ORIGIN = origin;
+  process.env.DECKO_DECK_ORIGIN = origin;
+  process.env.DECKO_SERVED_ROOT_URL = origin;
   return {
     origin,
     hrana,
     host,
     bundlePath,
     close: async () => {
-      await host.close();
-      await hrana.close();
+      try { await host.close(); } finally {
+        try { await hrana.close(); } finally { try { await storage.stop(); } finally { globalThis.fetch = originalFetch; } }
+      }
     },
     cleanup: () => rmSync(runtimeDir, { recursive: true, force: true }),
   };
+  } catch (error) {
+    try { if (host) await host.close(); } finally {
+      try { await hrana.close(); } finally { try { if (storage) await storage.stop(); } finally { globalThis.fetch = originalFetch; } }
+    }
+    throw error;
+  }
 }
