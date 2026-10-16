@@ -43,12 +43,13 @@ test("fixture pin rejects changed bytes, SQLite sidecars and invalid pins before
     writeFileSync(journeys, JSON.stringify({ journeys: [{ id: "must-not-launch", steps: [] }] }));
     function rejects(value, message) {
       const out = path.join(root, "output");
-      const result = spawnSync(process.execPath, [fileURLToPath(new URL("../run-journeys.mjs", import.meta.url)), "--engine", engine, "--fixture", fixture, "--journeys", journeys, "--out", out, "--fixture-sha256", value], { encoding: "utf8", windowsHide: true, timeout: 15000 });
+      const result = spawnSync(process.execPath, [fileURLToPath(new URL("../run-journeys.mjs", import.meta.url)), "--engine", engine, "--fixture", fixture, "--journeys", journeys, "--out", out, "--fixture-sha256", ...(value === undefined ? [] : [value])], { encoding: "utf8", windowsHide: true, timeout: 15000 });
       assert.equal(result.status, 1, result.stderr);
       assert.match(result.stderr, message);
       assert.equal(existsSync(sentinel), false);
       assert.equal(existsSync(out), false);
     }
+    rejects(undefined, /requires a value/);
     rejects("not-a-hash", /64 lowercase hexadecimal/);
     writeFileSync(path.join(fixture, "deck.sqlite3-wal"), "");
     rejects(pin, /fixture SHA-256 mismatch/);

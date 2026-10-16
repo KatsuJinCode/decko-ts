@@ -28,6 +28,7 @@ export function captureFixtureIdentity(fixture, pin) {
 }
 export function captureProvenance(args, engine) {
   // Admission precedes Git/dist work, output reservation, server start and browser launch.
+  if (Object.hasOwn(args, "fixture-sha256") && args["fixture-sha256"] === undefined) throw new Error("--fixture-sha256 requires a value");
   const fixtureSha256 = captureFixtureIdentity(args.fixture, args["fixture-sha256"]);
   const repo = fileURLToPath(new URL("../../..", import.meta.url));
   const git = (...a) => execFileSync("git", ["-C", repo, ...a], { windowsHide: true, encoding: "utf8" }).trim();
