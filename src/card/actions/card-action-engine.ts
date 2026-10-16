@@ -5543,9 +5543,9 @@ export class CardActionEngine {
     if (codename === "api_key") {
       // card-mod-api_key ok_to_create? (api_key.rb) raises before the verdict:
       // the answer is the exception itself.
-      throw new Error(
-        `cannot create ${name.s}: its left card does not exist, so the api_key right has no account to check ownership against`,
-      );
+      // Abstract::AccountField#account_card evaluates l.right_id inside
+      // left.tap before it can return nil (account_field.rb:3-4).
+      throw new NoMethodError("undefined method `right_id' for nil");
     }
     // card-mod-account set/right/password.rb: the password's save reads its
     // account (left) for the salt, and with no left card that read raises in
