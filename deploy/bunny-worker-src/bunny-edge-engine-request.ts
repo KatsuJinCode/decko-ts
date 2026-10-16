@@ -710,7 +710,7 @@ async function dispatchEngineRequest(
           home_view: url.searchParams.get("slot[home_view]") ?? view,
         });
       }
-      const html = await deck.render.render(parsed.name, view, historyParams);
+      const html = await deck.render.render(parsed.name, view, { ...historyParams, focalRoot: true });
       return { html, status: deck.render.pageErrorStatus ?? 200 };
     };
     const renderLive = async () => {
@@ -730,7 +730,7 @@ async function dispatchEngineRequest(
           },
           {
             requestedView: view,
-            historyParams,
+            historyParams: bareRead && !focalSlot ? { ...historyParams, focalRoot: true } : historyParams,
             signal,
             ...(bareRead ? { keep: false } : {}),
             ...(focalSlot ? { bareMainOpts: {

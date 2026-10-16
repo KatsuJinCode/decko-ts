@@ -60,6 +60,9 @@ import type { NewCardOptions } from "../fetch.js";
  *  The port threads them through RenderEngine.render's optional params
  *  argument - the URL query string, server-parsed. */
 export interface HistoryRenderParams {
+  /** HTTP HTML root without a layout: HtmlFormat#focal? is depth.zero?.
+   * Direct render/corpus callers leave this absent. */
+  focalRoot?: boolean;
   actId?: string;
   actionId?: string;
   actSeq?: string;

@@ -702,6 +702,8 @@ export function allRenderingErrorsRaise(): boolean {
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
+  /** Requested HTTP root without layout; independent of main/page nesting. */
+  focal?: boolean;
   /** Production render-error semantics (raise_all_rendering_errors=false):
    *  errors from NESTED view renders become the quiet
    *  `render-error alert alert-danger` span instead of propagating
@@ -798,6 +800,7 @@ export class RenderFormat {
   readonly engine: RenderEngineLike;
   readonly parent: RenderFormat | undefined;
   readonly isMain: boolean;
+  readonly isFocal: boolean;
   readonly maxDepth: number;
   /** Production nested-error semantics flag (see RenderFormatOptions). */
   readonly nestQuietErrors: boolean;
@@ -862,6 +865,7 @@ export class RenderFormat {
     this.engine = engine;
     this.parent = opts.parent;
     this.isMain = opts.main ?? false;
+    this.isFocal = opts.focal ?? this.isMain;
     this.nestQuietErrors = opts.nestQuietErrors ?? false;
     this.maxDepth = opts.maxDepth ?? RUBY_MAX_DEPTH;
     this.formatName = opts.formatName ?? opts.parent?.formatName ?? "html";
@@ -1313,7 +1317,7 @@ export class RenderFormat {
           // the page's main format, so the unconditional main arm emitted the
           // 1,377-char loud frame plus one extra closing </div> on every
           // +discussion page where the Ruby oracle renders nothing.
-          if (this.isMain && viewDenialView(normalized) === undefined) {
+          if (this.isFocal && viewDenialView(normalized) === undefined) {
             return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
@@ -1348,7 +1352,7 @@ export class RenderFormat {
         });
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
-          if (this.isMain && viewDenialView(normalized) === undefined) {
+          if (this.isFocal && viewDenialView(normalized) === undefined) {
             return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
@@ -1427,7 +1431,7 @@ export class RenderFormat {
    *  403. A denied nested card or a denied sub-view inside the main card's
    *  view leaves the status alone. */
   private noteFocalDenial(voo: Voo): void {
-    if (this.isMain && voo.parent === undefined) this.engine.pageErrorStatus = 403;
+    if (this.isFocal && voo.parent === undefined) this.engine.pageErrorStatus = 403;
   }
 
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
@@ -1525,10 +1529,11 @@ export class RenderFormat {
     // read through fmt.selfSetTitleOverride()) — so wave1's override data
     // and refill2's view-delegation mechanism both survive, and the denial
     // header can no longer drift from the readable header's title bytes.
+    const heading = this.isMain ? "h1" : "h2";
     const header =
       `<div class="d0-card-header card-header">` +
-      `<h1 class="d0-card-header-title">` +
-      `${this.renderView("title")}</h1></div>`;
+      `<${heading} class="d0-card-header-title">` +
+      `${this.renderView("title")}</${heading}></div>`;
     const message = this.loudDenialMessageHtml(deniedTask);
     // wrap.rb wrap_body: the body carries d0-card-content and the set keys
     // once a :titled or :labeled render set @content_body on this format.

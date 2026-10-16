@@ -1154,6 +1154,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<ViewResult> {
+    if (this.pagePrepareDepth === 0) this.pageErrorStatus = undefined;
     // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
     // render seats (the sweep-cascade cut — renderSeats' doc). The page
     // it clears once for the whole page render (beginPagePrepare), so
@@ -2423,6 +2424,7 @@ export class RenderEngine implements RenderEngineLike {
     // battery's depth-44 envelope {200,500} collapses to a deterministic
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, {
+      ...(params.focalRoot !== undefined ? { focal: params.focalRoot } : {}),
       maxDepth: RUBY_MAX_DEPTH,
       // The bare view lane rescues nested render errors to the quiet span,
       // the same render-global config the page lane passes (page.ts
