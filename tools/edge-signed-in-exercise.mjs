@@ -267,6 +267,10 @@ async function saveEditForm() {
   await observed.response.finished();
   const lines = linesSince(before);
   const write = lines.find((l) => l.method !== 'GET' && new URL(l.path, stack.origin).pathname === endpoint.pathname);
+  if (observed.response.status() >= 400) {
+    const capture = String(++htmlSequence).padStart(3, '0') + '-save-refusal';
+    writeFileSync(join(RAW, `${capture}.html`), await page.content(), { flag: 'wx' });
+  }
   return { action, status: observed.response.status(), serverTotalMs: totalMsOf(write), bodyHead: write?.bodyHead ?? null, lines };
 }
 
@@ -324,7 +328,9 @@ async function accountSettings() {
       record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
       if (passwordField !== undefined) {
         const oldPassword = creds.admin.password;
-        const next = `${oldPassword}x`;
+        // The real account policy requires lower/upper/number/special.
+        // A random fixture credential alone does not guarantee each class.
+        const next = `${oldPassword}Ax7#`;
         await passwordInput.fill(next);
         const write = await saveEditForm();
         const withOld = await signIn({ ...creds.admin, password: oldPassword });
