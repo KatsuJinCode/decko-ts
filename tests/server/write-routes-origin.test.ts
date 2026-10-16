@@ -190,3 +190,30 @@ describe("checkRequestOrigin", () => {
     expect(() => originPolicyFromEnv({ DECKO_TRUSTED_ORIGINS: "javascript:alert(1)" })).toThrow(/DECKO_TRUSTED_ORIGINS/);
   });
 });
+
+describe("the shared host dispatches stock GET update links without bypassing gates", () => {
+  const request = (method = "GET", pathname = "/update/Widget", headers: Record<string, string> = {}) => ({
+    method, pathname, search: "?card%5Bcontent%5D=via-get", host: HOST,
+    headers: { authorization: `Bearer ${token}`, accept: "application/json", ...headers },
+    body: "", secure: false, scheme: "http" as const,
+  });
+  const surface = (req: ReturnType<typeof request>, armed = true) => handleWorkersWriteSurface(
+    { fetcher: storage.fetcher, renderEngine: storage.engine, driver: storage.counting }, req,
+    armed ? { DECKO_WRITE_PATH: "1" } : {},
+  );
+  it("routes explicit GET update through the actual save and keeps cross-origin refusal atomic", async () => {
+    expect((await surface(request()))?.status).toBe(200);
+    expect(await widget()).toBe("via-get");
+    const before = await widget();
+    const denied = await surface({ ...request("GET", "/update/Widget", { origin: "https://attacker.example" }), search: "?card%5Bcontent%5D=cross-site" });
+    expect(denied?.status).toBe(403); expect(await widget()).toBe(before);
+  });
+  it("leaves disarmed GET, HEAD, bare reads and unrelated action routes untouched", async () => {
+    const before = await widget();
+    expect(await surface(request(), false)).toBeNull();
+    for (const req of [request("HEAD"), request("GET", "/Widget"), request("GET", "/update"), request("GET", "/delete/Widget")]) {
+      expect(await surface(req)).toBeNull();
+    }
+    expect(await widget()).toBe(before);
+  });
+});

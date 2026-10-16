@@ -371,6 +371,29 @@ it("keeps typed create denials focal and actor-specific after a committed permis
   }
 }, 60_000);
 
+it("follows the stock remote GET link through a real save, requested follow slot and captured follower mail", async () => {
+  services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
+  outbox.drain();
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const page = await fetch(base + "/Topic_008/follow_section", { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+  expect(page.status).toBe(200);
+  const board = await page.text();
+  const href = [...board.matchAll(/<a\b[^>]*href=['"]([^'"]+)['"][^>]*>/g)].map(m => m[1].replaceAll("&amp;", "&")).find(h => h.startsWith("/update/Topic_008+") && h.includes("card%5Bcontent%5D"));
+  expect(href).toBeDefined();
+  const followed = await fetch(base + href, { headers: { cookie, referer: base + "/Topic_008?view=board", "x-requested-with": "XMLHttpRequest" } });
+  const slot = await followed.text();
+  expect(followed.status, slot).toBe(200);
+  expect(slot).toContain("follow_section-view");
+  expect(slot).toContain("unfollow"); expect(slot).not.toContain("<html");
+  const rule = (await driver.query<{ id: number; db_content: string }>("SELECT r.id,r.db_content FROM cards r JOIN cards u ON u.id=r.left_id JOIN cards s ON s.id=u.left_id WHERE r.right_id=(SELECT id FROM cards WHERE codename='follow') AND u.right_id=611 AND s.left_id=681 AND s.right_id=(SELECT id FROM cards WHERE codename='self') AND r.trash=0", [])).rows[0];
+  // Captured Ruby33 stores the pointer's canonical content as *always.
+  expect(rule.db_content).toBe("*always");
+  expect((await driver.query<{ actor_id: number }>("SELECT a.actor_id FROM card_acts a JOIN card_actions x ON x.card_act_id=a.id WHERE x.card_id=? ORDER BY x.id DESC LIMIT 1", [rule.id])).rows[0].actor_id).toBe(611);
+  expect(outbox.drain().some(m => m.to === "mira.member@example.test" && m.subject.includes('Ada Admin created "Topic 008+*self+Ada Admin+*follow"'))).toBe(true);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();

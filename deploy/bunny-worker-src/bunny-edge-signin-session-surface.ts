@@ -240,7 +240,7 @@ export async function mountBunnyEdgeWriteSurface(
     {
       fetcher: deck.fetcher,
       renderEngine: deck.render,
-      renderSavedSlot: async (name) => {
+      renderSavedSlot: async (name, view) => {
         const driver = deck.driver ?? deck.fetcher.driver;
         const token = readSessionCookie(inbound.headers.cookie);
         const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
@@ -251,7 +251,7 @@ export async function mountBunnyEdgeWriteSurface(
             engines.render.viewer = viewer;
             engines.render.pageSession = viewer;
             return engines;
-          }, { requestedView: "titled", signal: request.signal });
+          }, { requestedView: view ?? "titled", signal: request.signal });
           return result.html;
         };
         return requestContextAvailable()

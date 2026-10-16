@@ -154,7 +154,7 @@ export interface WorkersRenderEngine {
 export interface WorkersWriteContext {
   /** Host-owned request-local saved-slot renderer. Hosts with remote
    *  drivers batch view reads through their normal serving boot. */
-  readonly renderSavedSlot?: (name: string) => Promise<string>;
+  readonly renderSavedSlot?: (name: string, view?: string) => Promise<string>;
   /** Explicit production transport + token configuration; absent never
    * claims that a required verification email was sent. */
   readonly accountMail?: WriteRouteContext["accountMail"];
@@ -470,7 +470,7 @@ async function mountFirstRun(
   return { status: result.status, headers: result.headers, body: result.body };
 }
 
-/** Non-GET/HEAD — delegated whole to write-routes.ts. handleWriteRequest is
+/** Write verbs and stock explicit GET update — delegated to write-routes.ts. handleWriteRequest is
  *  NOT self-gated (the gate is the host's, write-routes.ts:187-192), which is
  *  why the 403 lives here and the function is only ever reached with the
  *  write gate armed. */
@@ -491,11 +491,11 @@ async function mountWrite(
       // The ajax soft redirect re-renders the SAVED card through the host's
       // render engine. Expiry must come first — without it the slot render
       // reads the pre-save warm maps (post-save-cache-expiry.ts).
-      renderSlot: async (name) => {
+      renderSlot: async (name, view) => {
         ctx.fetcher.expireName(name);
         ctx.renderEngine.expireRenderCard(name);
-        if (ctx.renderSavedSlot !== undefined) return await ctx.renderSavedSlot(name);
-        return ctx.renderEngine.render(name, "titled");
+        if (ctx.renderSavedSlot !== undefined) return await ctx.renderSavedSlot(name, view);
+        return ctx.renderEngine.render(name, view ?? "titled");
       },
       // carrierwave's real two-step upload answers with its preview_editor,
       // including the draft action's hidden save field. Render under this
@@ -582,7 +582,8 @@ function expireAfterSave(ctx: WorkersWriteContext, expiryName: string | undefine
  * Dispatch one request against the Workers write surface.
  *
  * Returns null — "not mine, fall through to the read surface" — for every GET
- * or HEAD that is not /setup and not the sign-in form. That null is what
+ * or HEAD that is not /setup, the sign-in form or an armed explicit GET
+ * update action. That null is what
  * keeps the deployed read-only surface byte-identical.
  */
 export async function handleWorkersWriteSurface(
@@ -614,11 +615,11 @@ export async function handleWorkersWriteSurface(
   }
 
   if (readMethod) {
-    // The account module emits real GET update links for approval and its
-    // email tokens. Keep unrelated reads and the disarmed posture untouched.
-    const trigger = new URLSearchParams(req.search ?? "").get("card[trigger]");
-    if (write && req.method === "GET" && /^\/(?:card\/)?update\/[^/]+$/.test(req.pathname) &&
-        ["reset_password", "verify_and_activate", "approve_with_verification", "approve_without_verification"].includes(trigger ?? "")) {
+    // engine_routes.rb:41-44 gives update an explicit GET alternative.
+    // Stock follow links are remote GET anchors, as are account token links.
+    // Delegate to the same origin/auth/permission-checked write dispatcher;
+    // HEAD, unrelated reads and the disarmed posture remain read-only.
+    if (write && req.method === "GET" && /^\/(?:card\/)?update\/[^/]+$/.test(req.pathname)) {
       return mountWrite(ctx, resolveDriver(ctx, env), req, applySecuritySettings(env));
     }
     return null;
