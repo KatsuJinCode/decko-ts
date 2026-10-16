@@ -4,7 +4,7 @@ Seven browser harness test files imported Node's test API but were collected
 by Vitest. They reported no Vitest suite; their real assertions were not a
 passing Node gate. The earlier public-candidate failure report stays unchanged.
 
-The default Vitest configuration now explicitly excludes those seven files,
+The default Vitest configuration explicitly excludes the browser Node files,
 alongside the already documented Node runner/oracle suites. Full and harness
 gates split their selected files by actual parsed import declarations and run
 the Node files independently. A failed Vitest invocation does not prevent the
