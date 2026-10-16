@@ -53,7 +53,7 @@ export function buildBundle() {
  * Starts the stack on the given local deck file.
  * @returns {Promise<{ origin: string, hrana: any, host: any, bundlePath: string, close: () => Promise<void>, cleanup: () => void }>}
  */
-export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle() }) {
+export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle(), onRequest }) {
   const inside = relative(join(REPO, 'tmp'), resolve(runtimeDir));
   if (!inside || inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error('runtime must be an owned child of this repository tmp');
   mkdirSync(runtimeDir, { recursive: true });
@@ -73,6 +73,7 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
   host = await startEdgeHost({
     bundlePath,
     runtimeDir: join(runtimeDir, "edge"),
+    onRequest,
     env: { ...localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),
       DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host },
   });

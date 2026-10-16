@@ -38,6 +38,7 @@ import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
 import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
+import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
@@ -50,6 +51,12 @@ const RUN_DIR = join(REPO, "tmp", `edge-signed-in-${RUN_ID}-${process.pid}`);
 const OUT = resolve(argOf("out") ?? join(REPO, '.runtime', 'edge-signed-in', RUN_ID, 'report.md'));
 if (existsSync(OUT) || existsSync(OUT + '.json') || existsSync(OUT + '.intent.json')) throw new Error('output already exists; use a fresh attempt destination');
 const RAW = OUT + '.raw';
+const MEMORY = OUT + '.memory.jsonl';
+let memoryAdmitted = false;
+let memoryRequestCount = 0;
+function sampleMemory(stage, counters = {}) {
+  if (memoryAdmitted) writeFileSync(MEMORY, JSON.stringify(memoryEvidence(stage, counters)) + '\n', { flag: 'a' });
+}
 let htmlSequence = 0;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
@@ -61,9 +68,10 @@ provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('onl
 
 const results = [];
 let currentGroup = "";
-const group = (name) => { currentGroup = name; console.log(`\n== ${name}`); };
+const group = (name) => { currentGroup = name; sampleMemory(`group:${name}`); console.log(`\n== ${name}`); };
 function record(check, pass, evidence, timing = {}) {
   results.push({ group: currentGroup, check, pass, evidence, timing });
+  sampleMemory('check', { checks: results.length, failed: results.filter(item => !item.pass).length });
   console.log(`  ${pass ? "PASS" : "FAIL"}  ${check}${timing.wallMs !== undefined ? `  (${timing.wallMs}ms)` : ""}`);
   if (!pass) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
 }
@@ -89,6 +97,9 @@ provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signe
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT + '.intent.json', JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' });
 mkdirSync(RAW);
+writeFileSync(MEMORY, '', { flag: 'wx' });
+memoryAdmitted = true;
+sampleMemory('before-build');
 mkdirSync(RUN_DIR, { recursive: true });
 
 console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
@@ -137,6 +148,9 @@ if (ajaxSaveRedirect !== undefined) {
   captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
 }
 provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
+provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
+  keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
+  liveEnabled: captureEnv.DECKO_LIVE_RENDER !== '0', liveDefaulted: captureEnv.DECKO_LIVE_RENDER === undefined };
 const assetHosts = [...new Set(Object.entries(liveEnv)
   .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
   .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
@@ -158,8 +172,12 @@ for (const value of allowedFaviconUrls) {
 }
 provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
-const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
+const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath,
+  onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
+    status: line.status, responseBytes: line.bytes ?? 0 }) });
 provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
+provenance.memoryEvidence = { file: basename(MEMORY), scope: 'combined SDK and harness process', forcedGc: false };
+sampleMemory('stack-ready');
 console.log(`local edge host: ${stack.origin}`);
 
 let browser;
