@@ -280,7 +280,9 @@
         "cucumber structure 'Default on a ranking set'",
         "journeys default-content-in-form"
       ],
-      "status": "not_covered"
+        "status": "not_covered",
+        "checks": ["C14 a *right+*default rule's content fills the new form for a card with that right"],
+        "requiredActors": ["admin"]
     },
     {
       "id": "C15",
@@ -396,7 +398,8 @@
       "checks": [
         "Nest Apply inserts the preview into the opening editor",
         "the inserted nest persists after Save and a fresh GET"
-      ]
+        ],
+        "requiredActors": ["admin"]
     },
     {
       "id": "E6",
@@ -596,7 +599,9 @@
       "sources": [
         "cypress edit/pointer 'editing pointers'"
       ],
-      "status": "not_covered"
+        "status": "not_covered",
+        "checks": ["E23 a pointer card can be edited: the selection changes and is stored"],
+        "requiredActors": ["admin"]
     },
     {
       "id": "R1",

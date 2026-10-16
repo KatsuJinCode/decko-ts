@@ -95,3 +95,33 @@ export async function imageDialogJourney(ctx){
  const decoded=present&&await rendered.evaluate(img=>img.complete&&img.naturalWidth>0);
  record('E8 the nest image editor inserts a nest with view and size options',hasSnippet(inserted,image.name)&&saveStatus<400&&hasSnippet(stored,image.name)&&fresh.status===200&&decoded,{actor:'admin',actorId:editor.actorId,image,wire,preview,insertedHasSnippet:hasSnippet(inserted,image.name),saveStatus,storedHasSnippet:hasSnippet(stored,image.name),freshStatus:fresh.status,src,decoded});
 }
+
+export async function nestDialogJourney(ctx){
+ const {page,stack,record,database}=ctx;
+ const actorId=storedSessionActorId(database(),await page.context().cookies(stack.origin));
+ if(actorId!==ctx.creds.admin.id)throw Error('nest journey does not have the expected admin actor');
+ const source=ctx.cardName('NestSource'),targetName=ctx.cardName('NestTarget'),target=source+'+'+targetName;
+ const before='before the nest',body='Harness nested body '+target;
+ ctx.created.push(source,target);
+ await createTypedFixture(ctx,{name:source,type:'RichText',content:before});
+ await createTypedFixture(ctx,{name:target,type:'PlainText',content:body});
+ await ctx.visit('/'+encodeURIComponent(source));
+ await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+ const id=await focusRichEditor(page),field=page.locator(`textarea[id="${id}"]`);
+ const form=field.locator('xpath=ancestor::form[1]'),toolbar=field.locator('..').locator('.tox-tinymce');
+ if(await toolbar.count()!==1||!await toolbar.evaluate((el,id)=>el===window.tinymce.get(id).editorContainer,id))throw Error('nest toolbar does not belong to the matching editor');
+ await toolbar.getByRole('button',{name:'Insert/edit nest',exact:true}).click();
+ const dialog=page.locator('.modal.show').filter({has:page.locator('input._nest-name')}).last();
+ await dialog.locator('input._nest-name').fill(targetName);
+ await page.waitForFunction(name=>(document.querySelector('input._nest-preview')?.value??'').includes(name),targetName,{timeout:10000});
+ const preview=await dialog.locator('input._nest-preview').inputValue();
+ const apply=dialog.locator('button._nest-apply'),wire=await applyWire(page,apply,id);
+ await apply.click();await dialog.waitFor({state:'hidden'});
+ await page.waitForFunction(([id,text])=>(window.tinymce?.get(id)?.getContent?.()??'').includes(text),[id,preview],{timeout:10000});
+ const inserted=await page.evaluate(id=>window.tinymce.get(id).getContent(),id);
+ record('Nest Apply inserts the preview into the opening editor',inserted.includes(preview)&&inserted.includes(before),{actor:'admin',actorId,wire,preview,originalPreserved:inserted.includes(before)});
+ const saveStatus=await saveEditor(ctx,form);
+ const stored=database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(source)?.db_content??'';
+ const fresh=await ctx.visit('/'+encodeURIComponent(source));
+ record('the inserted nest persists after Save and a fresh GET',saveStatus<400&&stored.includes(preview)&&stored.includes(before)&&fresh.status===200&&fresh.html.includes(body)&&fresh.html.includes(before),{actor:'admin',actorId,saveStatus,storedHasSnippet:stored.includes(preview),originalPreserved:stored.includes(before),freshStatus:fresh.status,nestedBody:fresh.html.includes(body)});
+}

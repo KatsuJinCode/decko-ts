@@ -11,9 +11,10 @@
 // Loaded by tools/edge-signed-in-exercise.mjs through its checks-*.mjs loader;
 // the entry point is runCoverBChecks(ctx).
 
-import { focusRichEditor } from "./lib/rich-editor.mjs";
+import { focusRichEditor, matchingRichEditor } from "./lib/rich-editor.mjs";
 import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixture.mjs";
-import {linkDialogJourney,imageDialogJourney} from './lib/editor-dialogs.mjs';
+import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/editor-dialogs.mjs';
+import {storedSessionActorId} from './lib/session-actor.mjs';
 
 const CAP = "C";
 
@@ -98,6 +99,11 @@ export async function runCoverBChecks(ctx) {
   const ensure = (name) => { if (!created.includes(name)) created.push(name); return name; };
   const exists = (name) => fixtureCard(ctx.database(),name);
   const row = (name) => {const found=fixtureCard(ctx.database(),name);return found?{...found,content:found.db_content}:undefined;};
+  const adminActor=async()=>{
+    const id=storedSessionActorId(ctx.database(),await page.context().cookies(stack.origin));
+    if(id!==admin.id)throw Error('the requested admin actor is not verified');
+    return id;
+  };
   /** Creates the requested canonical cardtype and verifies its stored identity. */
   const create = async (name, content = "", type = "RichText") => {
     ensure(name);
@@ -110,11 +116,15 @@ export async function runCoverBChecks(ctx) {
     return linesSince(before);
   };
   const pointerEditor = async name => {
+    const actorId=await adminActor(),target=exists(name);
+    if(!target)throw Error('pointer editor target is not a stored fixture');
     const shown=await visit('/'+encodeURIComponent(name));
     await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click');
     const form=page.locator('.modal.show form.card-form[id^="edit_card"]:visible').first();
     await form.waitFor({state:'visible',timeout:20000});
-    return {form,status:shown.status};
+    const shownId=Number(await form.locator('xpath=ancestor::*[@data-card-id][1]').getAttribute('data-card-id'));
+    if(shownId!==target.id)throw Error('pointer form belongs to a different stored card');
+    return {form,status:shown.status,actorId};
   };
   const submitEditor = async form => {
     const action=new URL(await form.getAttribute('action'),stack.origin);
@@ -223,18 +233,23 @@ export async function runCoverBChecks(ctx) {
   });
 
   await attempt("C14 a *right+*default rule's content fills the new form", async () => {
+    const actorId=await adminActor();
     // Ruby: "Home Movie+*right+*default" = "Watch this"; a new card "Lew+Home Movie" shows it.
     // Creating a junction creates its LEFT card too, so track it for cleanup.
     ensure("Harness_CB_Home");
     await create("Harness_CB_Home+*right+*default", "Watch this");
     const name = ensure("Harness_CB_Lew+Harness_CB_Home");
     const defaultType = fixtureType(ctx.database(), "RichText");
-    await page.goto(`${stack.origin}/new/${encodeURIComponent(defaultType.name)}?card%5Bname%5D=${encodeURIComponent(name)}`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(3000);
-    const editor = await waitForEditor(page, 20_000);
-    const content = await page.evaluate(() => window.tinymce?.activeEditor?.getContent?.() ?? document.querySelector('textarea[name="card[content]"], input[name="card[content]"]')?.value ?? "");
+    const opened=await page.goto(`${stack.origin}/new/${encodeURIComponent(defaultType.name)}?card%5Bname%5D=${encodeURIComponent(name)}`, { waitUntil: "domcontentloaded" });
+    const form=page.locator('#main form.card-form').filter({has:page.locator('textarea[name="card[content]"]')}).first();
+    if(await form.locator('input[name="card[name]"]').inputValue()!==name||Number(await form.locator('[name="card[type_id]"]').first().inputValue())!==defaultType.id)throw Error('default prefill form does not match the requested fixture');
+    const field=form.locator('textarea[name="card[content]"]'),id=await field.getAttribute('id');
+    if(!id)throw Error('default form editor has no field identity');
+    await page.waitForFunction(matchingRichEditor,[id,false],{timeout:20000});
+    await field.locator('..').locator('.tox-tinymce').waitFor({state:'visible'});
+    const content=await page.evaluate(id=>window.tinymce.get(id).getContent(),id);
     record("C14 a *right+*default rule's content fills the new form for a card with that right",
-      editor.active && /Watch this/.test(content), { editor, content: String(content).slice(0, 120) });
+      opened.status()===200&&/Watch this/.test(content), {actor:'admin',actorId,editorId:id,status:opened.status(),content:String(content).slice(0,120)});
   });
 
   // ------------------------------------------------------------ C16, C18
@@ -329,85 +344,7 @@ export async function runCoverBChecks(ctx) {
   // ------------------------------------------------------------------ E5
   group("cover-b. edit: the Nest dialog's Apply (E5): wire id, insertion, save persistence");
 
-  await attempt("E5 the Nest dialog's Apply inserts the nest and saving persists it (data-tinymce-id wire, editor content, fresh GET)", async () => {
-    // nest_editor 'nest editor', beyond dialog presence: the {{}} toolbar
-    // button opens the Nest dialog; its Apply must carry the id of the editor
-    // that opened it (data-tinymce-id — nest_editor.js.coffee inserts the
-    // preview through tinymce.get($(apply).data("tinymce-id"))), the nest
-    // markup must land in the editor's content, and the save must persist it
-    // (a fresh GET of the page renders the nested card's body). Without the
-    // wire the insert threw while Bootstrap's data-bs-dismiss closed the
-    // dialog anyway — invisible to presence-only checks.
-    const source = ensure(cardName("NestSource"));
-    const targetName = cardName("NestTarget");
-    const target = ensure(`${source}+${targetName}`);
-    const nestedBody = `Harness nested body ${target}`;
-    await create(source, "before the nest", "RichText");
-    await create(target, nestedBody, "PlainText");
-    await visit(`/${source}`);
-    const link = page.locator('a.edit-link[href$="/edit"]').first();
-    await link.dispatchEvent("click").catch(() => undefined);
-    await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
-    await page.waitForTimeout(3500);
-    const editorId = await openRichEditorId(page);
-    await page.keyboard.press("Control+End");
-    const opened = await page.evaluate((id) => {
-      const c = window.tinymce?.get(id)?.editorContainer;
-      if (!c) return { opened: false, reason: "no editor" };
-      const nest = [...c.querySelectorAll("button, a")].find((b) =>
-        /nest/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`) &&
-        !/image|list|rules/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`));
-      if (!nest) return { opened: false, reason: "no Insert/edit nest toolbar button", buttons: [...c.querySelectorAll("button, a")].map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
-      nest.click();
-      return { opened: true };
-    }, editorId);
-    await page.waitForSelector("button._nest-apply", { timeout: 20_000 }).catch(() => undefined);
-    await page.waitForTimeout(1200);
-    // The wire, read at render time: Apply's data-tinymce-id names a live
-    // TinyMCE instance (the one that opened the dialog).
-    const wire = await page.evaluate((modalEditorId) => {
-      const apply = document.querySelector("button._nest-apply");
-      if (!apply) return { present: false };
-      const id = apply.getAttribute("data-tinymce-id");
-      return {
-        present: true,
-        tinymceId: id,
-        nonEmpty: typeof id === "string" && id.length > 0,
-        resolvesEditor: Boolean(id) && typeof window.tinymce?.get === "function" && Boolean(window.tinymce.get(id)),
-        isEditorThatOpened: Boolean(id) && Boolean(modalEditorId) && window.tinymce?.get?.(id) != null && window.tinymce.get(id) === window.tinymce.get(modalEditorId),
-        label: (apply.textContent ?? "").trim(),
-        inModalSlot: Boolean(apply.closest("._modal-slot")),
-      };
-    }, editorId);
-    await page.locator("input._nest-name").first().fill(targetName);
-    await page.waitForTimeout(600);
-    const preview = await page.evaluate(() => document.querySelector("._nest-preview")?.value ?? null);
-    await page.evaluate(() => document.querySelector("button._nest-apply")?.click());
-    await page.waitForTimeout(1000);
-    const content = await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId);
-    const insertedNest = content.includes(targetName) && content.includes("{{");
-    const editorField = page.locator(`textarea[id="${editorId}"]`);
-    const editorForm = editorField.locator('xpath=ancestor::form[1]');
-    const saveAction = new URL(await editorForm.getAttribute('action'), stack.origin);
-    if (saveAction.origin !== stack.origin || !saveAction.pathname.startsWith('/update/')) throw Error('nest editor save is not the local update action');
-    const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === saveAction.pathname && r.request().method() === 'POST', {timeout: 60000}).then(response => ({response}), error => ({error}));
-    await editorForm.locator('button[type=submit]').first().click();
-    const saved = await pending;
-    if (saved.error) throw saved.error;
-    await saved.response.finished();
-    const write = {status: saved.response.status()};
-    // The stored content is the durable proof the nest markup was saved; the
-    // fresh GET must render the nested card's body through the nest.
-    const stored = row(source)?.content ?? "";
-    const after = await visit(`/${source}`);
-    const freshShowsNestedBody = after.html.includes(nestedBody);
-    record("E5 the Nest dialog's Apply inserts the nest and saving persists it (data-tinymce-id wire, editor content, fresh GET)",
-      wire.present && wire.nonEmpty && wire.resolvesEditor && opened.opened && insertedNest &&
-        write.status < 400 && stored.includes(targetName) && freshShowsNestedBody,
-      { opened, wire, preview, inserted: content.slice(0, 140), insertedNest, saveStatus: write?.status ?? null,
-        storedHasNest: stored.includes(targetName), stored: stored.slice(0, 120), freshShowsNestedBody, afterStatus: after.status });
-    await page.keyboard.press("Escape").catch(() => undefined);
-  });
+  await attempt("E5 the Nest dialog Apply inserts and saves through its owned visible editor",()=>nestDialogJourney(ctx));
 
   // ------------------------------------------------------------- E10, E12
   group("cover-b. edit: plain input, edit type in board (E10, E12)");
@@ -599,7 +536,7 @@ export async function runCoverBChecks(ctx) {
     const after = await visit(`/${pointer}`);
     record("E23 a pointer card can be edited: the selection changes and is stored",
       write !== undefined && write.status < 400 && /Pick_Two/.test(stored) && /Pick_Two/.test(after.html),
-      { writeStatus: write?.status ?? null, stored, afterStatus: after.status, showsPickTwo: /Pick_Two/.test(after.html) });
+      {actor:'admin',actorId:form.actorId,writeStatus:write.status,stored,afterStatus:after.status,showsPickTwo:/Pick_Two/.test(after.html)});
   });
 
   // -------------------------------------------------------------- F1, F3, F5, F7
