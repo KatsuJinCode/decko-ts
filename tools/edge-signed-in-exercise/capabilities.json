@@ -521,7 +521,15 @@
         "cucumber conflict (2 scenarios)",
         "journeys edit-conflict"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "conflict journey signs in both isolated browser actors",
+        "both editors hold the same actual revision",
+        "member saves the first edit through the visible form",
+        "stale admin form receives conflict without overwriting or creating history",
+        "conflict response refreshes the visible forms revision",
+        "retry through the same form persists after a fresh browser read"
+      ]
     },
     {
       "id": "E19",

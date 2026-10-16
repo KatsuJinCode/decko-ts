@@ -1025,29 +1025,8 @@ export async function runCoverBChecks(ctx) {
       { boardStillOpen: stillOpen, writeStatus: write?.status ?? null, storedAfterSave: after.html.includes("Harness save after") });
   });
 
-  await attempt("E18 Two edits at the same time: second save refused (conflict)", async () => {
-    const name = ensure(cardName("conflict"));
-    await create(name, "Harness conflict base", "Basic");
-    await signIn(admin);
-    const held = await page.evaluate(async ({ origin, card }) => {
-      const form = await (await fetch(`${origin}/${card}/edit`, { credentials: "include" })).text();
-      return /name="card\[last_action_id_before_edit\]"[^>]*value="([^"]*)"/.exec(form)?.[1] ?? /value="([^"]*)"[^>]*name="card\[last_action_id_before_edit\]"/.exec(form)?.[1] ?? null;
-    }, { origin: stack.origin, card: name });
-    await signIn(member);
-    await page.evaluate(async ({ origin, card, id }) => {
-      await fetch(`${origin}/update/${card}`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", origin },
-        body: new URLSearchParams({ _method: "patch", "card[content]": "member edit first", "card[last_action_id_before_edit]": id ?? "", "success[redirect]": "true" }).toString(), redirect: "manual", credentials: "include" });
-    }, { origin: stack.origin, card: name, id: held });
-    await signIn(admin);
-    const second = await page.evaluate(async ({ origin, card, id }) => {
-      const r = await fetch(`${origin}/update/${card}`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", origin },
-        body: new URLSearchParams({ _method: "patch", "card[content]": "admin edit on stale revision", "card[last_action_id_before_edit]": id ?? "", "success[redirect]": "true" }).toString(), redirect: "manual", credentials: "include" });
-      return { status: r.status, body: (await r.text()).replace(/\s+/g, " ").slice(0, 160) };
-    }, { origin: stack.origin, card: name, id: held });
-    record("E18 Two edits at the same time: second save refused (conflict)",
-      held !== null && (second.status >= 400 || /conflict|stale|changed/i.test(second.body)),
-      { heldRevision: held, status: second.status, body: second.body.slice(0, 120) });
-  });
+  // E18 lives in checks-conflict.mjs: two real browser actors, exact 409,
+  // preserved history/content, revision refresh and a persisted same-form retry.
 
   await attempt("E22 Edit board: rules tab (no set selected; warns when set 'all' selected)", async () => {
     await visit("/Home/board");
@@ -1135,7 +1114,7 @@ export async function runCoverBChecks(ctx) {
 
 export const meta = {
   topic: "cover-b",
-  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E18", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S2", "S3", "S4", "S5", "W1", "W3"],
+  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S2", "S3", "S4", "S5", "W1", "W3"],
 };
 
 function adaptRunnerContext(ctx) {

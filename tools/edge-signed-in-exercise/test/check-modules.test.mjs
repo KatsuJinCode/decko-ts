@@ -8,6 +8,7 @@ import {verifiedCapabilities} from '../lib/local-policy.mjs';
 import {checks as permissionChecks,capabilityChecks} from '../checks-permissions.mjs';
 import {checks as navboxChecks,capabilityChecks as navboxCapabilityChecks} from '../checks-navbox.mjs';
 import {checks as mailChecks,capabilityChecks as mailCapabilityChecks,meta as mailMeta} from '../checks-mail-reset.mjs';
+import {checks as conflictChecks,capabilityChecks as conflictCapabilityChecks} from '../checks-conflict.mjs';
 
 test('module loader refuses ambiguous topics',async()=>{
  const base=fileURLToPath(new URL('../../../tmp/',import.meta.url));mkdirSync(base,{recursive:true});
@@ -74,6 +75,17 @@ test('mail journey requires capture and cannot credit an unrestored credential f
  assert.equal(verifiedCapabilities([capability],mailCapabilityChecks.map(check=>({check,pass:true})))[0].status,'covered');
  const unRestored=mailCapabilityChecks.slice(0,-1).map(check=>({check,pass:true}));
  assert.notEqual(verifiedCapabilities([capability],unRestored)[0].status,'covered');
+});
+
+test('conflict credit requires both actors, preserved data and successful same-form retry',async()=>{
+ await assert.rejects(conflictChecks[0].run({stack:{origin:'https://culturesmith-edge.bunny.run'}}),/disposable loopback/);
+ const document=JSON.parse(readFileSync(new URL('../capabilities.json',import.meta.url)));
+ const capability=document.capabilities.find(c=>c.id==='E18');
+ assert.deepEqual(capability.checks,conflictCapabilityChecks);
+ const results=conflictCapabilityChecks.map(check=>({check,pass:true}));
+ assert.equal(verifiedCapabilities([capability],results)[0].status,'covered');
+ assert.notEqual(verifiedCapabilities([capability],results.slice(0,-1))[0].status,'covered');
+ assert.notEqual(verifiedCapabilities([capability],[{check:'E18 Two edits at the same time: second save refused (conflict)',pass:true}])[0].status,'covered');
 });
 
 test('permission module closes its first isolated session if the second cannot open',async()=>{
