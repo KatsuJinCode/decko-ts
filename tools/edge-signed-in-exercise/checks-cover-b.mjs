@@ -285,6 +285,13 @@ export async function runCoverBChecks(ctx) {
     record("C16 a checkbox pointer input can be checked and stored (card shows the checked value)",
       write.status < 400 && stored.includes(target.value) && /Pick_Two/.test(after.html),
       { writeStatus: write.status, stored, checkboxes: boxes.slice(0, 6), afterStatus: after.status, showsPickTwo: /Pick_Two/.test(after.html) });
+    // pointer_inputs.feature also removes the selected item and rereads it.
+    const reopened=await pointerEditor(`${cardNamePick}+${rightSet}`);
+    await reopened.form.locator(`input[type="checkbox"][value="${target.value}"]`).uncheck();
+    const removed=await submitEditor(reopened.form);
+    const remaining=row(`${cardNamePick}+${rightSet}`)?.content??'';
+    const reloaded=await visit(`/${cardNamePick}+${rightSet}`);
+    record('a checkbox choice can be unchecked and removal persists on a fresh page',removed.status<400&&!remaining.includes(target.value)&&!/Pick_Two/.test(reloaded.html),{status:removed.status,stored:remaining,freshStatus:reloaded.status,removed:!/Pick_Two/.test(reloaded.html)});
   });
 
   await attempt("C18 a select pointer input offers a choice and stores it", async () => {

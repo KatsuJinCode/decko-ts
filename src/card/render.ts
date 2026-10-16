@@ -10583,7 +10583,7 @@ export class RenderEngine implements RenderEngineLike {
       return;
     }
     const typeCode = source.card.typeCode;
-    if (typeCode !== "search" && typeCode !== "set") return;
+    if (typeCode !== SEARCH_TYPE_CODE && typeCode !== "search" && typeCode !== "set") return;
     const key = source.card.key;
     if (this.searchResults.has(key) || this.searchFailures.has(key)) return;
     // Ruby's limit (options_api.rb:42,45 `o_card.try(:default_limit).to_i`):
@@ -10665,7 +10665,7 @@ export class RenderEngine implements RenderEngineLike {
           String(v),
         ]);
       }
-      if (opts.typeCode === "search" || opts.typeCode === "set") {
+      if (opts.typeCode === SEARCH_TYPE_CODE || opts.typeCode === "search" || opts.typeCode === "set") {
         standard = (this.searchResults.get(opts.key) ?? []).map((r) => r.name.s);
       } else {
         // Literal item names (item.rb:15-22, context: the options card's

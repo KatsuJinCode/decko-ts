@@ -331,7 +331,7 @@ it("applies a right default only when a new form has no explicit content preset"
 it("uses newly saved right input rules for actual Pointer edit modals", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
-  const types = Object.fromEntries((await driver.query<{ id: number; codename: string }>("SELECT id,codename FROM cards WHERE codename IN ('basic','phrase','pointer','list')", [])).rows.map(row => [row.codename, row.id]));
+  const types = Object.fromEntries((await driver.query<{ id: number; codename: string }>("SELECT id,codename FROM cards WHERE codename IN ('basic','phrase','pointer','list','search_type')", [])).rows.map(row => [row.codename, row.id]));
   const host = "Owned Pointer Host", right = "Owned Pointer Field", option = "Owned Pointer Option One";
   const create = async (name: string, type: string, content: string) => {
     const result = await post("/card/create", { "card[name]": name, "card[type_id]": String(types[type]), "card[content]": content }, cookie);
@@ -361,6 +361,15 @@ it("uses newly saved right input rules for actual Pointer edit modals", async ()
     expect(html).not.toContain('pointer-list-editor');
     expect(await snapshot()).toEqual(before);
   }
+  // The real deck uses Search's canonical search_type codename. Its JSON
+  // is a query, not a literal option label, unlike the List fixture above.
+  const options = await post('/update/'+encodeURIComponent(`${right}+*right+*content options`), { 'card[type_id]': String(types.search_type), 'card[content]': JSON.stringify({name:option}) }, cookie);
+  expect(options.status).toBe(200);
+  const searched = await fetch(base+'/'+encodeURIComponent(name)+'/edit', {headers:{cookie,'x-requested-with':'XMLHttpRequest'}});
+  expect(searched.status).toBe(200);
+  const searchedHtml=await searched.text();
+  expect(searchedHtml).toContain(`value="${option}"`);
+  expect(searchedHtml).not.toContain('&quot;name&quot;');
 }, 60_000);
 
 it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
