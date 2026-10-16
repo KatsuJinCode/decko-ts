@@ -30,10 +30,22 @@ export default defineConfig({
       // are `.spec.js`, which vitest collects as suites). A suite is never
       // written here, so nothing of the project's is excluded with them.
       "tmp/**",
+      ".runtime/**",
       "**/dist/**",
       "tools/oracle/corpus-deck-pairing-gate.test.mjs",
       "tools/oracle/capture-stores-raw-slot-ids.test.mjs",
       "reference-harness/runner/test/**",
+      // Optional private policy controls are Node tests when that tool is present.
+      "tools/edge-signed-in-exercise/test/*.test.mjs",
+      // These seven collected files use node:test. Full/harness gates run
+      // them with the real Node runner and retain its independent report.
+      "reference-harness/browser/test/editor-readiness.test.mjs",
+      "reference-harness/browser/test/engine-lifecycle.test.mjs",
+      "reference-harness/browser/test/evidence-integrity.test.mjs",
+      "reference-harness/browser/test/follow-operation-contracts.test.mjs",
+      "reference-harness/browser/test/network-recording.test.mjs",
+      "reference-harness/browser/test/output-admission.test.mjs",
+      "reference-harness/browser/test/signup-mail-host.test.mjs",
     ],
   },
 });

@@ -18,6 +18,9 @@
 // `check` is wired into the correctness gate, so adding an unclassified test
 // fails the suite instead of silently joining the constant path.
 
+import { randomUUID } from "node:crypto";
+import { testRunner } from "./node-test-runners.mjs";
+import { runNodeTests } from "./run-node-tests.mjs";
 import { execFileSync } from "node:child_process";
 import { readdirSync, writeFileSync, unlinkSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -88,7 +91,7 @@ export function listTestFiles(dir = REPO_ROOT, out = []) {
     // tmp/ is scratch: the gate's own working directories, and the vendored
     // gem tree an oracle checkout leaves there (bootstrap's jQuery specs are
     // `.spec.js`, which isTestFile accepts). No project suite lives under it.
-    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "tmp" || entry.name.startsWith(".git")) continue;
+    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === "tmp" || entry.name === ".runtime" || entry.name.startsWith(".git")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) listTestFiles(full, out);
     else if (isTestFile(entry.name)) out.push(relative(REPO_ROOT, full).replace(/\\/g, "/"));
@@ -105,7 +108,7 @@ function repoTestFiles() {
   return listTestFiles().sort();
 }
 
-function command() {
+async function command() {
   const [verb, arg] = process.argv.slice(2);
 
   if (verb === "list" || !verb) {
@@ -136,7 +139,7 @@ function command() {
       for (const p of problems) console.error("  " + p);
       process.exit(1);
     }
-    console.log(`test gate check OK - all ${files.length} test files are classified`);
+    console.log(`test gate check OK - all ${files.length} test files are classified; ${files.filter(f => testRunner(REPO_ROOT, f) === "node").length} use node:test`);
     return;
   }
 
@@ -164,8 +167,10 @@ function command() {
     // line. Windows caps a command at ~32k characters; passing the full suite
     // as arguments already fails outright at 626 files, and the correctness
     // gate alone is close enough to the cap that it would break next.
-    const generated = join(REPO_ROOT, "vitest.gate.generated.ts");
-    const includeList = selected.map((f) => `  ${JSON.stringify(f)},`).join("\n");
+    const nodeFiles = selected.filter(f => testRunner(REPO_ROOT, f) === "node");
+    const vitestFiles = selected.filter(f => !nodeFiles.includes(f));
+    const generated = join(REPO_ROOT, `vitest.gate.${process.pid}.${randomUUID()}.generated.ts`);
+    const includeList = vitestFiles.map((f) => `  ${JSON.stringify(f)},`).join("\n");
     writeFileSync(
       generated,
       [
@@ -186,18 +191,32 @@ function command() {
       ].join("\n")
     );
 
-    console.error(`gate "${gateId}": ${selected.length} files`);
+    console.error(`gate "${gateId}": ${vitestFiles.length} Vitest + ${nodeFiles.length} Node files`);
     const extra = process.argv.slice(4);
-    try {
-      execFileSync("npx", ["vitest", "run", "--config", generated, ...extra], {
-        cwd: REPO_ROOT,
-        stdio: "inherit",
-        shell: process.platform === "win32",
-      });
-    } finally {
-      // Never leave the generated config behind, whatever happened above.
-      try { unlinkSync(generated); } catch { /* already gone */ }
+    // Keep the first-class gate bounded under concurrent release work. An
+    // explicit CLI budget wins; this does not alter another runner's workers.
+    if (!extra.some(arg => arg.startsWith("--maxWorkers"))) {
+      const workers = Number(process.env.DECKO_TEST_MAX_WORKERS ?? 2);
+      if (!Number.isInteger(workers) || workers < 1) throw Error("positive DECKO_TEST_MAX_WORKERS required");
+      extra.unshift(`--maxWorkers=${workers}`);
     }
+    let vitestStatus = 0;
+    try {
+      if (vitestFiles.length) execFileSync(process.execPath, [join(REPO_ROOT, "node_modules/vitest/vitest.mjs"), "run", "--config", generated, ...extra], {
+        cwd: REPO_ROOT, stdio: "inherit", windowsHide: true,
+      });
+    } catch (error) { vitestStatus = error.status ?? 1; } finally {
+      try { unlinkSync(generated); } catch { /* preserve the test outcome */ }
+    }
+    // A failed Vitest suite must not prevent Node coverage from executing.
+    let nodePass = true;
+    if (nodeFiles.length) {
+      const report = process.env.NODE_TEST_REPORT ?? join(REPO_ROOT, "node_modules/.vitest-cache", `node-gate-${process.pid}-${Date.now()}.json`);
+      const result = await runNodeTests({ root: REPO_ROOT, files: nodeFiles, report });
+      nodePass = result.pass;
+      console.error(JSON.stringify({ runner: "node:test", files: nodeFiles.length, filesExecuted: result.filesExecuted, summary: result.summary, pass: result.pass, report }));
+    }
+    if (vitestStatus !== 0 || !nodePass) process.exitCode = 1;
     return;
   }
 
@@ -207,4 +226,4 @@ function command() {
 
 // Only drive the CLI when executed directly; importing this module (to read the
 // rules, from a test) must not run a command.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) command();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await command();

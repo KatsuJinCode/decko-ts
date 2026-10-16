@@ -2,7 +2,7 @@
 // mail transport/token configuration as its dedicated reset endpoints.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -11,12 +11,17 @@ import { loadEngine, startEngine } from "../lib/engines.mjs";
 test("real host sends signup and approval verification mail and its token activates login", async () => {
   const root = fileURLToPath(new URL("../../..", import.meta.url));
   const fixture = path.join(root, "reference-harness/fixtures/synthetic-v1");
+  const modPublic = process.env.DECKO_MOD_PUBLIC_DIR ?? path.join(root, "reference-harness/oracle/app/public");
+  assert.ok(existsSync(path.join(modPublic, "mod")), "real host control requires DECKO_MOD_PUBLIC_DIR with the actual mod/ provider");
+  assert.ok(["mod/tinymce_editor/themes/silver/theme.min.js", "mod/tinymce_editor/public/themes/silver/theme.min.js"].some(file => existsSync(path.join(modPublic, file))), "real host control requires the actual TinyMCE theme provider");
   const actor = JSON.parse(readFileSync(path.join(fixture, "deck.json"))).actors.admin;
-  const db = new DatabaseSync(path.join(fixture, "deck/deck.sqlite3"), { readOnly: true });
-  const signupId = db.prepare("SELECT id FROM cards WHERE codename = 'signup'").get().id;
-  db.close();
   const server = await startEngine(loadEngine(path.join(root, "reference-harness/browser/engines/ts.json")), fixture);
   try {
+    // Query only the host's staged deck: even a readonly WAL handle can leave
+    // shared-memory sidecars beside an immutable committed fixture.
+    const db = new DatabaseSync(server.db, { readOnly: true });
+    let signupId;
+    try { signupId = db.prepare("SELECT id FROM cards WHERE codename = 'signup'").get().id; } finally { db.close(); }
     const post = (url, body, cookie) => fetch(server.base + url, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: server.base, ...(cookie ? { cookie } : {}) }, body: new URLSearchParams(body) });
     const sign = await post("/update/*signin", { "card[subcards][+*email][content]": actor.email, "card[subcards][+*password][content]": actor.password });
     const cookie = sign.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
