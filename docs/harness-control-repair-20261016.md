@@ -237,3 +237,20 @@ The controls use actual visible UI; no synthetic picker options, hidden-widget
 selection or timeout increase was used. No vendor state or golden was changed.
 The original complete507 whole-run score and latest canonical a4f30704 grade
 remain historical evidence, not updated totals for this newer checkpoint.
+
+## Owned visible editor contract verification
+
+Frozen source `5e53924c` passes **7/7** in the actual automated Chromium
+C14/E5/E23 batch, with three complete scoped capabilities. Evidence:
+`.runtime/verified-contracts-5e53924c-r1/report.md` and JSON/raw siblings.
+The executed bundle SHA-256 remains
+`8ef666001ef5e3cf13ca7eda31547726ec9012293d2882afff2e894997f0fef2`.
+C14 reads the exact named/typed form's visible matching editor. Nest uses
+visible toolbar and Apply clicks, verifies the opening editor's wire, preserves
+original content, then separately verifies insertion and real save/fresh-page
+nested rendering. Pointer verifies the stored admin actor and target card ID
+before the actual selection-change save. All checks witness admin53041.
+Twelve lightweight loader/selection/abort controls also pass. Cleanup removes
+all15 journey cards and closes the owned stack; asset audit passes. These are
+local SDK-shim results, not vendor deployment acceptance or a revised whole-run
+score. C16/C18 new/structured creation remains a separate contract.
