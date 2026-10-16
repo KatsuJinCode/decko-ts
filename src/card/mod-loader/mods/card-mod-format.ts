@@ -2404,7 +2404,13 @@ const setModules: ModSetModuleFile[] = [
         changed: ["content"],
         fn: (card) => {
           const message = jsonValidationMessage(card.dbContent ?? "");
-          if (message !== null) throw new CardActionError("user-error", message, message);
+          if (message !== null) {
+            // json.rb adds the parser's bare message under the localized
+            // "invalid json" attribute; INVALID JSON is its display prefix.
+            throw new CardActionError("user-error", message, message, {
+              "invalid json": message.replace(/^INVALID JSON: /, ""),
+            }, card.name);
+          }
         },
       },
     ],

@@ -1463,7 +1463,13 @@ function typeSetMember(codenameOfType: ReadonlyMap<number, string>) {
   return (setPath: string, card: { typeId?: number | null }): boolean => {
     const match = /^type\/([^/]+)/.exec(setPath);
     if (match === null || card.typeId === undefined || card.typeId === null) return false;
-    return codenameOfType.get(card.typeId) === match[1];
+    const ownType = codenameOfType.get(card.typeId);
+    if (ownType === match[1]) return true;
+    // Stock rules/type/set.rb includes Type::SearchType, and search's
+    // type/search_type.rb includes Type::Json. Their inherited validators
+    // apply to the same card, not just a card whose immediate type is JSON.
+    return (ownType === "set" && match[1] === "search_type") ||
+      ((ownType === "set" || ownType === "search_type") && match[1] === "json");
   };
 }
 
