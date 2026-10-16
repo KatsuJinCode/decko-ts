@@ -115,7 +115,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The collection surface: the count and paging views that put a total and page links under a set of cards, plus the Abstract::PagingLinks data structure behind them. Its three declared html views (count, paging, paging_urls) are the ones the engine did not already cover.",
     sourceFile: "src/card/mod-loader/mods/card-mod-collection.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "content",
@@ -227,7 +227,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "File and image attachments: mounts CarrierWave onto the File and Image sets, wires 24 event hooks (storage-type writes, file deletes, upload-cache lifecycle, public-link symlinks, cloud bucket management), and contributes the admin task table entries the ops basket reads.",
     sourceFile: "src/card/mod-loader/mods/card-mod-carrierwave.ts",
-    sourceLine: 2,
+    sourceLine: 3,
   },
   {
     name: "virtual",
@@ -251,7 +251,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The Script cardtype: sixteen set files (seven abstract, one all, one right, one self, four type, two type_plus_right), two lib modules and two config initializers. Its effect is card content - a script card and the input types that edit it.",
     sourceFile: "src/card/mod-loader/mods/card-mod-script.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "ace_editor",

@@ -90,6 +90,7 @@ const IDS_RULE = {
   anyoneSignedIn: 9,
   cardtype: 11,
   signup: 12,
+  phrase: 13,
   catchAllRead: 20,
   governedSelfJunction: 21,
   governedReadRule: 22,
@@ -178,6 +179,9 @@ async function seedDeck(): Promise<void> {
   await insertCard({ id: IDS_RULE.anyoneSignedIn, name: "Anyone Signed In", codename: "anyone_signed_in" });
   await insertCard({ id: IDS_RULE.cardtype, name: "Cardtype", codename: "cardtype", typeId: 5 });
   await insertCard({ id: IDS_RULE.signup, name: "Sign up", codename: "signup", typeId: 5 });
+  // Stock account email/password rights assign_type :phrase; the form needs
+  // the deck-local codename rather than assuming a numeric type ID.
+  await insertCard({ id: IDS_RULE.phrase, name: "Phrase", codename: "phrase", typeId: IDS_RULE.cardtype });
 
   // READ universe: the catch-all (rule-universe completeness) grants
   // Anyone; the GOVERNED card's own *self rule is the one the first
@@ -358,6 +362,10 @@ describe("shared edge handler — retained-engine freshness gates every data rou
     expect(first.status).toBe(200);
     const firstBody = await first.text();
     expect(firstBody).toContain(`action="/card/create"`);
+    for (const field of ["email", "password"]) {
+      expect(firstBody).toContain(`value="${IDS_RULE.phrase}" name="card[subcards][+*account][subcards][+*${field}][type_id]"`);
+      expect(firstBody).toContain(`data-card-name="+*${field}" data-card-type-id="${IDS_RULE.phrase}" data-card-type-name="Phrase"`);
+    }
 
     // The committed revocation of Sign up+*type+*create: Anyone -> Anyone
     // Signed In (the *all+*create fallback already denies anonymous, so

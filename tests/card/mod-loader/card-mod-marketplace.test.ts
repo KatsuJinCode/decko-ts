@@ -282,7 +282,9 @@ describe("card-mod-marketplace: the catalog renders one card per loaded mod", ()
       expect(existsSync(abs), `${entry.sourceFile} must exist`).toBe(true);
       const text = readFileSync(abs, "utf8");
       const line = text.split(/\r?\n/)[entry.sourceLine - 1] ?? "";
-      expect(line).toMatch(new RegExp(`^// .*${entry.name}|^// The card-mod-|^// card-mod-`));
+      expect(line, `${entry.sourceFile}:${entry.sourceLine} must cite its source header`).toMatch(
+        new RegExp(`^// .*${entry.name}|^// The card-mod-|^// card-mod-`),
+      );
     }
     // the prose is a real paragraph, not a placeholder
     for (const entry of MOD_CATALOG) {
