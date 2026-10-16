@@ -80,13 +80,21 @@ function parsePath(
     };
   }
   if (segments.length === 1) {
-    const name = decodeName(segments[0]!);
+    const rawName = segments[0]!;
+    // Stock Select2 editors use /:search.json?view=image_complete (and
+    // ?v= aliases), the mark-format arm plus view_from_params. Preserve
+    // existing name-only behavior; an explicit JSON query view must reach
+    // JSON dispatch rather than returning JSON-looking text as HTML.
+    const jsonView = rawName.endsWith(".json")
+      ? searchParams?.get("view") || searchParams?.get("v") || undefined
+      : undefined;
+    const name = decodeName(jsonView === undefined ? rawName : rawName.slice(0, -".json".length));
     if (name === undefined || name === "") return { kind: "notFound" };
     // Bare single-segment arm: Ruby's card#read -> show(nil) — the page
     // path re-derives bareness for the requestedView (the "open" here is
     // parsePath's pinned default, not a requested view).
     const params = wireParams();
-    return { name, view: "open", ...(params ? { params } : {}) };
+    return { name, view: jsonView ?? "open", ...(params ? { params } : {}), ...(jsonView === undefined ? {} : { format: "json" as const }) };
   }
   if (segments.length === 2 && segments[0] === "new") {
     // THE /new/:type ARM: decko's

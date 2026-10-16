@@ -372,6 +372,21 @@ it("uses newly saved right input rules for actual Pointer edit modals", async ()
   expect(searchedHtml).not.toContain('&quot;name&quot;');
 }, 60_000);
 
+it("serves the stock image picker mark.json query-view URL as a JSON result array", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  for (const [term, expected, key] of [["*log", "*logo", "view"], ["MissingImagePickerTarget", undefined, "view"], ["*log", "*logo", "v"]] as const) {
+    const params=new URLSearchParams({[key]:'image_complete',term});
+    const response=await fetch(base+'/:search.json?'+params,{headers:{cookie}});
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    const items=await response.json() as Array<{id:string;text:string}>;
+    expect(Array.isArray(items)).toBe(true);
+    if(expected)expect(items.some(item=>item.id===expected&&typeof item.text==='string')).toBe(true);
+    else expect(items).toEqual([]);
+  }
+}, 60_000);
+
 it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
