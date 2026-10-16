@@ -35,6 +35,7 @@ import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.m
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
+import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
@@ -609,19 +610,26 @@ try {
     const marker = "Harness preset";
     const url = `${stack.origin}/new/RichText?card%5Bname%5D=${preName}&card%5Bcontent%5D=${encodeURIComponent(`<p>${marker}</p>`)}`;
     const view = await page.goto(url, { waitUntil: "load" }).then((r) => ({ status: r?.status() ?? null })).catch((e) => ({ error: String(e).slice(0, 100) }));
-    await page.waitForTimeout(2500);
+    await page.waitForFunction(editorReady, ['card[content]'], { timeout: 60_000 });
     const prefilled = await page.evaluate(() => {
-      const ed = window.tinymce?.activeEditor;
-      const ta = document.querySelector(".modal textarea, #edit_card textarea");
+      const ta = document.querySelector('form.card-form textarea[name="card[content]"]');
+      const ed = ta?.id && window.tinyMCE?.get(ta.id);
       return { editor: ed ? ed.getContent() : null, textarea: ta ? ta.value : null };
     });
-    const before = ledger().length;
-    await page.locator('form.card-form button[type="submit"], .modal button.submit-button, #edit_card button.submit-button').first().click().catch((e) => record("C10 submit", false, { error: String(e).slice(0, 120) }));
-    await page.waitForTimeout(3000);
-    const line = linesSince(before).find((l) => l.method !== "GET");
+    const capture = String(++htmlSequence).padStart(3, '0') + '-preset-form';
+    writeFileSync(join(RAW, `${capture}.html`), await page.content(), { flag: 'wx' });
+    const pending = page.waitForResponse(response => {
+      const target = new URL(response.url());
+      return target.origin === stack.origin && target.pathname === '/card/create' && response.request().method() === 'POST';
+    }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+    await page.locator('form.card-form button[type="submit"], .modal button.submit-button, #edit_card button.submit-button').first().click();
+    const observed = await pending;
+    if (observed.error) throw observed.error;
+    await observed.response.finished();
+    const row = database().prepare('SELECT db_content,trash FROM cards WHERE name = ?').get(preName);
     const after = await visit(`/${preName}`);
-    record("card content preset in the /new URL is submitted and stored", line !== undefined && line.status < 400 && after.html.includes(marker),
-      { status: line?.status ?? null, prefilledEditor: (prefilled.editor ?? "").slice(0, 60), marker, afterStatus: after.status });
+    record("card content preset in the /new URL is submitted and stored", observed.response.status() < 400 && prefilled.editor?.includes(marker) && row?.trash === 0 && row.db_content.includes(marker) && after.html.includes(marker),
+      { status: observed.response.status(), prefilledEditor: (prefilled.editor ?? "").slice(0, 60), marker, storedMarker:row?.db_content?.includes(marker) ?? false, afterStatus: after.status });
   });
 
   await attempt("C8 duplicate name refused", async () => {
@@ -771,13 +779,14 @@ try {
       }
       const emailInput = await openAccountField('email');
       const emailName = await emailInput.getAttribute('name');
+      const emailType = await emailInput.getAttribute('type');
       await page.locator('.modal .cancel-button:visible, #edit_card .cancel-button:visible').first().click();
       await page.locator('.modal.show').waitFor({ state: 'hidden' });
       const passwordInput = await openAccountField('password');
       const passwordName = await passwordInput.getAttribute('name');
-      const fields = [{name:emailName,type:'email'}, {name:passwordName,type:await passwordInput.getAttribute('type')}];
-      const emailField = fields.find((f) => f.name && /email/i.test(f.name) && f.type !== "hidden");
-      const passwordField = fields.find((f) => f.name && /password/i.test(f.name));
+      const fields = [{right:'email',name:emailName,type:emailType}, {right:'password',name:passwordName,type:await passwordInput.getAttribute('type')}];
+      const emailField = fields.find((f) => f.right === 'email' && f.name && f.type !== 'hidden');
+      const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
       record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
       if (passwordField !== undefined) {
         const oldPassword = creds.admin.password;
