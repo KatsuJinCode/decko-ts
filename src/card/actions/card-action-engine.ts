@@ -2400,12 +2400,18 @@ export class CardActionEngine {
     // Ruby's stage order (director/phases.rb storage_phase: store, then
     // finalize), which is what lets the reference walk's Lexicon.id resolve
     // the cards created earlier in the same act.
+    // Reference chunks come from Card#content, including an applicable
+    // structure template, while the authored column remains unchanged.
+    const refsContentAfter = attachmentIdentifier ?? (input.content == null
+      ? null
+      : createdRow === undefined ? input.content
+        : await this.structureReferencesContent(createdRow, input.content));
     const referenceFinalizeCard = (): ModEventCard =>
       this.eventCard({
         name,
         id: created.cardId,
         key: name.key,
-        dbContent: attachmentIdentifier ?? (input.content ?? null),
+        dbContent: refsContentAfter,
         dbContentBeforeAct: null,
         action: "create",
         trash: false,
@@ -2426,7 +2432,7 @@ export class CardActionEngine {
             cardId: created.cardId,
             name,
             contentBefore: null,
-            contentAfter: attachmentIdentifier ?? input.content ?? null,
+            contentAfter: refsContentAfter,
           }),
       ],
       [
