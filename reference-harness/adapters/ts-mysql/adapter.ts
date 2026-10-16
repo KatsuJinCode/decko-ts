@@ -374,6 +374,10 @@ async function opAsk(req: Req): Promise<Json> {
 }
 
 // ---- write -----------------------------------------------------------------------
+// Only the harness's explicit absent-target error escapes save handling.
+// Lookup failures retain the existing mark/ID/virtual error behavior.
+class MissingWriteTargetError extends Error { readonly rubyClass = "ArgumentError"; }
+
 async function opWrite(req: Req): Promise<Json> {
   const actorRec = await actorRecord(req.actor);
   const actor =
@@ -415,7 +419,7 @@ async function opWrite(req: Req): Promise<Json> {
       result = await engine.createCard({ name: req.card, ...input } as CreateCardInput);
     } else {
       const rec = await liveRecord(req.card);
-      if (rec === undefined) throw new Error(`no such card ${req.card}`);
+      if (rec === undefined) throw new MissingWriteTargetError(`no such card ${req.card}`);
       if (req.action === "update") {
         if (fields.name !== undefined) input.name = fields.name;
         result = await engine.updateCard({ cardId: rec.id, ...input } as UpdateCardInput);
@@ -433,6 +437,8 @@ async function opWrite(req: Req): Promise<Json> {
       card = rec === undefined ? null : { name: await nameOf(rec), id };
     }
   } catch (error) {
+    // oracle/adapter.rb rescues Card::Error here, not its own ArgumentError.
+    if (error instanceof MissingWriteTargetError) throw error;
     saved = false;
     // The errors view's shape (card-mod-format set/all/error.rb format :json
     // view :errors): {attribute => message}. The engine's denial wording is
