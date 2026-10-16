@@ -70,9 +70,7 @@ const stylesheetPathSeam: ViewFn = (ctx) => {
   return `/files/${content}`;
 };
 
-beforeAll(async () => {
-  storage = await createRenderTestStorage();
-  const s = storage;
+async function seedScriptStorage(s: RenderTestStorage, scriptOutput = "~307test/1790061390.js") {
 
   // cardtype cards (their codenames feed the engine's typeCode lookups the
   // set/type dispatches read; ids are self-referential type ids).
@@ -110,7 +108,7 @@ beforeAll(async () => {
     leftId: 306,
     rightId: 52,
     typeId: 43,
-    dbContent: "~307test/1790061390.js",
+    dbContent: scriptOutput,
   });
 
   // the *all+*style rule card + its compiled output (the cssPath chain)
@@ -166,6 +164,11 @@ beforeAll(async () => {
 
   // the sibling-mod seam (see file header)
   s.engine.views["stylesheet_path"] = stylesheetPathSeam;
+}
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await seedScriptStorage(storage);
 }, 60_000);
 
 afterAll(() => {
@@ -289,6 +292,32 @@ describe("card-mod-script through the mod loader (A/B)", () => {
         "\n<!-- MAIN DECKO JAVASCRIPT -->\n" +
         '<script src="/files/~307test/1790061390.js"></script>',
     );
+  });
+
+  it("WITH the mod: web and cloud output identifiers retain their actual uploader URLs", async () => {
+    for (const [content, expected] of [
+      ["https://assets.example/files/50617/1768074298.js", "https://assets.example/files/50617/1768074298.js"],
+      ["(bucket)/50617/1768074298.js", "https://assets.example/files/50617/1768074298.js"],
+      ['https://assets.example/main.js?a=1&label="x"', "https://assets.example/main.js?a=1&amp;label=&quot;x&quot;"],
+    ]) {
+      const s = await createRenderTestStorage();
+      const isolatedLoader = new ModLoader([{ manifest: cardModScript }]);
+      try {
+        await seedScriptStorage(s, content);
+        s.engine.imageCdnHost = "https://assets.example";
+        isolatedLoader.load();
+        bindModLoaderToEngine(s, isolatedLoader);
+        await isolatedLoader.installInto(modEngineHost(s.engine, s.fetcher));
+        const html = await s.engine.render("Oracle Head Probe", "javascript_tags");
+        expect(html).toBe(REMOTE_TAGS_FOR_ALL_SCRIPT +
+          '\n<!-- MAIN DECKO JAVASCRIPT -->\n' + `<script src="${expected}"></script>`);
+        expect(html).not.toContain('/files/https:');
+      } finally {
+        isolatedLoader.reset();
+        s.close();
+        storage!.fetcher.installNameEnvironment();
+      }
+    }
   });
 
   it("WITH the mod: :javascript_tags resolves the *all+*script rule for ANY card through the all-pattern walk (all/head_javascript.rb:18)", async () => {

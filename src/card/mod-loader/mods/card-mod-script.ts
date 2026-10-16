@@ -94,6 +94,8 @@
 import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
 import { UnsupportedViewError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { applyDeploymentCssRevision } from "../../render/head-views.js";
+import { attachmentUrl } from "../../render/views.js";
+import { h } from "../../render/slot-html.js";
 import { deckoRootUrl } from "../../render/deployment-follow-live-config.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
@@ -153,6 +155,12 @@ function assetOutputUrl(ctx: ViewContext, cardName: string): string | undefined 
   const outputCard = ctx.fmt.engine.fetchRenderCard(`${cardName}+*asset output`);
   const content = outputCard?.dbContent;
   if (content === undefined || content === "") return undefined;
+  // FileCardUploader#url returns web content unchanged and derives a fog
+  // URL for cloud identifiers. Prefixing either with /files/ corrupts the
+  // actual script URL when this mod view is nested by a layout card.
+  if (/^(?:https?:|\()/.test(content.trim())) {
+    return attachmentUrl(content, undefined, undefined, ctx.fmt.engine.imageCdnHost);
+  }
   return `/files/${content}`;
 }
 
@@ -270,7 +278,7 @@ const javascriptTagsView: ViewFn = (ctx) => {
   parts.push("<!-- MAIN DECKO JAVASCRIPT -->");
   const outputUrl = assetOutputUrl(ctx, assetCard.name.s);
   if (outputUrl !== undefined) {
-    parts.push(`<script src="${outputUrl}"></script>`);
+    parts.push(`<script src="${h(outputUrl)}"></script>`);
   }
   return parts.join("\n");
 };
