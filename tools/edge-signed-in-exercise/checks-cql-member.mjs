@@ -5,7 +5,7 @@ export const checks=[{name:'member JSON search is consistent with an independent
  const {stack,page,creds,signIn,database,visit,record,captureEvidence}=ctx;
  if(!['127.0.0.1','localhost','[::1]'].includes(new URL(stack.origin).hostname))throw Error('member search control requires the disposable loopback fixture');
  const member=creds.member;
- const target=database().prepare('SELECT c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(member.id);
+ const target=database().prepare('SELECT c.name,t.name AS type,c.read_rule_id AS readRuleId,c.read_rule_class AS readRuleClass FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(member.id);
  if(target?.name!==member.name||!target.type)throw Error('owned member target is unavailable');
  const session=await signIn(member);
  if(!verifiedActorSession(session,member.id))throw Error('ordinary member actor was not verified');
@@ -15,7 +15,7 @@ export const checks=[{name:'member JSON search is consistent with an independent
  const readable=direct.status===200&&title===target.name;
  const refused=direct.status===403;
  const readRaw=captureEvidence(await page.content(),{check:'member-direct-target-read',actorId:member.id,target:target.name,status:direct.status,title});
- record('ordinary member target has an explicit fresh read verdict',readable||refused,{actorId:member.id,status:direct.status,readable,refused,title,raw:readRaw});
+ record('ordinary member target has an explicit fresh read verdict',readable||refused,{actorId:member.id,status:direct.status,readable,refused,title,readRuleId:target.readRuleId,readRuleClass:target.readRuleClass,raw:readRaw});
  if(!readable&&!refused)throw Error('member target read verdict is not established');
  await page.goto(stack.origin+'/',{waitUntil:'load'});
  const query=JSON.stringify({type:target.type,name:target.name});
