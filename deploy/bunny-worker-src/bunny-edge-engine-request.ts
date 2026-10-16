@@ -177,6 +177,9 @@ export function liveRenderApplies(
   // Signed-in pages also take it for path and query views (the edit page),
   // which the anonymous path keeps on the normal render.
   if (options?.viewer !== undefined) return noHistorySelectors;
+  // A requested anonymous XHR slot has the same complete preparation as
+  // other live views; keep its form store request-local (renderLive).
+  if (isXhr(request) && !url.searchParams.has("layout")) return noHistorySelectors;
   if (!pathViewIsBareArm(url.pathname) || pageView !== undefined) return false;
   return noHistorySelectors;
 }

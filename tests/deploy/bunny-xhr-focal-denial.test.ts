@@ -19,3 +19,15 @@ it('HTTP root edit denial is focal without layout and includes actual sign-in li
  expect(publicRead.status).toBe(200);expect(await publicRead.text()).not.toContain('class="denied"');
 });
 it('direct corpus-style bare render keeps quiet nested denial semantics',async()=>{const deck=await bootEdgeServingEngines(driver);expect(await deck.render.render('Home','edit',{focalRoot:true})).toContain('signin-link');expect(deck.render.pageErrorStatus).toBe(403);expect(await deck.render.render('Home','edit')).toContain('<span class="denied">');expect(deck.render.pageErrorStatus).toBeUndefined();});
+
+it('batches actual anonymous XHR denial and preserves restricted read and public controls',async()=>{
+ const env={DECKO_DB_URL:hrana.url,DECKO_DB_TOKEN:'owned-test',DECKO_LIVE_RENDER:'1',DECKO_EDGE_DECK_PROFILE:'stock'};
+ const request=(path:string)=>handleBunnyEngineRequest(new Request('https://local.test'+path,{headers:{'x-requested-with':'XMLHttpRequest'}}),env);
+ const before=(await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows;
+ const start=hrana.requests.length;const edit=await request('/Home/edit');
+ expect(edit.status).toBe(403);expect(await edit.text()).toContain('signin-link');
+ expect(hrana.requests.length-start).toBeLessThan(40);
+ const restricted=await request('/Mira_Member+*account/content');expect(restricted.status).toBe(403);
+ const readable=await request('/Home/content');expect(readable.status).toBe(200);expect(await readable.text()).not.toContain('class="denied"');
+ expect((await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows).toEqual(before);
+});
