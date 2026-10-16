@@ -265,7 +265,9 @@ async function opRender(req: Req): Promise<Json> {
   // edit_inline form's content input renders blank. The engine cache here
   // is a boot-cost cache, not a session; each render re-signs in.
   engine.resetRequestSession();
-  const html = req.view ? await engine.render(req.card, req.view) : await engine.renderPage(req.card);
+  // Preserve the same raw format.render boundary as the SQLite recorder.
+  const params = req.format && req.format !== "html" ? { format: req.format } : {};
+  const html = req.view ? await engine.renderRaw(req.card, req.view, params) : await engine.renderPage(req.card);
   return { html };
 }
 

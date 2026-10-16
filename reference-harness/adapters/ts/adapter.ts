@@ -273,8 +273,10 @@ async function opRender(req: Req): Promise<Json> {
   // A non-html view dispatches through the format's own view chain (the
   // engine's root format carries params.format, render.ts renderHeld).
   const params = req.format && req.format !== "html" ? { format: req.format } : {};
+  // Match Ruby format.render: record its value before HTML consumers apply
+  // to_s. Numbers, nil, arrays and hashes are protocol answers in their own right.
   const html = req.view
-    ? await engine.render(req.card, req.view, params)
+    ? await engine.renderRaw(req.card, req.view, params)
     : await engine.renderPage(req.card);
   return { html };
 }
