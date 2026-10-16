@@ -1075,7 +1075,28 @@ const coreViewBase: ViewFn = (ctx) => {
   // type dispatch below serves (the pre-port search-no-results bytes).
   if (fmt.card.setKeys.split(" ").includes("SELF-Xrecent")) {
     const reader = fmt.engine.historyRenderReader?.();
-    if (reader !== undefined) return recentChangesCoreBytes(fmt, reader);
+    // Ruby's self/recent.rb :core is a SELF-set override of the search core
+    // below: once the set matches, the search card_list must NEVER answer -
+    // executing the CQL as a plain search is exactly the pre-port wrong
+    // bytes (the live Changes page served the search list, whose entries are
+    // links, instead of the recent-acts accordion whose entries open
+    // inline). Every lane that can reach this arm seats the deck-wide
+    // reader in the async prepare (render.ts: the ROOT gate for *recent
+    // roots, and the nested-closure scan for {{*recent}} nests inside other
+    // cards' content). A lane arriving WITHOUT the reader is an unseated
+    // render path - the state whose two silent fallbacks were both wrong
+    // surfaces (the executed search list; then commit 2f10d8e0's "") - so
+    // the arm now refuses at dispatch: in a nest the quiet-error span
+    // surfaces the miss, at a root the raise propagates. Never empty, and
+    // the search dispatch below stays unreachable for *recent.
+    if (reader === undefined) {
+      throw new Error(
+        "*recent :core reached without the render-time history seat - " +
+          "the render path must seat RenderEngine#prepareHistoryRender('recent') " +
+          "before dispatching (render.ts ROOT gate + nested-closure scan)",
+      );
+    }
+    return recentChangesCoreBytes(fmt, reader);
   }
   // Match by codename (card-mod-search type card's codehash has codename
   // "search_type"); the corpus search cards have type cards whose CARD

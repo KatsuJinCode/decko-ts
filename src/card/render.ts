@@ -2627,6 +2627,45 @@ export class RenderEngine implements RenderEngineLike {
     }
     await this.applyLateSeatStructureContent();
     if (FORM_VIEW_PATTERN.test(view)) await this.seatLastActionIds();
+    // THE NESTED-*RECENT SEAT (the SELF-Xrecent arm's second lane): the
+    // gate above seats only when the RENDER ROOT is *recent (the Changes
+    // page's own lane - the live bundle renders its 24-entry accordion). A
+    // *recent CORE reached through a NEST ({{*recent}} inside another
+    // card's content: format.ts nest -> subformat.renderView) dispatches
+    // the sync view tree with NO async prepare half of its own - the same
+    // sync-lane constraint ensureCoreAdminRuntime's doc names - so that
+    // lane arrived at the SELF-Xrecent arm with no reader. Both silent
+    // fallbacks for that state were wrong surfaces: the executed search
+    // list (the pre-port bytes Brandon saw in the meeting), then 2f10d8e0's
+    // silent "". Ruby renders the same deck-wide feed from inside the nest
+    // (self/recent.rb:28-33 runs recent_acts IN the nested core render),
+    // so the honest fix arms the seam HERE, before the sync dispatch,
+    // whenever this render's closure can reach the arm - and the arm itself
+    // now REFUSES LOUDLY when a lane still arrives unseated (views.ts):
+    // never empty, never the search list. Zero added queries for renders
+    // whose closure never references *recent (the scan is in-memory nest
+    // parsing over already-prepared bytes); a render that does reference
+    // *recent pays the deck-wide feed reads Ruby's own nested-core render
+    // pays. Discovery passes are skipped - their bytes are discarded
+    // (skipSyncRender), and the real pass re-enters render() with the
+    // reader freshly cleared (line ~1327) and seats through this same gate.
+    if (
+      this.historyReader === undefined &&
+      this.skipSyncRender?.() !== true &&
+      this.renderClosureNestsRecentCard()
+    ) {
+      // Seat with the *recent CARD as the reader root - not this render's
+      // root - so the nested bytes carry the same reader shape the
+      // *recent-rooted page carries (rootCardId, cardLastAct, the update
+      // gate all read the *recent card, as Ruby's nested core render
+      // reads @card = *recent). Cache-first: the nest reference already
+      // prepared the card, so a warm render asks zero round trips here.
+      const recentRecord = await this.fetcher.fetchByName("*recent");
+      if (recentRecord !== undefined) {
+        const recentCard = await this.enrichAndStore(recentRecord);
+        this.historyReader = await this.prepareHistoryRender(recentCard, params, "recent");
+      }
+    }
     // db round-trip elimination: prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
@@ -6219,6 +6258,36 @@ export class RenderEngine implements RenderEngineLike {
       const content = card.dbContent?.toString();
       if (content !== undefined && content.includes("|configs")) return true;
       if (card.typeCode === "mod") return true;
+    }
+    return false;
+  }
+
+  /** Whether any card THIS render seated (the renderSeats closure, the
+   *  same sweep surface enrichNestTypeOptTargets scans) carries a nest of
+   *  the deck-wide *recent card - the {{*recent}} / {{:recent}} shapes.
+   *  A junction reference like `_self+*recent` names a DIFFERENT card
+   *  (a set rule off some host, never the root *recent), so only the bare
+   *  name and the codename mark count: those are the two authored forms
+   *  whose nest render dispatches the SELF-Xrecent arm (views.ts). The
+   *  async prepare gates the deck-wide history seat on this (the
+   *  NESTED-*RECENT SEAT in render()): the nest lanes dispatch
+   *  format.renderView synchronously with no prepare half of their own,
+   *  so the reader must exist before the sync tree renders. The
+   *  explicit-view question is deliberately NOT consulted: the sync lane's
+   *  modal_nest_view/implicit-view resolution can promote a nest's view to
+   *  the core (the default nest view is :content), and over-seating costs
+   *  a bounded SELECT set only on decks whose content references *recent
+   *  at all. */
+  renderClosureNestsRecentCard(): boolean {
+    for (const key of this.renderSeats) {
+      const content = this.renderCards.get(key)?.dbContent?.toString();
+      if (content === undefined || !content.includes("{{")) continue;
+      for (const piece of scanNests(content)) {
+        const nest = piece.nest;
+        if (nest === undefined || nest.comment !== undefined) continue;
+        const nameKey = nest.name.trim().toLowerCase();
+        if (nameKey === "*recent" || nameKey === ":recent") return true;
+      }
     }
     return false;
   }
