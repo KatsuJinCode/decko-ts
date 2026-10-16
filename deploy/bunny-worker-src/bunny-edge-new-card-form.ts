@@ -184,11 +184,12 @@ export function signedInNewCardFormBodyHtml(
   typeId: number,
   typeCode: string | undefined,
   cardName = "",
+  content = "",
 ): string {
   const contentEditor =
     typeCode === "date"
-      ? `<input class="date-editor form-control" type="date" value="" name="card[content]" id="card_content" />`
-      : `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="new-card-content" name="card[content]">\n</textarea>`;
+      ? `<input class="date-editor form-control" type="date" value="${h(content)}" name="card[content]" id="card_content" />`
+      : `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="new-card-content" name="card[content]">\n${h(content)}</textarea>`;
   const form = createFormShell({} as ViewContext, {
     htmlAttrs: [["data-main-success", MAIN_SUCCESS_ATTR]],
     success: { mark: "_self" },

@@ -534,7 +534,17 @@ async function dispatchEngineRequest(
         : (await newCardDeck.fetcher.fetchById(parsed.typeId))?.name?.s;
       if (typeName === undefined) return await renderDeckoNotFoundErrorPage(newCardDeck, String(parsed.typeId));
       if (options?.viewer !== undefined) {
-        const page = await signedInNewCardPage(source, newCardDeck, typeName, options, signal, parsed.cardName ?? "");
+        // card[name] / card[content] in the query preset the form, as Ruby's
+        // new view reads them off params.
+        const page = await signedInNewCardPage(
+          source,
+          newCardDeck,
+          typeName,
+          options,
+          signal,
+          url.searchParams.get("card[name]") ?? parsed.cardName ?? "",
+          url.searchParams.get("card[content]") ?? "",
+        );
         return page ?? (await signedInNewCardRouteResponse(newCardDeck, typeName));
       }
       return await newCardRouteResponse(newCardDeck, typeName);
@@ -827,6 +837,7 @@ async function signedInNewCardPage(
   options: EngineRequestOptions,
   signal: AbortSignal | undefined,
   cardName = "",
+  content = "",
 ): Promise<Response | undefined> {
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
@@ -876,7 +887,7 @@ async function signedInNewCardPage(
     engines.render.viewer = viewer;
     engines.render.pageSession = viewer;
     engines.render.renderAbsentCards = true;
-    return await engines.render.render(cardName, "new", { newCard: { typeId: typeRecord.id } });
+    return await engines.render.render(cardName, "new", { newCard: { typeId: typeRecord.id, content } });
   };
   const form = await (requestContextAvailable()
     ? runInRequestContext(getNameEnvironment(), renderForm)
