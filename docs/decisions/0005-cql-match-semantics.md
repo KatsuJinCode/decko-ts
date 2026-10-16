@@ -104,6 +104,50 @@ and the local engine's word-boundary semantics are ASCII-only where the
 captured server's are Unicode-aware. Neither is exercised by the capture; both
 are stated so a later reader knows what a passing battery does not cover.
 
+### Case folding: lower() on both sides, keyword bound unchanged
+
+The capture pins the default match as a case-insensitive substring search
+because the captured server (MySQL, the original site's engine) folds `REGEXP`
+case by default — "news" and "News" are one query there. The folding is a
+property of the engine, and the edge engine differs. Live-proven against
+cs-edge-deck 2026-10-16:
+
+- `'News' REGEXP 'news'` → **0** — the edge regexp is case-sensitive;
+- `'News' REGEXP '(?i)news'` → SQLite error **"'?' without operand"** — the
+  engine rejects inline fold flags. (This was the first fix's spelling; it
+  errored live as a 500 and was rolled back the same day.);
+- `lower('News') REGEXP lower('news')` → **1** — the adopted spelling;
+- `[Nn]` character classes work — a raw `~~` pattern can spell its own folds;
+- `regexp_like` does not exist on this engine.
+
+**The rule:** the keyword path wraps BOTH sides in SQL `lower()` —
+`lower(field) REGEXP lower(?)` — and binds the escaped keyword UNCHANGED, its
+original case intact. SQL `lower()` folds the bound parameter exactly as it
+folds the column. The keyword must NOT be lowercased in JavaScript: JS
+`toLowerCase()` is full-Unicode while SQLite-class `lower()` is ASCII-only, so
+a JS-folded "Élan" (→ "élan") would stop matching content "Élan" that an
+exact query must still reach. One spelling folds on every driver — MySQL's
+own `REGEXP` already folds, so the wrap changes no result set there; the
+local UDF keeps its `i` flag (harmless double-fold). NULL propagation is
+preserved (`lower(NULL)` is NULL on every engine).
+
+**Declared limitation:** `lower()` is ASCII-only on SQLite-class engines, so
+non-ASCII case variants stay distinct — "Élan" and "élan" are different
+queries on the edge (proven: `lower` leaves "É" unchanged), whereas MySQL
+folds accented Latin. This matches prior behavior and is not hidden:
+Unicode-insensitive parity is NOT established here; it needs the Ruby
+contract to be captured first. The local UDF's `i` flag folds more than the
+edge (JS case-folds non-ASCII), a pre-existing local-vs-edge asymmetry the
+battery pins rather than silently inherits.
+
+A `~~` raw pattern is user-authored server regexp and passes through AS
+WRITTEN — un-wrapped, un-lowercased — exactly as Ruby's
+`match_value.rb:46-51` renders it. On the edge such patterns are
+case-sensitive unless the author spells `[Nn]`-style folds; on MySQL they
+fold as the server folds. That is the record's standing contract ("the
+contract is not 'identical everywhere'") applied to the one shape the wrap
+deliberately does not touch.
+
 ### Declared match divergences
 
 One entry of the captured MySQL-rung match battery is excluded from the strict

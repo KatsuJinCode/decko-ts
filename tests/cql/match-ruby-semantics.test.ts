@@ -96,13 +96,16 @@ const DECK: CardsRow[] = [
   })),
 ];
 
-async function freshDeck(registerUdf: boolean): Promise<LocalSqliteDriver> {
+async function freshDeck(
+  registerUdf: boolean,
+  rows: CardsRow[] = DECK,
+): Promise<LocalSqliteDriver> {
   const driver = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");
   for (const statement of splitSqlStatements(ddl)) {
     await driver.query(statement, []);
   }
-  for (const row of DECK) {
+  for (const row of rows) {
     await driver.query(
       "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +
         "created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, " +
@@ -288,15 +291,19 @@ describe.each([
   it("renders the operator Ruby renders: `field REGEXP ?` for MySQL/SQLite", async () => {
     // active_record.rb:114-118 (SQLiteAdapter) and :100-102 (Mysql2Adapter)
     // both return "REGEXP #{string}". The port parameterizes the pattern, so
-    // the shape is `field REGEXP ?` with the pattern in params.
+    // the shape is `field REGEXP ?` with the pattern in params — with the
+    // case fold spelled as SQL lower() on both sides (see the case-fold
+    // battery below; MySQL's REGEXP folds, the edge engine's does not, and
+    // the wrap changes no result set on the folding engines).
     const driver = await freshDeck(registerUdf);
     try {
       const result = await executeQuery(driver, { match: "home" });
       if ("count" in result) throw new Error("expected a rows result");
       if (registerUdf) {
-        expect(result.sql).toContain("c0.name REGEXP ?");
-        expect(result.sql).toContain("c0.db_content REGEXP ?");
-        // match_value.rb:60-62: the non-raw term is escaped before quoting.
+        expect(result.sql).toContain("lower(c0.name) REGEXP lower(?)");
+        expect(result.sql).toContain("lower(c0.db_content) REGEXP lower(?)");
+        // match_value.rb:60-62: the non-raw term is escaped before quoting,
+        // and bound UNCHANGED — SQL lower() folds it, not JS.
         expect(result.params).toContain("home");
       } else {
         // the post-filter drops the predicate from the SQL and applies it
@@ -304,6 +311,230 @@ describe.each([
         expect(result.sql).not.toContain("REGEXP");
         expect(result.sql).not.toContain("LIMIT");
       }
+    } finally {
+      driver.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The case-fold battery: lower() on both sides, keyword bound unchanged.
+//
+// The live divergence this pins (2026-10-16, the cs-edge-deck probes): the
+// edge engine's regexp is CASE-SENSITIVE — a card whose content holds only
+// capital-N "News" answered the keyword "News" but NOT "news", which a
+// folding engine cannot produce (the original site's MySQL REGEXP folds by
+// default). The engine also REJECTS inline fold flags — REGEXP '(?i)news'
+// errored live ("'?' without operand"; the first fix's spelling, rolled
+// back) — while lower('News') REGEXP lower('news') -> 1 and [Nn] classes
+// work (regexp_like does not exist). The adopted wire shape wraps BOTH
+// sides in SQL lower() and binds the keyword UNCHANGED: JS toLowerCase is
+// full-Unicode while engine lower() is ASCII-only, so JS-side folding would
+// break exact non-ASCII queries (Élan must keep matching Élan).
+// docs/decisions/0005-cql-match-semantics.md, "Case folding: lower() on
+// both sides".
+// ---------------------------------------------------------------------------
+
+const FOLD_DECK: CardsRow[] = [
+  ...[
+    {
+      id: 101,
+      name: "Martial Art",
+      key: "martial_art",
+      content: "Saving Lives is a Martial Art. Read the News.",
+    },
+    { id: 102, name: "Plain News", key: "plain_news", content: "quiet news desk" },
+    { id: 103, name: "Unrelated", key: "unrelated", content: "nothing to see" },
+    { id: 104, name: "Élan vital", key: "elan_vital", content: "Élan vital, the spirit" },
+  ].map((row) => ({
+    id: row.id,
+    name: row.name,
+    key: row.key,
+    codename: null,
+    left_id: null,
+    right_id: null,
+    current_revision_id: null,
+    read_rule_class: null,
+    read_rule_id: null,
+    references_expired: null,
+    db_content: row.content,
+    trash: 0 as const,
+    type_id: 2,
+    creator_id: 10,
+    updater_id: 10,
+    created_at: "2026-01-01 00:00:00.000",
+    updated_at: "2026-01-01 00:00:00.000",
+  })),
+];
+
+describe.each([
+  ["REGEXP UDF (local SQLite)", true],
+  ["JS post-filter (libSQL / D1 shape)", false],
+])("case-fold battery: lower() on both sides — %s", (_label, registerUdf) => {
+  it("lowercase 'news' matches content holding only capital-N 'News' (the MySQL default)", async () => {
+    const driver = await freshDeck(registerUdf, FOLD_DECK);
+    try {
+      // id 101's content is the live proof shape: its only news-spelling is
+      // "News". id 102 matches on both name and content. id 103 never does.
+      const expected = [101, 102];
+      expect(await matched(driver, { match: "news" })).toEqual(expected);
+      expect(await matched(driver, { match: "NEWS" })).toEqual(expected);
+      expect(await matched(driver, { match: "nothing" })).toEqual([103]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the wire shape is lower()-wrapped on both sides with the keyword bound UNCHANGED", async () => {
+    // The exact shape the live probes proved correct on the edge engine:
+    // lower(col) REGEXP lower(?) with the original-case keyword as the bind
+    // (SQL lower() folds the parameter exactly as it folds the column; the
+    // engine facts themselves — case-sensitive regexp, '(?i)' rejected,
+    // lower both sides -> 1 — are recorded in the decision, not re-provable
+    // against local SQLite, whose UDF folds in JS).
+    const driver = await freshDeck(registerUdf, FOLD_DECK);
+    try {
+      const result = await executeQuery(driver, { match: "NeWs" });
+      if ("count" in result) throw new Error("expected a rows result");
+      if (registerUdf) {
+        expect(result.sql).toContain("lower(c0.name) REGEXP lower(?)");
+        expect(result.sql).toContain("lower(c0.db_content) REGEXP lower(?)");
+        expect(result.sql).not.toMatch(/REGEXP \?/); // never an unwrapped column
+        expect(result.sql).not.toContain("(?i)"); // the rejected spelling never returns
+        expect(result.params).toContain("NeWs"); // bound unchanged, JS folded nothing
+      } else {
+        // the UDF-less driver fails its first REGEXP statement ("no such
+        // function"), flips to the post-filter, and the JS compile folds
+        expect(result.sql).not.toContain("REGEXP");
+      }
+      expect(result.rows.map((row) => row.id).sort((a, b) => a - b)).toEqual([101, 102]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("exact non-ASCII case matches: 'Élan' hits 'Élan' on both paths (limitation control 1)", async () => {
+    // CONTROL: the keyword is bound unchanged and SQL lower() is
+    // ASCII-only — É survives on BOTH sides, so an exact non-ASCII query
+    // keeps matching. This is what JS-side folding would have broken.
+    const driver = await freshDeck(registerUdf, FOLD_DECK);
+    try {
+      expect(await matched(driver, { match: "Élan" })).toEqual([104]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("non-ASCII case variants stay DISTINCT on the SQL side: lower() leaves É alone (limitation control 2)", async () => {
+    // CONTROL, run against the real SQLite lower() (the same ASCII-only
+    // lower the edge engine exposes): lower('Élan') keeps its É, so
+    // 'élan' can never equal 'Élan' in SQL — the documented limitation
+    // ('Élan'/'élan' -> 0 on the edge, live-proven; matches prior
+    // behavior; Unicode-insensitive parity is NOT established — it needs
+    // the Ruby contract captured first). The local UDF compiles with the
+    // JS `i` flag and therefore folds MORE than the edge — the battery
+    // pins that asymmetry explicitly instead of inheriting it silently.
+    const driver = await freshDeck(registerUdf, FOLD_DECK);
+    try {
+      const lowered = await driver.query<{ r: string }>("SELECT lower('Élan') AS r", []);
+      expect(lowered.rows[0]!.r).toBe("Élan"); // É survives: ASCII-only fold
+      // and the local UDF's i-flag over-fold, pinned as the known asymmetry:
+      expect(await matched(driver, { match: "élan" })).toEqual([104]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("a ~~ raw pattern stays AS WRITTEN — bare REGEXP, no lower() wrap", async () => {
+    // raw patterns are user-authored server regexp and pass through
+    // unchanged (match_value.rb:46-51); the fold marker is bound on the
+    // ESCAPED-LITERAL shape only. On the edge such patterns are
+    // case-sensitive unless the author spells [Nn]-style folds.
+    const driver = await freshDeck(registerUdf, FOLD_DECK);
+    try {
+      const result = await executeQuery(driver, { match: "~~News" });
+      if ("count" in result) throw new Error("expected a rows result");
+      if (registerUdf) {
+        expect(result.sql).toContain("c0.name REGEXP ?");
+        expect(result.sql).not.toContain("lower(c0.name)");
+        expect(result.params).toContain("News"); // as written
+      }
+      // the local compile still folds (the i flag), so both news cards hit
+      expect(result.rows.map((row) => row.id).sort((a, b) => a - b)).toEqual([101, 102]);
+    } finally {
+      driver.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The wire against a GENUINELY case-sensitive REGEXP.
+//
+// The local UDF folds in JS (the i flag), so the fold-behavior tests above
+// cannot see a broken wire shape — the first deploy slipped through exactly
+// that way. This suite registers the EDGE engine's live-proven regexp
+// semantics on a real SQLite handle instead: case-sensitive matching, no i
+// flag, inline fold flags rejected with the engine's own error. SQLite's
+// own lower() (ASCII-only) evaluates the generated SQL, so the FULL wire —
+// column wrap AND parameter wrap — must be present or "news" misses the
+// capital-N-only card, exactly as it did live.
+// ---------------------------------------------------------------------------
+
+/** The cs-edge-deck regexp, reproduced from the 2026-10-16 live probes:
+ *  case-sensitive, inline fold flags rejected ("'?' without operand"). */
+function edgeFaithfulRegexpUdf(pattern: unknown, value: unknown): number | null {
+  if (pattern === null || pattern === undefined || value === null || value === undefined) {
+    return null;
+  }
+  if (typeof pattern !== "string" || typeof value !== "string") return 0;
+  if (pattern.includes("(?i)")) throw new Error("'?' without operand");
+  return new RegExp(pattern).test(value) ? 1 : 0; // NO i flag — case-sensitive
+}
+
+async function freshEdgeFaithfulDeck(): Promise<LocalSqliteDriver> {
+  const driver = await freshDeck(false, FOLD_DECK);
+  driver.registerFunction("regexp", edgeFaithfulRegexpUdf as (...args: unknown[]) => unknown, {
+    deterministic: true,
+  });
+  return driver;
+}
+
+describe("case-fold battery: the wire against a genuinely case-sensitive REGEXP", () => {
+  it("lowercase 'news' reaches capital-N-only content through the generated SQL", async () => {
+    // THE regression that shipped: an unwrapped column (`name REGEXP
+    // lower(?)`) still folded the parameter but left "…News…" capital, and
+    // this query returned nothing. With the correct wire
+    // (lower(name) REGEXP lower(?)) SQLite's own ASCII-only lower() folds
+    // both sides and the case-sensitive regexp matches.
+    const driver = await freshEdgeFaithfulDeck();
+    try {
+      expect(await matched(driver, { match: "news" })).toEqual([101, 102]);
+      expect(await matched(driver, { match: "NEWS" })).toEqual([101, 102]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the case-sensitive engine reproduces the edge facts: Élan/Élan hits, élan/Élan misses", async () => {
+    const driver = await freshEdgeFaithfulDeck();
+    try {
+      // exact non-ASCII case preserved (the bound keyword keeps its É and
+      // SQLite lower() leaves É alone on both sides)
+      expect(await matched(driver, { match: "Élan" })).toEqual([104]);
+      // the documented ASCII-only-fold limitation, live-proven: É and é
+      // never fold, so the lowercase spelling reaches nothing
+      expect(await matched(driver, { match: "élan" })).toEqual([]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the rejected (?i) spelling errors on this engine, never silently empty", async () => {
+    const driver = await freshEdgeFaithfulDeck();
+    try {
+      await expect(matched(driver, { match: "~~(?i)news" })).rejects.toThrow(
+        /'\?' without operand/,
+      );
     } finally {
       driver.close();
     }

@@ -337,7 +337,26 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       if (ctx.options.matchPostFilter === true) return "";
       const value =
         condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
-      return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
+      // Case folding is spelled IN THE SQL — lower() on BOTH sides, the
+      // keyword bound UNCHANGED (SQL lower() folds the bound parameter
+      // exactly as it folds the column, so an exact non-ASCII query keeps
+      // working; folding in JS instead would mismatch, since JS toLowerCase
+      // is full-Unicode while SQLite-class lower() is ASCII-only). The edge
+      // engine's regexp is case-sensitive and REJECTS inline fold flags —
+      // live-proven on cs-edge-deck 2026-10-16: 'News' REGEXP 'news' -> 0,
+      // REGEXP '(?i)news' -> error "'?' without operand" (the 500 that was
+      // rolled back), lower('News') REGEXP lower('news') -> 1 — while the
+      // original site's MySQL REGEXP folds case by default. One spelling,
+      // every driver folds. lower() being ASCII-only means non-ASCII case
+      // variants stay distinct (Élan vs élan -> 0): the documented
+      // limitation, matching prior behavior. A "~~" raw pattern is
+      // user-authored server regexp and passes through AS WRITTEN,
+      // un-wrapped (docs/decisions/0005-cql-match-semantics.md, "Case
+      // folding: lower() on both sides").
+      if (condition.prefix === "~~") {
+        return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
+      }
+      return `lower(${alias}.${condition.field}) REGEXP lower(${placeholder(ctx, value)})`;
     }
     case "like":
       // MatchAttributes#complete: "#{alias}.key LIKE '#{key}%'"

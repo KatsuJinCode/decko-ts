@@ -79,17 +79,38 @@ describe("single-table queries", () => {
 });
 
 describe("match family", () => {
-  it("top-level match ORs name and content [oracle: (c0.name REGEXP 'joe' OR c0.db_content REGEXP 'joe')]", () => {
+  it("top-level match ORs name and content, lower() on BOTH sides [edge-proven fold: lower('News') REGEXP lower('news') -> 1]", () => {
+    // The wire fold: the edge engine's regexp is case-sensitive and rejects
+    // inline flags ('(?i)' errored live — the rolled-back 500), so the fold
+    // is spelled as SQL lower() over column AND bound keyword alike
+    // (docs/decisions/0005-cql-match-semantics.md, "Case folding").
     expect(sql({ match: "joe" })).toEqual({
       sql:
-        "SELECT c0.* FROM cards c0 WHERE (c0.name REGEXP ? OR c0.db_content REGEXP ?) AND c0.trash is false",
+        "SELECT c0.* FROM cards c0 WHERE (lower(c0.name) REGEXP lower(?) OR lower(c0.db_content) REGEXP lower(?)) AND c0.trash is false",
       params: ["joe", "joe"],
+    });
+  });
+
+  it("binds the keyword UNCHANGED — SQL lower() folds it, not JS", () => {
+    // JS toLowerCase is full-Unicode while engine lower() is ASCII-only:
+    // folding the keyword in JS would break exact non-ASCII queries
+    // (Élan must keep matching Élan). The wire keeps the original case.
+    expect(sql({ match: "JoE" }).params).toEqual(["JoE", "JoE"]);
+    expect(sql({ match: "Élan" }).params).toEqual(["Élan", "Élan"]);
+  });
+
+  it("a ~~ raw pattern stays AS WRITTEN — no lower() wrap, no lowercasing", () => {
+    // user-authored server regexp passes through exactly as Ruby renders it
+    expect(sql({ match: "~~^Joe" })).toEqual({
+      sql:
+        "SELECT c0.* FROM cards c0 WHERE (c0.name REGEXP ? OR c0.db_content REGEXP ?) AND c0.trash is false",
+      params: ["^Joe", "^Joe"],
     });
   });
 
   it("name_match [oracle: (c0.name REGEXP 'joe' AND c0.key IS NOT NULL)]", () => {
     expect(sql({ name_match: "joe" }).sql).toBe(
-      "SELECT c0.* FROM cards c0 WHERE (c0.name REGEXP ? AND c0.key IS NOT NULL) AND c0.trash is false",
+      "SELECT c0.* FROM cards c0 WHERE (lower(c0.name) REGEXP lower(?) AND c0.key IS NOT NULL) AND c0.trash is false",
     );
   });
 
