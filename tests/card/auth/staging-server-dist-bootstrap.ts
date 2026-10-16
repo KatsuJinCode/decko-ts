@@ -29,9 +29,11 @@
 // so a normal `vitest run` stays quiet; failures throw loudly regardless.
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+// @ts-expect-error Shared ESM build tool has no TypeScript declaration.
+import { copyRuntimeAssets, runtimeAssetReadiness } from "../../../tools/dist/runtime-assets.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const DIST_DIR = path.join(REPO_ROOT, "dist");
@@ -43,32 +45,8 @@ const LOCK_STALE_MS = 10 * 60_000;
 const LOCK_WAIT_MS = 180_000;
 const TSC_BIN = path.join(REPO_ROOT, "node_modules", "typescript", "bin", "tsc");
 
-// The generated asset-source snapshots the write surface's source readers
-// fall back to on an edge runtime (src/card/assets/style-sources.ts and
-// script-sources.ts, src/card/render/bootstrap-code-files.ts import them
-// from vendor/). tsc emits only dist/src/**; the generated JS modules must
-// be copied alongside, or the dist server dies with ERR_MODULE_NOT_FOUND
-// the same way a missing emit would.
-const VENDOR_SNAPSHOT_FILES = [
-  "edge-bootstrap-scss-snapshot.js",
-  "edge-style-source-snapshot.js",
-  "edge-script-source-snapshot.js",
-].map((f) => path.join(REPO_ROOT, "vendor", f));
-const VENDOR_DIST_DIR = path.join(DIST_DIR, "vendor");
-
-function copyVendorSnapshots(): void {
-  const missing = VENDOR_SNAPSHOT_FILES.filter((f) => !existsSync(f));
-  if (missing.length > 0) {
-    throw new Error(
-      "staging-server dist bootstrap: the generated vendor snapshots are missing " +
-        "(generate with tools/vendor/build-edge-asset-source-snapshot.mjs):\n" +
-        missing.join("\n"),
-    );
-  }
-  mkdirSync(VENDOR_DIST_DIR, { recursive: true });
-  for (const file of VENDOR_SNAPSHOT_FILES) copyFileSync(file, path.join(VENDOR_DIST_DIR, path.basename(file)));
-}
-
+// Match the actual build: all checked-in vendor assets, including the HTML4
+// table and LibSass module, must be present with their exact source bytes.
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** The dist modules vm-staging-server.mjs actually imports (the ./dist/...
@@ -87,7 +65,7 @@ function missingDistModules(): string[] {
   if (!existsSync(DIST_ENTRY)) missing.push(path.relative(REPO_ROOT, DIST_ENTRY));
   const distModules = [
     ...requiredServerDistModules(),
-    ...VENDOR_SNAPSHOT_FILES.map((f) => path.join(VENDOR_DIST_DIR, path.basename(f))),
+
   ];
   for (const file of distModules) {
     let ready = false;
@@ -98,7 +76,7 @@ function missingDistModules(): string[] {
     }
     if (!ready) missing.push(path.relative(REPO_ROOT, file));
   }
-  return missing;
+  return [...missing, ...runtimeAssetReadiness(REPO_ROOT)];
 }
 
 function distReady(): boolean {
@@ -166,8 +144,9 @@ export async function ensureStagingServerDist(): Promise<void> {
     const result = spawnSync(process.execPath, [TSC_BIN, "-p", path.join(REPO_ROOT, "tsconfig.json")], {
       cwd: REPO_ROOT,
       encoding: "utf8",
+      windowsHide: true,
     });
-    if (result.status === 0) copyVendorSnapshots();
+    if (result.status === 0) copyRuntimeAssets(REPO_ROOT);
     const stillMissing = missingDistModules();
     if (result.status !== 0 || stillMissing.length > 0) {
       throw new Error(
@@ -179,6 +158,9 @@ export async function ensureStagingServerDist(): Promise<void> {
             : ""),
       );
     }
+    // Fail at the actual import boundary rather than polling a dead HTTP child.
+    await import(pathToFileURL(path.join(DIST_DIR, "src/card/render.js")).href);
+    await import(pathToFileURL(path.join(DIST_DIR, "src/server/libsass-wasm.js")).href);
     writeFileSync(BUILD_SENTINEL, new Date().toISOString() + "\n");
     if (process.env.STAGING_DIST_BOOTSTRAP_VERBOSE === "1") {
       console.log("[staging-server-dist] dist/ built.");
