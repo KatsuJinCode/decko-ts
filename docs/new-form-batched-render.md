@@ -143,3 +143,33 @@ patch became 751a1d7b, and the XHR patch is this change. Later probes were
 executed with the stated source patch before its commit. Their raw records
 are retained unchanged; they are bounded diagnostic evidence, not strict
 clean-candidate provenance receipts or cross-runtime parity grades.
+
+## Slotter main context must not disable batching
+
+The remaining slow ID-based slot refresh and `name_form` requests used the
+same dispatch branch. Their `main` query parameter became
+`historyParams.search.main`, and the live-render admission guard rejected
+every nonempty params object. It therefore sent these requests back through
+the direct driver. The guard now admits a main-only search context, carrying
+it unchanged into rendering; actual history selectors and keyword/paging
+contexts retain their prior gate until separately proven.
+
+The exact recorded `~10857/titled` focal query (including duplicate main,
+slot main/nest/layout args) returned 200 in 20.000s with 1389 database HTTP
+trips on the owned approved copy. After repair it returned 200 in 1.199s
+with 6 trips. A cold `name_form` request with the real slotter parameters
+took 19.392s/1389 trips; after repair, 0.715s/7 trips. Both retained their
+bare main-slot syntax and the name form retained its actual name input.
+An earlier second request's 0.096s name form was cache-warmed by the raw
+first request; that record is preserved and is not used as cold evidence.
+
+The actual-handler modal/focal test now carries main context and the
+recorded ID-slot argument shape. Its less-than-20-trip assertions and
+stored-row nonmutation check pass (5.12s including setup). Eleven real
+search/adapter controls pass separately. A broader keyword admission trial
+was RED: missing REGEXP errors surfaced from speculative flush outside
+the existing CQL fallback. Those 500 responses are preserved in
+`report-main-search-batched.json`; this checkpoint does not enable that
+keyword path. The main-only observations remain valid for the narrower
+gate. Raw cold controls are `report-main-context.json` and
+`report-name-context-cold.json` in the private evidence directory.

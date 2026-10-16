@@ -170,11 +170,19 @@ export function liveRenderApplies(
   const flag =
     options.liveRenderFlag ?? (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RENDER : undefined);
   if (flag === "0") return false;
+  // The slotter's main context reaches the render through the search seam,
+  // but is not a history selector. Preserve it without forcing serial reads.
+  // Keyword/paging contexts still require separate capability-error proof.
+  const search = historyParams.search;
+  const noHistorySelectors = Object.keys(historyParams).length === 0 || (
+    Object.keys(historyParams).length === 1 && search !== null && typeof search === "object" &&
+    Object.keys(search).every(key => key === "main")
+  );
   // Signed-in pages also take it for path and query views (the edit page),
   // which the anonymous path keeps on the normal render.
-  if (options?.viewer !== undefined) return Object.keys(historyParams).length === 0;
+  if (options?.viewer !== undefined) return noHistorySelectors;
   if (!pathViewIsBareArm(url.pathname) || pageView !== undefined) return false;
-  return Object.keys(historyParams).length === 0;
+  return noHistorySelectors;
 }
 
 /** One render at a time per isolate, for the renders that use the
