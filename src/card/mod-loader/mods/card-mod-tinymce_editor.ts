@@ -1002,7 +1002,7 @@ function applyButton(
   attrs.push(["class", `_${refType}-apply btn-sm me-3 btn btn-primary`]);
   return `<button${attrs
     .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => ` ${k}="${v}"`)
+    .map(([k, v]) => ` ${k}="${h(v!)}"`)
     .join("")}>${label}</button>`;
 }
 
@@ -1701,7 +1701,7 @@ const nestEditorView: ViewFn = (ctx) =>
     ctx,
     "nest_editor",
     "_overlay d0-card-overlay card nodblclick",
-    nestEditorChrome(engineChromeContext(ctx, "image01"), "overlay"),
+    nestEditorChrome(engineChromeContext(ctx, "image01"), "overlay", ctx.fmt.engine.requestEditorParams),
   );
 
 /** view :modal_nest_editor, cache: :never, unknown: true, wrap: { slot:
@@ -1711,7 +1711,7 @@ const modalNestEditorView: ViewFn = (ctx) =>
     ctx,
     "modal_nest_editor",
     "nodblclick",
-    nestEditorChrome(engineChromeContext(ctx, "image01"), "modal"),
+    nestEditorChrome(engineChromeContext(ctx, "image01"), "modal", ctx.fmt.engine.requestEditorParams),
   );
 
 /** view :nest_image, unknown: true, cache: :never, wrap: { slot: { class:

@@ -25,6 +25,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { historyRenderParamsFromWire } from "../../../src/server/worker-shared-surface.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -276,6 +277,21 @@ describe("card-mod-tinymce_editor harness probe: the chrome oracle replay", () =
 // --- section B: the registered views through the seeded runtime --------------
 
 describe("card-mod-tinymce_editor harness probe: the ported views through the engine", () => {
+  it.each(["nest_editor", "modal_nest_editor"])("binds %s Apply to this request's editor and clears it on the next request", async (view) => {
+    const params = historyRenderParamsFromWire({
+      tinymce_id: 'editor-owned-"probe',
+      tm_snippet_raw: "{{+Existing|view: name}}",
+      tm_snippet_start: "17",
+    });
+    const html = await storage!.engine.render(CARD_NAME, view, params);
+    expect(html).toContain('data-tinymce-id="editor-owned-&quot;probe"');
+    expect(html).toContain('data-tm-snippet-start="17"');
+    expect(html).toContain('data-tm-snippet-size="24"');
+    const next = await storage!.engine.render(CARD_NAME, view);
+    expect(next).not.toContain("data-tinymce-id");
+    expect(next).not.toContain("data-tm-snippet-start");
+  });
+
   it("renders :nest_editor through the engine - the chrome + a REAL rules-tab seam", async () => {
     const s = storage!;
     const html = await s.engine.render(CARD_NAME, "nest_editor");
