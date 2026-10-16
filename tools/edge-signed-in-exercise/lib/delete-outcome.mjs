@@ -30,6 +30,17 @@ export function deleteOutcome({ html, name, origin, finalUrl, responseBody }) {
       redirectCompleted = target.origin === new URL(origin).origin && landed.origin === target.origin && landed.pathname === target.pathname && landed.search === target.search;
     }
   } catch { /* A slot response is HTML; it must establish its confirmation. */ }
-  return { targetCreateForm, deletedConfirmation, redirect, redirectCompleted,
+  // The delete's JSON redirect is unreadable when the browser followed it (the
+  // body is dropped on navigation). The browser then ended on the page the
+  // redirect named, so the redirect completed when it is some page other than
+  // the deleted card's own (its first path segment is not the deleted name).
+  // The create-form test above still rejects a recreated target.
+  let landedOnDeleted = false;
+  try {
+    const landedSegment = decodeURIComponent(new URL(finalUrl, origin).pathname).replace(/^\//, '').split('/')[0] ?? '';
+    landedOnDeleted = sameName(landedSegment, name);
+  } catch { /* An unparseable landing cannot be the deleted card's page. */ }
+  if (redirect === null && responseBody === '' && !landedOnDeleted) redirectCompleted = true;
+  return { targetCreateForm, deletedConfirmation, redirect, redirectCompleted, landedOnDeleted,
     pageAccepted: !targetCreateForm && (deletedConfirmation || redirectCompleted) };
 }
