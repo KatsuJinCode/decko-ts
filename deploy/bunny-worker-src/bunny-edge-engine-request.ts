@@ -170,14 +170,10 @@ export function liveRenderApplies(
   const flag =
     options.liveRenderFlag ?? (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RENDER : undefined);
   if (flag === "0") return false;
-  // The slotter's main context reaches the render through the search seam,
-  // but is not a history selector. Preserve it without forcing serial reads.
-  // Keyword/paging contexts still require separate capability-error proof.
-  const search = historyParams.search;
-  const noHistorySelectors = Object.keys(historyParams).length === 0 || (
-    Object.keys(historyParams).length === 1 && search !== null && typeof search === "object" &&
-    Object.keys(search).every(key => key === "main")
-  );
+  // Search vars, paging and the slotter's main context are query inputs,
+  // not history selectors. Preserve them through the same complete-answer
+  // lifecycle, including actual CQL capability errors/fallbacks.
+  const noHistorySelectors = Object.keys(historyParams).every(key => key === "search");
   // Signed-in pages also take it for path and query views (the edit page),
   // which the anonymous path keeps on the normal render.
   if (options?.viewer !== undefined) return noHistorySelectors;

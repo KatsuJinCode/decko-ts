@@ -265,6 +265,9 @@ it("returns the committed Date's real HTML slot without serial response-render q
   const row = (await driver.query<{ db_content: string; type_id: number }>("SELECT db_content,type_id FROM cards WHERE id=?", [cardId])).rows[0];
   expect(row).toEqual({ db_content: "2028-02-29", type_id: typeId });
   expect((await driver.query<{ n: number }>("SELECT count(*) AS n FROM card_acts", [])).rows[0].n).toBe(actsBefore + 1);
+  const focal = await fetch(base + `/~${cardId}/titled?main=HTTP%20Saved%20Date&slot[main]=true&slot[home_view]=titled`, { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+  expect(focal.status).toBe(200);
+  expect(await focal.text()).toContain("February 29, 2028");
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 

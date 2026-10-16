@@ -195,3 +195,40 @@ makes the no-UDF control fail (exit 1) when flush raises the missing-function
 error. The fixed controls and cancellation test pass in 3.34s; TypeScript
 validation passes. This change alone does not broaden route admission;
 keyword/paging admission requires its separate actual HTTP/browser proof.
+
+With that call-site behavior verified, route admission now permits the
+supported search params object (vars/term/paging/main), while any actual
+history selector still takes its established route. The actual approved-copy
+negative keyword returned 200 in 2.575s/13 trips with zero result IDs. The
+positive keyword returned 200 in 2.185s/14 trips and included the owned Date
+and RichText cards; offset 1 returned 200 in 2.574s/14 trips and its first
+19 IDs exactly matched the first page's final 19 IDs. This is a real result
+window change, not a successful error page. The Date HTTP control also
+checks a main-context focal refresh displays the committed leap day.
+
+Twenty-one actual HTTP/search/native/no-UDF/cancellation tests pass in
+42.85s, with TypeScript validation green. The earlier keyword 500 trial is
+retained. `report-keyword-callsite.json`, complete response HTML, source
+lineage and actual bundle hash retain the bounded diagnostic evidence.
+
+## New-form phase profile
+
+A separate ignored diagnostic bundle instrumented only the chrome/form
+boundaries in memory through esbuild's onLoad hook. The original tracked
+source and normal distribution remained unchanged. Its manifest pins clean
+a72c3bac, original source hash, instrumented bundle hash and build-script
+hash; it is explicitly diagnostic rather than the production artifact.
+
+| Form | Page shell | Typed form | Total |
+|---|---:|---:|---:|
+| Basic | 1.211s / 7 trips / 44 SQL / 641ms SQLite | 0.782s / 4 trips / 38 SQL / 311ms SQLite | 2.053s |
+| RichText preset | 2.058s / 7 trips / 78 SQL / 890ms SQLite | 0.811s / 4 trips / 37 SQL / 347ms SQLite | 2.925s |
+
+Both independent stores fetch about 1930 full rows and 7560 identity rows.
+The shell completes eight passes and the form five. Inclusive process CPU
+and actual SQLite execution times are recorded per boundary; the existing
+pass field named cpu_ms measures elapsed pass time and is not claimed as CPU.
+This establishes duplicated request-local fetch work for future bounded
+optimization. It does not turn the release lead's 3–4.5s failures into green
+or establish a median/p95. Raw `phase-report.json`, `phase-build.json`, virtual
+instrumentation build script, and unchanged HTML are preserved privately.
