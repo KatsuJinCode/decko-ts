@@ -36,10 +36,11 @@ import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-acco
 import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
+import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
-if (argOf('only') !== undefined && argOf('only') !== 'account') throw new Error('supported --only selection: account');
+if (argOf('only') !== undefined && !['account','owner','owner-replay'].includes(argOf('only'))) throw new Error('supported --only selections: account, owner, owner-replay');
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -103,6 +104,18 @@ const deckReport = await buildLocalDeck({ source: SOURCE_DECK, out: localDeck })
 if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)) throw new Error('source changed during snapshot copy; refusing mixed-state capture');
 const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
 console.log(`  cards copied: ${cardsCopied}`);
+async function ownerAudit(replayOnly = false) {
+  const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,
+    launchBrowser:options => launchHarnessBrowser({...options,allowedFaviconUrls})};
+  if (!replayOnly) {
+    group('owner audit required checks');
+    await signIn(creds.admin);
+    await ownerRequiredChecks(context);
+  }
+  group('owner request-log replay; fixture administrator actor');
+  await ownerReplay(context);
+}
+
 try {
   execFileSync(process.execPath, [join(REPO, "tools/deploy/build-nest-index.mjs"), "--db", localDeck], { cwd: REPO, stdio: "ignore", timeout: 600_000 });
   console.log("  nest index: built");
@@ -380,6 +393,8 @@ try {
   if (argOf('only') === 'account') {
     group('account diagnostic only');
     for (const account of [creds.admin, creds.member]) await accountSettings(account);
+  } else if (['owner','owner-replay'].includes(argOf('only'))) {
+    await ownerAudit(argOf('only') === 'owner-replay');
   } else {
   // -- 1 -----------------------------------------------------------------
   group("1. sign in, and stay signed in");
@@ -907,6 +922,7 @@ try {
   await signIn(creds.admin);
 
   // -- 9 -----------------------------------------------------------------
+  await ownerAudit();
   group("9. timings");
   const slowPages = ledger().filter((l) => {
     if (!l.serverTiming || (l.method !== "GET")) return false;

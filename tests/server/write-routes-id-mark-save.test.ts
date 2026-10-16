@@ -24,8 +24,8 @@
 // The GET path warms id marks (deploy/worker.ts warmMark); the write path
 // now warms them too (write-routes.ts warmIdMarks) before the first parse.
 //
-// The case under test is the one the demo hit: Brandon WilliamsCraig+
-// Project(s) Organizing (card 1743, a List junction with multi-line pointer
+// The case under test is the one the demo hit: Fixture Owner+
+// Planning Projects (card 1743, a List junction with multi-line pointer
 // content) saved through POST /update/~1743.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -43,9 +43,9 @@ import { handleWriteRequest, type WriteRouteContext } from "../../src/server/wri
 const SET_TYPE_ID = 2;
 const JOE_ID = 90;
 const EDITOR_ID = 30;
-/** Brandon's cards, by id, as they are in the demo deck. */
-const PERSON_ID = 393; // Brandon WilliamsCraig (type Person)
-const POINTER_FIELD_ID = 1638; // Project(s) Organizing (a pointer field)
+/** Synthetic cards exercising the captured cold-ID route shape. */
+const PERSON_ID = 393; // Fixture Owner (type Person)
+const POINTER_FIELD_ID = 1638; // Planning Projects (a pointer field)
 const JUNCTION_ID = 1743; // the List junction the demo saved
 
 let storage: RenderTestStorage;
@@ -75,13 +75,13 @@ async function seedRuleDeck(s: RenderTestStorage): Promise<void> {
   await byId(EDITOR_ID, "Editor");
   await byId(JOE_ID, "Joe User");
   // Brandon's structure: a Person trunk, a pointer field, and the List
-  // junction that joins them. "Project(s) Organizing" is the case that
+  // junction that joins them. "Planning Projects" is the case that
   // exercises the card gem's uncountable "s" inflection ("(s)" keys to
   // "_s_", not to nothing), so the stored keys only resolve with that
   // table applied — as the edge boot applies it.
   await byId(47, "List", { codename: "list", typeId: SET_TYPE_ID });
-  await byId(PERSON_ID, "Brandon WilliamsCraig", { dbContent: "" });
-  await byId(POINTER_FIELD_ID, "Project(s) Organizing", { dbContent: "" });
+  await byId(PERSON_ID, "Fixture Owner", { dbContent: "" });
+  await byId(POINTER_FIELD_ID, "Planning Projects", { dbContent: "" });
   await seedCard(s, {
     id: JUNCTION_ID,
     leftId: PERSON_ID,
@@ -129,16 +129,16 @@ describe("write surface: editing a card by its ~<id> mark", () => {
     // deck was seeded straight to rows), which is exactly the cold-isolate
     // state a write can meet on the edge.
     const res = await updateRequest(`/update/~${JUNCTION_ID}`, {
-      "card[content]": "Associative Inquiry\nFree Aiki Dojo\nGolden Bears Aikido at UC Berkeley",
+      "card[content]": "Example One\nExample Two\nExample Three",
     });
     expect(res).not.toBeNull();
     expect(res!.status).toBe(200);
     // The existing junction row was UPDATED, not re-created: a create
     // answer would have hit the (left_id, right_id) UNIQUE index (a 500)
     // because the junction already exists.
-    const row = await storage.fetcher.fetchByName("Brandon WilliamsCraig+Project(s) Organizing");
+    const row = await storage.fetcher.fetchByName("Fixture Owner+Planning Projects");
     expect(row?.id).toBe(JUNCTION_ID);
-    expect(row?.dbContent).toContain("Golden Bears Aikido at UC Berkeley");
+    expect(row?.dbContent).toContain("Example Three");
   });
 
   it("answers 404 for an id mark the deck does not hold", async () => {
