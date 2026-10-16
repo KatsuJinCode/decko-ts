@@ -9,11 +9,14 @@ export const capabilityChecks=[
  'JSON CQL missing-name control returns no result cards',
 ];
 export const checks=[{name:'JSON CQL navbox positive and negative controls',run:async ctx=>{
- const {stack,page,creds,signIn,database,record,captureEvidence}=ctx;
+ const {stack,page,creds,signIn,database,record,captureEvidence,visit}=ctx;
  if(!['127.0.0.1','localhost','[::1]'].includes(new URL(stack.origin).hostname))throw Error('CQL navbox requires the disposable loopback fixture');
  const identity=database().prepare('SELECT c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(creds.member.id);
  if(identity?.name!==creds.member.name||!identity.type)throw Error('owned member type fixture missing');
- const signed=await signIn(creds.member);if(!verifiedActorSession(signed,creds.member.id))throw Error('CQL navbox member actor was not verified');
+ const signed=await signIn(creds.admin);if(!verifiedActorSession(signed,creds.admin.id))throw Error('CQL navbox admin actor was not verified');
+ const readable=await visit('/'+encodeURIComponent(identity.name));
+ const visible=await page.locator(`#main .card-slot[data-card-id="${creds.member.id}"]`).count();
+ if(readable.status!==200||visible===0||await page.locator('#main .denied').count()>0)throw Error('owned member is not a proven readable CQL target');
  for(const [index,name]of [identity.name,'MissingCqlFixture_'+Date.now().toString(36)].entries()){
   const query=JSON.stringify({type:identity.type,name});
   await page.goto(stack.origin+'/',{waitUntil:'load'});
