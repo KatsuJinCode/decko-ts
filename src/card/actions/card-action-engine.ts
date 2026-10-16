@@ -1179,6 +1179,10 @@ export class CardActionEngine {
       );
     }
     const ext = detectAttachmentExtension(attachment.originalFilename, attachment.bytes);
+    // A history-less upload has no action row. CarrierWave's card_mount.rb
+    // selects Time.now.to_i instead; file_card_uploader.rb:202-226 uses that
+    // timestamp for storage without creating an action or change record.
+    const storedActionId = actionId === 0 ? Math.floor(this.clock().getTime() / 1000) : actionId;
     // The uploader class selection (set/type/image.rb:1 vs
     // set/type/file.rb:1): an IMAGE-typed card stores the rendition set —
     // the -original spelling + one file per version (image_card_uploader.rb
@@ -1201,7 +1205,7 @@ export class CardActionEngine {
     const renditionNames =
       coded === undefined
         ? codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
-          ? renditionFileNames(actionId, ext)
+          ? renditionFileNames(storedActionId, ext)
           : undefined
         : mountUsesImageUploader(codename ?? "")
           ? [
@@ -1219,13 +1223,13 @@ export class CardActionEngine {
       if (versions !== undefined) {
         renditionBytes = {};
         for (const v of IMAGE_VERSION_NAMES) {
-          renditionBytes[coded === undefined ? `${actionId}-${v}${ext}` : `${mount}-${v}${ext}`] = versions[v];
+          renditionBytes[coded === undefined ? `${storedActionId}-${v}${ext}` : `${mount}-${v}${ext}`] = versions[v];
         }
       }
     }
     const storeInput: AttachmentStoreInput = {
       cardId,
-      actionId,
+      actionId: storedActionId,
       ext,
       bytes: attachment.bytes,
       renditionNames,
@@ -1255,7 +1259,7 @@ export class CardActionEngine {
             coded.mod,
             ext,
           )
-        : localAttachmentIdentifier(cardId, actionId, ext);
+        : localAttachmentIdentifier(cardId, storedActionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
     // the raw column write, no history event, no timestamp bump.
@@ -1263,7 +1267,7 @@ export class CardActionEngine {
       identifier,
       cardId,
     ]);
-    if (verb === "update") {
+    if (verb === "update" && actionId !== 0) {
       // The writer recorded a db_content change row (the intermediate
       // identifier made the field "changed"); rewrite it to the final
       // value so the action resolves to the bytes it stored.
