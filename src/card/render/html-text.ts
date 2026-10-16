@@ -4,7 +4,8 @@ import {Parser} from 'htmlparser2';
 import {XHTML1_ENTITIES} from '../../../vendor/htmlentities-4.4.2/xhtml1.js';
 
 function decodeHtml4References(value: string): string {
-  return value.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]*);?/gi,(match,body: string)=>{
+  return value.replace(/&(#x[0-9a-f]+;?|#[0-9]+;?|[a-z][a-z0-9]*;)/gi,(match,body: string)=>{
+    body=body.replace(/;$/, "");
     const numeric=body[0]==='#';
     const hex=numeric&&body[1]!.toLowerCase()==='x';
     const cp=numeric?Number.parseInt(body.slice(hex?2:1),hex?16:10):XHTML1_ENTITIES[body];
