@@ -70,7 +70,7 @@ an incorrect full candidate hash and was refused; that operator error and
 its original report are preserved separately from the corrected, uniquely
 named exact-candidate report. It is not represented as a planned negative
 control or discarded. All original browser JSON/HTML, policies, scripts,
-receipts and SHA manifest are preserved at
-`C:/localProjects/brandonDojoTech/recovery/release/private-probes/follow-positive-operations-aeecbd4c/`.
+receipts and SHA manifest are preserved under private evidence-bundle ID
+`follow-positive-operations-aeecbd4c`.
 These results strengthen the visible product failures; they do not relax
 permissions or claim Ruby parity/deployed acceptance.
