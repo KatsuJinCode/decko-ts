@@ -72,3 +72,38 @@ Ruby byte parity. The immutable supplemental capture at `7bac96cd` completed
 six journeys but remains strictly red: external script 403s, account error
 text differences, mail differences, and three signup updater stamps differ.
 Those records were not normalized or reclassified by this performance fix.
+
+## Saved-slot response follows the same batched path
+
+A separate bounded Date write probe on the same owned copy isolated the
+write from response rendering. The JSON update returned 200 in 0.817s
+(54 database HTTP trips, 69 SQL statements, 23ms SQLite execution). An HTML
+XHR soft update returned 200 in 20.789s (1470 trips, 1554 statements, 703ms
+SQLite execution). Its 1413 serial lexicon queries came from the shared
+write surface's direct `renderSlot` callback after the write committed.
+
+The shared surface now accepts a host-owned `renderSavedSlot` callback,
+after expiring the saved name as before. Bunny supplies its actual serving
+boot over `liveRenderView`, with a fresh session lookup, fresh viewer-bound
+engine per pass, request context (or the existing isolate lock), no kept
+rows, and the inbound request's abort signal. The card write, transaction,
+integration callbacks, success selection, and expiry sequence are unchanged.
+Other hosts retain their existing default callback; this is not a claim of
+Cloudflare performance improvement.
+
+The repaired HTML Date update returned 200 in 1.682s (58 trips, 101 SQL
+statements, 431ms SQLite execution); JSON control remained 0.873s. Its actual
+HTML displayed March 3, 2028, and the committed Date content was exactly
+`2028-03-03`, type 17, trash 0. The protected source hash remained unchanged.
+Raw baseline and repaired evidence is `report-date-write.json` and
+`report-date-write-batched.json`, with the actual response bodies and scripts
+in the same private evidence directory. The profiler's existing
+`render;dur=0` on writes does not measure response rendering separately;
+these timings are measured from the actual complete HTTP responses.
+
+An actual HTTP regression creates a Date, performs an HTML XHR soft update,
+requires the committed leap-day text and edit link in the returned slot,
+checks exact stored content/type and exactly one new act, and bounds the
+database requests. The focused regression passed in 7.40s including setup;
+TypeScript validation passed. These are local measurements, not hosted or
+complete-journey acceptance.

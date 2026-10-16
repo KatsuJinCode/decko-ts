@@ -72,6 +72,14 @@ import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import type { AttachmentStore } from "../../src/card/attachments/attachment-store.js";
+import { SessionStore } from "../../src/card/auth/session-store.js";
+import { readSessionCookie } from "../../src/server/write-routes.js";
+import { liveRenderView } from "../../src/card/live/live-render.js";
+import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
+import { getNameEnvironment } from "../../src/card/name/environment.js";
+import { withIsolateRenderLock } from "./bunny-edge-engine-request.js";
+import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
+import { servedBootOptionsFromEnv } from "./bunny-edge-served-deltas.js";
 import {
   applySecuritySettings,
   handleWorkersWriteSurface,
@@ -232,6 +240,24 @@ export async function mountBunnyEdgeWriteSurface(
     {
       fetcher: deck.fetcher,
       renderEngine: deck.render,
+      renderSavedSlot: async (name) => {
+        const driver = deck.driver ?? deck.fetcher.driver;
+        const token = readSessionCookie(inbound.headers.cookie);
+        const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
+        const viewer = actor === null ? { signedIn: false as const } : { signedIn: true as const, actorId: actor.id };
+        const render = async () => {
+          const result = await liveRenderView(driver, name, async (requestDriver) => {
+            const engines = await bootEdgeServingEngines(requestDriver, servedBootOptionsFromEnv(env));
+            engines.render.viewer = viewer;
+            engines.render.pageSession = viewer;
+            return engines;
+          }, { requestedView: "titled", signal: request.signal });
+          return result.html;
+        };
+        return requestContextAvailable()
+          ? await runInRequestContext(getNameEnvironment(), render)
+          : await withIsolateRenderLock(render);
+      },
       driver: deck.driver ?? deck.fetcher.driver,
       ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
       ...(deck.accountMail === undefined ? {} : { accountMail: deck.accountMail }),

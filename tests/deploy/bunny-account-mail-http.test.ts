@@ -239,6 +239,28 @@ it("renders typed attachment/structure editors and submits the legacy query-name
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const typeId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='date'", [])).rows[0].id;
+  const created = await post("/card/create", { "card[name]": "HTTP Saved Date", "card[type_id]": String(typeId), "card[content]": "2028-02-28" }, cookie);
+  expect(created.status).toBe(200);
+  const { card_id: cardId } = await created.json() as { card_id: number };
+  const actsBefore = (await driver.query<{ n: number }>("SELECT count(*) AS n FROM card_acts", [])).rows[0].n;
+  const beforeRequests = hrana.requests.length;
+  const saved = await fetch(base + "/update/HTTP_Saved_Date", { method: "POST", headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded", accept: "text/html", "x-requested-with": "XMLHttpRequest" }, body: new URLSearchParams({ "card[content]": "2028-02-29", "success[redirect]": "soft" }) });
+  expect(saved.status).toBe(200);
+  expect(saved.headers.get("content-type")).toContain("text/html");
+  const html = await saved.text();
+  expect(html).toContain("February 29, 2028");
+  expect(html).toContain('class="edit-link slotter"');
+  expect(hrana.requests.length - beforeRequests).toBeLessThan(90);
+  const row = (await driver.query<{ db_content: string; type_id: number }>("SELECT db_content,type_id FROM cards WHERE id=?", [cardId])).rows[0];
+  expect(row).toEqual({ db_content: "2028-02-29", type_id: typeId });
+  expect((await driver.query<{ n: number }>("SELECT count(*) AS n FROM card_acts", [])).rows[0].n).toBe(actsBefore + 1);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();

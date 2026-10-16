@@ -152,6 +152,9 @@ export interface WorkersRenderEngine {
 }
 
 export interface WorkersWriteContext {
+  /** Host-owned request-local saved-slot renderer. Hosts with remote
+   *  drivers batch view reads through their normal serving boot. */
+  readonly renderSavedSlot?: (name: string) => Promise<string>;
   /** Explicit production transport + token configuration; absent never
    * claims that a required verification email was sent. */
   readonly accountMail?: WriteRouteContext["accountMail"];
@@ -491,6 +494,7 @@ async function mountWrite(
       renderSlot: async (name) => {
         ctx.fetcher.expireName(name);
         ctx.renderEngine.expireRenderCard(name);
+        if (ctx.renderSavedSlot !== undefined) return await ctx.renderSavedSlot(name);
         return ctx.renderEngine.render(name, "titled");
       },
       // carrierwave's real two-step upload answers with its preview_editor,
