@@ -121,6 +121,21 @@ async function warmDeckLikeTheGradedRun(s: RenderTestStorage): Promise<void> {
 }
 
 describe("unknown pointer/list item: the default type is DERIVED from the deck's *all+*default rule card", () => {
+  it.each([
+    [undefined, 'template content'],
+    ['', ''],
+    ['explicit content', 'explicit content'],
+  ])('new root content respects default versus explicit assignment %s', async (content, expected) => {
+    const probe = await createRenderTestStorage();
+    try {
+      await seedDeckWithDefaultRule(probe, 22281, 'BasicCs');
+      await probe.counting.query('UPDATE cards SET db_content=? WHERE id=28', ['template content']);
+      probe.engine.renderAbsentCards = true;
+      await probe.engine.render('Unstored Default Probe', 'core', {newCard:{typeId:22281,...(content === undefined ? {} : {content})}});
+      expect(probe.engine.fetchRenderCard('unstored_default_probe')?.dbContent).toBe(expected);
+    } finally { await probe.close(); }
+  });
+
   it(
     "RED->GREEN: an unresolved-host phantom's mini_bar emits the *all+*default rule's type tokens (BasicCs / 22281 / TYPE-basic_c), not the RichText fallback",
     async () => {

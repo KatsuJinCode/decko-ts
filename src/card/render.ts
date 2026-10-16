@@ -4933,6 +4933,25 @@ export class RenderEngine implements RenderEngineLike {
         ? { typeId: card.typeId, typeName: card.typeName ?? "" }
         : this.newCardDefaultType(name, leftTypeName);
     const typeId = typed?.typeId;
+    // content/all.rb:17-19 standard_content: `db_content || (new_card? ?
+    // default_content : "")`, and templating.rb:52-58 new_card_template answers
+    // the *default rule only when no structure applies (a structure rule's
+    // nests are edited through the multi-card form, not this content). So a
+    // new root takes its *default rule's content, the same walk the type came
+    // from, and a structured root keeps "" here.
+    const structure = this.structureRuleForSync({
+      name: name.s,
+      id: undefined,
+      typeId,
+      typeName: typed?.typeName,
+      isNew: true,
+    });
+    const dbContent =
+      card.record.dbContent !== undefined && card.record.dbContent !== null
+        ? card.dbContent
+        : structure === undefined
+          ? (this.newCardDefaultContent(name) ?? "")
+          : "";
     const seated: RenderCard = {
       ...card,
       record: { ...card.record, typeId },
@@ -4940,6 +4959,7 @@ export class RenderEngine implements RenderEngineLike {
       typeName: typed?.typeName,
       typeCode: typeId === undefined ? undefined : this.fetcher.codenames.peekNameForId(typeId),
       setKeys: safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true }),
+      dbContent,
       unknown: true,
     };
     this.renderCards.set(card.key, seated);
