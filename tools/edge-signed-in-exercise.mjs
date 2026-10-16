@@ -535,7 +535,7 @@ async function richTextJourney() {
       });
     }
   });
-
+  return richName;
 }
 
 try {
@@ -612,7 +612,7 @@ try {
     }
   }
 
-  await richTextJourney();
+  const richName = await richTextJourney();
 
   // -- 5 -----------------------------------------------------------------
   group("5. create a card every way the site offers");
