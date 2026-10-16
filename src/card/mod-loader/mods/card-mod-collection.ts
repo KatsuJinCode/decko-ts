@@ -1,4 +1,3 @@
-import { searchPagingQuerySuffix } from "../../render/search-paging.js";
 // The card-mod-collection gem (card-mod-collection-0.20.0), ported through
 // the mod loader.
 //
@@ -49,6 +48,7 @@ import { searchPagingQuerySuffix } from "../../render/search-paging.js";
 // - set/abstract/items.rb (recursable_items?/item_type_id): overrides,
 //   no views.
 
+import { searchPagingQuerySuffix } from "../../render/search-paging.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { NoMethodError, rubyDefaultInspect, stableIdentity } from "../../render/format.js";
 import type {

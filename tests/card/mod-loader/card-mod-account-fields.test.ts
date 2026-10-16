@@ -196,8 +196,10 @@ describe("card-mod-account field views (right/account :core + right/password raw
       expect(actual).toContain(
         '&quot;title&quot;:&quot;password&quot;',
       );
-      expect(actual).toContain("&quot;nest_name&quot;:&quot;+*email&quot;");
-      expect(actual).toContain("&quot;nest_name&quot;:&quot;+*password&quot;");
+      // field_nest passes card.name.field(field), an absolute name, to nest
+      // (format/nesting.rb:27-31); slot metadata preserves that authored mark.
+      expect(actual).toContain("&quot;nest_name&quot;:&quot;Fields Probe Member+*account+*email&quot;");
+      expect(actual).toContain("&quot;nest_name&quot;:&quot;Fields Probe Member+*account+*password&quot;");
       // The child card's own renders are complete: its :core is the
       // linkified email body (RichText URI scan), its :labeled carries the
       // row id + content.

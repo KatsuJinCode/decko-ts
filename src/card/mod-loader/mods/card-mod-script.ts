@@ -1,4 +1,3 @@
-import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
 // The card-mod-script gem (card-mod-script-0.20.0), ported through the mod
 // loader.
 //
@@ -92,6 +91,7 @@ import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWES
 // - lib/javascript/*.js assets, data/real.yml seeds, config/early/
 //   init_execjs.rb (a require), the README: no render-path surface.
 
+import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
 import { UnsupportedViewError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { applyDeploymentCssRevision } from "../../render/head-views.js";
 import { deckoRootUrl } from "../../render/deployment-follow-live-config.js";
