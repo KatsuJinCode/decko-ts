@@ -20,9 +20,10 @@ export const checks=[{name:'real-browser permission boundaries and warm revocati
    const page=pages[actor];await page.goto(stack.origin+'/*signin',{waitUntil:'load'});
    await page.fill('input[name="card[subcards][+*email][content]"]',creds[actor].email);
    await page.fill('input[name="card[subcards][+*password][content]"]',creds[actor].password);
-   const pending=page.waitForResponse(r=>new URL(r.url()).pathname==='/update/*signin'&&r.request().method()==='POST',{timeout:20000});
+   const pending=page.waitForResponse(r=>new URL(r.url()).pathname==='/update/*signin'&&r.request().method()==='POST',{timeout:20000}).then(response=>({response}),error=>({error}));
    await page.locator('form[action="/update/*signin"] button[type="submit"]').first().click();
-   const response=await pending;await response.finished();
+   const observed=await pending;if(observed.error)throw observed.error;
+   const response=observed.response;await response.finished();
    const signedIn=(await page.context().cookies(stack.origin)).some(c=>c.name==='decko_ts_session'&&c.value);
    record('permission browser signs in '+actor,response.status()<400&&signedIn,{actor,status:response.status(),signedIn});
    if(!signedIn)throw Error('permission browser session absent');

@@ -35,6 +35,13 @@ const BROWSER_CANDIDATES = [
   "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
 ];
 
+/** Include child sessions: a blank coordinator page cannot vouch for them. */
+export function browserAssetFailures(browsers) {
+ return browsers.flatMap((browser,contextIndex)=>browser.blocked
+  .filter(item=>['script','stylesheet','font','image'].includes(item.resourceType))
+  .map(item=>({...item,contextIndex})));
+}
+
 function findBrowser() {
   for (const p of BROWSER_CANDIDATES) if (existsSync(p)) return p;
   throw new Error("no installed Chrome/Edge found for the harness browser");

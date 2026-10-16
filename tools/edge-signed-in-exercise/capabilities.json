@@ -801,7 +801,8 @@
       ],
       "status": "covered",
       "checks": [
-        "keyword search from the navbox returns the run's card"
+        "navbox Enter submits keyword search",
+        "navbox case variants find content-only target"
       ]
     },
     {

@@ -34,7 +34,8 @@ import { createHash } from 'node:crypto';
 import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
-import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
@@ -131,7 +132,7 @@ const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRow
 console.log(`  cards copied: ${cardsCopied}`);
 async function ownerAudit(replayOnly = false) {
   const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,captureEvidence,
-    launchBrowser:options => browser.newContext({...options,allowedFaviconUrls})};
+    launchBrowser:newIsolatedBrowser};
   if (!replayOnly) {
     group('owner audit required checks');
     await signIn(creds.admin);
@@ -143,7 +144,7 @@ async function ownerAudit(replayOnly = false) {
 
 function moduleContext() {
   return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
-    launchBrowser:options=>browser.newContext({...options,allowedFaviconUrls}),runId:RUN_ID,localDeck };
+    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck };
 }
 
 try {
@@ -200,6 +201,12 @@ sampleMemory('stack-ready');
 console.log(`local edge host: ${stack.origin}`);
 
 let browser;
+const childBrowsers=[];
+async function newIsolatedBrowser(options) {
+  const child=await browser.newContext({...options,allowedFaviconUrls});
+  childBrowsers.push(child);
+  return child;
+}
 try { browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts, allowedFaviconUrls }); }
 catch (error) { await stack.close(); stack.cleanup(); throw error; }
 const page = browser.page;
@@ -759,7 +766,7 @@ try {
   await attempt("S2/S3/S4 signed-out sign-in page", async () => {
     // An isolated session in the same browser: these are SIGNED-OUT behaviours, so the
     // context must carry no session cookie.
-    const anon = await browser.newContext({ origin: stack.origin, assetHosts });
+    const anon = await newIsolatedBrowser({ origin: stack.origin, assetHosts });
     const p2 = anon.page;
     try {
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
@@ -933,7 +940,7 @@ try {
     await page.goto(`${stack.origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(richName.slice(0, 14))}`, { waitUntil: "load" });
     await page.waitForTimeout(1000);
     const body = await page.content();
-    record("keyword search from the navbox returns the run's card", body.includes(richName.slice(0, 14)), { url: page.url() });
+    record("keyword search endpoint returns the run's card", body.includes(richName.slice(0, 14)), { url: page.url() });
   });
 
   await attempt("N2 cql search", async () => {
@@ -1038,13 +1045,8 @@ try {
   // -- cleanup -----------------------------------------------------------
   group("cleanup");
   const db = new Database(localDeck);
-  let removed = 0;
-  for (const name of created) {
-    const row = db.prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(name);
-    if (row) { db.prepare("UPDATE cards SET trash = 1 WHERE id = ?").run(row.id); removed += 1; }
-  }
-  const remaining = db.prepare("SELECT COUNT(*) AS n FROM cards WHERE name LIKE 'Harness\\_%' ESCAPE '\\' AND trash = 0 AND codename IS NULL").get().n;
-  record("every card the run created is removed from the local copy", Number(remaining) === 0, { removed, remaining });
+  const cleanup=cleanupCreatedCards(db,baselineMaxCardId);
+  record("every journey-created card is removed from the local copy", cleanup.remaining === 0, cleanup);
   db.close();
   dbHandle.close();
   await browser.close().catch(() => undefined);
@@ -1055,14 +1057,16 @@ try {
 }
 
 // ---------------------------------------------------------------- report
-// Retain asset failures from the entire main browser journey, including
-// editors reached after the initial signed-in styling check. Deliberate
+// Retain asset failures from every exercised browser session, including
+// anonymous, owner replay and module contexts. Deliberate
 // permission-refusal fetches remain in raw evidence and are not asset loads.
-const assetFailures = browser.blocked.filter(item =>
-  ['script', 'stylesheet', 'font', 'image'].includes(item.resourceType));
-group('final main-browser asset audit');
-record('no script, stylesheet, font or image failed during the complete main browser journey',
-  assetFailures.length === 0, { failures: assetFailures });
+const allBrowsers=[browser,...childBrowsers];
+const failedRequests=allBrowsers.flatMap((b,contextIndex)=>b.blocked.map(item=>({...item,contextIndex})));
+const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
+const assetFailures = browserAssetFailures(allBrowsers);
+group('final browser asset audit');
+record('no script, stylesheet, font or image failed across the exercised browser contexts',
+  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
 
 const failures = results.filter((r) => !r.pass);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
@@ -1111,7 +1115,7 @@ let capabilityCoverage;
 const coverageIncomplete = capabilityCoverage.counts.not_covered > 0 || capabilityCoverage.counts.partial > 0 || capabilityCoverage.counts.out_of_scope > 0;
 markdown += `\nComplete capability acceptance: ${!coverageIncomplete && failures.length === 0 ? 'pass' : 'incomplete or failed'}. Unrun capabilities are never credited.\n`;
 writeFileSync(OUT, markdown, { flag: 'wx' });
-writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), failedRequests: browser.blocked, consoleErrors: browser.consoleErrors }, null, 2) + '\n', { flag: 'wx' });
+writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), failedRequests, consoleErrors }, null, 2) + '\n', { flag: 'wx' });
 
 console.log(`\n${results.length - failures.length} / ${results.length} checks passed.`);
 if (failures.length > 0) {

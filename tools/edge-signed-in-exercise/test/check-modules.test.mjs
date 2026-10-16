@@ -6,6 +6,7 @@ import {resolve,sep} from 'node:path';
 import {loadCheckModules,runCheckModules} from '../lib/check-modules.mjs';
 import {verifiedCapabilities} from '../lib/local-policy.mjs';
 import {checks as permissionChecks,capabilityChecks} from '../checks-permissions.mjs';
+import {checks as navboxChecks,capabilityChecks as navboxCapabilityChecks} from '../checks-navbox.mjs';
 
 test('module loader refuses ambiguous topics',async()=>{
  const base=fileURLToPath(new URL('../../../tmp/',import.meta.url));mkdirSync(base,{recursive:true});
@@ -41,6 +42,16 @@ test('permission fixtures refuse a live destination before browser or mutation',
  let launched=false;
  await assert.rejects(permissionChecks[0].run({stack:{origin:'https://culturesmith-edge.bunny.run'},launchBrowser:async()=>{launched=true}}),/disposable loopback deck/);
  assert.equal(launched,false);
+});
+
+test('navbox fixture cannot write to a live destination or receive coverage from endpoint-only checks',async()=>{
+ let signedIn=false;
+ await assert.rejects(navboxChecks[0].run({stack:{origin:'https://culturesmith-edge.bunny.run'},signIn:async()=>{signedIn=true}}),/disposable loopback deck/);
+ assert.equal(signedIn,false);
+ const document=JSON.parse(readFileSync(new URL('../capabilities.json',import.meta.url)));
+ const capability=document.capabilities.find(c=>c.id==='N1');
+ assert.deepEqual(capability.checks,navboxCapabilityChecks);
+ assert.notEqual(verifiedCapabilities([capability],[{check:"keyword search endpoint returns the run's card",pass:true}])[0].status,'covered');
 });
 
 test('permission module closes its first isolated session if the second cannot open',async()=>{
