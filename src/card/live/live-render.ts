@@ -65,6 +65,8 @@ export interface LiveRenderOptions {
   /** Render the view alone, without the page/layout lifecycle. Used for
    *  mod-composed forms inserted into an independently rendered page. */
   bareView?: boolean;
+  /** Page prepare with the layout omitted, for a focal ajax slot refresh. */
+  bareMainOpts?: Record<string, unknown>;
   /** Collect pass 2 recording more than this many questions switches the
    *  request to full speculation. Unset here means never switch, so the choice
    *  stays with the caller; env DECKO_LIVE_AUTO_THRESHOLD overrides. */
@@ -115,7 +117,7 @@ let keptPages = new WeakMap<SQLDatabaseDriver, Map<string, KeptPage>>();
 const KEPT_PAGES_PER_DECK = 256;
 
 function keptKey(page: string, opts: LiveRenderOptions): string {
-  return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}\u0000${opts.bareView === true}`;
+  return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}\u0000${opts.bareView === true}\u0000${JSON.stringify(opts.bareMainOpts ?? {})}`;
 }
 
 /** Take a page's kept entry out of the map: a request owns it exclusively
@@ -236,7 +238,7 @@ async function renderPass(
   }
   return opts.bareView === true
     ? await render.render(page, opts.requestedView ?? "titled", opts.historyParams)
-    : await renderPageBytes(render, page, opts.requestedView, opts.historyParams);
+    : await renderPageBytes(render, page, opts.requestedView, opts.historyParams, opts.bareMainOpts);
 }
 
 /** Same complete-answer rule and cancellation as a live page, with the

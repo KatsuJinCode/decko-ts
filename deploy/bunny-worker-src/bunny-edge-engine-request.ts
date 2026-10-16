@@ -713,9 +713,10 @@ async function dispatchEngineRequest(
       const html = await deck.render.render(parsed.name, view, historyParams);
       return { html, status: deck.render.pageErrorStatus ?? 200 };
     };
-    const renderLive = async () =>
-      (
-        await liveRenderPage(
+    const renderLive = async () => {
+      const view = bareRead ? pageView ?? (await source.deck()).render.defaultHtmlViewConfig() : pageView;
+      const focalSlot = bareRead && url.searchParams.get("slot[main]") === "true";
+      return await (bareRead && !focalSlot ? liveRenderView : liveRenderPage)(
           source.driver,
           parsed.name,
           async (driver) => {
@@ -728,18 +729,23 @@ async function dispatchEngineRequest(
             return engines;
           },
           {
-            requestedView: pageView,
+            requestedView: view,
             historyParams,
             signal,
+            ...(bareRead ? { keep: false } : {}),
+            ...(focalSlot ? { bareMainOpts: {
+              nest_name: "_main", nest_syntax: `_main|${view}`, main: true,
+              home_view: url.searchParams.get("slot[home_view]") ?? view,
+            } } : {}),
             // Signed-in renders keep their rows per viewer: a kept entry is
             // never shared across viewers or with the anonymous path.
             ...(options?.viewer !== undefined ? { keepScope: `viewer:${String(options.viewer.actorId)}` } : {}),
           },
-        )
-      );
+        );
+    };
     // Each arm answers the page's HTML and its status (403 when the main
     // card is read-denied: Ruby's root.error_status, format/error.rb:27-31).
-    const page = bareRead || !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
+    const page = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
       ? await withIsolateRenderLock(renderNormal)
       : requestContextAvailable()
         ? // CONCURRENT: the live render boots its own engines over its own

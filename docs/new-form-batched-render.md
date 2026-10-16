@@ -107,3 +107,39 @@ checks exact stored content/type and exactly one new act, and bounds the
 database requests. The focused regression passed in 7.40s including setup;
 TypeScript validation passed. These are local measurements, not hosted or
 complete-journey acceptance.
+
+## XHR editor reads
+
+The signed-in read handler explicitly selected its direct-driver branch
+for every XHR request, even when the ordinary page qualified for live
+rendering. On the same owned copy, actual GET `/Local_Profile_Preset/edit`
+with `X-Requested-With: XMLHttpRequest` returned 503 at 20.309s: 1420
+database trips, 1445 statements, 749ms SQLite execution, no edit modal.
+
+Eligible XHR requests now use `liveRenderView` with their actual view and
+params, no kept form store, and the existing cancellation signal. A focal
+`slot[main]=true` refresh instead uses the existing page prepare with its
+bare-main options, preserving the slot's `_main` syntax/home view while
+omitting the layout. Ineligible histories and the explicit live-render
+off switch retain their existing dispatch. Kept-page keys bind bare-main
+options as well as bare/full view identity.
+
+The repaired actual XHR returned 200 in 1.215s with 7 trips and 45 SQL
+statements, including the real modal, TinyMCE textarea, and existing rich
+content. Raw controls are retained in `report-xhr-edit.json` and
+`report-xhr-edit-batched.json`, with response HTML and scripts. The focused
+real-handler HTTP regression checks both the RichText modal and focal slot,
+requires the actual content and slot syntax, rejects a full-page response,
+checks no stored-row changes, and bounds modal requests. It passed in 7.12s
+including process setup; TypeScript validation passed.
+
+### Measurement provenance limits
+
+The ad-hoc raw reports' `sourceCommit` field was inherited from the first
+control script and identifies the clean control lineage, not the exact
+later dirty builds. Every report records its actual bundle SHA; the initial
+control is clean 62b26338, the form patch became 60c1c030, the saved-slot
+patch became 751a1d7b, and the XHR patch is this change. Later probes were
+executed with the stated source patch before its commit. Their raw records
+are retained unchanged; they are bounded diagnostic evidence, not strict
+clean-candidate provenance receipts or cross-runtime parity grades.

@@ -261,6 +261,31 @@ it("returns the committed Date's real HTML slot without serial response-render q
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("batches the actual RichText XHR edit modal and focal slot without changing stored rows", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const typeId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='basic'", [])).rows[0].id;
+  expect((await post("/card/create", { "card[name]": "HTTP Rich Modal", "card[type_id]": String(typeId), "card[content]": "<p>Actual rich modal content</p>" }, cookie)).status).toBe(200);
+  const before = await snapshot();
+  const requestsBefore = hrana.requests.length;
+  const response = await fetch(base + "/HTTP_Rich_Modal/edit", { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+  expect(response.status).toBe(200);
+  const html = await response.text();
+  expect(html).toContain("modal-body");
+  expect(html).toContain("tinymce-textarea");
+  expect(html).toContain("Actual rich modal content");
+  expect(html).not.toMatch(/<!doctype html>/i);
+  expect(hrana.requests.length - requestsBefore).toBeLessThan(20);
+  const slot = await fetch(base + "/HTTP_Rich_Modal/titled?slot[main]=true&slot[home_view]=titled", { headers: { cookie, "x-requested-with": "XMLHttpRequest" } });
+  expect(slot.status).toBe(200);
+  const slotHtml = await slot.text();
+  expect(slotHtml).toContain("Actual rich modal content");
+  expect(slotHtml).toContain("_main|titled");
+  expect(slotHtml).not.toMatch(/<!doctype html>/i);
+  expect(await snapshot()).toEqual(before);
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();
