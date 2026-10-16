@@ -143,7 +143,7 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     expect(anchored.length).toBeGreaterThan(0);
   });
 
-  it("the non-html anchored registrations are the three json rows and account's base raw view", () => {
+  it("the non-html anchored registrations are the four json rows and account's base raw view", () => {
     // Measured census pin. Ruby files each of these ONLY under
     // JsonFormat (json_format.rb:6), so their json dispatch is faithful
     // and no other format ever dispatched them (no json renderView
@@ -163,6 +163,9 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
       ),
     ).toEqual([
       "search self/search :search_box_complete key=json",
+      // Stock self/search.rb:74-78 declares the completion label array
+      // alongside search_box_complete in the same JSON format block.
+      "search self/search :complete key=json",
       // Stock card-mod-account set/right/salt.rb declares raw outside a
       // format block; the base registration is intentional.
       "account right/salt :raw key=base",

@@ -266,7 +266,9 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       ["html", 342],
 
       ["js", 3],
-      ["json", 8],
+      // self/search.rb:74-78 adds :complete alongside :search_box_complete
+      // in JsonFormat; f0a92be0 ports this declaration without a new key.
+      ["json", 9],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
       // Stock all/text.rb registers one TextFormat core override.

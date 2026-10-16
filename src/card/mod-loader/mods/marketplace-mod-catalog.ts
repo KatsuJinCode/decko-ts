@@ -115,7 +115,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The collection surface: the count and paging views that put a total and page links under a set of cards, plus the Abstract::PagingLinks data structure behind them. Its three declared html views (count, paging, paging_urls) are the ones the engine did not already cover.",
     sourceFile: "src/card/mod-loader/mods/card-mod-collection.ts",
-    sourceLine: 2,
+    sourceLine: 1,
   },
   {
     name: "content",
@@ -131,7 +131,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The format layer: the base/abstract/html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml format classes, the name and date and content view families, the path generator, the link-to helpers, and the error / not-found / denial / server-error views. It also carries the two Cardio config keys the engine models as its per-render switches (default_html_view, rss_enabled).",
     sourceFile: "src/card/mod-loader/mods/card-mod-format.ts",
-    sourceLine: 2,
+    sourceLine: 3,
   },
   {
     name: "list",
@@ -251,7 +251,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The Script cardtype: sixteen set files (seven abstract, one all, one right, one self, four type, two type_plus_right), two lib modules and two config initializers. Its effect is card content - a script card and the input types that edit it.",
     sourceFile: "src/card/mod-loader/mods/card-mod-script.ts",
-    sourceLine: 2,
+    sourceLine: 1,
   },
   {
     name: "ace_editor",
@@ -331,7 +331,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "Page layouts: the Card::Layout support class, the set/all/process_layout page renderer, and the layout cardtype that carries a layout's body. Twenty-three set files across the abstract/all/right/self/type patterns, three event hooks, and an admin config with no mod.yml - its registration surface is the admin config alone.",
     sourceFile: "src/card/mod-loader/mods/card-mod-layout.ts",
-    sourceLine: 1,
+    sourceLine: 3,
   },
   {
     name: "recaptcha",
