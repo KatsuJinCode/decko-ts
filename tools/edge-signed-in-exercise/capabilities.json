@@ -1065,8 +1065,8 @@
         "cucumber reset_password 'Resetting password'",
         "journeys reset-password-request"
       ],
-      "status": "out_of_scope",
-      "reason": "the reset link arrives by mail; no mail sink locally",
+      "status": "not_covered",
+      "reason": "Requires the explicitly armed local capture module and the complete browser reset journey; production delivery remains separate.",
       "checks": [
         "reset request reaches the captured test inbox with visible acknowledgment",
         "captured reset link signs member into the password form",

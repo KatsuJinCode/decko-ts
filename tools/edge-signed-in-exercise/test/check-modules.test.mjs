@@ -71,6 +71,7 @@ test('mail journey requires capture and cannot credit an unrestored credential f
  const document=JSON.parse(readFileSync(new URL('../capabilities.json',import.meta.url)));
  const capability=document.capabilities.find(c=>c.id==='A5');
  assert.deepEqual(capability.checks,mailCapabilityChecks);
+ assert.equal(verifiedCapabilities([capability],mailCapabilityChecks.map(check=>({check,pass:true})))[0].status,'covered');
  const unRestored=mailCapabilityChecks.slice(0,-1).map(check=>({check,pass:true}));
  assert.notEqual(verifiedCapabilities([capability],unRestored)[0].status,'covered');
 });
