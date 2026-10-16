@@ -136,6 +136,14 @@ describe("bunny edge engine request — render error mapping", () => {
     }
   });
 
+  it("keeps the stock anonymous search parameter denial403 at the page boundary", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      const deck = deckWhoseRenderThrows(storage, new Error("limit parameter exceeds maximum for anonymous users (1000)"));
+      expect((await handleEngineRequest(edgeGet("/Home?offset=1001"), deck)).status).toBe(403);
+    } finally { storage.close(); }
+  });
+
   it("any other render failure stays a 500 Render-error page", async () => {
     const storage = await createRenderTestStorage();
     try {

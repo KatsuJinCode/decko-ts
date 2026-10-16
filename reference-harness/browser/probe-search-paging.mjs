@@ -35,6 +35,7 @@ try {
     activePage: document.querySelector(".paging .page-item.active")?.textContent.trim(),
     resultIds: [...document.querySelectorAll(".search-result-list > .search-result-item")].map(item => item.querySelector("[data-card-id]")?.getAttribute("data-card-id")).filter(Boolean),
     text: document.body.innerText.replace(/\s+/g, " "),
+    navbars: document.querySelectorAll("nav.navbar").length,
   }));
   evidence.first = await snapshot();
   const next = page.locator('a.card-paging-link[aria-label="Next"]').first();
@@ -47,6 +48,7 @@ try {
   if (!evidence.first.resultIds.length || !evidence.second.resultIds.length || evidence.first.resultIds[0] === evidence.second.resultIds[0]) evidence.problems.push("second page did not advance result window");
   if (!evidence.requests.some(request => request.offset === evidence.nextOffset && request.keyword === "Topic")) evidence.problems.push("paging request lost the keyword constraint");
   if (!evidence.second.text.includes("Results for Topic")) evidence.problems.push("second page lost the keyword heading");
+  if (evidence.second.navbars !== evidence.first.navbars) evidence.problems.push("XHR paging duplicated page chrome");
   evidence.oversizedAnonymousOffsetStatus = (await fetch(host.base + "/*search?query[keyword]=Topic&offset=1001")).status;
   if (evidence.oversizedAnonymousOffsetStatus !== 403) evidence.problems.push("anonymous offset1001 did not retain the stock403 cap");
   if (evidence.assetFailures.length) evidence.problems.push("required assets failed");

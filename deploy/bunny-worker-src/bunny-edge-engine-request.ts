@@ -697,6 +697,22 @@ async function dispatchEngineRequest(
     const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
     const search = jsonViewSearchParams(url.searchParams);
     const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
+    // CardController's XHR read returns a slot, unless an explicit layout
+    // was requested. Inserting a complete page here duplicates the chrome.
+    const bareRead = isXhr(request) && !url.searchParams.has("layout");
+    const renderNormal = async () => {
+      const deck = await source.deck();
+      if (!bareRead) return renderPageWithStatus(deck.render, parsed.name, pageView, historyParams);
+      const view = pageView ?? deck.render.defaultHtmlViewConfig();
+      if (url.searchParams.get("slot[main]") === "true") {
+        return renderPageWithStatus(deck.render, parsed.name, view, historyParams, {
+          nest_name: "_main", nest_syntax: `_main|${view}`, main: true,
+          home_view: url.searchParams.get("slot[home_view]") ?? view,
+        });
+      }
+      const html = await deck.render.render(parsed.name, view, historyParams);
+      return { html, status: deck.render.pageErrorStatus ?? 200 };
+    };
     const renderLive = async () =>
       (
         await liveRenderPage(
@@ -723,8 +739,8 @@ async function dispatchEngineRequest(
       );
     // Each arm answers the page's HTML and its status (403 when the main
     // card is read-denied: Ruby's root.error_status, format/error.rb:27-31).
-    const page = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
-      ? await source.deck().then((d) => withIsolateRenderLock(() => renderPageWithStatus(d.render, parsed.name, pageView, historyParams)))
+    const page = bareRead || !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
+      ? await withIsolateRenderLock(renderNormal)
       : requestContextAvailable()
         ? // CONCURRENT: the live render boots its own engines over its own
           // request store, and runs in its own request context (name
@@ -774,6 +790,13 @@ async function dispatchEngineRequest(
     // chrome instead of falling to the 500 Wild Card — the shape the old
     // third-twin handler answered and its /~999999 parity pin holds.
     const mapped = mapRenderError(message);
+    if (mapped.status === 403) {
+      const viewHtml = `<h1>Forbidden</h1><pre>${escapeHtml(message)}</pre>`;
+      return renderFullChromeErrorPage(await source.deck(), {
+        status: 403, titleText: "Forbidden", cardName: parsed.name, viewHtml,
+        fallbackHtml: layoutPage("Forbidden", viewHtml),
+      });
+    }
     if (mapped.status === 422) {
       return html(
         422,

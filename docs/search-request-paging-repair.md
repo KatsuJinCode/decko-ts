@@ -36,3 +36,11 @@ request retains Topic and its heading, fails required-asset errors, and
 checks offset1001 returns403. It is supplemental scoped proof, not full-site
 or hosted-runtime acceptance. No completed Ruby51 definition or capture is
 rewritten, and its SQLite keyword500 remains a reference incompatibility.
+
+The actual1d8fe07c Node page2 rerun passed. Bunny then passed the result-window
+and keyword checks but exposed two additional request-boundary defects: its
+catch still converted mapped403 into500, and XHR returned a full page inserted
+inside the existing result slot. The follow-up preserves403 and uses the
+existing bare main-slot render seam (including slot main/home opts), with
+an unchanged-navbar-count assertion in the actual browser probe. Explicit
+layout requests retain their full layout.
