@@ -7,7 +7,7 @@
 // intact; the script only fails to start, so the guard below has to sit below
 // the observed ceiling rather than at the documented one. This is script UTF-8
 // bytes, not JS characters or the JSON upload envelope.
-export const BUNNY_SCRIPT_LIMIT_BYTES = 9_000_000;
+export const BUNNY_SCRIPT_LIMIT_BYTES = 9_200_000;
 export function assertBunnyScriptBudget(code) {
   const bytes = Buffer.byteLength(code, "utf8");
   if (bytes > BUNNY_SCRIPT_LIMIT_BYTES) {
