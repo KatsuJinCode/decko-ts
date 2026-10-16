@@ -248,3 +248,16 @@ Exact font bytes from card-mod-bootstrap0.20.0's public files, from the
 MIT-licensed Bootstrap Icons project (https://github.com/twbs/icons).
 The upstream MIT copyright/license notice is retained in LICENSE.md;
 source filenames and hashes are recorded in provenance.json.
+
+### HTML4 text extraction
+
+The XHTML1 name-to-codepoint table in `vendor/htmlentities-4.4.2/` is
+derived from the public htmlentities 4.4.2 gem by Paul Battley (2005–2013).
+Its actual MIT COPYING.txt is retained as LICENSE.txt, with source-table
+SHA-256 and regeneration provenance beside it. This table preserves the
+Ruby HTML4 entity vocabulary rather than silently adopting HTML5 entities.
+
+The tokenizer uses htmlparser2 10.0.0 (MIT), with domhandler 5.0.3 (BSD-2-Clause),
+domelementtype 2.3.0 (BSD-2-Clause), domutils 3.2.2 (BSD-2-Clause),
+dom-serializer 2.0.0 (MIT), and entities 6.0.0 (BSD-2-Clause). Their full
+upstream license texts are retained in `vendor/html-text-licenses/`.

@@ -31,7 +31,8 @@ import { DeckoName } from "../name.js";
 import { selfSetInheritText, whoCanItemCount } from "../permissions/who-can.js";
 import { CodenameNotFoundError, NameNotFoundError, UnsupportedIdentifierError } from "../name/errors.js";
 import { h } from "./slot-html.js";
-import { stripTags } from "./nest-syntax.js";
+import { stripHtmlTags as stripTags } from "./html-text.js";
+import { truncateHtmlSafeText } from "./text-helpers.js";
 import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "./text-helpers.js";
 import { listItemContentOverride } from "./content-overrides.js";
@@ -350,8 +351,7 @@ function ruleOneLineContent(
  *  output and html_escape passes it through verbatim; see the base arm's
  *  truncation-bound note). */
 function oneLineFromStripped(stripped: string): string {
-  const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
-  return truncated === stripped ? truncated : h(truncated);
+  return truncateHtmlSafeText(stripped, ONE_LINE_CHARACTER_LIMIT);
 }
 
 /** link.rb:89-109 target_and_link_text: split at the FIRST pipe that is

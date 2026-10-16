@@ -183,31 +183,21 @@ export function distanceOfTimeInWords(
   return lookupOrFallback("almost_x_years", { ...tOpts, count: distanceInYears + 1 }, `almost ${distanceInYears + 1} years`);
 }
 
-/** Truncate a string to at most `length` characters, appending `omission`
- *  when truncation happened. Mirrors active_support/core_ext/string/
- *  filters.rb:70-83 String#truncate. Default length 30, default omission
- *  "...". The card-mod-format :one_line_content uses length=60 (the
- *  ONE_LINE_CHARACTER_LIMIT constant).
- *
- *  When the input is shorter than or equal to length, the input is
- *  returned unchanged. When the omission is longer than length, Ruby's
- *  String#[0, stop] with a negative `stop` keeps everything up to
- *  `length + |stop|` characters - so "Once upon a time"[0, -1] returns
- *  "Once upon a tim" (filters.rb:82 `+"#{self[0, stop]}#{omission}"`).
- *  The TS port mirrors that behavior with substring.
- *
- *  Note: Ruby's `length` is character count (post-Yard, String#length is
- *  grapheme-aware for some encodings). The TS port uses UTF-16 code units
- *  (the JS string length); the card en.yml files' format strings are pure
- *  ASCII so the distinction does not bite here. */
+/** ActiveSupport String#truncate, default omission "...". Ruby UTF8 lengths
+ * count Unicode codepoints (not UTF16 units or grapheme clusters). Negative
+ * slice lengths yield nil, interpolated as empty before the omission. */
 export function truncate(text: string, length: number = 30, omission: string = "..."): string {
-  if (text.length <= length) return text;
-  const lengthWithRoomForOmission = length - omission.length;
-  // When the omission is longer than `length`, Ruby's String#[0, stop]
-  // with stop < 0 returns "" (verified via `ruby -e 'puts "x"[0, -1]'`).
-  // The omission IS the entire output (filters.rb:64-69).
-  if (lengthWithRoomForOmission < 0) return omission;
-  return text.substring(0, lengthWithRoomForOmission) + omission;
+  const characters = Array.from(text);
+  if (characters.length <= length) return text;
+  const room = length - Array.from(omission).length;
+  return room < 0 ? omission : characters.slice(0, room).join("") + omission;
+}
+
+/** Rails TextHelper#truncate on strip_tags' html_safe buffer. An unchanged
+ * buffer stays safe; a truncated new String is HTML escaped. */
+export function truncateHtmlSafeText(text: string, length: number = 30, omission: string = "..."): string {
+  const result = truncate(text, length, omission);
+  return Array.from(text).length <= length ? result : result.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
 // ---------------------------------------------------------------------------

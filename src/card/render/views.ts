@@ -1,3 +1,4 @@
+import { htmlToText } from "./html-text.js";
 import { str, type ViewResult } from "./format.js";
 // The html-format view registry: TypeScript ports of the view definitions the
 // captured fixtures exercise (:open, :closed, :content, :title and the
@@ -764,69 +765,14 @@ ${core}`;
 // ---------------------------------------------------------------------------
 
 /** text.rb:4-6 #to_text: `HTMLEntities.new.decode strip_tags(html).to_s`.
- *  strip_tags is Rails' sanitizer stand-in (the same regex form the
- *  raw_one_line_content port documents - the corpus content is plain);
- *  decode covers the named entities the corpus carries plus the numeric
- *  forms. Applied AFTER the tags are gone, matching Ruby's composition.
+ *  The shared HTML4 helper follows Rails sanitizer text serialization and
+ *  the public XHTML1 entity table used by HTMLEntities.
  *  EXPORTED for the email_text format's :core (text.rb:22-24
  *  `view :core do to_text super() end` — EmailTextFormat < TextFormat
  *  inherits it; card-mod-email's text-message :core composes the same
  *  helper so the two surfaces cannot drift). */
 export function toText(html: string): string {
-  return decodeHtmlEntities(stripTags(html));
-}
-
-/** Rails strip_tags' regex stand-in (rawOneLineContentView's documented
- *  divergence note applies verbatim). */
-function stripTags(value: string): string {
-  return value.replace(/<[^>]*>/g, "");
-}
-
-/** HTMLEntities.decode for the named entities the deck's content carries
- *  (fluent in the XHTML+Latin set the gem docs list) plus numeric refs.
- *  Unknown entities pass through unchanged (HTMLEntities leaves them). */
-function decodeHtmlEntities(value: string): string {
-  const NAMED: Record<string, string> = {
-    amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0",
-    iexcl: "\u00a1", cent: "\u00a2", pound: "\u00a3", curren: "\u00a4",
-    yen: "\u00a5", brvbar: "\u00a6", sect: "\u00a7", uml: "\u00a8",
-    copy: "\u00a9", ordf: "\u00aa", laquo: "\u00ab", not: "\u00ac",
-    shy: "\u00ad", reg: "\u00ae", macr: "\u00af", deg: "\u00b0",
-    plusmn: "\u00b1", sup2: "\u00b2", sup3: "\u00b3", acute: "\u00b4",
-    micro: "\u00b5", para: "\u00b6", middot: "\u00b7", cedil: "\u00b8",
-    sup1: "\u00b9", ordm: "\u00ba", raquo: "\u00bb", frac14: "\u00bc",
-    frac12: "\u00bd", frac34: "\u00be", iquest: "\u00bf", times: "\u00d7",
-    divide: "\u00f7", ndash: "\u2013", mdash: "\u2014", lsquo: "\u2018",
-    rsquo: "\u2019", sbquo: "\u201a", ldquo: "\u201c", rdquo: "\u201d",
-    bdquo: "\u201e", dagger: "\u2020", Dagger: "\u2021", bull: "\u2022",
-    hellip: "\u2026", permil: "\u2030", prime: "\u2032", Prime: "\u2033",
-    euro: "\u20ac", trade: "\u2122", agrave: "\u00e0", aacute: "\u00e1",
-    acirc: "\u00e2", atilde: "\u00e3", auml: "\u00e4", aring: "\u00e5",
-    aelig: "\u00e6", ccedil: "\u00e7", egrave: "\u00e8", eacute: "\u00e9",
-    ecirc: "\u00ea", euml: "\u00eb", igrave: "\u00ec", iacute: "\u00ed",
-    icirc: "\u00ee", iuml: "\u00ef", ntilde: "\u00f1", ograve: "\u00f2",
-    oacute: "\u00f3", ocirc: "\u00f4", otilde: "\u00f5", ouml: "\u00f6",
-    oslash: "\u00f8", ugrave: "\u00f9", uacute: "\u00fa", ucirc: "\u00fb",
-    uuml: "\u00fc", yacute: "\u00fd", yuml: "\u00ff", OElig: "\u0152",
-    oelig: "\u0153", Scaron: "\u0160", scaron: "\u0161", Yuml: "\u0178",
-    fnof: "\u0192", circ: "\u02c6", tilde: "\u02dc", ensp: "\u2002",
-    emsp: "\u2003", thinsp: "\u2009", zwnj: "\u200c", zwj: "\u200d",
-    lrm: "\u200e", rlm: "\u200f",
-    larr: "\u2190", uarr: "\u2191", rarr: "\u2192", darr: "\u2193",
-    harr: "\u2194", crarr: "\u21b5", lceil: "\u2308", rceil: "\u2309",
-    lfloor: "\u230a", rfloor: "\u230b", loz: "\u25ca", spades: "\u2660",
-    clubs: "\u2663", hearts: "\u2665", diamonds: "\u2666",
-  };
-  return value
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) =>
-      String.fromCodePoint(parseInt(hex, 16)),
-    )
-    .replace(/&#(\d+);/g, (_, dec: string) =>
-      String.fromCodePoint(parseInt(dec, 10)),
-    )
-    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (match, name: string) =>
-      NAMED[name] !== undefined ? NAMED[name] : match,
-    );
+  return htmlToText(html);
 }
 
 /** text.rb:14-17 view :text_without_nests (the BASE format block - the

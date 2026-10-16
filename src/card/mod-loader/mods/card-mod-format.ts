@@ -1,3 +1,4 @@
+import { stripHtmlTags as stripTags } from "../../render/html-text.js";
 import { str } from "../../render/format.js";
 // The card-mod-format gem (card-mod-format-0.20.0), ported through the
 // mod loader - the mod that defines the format layer (base/abstract/
@@ -47,7 +48,7 @@ import { str } from "../../render/format.js";
 // - set/all/content.rb:18-50 the content view family (label,
 //   closed_content [alias to one_line_content], raw_one_line_content)
 //   - all headless-portable once the text-helpers truncate seam
-//   (src/card/render/text-helpers.ts:203-211) and a local stripTags
+//   (src/card/render/text-helpers.ts:203-211) and the shared HTML4 stripHtmlTags
 //   helper were added; both views render the same bytes Ruby emits
 //   on plain-text content.
 // - set/all/html/views.rb:29-32 the :one_line_content html wrap arm
@@ -194,6 +195,7 @@ import {
   ONE_LINE_CHARACTER_LIMIT,
   timeAgoInWords as sharedTimeAgoInWords,
   truncate,
+  truncateHtmlSafeText,
 } from "../../render/text-helpers.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import { modBarRightSections } from "./core-admin-runtime.js";
@@ -506,7 +508,7 @@ const uriCoreView: ViewFn = ({ fmt }) => fmt.renderView("title_link");
 const typeHtmlOneLineContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return truncate(stripTags(fmt.renderRaw()), length, "...");
+  return truncateHtmlSafeText(stripTags(fmt.renderRaw()), length, "...");
 };
 
 
@@ -1265,7 +1267,7 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
   return fmt.withNestMode("compact", () =>
-    truncate(stripTags(str(fmt.renderView("core"))), length, "..."),
+    truncateHtmlSafeText(stripTags(str(fmt.renderView("core"))), length, "..."),
   );
 };
 
@@ -1305,17 +1307,8 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
 const allHtmlViewsRawOneLineContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return `<div class="text-muted">${truncate(stripTags(fmt.renderRaw()), length, "...")}</div>`;
+  return `<div class="text-muted">${truncateHtmlSafeText(stripTags(fmt.renderRaw()), length, "...")}</div>`;
 };
-
-/** stripTags: regex-based stand-in for Rails' strip_tags
- *  (actionview/lib/action_view/helpers/sanitize_helper.rb:95-110:
- *  the full Rails version also drops <script>/<style>/<textarea>
- *  contents; plain-text content needs no script/style handling, so the
- *  simple regex form suffices). */
-function stripTags(value: string): string {
-  return value.replace(/<[^>]*>/g, "");
-}
 
 /**
  * set/all/content.rb:56-60 view :hidden_content_field, unknown: true,
@@ -1521,7 +1514,7 @@ export const allHtmlViewsOneLineContentView: ViewFn = (ctx) => {
   return viewWrapInherited(
     ctx,
     "one_line_content",
-    truncate(stripTags(str(fmt.renderView("core"))), length, "..."),
+    truncateHtmlSafeText(stripTags(str(fmt.renderView("core"))), length, "..."),
   );
 };
 

@@ -1,3 +1,5 @@
+import { stripHtmlTags as stripTags } from "../../render/html-text.js";
+import { truncateHtmlSafeText } from "../../render/text-helpers.js";
 // The card-mod-layout gem (card-mod-layout-0.20.0), ported through the mod
 // loader.
 //
@@ -38,7 +40,7 @@
 // - set/right/head.rb :one_line_content - body is card-mod-format's
 //   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
 //   (rightHeadOneLineContentView) using text-helpers.ts#truncate +
-//   nest-syntax.ts#stripTags
+//   html-text.ts#stripHtmlTags
 // - set/self/head.rb :core (escape_in_main { nest root.card, view: :head }) -
 //   view :head and the root/main page machinery are unported; *head's core
 //   falls through to the base (documented divergence)
@@ -83,7 +85,7 @@ import { str, type ViewResult } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../../name/errors.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
-import { scanNests, stripTags, interpretEscapedLiteral } from "../../render/nest-syntax.js";
+import { scanNests, interpretEscapedLiteral } from "../../render/nest-syntax.js";
 import { highlight } from "../../render/code-highlighting/index.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import {
@@ -830,8 +832,7 @@ const headContentView: ViewFn = (ctx) => {
  *  `voo.size || ONE_LINE_CHARACTER_LIMIT` (60, content.rb:51-53). The
  *  truncate helper (src/card/render/text-helpers.ts:203-211) is the Rails
  *  String#truncate port (filters.rb:70-83) - length 60 with the "..."
- *  omission when truncation happened; strip_tags (nest-syntax.ts:24-26,
- *  nest.rb's `string.gsub(/<[^>]*>/, "")`) drops the HTML tags the head-
+ *  omission when truncation happened; strip_tags (the shared HTML4 full-sanitizer helper) drops the tags the head-
  *  rule raw carries (the *head setting's rule dbContent, e.g.
  *  `<meta name="..." content="...">`). SET SCOPE: the gem defines this
  *  view on Right::Head (set/right/head.rb:12-14) - but the view NAME is
@@ -850,7 +851,7 @@ const rightHeadOneLineContentView: ViewFn = (ctx) => {
   }
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return viewWrapInherited(ctx, "one_line_content", truncate(stripTags(fmt.renderRaw()), length, "..."));
+  return viewWrapInherited(ctx, "one_line_content", truncateHtmlSafeText(stripTags(fmt.renderRaw()), length, "..."));
 };
 
 // ---------------------------------------------------------------------------
@@ -1178,7 +1179,7 @@ const cardModLayout: DeckoModManifest = {
       // the composed layoutCoreView registered here; :one_line_content is
       // the right/head.rb:12-14 truncate(strip_tags(render_raw)) body, now
       // portable via src/card/render/text-helpers.ts#truncate +
-      // nest-syntax.ts#stripTags)
+      // html-text.ts#stripHtmlTags)
       setPath: "right/head",
       formats: {
         html: {
