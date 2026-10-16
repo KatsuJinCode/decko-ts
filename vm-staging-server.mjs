@@ -130,6 +130,7 @@ import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
+import { jsonViewSearchParams } from "./dist/src/server/worker-shared-surface.js";
 import { configureFontAwesomeMode } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -2944,23 +2945,7 @@ function decodeViewSegmentJson(raw) {
  *  request params ride the render params' search seam (search_params.rb —
  *  term_param || vars.keyword). */
 async function renderCardViewJson(cardName, view, url, renderEngine = render) {
-  const searchParamsSource = {
-    term: url.searchParams.get("term"),
-    main: url.searchParams.get("main"),
-    keyword: url.searchParams.get("query[keyword]"),
-  };
-  const search =
-    searchParamsSource.term !== null ||
-    searchParamsSource.main !== null ||
-    searchParamsSource.keyword !== null
-      ? {
-          ...(searchParamsSource.term !== null ? { term: searchParamsSource.term } : {}),
-          ...(searchParamsSource.main !== null ? { main: searchParamsSource.main } : {}),
-          ...(searchParamsSource.keyword !== null
-            ? { vars: { keyword: searchParamsSource.keyword } }
-            : {}),
-        }
-      : undefined;
+  const search = jsonViewSearchParams(url.searchParams);
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
@@ -4162,21 +4147,10 @@ const server = http.createServer(async (req, res) => {
       } else {
         const pageRenderParams =
           STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined;
-        const searchKeywordParam = url.searchParams.get("query[keyword]");
-        const searchOffsetRaw = url.searchParams.get("offset");
-        const searchOffset =
-          searchOffsetRaw !== null && /^\d+$/.test(searchOffsetRaw) && Number(searchOffsetRaw) > 0
-            ? Number(searchOffsetRaw)
-            : undefined;
-        const searchReqSingle =
-          searchKeywordParam === null && searchOffset === undefined
-            ? undefined
-            : {
-                ...(searchKeywordParam !== null ? { vars: { keyword: searchKeywordParam } } : {}),
-                ...(searchOffset !== undefined ? { offset: searchOffset } : {}),
-                ...(actor === null && searchOffset !== undefined && searchOffset > 1000 ? { capped: true } : {}),
-              };
-        response = await renderCardPage(
+        const searchReqSingle = jsonViewSearchParams(url.searchParams);
+        response = actor === null && searchReqSingle?.offset > 1000
+          ? htmlResponse(403, "<h1>Forbidden</h1><pre>limit parameter exceeds maximum for anonymous users (1000)</pre>", "Forbidden")
+          : await renderCardPage(
           name,
           requestEngine,
           requestedView,
@@ -4184,10 +4158,7 @@ const server = http.createServer(async (req, res) => {
             ...(pageRenderParams ?? {}),
             ...(searchReqSingle !== undefined
               ? {
-                  search:
-                    searchReqSingle.capped === true
-                      ? { vars: searchReqSingle.vars, offset: 1000 }
-                      : { vars: searchReqSingle.vars, offset: searchReqSingle.offset },
+                  search: searchReqSingle,
                 }
               : {}),
           },
@@ -4247,14 +4218,7 @@ const server = http.createServer(async (req, res) => {
         console.log(`[vm-staging] ${req.method} ${pathname} -> 403 anonymous offset (${Date.now() - startedAt}ms)`);
         return;
       }
-      const searchVarsSource = url.searchParams.get("query[keyword]");
-      const searchReq =
-        searchVarsSource !== null || searchOffset !== undefined
-          ? {
-              vars: searchVarsSource !== null ? { keyword: searchVarsSource } : undefined,
-              offset: searchOffset,
-            }
-          : undefined;
+      const searchReq = jsonViewSearchParams(url.searchParams);
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;

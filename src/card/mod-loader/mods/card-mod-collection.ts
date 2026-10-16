@@ -1,3 +1,4 @@
+import { searchPagingQuerySuffix } from "../../render/search-paging.js";
 // The card-mod-collection gem (card-mod-collection-0.20.0), ported through
 // the mod loader.
 //
@@ -491,6 +492,7 @@ function pageLink(
   options: LinkOptions,
   urlPath: string,
   limit: number,
+  query?: Readonly<Record<string, string>>,
 ): string {
   if (page === null) {
     return `<div class="page-link">${text}</div>`;
@@ -499,7 +501,7 @@ function pageLink(
   const ariaAttr = typeof ariaLabel === "string" ? ` aria-label="${ariaLabel}"` : "";
   return (
     `<a${ariaAttr} class="card-paging-link slotter page-link"` +
-    ` href="${urlPath}?limit=${limit}&amp;offset=${page * limit}" data-remote="true">${text}</a>`
+    ` href="${urlPath}?limit=${limit}&amp;offset=${page * limit}${searchPagingQuerySuffix(query)}" data-remote="true">${text}</a>`
   );
 }
 
@@ -515,7 +517,7 @@ function pagingLinks(ctx: ViewContext): string[] {
   const urlPath = `/${ctx.fmt.card.name.urlKey}`;
   return new PagingLinks(tp, cp).build(5, (text, page, status, options) => {
     const liClass = pageLinkLiClass(status);
-    const link = pageLink(text, page, options, urlPath, limit);
+    const link = pageLink(text, page, options, urlPath, limit, ctx.fmt.engine?.searchResultPaging?.(ctx.fmt)?.query);
     return `<li class="${liClass}">${link}</li>`;
   });
 }

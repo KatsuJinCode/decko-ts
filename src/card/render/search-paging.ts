@@ -44,6 +44,12 @@ export interface SearchResultPaging {
   limit: number;
   offset: number;
   count: number;
+  query?: Readonly<Record<string, string>>;
+}
+
+/** Search's extra_paging_path_args preserves the request's nested query. */
+export function searchPagingQuerySuffix(query?: Readonly<Record<string, string>>): string {
+  return Object.entries(query ?? {}).map(([key, value]) => `&amp;query%5B${encodeURIComponent(key)}%5D=${encodeURIComponent(value)}`).join("");
 }
 
 /** The card's URL path form: the name's url key ("Sign up+*type+by name" ->
@@ -66,6 +72,7 @@ function pagingItem(
   urlPath: string,
   limit: number,
   current: number,
+  query?: Readonly<Record<string, string>>,
 ): string {
   // page_link_li_class (paging_views.rb:38-41): PAGE_LI_CLASS maps only
   // :ellipses -> "disabled" and :current -> "active"; previous/next have no
@@ -79,7 +86,7 @@ function pagingItem(
   const inner =
     page === false
       ? `<div class="page-link">${text}</div>`
-      : `<a${ariaLabel !== undefined ? ` aria-label="${ariaLabel}"` : ""} class="card-paging-link slotter page-link" href="${urlPath}?limit=${limit}&amp;offset=${page * limit}" data-remote="true">${text}</a>`;
+      : `<a${ariaLabel !== undefined ? ` aria-label="${ariaLabel}"` : ""} class="card-paging-link slotter page-link" href="${urlPath}?limit=${limit}&amp;offset=${page * limit}${searchPagingQuerySuffix(query)}" data-remote="true">${text}</a>`;
   return `<li class="${liClass}">${inner}</li>`;
 }
 
@@ -91,6 +98,7 @@ function pagingLinks(
   current: number,
   urlPath: string,
   limit: number,
+  query?: Readonly<Record<string, string>>,
 ): string {
   const window = 5;
   const item = (
@@ -98,7 +106,7 @@ function pagingLinks(
     page: number | false,
     status: "current" | "ellipses" | "previous" | "next" | undefined,
     ariaLabel?: string,
-  ): string => pagingItem(text, page, status, ariaLabel, urlPath, limit, current);
+  ): string => pagingItem(text, page, status, ariaLabel, urlPath, limit, current, query);
   const direct = (page: number): string | undefined =>
     page >= 0 && page <= total ? item(String(page + 1), page, page === current ? "current" : undefined) : undefined;
   // previous_page/next_page (paging_links.rb:79-85): false at the edges.
@@ -178,7 +186,7 @@ export function searchPagingNav(name: { urlKey: string }, paging: SearchResultPa
   const { limit, offset, count } = paging;
   const total = totalPages(count, limit);
   const current = currentPage(offset, limit);
-  const links = pagingLinks(total, current, cardUrlPath(name), limit);
+  const links = pagingLinks(total, current, cardUrlPath(name), limit, paging.query);
   return (
     `<nav class='nav justify-content-between align-items-center'>\n` +
     `<ul class='pagination paging'>\n` +

@@ -47,6 +47,8 @@ try {
   if (!evidence.first.resultIds.length || !evidence.second.resultIds.length || evidence.first.resultIds[0] === evidence.second.resultIds[0]) evidence.problems.push("second page did not advance result window");
   if (!evidence.requests.some(request => request.offset === evidence.nextOffset && request.keyword === "Topic")) evidence.problems.push("paging request lost the keyword constraint");
   if (!evidence.second.text.includes("Results for Topic")) evidence.problems.push("second page lost the keyword heading");
+  evidence.oversizedAnonymousOffsetStatus = (await fetch(host.base + "/*search?query[keyword]=Topic&offset=1001")).status;
+  if (evidence.oversizedAnonymousOffsetStatus !== 403) evidence.problems.push("anonymous offset1001 did not retain the stock403 cap");
   if (evidence.assetFailures.length) evidence.problems.push("required assets failed");
 } catch (error) { evidence.problems.push(error.stack ?? String(error)); }
 finally {

@@ -60,6 +60,7 @@ import {
 } from "./rules/structure.js";
 import type { CardsRow } from "../server/schema.js";
 import { CqlBadQuery } from "../cql/ast.js";
+import { PermissionDeniedError } from "./auth/token.js";
 import {
   RenderFormat,
   RUBY_MAX_DEPTH,
@@ -10716,6 +10717,9 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     const searchOffset = focalSearch?.offset;
+    if (searchOffset !== undefined && searchOffset > 1000 && this.viewer.signedIn !== true) {
+      throw new PermissionDeniedError("limit parameter exceeds maximum for anonymous users (1000)");
+    }
     if (searchOffset !== undefined && searchOffset > 0) {
       (statement as Record<string, unknown>)["offset"] = searchOffset;
     }
@@ -10930,7 +10934,7 @@ export class RenderEngine implements RenderEngineLike {
       this.searchResultCounts.set(this.searchCacheKey(card), searchCount);
     }
     if (paging !== undefined) {
-      this.searchResultPagingMap.set(this.searchCacheKey(card), paging);
+      this.searchResultPagingMap.set(this.searchCacheKey(card), { ...paging, ...(vars !== undefined ? { query: { ...vars } } : {}) });
     }
     return items;
   }

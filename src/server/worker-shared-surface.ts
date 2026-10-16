@@ -59,6 +59,7 @@ export function mapRenderError(message: string): RenderErrorPage {
   // act_listing.rb:12 `Act.find(act_id) || raise(Card::NotFound, "act not found")`
   // - Card::NotFound (error.rb:88-91) is 404 with the :not_found view.
   if (/^act not found$/.test(message)) return { status: 404, title: "Card not found" };
+  if (message === "limit parameter exceeds maximum for anonymous users (1000)") return { status: 403, title: "Forbidden" };
   return { status: 500, title: "Render error" };
 }
 
@@ -201,25 +202,32 @@ export function historyViewParams(searchParams: URLSearchParams): HistoryRenderP
     const value = searchParams.get(key);
     if (value !== null) wire[key] = value;
   }
-  return historyRenderParamsFromWire(wire);
+  const search = jsonViewSearchParams(searchParams);
+  return { ...historyRenderParamsFromWire(wire), ...(search !== undefined ? { search } : {}) };
 }
 
 /**
- * The request-term seam for a `:mark/:view(.:format)` json dispatch
+ * The shared request-term/query/paging seam for HTML and JSON dispatch
  * (search_params.rb: term_param || vars.keyword — the navbox typeahead's
  * `?term=` and the `query[keyword]` form pair among them). Undefined when
  * the request carries none, so the render params stay clean. Shared by the
- * deploy entries; the staging harness carries its own copy.
+ * deploy entries and Node. The legacy export name remains for existing callers.
  */
-export function jsonViewSearchParams(searchParams: URLSearchParams): Record<string, unknown> | undefined {
+export function jsonViewSearchParams(searchParams: URLSearchParams): HistoryRenderParams["search"] {
   const term = searchParams.get("term");
   const main = searchParams.get("main");
-  const keyword = searchParams.get("query[keyword]");
-  if (term === null && main === null && keyword === null) return undefined;
+  const vars = Object.fromEntries([...searchParams].flatMap(([key, value]) => {
+    const match = /^query\[([^\[\]]+)\]$/.exec(key);
+    return match ? [[match[1]!, value]] : [];
+  }));
+  const rawOffset = searchParams.get("offset");
+  const offset = rawOffset !== null && /^\d+$/.test(rawOffset) && Number(rawOffset) > 0 ? Number(rawOffset) : undefined;
+  if (term === null && main === null && Object.keys(vars).length === 0 && offset === undefined) return undefined;
   return {
     ...(term !== null ? { term } : {}),
     ...(main !== null ? { main } : {}),
-    ...(keyword !== null ? { vars: { keyword } } : {}),
+    ...(Object.keys(vars).length ? { vars } : {}),
+    ...(offset !== undefined ? { offset } : {}),
   };
 }
 

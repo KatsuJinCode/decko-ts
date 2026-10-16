@@ -695,7 +695,8 @@ async function dispatchEngineRequest(
     // ("?view= fills the view-less arm") holds. An explicit path view still
     // wins (the action arg never falls through to params).
     const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
-    const historyParams = historyRenderParamsFromWire(parsed.params);
+    const search = jsonViewSearchParams(url.searchParams);
+    const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
     const renderLive = async () =>
       (
         await liveRenderPage(

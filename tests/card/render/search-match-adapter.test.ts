@@ -7,6 +7,7 @@ import { RenderEngine } from "../../../src/card/render.js";
 import { registerSqliteRegexpFunction } from "../../../src/cql/sqlite-regexp.js";
 import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
 import cardModSearch from "../../../src/card/mod-loader/mods/card-mod-search.js";
+import { historyViewParams } from "../../../src/server/worker-shared-surface.js";
 import { startMockHranaServer } from "../../server/drivers/mock-hrana-server.js";
 import {
   BOOTSTRAP_READ_SUBSTRATE_IDS, CountingRenderDriver, seedCard, bindModLoaderToEngine,
@@ -59,6 +60,21 @@ for (const mode of ["sqlite-regexp", "bunny-hrana-no-udf"] as const) {
         expect(second).not.toContain('data-card-id="12"');
         expect(f.storage.counting.statements.some(sql => /REGEXP/i.test(sql))).toBe(true);
         expect(f.server?.violations ?? []).toEqual([]);
+      } finally { await f.close(); }
+    });
+
+    it("runs mapped request vars/offsets through the actor-scoped engine and retains the anonymous cap", async () => {
+      const f = await fixture();
+      try {
+        await f.search({ match: "$keyword", type: 2, sort: "id", dir: "asc", limit: 1 });
+        const get = (offset: number) => f.storage.engine.render("Match Results", "content", historyViewParams(new URLSearchParams(`query[keyword]=needle&offset=${offset}`)));
+        const firstHtml = await get(0);
+        expect(firstHtml).toContain('data-card-id="12"');
+        expect(firstHtml).toContain("query%5Bkeyword%5D=needle");
+        const secondHtml = await get(1);
+        expect(secondHtml).toContain('data-card-id="13"');
+        expect(secondHtml).not.toContain('data-card-id="12"');
+        await expect(get(1001)).rejects.toThrow("limit parameter exceeds maximum for anonymous users (1000)");
       } finally { await f.close(); }
     });
 
