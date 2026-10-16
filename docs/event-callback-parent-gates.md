@@ -42,7 +42,7 @@ This corrects an earlier unit test's mistaken claim that a relative callback
 could not be caught by its enclosing integration target. The relative
 method has no rescue of its own; the surrounding target does.
 
-Validation commands in `C:/localProjects/decko-ts-event-order-repair`:
+Historical validation commands from the repository root:
 
 ```
 C:/Ruby33-x64/bin/ruby.exe tmp/callback-chain-control.rb

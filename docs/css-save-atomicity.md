@@ -21,7 +21,7 @@ mod callback stub and event-completeness classification remain unchanged.
 SCSS variable-context validation and other post-commit asset failures remain
 separate work.
 
-Focused commands (worktree `C:/localProjects/decko-ts-css-save-atomicity`):
+Focused commands from the repository root of the original verification checkout:
 
 ```
 node node_modules/typescript/bin/tsc --noEmit

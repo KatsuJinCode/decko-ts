@@ -124,7 +124,7 @@ This is the one mask that does not rest on two-run variation (SPEC section 4.2):
 the oracle's backtrace is stable between runs, but no other engine has it.
 
 **Release-lead decision, 2026-10-15.** The lead has ruled on this rule in
-writing (`recovery/release/FAKED-PARITY-AUDIT.md`, item 2 — the ruling that
+writing (private release audit, item 2, not shipped — the ruling that
 SUBAGENT-GOAL.md reserves to the lead, since N6 widens a normalisation rule).
 Verbatim:
 

@@ -1,6 +1,8 @@
 // tools/cf-cost/cpuprofile-summary.mjs — summarize a .cpuprofile: self time by function
 // and by source file, and inclusive time for the engine entry points.
 import { readFileSync } from "node:fs";
+import { relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const profile = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const top = Number(process.argv[3] ?? 40);
@@ -35,7 +37,11 @@ for (const [id, us] of selfUs) {
   const cf = n.callFrame;
   const fn = `${cf.functionName || "(anon)"} ${cf.url.split("/").pop()}:${cf.lineNumber + 1}`;
   byFn.set(fn, (byFn.get(fn) ?? 0) + us);
-  const file = cf.url ? cf.url.replace(/^file:\/\/\/[A-Za-z]:\/localProjects\/decko-ts-cf-cpu\//, "") : `(${cf.functionName || "native"})`;
+  let file = cf.url || `(${cf.functionName || 'native'})`;
+  if (cf.url?.startsWith('file:')) {
+    try { file = relative(process.cwd(), fileURLToPath(cf.url)).split(sep).join('/'); }
+    catch { /* Non-file source labels retain the profiler's original text. */ }
+  }
   byFile.set(file, (byFile.get(file) ?? 0) + us);
 }
 

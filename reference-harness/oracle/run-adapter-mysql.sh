@@ -13,8 +13,8 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 if command -v cygpath >/dev/null 2>&1; then HERE="$(cygpath -m "$HERE")"; fi
-MYSQL_HOME="${MYSQL_HOME:-C:/localProjects/.mysql-test-cache/8.4.11/mysql-8.4.11-winx64}"
-MYSQL_GEM_HOME="${MYSQL_GEM_HOME:-C:/localProjects/.mysql-test-cache/oracle-gems}"
+MYSQL_HOME="${MYSQL_HOME:?set MYSQL_HOME to the MySQL 8.4 distribution}"
+MYSQL_GEM_HOME="${MYSQL_GEM_HOME:?set MYSQL_GEM_HOME to the mysql2 0.5.7 gem home}"
 # Ruby 3.3 holds card 1.110.0; its bin/ holds the ruby DLL that extensions import.
 export PATH="C:/Ruby33-x64/bin:$MYSQL_HOME/bin:$MYSQL_HOME/lib:$PATH"
 export MYSQL_HOME

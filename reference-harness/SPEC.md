@@ -447,7 +447,7 @@ Two kinds of rule:
    (item 24), which raise errors that are not security-related — and changes
    their grade; see NORMALIZATION-EVIDENCE.md.
 
-   **Release-lead decision, 2026-10-15** (recorded verbatim, `recovery/release/FAKED-PARITY-AUDIT.md` item 2; the widening of a normalisation rule is the lead's to make, SUBAGENT-GOAL.md):
+   **Release-lead decision, 2026-10-15** (recorded verbatim in the private release audit, item 2, not shipped; the widening of a normalisation rule is the lead's to make, SUBAGENT-GOAL.md):
 
    > A backtrace is the call stack of whichever engine raised; its frames name that engine's own files and cannot be produced by a second implementation without fabrication. The comparison therefore masks the backtrace frame list on both sides and compares everything else in the error page byte for byte: the error class, the message, and the surrounding page. Fabricating frames to match is forbidden (SUBAGENT-GOAL.md).
 7. **N7 (canonical form over capture-host content).** In rendered HTML,

@@ -8,7 +8,7 @@
 # (its bin/ holds libcrypto, libssl and jemalloc; its lib/ holds libmysql.dll).
 require "fiddle"
 
-home = ENV.fetch("MYSQL_HOME") { "C:/localProjects/.mysql-test-cache/8.4.11/mysql-8.4.11-winx64" }
+home = ENV.fetch("MYSQL_HOME")
 %w[bin/libcrypto-3-x64.dll bin/libssl-3-x64.dll bin/jemalloc.dll lib/libmysql.dll].each do |dll|
   Fiddle.dlopen("#{home}/#{dll}")
 end

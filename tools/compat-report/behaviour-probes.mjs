@@ -349,7 +349,7 @@ export function gradeMod(repo, modId, grades, specific = new Map(), probes = nul
 
 function gemDirFromEnv() {
   const gemHome = process.env.GEM_HOME;
-  if (!gemHome) throw new Error("set GEM_HOME to the Ruby gem home (e.g. C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0)");
+  if (!gemHome) throw new Error("set GEM_HOME to the reference Ruby installation's gem home");
   return gemHome.endsWith("gems") ? join(gemHome, "..") : gemHome;
 }
 

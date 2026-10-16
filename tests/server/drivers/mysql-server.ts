@@ -4,7 +4,7 @@
 //
 // The binaries are fetched and checksum-verified by tools/mysql/fetch-mysql.mjs
 // into a cache directory (default: the sibling of the repository checkout,
-// C:/localProjects/.mysql-test-cache; override with DECKO_MYSQL_CACHE). Each
+// .mysql-test-cache; override with DECKO_MYSQL_CACHE). Each
 // test server gets its own data directory under the OS temp directory, on the
 // loopback interface only, and is shut down and deleted when the suite ends.
 //

@@ -7,7 +7,7 @@
 // The archive is fetched from cdn.mysql.com (Oracle's own CDN) and its MD5 is
 // compared with the checksum Oracle publishes beside it before anything is
 // unpacked. The cache directory defaults to the sibling of the repository
-// checkout, C:/localProjects/.mysql-test-cache, and is overridden with
+// checkout, named .mysql-test-cache, and is overridden with
 // --cache or DECKO_MYSQL_CACHE; it is outside the repository and never inside
 // Downloads. The unpacked directory is left in place for later runs.
 import { spawn } from "node:child_process";
