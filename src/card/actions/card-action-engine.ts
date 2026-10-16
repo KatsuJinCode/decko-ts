@@ -59,6 +59,7 @@ import {
 import { actionTypeCode } from "../history/action.js";
 import { sqlDateTime } from "../history/act.js";
 import { DeckoName } from "../name.js";
+import { NoMethodError, rubyDefaultInspect } from "../render/format.js";
 import {
   CodenameNotFoundError,
   NameNotFoundError,
@@ -4054,6 +4055,24 @@ export class CardActionEngine {
     // holder's own delete action carries the rename too.
     const accountId = await this.fetch.codenames.id("account");
     const deletesAccount = accountId !== undefined && row.right_id === accountId && row.left_id !== null;
+    if (deletesAccount && row.left_id !== null) {
+      // right/account/events.rb:45-47 calls accounted.close_account. The
+      // method belongs to Abstract::AccountHolder (User/Signup and the two
+      // system self sets); an arbitrary Basic card has no such method.
+      // Refuse before trash/anonymization, preserving Ruby's atomic failure.
+      const holder = await this.fetchRowById(row.left_id);
+      const userType = await this.fetch.codenames.id("user");
+      const signupType = await this.fetch.codenames.id("signup");
+      const holderCanClose = holder !== undefined && (
+        (userType !== undefined && holder.type_id === userType) ||
+        (signupType !== undefined && holder.type_id === signupType) ||
+        holder.codename === "decko_bot" || holder.codename === "anonymous"
+      );
+      if (!holderCanClose) {
+        const receiver = holder === undefined ? "nil" : rubyDefaultInspect("Card", holder.id);
+        throw new NoMethodError(`undefined method \`close_account' for ${receiver}`);
+      }
+    }
     const holderAccount = accountId === undefined || row.left_id !== null
       ? undefined
       : (await this.childRows(row.id)).find((c) => c.right_id === accountId && c.left_id === row.id);

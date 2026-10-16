@@ -13,6 +13,25 @@ async function snapshot(s:Awaited<ReturnType<typeof deck>>) {
 }
 
 describe("generated account salt history",()=>{
+  it('refuses closing an account on a card without AccountHolder behavior and writes nothing',async()=>{
+    const s=await deck();try{
+      const engine=actionEngine(s,undefined,{canWrite:()=>true});
+      const account=await engine.createCard({name:'Default Field Holder+*account',subcards:{'+*email':{content:'holder@example.test'}}});
+      const before=await snapshot(s);
+      await expect(engine.deleteCard({cardId:account.cardId})).rejects.toMatchObject({name:'NoMethodError'});
+      expect(await snapshot(s)).toEqual(before);
+    }finally{s.close()}
+  });
+  it('still closes an account on a User holder',async()=>{
+    const s=await deck();try{
+      await seedCard(s,{id:520,name:'User',codename:'user',typeId:3});
+      await s.driver.query('UPDATE cards SET type_id=? WHERE id=?',[520,510]);
+      const engine=actionEngine(s,undefined,{canWrite:()=>true});
+      const account=await engine.createCard({name:'Default Field Holder+*account',subcards:{'+*email':{content:'holder@example.test'}}});
+      expect(await engine.deleteCard({cardId:account.cardId})).not.toBeNull();
+      expect((await s.selectOne<{name:string}>('SELECT name FROM cards WHERE id=?',[510]))?.name).toMatch(/^ANON-[0-9a-f]{12}$/);
+    }finally{s.close()}
+  });
   it("stores generated defaults without allocating a salt action or an action sequence gap",async()=>{
     const s=await deck();try{
       const engine=actionEngine(s,undefined,{canWrite:()=>true});
