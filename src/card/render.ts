@@ -2031,7 +2031,7 @@ export class RenderEngine implements RenderEngineLike {
     // and the exact-term card, so they seat here, on the one view whose root
     // renders it. No-op for every other root (the view-lane corpus ops never
     // ask for it — the view was unported before this seam existed).
-    if (view === "search_box_complete") {
+    if (view === "search_box_complete" || view === "complete") {
       await this.prepareSearchBoxComplete(rootCard);
     }
     if (view === "image_complete") await this.prepareImageComplete(rootCard);

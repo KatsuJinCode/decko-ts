@@ -93,3 +93,22 @@ describe("real image picker completion",()=>{
     expect((await fetch(base+"/A_%26_B/image_complete.json?term=Alpha")).status).toBe(422);
   }));
 });
+
+describe("complete JSON label endpoint",()=>{
+  it("returns only completion labels, with CQL type/read filtering and no search/add entries",async()=>withHttp(async(base,s)=>{
+    for(let i=0;i<9;i++)await seedCard(s,{id:500+i,name:`Alpha A${i}`,typeId:100,readRuleId:9999});
+    const raw=await s.engine.renderRaw("*search","complete",{format:"json",search:{term:"Alpha"}});
+    expect(Array.isArray(raw)).toBe(true);
+    const response=await fetch(base+"/*search/complete.json?term=Alpha");expect(response.status).toBe(200);
+    const items=await response.json();expect(items).toHaveLength(1);
+    expect(items[0]).toContain("Alpha Report");
+    expect(items[0]).not.toContain("Alpha Logo");
+    expect(items[0]).not.toContain("autocomplete-item-search");
+    expect(items[0]).not.toContain("autocomplete-item-add");
+  }));
+  it("returns empty arrays for no matches and keeps the SELF/json format target boundaries",async()=>withHttp(async(base)=>{
+    const empty=await fetch(base+"/*search/complete.json?term=NoSuchMatch");expect(empty.status).toBe(200);expect(await empty.json()).toEqual([]);
+    expect((await fetch(base+"/A_%26_B/complete.json")).status).toBe(422);
+    expect((await fetch(base+"/*search/complete")).status).toBe(422);
+  }));
+});

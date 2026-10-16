@@ -45,9 +45,8 @@ import type { ViewResult } from "../../render/format.js";
 //   molecule/paging_urls machinery
 // - name_complete / name_match (0_search/views.rb:38-44) - request-term: they
 //   run ad-hoc CQL against params[:term] at view time
-// - complete (self/search.rb:74-78) - request-term (the sibling
-//   search_box_complete IS ported: the self/search setModule's json arm
-//   below, its request-term data riding the render.ts search seat)
+// - complete and search_box_complete share the prepared request-term
+//   seat; complete returns only the completion HTML labels.
 // - search_box (self/search.rb:37 + haml) - request-dependent form bytes
 //   (form_tag path, query params)
 // - method-only set modules (no manifest surface - the DeckoModManifest
@@ -769,6 +768,21 @@ const select2OptionView: ViewFn = ({ fmt }) => {
 // the presentation boundary, while renderRaw retains the typed answer.
 // ---------------------------------------------------------------------------
 
+/** self/search.rb:74-78 — raw HTML-label array, without search/add entries
+ * or the navbox's exact-name unshift. The shared seat's goto list is the
+ * default start-only, read-filtered completion query itself. */
+const completeView: ViewFn = ({ fmt }) => {
+  const seat = fmt.engine.searchBoxCompleteSeat?.(fmt.card);
+  if (seat === undefined) throw new Error("complete rendered without its prepare seat");
+  if (seat.failure !== undefined) throw new CqlBadQuery(seat.failure);
+  return seat.goto.map(card => {
+    const html = new RenderFormat(card, fmt.engine, {
+      parent: fmt, formatName: "html", maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors,
+    });
+    return str(html.renderView("goto_autocomplete_item", {}));
+  });
+};
+
 const searchBoxCompleteView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // set/self/search.rb is the SELF set (Card::Set::Self::Search) - the
@@ -1185,6 +1199,7 @@ const cardModSearch: DeckoModManifest = {
               viewFn: searchBoxCompleteView,
               config: { cache: "never", perms: "none" },
             },
+            { view: "complete", viewFn: completeView, config: { cache: "never", perms: "none" } },
           ],
         },
       },
