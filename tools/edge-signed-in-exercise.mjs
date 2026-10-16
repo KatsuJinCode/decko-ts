@@ -719,14 +719,34 @@ try {
     if (count === 0) {
       record("upload: the File create form offers a file input", false, { note: "no file input on /new/File" });
     } else {
+      const uploadName = cardName('file');
+      const bytes = Buffer.from('Owned harness file bytes.\n');
+      created.push(uploadName);
+      await page.locator('input[name="card[name]"]').first().fill(uploadName);
+      await fileInput.setInputFiles({ name: 'harness.txt', mimeType: 'text/plain', buffer: bytes });
+      await page.waitForFunction(() => {
+        const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+        return draft && /^\d+$/.test(draft.value);
+      }, undefined, { timeout: 60_000 });
       const before = ledger().length;
-      await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: Buffer.from("harness") }).catch((e) => record("upload", false, { error: String(e).slice(0, 120) }));
-      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
-      await page.waitForTimeout(3000);
-      const write = linesSince(before).find((l) => l.method !== "GET");
-      const body = await page.content();
-      record("a file can be uploaded through the File create form", write !== undefined && write.status < 400 && !/error|not configured|no storage/i.test(body),
-        { status: write?.status ?? null, serverSaid: write?.bodyHead?.slice(0, 160) });
+      const pending = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.origin === stack.origin && url.pathname === '/card/create' && response.request().method() === 'POST';
+      }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click();
+      const observed = await pending;
+      if (observed.error) throw observed.error;
+      await observed.response.finished();
+      const row = database().prepare('SELECT id,db_content,trash FROM cards WHERE name = ?').get(uploadName);
+      let downloadStatus = null;
+      let exactBytes = false;
+      if (row?.db_content && row.trash === 0) {
+        const download = await page.context().request.get(`${stack.origin}/files/${row.db_content}`);
+        downloadStatus = download.status();
+        exactBytes = (await download.body()).equals(bytes);
+      }
+      record('a file can be uploaded through the File create form', observed.response.status() < 400 && row?.trash === 0 && downloadStatus === 200 && exactBytes,
+        { status: observed.response.status(), cardId: row?.id ?? null, downloadStatus, exactBytes, requests: linesSince(before) });
     }
   });
 
