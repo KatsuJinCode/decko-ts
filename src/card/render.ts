@@ -25,6 +25,7 @@ import type {PermissionEditorOptions} from "./render/format.js";
 //   divergence is
 
 import { DeckoName } from "./name.js";
+import { jsonShowResult } from "./render/json-show.js";
 import { getNameEnvironment, setNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
@@ -66,6 +67,7 @@ import { PermissionDeniedError } from "./auth/token.js";
 import {
   RenderFormat,
   RUBY_MAX_DEPTH,
+  cardPath,
   str,
   UnsupportedViewError,
   type RenderCard,
@@ -1137,7 +1139,11 @@ export class RenderEngine implements RenderEngineLike {
    * is renderRaw(); the reference harness records through it.
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
-    return str(await this.renderRaw(cardName, view, params));
+    const raw = await this.renderRaw(cardName, view, params);
+    if (params.format === "json") {
+      return jsonShowResult(raw, params.requestUrl ?? `${this.envOriginConfig()}${cardPath(DeckoName.parse(cardName).urlKey)}`, params.compress);
+    }
+    return str(raw);
   }
 
   /**
@@ -11002,7 +11008,7 @@ export class RenderEngine implements RenderEngineLike {
     const term = this.searchKeyword(rootCard);
     let exact: RenderCard | undefined;
     let exactKnown = false;
-    if (term !== undefined) {
+    {
       // Card.fetch(term, new: {}): the real row when one exists, the
       // fabricated new card otherwise (fetch.rb new-card idiom). The fetch
       // is permission-blind. A VIRTUAL resolution (a virtual-family name:
@@ -11011,14 +11017,14 @@ export class RenderEngine implements RenderEngineLike {
       // its !virtual? guard (autocomplete.rb:39) and only the goto unshift
       // could care (it doesn't — known? false). The fabricated card seats
       // only when the name is neither row nor virtual.
-      const real = await this.fetcher.fetchByName(term, { skipVirtual: true });
+      const real = await this.fetcher.fetchByName(term ?? "", { skipVirtual: true });
       if (real !== undefined && real.id !== undefined) {
         exactKnown = true;
         exact = await this.enrichAndStore(real);
       } else if (
-        virtualSearchCqlFor(DeckoName.parse(term), this.codenameHolderKey) === undefined
+        virtualSearchCqlFor(DeckoName.parse(term ?? ""), this.codenameHolderKey) === undefined
       ) {
-        const fabricated = await this.fetcher.fetchByName(term, { new: {} });
+        const fabricated = await this.fetcher.fetchByName(term ?? "", { new: {} });
         if (fabricated !== undefined) exact = await this.enrichAndStore(fabricated);
       }
     }

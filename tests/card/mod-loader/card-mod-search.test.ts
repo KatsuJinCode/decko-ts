@@ -604,7 +604,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     const card = await s.engine.prepareItemForRender("Item One");
     expect(card).toBeDefined();
     const fmt = new RenderFormat(card!, s.engine, { formatName: "json" });
-    expect(fmt.renderView("select2_option")).toBe('{"id":"~401","text":"Item One"}');
+    expect(fmt.renderView("select2_option")).toEqual({ id: "~401", text: "Item One" });
   });
 
   it("WITH the mod: every ported set module from the gem tree is in the basket", () => {

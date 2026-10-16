@@ -536,7 +536,7 @@ export type ViewResult = string | number | null | ViewRawArray | ViewRawHash;
 
 /** A raw Ruby array answer (the csv :header/:row/:body views return arrays
  *  of cells; the render boundary carries them as JSON arrays). */
-export type ViewRawArray = ReadonlyArray<string | number | null | ViewRawArray>;
+export type ViewRawArray = ReadonlyArray<string | number | null | ViewRawArray | ViewRawHash>;
 
 /** A raw Ruby hash answer (data.rb's pod_hash/cast, json's molecule). */
 export type ViewRawHash = Readonly<Record<string, unknown>>;
@@ -3722,7 +3722,7 @@ export interface SearchBoxCompleteSeat {
    *  carries neither term nor query[keyword]. */
   readonly term: string | undefined;
   /** Card.fetch(term, new: {}) (:102) — the real row or the fabricated new
-   *  card; undefined only when term is. */
+   *  card (including the blank new-card candidate when term is absent). */
   readonly exact: RenderCard | undefined;
   /** exact.known? — a real row exists (the exact-name unshift's gate). */
   readonly exactKnown: boolean;

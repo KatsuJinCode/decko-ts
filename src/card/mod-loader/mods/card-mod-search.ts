@@ -713,12 +713,12 @@ const addAutocompleteItemView: ViewFn = ({ fmt }) =>
   autocompleteItem("add", materialIconTag("add"), fmt.card.name.s);
 
 /** autocomplete.rb:52-56 format :json view :select2_option, perms: :none:
- *  `{ id: "~#{card.id}", text: card.name }` - the json format serializes the
- *  returned Hash (Name < String, so text is the name bytes; nil id
+ *  `{ id: "~#{card.id}", text: card.name }` - a raw Hash; the JSON show
+ *  boundary serializes it (Name < String; nil id
  *  interpolates to "~" like Ruby's "\~#{nil}"). */
 const select2OptionView: ViewFn = ({ fmt }) => {
   const id = `~${fmt.card.id ?? ""}`;
-  return JSON.stringify({ id, text: fmt.card.name.s });
+  return { id, text: fmt.card.name.s };
 };
 
 // ---------------------------------------------------------------------------
@@ -744,7 +744,7 @@ const select2OptionView: ViewFn = ({ fmt }) => {
 // label} (data = {url: ...} merges under the three keys):
 //   - :search  (:104-106) ALWAYS - url = card_url(results_path(term))
 //              (:38-40 path mark: :search, query: {keyword: term}; to_param
-//              Rack-escapes the nested key, empty term -> no query string),
+//              Rack-escapes the nested key, including an empty keyword),
 //              value = term (nil -> JSON null), label = the *search card's
 //              html search_item (:47-49 autocomplete_item :search,
 //              icon_tag(:search), term).
@@ -763,12 +763,8 @@ const select2OptionView: ViewFn = ({ fmt }) => {
 // never fires), unshift exact.name when go_to_exact_match? (exact.known?),
 // uniq. The search seat (render.ts #prepareSearchBoxComplete) carries the
 // term, the exact card, and the read-filtered goto cards; this fn does the
-// Ruby assembly. Serialization: JsonFormat#show's string_with_page_details
-// (:37-44) - the Array result is not a String, so page_details (a no-op on
-// arrays) passes through and stringify runs JSON.pretty_generate (the
-// params[:compress] default) - folded into this fn exactly the way
-// select2_option folds its Hash serialization above (the view fns' byte
-// contract in this engine).
+// Ruby assembly. The view returns its Array; JsonFormat#show serializes at
+// the presentation boundary, while renderRaw retains the typed answer.
 // ---------------------------------------------------------------------------
 
 const searchBoxCompleteView: ViewFn = (ctx) => {
@@ -807,22 +803,19 @@ const searchBoxCompleteView: ViewFn = (ctx) => {
     return str(sub.renderView(view, {}));
   };
   const term = seat.term;
-  interface CompleteItem {
+  type CompleteItem = {
     url: string;
     action: string;
     value: string | null;
     label: string;
-  }
+  };
   const items: CompleteItem[] = [];
   // :search_item (:104-106) - always. results_path (:38-40): the query
   // pair rides to_param's Rack escape (follow-form-shapes formEscape;
-  // space -> "+"), and an absent/empty term leaves NO query string
-  // (Rails String#to_query answers nil for "" - the pair drops).
+  // space -> "+"). Ruby retains the nested keyword even when it is empty.
   items.push({
     url: fmt.cardUrl(
-      term === undefined || term === ""
-        ? "*search"
-        : `*search?query%5Bkeyword%5D=${formEscape(term)}`,
+      `*search?query%5Bkeyword%5D=${formEscape(term ?? "")}`,
     ),
     action: "search",
     value: term ?? null,
@@ -865,10 +858,8 @@ const searchBoxCompleteView: ViewFn = (ctx) => {
   };
   if (seat.exactKnown && seat.exact !== undefined) pushGoto(seat.exact);
   for (const card of seat.goto) pushGoto(card);
-  // JsonFormat#show's stringify (JSON.pretty_generate) - 2-space indent,
-  // no trailing newline, exactly JSON.stringify(, null, 2) for the ASCII
-  // deck names and escaped-label strings this surface carries.
-  return JSON.stringify(items, null, 2);
+  // Keep the raw view value; HTTP serialization belongs to JsonFormat#show.
+  return items;
 };
 
 // ---------------------------------------------------------------------------

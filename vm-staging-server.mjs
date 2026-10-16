@@ -2957,6 +2957,8 @@ async function renderCardViewJson(cardName, view, url, renderEngine = render) {
     const body = await renderEngine.render(cardName, view, {
       ...(search !== undefined ? { search } : {}),
       format: "json",
+      requestUrl: url.href,
+      ...(url.searchParams.has("compress") ? { compress: url.searchParams.get("compress") } : {}),
     });
     return { status: 200, headers, body };
   } catch (error) {

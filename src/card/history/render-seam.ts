@@ -102,6 +102,10 @@ export interface HistoryRenderParams {
    *  view through the json format's view table, Ruby's JsonFormat#show
    *  serialization). Undefined = html (every pre-existing caller). */
   format?: string;
+  /** HTTP original_url for JsonFormat#page_details; requestless uses card path. */
+  requestUrl?: string;
+  /** Ruby params[:compress] truthiness at the JSON presentation boundary. */
+  compress?: unknown;
 }
 
 /** One action's card as the views need it (name algebra + type + the

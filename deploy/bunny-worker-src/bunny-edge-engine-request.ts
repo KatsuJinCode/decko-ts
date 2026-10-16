@@ -484,6 +484,8 @@ async function dispatchEngineRequest(
       (await source.deck()).render.render(parsed.name, parsed.view, {
         ...(search !== undefined ? { search } : {}),
         format: "json",
+        requestUrl: url.href,
+        ...(url.searchParams.has("compress") ? { compress: url.searchParams.get("compress") } : {}),
       });
     let body: string;
     try {
