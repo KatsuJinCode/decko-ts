@@ -6,6 +6,7 @@
 //   node tools/edge-signed-in-exercise.mjs [--deck <source.sqlite3>]
 //        [--out docs/runs/edge-signed-in-exercise-<date>.md] [--keep]
 //        [--asset-host <additional known public asset hostname>]
+//        [--favicon-url <exact public favicon URL>]
 //
 // It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
 // engine.bundle.js, rebuilt from deploy/bunny-worker-src by
@@ -125,12 +126,18 @@ if (additionalAssetHost) {
   assetHosts.push(candidate.hostname);
 }
 provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
+const allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href] : [];
+for (const value of allowedFaviconUrls) {
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('favicon-url must be an exact HTTPS resource on a declared public asset host');
+}
+provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
 const stack = await startStack({ deckPath: localDeck, live: liveEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
 console.log(`local edge host: ${stack.origin}`);
 
 let browser;
-try { browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts }); }
+try { browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts, allowedFaviconUrls }); }
 catch (error) { await stack.close(); stack.cleanup(); throw error; }
 const page = browser.page;
 
@@ -187,9 +194,19 @@ async function openEdit(pathname) {
   const link = page.locator('a.edit-link[href$="/edit"]').first();
   const href = await link.getAttribute("href").catch(() => null);
   const before = ledger().length;
-  await link.dispatchEvent("click").catch(() => undefined);
-  await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
-  await page.waitForTimeout(500);
+  if (!href) throw new Error('card has no edit link');
+  const endpoint = new URL(href, stack.origin);
+  if (endpoint.origin !== stack.origin) throw new Error('edit link leaves owned origin');
+  const pending = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === endpoint.pathname;
+  }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+  await link.dispatchEvent('click');
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
+  if (observed.response.status() >= 400) throw new Error(`edit request answered ${observed.response.status()}`);
+  await page.waitForSelector('#edit_card, .modal', {timeout:20_000});
   return { href, modals: await page.locator(".modal").count(), lines: linesSince(before) };
 }
 
