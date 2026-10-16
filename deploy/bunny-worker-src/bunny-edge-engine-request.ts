@@ -170,10 +170,10 @@ export function liveRenderApplies(
   const flag =
     options.liveRenderFlag ?? (typeof process !== "undefined" ? process.env?.DECKO_LIVE_RENDER : undefined);
   if (flag === "0") return false;
-  // Search vars, paging and the slotter's main context are query inputs,
+  // Search vars, snippet editor binding and the slotter's main context are query inputs,
   // not history selectors. Preserve them through the same complete-answer
   // lifecycle, including actual CQL capability errors/fallbacks.
-  const noHistorySelectors = Object.keys(historyParams).every(key => key === "search");
+  const noHistorySelectors = Object.keys(historyParams).every(key => key === "search" || key === "editorParams");
   if (options?.viewer !== undefined) return noHistorySelectors;
   // Anonymous requested views use the same complete renderer and read
   // permission preparation as anonymous bare pages. Explicit layouts and
