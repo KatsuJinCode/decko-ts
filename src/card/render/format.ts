@@ -3974,6 +3974,11 @@ export interface RenderEngineLike {
    *  card hash for a card that does not exist yet); undefined when the
    *  request carries none. */
   readonly requestNewCard?: { typeId?: number };
+  /** The current request's TinyMCE snippet-editor params (tinymce_id,
+   *  tm_snippet_raw, tm_snippet_start; HistoryRenderParams#editorParams).
+   *  Read by the link and nest-image editor views to bind Apply to the
+   *  opening editor (reference_editor.rb:18-24); undefined = absent. */
+  readonly requestEditorParams?: Readonly<Record<string, string>>;
   /** The prepared :my_card view body (account_links.rb:56-58 my_card — the
    *  account_dropdown arm, the raw btn-group; the roles arm rides the
    *  session roles the port does not carry yet). Set alongside

@@ -154,7 +154,14 @@ const HISTORY_PARAM_KEYS = [
   "action_view",
   "hide_diff",
   "act_context",
+  "tinymce_id",
+  "tm_snippet_raw",
+  "tm_snippet_start",
 ] as const;
+
+/** The TinyMCE snippet editors' request params (reference_editor.rb:4-5 and
+ *  apply_tm_snippet_data): carried into HistoryRenderParams.editorParams. */
+const EDITOR_PARAM_KEYS = ["tinymce_id", "tm_snippet_raw", "tm_snippet_start"] as const;
 
 /**
  * Translate the WIRE query keys the engine's history seam actually reads.
@@ -184,6 +191,11 @@ export function historyRenderParamsFromWire(
   if (params["hide_diff"] !== undefined) out.hideDiff = params["hide_diff"];
   if (params["act_context"] !== undefined) out.actContext = params["act_context"];
   if (params["page"] !== undefined) out.page = params["page"];
+  const editor: Record<string, string> = {};
+  for (const key of EDITOR_PARAM_KEYS) {
+    if (params[key] !== undefined) editor[key] = params[key];
+  }
+  if (Object.keys(editor).length > 0) out.editorParams = editor;
   return out;
 }
 

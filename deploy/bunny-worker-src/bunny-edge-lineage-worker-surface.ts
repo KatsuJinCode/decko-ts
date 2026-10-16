@@ -55,7 +55,7 @@ function parsePath(
   const wireParams = (): Record<string, string> | undefined => {
     if (searchParams === undefined) return undefined;
     const params: Record<string, string> = {};
-    for (const key of ["act_id", "action_id", "page", "act_seq", "action_view", "hide_diff", "act_context"]) {
+    for (const key of ["act_id", "action_id", "page", "act_seq", "action_view", "hide_diff", "act_context", "tinymce_id", "tm_snippet_raw", "tm_snippet_start"]) {
       const value = searchParams.get(key);
       if (value !== null) params[key] = value;
     }

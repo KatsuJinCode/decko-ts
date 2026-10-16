@@ -833,6 +833,9 @@ export class RenderEngine implements RenderEngineLike {
    *  new_type_preset? (card-mod-edit new.rb:142-144). Set at every render()
    *  entry. RenderEngineLike#requestNewCard. */
   requestNewCard: NewCardOptions | undefined;
+  /** The current request's TinyMCE snippet-editor params (set at every
+   *  render() entry, like requestNewCard). RenderEngineLike#requestEditorParams. */
+  requestEditorParams: Readonly<Record<string, string>> | undefined;
 
   /** The render-time ACT-SEARCH seam bundle (src/card/history/updater-seam.ts):
    *  set by prepareUpdaterRender during a render whose view is one of
@@ -1326,6 +1329,7 @@ export class RenderEngine implements RenderEngineLike {
     this.searchBoxCompleteData = undefined;
     this.imageCompleteData = undefined;
     this.requestNewCard = params.newCard;
+    this.requestEditorParams = params.editorParams;
     this.renderSearch = params.search;
     this.renderSearchFocalKey = name.key;
     // The fill's PER-PASS consumption state resets here: a render() call is

@@ -71,6 +71,13 @@ export interface HistoryRenderParams {
   actContext?: string;
   page?: string;
 
+  /** The TinyMCE snippet editors' request params (Ruby Env.params for the
+   *  link, nest and image editor views: tinymce_id, tm_snippet_raw,
+   *  tm_snippet_start). reference_editor.rb:4-5 reads tinymce_id and
+   *  apply_tm_snippet_data (reference_editor.rb:18-24) binds the Apply button
+   *  to the editor that opened it. Undefined = the absent-params arm. */
+  editorParams?: Readonly<Record<string, string>>;
+
   /** The render's VIEW opts (Ruby render(view, opts) - the opts hash the
    *  voo builds from; the modal hidden-header arm
    *  reaches the wrap gates through it: render(card, :modal_rule,

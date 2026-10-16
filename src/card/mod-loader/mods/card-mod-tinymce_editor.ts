@@ -651,13 +651,16 @@ function linkEditorPartial(snippet: LinkParser): string {
  *  The trailing blank line before </div>\n</div> is the Haml source's own
  *  blank line between the partial call and .card-footer (Haml keeps it as
  *  a bare newline). */
-function linkEditorChrome(_ctx: ViewContext, editorMode: "overlay" | "modal"): string {
+function linkEditorChrome(_ctx: ViewContext, editorMode: "overlay" | "modal", tinymceId?: string): string {
   const modal = isModalEditorMode(editorMode);
   // link_editor.rb:28-30 - the absent-params arm (see linkEditorPartial)
   const snippet = LinkParser.defaultSnippet();
   const applyLabel = modal ? "Apply and Close" : "Apply";
   const cancelLabel = modal ? "Cancel" : "Close";
   const applyDismiss = modal ? ` data-bs-dismiss="modal"` : "";
+  // reference_editor.rb:18-24 apply_tm_snippet_data: data-tinymce-id binds Apply
+  // to the TinyMCE instance that opened the editor (the request's tinymce_id).
+  const tinymceAttr = tinymceId === undefined ? "" : ` data-tinymce-id="${h(tinymceId)}"`;
   return (
     `<div class='_nest-editor'>\n` +
     `<div class='card-header d-flex'>\n` +
@@ -680,7 +683,7 @@ function linkEditorChrome(_ctx: ViewContext, editorMode: "overlay" | "modal"): s
     `</div>\n` +
     `<hr class='mt-1 mb-1'>\n` +
     `<div class='form-group-inline d-flex justify-content-center py-3'>\n` +
-    `<button name="button" type="submit"${applyDismiss} class="_link-apply btn-sm me-3 btn btn-primary">${applyLabel}</button>\n` +
+    `<button name="button" type="submit"${tinymceAttr}${applyDismiss} class="_link-apply btn-sm me-3 btn btn-primary">${applyLabel}</button>\n` +
     `<a class='border-light text-dark btn btn-sm btn-secondary' data-bs-dismiss='${editorMode}' href='#'>\n` +
     `${cancelLabel}\n` +
     `</a>\n` +
@@ -702,7 +705,7 @@ const linkEditorView: ViewFn = (ctx) =>
     ctx,
     "link_editor",
     "_overlay d0-card-overlay card nodblclick",
-    linkEditorChrome(ctx, "overlay"),
+    linkEditorChrome(ctx, "overlay", ctx.fmt.engine.requestEditorParams?.tinymce_id),
   );
 
 /** link_editor.rb:9-12 view :modal_link_editor, cache: :never,
@@ -722,7 +725,7 @@ const modalLinkEditorView: ViewFn = (ctx) =>
     ctx,
     "modal_link_editor",
     "nodblclick",
-    `<modal>${linkEditorChrome(ctx, "modal")}</modal>`,
+    `<modal>${linkEditorChrome(ctx, "modal", ctx.fmt.engine.requestEditorParams?.tinymce_id)}</modal>`,
   );
 
 // ---------------------------------------------------------------------------
@@ -1602,6 +1605,7 @@ export function nestImageChrome(
   ctx: ChromeContext,
   editorMode: "overlay" | "modal",
   autoname: string,
+  tinymceId?: string,
 ): string {
   const snippet = NestParser.newImage(autoname);
   // adapt_reference_editor_for_images (nest_image.rb:33-37):
@@ -1621,7 +1625,7 @@ export function nestImageChrome(
       "content",
       { tabType: "tabs", panelClass: "nest-options", navClasses: "nav nav-fill" },
     ) + "\n\n";
-  const applyOpts = tmApplyOpts({}, snippet);
+  const applyOpts = tmApplyOpts({ tinymce_id: tinymceId }, snippet);
   const body = referenceEditorChrome({
     title: "Image",
     editorMode,
@@ -1717,7 +1721,7 @@ const nestImageView: ViewFn = (ctx) =>
     ctx,
     "nest_image",
     "_overlay d0-card-overlay card nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01", "nest_image"), "overlay", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "nest_image"), "overlay", "image01", ctx.fmt.engine.requestEditorParams?.tinymce_id),
   );
 
 /** view :modal_nest_image, unknown: true, cache: :never, wrap: { slot:
@@ -1727,7 +1731,7 @@ const modalNestImageView: ViewFn = (ctx) =>
     ctx,
     "modal_nest_image",
     "nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01", "modal_nest_image"), "modal", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "modal_nest_image"), "modal", "image01", ctx.fmt.engine.requestEditorParams?.tinymce_id),
   );
 
 /** view :nest_content, perms: :create, cache: :never, unknown: true,
