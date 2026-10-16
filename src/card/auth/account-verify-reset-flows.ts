@@ -665,7 +665,7 @@ export async function sendAccountVerificationToken(
     accountName: account.name,
     holderId: account.holder.id,
     trigger: "verify_and_activate",
-    extraPayload: {},
+    extraPayload: { anonymous: true },
   });
   const mail = renderAccountEmail(ctx, VERIFY_EMAIL_TEMPLATE, { url });
   await ctx.transport.sendMail({ ...mail, to: account.email });
@@ -999,6 +999,13 @@ export async function confirmAccountVerification(
   // verify_and_activate_success (events.rb:87-92): Auth.signin;
   // Auth.as_bot { activate_account }; success << "".
   const bot = await actorBot(ctx.driver);
+  // Authenticator (auth/token.rb:38-40) precedes root prepare; the event's
+  // Auth.signin then changes current_id, while Auth.as_bot changes only the
+  // permission proxy (auth/proxy.rb:7-24). Generated children stamp the new
+  // holder; the already-prepared account root retains its initial stamper.
+  const anonymous = claims.anonymous !== undefined && claims.anonymous !== null && claims.anonymous !== false;
+  const rootStamperId = anonymous ? await ctx.fetcher.codenames.id("anonymous") : account.holder.id;
+  if (rootStamperId === undefined) throw new Error("activation requires the deck's Anonymous account");
   const session = await ctx.sessions.createSession(account.holder.id);
   let activated = false;
   if (account.childIds.status !== undefined) {
@@ -1008,7 +1015,7 @@ export async function confirmAccountVerification(
     const changesHolderType = signupTypeId !== undefined && holder?.typeId === signupTypeId;
     if (changesHolderType && userTypeId === undefined) throw new Error("activation requires the default User cardtype");
     const engine = new CardActionEngine(ctx.fetcher, {
-      actor: bot, actActorId: account.holder.id,
+      actor: bot, actActorId: account.holder.id, currentActorId: account.holder.id, rootStamperId,
       now: ctx.now ?? cardWallClockNow, ipAddress: ctx.ipAddress,
     });
     // events.rb:19-24 generates both subcards AFTER the activatable guard:

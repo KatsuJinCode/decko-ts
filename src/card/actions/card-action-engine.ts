@@ -287,6 +287,11 @@ export interface CardActionEngineOptions {
   actor: Actor | null;
   /** The request's act actor before an authenticated event enters bot authority. */
   actActorId?: number;
+  /** Auth.current_id differs from the permission proxy (Auth.as_id) during
+   *  account activation. Card stamps follow current_id, not bot authority. */
+  currentActorId?: number;
+  /** Root set_stamper ran before the event changed Auth.current_id. */
+  rootStamperId?: number;
   /** Clock for every timestamp (defaults to () => new Date()). */
   now?: () => Date;
   /** card_acts.ip_address capture (director/class_methods.rb:27-29). */
@@ -465,6 +470,8 @@ export class CardActionEngine {
   readonly fetch: FetchEngine;
   readonly actor: Actor | null;
   private readonly actActorId: number | undefined;
+  private readonly currentActorId: number | undefined;
+  private readonly rootStamperId: number | undefined;
   private readonly clock: () => Date;
   private readonly ipAddress: string | null;
   private readonly delayedJobs: DelayedJobsConfig | undefined;
@@ -521,6 +528,8 @@ export class CardActionEngine {
     this.fetch = fetchEngine;
     this.actor = options.actor;
     this.actActorId = options.actActorId;
+    this.currentActorId = options.currentActorId;
+    this.rootStamperId = options.rootStamperId;
     this.clock = options.now ?? (() => new Date());
     this.ipAddress = options.ipAddress ?? null;
     this.delayedJobs = options.delayedJobs;
@@ -993,7 +1002,7 @@ export class CardActionEngine {
           if (!abortedBlankPassword) {
             await this.fetch.driver.query(
               "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
-              [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
+              [sqlDateTime(this.clock()), this.currentActorId ?? (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
             );
           }
         }
@@ -3190,7 +3199,7 @@ export class CardActionEngine {
       if (input.subcards !== undefined) {
         await this.fetch.driver.query(
           "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
-          [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
+          [sqlDateTime(this.clock()), ((opts.isActCard ?? true) ? this.rootStamperId : undefined) ?? this.currentActorId ?? (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
         );
       }
       return null; // no-op save: no action rows persisted
@@ -3585,7 +3594,7 @@ export class CardActionEngine {
     for (const cardId of cardIds) for (const a of await ancestors(cardId, 0)) ids.add(a);
     if (ids.size === 0) return;
     const list = [...ids];
-    const actingId = (await this.actingIdForWrite()) ?? this.actor?.id ?? null;
+    const actingId = this.currentActorId ?? (await this.actingIdForWrite()) ?? this.actor?.id ?? null;
     await driver.query(
       `UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (${list.map(() => "?").join(", ")})`,
       [actingId, sqlDateTime(this.clock()), ...list],
@@ -5103,8 +5112,9 @@ export class CardActionEngine {
     }
     return new ActWriter({
       driver: this.fetch.driver,
-      actorId,
+      actorId: this.currentActorId ?? actorId,
       actActorId: this.actActorId,
+      rootStamperId: this.rootStamperId,
       ipAddress: this.ipAddress,
       now: this.clock,
     });

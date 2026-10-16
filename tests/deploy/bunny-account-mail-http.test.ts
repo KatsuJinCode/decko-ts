@@ -10,6 +10,7 @@ import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import { runAuthMigrations } from "../../src/card/auth/index.js";
 import { ensureFreshnessStamp } from "../../src/server/freshness-stamp.js";
 import { CaptureTransport } from "../../src/card/notify/transport.js";
+import { decodeAuthToken } from "../../src/card/auth/token.js";
 import { handleBunnyEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-handler.js";
 import type { WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
@@ -108,6 +109,8 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const sent = outbox.drain().filter(m => m.to === "edge.signup@example.test" && /verification link/.test(m.subject));
   expect(sent).toHaveLength(1);
   const link = sent[0].textBody.match(/https?:\/\/[^\s<>]+/)![0];
+  const claims = await decodeAuthToken(services.accountMail.token, new URL(link).searchParams.get("token")!);
+  expect(claims).toMatchObject({ anonymous: true });
   const configured = services.accountMail;
   delete services.accountMail;
   const pending = await snapshot();
@@ -127,6 +130,10 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const userId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='user'", [])).rows[0].id;
   expect(holder.type_id).toBe(userId);
   const accountId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE left_id=? AND right_id=(SELECT id FROM cards WHERE codename='account')", [holder.id])).rows[0].id;
+  const anonymousId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='anonymous'", [])).rows[0].id;
+  const stamps = (await driver.query<{ id: number; updater_id: number }>("SELECT id,updater_id FROM cards WHERE id IN (?,?) OR (left_id=? AND right_id=(SELECT id FROM cards WHERE codename='status')) ORDER BY id", [holder.id, accountId, accountId])).rows;
+  expect(stamps).toEqual(expect.arrayContaining([{ id: holder.id, updater_id: holder.id }, { id: accountId, updater_id: anonymousId }]));
+  expect(stamps.filter(row => row.id !== accountId).every(row => row.updater_id === holder.id)).toBe(true);
   const act = (await driver.query<{ id: number; card_id: number; actor_id: number; ip_address: string }>("SELECT id,card_id,actor_id,ip_address FROM card_acts ORDER BY id DESC LIMIT 1", [])).rows[0];
   expect(act).toMatchObject({ card_id: accountId, actor_id: holder.id, ip_address: "127.0.0.1" });
   const changed = (await driver.query<{ card_id: number }>("SELECT card_id FROM card_actions WHERE card_act_id=? ORDER BY id", [act.id])).rows;

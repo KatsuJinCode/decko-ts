@@ -430,6 +430,18 @@ describe("trashCard (delete)", () => {
 });
 
 describe("actor passthrough", () => {
+  it("keeps the root's prepare stamper when signin changes the generated cards' current actor", async () => {
+    const f = freshFixture();
+    const rootId = await createSimple(f.storage, f.writer, "Account Root", "before");
+    const childId = await createSimple(f.storage, f.writer, "Generated Status", "before");
+    const writer = new ActWriter({ driver: f.storage.driver, actorId: ACTOR_B, rootStamperId: ACTOR_A });
+    await writer.updateCard({ cardId: rootId, before: stateOf(f.storage, rootId), after: { ...stateOf(f.storage, rootId), db_content: "after" }, isActCard: true });
+    await writer.updateCard({ cardId: childId, before: stateOf(f.storage, childId), after: { ...stateOf(f.storage, childId), db_content: "after" }, isActCard: false });
+    expect(cardRow(f.storage, rootId)?.updater_id).toBe(ACTOR_A);
+    expect(cardRow(f.storage, childId)?.updater_id).toBe(ACTOR_B);
+    expect(acts(f.storage).at(-1)).toMatchObject({ card_id: rootId, actor_id: ACTOR_B });
+  });
+
   it("keeps creator_id, moves updater_id, and gives each save its own act", async () => {
     const f = freshFixture();
     const cardId = await createSimple(f.storage, f.writer, "Shared", "v1");

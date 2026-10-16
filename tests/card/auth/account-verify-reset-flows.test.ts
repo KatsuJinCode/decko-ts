@@ -530,11 +530,14 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
     // `success << {id: name, view: :edit}`, events.rb:100-104).
     expect(confirmation.redirectTo).toEqual({ name: "", view: undefined });
     // activate_account: the +*status child content is
-    // now "active" (written under the bot actor).
-    const status = f.storage.selectOne<{ db_content: string }>(
-      "SELECT db_content FROM cards WHERE id = 9115",
+    // Bot permission does not replace Auth.current_id. The status was
+    // generated after signin; the account root was prepared as Anonymous.
+    const status = f.storage.selectOne<{ db_content: string; updater_id: number }>(
+      "SELECT db_content, updater_id FROM cards WHERE id = 9115",
     );
     expect(status?.db_content).toBe("active");
+    expect(status?.updater_id).toBe(JILL.id);
+    expect(f.storage.selectOne<{ updater_id: number }>("SELECT updater_id FROM cards WHERE id = 9111")?.updater_id).toBe(IDS.anonymous);
     // the session binds the holder (the EVENT signed in, not the
     // authenticator — the link's anonymous flag binds Anonymous upstream).
     const actor = await f.ctx.sessions.lookupSession(confirmation.session.token);

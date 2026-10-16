@@ -47,15 +47,18 @@ export type { CardFieldState };
 export interface ActWriterOptions {
   /** The storage seam. */
   driver: SQLDatabaseDriver;
-  /** Account responsible for this act's history rows. Ruby fills the act's
+  /** Current account used for card stamps. Ruby fills the act's
    *  actor_id from Auth.current_id at act save (act.rb:131-134 assign_actor)
    *  and the card's creator_id/updater_id from the same value
    *  (card-mod-account set/all/account.rb:20-23, event :set_stamper). This
    *  is the actor passthrough. */
   actorId: number;
-  /** Act attribution captured before a scoped Auth.as_bot transition.
-   *  Card stamps keep actorId; the act retains the signed-in initiator. */
+  /** Separate act attribution when an event changes the current account
+   *  between root prepare and act save. Defaults to actorId. */
   actActorId?: number;
+  /** Root card's prepare-stage stamper when an event later signs in a
+   *  different current user before generating child cards. */
+  rootStamperId?: number;
   /** Env.ip stand-in for card_acts.ip_address
    *  (director/class_methods.rb:27-29). */
   ipAddress?: string | null;
@@ -244,6 +247,7 @@ export class ActWriter {
   private readonly driver: SQLDatabaseDriver;
   private readonly actorId: number;
   private readonly actActorId: number;
+  private readonly rootStamperId: number | undefined;
   private readonly ipAddress: string | null;
   private readonly clock: () => Date;
   private actCardId: number | undefined;
@@ -260,6 +264,7 @@ export class ActWriter {
     this.driver = options.driver;
     this.actorId = options.actorId;
     this.actActorId = options.actActorId ?? options.actorId;
+    this.rootStamperId = options.rootStamperId;
     this.ipAddress = options.ipAddress ?? null;
     this.clock = options.now ?? (() => new Date());
     this.actCardId = options.actCardId;
@@ -300,8 +305,8 @@ export class ActWriter {
         input.right_id ?? null,
         ts,
         ts,
-        this.actorId, // creator_id = updater_id = Auth.current_id (set_stamper)
-        this.actorId,
+        this.cardStamperId(undefined, input.isActCard), // set_stamper: Auth.current_id
+        this.cardStamperId(undefined, input.isActCard),
         input.readRule?.readRuleClass ?? null, // set_read_rule store event
         input.readRule?.readRuleId ?? null, // (permissions.rb:1-5)
         trash,
@@ -846,7 +851,7 @@ export class ActWriter {
       params.push(input.readRule.readRuleClass, input.readRule.readRuleId);
     }
     sets.push("updated_at = ?", "updater_id = ?");
-    params.push(ts, this.actorId);
+    params.push(ts, this.cardStamperId(input.cardId, input.isActCard));
     stmts.push({
       sql: `UPDATE cards SET ${sets.join(", ")} WHERE id = ?`,
       params: [...params, input.cardId],
@@ -906,6 +911,11 @@ export class ActWriter {
     if (this.actCardId !== undefined) return this.actCardId === cardId;
     this.actCardId = cardId;
     return true;
+  }
+
+  private cardStamperId(cardId: number | undefined, explicit: boolean | undefined): number {
+    const root = explicit ?? (this.actCardId === undefined || cardId === this.actCardId);
+    return root ? this.rootStamperId ?? this.actorId : this.actorId;
   }
 
   private requireActId(readBack?: number): number {
