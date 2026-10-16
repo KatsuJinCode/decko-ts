@@ -268,6 +268,13 @@ export class StoreRowEvaluator {
 
   rowsSeated = 0;
 
+  retainedPayload(): unknown { return { ...this }; }
+
+  clear(): void {
+    for (const index of [this.rowsById, this.idByKeyBinary, this.idByKeyNoCase, this.idsByLeft, this.idByPair]) index.clear();
+    this.rowsSeated = 0;
+  }
+
   /** Seat one fetched row. Returns false when its id was already seated, which
    *  mirrors `RequestStore.addRow`. */
   seat(raw: CardRow): boolean {

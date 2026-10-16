@@ -197,9 +197,22 @@ export class RequestStore {
    *  with the columns it projects; the store only ever ADDS rows for unknown
    *  ids (an identity row upgraded to full keeps every identity value), so
    *  no later row can match a certified statement: its answer is final for
-   *  the life of the store (one request). Callers get fresh row objects
-   *  every time, exactly as from a new query. */
+   *  the active request. Completed idle retention may discard witnesses but
+   *  keeps these complete answers only under the caller's checked DB stamp.
+   *  Callers get fresh row objects every time, exactly as from a new query. */
   private readonly answerMemo = new Map<string, CardRow[]>();
+
+  retainedPayload(): unknown { return { ...this, rows: this.rows.retainedPayload() }; }
+
+  /** Completed, version-checked idle stores need only their already certified
+   * answers. Drop ALL evidence for answering any other query: unseen shapes
+   * must fetch again, never infer an empty answer from removed row indexes. */
+  releaseWitnesses(): void {
+    this.rows.clear();
+    for (const set of [this.keyKnown, this.idKnown, this.leftComplete, this.expanded,
+      this.contentExpanded, this.present, this.full]) set.clear();
+    this.rowsFetched = 0;
+  }
 
   close(): void {
     this.answerMemo.clear();

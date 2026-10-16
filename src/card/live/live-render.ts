@@ -52,6 +52,7 @@ import { renderPageBytes } from "../render/page.js";
 import { BOOT_VERSION_STATEMENT, resetBootCache } from "../render/boot-cache.js";
 import { DeckoName } from "../name.js";
 import { LiveRenderAborted, LiveStoreDriver, type LiveStoreStats } from "./live-store-driver.js";
+import { RetainedPages, retainedPagesDiagnostics } from "./retained-pages.js";
 
 export { LiveRenderAborted };
 
@@ -177,9 +178,13 @@ interface KeptPage {
 }
 
 /** Kept pages per serving driver (one deck each), least recently used first. */
-let keptPages = new WeakMap<SQLDatabaseDriver, Map<string, KeptPage>>();
-/** Pages kept per deck; the least recently rendered is dropped beyond it. */
-const KEPT_PAGES_PER_DECK = 256;
+let keptPages = new WeakMap<SQLDatabaseDriver, RetainedPages<KeptPage>>();
+
+/** Numeric diagnostics only; this accessor is unused in the serving bundle. */
+export function keptLivePageDiagnostics(base: SQLDatabaseDriver): { entries: number; estimatedBytes: number } {
+  const pages = keptPages.get(base);
+  return pages ? retainedPagesDiagnostics(pages) : { entries: 0, estimatedBytes: 0 };
+}
 
 function keptKey(page: string, opts: LiveRenderOptions): string {
   return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}\u0000${opts.bareView === true}\u0000${JSON.stringify(opts.bareMainOpts ?? {})}`;
@@ -189,26 +194,22 @@ function keptKey(page: string, opts: LiveRenderOptions): string {
  *  while it renders, so a concurrent request for the same page renders as a
  *  first request instead of sharing a store mid-render. */
 function takeKept(base: SQLDatabaseDriver, key: string): KeptPage | undefined {
-  const pages = keptPages.get(base);
-  const kept = pages?.get(key);
-  if (kept !== undefined) pages!.delete(key);
-  return kept;
+  return keptPages.get(base)?.take(key);
 }
 
 function putKept(base: SQLDatabaseDriver, key: string, kept: KeptPage): void {
   let pages = keptPages.get(base);
   if (pages === undefined) {
-    pages = new Map();
+    pages = new RetainedPages<KeptPage>(
+      (entry) => entry.live.close(),
+      (entry) => {
+        entry.live.compactForRetention();
+        return [entry.live.retainedPayload(), entry.seeds, entry.eagerRefs, entry.deniedRootKey];
+      },
+    );
     keptPages.set(base, pages);
   }
-  pages.get(key)?.live.close();
-  pages.delete(key);
-  pages.set(key, kept);
-  while (pages.size > KEPT_PAGES_PER_DECK) {
-    const oldest = pages.keys().next().value as string;
-    pages.get(oldest)?.live.close();
-    pages.delete(oldest);
-  }
+  pages.put(key, kept);
 }
 
 /** Drop every kept page (tests; an operator-side reset). */
@@ -218,7 +219,6 @@ export function clearKeptLivePages(base?: SQLDatabaseDriver): void {
     return;
   }
   const pages = keptPages.get(base);
-  pages?.forEach((k) => k.live.close());
   pages?.clear();
 }
 

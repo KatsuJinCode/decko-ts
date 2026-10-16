@@ -759,6 +759,27 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     for (const k of Object.keys(this.stats) as (keyof LiveStoreStats)[]) this.stats[k] = 0;
   }
 
+  /** Called only after a completed page returns exclusive ownership for
+   * retention. Complete query answers remain valid under its checked stamp;
+   * row witnesses and discovery state are not needed by a repeat answer. */
+  compactForRetention(): void {
+    if (this.pendingCount || this.tick.size || this.tickFlush) throw new Error("cannot compact pending live reads");
+    this.store.releaseWitnesses();
+    for (const set of [this.demanded, this.leftKeysPending, this.ruleExpanded, this.ruleSetsAsked, this.globalRulesSent]) set.clear();
+    this.firstTripDone = false;
+    this.stackTrace = undefined;
+    this.leadResult = undefined;
+    this.opts.signal = undefined;
+  }
+
+  /** Every owned field is inspected, including future additions. The shared
+   * base driver is external ownership; the completed request signal must not
+   * retain its request. Unsupported/opaque payloads simply cannot be kept. */
+  retainedPayload(): unknown {
+    return { ...this, base: undefined, store: this.store.retainedPayload(),
+      spec: { ...this.spec }, tick: { ...this.tick } };
+  }
+
   close(): void {
     if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_ROWS === "1") {
       process.stderr.write(`ROWS ${JSON.stringify({ full: [...this.store.full], present: [...this.store.present] })}\n`);
