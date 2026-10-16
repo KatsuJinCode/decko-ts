@@ -285,6 +285,27 @@ it("renders typed attachment/structure editors and submits the legacy query-name
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("preserves URL RichText presets through both actual new-form paths and real create submissions", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  for (const kind of ["typed", "legacy"]) {
+    const name = `Owned URL Rich Preset ${kind}`, expected = `<p>Persisted rich preset ${kind}.</p>`;
+    const query = new URLSearchParams({ "card[name]": name, "card[content]": expected, ...(kind === "legacy" ? { type: "RichText" } : {}) });
+    const page = await fetch(base + (kind === "typed" ? "/new/RichText?" : "/card/new?") + query, { headers: { cookie } });
+    expect(page.status).toBe(200); const body = await page.text();
+    const fields = formFields(body, "/card/create");
+    const textarea = [...body.matchAll(/<textarea\b([^>]*)>([\s\S]*?)<\/textarea>/g)].find(x => x[1].includes('name="card[content]"'));
+    expect(textarea).toBeDefined();
+    fields["card[content]"] = textarea![2].replace(/^\r?\n/, "").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+    expect(fields["card[content]"]).toBe(expected); expect(fields["card[name]"]).toBe(name);
+    const saved = await post("/card/create", fields, cookie); expect(saved.status).toBe(200);
+    const row = (await driver.query<{ db_content: string; trash: number }>("SELECT db_content,trash FROM cards WHERE name=?", [name])).rows[0];
+    expect(row).toMatchObject({ db_content: expected, trash: 0 });
+    const reload = await fetch(base + "/" + name.replaceAll(" ", "_"), { headers: { cookie } });
+    expect(reload.status).toBe(200); expect(await reload.text()).toContain(expected);
+  }
+}, 60_000);
+
 it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");

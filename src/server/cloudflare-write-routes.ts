@@ -156,6 +156,8 @@ export interface WorkersWriteContext {
   /** Host-owned request-local saved-slot renderer. Hosts with remote
    *  drivers batch view reads through their normal serving boot. */
   readonly renderSavedSlot?: (name: string, view?: string) => Promise<string>;
+  /** Host-owned selected-upload renderer; the default remains below. */
+  readonly renderPreviewEditor?: WriteRouteContext["renderPreviewEditor"];
   /** Explicit production transport + token configuration; absent never
    * claims that a required verification email was sent. */
   readonly accountMail?: WriteRouteContext["accountMail"];
@@ -501,7 +503,7 @@ async function mountWrite(
       // carrierwave's real two-step upload answers with its preview_editor,
       // including the draft action's hidden save field. Render under this
       // request's account; never mutate the shared anonymous engine's viewer.
-      renderPreviewEditor: async ({ name, opts }) => {
+      renderPreviewEditor: ctx.renderPreviewEditor ?? (async ({ name, opts }) => {
         const token = readSessionCookie(req.headers.cookie);
         const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
         if (actor === null) throw new Error("upload preview requires the authenticated request session");
@@ -511,7 +513,7 @@ async function mountWrite(
         render.pageSession = render.viewer;
         render.imageCdnHost = ctx.renderEngine.imageCdnHost;
         return await render.render(name, "preview_editor", { viewOpts: opts });
-      },
+      }),
       // The edge compilers (the scssCompiler / coffeeCompiler seams): the
       // WebAssembly LibSass and the npm coffeescript package, so stylesheet
       // and script saves compile here instead of being refused.

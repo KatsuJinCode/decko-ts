@@ -236,28 +236,33 @@ export async function mountBunnyEdgeWriteSurface(
     return toWebResponse(auth, inbound);
   }
 
-  const result = await handleWorkersWriteSurface(
-    {
-      fetcher: deck.fetcher,
-      renderEngine: deck.render,
-      renderSavedSlot: async (name, view) => {
+  const renderRequestView = async (name: string, view: string, viewOpts?: Record<string, unknown>, requireSession = false) => {
         const driver = deck.driver ?? deck.fetcher.driver;
         const token = readSessionCookie(inbound.headers.cookie);
         const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
+        if (requireSession && actor === null) throw new Error("upload preview requires the authenticated request session");
+        if (requireSession) deck.fetcher.expireName(name);
         const viewer = actor === null ? { signedIn: false as const } : { signedIn: true as const, actorId: actor.id };
         const render = async () => {
           const result = await liveRenderView(driver, name, async (requestDriver) => {
             const engines = await bootEdgeServingEngines(requestDriver, servedBootOptionsFromEnv(env));
             engines.render.viewer = viewer;
             engines.render.pageSession = viewer;
+            if (requireSession) engines.render.imageCdnHost = deck.render.imageCdnHost;
             return engines;
-          }, { requestedView: view ?? "titled", signal: request.signal });
+          }, { requestedView: view, signal: request.signal, ...(viewOpts === undefined ? {} : { historyParams: { viewOpts } }) });
           return result.html;
         };
         return requestContextAvailable()
           ? await runInRequestContext(getNameEnvironment(), render)
           : await withIsolateRenderLock(render);
-      },
+  };
+  const result = await handleWorkersWriteSurface(
+    {
+      fetcher: deck.fetcher,
+      renderEngine: deck.render,
+      renderSavedSlot: (name, view) => renderRequestView(name, view ?? "titled"),
+      renderPreviewEditor: ({ name, opts }) => renderRequestView(name, "preview_editor", opts, true),
       driver: deck.driver ?? deck.fetcher.driver,
       ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
       ...(deck.accountMail === undefined ? {} : { accountMail: deck.accountMail }),
