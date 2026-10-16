@@ -480,13 +480,34 @@ async function dispatchEngineRequest(
   // handback) otherwise.
   if (!("kind" in parsed) && parsed.format === "json") {
     const search = jsonViewSearchParams(url.searchParams);
-    const renderJsonView = async () =>
-      (await source.deck()).render.render(parsed.name, parsed.view, {
-        ...(search !== undefined ? { search } : {}),
-        format: "json",
-        requestUrl: url.href,
-        ...(url.searchParams.has("compress") ? { compress: url.searchParams.get("compress") } : {}),
-      });
+    const params = {
+      ...(search !== undefined ? { search } : {}),
+      format: "json",
+      requestUrl: url.href,
+      ...(url.searchParams.has("compress") ? { compress: url.searchParams.get("compress") } : {}),
+    };
+    const renderJsonView = async () => {
+      // Suggestions prepare exact/goto cards and their read/create rules.
+      // On a cold deck those independent facts otherwise take thousands of
+      // serial reads. Use the same fresh-engine complete-answer lifecycle
+      // as bare views: no response or cross-request suggestion cache.
+      if (parsed.view === "search_box_complete" && liveRenderApplies(
+        request, url, options, parsed.view, search === undefined ? {} : { search },
+      )) {
+        const result = await liveRenderView(source.driver, parsed.name, async driver => {
+          const engines = await bootEdgeServingEngines(driver, options?.servedBootOptions ?? {});
+          if (options?.viewer !== undefined) {
+            engines.render.viewer = options.viewer;
+            engines.render.pageSession = options.viewer;
+          }
+          return engines;
+        }, { requestedView: parsed.view, historyParams: params, signal });
+        return result.html;
+      }
+      const deck = await source.deck();
+      deck.fetcher.installNameEnvironment?.();
+      return await deck.render.render(parsed.name, parsed.view, params);
+    };
     let body: string;
     try {
       body = requestContextAvailable()
