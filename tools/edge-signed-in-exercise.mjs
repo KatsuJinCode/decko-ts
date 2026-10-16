@@ -53,6 +53,7 @@ const supportedTopics = ['account','owner','owner-replay','richtext',...moduleTo
 const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
+if(hasFlag('case')&&(argOf('only')!=='cover-b'||!checkModules.find(m=>m.meta.topic==='cover-b')?.meta.capabilityIds.includes(argOf('case'))))throw Error('--case requires --only cover-b and one of its declared capability IDs');
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -71,7 +72,7 @@ let htmlSequence = 0;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
 const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
-provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('only') !== undefined };
+provenance.selection = { only: argOf('only') ?? null, case:argOf('case')??null, diagnosticOnly: argOf('only') !== undefined };
 provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,requiresMail:meta.requiresMail===true,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
 
 // --------------------------------------------------------------- check kit
@@ -146,7 +147,7 @@ async function ownerAudit(replayOnly = false) {
 
 function moduleContext() {
   return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
-    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
+    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,coverBCase:argOf('case'),mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
 }
 
 try {
