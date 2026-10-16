@@ -45,7 +45,7 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
-if (argOf('only') !== undefined && !['account','owner','owner-replay'].includes(argOf('only'))) throw new Error('supported --only selections: account, owner, owner-replay');
+if (argOf('only') !== undefined && !['account','owner','owner-replay','richtext'].includes(argOf('only'))) throw new Error('supported --only selections: account, owner, owner-replay, richtext');
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -425,77 +425,7 @@ async function accountSettings(account = creds.admin) {
   });
 }
 
-try {
-  if (argOf('only') === 'account') {
-    group('account diagnostic only');
-    for (const account of [creds.admin, creds.member]) await accountSettings(account);
-  } else if (['owner','owner-replay'].includes(argOf('only'))) {
-    await ownerAudit(argOf('only') === 'owner-replay');
-  } else {
-  // -- 1 -----------------------------------------------------------------
-  group("1. sign in, and stay signed in");
-  const adminIn = await attempt("admin signs in through the form", () => signIn(creds.admin));
-  if (adminIn) record("admin signs in through the sign-in form and stays signed in", adminIn.hasSessionCookie && adminIn.landing.signedIn && adminIn.landing.hasSignOut, { hasSessionCookie: adminIn.hasSessionCookie, landedOn: adminIn.landedOn, signedIn: adminIn.landing.signedIn, hasSignOut: adminIn.landing.hasSignOut });
-  const memberIn = await attempt("member signs in through the form", () => signIn(creds.member));
-  if (memberIn) record("member signs in through the sign-in form and stays signed in", memberIn.hasSessionCookie && memberIn.landing.signedIn, { hasSessionCookie: memberIn.hasSessionCookie, signedIn: memberIn.landing.signedIn });
-  await signIn(creds.admin);
-
-  const home = await visit("/");
-  record("home shows the account name and Sign out", home.hasSignOut && home.hasAccountName && home.signedIn, { title: home.title, hasSignOut: home.hasSignOut, hasAccountName: home.hasAccountName, signedIn: home.signedIn }, { wallMs: home.wallMs });
-  const nav = await visit("/Home");
-  record("stays signed in across navigation", nav.signedIn && nav.hasSignOut, { title: nav.title, signedIn: nav.signedIn }, { wallMs: nav.wallMs });
-  await attempt("signed in after Back", async () => {
-    await page.goBack({ waitUntil: "load" });
-    record("stays signed in after browser Back", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
-  });
-  await attempt("signed in after reload", async () => {
-    await page.reload({ waitUntil: "load" });
-    record("stays signed in after reload", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
-  });
-  await attempt("signed in after leaving and returning", async () => {
-    await page.goto("about:blank");
-    await page.goto(`${stack.origin}/`, { waitUntil: "load" });
-    record("stays signed in after leaving the site and returning", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
-  });
-
-  // -- 2 -----------------------------------------------------------------
-  group("2. styling and console on signed-in pages");
-  await attempt("stylesheet and console", async () => {
-    const links = await page.evaluate(() => [...document.querySelectorAll('link[rel~="stylesheet"]')].map((l) => ({ href: l.href, sheet: Boolean(l.sheet) })));
-    record("deck stylesheet link resolves", links.length > 0 && links.every((l) => l.sheet), { links });
-    const mixed = browser.blocked;
-    record("no blocked or 4xx/5xx subresource on the signed-in page", mixed.length === 0, { blocked: mixed.slice(0, 6) });
-    record("no console errors on the signed-in page", browser.consoleErrors.length === 0, { errors: browser.consoleErrors.slice(0, 6) });
-  });
-
-  // -- 3 -----------------------------------------------------------------
-  group("3. edit a Date card");
-  const dateCard = "2011_12_14";
-  const datePage = await attempt("date page loads", () => visit(`/${dateCard}`));
-  if (datePage) record("date card page loads", datePage.status === 200, { status: datePage.status, title: datePage.title }, { wallMs: datePage.wallMs });
-  const dateEdit = await attempt("open date edit", () => openEdit(`/${dateCard}`));
-  if (dateEdit) {
-    record("edit opens as a modal from the card page (no duplicated page behind it)", dateEdit.modals > 0, { modals: dateEdit.modals, href: dateEdit.href });
-    const dateField = await page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
-    const type = await dateField.getAttribute("type").catch(() => null);
-    const original = await dateField.inputValue().catch(() => null);
-    record("content field is a date picker showing the stored date", (type === "date" || type === "text") && Boolean(original), { type, value: original });
-    if (original) {
-      const newDate = original === "2011-12-15" ? "2011-12-16" : "2011-12-15";
-      await dateField.fill(newDate).catch(() => undefined);
-      const saved = await saveEditForm();
-      record("saving the new date answers a write (Save)", saved.status !== null && saved.status < 400, { status: saved.status, action: saved.action, serverTotalMs: saved.serverTotalMs });
-      const after = await visit(`/${dateCard}`);
-      record("the page shows the new date (long form)", after.html.includes(longDate(newDate)), { newDate, shown: longDate(newDate) });
-      await openEdit(`/${dateCard}`);
-      const restoreField = page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
-      await restoreField.fill(original).catch(() => undefined);
-      await saveEditForm();
-      const restored = await visit(`/${dateCard}`);
-      record("the original date is restored afterwards (long form)", restored.html.includes(longDate(original)), { original, shown: longDate(original) });
-    }
-  }
-
+async function richTextJourney() {
   // -- 4 -----------------------------------------------------------------
   group("4. edit a RichText card (TinyMCE, nest dialog, link button)");
   const richName = cardName("richtext");
@@ -601,6 +531,84 @@ try {
       });
     }
   });
+
+}
+
+try {
+  if (argOf('only') === 'account') {
+    group('account diagnostic only');
+    for (const account of [creds.admin, creds.member]) await accountSettings(account);
+  } else if (argOf('only') === 'richtext') {
+    await signIn(creds.admin);
+    await richTextJourney();
+  } else if (['owner','owner-replay'].includes(argOf('only'))) {
+    await ownerAudit(argOf('only') === 'owner-replay');
+  } else {
+  // -- 1 -----------------------------------------------------------------
+  group("1. sign in, and stay signed in");
+  const adminIn = await attempt("admin signs in through the form", () => signIn(creds.admin));
+  if (adminIn) record("admin signs in through the sign-in form and stays signed in", adminIn.hasSessionCookie && adminIn.landing.signedIn && adminIn.landing.hasSignOut, { hasSessionCookie: adminIn.hasSessionCookie, landedOn: adminIn.landedOn, signedIn: adminIn.landing.signedIn, hasSignOut: adminIn.landing.hasSignOut });
+  const memberIn = await attempt("member signs in through the form", () => signIn(creds.member));
+  if (memberIn) record("member signs in through the sign-in form and stays signed in", memberIn.hasSessionCookie && memberIn.landing.signedIn, { hasSessionCookie: memberIn.hasSessionCookie, signedIn: memberIn.landing.signedIn });
+  await signIn(creds.admin);
+
+  const home = await visit("/");
+  record("home shows the account name and Sign out", home.hasSignOut && home.hasAccountName && home.signedIn, { title: home.title, hasSignOut: home.hasSignOut, hasAccountName: home.hasAccountName, signedIn: home.signedIn }, { wallMs: home.wallMs });
+  const nav = await visit("/Home");
+  record("stays signed in across navigation", nav.signedIn && nav.hasSignOut, { title: nav.title, signedIn: nav.signedIn }, { wallMs: nav.wallMs });
+  await attempt("signed in after Back", async () => {
+    await page.goBack({ waitUntil: "load" });
+    record("stays signed in after browser Back", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+  await attempt("signed in after reload", async () => {
+    await page.reload({ waitUntil: "load" });
+    record("stays signed in after reload", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+  await attempt("signed in after leaving and returning", async () => {
+    await page.goto("about:blank");
+    await page.goto(`${stack.origin}/`, { waitUntil: "load" });
+    record("stays signed in after leaving the site and returning", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+
+  // -- 2 -----------------------------------------------------------------
+  group("2. styling and console on signed-in pages");
+  await attempt("stylesheet and console", async () => {
+    const links = await page.evaluate(() => [...document.querySelectorAll('link[rel~="stylesheet"]')].map((l) => ({ href: l.href, sheet: Boolean(l.sheet) })));
+    record("deck stylesheet link resolves", links.length > 0 && links.every((l) => l.sheet), { links });
+    const mixed = browser.blocked;
+    record("no blocked or 4xx/5xx subresource on the signed-in page", mixed.length === 0, { blocked: mixed.slice(0, 6) });
+    record("no console errors on the signed-in page", browser.consoleErrors.length === 0, { errors: browser.consoleErrors.slice(0, 6) });
+  });
+
+  // -- 3 -----------------------------------------------------------------
+  group("3. edit a Date card");
+  const dateCard = "2011_12_14";
+  const datePage = await attempt("date page loads", () => visit(`/${dateCard}`));
+  if (datePage) record("date card page loads", datePage.status === 200, { status: datePage.status, title: datePage.title }, { wallMs: datePage.wallMs });
+  const dateEdit = await attempt("open date edit", () => openEdit(`/${dateCard}`));
+  if (dateEdit) {
+    record("edit opens as a modal from the card page (no duplicated page behind it)", dateEdit.modals > 0, { modals: dateEdit.modals, href: dateEdit.href });
+    const dateField = await page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
+    const type = await dateField.getAttribute("type").catch(() => null);
+    const original = await dateField.inputValue().catch(() => null);
+    record("content field is a date picker showing the stored date", (type === "date" || type === "text") && Boolean(original), { type, value: original });
+    if (original) {
+      const newDate = original === "2011-12-15" ? "2011-12-16" : "2011-12-15";
+      await dateField.fill(newDate).catch(() => undefined);
+      const saved = await saveEditForm();
+      record("saving the new date answers a write (Save)", saved.status !== null && saved.status < 400, { status: saved.status, action: saved.action, serverTotalMs: saved.serverTotalMs });
+      const after = await visit(`/${dateCard}`);
+      record("the page shows the new date (long form)", after.html.includes(longDate(newDate)), { newDate, shown: longDate(newDate) });
+      await openEdit(`/${dateCard}`);
+      const restoreField = page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
+      await restoreField.fill(original).catch(() => undefined);
+      await saveEditForm();
+      const restored = await visit(`/${dateCard}`);
+      record("the original date is restored afterwards (long form)", restored.html.includes(longDate(original)), { original, shown: longDate(original) });
+    }
+  }
+
+  await richTextJourney();
 
   // -- 5 -----------------------------------------------------------------
   group("5. create a card every way the site offers");
