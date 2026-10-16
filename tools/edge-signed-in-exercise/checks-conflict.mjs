@@ -61,7 +61,8 @@ export const checks=[{name:'two browser editors resolve a real stale-save confli
   record(capabilityChecks[3],rejected.status()===409&&html.includes('new-current-revision-id')&&row()?.db_content===first&&JSON.stringify(beforeHistory)===JSON.stringify(afterHistory),{status:rejected.status(),unchanged:row()?.db_content===first,historyUnchanged:JSON.stringify(beforeHistory)===JSON.stringify(afterHistory),raw:captureEvidence(html,{check:'actual-browser-conflict',name})});
   const current=String(afterHistory.at(-1));
   const refreshed=await admin.page.waitForFunction(({name,current})=>{const form=[...document.querySelectorAll('form.card-form')].find(f=>f.action.includes(name));return form?.querySelector('[name="card[last_action_id_before_edit]"]')?.value===current&&/Conflict!/i.test(form.innerText)},{name,current},{timeout:15000}).then(()=>true,()=>false);
-  record(capabilityChecks[4],refreshed,{current,refreshed});
+  const ui=await admin.page.evaluate(()=>({revisions:[...document.querySelectorAll('form.card-form')].map(f=>({action:f.action,revision:f.querySelector('[name="card[last_action_id_before_edit]"]')?.value,text:f.innerText.slice(-900)})),spans:[...document.querySelectorAll('.new-current-revision-id')].map(e=>e.textContent),notices:[...document.querySelectorAll('.card-notice')].map(e=>e.innerText)}));
+  record(capabilityChecks[4],refreshed,{current,refreshed,ui,raw:captureEvidence(await admin.page.content(),{check:'conflict-visible-revision',name})});
   if(!refreshed)throw Error('conflict UI did not refresh its revision');
   const retried=await submit(editors.admin);
   const fresh=await admin.page.goto(stack.origin+'/'+name+'?harness_verify='+Date.now(),{waitUntil:'load'});
