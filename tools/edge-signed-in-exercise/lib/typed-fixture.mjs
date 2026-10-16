@@ -2,6 +2,18 @@ import {matchingRichEditor} from './rich-editor.mjs';
 
 const codes={basic:'basic',richtext:'basic',cardtype:'cardtype',pointer:'pointer',list:'list',phrase:'phrase',plaintext:'plain_text',search:'search_type',layout:'layout_type',html:'html',date:'date',number:'number',file:'file',image:'image'};
 
+// New-schema junction rows can have both name and key NULL. Their identity
+// is the pair of component IDs, not an absent denormalized name string.
+export function fixtureCard(database,name){
+ const direct=database.prepare('SELECT id,name,type_id,trash,db_content FROM cards WHERE name=? AND trash=0').get(name);
+ if(direct)return direct;
+ const joint=name.lastIndexOf('+');
+ if(joint<1||joint===name.length-1)return undefined;
+ const left=fixtureCard(database,name.slice(0,joint)),right=fixtureCard(database,name.slice(joint+1));
+ if(!left||!right)return undefined;
+ return database.prepare('SELECT id,name,type_id,trash,db_content FROM cards WHERE left_id=? AND right_id=? AND trash=0').get(left.id,right.id);
+}
+
 // Fixture labels denote the canonical types, even when a migrated deck has
 // renamed them. In this deck, codename basic is RichText; the ordinary card
 // named basic is not a cardtype and must never become a fallback fixture type.
@@ -41,9 +53,16 @@ export async function createTypedFixture(ctx,{name,content='',type='RichText',as
  const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==='POST',{timeout:60000}).then(response=>({response}),error=>({error}));
  await form.locator('button[type="submit"],input[type="submit"]').first().click();
  const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
- const stored=database().prepare('SELECT id,type_id,trash FROM cards WHERE name=? AND trash=0').get(name);
+ const outcome=await seen.response.json().catch(()=>null);
+ if(typeof outcome?.redirect==='string'){
+  const redirect=new URL(outcome.redirect,stack.origin);
+  if(redirect.origin!==stack.origin)throw Error('fixture create redirect left the local origin');
+  await page.waitForURL(redirect.href,{waitUntil:'domcontentloaded',timeout:60000});
+ }
+ const stored=fixtureCard(database(),name);
  if(seen.response.status()>=400||!stored||stored.type_id!==expected.id){
-  const raw=ctx.captureEvidence?.(await page.content(),{check:'typed-fixture-create',name,expectedTypeId:expected.id,stored:stored??null,status:seen.response.status()});
+  const html=await page.content().catch(()=>null);
+  const raw=html===null?null:ctx.captureEvidence?.(html,{check:'typed-fixture-create',name,expectedTypeId:expected.id,stored:stored??null,status:seen.response.status()});
   throw Error('typed fixture was not created as requested: '+name+'; HTTP '+seen.response.status()+'; expected type '+expected.id+'; stored '+JSON.stringify(stored??null)+'; raw '+JSON.stringify(raw??null));
  }
  return{status:seen.response.status(),id:stored.id,storedTypeId:stored.type_id,storedType:expected.name};

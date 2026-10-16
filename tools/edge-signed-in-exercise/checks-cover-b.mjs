@@ -12,7 +12,7 @@
 // the entry point is runCoverBChecks(ctx).
 
 import { focusRichEditor } from "./lib/rich-editor.mjs";
-import { createTypedFixture, fixtureType } from "./lib/typed-fixture.mjs";
+import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixture.mjs";
 
 const CAP = "C";
 
@@ -94,8 +94,8 @@ export async function runCoverBChecks(ctx) {
   };
 
   const ensure = (name) => { if (!created.includes(name)) created.push(name); return name; };
-  const exists = (name) => ctx.database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(name);
-  const row = (name) => ctx.database().prepare("SELECT name, db_content AS content FROM cards WHERE name = ? AND trash = 0").get(name);
+  const exists = (name) => fixtureCard(ctx.database(),name);
+  const row = (name) => {const found=fixtureCard(ctx.database(),name);return found?{...found,content:found.db_content}:undefined;};
   /** Creates the requested canonical cardtype and verifies its stored identity. */
   const create = async (name, content = "", type = "RichText") => {
     ensure(name);
