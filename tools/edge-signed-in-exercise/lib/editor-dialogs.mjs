@@ -9,9 +9,10 @@ async function fixtureEditor(ctx,label){
  const form=ctx.page.locator('.modal.show form.card-form[id^="edit_card"]:visible').first();
  await form.waitFor({state:'visible',timeout:20000});
  const id=await focusRichEditor(ctx.page);
- const containerId=await ctx.page.evaluate(id=>window.tinymce.get(id).editorContainer.id,id);
- if(!containerId)throw Error('the matching editor has no toolbar container');
- return {name,form,id,toolbar:ctx.page.locator(`[id="${containerId}"]`)};
+ const toolbar=ctx.page.locator(`textarea[id="${id}"]`).locator('..').locator('.tox-tinymce');
+ if(await toolbar.count()!==1||!await toolbar.evaluate((el,id)=>el===window.tinymce.get(id).editorContainer,id))throw Error('the matching field does not identify exactly one owned toolbar');
+ await toolbar.waitFor({state:'visible'});
+ return {name,form,id,toolbar};
 }
 
 async function saveEditor(ctx,form){
