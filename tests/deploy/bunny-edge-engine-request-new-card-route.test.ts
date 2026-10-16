@@ -84,6 +84,7 @@ async function seedNewRouteDeck(s: RenderTestStorage): Promise<void> {
   // The type the signup journey creates: "Sign up" is a Cardtype-typed card
   // — the /new/:type mark resolves to it.
   await seedCard(s, { id: 9, name: "Cardtype", codename: "cardtype", typeId: CARDTYPE_TYPE_ID });
+  await seedCard(s, { id: 52, name: "Phrase", codename: "phrase", typeId: CARDTYPE_TYPE_ID });
   await seedCard(s, {
     id: 12, name: "Sign up", codename: "signup", typeId: CARDTYPE_TYPE_ID,
   });

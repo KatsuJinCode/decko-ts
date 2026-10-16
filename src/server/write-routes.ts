@@ -1169,13 +1169,17 @@ function absoluteTarget(req: WriteRouteRequest, target: string): string {
  *  success[mark] "*previous" -> previous location (the visitor's location
  *  history, location_history.rb:19-21); an absolute path or URL as given;
  *  another mark -> that card's path; no mark -> the request's own card. */
-function successTargetPath(parsed: ParsedBody, ownName: string, visit: VisitorSession): string {
+async function successTargetPath(fetcher: FetchEngine, parsed: ParsedBody, ownName: string, visit: VisitorSession): Promise<string> {
   const mark = parsed.success["mark"] ?? parsed.success["id"];
   if (mark === undefined) return `/${locationName(ownName)}`;
   if (mark === "") return "";
   if (mark === "*previous" || mark === ":previous") return previousLocation(visit);
   if (/^(http|\/)/.test(mark)) return mark;
-  return `/${locationName(mark)}`;
+  if (mark === "_self") return `/${locationName(ownName)}`;
+  // A success mark is a Card mark, not an unbound URL spelling. Resolve
+  // aliases/codenames to the stored name (e.g. signup_success -> Signup Success).
+  const target = await fetcher.fetchByName(mark);
+  return `/${locationName(target?.name?.s ?? mark)}`;
 }
 
 // -----------------------------------------------------------------------
@@ -1253,7 +1257,7 @@ async function handleSigninUpdate(
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
   // success mark the target is the card itself, *signin.
-  const target = absoluteTarget(req, successTargetPath(parsed, "*signin", visit));
+  const target = absoluteTarget(req, await successTargetPath(ctx.fetcher, parsed, "*signin", visit));
   if (isAjax(req, parsed)) {
     // the ajax hard redirect (response.rb:42-46)
     const body = jsonResponse(200, { redirect: target });
@@ -1530,7 +1534,7 @@ async function dispatchWriteRequest(
   if (opts?.authOnly !== true && method === "GET" && route.verb === "update" && route.mark !== undefined &&
       (parsed.card["trigger"] === "reset_password" || parsed.card["trigger"] === "verify_and_activate")) {
     if (ctx.accountMail === undefined) return { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }, body: "account mail is not configured on this host" };
-    const flow = { ...ctx.accountMail, driver: ctx.driver, fetcher: ctx.fetcher, sessions: new SessionStore({ driver: ctx.driver }) };
+    const flow = { ...ctx.accountMail, driver: ctx.driver, fetcher: ctx.fetcher, sessions: new SessionStore({ driver: ctx.driver }), now: ctx.now, ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1" };
     const token = new URLSearchParams(req.search ?? "").get("token") ?? "";
     const mark = markToName(route.mark);
     const outcome = parsed.card["trigger"] === "reset_password"
@@ -1690,7 +1694,7 @@ async function dispatchWriteRequest(
           json,
           input.name,
           { cardId: 0, actId: 0, actionId: 0, verb: "create" },
-          successTargetPath(parsed, input.name, visit),
+          await successTargetPath(ctx.fetcher, parsed, input.name, visit),
         );
       }
       await assertSignupMailConfigured(ctx, engine, input);
@@ -1933,7 +1937,7 @@ async function dispatchWriteRequest(
           redirect:
             previousRedirect !== undefined
               ? cardUrl(req, previousRedirect)
-              : cardUrl(req, `/${locationName(successName!)}`),
+              : absoluteTarget(req, await successTargetPath(ctx.fetcher, parsed, name, visit)),
         }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
@@ -1978,7 +1982,7 @@ async function dispatchWriteRequest(
     if (saved.verb === "delete") discardLocationsFor(visit, name);
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
       ? previousLocation(visit)
-      : successTargetPath(parsed, name, visit);
+      : await successTargetPath(ctx.fetcher, parsed, name, visit);
     const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
     return response;
   } catch (error) {

@@ -285,6 +285,8 @@ export interface CardActionEngineOptions {
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
    *  An actor NAMED "*anonymous" is treated the same way. */
   actor: Actor | null;
+  /** The request's act actor before an authenticated event enters bot authority. */
+  actActorId?: number;
   /** Clock for every timestamp (defaults to () => new Date()). */
   now?: () => Date;
   /** card_acts.ip_address capture (director/class_methods.rb:27-29). */
@@ -462,6 +464,7 @@ function anonymousAccountName(): string {
 export class CardActionEngine {
   readonly fetch: FetchEngine;
   readonly actor: Actor | null;
+  private readonly actActorId: number | undefined;
   private readonly clock: () => Date;
   private readonly ipAddress: string | null;
   private readonly delayedJobs: DelayedJobsConfig | undefined;
@@ -517,6 +520,7 @@ export class CardActionEngine {
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
     this.actor = options.actor;
+    this.actActorId = options.actActorId;
     this.clock = options.now ?? (() => new Date());
     this.ipAddress = options.ipAddress ?? null;
     this.delayedJobs = options.delayedJobs;
@@ -5100,6 +5104,7 @@ export class CardActionEngine {
     return new ActWriter({
       driver: this.fetch.driver,
       actorId,
+      actActorId: this.actActorId,
       ipAddress: this.ipAddress,
       now: this.clock,
     });

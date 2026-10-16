@@ -86,6 +86,10 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   expect(signupPage.status).toBe(200);
   const form = formFields(await signupPage.text(), "/card/create");
   expect(form["card[type_id]"]).toBe(String(signupId));
+  const phraseId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='phrase'", [])).rows[0].id;
+  expect(form["card[subcards][+*account][subcards][+*email][type_id]"]).toBe(String(phraseId));
+  expect(form["card[subcards][+*account][subcards][+*password][type_id]"]).toBe(String(phraseId));
+  expect(form["success[mark]"]).toBe("signup_success");
   expect(Object.hasOwn(form, "card[subcards][+*account][subcards][+*email][content]")).toBe(true);
   expect(Object.hasOwn(form, "card[subcards][+*account][subcards][+*password][content]")).toBe(true);
   form["card[name]"] = "Edge Mail Signup";
@@ -119,6 +123,15 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const activated = await fetch(link, { redirect: "manual" });
   expect(activated.status).toBe(303);
   expect(activated.headers.get("set-cookie")).toMatch(/decko_ts_session=[^;]+/);
+  const holder = (await driver.query<{ id: number; type_id: number }>("SELECT id,type_id FROM cards WHERE name='Edge Mail Signup'", [])).rows[0];
+  const userId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='user'", [])).rows[0].id;
+  expect(holder.type_id).toBe(userId);
+  const accountId = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE left_id=? AND right_id=(SELECT id FROM cards WHERE codename='account')", [holder.id])).rows[0].id;
+  const act = (await driver.query<{ id: number; card_id: number; actor_id: number; ip_address: string }>("SELECT id,card_id,actor_id,ip_address FROM card_acts ORDER BY id DESC LIMIT 1", [])).rows[0];
+  expect(act).toMatchObject({ card_id: accountId, actor_id: holder.id, ip_address: "127.0.0.1" });
+  const changed = (await driver.query<{ card_id: number }>("SELECT card_id FROM card_actions WHERE card_act_id=? ORDER BY id", [act.id])).rows;
+  expect(changed).toHaveLength(2);
+  expect(changed[1].card_id).toBe(holder.id);
   // Stock account data seeds an empty welcome template (no subject/body).
   const welcome = outbox.drain().filter(m => m.to === "edge.signup@example.test");
   expect(welcome).toHaveLength(1);
@@ -126,7 +139,35 @@ it("refuses missing mail without writes; delivers real verification tokens throu
   const fresh = await signin("edge.signup@example.test", "Edge signup pass 7#");
   expect(fresh.status).toBe(303);
   expect(fresh.headers.get("set-cookie")).toMatch(/decko_ts_session=[^;]+/);
+  const page = await fetch(base + "/Edge_Mail_Signup", { headers: { cookie: fresh.headers.getSetCookie().map(x => x.split(";")[0]).join("; ") } });
+  expect(page.status).toBe(200);
+  expect(await page.text()).not.toContain("Send verification email");
   expect(hrana.violations).toEqual([]);
+}, 60_000);
+
+it("returns the deck's actual Signup Success page and resolves a plain _self create redirect", async () => {
+  const page = await fetch(base + "/new/Sign_up");
+  expect(page.status).toBe(200);
+  const fields = formFields(await page.text(), "/card/create");
+  fields["card[name]"] = "HTTP Pending Signup";
+  fields["card[subcards][+*account][subcards][+*email][content]"] = "http.pending@example.test";
+  fields["card[subcards][+*account][subcards][+*password][content]"] = "HTTP pending pass 8#";
+  fields["success[redirect]"] = "true";
+  const submitted = await fetch(base + "/card/create", { method: "POST", redirect: "manual", headers: { origin: base, "content-type": "application/x-www-form-urlencoded", "x-requested-with": "XMLHttpRequest" }, body: new URLSearchParams(fields) });
+  expect(submitted.status).toBe(200);
+  expect(await submitted.json()).toMatchObject({ redirect: `${base}/Signup_Success` });
+  const thanks = await fetch(base + "/Signup_Success");
+  expect(thanks.status).toBe(200);
+  expect(await thanks.text()).toContain("Thank you for signing up with");
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const form = await fetch(`${base}/card/new?${new URLSearchParams({ "card[name]": "HTTP Self Redirect", type: "Phrase" })}`, { headers: { cookie } });
+  const self = formFields(await form.text(), "/card/create");
+  expect(self["success[mark]"]).toBe("_self");
+  self["card[content]"] = "saved";
+  const created = await fetch(base + "/card/create", { method: "POST", redirect: "manual", headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(self) });
+  expect(created.status).toBe(303);
+  expect(created.headers.get("location")).toBe(`${base}/HTTP_Self_Redirect`);
 }, 60_000);
 
 it("uploads real bytes, renders the actual selected draft preview and saves/downloads the cached attachment", async () => {

@@ -49,6 +49,7 @@ import {
 } from "../../src/card/permissions/view-task-rules.js";
 import { createFormShell } from "../../src/card/mod-loader/mod-form-substrate.js";
 import type { ViewContext } from "../../src/card/render/format.js";
+import { ruleContentForCard } from "../../src/card/actions/rule-content-walk.js";
 import { h, newSlotId } from "../../src/card/render/slot-html.js";
 import {
   EDGE_ERROR_PAGE_GRACE_MS,
@@ -73,8 +74,8 @@ const MAIN_SUCCESS_ATTR = '{"redirect":true}'.replace(/"/g, "&quot;");
  *  signinFieldGroup — the SAME account-mod editor partials render both
  *  forms), nested under the new holder's +*account subcard as
  *  account_holder.rb account_formgroups fields_for does. The structural fallbacks are the account mod's own
- *  invariants: both rights are Phrase-typed, type_id 52). */
-function accountFieldGroup(field: "email" | "password"): string {
+ *  invariants: both rights are Phrase-typed; its ID is deck-local). */
+function accountFieldGroup(field: "email" | "password", phraseTypeId: number): string {
   const safeRight = field === "email" ? "Xemail" : "Xpassword";
   const setKeys =
     `ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-${safeRight} TYPE_PLUS_RIGHT-rich_text-${safeRight}`;
@@ -86,7 +87,7 @@ function accountFieldGroup(field: "email" | "password"): string {
   const label =
     `<label for="${contentId}"><span class="card-title" title="${field}">${field}</span>\n` +
     `<div id="-${safeRight}-help-view" class="card-slot help-view ${setKeys}"` +
-    ` data-card-name="${subName}" data-card-type-id="52" data-card-type-name="Phrase"` +
+    ` data-card-name="${subName}" data-card-type-id="${phraseTypeId}" data-card-type-name="Phrase"` +
     ` data-card-link-name="${subName}" data-slot-id="${newSlotId()}"` +
     ` data-slot="view=help show=edit_in_form,help"></div></label>`;
   const editor =
@@ -94,14 +95,14 @@ function accountFieldGroup(field: "email" | "password"): string {
       ? `<div class="editor content-editor">` +
         `<input class="d0-card-content form-control" placeholder="" type="text"` +
         ` value="" name="${contentName}" id="${contentId}" />\n` +
-        `<input autocomplete="off" type="hidden" value="52" name="${typeIdName}" id="${typeIdId}" /></div></div>`
+        `<input autocomplete="off" type="hidden" value="${phraseTypeId}" name="${typeIdName}" id="${typeIdId}" /></div></div>`
       : `<div class="editor content-editor">` +
         `<input class="d0-card-content _pw-input form-control" placeholder="Password"` +
         ` autocomplete="off" type="password" name="${contentName}" id="${contentId}" />\n` +
         `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
         `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
         `</span>\n\n` +
-        `<input autocomplete="off" type="hidden" value="52" name="${typeIdName}" id="${typeIdId}" /></div></div>`;
+        `<input autocomplete="off" type="hidden" value="${phraseTypeId}" name="${typeIdName}" id="${typeIdId}" /></div></div>`;
   return (
     `<div class="form-group card-editor RIGHT-${safeRight}"` +
     ` data-card-name="${subName}" data-card-link-name="${subName}"` +
@@ -117,7 +118,7 @@ function accountFieldGroup(field: "email" | "password"): string {
  *  deck), new_view_type (hidden type_id — the type is PRESET by the route,
  *  new.rb:139 new_type_preset?), content_formgroups (the signup override:
  *  account_formgroups), new_buttons (create + cancel)]. */
-export function newCardFormBodyHtml(typeName: string, typeId: number): string {
+export function newCardFormBodyHtml(typeName: string, typeId: number, phraseTypeId: number, thanks: string): string {
   // voo.title = t(:account_sign_up) (set/type/signup/views.rb:6-10) — the
   // frame header title for the anonymous viewer (invitation? requires a
   // signed-in approver).
@@ -127,10 +128,10 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
       // opts); the virtual new card has no render format to lend it.
       {} as ViewContext,
       {
-        htmlAttrs: [["data-main-success", MAIN_SUCCESS_ATTR]],
+        htmlAttrs: [["data-main-success", MAIN_SUCCESS_ATTR], ["data-remote", "true"]],
         // new_success (new.rb:81-83): { mark: card.rule(:thanks) || "_self" }
-        // — the serving deck's *thanks does not reach this virtual card.
-        success: { mark: "_self" },
+        // The route resolves the actual deck's rule for this virtual type.
+        success: { mark: thanks },
         body:
           `<div class="d-flex justify-content-between">` +
           `<div class="w-100">` +
@@ -148,9 +149,9 @@ export function newCardFormBodyHtml(typeName: string, typeId: number): string {
           `<input type="hidden" name="card[type_id]" id="card_type_id" value="${typeId}" autocomplete="off" />` +
           // content_formgroups (set/type/signup/views.rb:13-15): the account
           // fields are the form's content.
-          accountFieldGroup("email") +
+          accountFieldGroup("email", phraseTypeId) +
           `\n` +
-          accountFieldGroup("password") +
+          accountFieldGroup("password", phraseTypeId) +
           // new_buttons (new.rb:157-161): standard_create_button +
           // standard_cancel_button (form_elements.rb:59-64 + form_buttons.rb
           // :36-39; cancel href = path_to_previous = "/" for a fresh
@@ -317,14 +318,14 @@ export async function newCardRouteResponse(
       graceMs: EDGE_ERROR_PAGE_GRACE_MS,
     });
   }
+  const phraseTypeId = await deck.fetcher.codenames.id("phrase");
+  if (phraseTypeId === undefined) throw new Error("signup form requires the deck's Phrase cardtype");
+  const thanks = await ruleContentForCard(deck.fetcher, {
+    name: "", typeId: typeRecord.id, typeName: typeRecord.name.s, isNew: true,
+  }, "thanks");
+  const body = newCardFormBodyHtml(typeRecord.name.s, typeRecord.id, phraseTypeId, thanks === undefined ? "_self" : String(thanks));
   return await renderFullChromeErrorPage(deck, {
-    status: 200,
-    viewHtml: newCardFormBodyHtml(typeRecord.name.s, typeRecord.id),
-    cardName: typeKey.urlKey,
-    fallbackHtml: layoutPage(
-      "Sign up",
-      newCardFormBodyHtml(typeRecord.name.s, typeRecord.id),
-    ),
-    graceMs: EDGE_ERROR_PAGE_GRACE_MS,
+    status: 200, viewHtml: body, cardName: typeKey.urlKey,
+    fallbackHtml: layoutPage("Sign up", body), graceMs: EDGE_ERROR_PAGE_GRACE_MS,
   });
 }

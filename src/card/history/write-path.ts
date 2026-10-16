@@ -53,6 +53,9 @@ export interface ActWriterOptions {
    *  (card-mod-account set/all/account.rb:20-23, event :set_stamper). This
    *  is the actor passthrough. */
   actorId: number;
+  /** Act attribution captured before a scoped Auth.as_bot transition.
+   *  Card stamps keep actorId; the act retains the signed-in initiator. */
+  actActorId?: number;
   /** Env.ip stand-in for card_acts.ip_address
    *  (director/class_methods.rb:27-29). */
   ipAddress?: string | null;
@@ -240,6 +243,7 @@ const ALL_TRACKED_WRITE_ORDER: (keyof CardFieldState)[] = [
 export class ActWriter {
   private readonly driver: SQLDatabaseDriver;
   private readonly actorId: number;
+  private readonly actActorId: number;
   private readonly ipAddress: string | null;
   private readonly clock: () => Date;
   private actCardId: number | undefined;
@@ -255,6 +259,7 @@ export class ActWriter {
   constructor(options: ActWriterOptions) {
     this.driver = options.driver;
     this.actorId = options.actorId;
+    this.actActorId = options.actActorId ?? options.actorId;
     this.ipAddress = options.ipAddress ?? null;
     this.clock = options.now ?? (() => new Date());
     this.actCardId = options.actCardId;
@@ -729,7 +734,7 @@ export class ActWriter {
   ): number {
     stmts.push({
       sql: "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
-      params: [cardId, this.actorId, actedAt, this.ipAddress],
+      params: [cardId, this.actActorId, actedAt, this.ipAddress],
     });
     stmts.push({ sql: "SELECT last_insert_rowid() AS id", params: [] });
     return stmts.length - 1;

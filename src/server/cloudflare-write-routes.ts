@@ -103,6 +103,7 @@ import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { RenderEngine } from "../card/render.js";
 import { SessionStore } from "../card/auth/session-store.js";
 import { readSessionCookie } from "./write-routes.js";
+import { cardWallClockNow } from "../card/wall-clock.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
@@ -481,6 +482,7 @@ async function mountWrite(
       driver,
       fetcher: ctx.fetcher,
       ipAddress: req.ipAddress,
+      now: cardWallClockNow,
       originPolicy,
       ...(ctx.accountMail === undefined ? {} : { accountMail: ctx.accountMail, notifyTransport: ctx.accountMail.transport }),
       // The ajax soft redirect re-renders the SAVED card through the host's

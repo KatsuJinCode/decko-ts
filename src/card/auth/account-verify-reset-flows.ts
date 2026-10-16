@@ -156,6 +156,7 @@ import {
   type AccountCodenameIds,
 } from "./signin.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
+import { cardWallClockNow } from "../wall-clock.js";
 import type { FetchEngine } from "../fetch.js";
 import type { MailMessage, NotifyTransport } from "../notify/types.js";
 import { addressOf, resolveFromAddress } from "../notify/mail.js";
@@ -167,6 +168,8 @@ import { DeckoName } from "../name.js";
 
 /** Everything the flows run against — the host's wiring, per boot. */
 export interface AccountFlowContext {
+  readonly now?: () => Date;
+  readonly ipAddress?: string | null;
   readonly driver: SQLDatabaseDriver;
   /** Card write engine input — the activation status write (verify
    *  success, events.rb:89-90) runs a CardActionEngine under the bot
@@ -944,9 +947,9 @@ export type VerificationConfirmation =
  *
  * Success: signin; Auth.as_bot activate_account — +*status -> "active"
  * (events.rb:40-43) through the write engine under the DeckoBot actor —
- * then the welcome email; NO other card write (activatable's "no field
- * manipulation mid-activation" guard, events.rb:57-62, is structural: the
- * confirm API carries no subcards).
+ * then the welcome email. The event generates the Signup holder's type
+ * change after authentication; the public confirm API accepts no subcards
+ * (activatable's "no field manipulation mid-activation" guard).
  *
  * Failure: re-send the verification email (events.rb:95) with the
  * events.rb:96-97 literal message.
@@ -999,8 +1002,22 @@ export async function confirmAccountVerification(
   const session = await ctx.sessions.createSession(account.holder.id);
   let activated = false;
   if (account.childIds.status !== undefined) {
-    const engine = new CardActionEngine(ctx.fetcher, { actor: bot });
-    await engine.updateCard({ cardId: account.childIds.status, content: "active" });
+    const holder = await ctx.fetcher.fetchById(account.holder.id);
+    const signupTypeId = await ctx.fetcher.codenames.id("signup");
+    const userTypeId = await ctx.fetcher.codenames.id("user");
+    const changesHolderType = signupTypeId !== undefined && holder?.typeId === signupTypeId;
+    if (changesHolderType && userTypeId === undefined) throw new Error("activation requires the default User cardtype");
+    const engine = new CardActionEngine(ctx.fetcher, {
+      actor: bot, actActorId: account.holder.id,
+      now: ctx.now ?? cardWallClockNow, ipAddress: ctx.ipAddress,
+    });
+    // events.rb:19-24 generates both subcards AFTER the activatable guard:
+    // status becomes active and the Signup holder activates its User type.
+    // They share the account-root act and the engine's real transaction.
+    await engine.updateCard({ cardId: account.id, subcards: {
+      "+*status": { content: "active" },
+      ...(changesHolderType ? { [account.holder.name]: { typeId: userTypeId! } } : {}),
+    } });
     activated = true;
   }
   // trigger_event! :send_welcome_email (events.rb:42) — the seed template
