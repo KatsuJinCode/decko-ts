@@ -495,7 +495,15 @@ async function routeBunnyEngineRequest(
       profile,
       request,
       env,
-      async () => handleEngineRequest(request, deck, { budgetMs: renderBudgetMs }),
+      async () => handleEngineRequest(request, deck, {
+        budgetMs: renderBudgetMs,
+        // A failed session lookup is the same anonymous actor as no cookie.
+        // Preserve the complete request-local renderer and serving settings;
+        // otherwise an expired cookie silently forces serial normal renders.
+        anonymous: true,
+        liveRenderFlag: env.DECKO_LIVE_RENDER,
+        servedBootOptions: servedBootOptionsFromEnv(env),
+      }),
       resolveEdgeContentCache(env),
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );

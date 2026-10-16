@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {startMockHranaServer,type MockHranaServer} from '../server/drivers/mock-hrana-server.js';
 import {BunnyDbDriver} from '../../src/card/drivers/bunny-db.js';
-import {runAuthMigrations} from '../../src/card/auth/index.js';
+import {runAuthMigrations,SessionStore} from '../../src/card/auth/index.js';
 import {ensureFreshnessStamp} from '../../src/server/freshness-stamp.js';
 import {handleBunnyEngineRequest} from '../../deploy/bunny-worker-src/bunny-edge-engine-handler.js';
 import {normalizeSlotIds} from '../../src/testing/diff.js';
@@ -44,4 +44,26 @@ it('anonymous full-page requested views keep normal-render bytes and permission 
   if(path.includes('account'))expect(live.status).toBe(403);
  }
  expect((await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows).toEqual(rows);
+},30000);
+
+it('invalid, expired and revoked session cookies keep anonymous batched bytes and fresh read denials',async()=>{
+ const env={DECKO_DB_URL:hrana.url,DECKO_DB_TOKEN:'owned-test',DECKO_EDGE_DECK_PROFILE:'stock',DECKO_LIVE_RENDER:'1'};
+ const sessions=new SessionStore({driver});
+ const expired=await sessions.createSession(611,{ttlSeconds:-10});
+ const revoked=await sessions.createSession(611);expect(await sessions.revokeSession(revoked.token)).toBe(true);
+ const valid=await sessions.createSession(611);
+ const signedIn=await handleBunnyEngineRequest(new Request('https://local.test/Home/titled',{headers:{cookie:`decko_ts_session=${valid.token}`}}),env);
+ expect(signedIn.status).toBe(200);expect(await signedIn.text()).toContain('signout-link');
+ const rows=(await driver.query('SELECT * FROM cards ORDER BY id',[])).rows;
+ for(const path of ['/Home/titled','/*signin/titled','/Mira_Member+*account/titled']){
+  const expected=await handleBunnyEngineRequest(new Request('https://local.test'+path),env);const expectedBody=await expected.text();
+  for(const token of ['owned-nonexistent-session',expired.token,revoked.token]){
+   const start=hrana.requests.length;
+   const result=await handleBunnyEngineRequest(new Request('https://local.test'+path,{headers:{cookie:`decko_ts_session=${token}`}}),env);
+   const body=await result.text();expect(result.status).toBe(expected.status);expect(normalizeSlotIds(body)).toBe(normalizeSlotIds(expectedBody));
+   expect(hrana.requests.length-start).toBeLessThan(80);expect(body).not.toContain('class="signout-link"');
+   if(path.includes('account'))expect(result.status).toBe(403);
+  }
+ }
+ expect((await driver.query('SELECT * FROM cards ORDER BY id',[])).rows).toEqual(rows);
 },30000);
