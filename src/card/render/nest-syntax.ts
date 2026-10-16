@@ -46,6 +46,10 @@ import { DeckoName } from "../name.js";
  *    never reaches Chunk::Nest. */
 const NEST_AT_REGEXP = /\{\{([^{}]*)\}\}/y;
 const ESCAPED_LITERAL_AT_REGEXP = /\\(?:\[\[[^\]]*\]\]|\{\{[^}]*\}\})/y;
+/** The only positions either chunk class above can start at: a backslash
+ *  (escaped literal) or an open brace (nest). scanNestsUncached skips to
+ *  these; every other position is ordinary text. */
+const CANDIDATE_AT_REGEXP = /[\\{]/g;
 
 /** escaped_literal.rb:21-23 `interpret`:
  *
@@ -208,15 +212,37 @@ export function scanNests(content: string | undefined): ContentPiece[] {
   // memoized result is deep-frozen, so no caller can change what a later
   // caller reads (a write would throw, never pass silently).
   const memo = DeckoName.requestMemo<ContentPiece[]>(SCAN_NESTS_MEMO);
-  if (memo === undefined) return scanNestsUncached(content);
-  const hit = memo.get(content);
-  if (hit !== undefined) return hit;
+  if (memo !== undefined) {
+    const hit = memo.get(content);
+    if (hit !== undefined) return hit;
+  }
+  // Process-wide, across requests: the same pure function of the text, and
+  // the same frozen result, so a card whose content has not changed is not
+  // rescanned on every request. Bounded by total characters held.
+  const known = processScanMemo.get(content);
+  if (known !== undefined) {
+    memo?.set(content, known);
+    return known;
+  }
   const pieces = deepFreeze(scanNestsUncached(content));
-  memo.set(content, pieces);
+  if (processScanMemoChars + content.length > SCAN_PROCESS_MEMO_CHAR_LIMIT) {
+    processScanMemo.clear();
+    processScanMemoChars = 0;
+  }
+  processScanMemo.set(content, pieces);
+  processScanMemoChars += content.length;
+  memo?.set(content, pieces);
   return pieces;
 }
 
 const SCAN_NESTS_MEMO = {};
+/** Process-wide scanNests results, keyed by content text. The bound is on
+ *  characters of content held (an isolate's memory is finite and request
+ *  content is not trusted), and it is sized to hold a whole deck's card
+ *  bodies, so a warm render scans only the content that changed. */
+const processScanMemo = new Map<string, ContentPiece[]>();
+let processScanMemoChars = 0;
+const SCAN_PROCESS_MEMO_CHAR_LIMIT = 2_000_000;
 
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
@@ -237,6 +263,14 @@ function scanNestsUncached(content: string): ContentPiece[] {
   let textStart = 0;
   let at = 0;
   while (at < content.length) {
+    // Neither chunk class can full-match at a position that is not a
+    // backslash (the escaped literal's prefix) or an open brace (the nest),
+    // so the scan jumps straight to the next such position. Same pieces,
+    // without two sticky regex calls per character of plain text.
+    CANDIDATE_AT_REGEXP.lastIndex = at;
+    const candidate = CANDIDATE_AT_REGEXP.exec(content);
+    if (candidate === null) break;
+    at = candidate.index;
     const escaped = matchAt(ESCAPED_LITERAL_AT_REGEXP, content, at);
     if (escaped !== undefined) {
       pushText(pieces, content.slice(textStart, at));
