@@ -543,7 +543,19 @@ export function cacheKey(lex: Lex): string {
 
 /** lexicon.rb#lex_query: { left_id:, right_id: } for arrays, { key: } for strings.
  *  A nil side queries `IS NULL`, exactly as ActiveRecord renders
- *  where(left_id: nil) - `= NULL` would never match in SQLite. */
+ *  where(left_id: nil) - `= NULL` would never match in SQLite.
+ *
+ *  The string arm folds case (`COLLATE NOCASE`), matching the ci collation
+ *  the cards.key column carries on the MySQL reference: Ruby's Lexicon.id
+ *  resolves through that collation, so a stored key differing from the
+ *  computed key by CASE still resolved there, while libSQL's binary
+ *  comparison answers "unknown" and lets validate_uniqueness_of_name
+ *  (name_events.rb:19-26) pass — the case-duplicate-creation bug. Keys are
+ *  stored downcased at write (the engine writes the computed key), so the
+ *  fold only widens matches onto drifted stored keys — the rows MySQL
+ *  masked. The Postgres driver translates COLLATE NOCASE to
+ *  lower(x) = lower($n) (drivers/postgres.ts), so the one SQL string is
+ *  dual-path by construction. */
 export function lexQuery(lex: Lex): { sql: string; params: unknown[] } {
   if (Array.isArray(lex)) {
     return {
@@ -553,5 +565,5 @@ export function lexQuery(lex: Lex): { sql: string; params: unknown[] } {
       params: [lex[0], lex[1]].filter((side) => side !== undefined),
     };
   }
-  return { sql: "key = ?", params: [DeckoName.parse(lex).key] };
+  return { sql: "key = ? COLLATE NOCASE", params: [DeckoName.parse(lex).key] };
 }

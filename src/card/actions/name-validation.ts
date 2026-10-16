@@ -93,13 +93,18 @@ export async function findTrashedCardByLex(
  *  `Card.find_by_key_and_trash name.key, true`. Only simple names have a
  *  stored key (compound cards' key columns are NULL post-2020,
  *  20200718051236_compound_names_do_not_store_name_and_key.rb), so compound
- *  renames never find an obstacle — same as Ruby. */
+ *  renames never find an obstacle — same as Ruby. The comparison folds case
+ *  (`COLLATE NOCASE`) like the lexicon's key arm (lexicon.ts lexQuery):
+ *  Ruby resolves through MySQL's ci collation, where a drifted stored key
+ *  differing only by case still matched; the fold keeps the rename-in-trash
+ *  obstacle detectable on libSQL's binary comparison. The Postgres driver
+ *  translates COLLATE NOCASE to lower(x) = lower($n). */
 export async function findTrashedKeyObstacle(
   driver: SQLDatabaseDriver,
   key: string,
 ): Promise<CardsRow | undefined> {
   const result = await driver.query<CardsRow>(
-    "SELECT * FROM cards WHERE key = ? AND trash = 1 LIMIT 1",
+    "SELECT * FROM cards WHERE key = ? COLLATE NOCASE AND trash = 1 LIMIT 1",
     [key],
   );
   return result.rows[0];
