@@ -821,6 +821,32 @@ function markToName(mark: string): string {
   return decodeUriComponentSafe(withoutFormat).replace(/_/g, " ");
 }
 
+/** Warms every "~<id>" among the given marks/names through the lexicon's
+ *  ASYNC read before the request parses it synchronously. The sync name
+ *  environment (DeckoName.parse -> idFromString) answers only warm entries
+ *  (src/card/fetch/lexicon.ts peek adapters): a cold isolate that has not
+ *  read the id would throw NameNotFoundError, and the write surface would
+ *  answer 500 for a card that exists. Ruby's Lexicon#name is cache-first
+ *  with a synchronous db fallback (card-1.110.0 lib/card/lexicon.rb), so the
+ *  port performs that read here. Returns the first id mark the deck does NOT
+ *  hold (undefined when every id resolves): Ruby's bad_mark raises
+ *  Card::Error::NotFound for such a mark (card-1.110.0 lib/card/name.rb
+ *  :102-105), the 404 class — a save against it, not a server error. */
+async function warmIdMarks(
+  fetcher: FetchEngine,
+  ...marks: readonly (string | undefined)[]
+): Promise<number | undefined> {
+  for (const mark of marks) {
+    if (mark === undefined) continue;
+    const match = /^~(\d+)$/.exec(markToName(mark).trim());
+    if (match === null) continue;
+    const id = Number(match[1]);
+    const name = await fetcher.lexicon.name(id);
+    if (name === undefined || name.s === "") return id;
+  }
+  return undefined;
+}
+
 /** Rack::MethodOverride semantics: only a POST is overridable, and only to
  *  PATCH / PUT / DELETE (the verbs browser forms cannot send natively). */
 function effectiveMethod(method: string, parsed: ParsedBody): string {
@@ -1576,6 +1602,22 @@ async function dispatchWriteRequest(
     ctx.originPolicy ?? defaultOriginPolicy(),
   );
   if (!originVerdict.ok) return crossOriginResponse(json, originVerdict.reason);
+
+  // Every "~<id>" the request names (the URL mark, the card-hash name) is
+  // resolved through the SYNCHRONOUS name environment below. Warm it first:
+  // a cold isolate has not read that id, and the sync parse would throw.
+  const missingId = await warmIdMarks(ctx.fetcher, route.mark, parsed.card["name"]);
+  if (missingId !== undefined) {
+    // bad_mark's NotFound (name.rb:102-105) — answered here, above the
+    // signin arms (a mark of "*signin" is never an id), through the shared
+    // error shape so the body is the not-found view like any other 404.
+    return errorResponse(
+      json,
+      new CardActionError("not-found", `id doesn't exist: ${missingId}`),
+      false,
+      { url: requestUrl(req), now: ctx.now?.() ?? new Date() },
+    );
+  }
 
   // The *signin update IS the login action (signin.rb:6 "/update/:signin is
   // the login action") — before any card machinery runs.
