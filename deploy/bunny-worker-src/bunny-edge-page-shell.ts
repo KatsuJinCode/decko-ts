@@ -35,6 +35,7 @@ import { applyFontAwesomeAssetConfiguration } from "../../src/card/render/font-a
 // pattern as bunny-edge-engine-request.ts).
 
 import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
+import { addConflictRetryScript } from './bunny-edge-conflict-retry-script.js';
 
 /** The asset host a deployment's /files/ URLs resolve to, or undefined for
  *  the stock host-relative form (the engine's imageCdnHost-unset shape).
@@ -92,6 +93,7 @@ export function applyServedEnvironmentDeltas(
       .join(`>Decko v${deltas.footerVersionPin}</a>`);
   }
   if (!body.endsWith("\n")) body += "\n";
+  if(deltas.conflictRetry===true)body=addConflictRetryScript(body);
   return body;
 }
 

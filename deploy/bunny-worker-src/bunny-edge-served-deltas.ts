@@ -87,6 +87,8 @@ export interface PhantomTypeDelta {
  *  is optional; the empty object is the stock-deck default and every delta
  *  pass it drives is a no-op. */
 export interface ServedEnvironmentDeltas {
+  /** Explicit modal conflict retry repair; upstream assets remain unchanged. */
+  conflictRetry?:true;
   /** The deck's configured time zone (an IANA name) for every timestamp the
    *  render path formats — Ruby's `Time.zone`.
    *  undefined = the engine's default, which is the GRADED deck's zone so an
@@ -199,6 +201,7 @@ function parseDeltasBlob(raw: string | undefined): ServedEnvironmentDeltas {
     return typeof v === "number" && Number.isInteger(v) ? v : undefined;
   };
   const out: ServedEnvironmentDeltas = {};
+  if(blob['conflictRetry']===true)out.conflictRetry=true;
   const timeZone = str("timeZone");
   if (timeZone !== undefined) out.timeZone = timeZone;
   const deckOrigin = str("deckOrigin");
@@ -361,6 +364,7 @@ function parseIntegrityPairs(raw: string | undefined): ScriptIntegrityDelta[] | 
 export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined): ServedEnvironmentDeltas {
   const src = env ?? {};
   const out: ServedEnvironmentDeltas = { ...parseDeltasBlob(src["DECKO_SERVED_DELTAS"]) };
+  if(src['DECKO_CONFLICT_RETRY']==='1')out.conflictRetry=true;
 
   const timeZone = trimmed(src["DECKO_TIME_ZONE"]);
   if (out.timeZone === undefined && timeZone !== undefined) out.timeZone = timeZone;

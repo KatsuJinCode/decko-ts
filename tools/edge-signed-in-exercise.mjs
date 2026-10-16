@@ -170,6 +170,12 @@ if (ajaxSaveRedirect !== undefined) {
   captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
 }
 provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
+const conflictRetry=argOf('conflict-retry');
+if(conflictRetry!==undefined){
+ if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
+ captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
+ provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
+}
 provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
   keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
   liveEnabled: captureEnv.DECKO_LIVE_RENDER !== '0', liveDefaulted: captureEnv.DECKO_LIVE_RENDER === undefined };
