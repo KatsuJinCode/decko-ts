@@ -1062,15 +1062,21 @@ try {
 } finally {
   // -- cleanup -----------------------------------------------------------
   group("cleanup");
-  const db = new Database(localDeck);
-  const cleanup=cleanupCreatedCards(db,baselineMaxCardId);
-  record("every journey-created card is removed from the local copy", cleanup.remaining === 0, cleanup);
-  db.close();
-  dbHandle.close();
+  // A timed-out promise can still finish an old operation. Close its browser
+  // and drain the owned application before inspecting or cleaning the copy.
   await browser.close().catch(() => undefined);
   let closed = false;
   try { await stack.close(); closed = true; record('owned local stack closed', true, {}); }
   catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
+  try {
+    if(closed){
+      const db = new Database(localDeck);
+      try{
+        const cleanup=cleanupCreatedCards(db,baselineMaxCardId);
+        record("every journey-created card is removed from the local copy",cleanup.remaining===0,cleanup);
+      }finally{db.close()}
+    }else record("every journey-created card is removed from the local copy",false,{reason:'owned stack did not close; preserving the fixture instead of racing its writes'});
+  }finally{dbHandle.close()}
   if (closed) stack.cleanup();
 }
 

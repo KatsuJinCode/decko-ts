@@ -4,6 +4,25 @@ The source of truth is `tools/edge-signed-in-exercise/capabilities.json`, which 
 reads to print coverage in its run record. This document explains where the list came from and
 what each row means.
 
+## Safe fixture admission and focused diagnostics
+
+The runner reads an immutable SQLite snapshot, then creates its own disposable
+copy. If another lane's source has an active WAL, never checkpoint it, remove
+its sidecars, or stop its owner. Use the first-class `snapshot-deck.mjs`
+export with `--source` and a fresh `--out` on C:. It opens the source read-only,
+backs up committed WAL data, checks the standalone output and writes a SHA-256
+receipt. The snapshot is a new dataset identity; preserve its receipt.
+
+`--only cover-b --case S2` runs just the selected capability diagnostic. The
+selection is recorded; it cannot establish complete acceptance. A timed-out
+cover-b operation makes the fixture fatal: no successor check runs, and the
+owned browser/application close before cleanup. Continue with a fresh run.
+
+Capability credit requires exact assertion names in `capabilities.json`, not
+just a module's advertised IDs. The imported cover-b descriptions still need
+contract review and alignment; a passed diagnostic can therefore remain
+uncredited. Preserve the result instead of weakening the coverage rule.
+
 ## Where the list came from
 
 Decko's own automated browser tests. Two suites ship in the Decko source

@@ -232,6 +232,7 @@ export async function runCoverBChecks(ctx) {
   });
 
   await attempt("C14 a *right+*default rule's content fills the new form", async () => {
+    if(!exists(movie))await create(movie,"","Cardtype");
     // Ruby: "Home Movie+*right+*default" = "Watch this"; a new card "Lew+Home Movie" shows it.
     // Creating a junction creates its LEFT card too, so track it for cleanup.
     ensure("Harness_CB_Home");
