@@ -202,8 +202,17 @@ export interface WriteRouteContext {
    *  set_stamper assigns their updater at instantiation, so the slot
    *  re-render must read their POST-save state — expiring only the mark
    *  left a changed +*email rendering its pre-save value inside the slot
-   *  bytes themselves. */
-  renderSlot?: (name: string, view?: string, subcardNames?: string[]) => Promise<string>;
+   *  bytes themselves. The fourth carries the render options: `absentCard`
+   *  renders the named card through the absent-card seat even when the
+   *  host's engine keeps renderAbsentCards off — the trashed card a
+   *  delete's soft redirect confirms (response.rb:54-62,
+   *  location_history.rb:12-14; render-seam.ts's HistoryRenderParams). */
+  renderSlot?: (
+    name: string,
+    view?: string,
+    subcardNames?: string[],
+    opts?: { absentCard?: boolean },
+  ) => Promise<string>;
   /** Renders one card's page through the host's page lane (the full layout
    *  html) for the named view — the explicit-GET update alternative's
    *  non-ajax denial surface: Ruby's card#update rescue renders the target
@@ -1948,52 +1957,29 @@ async function dispatchWriteRequest(
         .map((slot) => `${name}${slot}`),
       ...(result?.nameBeforeAct !== undefined ? [result.nameBeforeAct.s] : []),
     ];
-    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
-    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
-    // delete whose success target is the deleted card itself (no mark = self)
-    // with is_main in the params rewrites the success — redirect=true,
-    // target=:previous. The hard-redirect JSON then carries the session's
-    // previous location, resolved BEFORE the delete's discard drops the
-    // card's own entries; the browser reloads that address and the trashed
-    // card's page renders the create form through the unknown-card branch
-    // (card-mod-format html/error.rb:81-86 page_view_for_unknown).
-    const deleteConfigureRedirect =
+    // The delete's success target is the deleted card itself (no mark, or
+    // "_self"). Ruby's event :discard_deleted_locations, :finalize on :delete
+    // (mod/session set/all/location_history.rb:1-4) runs
+    // Env.discard_locations_for self FIRST and then configure_successful_
+    // deletion (:9-17) — so the target :previous resolves AFTER the deleted
+    // card's own entries are gone (location_history.rb:19-21, the last entry
+    // left, "/" at the bottom of the stack). Both arms below follow that order.
+    const deletesOwnTarget =
       saved.verb === "delete" &&
-      !json && isAjax(req, parsed) &&
-      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
-      parsed.isMain !== undefined;
-    if (deleteConfigureRedirect && ctx.previousLocation !== undefined) {
-      const previous = ctx.previousLocation();
-      if (previous !== undefined) {
-        return {
-          ...jsonResponse(200, { redirect: cardUrl(req, previous) }),
-          expiryName: name,
-          expiryNames: subcardExpiryNames,
-        };
-      }
-    }
-    const successRedirect = parsed.success["redirect"];
-    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
-    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
-    // delete whose success target is the deleted card itself (no mark = self)
-    // with is_main in the params rewrites the success — redirect=true,
-    // target=:previous. The hard-redirect JSON then carries the session's
-    // previous location (resolved before the discard below), and the browser
-    // reloads that address: the trashed card's page renders the create form
-    // through the unknown-card branch (card-mod-format html/error.rb:81-86
-    // page_view_for_unknown).
-    if (
-      saved.verb === "delete" &&
-      !json && isAjax(req, parsed) &&
-      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
-      parsed.isMain !== undefined
-    ) {
+      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self");
+    // configure_successful_deletion's else arm (location_history.rb:15-17): an
+    // ajax delete carrying is_main — the card page's and the search bar's
+    // main slot — rewrites the success to redirect=true, target=:previous.
+    if (deletesOwnTarget && !json && isAjax(req, parsed) && parsed.isMain !== undefined) {
+      discardLocationsFor(visit, name);
+      const previous = ctx.previousLocation?.() ?? previousLocation(visit);
       return {
-        ...jsonResponse(200, { redirect: absoluteTarget(req, previousLocation(visit)) }),
+        ...jsonResponse(200, { redirect: absoluteTarget(req, previous) }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };
     }
+    const successRedirect = parsed.success["redirect"];
     if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
       return {
         ...jsonResponse(200, {
@@ -2019,10 +2005,21 @@ async function dispatchWriteRequest(
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
       // The *previous resolution answers through the redirect arm above, so
       // the slot arm only fires for a card-name success target.
+      // configure_successful_deletion's then arm (location_history.rb:12-14):
+      // an ajax delete of the card itself WITHOUT is_main keeps the
+      // in-memory success target, and soft_redirect (response.rb:54-62)
+      // renders the trashed card's success[view] — :just_deleted from the
+      // delete link (form_buttons.rb:72-78), whose view (editing.rb:46-48)
+      // answers "<title> deleted". The card no longer fetches (every fetch
+      // filters trash = 0), so the host renders it through the absent-card
+      // seat (params.absentCard; render-seam.ts).
       const slotHtml = await ctx.renderSlot(
         successName ?? name,
         parsed.success["view"] || undefined,
         subcardExpiryNames,
+        {
+          ...(deletesOwnTarget ? { absentCard: true } : {}),
+        },
       );
       return {
         status: 200,

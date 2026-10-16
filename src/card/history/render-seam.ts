@@ -85,6 +85,25 @@ export interface HistoryRenderParams {
    *  (RenderEngine#renderAbsentCards); undefined is the `new: {}` idiom. */
   newCard?: NewCardOptions;
 
+  /** Render THIS render's target as a card that does not exist, even when
+   *  the engine's own `renderAbsentCards` is off (the hosts keep it off and
+   *  map the raised "card not found" to their not-found response).
+   *
+   *  Ruby's delete confirmation needs exactly this: soft_redirect
+   *  (decko/lib/card_controller/response.rb:54-62) sets `@card =
+   *  success.target` — for configure_successful_deletion
+   *  (mod/session/set/all/location_history.rb:12-14) the card that was just
+   *  trashed — and `show` renders its view; the trashed card is a Card
+   *  instance there, so `render(:just_deleted)`
+   *  (mod/edit/set/all/editing.rb:46-48) answers "<title> deleted". The
+   *  trashed card's fetch is gone (every fetch filters `trash = 0`), so the
+   *  port renders it through the SAME absent-card seat the page path uses
+   *  (renderAbsentCards) for this render alone: the view carries
+   *  `unknown: true`, so view_for_unknown (card-mod-format
+   *  set/all/html/error.rb:18-25) renders it AS REQUESTED rather than
+   *  substituting :new. */
+  absentCard?: boolean;
+
   /** The search request parameters (search_params.rb: the query vars
    *  `Env.hash(params[:query])` merged into the search's cql as vars, and
    *  the paging window — offset from `Env.params[:offset]`, focal-only per

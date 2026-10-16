@@ -147,7 +147,7 @@ export interface WorkersWriteEnv extends WriteSurfaceFlags {
 /** The render engine the host already boots (worker.js's `deck.render`). Only
  *  the two members the post-save expiry and the ajax soft redirect need. */
 export interface WorkersRenderEngine {
-  render(name: string, view: string): Promise<string>;
+  render(name: string, view: string, params?: { absentCard?: boolean }): Promise<string>;
   expireRenderCard(name: string): void;
   readonly imageCdnHost?: string;
 }
@@ -155,7 +155,7 @@ export interface WorkersRenderEngine {
 export interface WorkersWriteContext {
   /** Host-owned request-local saved-slot renderer. Hosts with remote
    *  drivers batch view reads through their normal serving boot. */
-  readonly renderSavedSlot?: (name: string, view?: string) => Promise<string>;
+  readonly renderSavedSlot?: (name: string, view?: string, opts?: { absentCard?: boolean }) => Promise<string>;
   /** Host-owned selected-upload renderer; the default remains below. */
   readonly renderPreviewEditor?: WriteRouteContext["renderPreviewEditor"];
   /** Explicit production transport + token configuration; absent never
@@ -494,11 +494,15 @@ async function mountWrite(
       // The ajax soft redirect re-renders the SAVED card through the host's
       // render engine. Expiry must come first — without it the slot render
       // reads the pre-save warm maps (post-save-cache-expiry.ts).
-      renderSlot: async (name, view) => {
+      renderSlot: async (name, view, _subcardNames, opts) => {
         ctx.fetcher.expireName(name);
         ctx.renderEngine.expireRenderCard(name);
-        if (ctx.renderSavedSlot !== undefined) return await ctx.renderSavedSlot(name, view);
-        return ctx.renderEngine.render(name, view ?? "titled");
+        if (ctx.renderSavedSlot !== undefined) return await ctx.renderSavedSlot(name, view, opts);
+        return ctx.renderEngine.render(
+          name,
+          view ?? "titled",
+          opts?.absentCard === true ? { absentCard: true } : {},
+        );
       },
       // carrierwave's real two-step upload answers with its preview_editor,
       // including the draft action's hidden save field. Render under this

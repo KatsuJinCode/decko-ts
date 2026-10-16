@@ -1303,7 +1303,10 @@ export class RenderEngine implements RenderEngineLike {
     this.bootProbeIssued = true;
     const [found] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
     if (bootProbe !== undefined) this.bootProbeVersion = await bootProbe;
-    const record = (found === undefined || found.isNew === true) && this.renderAbsentCards
+    // renderAbsentCards (the host's page seat) or params.absentCard (this
+    // render only: the trashed card a delete's confirmation names).
+    const absentOk = this.renderAbsentCards || params.absentCard === true;
+    const record = (found === undefined || found.isNew === true) && absentOk
       ? await this.fetcher.fetchByName(cardName, { new: params.newCard ?? {} })
       : found;
     if (record === undefined || record.name === undefined) {
@@ -1313,7 +1316,7 @@ export class RenderEngine implements RenderEngineLike {
     // An absent card is built from this request's arguments: a render card
     // an earlier request seated under the same name (another type, say) is
     // not this one.
-    if (record.isNew === true && this.renderAbsentCards) this.renderCards.delete(name.key);
+    if (record.isNew === true && absentOk) this.renderCards.delete(name.key);
     // The render-time history seam state is per-render: a render whose view
     // is not one of the history views must not see a previous render's
     // bundle (render-seam.ts documents the seam boundary). Same for the
@@ -2006,7 +2009,7 @@ export class RenderEngine implements RenderEngineLike {
       throw new Error(`render card not prepared: ${name.s}`);
     }
     const rootCard =
-      record.isNew === true && preparedRoot.id === undefined && this.renderAbsentCards
+      record.isNew === true && preparedRoot.id === undefined && absentOk
         ? await this.seatAbsentRoot(preparedRoot)
         : preparedRoot;
     // Pointer / List cardtypes: pre-enrich every item their content
