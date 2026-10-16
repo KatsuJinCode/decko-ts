@@ -37,6 +37,7 @@ import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-brow
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
+import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
@@ -487,26 +488,26 @@ try {
   if (created1) record("create a RichText card via /new/RichText and land on it", created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists, created1);
 
   const richEdit = await attempt("open rich edit", () => openEdit(`/${richName}`));
-  if (richEdit) {
+  if (richEdit) await attempt("RichText editor journey", async () => {
     record("RichText edit opens as a modal", richEdit.modals > 0, { modals: richEdit.modals, href: richEdit.href });
-    await page.waitForTimeout(3000);
-    await page.evaluate(() => window.tinymce?.activeEditor?.focus());
+    const richEditorId = await focusRichEditor(page);
     await page.keyboard.type("Harness rich text ");
-    const editor = await page.evaluate(() => {
-      const textarea = document.querySelector(".modal textarea, #edit_card textarea");
+    const editor = await page.evaluate((id) => {
+      const textarea = document.getElementById(id);
+      const selected = window.tinymce?.get(id);
       return {
         tinymcePresent: typeof window.tinymce !== "undefined",
-        activeEditor: typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null,
-        skinCss: typeof window.tinymce !== "undefined" ? window.tinymce.activeEditor?.editorContainer?.querySelectorAll("link[rel=stylesheet]").length ?? 0 : 0,
+        activeEditor: selected?.initialized === true && window.tinymce.activeEditor === selected,
+        skinCss: selected?.editorContainer?.querySelectorAll("link[rel=stylesheet]").length ?? 0,
         textarea: textarea ? textarea.name ?? "(unnamed)" : null,
       };
-    });
+    }, richEditorId);
     record("TinyMCE loads for the RichText editor", editor.tinymcePresent && editor.activeEditor, editor);
     // Save first, while the edit modal is still open: "Save and Close" is the
     // control a person presses after typing. The nest dialog is exercised in a
     // freshly reopened modal afterwards.
     const richSave = await attempt("save rich", async () => {
-      await page.evaluate(() => window.tinymce?.activeEditor?.focus());
+      await focusRichEditor(page);
       await page.keyboard.press("Control+End");
       return saveEditForm();
     });
@@ -515,23 +516,24 @@ try {
     if (afterRich) record("the saved RichText content is on the page", afterRich.html.includes("Harness rich text"), { status: afterRich.status });
     // Reopen the editor for the nest-dialog exercise.
     const richEdit2 = await openEdit(`/${richName}`);
-    await page.waitForTimeout(3500);
-    const nestButton = await page.evaluate(() => {
-      if (typeof window.tinymce === "undefined" || !window.tinymce.activeEditor) return null;
-      const buttons = [...window.tinymce.activeEditor.editorContainer.querySelectorAll("button, a")];
+    const nestedEditorId = await focusRichEditor(page);
+    const nestButton = await page.evaluate((id) => {
+      const selected = window.tinymce?.get(id);
+      if (!selected) return null;
+      const buttons = [...selected.editorContainer.querySelectorAll("button, a")];
       const found = buttons.find((b) => {
         const label = `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""} ${b.getAttribute("data-mce-name") ?? ""}`;
         return /nest|\{\{\}\}/i.test(label);
       });
       return found ? (found.getAttribute("title") ?? found.textContent ?? "(no title)") : null;
-    });
+    }, nestedEditorId);
     record("the nest ({{}}) button is present in the TinyMCE toolbar", nestButton !== null, { nestButton });
     if (nestButton !== null) {
       await attempt("nest dialog", async () => {
-        await page.evaluate(() => {
-          const buttons = [...window.tinymce.activeEditor.editorContainer.querySelectorAll("button, a")];
+        await page.evaluate((id) => {
+          const buttons = [...window.tinymce.get(id).editorContainer.querySelectorAll("button, a")];
           buttons.find((b) => /nest|\{\{\}\}/i.test(`${b.getAttribute("title") ?? ""} ${b.textContent ?? ""}`))?.click();
-        });
+        }, nestedEditorId);
         await page.waitForTimeout(1500);
         const dialog = await page.evaluate(() => {
           const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
@@ -552,7 +554,7 @@ try {
         await page.waitForTimeout(500);
       });
     }
-  }
+  });
 
   // -- 5 -----------------------------------------------------------------
   group("5. create a card every way the site offers");
@@ -949,6 +951,8 @@ try {
   record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
 
   }
+} catch (error) {
+  await attempt('unexpected journey exception', async () => { throw error; });
 } finally {
   // -- cleanup -----------------------------------------------------------
   group("cleanup");
