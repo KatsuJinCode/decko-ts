@@ -82,3 +82,34 @@ validation passes. Raw logs: `.runtime/new-form-default-red.log`,
 `.runtime/new-form-default-green.log`, `.runtime/new-form-default-typecheck.log`.
 No source snapshot, oracle golden or vendor state changed. Pointer dispatch
 and the other remaining full-run failures still require their own evidence.
+
+## Subsequent runtime repair: Pointer editor rule and Search options
+
+On `a220709f`, the automated existing-Pointer checkbox journey passes **5/5**
+(`.runtime/pointer-input-a220709f-C16-r2/report.md`). It checks a real choice,
+saves through the modal, verifies stored content and a fresh page, then
+unchecks the choice and verifies its removal after another save and read.
+
+The serving path lacked the input-rule preparation that isolated mod tests
+explicitly performed. The renderer now seats the winning `input_type` rule
+for an existing Pointer/List edit root through the existing authoritative
+rule cache before synchronous editor dispatch. A separate options defect
+recognized legacy `search` but omitted canonical `search_type`, rendering the
+rule's JSON as a literal choice. Both existing option checks now accept the
+canonical code as well.
+
+Actual-handler tests failed before each correction and pass afterwards.
+They verify the no-rule list fallback, a newly saved checkbox rule, its later
+select update, literal List options, canonical Search options and no writes
+while rendering the forms. The first focused HTTP/checkbox/select run passed
+21 tests; the strengthened canonical-Search HTTP test passed in 14.00 seconds.
+TypeScript validation passes. Earlier failures are retained in
+`.runtime/pointer-input-rule-red.log`, `.runtime/pointer-search-options-red.log`
+and the preceding browser captures; green HTTP logs use matching prefixes.
+
+Whole-run fixture setup now updates an existing input rule between widget
+cases rather than ignoring a duplicate create. These C16/C18 diagnostic bodies
+operate existing editors; their original capability IDs describe new-card or
+structured-card creation, so those capabilities remain uncovered. C18/E23
+still need their actual browser selection/change checks on this repair.
+No vendor deployment, oracle golden or protected snapshot changed.
