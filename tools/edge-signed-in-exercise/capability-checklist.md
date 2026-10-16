@@ -30,15 +30,16 @@ capability appears in both sources, both are cited.
 `out_of_scope`. Every capability a signed-in user has is listed, whether or not the harness
 drives it yet, so the gap is visible rather than absent.
 
-## Findings so far that are NOT harness bugs
+## Historical findings from the initial exercise
 
-These are capabilities Decko has and the edge either lacks or answers wrongly. Each was
-confirmed against the local edge build, not just the harness.
+These describe the initial source, not current acceptance. Later integration changed
+several paths. Keep each failed capture and rerun its actual browser behavior against
+the exact candidate before claiming that a repair passed.
 
-1. **Navbar Sign out is broken.** The link is `/delete/*signin`, and the handler at
-   `deploy/bunny-worker-src/bunny-edge-engine-handler.ts:261` excludes that path from the
-   GET-to-DELETE rewrite, so `GET /delete/*signin` answers 404 and the session is not revoked.
-   `GET /_signout` works. Decko's own `signin-signout-member` journey covers this.
+1. **Navbar signout requires a behavioral check.** The integrated handler maps the
+   stock `/delete/*signin` link to signout. The former assertion rejecting that URL
+   was invalid. The exercise now clicks the actual link, checks anonymous landing,
+   cookie clearing, rejection of the old session and unchanged card rows.
 2. **No reset-password or sign-up links on the signed-out `/*signin` page.** Ruby's
    `core.haml` renders `.reset-password-link` and `.signup-button` beside the sign-in button;
    the port's `signin-core-form-view.ts` renders the same markup, but on the edge the signed-out

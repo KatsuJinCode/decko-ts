@@ -9,8 +9,8 @@
 // It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
 // engine.bundle.js, rebuilt from deploy/bunny-worker-src by
 // tools/bundle-bunny-edge-engine.mjs — behind a local HTTPS host, with the
-// LIVE script's environment variables (read read-only from the Bunny API,
-// never printed) minus the database secrets, plus a local database endpoint.
+// allowlisted render configuration read read-only from the Bunny API,
+// with local-only database and storage endpoints and dummy credentials.
 // Nothing reaches the live site and nothing is written to Bunny.
 //
 // The browser is a headless Chromium with a throwaway profile and a request
@@ -189,11 +189,23 @@ async function saveEditForm() {
   const submit = page.locator(".modal form button[type=submit], #edit_card button[type=submit]").first();
   const action = await page.locator(".modal form, #edit_card").first().getAttribute("action").catch(() => null);
   const before = ledger().length;
+  if (!action) throw new Error('edit form has no action');
+  const endpoint = new URL(action, stack.origin);
+  if (endpoint.origin !== stack.origin) throw new Error('edit action leaves owned local origin');
+  // Arm before clicking, and observe the actual write even when it is slow
+  // or fails. A fixed delay misreported 22–42s writes as no response.
+  const pending = page.waitForResponse(response => {
+    const request = response.request();
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === endpoint.pathname && request.method() !== 'GET';
+  }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
   await submit.click();
-  await page.waitForTimeout(2500);
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
   const lines = linesSince(before);
-  const write = lines.find((l) => l.method !== "GET");
-  return { action, status: write?.status ?? null, serverTotalMs: totalMsOf(write), bodyHead: write?.bodyHead ?? null, lines };
+  const write = lines.find((l) => l.method !== 'GET' && new URL(l.path, stack.origin).pathname === endpoint.pathname);
+  return { action, status: observed.response.status(), serverTotalMs: totalMsOf(write), bodyHead: write?.bodyHead ?? null, lines };
 }
 
 /** The long form a Date card shows (its stored ISO value is not printed verbatim). */
@@ -429,11 +441,33 @@ try {
     const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND name LIKE ? ESCAPE ?").get(baselineMaxCardId, "delete%", "\\").n;
     record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId });
   }
-  const signOutHref = await attempt("sign out link href", async () => {
-    const home2 = await visit("/");
-    return page.evaluate(() => document.querySelector("a.signout-link")?.getAttribute("href") ?? document.querySelector('a[href*="*signin"]')?.getAttribute("href") ?? null);
+  await attempt("navbar sign out revokes the session", async () => {
+    await visit("/");
+    const link = page.locator('a.signout-link').first();
+    const href = await link.getAttribute('href');
+    if (!href || new URL(href, stack.origin).origin !== stack.origin) throw new Error('no local navbar signout link');
+    const oldSession = (await page.context().cookies(stack.origin)).find(cookie => cookie.name === 'decko_ts_session');
+    if (!oldSession) throw new Error('navbar signout check started without a session');
+    const cardsBefore = digest(JSON.stringify(database().prepare('SELECT * FROM cards ORDER BY id').all()));
+    const responsePromise = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.origin === stack.origin && url.pathname === new URL(href, stack.origin).pathname;
+    }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+    await link.click();
+    const observed = await responsePromise;
+    if (observed.error) throw observed.error;
+    await observed.response.finished();
+    const landing = await visit('/');
+    const cookies = await page.context().cookies(stack.origin);
+    // Replay only to our own loopback server to distinguish cookie clearing
+    // from server-side revocation. The token itself never enters evidence.
+    const replay = await page.context().request.get(stack.origin + '/', { headers: { cookie: `${oldSession.name}=${oldSession.value}` } });
+    const replaySignedIn = SIGNED_IN_RE.test(await replay.text());
+    const cardsUnchanged = cardsBefore === digest(JSON.stringify(database().prepare('SELECT * FROM cards ORDER BY id').all()));
+    record('navbar sign out revokes the session without changing cards', !landing.signedIn && !cookies.some(cookie => cookie.name === oldSession.name) && !replaySignedIn && cardsUnchanged,
+      { href, status: observed.response.status(), landingSignedIn: landing.signedIn, replaySignedIn, cardsUnchanged });
+    await signIn(creds.admin);
   });
-  if (signOutHref !== undefined) record("the Sign out link is NOT a /delete/*signin link (which would delete/create a card)", signOutHref !== "/delete/*signin", { signOutHref });
 
   // -- 7 -----------------------------------------------------------------
   group("7. rename, history, search, changes, sign out and back in");

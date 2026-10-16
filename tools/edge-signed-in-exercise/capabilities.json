@@ -83,8 +83,8 @@
         "journeys signin-signout-member"
       ],
       "status": "partial",
-      "check": "the Sign out link is NOT a /delete/*signin link (FAILS: it is)",
-      "finding": "navbar Sign out is /delete/*signin, which 404s on the edge"
+      "check": "navbar sign out revokes the session without changing cards",
+      "finding": "Acceptance requires clicking the actual navbar link, clearing the cookie, rejecting replay of the old session, and preserving card rows. The stock /delete/*signin path is handled as signout by the edge."
     },
     {
       "id": "S9",
