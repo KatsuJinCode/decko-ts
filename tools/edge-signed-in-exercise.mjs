@@ -39,6 +39,7 @@ import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
+if (argOf('only') !== undefined && argOf('only') !== 'account') throw new Error('supported --only selection: account');
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -52,6 +53,7 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
 const provenance = { source: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain', '--untracked-files=normal') !== '', startedAt: new Date().toISOString(), productionRuntime: false };
 if (provenance.dirty) throw new Error('commit the coherent source before capability capture');
+provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('only') !== undefined };
 
 // --------------------------------------------------------------- check kit
 
@@ -281,7 +283,75 @@ const created = [];
 
 // ----------------------------------------------------------------- checks
 
+async function accountSettings() {
+  await attempt("A1/A2 account settings and change password", async () => {
+    // Account settings live on the account card's board (cypress
+    // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
+    const holder = creds.admin.name.replace(/ /g, "_");
+    const settings = await visit(`/${holder}/board`);
+    await page.waitForTimeout(2000);
+    const tabLinks = await page.evaluate(() => [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")].map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") })).filter((t) => t.text));
+    const accountTab = tabLinks.find((t) => /account/i.test(t.text));
+    if (!accountTab) {
+      record("the account card's board has an Account tab", false, { tabLinks });
+    } else {
+      record("the account card's board has an Account tab", true, { accountTab });
+      // Stock account_tab.spec.coffee activates the tab, opens the settings
+      // pill, then opens each labeled row's pencil. A fragment navigation
+      // never performs those interactions.
+      await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+      const pill = page.locator('[data-cy="email_and_password-pill"]').first();
+      await pill.waitFor({ state: 'visible' });
+      await pill.click();
+      await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 });
+      async function openAccountField(right) {
+        const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
+        await link.dispatchEvent('click');
+        const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
+        await input.waitFor({ state: 'visible', timeout: 60_000 });
+        return input;
+      }
+      const emailInput = await openAccountField('email');
+      const emailName = await emailInput.getAttribute('name');
+      const emailType = await emailInput.getAttribute('type');
+      await page.locator('.modal .cancel-button:visible, #edit_card .cancel-button:visible').first().click();
+      await page.locator('.modal.show').waitFor({ state: 'hidden' });
+      const passwordInput = await openAccountField('password');
+      const passwordName = await passwordInput.getAttribute('name');
+      const fields = [{right:'email',name:emailName,type:emailType}, {right:'password',name:passwordName,type:await passwordInput.getAttribute('type')}];
+      const emailField = fields.find((f) => f.right === 'email' && f.name && f.type !== 'hidden');
+      const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
+      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
+      if (passwordField !== undefined) {
+        const oldPassword = creds.admin.password;
+        const next = `${oldPassword}x`;
+        await passwordInput.fill(next);
+        const write = await saveEditForm();
+        const withOld = await signIn({ ...creds.admin, password: oldPassword });
+        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...creds.admin, password: next });
+        record("the account password can be changed and the new one signs in", write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
+          { writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
+        if (withNew.hasSessionCookie) {
+          await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
+          await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+          await page.locator('[data-cy="email_and_password-pill"]').first().click();
+          const restore = await openAccountField('password');
+          await restore.fill(oldPassword);
+          const restored = await saveEditForm();
+          if (restored.status >= 400) throw new Error(`password restore answered ${restored.status}`);
+          await signIn(creds.admin);
+        }
+      }
+    }
+  });
+}
+
 try {
+  if (argOf('only') === 'account') {
+    group('account diagnostic only');
+    await signIn(creds.admin);
+    await accountSettings();
+  } else {
   // -- 1 -----------------------------------------------------------------
   group("1. sign in, and stay signed in");
   const adminIn = await attempt("admin signs in through the form", () => signIn(creds.admin));
@@ -750,66 +820,7 @@ try {
     record("a CQL search runs and answers without an error page", ranIt, { url: page.url(), query: q });
   });
 
-  await attempt("A1/A2 account settings and change password", async () => {
-    // Account settings live on the account card's board (cypress
-    // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
-    const holder = creds.admin.name.replace(/ /g, "_");
-    const settings = await visit(`/${holder}/board`);
-    await page.waitForTimeout(2000);
-    const tabLinks = await page.evaluate(() => [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")].map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") })).filter((t) => t.text));
-    const accountTab = tabLinks.find((t) => /account/i.test(t.text));
-    if (!accountTab) {
-      record("the account card's board has an Account tab", false, { tabLinks });
-    } else {
-      record("the account card's board has an Account tab", true, { accountTab });
-      // Stock account_tab.spec.coffee activates the tab, opens the settings
-      // pill, then opens each labeled row's pencil. A fragment navigation
-      // never performs those interactions.
-      await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
-      const pill = page.locator('[data-cy="email_and_password-pill"]').first();
-      await pill.waitFor({ state: 'visible' });
-      await pill.click();
-      await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 });
-      async function openAccountField(right) {
-        const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
-        await link.dispatchEvent('click');
-        const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
-        await input.waitFor({ state: 'visible', timeout: 60_000 });
-        return input;
-      }
-      const emailInput = await openAccountField('email');
-      const emailName = await emailInput.getAttribute('name');
-      const emailType = await emailInput.getAttribute('type');
-      await page.locator('.modal .cancel-button:visible, #edit_card .cancel-button:visible').first().click();
-      await page.locator('.modal.show').waitFor({ state: 'hidden' });
-      const passwordInput = await openAccountField('password');
-      const passwordName = await passwordInput.getAttribute('name');
-      const fields = [{right:'email',name:emailName,type:emailType}, {right:'password',name:passwordName,type:await passwordInput.getAttribute('type')}];
-      const emailField = fields.find((f) => f.right === 'email' && f.name && f.type !== 'hidden');
-      const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
-      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
-      if (passwordField !== undefined) {
-        const oldPassword = creds.admin.password;
-        const next = `${oldPassword}x`;
-        await passwordInput.fill(next);
-        const write = await saveEditForm();
-        const withOld = await signIn({ ...creds.admin, password: oldPassword });
-        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...creds.admin, password: next });
-        record("the account password can be changed and the new one signs in", write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
-          { writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
-        if (withNew.hasSessionCookie) {
-          await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
-          await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
-          await page.locator('[data-cy="email_and_password-pill"]').first().click();
-          const restore = await openAccountField('password');
-          await restore.fill(oldPassword);
-          const restored = await saveEditForm();
-          if (restored.status >= 400) throw new Error(`password restore answered ${restored.status}`);
-          await signIn(creds.admin);
-        }
-      }
-    }
-  });
+  await accountSettings();
 
   await attempt("F1 upload on the edge", async () => {
     await visit("/new/File");
@@ -883,6 +894,7 @@ try {
   console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);
   record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
 
+  }
 } finally {
   // -- cleanup -----------------------------------------------------------
   group("cleanup");
