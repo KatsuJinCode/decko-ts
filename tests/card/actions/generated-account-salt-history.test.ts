@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createActionsTestStorage, seedStandardDeck, seedCard, actionEngine } from "./actions-test-storage.js";
 import { CardActionEngine } from '../../../src/card/actions/card-action-engine.js';
+import { defaultFollowNotifyDeps } from '../../../src/card/notify/follower-resolver.js';
 
 async function deck() {
   const s=await createActionsTestStorage();
@@ -17,19 +18,24 @@ describe("generated account salt history",()=>{
   it('uses the anonymized holder name in the delete result and integration notices',async()=>{
     const s=await deck();try{
       await seedCard(s,{id:520,name:'User',codename:'user',typeId:3});
-      await s.driver.query('UPDATE cards SET type_id=? WHERE id=?',[520,510]);
       const notices:Array<string|null>=[];
       const engine=new CardActionEngine(s.engine,{
         actor:{id:9,name:'Joe User'},canWrite:()=>true,
         integrationHooks:[{stage:'integrate',notable:e=>e.verb==='delete',fire:async e=>{notices.push(e.card?.name??null)}}],
       });
-      await engine.createCard({name:'Default Field Holder+*account',subcards:{'+*email':{content:'holder@example.test'}}});
-      const result=await engine.deleteCard({cardId:510});
-      const stored=await s.selectOne<{name:string}>('SELECT name FROM cards WHERE id=?',[510]);
+      const holder=await engine.createCard({name:'Notice Holder',typeId:520,subcards:{'+*account':{subcards:{'+*email':{content:'holder@example.test'}}}}});
+      const result=await engine.deleteCard({cardId:holder.cardId});
+      const stored=await s.selectOne<{name:string}>('SELECT name FROM cards WHERE id=?',[holder.cardId]);
       expect(stored?.name).toMatch(/^ANON-[0-9a-f]{12}$/);
       expect(result?.name?.s).toBe(stored?.name);
       expect(notices).toContain(stored?.name);
-      expect(notices).not.toContain('Default Field Holder');
+      expect(notices).not.toContain('Notice Holder');
+      const views=await defaultFollowNotifyDeps(s.engine,{mail:{origin:'http://deck.example',deckoBotEmail:'bot@example.test'}}).views!({
+        act:{actId:result!.actId,actor:{id:9,name:'Joe User',email:null},events:[],silent:false,actCardName:stored!.name},
+        actCardId:holder.cardId,ref:{followerId:9,followerName:'Joe User',followerEmail:'reader@example.test',followedSetName:'*all',followOption:'*always'},
+      });
+      expect(views.text['_|name']).toBe(stored?.name);
+      expect(views.text['_|url']).toBe('http://deck.example/'+stored!.name.replace('-','_'));
     }finally{s.close()}
   });
   it('preserves custom account subtrees without leaving cardless history',async()=>{
