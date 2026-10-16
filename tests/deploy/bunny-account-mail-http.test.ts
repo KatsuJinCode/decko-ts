@@ -306,6 +306,28 @@ it("preserves URL RichText presets through both actual new-form paths and real c
   }
 }, 60_000);
 
+it("applies a right default only when a new form has no explicit content preset", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const type = (await driver.query<{ id: number; name: string }>("SELECT id,name FROM cards WHERE codename='basic' AND trash=0", [])).rows[0];
+  const right = "Owned Default Field", expected = "<p>Actual right default.</p>";
+  const rule = await post("/card/create", { "card[name]": `${right}+*right+*default`, "card[type_id]": String(type.id), "card[content]": expected }, cookie);
+  expect(rule.status).toBe(200);
+  const before = await snapshot();
+  for (const [kind, content, wanted] of [["absent", undefined, expected], ["empty", "", ""], ["preset", "<p>Explicit preset.</p>", "<p>Explicit preset.</p>"]] as const) {
+    const params = new URLSearchParams({ "card[name]": `Owned Default ${kind}+${right}` });
+    if (content !== undefined) params.set("card[content]", content);
+    const page = await fetch(base + `/new/${encodeURIComponent(type.name)}?${params}`, { headers: { cookie } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    const textarea = [...html.matchAll(/<textarea\b([^>]*)>([\s\S]*?)<\/textarea>/g)].find(x => x[1].includes('name="card[content]"'));
+    expect(textarea, kind).toBeDefined();
+    const shown = textarea![2].replace(/^\r?\n/, "").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+    expect(shown, kind).toBe(wanted);
+  }
+  expect(await snapshot()).toEqual(before);
+}, 60_000);
+
 it("returns the committed Date's real HTML slot without serial response-render queries", async () => {
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");

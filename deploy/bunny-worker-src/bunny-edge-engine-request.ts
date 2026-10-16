@@ -572,7 +572,7 @@ async function dispatchEngineRequest(
           options,
           signal,
           url.searchParams.get("card[name]") ?? parsed.cardName ?? "",
-          url.searchParams.get("card[content]") ?? "",
+          url.searchParams.get("card[content]") ?? undefined,
         );
         return page ?? (await signedInNewCardRouteResponse(newCardDeck, typeName));
       }
@@ -896,7 +896,7 @@ async function signedInNewCardPage(
   options: EngineRequestOptions,
   signal: AbortSignal | undefined,
   cardName = "",
-  content = "",
+  content?: string,
 ): Promise<Response | undefined> {
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
@@ -950,7 +950,7 @@ async function signedInNewCardPage(
       engines.render.pageSession = viewer;
       engines.render.renderAbsentCards = true;
       return engines;
-    }, { signal, requestedView: "new", requestScope, keepScope, historyParams: { focalRoot: true, newCard: { typeId: typeRecord.id, content } } });
+    }, { signal, requestedView: "new", requestScope, keepScope, historyParams: { focalRoot: true, newCard: { typeId: typeRecord.id, ...(content === undefined ? {} : { content }) } } });
     return result;
   };
   const form = await (requestContextAvailable()
