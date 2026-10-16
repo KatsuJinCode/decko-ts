@@ -108,11 +108,14 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
   page.on("pageerror", (error) => consoleErrors.push(`pageerror: ${error.message}`));
   page.on("response", (response) => {
     if (response.status() >= 400) {
-      blocked.push({ url: response.url(), status: response.status() });
+      const request = response.request();
+      blocked.push({ url: response.url(), status: response.status(), method: request.method(),
+        resourceType: request.resourceType(), navigation: request.isNavigationRequest() });
     }
   });
   page.on("requestfailed", (request) => {
-    blocked.push({ url: request.url(), status: `failed:${request.failure()?.errorText ?? "unknown"}` });
+    blocked.push({ url: request.url(), status: `failed:${request.failure()?.errorText ?? "unknown"}`,
+      method: request.method(), resourceType: request.resourceType(), navigation: request.isNavigationRequest() });
   });
 
   return {

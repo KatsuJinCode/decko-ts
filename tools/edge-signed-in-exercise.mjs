@@ -992,6 +992,14 @@ try {
 }
 
 // ---------------------------------------------------------------- report
+// Retain asset failures from the entire main browser journey, including
+// editors reached after the initial signed-in styling check. Deliberate
+// permission-refusal fetches remain in raw evidence and are not asset loads.
+const assetFailures = browser.blocked.filter(item =>
+  ['script', 'stylesheet', 'font', 'image'].includes(item.resourceType));
+group('final main-browser asset audit');
+record('no script, stylesheet, font or image failed during the complete main browser journey',
+  assetFailures.length === 0, { failures: assetFailures });
 
 const failures = results.filter((r) => !r.pass);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
