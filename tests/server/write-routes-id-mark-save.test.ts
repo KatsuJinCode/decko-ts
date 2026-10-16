@@ -47,6 +47,14 @@ const EDITOR_ID = 30;
 const PERSON_ID = 393; // Fixture Owner (type Person)
 const POINTER_FIELD_ID = 1638; // Planning Project(s) (a pointer field)
 const JUNCTION_ID = 1743; // the List junction the demo saved
+// The standard-rule fixture: a Set-typed left, a Setting-typed right, the
+// junction joining them, and the *rule+*update grant that only Editor has.
+const SETTING_TYPE_ID = 66;
+const RULE_CARD_ID = 64;
+const RULABLE_ID = 61;
+const PINNED_SETTING_ID = 62;
+const RULE_JUNCTION_ID = 63;
+const RULE_UPDATE_RULE_ID = 65;
 
 let storage: RenderTestStorage;
 let ctx: WriteRouteContext;
@@ -89,6 +97,16 @@ async function seedRuleDeck(s: RenderTestStorage): Promise<void> {
     typeId: 47,
     dbContent: "Example One\nExample Two",
   });
+  // A standard rule (rule/all.rb:37-40: left a Set card, right a Setting
+  // card) under *rule+*update = [[Editor]]. The *rule pattern is the one
+  // the write path must see: isRule is what makes it apply.
+  await byId(SETTING_TYPE_ID, "Setting", { codename: "setting", typeId: SET_TYPE_ID });
+  await byId(RULE_CARD_ID, "*rule", { codename: "rule", typeId: SET_TYPE_ID });
+  await byId(RULABLE_ID, "Rulable", { codename: "rulable_set", typeId: SET_TYPE_ID });
+  await byId(PINNED_SETTING_ID, "Pinned Setting", { typeId: SETTING_TYPE_ID });
+  await seedCard(s, { id: RULE_JUNCTION_ID, leftId: RULABLE_ID, rightId: PINNED_SETTING_ID, typeId: 47, dbContent: "old" });
+  await seedCard(s, { id: RULE_UPDATE_RULE_ID, leftId: RULE_CARD_ID, rightId: 3, dbContent: "[[Editor]]" });
+  await seedReference(s, RULE_UPDATE_RULE_ID, EDITOR_ID, "editor");
 }
 
 beforeAll(async () => {
@@ -165,6 +183,20 @@ describe("write surface: editing a card by its ~<id> mark", () => {
     // PermissionDenied -> 403 (permission.rb ok_to_*). The warm happens on
     // the way to the auth gate and must not change that.
     expect(res?.status).toBe(403);
+  });
+});
+
+describe("write surface: the *rule pattern applies to standard rule cards", () => {
+  // A standard rule is a junction whose left part is a Set card and whose
+  // right part is a Setting card (rule/all.rb:37-40). The *rule pattern
+  // applies only to such a card (06_rule.rb#pattern_applies?), so a
+  // *rule+*update grant governs it. Before the fix the write path never
+  // set isRule, and Joe rewrote a standard rule his grant denied.
+  it("denies a standard rule update when *rule+*update is restricted to Editor", async () => {
+    const res = await updateRequest("/update/Rulable+Pinned Setting", { "card[content]": "joe rewrites" });
+    expect(res?.status).toBe(403);
+    const row = await storage.fetcher.fetchByName("Rulable+Pinned Setting");
+    expect(row?.dbContent).toBe("old");
   });
 });
 

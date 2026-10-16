@@ -125,6 +125,8 @@ import {
 import { updatePermissionOverride } from "../permissions/read-override.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import {
+  isStandardRuleName,
+  isPreferenceName,
   quickTypeName,
   ruleContentForCard,
   ruleWalkPatternInput,
@@ -5157,6 +5159,18 @@ export class CardActionEngine {
       typeId,
       typeName,
       leftTypeName,
+      // 06_rule.rb#pattern_applies? -> card.rule? (rule/all.rb:32-34):
+      // standard_rule? (rule/all.rb:37-40 - left a Set card, right a
+      // Setting card) || preference?. The registry's *rule pattern applies
+      // ONLY when this is true (set-patterns/registry.ts:233), so a
+      // *rule+*create/update/delete grant must be able to see it; leaving
+      // it off lets any permitted actor rewrite a standard rule. Same
+      // computation as the read-rule seam (set-read-rule.ts:656-658).
+      isRule:
+        patternName !== undefined && patternName.isCompound
+          ? (await isStandardRuleName(this.fetch, patternName)) ||
+            (await isPreferenceName(this.fetch, patternName))
+          : false,
     };
   }
 
