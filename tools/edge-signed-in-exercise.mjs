@@ -181,14 +181,29 @@ async function visit(pathname) {
 
 /** Signs in by filling the deck's own sign-in form, as a person does. */
 async function signIn(account) {
+  // Each credential verdict must come from a fresh browser session, rather
+  // than mistaking an existing valid cookie for a successful new login.
+  await page.context().clearCookies();
   await page.goto(`${stack.origin}/*signin`, { waitUntil: "load", timeout: 60_000 });
   await page.fill('input[name="card[subcards][+*email][content]"]', account.email);
   await page.fill('input[name="card[subcards][+*password][content]"]', account.password);
   const before = ledger().length;
+  const pending = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === '/update/*signin' && response.request().method() === 'POST';
+  }, {timeout:60_000}).then(response => ({response}), error => ({error}));
   await page.locator('form[action="/update/*signin"] button[type="submit"], form[action="/update/*signin"] input[type="submit"]').first().click();
-  // The 200 ajax answer is {"redirect": url}; the page then navigates there.
-  await page.waitForTimeout(2500);
-  await page.waitForLoadState("load").catch(() => undefined);
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
+  if (observed.response.status() < 400) {
+    const body = await observed.response.json().catch(() => null);
+    const location = body?.redirect ?? observed.response.headers().location;
+    if (!location) throw new Error('successful sign-in has no observed redirect');
+    const target = new URL(location, stack.origin);
+    if (target.origin !== stack.origin) throw new Error('sign-in redirect leaves owned origin');
+    await page.waitForURL(target.href, {waitUntil:'load', timeout:60_000});
+  }
   const cookies = await page.context().cookies(stack.origin);
   const session = cookies.find((c) => c.name === "decko_ts_session");
   const lines = linesSince(before);
@@ -628,25 +643,49 @@ try {
     if (rowCount === 0) {
       record("rename: the board shows an edit_name_row", false, { note: "no edit_name_row in the board" });
     } else {
-      await row.locator("a.edit-link, a[href$='/edit']").first().dispatchEvent("click").catch(() => undefined);
-      await page.waitForTimeout(1500);
+      const edit = row.locator("a.edit-link, a[href$='/edit']").first();
+      const href = await edit.getAttribute('href');
+      if (!href) throw new Error('name row has no edit target');
+      const target = new URL(href, stack.origin);
+      if (target.origin !== stack.origin) throw new Error('rename target leaves owned origin');
+      const opened = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.origin === stack.origin && url.pathname === target.pathname;
+      }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+      await edit.dispatchEvent('click');
+      const observed = await opened;
+      if (observed.error) throw observed.error;
+      await observed.response.finished();
       const nameInput = page.locator(".modal input[name='card[name]'], .board input[name='card[name]'], .name-editor input[name='card[name]']").first();
+      await nameInput.waitFor({state:'visible',timeout:20_000});
       const present = await nameInput.count();
       if (present === 0) {
         record("rename: the name row opens a renamer with a card[name] field", false, { note: "no name field after the name row was opened" });
       } else {
-        await nameInput.fill(renamed).catch(() => undefined);
+        await nameInput.fill(renamed);
+        const form = nameInput.locator('xpath=ancestor::form[1]');
+        const action = await form.getAttribute('action');
+        if (!action || new URL(action, stack.origin).origin !== stack.origin) throw new Error('rename form lacks a local action');
         const before = ledger().length;
-        await page.locator(".modal button.renamer, .board button.renamer, button[type='submit']").first().click().catch(() => undefined);
-        await page.waitForTimeout(3000);
+        const saved = page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return url.origin === stack.origin && url.pathname === new URL(action, stack.origin).pathname && response.request().method() !== 'GET';
+        }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+        await form.locator('button.renamer, button[type=submit], input[type=submit]').first().click();
+        const answer = await saved;
+        if (answer.error) throw answer.error;
+        await answer.response.finished();
         const write = linesSince(before).find((l) => l.method !== "GET");
         const after = await visit(`/${renamed}`);
         const old = await visit(`/${richName}`);
-        const oldGone = old.status !== 200 || !old.html.includes(renamed);
-        record("rename through the board's name row moves the card to its new name", write !== undefined && write.status < 400 && after.html.includes(renamed) && oldGone,
-          { status: write?.status ?? null, serverSaid: write?.bodyHead, newName: renamed, afterStatus: after.status, oldGone });
-        created[created.indexOf(currentName)] = renamed;
-        currentName = renamed;
+        const stored = database().prepare('SELECT id,name,trash FROM cards WHERE name = ?').get(renamed);
+        const oldGone = Number(database().prepare('SELECT COUNT(*) AS n FROM cards WHERE name = ? AND trash = 0').get(currentName).n) === 0;
+        record("rename through the board's name row moves the card to its new name", answer.response.status() < 400 && after.status === 200 && stored?.trash === 0 && oldGone,
+          { status: answer.response.status(), serverSaid: write?.bodyHead, newName: renamed, afterStatus: after.status, oldStatus:old.status, oldGone, storedId:stored?.id??null });
+        if (stored?.trash === 0 && oldGone) {
+          created[created.indexOf(currentName)] = renamed;
+          currentName = renamed;
+        }
       }
     }
   });
