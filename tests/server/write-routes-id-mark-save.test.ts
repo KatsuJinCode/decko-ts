@@ -167,3 +167,59 @@ describe("write surface: editing a card by its ~<id> mark", () => {
     expect(res?.status).toBe(403);
   });
 });
+
+describe("write surface: pointer and list content, item params", () => {
+  it("a repeated card[content][] saves the items joined by newlines (Ruby to_pointer_content)", async () => {
+    // Rack collects card[content][]=A&card[content][]=B into an Array; the
+    // Array becomes the pointer content (content/all.rb:22-24 ->
+    // item_assignment.rb:69-70 -> array.rb:4-11). The save must land, not
+    // answer card_id 0 with the old content.
+    const res = await updateRequest(`/update/~${JUNCTION_ID}`, {
+      "card[content][]": "Example Three",
+    });
+    expect(res!.status).toBe(200);
+    const multi = new URLSearchParams();
+    multi.append("card[content][]", "Example One");
+    multi.append("card[content][]", "");
+    multi.append("card[content][]", "[[Example Two]]");
+    const many = await handleWriteRequest(ctx, {
+      method: "POST",
+      pathname: `/update/~${JUNCTION_ID}`,
+      search: "",
+      host: "127.0.0.1",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        cookie: `decko_ts_session=${token}`,
+        accept: "application/json",
+      },
+      body: multi.toString(),
+      scheme: "http",
+    } as never);
+    expect(many!.status).toBe(200);
+    const row = await storage.fetcher.fetchById(JUNCTION_ID);
+    // blank item rejected, the [[ ]] wrap stripped, order kept
+    expect(row?.dbContent).toBe("Example One\nExample Two");
+  });
+
+  it("add_item appends to the stored list; drop_item removes by name identity", async () => {
+    const add = await updateRequest(`/update/~${JUNCTION_ID}`, { add_item: "Example Three" });
+    expect(add!.status).toBe(200);
+    let row = await storage.fetcher.fetchById(JUNCTION_ID);
+    expect(row?.dbContent).toBe("Example One\nExample Two\nExample Three");
+
+    const drop = await updateRequest(`/update/~${JUNCTION_ID}`, { drop_item: "example two" });
+    expect(drop!.status).toBe(200);
+    row = await storage.fetcher.fetchById(JUNCTION_ID);
+    expect(row?.dbContent).toBe("Example One\nExample Three");
+  });
+
+  it("insert_item with item_index moves the name to that position", async () => {
+    const res = await updateRequest(`/update/~${JUNCTION_ID}`, {
+      insert_item: "Example Three",
+      item_index: "0",
+    });
+    expect(res!.status).toBe(200);
+    const row = await storage.fetcher.fetchById(JUNCTION_ID);
+    expect(row?.dbContent).toBe("Example Three\nExample One");
+  });
+});

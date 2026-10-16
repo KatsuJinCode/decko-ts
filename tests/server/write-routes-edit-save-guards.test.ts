@@ -23,9 +23,9 @@
 //      `actions` = Card#actions = NON-DRAFT only (card-1.110.0 lib/card.rb:172
 //      `has_many :actions, -> { where(draft: [nil, false]).order :id }`), so a
 //      draft never moves the revision the guard compares against.
-//      HTTP shape: a UserError (validation) is 422 - card-1.110.0
-//      lib/card/error.rb:21 (the module header's status table), the same
-//      status the other validation rejections already use.
+//      HTTP shape: EditConflict is 409 - card-1.110.0 lib/card/error.rb:97-100
+//      (class EditConflict, status_code 409), routed from the :conflict key by
+//      KEY_MAP (error.rb:128-129). Not the 422 UserError default.
 //      ORACLE: the captured edit-forms oracle, not in the public package conflict_probe - captured
 //      by oracle-capture-edit-forms.rb (not in the public package) (validation-only
 //      probe, actions 4881 -> 4881): errors_conflict == ["changes not based
@@ -172,7 +172,7 @@ afterAll(() => {
 });
 
 describe("E8 - the stale-revision detector on the save path (detect_conflict)", () => {
-  it("a save carrying a STALE last_action_id_before_edit by a different actor is refused 422 and writes nothing", async () => {
+  it("a save carrying a STALE last_action_id_before_edit by a different actor is refused 409 and writes nothing", async () => {
     // Joe's save creates the first action; the revision the form would have
     // carried is that action's id.
     const first = await post(
@@ -197,7 +197,7 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
       },
       annToken,
     );
-    expect(conflicted.status).toBe(422);
+    expect(conflicted.status).toBe(409);
     // the FORM flavor answers the shared validation-error surface carrying
     // the oracle's message (write-routes errorResponse -> htmlResponse
     // "Error (conflict)" + the errors view's alert body: card-mod-format
@@ -232,7 +232,7 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
       }),
       redirect: "manual",
     });
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(409);
     expect(await res.text()).toContain("changes not based on latest revision");
     expect(await actionRows()).toEqual(before);
   });
@@ -330,7 +330,7 @@ describe("E7 - the draft save (autosave POST, draft=true)", () => {
       },
       joeToken,
     );
-    expect(refused.status).toBe(422);
+    expect(refused.status).toBe(409);
     const ok = await post(
       "/update/Guard_Note",
       {

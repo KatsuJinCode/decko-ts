@@ -429,8 +429,9 @@ function actionError(error: unknown): Response {
       case "attachment-missing":
       case "protected-card":
       case "user-error":
-      case "conflict": // a detected history conflict — a user error
         return jsonResponse(422, { error: error.message, code: error.code });
+      case "conflict": // EditConflict, card-1.110.0 error.rb:97-100 (status 409)
+        return jsonResponse(409, { error: error.message, code: error.code });
     }
   }
   throw error;

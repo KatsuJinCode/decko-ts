@@ -453,6 +453,8 @@ interface ParsedBody {
    *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
    *  CardMount's file=/image= argument (card_mount.rb:41-44). */
   cardFiles: Record<string, MultipartFilePart>;
+  /** card[<name>][] values, by name (Rack array params; see CARD_ARRAY_KEY). */
+  cardArrays: Record<string, string[]>;
   /** params[:token] (rest.rb:42 authenticators). */
   token?: string;
   /** params[:_method] — the Rails form verb override. */
@@ -491,6 +493,20 @@ interface ParsedBody {
    *  preliminary_upload?): the file is stored as a draft and the request
    *  answers its action id. */
   attachmentUpload?: string;
+  /** params[:add_item] / params[:drop_item] — the add_and_drop_items
+   *  event's inputs (card-mod-list set/abstract/01_list/events.rb:1-6,
+   *  `Array.wrap(adds).each { add_item i }` / the same for drops). The role
+   *  member checkbox posts them (card-mod-account set/type/role.rb:27-29;
+   *  card-mod-edit assets/script/components.js.coffee:30 swaps the name
+   *  between "add_item" and "drop_item" on check). Rails' Array.wrap shape
+   *  means either a scalar or a repeated key; kept as an array either way. */
+  addItem?: string[];
+  dropItem?: string[];
+  /** params[:insert_item] / params[:item_index] — the insert_item_event's
+   *  inputs (events.rb:8-11 `insert_item (Env.params["item_index"] || 0).
+   *  to_i, item_to_insert`, item_to_insert -> Env.params["insert_item"]). */
+  insertItem?: string;
+  itemIndex?: string;
 }
 
 /** The urlencoded/json key grammar every content type shares (the
@@ -509,6 +525,11 @@ function applyParam(
       const slot = (parsed.subcards[segments[0]] ??= {});
       slot[segments[1]] = value;
     }
+    return;
+  }
+  const arrayMatch = CARD_ARRAY_KEY.exec(key);
+  if (arrayMatch !== null) {
+    (parsed.cardArrays[arrayMatch[1]] ??= []).push(value);
     return;
   }
   const cardMatch = /^card\[(.+)\]$/.exec(key);
@@ -541,6 +562,98 @@ function applyParam(
   } else if (key === "revert_to") parsed.revertTo = value;
   else if (key === "revert_act") parsed.revertAct = value;
   else if (key === "attachment_upload") parsed.attachmentUpload = value;
+  else if (key === "add_item" || key === "add_item[]") (parsed.addItem ??= []).push(value);
+  else if (key === "drop_item" || key === "drop_item[]") (parsed.dropItem ??= []).push(value);
+  else if (key === "insert_item") parsed.insertItem = value;
+  else if (key === "item_index") parsed.itemIndex = value;
+}
+
+/** Rails' array-named card params (`card[content][]`, the shape a repeated
+ *  multi-value field posts): Rack's normalize_params collects every value
+ *  under the one name into an Array (rack query_parser). The key grammar
+ *  is `card[<name>][]` with no nesting; a `card[subcards]...` key never
+ *  matches (the subcard branch above takes it first). */
+const CARD_ARRAY_KEY = /^card\[([^[\]]+)\]\[\]$/;
+
+/** The card-hash array fields (`card[name][]` and a JSON array value).
+ *  Ruby: the Array reaches the content writer, standardize_content
+ *  (card-1.110.0 lib/card/content/all.rb:22-24) -> items_content
+ *  (card-mod-collection set/all/item_assignment.rb:69-70) ->
+ *  to_pointer_content (card-1.110.0 config/initializers/01_core_extensions/
+ *  array.rb:4-11): each item stripped of its `[[`/`]]` wrap, blank items
+ *  rejected, the rest joined with "\n". unique_items? is false by default
+ *  (item_assignment.rb:1-3), so repeats stay. */
+function pointerItemsContent(values: readonly string[]): string {
+  return values
+    .map((item) => item.trim().replace(/^\[\[/, "").replace(/\]\]$/, ""))
+    .filter((item) => item.trim() !== "")
+    .join("\n");
+}
+
+/** Folds every collected card-hash array into its card field, the array
+ *  winning over a scalar of the same name (Rack's array-vs-scalar collision
+ *  is a parameter error in Rails; the array is the intent a multi-value
+ *  field posts). */
+function foldCardArrays(parsed: ParsedBody): ParsedBody {
+  const names = Object.keys(parsed.cardArrays);
+  if (names.length === 0) return parsed;
+  const card = { ...parsed.card };
+  for (const name of names) card[name] = pointerItemsContent(parsed.cardArrays[name]);
+  return { ...parsed, card };
+}
+
+/** A list card's item names from its content (card-mod-collection
+ *  item.rb raw_item_strings: content split on newlines, each item with its
+ *  `[[`/`]]` wrap removed; blank lines are not items). */
+function listItemsOf(content: string): string[] {
+  return content
+    .split(/\n+/)
+    .map((item) => item.trim().replace(/^\[\[/, "").replace(/\]\]$/, "").trim())
+    .filter((item) => item !== "");
+}
+
+/** The item identity Ruby compares with: Cardname#== is its key
+ *  (cardname.rb `==` -> key). A name the sync parser cannot resolve (a cold
+ *  "~<id>") compares as its own text. */
+function itemIdentity(item: string): string {
+  try {
+    return DeckoName.parse(item).key;
+  } catch {
+    return item;
+  }
+}
+
+/** The list's content after the item params, or undefined when the request
+ *  names none. Ruby's events on save, in definition order:
+ *    add_and_drop_items (card-mod-list set/abstract/01_list/events.rb:1-6)
+ *      — `Array.wrap(adds).each { add_item }`, then `Array.wrap(drops)
+ *      .each { drop_item }`. add_item appends (item.rb/item_assignment.rb:
+ *      14-16); drop_item rejects every item with the same identity
+ *      (item_assignment.rb:32-35).
+ *    insert_item_event (events.rb:8-11) — `insert_item (item_index || 0)
+ *      .to_i, item_to_insert` (item_assignment.rb:47-51): the name is removed
+ *      wherever it sits, then inserted at the index.
+ *  The base is the content the request assigned, else the stored content
+ *  (the events read the card AFTER assign_attributes, so a posted content
+ *  is what the items act on). */
+function listItemContent(parsed: ParsedBody, base: string): string | undefined {
+  if (parsed.addItem === undefined && parsed.dropItem === undefined && parsed.insertItem === undefined) {
+    return undefined;
+  }
+  let items = listItemsOf(base);
+  for (const add of parsed.addItem ?? []) items = [...items, add.trim()];
+  for (const drop of parsed.dropItem ?? []) {
+    const identity = itemIdentity(drop.trim());
+    items = items.filter((item) => itemIdentity(item) !== identity);
+  }
+  if (parsed.insertItem !== undefined) {
+    const name = parsed.insertItem.trim();
+    const identity = itemIdentity(name);
+    items = items.filter((item) => itemIdentity(item) !== identity);
+    const index = Number.parseInt(parsed.itemIndex ?? "0", 10);
+    items.splice(Number.isFinite(index) && index >= 0 ? index : 0, 0, name);
+  }
+  return items.join("\n");
 }
 
 /** The query-string parameters, applied before the body's so a body
@@ -558,6 +671,7 @@ function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody 
     card: { ...fromQuery.card, ...parsed.card },
     subcards: { ...fromQuery.subcards, ...parsed.subcards },
     success: { ...fromQuery.success, ...parsed.success },
+    cardArrays: { ...fromQuery.cardArrays, ...parsed.cardArrays },
     cardFiles: parsed.cardFiles,
   } as ParsedBody;
 }
@@ -606,6 +720,12 @@ function requestParamsForEvents(parsed: ParsedBody): Record<string, unknown> {
   if (parsed.commentAuthor !== undefined) params["comment_author"] = parsed.commentAuthor;
   if (parsed.recaptchaToken !== undefined) params["recaptcha_token"] = parsed.recaptchaToken;
   if (parsed.token !== undefined) params["token"] = parsed.token;
+  // The list item params the add_and_drop_items / insert_item_event `when:`
+  // predicates and bodies read off Env.params (events.rb:1-11).
+  if (parsed.addItem !== undefined) params["add_item"] = parsed.addItem;
+  if (parsed.dropItem !== undefined) params["drop_item"] = parsed.dropItem;
+  if (parsed.insertItem !== undefined) params["insert_item"] = parsed.insertItem;
+  if (parsed.itemIndex !== undefined) params["item_index"] = parsed.itemIndex;
   return params;
 }
 
@@ -625,8 +745,22 @@ function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
   return out;
 }
 
+/** A JSON card hash's array-valued fields (`{"card":{"content":["A","B"]}}`):
+ *  the same Array the form grammar's `card[content][]` builds. Non-string
+ *  items are stringified the way the scalar branch does. */
+function jsonCardArrays(rawCard: Record<string, unknown>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(rawCard)) {
+    if (!Array.isArray(value)) continue;
+    out[key] = value
+      .filter((item): item is string | number => typeof item === "string" || typeof item === "number")
+      .map((item) => String(item));
+  }
+  return out;
+}
+
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, subcardTree: {}, success: {}, slotParams: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, subcardTree: {}, success: {}, slotParams: {}, cardFiles: {}, cardArrays: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -708,6 +842,7 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
       success,
       slotParams: {},
       cardFiles: {},
+      cardArrays: jsonCardArrays(rawCard),
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
       methodOverride: typeof obj["_method"] === "string" ? obj["_method"] : undefined,
       simulateXhr: obj["simulate_xhr"] === true || obj["simulate_xhr"] === "true",
@@ -919,12 +1054,16 @@ function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse 
 }
 
 /** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403
- *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21).
+ *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21),
+ *  EditConflict 409 (:98, "two editors altering the same card at once";
+ *  KEY_MAP :128-129 routes the :conflict error key to it). The generic 422
+ *  is the UserError default; a detected edit conflict is its own class.
  *  anonymous-actor is Ruby's permission denial in engine terms (module
  *  header). */
 function errorStatus(code: CardActionError["code"]): number {
   if (code === "not-found") return 404;
   if (code === "server-error") return 500;
+  if (code === "conflict") return 409;
   if (code === "anonymous-actor" || code === "permission-denied") return 403;
   return 422;
 }
@@ -1032,7 +1171,10 @@ function errorResponse(
   // classification now rides the error code itself.) The other families
   // keep the audited bodies below (the 403 denial's quiet text and its
   // diagnostic comment).
-  if (status === errorStatus("user-error")) {
+  if (status === errorStatus("user-error") || error.code === "conflict") {
+    // The conflict (409) keeps the same alert body: its message is the
+    // oracle's errors-view text (events.rb:19-22's :conflict error). The
+    // full :conflict screen (html/error.rb:37-51) is a separate render.
     return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
   }
   if (opts?.ajax === true && error.cardName !== undefined) {
@@ -1569,7 +1711,7 @@ async function dispatchWriteRequest(
     (req.headers["accept"] ?? "").includes("application/json");
   let parsed: ParsedBody;
   try {
-    parsed = applyQuery(parseBody(req), req.search);
+    parsed = foldCardArrays(applyQuery(parseBody(req), req.search));
   } catch (error) {
     if (error instanceof CardActionError) {
       return errorResponse(json, error, false, { url: requestUrl(req), now: ctx.now?.() ?? new Date() });
@@ -1848,7 +1990,10 @@ async function dispatchWriteRequest(
           // card-hash name WINS over the URL mark (uri_fetch_opts) — a
           // card[name] on an update is the RENAME arg (name_events.rb).
           name: hashName !== undefined && hashName !== markName ? hashName : undefined,
-          content: card["content"],
+          // The list item params (add_item / drop_item / insert_item) act on
+          // the content the save assigns, else on the stored content
+          // (listItemContent); a request without them keeps its content.
+          content: listItemContent(parsed, card["content"] ?? existing.dbContent ?? "") ?? card["content"],
           typeName: card["type"],
           typeId:
             typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
