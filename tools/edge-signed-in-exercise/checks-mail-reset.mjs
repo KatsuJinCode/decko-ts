@@ -49,6 +49,9 @@ export const checks=[{name:'password reset through the captured email and browse
   if(fresh.hasSessionCookie)creds.member.password=next;
   const old=await ctx.signIn({email:creds.member.email,password:original});
   record(capabilityChecks[2],save.response.status()<400&&changed&&fresh.hasSessionCookie&&fresh.landing.signedIn&&!old.hasSessionCookie,{status:save.response.status(),storedDigestChanged:changed,newCredentialAccepted:fresh.hasSessionCookie&&fresh.landing.signedIn,oldCredentialRefused:!old.hasSessionCookie});
+ }catch(error){
+  if(error?.name==='TimeoutError')fixtureState.fatalReason='password reset browser operation timed out';
+  throw error;
  }finally{
   await anon?.close().catch(()=>{});
   if(restoreNeeded){
