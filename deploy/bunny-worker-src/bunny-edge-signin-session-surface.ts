@@ -236,7 +236,15 @@ export async function mountBunnyEdgeWriteSurface(
     return toWebResponse(auth, inbound);
   }
 
-  const renderRequestView = async (name: string, view: string, viewOpts?: Record<string, unknown>, requireSession = false) => {
+  const renderRequestView = async (
+    name: string,
+    view: string,
+    viewOpts?: Record<string, unknown>,
+    requireSession = false,
+    // A delete's confirmation names the trashed card: the render seats it as
+    // an absent card for this request only (render-seam.ts absentCard).
+    absentCard = false,
+  ) => {
         const driver = deck.driver ?? deck.fetcher.driver;
         const token = readSessionCookie(inbound.headers.cookie);
         const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
@@ -250,7 +258,13 @@ export async function mountBunnyEdgeWriteSurface(
             engines.render.pageSession = viewer;
             if (requireSession) engines.render.imageCdnHost = deck.render.imageCdnHost;
             return engines;
-          }, { requestedView: view, signal: request.signal, ...(viewOpts === undefined ? {} : { historyParams: { viewOpts } }) });
+          }, {
+            requestedView: view,
+            signal: request.signal,
+            ...(viewOpts === undefined && !absentCard
+              ? {}
+              : { historyParams: { ...(viewOpts === undefined ? {} : { viewOpts }), ...(absentCard ? { absentCard: true } : {}) } }),
+          });
           return result.html;
         };
         return requestContextAvailable()
@@ -261,7 +275,7 @@ export async function mountBunnyEdgeWriteSurface(
     {
       fetcher: deck.fetcher,
       renderEngine: deck.render,
-      renderSavedSlot: (name, view) => renderRequestView(name, view ?? "titled"),
+      renderSavedSlot: (name, view, opts) => renderRequestView(name, view ?? "titled", undefined, false, opts?.absentCard === true),
       renderPreviewEditor: ({ name, opts }) => renderRequestView(name, "preview_editor", opts, true),
       driver: deck.driver ?? deck.fetcher.driver,
       ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
