@@ -202,7 +202,9 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
     // the oracle's message (write-routes errorResponse -> htmlResponse
     // "Error (conflict)" + the errors view's alert body: card-mod-format
     // set/all/html/error.rb standard_errors' dismissible warning alert,
-    // which the ajax slotter places in the form's card-notice)
+    // which the ajax slotter places in the form's card-notice; the host's
+    // render-seam conflict arm replaces these bytes with the card's
+    // :conflict view where a render engine exists - this harness binds none)
     expect(conflicted.body).toContain("Error (conflict)");
     expect(conflicted.body).toContain("card-error-msg");
     expect(conflicted.body).toContain("changes not based on latest revision");

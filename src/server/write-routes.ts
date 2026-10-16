@@ -1937,7 +1937,26 @@ async function dispatchWriteRequest(
       // as a new card. The history pane's revert requests send it.
       const trashedTarget =
         parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, markName ?? updateName) : undefined;
-      const existing = (await lookupLiveCard(ctx.fetcher, markName ?? updateName)) ?? trashedTarget;
+      // NEVER-MINT GUARD for "~<id>" marks: warmIdMarks above already 404s an
+      // id the deck does not hold, so an id-mark save that reaches this point
+      // names a card that EXISTS. The key-based lookupLiveCard can still miss
+      // it (a lexicon peek miss or a stored key the computed key cannot
+      // reach), and the create fallback below would then MINT a new card from
+      // the mark text - the live-demo junk-card bug. Ruby's uri_fetch
+      // (card_class.rb:118-126) fetches the mark by ID here: resolve the row
+      // by id and let the update arms run. A trashed id keeps the Ruby shape
+      // (retrieval filters trash = 0, so byId misses and the
+      // look_in_trash/create arms decide, exactly as Card.fetch's default
+      // look_in_trash: false does).
+      const idMarkMatch = markName !== undefined ? /^~(\d+)$/.exec(markName.trim()) : null;
+      const byId =
+        idMarkMatch !== null ? await ctx.fetcher.fetchById(Number(idMarkMatch[1])) : undefined;
+      const existing =
+        (await lookupLiveCard(ctx.fetcher, markName ?? updateName)) ??
+        (byId !== undefined && byId.id !== undefined && byId.trash !== true
+          ? (byId as CardRecord & { id: number })
+          : undefined) ??
+        trashedTarget;
       const trigger = card["trigger"];
       if (existing !== undefined && reverting) {
         // :rollback_actions (card-mod-history set/all/history/events.rb:40-46)
@@ -2221,6 +2240,34 @@ async function dispatchWriteRequest(
           };
         } catch {
           // a page-render miss keeps the audited quiet-text body
+        }
+      }
+      // The edit-conflict answer renders the CONFLICTED CARD's :conflict
+      // view — error.rb:96-100 EditConflict (status 409, view :conflict)
+      // + card-mod-format set/all/html/error.rb:37-51: the "Conflict!"
+      // alert whose `.new-current-revision-id` span the deck script's 409
+      // branch (slotter.js showErrorResponse: notify, then copy that span
+      // into the form's .current_revision_id) reads, so the retried save is
+      // based on the current revision and succeeds. Through the host's
+      // render seam when there is one ("conflict" is a HISTORY_SEAM_VIEWS
+      // member, so the seam seats for the render); the generic error
+      // surface below stays the fallback (now 409 too) for hosts without
+      // the seam or a save whose card name is unknown.
+      if (
+        !json &&
+        error.code === "conflict" &&
+        error.cardName !== undefined &&
+        ctx.renderSlot !== undefined
+      ) {
+        try {
+          const conflictHtml = await ctx.renderSlot(error.cardName, "conflict", [], {});
+          return {
+            status: 409,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: conflictHtml,
+          };
+        } catch {
+          // a conflict-view render miss keeps the audited error body below
         }
       }
       return errorResponse(json, error, await signedInFor(ctx, sessionToken), {

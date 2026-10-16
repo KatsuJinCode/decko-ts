@@ -2649,7 +2649,7 @@ export class CardActionEngine {
     // detect_conflict (card-mod-history set/all/history/events.rb:19-22) is
     // a :validate-stage event, so it runs after ok_to_update? and BEFORE
     // anything persists - a stale-revision save is refused whole.
-    await this.assertNoEditConflict(row.id, input.lastActionIdBeforeEdit);
+    await this.assertNoEditConflict(row.id, input.lastActionIdBeforeEdit, card.name?.s);
     await this.assertLayoutHasMainNest(row, input.content, resolvedTypeId);
     if (typeChanged) input = await this.applySkinTypeChange(row, input, resolvedTypeId);
     await this.validateCssSaveTree(
@@ -3517,10 +3517,14 @@ export class CardActionEngine {
    *  so a draft save never trips this guard.
    *
    *  HTTP shape: a validation error is 422 (card-1.110.0 lib/card/error.rb:21
-   *  UserError), the same status the other validation rejections use. */
+   *  UserError), the same status the other validation rejections use - EXCEPT
+   *  the conflict itself rides Ruby's EditConflict subclass (error.rb:96-100,
+   *  status_code 409, view :conflict): the route layer answers 409 and
+   *  renders the card's :conflict view from this error's cardName. */
   private async assertNoEditConflict(
     cardId: number,
     lastActionIdBeforeEdit: number | string | null | undefined,
+    cardName?: string,
   ): Promise<void> {
     if (lastActionIdBeforeEdit === null || lastActionIdBeforeEdit === undefined) {
       return; // events.rb:66 - `last_action_id_before_edit &&`
@@ -3532,7 +3536,18 @@ export class CardActionEngine {
       this.actor?.id ?? 0,
     );
     if (!conflicted) return;
-    throw new CardActionError("conflict", HISTORY_ERROR_NOT_LATEST_REVISION);
+    throw new CardActionError(
+      "conflict",
+      HISTORY_ERROR_NOT_LATEST_REVISION,
+      `CONFLICT: ${HISTORY_ERROR_NOT_LATEST_REVISION}`,
+      // errors.add :conflict, msg (events.rb:20) - the JSON errors view's
+      // attribute hash, and the KEY_MAP source invalid_card_error_class
+      // (error.rb:128-129, 177-182) reads to pick EditConflict.
+      { conflict: HISTORY_ERROR_NOT_LATEST_REVISION },
+      // error.rb:146-157 cardify_exception sets `card_exception.card` - the
+      // :conflict view renders THIS card (its last_action + render_act).
+      cardName,
+    );
   }
 
   /** save_draft (mod/core/set/all/content.rb:8-15) - the autosave save. The
