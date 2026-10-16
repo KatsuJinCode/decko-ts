@@ -67,7 +67,7 @@ export async function imageDialogJourney(ctx){
  const image=database().prepare("SELECT c.id,c.name FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.codename='logo' AND t.codename='image' AND c.trash=0 AND length(c.db_content)>0").get();
  if(!image?.name)throw Error('the upstream image-picker logo fixture is unavailable');
  const editor=await fixtureEditor(ctx,'imgbtn');
- await editor.toolbar.getByRole('button',{name:'Insert',exact:true}).click();
+ await editor.toolbar.getByRole('menuitem',{name:'Insert',exact:true}).click();
  // TinyMCE renders menu items in a portal after the menu opens.
  await page.getByRole('menuitem',{name:'Image...',exact:true}).click();
  const dialog=page.locator('.modal.show').filter({has:page.locator('button._image_nest-apply')}).last();
