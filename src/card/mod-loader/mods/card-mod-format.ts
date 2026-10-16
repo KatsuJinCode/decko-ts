@@ -227,6 +227,7 @@ import {
   HTML_VIEWS,
   contentView as baseContentView,
   coreView as baseCoreView,
+  toText,
   linkView,
   navLinkView,
   unknownView as htmlErrorUnknownView,
@@ -236,7 +237,7 @@ import type {
   DeckoModManifest,
   ModSetModuleFile,
 } from "../mod-manifest.js";
-import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
+import { modSlotWrap, viewWrapInherited, superView } from "../mod-view-helpers.js";
 import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
 import { CardActionError } from "../../actions/types.js";
@@ -2270,12 +2271,14 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/text.rb:1-26 base block (to_text/nestless_content + view
-    // :text_without_nests) + text format block (view :core). :text_
-    // without_nests IS PORTED views-side (render/views.ts - the nest scan
-    // + the shared link expander + the to_text decode). Not ported: the
-    // text-format block (no text dispatch in the engine).
+    // set/all/text.rb:22-25 TextFormat core is to_text(super()).
+    // Its parent body remains format-scoped; HTML's view table is not its parent.
     setPath: "all/text",
+    formats: {
+      text: {
+        views: [{view: "core", viewFn: ctx => toText(str(superView(ctx, "All::Text", "core")))}],
+      },
+    },
   },
   {
     // set/all/title.rb:1-47 base block (view :title + standard_title)

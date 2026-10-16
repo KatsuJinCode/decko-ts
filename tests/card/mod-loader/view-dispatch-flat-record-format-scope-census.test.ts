@@ -148,11 +148,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // views are all-set modules under their own format keys. Measured on this tree.
     // set/all/css.rb adds its five format-specific all-set views.
     // rss.rb adds nine non-XML all-set views and aliases.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(197);
+    // text.rb adds its one TextFormat core override.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(198);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
-  it("the foreign-key flat rows are exactly the thirty measured rows", () => {
+  it("the foreign-key flat rows include the stock TextFormat override", () => {
     // The rows the format filter refuses (mod-loader.ts registration
     // seam): kind admitted, key not html/base. Ruby files each under its
     // own format class, invisible to HtmlFormat (header citations). A
@@ -166,7 +167,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // all/js :source and all/yaml :core are the format-block views of the
     // non-html formats, each keyed under its own format class
     // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
-    expect(foreign).toHaveLength(44);
+    expect(foreign).toHaveLength(45);
     expect(
       foreign
         .map(
@@ -214,6 +215,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/rss :menu key=rss",
       "format all/rss :open key=rss",
       "format all/rss :open_content key=rss",
+      "format all/text :core key=text",
       "format all/yaml :core key=yaml",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
@@ -240,7 +242,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "comment_box: All::Rss:rss | All::Comment:html",
       "compact_missing: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
       "content: All::Base:base | All::Css:css | All::Data:data | All::Rss:rss",
-      "core: All::Base:base | All::Data:data | All::File:file | All::Yaml:yaml",
+      "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "items: All::Data:data | All::Json:json",
       "labeled: All::Base:base | All::Html::Views:html",

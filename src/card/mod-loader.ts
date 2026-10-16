@@ -97,6 +97,7 @@ const HTML_DESCENDED_FORMATS = new Set(["rss", "email_html"]);
 const FORMAT_PARENT: Readonly<Record<string, string>> = {
   rss: "html",
   email_html: "html",
+  email_text: "text",
   json: "data",
   yaml: "data",
   xml: "data",
@@ -633,15 +634,9 @@ export class ModLoader {
  *   visible (set/format.rb:120-144 files each all-set format module
  *   under its own format class).
    *
-   * Format inheritance (AbstractFormat#format block reopen - card-
-   * 1.110.0 lib/card/format.rb:62-68's format_ancestry): when `format`
-   * is not "html" and the format-specific chain produces no entries,
-   * the walker falls back to the html chain. css/js/rss formats
-   * declared without their own registration reopen the html chain;
-   * with one, the css chain wins. The base format record (no format
-   * key, the bare `format do` block) inherits the html chain too.
-   * Default `format = "html"` keeps the html-only render path
-   * byte-identical to the pre-chain dispatcher.
+   * Format ancestry follows FORMAT_PARENT and then the base-format tail.
+   * A non-HTML format never inherits HTML merely because its own chain is
+   * empty; EmailTextFormat inherits TextFormat, not HtmlFormat.
    */
   viewChain(setKeys: string, view: string, format: string = "html"): ViewChainEntry[] {
     // Memoized per load generation: a card's chain for a view is asked by

@@ -171,7 +171,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     expect(RUBY_FORMAT_ANCESTRY.email_text).toEqual(["email_text", "text", "base"]);
   });
 
-  it("composed-deck census: the format-key universe is exactly the measured six", () => {
+  it("composed-deck census: the format-key universe includes the stock text core", () => {
     // Measured on this tree (job-1790896607499, this suite's census dump):
     // base=5 email_html=2 email_text=3 html=312 js=2 json=3. No css, no
     // scss, no rss, no csv/text/xml/yaml rows exist. A NEW key (or a
@@ -269,6 +269,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       ["json", 8],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
+      // Stock all/text.rb registers one TextFormat core override.
+      ["text", 1],
       ["yaml", 1],
     ]);
   });

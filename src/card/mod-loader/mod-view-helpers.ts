@@ -141,7 +141,7 @@ export function superView(
   const loader = getDefaultModLoader();
   if (loader === undefined) return "";
   const card = ctx.fmt.card;
-  const chain = loader.viewChain(card.setKeys, view);
+  const chain = loader.viewChain(card.setKeys, view, ctx.fmt.formatName);
   const idx = chain.findIndex((entry) => entry.setModule === currentModule);
   if (idx === -1) {
     // currentModule did not register this view; the caller's identity
