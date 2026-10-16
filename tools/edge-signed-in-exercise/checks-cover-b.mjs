@@ -107,6 +107,21 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(1500);
     return linesSince(before);
   };
+  const pointerEditor = async name => {
+    const shown=await visit('/'+encodeURIComponent(name));
+    await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+    const form=page.locator('form#edit_card:visible').first();
+    await form.waitFor({state:'visible',timeout:20000});
+    return {form,status:shown.status};
+  };
+  const submitEditor = async form => {
+    const action=new URL(await form.getAttribute('action'),stack.origin);
+    if(action.origin!==stack.origin||!action.pathname.startsWith('/update/'))throw Error('pointer editor is not the local update form');
+    const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==='POST',{timeout:60000}).then(response=>({response}),error=>({error}));
+    await form.locator('.submit-button').first().click();
+    const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
+    return {status:seen.response.status()};
+  };
 
   // ------------------------------------------------------------------ S2-S4
   group("cover-b. session: sign-in refusals and the signed-out links (S2, S4)");
@@ -250,23 +265,20 @@ export async function runCoverBChecks(ctx) {
     const cardNamePick = ensure("Harness_CB_Boxy");
     await create(cardNamePick, null, "Basic");
     ensure(`${cardNamePick}+${rightSet}`); await create(`${cardNamePick}+${rightSet}`, "", "Pointer");
-    const form = await visit(`/${cardNamePick}+${rightSet}?view=edit`);
-    await page.waitForTimeout(1500);
-    const boxes = await page.evaluate(() => [...document.querySelectorAll('#main input[type="checkbox"]')].map((i) => ({ name: i.name, value: i.value, id: i.id })));
+    const form = await pointerEditor(`${cardNamePick}+${rightSet}`);
+    const boxes = await form.form.locator('input[type="checkbox"]').evaluateAll(items => items.map(i => ({name:i.name,value:i.value,id:i.id})));
     const target = boxes.find((b) => /Pick_Two/i.test(`${b.value} ${b.name}`));
     if (target === undefined) {
       record("C16 a checkbox pointer input can be checked and stored", false, { formStatus: form.status, checkboxes: boxes.slice(0, 8), note: "no checkbox inputs on the pointer's edit form" });
       return;
     }
-    await page.locator(`#main input[type="checkbox"][value="${target.value}"]`).first().check({ force: true }).catch(() => undefined);
-    const before = ledger().length;
-    await page.locator('#main form button[type="submit"], #main button.submit-button, #main button[type="submit"]').first().click({ force: true }).catch(() => undefined);
-    await page.waitForTimeout(3000);
-    const write = linesSince(before).find((l) => l.method !== "GET");
+    await form.form.locator(`input[type="checkbox"][value="${target.value}"]`).check();
+    const write = await submitEditor(form.form);
+    const stored = row(`${cardNamePick}+${rightSet}`)?.content ?? '';
     const after = await visit(`/${cardNamePick}+${rightSet}`);
     record("C16 a checkbox pointer input can be checked and stored (card shows the checked value)",
-      write !== undefined && write.status < 400 && /Pick_Two/.test(after.html),
-      { writeStatus: write?.status ?? null, checkboxes: boxes.slice(0, 6), afterStatus: after.status, showsPickTwo: /Pick_Two/.test(after.html) });
+      write.status < 400 && stored.includes(target.value) && /Pick_Two/.test(after.html),
+      { writeStatus: write.status, stored, checkboxes: boxes.slice(0, 6), afterStatus: after.status, showsPickTwo: /Pick_Two/.test(after.html) });
   });
 
   await attempt("C18 a select pointer input offers a choice and stores it", async () => {
@@ -274,25 +286,22 @@ export async function runCoverBChecks(ctx) {
     const cardNameSel = ensure("Harness_CB_Selly");
     await create(cardNameSel, null, "Basic");
     ensure(`${cardNameSel}+${rightSet}`); await create(`${cardNameSel}+${rightSet}`, "", "Pointer");
-    const form = await visit(`/${cardNameSel}+${rightSet}?view=edit`);
-    await page.waitForTimeout(1500);
-    const selects = await page.evaluate(() => [...document.querySelectorAll('#main select')].map((s) => ({ name: s.name, id: s.id, options: [...s.options].map((o) => ({ text: o.textContent.trim(), value: o.value })).slice(0, 8) })));
+    const form = await pointerEditor(`${cardNameSel}+${rightSet}`);
+    const selects = await form.form.locator('select').evaluateAll(items => items.map(s => ({name:s.name,id:s.id,options:[...s.options].map(o=>({text:o.textContent.trim(),value:o.value})).slice(0,8)})));
     const sel = selects.find((s) => s.options.some((o) => /Pick_One/i.test(o.text) || /Pick_One/i.test(o.value)));
     if (sel === undefined) {
       record("C18 a select pointer input offers a choice and stores it", false, { formStatus: form.status, selects: selects.slice(0, 4), note: "no select with the option cards on the pointer's edit form" });
       return;
     }
     const option = sel.options.find((o) => /Pick_One/i.test(o.text) || /Pick_One/i.test(o.value));
-    await page.selectOption(`#main select[name="${sel.name}"]`, { label: option.text }).catch(async () => { await page.selectOption(`#main select[name="${sel.name}"]`, option.value).catch(() => undefined); });
-    const before = ledger().length;
-    await page.locator('#main form button[type="submit"], #main button.submit-button, #main button[type="submit"]').first().click({ force: true }).catch(() => undefined);
-    await page.waitForTimeout(3000);
-    const write = linesSince(before).find((l) => l.method !== "GET");
+    await form.form.locator(`select[name="${sel.name}"]`).selectOption(option.value);
+    const write = await submitEditor(form.form);
+    const stored=row(`${cardNameSel}+${rightSet}`)?.content??'';
     const after = await visit(`/${cardNameSel}+${rightSet}`);
     void write;
     record("C18 a select pointer input offers a choice and stores it (card shows the selection)",
-      write !== undefined && write.status < 400 && /Pick_One/.test(after.html),
-      { writeStatus: write?.status ?? null, selected: option, afterStatus: after.status, showsPickOne: /Pick_One/.test(after.html) });
+      write.status < 400 && stored.includes(option.value) && /Pick_One/.test(after.html),
+      { writeStatus: write.status, stored, selected: option, afterStatus: after.status, showsPickOne: /Pick_One/.test(after.html) });
   });
 
   // ------------------------------------------------------------------ E6-E8
