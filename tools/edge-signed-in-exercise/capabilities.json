@@ -497,7 +497,8 @@
       "sources": [
         "cypress edit/board/save_changes 'save'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "check": "supplemental: Save without close persists the editor and revision while retaining the board"
     },
     {
       "id": "E17",
@@ -623,7 +624,8 @@
       "sources": [
         "journeys delete-system-card-admin"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "check": "supplemental: system-card deletion returns protected-card 422 without product writes"
     },
     {
       "id": "R5",
