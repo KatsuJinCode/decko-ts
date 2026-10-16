@@ -193,3 +193,47 @@ account migration are complete. Protected snapshot and vendor state remain
 unchanged. The separate native compile-cache trial reproduced the canonical
 totals on exact `a4f30704` but was slower over the full fixture, so no default
 compile-cache or loader change was adopted.
+
+## Link and image dialog journeys
+
+The combined E6/E8 browser run on `54e87387` passes **5/5** and satisfies
+both explicitly mapped capability contracts. Executed bundle SHA-256:
+`8ef666001ef5e3cf13ca7eda31547726ec9012293d2882afff2e894997f0fef2`.
+Report: `.runtime/editor-dialog-final-54e87387-r7/report.md` and raw/JSON siblings.
+Both checks require the stored admin actor and the Apply button bound to the
+matching editor; saves are matched to the actual form action.
+
+E6 uses the visible toolbar button and actual link dialog fields. The selected
+reference must enter the editor, persist after save and render as the expected
+Home link on a fresh page. There is no manually typed-reference fallback.
+
+E8 opens Insert before querying its portal menu, selects the actual `*logo`
+through visible Select2 controls, chooses titled/small, applies, saves, checks
+the stored snippet, and requires the fresh nested image to decode. The observed
+image is card79 at `/files/79/3643-small.jpg` on the configured public CDN.
+
+Two runtime defects were found after correcting the test controls:
+
+1. Stock `/:search.json?view=image_complete` returned HTML content type.
+   The single-mark explicit query-view JSON arm now reaches JSON dispatch;
+   `v` aliases work too. Existing name-only behavior is preserved. Real HTTP
+   positive and missing-image controls first failed on MIME type and now pass.
+2. Image completion used the isolate-retained serial renderer. On the pinned
+   deck its initial query returned503 after30.049s and2526SQL statements.
+   It now uses the existing request-local complete-answer JSON renderer.
+   Observed initial lookup:200 at1.302s/90SQL; typed lookup:200 at1.837s/90SQL.
+   These are bounded observations, not a distribution benchmark. Snapshot and
+   live flags match; configuration hashes include different owned endpoints.
+
+Five JSON typeahead/image/actor/freshness regression tests pass in11.72s,
+including byte equality with normal rendering for anonymous/admin/member and
+permission/content changes after warmed requests. TypeScript validation passes.
+Twelve lightweight loader/selection/abort controls pass.
+
+Earlier test mistakes (toolbar ID assumption, menubar ARIA role, and the Image
+modal's shared Apply class) and protocol/time-budget failures remain in the
+preceding `.runtime/editor-dialog-*` / `.runtime/editor-image-*` captures.
+The controls use actual visible UI; no synthetic picker options, hidden-widget
+selection or timeout increase was used. No vendor state or golden was changed.
+The original complete507 whole-run score and latest canonical a4f30704 grade
+remain historical evidence, not updated totals for this newer checkpoint.
