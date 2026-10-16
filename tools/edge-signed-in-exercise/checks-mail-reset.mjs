@@ -43,7 +43,7 @@ export const checks=[{name:'password reset through the captured email and browse
   record(capabilityChecks[1],landed.status()<400&&session,{status:landed.status(),session,landedPath:new URL(p.url()).pathname,raw:captureEvidence(await p.content(),{check:'mail-reset-link-landing'})});
   await field.fill(next);restoreNeeded=true;
   const saved=p.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&r.request().method()==='POST',{timeout:20000}).then(response=>({response}),error=>({error}));
-  await p.locator('form.card-form').filter({has:field}).locator('button[type="submit"],input[type="submit"]').first().click();
+  await p.locator('form.card-form').filter({has:p.locator('input[type="password"]:visible')}).locator('button[type="submit"],input[type="submit"]').first().click();
   const save=await saved;if(save.error)throw save.error;await save.response.finished();
   const changed=database().prepare('SELECT db_content FROM cards WHERE id=? AND trash=0').get(info.password_id)?.db_content!==info.digest;
   const fresh=await ctx.signIn({email:creds.member.email,password:next});
