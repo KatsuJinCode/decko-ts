@@ -25,7 +25,7 @@
 // now warms them too (write-routes.ts warmIdMarks) before the first parse.
 //
 // The case under test is the one the demo hit: Fixture Owner+
-// Planning Projects (card 1743, a List junction with multi-line pointer
+// Planning Project(s) (card 1743, a List junction with multi-line pointer
 // content) saved through POST /update/~1743.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -45,7 +45,7 @@ const JOE_ID = 90;
 const EDITOR_ID = 30;
 /** Synthetic cards exercising the captured cold-ID route shape. */
 const PERSON_ID = 393; // Fixture Owner (type Person)
-const POINTER_FIELD_ID = 1638; // Planning Projects (a pointer field)
+const POINTER_FIELD_ID = 1638; // Planning Project(s) (a pointer field)
 const JUNCTION_ID = 1743; // the List junction the demo saved
 
 let storage: RenderTestStorage;
@@ -74,20 +74,20 @@ async function seedRuleDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: SET_TYPE_ID });
   await byId(EDITOR_ID, "Editor");
   await byId(JOE_ID, "Joe User");
-  // Brandon's structure: a Person trunk, a pointer field, and the List
-  // junction that joins them. "Planning Projects" is the case that
+  // A synthetic Person trunk, a pointer field, and the List
+  // junction that joins them. "Planning Project(s)" is the case that
   // exercises the card gem's uncountable "s" inflection ("(s)" keys to
   // "_s_", not to nothing), so the stored keys only resolve with that
   // table applied — as the edge boot applies it.
   await byId(47, "List", { codename: "list", typeId: SET_TYPE_ID });
   await byId(PERSON_ID, "Fixture Owner", { dbContent: "" });
-  await byId(POINTER_FIELD_ID, "Planning Projects", { dbContent: "" });
+  await byId(POINTER_FIELD_ID, "Planning Project(s)", { dbContent: "" });
   await seedCard(s, {
     id: JUNCTION_ID,
     leftId: PERSON_ID,
     rightId: POINTER_FIELD_ID,
     typeId: 47,
-    dbContent: "Associative Inquiry\nFree Aiki Dojo",
+    dbContent: "Example One\nExample Two",
   });
 }
 
@@ -136,7 +136,7 @@ describe("write surface: editing a card by its ~<id> mark", () => {
     // The existing junction row was UPDATED, not re-created: a create
     // answer would have hit the (left_id, right_id) UNIQUE index (a 500)
     // because the junction already exists.
-    const row = await storage.fetcher.fetchByName("Fixture Owner+Planning Projects");
+    const row = await storage.fetcher.fetchByName("Fixture Owner+Planning Project(s)");
     expect(row?.id).toBe(JUNCTION_ID);
     expect(row?.dbContent).toContain("Example Three");
   });
