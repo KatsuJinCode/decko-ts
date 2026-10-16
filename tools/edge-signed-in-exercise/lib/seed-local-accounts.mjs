@@ -68,8 +68,8 @@ export async function seedLocalAccounts({ deck, credentialsOut }) {
 
     // Everything slow (the PBKDF2 hashes) happens before the first write.
     const accounts = [
-      { name: ADMIN_NAME, email: `harness-admin-${randomBytes(4).toString("hex")}@harness.invalid`, password: randomBytes(18).toString("base64url"), roles: [ids.administrator] },
-      { name: MEMBER_NAME, email: `harness-member-${randomBytes(4).toString("hex")}@harness.invalid`, password: randomBytes(18).toString("base64url"), roles: [] },
+      { name: ADMIN_NAME, email: `harness-admin-${randomBytes(4).toString("hex")}@harness.invalid`, password: randomBytes(18).toString("base64url") + 'Ax7#', roles: [ids.administrator] },
+      { name: MEMBER_NAME, email: `harness-member-${randomBytes(4).toString("hex")}@harness.invalid`, password: randomBytes(18).toString("base64url") + 'Ax7#', roles: [] },
     ];
     for (const account of accounts) {
       account.salt = randomBytes(16).toString("hex");

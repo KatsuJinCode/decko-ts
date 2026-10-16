@@ -287,11 +287,13 @@ const created = [];
 
 // ----------------------------------------------------------------- checks
 
-async function accountSettings() {
+async function accountSettings(account = creds.admin) {
+  const signedIn = await signIn(account);
+  if (!signedIn.hasSessionCookie) throw new Error('account diagnostic could not sign in');
   await attempt("A1/A2 account settings and change password", async () => {
     // Account settings live on the account card's board (cypress
     // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
-    const holder = creds.admin.name.replace(/ /g, "_");
+    const holder = account.name.replace(/ /g, "_");
     const settings = await visit(`/${holder}/board`);
     await page.waitForTimeout(2000);
     const tabLinks = await page.evaluate(() => [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")].map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") })).filter((t) => t.text));
@@ -299,7 +301,7 @@ async function accountSettings() {
     if (!accountTab) {
       record("the account card's board has an Account tab", false, { tabLinks });
     } else {
-      record("the account card's board has an Account tab", true, { accountTab });
+      record("the account card's board has an Account tab", true, { accountTab, actor:account.name });
       // Stock account_tab.spec.coffee activates the tab, opens the settings
       // pill, then opens each labeled row's pencil. A fragment navigation
       // never performs those interactions.
@@ -327,16 +329,16 @@ async function accountSettings() {
       const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
       record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
       if (passwordField !== undefined) {
-        const oldPassword = creds.admin.password;
+        const oldPassword = account.password;
         // The real account policy requires lower/upper/number/special.
         // A random fixture credential alone does not guarantee each class.
         const next = `${oldPassword}Ax7#`;
         await passwordInput.fill(next);
         const write = await saveEditForm();
-        const withOld = await signIn({ ...creds.admin, password: oldPassword });
-        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...creds.admin, password: next });
+        const withOld = await signIn({ ...account, password: oldPassword });
+        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...account, password: next });
         record("the account password can be changed and the new one signs in", write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
-          { writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
+          { actor:account.name, writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
         if (withNew.hasSessionCookie) {
           await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
           await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
@@ -345,8 +347,30 @@ async function accountSettings() {
           await restore.fill(oldPassword);
           const restored = await saveEditForm();
           if (restored.status >= 400) throw new Error(`password restore answered ${restored.status}`);
-          await signIn(creds.admin);
+          const restoredLogin = await signIn(account);
+          if (!restoredLogin.hasSessionCookie) throw new Error('restored password did not sign in');
         }
+      }
+      await page.goto(`${stack.origin}/${holder}/board`, {waitUntil:'load'});
+      await page.locator('.board .nav-tabs a').filter({hasText:/^Account$/i}).first().click();
+      await page.locator('[data-cy="email_and_password-pill"]').first().click();
+      const changeEmail = await openAccountField('email');
+      const newEmail = `changed-${account.id}-${Date.now()}@harness.invalid`;
+      await changeEmail.fill(newEmail);
+      const emailWrite = await saveEditForm();
+      const emailRow = database().prepare("SELECT f.db_content FROM cards f JOIN cards a ON a.id=f.left_id JOIN cards r ON r.id=f.right_id WHERE a.left_id=? AND r.codename='email' AND f.trash=0").get(account.id);
+      const oldEmailLogin = await signIn(account);
+      const newEmailLogin = oldEmailLogin.hasSessionCookie ? {skipped:true} : await signIn({...account,email:newEmail});
+      record('the account email can be changed and the new one signs in', emailWrite.status < 400 && emailRow?.db_content === newEmail && !oldEmailLogin.hasSessionCookie && newEmailLogin.hasSessionCookie === true,
+        {actor:account.name,writeStatus:emailWrite.status,storedNewEmail:emailRow?.db_content === newEmail,oldEmailStillWorks:oldEmailLogin.hasSessionCookie,newEmailWorks:newEmailLogin.hasSessionCookie});
+      if (newEmailLogin.hasSessionCookie) {
+        await page.goto(`${stack.origin}/${holder}/board`, {waitUntil:'load'});
+        await page.locator('.board .nav-tabs a').filter({hasText:/^Account$/i}).first().click();
+        await page.locator('[data-cy="email_and_password-pill"]').first().click();
+        await (await openAccountField('email')).fill(account.email);
+        const restoredEmail = await saveEditForm();
+        const restoredLogin = await signIn(account);
+        if (restoredEmail.status >= 400 || !restoredLogin.hasSessionCookie) throw new Error('original email did not restore');
       }
     }
   });
@@ -355,8 +379,7 @@ async function accountSettings() {
 try {
   if (argOf('only') === 'account') {
     group('account diagnostic only');
-    await signIn(creds.admin);
-    await accountSettings();
+    for (const account of [creds.admin, creds.member]) await accountSettings(account);
   } else {
   // -- 1 -----------------------------------------------------------------
   group("1. sign in, and stay signed in");
@@ -826,7 +849,8 @@ try {
     record("a CQL search runs and answers without an error page", ranIt, { url: page.url(), query: q });
   });
 
-  await accountSettings();
+  for (const account of [creds.admin, creds.member]) await accountSettings(account);
+  await signIn(creds.admin);
 
   await attempt("F1 upload on the edge", async () => {
     await visit("/new/File");
