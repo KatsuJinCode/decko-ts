@@ -90,8 +90,8 @@ export interface ModStyleFile {
  *  than its `+*asset input` row's updated_at, so the first request after the
  *  gems are installed re-stores every input and bundle, and later requests
  *  do not. The port has no file mtimes for the gems, so this constant plays
- *  that role: a row stamped before it needs one refresh, and a refresh stamps
- *  its rows no earlier than it (style-asset-events.ts inputStampAt). 2026-10-13
+ *  that role for source invalidation only. Virtual rows retain their actual
+ *  save time, even when a frozen clock predates the source stamp. 2026-10-13
  *  is the install date of the gems the vendored copies come from. */
 export const STYLE_SOURCES_MTIME: Date = new Date("2026-10-13T00:00:00Z");
 

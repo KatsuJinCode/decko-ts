@@ -213,19 +213,9 @@ function inputStore(ctx: StyleAssetEventContext): AssetInputStore {
     save: async (inputter, content) => {
       const record = await assetInputRecord(ctx, inputter, content);
       if (record === undefined) return;
-      await virtualSave(ctx.fetch.driver, record, ctx.virtuals, inputStampAt(ctx));
+      await virtualSave(ctx.fetch.driver, record, ctx.virtuals, ctx.clock());
     },
   };
-}
-
-/** The stamp an input row is written with: the clock, but no earlier than
- *  the gem sources' stamp (style-sources.ts STYLE_SOURCES_MTIME). Ruby's
- *  clock is the wall clock, which is always past the gems' install; the
- *  battery's fixture clock is not, so this keeps a refreshed row from
- *  looking older than the sources it was refreshed from. */
-function inputStampAt(ctx: StyleAssetEventContext): Date {
-  const now = ctx.clock();
-  return now.getTime() < STYLE_SOURCES_MTIME.getTime() ? STYLE_SOURCES_MTIME : now;
 }
 
 /** Abstract::AssetInputter#asset_input_needs_refresh? for the read path
@@ -557,8 +547,9 @@ const READ_ASSET_INPUT_NAMES: readonly string[] = ["style: mods"];
  *  the .css and .js bundles of a deck's first request.
  *
  *  The gate is the source stamp: a row older than STYLE_SOURCES_MTIME (or
- *  missing) needs one refresh, and a refresh stamps its row no earlier than
- *  that stamp, so the next request does not repeat the walk. Ruby's gate is
+ *  missing) needs a refresh. Saving records the actual clock, as Card::Virtual
+ *  does; a deliberately frozen clock older than the sources can therefore
+ *  trigger another refresh, just as Ruby's source_changed? does. Ruby's gate is
  *  the mtime of each mod's source files against the row's updated_at; see
  *  style-sources.ts.
  *

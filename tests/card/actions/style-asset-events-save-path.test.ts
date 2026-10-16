@@ -65,6 +65,19 @@ function engine(scssCompiler?: (source: string) => Promise<string>) {
 }
 
 describe("the save path's style asset events", () => {
+  it("asset virtual timestamps retain the save clock even before the vendored source date", async () => {
+    const now = new Date("2026-09-19T12:00:00Z");
+    const result = await new CardActionEngine(storage.engine, {
+      actor: JOE, now: () => now, scssCompiler: libsassWasmCompiler(),
+    }).createCard({ name: "Clocked SCSS", typeId: ids.scss, content: ".clocked { color: red; }" });
+    const row = await storage.selectOne<{ updated_at: string; content: string }>(
+      "SELECT updated_at, content FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+      [result.cardId, ids.assetInput],
+    );
+    expect(row?.updated_at).toBe("2026-09-19 12:00:00");
+    // SCSS asset input is its raw source; the outputter compiles the bundle.
+    expect(row?.content).toBe(".clocked { color: red; }");
+  });
   it("SCSS preflight skips an empty style rule before requiring a compiler; CSS does not", async () => {
     await storage.driver.query("UPDATE cards SET db_content = '' WHERE id = ?", [ids.allStyle]);
     await seedCard(storage, { id: 460, name: "CSS", codename: "css" });
