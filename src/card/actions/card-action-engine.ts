@@ -693,8 +693,10 @@ export class CardActionEngine {
     // leaves an error on the card, and Ruby then runs none of its later
     // integrate stages — the follower notice included.
     let observerFailed = false;
+    let actTarget: CardsRow | undefined;
     if (this.followMail !== undefined && result.name !== undefined) {
       const row = await this.fetchRowById(result.cardId);
+      actTarget = row;
       const outcome = await runObserverEvents(this.fetch, {
         card: { id: result.cardId, name: result.name.s, typeId: row?.type_id },
         action: result.verb,
@@ -715,6 +717,13 @@ export class CardActionEngine {
         }),
       ),
     ];
+    // Asset output is not followable (assets/right/asset_output.rb:1-3).
+    // Judge the actual act target: its history-less save may leave only a
+    // newly-created parent's action, which must not trigger a follower notice.
+    actTarget ??= await this.fetchRowById(result.cardId);
+    const cardHooks = await this.isAssetOutputRight(actTarget?.right_id)
+      ? allHooks.filter(h => h.event !== "notify_followers_after_save")
+      : allHooks;
     // A save whose request carries an uploaded file never runs the
     // integrate_with_delay stage in Ruby: the stage is queued through
     // ActiveJob with the request params, the uploaded file object cannot be
@@ -724,8 +733,8 @@ export class CardActionEngine {
     // follower notice after an upload is therefore never sent; the delete
     // notice (:integrate) is unaffected.
     const hooks = opts.delayedStageDropped === true || observerFailed
-      ? allHooks.filter((h) => h.stage !== "integrate_with_delay")
-      : allHooks;
+      ? cardHooks.filter((h) => h.stage !== "integrate_with_delay")
+      : cardHooks;
     if (hooks.length === 0) return;
     // Unreachable (isAnonymousSession returned false); narrows for the
     // actor read.
@@ -2009,6 +2018,10 @@ export class CardActionEngine {
     input = { ...prepared.input, superActionId: input.superActionId };
     const typeId = prepared.typeId;
     const name = DeckoName.parse(input.name ?? "");
+    // history? false is resolved before reserving an action or creating sides.
+    // The right's codename, not its displayed spelling, identifies this set.
+    const targetRightId = name.rightName === undefined ? undefined : await this.fetch.lexicon.id(name.rightName);
+    if (await this.isAssetOutputRight(targetRightId)) input.history = false;
     const validationCard = (): ModEventCard => this.eventCard({
       name, key: name.key, dbContent: input.content, dbContentBeforeAct: null,
       action: "create", typeId,
@@ -2128,6 +2141,7 @@ export class CardActionEngine {
         }),
         superActionId: input.superActionId ?? null,
         isActCard: opts.isActCard,
+        ...(input.history === false ? { history: false } : {}),
       });
       if (saved === null) {
         // Unreachable: trash flips 1 -> 0, which is always a diff.
@@ -3129,10 +3143,12 @@ export class CardActionEngine {
         // The renamed card's own action row precedes the actions of the side
         // cards the rename creates, as on a compound create (Ruby saves the
         // supercard's action before the subcards it stores).
-        reservedActionId = await writer.reserveAction({
-          actionType: "update",
-          superActionId: input.superActionId ?? null,
-        });
+        if (!await this.isAssetOutputRight(peekedRight)) {
+          reservedActionId = await writer.reserveAction({
+            actionType: "update",
+            superActionId: input.superActionId ?? null,
+          });
+        }
         const sides = await this.ensureSides(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
@@ -3216,6 +3232,7 @@ export class CardActionEngine {
       // false for subcard saves riding the same act (subcards.rb — the
       // writer holds ONE act-card action per act).
       isActCard: opts.isActCard ?? true,
+      ...(await this.isAssetOutputRight(after.right_id) ? { history: false } : {}),
       reservedActionId,
     });
     if (saved === null) {
@@ -3706,7 +3723,12 @@ export class CardActionEngine {
     if (row.right_id === null) return true;
     const passwordId = await this.fetch.codenames.id("password");
     const saltId = await this.fetch.codenames.id("salt");
-    return row.right_id !== passwordId && row.right_id !== saltId;
+    return row.right_id !== passwordId && row.right_id !== saltId && !await this.isAssetOutputRight(row.right_id);
+  }
+
+  /** assets/set/right/asset_output.rb: followable? false, history? false. */
+  private async isAssetOutputRight(rightId: number | null | undefined): Promise<boolean> {
+    return rightId != null && await this.fetch.codenames.nameForId(rightId) === "asset_output";
   }
 
   /** The cards an act saved, for the style asset events: the act card's own
@@ -4037,6 +4059,7 @@ export class CardActionEngine {
         ? { after: { ...cardFieldStateFromRow(row), name: anonName, trash: 1 }, key: DeckoName.parse(anonName).key }
         : {}),
       superActionId: input.superActionId ?? null,
+      ...(await this.isAssetOutputRight(row.right_id) ? { history: false } : {}),
     });
     if (saved === null) return null;
     let closure: CardActionSummary[] = [];
@@ -4186,6 +4209,7 @@ export class CardActionEngine {
       cardId: row.id,
       before: cardFieldStateFromRow(row),
       superActionId,
+      ...(await this.isAssetOutputRight(row.right_id) ? { history: false } : {}),
     });
     if (saved === null) return [];
     const name = await this.composedNameOf(row);
@@ -5626,7 +5650,9 @@ export class CardActionEngine {
     created: readonly (CardActionSummary & { actId: number })[],
     superActionId: number,
   ): Promise<CardActionSummary[]> {
-    if (created.length > 0) {
+    // A history-less supercard has no current_action (history/events.rb:
+    // super_action); the writer's actionId=0 sentinel is not an association.
+    if (created.length > 0 && superActionId !== 0) {
       const ids = created.map((c) => c.actionId);
       await this.fetch.driver.query(
         `UPDATE card_actions SET super_action_id = ? WHERE id IN (${ids

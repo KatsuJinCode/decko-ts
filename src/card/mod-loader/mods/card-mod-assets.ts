@@ -366,9 +366,9 @@ const cardModAssets: DeckoModManifest = {
       // the headless chain serves it in html like the other base-format
       // ports (card-mod-format's all/error registrations). Registered here
       // so every `X+*asset output` card dispatches the gate instead of the
-      // bare engine :not_found. NOT ported from the same file:
-      // followable?/ok_to_read?/history? (the read-permission and history
-      // surfaces are engine-level).
+      // bare engine :not_found. followable?/history? are honored by the
+      // action engine at the actual asset_output codename boundary.
+      // ok_to_read? remains an engine-level read-permission surface.
       // Event — STUB, named remainder:
       // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
       // on: :delete, when: :codename?` loads the attachment then strips the
