@@ -42,7 +42,7 @@ import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js"
 import { edgeHostLabels } from "./edge-host-labels.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { renderPageWithStatus } from "../../src/card/render/page.js";
-import { liveRenderPage } from "../../src/card/live/live-render.js";
+import { liveRenderPage, liveRenderView } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
 import {
@@ -907,11 +907,14 @@ async function signedInNewCardPage(
   // its text input, and pointer types their configured editors. A generic
   // TinyMCE textarea cannot represent these types.
   const renderForm = async () => {
-    const engines = await bootEdgeServingEngines(source.driver, options.servedBootOptions ?? {});
-    engines.render.viewer = viewer;
-    engines.render.pageSession = viewer;
-    engines.render.renderAbsentCards = true;
-    return await engines.render.render(cardName, "new", { newCard: { typeId: typeRecord.id, content } });
+    const result = await liveRenderView(source.driver, cardName, async (driver) => {
+      const engines = await bootEdgeServingEngines(driver, options.servedBootOptions ?? {});
+      engines.render.viewer = viewer;
+      engines.render.pageSession = viewer;
+      engines.render.renderAbsentCards = true;
+      return engines;
+    }, { signal, requestedView: "new", historyParams: { newCard: { typeId: typeRecord.id, content } } });
+    return result.html;
   };
   const form = await (requestContextAvailable()
     ? runInRequestContext(getNameEnvironment(), renderForm)

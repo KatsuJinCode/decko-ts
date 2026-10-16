@@ -214,11 +214,17 @@ it("renders typed attachment/structure editors and submits the legacy query-name
   expect(structured.status).toBe(200);
   expect(await structured.text()).toContain('name="card[subcards][+summary][content]"');
   const mark = "tags+*right+*input_type";
-  const legacy = await fetch(`${base}/card/new?${new URLSearchParams({ "card[name]": mark, type: "Phrase" })}`, { headers: { cookie } });
+  const beforeForm = await snapshot();
+  const requestsBeforeForm = hrana.requests.length;
+  const legacy = await fetch(`${base}/card/new?${new URLSearchParams({ "card[name]": mark, "card[content]": "checkbox", type: "Phrase" })}`, { headers: { cookie } });
   expect(legacy.status).toBe(200);
   const fields = formFields(await legacy.text(), "/card/create");
   expect(fields["card[name]"]).toBe(mark);
-  fields["card[content]"] = "checkbox";
+  expect(fields["card[content]"]).toBe("checkbox");
+  // The real HTTP driver must batch this form as well as its chrome.
+  // A raw form boot regresses to hundreds of serial name-lookup requests.
+  expect(hrana.requests.length - requestsBeforeForm).toBeLessThan(20);
+  expect(await snapshot()).toEqual(beforeForm);
   const saved = await post("/card/create", fields, cookie);
   expect(saved.status).toBe(200);
   const result = await saved.json() as { card_id: number; card: { name: string }; verb: string };

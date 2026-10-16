@@ -62,6 +62,9 @@ export type LiveEngineBoot = (driver: SQLDatabaseDriver) => Promise<{ render: Re
 export interface LiveRenderOptions {
   requestedView?: string;
   historyParams?: HistoryRenderParams;
+  /** Render the view alone, without the page/layout lifecycle. Used for
+   *  mod-composed forms inserted into an independently rendered page. */
+  bareView?: boolean;
   /** Collect pass 2 recording more than this many questions switches the
    *  request to full speculation. Unset here means never switch, so the choice
    *  stays with the caller; env DECKO_LIVE_AUTO_THRESHOLD overrides. */
@@ -112,7 +115,7 @@ let keptPages = new WeakMap<SQLDatabaseDriver, Map<string, KeptPage>>();
 const KEPT_PAGES_PER_DECK = 256;
 
 function keptKey(page: string, opts: LiveRenderOptions): string {
-  return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}`;
+  return `${opts.keepScope ?? ""}\u0000${page}\u0000${opts.requestedView ?? ""}\u0000${JSON.stringify(opts.historyParams ?? {})}\u0000${opts.bareView === true}`;
 }
 
 /** Take a page's kept entry out of the map: a request owns it exclusively
@@ -231,7 +234,20 @@ async function renderPass(
     render.skippedStructureRefAsked = lazy.asked;
     render.eagerStructureRefs = lazy.eager;
   }
-  return await renderPageBytes(render, page, opts.requestedView, opts.historyParams);
+  return opts.bareView === true
+    ? await render.render(page, opts.requestedView ?? "titled", opts.historyParams)
+    : await renderPageBytes(render, page, opts.requestedView, opts.historyParams);
+}
+
+/** Same complete-answer rule and cancellation as a live page, with the
+ *  engine's bare-view semantics. Form rows remain request-local. */
+export async function liveRenderView(
+  base: SQLDatabaseDriver,
+  cardName: string,
+  boot: LiveEngineBoot,
+  opts: LiveRenderOptions,
+): Promise<LiveRenderResult> {
+  return await liveRenderPage(base, cardName, boot, { ...opts, bareView: true, keep: false });
 }
 
 /** Render one page through the request store. `base` is the serving
