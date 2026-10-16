@@ -47,3 +47,30 @@ HTTP200-page/GET422/no-mutation cases, provenance/default-policy failures,
 missing real restart, overwrite refusal, and raw-input immutability. The
 controls use explicitly labelled unit fixtures; only actual browser runs
 can substantiate a product claim.
+
+## Actual prospective run
+
+Clean `aeecbd4cd9d7c03de5fa331df767d52a80f8e8c5` ran all three definitions
+serially through the actual local Bunny handler. Every flow completed the
+new profile, real owned restart, authenticated reload and final observation;
+the owned processes closed naturally. The additional evaluator returns
+FAIL/exit1 with **one of three positive operations passing**:
+
+- Admin follow passed in 27.876s, including successful GET, stored preference,
+  follower notice and the following control after restart/login.
+- Member-board unfollow completed in 23.330s but its action returned422,
+  no `*never` preference persisted and fresh reload still showed following.
+- Mail unfollow completed in 34.328s but returned403, target910 did not change
+  to `*never`, and the global follow section still showed following after
+  restart/login.
+
+The exact-candidate evaluation has no fixture, definition, default-policy,
+engine, source/build or run-identity errors. The first invocation supplied
+an incorrect full candidate hash and was refused; that operator error and
+its original report are preserved separately from the corrected, uniquely
+named exact-candidate report. It is not represented as a planned negative
+control or discarded. All original browser JSON/HTML, policies, scripts,
+receipts and SHA manifest are preserved at
+`C:/localProjects/brandonDojoTech/recovery/release/private-probes/follow-positive-operations-aeecbd4c/`.
+These results strengthen the visible product failures; they do not relax
+permissions or claim Ruby parity/deployed acceptance.
