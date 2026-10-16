@@ -14,9 +14,7 @@
 // decko.signed_in flag, the Server-Timing header, any console errors, and
 // any failed (blocked) subresource requests.
 
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
 
@@ -62,26 +60,28 @@ function assetHostsFromEnv(env) {
  * Launches the throwaway browser and returns { page, close, consoleErrors, blocked }.
  * @param {{ origin: string, assetHosts: string[] }} opts
  */
-export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [] }) {
+export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser }) {
   const { chromium } = await loadPlaywright();
   const executablePath = findBrowser();
-  const profile = mkdtempSync(join(tmpdir(), "edge-signed-in-profile-"));
   const allowedAssets = new Set(assetHosts);
   const consoleErrors = [];
   const dialogs = [];
   const blocked = [];
   let context;
+  let browser = sharedBrowser;
   try {
-    context = await chromium.launchPersistentContext(profile, {
+    browser ??= await chromium.launch({
       headless: true,
       executablePath,
+      args: ["--no-first-run", "--no-default-browser-check", "--disable-extensions", "--mute-audio"],
+    });
+    context = await browser.newContext({
       ignoreHTTPSErrors: true, // the harness origin's throwaway self-signed certificate
       viewport: { width: 1280, height: 900 },
       acceptDownloads: false,
-      args: ["--no-first-run", "--no-default-browser-check", "--disable-extensions", "--mute-audio"],
     });
   } catch (error) {
-    rmSync(profile, { recursive: true, force: true });
+    if (!sharedBrowser) await browser?.close().catch(() => undefined);
     throw error;
   }
   // Requests may reach the local origin, the deck's configured asset host and
@@ -123,8 +123,10 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     consoleErrors,
     dialogs,
     blocked,
+    // Independent cookies/storage, one owned browser process for the run.
+    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, ...options, sharedBrowser: browser }),
     close: async () => {
-      try { await context.close(); } finally { rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
+      try { await context.close(); } finally { if (!sharedBrowser) await browser.close(); }
     },
   };
 }

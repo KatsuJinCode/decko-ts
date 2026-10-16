@@ -126,7 +126,7 @@ const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRow
 console.log(`  cards copied: ${cardsCopied}`);
 async function ownerAudit(replayOnly = false) {
   const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,captureEvidence,
-    launchBrowser:options => launchHarnessBrowser({...options,allowedFaviconUrls})};
+    launchBrowser:options => browser.newContext({...options,allowedFaviconUrls})};
   if (!replayOnly) {
     group('owner audit required checks');
     await signIn(creds.admin);
@@ -744,9 +744,9 @@ try {
   group("7b. further signed-in capabilities (Decko's own browser tests as the checklist)");
 
   await attempt("S2/S3/S4 signed-out sign-in page", async () => {
-    // A second, throwaway browser: these are the SIGNED-OUT sign-in behaviours, so the
+    // An isolated session in the same browser: these are SIGNED-OUT behaviours, so the
     // context must carry no session cookie.
-    const anon = await launchHarnessBrowser({ origin: stack.origin, assetHosts: assetHosts });
+    const anon = await browser.newContext({ origin: stack.origin, assetHosts });
     const p2 = anon.page;
     try {
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
