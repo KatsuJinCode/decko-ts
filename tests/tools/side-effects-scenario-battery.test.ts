@@ -65,10 +65,12 @@
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+// @ts-expect-error Shared ESM build tool has no TypeScript declaration.
+import { copyRuntimeAssets } from "../../tools/dist/runtime-assets.mjs";
 
 const REPO = fileURLToPath(new URL("../../", import.meta.url));
 const FIXTURE = join(REPO, "reference-harness", "fixtures", "write-battery-v1");
@@ -82,13 +84,6 @@ const SCENARIOS = join(BATTERY, "scenarios.json");
 // The engine ts-drive.mjs loads (dist/src/...) and the SCSS compiler it
 // spawns; both are build artifacts this checkout documents but does not carry.
 const DIST_ENGINE = join(REPO, "dist", "src", "server", "write-routes.js");
-// The generated vendor asset-source snapshots tsc does not emit (see the
-// build block below); a dist carrying the engine but not these cannot run.
-const VENDOR_SNAPSHOTS = [
-  "edge-bootstrap-scss-snapshot.js",
-  "edge-style-source-snapshot.js",
-  "edge-script-source-snapshot.js",
-];
 const SASSC = join(
   REPO,
   "tools",
@@ -188,21 +183,13 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     const tsc = spawnSync(process.execPath, [join(REPO, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], {
       cwd: REPO, encoding: "utf8", timeout: 900_000, windowsHide: true,
     });
-    if (!existsSync(DIST_ENGINE)) {
+    if (tsc.status !== 0 || !existsSync(DIST_ENGINE)) {
       throw new Error(`the engine build failed (tsc exit ${tsc.status}): ${(tsc.stderr || tsc.stdout || "").slice(-600)}`);
     }
-    // tsc emits only dist/src/**. The generated asset-source snapshots the
-    // engine's source readers import from vendor/ (src/card/render/
-    // bootstrap-code-files.ts) must be copied alongside, or ts-drive.mjs
-    // dies on ERR_MODULE_NOT_FOUND before it runs a single step — the same
-    // gap tests/card/auth/staging-server-dist-bootstrap.ts:46-70 closes for
-    // the staging server, with the same three files.
-    const vendorDist = join(REPO, "dist", "vendor");
-    mkdirSync(vendorDist, { recursive: true });
-    for (const file of VENDOR_SNAPSHOTS) {
-      copyFileSync(join(REPO, "vendor", file), join(vendorDist, file));
-    }
   }
+  // Every consumer uses the same byte-verified runtime asset distribution,
+  // including HTML4 entity tables and the Wasm fallback, even on a warm dist.
+  if (missing.length === 0) copyRuntimeAssets(REPO);
   if (missing.length === 0 && !existsSync(SASSC)) {
     const build = spawnSync(process.execPath, [join(REPO, "tools", "libsass", "build-native.mjs"), join(REPO, "tools", "libsass", "libsass")], {
       cwd: REPO, encoding: "utf8", timeout: 1_200_000, windowsHide: true,
