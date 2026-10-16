@@ -436,8 +436,8 @@ export async function runCoverBChecks(ctx) {
     const targetName = cardName("NestTarget");
     const target = ensure(`${source}+${targetName}`);
     const nestedBody = `Harness nested body ${target}`;
-    await create(target, nestedBody, "PlainText");
     await create(source, "before the nest", "RichText");
+    await create(target, nestedBody, "PlainText");
     await visit(`/${source}`);
     const link = page.locator('a.edit-link[href$="/edit"]').first();
     await link.dispatchEvent("click").catch(() => undefined);
