@@ -70,7 +70,7 @@ export async function imageDialogJourney(ctx){
  await editor.toolbar.getByRole('menuitem',{name:'Insert',exact:true}).click();
  // TinyMCE renders menu items in a portal after the menu opens.
  await page.getByRole('menuitem',{name:'Image...',exact:true}).click();
- const dialog=page.locator('.modal.show').filter({has:page.locator('button._image_nest-apply')}).last();
+ const dialog=page.locator('.modal.show').filter({has:page.locator('.modal_nest_image-view')}).last();
  await dialog.getByRole('tab',{name:'select',exact:true}).click();
  const field=dialog.locator('select._image-card-select');
  await select2Choice(page,field,image.name,image.name.slice(0,4));
@@ -81,7 +81,7 @@ export async function imageDialogJourney(ctx){
  const hasSnippet=(value,name)=>value.includes(name)&&value.includes('{{')&&/view:\s*titled/.test(value)&&/size:\s*small/.test(value);
  await page.waitForFunction(name=>{const value=document.querySelector('input._nest-preview')?.value??'';return value.includes(name)&&/view:\s*titled/.test(value)&&/size:\s*small/.test(value)},image.name,{timeout:10000});
  const preview=await dialog.locator('input._nest-preview').inputValue();
- const apply=dialog.locator('button._image_nest-apply'),wire=await applyWire(page,apply,editor.id);
+ const apply=dialog.getByRole('button',{name:'Apply and Close',exact:true}),wire=await applyWire(page,apply,editor.id);
  await apply.click();await dialog.waitFor({state:'hidden'});
  const inserted=await page.evaluate(id=>window.tinymce.get(id).getContent(),editor.id);
  const saveStatus=await saveEditor(ctx,editor.form);
