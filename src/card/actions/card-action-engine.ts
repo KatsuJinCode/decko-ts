@@ -5286,7 +5286,6 @@ export class CardActionEngine {
     const driver = this.fetch.driver;
     const recentId = await this.fetch.codenames.id("recent_settings");
     if (recentId === undefined) return;
-    const settingTypeId = await this.fetch.codenames.id("setting");
     const actions = [
       { cardId: result.cardId, actionId: result.actionId, verb: result.verb, name: result.name },
       ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb, name: s.name })),
@@ -5295,17 +5294,12 @@ export class CardActionEngine {
       if (action.verb === "delete") continue;
       const row = await this.fetchRowById(action.cardId);
       if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
-      const right = await this.fetchRowById(row.right_id);
-      // set/rule/rules.rb's set is EVERY rule-and-preference card (the right
-      // part is a Setting) — the follow family's PREFERENCE saves
-      // ("Topic 008+*self+Ada Admin+*follow", whose direct left is a User
-      // junction, not a Set) fire it exactly like a set-anchored rule does;
-      // the set-anchored left check dropped the preference arm entirely.
-      // (Both merge lines landed this event-set fix — merge 50 as Card#rule?'s
-      // standard_rule?/preference? disjunction, this branch as the event set's
-      // own right-Setting membership; the set definition is the binding one
-      // and admits the superset, so the right-Setting membership stays.)
-      if (right === undefined || right.type_id !== settingTypeId || right.trash === 1) continue;
+      const name = action.name ?? await this.composedNameOf(row);
+      // 06_rule.rb applies this module through Card#rule? (rule/all.rb:33-45):
+      // a Set+Setting standard rule OR a valid Set+User+Setting preference.
+      // A Setting on the right alone does not make an ordinary card a rule.
+      if (name === undefined || !((await isStandardRuleName(this.fetch, name)) ||
+        (await isPreferenceName(this.fetch, name)))) continue;
       if (action.verb === "update") {
         const changed = (
           await driver.query<{ n: number }>(
@@ -5325,7 +5319,7 @@ export class CardActionEngine {
       // Array#delete's Card::Name == is key equality). The AUTHORED name
       // rides the action summary (compound rows carry name NULL, and the
       // sides resolve through the lexicon — the setting card's stored name).
-      const settingName = action.name?.rightName?.s;
+      const settingName = name.rightName?.s;
       if (settingName === undefined) continue;
       const settingKey = DeckoName.parse(settingName).key;
       const items = listItemStrings(recent.db_content).filter(
