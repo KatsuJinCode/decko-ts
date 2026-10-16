@@ -197,7 +197,14 @@ async function signIn(account) {
   if (observed.error) throw observed.error;
   await observed.response.finished();
   if (observed.response.status() < 400) {
-    const body = observed.body;
+    // A hard navigation can evict Chromium's XHR body before the protocol
+    // reader returns it. The owned HTTP host also records the exact response
+    // bytes; accept only a complete JSON object from that independent record.
+    const write = linesSince(before).find(line => line.method === 'POST' && new URL(line.path, stack.origin).pathname === '/update/*signin');
+    let body = observed.body;
+    if (!body && write?.bodyHead) {
+      try { body = JSON.parse(write.bodyHead); } catch { /* Truncated bytes prove no redirect. */ }
+    }
     const location = body?.redirect ?? observed.response.headers().location;
     if (!location) throw new Error(`successful sign-in has no observed redirect (status ${observed.response.status()}, content-type ${observed.response.headers()['content-type']}, body keys ${Object.keys(body ?? {}).join(',')})`);
     const target = new URL(location, stack.origin);
