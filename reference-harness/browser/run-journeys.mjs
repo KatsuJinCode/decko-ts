@@ -408,14 +408,15 @@ async function runJourney(engine, args, journey, spec, logFile) {
         continue;
       }
       const stepStarted = Date.now();
+      const stepStartedAtMs = performance.now();
       try {
         ctx.editorVia = undefined;
         ctx.restartEvidence = undefined;
         await runStep(ctx, step);
-        result.steps.push({ i, step, outcome: "ok", ms: Date.now() - stepStarted, ...(ctx.editorVia ? { via: ctx.editorVia } : {}), ...(ctx.restartEvidence ? { restart: ctx.restartEvidence } : {}) });
+        result.steps.push({ i, step, outcome: "ok", ms: Date.now() - stepStarted, startedAtMs: stepStartedAtMs, finishedAtMs: performance.now(), ...(ctx.editorVia ? { via: ctx.editorVia } : {}), ...(ctx.restartEvidence ? { restart: ctx.restartEvidence } : {}) });
       } catch (err) {
         failed = true;
-        result.steps.push({ i, step, outcome: "failed", ms: Date.now() - stepStarted, error: String(err?.message ?? err).split("\n")[0] });
+        result.steps.push({ i, step, outcome: "failed", ms: Date.now() - stepStarted, startedAtMs: stepStartedAtMs, finishedAtMs: performance.now(), error: String(err?.message ?? err).split("\n")[0] });
         // What the user was looking at when the step failed.
         try {
           await runStep(ctx, { observe: `failed at step ${i}` });
