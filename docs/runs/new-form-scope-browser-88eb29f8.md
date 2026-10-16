@@ -60,3 +60,16 @@ these reads leave rows unchanged. It then creates the final image, downloads
 exact original bytes, and verifies the consumed temporary preview is 404.
 All 31 file-route and actual HTTP controls passed in 61.55s; TypeScript
 validation passed. A clean browser rerun of this repair is recorded separately.
+
+The clean rerun on `b7de77f4a663b37bfc1993fb840d0a743780ac22` completed the
+same unmodified `upload-image-admin` journey in 21.520s. The identical
+`/files/~296/997-medium.png` preview request returned 200; both observations
+were 200, final content remained `~911/998.png`, and there were zero failed
+network requests or required assets. The owned engine closed naturally.
+This remains one focused journey, not full-suite acceptance.
+
+Run ID: `c273d232-766b-4ab6-8caa-c10ce0bc710b`.
+Clean distribution SHA-256:
+`8fa27266d2ba6e22dc8180f9a5911577c3b6d20eb655ae643f7a471e94a4b099`.
+Original JSON, HTML, metadata and logs are preserved beside the earlier
+failure under `browser-b7de77f4/`, with their own SHA-256 manifest.
