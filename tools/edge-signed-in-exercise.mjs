@@ -490,9 +490,11 @@ async function richTextJourney() {
       await attempt("nest dialog", async () => {
         await page.evaluate((id) => {
           const buttons = [...window.tinymce.get(id).editorContainer.querySelectorAll("button, a")];
-          buttons.find((b) => /nest|\{\{\}\}/i.test(`${b.getAttribute("title") ?? ""} ${b.textContent ?? ""}`))?.click();
+          const button = buttons.find((b) => /nest|\{\{\}\}/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""} ${b.getAttribute("data-mce-name") ?? ""}`));
+          if (!button) throw new Error('opening editor has no nest toolbar action');
+          button.click();
         }, nestedEditorId);
-        await page.waitForTimeout(1500);
+        await page.locator('._nest-editor:visible').last().waitFor({ state: 'visible', timeout: 30_000 });
         const dialog = await page.evaluate(() => {
           const d = [...document.querySelectorAll("._nest-editor")].find(item => item.getClientRects().length > 0);
           return d ? { open: true, fields: [...d.querySelectorAll("input,textarea")].map((i) => i.name || i.id || i.type) } : { open: false };
