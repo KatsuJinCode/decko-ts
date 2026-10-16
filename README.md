@@ -411,7 +411,7 @@ round trip per nesting level below the root, however many cards each level
 holds. Measured 2026-10-14 with `DEPTH_SWEEP_WRITE_ARTIFACT=1 npx vitest run
 tests/card/render/depth-sweep.test.ts`: three round trips at every depth 1
 through 20 with the index, 3 + (depth - 1) without it
-(`benchmarks/results/depth-sweep-ts.json`); that test asserts both at every
+(the generated depth-sweep report is not shipped); that test asserts both at every
 depth up to the renderer's 20-level ceiling. Both hold on a deck that carries
 its `*all+*read` rule card, which every real deck does: the read permission's
 one-time setup rides the prelude batch, so it costs statements and no round

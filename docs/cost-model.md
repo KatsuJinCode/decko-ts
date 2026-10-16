@@ -269,7 +269,8 @@ Cloudflare account, bound to a scratch D1 database `decko-test-cpu-scale-db`
 holding `deploy/migrations/0001-schema.sql` and `deploy/cf-scale-deck/seed.sql`
 (the same 2,287-card deck). Per-request CPU was read from `wrangler tail`
 (`cpuTime` on each request event), not from the local script. The Worker was
-deployed to `workers.dev`; all nine pages of `benchmarks/cf-scale/measure-workerd-cpu.mjs`
+deployed to `workers.dev`; all nine pages of the private workerd CPU instrument
+(not shipped in this package)
 returned HTTP 200. Requests: 11 per page, 99 in total, concurrency 4, sent
 within about 25 seconds. Every request succeeded; there were no errors and no
 exceptions.

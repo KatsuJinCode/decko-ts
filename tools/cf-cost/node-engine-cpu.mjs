@@ -1,6 +1,6 @@
 // tools/cf-cost/node-engine-cpu.mjs — Node-side CPU profiler for the CF worker.
 //
-// Bundles deploy/worker.ts the way benchmarks/cf-scale/measure-workerd-cpu.mjs
+// Bundles deploy/worker.ts the way the private workerd CPU instrument
 // does (vite SSR, node:crypto aliased to the deploy shim), then drives the
 // default export's fetch() against a D1 shim over better-sqlite3 seeded with
 // deploy/migrations/0001-schema.sql + deploy/cf-scale-deck/seed.sql.

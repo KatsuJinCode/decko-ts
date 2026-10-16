@@ -25,8 +25,9 @@ were weakened.
 
 Validation: `npx vitest run tests/card/render/search-match-adapter.test.ts
 tests/card/render/search-bad-query-error.test.ts tests/cql/execution.test.ts
-tests/cql/match-uncapped.test.ts tests/cql/match-dialect-throw-guard.test.ts`
-passed 86 tests; `npx tsc --noEmit` passed.
+tests/cql/match-uncapped.test.ts` plus a private capture-derived dialect guard
+(not shipped) passed 86 tests in the original verification;
+`npx tsc --noEmit` passed. That historical total includes the private control.
 
 This is local source/driver evidence. Stock Ruby33 SQLite keyword-search
 HTTP500 remains a reference-adapter incompatibility; matching that failure is

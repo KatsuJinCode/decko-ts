@@ -12,7 +12,10 @@ Verification: the recovered cache first failed five credential/policy negative t
 
 ## Local process CPU
 
-Run `node benchmarks/cf-scale/measure-workerd-cpu.mjs --deck cf-scale --page '500-item pointer' --n 40 --batches 2 --nest-index [--edge-cache] --json <output>`.
+The local process measurements below used the private workerd CPU instrument
+(not shipped in this package), with the cf-scale deck, 40 requests in two
+batches and a prepared nest index. They are historical observations, not a
+command available in this public package.
 
 The500-item pointer measured16.41ms/request without cache versus7.03ms/request with cache (two20-request batch means; cachedp95=7.81ms); identical64392-byte200response, oneD1stampread/request. The small ordinary card was5.86ms with/without cache. Cold `/` remained156.25–187.5ms. These are Windows workerd process CPU upper bounds including local D1+HTTP, not billed Worker CPU; batch-mean percentiles are not individual-request percentiles. Raw reports are `cf-free-cpu-local-evidence.json`. No free-plan acceptance claim is made.
 

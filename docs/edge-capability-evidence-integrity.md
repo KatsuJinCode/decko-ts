@@ -20,7 +20,8 @@ results and failed requests. The database snapshot is read-only and checked
 for changes during copying. Builds use the first-class distribution builder;
 the already-built bundle is reused rather than built twice.
 
-Three negative-control tests cover production credential exclusion, exact
-owned-origin writes, and truthful capability coverage. They pass with
-`node --test tools/edge-signed-in-exercise/test/local-policy.test.mjs`.
-These controls alone are not a successful application capability run.
+Three negative-control tests in the private site exercise cover production
+credential exclusion, exact owned-origin writes and truthful capability
+coverage. The site-specific exercise and its deployment configuration are
+not shipped in the public package. These controls alone are not a successful
+application capability run.

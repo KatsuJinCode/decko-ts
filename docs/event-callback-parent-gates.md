@@ -47,7 +47,7 @@ Validation commands in `C:/localProjects/decko-ts-event-order-repair`:
 ```
 C:/Ruby33-x64/bin/ruby.exe tmp/callback-chain-control.rb
 node node_modules/typescript/bin/tsc --noEmit
-node node_modules/vitest/vitest.mjs run tests/card/mod-loader/mod-event-dispatch.test.ts tests/card/mod-loader/card-mod-account-events.test.ts tests/card/mod-loader/card-mod-carrierwave-events.test.ts tests/card/mod-loader/card-mod-comment-save-event.test.ts tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts --maxWorkers 1
+node node_modules/vitest/vitest.mjs run tests/card/mod-loader/mod-event-dispatch.test.ts tests/card/mod-loader/card-mod-account-events.test.ts tests/card/mod-loader/card-mod-carrierwave-events.test.ts tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts --maxWorkers 1
 node tools/parity-side-effects/build-changed.mjs
 node tools/parity-side-effects/ts-drive.mjs reference-harness/fixtures/write-battery-v1/deck/deck.sqlite3 tmp/side-effects-battery-after/ts-work
 node tools/parity-side-effects/compare.mjs reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json tmp/side-effects-battery-after/ts.json tmp/side-effects-battery-after/compare-report.json
