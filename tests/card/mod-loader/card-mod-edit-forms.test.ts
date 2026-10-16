@@ -309,6 +309,17 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
     expect(home).toBe(FIXTURE.targets.deck_level.views.tova.edit);
   });
 
+  it("the board type row renders its live select only when type_form is explicitly shown", async () => {
+    const engine = storage!.engine;
+    const row = await engine.render("Oracle Basics", "edit_type_row");
+    expect(row).not.toContain('<select');
+    const opened = await engine.render("Oracle Basics", "edit_type_row", {viewOpts:{show:['type_form']}});
+    expect(opened).toContain('name="card[type]"');
+    expect(opened).toContain('_live-type-field');
+    const next = await engine.render("Oracle Basics", "edit_type_row");
+    expect(next).not.toContain('<select');
+  });
+
   it("anonymous :edit is the quiet denial span, byte-for-byte (real task verdicts)", async () => {
     const s = storage!;
     anonymousEngine = new RenderEngine(new FetchEngine(s.counting));
