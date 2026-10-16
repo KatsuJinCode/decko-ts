@@ -31,6 +31,7 @@ describe("live render: the request budget stops it", () => {
     await expect(live.query("SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1", ["home"])).rejects.toBeInstanceOf(
       LiveRenderAborted,
     );
+    await expect(live.query("SELECT * FROM cards WHERE name REGEXP ?", ["home"])).rejects.toBeInstanceOf(LiveRenderAborted);
     live.mode = "spec";
     await live.query("SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1", ["zed"]);
     await expect(live.flushSpeculative()).rejects.toBeInstanceOf(LiveRenderAborted);

@@ -310,6 +310,24 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   async query<T>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    // CQL catches a missing REGEXP function at this call site and executes
+    // its established complete-candidate fallback. Deferring that error to
+    // flushSpeculative moves it outside the catch and changes a valid search
+    // into a 500. Run this capability-sensitive read now; never invent an
+    // empty answer or suppress its original error. Successful answers remain
+    // request-store facts for subsequent passes.
+    if (/\bREGEXP\b/i.test(sql)) {
+      if (this.opts.signal?.aborted === true) throw new LiveRenderAborted();
+      if (!/^\s*(SELECT|WITH)\b/i.test(sql)) throw new Error(`live-store render reached a non-read statement: ${sql.slice(0, 120)}`);
+      const key = keyOf(sql, params);
+      const known = this.exact.get(key);
+      if (known !== undefined) return known as SQLQueryResult<T>;
+      this.stats.round_trips += 1;
+      this.stats.statements_sent += 1;
+      const result = await this.base.query<T>(sql, params);
+      this.exact.set(key, result);
+      return result;
+    }
     const [r] = await this.batch([{ sql, params }]);
     return r as SQLQueryResult<T>;
   }

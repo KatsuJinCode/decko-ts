@@ -173,3 +173,25 @@ the existing CQL fallback. Those 500 responses are preserved in
 keyword path. The main-only observations remain valid for the narrower
 gate. Raw cold controls are `report-main-context.json` and
 `report-name-context-cold.json` in the private evidence directory.
+
+## Capability-sensitive CQL reads keep their call-site errors
+
+The keyword trial exposed an existing speculative-read boundary problem:
+CQL's real missing-REGEXP error was deferred until `flushSpeculative`, outside
+`executeQuery`'s established no-UDF catch. That prevented decision 0005's
+complete-candidate post-filter from running and returned 500.
+
+The request store now executes REGEXP SELECTs at the actual query call site,
+keeping successful answers as request-store facts. Original errors propagate
+unchanged to the caller. CQL consequently executes its existing fallback
+with every candidate, then filters and applies the requested limit/offset.
+No missing-function error is treated as an empty result; unrelated errors,
+malformed patterns, and read-only/abort boundaries remain failures.
+
+Real SQLite with its registered UDF and real Bunny/Hrana HTTP without a UDF
+both pass positive, second-window, exact count, empty-negative, and malformed
+regex controls through speculative request stores. Restoring the old store
+makes the no-UDF control fail (exit 1) when flush raises the missing-function
+error. The fixed controls and cancellation test pass in 3.34s; TypeScript
+validation passes. This change alone does not broaden route admission;
+keyword/paging admission requires its separate actual HTTP/browser proof.
