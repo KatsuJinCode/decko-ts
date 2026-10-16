@@ -488,8 +488,8 @@ export const editButtonsView: ViewFn = ({ fmt, voo }) =>
  *  visible? (visibility.rb:81-84) viz-writes :type_form with the block's
  *  value (:hide, via the non-force viz) ONLY when unset, then answers
  *  show? - unset here -> the slot's hide list carries type_form
- *  and the edit_row branch renders. The board_type_formgroup branch (the
- *  live type select) is the rails-runtime remainder (select2 formgroup).
+ *  and the edit_row branch renders. Once type_form is explicitly shown,
+ *  the board_type_formgroup branch renders the live type select.
  *
  *  edit_row (edit_inline.rb:37-46): `class_up "card-slot", "d-flex
  *  form-group"; wrap true, class: :row { haml :edit_row, ... }` - the
@@ -504,12 +504,15 @@ export const editButtonsView: ViewFn = ({ fmt, voo }) =>
  *  (edit_inline.rb:48-52): link_to_view with menu_icon (icon_tag :edit),
  *  class "ms-2 edit-link", "data-cy" "edit-link" - href "/<card url_key>/
  *  board_type_formgroup", rel nofollow, data-remote. */
-export const editTypeRowView: ViewFn = ({ fmt, voo }) => {
+export const editTypeRowView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
   if (!voo.viz.has("type_form")) voo.hide("type_form"); // visible? writes once
   if (voo.explicitShow("type_form")) {
-    // honest remainder: board_type_formgroup (type select2 formgroup) -
-    // rails-runtime; unreachable in the shipped surface (type_form hidden)
-    return "";
+    // edit_type.rb:19 `return _render_board_type_formgroup if voo.visible?(
+    // :type_form) { false }`: once the row's edit link has asked for the
+    // type form, the row answers the live type select (the same view the
+    // board_type_formgroup route renders) in place of the read-only row.
+    return boardTypeFormgroupView(ctx);
   }
   const typeName = fmt.card.typeName ?? "";
   const typeUrl = DeckoName.parse(typeName).urlKey;
