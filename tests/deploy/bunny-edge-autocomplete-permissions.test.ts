@@ -270,12 +270,12 @@ async function mintSessionToken(): Promise<string> {
 describe("signed-in autocomplete read permissions", () => {
   it("filters denied prefix candidates before the eight-result window and rechecks revocations", async () => {
     const token = await mintSessionToken();
-    // Nine denied names sort before the readable names. Filtering a SQL
-    // LIMIT 8 after the query would hide every legitimate suggestion.
-    for (let i = 0; i < 9; i++) {
+    // Forty denied names sort before the readable names. Fixed over-fetch
+    // windows (including LIMIT 32) must not hide later readable candidates.
+    for (let i = 0; i < 40; i++) {
       await insertCard({ id: 10000 + i, name: `Permission Probe A${i}`, readRuleId: IDS_RULE.governedReadRule });
     }
-    await insertCard({ id: 10020, name: "Permission Probe Z", readRuleId: IDS_RULE.catchAllRead });
+    await insertCard({ id: 10080, name: "Permission Probe Z", readRuleId: IDS_RULE.catchAllRead });
     await driver.query("UPDATE card_references SET referee_id = ?, referee_key = 'anonymous' WHERE referer_id = ?", [IDS_RULE.anonymous, IDS_RULE.governedReadRule]);
     const headers = { cookie: `decko_ts_session=${token}` };
     for (const view of ["name_match", "name_complete"]) {
@@ -324,6 +324,38 @@ describe("signed-in autocomplete read permissions", () => {
       const response = await handleBunnyEngineRequest(edgeGet("/Basic.json?view=name_complete&term=Actorprobe", { cookie: `decko_ts_session=${token}` }), env);
       expect(await response.json()).toEqual(expected);
     }
+  });
+
+  it("isolates anonymous, invalid-cookie, member and administrator results and refreshes anonymous reads", async () => {
+    await insertCard({ id: 11000, name: "Suggestion Member" });
+    await insertCard({ id: 11001, name: "Suggestion Admin" });
+    await insertCard({ id: 11002, name: "Role", codename: "role", typeId: 11 });
+    await insertCard({ id: 11003, name: "Administrator", codename: "administrator", typeId: 11002 });
+    await insertCard({ id: 11004, name: "*members", codename: "members" });
+    await insertCard({ id: 11005, name: "Administrator+*members", leftId: 11003, rightId: 11004 });
+    await insertReference(11005, 11001, keyOf("Suggestion Admin"));
+    await insertCard({ id: 11010, name: "Viewerprobe A private", readRuleId: IDS_RULE.governedReadRule });
+    for (let i = 0; i < 10; i++) await insertCard({ id: 11020 + i, name: "Viewerprobe Z" + i, readRuleId: IDS_RULE.catchAllRead });
+    await insertCard({ id: 11040, name: "Other Viewerprobe", readRuleId: IDS_RULE.catchAllRead });
+    await driver.query("UPDATE card_references SET referee_id = ?, referee_key = ? WHERE referer_id = ?", [HOLDER.id, keyOf(HOLDER.name), IDS_RULE.governedReadRule]);
+    const sessions = new SessionStore({ driver });
+    const member = await sessions.createSession(11000);
+    const admin = await sessions.createSession(11001);
+    const visible = Array.from({ length: 8 }, (_, i) => "Viewerprobe Z" + i);
+    for (const view of ["name_match", "name_complete"]) {
+      const path = "/Basic.json?view=" + view + "&term=Viewerprobe";
+      for (const [cookie, expected] of [[null, visible], ["decko_ts_session=invalid-suggestion-token", visible], ["decko_ts_session=" + member.token, visible], ["decko_ts_session=" + admin.token, ["Viewerprobe A private", ...visible.slice(0, 7)]]] as const) {
+        const response = await handleBunnyEngineRequest(edgeGet(path, cookie ? { cookie } : {}), env);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual(expected);
+      }
+    }
+    const path = "/Basic.json?view=name_complete&term=Viewerprobe%20A";
+    expect(await (await handleBunnyEngineRequest(edgeGet(path), env)).json()).toEqual([]);
+    await driver.query("UPDATE card_references SET referee_id = ?, referee_key = 'anyone' WHERE referer_id = ?", [IDS_RULE.anyone, IDS_RULE.governedReadRule]);
+    expect(await (await handleBunnyEngineRequest(edgeGet(path), env)).json()).toEqual(["Viewerprobe A private"]);
+    await driver.query("UPDATE card_references SET referee_id = ?, referee_key = ? WHERE referer_id = ?", [HOLDER.id, keyOf(HOLDER.name), IDS_RULE.governedReadRule]);
+    expect(await (await handleBunnyEngineRequest(edgeGet(path), env)).json()).toEqual([]);
   });
 
   it("serves stock coded files without storage credentials and isolates/rechecks the session read scope", async () => {
