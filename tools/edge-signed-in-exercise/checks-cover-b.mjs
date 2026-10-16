@@ -62,7 +62,8 @@ function bounded(promise, name) {
 }
 
 export async function runCoverBChecks(ctx) {
-  if(ctx.coverBCase!==undefined&&!meta.capabilityIds.includes(ctx.coverBCase))throw Error('unknown cover-b capability selection');
+  const selectedCases=ctx.coverBCase?.split(',');
+  if(selectedCases?.some(id=>!meta.capabilityIds.includes(id)))throw Error('unknown cover-b capability selection');
   const { page, stack, creds, record, visit, signIn, ledger, linesSince, created, cardName } = ctx;
   const group = ctx.group ?? ((name) => console.log(`\n== ${name}`));
   const admin = creds.admin;
@@ -77,7 +78,7 @@ export async function runCoverBChecks(ctx) {
   // throws so runCoverBChecks exits entirely.
   let timedOutCheck = null;
   const attempt = async (name, fn) => {
-    if(ctx.coverBCase!==undefined&&!name.startsWith(ctx.coverBCase+' '))return;
+    if(selectedCases!==undefined&&!selectedCases.some(id=>name.startsWith(id+' ')))return;
     const result = await ctx.attempt(name, async () => {
       try {
         return await bounded(Promise.resolve().then(fn), name);

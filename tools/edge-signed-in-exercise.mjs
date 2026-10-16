@@ -55,7 +55,7 @@ const supportedTopics = ['account','owner','owner-replay','richtext','member-del
 const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
-if(hasFlag('case')&&(argOf('only')!=='cover-b'||!checkModules.find(m=>m.meta.topic==='cover-b')?.meta.capabilityIds.includes(argOf('case'))))throw Error('--case requires --only cover-b and one of its declared capability IDs');
+if(hasFlag('case')&&(argOf('only')!=='cover-b'||!(argOf('case')??'').split(',').every(id=>checkModules.find(m=>m.meta.topic==='cover-b')?.meta.capabilityIds.includes(id))))throw Error('--case requires --only cover-b and comma-separated declared capability IDs');
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");

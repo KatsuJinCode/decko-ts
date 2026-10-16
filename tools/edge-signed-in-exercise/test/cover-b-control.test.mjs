@@ -20,3 +20,10 @@ test('timed-out cover-b exits before a successor can use its fixture',async t=>{
  await rejected;
  assert.equal(attempted.length,1);assert.deepEqual(visits,['/_signout']);assert.match(context.fixtureState.fatalReason,/did not settle/);
 });
+
+test('a bounded case batch selects only its requested workflow bodies',async()=>{
+ const attempted=[];
+ await runCoverBChecks({...base(),coverBCase:'C16,C18,E23',attempt:async name=>attempted.push(name)});
+ assert.deepEqual(attempted.map(name=>name.split(' ')[0]),['C16','C18','E23']);
+ await assert.rejects(runCoverBChecks({...base(),coverBCase:'C16,unknown'}),/unknown cover-b/);
+});
