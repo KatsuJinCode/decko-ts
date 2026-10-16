@@ -253,7 +253,7 @@ export interface ModEventRuntime {
   readonly predicates?: ModEventPredicateTable;
   /** Set membership for scoped (non-"all/") set paths. Absent -> scoped
    *  events are skipped "set-not-applicable". */
-  readonly setMember?: (setPath: string, card: ModEventCard) => boolean;
+  readonly setMember?: (setPath: string, card: ModEventCard) => boolean | Promise<boolean>;
   /** skip= / skip_in_action= names (hash value true). */
   readonly skip?: readonly string[];
   /** skip_event! / skip_event_in_action! names (hash value :force). */

@@ -1436,9 +1436,20 @@ export function servingModEventRuntime(): Promise<ModEventRuntime> {
 export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
+  const typeMember = typeSetMember(codenameOfType);
   return {
     ...runtime,
-    setMember: typeSetMember(codenameOfType),
+    setMember: (setPath, card) => {
+      if (setPath !== "right/enabled_roles") return typeMember(setPath, card);
+      const right = DeckoName.parse(card.name).rightName;
+      if (right === undefined) return false;
+      // Resolve the actual codename anchor, including renamed settings. Do
+      // not activate other right-scoped callbacks as a side effect of this one.
+      return ctx.driver.query<{ codename: string }>(
+        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        [right.key],
+      ).then(result => result.rows[0]?.codename === "enabled_roles");
+    },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
   };
 }

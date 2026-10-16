@@ -33,9 +33,8 @@
 //   the `perms:` gate, and the engine's view-permission gate leaves an
 //   un-implemented method predicate unverified-ALLOWED, so the bytes are
 //   the signed-OUT reader's. See the view block below.
-// - set/right/enabled_roles.rb (:edit_inline super() + checkbox input +
-//   validate_role_enabling/clear_roles_cache events) - the edit framework is
-//   unported  and the events are write-path
+// - set/right/enabled_roles.rb: clear_roles_cache/session state remain
+//   unported. The held-role validation is implemented below.
 // - set/right/head.rb :one_line_content - body is card-mod-format's
 //   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
 //   (rightHeadOneLineContentView) using text-helpers.ts#truncate +
@@ -82,6 +81,7 @@
 
 import { str, type ViewResult } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
+import { NameNotFoundError, CodenameNotFoundError } from "../../name/errors.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
 import { scanNests, stripTags, interpretEscapedLiteral } from "../../render/nest-syntax.js";
 import { highlight } from "../../render/code-highlighting/index.js";
@@ -114,6 +114,9 @@ import type { DeckoModManifest } from "../mod-manifest.js";
 import type { ModEngineHost, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { warmRuleCards } from "./rule-card-warm.js";
 import { viewWrapInherited } from "../mod-view-helpers.js";
+import { CardActionError } from "../../actions/types.js";
+import { readPermissionStatements, readPermissionStateFromViewerResults, anonymousIdFromResults } from "../../permissions/read-rules.js";
+import { toSentence } from "../mod-form-substrate.js";
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -123,6 +126,48 @@ function event(
 ): ModEventRegistration {
   return { fn: () => undefined, ...decl };
 }
+
+/** enabled_roles.rb:24-29: item_names - Auth.current_roles. This validation
+ * does not use Auth.always_ok?: even the bot may enable only roles it holds. */
+const validateRoleEnabling: ModEventFn = async (card, _host, ctx) => {
+  if (card.authCurrentId === undefined || ctx.fetch === undefined) {
+    throw new Error("validate_role_enabling requires the save's actor and fetch context");
+  }
+  const actorId = card.authCurrentId;
+  const held = new Set<string>();
+  if (actorId !== null) {
+    const viewer = { signedIn: true, actorId };
+    const results = await ctx.driver.batch(readPermissionStatements(viewer));
+    if (actorId !== anonymousIdFromResults(results)) {
+      const anyoneId = (results[0].rows as Array<{ id: number; codename: string }>).find(row => row.codename === "anyone")?.id;
+      const state = readPermissionStateFromViewerResults(results, viewer);
+      for (const id of state.parties) {
+        if (id === actorId || id === anyoneId) continue;
+        const role = await ctx.fetch.fetchById(id);
+        if (role?.name === undefined || role.name === null) throw new Error(`current role ${id} has no name`);
+        held.add(role.name.s);
+      }
+    }
+  }
+  // Ruby String#split drops trailing empty fields; the common pointer helper
+  // strips brackets/whitespace but deliberately retains its supplied lines.
+  const content = (card.dbContent ?? "").replace(/\n+$/, "");
+  const names = content === "" ? [] : rawItemStrings(content).flatMap(item => {
+    try {
+      return [DeckoName.parse(item).absoluteName(card.name).s];
+    } catch (error) {
+      // collection/item.rb clean_item_name drops only unresolved id/codename
+      // marks (Card::Error::NotFound), not arbitrary failures.
+      if (error instanceof NameNotFoundError || error instanceof CodenameNotFoundError) return [];
+      throw error;
+    }
+  });
+  // Array#- uses eql?, not Cardname's key-based ==. Keep literal role names.
+  const illegal = names.filter(name => !held.has(name));
+  if (illegal.length === 0) return;
+  const message = `illegal roles: ${toSentence(illegal)}`;
+  throw new CardActionError("validation-failed", `Validation failed: ${message}`, `CONTENT: ${message}`, { content: message }, card.name);
+};
 
 // The base implementations captured BEFORE any registration replaces the
 // table entry (see the set-scoped dispatch note in the header).
@@ -1180,20 +1225,14 @@ const cardModLayout: DeckoModManifest = {
       // :edit_inline view (the role
       // checkboxes are the named remainder on the view).
       //
-      // Events — two STUBS with named
-      // reasons (enabled_roles.rb:21-33):
-      // - validate_role_enabling (:validate, on: :save) errors when the
-      //   saved list enables roles the acting account does not hold
-      //   (item_names - Auth.current_roles); the port's session model
-      //   has no +*enabled_roles card save path (the visitor-session
-      //   carries its role state outside the card write path).
+      // validate_role_enabling enforces the current actor's held-role subset.
       // - clear_roles_cache (:prepare_to_store, before:
       //   store_in_session) drops Auth.current's role caches after a
       //   roles change; same missing save path (and store_in_session,
       //   the session mod's event, is itself an unwired stub).
       setPath: "right/enabled_roles",
       events: [
-        event({ event: "validate_role_enabling", at: "validate", on: ["save"] }),
+        event({ event: "validate_role_enabling", at: "validate", on: ["save"], fn: validateRoleEnabling }),
         // Ruby: `event :clear_roles_cache, :prepare_to_store, before:
         // :store_in_session` — options.rb:76 clears @stage when before: is
         // given, so the declared :prepare_to_store never becomes the
