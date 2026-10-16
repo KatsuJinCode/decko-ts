@@ -11,6 +11,7 @@ import { readFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, resolve, dirname, relative, isAbsolute, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { createHash } from 'node:crypto';
 import { startLocalHrana } from "./local-hrana.mjs";
 import { startEdgeHost } from "./edge-host.mjs";
 export { localEnv } from "./local-policy.mjs";
@@ -80,8 +81,11 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
   process.env.DECKO_ORIGIN = origin;
   process.env.DECKO_DECK_ORIGIN = origin;
   process.env.DECKO_SERVED_ROOT_URL = origin;
+  const configuration = localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin });
+  const renderConfigurationSha256 = createHash('sha256').update(JSON.stringify(Object.entries(configuration).sort(([a],[b]) => a.localeCompare(b)))).digest('hex');
   return {
     origin,
+    renderConfigurationSha256,
     hrana,
     host,
     bundlePath,

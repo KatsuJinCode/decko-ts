@@ -7,6 +7,7 @@
 //        [--out docs/runs/edge-signed-in-exercise-<date>.md] [--keep]
 //        [--asset-host <additional known public asset hostname>]
 //        [--favicon-url <exact public favicon URL>]
+//        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
 //
 // It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
 // engine.bundle.js, rebuilt from deploy/bunny-worker-src by
@@ -112,6 +113,13 @@ const creds = JSON.parse(readFileSync(credentialsPath, "utf8"));
 console.log(`seeded local accounts: ${creds.admin.name} (admin), ${creds.member.name} (member)`);
 
 const { env: liveEnv } = await readLiveScriptEnv(SECRETS);
+const captureEnv = { ...liveEnv };
+const ajaxSaveRedirect = argOf('ajax-save-redirect');
+if (ajaxSaveRedirect !== undefined) {
+  if (!['0', '1'].includes(ajaxSaveRedirect)) throw new Error('ajax-save-redirect must be 0 or 1');
+  captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
+}
+provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
 const assetHosts = [...new Set(Object.entries(liveEnv)
   .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
   .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
@@ -133,7 +141,8 @@ for (const value of allowedFaviconUrls) {
 }
 provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
-const stack = await startStack({ deckPath: localDeck, live: liveEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
+const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
+provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
 console.log(`local edge host: ${stack.origin}`);
 
 let browser;
