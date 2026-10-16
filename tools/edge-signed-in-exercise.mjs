@@ -36,6 +36,8 @@ import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.m
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
+import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
+import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
@@ -49,7 +51,7 @@ const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i 
 const hasFlag = (name) => process.argv.includes(`--${name}`);
 const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
 const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
-const supportedTopics = ['account','owner','owner-replay','richtext',...moduleTopics];
+const supportedTopics = ['account','owner','owner-replay','richtext','member-delete',...moduleTopics];
 const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
@@ -251,10 +253,10 @@ function captureEvidence(html, metadata) {
   return { capture, htmlSha256: receipt.htmlSha256 };
 }
 
-async function visit(pathname) {
+async function visit(pathname,{waitUntil='load'}={}) {
   const before = ledger().length;
   const started = Date.now();
-  const response = await page.goto(`${stack.origin}${pathname}`, { waitUntil: "load", timeout: 60_000 });
+  const response = await page.goto(`${stack.origin}${pathname}`, { waitUntil, timeout: 60_000 });
   const wallMs = Date.now() - started;
   const html = await page.content();
   const capture = String(++htmlSequence).padStart(3, '0');
@@ -277,7 +279,7 @@ async function signIn(account) {
   // Each credential verdict must come from a fresh browser session, rather
   // than mistaking an existing valid cookie for a successful new login.
   await page.context().clearCookies();
-  await page.goto(`${stack.origin}/*signin`, { waitUntil: "load", timeout: 60_000 });
+  await page.goto(`${stack.origin}/*signin`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.fill('input[name="card[subcards][+*email][content]"]', account.email);
   await page.fill('input[name="card[subcards][+*password][content]"]', account.password);
   const before = ledger().length;
@@ -302,13 +304,16 @@ async function signIn(account) {
     if (!location) throw new Error(`successful sign-in has no observed redirect (status ${observed.response.status()}, content-type ${observed.response.headers()['content-type']}, body keys ${Object.keys(body ?? {}).join(',')})`);
     const target = new URL(location, stack.origin);
     if (target.origin !== stack.origin) throw new Error('sign-in redirect leaves owned origin');
-    await page.waitForURL(target.href, {waitUntil:'load', timeout:60_000});
+    await page.waitForURL(target.href, {waitUntil:'domcontentloaded', timeout:60_000});
   }
   const cookies = await page.context().cookies(stack.origin);
   const session = cookies.find((c) => c.name === "decko_ts_session");
   const lines = linesSince(before);
-  const landing = session ? await visit("/") : { signedIn:false, hasSignOut:false, status:observed.response.status(), url:page.url() };
-  return { hasSessionCookie: Boolean(session), landedOn: page.url(), landing, lines };
+  const landing = session ? await visit("/",{waitUntil:'domcontentloaded'}) : { signedIn:false, hasSignOut:false, status:observed.response.status(), url:page.url() };
+  const storedActorId=storedSessionActorId(database(),cookies);
+  const expectedActorId=account.id??[creds.admin,creds.member].find(actor=>actor.email===account.email)?.id??null;
+  (provenance.actorWitnesses??=[]).push({expectedActorId,actualActorId:storedActorId,hasSessionCookie:Boolean(session),backendSignedIn:landing.signedIn});
+  return { hasSessionCookie: Boolean(session), storedActorId, landedOn: page.url(), landing, lines };
 }
 
 /** The edit (pencil) link, dispatched rather than clicked: Decko reveals it on
@@ -581,7 +586,16 @@ async function richTextJourney() {
 }
 
 try {
-  if (argOf('only') === 'account') {
+  if(argOf('only')==='member-delete'){
+    const admin=await signIn(creds.admin);
+    if(!verifiedActorSession(admin,creds.admin.id))throw Error('fixture admin actor not verified');
+    const name=cardName('member_delete');created.push(name);
+    const type=database().prepare("SELECT name FROM cards WHERE codename='basic' AND trash=0").get()?.name;
+    if(!type)throw Error('canonical basic cardtype missing');
+    const response=await page.context().request.post(stack.origin+'/card/create',{headers:{origin:stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,data:new URLSearchParams({'card[name]':name,'card[type]':type,'card[content]':'UNCHANGED_'+name,'success[redirect]':'true'}).toString()});
+    if(response.status()>=400)throw Error('member-delete fixture create refused');
+    await memberDeleteJourney(moduleContext(),name);
+  } else if (argOf('only') === 'account') {
     group('account diagnostic only');
     for (const account of [creds.admin, creds.member]) await accountSettings(account);
   } else if (argOf('only') === 'richtext') {
@@ -1019,18 +1033,7 @@ try {
 
   // -- 8 -----------------------------------------------------------------
   group("8. ordinary (non-admin) account permissions");
-  const memberSession = await attempt("member session", () => signIn(creds.member));
-  if (memberSession) record("the member is signed in", memberSession.hasSessionCookie && memberSession.landing.signedIn, { signedIn: memberSession.landing.signedIn });
-  await attempt("member delete attempt", async () => {
-    const result = await page.evaluate(async ({ origin, target }) => {
-      const r = await fetch(`${origin}/delete/${target}`, { redirect: "manual" });
-      return { status: r.status, body: (await r.text()).replace(/\s+/g, " ").slice(0, 200) };
-    }, { origin: stack.origin, target: richName });
-    const isRefusal = result.status >= 400 || /permission|not allowed|denied|may not|sign in/i.test(result.body);
-    record("a member's delete attempt is refused with a clear message, not a form", isRefusal, result);
-    const stillThere = await visit(`/${richName}`);
-    record("the card the member tried to delete is still there", stillThere.status === 200, { status: stillThere.status });
-  });
+  await attempt('verified member delete journey',()=>memberDeleteJourney(moduleContext(),currentName));
   await signIn(creds.admin);
 
   if (argOf('supplemental-checks')) {

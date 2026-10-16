@@ -12,6 +12,7 @@
 // the entry point is runCoverBChecks(ctx).
 
 import { focusRichEditor } from "./lib/rich-editor.mjs";
+import { createTypedFixture, fixtureType } from "./lib/typed-fixture.mjs";
 
 const CAP = "C";
 
@@ -25,7 +26,7 @@ const ONE_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAD
 /** TinyMCE is ready once the global tinymce has an active editor. */
 async function waitForEditor(page, timeout = 30_000) {
   try {
-    await page.waitForFunction(() => typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null, { timeout });
+    await page.waitForFunction(() => typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null, undefined, { timeout });
   } catch { /* recorded by the caller */ }
   return page.evaluate(() => ({
     present: typeof window.tinymce !== "undefined",
@@ -43,28 +44,6 @@ async function openRichEditorId(page) {
   } catch {
     return null;
   }
-}
-
-/** Creates a card of `type` with `content` through the create form. */
-async function createCard(page, stack, { type = "RichText", name, content = "" }) {
-  const url = `${stack.origin}/new/${type}` + (name || content ? `?card%5Bname%5D=${encodeURIComponent(name ?? "")}${content ? `&card%5Bcontent%5D=${encodeURIComponent(content)}` : ""}` : "");
-  const response = await page.goto(url, { waitUntil: "load", timeout: 60_000 }).catch(() => null);
-  await page.waitForTimeout(2500);
-  const state = await page.evaluate(() => {
-    const form = document.querySelector('form.card-form');
-    const input = document.querySelector('form.card-form input[name="card[name]"]');
-    return { action: form?.getAttribute("action") ?? null, name: input?.value ?? null, hasSubmit: Boolean(document.querySelector('form.card-form button[type="submit"]')) };
-  });
-  if (content && state.hasSubmit) {
-    const ed = await waitForEditor(page, 15_000);
-    if (ed.active) await page.evaluate((text) => window.tinymce.activeEditor.setContent(text), content);
-    else await page.fill('form.card-form textarea[name="card[content]"]', content).catch(() => undefined);
-  }
-  const before = page.__ctxLedgerLength?.() ?? null;
-  void before;
-  await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
-  await page.waitForTimeout(3000);
-  return { status: response?.status() ?? null, landed: page.url().replace(stack.origin, ""), ...state };
 }
 
 /** A check that never settles (a stalled click or a page that never answers)
@@ -117,15 +96,10 @@ export async function runCoverBChecks(ctx) {
   const ensure = (name) => { if (!created.includes(name)) created.push(name); return name; };
   const exists = (name) => ctx.database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(name);
   const row = (name) => ctx.database().prepare("SELECT name, db_content AS content FROM cards WHERE name = ? AND trash = 0").get(name);
-  /** Creates a card, retrying the type that actually matches (a Date type needs a date input). */
+  /** Creates the requested canonical cardtype and verifies its stored identity. */
   const create = async (name, content = "", type = "RichText") => {
     ensure(name);
-    const made = await createCard(page, stack, { type, name, content });
-    if (!exists(name)) {
-      const alt = await createCard(page, stack, { type: "Basic", name, content });
-      return { ...made, retriedAsBasic: true, alt };
-    }
-    return made;
+    return createTypedFixture(ctx, { type, name, content });
   };
   const clickAndWait = async (locator, { timeout = 15_000 } = {}) => {
     const before = ledger().length;
@@ -232,13 +206,13 @@ export async function runCoverBChecks(ctx) {
   });
 
   await attempt("C14 a *right+*default rule's content fills the new form", async () => {
-    if(!exists(movie))await create(movie,"","Cardtype");
     // Ruby: "Home Movie+*right+*default" = "Watch this"; a new card "Lew+Home Movie" shows it.
     // Creating a junction creates its LEFT card too, so track it for cleanup.
     ensure("Harness_CB_Home");
     await create("Harness_CB_Home+*right+*default", "Watch this");
     const name = ensure("Harness_CB_Lew+Harness_CB_Home");
-    await page.goto(`${stack.origin}/new/${encodeURIComponent(movie)}?card%5Bname%5D=${encodeURIComponent(name)}`, { waitUntil: "load" });
+    const defaultType = fixtureType(ctx.database(), "RichText");
+    await page.goto(`${stack.origin}/new/${encodeURIComponent(defaultType.name)}?card%5Bname%5D=${encodeURIComponent(name)}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(3000);
     const editor = await waitForEditor(page, 20_000);
     const content = await page.evaluate(() => window.tinymce?.activeEditor?.getContent?.() ?? document.querySelector('textarea[name="card[content]"], input[name="card[content]"]')?.value ?? "");
@@ -261,7 +235,7 @@ export async function runCoverBChecks(ctx) {
       ensure(rightSet);
       await create(optionType, "", "Cardtype");
       for (const option of optionCards) await create(option, "", optionType);
-      await create(`${rightSet}+*right+*options`, JSON.stringify({ type: optionType, sort: "name" }), "RichText");
+      await create(`${rightSet}+*right+*options`, JSON.stringify({ type: optionType, sort: "name" }), "Search");
       pointerBuilt = true;
     }
     ensure(`${rightSet}+*right+*input type`);
@@ -446,10 +420,11 @@ export async function runCoverBChecks(ctx) {
     // (a fresh GET of the page renders the nested card's body). Without the
     // wire the insert threw while Bootstrap's data-bs-dismiss closed the
     // dialog anyway — invisible to presence-only checks.
-    const target = ensure(cardName("NestTarget"));
+    const source = ensure(cardName("NestSource"));
+    const targetName = cardName("NestTarget");
+    const target = ensure(`${source}+${targetName}`);
     const nestedBody = `Harness nested body ${target}`;
     await create(target, nestedBody, "PlainText");
-    const source = ensure(cardName("NestSource"));
     await create(source, "before the nest", "RichText");
     await visit(`/${source}`);
     const link = page.locator('a.edit-link[href$="/edit"]').first();
@@ -486,17 +461,23 @@ export async function runCoverBChecks(ctx) {
         inModalSlot: Boolean(apply.closest("._modal-slot")),
       };
     }, editorId);
-    await page.locator("input._nest-name").first().fill(target).catch(() => undefined);
+    await page.locator("input._nest-name").first().fill(targetName);
     await page.waitForTimeout(600);
     const preview = await page.evaluate(() => document.querySelector("._nest-preview")?.value ?? null);
     await page.evaluate(() => document.querySelector("button._nest-apply")?.click());
     await page.waitForTimeout(1000);
     const content = await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId);
-    const insertedNest = content.includes(target) && content.includes("{{");
-    const before = ledger().length;
-    await page.locator("#edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
-    await page.waitForTimeout(2500);
-    const write = linesSince(before).find((l) => l.method !== "GET");
+    const insertedNest = content.includes(targetName) && content.includes("{{");
+    const editorField = page.locator(`textarea[id="${editorId}"]`);
+    const editorForm = editorField.locator('xpath=ancestor::form[1]');
+    const saveAction = new URL(await editorForm.getAttribute('action'), stack.origin);
+    if (saveAction.origin !== stack.origin || !saveAction.pathname.startsWith('/update/')) throw Error('nest editor save is not the local update action');
+    const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === saveAction.pathname && r.request().method() === 'POST', {timeout: 60000}).then(response => ({response}), error => ({error}));
+    await editorForm.locator('button[type=submit]').first().click();
+    const saved = await pending;
+    if (saved.error) throw saved.error;
+    await saved.response.finished();
+    const write = {status: saved.response.status()};
     // The stored content is the durable proof the nest markup was saved; the
     // fresh GET must render the nested card's body through the nest.
     const stored = row(source)?.content ?? "";
@@ -504,9 +485,9 @@ export async function runCoverBChecks(ctx) {
     const freshShowsNestedBody = after.html.includes(nestedBody);
     record("E5 the Nest dialog's Apply inserts the nest and saving persists it (data-tinymce-id wire, editor content, fresh GET)",
       wire.present && wire.nonEmpty && wire.resolvesEditor && opened.opened && insertedNest &&
-        write !== undefined && write.status < 400 && stored.includes(target) && freshShowsNestedBody,
+        write.status < 400 && stored.includes(targetName) && freshShowsNestedBody,
       { opened, wire, preview, inserted: content.slice(0, 140), insertedNest, saveStatus: write?.status ?? null,
-        storedHasNest: stored.includes(target), stored: stored.slice(0, 120), freshShowsNestedBody, afterStatus: after.status });
+        storedHasNest: stored.includes(targetName), stored: stored.slice(0, 120), freshShowsNestedBody, afterStatus: after.status });
     await page.keyboard.press("Escape").catch(() => undefined);
   });
 
