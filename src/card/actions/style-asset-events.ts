@@ -218,17 +218,14 @@ function inputStore(ctx: StyleAssetEventContext): AssetInputStore {
   };
 }
 
-/** Abstract::AssetInputter#asset_input_needs_refresh? for the read path
- *  (mod_assets.rb:134-135, asset_group.rb:41-45): the `+*asset input` row is
- *  missing, or it is older than the sources. Once a refresh has stamped the
- *  row, later requests do not repeat the walk. */
-async function inputNeedsRefresh(ctx: StyleAssetEventContext, inputter: StyleCard): Promise<boolean> {
+/** Only the missing-input fallback below uses this gate. Unlike mod assets,
+ * style:mods inherits AssetInputter#asset_input_needs_refresh? = false; an
+ * existing input must not get a source-mtime refresh of its own. */
+async function inputMissing(ctx: StyleAssetEventContext, inputter: StyleCard): Promise<boolean> {
   const record = await assetInputRecord(ctx, inputter, undefined);
   if (record === undefined) return false;
   const row = await findVirtualByCard(ctx.fetch.driver, record);
-  if (row?.updated_at === null || row?.updated_at === undefined) return true;
-  const updatedAt = new Date(`${row.updated_at.replace(" ", "T")}Z`).getTime();
-  return updatedAt < STYLE_SOURCES_MTIME.getTime();
+  return row === undefined;
 }
 
 /** A `<set>+*style` rule (type_plus_right/set/style.rb): its right is
@@ -563,7 +560,7 @@ export async function refreshReadAssetInputs(ctx: StyleAssetEventContext): Promi
   }
   for (const name of READ_ASSET_INPUT_NAMES) {
     const card = await cardByName(ctx, name);
-    if (card === undefined || !(await inputNeedsRefresh(ctx, card))) continue;
+    if (card === undefined || !(await inputMissing(ctx, card))) continue;
     await updateAssetInput(ctx, card, new Map(), new Set());
   }
 }
