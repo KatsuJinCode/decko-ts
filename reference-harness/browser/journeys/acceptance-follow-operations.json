@@ -1,0 +1,56 @@
+{
+  "format": "decko-browser-journeys/1",
+  "fixture": "synthetic-v1",
+  "about": "Prospective positive operations, evaluated independently of Ruby equality. Existing synthetic-v1 journeys/captures remain immutable. Permission refusals remain failed product operations. Each operation is followed by a fresh profile, owned host restart and authenticated reload.",
+  "journeys": [
+    {
+      "id": "follow-admin-operation-persistence",
+      "steps": [
+        {"signin": "admin"},
+        {"visit": "/Topic_008?view=board"},
+        {"click": {"link": "Engage"}},
+        {"observe": "before follow"},
+        {"click": {"css": "a.follow-link"}},
+        {"observe": "after follow"},
+        {"fresh_session": true},
+        {"restart": true},
+        {"signin": "admin"},
+        {"visit": "/Topic_008/follow_section"},
+        {"observe": "follow state after fresh login and restart"}
+      ]
+    },
+    {
+      "id": "unfollow-member-operation-persistence",
+      "steps": [
+        {"signin": "member"},
+        {"visit": "/Topic_009?view=board"},
+        {"click": {"link": "Engage"}},
+        {"observe": "before unfollow"},
+        {"click": {"css": "a.follow-link"}},
+        {"observe": "after unfollow"},
+        {"fresh_session": true},
+        {"restart": true},
+        {"signin": "member"},
+        {"visit": "/Topic_009/follow_section"},
+        {"observe": "unfollow state after fresh login and restart"}
+      ]
+    },
+    {
+      "id": "unfollow-mail-operation-persistence",
+      "steps": [
+        {"signin": "admin"},
+        {"visit": "/Note_011?view=edit"},
+        {"editor": "card[content]", "value": "<p>Edited so the follower hears.</p>"},
+        {"click": {"button": "Save and Close"}},
+        {"signin": "member"},
+        {"mail_link": {"subject": "Note 011", "contains": "follow"}},
+        {"observe": "after mail unfollow"},
+        {"fresh_session": true},
+        {"restart": true},
+        {"signin": "member"},
+        {"visit": "/*all/follow_section"},
+        {"observe": "mail unfollow state after fresh login and restart"}
+      ]
+    }
+  ]
+}

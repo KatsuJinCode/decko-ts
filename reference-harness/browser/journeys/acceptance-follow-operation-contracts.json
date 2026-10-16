@@ -1,0 +1,24 @@
+{
+  "format": "decko-follow-operation-contracts/1",
+  "scope": "Additive candidate-only product requirements evaluated from immutable observations/network/rows/mail. These do not change captured default policy or Ruby expectations, and never waive stock permission refusals.",
+  "journeys": {
+    "follow-admin-operation-persistence": {
+      "actions": [{"method": "GET", "path": "/update/Topic_008+*self+Ada_Admin+*follow", "status": 200}],
+      "state": {"mode": "inserted", "id": "new card Topic 008+*self+Ada Admin+*follow", "field": "db_content", "value": "*always"},
+      "notification": {"count": 1, "to": ["mira.member@example.test"], "subject": "Ada Admin created \"Topic 008+*self+Ada Admin+*follow\""},
+      "reload": {"label": "follow state after fresh login and restart", "mainTextIncludes": ["following"], "mainTextExcludes": ["Sorry!", "Problems with"], "structureIncludes": ["follow-link", "btn-item-delete"]}
+    },
+    "unfollow-member-operation-persistence": {
+      "actions": [{"method": "GET", "path": "/update/Topic_009+*self+Mira_Member+*follow", "status": 200}],
+      "state": {"mode": "inserted", "id": "new card Topic 009+*self+Mira Member+*follow", "field": "db_content", "value": "*never"},
+      "notification": {"count": 0},
+      "reload": {"label": "unfollow state after fresh login and restart", "mainTextIncludes": ["follow"], "mainTextExcludes": ["following", "unfollow", "Sorry!", "Problems with"], "structureIncludes": ["follow-link"]}
+    },
+    "unfollow-mail-operation-persistence": {
+      "actions": [{"method": "POST", "path": "/update/Note_011", "status": 200}, {"method": "GET", "path": "/update/Mira_Member+*follow", "status": 200}],
+      "state": {"mode": "updated", "id": 910, "field": "db_content", "value": "*never"},
+      "notification": {"count": 1, "to": ["mira.member@example.test"], "subject": "Ada Admin updated \"Note 011\""},
+      "reload": {"label": "mail unfollow state after fresh login and restart", "mainTextIncludes": ["follow"], "mainTextExcludes": ["following", "unfollow", "Sorry!", "Problems with"], "structureIncludes": ["follow-link"]}
+    }
+  }
+}
