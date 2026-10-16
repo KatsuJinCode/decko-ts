@@ -254,3 +254,34 @@ Twelve lightweight loader/selection/abort controls also pass. Cleanup removes
 all15 journey cards and closes the owned stack; asset audit passes. These are
 local SDK-shim results, not vendor deployment acceptance or a revised whole-run
 score. C16/C18 new/structured creation remains a separate contract.
+
+## Nested recent-changes reader admission
+
+Native `2b17afdf` was reviewed against the retained Ruby source
+`mod/search/set/self/recent.rb`: HTML core calls `acts_layout card.recent_acts`
+inside the nested format too. Gateway research identified the documented
+Card::Set::Self::Recent and act/action/change distinction; exact Ruby is the
+source authority for the dispatch behavior. Port `6f4a1c22` targets this release's
+original SELF-Xrecent dispatch directly, without importing the rejected older
+silent-empty hardening or unrelated native integration ancestry.
+
+The prepare phase seats the existing deck-wide reader for closures nesting
+`*recent` before synchronous nested dispatch. An unseated SELF-Xrecent arm
+throws a named missing-reader error instead of emitting a search list or empty
+success. The maintained regression exercises real written history: rooted
+accordion, nested-host accordion with the act's title, and explicit unseated
+refusal. Focused **3/3** pass. Full selected render/history regression:
+**1245 passed, 144 skipped** across **228 passed /31 skipped files**,148.79s.
+TypeScript validation passes. Captures `.runtime/nested-recent-review-focused.log`,
+`.runtime/nested-recent-review-regressions.log`, and
+`.runtime/nested-recent-review-typecheck.log`. Skipped corpus-dependent tests
+are not acceptance evidence. No golden, mask, permission or write path changed.
+
+The >2-minute diagnosis found unnecessary broad admission selection:253 render
+files plus history, with46% test,35% import,15% transform,3% setup,1% worker time.
+Both-worker memory bound and isolation were retained; no repeat full run is
+needed without another relevant source change. The lock was released in
+finally. The existing N5 control visits `/*search` and checks links; it does
+not prove a nested *recent accordion expands inline. Native retains that
+actual live/browser journey and deployment-gap ownership; this source result
+is not a claim that the fix is deployed or the overall release is accepted.
