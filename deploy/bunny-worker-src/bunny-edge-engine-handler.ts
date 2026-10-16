@@ -436,6 +436,12 @@ async function routeBunnyEngineRequest(
   const sessionToken = sessionTokenFromRequest(request);
   if (sessionToken === null) {
     profile.authMs += Math.max(0, Date.now() - auth0);
+    // Name suggestions answer from one name query filtered by the anonymous
+    // viewer's read rules, instead of a full render.
+    if (isNameSuggestionRequest(request, url)) {
+      const anonymousMatch = await nameMatchResponse(request, url, await getDeck(resolved, env));
+      if (anonymousMatch !== null) return anonymousMatch;
+    }
     return await serveProfiled(
       profile,
       request,
@@ -469,6 +475,8 @@ async function routeBunnyEngineRequest(
   );
   profile.authMs += Math.max(0, Date.now() - viewerAuth0);
   if (viewer.signedIn !== true) {
+    const anonymousMatch = await nameMatchResponse(request, url, deck);
+    if (anonymousMatch !== null) return anonymousMatch;
     return await serveProfiled(
       profile,
       request,
@@ -478,7 +486,7 @@ async function routeBunnyEngineRequest(
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
-  const nameMatch = await nameMatchResponse(request, url, deck);
+  const nameMatch = await nameMatchResponse(request, url, deck, getActorEngines().deckFor(viewer.actorId as number));
   if (nameMatch !== null) return nameMatch;
   return await serveProfiled(
     profile,
@@ -510,15 +518,25 @@ async function routeBunnyEngineRequest(
  *  those starting with the term first, then those containing it, each group
  *  by name. Answered for signed-in viewers, whom the editors serve; null when
  *  the request is not this route. */
-async function nameMatchResponse(request: Request, url: URL, deck: Deck): Promise<Response | null> {
-  if (request.method !== "GET") return null;
+/** True when the request is one of the name-suggestion routes below. */
+function isNameSuggestionRequest(request: Request, url: URL): boolean {
+  if (request.method !== "GET") return false;
   const path = decodeURIComponent(url.pathname);
-  if (!path.endsWith(".json")) return null;
+  if (!path.endsWith(".json")) return false;
+  const view = url.searchParams.get("view");
+  return /^\/\*search\/search_box_complete\.json$/i.test(path) ||
+    view === "search_box_complete" || view === "name_match" || view === "name_complete";
+}
+
+/** `readDeck` is the viewer's deck (the actor deck when signed in, the shared
+ *  anonymous deck otherwise): only cards it may read are suggested. */
+async function nameMatchResponse(request: Request, url: URL, deck: Deck, readDeck: Deck = deck): Promise<Response | null> {
+  if (!isNameSuggestionRequest(request, url)) return null;
+  const path = decodeURIComponent(url.pathname);
   const view = url.searchParams.get("view");
   const searchBox = /^\/\*search\/search_box_complete\.json$/i.test(path) || view === "search_box_complete";
-  if (!searchBox && view !== "name_match" && view !== "name_complete") return null;
   const rawTerm = (url.searchParams.get("term") ?? url.searchParams.get("query[keyword]") ?? "").trim();
-  const names = await matchingCardNames(deck, rawTerm.toLowerCase(), view !== "name_complete");
+  const names = await matchingCardNames(deck, readDeck, rawTerm.toLowerCase(), view !== "name_complete");
   const body = searchBox ? searchBoxItems(rawTerm, names) : names;
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -529,17 +547,34 @@ async function nameMatchResponse(request: Request, url: URL, deck: Deck): Promis
 /** Up to 8 live card names: prefix matches first, then (when `contains`)
  *  names containing the term, each group ordered by name — Ruby's
  *  complete_or_match_search. */
-async function matchingCardNames(deck: Deck, term: string, contains: boolean): Promise<string[]> {
+async function matchingCardNames(deck: Deck, readDeck: Deck, term: string, contains: boolean): Promise<string[]> {
   const limit = 8;
   const like = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
   const names: string[] = [];
+  const seen: string[] = [];
+  const readable = async (id: number): Promise<boolean> => {
+    try {
+      const record = await deck.fetcher.fetchById(id);
+      if (record === undefined) return false;
+      const typeRecord = record.typeId !== undefined ? await deck.fetcher.fetchById(record.typeId) : undefined;
+      return await readDeck.render.canReadCard(record, typeRecord?.name?.s);
+    } catch {
+      return false;
+    }
+  };
   const pick = async (pattern: string) => {
-    const notIn = names.length > 0 ? ` and name not in (${names.map(() => "?").join(",")})` : "";
-    const result = await deck.fetcher.driver.query<{ name: string }>(
-      `select name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${notIn} order by name limit ?`,
-      [pattern, ...names, limit - names.length],
+    // Over-fetch, then keep only cards the viewer may read (Ruby's search
+    // applies the viewer's read rules before limiting).
+    const notIn = seen.length > 0 ? ` and name not in (${seen.map(() => "?").join(",")})` : "";
+    const result = await deck.fetcher.driver.query<{ id: number; name: string }>(
+      `select id, name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${notIn} order by name limit ?`,
+      [pattern, ...seen, limit * 4],
     );
-    for (const row of result.rows) names.push(row.name);
+    for (const row of result.rows) {
+      seen.push(row.name);
+      if (names.length >= limit) break;
+      if (await readable(Number(row.id))) names.push(row.name);
+    }
   };
   await pick(`${like(term)}%`);
   if (contains && term !== "" && names.length < limit) await pick(`%${like(term)}%`);
