@@ -40,3 +40,13 @@ configured host, visits the real icons view, exports computed glyph/font
 state and verifies CSS/font network bytes. It fails if any Kit request occurs
 or the icon font fails to load. Its receipt is separate from full-journey or
 hosted production acceptance.
+
+The private 21k-card capability capture at 575fd07b still requested the stock
+kit in explicit local mode. Its anonymous request-local boot dropped that mode;
+the memoized deck setting did not configure the new engine. Both boots now read
+the same served boot option. Actual stock-kit script elements in custom page
+heads and configured error scripts also use the selected provider. This applies
+only in local mode; comments, inline JavaScript, other kit IDs, and stock-mode
+bytes remain untouched. Four focused controls include a real fresh engine and
+page render; the existing 30 asset/page-shell checks and typecheck also pass.
+This source verification does not supersede the red private-site capture.

@@ -1,5 +1,5 @@
 import { str, type ViewResult } from "./format.js";
-import { fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "./font-awesome.js";
+import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "./font-awesome.js";
 // The page renderer: TypeScript port of the html-format show path —
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
 // live-serving page assembly the bare view-function renderer does not do.
@@ -195,7 +195,7 @@ export async function renderPageBytes(
       typeof engine.renderWithUnknownCreateVerdicts === "function"
         ? await engine.renderWithUnknownCreateVerdicts(render)
         : await render();
-      return str(body);
+      return applyFontAwesomeAssetConfiguration(str(body), engine.fontAwesomeAssetMode);
     } finally {
       // The request boundary's fill fold (commitSessionRolesFill): a Ruby
       // request whose roles nest rendered leaves the fill on the session's

@@ -1,3 +1,4 @@
+import { configureFontAwesomeMode } from "../../src/card/render/font-awesome.js";
 // deploy/bunny-worker-src/bunny-edge-served-deltas.ts — the deployment
 // configuration that carries ONE deck's identity into the edge's served
 // bytes, EMPTY by default.
@@ -144,6 +145,7 @@ export interface ServedEnvironmentDeltas {
    *  supplies). Empty/absent = no remote scripts — a stock deck's chrome
    *  links only its own compiled CSS and main script. */
   headScripts?: string[];
+  fontAwesomeAssetMode?: "local";
   /** The *logo fallback URL (used when the deck stores none). */
   logoUrl?: string;
   /** The *favicon fallback URL (used when the deck stores none). */
@@ -439,6 +441,8 @@ export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined)
     }
   }
 
+  const fontMode = configureFontAwesomeMode(src["DECKO_FONT_AWESOME"]);
+  if (fontMode !== undefined) out.fontAwesomeAssetMode = fontMode;
   return out;
 }
 
@@ -458,6 +462,7 @@ export function servedDeltasAreEmpty(deltas: ServedEnvironmentDeltas): boolean {
  *  a fresh isolate printed decko.rootUrl='/'. Unset fields are omitted, so
  *  an empty delta set yields the stock boot. */
 export interface ServedBootOptions {
+  fontAwesomeAssetMode?: "local";
   assetHost?: string;
   phantomItemType?: PhantomTypeDelta;
   timeZone?: string;
@@ -466,6 +471,7 @@ export interface ServedBootOptions {
 
 export function servedBootOptions(deltas: ServedEnvironmentDeltas): ServedBootOptions {
   const out: ServedBootOptions = {};
+  if (deltas.fontAwesomeAssetMode !== undefined) out.fontAwesomeAssetMode = deltas.fontAwesomeAssetMode;
   if (deltas.assetHost !== undefined) out.assetHost = deltas.assetHost;
   if (deltas.phantomType !== undefined) out.phantomItemType = deltas.phantomType;
   if (deltas.timeZone !== undefined) out.timeZone = deltas.timeZone;

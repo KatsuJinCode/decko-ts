@@ -1,4 +1,4 @@
-import { fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
+import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "../../render/font-awesome.js";
 // The card-mod-script gem (card-mod-script-0.20.0), ported through the mod
 // loader.
 //
@@ -411,11 +411,11 @@ function remoteScriptTagsOfModCard(ctx: ViewContext): string {
   const groupRemote = ctx.fmt.engine.fetchRenderCard(`${leftKey}+*group remote`);
   const content = groupRemote?.dbContent;
   if (content !== undefined && content !== "") {
-    return content
+    return applyFontAwesomeAssetConfiguration(content
       .split("\n")
       .filter((src) => src !== "")
       .map((src) => `<script src="${src}"></script>`)
-      .join("\n");
+      .join("\n"), ctx.fmt.engine.fontAwesomeAssetMode);
   }
   // The +*group remote cards are VIRTUAL: Ruby synthesizes them at boot
   // from each mod's assets/script/manifest.yml "remote" group

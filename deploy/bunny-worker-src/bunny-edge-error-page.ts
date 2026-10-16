@@ -1,3 +1,4 @@
+import { applyFontAwesomeAssetConfiguration } from "../../src/card/render/font-awesome.js";
 // deploy/bunny-worker-src/bunny-edge-error-page.ts — the edge's full-chrome
 // error pages, ported from the staging host's error builder.
 //
@@ -660,7 +661,7 @@ async function wrapWithLayout(
   const remoteScriptTags =
     deltas.headScripts === undefined
       ? ""
-      : deltas.headScripts.map((tag) => `${tag}\n`).join("");
+      : deltas.headScripts.map((tag) => `${applyFontAwesomeAssetConfiguration(tag, deltas.fontAwesomeAssetMode)}\n`).join("");
   if (typeof layout.layoutBody !== "string" || layout.layoutBody.length === 0) {
     throw new Error(
       `layout body missing or empty for card ${cardName} (layout: ${layout.layoutName}); ` +

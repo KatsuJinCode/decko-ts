@@ -190,6 +190,7 @@ export async function bootEdgeServingEngines(
      *  deck with no CDN configured serves. Read from the deployment's
      *  DECKO_SERVED_DELTAS assetHost by bootDeck; never hard-coded. */
     assetHost?: string;
+    fontAwesomeAssetMode?: "local";
     /** The deck's phantom (unknown pointer/list item) type identity — the
      *  deck config form of Ruby's `*all+*default` template type. Unset, the
      *  deck's unknown items carry no type chip and no type attributes. */
@@ -221,6 +222,7 @@ export async function bootEdgeServingEngines(
     await engines.fetcher.codenames.ensureLoaded();
   }
   engines.render.imageCdnHost = opts.assetHost;
+  engines.render.fontAwesomeAssetMode = opts.fontAwesomeAssetMode;
   engines.render.phantomItemType = opts.phantomItemType;
   // The DECK's time zone. The render path's
   // timestamps read it from src/card/deck-time-zone.ts rather than from a

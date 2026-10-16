@@ -1,3 +1,4 @@
+import { applyFontAwesomeAssetConfiguration } from "../../src/card/render/font-awesome.js";
 // deploy/bunny-worker-src/bunny-edge-page-shell.ts — the served-environment
 // deltas the Bunny edge applies to the engine's page output, and the /files/
 // attachment-URL derivation for the edge's files route.
@@ -61,7 +62,7 @@ export function applyServedEnvironmentDeltas(
   engineHtml: string,
   deltas: ServedEnvironmentDeltas = EMPTY_SERVED_DELTAS,
 ): string {
-  let body = engineHtml;
+  let body = applyFontAwesomeAssetConfiguration(engineHtml, deltas.fontAwesomeAssetMode);
   if (deltas.assetHost !== undefined) {
     // The engine pins the fog endpoint form
     // `http://s3.amazonaws.com//files/…`; a deployment serving from a CDN
