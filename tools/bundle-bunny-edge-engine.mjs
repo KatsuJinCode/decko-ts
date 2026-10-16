@@ -25,9 +25,12 @@
 // bundle ships node:process and runs).
 
 import { build } from "esbuild";
-import { readFileSync, writeFileSync, statSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
+import { assertStaticUglifierCurrent } from "./vendor/build-uglify-harmony-static.mjs";
+import { assertBunnyScriptBudget, BUNNY_SCRIPT_LIMIT_BYTES } from "./vendor/edge-bundle-budget.mjs";
+assertStaticUglifierCurrent();
 import { coffeescriptNodeBuiltinStubs } from "./vendor/coffeescript-edge-bundler-stubs.mjs";
 
 const here = resolve(process.cwd());
@@ -53,10 +56,11 @@ for (const target of TARGETS) {
   const payload = resolve(here, target.payload);
   mkdirSync(dirname(out), { recursive: true });
 
-  await build({
+  const built = await build({
     entryPoints: [src],
     outfile: out,
     bundle: true,
+    write: false,
     format: "esm",
     platform: "neutral",
     target: "es2022",
@@ -84,16 +88,17 @@ for (const target of TARGETS) {
     banner: { js: 'globalThis.__deckoEval0=[typeof performance<"u"?performance.now():-1,Date.now()];' },
   });
 
-  const stat = statSync(out);
+  const code = built.outputFiles[0].text;
+  const bytes = assertBunnyScriptBudget(code);
   // https://bunny.net/docs/scripting/limits.md: script size limit is 10 MB.
   // Warn at 80%.
-  const LIMIT_BYTES = 10 * 1024 * 1024;
-  if (stat.size > LIMIT_BYTES * 0.8) {
-    console.error(`WARN: bundle ${(stat.size / 1024 / 1024).toFixed(2)}MB is over 80% of the ${LIMIT_BYTES / 1024 / 1024}MB script limit.`);
+  const LIMIT_BYTES = BUNNY_SCRIPT_LIMIT_BYTES;
+  if (bytes > LIMIT_BYTES * 0.8) {
+    console.error(`WARN: bundle ${bytes} bytes is over 80% of the conservative ${LIMIT_BYTES}-byte script limit.`);
   }
-  console.log(`bundle written: ${out} (${stat.size} bytes = ${(stat.size / 1024).toFixed(1)} KB, limit ${LIMIT_BYTES} bytes)`);
+  console.log(`bundle validated: ${out} (${bytes} bytes = ${(bytes / 1024).toFixed(1)} KB, limit ${LIMIT_BYTES} bytes)`);
 
-  const code = readFileSync(out, "utf8");
+  // Output is written only after budget and import validation pass.
 
   // The bundle must be a valid ES module: the SDK stays a bare import.
   if (!code.includes('from"@bunny.net/edgescript-sdk"') && !code.includes('from "@bunny.net/edgescript-sdk"')) {
@@ -129,6 +134,7 @@ for (const target of TARGETS) {
     console.log(`note: bundle keeps ${nodeImports.join(", ")} external (the edge runtime must provide them)`);
   }
 
+  writeFileSync(out, code);
   writeFileSync(payload, JSON.stringify({ Code: code }));
   console.log(`payload written: ${payload} (${code.length} chars)`);
 }

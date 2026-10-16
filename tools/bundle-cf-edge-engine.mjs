@@ -9,6 +9,8 @@
 // `wrangler deploy` (the deploying wrangler.toml sets no_bundle).
 
 import { build } from "esbuild";
+import { assertStaticUglifierCurrent } from "./vendor/build-uglify-harmony-static.mjs";
+assertStaticUglifierCurrent();
 import { statSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";

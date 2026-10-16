@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Build the complete engine distribution, including checked-in runtime assets.
 import { spawnSync, execFileSync } from "node:child_process";
+import { assertStaticUglifierCurrent } from "../vendor/build-uglify-harmony-static.mjs";
+assertStaticUglifierCurrent();
 import { cpSync, mkdirSync, writeFileSync, existsSync, realpathSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";

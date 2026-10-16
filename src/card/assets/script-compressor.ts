@@ -18,9 +18,9 @@
 //     Node vm with the option hash Uglifier.new(harmony: true) builds. Ruby's
 //     ExecJS runs the same JavaScript (on Node, its runtime wherever Node is
 //     installed), so the output is the same bytes.
-//   - Edge runtimes have none: the vendored UglifyJS compiles its keyword
-//     predicates with `new Function` (makePredicate), which the Workers
-//     runtime forbids. They run compress_assets false.
+//   - Edge runtimes can use uglify-harmony-static.ts: the same snapshot's
+//     trusted constructors are precompiled at build time. Current edge
+//     hosts keep compress_assets false; syntax validation is independent.
 
 /** Minify one script leaf's core; throws on a parse error, as Uglifier
  *  raises Uglifier::Error. */

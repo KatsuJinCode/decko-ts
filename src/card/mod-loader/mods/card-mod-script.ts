@@ -678,8 +678,8 @@ const validateCoffeescriptSyntaxFn: ModEventFn = (card, _host) => {
  *
  *  The optional host-backed implementation runs in the action engine's
  *  pre-store subtree guard. Node production boot and harness use the same
- *  real vendored Uglifier provider. Edge validation remains unported; this
- *  declaration alone is not execution/completeness evidence. */
+ *  real vendored Uglifier provider. Edge hosts pass its static-initialization
+ *  equivalent; this declaration alone is not execution evidence. */
 const validateJavascriptSyntaxFn: ModEventFn = () => {};
 
 /** A set file whose ported bytes are registration bookkeeping only (the

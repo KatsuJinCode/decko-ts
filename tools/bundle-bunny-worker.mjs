@@ -27,9 +27,12 @@
 // the Deno-based edge runtime would have to shim.
 
 import { build } from "esbuild";
-import { readFileSync, writeFileSync, statSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
+import { assertStaticUglifierCurrent } from "./vendor/build-uglify-harmony-static.mjs";
+import { assertBunnyScriptBudget, BUNNY_SCRIPT_LIMIT_BYTES } from "./vendor/edge-bundle-budget.mjs";
+assertStaticUglifierCurrent();
 
 const here = resolve(process.cwd());
 const src = resolve(here, "deploy/bunny-worker-src/bunny-edge-entry.ts");
@@ -46,10 +49,11 @@ const builtins = new Set([
 
 mkdirSync(dirname(out), { recursive: true });
 
-await build({
+const built = await build({
   entryPoints: [src],
   outfile: out,
   bundle: true,
+  write: false,
   format: "esm",
   platform: "neutral",
   target: "es2022",
@@ -61,16 +65,17 @@ await build({
   metafile: true,
 });
 
-const stat = statSync(out);
+const code = built.outputFiles[0].text;
+const bytes = assertBunnyScriptBudget(code);
 // https://bunny.net/docs/scripting/limits.md (fetched 2026-10-01): script
 // size limit is 10 MB, not the ~1 MB the Sept entry assumed. Warn at 80%.
-const LIMIT_BYTES = 10 * 1024 * 1024;
-if (stat.size > LIMIT_BYTES * 0.8) {
-  console.error(`WARN: bundle ${(stat.size / 1024 / 1024).toFixed(2)}MB is over 80% of the ${LIMIT_BYTES / 1024 / 1024}MB script limit.`);
+const LIMIT_BYTES = BUNNY_SCRIPT_LIMIT_BYTES;
+if (bytes > LIMIT_BYTES * 0.8) {
+  console.error(`WARN: bundle ${bytes} bytes is over 80% of the conservative ${LIMIT_BYTES}-byte script limit.`);
 }
-console.log(`bundle written: ${out} (${stat.size} bytes = ${(stat.size / 1024).toFixed(1)} KB, limit ${LIMIT_BYTES} bytes)`);
+console.log(`bundle validated: ${out} (${bytes} bytes = ${(bytes / 1024).toFixed(1)} KB, limit ${LIMIT_BYTES} bytes)`);
 
-const code = readFileSync(out, "utf8");
+// Output is written only after budget and import validation pass.
 
 // The bundle must be a valid ES module: the SDK stays a bare import.
 if (!code.includes('from"@bunny.net/edgescript-sdk"') && !code.includes('from "@bunny.net/edgescript-sdk"')) {
@@ -84,5 +89,6 @@ if (nodeImports.length > 0) {
   console.log(`note: bundle still references ${nodeImports.join(", ")} (Deno provides these; Deno deploy note in the runbook)`);
 }
 
+writeFileSync(out, code);
 writeFileSync(payload, JSON.stringify({ Code: code }));
 console.log(`payload written: ${payload} (${code.length} chars)`);

@@ -270,7 +270,7 @@ export interface WriteRouteContext {
   compressAssets?: boolean;
   /** The Uglifier seam (uglifyHarmonyCompile on Node hosts). */
   scriptCompressor?: ScriptCompressor;
-  /** Optional host Uglifier save validator; edge provider remains unported. */
+  /** Optional host Uglifier save validator, independent of compression policy. */
   javascriptValidator?: JavascriptSyntaxValidator;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and

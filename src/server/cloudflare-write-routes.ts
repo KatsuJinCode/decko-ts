@@ -99,6 +99,7 @@ import { configureSetupToken } from "../card/auth/setup-token.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
 import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
+import { staticUglifyHarmonySyntaxError } from "../card/assets/uglify-harmony-static.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { RenderEngine } from "../card/render.js";
 import { SessionStore } from "../card/auth/session-store.js";
@@ -516,11 +517,10 @@ async function mountWrite(
       // and script saves compile here instead of being refused.
       scssCompiler: edgeScssCompiler,
       coffeeCompiler: edgeCoffeeCompiler,
-      // compressAssets is left off: the Uglifier engine the Node hosts run
-      // (assets/script-compressor.ts) builds its keyword predicates with
-      // `new Function`, which the Workers runtime refuses, so script asset
-      // inputs saved here are stored unminified, as on a deck configured
-      // with compress_assets false.
+      javascriptValidator: staticUglifyHarmonySyntaxError,
+      // Compression policy remains the existing development configuration
+      // (compress_assets false). Save-time syntax validation is independent:
+      // the exact parser's trusted constructors are precompiled at build time.
       // The host's bucket (env.FILES on Cloudflare): uploads, image
       // renditions and the stored asset outputs (the site stylesheet the
       // style asset events write on save) land here, keyed exactly as the

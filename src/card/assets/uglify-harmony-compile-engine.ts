@@ -28,6 +28,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { uglifierOptionsFor } from "./uglify-harmony-options.js";
+import { formatUglifierSyntaxError, type UglifierResult } from "./uglify-harmony-diagnostics.js";
+
 /** The vendored snapshot directory name under the repo's vendor/. */
 const VENDOR_DIR_NAME = "uglifier-4.2.1-uglify-harmony";
 
@@ -83,106 +86,6 @@ function loadSandbox() {
   return { uglifier: callable as (options: unknown) => { code?: string; error?: unknown } };
 }
 
-// uglifier-4.2.1 lib/uglifier.rb DEFAULTS, projected through run_uglifyjs's
-// option hash for `Uglifier.new(harmony: true)` with no overrides:
-// - output_options: DEFAULTS[:output] + comments: :copyright encoded as
-//   encode_regexp(/(^!)|Copyright/i) = ["(^!)|Copyright", "i"] (the JS
-//   wrapper builds the RegExp) + quote_style: 0.
-// - compressor_options: DEFAULTS[:compress] + global_defs: {} + keep_fnames:
-//   false (negate_iife_block is empty — wrap_iife is false).
-// - mangle_options: DEFAULTS[:mangle] + keep_fnames: false + properties:
-//   false (MANGLE_PROPERTIES_DEFAULTS under conditional_option(false)).
-// - parse_options: DEFAULTS[:parse] (no source-map filename merge).
-// - source_map_options: SOURCE_MAP_DEFAULTS projected (source_map: false).
-// - ie8: DEFAULTS[:ie8] = true.
-const COMPRESS_DEFAULTS = {
-  sequences: true,
-  properties: true,
-  dead_code: true,
-  drop_debugger: true,
-  unsafe: false,
-  unsafe_comps: false,
-  unsafe_math: false,
-  unsafe_proto: false,
-  conditionals: true,
-  comparisons: true,
-  evaluate: true,
-  booleans: true,
-  loops: true,
-  unused: true,
-  toplevel: false,
-  top_retain: [] as string[],
-  hoist_funs: true,
-  hoist_vars: false,
-  if_return: true,
-  join_vars: true,
-  collapse_vars: true,
-  reduce_funcs: false,
-  reduce_vars: false,
-  negate_iife: true,
-  pure_getters: false,
-  pure_funcs: null,
-  drop_console: false,
-  keep_fargs: false,
-  keep_fnames: false,
-  passes: 1,
-  keep_infinity: false,
-  side_effects: true,
-  switches: true,
-};
-
-/** The exact option hash run_uglifyjs builds (uglifier.rb:208-222), as JSON
- *  (ExecJS serializes the same shape; arrays stay arrays so the wrapper's
- *  comments() builds the RegExp). */
-function uglifierOptionsFor(source: string) {
-  return {
-    source,
-    output: {
-      ascii_only: true,
-      comments: ["(^!)|Copyright", "i"],
-      inline_script: false,
-      quote_keys: false,
-      max_line_len: 32 * 1024,
-      bracketize: false,
-      semicolons: true,
-      preserve_line: false,
-      beautify: false,
-      indent_level: 4,
-      indent_start: 0,
-      width: 80,
-      preamble: null,
-      wrap_iife: false,
-      shebang: true,
-      quote_style: 0,
-      keep_quoted_props: false,
-    },
-    compress: { ...COMPRESS_DEFAULTS, global_defs: {}, keep_fnames: false },
-    mangle: {
-      eval: false,
-      reserved: ["$super"],
-      properties: false,
-      toplevel: false,
-      keep_fnames: false,
-    },
-    parse: {
-      bare_returns: false,
-      expression: false,
-      html5_comments: true,
-      shebang: true,
-      strict: false,
-    },
-    sourceMap: {
-      input: null,
-      filename: null,
-      root: null,
-      content: null,
-      url: false,
-      includeSources: false,
-    },
-    ie8: true,
-  };
-}
-
 /** Uglifier.new(harmony: true).compile(input) — 00_script.rb:25-27's
  *  try_compress body. Throws Error (the caller shapes compression_error_message,
  *  00_script.rb:29-37) when uglify reports a parse/compress error. */
@@ -205,34 +108,7 @@ export function uglifyHarmonyCompile(source: string): string {
   return code;
 }
 
-/** Uglifier 4.2.1 error_message/context_lines_message (uglifier.rb:237-290),
- * followed by Cardio::Utils::Ansi2Html. This consumes the actual parser's
- * line/column fields; it neither reparses source nor invents a diagnostic. */
+/** Save validation uses the same actual parser and the shared stock formatter. */
 export function uglifyHarmonySyntaxError(source: string): string | undefined {
-  const result = uglifierSandbox().uglifier(uglifierOptionsFor(source)) as {
-    error?: { message?: string; line?: number; col?: number } | string;
-  };
-  if (result.error === undefined) return undefined;
-  const error = result.error;
-  const message = typeof error === "string" ? error : error.message ?? "";
-  let context = "";
-  if (typeof error !== "string" && error.line !== undefined && error.line !== null) {
-    const lines = source.split("\n");
-    while (lines.at(-1) === "") lines.pop(); // Ruby String#split drops trailing empty fields.
-    const lineIndex = error.line - 1;
-    const low = Math.max(lineIndex - 8, 0);
-    const high = Math.min(error.line + 8, lines.length);
-    const width = String(high).length;
-    const formatted = lines.slice(low, high).map((line, index) => {
-      if (low + index !== lineIndex) return `\x1b[36m${String(low + index + 1).padStart(width + 1)}\x1b[0m ${line}`;
-      const chars = Array.from(line);
-      const column = error.col ?? 0;
-      return `\x1b[91m${" => ".padStart(width + 2)}\x1b[0m${chars.slice(0, column).join("")}\x1b[91m${chars.slice(column).join("")}\x1b[0m`;
-    });
-    context = `--\n${formatted.join("\n")}\n==`;
-  }
-  // Uglifier's context uses only cyan and bright red. Keep the exact stock
-  // span spelling, including the trailing style space (ansi2_html.rb).
-  return `${message}\n${context}`.replace(/\x1b\[(36|91)m(.*?)\x1b\[0m/g,
-    (_match, code: string, text: string) => `<span style='color: ${code === "36" ? "darkcyan" : "lightcoral"}; '>${text}</span>`);
+  return formatUglifierSyntaxError(uglifierSandbox().uglifier(uglifierOptionsFor(source)) as UglifierResult, source);
 }
