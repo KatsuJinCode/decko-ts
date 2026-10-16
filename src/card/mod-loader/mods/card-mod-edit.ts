@@ -3277,18 +3277,20 @@ function visibleBoardTabs(ctx: ViewContext): ReadonlyArray<readonly [string, str
  *  A new card answers false (the fabricated new: {} card is not real). */
 function showAccountTab(ctx: ViewContext): boolean {
   const { fmt } = ctx;
-  if (!isAccountHolder(fmt)) return false; // the override lives on Type::User and Type::Signup only
+  if (!isAccountHolder(fmt)) return false;
   if (fmt.card.id === undefined) return false; // new_card?
   const account = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
   return account !== undefined && account.id !== undefined;
 }
 
-/** The account-holder cardtypes: abstract/account_holder.rb is included by
- *  Type::User (set/type/user.rb:1) and Type::Signup (set/type/signup.rb:1);
- *  the holder's show_account_tab? and default_board_tab overrides apply
- *  only on these cards. */
+/** Type::User, Type::Signup AND Self::DeckoBot include Abstract::AccountHolder.
+ *  The bot's stored type may be Basic; its self-set grants these overrides.
+ *  Self::Anonymous also includes the module but overrides account? to false,
+ *  so it never qualifies for an Account tab. Generic cards with an account
+ *  junction retain the all-set's false answer. */
 function isAccountHolder(fmt: ViewContext["fmt"]): boolean {
-  return fmt.card.typeCode === "user" || fmt.card.typeCode === "signup";
+  return fmt.card.typeCode === "user" || fmt.card.typeCode === "signup" ||
+    fmt.card.record.codename === "decko_bot";
 }
 
 /** tab_visibility.rb:60-64 show_discussion? - the engine surface answers
