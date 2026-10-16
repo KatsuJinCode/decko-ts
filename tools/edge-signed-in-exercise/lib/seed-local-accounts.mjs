@@ -14,7 +14,8 @@
 // The password is hashed by the engine's own hashPassword, so sign-in
 // verifies it through the engine's own path. Hashing happens BEFORE the
 // database is written, and every insert runs in one transaction, so a
-// failure leaves the deck untouched.
+// insert failure rolls back. Permission metadata is derived before credentials
+// are published; any preparation failure aborts this disposable fixture.
 //
 // Credentials are generated here, written to the credentials file the caller
 // names (mode 0600), and never printed.
@@ -26,8 +27,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import Database from "better-sqlite3";
 
 const here = dirname(fileURLToPath(import.meta.url));
-// The engine's own password hash (compiled to dist/ by the harness build).
-const { hashPassword } = await import(pathToFileURL(join(here, "../../../dist/src/card/auth/password-hash.js")).href);
 
 const ADMIN_NAME = "Harness Admin";
 const MEMBER_NAME = "Harness Member";
@@ -40,6 +39,12 @@ const stampNow = () => new Date().toISOString().replace("T", " ").slice(0, 19);
  * @returns {Promise<{ admin: { name: string, email: string, id: number }, member: { name: string, email: string, id: number } }>}
  */
 export async function seedLocalAccounts({ deck, credentialsOut }) {
+  // Load after the harness build, so neither hashes nor derived permissions
+  // can come from a stale distribution imported during runner startup.
+  const [{hashPassword},{LocalSqliteDriver},{FetchEngine},{updateReadRule}]=await Promise.all([
+    'src/card/auth/password-hash.js','src/server/drivers/local-sqlite.js',
+    'src/card/fetch.js','src/card/permissions/set-read-rule.js',
+  ].map(file=>import(pathToFileURL(join(here,'../../../dist',file)).href)));
   const db = new Database(deck);
   try {
     const codenameId = (codename) => {
@@ -81,15 +86,18 @@ export async function seedLocalAccounts({ deck, credentialsOut }) {
       "INSERT INTO cards (name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, NULL, NULL, 0, ?, ?)",
     );
     const insertReference = db.prepare("INSERT INTO card_references (referer_id, referee_id, referee_key) VALUES (?, ?, ?)");
-    const written = {};
+    const written = {}, seededIds=[];
     db.transaction(() => {
       for (const account of accounts) {
         const holder = Number(insertCard.run(account.name, keyOf(account.name), null, null, null, stamp, stamp, ids.bot, ids.bot, ids.person, "").lastInsertRowid);
         const junction = Number(insertCard.run(null, null, null, holder, ids.account, stamp, stamp, ids.bot, ids.bot, ids.basic, null).lastInsertRowid);
-        const field = (codename, content) =>
+        seededIds.push(holder,junction);
+        const field = (codename, content) => {
           // Stock right/email, password, salt and status each assign Phrase.
           // Seeding RichText here creates a different editor from a real account.
-          insertCard.run(null, null, null, junction, ids[codename], stamp, stamp, ids.bot, ids.bot, ids.phrase, content);
+          const inserted=insertCard.run(null, null, null, junction, ids[codename], stamp, stamp, ids.bot, ids.bot, ids.phrase, content);
+          seededIds.push(Number(inserted.lastInsertRowid));
+        };
         field("email", account.email);
         field("salt", account.salt);
         field("password", account.hash);
@@ -105,6 +113,23 @@ export async function seedLocalAccounts({ deck, credentialsOut }) {
         written[account.name] = { id: holder, email: account.email, password: account.password };
       }
     })();
+
+    // Normal card creation runs permissions.rb#set_read_rule. Direct fixture
+    // inserts must derive that same metadata; NULL excludes an otherwise
+    // readable card from CQL's stored read_rule_id filter for ordinary users.
+    const driver=new LocalSqliteDriver({path:deck});
+    try{
+      const fetch=new FetchEngine(driver);
+      await driver.transaction(async()=>{
+        await fetch.codenames.ensureLoaded();
+        const changed=new Set();
+        for(const id of seededIds){
+          if(changed.has(id))continue;
+          changed.add(id);
+          await updateReadRule({driver,fetch},id,changed);
+        }
+      });
+    }finally{await driver.close();}
 
     const credentials = {
       note: "Disposable accounts for the local signed-in exercise, created in a local deck copy only.",
