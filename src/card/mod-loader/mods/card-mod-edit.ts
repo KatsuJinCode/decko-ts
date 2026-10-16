@@ -3274,9 +3274,18 @@ function visibleBoardTabs(ctx: ViewContext): ReadonlyArray<readonly [string, str
  *  A new card answers false (the fabricated new: {} card is not real). */
 function showAccountTab(ctx: ViewContext): boolean {
   const { fmt } = ctx;
+  if (!isAccountHolder(fmt)) return false; // the override lives on Type::User and Type::Signup only
   if (fmt.card.id === undefined) return false; // new_card?
   const account = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
   return account !== undefined && account.id !== undefined;
+}
+
+/** The account-holder cardtypes: abstract/account_holder.rb is included by
+ *  Type::User (set/type/user.rb:1) and Type::Signup (set/type/signup.rb:1);
+ *  the holder's show_account_tab? and default_board_tab overrides apply
+ *  only on these cards. */
+function isAccountHolder(fmt: ViewContext["fmt"]): boolean {
+  return fmt.card.typeCode === "user" || fmt.card.typeCode === "signup";
 }
 
 /** tab_visibility.rb:60-64 show_discussion? - the engine surface answers
@@ -3305,7 +3314,7 @@ function boardTabsView(ctx: ViewContext): string {
   // it: current_account? (the viewer IS this account) -> :account_tab, else
   // show_guide_tab? ? :guide_tab : :engage_tab.
   const currentAccount =
-    fmt.card.id !== undefined && fmt.engine.viewer?.actorId === fmt.card.id;
+    isAccountHolder(fmt) && fmt.card.id !== undefined && fmt.engine.viewer?.actorId === fmt.card.id;
   const activeName =
     (currentAccount ? visible.find(([, view]) => view === "account_tab")?.[0] : undefined) ??
     visible.find(([, view]) => view === "guide_tab")?.[0] ??
