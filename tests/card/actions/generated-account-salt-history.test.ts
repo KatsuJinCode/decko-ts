@@ -13,6 +13,27 @@ async function snapshot(s:Awaited<ReturnType<typeof deck>>) {
 }
 
 describe("generated account salt history",()=>{
+  it('preserves custom account subtrees without leaving cardless history',async()=>{
+    const s=await deck();try{
+      const engine=actionEngine(s,undefined,{canWrite:()=>true});
+      await engine.createCard({name:'Custom Holder+*account',subcards:{'+*email':{content:'custom-holder@example.test'},'+note':{content:'custom account data'}}});
+      expect((await s.engine.fetchByName('Custom Holder+*account+note'))?.dbContent).toBe('custom account data');
+      expect((await s.selectOne<{n:number}>('SELECT COUNT(*) AS n FROM card_actions WHERE card_id IS NULL'))?.n).toBe(0);
+    }finally{s.close()}
+  });
+  it('records requested account fields before an automatically created holder, without renumbering or salt gaps',async()=>{
+    const s=await deck();try{
+      const engine=actionEngine(s,undefined,{canWrite:()=>true});
+      const root=await engine.createCard({name:'New Holder+*account',subcards:{'+*email':{content:'new-holder@example.test'}}});
+      const holder=await s.engine.fetchByName('New Holder');
+      const email=await s.engine.fetchByName('New Holder+*account+*email');
+      const status=await s.engine.fetchByName('New Holder+*account+*status');
+      const actions=await s.selectAll<{id:number;card_id:number;super_action_id:number|null}>('SELECT id,card_id,super_action_id FROM card_actions ORDER BY id');
+      expect(actions.map(row=>row.card_id)).toEqual([root.cardId,email!.id,status!.id,holder!.id]);
+      expect(actions.map(row=>row.id)).toEqual([1,2,3,4]);
+      expect(actions.slice(1).map(row=>row.super_action_id)).toEqual([root.actionId,root.actionId,root.actionId]);
+    }finally{s.close()}
+  });
   it('refuses closing an account on a card without AccountHolder behavior and writes nothing',async()=>{
     const s=await deck();try{
       const engine=actionEngine(s,undefined,{canWrite:()=>true});

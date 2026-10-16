@@ -604,15 +604,21 @@ export class CardActionEngine {
     this.saveDepth = 1;
     this.afterCommitSteps = [];
     this.filesStoredThisSave = [];
+    this.plannedAccountFieldActions.clear();
     let result: R;
     try {
-      result = await driver.transaction(work);
+      result = await driver.transaction(async () => {
+        const value = await work();
+        if (this.plannedAccountFieldActions.size !== 0) throw new Error('unfilled account field history reservation');
+        return value;
+      });
     } catch (error) {
       this.afterCommitSteps = [];
       await this.forgetRolledBackSave();
       throw error;
     } finally {
       this.saveDepth = 0;
+      this.plannedAccountFieldActions.clear();
     }
     const steps = this.afterCommitSteps;
     this.afterCommitSteps = [];
@@ -2041,9 +2047,13 @@ export class CardActionEngine {
     // so reserving for one would strand an orphaned cardless action row —
     // Ruby records nothing for a no-history create (the account plan's
     // +*salt / +*password writes).
-    const reservedActionId = name.isCompound && input.history !== false
+    const plannedActionId = this.plannedAccountFieldActions.get(name.key);
+    if (plannedActionId !== undefined) this.plannedAccountFieldActions.delete(name.key);
+    if (plannedActionId !== undefined && input.history === false) throw new Error('planned account field became historyless');
+    const reservedActionId = plannedActionId ?? (name.isCompound && input.history !== false
       ? await writer.reserveAction({ actionType: "create", superActionId: input.superActionId ?? null })
-      : undefined;
+      : undefined);
+    await this.reserveStandardAccountFieldsBeforeHolder(writer, name, input, targetRightId, reservedActionId);
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
     // (prepare_new_side :118-125). The compound's own action is recorded
@@ -5386,6 +5396,49 @@ export class CardActionEngine {
   /** Salts generated for accounts created in this engine's acts, by account
    *  card id, until their +*salt card is stored (account-fields.ts). */
   private readonly pendingSalts = new Map<number, string>();
+  private readonly plannedAccountFieldActions = new Map<string, number>();
+
+  /** Requested fields and the generated status join the director before
+   * prepare_new_side appends a missing holder (name_events.rb:136-141).
+   * Reserve their history positions before allocating that holder's row;
+   * fill those same positions during ordinary field stores. No renumbering.
+   * Complex/custom subtrees keep the existing path until their complete
+   * director plan is represented; this plan covers the standard fields. */
+  private async reserveStandardAccountFieldsBeforeHolder(
+    writer: ActWriter, name: DeckoName, input: CreateCardInput,
+    rightId: number | undefined, rootActionId: number | undefined,
+  ): Promise<void> {
+    if (rootActionId === undefined || input.history === false || name.leftName === undefined) return;
+    const accountId = await this.fetch.codenames.id('account');
+    if (accountId === undefined || rightId !== accountId) return;
+    const holder = await this.fetch.fetchByName(name.leftName.s);
+    if (holder?.id !== undefined && !holder.trash) return;
+    const fields: Array<{name: DeckoName; code: string; sub: SubcardInput}> = [];
+    for (const [key, sub] of Object.entries(input.subcards ?? {})) {
+      const field = DeckoName.parse(key.startsWith('+') ? name.s + key : key);
+      if (field.leftName?.key !== name.key || field.rightName === undefined || sub.subcards || sub.name || sub.trash || sub.attachment) return;
+      const fieldId = await this.fetch.lexicon.id(field.rightName);
+      const code = fieldId === undefined ? undefined : await this.fetch.codenames.nameForId(fieldId);
+      if (code === undefined || !['email','salt','password','status'].includes(code)) return;
+      if ((code === 'email' || code === 'status') && !(sub.content ?? '').trim()) return;
+      const existing = await this.fetch.fetchByName(field.s);
+      if (existing?.id !== undefined && !existing.trash) return;
+      fields.push({name:field,code,sub});
+    }
+    if (!fields.some(field => field.code === 'email')) return;
+    if (!fields.some(field => field.code === 'status')) {
+      const statusName = DeckoName.parse(name.s+'+*status');
+      const existing = await this.fetch.fetchByName(statusName.s);
+      if (existing?.id !== undefined && !existing.trash) return;
+      fields.push({name:statusName,code:'status',sub:{content:DEFAULT_ACCOUNT_STATUS}});
+    }
+    for (const field of fields) {
+      if (field.sub.history === false || field.code === 'salt' || field.code === 'password') continue;
+      if (this.plannedAccountFieldActions.has(field.name.key)) throw new Error('duplicate planned account field');
+      const id = await writer.reserveAction({actionType:'create',superActionId:rootActionId});
+      this.plannedAccountFieldActions.set(field.name.key,id);
+    }
+  }
 
   /** `left&.salt` for a +*password save: the account's stored +*salt, or the
    *  salt generated for an account created earlier in this act. */
