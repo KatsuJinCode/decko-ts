@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { localEnv, externalBrowserRequestAllowed, verifiedCapabilities } from '../lib/local-policy.mjs';
 
+test('account coverage requires every named actor and rejects any failed repeat', () => {
+  const capabilities = [{status:'not_covered',checks:['real save'],requiredActors:['admin','member']}];
+  const admin = {check:'real save',pass:true,evidence:{actor:'admin'}};
+  const member = {check:'real save',pass:true,evidence:{actor:'member'}};
+  assert.equal(verifiedCapabilities(capabilities,[admin])[0].status,'not_covered');
+  assert.equal(verifiedCapabilities(capabilities,[admin,{...member,evidence:{}}])[0].status,'not_covered');
+  assert.equal(verifiedCapabilities(capabilities,[admin,member])[0].status,'covered');
+  assert.equal(verifiedCapabilities(capabilities,[admin,member,{...member,pass:false}])[0].status,'not_covered');
+});
+
 test('local bundle environment cannot inherit production provider credentials', () => {
   const result = localEnv({ live: {
     DECKO_DB_URL: 'https://production.invalid', DECKO_DB_TOKEN: 'secret',

@@ -217,7 +217,7 @@ async function signIn(account) {
   const cookies = await page.context().cookies(stack.origin);
   const session = cookies.find((c) => c.name === "decko_ts_session");
   const lines = linesSince(before);
-  const landing = await visit("/");
+  const landing = session ? await visit("/") : { signedIn:false, hasSignOut:false, status:observed.response.status(), url:page.url() };
   return { hasSessionCookie: Boolean(session), landedOn: page.url(), landing, lines };
 }
 
@@ -327,7 +327,7 @@ async function accountSettings(account = creds.admin) {
       const fields = [{right:'email',name:emailName,type:emailType}, {right:'password',name:passwordName,type:await passwordInput.getAttribute('type')}];
       const emailField = fields.find((f) => f.right === 'email' && f.name && f.type !== 'hidden');
       const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
-      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
+      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields, actor:account.name });
       if (passwordField !== undefined) {
         const oldPassword = account.password;
         // The real account policy requires lower/upper/number/special.

@@ -46,7 +46,8 @@ export function verifiedCapabilities(capabilities, results) {
     const names = capability.checks ?? (typeof capability.check === 'string' ? [capability.check] : []);
     const passed = names.filter(name => {
       const matches = results.filter(result => result.check === name);
-      return matches.length > 0 && matches.every(result => result.pass === true);
+      return matches.length > 0 && matches.every(result => result.pass === true) &&
+        (capability.requiredActors ?? []).every(actor => matches.some(result => result.evidence?.actor === actor));
     });
     const complete = names.length > 0 && passed.length === names.length;
     const status = complete && capability.status !== 'partial' ? 'covered' : passed.length > 0 ? 'partial' : 'not_covered';

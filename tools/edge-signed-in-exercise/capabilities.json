@@ -525,11 +525,14 @@
       "sources": [
         "cypress edit/board/account_tab"
       ],
-      "status": "partial",
+      "status": "not_covered",
       "checks": [
-        "the account card's board has an Account tab"
+        "the account card's board has an Account tab",
+        "the Account tab exposes the account's email and password fields",
+        "the account email can be changed and the new one signs in"
       ],
-      "finding": "Account tab exists, but fields fail and no email change journey."
+      "requiredActors": ["Harness Admin", "Harness Member"],
+      "finding": "Requires actual tab/pill/row editors, stored email and fresh old/new credential verdicts for both actors."
     },
     {
       "id": "E20",
@@ -981,7 +984,8 @@
         "journeys account-settings-member"
       ],
       "status": "not_covered",
-      "finding": "the account board renders no Account tab, so email and password cannot be changed from the edge"
+      "checks": ["the account card's board has an Account tab", "the Account tab exposes the account's email and password fields"],
+      "requiredActors": ["Harness Admin", "Harness Member"]
     },
     {
       "id": "A2",
@@ -990,7 +994,9 @@
       "sources": [
         "journeys account-change-password-member"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": ["the account password can be changed and the new one signs in"],
+      "requiredActors": ["Harness Admin", "Harness Member"]
     },
     {
       "id": "A3",
@@ -999,7 +1005,9 @@
       "sources": [
         "journeys account-change-email-member"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": ["the account email can be changed and the new one signs in"],
+      "requiredActors": ["Harness Admin", "Harness Member"]
     },
     {
       "id": "A4",
