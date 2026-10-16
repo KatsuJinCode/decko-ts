@@ -25,7 +25,7 @@ keeps the tested dependency closure unchanged.
 
 Typecheck passes. Six focused render suites pass 144 tests, including 26 helper
 controls. An additional existing corpus/source-pinned suite could not read its
-configured C:/localProjects/archive/decko-fork-study/decko Ruby source and lacked
+configured archived Ruby source tree and lacked
 the corpus; its three source-read errors and three skips are not passing checks.
 
 The real TS adapter recapture at clean `fecf2141` selects only canonical IDs

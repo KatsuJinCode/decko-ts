@@ -79,4 +79,4 @@ It is not promoted to exact-fixture or full-suite parity.
 
 Raw JSON/HTML, clean source/build/runtime provenance, the detailed action
 network summary, logs and SHA-256 manifest are preserved outside the worktree
-at `C:/localProjects/brandonDojoTech/recovery/release/private-probes/follow-get-host-8f2ec754/`.
+in the private evidence bundle `follow-get-host-8f2ec754`, withheld from the public package.

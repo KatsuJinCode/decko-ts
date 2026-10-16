@@ -299,4 +299,4 @@ The final targeted run passed all 12 tests across the actual HTTP, request
 scope, CQL capability and cancellation suites in 62.54s. TypeScript validation
 also passed. Raw phase bundles, HTML, scripts, positive and negative records,
 and test logs are preserved with a SHA-256 manifest outside the worktree at
-`C:/localProjects/brandonDojoTech/recovery/release/private-probes/newform-request-scope-c3b06650/`.
+the private evidence bundle `newform-request-scope-c3b06650`, withheld from the public package.
