@@ -47,21 +47,22 @@ class CountingBinding implements D1DatabaseLike {
   constructor(private readonly sqlite: LocalSqliteDriver) {}
 
   prepare(sql: string): D1PreparedStatementLike {
-    let params: unknown[] = [];
-    const exec = async (): Promise<D1ResultLike> => {
-      const result = await this.sqlite.query<Record<string, unknown>>(sql, params);
-      return { results: result.rows, success: true, meta: { changes: result.rowsAffected } };
+    // Actual D1 bind() returns a new statement. A mutable fake hides a
+    // wrapper which discards that returned value and loses all bindings.
+    const statement = (params: unknown[]): D1PreparedStatementLike => {
+      const exec = async (): Promise<D1ResultLike> => {
+        const result = await this.sqlite.query<Record<string, unknown>>(sql, params);
+        return { results: result.rows, success: true, meta: { changes: result.rowsAffected } };
+      };
+      const prepared: D1PreparedStatementLike = {
+        bind: (...values: D1BindValue[]) => statement(values),
+        run: () => this.count(1, exec),
+        all: () => this.count(1, exec),
+      };
+      this.executors.set(prepared, exec);
+      return prepared;
     };
-    const prepared: D1PreparedStatementLike = {
-      bind(...values: D1BindValue[]) {
-        params = values as unknown[];
-        return prepared;
-      },
-      run: () => this.count(1, exec),
-      all: () => this.count(1, exec),
-    };
-    this.executors.set(prepared, exec);
-    return prepared;
+    return statement([]);
   }
 
   async batch(statements: D1PreparedStatementLike[]): Promise<D1ResultLike[]> {
@@ -89,6 +90,22 @@ function makeDriver(sqlite: LocalSqliteDriver): { driver: LedgerD1Driver; bindin
 }
 
 describe("cf edge telemetry: the ledger counts binding calls, not driver operations", () => {
+  it("retains independent immutable bind results for direct calls and batches", async () => {
+    const sqlite = new LocalSqliteDriver({ path: ":memory:" });
+    try {
+      const db = ledgeredBinding(new CountingBinding(sqlite));
+      const base = db.prepare("SELECT ? AS v");
+      const first = base.bind(11);
+      const second = base.bind(22);
+      expect(first).not.toBe(base);
+      expect(second).not.toBe(first);
+      expect((await first.all()).results).toEqual([{ v: 11 }]);
+      expect((await second.all()).results).toEqual([{ v: 22 }]);
+      expect((await db.batch([first, second])).map(result => result.results)).toEqual([[{ v: 11 }], [{ v: 22 }]]);
+    } finally {
+      sqlite.close();
+    }
+  });
   it("one driver query over a database without the transaction-state table is TWO binding calls carrying THREE statements", async () => {
     const sqlite = new LocalSqliteDriver({ path: ":memory:" });
     const { driver, binding } = makeDriver(sqlite);

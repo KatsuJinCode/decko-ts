@@ -53,28 +53,27 @@ export function ledgeredBinding(db: D1DatabaseLike): D1DatabaseLike {
   // wrapper; the batch() call must hand the real binding its own prepared
   // statements back, so the wrapper keeps the mapping.
   const innerOf = new WeakMap<D1PreparedStatementLike, D1PreparedStatementLike>();
+  const wrap = (inner: D1PreparedStatementLike): D1PreparedStatementLike => {
+    const invoke = async <T>(call: () => Promise<T>): Promise<T> => {
+      const t0 = Date.now();
+      try {
+        return await call();
+      } finally {
+        recordEdgeDbBindingCall(Date.now() - t0, 1);
+      }
+    };
+    const prepared: D1PreparedStatementLike = {
+      // D1 bind() returns a NEW prepared statement. Keep that returned
+      // handle and its independent bindings, including for later batch().
+      bind: (...values) => wrap(inner.bind(...values)),
+      run: () => invoke(() => inner.run()),
+      all: () => invoke(() => inner.all()),
+    };
+    innerOf.set(prepared, inner);
+    return prepared;
+  };
   return {
-    prepare(sql: string): D1PreparedStatementLike {
-      const inner = db.prepare(sql);
-      const invoke = async <T>(call: () => Promise<T>): Promise<T> => {
-        const t0 = Date.now();
-        try {
-          return await call();
-        } finally {
-          recordEdgeDbBindingCall(Date.now() - t0, 1);
-        }
-      };
-      const prepared: D1PreparedStatementLike = {
-        bind(...values) {
-          inner.bind(...values);
-          return prepared;
-        },
-        run: () => invoke(() => inner.run()),
-        all: () => invoke(() => inner.all()),
-      };
-      innerOf.set(prepared, inner);
-      return prepared;
-    },
+    prepare: (sql: string) => wrap(db.prepare(sql)),
     async batch(statements) {
       const t0 = Date.now();
       try {
