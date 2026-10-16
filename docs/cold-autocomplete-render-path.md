@@ -69,10 +69,9 @@ and changed result order; it was rejected without a source change.
 Private evidence-bundle ID: `cold-autocomplete-9b-c064`. It contains the
 separate source/build/configuration receipts, unchanged raw responses,
 measurement errors, intermediate failures, tests and research records.
-The first-class private measurement tool is
-`tools/edge-signed-in-exercise/probe-cold-autocomplete.mjs`; it requires
-explicit approved local source/mirror/configuration inputs and a new output
-directory. It never reads provider credentials. Normal build:
+The bundle includes the private measurement tool and its invocation receipt.
+It requires explicit approved local source, mirror and configuration inputs
+and a new output directory; it never reads provider credentials. Normal build:
 
 ```powershell
 node tools/bundle-bunny-edge-engine.mjs
