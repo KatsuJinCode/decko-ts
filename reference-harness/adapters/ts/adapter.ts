@@ -444,11 +444,13 @@ async function opWrite(req: Req): Promise<Json> {
   let card: Json = null;
   try {
     let result: unknown;
+    let fetchedTargetId: number | undefined;
     if (req.action === "create") {
       result = await engine.createCard({ name: req.card, ...input } as CreateCardInput);
     } else {
       const rec = await liveRecord(req.card);
       if (rec === undefined) throw new MissingWriteTargetError(`no such card ${req.card}`);
+      fetchedTargetId = rec.id;
       if (req.action === "update") {
         if (fields.name !== undefined) input.name = fields.name;
         result = await engine.updateCard({ cardId: rec.id, ...input } as UpdateCardInput);
@@ -457,7 +459,10 @@ async function opWrite(req: Req): Promise<Json> {
       } else throw new Error(`unknown write action ${req.action}`);
     }
     const id =
-      (result as { cardId?: number })?.cardId ?? (result as { card?: { id?: number } })?.card?.id ?? undefined;
+      (result as { cardId?: number })?.cardId ?? (result as { card?: { id?: number } })?.card?.id ?? fetchedTargetId;
+    // oracle/adapter.rb153-157 retains Card.fetch's object when update/delete
+    // returns. A successful engine no-op returns null because it writes no
+    // action; that does not erase the already-fetched protocol card identity.
     if (id !== undefined) {
       await boot();
       // A delete's payload card is the TRASHED card (Ruby's payload carries
