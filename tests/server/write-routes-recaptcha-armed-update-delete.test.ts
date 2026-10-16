@@ -81,6 +81,10 @@ import {
 } from "./write-routes-test-bridge.js";
 
 const SET_TYPE_ID = 2;
+// Ordinary prose targets must not inherit seedCard's historical typeId2,
+// which this fixture names Set (and therefore correctly validates JSON).
+const RICH_TEXT_TYPE_ID = 30;
+const INVALID_SET_TARGET_ID = 28;
 const ANON_CARD_ID = 14;
 const CAPTCHA_SETTING_ID = 18;
 const CAPTCHA_RULE_ID = 19;
@@ -117,6 +121,7 @@ async function seedArmedUpdateDeleteDeck(s: RenderTestStorage): Promise<void> {
     name: string,
     extra: Omit<Parameters<typeof seedCard>[1], "id" | "name"> = {},
   ) => seedCard(s, { id, name, ...extra });
+  await byId(RICH_TEXT_TYPE_ID, "RichText", { codename: "basic", typeId: RICH_TEXT_TYPE_ID });
   await byId(1, "*all", { codename: "all", typeId: SET_TYPE_ID });
   await byId(2, "Set", { codename: "set" });
   await byId(3, "*update", { codename: "update" });
@@ -135,23 +140,30 @@ async function seedArmedUpdateDeleteDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: CAPTCHA_RULE_ID, leftId: 1, rightId: CAPTCHA_SETTING_ID, dbContent: "1" });
   // the arms' targets (each arm owns its card; no shared state)
   await byId(UPDATE_REFUSAL_TARGET_ID, "Armed Update Refusal Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "update refusal before",
   });
   await byId(UPDATE_HUMAN_TARGET_ID, "Armed Update Human Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "update human before",
   });
   await byId(UPDATE_UNARMED_TARGET_ID, "Armed Update Unarmed Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "update unarmed before",
   });
   await byId(DELETE_REFUSAL_TARGET_ID, "Armed Delete Refusal Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "delete refusal body",
   });
   await byId(DELETE_HUMAN_TARGET_ID, "Armed Delete Human Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "delete human body",
   });
   await byId(DELETE_UNARMED_TARGET_ID, "Armed Delete Unarmed Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "delete unarmed body",
   });
+  await byId(INVALID_SET_TARGET_ID, "Set Payload Refusal Target", { typeId: SET_TYPE_ID, dbContent: "{}" });
 }
 
 /** Arm 7's DENIED twin of the granted deck: the same rule-walk sources the
@@ -169,6 +181,7 @@ async function seedArmedDeleteDeniedDeck(s: RenderTestStorage): Promise<void> {
     name: string,
     extra: Omit<Parameters<typeof seedCard>[1], "id" | "name"> = {},
   ) => seedCard(s, { id, name, ...extra });
+  await byId(RICH_TEXT_TYPE_ID, "RichText", { codename: "basic", typeId: RICH_TEXT_TYPE_ID });
   await byId(1, "*all", { codename: "all", typeId: SET_TYPE_ID });
   await byId(2, "Set", { codename: "set" });
   await byId(3, "*update", { codename: "update" });
@@ -185,6 +198,7 @@ async function seedArmedDeleteDeniedDeck(s: RenderTestStorage): Promise<void> {
   await byId(CAPTCHA_SETTING_ID, "*captcha", { codename: "captcha" });
   await seedCard(s, { id: CAPTCHA_RULE_ID, leftId: 1, rightId: CAPTCHA_SETTING_ID, dbContent: "1" });
   await byId(DELETE_RULE_DENIED_TARGET_ID, "Armed Delete Rule Denied Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "delete rule denied body",
   });
 }
@@ -206,6 +220,7 @@ async function seedArmedUpdateDeniedDeck(s: RenderTestStorage): Promise<void> {
     name: string,
     extra: Omit<Parameters<typeof seedCard>[1], "id" | "name"> = {},
   ) => seedCard(s, { id, name, ...extra });
+  await byId(RICH_TEXT_TYPE_ID, "RichText", { codename: "basic", typeId: RICH_TEXT_TYPE_ID });
   await byId(1, "*all", { codename: "all", typeId: SET_TYPE_ID });
   await byId(2, "Set", { codename: "set" });
   await byId(3, "*update", { codename: "update" });
@@ -222,6 +237,7 @@ async function seedArmedUpdateDeniedDeck(s: RenderTestStorage): Promise<void> {
   await byId(CAPTCHA_SETTING_ID, "*captcha", { codename: "captcha" });
   await seedCard(s, { id: CAPTCHA_RULE_ID, leftId: 1, rightId: CAPTCHA_SETTING_ID, dbContent: "1" });
   await byId(UPDATE_RULE_DENIED_TARGET_ID, "Armed Update Rule Denied Target", {
+    typeId: RICH_TEXT_TYPE_ID,
     dbContent: "update rule denied body",
   });
 }
@@ -257,6 +273,13 @@ async function call(
     body: text,
     json: () => JSON.parse(text) as Record<string, unknown>,
   };
+}
+
+/** Verify the refusal preserves every card/history/reference/sequence row,
+ * not merely the target's content and absence of its own act. */
+async function mutationSnapshot(s: RenderTestStorage) {
+  return Promise.all(["cards", "card_actions", "card_acts", "card_changes", "card_references", "sqlite_sequence"]
+    .map(async table => (await s.counting.query(`SELECT * FROM ${table} ORDER BY rowid`, [])).rows));
 }
 
 // ONE deck (the granted + captcha-ruled seed) serves all six arms, each
@@ -410,6 +433,7 @@ afterAll(() => {
 
 describe("armed route pins: UPDATE through the production recaptcha seat (no module mock)", () => {
   it("(1) armed + failed verify: the update is refused whole — 422 recaptcha shape, the token rode to siteverify once, zero rows", async () => {
+    const before = await mutationSnapshot(storage!);
     const res = await call(updRefusalBaseUrl, "PUT", "/Armed_Update_Refusal_Target.json", {
       form: {
         "card[content]": "refused update body",
@@ -437,6 +461,7 @@ describe("armed route pins: UPDATE through the production recaptcha seat (no mod
     );
     expect(row.rows[0]).toEqual({ db_content: "update refusal before", updater_id: 1 });
     expect(await actCount(storage!, "armed_update_refusal_target")).toBe(0);
+    expect(await mutationSnapshot(storage!)).toEqual(before);
   });
 
   it("(2) armed + human verdict: the update lands — 200 cud_success, content saved, updater_id = the Anonymous card", async () => {
@@ -446,7 +471,7 @@ describe("armed route pins: UPDATE through the production recaptcha seat (no mod
         recaptcha_token: "tok-upd-human",
       },
     });
-    expect(res.status).toBe(200); // the cud_success JSON flavor (rest.rb:80-89)
+    expect(res.status, res.body).toBe(200); // the cud_success JSON flavor (rest.rb:80-89)
     expect(res.json()).toMatchObject({ verb: "update" });
     expect(updHumanStubCalls.map((c) => c.query.response)).toEqual(["tok-upd-human"]);
     const row = await storage!.counting.query<{
@@ -471,7 +496,7 @@ describe("armed route pins: UPDATE through the production recaptcha seat (no mod
     const res = await call(updUnarmedBaseUrl, "PUT", "/Armed_Update_Unarmed_Target.json", {
       form: { "card[content]": "unarmed update body" },
     });
-    expect(res.status).toBe(200);
+    expect(res.status, res.body).toBe(200);
     const row = await storage!.counting.query<{ db_content: string | null; updater_id: number | null }>(
       `SELECT db_content, updater_id FROM cards WHERE id = ?`,
       [UPDATE_UNARMED_TARGET_ID],
@@ -489,6 +514,7 @@ describe("armed route pins: DELETE through the production recaptcha seat (no mod
   // has no `on:` clause, recaptcha.rb:50) and the wire plumbs the token
   // (write-routes.ts delete leg).
   it("(4) armed + failed verify: the delete is refused whole — 422 recaptcha shape, the token rode to siteverify once, zero rows", async () => {
+    const before = await mutationSnapshot(storage!);
     // the .json flavor — arm (1)'s shape: the refusal's error BODY is
     // asserted, and the JSON error shape (error.rb:21 UserError -> 422)
     // is what carries {code, message}
@@ -515,6 +541,7 @@ describe("armed route pins: DELETE through the production recaptcha seat (no mod
     expect(row.rows[0]?.trash).toBe(0);
     expect(row.rows[0]?.db_content).toBe("delete refusal body");
     expect(await actCount(storage!, "armed_delete_refusal_target")).toBe(0);
+    expect(await mutationSnapshot(storage!)).toEqual(before);
   });
 
   it("(5) armed + human verdict: the delete lands — 303, trash flip, updater_id = the Anonymous card, the verdict rode to siteverify once (action \"delete\")", async () => {
@@ -568,6 +595,7 @@ describe("armed route pins: DELETE where the RULE denies the actor (permission o
   // siteverify exactly once and 303s the trash flip, so this 403 is
   // provably the permission's verdict and not the guard's.
   it("(7) armed + rule-DENIED delete + token present: 403 permission-denied from the walk — zero siteverify calls, trash unchanged, zero act rows", async () => {
+    const before = await mutationSnapshot(delDeniedStorage!);
     // the .json mark — arm (1)/(4)'s shape: the JSON error body is what
     // carries {code, message} (errorResponse's json arm, write-routes.ts
     // :564-568; permission-denied maps to 403 at :558-562, the guard's
@@ -592,6 +620,7 @@ describe("armed route pins: DELETE where the RULE denies the actor (permission o
     );
     expect(row.rows[0]).toEqual({ trash: 0, db_content: "delete rule denied body" });
     expect(await actCount(delDeniedStorage!, "armed_delete_rule_denied_target")).toBe(0);
+    expect(await mutationSnapshot(delDeniedStorage!)).toEqual(before);
   });
 });
 
@@ -609,6 +638,7 @@ describe("armed route pins: UPDATE where the RULE denies the actor (permission o
   // guard's refusal is 422 — errorStatus's fall-through,
   // write-routes.ts:558-562 — never 403).
   it("(8) armed + rule-DENIED update + token present: 403 permission-denied from the walk — zero siteverify calls, content unchanged, zero act rows", async () => {
+    const before = await mutationSnapshot(updDeniedStorage!);
     // the .json mark — arm (7)'s shape: the JSON error body is what
     // carries {code, message} (errorResponse's json arm, write-routes.ts
     // :564-568; permission-denied maps to 403 at :558-562, the guard's
@@ -639,5 +669,22 @@ describe("armed route pins: UPDATE where the RULE denies the actor (permission o
     }>(`SELECT db_content, updater_id FROM cards WHERE id = ?`, [UPDATE_RULE_DENIED_TARGET_ID]);
     expect(row.rows[0]).toEqual({ db_content: "update rule denied body", updater_id: 1 });
     expect(await actCount(updDeniedStorage!, "armed_update_rule_denied_target")).toBe(0);
+    expect(await mutationSnapshot(updDeniedStorage!)).toEqual(before);
+  });
+});
+
+describe("captcha success preserves independent content validation", () => {
+  it("does not allow malformed Set content even after successful verification", async () => {
+    const before = await mutationSnapshot(storage!);
+    const priorCalls = updHumanStubCalls.length;
+    const res = await call(updHumanBaseUrl, "PUT", "/Set_Payload_Refusal_Target.json", {
+      form: { "card[content]": "not-json", recaptcha_token: "tok-human-invalid-set" },
+    });
+    expect(res.status, res.body).toBe(422);
+    expect(res.json()).toMatchObject({ error_status: 422, errors: { "invalid json": expect.any(String) } });
+    expect(updHumanStubCalls.slice(priorCalls)).toEqual([
+      { url: DEFAULT_VERIFY_URL, query: { secret: "s", response: "tok-human-invalid-set" } },
+    ]);
+    expect(await mutationSnapshot(storage!)).toEqual(before);
   });
 });

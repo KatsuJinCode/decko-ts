@@ -70,7 +70,7 @@ let sideDenyBaseUrl = "";
  *   12 *all+*delete   [[Anyone Signed In]] + ref -> 7
  *   13 Widget typeId 14   14 Basic   15 Basic+*type (Set-typed)
  *   16 RichText (a second type for type-change saves)
- *   17 *all+*default (typeId 2 — Card.default_type_id)
+ *   17 *all+*default (typeId 14 Basic — Card.default_type_id)
  *   30 Editor (a party Joe is NOT in)
  *   40 Locked   41 Locked+*self   42 Locked+*self+*update [[Editor]]
  *   43 Widget+*self  44 Widget+*self+*create [[Editor]]
@@ -98,7 +98,8 @@ async function seedRuleDeck(s: RenderTestStorage): Promise<void> {
   await seedReference(s, 11, 7, "anyone signed in");
   await seedCard(s, { id: 12, leftId: 1, rightId: 5, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 12, 7, "anyone signed in");
-  await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: SET_TYPE_ID });
+  // Default prose creates use Basic, not the Set type that validates JSON.
+  await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: 14 });
   await byId(13, "Widget", { typeId: 14, dbContent: "widget body v1" });
   await byId(14, "Basic");
   await seedCard(s, { id: 15, leftId: 14, rightId: 8, typeId: SET_TYPE_ID });
@@ -336,7 +337,7 @@ describe("signed-in save over HTTP (the full write path)", () => {
       json: { card: { content: "widget body v3 (json api)" } },
       token: joeToken,
     });
-    expect(res.status).toBe(200);
+    expect(res.status, res.body).toBe(200);
     expect(res.json().card).toMatchObject({ name: "Widget" });
     expect(res.json().verb).toBe("update");
   });
@@ -346,14 +347,14 @@ describe("signed-in save over HTTP (the full write path)", () => {
       json: { card: { content: "widget body v4 (put)" } },
       token: joeToken,
     });
-    expect(put.status).toBe(200);
+    expect(put.status, put.body).toBe(200);
     expect(put.json().verb).toBe("update");
 
     const create = await call(baseUrl, "POST", "/HTTP Made.json", {
       json: { card: { content: "created over http" } },
       token: joeToken,
     });
-    expect(create.status).toBe(200);
+    expect(create.status, create.body).toBe(200);
     expect(create.json().verb).toBe("create");
     const record = await call(baseUrl, "GET", "/HTTP_Made.json", {});
     expect(record.json().dbContent).toBe("created over http");
@@ -364,7 +365,7 @@ describe("signed-in save over HTTP (the full write path)", () => {
       json: { card: { content: "doomed" } },
       token: joeToken,
     });
-    expect(create.status).toBe(200);
+    expect(create.status, create.body).toBe(200);
     const del = await call(baseUrl, "DELETE", "/Doomed.json", { token: joeToken });
     expect(del.status).toBe(200);
     expect(del.json().verb).toBe("delete");
@@ -390,7 +391,7 @@ describe("signed-in save over HTTP (the full write path)", () => {
       token: joeToken,
       headers: { "X-Requested-With": "XMLHttpRequest" },
     });
-    expect(res.status).toBe(200);
+    expect(res.status, res.body).toBe(200);
     expect(res.headers["content-type"]).toContain("text/html");
     expect(res.body).toContain("xhr slot save");
     const record = await call(baseUrl, "GET", "/Widget.json", {});
@@ -452,9 +453,11 @@ describe("the permission gates through HTTP (ok_to_* walks)", () => {
     await seedCard(s, { id: 51, name: "Left Part", typeId: 14 });
     await seedCard(s, { id: 52, name: "Right Part", typeId: 14 });
     const res = await call(sideDenyBaseUrl, "POST", "/Left Part+Right Part.json", {
-      json: { card: { content: "junction with existing parts" } },
+      // This deck deliberately defaults to Set for its type-based permission rule.
+      json: { card: { content: "{}" } },
       token: sideDenyJoeToken,
     });
+    expect(res.status, res.body).toBe(200);
     expect(res.json().verb).toBe("create");
   });
 });

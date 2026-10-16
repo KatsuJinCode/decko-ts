@@ -108,6 +108,7 @@ import {
 } from "./write-routes-test-bridge.js";
 
 const SET_TYPE_ID = 2;
+const RICH_TEXT_TYPE_ID = 30;
 const ANON_CARD_ID = 14;
 const SIGNUP_TYPE_CARD_ID = 15;
 const LOCKED_WIKI_ID = 40;
@@ -193,6 +194,7 @@ async function seedAnonymousRouteDeck(
     name: string,
     extra: Omit<Parameters<typeof seedCard>[1], "id" | "name"> = {},
   ) => seedCard(s, { id, name, ...extra });
+  await byId(RICH_TEXT_TYPE_ID, "RichText", { codename: "basic", typeId: RICH_TEXT_TYPE_ID });
   await byId(1, "*all", { codename: "all", typeId: SET_TYPE_ID });
   await byId(2, "Set", { codename: "set" });
   await byId(3, "*update", { codename: "update" });
@@ -240,10 +242,10 @@ async function seedAnonymousRouteDeck(
   });
   await seedReference(s, 17, 6, "anyone");
   await byId(18, "*captcha", { codename: "captcha" });
-  await byId(LOCKED_WIKI_ID, "Locked Wiki", { dbContent: "wiki v1" });
+  await byId(LOCKED_WIKI_ID, "Locked Wiki", { typeId: RICH_TEXT_TYPE_ID, dbContent: "wiki v1" });
   if (grantedRules) {
     // the granted arms' target card (untouched by every other arm)
-    await byId(OPEN_WIKI_ID, "Open Wiki", { dbContent: "wiki v1" });
+    await byId(OPEN_WIKI_ID, "Open Wiki", { typeId: RICH_TEXT_TYPE_ID, dbContent: "wiki v1" });
   }
 }
 
@@ -451,7 +453,7 @@ describe("granted anonymous update/delete over the routes (the denied arms (b)/(
     const res = await call(grantedBaseUrl, "PUT", "/Open_Wiki.json", {
       json: { card: { content: "anonymous route edit" } },
     });
-    expect(res.status).toBe(200); // cud_success JSON flavor (rest.rb:80-89)
+    expect(res.status, res.body).toBe(200); // cud_success JSON flavor (rest.rb:80-89)
     expect(res.json()).toMatchObject({ verb: "update" });
     expect(res.json().card).toMatchObject({ name: "Open Wiki" });
     const card = await grantedStorage!.counting.query<{
