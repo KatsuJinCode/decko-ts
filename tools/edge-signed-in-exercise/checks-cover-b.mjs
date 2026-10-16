@@ -682,17 +682,13 @@ export async function runCoverBChecks(ctx) {
     const pointer = `${host}+${rightSet}`;
     ensure(pointer);
     await create(pointer, "Harness_CB_Pick_One", "Pointer");
-    const form = await visit(`/${pointer}?view=edit`);
-    await page.waitForTimeout(1500);
-    const selects = await page.evaluate(() => [...document.querySelectorAll("#main select")].map((s) => ({ name: s.name, value: s.value, options: [...s.options].map((o) => ({ text: o.textContent.trim(), value: o.value })).slice(0, 6) })));
+    const form = await pointerEditor(pointer);
+    const selects = await form.form.locator('select').evaluateAll(items=>items.map(s=>({name:s.name,value:s.value,options:[...s.options].map(o=>({text:o.textContent.trim(),value:o.value})).slice(0,6)})));
     const sel = selects.find((s) => s.options.some((o) => /Pick_Two/.test(o.text) || /Pick_Two/.test(o.value)));
     if (sel === undefined) { record("E23 a pointer card can be edited: the selection changes and is stored", false, { formStatus: form.status, selects, note: "no select input on the pointer card's edit form" }); return; }
     const option = sel.options.find((o) => /Pick_Two/.test(o.text) || /Pick_Two/.test(o.value));
-    await page.selectOption(`#main select[name="${sel.name}"]`, { label: option.text }).catch(async () => { await page.selectOption(`#main select[name="${sel.name}"]`, option.value).catch(() => undefined); });
-    const before = ledger().length;
-    await page.locator("#main form button[type=submit], #main button.submit-button, #main button[type=submit]").first().click({ force: true }).catch(() => undefined);
-    await page.waitForTimeout(3000);
-    const write = linesSince(before).find((l) => l.method !== "GET");
+    await form.form.locator(`select[name="${sel.name}"]`).selectOption(option.value);
+    const write = await submitEditor(form.form);
     const stored = row(pointer)?.content ?? "";
     const after = await visit(`/${pointer}`);
     record("E23 a pointer card can be edited: the selection changes and is stored",

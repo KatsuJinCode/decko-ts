@@ -1,0 +1,63 @@
+# Browser control repair checkpoint, 2026-10-16
+
+Release baseline `50717cca` retains the native whole-run result: 129/154
+checks passing, 25 failing; 24 covered, 16 partial, 50 not covered, one
+disabled and three out of scope. This is local Node/SDK evidence, with
+`productionAcceptance=false`. No focused rerun changes that historical total.
+
+The requested `fix/demo-signed-in-edge` is an ancestor of the release line.
+The native `decko recovery` session owns full E2E/live verification; Codex owns
+integration and these controls. The native inbox accepted command
+`fcdfc09f004871334232daeced52d3e0fba164d00b321ee86aa938e9b6300c5b`, and the lead
+explicitly acknowledged the split and released its completed-run heavy lock.
+
+## Executed focused browser results
+
+| Journey | Source | Result | Private local report |
+|---|---|---|---|
+| Member delete | `078523f6` | 6/6 | `.runtime/control-078523f6-member-delete-r2/report.md` |
+| JSON navbox, readable target | `863a5ddb` | 7/7 | `.runtime/control-863a5ddb-cql-navbox-r2/report.md` |
+| Nest insert/save/fresh render | `74d9148c` | 4/4 | `.runtime/control-74d9148c-E5-r2/report.md` |
+| Isolated right-default prefill | `863a5ddb` | 3/4, prefill fails | `.runtime/control-863a5ddb-C14-r1/report.md` |
+
+The member check proves the browser cookie's stored actor and backend
+acceptance, requires exactly 403 with a denial message, verifies the same
+stored card remains unchanged and performs a fresh read. It uses the current
+name after rename. An unknown/wrong actor cannot execute the deletion check.
+
+The JSON control follows Ruby `decko/features/navbox.feature`: visible
+`query[keyword]`, JSON and Enter. A verified admin first reads the target;
+the positive query then returns exactly that card and the missing-name query
+returns none. The earlier member-actor result was 6/7 without an independent
+readability prerequisite and remains preserved. It is not a demonstrated CQL
+regression. No engine search patch was needed for the passing path.
+
+The nest control creates the RichText parent before its PlainText child,
+matches the relative `+target` preview, observes the exact editor form's POST,
+checks persistence and requires the nested body on a fresh page.
+
+## Controls corrected and unresolved findings
+
+Fixture creation now resolves canonical type codenames, verifies the form's
+type ID and stored type, and never retries silently as Basic. In this deck,
+canonical `basic` means RichText3; ordinary `basic39120` is not a cardtype.
+Junction identity follows `left_id/right_id` when both name and key are NULL.
+Creation waits for the actual POST and observed redirect, and clicks the
+real create Submit button instead of a Pointer editor's disabled add button.
+
+Pointer fixtures use Search30 and the migrated `content_options` setting86,
+not a newly created ordinary `*options` card. Editor checks open the actual
+pencil link, match modal form IDs with stored-ID suffixes and observe matched
+saves. C16's captured actual editor still shows a list input despite a stored
+checkbox rule. Runtime rule dispatch remains open. C18/E23 need execution
+with the corrected form controls. Default prefill remains empty even after
+removing the unrelated structured Movie fixture. Neither finding is closed.
+
+Five lightweight actor/type/junction/selection/abort controls and nine module
+loader/coverage/fixture-safety controls pass. Syntax and whitespace checks pass.
+Earlier failing runs and their raw captures remain available. The first member
+attempt failed before browser startup because OpenSSL was absent from PATH;
+the retry used existing Git OpenSSL, with no installation.
+
+No runtime implementation, oracle golden, source snapshot or vendor state was
+changed by this checkpoint. There is no verified release-completion ETA.
