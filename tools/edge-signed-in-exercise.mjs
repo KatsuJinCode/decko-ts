@@ -41,6 +41,7 @@ import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/
 import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
 import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
 import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artifact.mjs';
+import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
@@ -62,8 +63,7 @@ function sampleMemory(stage, counters = {}) {
 let htmlSequence = 0;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
-const provenance = { source: git('rev-parse', 'HEAD'), dirty: git('status', '--porcelain', '--untracked-files=normal') !== '', startedAt: new Date().toISOString(), productionRuntime: false };
-if (provenance.dirty) throw new Error('commit the coherent source before capability capture');
+const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
 provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('only') !== undefined };
 
 // --------------------------------------------------------------- check kit
@@ -1041,7 +1041,7 @@ record('no script, stylesheet, font or image failed during the complete main bro
 const failures = results.filter((r) => !r.pass);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
 if (pinnedArtifact) markdown += `- Harness source differs from the engine artifact: engine source claim \`${pinnedArtifact.sourceCommit}\`, exact artifact SHA256 \`${pinnedArtifact.sha256}\`; source claim is caller-declared, artifact bytes are verified. No vendor-runtime acceptance.\n`;
-markdown += `- Source: \`${provenance.source}\`, clean; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
+markdown += `- Source: \`${provenance.source}\`, source files clean${provenance.worktreeHasOperationalMarker ? '; worktree has separately hashed operational .keep-root marker' : ''}; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
 markdown += `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
 markdown += `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;
 markdown += `- Command: \`node tools/edge-signed-in-exercise.mjs\`\n`;
