@@ -5388,7 +5388,11 @@ export class CardActionEngine {
       if (live !== undefined && live.trash === 0) continue;
       const created = await this.createInWriter(
         writer,
-        { name: fieldName.s, content, superActionId: accountActionId },
+        {
+          name: fieldName.s, content, superActionId: accountActionId,
+          // Salt#history? is false: do not allocate and then delete an action.
+          ...(field === "*salt" ? { history: false } : {}),
+        },
         { isActCard: false },
       );
       if (field !== "*salt") {
