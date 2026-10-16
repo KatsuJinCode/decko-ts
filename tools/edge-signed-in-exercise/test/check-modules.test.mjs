@@ -7,6 +7,7 @@ import {loadCheckModules,runCheckModules} from '../lib/check-modules.mjs';
 import {verifiedCapabilities} from '../lib/local-policy.mjs';
 import {checks as permissionChecks,capabilityChecks} from '../checks-permissions.mjs';
 import {checks as navboxChecks,capabilityChecks as navboxCapabilityChecks} from '../checks-navbox.mjs';
+import {checks as mailChecks,capabilityChecks as mailCapabilityChecks,meta as mailMeta} from '../checks-mail-reset.mjs';
 
 test('module loader refuses ambiguous topics',async()=>{
  const base=fileURLToPath(new URL('../../../tmp/',import.meta.url));mkdirSync(base,{recursive:true});
@@ -24,6 +25,16 @@ test('topic selection runs only the selected checks and records actual modules',
  const modules=[{file:'checks-a.mjs',meta:{topic:'a'},checks:[{name:'A',run:async()=>called.push('A')}]},{file:'checks-b.mjs',meta:{topic:'b'},checks:[{name:'B',run:async()=>called.push('B')}]}];
  const ran=await runCheckModules(modules,{group:()=>{},attempt:async(_,f)=>f()},'b');
  assert.deepEqual(called,['B']);assert.deepEqual(ran.map(r=>r.topic),['b']);
+});
+
+test('a poisoned fixture cannot continue into a successor check',async()=>{
+ const called=[],fixtureState={fatalReason:null};
+ const modules=[{file:'checks-state.mjs',meta:{topic:'state'},checks:[
+  {name:'first',run:async()=>{called.push('first');fixtureState.fatalReason='credential restore failed';throw Error('save failed')}},
+  {name:'successor',run:async()=>called.push('successor')},
+ ]}];
+ await assert.rejects(runCheckModules(modules,{fixtureState,group:()=>{},attempt:async(_,f)=>{try{await f()}catch{}}}),/fixture quarantined/);
+ assert.deepEqual(called,['first']);
 });
 
 test('permission coverage requires positive controls and every repeated actor result',()=>{
@@ -52,6 +63,16 @@ test('navbox fixture cannot write to a live destination or receive coverage from
  const capability=document.capabilities.find(c=>c.id==='N1');
  assert.deepEqual(capability.checks,navboxCapabilityChecks);
  assert.notEqual(verifiedCapabilities([capability],[{check:"keyword search endpoint returns the run's card",pass:true}])[0].status,'covered');
+});
+
+test('mail journey requires capture and cannot credit an unrestored credential fixture',async()=>{
+ assert.equal(mailMeta.requiresMail,true);
+ await assert.rejects(mailChecks[0].run({stack:{origin:'https://culturesmith-edge.bunny.run'}}),/disposable loopback deck/);
+ const document=JSON.parse(readFileSync(new URL('../capabilities.json',import.meta.url)));
+ const capability=document.capabilities.find(c=>c.id==='A5');
+ assert.deepEqual(capability.checks,mailCapabilityChecks);
+ const unRestored=mailCapabilityChecks.slice(0,-1).map(check=>({check,pass:true}));
+ assert.notEqual(verifiedCapabilities([capability],unRestored)[0].status,'covered');
 });
 
 test('permission module closes its first isolated session if the second cannot open',async()=>{

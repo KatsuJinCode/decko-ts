@@ -45,6 +45,7 @@ export async function loadCheckModules(dir) {
     if (!Array.isArray(checks) || checks.length === 0) {
       throw new Error(`${file}: export const checks must be a non-empty array`);
     }
+    if (meta.requiresMail !== undefined && typeof meta.requiresMail !== 'boolean') throw new Error(`${file}: requiresMail must be boolean`);
     if (topics.has(meta.topic)) throw new Error(`${file}: duplicate topic ${meta.topic}`);
     topics.add(meta.topic);
     for (const check of checks) {
@@ -73,6 +74,7 @@ export async function runCheckModules(modules, ctx, onlyTopic) {
     ctx.group(`checks module ${meta.topic} (${file})`);
     for (const check of selected) {
       await ctx.attempt(check.name, () => check.run(ctx));
+      if (ctx.fixtureState?.fatalReason) throw new Error('fixture quarantined: '+ctx.fixtureState.fatalReason);
     }
     ran.push({ topic: meta.topic, file, checks: selected.length, capabilityIds: meta.capabilityIds ?? [] });
   }

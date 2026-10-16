@@ -1066,7 +1066,13 @@
         "journeys reset-password-request"
       ],
       "status": "out_of_scope",
-      "reason": "the reset link arrives by mail; no mail sink locally"
+      "reason": "the reset link arrives by mail; no mail sink locally",
+      "checks": [
+        "reset request reaches the captured test inbox with visible acknowledgment",
+        "captured reset link signs member into the password form",
+        "reset password persists and rejects the old credential",
+        "reset journey restores its original fixture credential"
+      ]
     },
     {
       "id": "M1",

@@ -53,14 +53,22 @@ export function buildBundle() {
  * Starts the stack on the given local deck file.
  * @returns {Promise<{ origin: string, hrana: any, host: any, bundlePath: string, close: () => Promise<void>, cleanup: () => void }>}
  */
-export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle(), expectedBundleSha256, onRequest }) {
+export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle(), expectedBundleSha256, onRequest, mail }) {
   const inside = relative(join(REPO, 'tmp'), resolve(runtimeDir));
   if (!inside || inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error('runtime must be an owned child of this repository tmp');
+  if (mail !== undefined && (typeof mail.sink !== 'function' || !mail.tokenSecret || !mail.siteTitle)) throw new Error('local mail capture requires a sink, token secret and site title');
   mkdirSync(runtimeDir, { recursive: true });
   const hrana = await startLocalHrana({ dbPath: deckPath });
   let storage;
   let host;
   const originalFetch = globalThis.fetch;
+  const originalSink = globalThis.__deckoLocalMailSink;
+  const mailKeys=['DECKO_LOCAL_MAIL','DECKO_LOCAL_TOKEN_SECRET','DECKO_LOCAL_SITE_TITLE','DECKO_LOCAL_ORIGIN','DECKO_SMTP_PASS'];
+  const previousMailEnv=new Map(mailKeys.map(key=>[key,process.env[key]]));
+  const restoreMail=()=>{
+    globalThis.__deckoLocalMailSink=originalSink;
+    for(const [key,value] of previousMailEnv){if(value===undefined)delete process.env[key];else process.env[key]=value;}
+  };
   try {
   storage = await startMockBunnyStorage({ filesRoot: join(runtimeDir, 'storage-files') });
   const storagePrefix = `https://${storage.host}/`;
@@ -70,14 +78,19 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
   };
   // The origin is only known once the TLS listener binds, so start the host
   // with a placeholder, then set the trusted origin on the bundle's env.
+  const mailEnv={DECKO_LOCAL_MAIL:mail===undefined?'0':'1',DECKO_SMTP_PASS:'',...(mail===undefined?{}:{
+    DECKO_LOCAL_TOKEN_SECRET:mail.tokenSecret,DECKO_LOCAL_SITE_TITLE:mail.siteTitle,DECKO_LOCAL_ORIGIN:'https://127.0.0.1',
+  })};
+  if(mail!==undefined)globalThis.__deckoLocalMailSink=mail.sink;
   host = await startEdgeHost({
     bundlePath, expectedBundleSha256,
     runtimeDir: join(runtimeDir, "edge"),
     onRequest,
     env: { ...localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),
-      DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host },
+      DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host,...mailEnv },
   });
   const origin = host.url;
+  if(mail!==undefined)process.env.DECKO_LOCAL_ORIGIN=origin;
   process.env.DECKO_TRUSTED_ORIGINS = origin;
   process.env.DECKO_ORIGIN = origin;
   process.env.DECKO_DECK_ORIGIN = origin;
@@ -92,14 +105,14 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
     bundlePath,
     close: async () => {
       try { await host.close(); } finally {
-        try { await hrana.close(); } finally { try { await storage.stop(); } finally { globalThis.fetch = originalFetch; } }
+        try { await hrana.close(); } finally { try { await storage.stop(); } finally { globalThis.fetch = originalFetch;restoreMail(); } }
       }
     },
     cleanup: () => rmSync(runtimeDir, { recursive: true, force: true }),
   };
   } catch (error) {
     try { if (host) await host.close(); } finally {
-      try { await hrana.close(); } finally { try { if (storage) await storage.stop(); } finally { globalThis.fetch = originalFetch; } }
+      try { await hrana.close(); } finally { try { if (storage) await storage.stop(); } finally { globalThis.fetch = originalFetch;restoreMail(); } }
     }
     throw error;
   }

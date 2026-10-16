@@ -55,16 +55,15 @@ export interface LocalMailRecord {
   readonly to: string;
   readonly from: string | undefined;
   readonly replyTo: string | undefined;
-  readonly cc: readonly string[];
-  readonly bcc: readonly string[];
+  readonly cc: string | undefined;
+  readonly bcc: string | undefined;
   readonly subject: string;
   readonly textBody: string;
   readonly htmlBody: string | undefined;
 }
 
-/** The host-installed sink. The bundle calls it once per delivered message,
- *  synchronously in delivery order. Undefined means no host is listening and
- *  the message is kept only in the engine's own CaptureTransport. */
+/** The required host-installed sink. The bundle calls it once per delivered
+ *  message, synchronously in delivery order, scoped to that host's run. */
 export type LocalMailSink = (record: LocalMailRecord) => void;
 
 declare global {
@@ -78,20 +77,19 @@ class LocalMailTransport implements NotifyTransport {
   readonly name = "edge-local-mail";
   private readonly inner = new CaptureTransport("edge-local-mail");
   private seq = 0;
+  constructor(private readonly sink: LocalMailSink) {}
 
   async sendMail(msg: MailMessage): Promise<void> {
     await this.inner.sendMail(msg);
     this.seq += 1;
-    const sink = globalThis.__deckoLocalMailSink;
-    if (typeof sink !== "function") return;
-    sink({
+    this.sink({
       seq: this.seq,
       capturedAt: new Date().toISOString(),
       to: msg.to,
       from: msg.from,
       replyTo: msg.replyTo,
-      cc: msg.cc ?? [],
-      bcc: msg.bcc ?? [],
+      cc: msg.cc,
+      bcc: msg.bcc,
       subject: msg.subject,
       textBody: msg.textBody,
       htmlBody: msg.htmlBody,
@@ -99,7 +97,7 @@ class LocalMailTransport implements NotifyTransport {
   }
 }
 
-let transport: LocalMailTransport | undefined;
+const transports = new WeakMap<LocalMailSink, LocalMailTransport>();
 
 /**
  * The services for handleBunnyEngineRequest, or {} when the local capture is
@@ -110,9 +108,11 @@ let transport: LocalMailTransport | undefined;
  * the same key the link is later verified under, Ruby token.rb:7), the origin
  * card_url prefixes (location.rb:19-24), and the site title the
  * {{:title|core}} template renders (the *title card's content). If one is
- * missing the call throws instead of quietly sending nothing.
+ * missing the call throws instead of quietly sending nothing. The actual
+ * request must share the configured loopback origin and a host sink must be
+ * installed; a public request cannot arm this testing transport.
  */
-export function localMailServices(env: Record<string, string | undefined>): LocalMailServices {
+export function localMailServices(env: Record<string, string | undefined>, requestUrl?: string): LocalMailServices {
   if (env.DECKO_LOCAL_MAIL !== "1") return {};
   const secret = env.DECKO_LOCAL_TOKEN_SECRET;
   const origin = env.DECKO_LOCAL_ORIGIN;
@@ -122,6 +122,26 @@ export function localMailServices(env: Record<string, string | undefined>): Loca
       "local mail capture is armed but incomplete: DECKO_LOCAL_TOKEN_SECRET, DECKO_LOCAL_ORIGIN and DECKO_LOCAL_SITE_TITLE must all be non-empty",
     );
   }
-  transport ??= new LocalMailTransport();
+  let configured: URL;
+  let requested: URL;
+  try {
+    configured = new URL(origin);
+    requested = new URL(requestUrl ?? "");
+  } catch {
+    throw new Error("local mail capture requires a valid loopback request and origin");
+  }
+  if (!['http:', 'https:'].includes(configured.protocol) ||
+      !['127.0.0.1', 'localhost', '[::1]'].includes(configured.hostname) ||
+      configured.username || configured.password || configured.pathname !== '/' || configured.search || configured.hash ||
+      requested.origin !== configured.origin) {
+    throw new Error("local mail capture requires the same loopback request and origin");
+  }
+  const sink = globalThis.__deckoLocalMailSink;
+  if (typeof sink !== 'function') throw new Error("local mail capture requires an installed host sink");
+  let transport = transports.get(sink);
+  if (transport === undefined) {
+    transport = new LocalMailTransport(sink);
+    transports.set(sink, transport);
+  }
   return { accountMail: { transport, token: { secret }, origin, siteTitle } };
 }

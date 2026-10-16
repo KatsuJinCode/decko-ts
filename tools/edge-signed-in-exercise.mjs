@@ -30,7 +30,7 @@ import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import Database from "better-sqlite3";
 import { pathToFileURL } from "node:url";
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
@@ -50,6 +50,8 @@ const hasFlag = (name) => process.argv.includes(`--${name}`);
 const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
 const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
 const supportedTopics = ['account','owner','owner-replay','richtext',...moduleTopics];
+const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
+  (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
@@ -70,7 +72,7 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
 const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
 provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('only') !== undefined };
-provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
+provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,requiresMail:meta.requiresMail===true,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
 
 // --------------------------------------------------------------- check kit
 
@@ -144,7 +146,7 @@ async function ownerAudit(replayOnly = false) {
 
 function moduleContext() {
   return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
-    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck };
+    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
 }
 
 try {
@@ -191,7 +193,21 @@ for (const value of allowedFaviconUrls) {
 }
 provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
-const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,
+const MAIL_DIR=join(RAW,'mail');
+const mailInbox=[];
+let mailSettings;
+if(mailRequired){
+  mkdirSync(MAIL_DIR);
+  const mailDb=new Database(localDeck,{readonly:true});
+  let siteTitle;
+  try{siteTitle=mailDb.prepare("SELECT db_content FROM cards WHERE codename='title' AND trash=0 LIMIT 1").get()?.db_content;}finally{mailDb.close();}
+  mailSettings={siteTitle,tokenSecret:randomBytes(32).toString('hex'),sink:message=>{
+    mailInbox.push(message);
+    writeFileSync(join(MAIL_DIR,String(message.seq).padStart(3,'0')+'.json'),JSON.stringify(message,null,2)+'\n',{flag:'wx'});
+  }};
+}
+provenance.localMailCapture={enabled:mailRequired,transport:mailRequired?'owned in-process capture':null,externalDelivery:false};
+const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,mail:mailSettings,
   onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
     status: line.status, responseBytes: line.bytes ?? 0 }) });
 provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
@@ -352,6 +368,7 @@ const database = () => dbHandle;
 
 const cardName = (label) => `Harness_${label}_${Date.now().toString(36)}`;
 const created = [];
+const fixtureState={fatalReason:null};
 
 // ----------------------------------------------------------------- checks
 

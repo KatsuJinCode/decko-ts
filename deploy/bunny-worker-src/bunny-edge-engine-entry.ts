@@ -77,6 +77,6 @@ BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   // The local mail capture seat: {} unless DECKO_LOCAL_MAIL=1 (the deployed
   // script never sets it, so production composition is unchanged; see
   // bunny-edge-local-mail.ts).
-  return await handleBunnyEngineRequest(request, env, localMailServices(env));
+  return await handleBunnyEngineRequest(request, env, localMailServices(env, request.url));
 
 });
