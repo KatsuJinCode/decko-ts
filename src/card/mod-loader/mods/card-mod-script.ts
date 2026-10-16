@@ -676,27 +676,11 @@ const validateCoffeescriptSyntaxFn: ModEventFn = (card, _host) => {
  *    errors.add :content, "<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>".html_safe
  *  end
  *
- *  SEAM: same as the coffeescript event - the TS engine has no errors.add
- *  seam, the uglifier gem is unported, and Cardio::Utils.ansi2html
- *  (lib/cardio/utils/ansi2_html.rb) is consumed only by this error
- *  message (no other reachable consumer headlessly - see the header's
- *  honest remainder). The body reads the card's content, names the
- *  field, and leaves the compile + ansi2html-wrapped errors.add as the
- *  seam the validate execution wiring must wire. */
-const validateJavascriptSyntaxFn: ModEventFn = (card, _host) => {
-  // SEAM (no-op stub, see header): when execution wiring lands, this body
-  // must (a) call Uglifier.compile(card.dbContent, harmony: true), (b)
-  // rescue Uglifier::Error, ANSI->HTML the message through
-  // Cardio::Utils.ansi2html (lib/cardio/utils/ansi2_html.rb), wrap it in
-  // "<pre>...</pre>".html_safe, and (c) call errors.add :content,
-  // <wrapped message> against the action engine's write-path error surface.
-  // The uglifier gem is unported (no TS compiler bridge); the ansi2html
-  // helper has no headless consumer outside this event; the errors.add
-  // seam is unported (no TS error surface); the stage selector below is
-  // the only piece the event registry admits today.
-  void validateSyntaxField;
-  void card;
-};
+ *  The optional host-backed implementation runs in the action engine's
+ *  pre-store subtree guard. Node production boot and harness use the same
+ *  real vendored Uglifier provider. Edge validation remains unported; this
+ *  declaration alone is not execution/completeness evidence. */
+const validateJavascriptSyntaxFn: ModEventFn = () => {};
 
 /** A set file whose ported bytes are registration bookkeeping only (the
  *  module basket entry Ruby's SetLoader creates; its card methods / events

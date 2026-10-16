@@ -167,6 +167,7 @@ import type { ScssCompiler } from "../assets/scss-compiler.js";
 import { renderStyleChunks } from "../assets/skin-stylesheet.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../assets/script-compressor.js";
+import type { JavascriptSyntaxValidator } from "../assets/javascript-syntax-validator.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
@@ -370,6 +371,9 @@ export interface CardActionEngineOptions {
    *  compressAssets and no compressor, a save that rebuilds a script asset is
    *  refused with a named error. */
   scriptCompressor?: ScriptCompressor;
+  /** Save-time Uglifier syntax check, independent of compressAssets.
+   * Absent providers remain an explicit host validation coverage gap. */
+  javascriptValidator?: JavascriptSyntaxValidator;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default, the oracle deck's
    *  config_file_storage_default). Shapes validate_file_exist's web? arm:
@@ -493,6 +497,7 @@ export class CardActionEngine {
   private readonly coffeeCompiler: CoffeeCompiler | undefined;
   private readonly compressAssets: boolean;
   private readonly scriptCompressor: ScriptCompressor | undefined;
+  private readonly javascriptValidator: JavascriptSyntaxValidator | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
   private readonly virtualCache = new VirtualRecordCache();
   /** The deck's file_storage config port (CardActionEngineOptions.
@@ -547,6 +552,7 @@ export class CardActionEngine {
     this.coffeeCompiler = options.coffeeCompiler;
     this.compressAssets = options.compressAssets ?? false;
     this.scriptCompressor = options.scriptCompressor;
+    this.javascriptValidator = options.javascriptValidator;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
@@ -2790,6 +2796,16 @@ export class CardActionEngine {
         : row.type_id
     );
     const typeCode = (await this.fetchRowById(typeId))?.codename;
+    if (typeCode === "java_script" && !this.skipsEvent("validate_javascript_syntax") && this.javascriptValidator !== undefined) {
+      const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
+      if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
+        const diagnostic = this.javascriptValidator(content);
+        if (diagnostic !== undefined) {
+          const message = `<pre>${diagnostic}</pre>`;
+          throw new CardActionError("validation-failed", `Validation failed: ${message}`, `CONTENT: ${message}`, { content: message }, name.s);
+        }
+      }
+    }
     if ((typeCode === "css" && !this.skipsEvent("validate_css")) ||
         (typeCode === "scss" && !this.skipsEvent("validate_scss_syntax"))) {
       const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";

@@ -26,6 +26,7 @@ import {
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import { libsassWasmCompiler } from "../../src/server/libsass-wasm.js";
 import type { ScssCompiler } from "../../src/card/assets/scss-compiler.js";
+import { uglifyHarmonySyntaxError } from "../../src/card/assets/uglify-harmony-compile-engine.js";
 import { makeWriteRouteServer } from "./write-routes-test-bridge.js";
 
 const SET_TYPE_ID = 2;
@@ -141,6 +142,31 @@ afterAll(() => {
 });
 
 describe("the write surface's compiler seam (the edge refusal gate's dispatch)", () => {
+  it("Node Uglifier validation preserves a valid script and history after malformed updates", async () => {
+    await seedCard(storage, { id: 80, name: "JavaScript", codename: "java_script", typeId: SET_TYPE_ID });
+    await seedCard(storage, { id: 81, name: "HTTP JavaScript", typeId: 80, dbContent: "var before = 1;" });
+    await seedCard(storage, { id: 83, name: "PlainText", codename: "plain_text", typeId: SET_TYPE_ID });
+    await seedCard(storage, { id: 82, name: "HTTP Ordinary Script Text", typeId: 83, dbContent: "before" });
+    const context = { ...ctxWith(), javascriptValidator: uglifyHarmonySyntaxError };
+    const bridge = await makeWriteRouteServer(storage, context, { get: "record-404" });
+    const put = (name: string, content: string) => fetch(`${bridge.url}/${encodeURIComponent(name)}.json`, {
+      method: "PUT", headers: { "content-type": "application/json", authorization: `Bearer ${joeToken}` },
+      body: JSON.stringify({ card: { content } }),
+    });
+    const rows = () => Promise.all(["cards", "card_actions", "card_acts", "card_changes", "card_virtuals", "card_references"]
+      .map(async table => [table, (await storage.counting.query(`SELECT * FROM ${table} ORDER BY rowid`, [])).rows]));
+    try {
+      expect((await put("HTTP JavaScript", "let x = 1; const f = n => n + x;")).status).toBe(200);
+      const before = await rows();
+      const denied = await put("HTTP JavaScript", "var invalid = ;");
+      expect(denied.status).toBe(422);
+      expect(await denied.text()).toContain("Unexpected token: punc (;)");
+      expect(await rows()).toEqual(before);
+      expect((await put("HTTP Ordinary Script Text", "var invalid = ;")).status).toBe(200);
+    } finally {
+      await new Promise<void>((resolve, reject) => bridge.server.close(error => error ? reject(error) : resolve()));
+    }
+  });
   it("a *all+*style save with a scssCompiler in the context compiles and stores the site stylesheet", async () => {
     const seen: { source: string; style: string }[] = [];
     const response = await handleWriteRequest(

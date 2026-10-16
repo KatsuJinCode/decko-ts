@@ -124,6 +124,7 @@ import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import type { ScssCompiler } from "../card/assets/scss-compiler.js";
 import type { CoffeeCompiler } from "../card/assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../card/assets/script-compressor.js";
+import type { JavascriptSyntaxValidator } from "../card/assets/javascript-syntax-validator.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
@@ -269,6 +270,8 @@ export interface WriteRouteContext {
   compressAssets?: boolean;
   /** The Uglifier seam (uglifyHarmonyCompile on Node hosts). */
   scriptCompressor?: ScriptCompressor;
+  /** Optional host Uglifier save validator; edge provider remains unported. */
+  javascriptValidator?: JavascriptSyntaxValidator;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and
    *  the storage-type resolution ride it. */
@@ -1620,6 +1623,7 @@ async function dispatchWriteRequest(
     ...(ctx.coffeeCompiler === undefined ? {} : { coffeeCompiler: ctx.coffeeCompiler }),
     ...(ctx.compressAssets === undefined ? {} : { compressAssets: ctx.compressAssets }),
     ...(ctx.scriptCompressor === undefined ? {} : { scriptCompressor: ctx.scriptCompressor }),
+    ...(ctx.javascriptValidator === undefined ? {} : { javascriptValidator: ctx.javascriptValidator }),
     fileStorage: ctx.fileStorage,
     // the deck's event runtime rides EVERY save (the deck-boot seam,
     // servingModEventRuntime above - Ruby's boot composes all mods once and

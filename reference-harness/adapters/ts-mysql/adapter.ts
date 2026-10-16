@@ -26,6 +26,7 @@ import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
 import { coffeeNpmCompiler } from "../../../src/server/coffee-npm-compiler.js";
+import { uglifyHarmonySyntaxError } from "../../../src/card/assets/uglify-harmony-compile-engine.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
@@ -395,6 +396,7 @@ async function opWrite(req: Req): Promise<Json> {
   // From rule from; absent, every nest renders as its bare "_" placeholder.
   const engine = new CardActionEngine(fetcher, {
     coffeeCompiler: coffeeNpmCompiler(),
+    javascriptValidator: uglifyHarmonySyntaxError,
     scssCompiler,
     actor,
     ipAddress: null,
