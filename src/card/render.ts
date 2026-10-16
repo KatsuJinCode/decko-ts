@@ -1,3 +1,5 @@
+import {readPermissionEditorOptions} from "./mod-loader/mods/card-mod-permissions.js";
+import type {PermissionEditorOptions} from "./render/format.js";
 // The render engine: TypeScript port of the Decko card renderer's public
 // surface, with the decko-commons/decko#1282 batched inclusion prefetch.
 //
@@ -219,6 +221,12 @@ const FORM_VIEW_PATTERN = /edit|board|bridge|form|overlay|modal/;
  *  current_set_card). The rule-side warm (Card::Rule::Cache's request-cycle
  *  set-anchor load) covers them. */
 const RULE_WARM_VIEWS = new Set(["edit_rules"]);
+const PERMISSION_EDITOR_VIEWS = new Set([
+  "input", "editor", "content_editor", "content_formgroup", "edit", "edit_in_form",
+  "edit_in_modal", "rule_form_card_editor", "rule_edit", "rule_form", "overlay_rule",
+  "modal_rule", "nest_rules", "modal_nest_rules", "quick_edit_setting_list",
+  "quick_edit", "edit_rules",
+]);
 import type { UpdaterCardInfo, UpdaterRenderReader } from "./history/updater-seam.js";
 import {
   FOLLOW_SEAM_VIEWS,
@@ -996,6 +1004,9 @@ export class RenderEngine implements RenderEngineLike {
    *  engine, on the first render whose ROOT view demands a non-read task
    *. Cleared on resetCaches. */
   private taskState: ViewTaskState | undefined;
+  private permissionEditorState: PermissionEditorOptions = {roles: []};
+  permissionEditorOptions(): PermissionEditorOptions { return this.permissionEditorState; }
+
   /** auth/permissions.rb:18-26 Auth.createable_types — the sorted cardtype
    *  names the viewer's create verdict admits ([] until precomputed by
    *  ensureCreateableTypes, which the type-editor views' prepare gate
@@ -1726,6 +1737,14 @@ export class RenderEngine implements RenderEngineLike {
     // Sample_Card_099+discussion:open pair renders the
     // inherited-grant form on THIS lane).
     await this.ensureDiscussionUpdateVerdicts({ cardName, view });
+    const permissionEditorRoot = this.renderCards.get(name.key);
+    const permissionRight = permissionEditorRoot?.name.isCompound
+      ? DeckoName.parse(permissionEditorRoot.name.tag).codename : undefined;
+    const ruleContainer = view.includes("rule") || view === "quick_edit";
+    if (PERMISSION_EDITOR_VIEWS.has(view) &&
+        (ruleContainer || (permissionRight !== undefined && PERMISSION_RIGHT_CODENAMES.has(permissionRight)))) {
+      this.permissionEditorState = await readPermissionEditorOptions(modEngineHost(this, this.fetcher));
+    }
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.

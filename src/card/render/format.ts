@@ -3748,7 +3748,14 @@ export interface PhantomItemType {
   typeKey: string;
 }
 
+export interface PermissionEditorOptions {
+  readonly roles: readonly {name: string; key: string}[];
+  readonly cardsWithAccountUrlKey?: string;
+}
+
 export interface RenderEngineLike {
+  /** Per-engine, freshly prepared Auth.as_bot role catalog for permission inputs. */
+  permissionEditorOptions?(): PermissionEditorOptions;
   views: Record<string, ViewFn>;
   /** The render viewer (render.ts RenderEngine#viewer - the read-verdict
    *  identity). Optional: engines without it answer the SIGNED-OUT surface

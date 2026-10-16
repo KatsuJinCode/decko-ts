@@ -116,7 +116,7 @@
 // reason.
 
 import { viewWrapInherited } from "../mod-view-helpers.js";
-import { str, UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
+import { str, UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn, type PermissionEditorOptions } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE } from "../../set-patterns/registry.js";
 import { permissionInheritContentHtml, permissionRuleTask } from "../../render/rule-bar-right.js";
@@ -333,10 +333,9 @@ export const permissionCoreView: ViewFn = (ctx) => {
 // set/abstract/permission.rb format :html - view :input (26-43)
 // ---------------------------------------------------------------------------
 
-/** The Auth.as_bot role warm's registry: the Role-typed cards, name-sorted
- *  (permission.rb:64-68 group_options). Filled once per engine by
- *  preparePermissionRoles; empty (Groups section renders empty) in engines
- *  without the warm. */
+/** Legacy explicit prepareEngine fixture catalog. Concrete RenderEngine
+ * instances always use their own freshly prepared PermissionEditorOptions;
+ * the process-wide fixture state never supplies a concrete engine's form. */
 interface RoleOption {
   name: string;
   key: string;
@@ -372,9 +371,10 @@ export function resetPermissionRolesForTests(): void {
  *  href appended LAST (links.rb:105). */
 function groupRowsAndRemainingItems(
   itemNames: string[],
+  roles: readonly RoleOption[],
 ): { rows: string; remainingItems: string[] } {
   const remaining = [...itemNames];
-  const rows = roleRegistry.map((option) => {
+  const rows = roles.map((option) => {
     const checked = remaining.indexOf(option.name);
     if (checked !== -1) remaining.splice(checked, 1);
     const icon = iconTag("close_fullscreen", "text-muted");
@@ -413,7 +413,7 @@ function groupRowsAndRemainingItems(
  *  (list_input never reads it); items_for_input (html_views.rb:115-118)
  *  maps an EMPTY list to [""] - one value-less row; the haml output ends
  *  with a trailing newline (haml_to_html's template flush). */
-function listInput(itemNames: string[]): string {
+function listInput(itemNames: string[], optionsCardUrlKey: string | undefined): string {
   const items = itemNames.length === 0 ? [""] : itemNames;
   const rows = items
     .map(
@@ -422,7 +422,7 @@ function listInput(itemNames: string[]): string {
         `<span class='input-group'>\n` +
         `<span class='input-group-text handle'>\n${iconTag("reorder")}\n</span>\n` +
         `<input type="text" name="pointer_item" id="pointer_item" value="${h(item)}" class="pointer-item-text form-control"` +
-        (cardsWithAccountUrlKey === undefined ? "" : ` data-options-card="${h(cardsWithAccountUrlKey)}"`) +
+        (optionsCardUrlKey === undefined ? "" : ` data-options-card="${h(optionsCardUrlKey)}"`) +
         ` placeholder="" />\n` +
         `<button class='pointer-item-delete btn btn-secondary' type='button'>\n${iconTag("close")}\n</button>\n` +
         `</span>\n` +
@@ -482,7 +482,12 @@ const inputView: ViewFn = (ctx) => {
   const itemNames = inheriting(ctx) ? [] : rawItemStrings(ctx.fmt.card.dbContent);
   const hiddenField =
     `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${h(ctx.fmt.card.dbContent)}" name="card[content]" id="card_content" />`;
-  const { rows, remainingItems } = groupRowsAndRemainingItems(itemNames);
+  // Concrete engines always provide isolated render-prepared state. Legacy
+  // stub-only loaders retain their explicit prepareEngine fixture catalog.
+  const options = ctx.fmt.engine.permissionEditorOptions?.() ?? {
+    roles: roleRegistry, cardsWithAccountUrlKey,
+  };
+  const { rows, remainingItems } = groupRowsAndRemainingItems(itemNames, options.roles);
   return (
     `\n      ${hiddenField}\n` +
     `      <div class="perm-editor">\n` +
@@ -496,7 +501,7 @@ const inputView: ViewFn = (ctx) => {
     // Ruby's call passes extra_css_class: 'perm-indiv-ul', but list_input
     // never reads it (html_views.rb:49 hardcodes "pointer-list-ul") - the
     // argument is dead there, so the port's listInput takes none.
-    `          ${listInput(remainingItems)}` +
+    `          ${listInput(remainingItems, options.cardsWithAccountUrlKey)}` +
     `\n        </div>\n` +
     `      </div>\n` +
     `    `
@@ -524,6 +529,32 @@ function rolesStatement(roleTypeId: number): { sql: string; params: unknown[] } 
  *  registry (the sorted enumeration group_options renders from), plus the
  *  cards_with_account card for the input's data-options-card. The engine
  *  render path itself never queries for the role list. */
+/** Live render preparation: one full-row query, not one fetch per role.
+ * Ruby group_options deliberately runs as Bot, independent of the viewer's
+ * readable roles. Only the form's role catalog bypasses actor filtering;
+ * the form's own read/update gates remain unchanged. No process-global state. */
+export async function readPermissionEditorOptions(host: ModEngineHost): Promise<PermissionEditorOptions> {
+  await host.codenames.ensureLoaded();
+  const roleId = host.codenames.peekId("role");
+  const optionsId = host.codenames.peekId("cards_with_account");
+  if (roleId === undefined) return {roles: []};
+  const results = await host.batch([{
+    sql: "SELECT c.* FROM cards c WHERE c.trash = 0 AND (c.type_id = ? OR c.id = ?) ORDER BY c.key ASC",
+    params: [roleId, optionsId ?? -1],
+  }]);
+  const rows = (results[0] as {rows: {id: number; type_id: number}[]}).rows;
+  const roleIds = new Set(rows.filter(row => Number(row.type_id) === roleId).map(row => Number(row.id)));
+  const records = await host.composeAndCacheRows(rows);
+  const roles: RoleOption[] = [];
+  let optionsKey: string | undefined;
+  for (const record of records) {
+    if (record.id === undefined || record.name === undefined) continue;
+    if (roleIds.has(record.id)) roles.push({name: record.name.s, key: record.key ?? DeckoName.parse(record.name.s).key});
+    if (record.id === optionsId) optionsKey = DeckoName.parse(record.name.s).urlKey;
+  }
+  return {roles, ...(optionsKey !== undefined ? {cardsWithAccountUrlKey: optionsKey} : {})};
+}
+
 export async function preparePermissionRoles(host: ModEngineHost): Promise<void> {
   resetPermissionRolesForTests();
   await host.codenames.ensureLoaded(); // memoized; first call only
