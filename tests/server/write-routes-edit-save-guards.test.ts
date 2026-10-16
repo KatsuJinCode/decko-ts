@@ -61,6 +61,8 @@ import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
 import { type WriteRouteContext } from "../../src/server/write-routes.js";
 import { DeckoName } from "../../src/card/name.js";
 import { makeWriteRouteServer as makeServer } from "./write-routes-test-bridge.js";
+import { ModLoader, modEngineHost } from '../../src/card/mod-loader.js';
+import cardModHistory from '../../src/card/mod-loader/mods/card-mod-history.js';
 
 const SET_TYPE_ID = 2;
 const JOE_ID = 90;
@@ -73,6 +75,7 @@ let annToken = "";
 let ctx: WriteRouteContext;
 let server: http.Server;
 let baseUrl = "";
+let historyLoader:ModLoader;
 
 /** The minimum rule deck: *all+*update -> [[Anyone Signed In]] so both
  *  members may save, plus the account cards and a target note. */
@@ -155,6 +158,9 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   await runAuthMigrations(storage.counting);
   await seedDeck(storage);
+  historyLoader=new ModLoader([{manifest:cardModHistory}]);
+  historyLoader.load();
+  await historyLoader.installInto(modEngineHost(storage.engine,storage.fetcher));
   ctx = { driver: storage.counting, fetcher: storage.fetcher };
   const sessions = new SessionStore({ driver: storage.counting });
   joeToken = (await sessions.createSession(JOE_ID)).token;
@@ -167,11 +173,33 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(() => {
+  historyLoader?.reset();
   server?.close();
   storage?.close();
 });
 
 describe("E8 - the stale-revision detector on the save path (detect_conflict)", () => {
+  it("renders the actual conflict view with a fresh revision, then accepts the retry", async () => {
+    const original=ctx.renderSlot;
+    const calls: Array<[string,string]>=[];
+    const renderErrors:string[]=[];
+    ctx.renderSlot=async (name,view)=>{if(view===undefined)throw Error('explicit conflict view required');calls.push([name,view]);try{return await storage!.engine.render(name,view)}catch(error){renderErrors.push(String(error));throw error}};
+    try{
+      await post('/update/Guard_Note',{'card[content]':'conflict render baseline'},joeToken);
+      const revision=await currentRevisionId();
+      const before=await actionRows();
+      const rejected=await post('/update/Guard_Note',{'card[content]':'stale overwrite','card[last_action_id_before_edit]':String(Number(revision)-1)},annToken);
+      expect(rejected.status,rejected.body).toBe(409);
+      expect(calls).toContainEqual(['Guard Note','conflict']);
+      expect(rejected.body,renderErrors.join('\n')).toContain('new-current-revision-id');
+      expect(rejected.body).toContain(String(revision));
+      expect(await actionRows()).toEqual(before);
+      expect(await dbContent()).toBe('conflict render baseline');
+      const retry=await post('/update/Guard_Note',{'card[content]':'accepted retry','card[last_action_id_before_edit]':String(revision)},annToken);
+      expect(retry.status,retry.body).toBe(303);
+      expect(await dbContent()).toBe('accepted retry');
+    }finally{ctx.renderSlot=original}
+  });
   it("a save carrying a STALE last_action_id_before_edit by a different actor is refused 409 and writes nothing", async () => {
     // Joe's save creates the first action; the revision the form would have
     // carried is that action's id.

@@ -27,6 +27,12 @@ describe("DbLexicon.id (lexicon.rb#id)", () => {
     expect(await storage.engine.lexicon.id("home_page")).toBe(10);
   });
 
+  it('resolves an ASCII case-drifted stored key without changing it',async()=>{
+    await seedCard(storage,{id:10,name:'Drifted Name',key:'DRIFTED_NAME'});
+    expect(await storage.engine.lexicon.id('Drifted Name')).toBe(10);
+    expect((await storage.counting.query<{key:string}>('SELECT key FROM cards WHERE id = ?',[10])).rows[0]?.key).toBe('DRIFTED_NAME');
+  });
+
   it("resolves compound names through side-card ids (lexicon.rb#name_to_lex)", async () => {
     await seedCard(storage, { id: 10, name: "Left Part" });
     await seedCard(storage, { id: 11, name: "Right Part" });

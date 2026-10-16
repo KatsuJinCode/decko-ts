@@ -142,6 +142,16 @@ function updateRequest(pathname: string, form: Record<string, string>, accept = 
 }
 
 describe("write surface: editing a card by its ~<id> mark", () => {
+  it("updates the original id without creating a card when its stored key has drifted", async () => {
+    const id=9851;
+    await seedCard(storage,{id,name:'Legacy Key Note',typeId:47,dbContent:'before'});
+    await storage.counting.query('UPDATE cards SET key = ? WHERE id = ?', ['old_unreachable_key',id]);
+    const before=await storage.counting.query<{n:number}>('SELECT count(*) AS n FROM cards',[]);
+    const res=await updateRequest('/update/~'+id,{'card[content]':'after'});
+    expect(res?.status,res?.body).toBe(200);
+    expect((await storage.counting.query<{db_content:string}>('SELECT db_content FROM cards WHERE id = ?',[id])).rows[0]?.db_content).toBe('after');
+    expect((await storage.counting.query<{n:number}>('SELECT count(*) AS n FROM cards',[])).rows).toEqual(before.rows);
+  });
   it("saves a List junction through POST /update/~<id> on a cold lexicon", async () => {
     // Nothing has read the junction's id through the fetch engine yet (the
     // deck was seeded straight to rows), which is exactly the cold-isolate

@@ -104,7 +104,7 @@ export async function findTrashedKeyObstacle(
   key: string,
 ): Promise<CardsRow | undefined> {
   const result = await driver.query<CardsRow>(
-    "SELECT * FROM cards WHERE key = ? COLLATE NOCASE AND trash = 1 LIMIT 1",
+    "SELECT * FROM cards WHERE key COLLATE NOCASE = ? AND trash = 1 LIMIT 1",
     [key],
   );
   return result.rows[0];

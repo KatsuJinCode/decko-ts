@@ -565,5 +565,5 @@ export function lexQuery(lex: Lex): { sql: string; params: unknown[] } {
       params: [lex[0], lex[1]].filter((side) => side !== undefined),
     };
   }
-  return { sql: "key = ? COLLATE NOCASE", params: [DeckoName.parse(lex).key] };
+  return { sql: "key COLLATE NOCASE = ?", params: [DeckoName.parse(lex).key] };
 }
