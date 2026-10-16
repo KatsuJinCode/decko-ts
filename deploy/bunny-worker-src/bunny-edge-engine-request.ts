@@ -174,13 +174,12 @@ export function liveRenderApplies(
   // not history selectors. Preserve them through the same complete-answer
   // lifecycle, including actual CQL capability errors/fallbacks.
   const noHistorySelectors = Object.keys(historyParams).every(key => key === "search");
-  // Signed-in pages also take it for path and query views (the edit page),
-  // which the anonymous path keeps on the normal render.
   if (options?.viewer !== undefined) return noHistorySelectors;
-  // A requested anonymous XHR slot has the same complete preparation as
-  // other live views; keep its form store request-local (renderLive).
-  if (isXhr(request) && !url.searchParams.has("layout")) return noHistorySelectors;
-  if (!pathViewIsBareArm(url.pathname) || pageView !== undefined) return false;
+  // Anonymous requested views use the same complete renderer and read
+  // permission preparation as anonymous bare pages. Explicit layouts and
+  // history selectors keep their established dispatch; forms remain local
+  // to the request through renderLive's bare-view keep:false posture.
+  if (url.searchParams.has("layout")) return false;
   return noHistorySelectors;
 }
 

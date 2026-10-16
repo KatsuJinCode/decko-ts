@@ -7,6 +7,7 @@ import {BunnyDbDriver} from '../../src/card/drivers/bunny-db.js';
 import {runAuthMigrations} from '../../src/card/auth/index.js';
 import {ensureFreshnessStamp} from '../../src/server/freshness-stamp.js';
 import {handleBunnyEngineRequest} from '../../deploy/bunny-worker-src/bunny-edge-engine-handler.js';
+import {normalizeSlotIds} from '../../src/testing/diff.js';
 import {bootEdgeServingEngines} from '../../deploy/bunny-worker-src/bunny-edge-deck-boot.js';
 let root:string,hrana:MockHranaServer,driver:BunnyDbDriver;
 beforeAll(async()=>{root=mkdtempSync(join(tmpdir(),'decko-xhr-focal-'));const db=join(root,'deck.sqlite3');copyFileSync('reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3',db);hrana=await startMockHranaServer({path:db});driver=new BunnyDbDriver({url:hrana.url,authToken:'owned-test'});await runAuthMigrations(driver);await ensureFreshnessStamp(driver);});
@@ -31,3 +32,16 @@ it('batches actual anonymous XHR denial and preserves restricted read and public
  const readable=await request('/Home/content');expect(readable.status).toBe(200);expect(await readable.text()).not.toContain('class="denied"');
  expect((await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows).toEqual(before);
 });
+
+it('anonymous full-page requested views keep normal-render bytes and permission outcomes',async()=>{
+ const env={DECKO_DB_URL:hrana.url,DECKO_DB_TOKEN:'owned-test',DECKO_EDGE_DECK_PROFILE:'stock'};
+ const rows=(await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows;
+ for(const path of ['/Home/titled','/*signin/titled','/Mira_Member+*account/titled']){
+  const normal=await handleBunnyEngineRequest(new Request('https://local.test'+path),{...env,DECKO_LIVE_RENDER:'0'});const expected=await normal.text();
+  const start=hrana.requests.length;const live=await handleBunnyEngineRequest(new Request('https://local.test'+path),{...env,DECKO_LIVE_RENDER:'1'});const actual=await live.text();
+  expect(live.status).toBe(normal.status);expect(normalizeSlotIds(actual)).toBe(normalizeSlotIds(expected));expect(hrana.requests.length-start).toBeLessThan(60);
+  if(path.includes('signin')){expect(live.status).toBe(200);expect(actual).toContain('card[subcards][+*email][content]');expect(actual).toContain('card[subcards][+*password][content]');}
+  if(path.includes('account'))expect(live.status).toBe(403);
+ }
+ expect((await driver.query('SELECT id,db_content FROM cards ORDER BY id',[])).rows).toEqual(rows);
+},30000);
