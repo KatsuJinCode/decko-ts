@@ -54,6 +54,7 @@ export async function seedLocalAccounts({ deck, credentialsOut }) {
       salt: codenameId("salt"),
       status: codenameId("status"),
       basic: codenameId("basic"),
+      phrase: codenameId("phrase"),
       person: codenameId("user"),
       list: codenameId("list"),
       members: codenameId("members"),
@@ -86,7 +87,9 @@ export async function seedLocalAccounts({ deck, credentialsOut }) {
         const holder = Number(insertCard.run(account.name, keyOf(account.name), null, null, null, stamp, stamp, ids.bot, ids.bot, ids.person, "").lastInsertRowid);
         const junction = Number(insertCard.run(null, null, null, holder, ids.account, stamp, stamp, ids.bot, ids.bot, ids.basic, null).lastInsertRowid);
         const field = (codename, content) =>
-          insertCard.run(null, null, null, junction, ids[codename], stamp, stamp, ids.bot, ids.bot, ids.basic, content);
+          // Stock right/email, password, salt and status each assign Phrase.
+          // Seeding RichText here creates a different editor from a real account.
+          insertCard.run(null, null, null, junction, ids[codename], stamp, stamp, ids.bot, ids.bot, ids.phrase, content);
         field("email", account.email);
         field("salt", account.salt);
         field("password", account.hash);
