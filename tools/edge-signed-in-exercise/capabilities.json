@@ -406,7 +406,9 @@
         "cypress edit/nest_editor",
         "journeys edit-note-admin"
       ],
-      "status": "not_covered"
+        "status": "not_covered",
+        "checks": ["E6 the editor's link button inserts a reference that renders as a link"],
+        "requiredActors": ["admin"]
     },
     {
       "id": "E7",
@@ -424,7 +426,9 @@
       "sources": [
         "cypress edit/nest_editor 'nest image editor'"
       ],
-      "status": "not_covered"
+        "status": "not_covered",
+        "checks": ["E8 the nest image editor inserts a nest with view and size options"],
+        "requiredActors": ["admin"]
     },
     {
       "id": "E9",

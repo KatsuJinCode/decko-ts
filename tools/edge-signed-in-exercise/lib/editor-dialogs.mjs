@@ -1,7 +1,10 @@
 import {createTypedFixture} from './typed-fixture.mjs';
 import {focusRichEditor} from './rich-editor.mjs';
+import {storedSessionActorId} from './session-actor.mjs';
 
 async function fixtureEditor(ctx,label){
+ const actorId=storedSessionActorId(ctx.database(),await ctx.page.context().cookies(ctx.stack.origin));
+ if(actorId!==ctx.creds.admin.id)throw Error('dialog journey does not have the expected admin actor');
  const name=ctx.cardName(label);ctx.created.push(name);
  await createTypedFixture(ctx,{name,type:'RichText'});
  await ctx.visit('/'+encodeURIComponent(name));
@@ -12,7 +15,7 @@ async function fixtureEditor(ctx,label){
  const toolbar=ctx.page.locator(`textarea[id="${id}"]`).locator('..').locator('.tox-tinymce');
  if(await toolbar.count()!==1||!await toolbar.evaluate((el,id)=>el===window.tinymce.get(id).editorContainer,id))throw Error('the matching field does not identify exactly one owned toolbar');
  await toolbar.waitFor({state:'visible'});
- return {name,form,id,toolbar};
+ return {name,form,id,toolbar,actorId};
 }
 
 async function saveEditor(ctx,form){
@@ -59,7 +62,7 @@ export async function linkDialogJourney(ctx){
  const link=page.locator('#main').getByRole('link',{name:label,exact:true});
  const count=await link.count(),href=count===1?await link.getAttribute('href'):null;
  const renderedLink=href!==null&&new URL(href,stack.origin).pathname==='/Home';
- record("E6 the editor's link button inserts a reference that renders as a link",saveStatus<400&&stored.includes(preview)&&fresh.status===200&&renderedLink,{wire,preview,saveStatus,storedHasSnippet:stored.includes(preview),freshStatus:fresh.status,renderedLink,href});
+ record("E6 the editor's link button inserts a reference that renders as a link",saveStatus<400&&stored.includes(preview)&&fresh.status===200&&renderedLink,{actor:'admin',actorId:editor.actorId,wire,preview,saveStatus,storedHasSnippet:stored.includes(preview),freshStatus:fresh.status,renderedLink,href});
 }
 
 export async function imageDialogJourney(ctx){
@@ -90,5 +93,5 @@ export async function imageDialogJourney(ctx){
  const rendered=page.locator(`#main .card-slot[data-card-id="${image.id}"] img`).first();
  const present=await rendered.count()>0,src=present?await rendered.getAttribute('src'):null;
  const decoded=present&&await rendered.evaluate(img=>img.complete&&img.naturalWidth>0);
- record('E8 the nest image editor inserts a nest with view and size options',hasSnippet(inserted,image.name)&&saveStatus<400&&hasSnippet(stored,image.name)&&fresh.status===200&&decoded,{image,wire,preview,insertedHasSnippet:hasSnippet(inserted,image.name),saveStatus,storedHasSnippet:hasSnippet(stored,image.name),freshStatus:fresh.status,src,decoded});
+ record('E8 the nest image editor inserts a nest with view and size options',hasSnippet(inserted,image.name)&&saveStatus<400&&hasSnippet(stored,image.name)&&fresh.status===200&&decoded,{actor:'admin',actorId:editor.actorId,image,wire,preview,insertedHasSnippet:hasSnippet(inserted,image.name),saveStatus,storedHasSnippet:hasSnippet(stored,image.name),freshStatus:fresh.status,src,decoded});
 }
