@@ -42,6 +42,9 @@ export async function createTypedFixture(ctx,{name,content='',type='RichText',as
  await form.locator('button[type="submit"],input[type="submit"]').first().click();
  const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
  const stored=database().prepare('SELECT id,type_id,trash FROM cards WHERE name=? AND trash=0').get(name);
- if(seen.response.status()>=400||!stored||stored.type_id!==expected.id)throw Error('typed fixture was not created as requested: '+name+'; HTTP '+seen.response.status());
+ if(seen.response.status()>=400||!stored||stored.type_id!==expected.id){
+  const raw=ctx.captureEvidence?.(await page.content(),{check:'typed-fixture-create',name,expectedTypeId:expected.id,stored:stored??null,status:seen.response.status()});
+  throw Error('typed fixture was not created as requested: '+name+'; HTTP '+seen.response.status()+'; expected type '+expected.id+'; stored '+JSON.stringify(stored??null)+'; raw '+JSON.stringify(raw??null));
+ }
  return{status:seen.response.status(),id:stored.id,storedTypeId:stored.type_id,storedType:expected.name};
 }
