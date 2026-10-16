@@ -6,6 +6,8 @@
 // request logs). Each check below names the audit row it answers. Every card these
 // checks create is named Harness_owner_* and pushed on the run's cleanup list.
 
+import { deleteOutcome } from './delete-outcome.mjs';
+
 const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
 const NEW_CARD_FORM_RE = /<form[^>]*class="[^"]*card-form/;
 
@@ -218,18 +220,31 @@ export async function ownerRequiredChecks(ctx) {
     await page.waitForTimeout(3000);
     await page.goto(`${O}/${encodeURIComponent(name)}/edit`, { waitUntil: "load" });
     const beforeOpen = ctx.ledger().length;
+    const responsePending = page.waitForResponse(r => {
+      try { return decodeURIComponent(new URL(r.url()).pathname) === "/delete/" + name; } catch { return false; }
+    }, { timeout: 20_000 }).catch(() => null);
     await page.evaluate((target) => {
       const a = [...document.querySelectorAll("a[href^='/delete/']")].find((x) => x.getAttribute("href")?.startsWith(target));
       a?.click();
     }, `/delete/${name}`).catch(() => undefined);
-    await page.waitForTimeout(3000);
+    const response = await responsePending;
+    const responseBody = response ? await response.text() : "";
+    let redirect = null;
+    try { redirect = JSON.parse(responseBody).redirect; } catch { /* HTML slot response. */ }
+    if (typeof redirect === "string") {
+      await page.waitForURL(new URL(redirect, O).href, { waitUntil: "load", timeout: 20_000 }).catch(() => undefined);
+    } else {
+      await page.waitForFunction(target => [...document.querySelectorAll('.just_deleted-view')]
+        .some(node => (node.getAttribute('data-card-name') ?? '').replaceAll('_', ' ') === target.replaceAll('_', ' ')), name, { timeout: 5_000 }).catch(() => undefined);
+    }
     const line = linesSince(beforeOpen).find((l) => l.path.startsWith(`/delete/${name}`));
     const after = await page.content();
     const trashed = database().prepare("SELECT trash FROM cards WHERE name = ?").get(name)?.trash === 1;
-    const showsForm = NEW_CARD_FORM_RE.test(after);
-    record("row 7: the Delete button removes the card and answers with the deleted page, not a new-card form",
-      line !== undefined && line.status < 400 && trashed && !showsForm,
-      { hostStatus: line?.status ?? null, trashed, showsNewCardForm: showsForm, url: page.url().slice(O.length) });
+    const outcome = deleteOutcome({ html: after, name, origin: O, finalUrl: page.url(), responseBody });
+    const raw = ctx.captureEvidence(after, { check: "owner-delete-after", name, url: page.url(), responseStatus: response?.status() ?? null, responseBody, ...outcome });
+    record("row 7: the Delete button removes the card and completes the previous-page redirect or deleted confirmation, without recreating that target",
+      line !== undefined && line.status < 400 && response !== null && response.status() < 400 && trashed && outcome.pageAccepted,
+      { hostStatus: line?.status ?? null, trashed, showsNewCardForm: outcome.targetCreateForm, ...outcome, raw, url: page.url().slice(O.length) });
   });
 }
 

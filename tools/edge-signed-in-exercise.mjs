@@ -105,7 +105,7 @@ if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (exists
 const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
 console.log(`  cards copied: ${cardsCopied}`);
 async function ownerAudit(replayOnly = false) {
-  const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,
+  const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,captureEvidence,
     launchBrowser:options => launchHarnessBrowser({...options,allowedFaviconUrls})};
   if (!replayOnly) {
     group('owner audit required checks');
@@ -173,6 +173,14 @@ const linesSince = (n) => ledger().slice(n);
 const lastLine = (fragment) => [...ledger()].reverse().find((l) => l.path.includes(fragment));
 const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.exec(line.serverTiming)?.[1] ?? NaN) : null);
 const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
+
+function captureEvidence(html, metadata) {
+  const capture = String(++htmlSequence).padStart(3, '0') + '-owner-delete-after';
+  writeFileSync(join(RAW, capture + '.html'), html, { flag: 'wx' });
+  const receipt = { ...metadata, htmlSha256: digest(html) };
+  writeFileSync(join(RAW, capture + '.json'), JSON.stringify(receipt), { flag: 'wx' });
+  return { capture, htmlSha256: receipt.htmlSha256 };
+}
 
 async function visit(pathname) {
   const before = ledger().length;
