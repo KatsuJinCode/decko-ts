@@ -28,10 +28,57 @@ import { build } from "esbuild";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
+import { gzipSync } from "node:zlib";
+import { pathToFileURL } from "node:url";
 import { assertStaticUglifierCurrent } from "./vendor/build-uglify-harmony-static.mjs";
 import { assertBunnyScriptBudget, BUNNY_SCRIPT_LIMIT_BYTES } from "./vendor/edge-bundle-budget.mjs";
 assertStaticUglifierCurrent();
 import { coffeescriptNodeBuiltinStubs } from "./vendor/coffeescript-edge-bundler-stubs.mjs";
+
+/** Inline WebAssembly blobs the Bunny builds store gzip-compressed. Each source
+ *  module exports one base64-encoded WebAssembly binary; gzip (level 9) cuts the
+ *  two of them (LibSass and the photon image resizer) by about 2.9 MB together.
+ *  The Deno-based edge runtime inflates them with DecompressionStream (verified
+ *  on staging script 96895, 2026-10-16), and the bytes after inflation are
+ *  identical to the source module's, so behaviour does not change. Without this
+ *  the release bundle (9,998,789 bytes) fails to boot on Bunny: see the budget
+ *  in tools/vendor/edge-bundle-budget.mjs. */
+const GZIPPED_INLINE_BLOBS = [
+  { filter: /libsass-3\.6\.4-wasm-base64\.js$/, exports: "base64" },
+  { filter: /photon_rs_bg\.wasm\.inline\.js$/, exports: "arrayBuffer" },
+];
+
+function gzipInlineWasmBlobsPlugin() {
+  return {
+    name: "gzip-inline-wasm-blobs",
+    setup(build) {
+      for (const blob of GZIPPED_INLINE_BLOBS) {
+        build.onLoad({ filter: blob.filter }, async (args) => {
+          const source = (await import(pathToFileURL(args.path).href)).default;
+          const raw = typeof source === "string" ? Buffer.from(source, "base64") : Buffer.from(source);
+          const gzipped = gzipSync(raw, { level: 9 }).toString("base64");
+          const inflate = [
+            `const GZIPPED_BINARY_B64 = "${gzipped}";`,
+            "const inflated = await (async () => {",
+            "  const bin = typeof Uint8Array.fromBase64 === \"function\"",
+            "    ? Uint8Array.fromBase64(GZIPPED_BINARY_B64)",
+            "    : Uint8Array.from(atob(GZIPPED_BINARY_B64), (c) => c.charCodeAt(0));",
+            "  const stream = new DecompressionStream(\"gzip\");",
+            "  const writer = stream.writable.getWriter();",
+            "  writer.write(bin);",
+            "  writer.close();",
+            "  return new Uint8Array(await new Response(stream.readable).arrayBuffer());",
+            "})();",
+          ].join("\n");
+          const exported = blob.exports === "base64"
+            ? "export default await (async () => { let s = \"\"; for (let i = 0; i < inflated.length; i += 0x8000) s += String.fromCharCode.apply(null, inflated.subarray(i, i + 0x8000)); return btoa(s); })();"
+            : "export default inflated.buffer;";
+          return { contents: inflate + "\n" + exported + "\n", loader: "js" };
+        });
+      }
+    },
+  };
+}
 
 const here = resolve(process.cwd());
 /** The two scripts this tool builds. The full engine script serves every
@@ -80,7 +127,7 @@ for (const target of TARGETS) {
     // fs/vm/path for file and eval helpers compile() never touches. Stub
     // those three for the coffeescript subtree only — the bundle's
     // no-static-node-imports discipline stays intact.
-    plugins: [coffeescriptNodeBuiltinStubs()],
+    plugins: [coffeescriptNodeBuiltinStubs(), gzipInlineWasmBlobsPlugin()],
     logLevel: "info",
     metafile: true,
     // The bundle's first statement stamps when evaluation began, before any
@@ -90,8 +137,10 @@ for (const target of TARGETS) {
 
   const code = built.outputFiles[0].text;
   const bytes = assertBunnyScriptBudget(code);
-  // https://bunny.net/docs/scripting/limits.md: script size limit is 10 MB.
-  // Warn at 80%.
+  // Bunny documents a 10 MB script cap, but staging script 96895 stopped
+  // booting above ~9.25 MB on 2026-10-16; the budget in
+  // tools/vendor/edge-bundle-budget.mjs is the boot-safe ceiling and fails the
+  // build above it. Warn at 80% of that ceiling.
   const LIMIT_BYTES = BUNNY_SCRIPT_LIMIT_BYTES;
   if (bytes > LIMIT_BYTES * 0.8) {
     console.error(`WARN: bundle ${bytes} bytes is over 80% of the conservative ${LIMIT_BYTES}-byte script limit.`);

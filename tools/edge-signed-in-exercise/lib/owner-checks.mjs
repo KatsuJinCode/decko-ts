@@ -228,7 +228,10 @@ export async function ownerRequiredChecks(ctx) {
       a?.click();
     }, `/delete/${name}`).catch(() => undefined);
     const response = await responsePending;
-    const responseBody = response ? await response.text() : "";
+    // The delete's answer is read after the browser may already have navigated
+    // away (Chromium then drops the body). A missing body is not a failure: the
+    // redirect check below falls back to the page the browser ended on.
+    const responseBody = response ? await response.text().catch(() => "") : "";
     let redirect = null;
     try { redirect = JSON.parse(responseBody).redirect; } catch { /* HTML slot response. */ }
     if (typeof redirect === "string") {

@@ -109,6 +109,9 @@ function stableKey(word: string): string {
  *  an isolate's memory without bound. */
 const simpleKeyMemo = new Map<string, string>();
 const SIMPLE_KEY_MEMO_LIMIT = 100_000;
+/** The process-wide Cardname cache's bound (DeckoName.baseParse). The deck's
+ *  own distinct names are far below it; the bound is for request strings. */
+const BASE_PARSE_CACHE_LIMIT = 50_000;
 onDeckInflectionsChanged(() => simpleKeyMemo.clear());
 
 /** Cardname#simple_key (cardname lib/cardname.rb private #simple_key). */
@@ -238,13 +241,25 @@ export class DeckoName {
   /** Open / close a request scope for the parse and mark memos (see
    *  parse). Scopes nest (a page render opens one, its inner render() opens
    *  another): the outermost begin starts from empty memos and the
-   *  outermost end drops every name memo, so nothing outlives the request.
-   *  Outside a scope nothing new is memoized. */
+   *  outermost end drops every request-scoped name memo, so nothing
+   *  request-dependent outlives the request. Outside a scope nothing new is
+   *  memoized.
+   *
+   *  The PROCESS-WIDE base cache (Cardname.cache, by raw string) survives
+   *  both boundaries, exactly as simpleKeyMemo does: it is a pure function
+   *  of the text and the inflection tables, so the only thing that can
+   *  change an entry is a deck-inflection change, which clears it through
+   *  the onDeckInflectionsChanged hook below. Dropping it per request made
+   *  every request re-split and re-key every name on its page (a page names
+   *  hundreds of cards, so thousands of uncached baseParse calls per
+   *  request); baseParse keeps it bounded instead (see BASE_PARSE_CACHE_
+   *  LIMIT). */
   static beginRequestScope(): void {
     const sc = DeckoName.scopeState();
     sc.depth += 1;
     if (sc.depth > 1) return;
-    DeckoName.clearParseMemo();
+    sc.parseMemo?.clear();
+    sc.markMemo?.clear();
     sc.markMemo = new Map();
     sc.parseMemo = new Map();
     sc.scopedMemos = new WeakMap();
@@ -258,7 +273,6 @@ export class DeckoName {
     sc.markMemo = undefined;
     sc.parseMemo = undefined;
     sc.scopedMemos = undefined;
-    DeckoName.clearParseMemo();
   }
 
   /** Other request-scoped memos, one per owner object (for example one
@@ -286,9 +300,10 @@ export class DeckoName {
     return sc.depth === 0 && sc.parseMemo === undefined && sc.markMemo === undefined && sc.scopedMemos === undefined;
   }
 
-  /** Drop the name memos (both are pure functions of the text and the
-   *  inflection tables; callers that want request-scoped state clear them
-   *  at the request boundary). */
+  /** Drop EVERY name memo, the process-wide base cache included. Only a
+   *  deck-inflection change (the onDeckInflectionsChanged hook above) needs
+   *  this, because both are pure functions of the text and the inflection
+   *  tables; the request boundaries drop only the request-scoped memos. */
   static clearParseMemo(): void {
     const sc = DeckoName.scopeState();
     sc.parseMemo?.clear();
@@ -298,7 +313,6 @@ export class DeckoName {
   }
 
   private static parseUncached(str: string): DeckoName {
-
     if (str.includes(DeckoName.JOINT)) {
       // new_from_compound_string: split on the joint and parse each part
       // (mark resolution applies per part - lib/card/name.rb #new_from_parts)
@@ -323,6 +337,9 @@ export class DeckoName {
     const cached = DeckoName.cache.get(raw);
     if (cached !== undefined) return cached;
     const name = new DeckoName(raw);
+    // Bounded like simpleKeyMemo: request strings are not trusted, so the
+    // process-wide cache empties itself rather than grow without limit.
+    if (DeckoName.cache.size >= BASE_PARSE_CACHE_LIMIT) DeckoName.cache.clear();
     DeckoName.cache.set(raw, name);
     return name;
   }
