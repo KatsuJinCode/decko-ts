@@ -24,6 +24,8 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
+import { coffeeNpmCompiler } from "../../../src/server/coffee-npm-compiler.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
@@ -83,6 +85,7 @@ process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 // them, so they are installed before any name is parsed.
 applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 const clock = new Date(spec.clock);
+const scssCompiler = libsassWasmCompiler();
 setCaptureWallClock(clock);
 setDeckEnvironment({
   origin: spec.environment?.origin,
@@ -391,6 +394,8 @@ async function opWrite(req: Req): Promise<Json> {
   // Bot address the follower emails render their links, unfollow URL and
   // From rule from; absent, every nest renders as its bare "_" placeholder.
   const engine = new CardActionEngine(fetcher, {
+    coffeeCompiler: coffeeNpmCompiler(),
+    scssCompiler,
     actor,
     ipAddress: null,
     now: () => clock,
