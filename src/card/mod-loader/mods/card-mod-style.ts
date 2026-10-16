@@ -369,7 +369,7 @@ const validateCssBody: ModEventFn = () => {
 };
 
 // ---------------------------------------------------------------------------
-// type/scss.rb:4-23 validate_scss_syntax body (DOCUMENTED STUB - READ COMMENT)
+// type/scss.rb:4-23 validate_scss_syntax (host-backed pre-store guard)
 //
 // Ruby body (type/scss.rb:4-23):
 //   event :validate_scss_syntax, :validate, on: :save,
@@ -392,25 +392,12 @@ const validateCssBody: ModEventFn = () => {
 //     errors.add(:content, "<pre>#{message}</pre>".html_safe)
 //   end
 //
-// SEAM (the doubled write-path seam this needs):
-//   1. Card[:all, :style]&.joined_items_content - the *all+*style
-//      pointer's joined item content (type_plus_right/set/style.rb:58-60
-//      joined_items_content). Unported: the pointer's joined-content
-//      method is not on the TS engine's render path.
-//   2. SassC::Engine.new(...).render - the SassC gem does not exist
-//      in node_modules (the engine has no sass / sassc dependency).
-//      Even an oracle-faithful port of the line-rewriting backtrace
-//      (.sub(...) for line and >> markers) would need a real SCSS
-//      compile to render against.
-//   3. card.errors.add(:content, "<pre>#{message}</pre>".html_safe) -
-//      the save-path error add seam + html_safe flag.
-// The body is a stub. The declaration runs through the registry.
-const validateScssSyntaxBody: ModEventFn = () => {
-  // STUB - see SEAM note above; a future sassc-node + engine errors
-  // seam replaces this with the verbatim Ruby body. The declaration
-  // itself (name / stage / on:save / changed:[type_id, content]) is
-  // what the test asserts and the loader records.
-};
+// Host-backed implementation lives in CardActionEngine.validateCssSaveTree.
+// It walks the entire proposed subtree before the first write, reads the
+// style rule's joined Card#content without storing asset inputs, and calls
+// the same real LibSass compiler used to build the output. The declaration
+// remains registered here; executing it again would duplicate validation.
+const validateScssSyntaxBody: ModEventFn = () => {};
 
 // ---------------------------------------------------------------------------
 // type/skin.rb:13-17 no_deletion_if_used body

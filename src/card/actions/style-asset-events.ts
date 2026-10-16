@@ -50,6 +50,7 @@ import {
   STYLE_INPUTTER_TYPES,
   StyleAssetUnsupportedError,
   assembleStyleInput,
+  bootswatchSkinContent,
   styleOutputContent,
   type AssetInputStore,
   type StyleAssetDeps,
@@ -167,6 +168,25 @@ function deps(ctx: StyleAssetEventContext, staleContent: ReadonlyMap<string, str
     compressScript: ctx.compressScript,
     staleContent,
   };
+}
+
+/** set/type/scss.rb validates against Card[:all, :style].joined_items_content.
+ * This is a read of each item's Card#content, not asset_input: validation must
+ * neither store virtual inputs nor rebuild output files. */
+export async function scssValidationVariables(ctx: StyleAssetEventContext): Promise<string> {
+  const all = await ctx.fetch.codenames.name("all");
+  const style = await ctx.fetch.codenames.name("style");
+  if (all === undefined || style === undefined) return "";
+  const rule = await cardByName(ctx, `${all.s}+${style.s}`);
+  if (rule === undefined) return "";
+  const readDeps = deps(ctx, new Map());
+  const contents: string[] = [];
+  for (const item of rawItemStrings(rule.dbContent)) {
+    const card = await cardByName(ctx, DeckoName.parse(item).absoluteName(DeckoName.parse(rule.name)).s);
+    if (card === undefined) continue;
+    contents.push(card.typeCode === "bootswatch_skin" ? await bootswatchSkinContent(readDeps, card) : card.dbContent);
+  }
+  return contents.join("\n");
 }
 
 /** The `+*asset input` card of an inputter, as card-mod-virtual keys it. */

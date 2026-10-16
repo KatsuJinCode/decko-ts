@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
+import { DeckoName } from "../../../src/card/name.js";
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
 import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
 import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
@@ -64,6 +65,22 @@ function engine(scssCompiler?: (source: string) => Promise<string>) {
 }
 
 describe("the save path's style asset events", () => {
+  it("SCSS preflight skips an empty style rule before requiring a compiler; CSS does not", async () => {
+    await storage.driver.query("UPDATE cards SET db_content = '' WHERE id = ?", [ids.allStyle]);
+    await seedCard(storage, { id: 460, name: "CSS", codename: "css" });
+    // The preflight is deliberately isolated: the independent asset-output
+    // capability gate still rejects a full save on a host with no compiler.
+    const preflight = (actionEngine: CardActionEngine) => actionEngine as unknown as {
+      validateCssSaveTree(name: DeckoName, input: { typeId: number; content: string }): Promise<void>;
+    };
+    const name = DeckoName.parse("Validation candidate");
+    await expect(preflight(engine()).validateCssSaveTree(name, { typeId: ids.scss, content: "invalid {" })).resolves.toBeUndefined();
+    await expect(preflight(engine()).validateCssSaveTree(name, { typeId: 460, content: "invalid {" })).rejects.toBeInstanceOf(CardActionError);
+    await seedCard(storage, { id: 461, name: "Variables", typeId: ids.scss, dbContent: "$brand: blue;" });
+    await storage.driver.query("UPDATE cards SET db_content = 'Variables' WHERE id = ?", [ids.allStyle]);
+    storage.engine.expireCard((await storage.engine.fetchById(ids.allStyle))!);
+    await expect(preflight(engine()).validateCssSaveTree(name, { typeId: ids.scss, content: ".x { color: $brand; }" })).rejects.toBeInstanceOf(CardActionError);
+  });
   it("using a skin finalizes its own unchanged save before updating the rule in one act", async () => {
     await seedCard(storage, { id: 450, name: "*variables", codename: "variables" });
     await seedCard(storage, { id: 451, name: "Probe Skin+*variables", leftId: ids.skin, rightId: 450,

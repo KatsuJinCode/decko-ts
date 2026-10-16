@@ -172,6 +172,7 @@ import {
   assertStyleCompilerFor,
   refreshReadAssetInputs,
   runStyleAssetEvents,
+  scssValidationVariables,
   type SavedCard,
   type StyleAssetEventContext,
 } from "./style-asset-events.js";
@@ -2788,15 +2789,38 @@ export class CardActionEngine {
         ? await resolveTypeId(this.fetch, { ...input, name })
         : row.type_id
     );
-    if (!this.skipsEvent("validate_css") && (await this.fetchRowById(typeId))?.codename === "css") {
+    const typeCode = (await this.fetchRowById(typeId))?.codename;
+    if ((typeCode === "css" && !this.skipsEvent("validate_css")) ||
+        (typeCode === "scss" && !this.skipsEvent("validate_scss_syntax"))) {
       const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
       if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
-        await assertStyleCompilerFor(this.styleAssetContext(undefined), name, typeId);
-        const source = renderStyleChunks(content);
+        const variables = typeCode === "scss" ? await scssValidationVariables(this.styleAssetContext(undefined)) : "";
+        // Stock SCSS skips validation only while the style rule has no input
+        // (seed building). CSS has no corresponding presence guard.
+        const source = typeCode === "scss" ? `${variables.trim()}\n${content}` : renderStyleChunks(content);
         try {
-          await this.scssCompiler!(source, "compressed");
+          if (typeCode !== "scss" || variables.trim() !== "") {
+            await assertStyleCompilerFor(this.styleAssetContext(undefined), name, typeId);
+            await this.scssCompiler!(source, typeCode === "scss" ? "nested" : "compressed");
+          }
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
+          let message = error instanceof Error ? error.message : String(error);
+          if (typeCode === "scss" && message.startsWith("LibSass compile failed: Error:")) {
+            // SassC raises the raw LibSass diagnostic. Both host compiler
+            // wrappers trim it and add their transport prefix; restore the
+            // diagnostic before the stock scss.rb line/source correction.
+            message = `${message.slice("LibSass compile failed: ".length)}\n`;
+            const match = /line (\d+)/.exec(message);
+            if (match !== null) {
+              const lines = variables.match(/[^\n]*\n|[^\n]+$/g)?.length ?? 0;
+              const corrected = Number(match[1]) - lines + 6;
+              // The WASM host's synthetic cwd makes LibSass call the string
+              // input /stdin; SassC calls that same input stdin.
+              message = message.replace(/line \d+:(\d+) of \/?stdin/, `line ${corrected}:$1`)
+                .replace(/>>[^\n]*/, `>> ${content.match(/[^\n]*\n|[^\n]+$/g)?.[corrected - 1] ?? ""}`);
+            }
+            message = `<pre>${message}</pre>`;
+          }
           throw new CardActionError("validation-failed", `Validation failed: ${message}`, `CONTENT: ${message}`, { content: message }, name.s);
         }
       }
