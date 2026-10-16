@@ -22,9 +22,10 @@ export const checks=[{name:'password reset through the captured email and browse
   const resetHref=await p.locator('a').filter({hasText:/Reset password/i}).first().getAttribute('href');
   if(!resetHref)throw Error('signed-out reset link missing');
   await p.goto(new URL(resetHref,stack.origin).href,{waitUntil:'load'});
-  await p.fill('input[name="card[subcards][+*email][content]"]',creds.member.email);
+  const resetForm=p.locator('form.card-form').filter({has:p.locator('input[name="card[trigger]"][value="send_reset_password_token"]')});
+  await resetForm.locator('input[name="card[subcards][+*email][content]"]').fill(creds.member.email);
   const pending=p.waitForResponse(r=>new URL(r.url()).pathname==='/update/*signin'&&r.request().method()==='POST',{timeout:20000}).then(response=>({response}),error=>({error}));
-  await p.locator('button').filter({hasText:/^Reset password$/}).first().click();
+  await resetForm.locator('button').filter({hasText:/^Reset password$/}).first().click();
   const observed=await pending;if(observed.error)throw observed.error;await observed.response.finished();
   // sendResetPasswordToken awaits the capture transport before returning.
   const delivered=mail.inbox.filter(m=>m.to===creds.member.email&&m.subject.startsWith('reset password for '));
