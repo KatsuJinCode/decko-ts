@@ -20,11 +20,13 @@ budget available; the Node half runs one file at a time.
 
 Controls execute actual Node processes: a passing assertion exits0; an injected
 failed assertion exits1 with the expected files/case and retained error. A further
-source-changing negative control is included and awaits the current resource hold.
+source-changing negative control also passes: the two focused runner controls
+completed in4.21seconds.
 The initial actual Node sweep executed19files:237tests,236pass and1failure.
 The failure was real Node-host admission without a configured mod asset provider.
-A verified existing provider will be supplied for the bounded configured rerun;
-the missing-provider result is preserved. This is not a browser journey or a
+The bounded configured rerun with a verified existing mod provider passed
+in2.413seconds, exercising signup mail, approval, activation token and login.
+The original missing-provider result remains preserved. This is not a browser journey or a
 fresh-install/production acceptance claim.
 
 The signup mail control now reads the host's staged database. Opening the
