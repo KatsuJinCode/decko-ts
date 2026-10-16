@@ -20,7 +20,15 @@ export function treeDigest(root) {
   visit(root);
   return hash.digest("hex");
 }
+export function captureFixtureIdentity(fixture, pin) {
+  if (pin !== undefined && !/^[0-9a-f]{64}$/.test(pin)) throw new Error("--fixture-sha256 must be exactly 64 lowercase hexadecimal characters");
+  const actual = treeDigest(path.resolve(fixture));
+  if (pin !== undefined && actual !== pin) throw new Error(`fixture SHA-256 mismatch: expected ${pin}, actual ${actual}`);
+  return actual;
+}
 export function captureProvenance(args, engine) {
+  // Admission precedes Git/dist work, output reservation, server start and browser launch.
+  const fixtureSha256 = captureFixtureIdentity(args.fixture, args["fixture-sha256"]);
   const repo = fileURLToPath(new URL("../../..", import.meta.url));
   const git = (...a) => execFileSync("git", ["-C", repo, ...a], { windowsHide: true, encoding: "utf8" }).trim();
   const commit = git("rev-parse", "HEAD");
@@ -33,7 +41,8 @@ export function captureProvenance(args, engine) {
     startedAt: new Date().toISOString(),
     source: { commit, dirty: !!dirty, diffSha256: sha256(git("diff", "HEAD", "--binary")), statusSha256: sha256(dirty) },
     artifacts: { distSha256: treeDigest(path.join(repo, "dist")) },
-    fixtureSha256: treeDigest(path.resolve(args.fixture)),
+    fixtureSha256,
+    fixturePinSha256: args["fixture-sha256"] ?? null,
     journeysSha256: sha256(readFileSync(args.journeys)),
     contractsSha256: existsSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url)) ? sha256(readFileSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url))) : null,
     engineSha256: sha256(readFileSync(args.engine)), engine: engine.name,

@@ -4,7 +4,7 @@
 //   node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/ruby.json \
 //     --fixture reference-harness/fixtures/synthetic-v1 \
 //     --journeys reference-harness/browser/journeys/synthetic-v1.json \
-//     --out <dir> [--filter <regex>] [--signin form|direct] [--html 1] [--shard K/N]
+//     --out <dir> [--filter <regex>] [--signin form|direct] [--html 1] [--shard K/N] [--fixture-sha256 <64 lowercase hex>]
 //
 // --html 1 also saves each observed page's DOM under <out>/<journey id>/.
 //
