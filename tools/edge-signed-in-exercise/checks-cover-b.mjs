@@ -13,6 +13,7 @@
 
 import { focusRichEditor } from "./lib/rich-editor.mjs";
 import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixture.mjs";
+import {linkDialogJourney,imageDialogJourney} from './lib/editor-dialogs.mjs';
 
 const CAP = "C";
 
@@ -321,118 +322,9 @@ export async function runCoverBChecks(ctx) {
   // ------------------------------------------------------------------ E6-E8
   group("cover-b. edit: editor buttons (link, nest image) (E6, E8)");
 
-  await attempt("E6 the editor's link button inserts a reference that renders as a link", async () => {
-    const name = ensure(cardName("linkbtn"));
-    await create(name, "");
-    await visit(`/${name}`);
-    const link = page.locator('a.edit-link[href$="/edit"]').first();
-    await link.dispatchEvent("click").catch(() => undefined);
-    await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
-    await page.waitForTimeout(3500);
-    const editorId = await openRichEditorId(page);
-    const buttons = await page.evaluate((id) => {
-      const c = window.tinymce?.get(id)?.editorContainer;
-      if (!c) return [];
-      return [...c.querySelectorAll("button, a")].map((b) => ({ label: `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.trim() })).filter((b) => b.label);
-    }, editorId);
-    const linkButton = buttons.find((b) => /\[\[|link/i.test(b.label) && !/nest|image/i.test(b.label));
-    if (linkButton === undefined) {
-      record("E6 the editor's link button inserts a reference that renders as a link", false, { note: "no link ([[ ]]) button in the TinyMCE toolbar", buttons: buttons.slice(0, 12) });
-      return;
-    }
-    await page.evaluate((id) => {
-      const c = window.tinymce?.get(id)?.editorContainer;
-      const b = c ? [...c.querySelectorAll("button, a")].find((x) => /\[\[|link/i.test(`${x.getAttribute("title") ?? ""} ${x.getAttribute("aria-label") ?? ""} ${x.textContent ?? ""}`) && !/nest|image/i.test(`${x.getAttribute("title") ?? ""} ${x.textContent ?? ""}`)) : undefined;
-      b?.click();
-    }, editorId);
-    await page.waitForTimeout(1200);
-    const dialog = await page.evaluate(() => {
-      const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
-      return d ? { open: true, fields: [...d.querySelectorAll("input,textarea,select")].map((i) => i.name || i.id || i.type) } : { open: false };
-    });
-    let inserted = false;
-    if (dialog.open) {
-      // TinyMCE's own link dialog: link_name is the [[card]] it inserts.
-      await page.locator('[role=dialog] input[name="link_name"], .mce-window input[name="link_name"], .mce-dialog input[name="link_name"], [role=dialog] input[type=text]').first().fill("Home").catch(() => undefined);
-      await page.waitForTimeout(400);
-      await page.locator('[role=dialog] button.primary, .mce-window .mce-primary button, .mce-dialog .mce-primary button, [role=dialog] button:has-text("Save"), [role=dialog] button:has-text("Insert"), [role=dialog] button:has-text("OK")').first().click().catch(() => undefined);
-      await page.waitForTimeout(1200);
-      const content = await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId);
-      inserted = /Home/.test(content) && /\[\[|\]\]|href=/.test(content);
-      if (inserted) {
-        // Ruby's expectation (edit/nest_editor + edit-note-admin): the [[Home]]
-        // reference renders on the card page as a link to Home.
-        const before = ledger().length;
-        await page.locator("#edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
-        await page.waitForTimeout(2500);
-        const after = await visit(`/${name}`);
-        const renderedLink = /<a[^>]+href="\/Home"/.test(after.html);
-        record("E6 the editor's link button inserts a reference that renders as a link",
-          renderedLink, { linkButton, dialog, editorContent: content.slice(0, 120), wrote: linesSince(before).find((l) => l.method !== "GET")?.status ?? null, renderedLink });
-        return;
-      }
-      void inserted;
-    }
-    // The button's own dialog did not insert a [[reference]] into the editor.
-    // Grade the underlying reference syntax the button produces by typing it:
-    // if THAT renders as a link, the defect is the button/dialog; if it does
-    // not, [[references]] do not render as links at all.
-    await page.evaluate((id) => window.tinymce?.get(id)?.setContent?.("<p>[[Home]]</p>"), editorId).catch(() => undefined);
-    const before = ledger().length;
-    await page.locator("#edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
-    await page.waitForTimeout(2500);
-    const after = await visit(`/${name}`);
-    const renderedLink = /<a[^>]+href="\/Home"/.test(after.html);
-    record("E6 the editor's link button inserts a reference that renders as a link",
-      dialog.open && inserted && renderedLink,
-      { linkButton, dialog, insertedByButton: inserted, typedReferenceRendersLink: renderedLink, wrote: linesSince(before).find((l) => l.method !== "GET")?.status ?? null, afterStatus: after.status });
-  });
+  await attempt("E6 the editor's link button inserts a reference that renders as a link",()=>linkDialogJourney(ctx));
 
-  await attempt("E8 the nest image editor inserts a nest with view and size options", async () => {
-    const name = ensure(cardName("imgbtn"));
-    await create(name, "");
-    await visit(`/${name}`);
-    const link = page.locator('a.edit-link[href$="/edit"]').first();
-    await link.dispatchEvent("click").catch(() => undefined);
-    await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
-    await page.waitForTimeout(3500);
-    const editorId = await openRichEditorId(page);
-    const opened = await page.evaluate((id) => {
-      const c = window.tinymce?.get(id)?.editorContainer;
-      if (!c) return { opened: false, reason: "no editor" };
-      const buttons = [...c.querySelectorAll("button, a")];
-      const insert = buttons.find((b) => /^insert$/i.test((b.getAttribute("aria-label") ?? b.textContent ?? "").trim()));
-      if (!insert) return { opened: false, reason: "no Insert menu button", buttons: buttons.map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
-      insert.click();
-      const image = buttons.find((b) => /image/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`) && !/nest/i.test(`${b.getAttribute("title") ?? ""} ${b.textContent ?? ""}`));
-      if (!image) return { opened: false, reason: "no Image... item after Insert", buttons: buttons.map((b) => b.getAttribute("title") ?? b.textContent).slice(0, 20) };
-      image.click();
-      return { opened: true };
-    }, editorId);
-    await page.waitForTimeout(1500);
-    const dialog = await page.evaluate(() => {
-      const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
-      return d ? { open: true, selects: [...d.querySelectorAll("select")].map((s) => ({ cls: s.className, options: [...s.options].map((o) => o.value) }).slice(0, 10)) } : { open: false };
-    });
-    let applied = false;
-    if (dialog.open) {
-      await page.evaluate(() => {
-        for (const s of document.querySelectorAll(".mce-window select, .mce-dialog select")) {
-          if (/image-card-select/.test(s.className) || s.options.length === 0) continue;
-          if (/view-select/.test(s.className) && [...s.options].some((o) => /titled/.test(o.value))) { s.value = "titled"; s.dispatchEvent(new Event("change", { bubbles: true })); }
-          if (/size-select/.test(s.className) && [...s.options].some((o) => /small/.test(o.value))) { s.value = "small"; s.dispatchEvent(new Event("change", { bubbles: true })); }
-        }
-        const apply = [...document.querySelectorAll(".mce-window button, .mce-dialog button")].find((b) => /apply and close/i.test(b.textContent ?? ""));
-        apply?.click();
-      });
-      await page.waitForTimeout(1000);
-      applied = /view: titled/.test(await page.evaluate((id) => window.tinymce?.get(id)?.getContent?.() ?? "", editorId));
-    }
-    record("E8 the nest image editor inserts a nest with view and size options",
-      opened.opened && dialog.open && applied,
-      { opened, dialog, applied, note: opened.reason ?? null });
-    await page.keyboard.press("Escape").catch(() => undefined);
-  });
+  await attempt("E8 the nest image editor inserts a nest with view and size options",()=>imageDialogJourney(ctx));
 
   // ------------------------------------------------------------------ E5
   group("cover-b. edit: the Nest dialog's Apply (E5): wire id, insertion, save persistence");
