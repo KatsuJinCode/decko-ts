@@ -183,17 +183,23 @@ describe("CQL operators (Value#to_sql parity)", () => {
 });
 
 describe("match operator (Value::MatchValue)", () => {
+  // The oracle strings name Ruby's MySQL rendering; the port's one mechanical
+  // difference beyond parameterization is the case fold: lower() wraps BOTH
+  // the column and the bound keyword (the edge engine's regexp is
+  // case-sensitive and rejects inline flags — live-proven 2026-10-16;
+  // docs/decisions/0005-cql-match-semantics.md, "Case folding"). A "~~" raw
+  // pattern keeps the bare oracle shape, as-written.
   it("escapes every non-word character for REGEXP [oracle: c0.name REGEXP 'a\\ b\\?c']", () => {
     const ast = parseCql({ content: ["~", "a b?c"] });
     const { sql, params } = generateSql(ast);
-    expect(sql).toContain("c0.db_content REGEXP ?");
+    expect(sql).toContain("lower(c0.db_content) REGEXP lower(?)");
     expect(params).toEqual(["a\\ b\\?c"]);
   });
 
   it("match on name hits the name column, not key [oracle: c0.name REGEXP 'term']", () => {
     const ast = parseCql({ name: ["match", "term"] });
     const { sql, params } = generateSql(ast);
-    expect(sql).toContain("c0.name REGEXP ?");
+    expect(sql).toContain("lower(c0.name) REGEXP lower(?)");
     expect(params).toEqual(["term"]);
   });
 
@@ -207,7 +213,7 @@ describe("match operator (Value::MatchValue)", () => {
   it("= prefix on content still REGEXPs [oracle: c0.db_content REGEXP 'Foo']", () => {
     const ast = parseCql({ content: ["~", "=Foo"] });
     const { sql, params } = generateSql(ast);
-    expect(sql).toContain("c0.db_content REGEXP ?");
+    expect(sql).toContain("lower(c0.db_content) REGEXP lower(?)");
     expect(params).toEqual(["Foo"]);
   });
 
@@ -215,6 +221,7 @@ describe("match operator (Value::MatchValue)", () => {
     const ast = parseCql({ content: ["~", "~~a.*"] });
     const { sql, params } = generateSql(ast);
     expect(sql).toContain("c0.db_content REGEXP ?");
+    expect(sql).not.toContain("lower(");
     expect(params).toEqual(["a.*"]);
   });
 });

@@ -94,9 +94,11 @@ describe("match family", () => {
   it("binds the keyword UNCHANGED — SQL lower() folds it, not JS", () => {
     // JS toLowerCase is full-Unicode while engine lower() is ASCII-only:
     // folding the keyword in JS would break exact non-ASCII queries
-    // (Élan must keep matching Élan). The wire keeps the original case.
+    // (Élan must keep matching Élan). The wire keeps the original case —
+    // Ruby's literal escaping (match_value.rb:60-62, non-word chars
+    // backslashed, É among them) is unchanged, not a case transform.
     expect(sql({ match: "JoE" }).params).toEqual(["JoE", "JoE"]);
-    expect(sql({ match: "Élan" }).params).toEqual(["Élan", "Élan"]);
+    expect(sql({ match: "Élan" }).params).toEqual(["\\Élan", "\\Élan"]);
   });
 
   it("a ~~ raw pattern stays AS WRITTEN — no lower() wrap, no lowercasing", () => {
