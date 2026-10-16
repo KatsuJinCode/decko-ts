@@ -3,7 +3,7 @@
 // no external provider or remote database is contacted.
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createServer, type Server } from "node:http";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
@@ -202,6 +202,45 @@ it("uploads real bytes, renders the actual selected draft preview and saves/down
   expect(download.status).toBe(200);
   expect(await download.text()).toBe(bytes);
   expect(hrana.violations).toEqual([]);
+}, 60_000);
+
+it("serves the selected cached image's real temporary bytes before save and removes that draft after final create", async () => {
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const cookie = admin.headers.getSetCookie().map(x => x.split(";")[0]).join("; ");
+  const image = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='image'", [])).rows[0];
+  const newFile = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='new_file'", [])).rows[0];
+  const bytes = readFileSync("reference-harness/browser/files/gradient.png");
+  const data = new FormData();
+  data.append("card[type_id]", String(image.id));
+  data.append("attachment_upload", "card[image]");
+  data.append("card[image]", new Blob([bytes], { type: "image/png" }), "owned-gradient.png");
+  const uploaded = await fetch(base + "/card/create", { method: "POST", redirect: "manual", headers: { cookie, origin: base, "x-requested-with": "XMLHttpRequest" }, body: data });
+  const preview = await uploaded.text();
+  expect(uploaded.status, preview).toBe(200);
+  const selected = /name=['"]card\[action_id_of_cached_upload\]['"][^>]*value=['"](\d+)['"]/.exec(preview)?.[1];
+  const src = /<img[^>]*src=['"]([^'"]+)['"]/.exec(preview)?.[1];
+  expect(src).toMatch(new RegExp(`/files/~\\d+/${selected}-medium\\.png$`));
+  const before = await snapshot();
+  const thumbnail = await fetch(base + src, { headers: { cookie } });
+  expect(thumbnail.status).toBe(200);
+  expect(thumbnail.headers.get("content-type")).toBe("image/png");
+  const thumb = Buffer.from(await thumbnail.arrayBuffer());
+  expect(thumb.subarray(0, 8)).toEqual(bytes.subarray(0, 8));
+  expect(thumb.readUInt32BE(16)).toBeGreaterThan(0);
+  const original = await fetch(base + src!.replace("-medium", ""), { headers: { cookie } });
+  expect(original.status).toBe(200);
+  expect(Buffer.from(await original.arrayBuffer())).toEqual(bytes);
+  const head = await fetch(base + src, { method: "HEAD", headers: { cookie } });
+  expect(head.status).toBe(200); expect(head.headers.get("content-length")).toBe(String(thumb.length)); expect(await head.text()).toBe("");
+  expect((await fetch(`${base}/files/~${newFile.id}/${selected}-medium.png`, { headers: { cookie } })).status).toBe(404);
+  expect(await snapshot()).toEqual(before);
+  const saved = await post("/card/create", { "card[name]": "Owned Cached Image", "card[type_id]": String(image.id), "card[action_id_of_cached_upload]": selected! }, cookie);
+  expect(saved.status).toBe(200);
+  const result = await saved.json() as { card_id: number };
+  const card = (await driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [result.card_id])).rows[0];
+  const final = await fetch(`${base}/files/${card.db_content}`, { headers: { cookie } });
+  expect(final.status).toBe(200); expect(Buffer.from(await final.arrayBuffer())).toEqual(bytes);
+  expect((await fetch(base + src, { headers: { cookie } })).status).toBe(404);
 }, 60_000);
 
 it("renders typed attachment/structure editors and submits the legacy query-named create form through the actual handler", async () => {

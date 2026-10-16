@@ -28,8 +28,7 @@
 // Named remainder (documented, not silently missing): per-request READ
 // permission on file GETs when the host provides no canReadCard;
 // cloud/web/custom coded storage serving (stock coded logo/favicon and
-// ~local identifiers resolve to bytes); variant RESIZE bytes; the upload-cache draft lifecycle (the
-// preliminary two-step editor flow); public symlink management (a filesystem
+// ~local identifiers resolve to bytes); variant RESIZE bytes; public symlink management (a filesystem
 // optimization the route replaces by direct serving).
 
 import type { SQLDatabaseDriver } from "./driver.js";
@@ -72,6 +71,7 @@ interface ResolvedMark {
   key: string | null;
   typeId: number;
   dbContent: string | null;
+  codename?: string | null;
 }
 
 /** The attachment route entry: null = this request is not an attachment
@@ -214,6 +214,10 @@ async function handleFileGet(
     local.actionId,
     local.ext,
     parsed.size,
+    // Stock *new file/*new image override upload_dir to tmp_upload_dir
+    // (set/self/new_{file,image}.rb). Select the owning card's area;
+    // never fall back across areas for an arbitrary historical identifier.
+    card.codename === "new_file" || card.codename === "new_image" ? "tmp" : "files",
   );
   if (bytes === undefined) return fileNotFound();
 
@@ -466,6 +470,7 @@ async function resolveMark(deps: Pick<FileRouteDeps, "driver" | "fetchEngine">, 
     key: record.key ?? null,
     typeId: record.typeId ?? 0,
     dbContent: record.dbContent ?? null,
+    codename: record.codename ?? null,
   };
 }
 
@@ -475,6 +480,7 @@ interface CardsRowLite {
   key: string | null;
   type_id: number;
   db_content: string | null;
+  codename?: string | null;
 }
 
 function wrapRow(row: CardsRowLite): ResolvedMark {
@@ -484,5 +490,6 @@ function wrapRow(row: CardsRowLite): ResolvedMark {
     key: row.key,
     typeId: row.type_id,
     dbContent: row.db_content,
+    codename: row.codename ?? null,
   };
 }
