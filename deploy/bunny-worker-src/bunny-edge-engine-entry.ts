@@ -68,11 +68,15 @@ import * as BunnySDK from "@bunny.net/edgescript-sdk";
 import process from "node:process";
 
 import { handleBunnyEngineRequest, type EdgeEnv } from "./bunny-edge-engine-handler.js";
+import { localMailServices } from "./bunny-edge-local-mail.js";
 
 probeModuleReady();
 
 BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const env = process.env as EdgeEnv;
-  return await handleBunnyEngineRequest(request, env);
+  // The local mail capture seat: {} unless DECKO_LOCAL_MAIL=1 (the deployed
+  // script never sets it, so production composition is unchanged; see
+  // bunny-edge-local-mail.ts).
+  return await handleBunnyEngineRequest(request, env, localMailServices(env));
 
 });
