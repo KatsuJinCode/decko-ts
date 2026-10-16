@@ -563,19 +563,38 @@ try {
         }, nestedEditorId);
         await page.waitForTimeout(1500);
         const dialog = await page.evaluate(() => {
-          const d = document.querySelector(".mce-window, .mce-dialog, .mce-modal, [role=dialog]");
+          const d = [...document.querySelectorAll("._nest-editor")].find(item => item.getClientRects().length > 0);
           return d ? { open: true, fields: [...d.querySelectorAll("input,textarea")].map((i) => i.name || i.id || i.type) } : { open: false };
         });
         record("the {{}} button opens the Nest dialog", dialog.open, dialog);
         if (dialog.open) {
-          const cardInput = page.locator(".mce-window input[type=text], .mce-dialog input[type=text]").first();
-          await cardInput.fill("Home").catch(() => undefined);
+          const nestDialog = page.locator("._nest-editor:visible").last();
+          const cardInput = nestDialog.locator("input._nest-name");
+          await cardInput.fill("Home");
+          if (await nestDialog.locator('.show-prefix ._nest-field-toggle').count()) {
+            await nestDialog.locator('._nest-field-toggle').click();
+          }
           await page.waitForTimeout(1500);
           const suggestions = await page.evaluate(async () => {
             const r = await fetch("/*all+by name.json?view=name_match&term=Home", { credentials: "include", headers: { "x-requested-with": "XMLHttpRequest" } });
             return { status: r.status, body: (await r.text()).slice(0, 160) };
           });
           record("typing a card name returns suggestions (/*all+by name.json?view=name_match&term=...)", suggestions.status === 200 && suggestions.body.includes("Home"), suggestions);
+          const preview = await nestDialog.locator('input._nest-preview').inputValue();
+          const apply = nestDialog.locator('button._nest-apply');
+          const binding = await apply.getAttribute('data-tinymce-id');
+          const beforeContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
+          await apply.click();
+          const afterContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
+          record('Nest Apply inserts the preview into the opening editor',
+            binding === nestedEditorId && preview.includes('Home') && beforeContent !== afterContent && afterContent.includes(preview),
+            { binding, editorId: nestedEditorId, preview, changed: beforeContent !== afterContent, inserted: afterContent.includes(preview) });
+          const nestSave = await saveEditForm();
+          const stored = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(richName)?.db_content ?? '';
+          const fresh = await visit(`/${richName}`);
+          record('the inserted nest persists after Save and a fresh GET',
+            nestSave.status !== null && nestSave.status < 400 && stored.includes(preview) && fresh.status === 200 && fresh.signedIn,
+            { writeStatus: nestSave.status, storedPreview: stored.includes(preview), freshStatus: fresh.status, signedIn: fresh.signedIn });
         }
         await page.keyboard.press("Escape").catch(() => undefined);
         await page.waitForTimeout(500);

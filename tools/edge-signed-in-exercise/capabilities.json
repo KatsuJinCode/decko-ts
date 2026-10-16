@@ -392,7 +392,11 @@
       "sources": [
         "cypress edit/nest_editor 'nest editor'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "Nest Apply inserts the preview into the opening editor",
+        "the inserted nest persists after Save and a fresh GET"
+      ]
     },
     {
       "id": "E6",
