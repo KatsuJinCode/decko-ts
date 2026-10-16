@@ -62,6 +62,11 @@ function record(check, pass, evidence, timing = {}) {
 /** One check body. A thrown error is a failure, never a fatal. */
 async function attempt(check, fn) {
   try { return await fn(); } catch (error) {
+    try {
+      const capture = String(++htmlSequence).padStart(3, '0') + '-failure';
+      writeFileSync(join(RAW, `${capture}.html`), await browser.page.content(), { flag: 'wx' });
+      writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ check, url: browser.page.url(), error: String(error.message) }), { flag: 'wx' });
+    } catch { /* Preserve the original failure if the browser already closed. */ }
     record(check, false, { threw: String(error?.message ?? error).slice(0, 300) });
     return undefined;
   }
