@@ -78,6 +78,13 @@ export type EmailTemplateResolver = () => EmailTemplate | Promise<EmailTemplate>
  *  SavePathIntegrationHook is a registration the host attaches to the
  *  action engine via CardActionEngineOptions.integrationHooks. */
 export interface FollowNotifyDeps {
+  /** Stock Act#card and changes_visible? resolved before Auth.as(recipient).
+   * The primary card may have no action when only its fields changed. */
+  readonly actContext?: (act: SavePathAct) => Promise<{
+    cardId: number | null;
+    cardName: string | null;
+    changesVisible: boolean;
+  }>;
   /** The "who follows the saved card?" lookup. The caller supplies this
    *  against the rule algebra (card-mod-follow set/all/follow.rb —
    *  direct/indirect follower walks). */
@@ -163,6 +170,8 @@ async function notifyFollowersOfAct(
   stash: FollowerStash,
   mainAction: SavePathEvent,
 ): Promise<void> {
+  const actContext = await deps.actContext?.(act);
+  if (actContext !== undefined && !actContext.changesVisible) return;
   const template = await deps.template();
   if (template.subject.length === 0 && template.textBody.length === 0 && (template.htmlBody?.length ?? 0) === 0) {
     // Empty template — Ruby's `Card[:follower_notification_email]`
@@ -180,7 +189,7 @@ async function notifyFollowersOfAct(
   const followAct: FollowNoticeAct = {
     userName: act.actor.name,
     verb: `${mainAction.verb}d`,
-    cardName: act.actCardName ?? mainAction.card?.name ?? "",
+    cardName: actContext?.cardName ?? act.actCardName ?? mainAction.card?.name ?? "",
   };
   for (const ref of stash.followers()) {
     if (ref.followerId === act.actor.id) continue; // notify.rb:51 `next if follower == act.actor`
@@ -190,7 +199,7 @@ async function notifyFollowersOfAct(
     // actor-independent, so the resolved actor is not consumed
     // downstream.
     deps.authAs(ref.followerId, ref.followerName);
-    const actCardId = mainAction.card?.id ?? null;
+    const actCardId = actContext?.cardId ?? mainAction.card?.id ?? null;
     let extras: StockMailExtras | undefined;
     if (deps.views !== undefined && actCardId !== null) {
       const views = await deps.views({ act, actCardId, ref });

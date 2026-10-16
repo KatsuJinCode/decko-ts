@@ -277,8 +277,19 @@ ${body}`;
         ? "deleted"
         : `<a rel="nofollow" class="last-edited slotter" href="${url}/history" data-remote="true">edited</a>`;
 
+  // notification_action(nil) is card.last_action, not Act#main_action's
+  // fallback to a different card. A no-op primary card may have only an
+  // older action; do not render an included card's content as its own.
+  const lastOwnRow = canReadActCard ? (await driver.query<{
+    id: number; card_id: number; action_type: number;
+  }>("SELECT id, card_id, action_type FROM card_actions WHERE card_id = ? " +
+    "AND draft IS NOT TRUE AND id IS NOT NULL ORDER BY id DESC LIMIT 1", [input.actCardId])).rows[0] : undefined;
+  const lastOwn = lastOwnRow === undefined ? undefined : {
+    id: Number(lastOwnRow.id), cardId: Number(lastOwnRow.card_id),
+    type: ACTION_TYPES[Number(lastOwnRow.action_type)] ?? "update",
+  };
   const changesOf = async (html: boolean): Promise<string> =>
-    !canReadActCard || main === undefined ? "" : listOfChanges(main, html);
+    lastOwn === undefined ? "" : listOfChanges(lastOwn, html);
 
   return {
     text: {

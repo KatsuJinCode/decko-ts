@@ -41,9 +41,8 @@
 // "I" inclusion check) and stashes each qualifying ancestor's direct
 // followers.
 //
-// NOT ported here (deferred): changes_visible? (set/right/account.rb:9-11,
-// the follower must be able to read the card) — the permissions layer owns
-// ok?(:read).
+// changes_visible? is applied by the default notification deps below,
+// under the saving identity before the recipient delivery context swap.
 
 import type { CardRecord } from "../fetch/card-record.js";
 import type { FetchEngine } from "../fetch.js";
@@ -672,13 +671,13 @@ export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
 }
 
 /** Resolve the same stored/live and set-override read verdict as rendering,
- * once per recipient delivery. Never reuse the saving actor's authority. */
-async function recipientCardReader(fetch: FetchEngine, followerId: number) {
-  const viewer = { signedIn: true, actorId: followerId };
+ * once per viewer context. Delivery must resolve the recipient independently. */
+async function cardReaderForViewer(fetch: FetchEngine, viewerId: number) {
+  const viewer = { signedIn: true, actorId: viewerId };
   const state = readPermissionStateFromViewerResults(
     await fetch.driver.batch(readPermissionStatements(viewer)), viewer,
   );
-  const viewerKey = (await fetch.fetchById(followerId))?.key ?? undefined;
+  const viewerKey = (await fetch.fetchById(viewerId))?.key ?? undefined;
   const allowed = async (card: CardRecord | undefined, depth = 0): Promise<boolean> => {
     if (card?.name === undefined) return false;
     if (state.alwaysOk) return true;
@@ -731,9 +730,34 @@ export function defaultFollowNotifyDeps(
       ? {}
       : {
           deckoBotEmail: mail.deckoBotEmail,
+          actContext: async (act) => {
+            const row = (await fetch.driver.query<{ card_id: number | null }>(
+              "SELECT card_id FROM card_acts WHERE id = ?", [act.actId],
+            )).rows[0];
+            const cardId = row?.card_id ?? null;
+            const card = cardId === null ? undefined : await fetch.fetchById(cardId, { lookInTrash: true });
+            if (cardId === null || card?.name === undefined) {
+              return { cardId, cardName: null, changesVisible: false };
+            }
+            // Act#actions_affecting: primary card + its direct nestee_ids.
+            // The caller is still the saving actor; Auth.as(recipient) starts
+            // only inside account.rb's notify_of_act after this predicate.
+            const actions = await fetch.driver.query<{ card_id: number }>(
+              "SELECT DISTINCT a.card_id FROM card_actions a WHERE a.card_act_id = ? " +
+              "AND (a.card_id = ? OR EXISTS (SELECT 1 FROM card_references r " +
+              "WHERE r.referer_id = ? AND r.referee_id = a.card_id AND r.ref_type = 'I'))",
+              [act.actId, cardId, cardId],
+            );
+            const canRead = await cardReaderForViewer(fetch, act.actor.id);
+            let changesVisible = false;
+            for (const action of actions.rows) {
+              if (await canRead(Number(action.card_id))) { changesVisible = true; break; }
+            }
+            return { cardId, cardName: card.name.s, changesVisible };
+          },
           views: async ({ act, actCardId, ref }) =>
             followMailViews(fetch, {
-              canReadCard: await recipientCardReader(fetch, ref.followerId),
+              canReadCard: await cardReaderForViewer(fetch, ref.followerId),
               origin: mail.origin,
               actId: act.actId,
               actCardId,

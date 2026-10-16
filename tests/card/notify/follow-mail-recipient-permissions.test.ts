@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createActionsTestStorage, seedCard } from "../actions/actions-test-storage.js";
+import { buildFollowNotifyHook, fixedFollowerResolver, fixedTemplateResolver } from "../../../src/card/notify/follow-notify.js";
+import { CaptureTransport } from "../../../src/card/notify/transport.js";
 import { defaultFollowNotifyDeps } from "../../../src/card/notify/follower-resolver.js";
 
 async function fixture() {
@@ -61,8 +63,52 @@ describe("recipient read permissions on follow mail views",()=>{
   });
   it("filters unreadable nested action details while preserving readable nested changes",async()=>{
     const {s,views}=await fixture();try{
-      expect((await views(13,30)).text["_|subedits"]).toBe("");
+      await s.driver.query("DELETE FROM card_actions WHERE card_id = 30",[]);
+      const deniedNested = await views(13,30);
+      expect(deniedNested.text["_|subedits"]).toBe("");
+      expect(deniedNested.text["_|list_of_changes"]).not.toContain("restricted body");
       expect((await views(12,30)).text["_|subedits"]).toContain("restricted body");
+    }finally{s.close()}
+  });
+});
+
+async function nestedActNotice(s: Awaited<ReturnType<typeof fixture>>["s"], actorId = 11) {
+  const transport = new CaptureTransport();
+  const hook = buildFollowNotifyHook(defaultFollowNotifyDeps(s.engine, {
+    mail:{origin:"http://deck.example",deckoBotEmail:"bot@example.test"},
+    template:fixedTemplateResolver({to:"",from:"bot@example.test",subject:"{{_|name}}",textBody:"{{_|name}} {{_|last_action_verb}} {{_|subedits}}"}),
+    followers:fixedFollowerResolver([{followerId:12,followerName:"Reader",followerEmail:"reader@example.test",followedSetName:"*all",followOption:"*always"}]),
+  }));
+  // The root was a no-op; only its nested card recorded an action.
+  await s.driver.query("DELETE FROM card_actions WHERE card_id != 31",[]);
+  await s.driver.query("UPDATE card_acts SET actor_id = ? WHERE id = 1",[actorId]);
+  const actor={id:actorId,name:actorId===11?"Writer":"Other Reader",email:null};
+  await hook.fireAct!({actId:1,actor,silent:false,actCardName:"Shared Document",events:[{
+    card:{id:31,name:"Restricted Document",leftName:null,rightName:null,type:"RichText",content:"restricted body",trashed:false},
+    actId:1,actionId:2,actor,verb:"update",silent:false,isDeletePath:false,
+  }]},{transport});
+  return transport.captured();
+}
+
+describe("stored act primary card and changes_visible?",()=>{
+  it("announces the stored root when only an included card has an action",async()=>{
+    const {s}=await fixture();try{
+      const mail=await nestedActNotice(s);
+      expect(mail).toHaveLength(1);
+      expect(mail[0].subject).toBe("Shared Document");
+      expect(mail[0].textBody).toContain("Restricted Document");
+    }finally{s.close()}
+  });
+  it("does not notify when an unincluded subcard is the only action",async()=>{
+    const {s}=await fixture();try{
+      await s.driver.query("DELETE FROM card_references WHERE ref_type = 'I'",[]);
+      expect(await nestedActNotice(s)).toEqual([]);
+    }finally{s.close()}
+  });
+  it("checks affecting actions under the saving actor before recipient authorization",async()=>{
+    const {s}=await fixture();try{
+      // Recipient Reader can read the included document; saving Other Reader cannot.
+      expect(await nestedActNotice(s,13)).toEqual([]);
     }finally{s.close()}
   });
 });
