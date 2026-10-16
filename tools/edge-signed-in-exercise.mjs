@@ -40,6 +40,7 @@ import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
 import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
 import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
+import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artifact.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
@@ -96,6 +97,9 @@ if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)
 provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
 provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signed-in-exercise/capabilities.json')));
 if (argOf('supplemental-checks')) provenance.supplementalChecks = { path:resolve(argOf('supplemental-checks')), sha256:digest(readFileSync(resolve(argOf('supplemental-checks')))) };
+const pinnedArtifact = argOf('engine-bundle') ? pinnedEngineArtifact({ path:argOf('engine-bundle'), sha256:argOf('engine-bundle-sha256'), sourceCommit:argOf('engine-source') }) : undefined;
+if (!pinnedArtifact && (hasFlag('engine-bundle') || hasFlag('engine-bundle-sha256') || hasFlag('engine-source'))) throw new Error('engine artifact flags require a bundle path, exact SHA-256 and declared source commit');
+if (pinnedArtifact) provenance.engineArtifact = pinnedArtifact;
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT + '.intent.json', JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' });
 mkdirSync(RAW);
@@ -105,11 +109,13 @@ sampleMemory('before-build');
 mkdirSync(RUN_DIR, { recursive: true });
 
 console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
-console.log("compiling engine + rebuilding the deployed bundle");
+console.log(pinnedArtifact ? 'compiling local test support + verifying pinned engine artifact' : "compiling engine + rebuilding the deployed bundle");
 ensureEngineDist();
-const bundlePath = buildBundle();
+const bundlePath = pinnedArtifact?.path ?? buildBundle();
 provenance.bundleSha256 = digest(readFileSync(bundlePath));
+if (pinnedArtifact && provenance.bundleSha256 !== pinnedArtifact.sha256) throw new Error('pinned artifact changed after admission');
 provenance.buildReceipt = JSON.parse(readFileSync(join(REPO, '.runtime/browser-build.json'), 'utf8'));
+provenance.buildReceiptScope = pinnedArtifact ? 'local harness support, not the supplied engine artifact' : 'engine and local support from this checkout';
 console.log(`bundle: ${bundlePath} (${(readFileSync(bundlePath).length / 1048576).toFixed(1)} MB)`);
 
 const localDeck = join(RUN_DIR, "deck.sqlite3");
@@ -174,10 +180,11 @@ for (const value of allowedFaviconUrls) {
 }
 provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
-const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath,
+const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,
   onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
     status: line.status, responseBytes: line.bytes ?? 0 }) });
 provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
+provenance.executedBundleSha256 = stack.host.sourceBundleSha256;
 provenance.memoryEvidence = { file: basename(MEMORY), scope: 'combined SDK and harness process', forcedGc: false };
 sampleMemory('stack-ready');
 console.log(`local edge host: ${stack.origin}`);
@@ -1014,6 +1021,7 @@ record('no script, stylesheet, font or image failed during the complete main bro
 
 const failures = results.filter((r) => !r.pass);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
+if (pinnedArtifact) markdown += `- Harness source differs from the engine artifact: engine source claim \`${pinnedArtifact.sourceCommit}\`, exact artifact SHA256 \`${pinnedArtifact.sha256}\`; source claim is caller-declared, artifact bytes are verified. No vendor-runtime acceptance.\n`;
 markdown += `- Source: \`${provenance.source}\`, clean; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
 markdown += `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
 markdown += `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;

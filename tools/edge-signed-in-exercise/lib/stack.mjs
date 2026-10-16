@@ -53,7 +53,7 @@ export function buildBundle() {
  * Starts the stack on the given local deck file.
  * @returns {Promise<{ origin: string, hrana: any, host: any, bundlePath: string, close: () => Promise<void>, cleanup: () => void }>}
  */
-export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle(), onRequest }) {
+export async function startStack({ deckPath, live, runtimeDir, bundlePath = buildBundle(), expectedBundleSha256, onRequest }) {
   const inside = relative(join(REPO, 'tmp'), resolve(runtimeDir));
   if (!inside || inside === '..' || inside.startsWith('..' + sep) || isAbsolute(inside)) throw new Error('runtime must be an owned child of this repository tmp');
   mkdirSync(runtimeDir, { recursive: true });
@@ -71,7 +71,7 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
   // The origin is only known once the TLS listener binds, so start the host
   // with a placeholder, then set the trusted origin on the bundle's env.
   host = await startEdgeHost({
-    bundlePath,
+    bundlePath, expectedBundleSha256,
     runtimeDir: join(runtimeDir, "edge"),
     onRequest,
     env: { ...localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),

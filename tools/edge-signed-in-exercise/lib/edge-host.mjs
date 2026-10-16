@@ -23,6 +23,7 @@ import { mkdirSync, copyFileSync, writeFileSync, rmSync, existsSync, readFileSyn
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createHash } from 'node:crypto';
 
 const SHIM_DIR = "node_modules/@bunny.net/edgescript-sdk";
 
@@ -61,11 +62,13 @@ function readAll(path) {
 
 /**
  * Boots the bundle behind HTTPS.
- * @param {{ bundlePath: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void }} opts
+ * @param {{ bundlePath: string, expectedBundleSha256?: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void }} opts
  */
-export async function startEdgeHost({ bundlePath, runtimeDir, env, host = "127.0.0.1", port = 0, onRequest }) {
+export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeDir, env, host = "127.0.0.1", port = 0, onRequest }) {
   mkdirSync(runtimeDir, { recursive: true });
   const staged = stageBundle(bundlePath, runtimeDir);
+  const sourceBundleSha256 = createHash('sha256').update(readFileSync(staged)).digest('hex');
+  if (expectedBundleSha256 && sourceBundleSha256 !== expectedBundleSha256) throw new Error('staged engine artifact SHA-256 mismatch');
   const tls = ensureCertificate(runtimeDir);
 
   // This is the harness's own Node process. The bundle reads process.env;
@@ -146,6 +149,7 @@ export async function startEdgeHost({ bundlePath, runtimeDir, env, host = "127.0
   return {
     url,
     origin: url,
+    sourceBundleSha256,
     requests,
     close: async () => {
       await new Promise((r) => server.close(r));
