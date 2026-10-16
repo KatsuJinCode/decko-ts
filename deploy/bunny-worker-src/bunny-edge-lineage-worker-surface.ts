@@ -43,12 +43,6 @@ function parsePath(
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "api" }
   | { kind: "notFound" } {
-  // strip trailing slash, drop leading slash
-  const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
-  if (path === "") return { name: "Home", view: "open" };
-  if (path === "api/status") return { kind: "api" };
-  if (path.startsWith("api/card/")) return { kind: "api" };
-
   // The history views' wire params (Card::Env.params equivalents — the
   // lineage's addition, retained): extracted on every card route; the
   // history views read them, every other view ignores them.
@@ -61,6 +55,15 @@ function parsePath(
     }
     return Object.keys(params).length > 0 ? params : undefined;
   };
+
+  // Bare card URLs also carry XHR view/editor and history query params.
+  const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
+  if (path === "") {
+    const params = wireParams();
+    return { name: "Home", view: "open", ...(params ? { params } : {}) };
+  }
+  if (path === "api/status") return { kind: "api" };
+  if (path.startsWith("api/card/")) return { kind: "api" };
 
   const segments = path.split("/");
   // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
@@ -82,7 +85,8 @@ function parsePath(
     // Bare single-segment arm: Ruby's card#read -> show(nil) — the page
     // path re-derives bareness for the requestedView (the "open" here is
     // parsePath's pinned default, not a requested view).
-    return { name, view: "open" };
+    const params = wireParams();
+    return { name, view: "open", ...(params ? { params } : {}) };
   }
   if (segments.length === 2 && segments[0] === "new") {
     // THE /new/:type ARM: decko's

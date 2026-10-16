@@ -26,6 +26,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { historyRenderParamsFromWire } from "../../../src/server/worker-shared-surface.js";
+import { parsePath } from "../../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -278,11 +279,14 @@ describe("card-mod-tinymce_editor harness probe: the chrome oracle replay", () =
 
 describe("card-mod-tinymce_editor harness probe: the ported views through the engine", () => {
   it.each(["nest_editor", "modal_nest_editor"])("binds %s Apply to this request's editor and clears it on the next request", async (view) => {
-    const params = historyRenderParamsFromWire({
+    const route = parsePath('/Oracle_TinyMCE_Editor_Probe', new URLSearchParams({
+      view,
       tinymce_id: 'editor-owned-"probe',
       tm_snippet_raw: "{{+Existing|view: name}}",
       tm_snippet_start: "17",
-    });
+    }));
+    if (!('name' in route)) throw new Error('expected card route');
+    const params = historyRenderParamsFromWire(route.params);
     const html = await storage!.engine.render(CARD_NAME, view, params);
     expect(html).toContain('data-tinymce-id="editor-owned-&quot;probe"');
     expect(html).toContain('data-tm-snippet-start="17"');

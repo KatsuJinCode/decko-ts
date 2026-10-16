@@ -297,8 +297,9 @@ async function openEdit(pathname) {
 async function saveEditForm() {
   // The modal's own submit is "Save and Close" (button.submit-button), the
   // control a person presses. Its form is the one that carries the card.
-  const submit = page.locator(".modal form button[type=submit], #edit_card button[type=submit]").first();
-  const action = await page.locator(".modal form, #edit_card").first().getAttribute("action").catch(() => null);
+  const form = page.locator(".modal:visible form:visible, #edit_card:visible").first();
+  const submit = form.locator("button[type=submit]").first();
+  const action = await form.getAttribute("action").catch(() => null);
   const before = ledger().length;
   if (!action) throw new Error('edit form has no action');
   const endpoint = new URL(action, stack.origin);
@@ -515,6 +516,7 @@ async function richTextJourney() {
           const binding = await apply.getAttribute('data-tinymce-id');
           const beforeContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
           await apply.click();
+          await nestDialog.waitFor({ state: 'hidden' });
           const afterContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
           record('Nest Apply inserts the preview into the opening editor',
             binding === nestedEditorId && preview.includes('Home') && beforeContent !== afterContent && afterContent.includes(preview),
