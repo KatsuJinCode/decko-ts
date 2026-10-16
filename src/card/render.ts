@@ -73,6 +73,7 @@ import {
   type RenderCard,
   type RenderEngineLike,
   type SearchBoxCompleteSeat,
+  type ImageCompleteSeat,
   type ViewFn,
   type ViewResult,
 } from "./render/format.js";
@@ -819,6 +820,7 @@ export class RenderEngine implements RenderEngineLike {
    *  the one view that reads it, and clears at every render() entry like
    *  the other per-render seams. */
   private searchBoxCompleteData: SearchBoxCompleteSeat | undefined;
+  private imageCompleteData: ImageCompleteSeat | undefined;
 
   /** The render root's key — the focal card. search_params' env arms
    *  (paging.rb:37-45 env_search_param) apply ONLY to the focal card's
@@ -1319,6 +1321,7 @@ export class RenderEngine implements RenderEngineLike {
     this.historyReader = undefined;
     this.updaterReader = undefined;
     this.searchBoxCompleteData = undefined;
+    this.imageCompleteData = undefined;
     this.requestNewCard = params.newCard;
     this.renderSearch = params.search;
     this.renderSearchFocalKey = name.key;
@@ -2031,6 +2034,7 @@ export class RenderEngine implements RenderEngineLike {
     if (view === "search_box_complete") {
       await this.prepareSearchBoxComplete(rootCard);
     }
+    if (view === "image_complete") await this.prepareImageComplete(rootCard);
     // The board's ACCOUNT-TAB visibility (card-mod-account
     // set/abstract/account_holder.rb:139-141 `show_account_tab?` =
     // `card.account?` = `account.real?`, account_holder.rb:5-7
@@ -11110,6 +11114,66 @@ export class RenderEngine implements RenderEngineLike {
       failure = e instanceof Error ? e.message : String(e);
     }
     this.searchBoxCompleteData = { term, exact, exactKnown, goto, failure };
+  }
+
+  /** Carrierwave self/search.rb: image-only complete_or_match_search.
+   * Prefix matches occupy the first eight slots; substring matches fill
+   * only the remainder, excluding prefix names. Both queries retain CQL
+   * and read-permission filtering before limit, then recheck live verdicts. */
+  private async prepareImageComplete(rootCard: RenderCard): Promise<void> {
+    const items: RenderCard[] = [];
+    try {
+      const content = rootCard.dbContent ?? "";
+      if (content === "") throw new CqlBadQuery("can't run search with empty content");
+      let parsed: unknown;
+      try { parsed = JSON.parse(content); }
+      catch { throw new CqlBadQuery(`Invalid JSON search query: ${content}`); }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error(`cql content is not a Hash: ${content}`);
+      }
+      // complete_cql uses term_param, not the search vars' keyword fallback.
+      let term = this.renderSearch?.term;
+      if (term?.trim() === "") term = undefined;
+      const main = this.renderSearch?.main;
+      if (term?.startsWith("+") && main !== undefined) term = main + term;
+      const names = new Set<string>();
+      const select = async (specific: Record<string, unknown>, limit: number): Promise<void> => {
+        const result = await executeQuery(this.fetcher.driver, {
+          ...(parsed as Record<string, unknown>), limit, sort_by: "name", return: "name",
+          ...specific,
+        }, {
+          ...(await this.cqlPermissionOptions()),
+          parse: {
+            context: rootCard.name.s,
+            ensureCardId: name => this.fetcher.lexicon.id(name),
+            resolveCardId: name => this.idsByKey.get(DeckoName.parse(name).key) ?? this.fetcher.lexicon.peekId(name),
+          },
+        });
+        if (!("rows" in result)) return;
+        for (const row of result.rows) {
+          const selected = await composeCardRecord(row, this.fetcher.lexicon);
+          if (selected.name === undefined || names.has(selected.name.s)) continue;
+          const record = await this.fetcher.fetchByName(selected.name.s);
+          if (record === undefined || !(await this.canReadCard(record))) continue;
+          names.add(selected.name.s);
+          items.push(await this.enrichAndStore(record));
+        }
+      };
+      // Ruby additional_cql names the Image codename, independent of its label.
+      const imageId = await this.fetcher.codenames.id("image");
+      if (imageId === undefined) throw new CodenameNotFoundError("image");
+      await select({ complete: term ?? "", type: imageId }, 8);
+      if (items.length < 8 && term !== undefined) {
+        await select({ name_match: term, ...(names.size ? { name: ["not in", ...names] } : {}), type: imageId }, 8 - items.length);
+      }
+      this.imageCompleteData = { items };
+    } catch (error) {
+      this.imageCompleteData = { items, failure: error instanceof Error ? error : new Error(String(error)) };
+    }
+  }
+
+  imageCompleteSeat(_card: RenderCard): ImageCompleteSeat | undefined {
+    return this.imageCompleteData;
   }
 
   /** RenderEngineLike#searchBoxCompleteSeat — the :search_box_complete

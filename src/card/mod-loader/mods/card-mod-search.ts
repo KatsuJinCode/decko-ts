@@ -692,6 +692,8 @@ function materialIconTag(icon: string): string {
  *  (no +image card, or not prefetched) falls to icon_tag(:forward) - the
  *  basket maps forward: :arrow_forward (card-mod-bootstrap icon.rb:26). */
 function gotoAutocompleteIcon(fmt: RenderFormat): string {
+  // Type::Image::HtmlFormat overrides the generic field-image lookup.
+  if (fmt.card.typeCode === "image") return str(fmt.renderView("core", { size: "small" }));
   const image = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+image`);
   if (image !== undefined) {
     return fmt.nestRecord(image, "core", { size: "small" });

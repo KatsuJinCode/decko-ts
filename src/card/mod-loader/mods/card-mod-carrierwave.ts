@@ -1,3 +1,4 @@
+import { RenderFormat } from "../../render/format.js";
 import { NoMethodError, str } from "../../render/format.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
@@ -445,7 +446,17 @@ const FAVICON_RAW_HELP_TEXT =
 // ---------------------------------------------------------------------------
 
 /** set/self/search.rb:2-7 view :image_complete, cache: :never. */
-const searchJsonImageCompleteView: ViewFn = () => "[]";
+const searchJsonImageCompleteView: ViewFn = ({ fmt }) => {
+  const seat = fmt.engine.imageCompleteSeat?.(fmt.card);
+  if (seat === undefined) throw new Error("image_complete rendered without its prepare seat");
+  if (seat.failure !== undefined) throw seat.failure;
+  return seat.items.map(item => {
+    const html = new RenderFormat(item, fmt.engine, {
+      parent: fmt, formatName: "html", maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors,
+    });
+    return { id: item.name.s, href: item.name.urlKey, text: str(html.renderView("goto_autocomplete_item", {})) };
+  });
+};
 
 // ---------------------------------------------------------------------------
 // cwwrite-seam port: set/type/file.rb format :html editor views (:input
@@ -1074,8 +1085,8 @@ const cardModCarrierwave: DeckoModManifest = {
     },
 
     // set/self/search.rb - the search module. Ported: :image_complete view
-    // (json format, lines 1-8). The body returns "[]" in the headless
-    // engine (no search backend). The cache: :never config is recorded.
+    // (json format, lines 1-8), backed by the image-only read-filtered
+    // completion seat. The raw Array survives until JSON presentation.
     {
       setPath: "self/search",
       formats: {

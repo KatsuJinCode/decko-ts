@@ -373,8 +373,8 @@ describe("FAVICON_RAW_HELP_TEXT (set/self/favicon.rb:13-16)", () => {
 });
 
 describe("search :image_complete (set/self/search.rb:2-7, cache: :never)", () => {
-  it("returns the empty-result JSON in the headless port", () => {
-    expect(searchJsonImageCompleteView(makeCtx(""))).toBe("[]");
+  it("fails loudly when the image completion prepare seam is absent", () => {
+    expect(() => searchJsonImageCompleteView(makeCtx(""))).toThrow("without its prepare seat");
   });
 });
 

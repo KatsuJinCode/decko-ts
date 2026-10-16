@@ -3717,6 +3717,11 @@ function settingDisplayTitle(
 /** The :search_box_complete view's prepared data (card-mod-search
  *  set/self/search.rb:70-72; the seat half lives in render.ts
  *  #prepareSearchBoxComplete, which cites the gem line-by-line). */
+export interface ImageCompleteSeat {
+  readonly items: readonly RenderCard[];
+  readonly failure?: Error;
+}
+
 export interface SearchBoxCompleteSeat {
   /** search_keyword (search_params.rb:32-34) — undefined when the request
    *  carries neither term nor query[keyword]. */
@@ -3889,6 +3894,8 @@ export interface RenderEngineLike {
    *  (the mod's view dispatch on a seatless render is a port defect — the
    *  seam stays optional so stub engines fail LOUDLY, not silently). */
   searchBoxCompleteSeat?(card: RenderCard): SearchBoxCompleteSeat | undefined;
+  /** Carrierwave image-only, read-filtered prefix then substring choices. */
+  imageCompleteSeat?(card: RenderCard): ImageCompleteSeat | undefined;
   /** Ruby's Auth.always_ok? for the render session's viewer
    *  (auth/permissions.rb:7-13 — the DeckoBot actor or an Administrator-
    *  role member; the engine's ReadPermissionState.alwaysOk, settled in

@@ -1,6 +1,6 @@
-// Read-only exact SDK composition of scoped JSON-source hunks onto a clean candidate.
+// Read-only exact SDK composition of scoped JSON/image-source hunks onto a clean candidate.
 import assert from "node:assert/strict";
-import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {readFileSync,mkdirSync,writeFileSync,existsSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {builtinModules} from "node:module";
@@ -13,7 +13,7 @@ const integration=path.resolve(process.argv[2]);const out=path.resolve(process.a
 const git=(cwd,...args)=>execFileSync("git",args,{cwd,windowsHide:true,encoding:"utf8"}).trim();
 const hash=b=>createHash("sha256").update(b).digest("hex");
 const commit=git(integration,"rev-parse","HEAD");assert.equal(git(integration,"status","--porcelain","--untracked-files=no"),"");
-const paths=["src/card/render.ts","src/card/render/format.ts","src/card/history/render-seam.ts","src/card/mod-loader/mods/card-mod-search.ts","deploy/bunny-worker-src/bunny-edge-engine-request.ts"];
+const paths=["src/card/render.ts","src/card/render/format.ts","src/card/history/render-seam.ts","src/card/mod-loader/mods/card-mod-search.ts","src/card/mod-loader/mods/card-mod-carrierwave.ts","deploy/bunny-worker-src/bunny-edge-engine-request.ts"];
 const range=process.argv[4];
 const patch=execFileSync("git",["diff",...(range?[range]:[]),"--unified=3","--",...paths],{cwd:own,windowsHide:true,encoding:"utf8"});
 assert.ok(patch.includes("diff --git"),"proof expects scoped JSON changes (optional fourth argument: git diff range)");
@@ -30,6 +30,7 @@ for(const line of patch.split("\n")){
   else if(h&&/^[ +\-]/.test(line)&&!line.startsWith("--- ")&&!line.startsWith("+++ "))h.push(line);
 }flush();
 const helper="src/card/render/json-show.ts";const helperSource=readFileSync(path.join(own,helper),"utf8");
+if(existsSync(path.join(integration,helper)))assert.equal(hash(readFileSync(path.join(integration,helper))),hash(helperSource),"existing shared JSON helper must match; do not overlay unrelated source");
 const overlay={name:"read-only-json-presentation-composition",setup(b){
   b.onResolve({filter:/json-show\.js$/},args=>({path:path.join(integration,helper)}));
   b.onLoad({filter:/json-show\.ts$/},()=>({loader:"ts",contents:helperSource}));
