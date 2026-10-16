@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, writeFileSync, rmSync, readFileSync, statSync } 
 import { join, resolve, dirname, basename } from "node:path";
 import { execFileSync } from "node:child_process";
 import Database from "better-sqlite3";
+import { pathToFileURL } from "node:url";
 import { createHash } from 'node:crypto';
 import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
@@ -94,6 +95,7 @@ if (!existsSync(SOURCE_DECK)) throw new Error(`source deck not found: ${SOURCE_D
 if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0) throw new Error('use an immutable database snapshot without an active WAL');
 provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
 provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signed-in-exercise/capabilities.json')));
+if (argOf('supplemental-checks')) provenance.supplementalChecks = { path:resolve(argOf('supplemental-checks')), sha256:digest(readFileSync(resolve(argOf('supplemental-checks')))) };
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT + '.intent.json', JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' });
 mkdirSync(RAW);
@@ -948,6 +950,15 @@ try {
     record("the card the member tried to delete is still there", stillThere.status === 200, { status: stillThere.status });
   });
   await signIn(creds.admin);
+
+  if (argOf('supplemental-checks')) {
+    group('supplemental protected-delete and Save-without-close checks');
+    const supplementalPath = resolve(argOf('supplemental-checks'));
+    if (digest(readFileSync(supplementalPath)) !== provenance.supplementalChecks.sha256) throw new Error('supplemental checks changed after admission');
+    const {runSupplementalWriteChecks} = await import(pathToFileURL(supplementalPath).href);
+    await runSupplementalWriteChecks({page,stack,creds,database,signIn,attempt,record,visit,
+      focusRichEditor,ledger,linesSince,captureEvidence,currentName});
+  }
 
   // -- 9 -----------------------------------------------------------------
   await ownerAudit();
