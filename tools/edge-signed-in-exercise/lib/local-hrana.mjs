@@ -21,6 +21,7 @@
 
 import { createServer } from "node:http";
 import Database from "better-sqlite3";
+import { sqliteRegexpUdf } from "../../../src/cql/sqlite-regexp.ts";
 
 const SLOW_MS = 250;
 
@@ -111,6 +112,15 @@ function runExecute(db, sql, rawArgs, ledger) {
 export async function startLocalHrana({ dbPath, host = "127.0.0.1", port = 0 }) {
   const db = new Database(dbPath);
   db.pragma("busy_timeout = 5000");
+  // The REGEXP operator, the function libSQL provides natively and better-sqlite3
+  // does not. CQL renders `match` as `field REGEXP ?` (src/cql/ast.ts:24), so
+  // without this every keyword search died at prepare time with "no such
+  // function: REGEXP" and the page answered 500 — an artifact of the local
+  // SQLite connection, not of the query the edge runs. Register the PRODUCT'S
+  // own UDF (the decided case-insensitive MySQL-flavored semantics,
+  // docs/decisions/0005-cql-match-semantics.md) rather than a copy, so local
+  // and libSQL answer `X REGEXP Y` the same way. The query itself is unchanged.
+  db.function("regexp", { deterministic: true }, sqliteRegexpUdf);
   const ledger = { count: 0, totalMs: 0, slow: [] };
   let batonCounter = 0;
 
