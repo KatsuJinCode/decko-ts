@@ -110,7 +110,7 @@ export async function runCoverBChecks(ctx) {
   const pointerEditor = async name => {
     const shown=await visit('/'+encodeURIComponent(name));
     await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click');
-    const form=page.locator('form#edit_card:visible').first();
+    const form=page.locator('.modal.show form.card-form[id^="edit_card"]:visible').first();
     await form.waitFor({state:'visible',timeout:20000});
     return {form,status:shown.status};
   };
