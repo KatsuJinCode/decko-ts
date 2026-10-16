@@ -51,3 +51,32 @@ two preexisting fixture-dependent controls were unavailable in this checkout;
 they are not claimed verified. A TypeScript literal annotation was corrected
 after that run; all 22 origin controls were rerun (5.13s), and TypeScript
 validation passed. No unavailable control was removed or enabled artificially.
+
+## Actual browser rerun
+
+Clean `8f2ec754245d68c9eb1992e43970894ac491cfb5` was built with the first-class
+browser-host distribution and ran the three unchanged follow journeys
+serially through the real Bunny handler over owned loopback Hrana/storage.
+The owned processes exited naturally. Every required asset loaded.
+
+| Journey | Actual update request | Duration | Product outcome |
+|---|---|---:|---|
+| follow-from-board-admin | GET 200 | 24.836s | Real follow tree saved, button becomes unfollow, one follower notice |
+| unfollow-from-board-member | GET 422 | 22.819s | Refused missing-side create; no follow change; RED as a successful unfollow journey |
+| unfollow-from-mail | GET 403 | 17.377s | Real permission refusal; existing product policy remains RED |
+
+The member-board observations alone are both 200 and the runner reports
+completion. Those facts do not prove an unfollow: the actual network action
+is 422 and leaves no follow delta. The core permission source already
+documents prior real Ruby probes for both denials
+(`view-task-rules.ts:341–410`); permissions were not weakened for the fixture.
+
+Each rerun's entire recorded row delta and mail array equals the respective
+existing Ruby33 capture under the comparator's existing stable key sorting.
+No new normalization was applied. This remains diagnostic: the rerun's
+fixture-tree hash is `066062…`, while the historical reference has `e5798f…`.
+It is not promoted to exact-fixture or full-suite parity.
+
+Raw JSON/HTML, clean source/build/runtime provenance, the detailed action
+network summary, logs and SHA-256 manifest are preserved outside the worktree
+at `C:/localProjects/brandonDojoTech/recovery/release/private-probes/follow-get-host-8f2ec754/`.
