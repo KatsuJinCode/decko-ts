@@ -747,41 +747,48 @@ try {
       record("the account card's board has an Account tab", false, { tabLinks });
     } else {
       record("the account card's board has an Account tab", true, { accountTab });
-      if (accountTab.href) await page.goto(new URL(accountTab.href, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
-      else {
-        await page.locator(".board a").filter({ hasText: /account/i }).first().click().catch(() => undefined);
-        await page.waitForTimeout(1500);
+      // Stock account_tab.spec.coffee activates the tab, opens the settings
+      // pill, then opens each labeled row's pencil. A fragment navigation
+      // never performs those interactions.
+      await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+      const pill = page.locator('[data-cy="email_and_password-pill"]').first();
+      await pill.waitFor({ state: 'visible' });
+      await pill.click();
+      await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 });
+      async function openAccountField(right) {
+        const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
+        await link.dispatchEvent('click');
+        const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
+        await input.waitFor({ state: 'visible', timeout: 60_000 });
+        return input;
       }
-      const fields = await page.evaluate(() => [...document.querySelectorAll(".board input, .modal input")].map((i) => ({ name: i.name, type: i.type })));
+      const emailInput = await openAccountField('email');
+      const emailName = await emailInput.getAttribute('name');
+      await page.locator('.modal .cancel-button:visible, #edit_card .cancel-button:visible').first().click();
+      await page.locator('.modal.show').waitFor({ state: 'hidden' });
+      const passwordInput = await openAccountField('password');
+      const passwordName = await passwordInput.getAttribute('name');
+      const fields = [{name:emailName,type:'email'}, {name:passwordName,type:await passwordInput.getAttribute('type')}];
       const emailField = fields.find((f) => f.name && /email/i.test(f.name) && f.type !== "hidden");
       const passwordField = fields.find((f) => f.name && /password/i.test(f.name));
       record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields });
       if (passwordField !== undefined) {
         const oldPassword = creds.admin.password;
         const next = `${oldPassword}x`;
-        await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
-        await page.waitForTimeout(1500);
-        const accountTab2 = page.locator(".board a").filter({ hasText: /account/i }).first();
-        await accountTab2.click().catch(() => undefined);
-        await page.waitForTimeout(1500);
-        const input = page.locator(`.board input[name='${passwordField.name}']`).first();
-        await input.fill(next).catch(() => undefined);
-        const before = ledger().length;
-        await page.locator(".board form button[type='submit'], .board form input[type='submit'], .modal button[type='submit']").first().click().catch(() => undefined);
-        await page.waitForTimeout(3000);
-        const write = linesSince(before).find((l) => l.method !== "GET");
+        await passwordInput.fill(next);
+        const write = await saveEditForm();
         const withOld = await signIn({ ...creds.admin, password: oldPassword });
         const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...creds.admin, password: next });
-        record("the account password can be changed and the new one signs in", write !== undefined && write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
+        record("the account password can be changed and the new one signs in", write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
           { writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
         if (withNew.hasSessionCookie) {
           await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
-          await page.waitForTimeout(1500);
-          await page.locator(".board a").filter({ hasText: /account/i }).first().click().catch(() => undefined);
-          await page.waitForTimeout(1500);
-          await page.locator(`.board input[name='${passwordField.name}']`).first().fill(oldPassword).catch(() => undefined);
-          await page.locator(".board form button[type='submit'], .modal button[type='submit']").first().click().catch(() => undefined);
-          await page.waitForTimeout(2500);
+          await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+          await page.locator('[data-cy="email_and_password-pill"]').first().click();
+          const restore = await openAccountField('password');
+          await restore.fill(oldPassword);
+          const restored = await saveEditForm();
+          if (restored.status >= 400) throw new Error(`password restore answered ${restored.status}`);
           await signIn(creds.admin);
         }
       }
