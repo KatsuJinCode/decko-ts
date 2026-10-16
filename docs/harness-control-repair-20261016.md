@@ -161,3 +161,35 @@ including `grade.json`, raw results, before/after custody and
 real module paths and independent sessions; scenario wall time was 115.931
 seconds versus 127.613 in the prior comparison. Aggregate process boot time
 still dominates; this does not establish a general performance improvement.
+
+## Seeded member read/search consistency
+
+The ordinary-member diagnostic on `853748ea` retained a **4/5 failure**:
+the member could read its actual Person profile at 200 with rendered body,
+but JSON navbox search omitted that exact card. Direct fixture inserts left
+the profile and account fields' `read_rule_id/read_rule_class` NULL. Normal
+creation derives these through the existing `set_read_rule` machinery; CQL
+correctly uses the stored rule ID rather than granting a fallback.
+
+The seed helper now derives real metadata for only its newly inserted rows
+using the engine's existing `updateReadRule`, before publishing credentials.
+It assigns no blanket permission and changes no runtime permission code.
+Compiled hash/derivation helpers load after the harness build rather than
+being imported from a previous distribution at runner startup. A setup failure
+aborts the disposable fixture before the edge stack starts.
+
+On `c5765f58`, the real ordinary-member browser read/search control passes
+**5/5**. Its profile uses derived rule **6568**, class **`*all`**, and the
+same member's JSON query returns exactly its profile. Maintained P1/P3 browser
+boundaries pass **16/16**, including positive/negative controls and warm access
+revocation. Reports:
+
+- `.runtime/member-cql-853748ea-r1/report.md` (retained red).
+- `.runtime/member-cql-derived-r2/report.md` (member read/search green).
+- `.runtime/derived-accounts-permissions-c5765f58-r1/report.md` (16/16).
+
+This is a fixture repair, not proof that untested member journeys or live
+account migration are complete. Protected snapshot and vendor state remain
+unchanged. The separate native compile-cache trial reproduced the canonical
+totals on exact `a4f30704` but was slower over the full fixture, so no default
+compile-cache or loader change was adopted.
