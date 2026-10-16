@@ -61,3 +61,24 @@ the retry used existing Git OpenSSL, with no installation.
 
 No runtime implementation, oracle golden, source snapshot or vendor state was
 changed by this checkpoint. There is no verified release-completion ETA.
+
+## Subsequent runtime repair: omitted new-form content
+
+On `640fc529`, the isolated C14 browser check passes **4/4**, including cleanup
+and the asset audit (`.runtime/new-form-default-C14-fixed-r1/report.md`). This
+supersedes the earlier C14 failure only for this focused local path.
+
+The actual typed-new route converted an absent `card[content]` URL argument
+to `""`, then passed it as an explicit new-card content value. Ruby
+`card/lib/card/content/all.rb#standard_content` uses the default only when
+`db_content` is nil. The route now omits the new-card content assignment when
+the URL omits it, preserving both explicit empty content and explicit presets.
+
+An actual-handler HTTP regression first failed on the expected default versus
+empty content (4.45 seconds). The repaired default/empty/preset control and
+existing typed/legacy RichText preset submission test both pass (11.10 seconds
+including setup). Form rendering leaves stored tables unchanged. TypeScript
+validation passes. Raw logs: `.runtime/new-form-default-red.log`,
+`.runtime/new-form-default-green.log`, `.runtime/new-form-default-typecheck.log`.
+No source snapshot, oracle golden or vendor state changed. Pointer dispatch
+and the other remaining full-run failures still require their own evidence.
