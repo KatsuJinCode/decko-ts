@@ -5,6 +5,7 @@
 //
 //   node tools/edge-signed-in-exercise.mjs [--deck <source.sqlite3>]
 //        [--out docs/runs/edge-signed-in-exercise-<date>.md] [--keep]
+//        [--asset-host <additional known public asset hostname>]
 //
 // It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
 // engine.bundle.js, rebuilt from deploy/bunny-worker-src by
@@ -114,6 +115,16 @@ const assetHosts = [...new Set(Object.entries(liveEnv)
   .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
   .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
   .filter(Boolean))];
+// A migrated deck may retain an asset URL outside its configured current
+// CDN. Admit an explicitly named public host for read-only resources; the
+// browser policy still refuses navigation, fetch/XHR and every write there.
+const additionalAssetHost = argOf('asset-host');
+if (additionalAssetHost) {
+  const candidate = new URL(`https://${additionalAssetHost}`);
+  if (candidate.hostname !== additionalAssetHost || candidate.port || candidate.pathname !== '/' || candidate.username || candidate.password || ['localhost', '127.0.0.1', '[::1]'].includes(candidate.hostname)) throw new Error('asset-host must name one public hostname');
+  assetHosts.push(candidate.hostname);
+}
+provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
 
 const stack = await startStack({ deckPath: localDeck, live: liveEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath });
 console.log(`local edge host: ${stack.origin}`);
