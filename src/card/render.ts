@@ -1976,7 +1976,12 @@ export class RenderEngine implements RenderEngineLike {
     // Called TWICE per render — see warmNestedSkinImages for why the first
     // call cannot be the only one.
     await this.warmNestedSkinImages();
-    if (this.helpResolver === undefined) {
+    // The JSON suggestion view renders search/add/goto labels and optional
+    // image icons, not edit/help fields. Stock autocomplete.rb and
+    // self/search.rb never ask the deck-wide help resolver. Preparing it
+    // here walks unrelated help-rule ancestors on every fresh discovery
+    // engine; the HTML/default view lifecycle still prepares it normally.
+    if (this.helpResolver === undefined && !(this.liveRequest && params.format === "json" && view === "search_box_complete")) {
       this.helpResolver = installHelpRules(this, this.fetcher);
       await this.helpResolver.prepare();
       // Help-rules prepare enriches *help rule cards into renderCards (via
