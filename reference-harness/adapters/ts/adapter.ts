@@ -504,8 +504,14 @@ async function opWrite(req: Req): Promise<Json> {
       errors = list.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }));
     } else if (e.code !== undefined) {
       errors = [{ field: e.code, message: e.message }];
-    } else {
+    } else if ((e.constructor?.name ?? "").startsWith("Card::Error")) {
       errors = [{ field: "exception", message: `${e.constructor?.name ?? "Error"}: ${e.message}` }];
+    } else {
+      // oracle/adapter.rb:161 rescues Card::Error only. A NoMethodError
+      // (or another unexpected failure) is a protocol-level error, not a
+      // fabricated card validation result. The engine has already rolled
+      // its save back; keep the original exception identity and message.
+      throw error;
     }
     const denied = req.action === "create" ? undefined : await liveRecord(req.card).catch(() => undefined);
     card =
