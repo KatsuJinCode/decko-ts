@@ -536,7 +536,10 @@
         "the Account tab exposes the account's email and password fields",
         "the account email can be changed and the new one signs in"
       ],
-      "requiredActors": ["Harness Admin", "Harness Member"],
+      "requiredActors": [
+        "Harness Admin",
+        "Harness Member"
+      ],
       "finding": "Requires actual tab/pill/row editors, stored email and fresh old/new credential verdicts for both actors."
     },
     {
@@ -651,7 +654,13 @@
       "sources": [
         "journeys denied-member-read"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "P1 admin can read restricted card",
+        "P1 member cannot read restricted card",
+        "P1 member can read after grant",
+        "P1 member loses access after warm revocation"
+      ]
     },
     {
       "id": "P2",
@@ -669,7 +678,13 @@
       "sources": [
         "journeys denied-member-edit"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "P3 admin update positive control",
+        "P3 member can read update-restricted card",
+        "P3 member cannot open its editor",
+        "P3 member cannot update through browser request"
+      ]
     },
     {
       "id": "P4",
@@ -990,8 +1005,14 @@
         "journeys account-settings-member"
       ],
       "status": "not_covered",
-      "checks": ["the account card's board has an Account tab", "the Account tab exposes the account's email and password fields"],
-      "requiredActors": ["Harness Admin", "Harness Member"]
+      "checks": [
+        "the account card's board has an Account tab",
+        "the Account tab exposes the account's email and password fields"
+      ],
+      "requiredActors": [
+        "Harness Admin",
+        "Harness Member"
+      ]
     },
     {
       "id": "A2",
@@ -1001,8 +1022,13 @@
         "journeys account-change-password-member"
       ],
       "status": "not_covered",
-      "checks": ["the account password can be changed and the new one signs in"],
-      "requiredActors": ["Harness Admin", "Harness Member"]
+      "checks": [
+        "the account password can be changed and the new one signs in"
+      ],
+      "requiredActors": [
+        "Harness Admin",
+        "Harness Member"
+      ]
     },
     {
       "id": "A3",
@@ -1012,8 +1038,13 @@
         "journeys account-change-email-member"
       ],
       "status": "not_covered",
-      "checks": ["the account email can be changed and the new one signs in"],
-      "requiredActors": ["Harness Admin", "Harness Member"]
+      "checks": [
+        "the account email can be changed and the new one signs in"
+      ],
+      "requiredActors": [
+        "Harness Admin",
+        "Harness Member"
+      ]
     },
     {
       "id": "A4",

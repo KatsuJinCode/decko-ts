@@ -36,6 +36,7 @@ import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.m
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
+import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
 import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
@@ -45,7 +46,10 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
-if (argOf('only') !== undefined && !['account','owner','owner-replay','richtext'].includes(argOf('only'))) throw new Error('supported --only selections: account, owner, owner-replay, richtext');
+const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
+const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
+const supportedTopics = ['account','owner','owner-replay','richtext',...moduleTopics];
+if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -65,6 +69,7 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
 const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
 provenance.selection = { only: argOf('only') ?? null, diagnosticOnly: argOf('only') !== undefined };
+provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
 
 // --------------------------------------------------------------- check kit
 
@@ -136,6 +141,11 @@ async function ownerAudit(replayOnly = false) {
   await ownerReplay(context);
 }
 
+function moduleContext() {
+  return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
+    launchBrowser:options=>browser.newContext({...options,allowedFaviconUrls}),runId:RUN_ID,localDeck };
+}
+
 try {
   execFileSync(process.execPath, [join(REPO, "tools/deploy/build-nest-index.mjs"), "--db", localDeck], { cwd: REPO, stdio: "ignore", timeout: 600_000 });
   console.log("  nest index: built");
@@ -203,7 +213,8 @@ const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.ex
 const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
 
 function captureEvidence(html, metadata) {
-  const capture = String(++htmlSequence).padStart(3, '0') + '-owner-delete-after';
+  const label = String(metadata.check??'owner-delete-after').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,80);
+  const capture = String(++htmlSequence).padStart(3, '0') + '-'+label;
   writeFileSync(join(RAW, capture + '.html'), html, { flag: 'wx' });
   const receipt = { ...metadata, htmlSha256: digest(html) };
   writeFileSync(join(RAW, capture + '.json'), JSON.stringify(receipt), { flag: 'wx' });
@@ -547,6 +558,8 @@ try {
     await richTextJourney();
   } else if (['owner','owner-replay'].includes(argOf('only'))) {
     await ownerAudit(argOf('only') === 'owner-replay');
+  } else if (moduleTopics.includes(argOf('only'))) {
+    provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext(),argOf('only'));
   } else {
   // -- 1 -----------------------------------------------------------------
   group("1. sign in, and stay signed in");
@@ -1000,6 +1013,7 @@ try {
 
   // -- 9 -----------------------------------------------------------------
   await ownerAudit();
+  provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext());
   group("9. timings");
   const slowPages = ledger().filter((l) => {
     if (!l.serverTiming || (l.method !== "GET")) return false;
