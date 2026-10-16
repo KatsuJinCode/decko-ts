@@ -28,6 +28,27 @@ it('preserves cold JSON suggestion bytes and all supported actors',async()=>{
  }
  expect((await driver.query('SELECT * FROM cards ORDER BY id',[])).rows).toEqual(rows);
 },30000);
+it('preserves image-picker JSON and actor filtering through the complete-answer renderer',async()=>{
+ const before=(await driver.query('SELECT * FROM cards ORDER BY id',[])).rows;
+ const sessions=new SessionStore({driver});
+ for(const actor of [undefined,617,611]){
+  const session=actor===undefined?undefined:await sessions.createSession(actor);
+  const cookie=session===undefined?undefined:`decko_ts_session=${session.token}`;
+  for(const term of ['*log','MissingImagePickerTarget']){
+   const url='https://local.test/:search.json?view=image_complete&term='+encodeURIComponent(term);
+   const request=()=>new Request(url,{headers:{'x-requested-with':'XMLHttpRequest',...(cookie?{cookie}:{})}});
+   const normal=await handleBunnyEngineRequest(request(),{...env(),DECKO_LIVE_RENDER:'0'}),expected=await normal.text();
+   const start=hrana.requests.length;
+   const batched=await handleBunnyEngineRequest(request(),{...env(),DECKO_LIVE_RENDER:'1'}),actual=await batched.text();
+   expect(batched.status,JSON.stringify({actor,term,expected,actual})).toBe(normal.status);
+   expect(batched.headers.get('content-type')).toContain('application/json');
+   expect(actual).toBe(expected);
+   expect(Array.isArray(JSON.parse(actual))).toBe(true);
+   console.log(JSON.stringify({check:'image-picker-batched-trips',actor:actor??'anonymous',term,trips:hrana.requests.length-start}));
+  }
+ }
+ expect((await driver.query('SELECT * FROM cards ORDER BY id',[])).rows).toEqual(before);
+},30000);
 it('reloads changed autocomplete permissions and content between requests without a response cache',async()=>{
  const before=await (await get('Home','1')).text();
  expect((await driver.query("DELETE FROM card_references WHERE referer_id=10",[])).rowsAffected).toBeGreaterThan(0);

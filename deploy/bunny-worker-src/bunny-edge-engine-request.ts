@@ -487,11 +487,11 @@ async function dispatchEngineRequest(
       ...(url.searchParams.has("compress") ? { compress: url.searchParams.get("compress") } : {}),
     };
     const renderJsonView = async () => {
-      // Suggestions prepare exact/goto cards and their read/create rules.
+      // Suggestions and image pickers prepare item cards and their rules.
       // On a cold deck those independent facts otherwise take thousands of
       // serial reads. Use the same fresh-engine complete-answer lifecycle
       // as bare views: no response or cross-request suggestion cache.
-      if (parsed.view === "search_box_complete" && liveRenderApplies(
+      if (["search_box_complete", "image_complete"].includes(parsed.view) && liveRenderApplies(
         request, url, options, parsed.view, search === undefined ? {} : { search },
       )) {
         const result = await liveRenderView(source.driver, parsed.name, async driver => {
