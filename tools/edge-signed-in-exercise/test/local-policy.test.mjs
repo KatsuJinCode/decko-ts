@@ -42,3 +42,22 @@ test('coverage requires actual passing checks and never promotes failed, absent 
   const results = [{ check: 'failed', pass: false }, { check: 'passed', pass: true }, { check: 'inconsistent', pass: true }, { check: 'inconsistent', pass: false }];
   assert.deepEqual(verifiedCapabilities(capabilities, results).map(x => x.status), ['not_covered', 'not_covered', 'partial', 'covered', 'partial', 'not_covered']);
 });
+
+test('Chromium favicon other is limited to explicit GET resource from owned page', () => {
+ const favicon='https://assets.example.test/files/103/3649-small.jpg';
+ const config={origin:'https://127.0.0.1:4321',allowedHosts:new Set(['assets.example.test']),allowedFaviconUrls:[favicon]};
+ const req=(changes={})=>({url:()=>favicon,method:()=> 'GET',resourceType:()=> 'other',isNavigationRequest:()=>false,frame:()=>({url:()=>config.origin+'/Home'}),...changes});
+ assert.equal(externalBrowserRequestAllowed(req(),config),true);
+ for(const changes of [
+  {url:()=>favicon+'?token=x'}, {url:()=>favicon+'#fragment'},
+  {url:()=>favicon.replace('https:','http:')}, {url:()=>favicon.replace('assets.','other.')},
+  {url:()=>favicon.replace('103','104')}, {url:()=>favicon.replace('3649','%33%36%34%39')},
+  {method:()=> 'POST'}, {method:()=> 'HEAD'},
+  {resourceType:()=> 'fetch'}, {resourceType:()=> 'xhr'}, {resourceType:()=> 'document'},
+  {isNavigationRequest:()=>true}, {isNavigationRequest:undefined},
+  {frame:()=>({url:()=> 'https://unrelated.example.test/Home'})},
+  {frame:()=>{throw Error('no frame');}},
+ ]) assert.equal(externalBrowserRequestAllowed(req(changes),config),false);
+ assert.equal(externalBrowserRequestAllowed(req(),{...config,allowedFaviconUrls:[]}),false);
+ assert.equal(externalBrowserRequestAllowed(req(),{...config,allowedHosts:new Set()}),false);
+});

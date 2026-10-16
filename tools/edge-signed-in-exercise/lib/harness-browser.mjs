@@ -62,7 +62,7 @@ function assetHostsFromEnv(env) {
  * Launches the throwaway browser and returns { page, close, consoleErrors, blocked }.
  * @param {{ origin: string, assetHosts: string[] }} opts
  */
-export async function launchHarnessBrowser({ origin, assetHosts }) {
+export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [] }) {
   const { chromium } = await loadPlaywright();
   const executablePath = findBrowser();
   const profile = mkdtempSync(join(tmpdir(), "edge-signed-in-profile-"));
@@ -93,7 +93,7 @@ export async function launchHarnessBrowser({ origin, assetHosts }) {
   );
   await context.route('**/*', route => {
     const hosts = new Set([...allowedAssets, ...STOCK_LAYOUT_CDNS]);
-    return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts }) ? route.fallback() : route.abort('blockedbyclient');
+    return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts, allowedFaviconUrls }) ? route.fallback() : route.abort('blockedbyclient');
   });
   const page = await context.newPage();
   // Delete links are confirm-guarded; the harness answers the confirm as a

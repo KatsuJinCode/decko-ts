@@ -26,9 +26,16 @@ export function localEnv({ live, dbUrl, origin }) {
     DECKO_WRITE_PATH: '1', DECKO_FONT_AWESOME: 'local' };
 }
 
-export function externalBrowserRequestAllowed(request, { origin, allowedHosts }) {
+export function externalBrowserRequestAllowed(request, { origin, allowedHosts, allowedFaviconUrls = [] }) {
   const url = new URL(request.url());
   if (LOCAL_HOSTS.has(url.hostname)) return url.origin === origin;
+  if (request.resourceType() === 'other') {
+    // Chromium reports browser-initiated favicon reads as `other`. Admit only
+    // an explicitly named resource, from our own page, without opening the
+    // generic other/fetch/navigation boundary.
+    if (request.method() !== 'GET' || request.isNavigationRequest?.() !== false || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !allowedHosts.has(url.hostname) || !allowedFaviconUrls.includes(url.href)) return false;
+    try { return new URL(request.frame().url()).origin === origin; } catch { return false; }
+  }
   return allowedHosts.has(url.hostname) && ['GET', 'HEAD'].includes(request.method()) &&
     ['script', 'stylesheet', 'image', 'font', 'media'].includes(request.resourceType());
 }
