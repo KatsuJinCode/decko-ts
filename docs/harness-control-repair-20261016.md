@@ -113,3 +113,19 @@ operate existing editors; their original capability IDs describe new-card or
 structured-card creation, so those capabilities remain uncovered. C18/E23
 still need their actual browser selection/change checks on this repair.
 No vendor deployment, oracle golden or protected snapshot changed.
+
+## Combined existing-Pointer browser verification
+
+On `425665f1`, `--only cover-b --case C16,C18,E23` passes **7/7** in one
+isolated browser and disposable deck
+(`.runtime/pointer-workflow-batch-425665f1-r1/report.md`). It proves checkbox
+check/save/read, uncheck/save/read, select/save/read, and changing an existing
+Pointer from its first choice to the second with stored-content and fresh-page
+checks. Reusing the fixture also exercises the input-rule update between
+checkbox and select cases. All run-created cards are removed and the owned
+stack closes; the asset audit passes.
+
+The bounded case selector now accepts a comma-separated list, avoiding three
+cold builds and repeated fixture setup. Selection/abort controls pass. Original
+new-card/structured capability coverage stays unchanged: these are existing
+editor workflows, with no implicit credit for different creation scenarios.
