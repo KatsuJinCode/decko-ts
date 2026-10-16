@@ -51,6 +51,14 @@ import { DeckoName } from "../name.js";
 import type { SavePathEvent } from "./types.js";
 import { deckEmailTemplateResolver } from "./deck-resolvers.js";
 import { followMailViews } from "./follow-mail-views.js";
+import {
+  readPermissionStatements,
+  readPermissionStateFromViewerResults,
+  canReadByStoredRule,
+  canReadByRuleLookup,
+} from "../permissions/read-rules.js";
+import { readPermissionOverride } from "../permissions/read-override.js";
+import { ruleWalkPatternInput } from "../actions/rule-content-walk.js";
 import type { EmailTemplateResolver, FollowNotifyDeps, FollowerRef, FollowerResolver } from "./follow-notify.js";
 
 /** One row of Ruby's PreferenceCache SQL (rule/preference_cache.rb:8-30):
@@ -663,6 +671,40 @@ export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
   };
 }
 
+/** Resolve the same stored/live and set-override read verdict as rendering,
+ * once per recipient delivery. Never reuse the saving actor's authority. */
+async function recipientCardReader(fetch: FetchEngine, followerId: number) {
+  const viewer = { signedIn: true, actorId: followerId };
+  const state = readPermissionStateFromViewerResults(
+    await fetch.driver.batch(readPermissionStatements(viewer)), viewer,
+  );
+  const viewerKey = (await fetch.fetchById(followerId))?.key ?? undefined;
+  const allowed = async (card: CardRecord | undefined, depth = 0): Promise<boolean> => {
+    if (card?.name === undefined) return false;
+    if (state.alwaysOk) return true;
+    const override = await readPermissionOverride(card.name, {
+      viewerKey,
+      fetchByKey: key => fetch.fetchByKey(key),
+      fetchById: id => fetch.fetchById(id),
+      leftReadVerdict: async (name, nextDepth) => allowed(await fetch.fetchByKey(name.key), nextDepth),
+    }, depth);
+    if (override !== undefined) return override;
+    if (card.readRuleId != null) return canReadByStoredRule(card.readRuleId, state);
+    return (await canReadByRuleLookup(fetch, await ruleWalkPatternInput(fetch, {
+      name: card.name, id: card.id, typeId: card.typeId, isNew: false,
+    }), state)) === true;
+  };
+  const memo = new Map<number, Promise<boolean>>();
+  return (id: number): Promise<boolean> => {
+    let verdict = memo.get(id);
+    if (verdict === undefined) {
+      verdict = fetch.fetchById(id, { lookInTrash: true }).then(card => allowed(card));
+      memo.set(id, verdict);
+    }
+    return verdict;
+  };
+}
+
 /**
  * The full FollowNotifyDeps the save path builds when the host supplies no
  * hook of its own: the rule-algebra follower resolver above, the deck-backed
@@ -689,8 +731,9 @@ export function defaultFollowNotifyDeps(
       ? {}
       : {
           deckoBotEmail: mail.deckoBotEmail,
-          views: ({ act, actCardId, ref }) =>
+          views: async ({ act, actCardId, ref }) =>
             followMailViews(fetch, {
+              canReadCard: await recipientCardReader(fetch, ref.followerId),
               origin: mail.origin,
               actId: act.actId,
               actCardId,

@@ -56,6 +56,8 @@ export interface FollowMailViewInput {
   readonly actId: number;
   /** The act card (Ruby's act.card, the mail context). */
   readonly actCardId: number;
+  /** Read verdict under the recipient identity (Ruby Auth.as around delivery). */
+  readonly canReadCard: (cardId: number) => Promise<boolean>;
   /** The session user's card id (the `_user` part). */
   readonly actorId: number;
   /** The follower and the reason they follow (active_notice). */
@@ -208,6 +210,7 @@ export async function followMailViews(
   const subedits = async (html: boolean): Promise<string> => {
     let items = "";
     for (const action of subeditActions) {
+      if (!(await input.canReadCard(action.cardId))) continue;
       const newName = await changeValue(action, "name");
       const before = newName !== undefined ? await previousValue(action, "name") : undefined;
       const name = before ?? (await nameOf(action.cardId));
@@ -259,11 +262,14 @@ ${body}`;
     ? ""
     : `${input.origin}/update/${followMark}?${cgiEscape(`card[subcards][${ruleName}]`)}=${cgiEscape("*never")}`;
 
-  const verb = `${main?.type ?? "edite"}d`;
+  // These views use the default read permission. Names/URLs and subedits
+  // have their own stock permissions; denying this card does not blank them.
+  const canReadActCard = await input.canReadCard(input.actCardId);
+  const verb = canReadActCard ? `${main?.type ?? "edite"}d` : "";
   // the history mod's html last_action_verb: the card's action in its
   // last act.
   const ownAction = actions.find((a) => a.cardId === input.actCardId);
-  const htmlVerb = ownAction === undefined
+  const htmlVerb = !canReadActCard || ownAction === undefined
     ? ""
     : ownAction.type === "create"
       ? "added"
@@ -272,7 +278,7 @@ ${body}`;
         : `<a rel="nofollow" class="last-edited slotter" href="${url}/history" data-remote="true">edited</a>`;
 
   const changesOf = async (html: boolean): Promise<string> =>
-    main === undefined ? "" : listOfChanges(main, html);
+    !canReadActCard || main === undefined ? "" : listOfChanges(main, html);
 
   return {
     text: {
