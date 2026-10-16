@@ -191,15 +191,15 @@ async function signIn(account) {
   const pending = page.waitForResponse(response => {
     const url = new URL(response.url());
     return url.origin === stack.origin && url.pathname === '/update/*signin' && response.request().method() === 'POST';
-  }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+  }, {timeout:60_000}).then(async response => ({response, body: await response.json().catch(() => null)}), error => ({error}));
   await page.locator('form[action="/update/*signin"] button[type="submit"], form[action="/update/*signin"] input[type="submit"]').first().click();
   const observed = await pending;
   if (observed.error) throw observed.error;
   await observed.response.finished();
   if (observed.response.status() < 400) {
-    const body = await observed.response.json().catch(() => null);
+    const body = observed.body;
     const location = body?.redirect ?? observed.response.headers().location;
-    if (!location) throw new Error('successful sign-in has no observed redirect');
+    if (!location) throw new Error(`successful sign-in has no observed redirect (status ${observed.response.status()}, content-type ${observed.response.headers()['content-type']}, body keys ${Object.keys(body ?? {}).join(',')})`);
     const target = new URL(location, stack.origin);
     if (target.origin !== stack.origin) throw new Error('sign-in redirect leaves owned origin');
     await page.waitForURL(target.href, {waitUntil:'load', timeout:60_000});
