@@ -34,6 +34,26 @@ export function validateJourneyEvidence(args, expected, actual) {
   const productContracts = JSON.parse(contractBytes);
   const contracts = productContracts.journeys;
   const hashes = { contractsSha256: sha256(contractBytes), journeysSha256: sha256(definitionBytes), fixtureSha256: treeDigest(fixture instanceof URL ? fileURLToPath(fixture) : path.resolve(fixture)) };
+  let additionalPolicy = null;
+  let additionalContracts = {};
+  if (args["additional-contracts"]) {
+    const bytes = readFileSync(args["additional-contracts"]);
+    const policy = JSON.parse(bytes);
+    additionalPolicy = { sha256: sha256(bytes), candidateOnly: true, evaluation: "post-capture observations; not executed browser assertions" };
+    if (policy.format !== "decko-additional-product-contracts/1" || !policy.journeys || typeof policy.journeys !== "object" || Array.isArray(policy.journeys) || !Object.keys(policy.journeys).length) problems.push("invalid additional product policy");
+    else {
+      additionalContracts = policy.journeys;
+      for (const [id, labels] of Object.entries(additionalContracts)) {
+        const definition = definitions.find(j => j.id === id);
+        if (!definition) problems.push(`additional product policy: unknown journey ${id}`);
+        if (!labels || typeof labels !== "object" || Array.isArray(labels) || !Object.keys(labels).length) { problems.push(`additional product policy: invalid observations ${id}`); continue; }
+        for (const [label, expectation] of Object.entries(labels)) {
+          if (!definition?.steps.some(s => s.observe === label)) problems.push(`additional product policy: unknown observation ${id}/${label}`);
+          if (!expectation || typeof expectation !== "object" || Array.isArray(expectation) || !Object.keys(expectation).length || Object.entries(expectation).some(([key,value]) => key === "status" ? !Number.isInteger(value) || value < 200 || value > 599 : !["textIncludes","textExcludes","structureIncludes"].includes(key) || !Array.isArray(value) || !value.length || value.some(v => typeof v !== "string" || !v.length))) problems.push(`additional product policy: invalid expectation ${id}/${label}`);
+        }
+      }
+    }
+  }
   const candidate = args.candidate;
   if (!/^[a-f0-9]{40}$/.test(candidate ?? "")) problems.push("--candidate must name the exact full source commit");
   for (const [side, loaded] of [["reference", expected], ["actual", actual]]) {
@@ -64,12 +84,15 @@ export function validateJourneyEvidence(args, expected, actual) {
           if (!writes.length || writes.some(r => r.failure || r.status < 200 || r.status >= 400)) problems.push(`${prefix}: product requires successful recorded write requests`);
         }
         const observations = new Map((result.observations ?? []).map(o => [o.label,o]));
-        const required = { ...(contracts[journey.id] ?? {}), ...Object.fromEntries(journey.steps.filter(s => s.observe && s.expect).map(s => [s.observe,s.expect])) };
-        for (const [label, expectation] of Object.entries(required)) {
+        // Keep each policy separate: later policies cannot override an earlier requirement.
+        const required = [contracts[journey.id] ?? {}, Object.fromEntries(journey.steps.filter(s => s.observe && s.expect).map(s => [s.observe,s.expect])), additionalContracts[journey.id] ?? {}];
+        for (const [label, expectation] of required.flatMap(policy => Object.entries(policy))) {
+          if (!expectation || typeof expectation !== "object") continue;
           const observation = observations.get(label);
           if (!observation) { problems.push(`${prefix}/${label}: product observation missing`); continue; }
           if (expectation.status !== undefined && expectation.status !== observation.status) problems.push(`${prefix}/${label}: product expected HTTP ${expectation.status}, got ${observation.status}`);
           for (const text of expectation.textIncludes ?? []) if (!observation.text?.includes(text)) problems.push(`${prefix}/${label}: product text missing ${JSON.stringify(text)}`);
+          for (const text of Array.isArray(expectation.structureIncludes) ? expectation.structureIncludes : []) if (!(observation.structure ?? []).join("\n").includes(text)) problems.push(`${prefix}/${label}: product structure missing ${JSON.stringify(text)}`);
           for (const text of expectation.textExcludes ?? []) if (observation.text?.includes(text)) problems.push(`${prefix}/${label}: product failure text present ${JSON.stringify(text)}`);
         }
       }
@@ -89,5 +112,5 @@ export function validateJourneyEvidence(args, expected, actual) {
     }
     if (runs.size !== 1 || sources.size !== 1 || (side === "actual" && artifacts.size !== 1)) problems.push(`${side}: mixed or missing run/source/artifact identity`);
   }
-  return { ids, candidate: candidate ?? null, hashes, problems };
+  return { ids, candidate: candidate ?? null, hashes, additionalPolicy, problems };
 }

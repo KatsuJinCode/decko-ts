@@ -20,7 +20,7 @@ function fixture(fn) {
   const result={id:"home",completed:true,steps:steps.map((step,i)=>({step,i,outcome:"ok"})),observations:[{label:"home",url:"/",status:200,text:"Home",structure:[],fields:[]}],runtime:{ruby:"3.3.12",node:process.version},browserVersion:"actual-browser-test-fixture",provenance:p,rows:{},mail:[]};
   const write=(side,value,name="home")=>writeFileSync(path.join(root,side,name+".json"),JSON.stringify(value));
   write("ruby",result);write("ts",result);
-  const run=()=>spawnSync(process.execPath,[command,"--expected",path.join(root,"ruby"),"--actual",path.join(root,"ts"),"--fixture",path.join(root,"fixture"),"--journeys",journeys,"--candidate",candidate,"--report",path.join(root,"report.json")],{encoding:"utf8",windowsHide:true});
+  const run=(extra=[])=>spawnSync(process.execPath,[command,"--expected",path.join(root,"ruby"),"--actual",path.join(root,"ts"),"--fixture",path.join(root,"fixture"),"--journeys",journeys,"--candidate",candidate,"--report",path.join(root,"report.json"),...extra],{encoding:"utf8",windowsHide:true});
   fn({root,result,write,run});
  } finally {rmSync(root,{recursive:true,force:true});}
 }
@@ -51,4 +51,34 @@ test("matching HTTP200 failure pages fail explicit product postconditions",()=>f
  result.observations[0].text="Sorry, nothing was created";
  write("ruby",result);write("ts",result);
  const r=run();assert.equal(r.status,1);assert.match(r.stderr,/product text missing/);
+}));
+
+for (const [name, expectation, pass] of [
+ ["positive post-capture text",{status:200,textIncludes:["Home"]},true],
+ ["missing positive text",{textIncludes:["Signed in"]},false],
+ ["missing required type",{structureIncludes:["TYPE-user"]},false],
+ ["positive required type",{structureIncludes:["TYPE-user"]},true],
+ ["unknown observation",{textIncludes:["Home"]},false],
+ ["unsupported policy key",{ignoreFailures:true},false],
+]) test(`additional policy ${name}`,()=>fixture(({root,run,result,write})=>{
+ const policy=path.join(root,"additional.json");
+ const label=name==="unknown observation"?"absent":"home";
+ writeFileSync(policy,JSON.stringify({format:"decko-additional-product-contracts/1",journeys:{home:{[label]:expectation}}}));
+ // The captured default policy remains bound, including the reference.
+ result.provenance.contractsSha256=sha256(readFileSync(new URL("../journeys/product-contracts.json",import.meta.url)));
+ write("ruby",result);write("ts",result);
+ if(name==="positive required type") { result.observations[0].structure=["div.TYPE-user"];write("ruby",result);write("ts",result); }
+ const before=readFileSync(path.join(root,"ruby/home.json"));
+ const r=run(["--additional-contracts",policy]);assert.equal(r.status,pass?0:1,r.stdout+r.stderr);
+ assert.deepEqual(readFileSync(path.join(root,"ruby/home.json")),before);
+ const report=JSON.parse(readFileSync(path.join(root,"report.json")));
+ assert.equal(report.integrity.additionalPolicy.sha256,sha256(readFileSync(policy)));
+ assert.equal(report.integrity.additionalPolicy.candidateOnly,true);
+}));
+test("additional policy cannot override executed expectations",()=>fixture(({root,run,result,write})=>{
+ result.steps[1].step.expect={textIncludes:["Created successfully"]};
+ const journeys=path.join(root,"journeys.json");writeFileSync(journeys,JSON.stringify({journeys:[{id:"home",steps:result.steps.map(s=>s.step)}]}));
+ result.provenance.journeysSha256=sha256(readFileSync(journeys));write("ruby",result);write("ts",result);
+ const policy=path.join(root,"additional.json");writeFileSync(policy,JSON.stringify({format:"decko-additional-product-contracts/1",journeys:{home:{home:{textIncludes:["Home"]}}}}));
+ const r=run(["--additional-contracts",policy]);assert.equal(r.status,1);assert.match(r.stderr,/Created successfully/);
 }));
