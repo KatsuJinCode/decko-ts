@@ -4173,11 +4173,13 @@ export class CardActionEngine {
       actionId: saved.actionId,
       actId: saved.actId,
       verb: "delete" as const,
-      // A closed account's +*account card is named after its renamed
-      // holder by the time the act's notices go out.
-      name: deletesAccount && anonName !== undefined && currentName?.rightName !== undefined
-        ? DeckoName.parse(`${anonName}+${currentName.rightName.s}`)
-        : currentName,
+      // Both the holder itself and its +*account card carry the anonymized
+      // name by the time the act's notices go out (close_account).
+      name: holderAccount !== undefined && anonName !== undefined
+        ? DeckoName.parse(anonName)
+        : deletesAccount && anonName !== undefined && currentName?.rightName !== undefined
+          ? DeckoName.parse(`${anonName}+${currentName.rightName.s}`)
+          : currentName,
       subactions,
     };
     // II (director.rb:26): the integrate seam before the notify hooks (see

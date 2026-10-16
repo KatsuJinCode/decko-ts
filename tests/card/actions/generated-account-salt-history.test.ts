@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createActionsTestStorage, seedStandardDeck, seedCard, actionEngine } from "./actions-test-storage.js";
+import { CardActionEngine } from '../../../src/card/actions/card-action-engine.js';
 
 async function deck() {
   const s=await createActionsTestStorage();
@@ -13,6 +14,24 @@ async function snapshot(s:Awaited<ReturnType<typeof deck>>) {
 }
 
 describe("generated account salt history",()=>{
+  it('uses the anonymized holder name in the delete result and integration notices',async()=>{
+    const s=await deck();try{
+      await seedCard(s,{id:520,name:'User',codename:'user',typeId:3});
+      await s.driver.query('UPDATE cards SET type_id=? WHERE id=?',[520,510]);
+      const notices:Array<string|null>=[];
+      const engine=new CardActionEngine(s.engine,{
+        actor:{id:9,name:'Joe User'},canWrite:()=>true,
+        integrationHooks:[{stage:'integrate',notable:e=>e.verb==='delete',fire:async e=>{notices.push(e.card?.name??null)}}],
+      });
+      await engine.createCard({name:'Default Field Holder+*account',subcards:{'+*email':{content:'holder@example.test'}}});
+      const result=await engine.deleteCard({cardId:510});
+      const stored=await s.selectOne<{name:string}>('SELECT name FROM cards WHERE id=?',[510]);
+      expect(stored?.name).toMatch(/^ANON-[0-9a-f]{12}$/);
+      expect(result?.name?.s).toBe(stored?.name);
+      expect(notices).toContain(stored?.name);
+      expect(notices).not.toContain('Default Field Holder');
+    }finally{s.close()}
+  });
   it('preserves custom account subtrees without leaving cardless history',async()=>{
     const s=await deck();try{
       const engine=actionEngine(s,undefined,{canWrite:()=>true});
