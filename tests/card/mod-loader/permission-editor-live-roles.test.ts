@@ -1,7 +1,7 @@
 import {afterAll,beforeAll,it,expect} from 'vitest';
 import {createRenderTestStorage,seedCard,bindModLoaderToEngine,type RenderTestStorage} from '../render/render-test-storage.js';
-import {ModLoader} from '../../../src/card/mod-loader.js';
-import permissions from '../../../src/card/mod-loader/mods/card-mod-permissions.js';
+import {ModLoader,modEngineHost} from '../../../src/card/mod-loader.js';
+import permissions,{readPermissionEditorOptions} from '../../../src/card/mod-loader/mods/card-mod-permissions.js';
 import format from '../../../src/card/mod-loader/mods/card-mod-format.js';
 let loader:ModLoader;const decks:RenderTestStorage[]=[];
 async function deck(roleName:string){const s=await createRenderTestStorage();decks.push(s);await seedCard(s,{id:200,name:'Role',codename:'role'});await seedCard(s,{id:201,name:roleName,typeId:200});await seedCard(s,{id:202,name:'Cards with account',codename:'cards_with_account'});await seedCard(s,{id:204,name:'Anyone',codename:'anyone',typeId:200});bindModLoaderToEngine(s,loader);return s;}
@@ -14,3 +14,7 @@ it('refreshes added, renamed and trashed roles on the next render',async()=>{con
 it('uses Bot role enumeration while preserving the form read gate',async()=>{const s=await deck('Private Role');await s.counting.query('UPDATE cards SET read_rule_id = ?, read_rule_class = ? WHERE id = ?',[999999,'private',201]);expect(await s.engine.render('*all+*read','input')).toContain('Private Role');});
 it('composes a junction role name instead of silently dropping it',async()=>{const s=await deck('Simple Role');await seedCard(s,{id:205,name:'Field'});await seedCard(s,{id:206,name:'Team'});await seedCard(s,{id:207,leftId:205,rightId:206,typeId:200});expect(await s.engine.render('*all+*read','input')).toContain('Field+Team');});
 it('does not query the role catalog for an unrelated plain content input',async()=>{const s=await deck('Role Unused');await seedCard(s,{id:210,name:'Plain Probe',dbContent:'text'});await s.engine.render('Plain Probe','input');expect(s.engine.permissionEditorOptions().roles).toEqual([]);});
+
+it('does not disclose the catalog through a denied permission form',async()=>{const s=await createRenderTestStorage({bootstrapReadRules:false});decks.push(s);await seedCard(s,{id:200,name:'Role',codename:'role'});await seedCard(s,{id:201,name:'Hidden Catalog Role',typeId:200});await seedCard(s,{id:202,name:'*all',codename:'all'});await seedCard(s,{id:203,name:'*read',codename:'read'});await seedCard(s,{id:204,leftId:202,rightId:203});bindModLoaderToEngine(s,loader);const html=await s.engine.render('*all+*read','input');expect(html).not.toContain('Hidden Catalog Role');expect(html).not.toContain('perm-checkbox-button');});
+
+it('loads a larger role catalog with bounded composition metadata queries',async()=>{const s=await deck('Base Role');for(let id=300;id<350;id++)await seedCard(s,{id,name:`Bulk Role ${id}`,typeId:200});await s.engine.render('*all+*read','input');s.counting.reset();const state=await readPermissionEditorOptions(modEngineHost(s.engine,s.fetcher));expect(state.roles).toHaveLength(52);expect(s.counting.snapshot().roundTrips).toBeLessThanOrEqual(2);expect(s.counting.snapshot().statements).toBeLessThanOrEqual(3);});
