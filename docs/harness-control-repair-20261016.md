@@ -129,3 +129,35 @@ The bounded case selector now accepts a comma-separated list, avoiding three
 cold builds and repeated fixture setup. Selection/abort controls pass. Original
 new-card/structured capability coverage stays unchanged: these are existing
 editor workflows, with no implicit credit for different creation scenarios.
+
+## Adapter no-op target and complete canonical comparison
+
+The preserved adapter protocol correction is verified on `dfeb9066`. Ruby's
+oracle adapter retains the fetched Card object when calling update/delete;
+a successful no-op internal return must not replace that identity with null.
+The real-adapter control passes in 4.637 seconds. It checks the returned card
+identity, no mail, no card/action/change mutations and the existing empty-act
+bookkeeping. Engine write semantics are unchanged. TypeScript validation passes.
+
+The complete canonical comparison executes 556 renders and all 115 fresh
+scenario sessions / 535 steps against the unchanged Ruby33 reference:
+
+| Kind | Pass | Fail | Reproduced upstream failure |
+|---|---:|---:|---:|
+| Rendering | 493 | 54 | 9 |
+| Persistence | 516 | 19 | 0 |
+| Side effects | 445 | 41 | 49 |
+
+There are no semantic operations in this fixture. The grade remains **fail**;
+there are no completeness problems or partial selections. Compared with
+`50717cca`, no failing IDs are new and only `probe-e30#3` side effects resolve.
+Source, fixture database and reference metadata custody checks pass unchanged.
+No normalization or declared-divergence rule changed.
+
+Private complete evidence is in the process checkout at
+`recovery/release/private-probes/canonical-mod-current-ts-dfeb9066-r1/`,
+including `grade.json`, raw results, before/after custody and
+`changes-vs-50717cca.json`. The existing content-hash transform cache preserves
+real module paths and independent sessions; scenario wall time was 115.931
+seconds versus 127.613 in the prior comparison. Aggregate process boot time
+still dominates; this does not establish a general performance improvement.
