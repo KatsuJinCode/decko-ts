@@ -50,6 +50,11 @@ describe("search and related rows in one statement",()=>{
       const good=db.prepare(fused.sql).all();
       expect(decodeSearchWithRelated(good.map(row=>({...row,__decko_kind:null})))).toBeUndefined();
       expect(decodeSearchWithRelated([null])).toBeUndefined();
+      const large="SHARED_PARENT_"+"x".repeat(100_000);
+      db.prepare("UPDATE cards SET db_content=? WHERE id=3").run(large);
+      const largeWire=db.prepare(fused.sql).all();
+      expect(JSON.stringify(largeWire).match(/SHARED_PARENT_/g)).toHaveLength(1);
+      expect(decodeSearchWithRelated(largeWire)!.related.find(row=>row.id===3)?.db_content).toBe(large);
       db.exec("UPDATE cards SET db_content=x'0102' WHERE id=3");
       expect(decodeSearchWithRelated(db.prepare(fused.sql).all())).toBeUndefined();
       db.exec("UPDATE cards SET db_content=x'0102' WHERE id=1");

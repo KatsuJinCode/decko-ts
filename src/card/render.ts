@@ -1,4 +1,5 @@
 import {readPermissionEditorOptions} from "./mod-loader/mods/card-mod-permissions.js";
+import {junctionChainQuery} from "./render/junction-chain-query.js";
 import type {PermissionEditorOptions} from "./render/format.js";
 // The render engine: TypeScript port of the Decko card renderer's public
 // surface, with the decko-commons/decko#1282 batched inclusion prefetch.
@@ -4568,33 +4569,12 @@ export class RenderEngine implements RenderEngineLike {
         }
         for (const depth of [...byDepth.keys()].sort((a, b) => a - b)) {
           const asks = byDepth.get(depth)!;
-          // c<depth> is the asked card, c<n> its left junction of depth n down
-          // to c2; p0 is c2's left, p<n> (n >= 1) is c<n+1>'s right.
-          // Keep the asked card outermost, then follow primary keys. Without
-          // planner statistics SQLite can otherwise start with independent
-          // part tables and form a large cross product before testing the
-          // OR-of-key-tuples. CROSS JOIN fixes loop order without changing
-          // predicates or requiring ANALYZE on an existing deck.
-          const joins: string[] = [];
-          for (let n = depth - 1; n >= 2; n--) {
-            joins.push(`  CROSS JOIN cards c${n} ON c${n}.id = c${n + 1}.left_id AND c${n}.trash = 0\n`);
-          }
-          joins.push(`  CROSS JOIN cards p0 ON p0.id = c2.left_id AND p0.trash = 0\n`);
-          for (let n = 1; n < depth; n++) {
-            joins.push(`  CROSS JOIN cards p${n} ON p${n}.id = c${n + 1}.right_id AND p${n}.trash = 0\n`);
-          }
-          const clause =
-            "(" + Array.from({ length: depth }, (_, n) => `p${n}."key" COLLATE NOCASE = ?`).join(" AND ") + ")";
-          const perStatement = Math.floor(90 / depth);
+          // Bound tuple rows drive indexed key/pair lookups. Independent
+          // part tables must never become an unconstrained cross product.
+          const perStatement = Math.max(1, Math.floor(90 / depth));
           for (let i = 0; i < asks.length; i += perStatement) {
             const chunk = asks.slice(i, i + perStatement);
-            statements.push({
-              sql:
-                `SELECT DISTINCT c${depth}.* FROM cards c${depth}\n` +
-                joins.join("") +
-                ` WHERE c${depth}.trash = 0 AND (${chunk.map(() => clause).join(" OR ")})`,
-              params: chunk.flatMap((ask) => ask.partKeys),
-            });
+            statements.push(junctionChainQuery(chunk.map(ask=>ask.partKeys)));
           }
         }
       }

@@ -65,3 +65,28 @@ the site's actual name tuples are not embedded in the implementation.
 
 SQLite's documented ordering semantics:
 https://www.sqlite.org/optoverview.html#manual_control_of_query_plans_using_cross_join
+
+## Bound requested tuples — 2026-10-17
+
+The signed-in new Search form exposed the remaining cost of scanning every
+junction for each key-tuple chunk: one request issued 41 three-part and 43
+four-part lookup statements. The replacement keeps explicit join ordering,
+but starts from the requested tuples and walks indexed keys and junction
+pairs forward. It does not restore the unconstrained independent-part joins
+whose absent-statistics failure is recorded above. The same requested keys,
+trash predicates, result columns, DISTINCT behavior, depth order, chunk
+budget and number of requests are retained. No indexes or statistics are added.
+
+`junction-chain-join-order.test.ts` compares every returned column against
+the previous production query with both analyzed and absent statistics, then
+renders all sixteen matching chain bodies. Its plan check requires indexed
+searches for every stored table; the requested tuple rows are the only scan.
+`junction-chain-query.test.ts` also executes duplicate, missing, trashed and
+deeper-chain cases on SQLite and PostgreSQL/PGlite. The CTE uses SELECT/UNION
+rows rather than a SQLite-only table constructor.
+
+The isolated local Node/SDK profile of the previously failing form returned
+HTTP 200 in 2,407 / 2,254 / 2,258 ms of server time. These are three diagnostic
+samples against a disposable local deck, not vendor-runtime or live-site
+acceptance. The full prior capture and failed samples remain preserved in the
+private process repository's 2026-10-17 candidate verification report.
