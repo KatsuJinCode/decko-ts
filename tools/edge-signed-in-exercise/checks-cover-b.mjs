@@ -435,13 +435,22 @@ export async function runCoverBChecks(ctx) {
   group("cover-b. edit: type for a rule (E14)");
 
   await attempt("E14 a rule card's type can be changed in the board's Rules tab", async () => {
-    await visit("/Home/board");
+    const target = ensure(cardName("ruleType"));
+    const ruleName = ensure(`${target}+*self+*default`);
+    await create(target, "rule type target", "Basic");
+    await create(ruleName, "rule type content", "Basic");
+    await visit(`/${target}/board`);
     await page.waitForTimeout(1500);
     const rulesTab = page.locator(".board .nav-link", { hasText: "Rules" }).first();
     await rulesTab.click().catch(() => undefined);
+    const setSelect = page.locator('.board .rules_tab-view select[name="mark"]');
+    await setSelect.waitFor({state:"attached",timeout:15000});
+    // Ruby's rules_tab is a set selector. The rule list appears only after
+    // selecting the card's self set; opening the tab is not that selection.
+    await setSelect.selectOption(`${target}+*self`);
     await page.waitForTimeout(1500);
     const rows = await page.evaluate(() => [...document.querySelectorAll(".board .card-slot, .board .rule-row, .board [id*='rule']")].map((r) => ({ id: r.id, text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 40) })).slice(0, 15));
-    const ruleLink = page.locator(".board a[href*='rule_form'], .board a[href$='/edit']").first();
+    const ruleLink = page.locator(`.board a[href^="/${ruleName}/overlay_rule"]`).first();
     const opened = await ruleLink.count();
     if (opened === 0) {
       record("E14 a rule card's type can be changed in the board's Rules tab", false, { note: "no rule row edit link in the Rules tab", rows, rulesTabLinks: await page.evaluate(() => [...document.querySelectorAll(".board a")].map((a) => a.getAttribute("href"))), raw: ctx.captureEvidence(await page.content(), { check: "E14-rules-tab" }) });
@@ -459,8 +468,11 @@ export async function runCoverBChecks(ctx) {
     await page.locator("#edit_card button.submit-button, .modal button.submit-button, #edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
     await page.waitForTimeout(3000);
     const write = linesSince(before).find((l) => l.method !== "GET");
+    const stored = fixtureCard(ctx.database(), ruleName);
+    const expected = fixtureType(ctx.database(), "PlainText");
     record("E14 a rule card's type can be changed in the board's Rules tab (the write answers 200)",
-      write !== undefined && write.status < 400, { writeStatus: write?.status ?? null, rows });
+      write !== undefined && write.status < 400 && stored?.type_id === expected.id,
+      { writeStatus: write?.status ?? null, rows, ruleName, storedTypeId:stored?.type_id, expectedTypeId:expected.id, raw:ctx.captureEvidence(await page.content(),{check:"E14-rule-after-save",ruleName}) });
   });
 
   // ------------------------------------------------------------ E17, E19, E21
