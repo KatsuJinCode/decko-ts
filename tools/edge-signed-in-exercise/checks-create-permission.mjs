@@ -14,6 +14,8 @@
 //
 // Selected by `--only unmeasured-matrix` or `--only create-permission`.
 
+import { fixtureCard } from "./lib/typed-fixture.mjs";
+
 export const meta = { topic: "create-permission", capabilityIds: ["P2"] };
 export const capabilityChecks = {
   P2: [
@@ -60,7 +62,9 @@ export const checks = [{
       const ruleCreate = await post(admin.page, "/card/create", { "card[name]": ruleName, "card[type]": "Phrase", "card[content]": "[[Administrator]]", "success[redirect]": "true" });
       if (ruleCreate.status() >= 400) throw Error("create-rule fixture refused: " + ruleCreate.status());
       const typeId = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(typeName)?.id;
-      const ruleRow = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(ruleName);
+      // Junction names are composed from left_id/right_id; a correctly stored
+      // rule can have NULL name/key columns in the migrated schema.
+      const ruleRow = fixtureCard(database(), ruleName);
       // Where did the rule actually go? The boundary below works, so a rule
       // exists; if it is not under the exact requested name, the family and
       // any-trash lookups name the row the engine really wrote.
@@ -113,7 +117,7 @@ export const checks = [{
       // denial evidence must not claim a rule-driven cause while this fails.
       const referenceRows = ruleRow ? database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(ruleRow.id) : [];
       record(capabilityChecks.RULE_STORAGE[0], ruleRow !== undefined && ruleRow.db_content === "[[Administrator]]",
-        { actorId: creds.admin.id, requestedName: ruleName, requestedContent: "[[Administrator]]", storedRule: ruleRow?.db_content ?? null, ruleRowAnyTrash: ruleRowAnyTrash ?? null, familyRows, ruleCreateStatus: ruleCreate.status(), ruleCreateRedirect: ruleCreate.headers()?.location ?? null, referenceRows, memberDenialStatus: memberAttempt.status, adminCreateStatus: adminAttempt.status, note: "while this check fails, the member denial above is NOT attributable to a stored rule: the rule create answered " + ruleCreate.status() + " without storing a row, so the denial rides on the engine's fallback restriction for the type (rule-data question for the lead)" });
+        { actorId: creds.admin.id, requestedName: ruleName, requestedContent: "[[Administrator]]", storedRuleId: ruleRow?.id ?? null, storedRule: ruleRow?.db_content ?? null, ruleRowAnyTrash: ruleRowAnyTrash ?? null, familyRows, ruleCreateStatus: ruleCreate.status(), ruleCreateRedirect: ruleCreate.headers()?.location ?? null, referenceRows, memberDenialStatus: memberAttempt.status, adminCreateStatus: adminAttempt.status, note: ruleRow?.db_content === "[[Administrator]]" ? "requested rule resolved by its component identities and stored content" : "rule storage is unverified; member denial alone does not establish its cause" });
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "create-permission browser operation timed out";
       throw error;
