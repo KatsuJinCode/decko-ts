@@ -228,9 +228,24 @@ export async function runCoverBChecks(ctx) {
     });
     const hasEmail = shape.signinFields.some((f) => /email/i.test(f.name ?? ""));
     const hasPassword = shape.signinFields.some((f) => /password/i.test(f.name ?? ""));
+    // The crawl wrote the create-form landing as "/account/signin", which is a
+    // SUB-card path (the card named `account` with subcard `signin`), not the
+    // canonical auth route signin.rb names. Read it as well so the evidence
+    // records what that URL actually answers rather than leaving the crawl's
+    // own string unmeasured. Ruby renders the create form for ANY subcard that
+    // does not exist, so this read is diagnostic and stays out of the
+    // predicate.
+    const subcard = await visit("/account/signin");
+    const subcardShape = await page.evaluate(() => ({
+      title: document.title,
+      createForm: document.querySelector('form#new_card[action="/card/create"], #main form[action="/card/create"]') !== null,
+      signinForm: document.querySelector('form[action="/update/*signin"]') !== null,
+      prefilledName: document.querySelector('input[name="card[name]"]')?.value ?? null,
+    }));
+    const accountCard = ctx.database().prepare("SELECT id, trash FROM cards WHERE name = 'account'").get();
     record("S10 a signed-in visit to the sign-in route renders the sign-in form, not a card-creation form",
       visit1.status === 200 && sessionCookie && actor === admin.id && shape.signinForm && hasEmail && hasPassword && !shape.createForm,
-      { actor, sessionCookie, status: visit1.status, url: visit1.pathname, signedInWhileVisiting: visit1.signedIn, title: shape.title, hasEmail, hasPassword, createForm: shape.createForm, createFields: shape.createFields, formActions: shape.formActions, raw: ctx.captureEvidence(await page.content(), { check: "S10-signed-in-signin-route" }) });
+      { actor, sessionCookie, status: visit1.status, url: visit1.pathname, signedInWhileVisiting: visit1.signedIn, title: shape.title, hasEmail, hasPassword, createForm: shape.createForm, createFields: shape.createFields, formActions: shape.formActions, raw: ctx.captureEvidence(await page.content(), { check: "S10-signed-in-signin-route" }), crawlUrlDiagnostic: { requested: "/account/signin", status: subcard.status, ...subcardShape, accountCardRow: accountCard ?? null } });
   });
 
   await signIn(admin);
