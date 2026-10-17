@@ -81,7 +81,7 @@ export const checks = [{
         return { status: r.status, url: r.url };
       }, { origin: stack.origin, cardName, typeName });
       const storedRow = memberCardRow();
-      record(capabilityChecks.P2[1], memberAttempt.status >= 400 && storedRow === undefined,
+      record(capabilityChecks.P2[0], memberAttempt.status >= 400 && storedRow === undefined,
         { actorId: creds.member.id, attemptStatus: memberAttempt.status, landedOn: memberAttempt.url, storedRow: storedRow ?? null, nothingStored: storedRow === undefined });
 
       // The member's /new/<Type> surface must not answer a denial with a create form (P7 shape).
@@ -91,7 +91,7 @@ export const checks = [{
         const form = [...document.querySelectorAll("form.card-form")].find(f => (f.getAttribute("action") ?? "").includes("/card/create") || f.querySelector('input[name="card[name]"]'));
         return form ? { action: form.getAttribute("action"), hasNameField: form.querySelector('input[name="card[name]"]') !== null } : null;
       });
-      record(capabilityChecks.P2[2], !(newPageResponse.status() < 400 && createFormOffered !== null),
+      record(capabilityChecks.P2[1], !(newPageResponse.status() < 400 && createFormOffered !== null),
         { actorId: creds.member.id, status: newPageResponse.status(), createFormOffered, denialIsFormFree: !(newPageResponse.status() < 400 && createFormOffered !== null), raw: captureEvidence(newHtml, { check: "p2-new-type-denial", typeName }) });
 
       // Administrator positive control through the same restricted type.
@@ -105,7 +105,7 @@ export const checks = [{
       }, { origin: stack.origin, cardName, typeName });
       created.push(cardName);
       const adminRow = memberCardRow();
-      record(capabilityChecks.P2[3], adminAttempt.status < 400 && adminRow !== undefined && adminRow.type_id === typeId && adminRow.trash === 0,
+      record(capabilityChecks.P2[2], adminAttempt.status < 400 && adminRow !== undefined && adminRow.type_id === typeId && adminRow.trash === 0,
         { actorId: creds.admin.id, attemptStatus: adminAttempt.status, storedRow: adminRow ?? null, typeHonored: adminRow?.type_id === typeId });
 
       // Rule-data instrument: the requested type-create rule must actually
