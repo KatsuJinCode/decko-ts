@@ -123,6 +123,20 @@
       "reason": "one-time setup of a fresh deck; Brandon's deck is already set up"
     },
     {
+      "id": "S10",
+      "group": "session",
+      "capability": "A signed-in visit to the sign-in route still answers the sign-in form",
+      "sources": [
+        "card-mod-account set/self/signin.rb file header :3, ok_to_read? :37-39, view :core :119-125",
+        "enumeration 2026-10-16 (auth-route fallthrough)"
+      ],
+      "status": "not_covered",
+      "checks": [
+        "S10 a signed-in visit to the sign-in route renders the sign-in form, not a card-creation form"
+      ],
+      "finding": "The 2026-10-16 enumeration crawl recorded a signed-in auth-route visit landing on a New BasicCs create form and no instrument graded it. The check grades the rendered surface under a verified session (sign-in form present, card-creation form absent), because the gem's *signin core view carries no session condition: ok_to_read? is true and card-mod-layout holds no signed-in redirect arm."
+    },
+    {
       "id": "C1",
       "group": "create",
       "capability": "Create a RichText card through /new/RichText and land on it",
@@ -1028,7 +1042,8 @@
       "status": "not_covered",
       "checks": [
         "the account card's board has an Account tab",
-        "the Account tab exposes the account's email and password fields"
+        "the Account tab exposes the account's email and password fields",
+        "A1 the account settings page shows the signed-in account's email"
       ],
       "requiredActors": [
         "Harness Admin",
@@ -1060,7 +1075,8 @@
       ],
       "status": "not_covered",
       "checks": [
-        "the account email can be changed and the new one signs in"
+        "the account email can be changed and the new one signs in",
+        "A3 the account's new email address shows on the account page"
       ],
       "requiredActors": [
         "Harness Admin",

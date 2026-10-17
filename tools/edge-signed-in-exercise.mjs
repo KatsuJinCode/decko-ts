@@ -439,6 +439,20 @@ async function accountSettings(account = creds.admin) {
       await pill.waitFor({ state: 'visible' });
       await pill.click();
       await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 });
+      // A1's own claim is the VALUE a person reads on the settings page, not
+      // just the presence of an input: card-mod-account set/right/account
+      // views.rb:50-57 renders `field_nest field, title: title, view:
+      // :labeled`, and the email right is assign_type :phrase
+      // (right/email.rb:5), so the labeled row carries the address as text.
+      // The port nests the same labeled view (src/card/mod-loader/mods/
+      // card-mod-account.ts:277 `view: "labeled"` on `<holder>+*email`).
+      const shownEmail = await page.evaluate(() => {
+        const row = document.querySelector('.RIGHT-Xemail.labeled-view');
+        return row === null ? null : row.textContent.replace(/\s+/g, ' ').trim().slice(0, 160);
+      });
+      record("A1 the account settings page shows the signed-in account's email",
+        shownEmail !== null && shownEmail.includes(account.email),
+        { actor: account.name, expected: account.email, shown: shownEmail });
       async function openAccountField(right) {
         const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
         await link.dispatchEvent('click');
@@ -496,6 +510,18 @@ async function accountSettings(account = creds.admin) {
         await page.goto(`${stack.origin}/${holder}/board`, {waitUntil:'load'});
         await page.locator('.board .nav-tabs a').filter({hasText:/^Account$/i}).first().click();
         await page.locator('[data-cy="email_and_password-pill"]').first().click();
+        // A3's own claim is the new address VISIBLE on the account page after
+        // the change, which the stored-row + credential verdicts above cannot
+        // see: this is the fresh render a person reads, same labeled view A1
+        // grades (set/right/account views.rb:50-57).
+        await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 }).catch(() => undefined);
+        const shownAfterChange = await page.evaluate(() => {
+          const row = document.querySelector('.RIGHT-Xemail.labeled-view');
+          return row === null ? null : row.textContent.replace(/\s+/g, ' ').trim().slice(0, 160);
+        });
+        record("A3 the account's new email address shows on the account page",
+          shownAfterChange !== null && shownAfterChange.includes(newEmail),
+          { actor: account.name, expected: newEmail, shown: shownAfterChange });
         await (await openAccountField('email')).fill(account.email);
         const restoredEmail = await saveEditForm();
         const restoredLogin = await signIn(account);

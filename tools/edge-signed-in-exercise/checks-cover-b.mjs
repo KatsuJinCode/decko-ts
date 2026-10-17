@@ -192,6 +192,49 @@ export async function runCoverBChecks(ctx) {
   });
   await signIn(admin);
 
+  // ------------------------------------------------------------------- S10
+  group("cover-b. session: the auth route under an existing session (S10)");
+
+  await attempt("S10 a signed-in visit to the sign-in route renders the sign-in form, not a card-creation form", async () => {
+    // Oracle contract, card-mod-account 0.20.0 set/self/signin.rb: the
+    // "*signin (core view) gives the login ui" (file header :3) is readable by
+    // anyone - `ok_to_read?` is `true` (:37-39) with no session condition - and
+    // `view :core` (:119-125) renders `card_form :update` over the email and
+    // password nests whatever the session holds. There is no signed-in
+    // redirect arm anywhere in the gem (no `redirect` reference in
+    // card-mod-layout), so a signed-in GET /*signin must still answer the
+    // sign-in form. The port's create-form page is form#new_card posting to
+    // /card/create (src/card/render/views.ts:1823), which is what a card name
+    // that does not exist renders - the 2026-10-16 enumeration crawl recorded
+    // a signed-in auth-route visit landing on exactly that create form
+    // (docs/handoffs/edge-demo-coordination.md 19:45Z entry). Grade the
+    // rendered surface, not the URL: the sign-in form present AND no
+    // card-creation form.
+    const actor = storedSessionActorId(ctx.database(), await page.context().cookies(stack.origin));
+    const sessionCookie = (await page.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+    const visit1 = await visit("/*signin");
+    await page.waitForTimeout(1200);
+    const shape = await page.evaluate(() => {
+      const signinForm = document.querySelector('form[action="/update/*signin"]');
+      const createForm = document.querySelector('form#new_card[action="/card/create"], #main form[action="/card/create"]');
+      return {
+        title: document.title,
+        signinForm: signinForm !== null,
+        signinFields: signinForm === null ? [] : [...signinForm.querySelectorAll("input")].map((i) => ({ name: i.name, type: i.type })),
+        createForm: createForm !== null,
+        createFields: createForm === null ? [] : [...createForm.querySelectorAll("input, textarea, select")].map((i) => ({ name: i.name, type: i.type || i.tagName })).slice(0, 12),
+        formActions: [...new Set([...document.querySelectorAll("form")].map((f) => f.getAttribute("action")).filter(Boolean))].slice(0, 10),
+      };
+    });
+    const hasEmail = shape.signinFields.some((f) => /email/i.test(f.name ?? ""));
+    const hasPassword = shape.signinFields.some((f) => /password/i.test(f.name ?? ""));
+    record("S10 a signed-in visit to the sign-in route renders the sign-in form, not a card-creation form",
+      visit1.status === 200 && sessionCookie && actor === admin.id && shape.signinForm && hasEmail && hasPassword && !shape.createForm,
+      { actor, sessionCookie, status: visit1.status, url: visit1.pathname, signedInWhileVisiting: visit1.signedIn, title: shape.title, hasEmail, hasPassword, createForm: shape.createForm, createFields: shape.createFields, formActions: shape.formActions, raw: ctx.captureEvidence(await page.content(), { check: "S10-signed-in-signin-route" }) });
+  });
+
+  await signIn(admin);
+
   // ---------------------------------------------------------------- C8, C10
   group("cover-b. create: duplicate name, URL presets (C8, C10)");
 
@@ -1142,7 +1185,7 @@ export async function runCoverBChecks(ctx) {
 
 export const meta = {
   topic: "cover-b",
-  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S2", "S3", "S4", "S5", "W1", "W3"],
+  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S10", "S2", "S3", "S4", "S5", "W1", "W3"],
 };
 
 function adaptRunnerContext(ctx) {
