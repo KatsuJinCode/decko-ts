@@ -415,8 +415,9 @@ export async function runCoverBChecks(ctx) {
     const chosen = await page.evaluate(() => {
       const f = document.querySelector('#main select[name="card[type]"], #main input[name="card[type]"], .modal select[name="card[type]"], #edit_card select[name="card[type]"], .modal input[name="card[type]"], #edit_card input[name="card[type]"]');
       const hidden = document.querySelector('input[name="card[type_id]"]');
-      return { field: f?.value ?? null, hiddenTypeId: hidden?.value ?? null, formAction: f?.closest("form")?.getAttribute("action") ?? null };
+      return { field: f?.value ?? null, hiddenTypeId: hidden?.value ?? null, formAction: f?.closest("form")?.getAttribute("action") ?? null, options: f?.tagName === "SELECT" ? [...f.options].map(o => ({value:o.value,selected:o.selected})) : [], slotTypes: [...document.querySelectorAll('[data-card-type-id]')].filter(s=>s.getAttribute('data-card-name')?.startsWith('Harness_typechange')).map(s=>({view:s.className,type:s.getAttribute('data-card-type-id')})) };
     });
+    chosen.raw = ctx.captureEvidence(await page.content(), {check: "E12-selected-type", name});
     const before = ledger().length;
     await page.locator("#edit_card button.submit-button, .modal button.submit-button, .modal button[type=submit]:has-text('Save and Close'), #edit_card button[type=submit]").first().click().catch(() => undefined);
     await page.waitForTimeout(3000);
