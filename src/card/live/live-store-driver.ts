@@ -28,6 +28,7 @@ import { DeckoName } from "../name.js";
 import { RequestStore, type Missing, type Widening } from "./request-store.js";
 import { CARDS_COLUMNS, foldNoCase } from "./store-row-evaluator.js";
 import { compactStatement, compactWrap, decodeCompact } from "./compact-rows.js";
+import { searchWithRelatedStatement, decodeSearchWithRelated } from "./search-with-related.js";
 
 /** Thrown by a live render whose request was abandoned (its budget fired). */
 export class LiveRenderAborted extends Error {
@@ -610,7 +611,10 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       if (widening !== undefined && i === 1) return widening.identityColumns;
       return i >= send.length - companions.length ? CARDS_COLUMNS : undefined;
     });
-    const res = await this.sendBatch(send, storeNames);
+    const exactOffset = widening ? 2 : 0;
+    const res = await this.sendBatch(send, storeNames, companions.map((c, i) => ({
+      search: exactOffset + c.at, related: exactOffset + exact.length + i,
+    })));
     let j = 0;
     if (widening) {
       const fullRows = (res[j++]?.rows ?? []) as Record<string, unknown>[];
@@ -672,7 +676,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
    *  not matter), the engine's statements per compactStatement. A statement
    *  whose compact result is refused is sent again, plain, in one more trip;
    *  a trip the server rejects is sent again, plain, whole. */
-  private async sendBatch(send: SQLStatement[], storeNames: (readonly string[] | undefined)[]): Promise<SQLQueryResult[]> {
+  private async sendBatch(send: SQLStatement[], storeNames: (readonly string[] | undefined)[], pairs: {search: number; related: number}[] = []): Promise<SQLQueryResult[]> {
     const plain = async (stmts: SQLStatement[]) => {
       this.stats.round_trips += 1;
       this.stats.statements_sent += stmts.length;
@@ -697,20 +701,39 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       const names = storeNames[i];
       return names !== undefined ? { stmt: compactWrap(s, names, "aggregate"), names, form: "aggregate" as const } : compactStatement(s);
     });
+    const paired = new Map(pairs.flatMap(pair => {
+      const stmt = searchWithRelatedStatement(send[pair.search]!);
+      return stmt === undefined ? [] : [[pair.search, { ...pair, stmt }] as const];
+    }));
+    const folded = new Set([...paired.values()].map(pair => pair.related));
+    const units = send.flatMap((s, i) => folded.has(i) ? [] : [{
+      at: i, pair: paired.get(i), stmt: paired.get(i)?.stmt ?? forms[i]?.stmt ?? s,
+    }]);
     let wire: SQLQueryResult[];
     try {
-      wire = await plain(send.map((s, i) => forms[i]?.stmt ?? s));
+      wire = await plain(units.map(unit => unit.stmt));
     } catch {
       this.stats.compact_fallbacks += send.length;
       return await plain(send);
     }
-    const out: (SQLQueryResult | undefined)[] = wire.map((r, i) => {
-      const f = forms[i];
-      if (f === undefined) return r;
+    const out: (SQLQueryResult | undefined)[] = new Array(send.length);
+    units.forEach((unit, i) => {
+      const r = wire[i];
+      if (r === undefined) return;
+      if (unit.pair !== undefined) {
+        const rows = decodeSearchWithRelated(r.rows);
+        if (rows !== undefined) {
+          out[unit.at] = { ...r, rows: rows.search };
+          out[unit.pair.related] = { ...r, rows: rows.related };
+        }
+        return;
+      }
+      const f = forms[unit.at];
+      if (f === undefined) { out[unit.at] = r; return; }
       const rows = decodeCompact(r.rows, f.names, f.form);
-      return rows === undefined ? undefined : { ...r, rows };
+      out[unit.at] = rows === undefined ? undefined : { ...r, rows };
     });
-    const redo = out.flatMap((r, i) => (r === undefined ? [i] : []));
+    const redo = send.flatMap((_, i) => out[i] === undefined ? [i] : []);
     if (redo.length > 0) {
       this.stats.compact_fallbacks += redo.length;
       const again = await plain(redo.map((i) => send[i]!));

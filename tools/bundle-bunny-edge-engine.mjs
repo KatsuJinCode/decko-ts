@@ -26,7 +26,7 @@
 
 import { build } from "esbuild";
 import { writeFileSync, mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, basename } from "node:path";
 import { builtinModules } from "node:module";
 import { gzipSync } from "node:zlib";
 import { pathToFileURL } from "node:url";
@@ -81,6 +81,11 @@ function gzipInlineWasmBlobsPlugin() {
 }
 
 const here = resolve(process.cwd());
+const outArg = process.argv.indexOf("--out-dir");
+const outputDirectory = outArg < 0 ? undefined : process.argv[outArg + 1];
+if (outArg >= 0 && (!outputDirectory || outputDirectory.startsWith("--") || /^[t]:/i.test(outputDirectory) || /[\\/]Downloads(?:[\\/]|$)/i.test(outputDirectory))) {
+  throw new Error("--out-dir requires an allowed output directory");
+}
 /** The two scripts this tool builds. The full engine script serves every
  *  request; the read-only script serves anonymous page reads and forwards
  *  everything else to the full one (bunny-edge-read-handler.ts). */
@@ -99,8 +104,8 @@ const builtins = new Set([
 
 for (const target of TARGETS) {
   const src = resolve(here, target.entry);
-  const out = resolve(here, target.out);
-  const payload = resolve(here, target.payload);
+  const out = outputDirectory === undefined ? resolve(here, target.out) : resolve(outputDirectory, basename(target.out));
+  const payload = outputDirectory === undefined ? resolve(here, target.payload) : resolve(outputDirectory, basename(target.payload));
   mkdirSync(dirname(out), { recursive: true });
 
   const built = await build({
