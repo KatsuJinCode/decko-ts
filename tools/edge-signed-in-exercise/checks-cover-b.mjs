@@ -467,10 +467,13 @@ export async function runCoverBChecks(ctx) {
       return;
     }
     await typeField.selectOption({ label: "PlainText" }).catch(async () => { await typeField.selectOption("PlainText").catch(() => undefined); });
-    const before = ledger().length;
-    await page.locator("#edit_card button.submit-button, .modal button.submit-button, #edit_card button[type=submit], .modal button[type=submit]").first().click().catch(() => undefined);
-    await page.waitForTimeout(3000);
-    const write = linesSince(before).find((l) => l.method !== "GET");
+    const ruleForm = page.locator('form.card-rule-form').filter({has:page.locator(`input[name="card[name]"][value="${ruleName}"]`)});
+    await ruleForm.locator(`input[name="card[name]"][value="${ruleName}"]`).check();
+    const action = new URL(await ruleForm.getAttribute('action'), stack.origin);
+    const saved = page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==='POST',{timeout:20000});
+    await ruleForm.locator('button[type="submit"]').first().click();
+    const response = await saved; await response.finished();
+    const write = {status:response.status()};
     const stored = fixtureCard(ctx.database(), ruleName);
     const expected = fixtureType(ctx.database(), "PlainText");
     record("E14 a rule card's type can be changed in the board's Rules tab (the write answers 200)",
