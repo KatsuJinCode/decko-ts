@@ -220,10 +220,16 @@ if (additionalAssetHost) {
   assetHosts.push(candidate.hostname);
 }
 provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
-const allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href] : [];
+// A page's favicon read arrives as resourceType `other`, which the browser
+// policy admits only by exact URL. The deployment's own render configuration
+// names that URL (DECKO_SERVED_FAVICON_URL; for this deck it is
+// byte-identical to the head's card-derived favicon_tag href), so the default
+// invocation admits it; --favicon-url overrides; neither leaves it blocked.
+const allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href]
+  : (liveEnv.DECKO_SERVED_FAVICON_URL ? [new URL(liveEnv.DECKO_SERVED_FAVICON_URL).href] : []);
 for (const value of allowedFaviconUrls) {
   const url = new URL(value);
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('favicon-url must be an exact HTTPS resource on a declared public asset host');
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('declared favicon URL must be an exact HTTPS resource on a declared public asset host');
 }
 provenance.readOnlyFaviconUrls = allowedFaviconUrls;
 
