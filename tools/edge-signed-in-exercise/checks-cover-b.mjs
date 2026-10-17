@@ -1020,23 +1020,38 @@ export async function runCoverBChecks(ctx) {
     const name = ensure(cardName("newest"));
     await create(name, "Harness newest body", "Basic");
     // The deck's own Changes menu item is *main menu's [[*search|Changes]],
-    // so this check grades the *search card page. Result rows there are bar
-    // views whose card names are never anchor text — Ruby's bar.haml renders
-    // each row a _card-link div with only menu-icon <a>s inside — and the
-    // search card's paging links ("1","2",…) are the page's first text
-    // anchors, so an anchor-text selector reads pagination, not rows (the
-    // graded search-card-pages journey exercises exactly those paging links
-    // on both engines). Oracle contract for the page's order: the card's CQL
-    // sort "relevance" orders by updated_at DESC (card-1.110.0
-    // sql_statement/order.rb ORDER_MAP deprecated alias + query.rb
-    // DEFAULT_ORDER_DIRS), so the just-created card must be the first result
-    // row. Rows are read as data-card-name and matched space/underscore- and
-    // case-insensitively (static renders print canonical spaces, live renders
-    // the requested underscores).
+    // so this check grades the *search card page. Oracle contract for the
+    // page's order: the card's CQL sort "relevance" orders by updated_at DESC
+    // (card-1.110.0 sql_statement/order.rb ORDER_MAP deprecated alias +
+    // query.rb DEFAULT_ORDER_DIRS), so the just-created card must be the
+    // first result row.
+    //
+    // The rows must be read OFF THE ROW WRAPPERS, and this check failed on
+    // both graded nights (2026-10-16 at 50717cca and 2026-10-17 at
+    // d797e8de, evidence firstRows ["RichText","1","2","3","4","5"]) because
+    // it read the wrong nodes twice over:
+    //   - an anchor-text read (#main a[href^='/']) cannot see a row name at
+    //     all - a row is a bar view, and bar.haml renders it a _card-link div
+    //     whose only <a>s are menu icons (edit / space_dashboard /
+    //     open_in_full page / fullscreen modal), so every row anchor is
+    //     filtered out and the first surviving text anchors are the paging
+    //     links "1","2","3",... Replaying that exact selector against this
+    //     run's own captured page reads ["1","2","3","4","5","6"].
+    //   - a bare `#main [data-card-name]` read is not scoped to the results,
+    //     so it also swallows every other card-slot under #main, and each row
+    //     carries TWO slots (the .search-result-item wrapper's own and the
+    //     nested one), which halves the number of rows the index window sees.
+    // The result list is rendered by cardListView (src/card/render/views.ts:
+    // `<div class="card-list card-list-<view> search-result-list">` holding
+    // `<div class="search-result-item item-<view>">` children), so reading
+    // those children in DOM order IS the rendered order, independent of page
+    // chrome and of the doubled slot encoding. Names are matched
+    // space/underscore- and case-insensitively (static renders print
+    // canonical spaces, live renders the requested underscores).
     await visit("/*search");
     await page.waitForTimeout(1200);
-    const first = await page.evaluate(() => [...document.querySelectorAll("#main [data-card-name]")]
-      .map((n) => n.getAttribute("data-card-name"))
+    const first = await page.evaluate(() => [...document.querySelectorAll("#main .search-result-list > .search-result-item")]
+      .map((row) => row.querySelector("[data-card-name]")?.getAttribute("data-card-name"))
       .filter((t) => t && t !== "*search")
       .slice(0, 6));
     const key = (t) => t.replace(/_/g, " ").trim().toLowerCase();

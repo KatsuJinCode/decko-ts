@@ -868,7 +868,7 @@
         "the Changes link (/*search) lists cards",
         "/*search lists the cards this run just created/edited first"
       ],
-      "finding": "Harness name somewhere in body is not newest-first ordering."
+      "finding": "The order was never graded until 2026-10-17: the check read anchor text, and a search row's only anchors are menu icons, so it read the paging links \"1\",\"2\",\"3\",... instead of rows (identical evidence on 2026-10-16 and 2026-10-17). It then read every card-slot under #main rather than the rows. It now reads the ordered .search-result-list row wrappers."
     },
     {
       "id": "N6",
