@@ -875,8 +875,29 @@ export async function runCoverBChecks(ctx) {
     if (await save.count() === 0) { record("E16 Save (without close) updates the slot and leaves the board open", false, { note: "no data-cy=save control on the board" }); return; }
     await save.click({ force: true }).catch(() => undefined);
     await page.waitForTimeout(1000);
+    // This deck's "Basic" fixture resolves to the RichText cardtype
+    // (typed-fixture.mjs codename map), whose board content field is a
+    // visibility:hidden tinymce-textarea. A raw fill throws on the invisible
+    // element, and the swallowed error made the save silently re-submit the
+    // old content - the identical 10-16 and 10-17 E16 evidence (writeStatus
+    // 200, storedAfterSave false). Write through the editor that owns the
+    // field (the matchingRichEditor contract the dialog journeys use); only
+    // when no editor owns the field, fill a visible plain field. If the
+    // content cannot be set, fail here instead of saving stale content.
     const field = page.locator('.board input[name$="[content]"]:not([type=hidden]), .board textarea[name$="[content]"]').first();
-    await field.fill("Harness save after").catch(() => undefined);
+    const fieldId = await field.getAttribute("id");
+    const ownsEditor = fieldId
+      ? await page.waitForFunction(matchingRichEditor, [fieldId, true], { timeout: 10_000 }).then(() => true).catch(() => false)
+      : false;
+    const contentSet = ownsEditor
+      ? await page.evaluate((id) => {
+          const ed = window.tinymce?.get(id);
+          if (!ed?.initialized) return false;
+          ed.setContent("Harness save after");
+          return (ed.getContent() ?? "").includes("Harness save after");
+        }, fieldId)
+      : await field.isVisible().then((visible) => visible && field.fill("Harness save after").then(() => true, () => false));
+    if (!contentSet) throw new Error(`the board content field could not take the new content (fieldId ${fieldId}, ownsEditor ${ownsEditor})`);
     await page.waitForTimeout(500);
     const before = ledger().length;
     await save.click({ force: true }).catch(() => undefined);
