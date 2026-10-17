@@ -17,11 +17,11 @@
 export const meta = { topic: "create-permission", capabilityIds: ["P2"] };
 export const capabilityChecks = {
   P2: [
-    "P2 the create-only rule card stores an actual Administrator reference",
     "P2 member's create POST for the restricted type is refused and stores nothing",
     "P2 member's /new/<Type> denial is not rendered as a create form",
     "P2 admin positive control: the same form creates for the administrator",
   ],
+  RULE_STORAGE: ["rule-data: creating a <Type>+*type+*create rule card stores the rule under its requested name with its requested content"],
 };
 
 export const checks = [{
@@ -68,12 +68,7 @@ export const checks = [{
       const familyRows = database().prepare("SELECT id,name,trash,substr(coalesce(db_content,''),1,50) AS content_head FROM cards WHERE name LIKE ?").all("%" + stamp + "%");
       const adminRoleId = database().prepare("SELECT id FROM cards WHERE codename='administrator' AND trash=0 ORDER BY id LIMIT 1").get()?.id;
       // Reference rows are evidence for the lead (rule-data the matrix says no
-      // instrument reads); the contract asserted here is the stored rule text
-      // plus the boundary behavior below, which is the user-visible P2 truth.
-      const referenceRows = ruleRow ? database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(ruleRow.id) : [];
-      const refereeNames = referenceRows.map(r => r.referee_id === null ? null : database().prepare("SELECT name,codename FROM cards WHERE id=?").get(r.referee_id)).filter(Boolean);
-      record(capabilityChecks.P2[0], typeId !== undefined && ruleRow?.db_content === "[[Administrator]]",
-        { actorId: creds.admin.id, typeId, storedRule: ruleRow?.db_content ?? null, ruleRowAnyTrash: ruleRowAnyTrash ?? null, familyRows, ruleCreateStatus: ruleCreate.status(), ruleCreateRedirect: ruleCreate.headers()?.location ?? null, typeCreateRedirect: typeCreate.headers()?.location ?? null, referenceRows, refereeNames, adminRoleId });
+      // instrument reads). Recorded with the rule-storage check below.
 
       // The member's create POST through the browser session is refused; nothing is stored.
       const memberCardRow = () => database().prepare("SELECT id,type_id,trash FROM cards WHERE name=?").get(cardName);
@@ -112,6 +107,13 @@ export const checks = [{
       const adminRow = memberCardRow();
       record(capabilityChecks.P2[3], adminAttempt.status < 400 && adminRow !== undefined && adminRow.type_id === typeId && adminRow.trash === 0,
         { actorId: creds.admin.id, attemptStatus: adminAttempt.status, storedRow: adminRow ?? null, typeHonored: adminRow?.type_id === typeId });
+
+      // Rule-data instrument: the requested type-create rule must actually
+      // store. The three P2 records above hold independently of it, so their
+      // denial evidence must not claim a rule-driven cause while this fails.
+      const referenceRows = ruleRow ? database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(ruleRow.id) : [];
+      record(capabilityChecks.RULE_STORAGE[0], ruleRow !== undefined && ruleRow.db_content === "[[Administrator]]",
+        { actorId: creds.admin.id, requestedName: ruleName, requestedContent: "[[Administrator]]", storedRule: ruleRow?.db_content ?? null, ruleRowAnyTrash: ruleRowAnyTrash ?? null, familyRows, ruleCreateStatus: ruleCreate.status(), ruleCreateRedirect: ruleCreate.headers()?.location ?? null, referenceRows, memberDenialStatus: memberAttempt.status, adminCreateStatus: adminAttempt.status, note: "while this check fails, the member denial above is NOT attributable to a stored rule: the rule create answered " + ruleCreate.status() + " without storing a row, so the denial rides on the engine's fallback restriction for the type (rule-data question for the lead)" });
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "create-permission browser operation timed out";
       throw error;
