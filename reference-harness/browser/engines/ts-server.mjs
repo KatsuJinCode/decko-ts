@@ -49,8 +49,11 @@ process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
 // deltas Ruby never writes. Ruby-side parity is the engine behavior under
 // test; the production PBKDF2 default is a host decision, not an engine one.
 const productionProfile = process.argv.includes("--production");
-if (productionProfile) process.env.DECKO_FONT_AWESOME ??= "local";
-else process.env.DECKO_FONT_AWESOME = "stock";
+// Both journey profiles default to the vendored same-origin Font Awesome
+// (docs/self-hosted-font-awesome.md, vendor/fontawesome-free-6.7.2): the stock
+// external kit answers 403, which the journey evidence gate fail-closes on.
+// DECKO_FONT_AWESOME=stock restores the stock kit-tag bytes explicitly.
+process.env.DECKO_FONT_AWESOME ??= "local";
 if (!productionProfile) process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 else process.env.DECKO_PASSWORD_HASH ??= "pbkdf2";
 // A fresh deck served as stock Decko serves it (see vm-staging-server.mjs).

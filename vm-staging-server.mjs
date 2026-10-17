@@ -131,7 +131,7 @@ import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js"
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams } from "./dist/src/server/worker-shared-surface.js";
-import { configureFontAwesomeMode } from "./dist/src/card/render/font-awesome.js";
+import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
@@ -2313,7 +2313,10 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
     `<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous" integrity="sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw=="></script>\n` +
     `<!-- mod: bootstrap (remote) -->\n` +
     `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" integrity="sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==" referrerpolicy="no-referrer"></script>\n` +
-    `<script src="https://kit.fontawesome.com/1366963381.js" crossorigin="anonymous"></script>\n` +
+    // The shell's Font Awesome tag follows the selected provider (stock kit
+    // bytes when unconfigured), exactly as the engine's javascriptTags does
+    // for engine-rendered heads (page.ts javascriptTags).
+    fontAwesomeHeadTag(render.fontAwesomeAssetMode) + `\n` +
     `<!-- MAIN DECKO JAVASCRIPT -->\n` +
     `<script src="${escapeHtml(jsUrl)}"></script>\n` +
     `<script>\n` +
