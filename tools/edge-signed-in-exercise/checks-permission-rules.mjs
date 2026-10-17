@@ -44,9 +44,10 @@ export const capabilityChecks = {
   ],
   P6: [
     "P6 the board Rules tab offers the set's read and update rules to an administrator",
+    "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
   ],
   P4: [
-    "P4 the board offers a plus card whose create form the administrator can open",
+    "P4 a *default rule fills the plus-card create form opened from the board",
   ],
 };
 
@@ -172,13 +173,23 @@ export const checks = [
           raw: captureEvidence(boardHtml, { check: "p7-restricted-board-denial", name: cardName, status: board.status() }),
         });
 
-        // Positive control: the same board, for the actor the rule admits.
+        // Positive control: the same board, for the actor the rule admits. The board
+        // renders slots, not the card's own body - the card's slot identity is
+        // what proves the board came back for this actor, so the check reads
+        // that rather than the secret text (which no board view prints inline;
+        // the first run's red here was this assertion, not the product).
         const adminBoard = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}/board`, { waitUntil: "load" });
-        const adminHtml = await admin.page.content();
-        record(capabilityChecks.P7[1], adminBoard.status() < 400 && adminHtml.includes(secret), {
-          card: cardName, actor: "admin", boardStatus: adminBoard.status(), secretVisible: adminHtml.includes(secret),
-          hasBoardPane: await admin.page.locator(".board, .board-main").count() > 0,
-        });
+        const adminSlots = await admin.page.evaluate(name => [...document.querySelectorAll("#main [data-card-name]")]
+          .map(el => el.getAttribute("data-card-name")), cardName);
+        record(capabilityChecks.P7[1],
+          adminBoard.status() < 400
+          && await admin.page.locator(".board, .board-main").count() > 0
+          && adminSlots.includes(cardName),
+          {
+            card: cardName, actor: "admin", boardStatus: adminBoard.status(),
+            hasBoardPane: true, cardSlotRendered: adminSlots.includes(cardName),
+            slots: adminSlots.slice(0, 10),
+          });
       } finally {
         await member?.close().catch(() => {});
         await admin?.close().catch(() => {});
@@ -229,17 +240,18 @@ export const checks = [
           return;
         }
 
-        // The administrator selects the set: the selector is _submit-on-select,
-        // so choosing it is the act that loads the set's rules.
-        await admin.page.evaluate(set => {
-          const pane = document.querySelector(".tab-pane-Rules.active") ?? document.querySelector("[id*='rule']");
-          const select = pane?.querySelector("select[name='mark']");
-          if (select === null) return;
-          select.value = set;
-          select.dispatchEvent(new Event("change", { bubbles: true }));
-        }, selfSet);
-        await admin.page.waitForTimeout(3000);
-        const pills = await admin.page.evaluate(() => [...document.querySelectorAll(".card-slot._fixed-slot a._rule-item, .card-slot._fixed-slot .edit-rule-link")]
+        // Selecting the set is the act that loads the set's rules, and the
+        // stock widget submits on select2:select - NOT on the native change
+        // event (the same fact E14's Rules tab records at
+        // checks-cover-b.mjs:506-512, where a dispatched change event leaves
+        // ._fixed-slot empty). Drive the visible widget the way a person does.
+        const setSelect = admin.page.locator(".board .rules_tab-view select[name='mark']").first();
+        await setSelect.waitFor({ state: "attached", timeout: 15000 });
+        await admin.page.locator(".board .rules_tab-view .select2-selection").first().click().catch(() => undefined);
+        await admin.page.getByRole("treeitem", { name: `The card "${cardName}"`, exact: true }).click().catch(() => undefined);
+        await admin.page.locator(".board a[href*='overlay_rule']").first().waitFor({ state: "attached", timeout: 15000 }).catch(() => undefined);
+        await admin.page.waitForTimeout(1500);
+        const pills = await admin.page.evaluate(() => [...document.querySelectorAll(".board a[href*='overlay_rule']")]
           .map(a => ({
             setting: (a.getAttribute("data-cy") ?? "").replace("-pill", "") || a.textContent.replace(/\s+/g, " ").trim().split(" ")[0],
             href: a.getAttribute("href"),
@@ -251,29 +263,90 @@ export const checks = [
         // (setting the value) drives. Its control inventory and raw bytes ride
         // along in this row's evidence so the next stage is written against the
         // served DOM, not against an assumption about it.
-        let readRuleOverlay = null;
-        if (readPill !== undefined) {
-          await admin.page.locator(`a[href="${readPill.href}"]`).first().click().catch(() => undefined);
-          await admin.page.waitForTimeout(3000);
-          readRuleOverlay = await admin.page.evaluate(() => {
-            const root = document.querySelector(".overlay-container") ?? document.body;
-            return {
-              forms: [...root.querySelectorAll("form")].map(f => ({ action: f.getAttribute("action"), method: f.getAttribute("method") })),
-              controls: [...root.querySelectorAll("select,input,textarea,button")].slice(0, 30).map(el => ({
-                tag: el.tagName.toLowerCase(), name: el.getAttribute("name"), type: el.getAttribute("type"),
-                value: el.value ?? null, text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
-                options: el.tagName === "SELECT" ? [...el.options].slice(0, 10).map(o => `${o.value}:${o.textContent.trim()}`) : null,
-              })),
-              text: (root.innerText ?? "").replace(/\s+/g, " ").slice(0, 300),
-            };
-          });
-        }
+        const readRuleOverlay = readPill === undefined ? null : await admin.page.evaluate(() => {
+          const root = document.querySelector(".overlay-container") ?? document.body;
+          return {
+            forms: [...root.querySelectorAll("form")].map(f => ({ action: f.getAttribute("action"), method: f.getAttribute("method") })),
+            controls: [...root.querySelectorAll("select,input,textarea,button")].slice(0, 30).map(el => ({
+              tag: el.tagName.toLowerCase(), name: el.getAttribute("name"), type: el.getAttribute("type"),
+              value: el.value ?? null, text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
+              options: el.tagName === "SELECT" ? [...el.options].slice(0, 10).map(o => `${o.value}:${o.textContent.trim()}`) : null,
+            })),
+            text: (root.innerText ?? "").replace(/\s+/g, " ").slice(0, 300),
+          };
+        });
         record(capabilityChecks.P6[0], readPill !== undefined && updatePill !== undefined, {
           card: cardName, boardStatus: board.status(), ...sets, selfSet, selfOffered,
           settings: pills.map(p => p.setting), readPill: readPill ?? null, updatePill: updatePill ?? null,
           memberReadBefore: before.status(), readRuleOverlay,
           raw: captureEvidence(await admin.page.content(), { check: "p6-rules-tab-set", name: cardName }),
         });
+
+        // P6's act: set the set's read rule from that editor, as an
+        // administrator, and read the member's boundary afterwards. The rule's
+        // identity is the pill's own href, so the rule this claims to set is the
+        // rule the control addresses.
+        if (readPill === undefined) {
+          record(capabilityChecks.P6[1], false, { card: cardName, note: "not reached: the selected set lists no read rule pill", settings: pills.map(p => p.setting) });
+          return;
+        }
+        const ruleName = decodeURIComponent(new URL(readPill.href, stack.origin).pathname.replace(/^\//, ""));
+        const beforeRule = fixtureCard(database(), ruleName);
+        await admin.page.locator(`a[href="${readPill.href}"]`).first().click().catch(() => undefined);
+        await admin.page.waitForTimeout(2000);
+        const ruleForm = admin.page.locator("form.card-rule-form").filter({ has: admin.page.locator(`input[name="card[name]"][value="${ruleName}"]`) }).first();
+        if (await ruleForm.count() === 0) {
+          record(capabilityChecks.P6[1], false, {
+            card: cardName, ruleName, note: "the read pill opened no card-rule-form carrying that rule's name",
+            overlayForms: await admin.page.evaluate(() => [...document.querySelectorAll("form")].map(f => ({ action: f.getAttribute("action"), cls: f.className, names: [...f.querySelectorAll("[name]")].map(n => n.getAttribute("name")).slice(0, 8) }))),
+            raw: captureEvidence(await admin.page.content(), { check: "p6-read-rule-form", name: cardName }),
+          });
+          return;
+        }
+        const contentField = ruleForm.locator('[name="card[content]"]').first();
+        if (await contentField.count() === 0) {
+          record(capabilityChecks.P6[1], false, {
+            card: cardName, ruleName, note: "the rule form offers no content field to set the rule's value",
+            formControls: await ruleForm.evaluate(f => [...f.querySelectorAll("input,select,textarea")].map(el => ({ name: el.getAttribute("name"), type: el.getAttribute("type"), value: el.value ?? null }))),
+            raw: captureEvidence(await admin.page.content(), { check: "p6-read-rule-form", name: cardName }),
+          });
+          return;
+        }
+        const isTiny = await contentField.evaluate(el => el.classList.contains("tinymce-textarea"));
+        const wanted = "[[Administrator]]";
+        if (isTiny) {
+          const id = await contentField.getAttribute("id");
+          await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 });
+          await admin.page.evaluate(([editor, text]) => { const instance = window.tinymce.get(editor); instance.setContent(text); instance.save(); }, [id, wanted]);
+        } else if (await contentField.isVisible()) {
+          await contentField.fill(wanted);
+        }
+        const action = new URL(await ruleForm.getAttribute("action"), stack.origin);
+        const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
+          .then(response => ({ response }), error => ({ error }));
+        await ruleForm.locator("button[type='submit']").first().click().catch(() => undefined);
+        const observed = await pending;
+        if (observed.error) throw observed.error;
+        await observed.response.finished();
+        const afterRule = fixtureCard(database(), ruleName);
+
+        // The boundary the administrator just set, read from the member's side.
+        const after = await member.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
+        const afterHtml = await member.page.content();
+        record(capabilityChecks.P6[1],
+          observed.response.status() < 400
+          && afterRule?.db_content === wanted
+          && after.status() >= 400
+          && !afterHtml.includes(secret),
+          {
+            card: cardName, ruleName, wanted,
+            ruleWriteStatus: observed.response.status(),
+            ruleContentBefore: beforeRule?.db_content ?? null,
+            ruleContentAfter: afterRule?.db_content ?? null,
+            memberReadBefore: before.status(), memberReadAfter: after.status(),
+            secretVisibleAfter: afterHtml.includes(secret),
+            raw: captureEvidence(afterHtml, { check: "p6-member-after-read-rule", name: cardName, status: after.status() }),
+          });
       } finally {
         await member?.close().catch(() => {});
         await admin?.close().catch(() => {});
@@ -312,42 +385,46 @@ export const checks = [
         const ruleRow = fixtureCard(database(), defaultRule);
 
         const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}/board`, { waitUntil: "load" });
-        const plusLinks = await admin.page.evaluate(() => [...document.querySelectorAll("a, .card-slot")]
-          .filter(el => /^\s*\+/.test(el.textContent ?? "") || /\+\s*$/.test((el.getAttribute("data-card-name") ?? "")))
-          .slice(0, 8)
-          .map(el => ({ tag: el.tagName.toLowerCase(), text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40), href: el.getAttribute("href"), name: el.getAttribute("data-card-name") })));
-        // A plus card the administrator can actually open is the affordance P4
-        // is about; whether the *default rule's text arrives inside that form
-        // is the next stage, written against whatever the form renders here.
-        let openedForm = null;
-        const plusHref = plusLinks.find(l => l.href && l.href.includes("/new/"))?.href ?? null;
-        if (plusHref !== null) {
-          const opened = await admin.page.goto(new URL(plusHref, stack.origin).href, { waitUntil: "domcontentloaded" }).catch(() => null);
-          if (opened !== null) {
-            openedForm = await admin.page.evaluate(() => {
-              const form = document.querySelector("form.card-form");
-              const field = form?.querySelector('[name="card[content]"]') ?? null;
-              const isTiny = field !== null && field.classList.contains("tinymce-textarea");
-              return {
-                hasForm: form !== null,
-                action: form?.getAttribute("action") ?? null,
-                contentInput: field === null ? null : { name: field.getAttribute("name"), value: field.value ?? null, tinyMce: isTiny },
-                submitButtons: document.querySelectorAll(".create-submit-button").length,
-              };
-            });
-            if (openedForm?.contentInput?.tinyMce === true) {
-              // The TinyMCE editor id is not the input name; read it off the DOM.
-              const id = await admin.page.evaluate(() => document.querySelector("form.card-form [name='card[content]'].tinymce-textarea")?.id ?? null);
-              if (id !== null) {
-                await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 }).catch(() => undefined);
-                openedForm.contentValue = await admin.page.evaluate(editor => window.tinymce?.get(editor)?.getContent?.() ?? null, id);
-              }
+        // The board's plus card is the "New Card" affordance, rendered from the
+        // deck's own https://culturesmith.com/card/new link as
+        // a.unknown-link[href$="/new_in_modal"][data-remote] carrying an
+        // add_box icon (measured in the 2026-10-17T23:52:10Z run's
+        // p6-rules-tab-set capture). The first version of this row hunted for
+        // text starting with "+" and found nothing - that was this read, not a
+        // missing affordance.
+        const plusLink = admin.page.locator("a[href*='new_in_modal']").first();
+        const plusCount = await admin.page.locator("a[href*='new_in_modal']").count();
+        let openedForm = null, formStatus = null;
+        if (plusCount > 0) {
+          await plusLink.click().catch(() => undefined);
+          await admin.page.waitForTimeout(2500);
+          const shape = await admin.page.evaluate(() => {
+            const form = document.querySelector(".modal form.card-form") ?? document.querySelector("form.card-form");
+            const field = form?.querySelector('[name="card[content]"]') ?? null;
+            return {
+              hasForm: form !== null,
+              action: form?.getAttribute("action") ?? null,
+              nameValue: form?.querySelector('[name="card[name]"]')?.value ?? null,
+              contentInput: field === null ? null : { name: field.getAttribute("name"), value: field.value ?? null, tinyMce: field.classList.contains("tinymce-textarea") },
+              submitButtons: document.querySelectorAll(".create-submit-button").length,
+            };
+          });
+          openedForm = shape;
+          formStatus = board.status();
+          if (shape.contentInput?.tinyMce === true) {
+            const id = await admin.page.evaluate(() => document.querySelector("form.card-form [name='card[content]'].tinymce-textarea")?.id ?? null);
+            if (id !== null) {
+              await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 }).catch(() => undefined);
+              openedForm.editorContent = await admin.page.evaluate(editor => window.tinymce?.get(editor)?.getContent?.() ?? null, id);
             }
           }
         }
-        record(capabilityChecks.P4[0], plusHref !== null && openedForm?.hasForm === true, {
+        // P4's assertion: the plus card's create form arrives carrying the
+        // *default rule's text - the override, read from what the form shows.
+        const carried = [openedForm?.contentInput?.value ?? "", openedForm?.editorContent ?? ""].some(v => typeof v === "string" && v.includes(defaultText));
+        record(capabilityChecks.P4[0], plusCount > 0 && openedForm?.hasForm === true && carried, {
           card: cardName, ruleWriteStatus: ruleWrite.status(), ruleStored: ruleRow !== undefined, ruleContent: ruleRow?.db_content ?? null,
-          boardStatus: board.status(), plusLinks, plusHref, openedForm,
+          boardStatus: board.status(), plusCardCount: plusCount, openedForm, defaultText, defaultCarriedIntoForm: carried,
         });
       } finally {
         await admin?.close().catch(() => {});
