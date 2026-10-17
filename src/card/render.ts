@@ -1158,6 +1158,9 @@ export class RenderEngine implements RenderEngineLike {
    * Ruby's to_s (str()).
    */
   async renderRaw(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<ViewResult> {
+    // An assigned editor is a transient Card instance, never a stored/cache
+    // mutation. Isolate its derived type/permission state on both boundaries.
+    if (params.assignedType !== undefined) this.resetCaches();
     // One render is one request: hold the Temporary caches so no
     // within_key_counts reset drops an entry this render seated before its
     // synchronous readers use it (TemporaryCache#hold). Nested inside a
@@ -1170,6 +1173,7 @@ export class RenderEngine implements RenderEngineLike {
     try {
       return await this.renderWithUnknownCreateVerdicts(() => this.renderHeld(cardName, view, params));
     } finally {
+      if (params.assignedType !== undefined) this.resetCaches();
       DeckoName.endRequestScope();
       releaseCaches();
     }
@@ -1309,13 +1313,18 @@ export class RenderEngine implements RenderEngineLike {
     // renderAbsentCards (the host's page seat) or params.absentCard (this
     // render only: the trashed card a delete's confirmation names).
     const absentOk = this.renderAbsentCards || params.absentCard === true;
-    const record = (found === undefined || found.isNew === true) && absentOk
+    let record = (found === undefined || found.isNew === true) && absentOk
       ? await this.fetcher.fetchByName(cardName, { new: params.newCard ?? {} })
       : found;
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
     const name = record.name;
+    if (params.assignedType !== undefined && !record.isNew) {
+      const type = await this.fetcher.fetchByName(params.assignedType);
+      if (type?.id === undefined) throw new Error(`card type not found: ${params.assignedType}`);
+      record = { ...record, typeId: type.id };
+    }
     // An absent card is built from this request's arguments: a render card
     // an earlier request seated under the same name (another type, say) is
     // not this one.
@@ -1476,7 +1485,9 @@ export class RenderEngine implements RenderEngineLike {
       const stats = await prefetchInclusionClosure(record, {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
-        writeToCache: (cached) => this.fetcher.writeToCache(cached),
+        writeToCache: (cached) => {
+          if (params.assignedType === undefined || cached.key !== record.key) this.fetcher.writeToCache(cached);
+        },
         cacheRecord: (cached) =>
           // Virtual-card root: the prefetch's recordToRawRow placeholders an
           // id-less record as id -1; storing that record would poison the
@@ -1485,7 +1496,8 @@ export class RenderEngine implements RenderEngineLike {
           // PRISTINE id-less record instead — same key, undefined id — and
           // let the -1 row dissolve (enrichAndStore's existing-key guard
           // keeps the map entry pristine).
-          cached.id === -1 && record.id === undefined && cached.key === record.key
+          (cached.id === -1 && record.id === undefined && cached.key === record.key) ||
+          (params.assignedType !== undefined && cached.key === record.key)
             ? this.enrichAndStore(record).then(() => undefined)
             : this.cacheFetchedRecord(cached),
         ...(coldStatements.length > 0 ? { additionalStatements: coldStatements } : {}),

@@ -92,6 +92,10 @@ export interface HistoryRenderParams {
    *  (RenderEngine#renderAbsentCards); undefined is the `new: {}` idiom. */
   newCard?: NewCardOptions;
 
+  /** Card.uri_fetch(assign: true): preview an existing card with the
+   * requested type, without saving it. Used by the board's live type field. */
+  assignedType?: string;
+
   /** Render THIS render's target as a card that does not exist, even when
    *  the engine's own `renderAbsentCards` is off (the hosts keep it off and
    *  map the raised "card not found" to their not-found response).

@@ -67,6 +67,7 @@ import {
 } from "../../../src/card/mod-loader.js";
 import cardModEdit from "../../../src/card/mod-loader/mods/card-mod-edit.js";
 import cardModHelp from "../../../src/card/mod-loader/mods/card-mod-help.js";
+import { handleEngineRequest } from "../../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 
 const FIXTURE = JSON.parse(
   readFileSync(
@@ -328,6 +329,35 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
     const html = await anonymousEngine.render("Oracle Basics", "edit");
     expect(html).toBe(FIXTURE.targets.basic_note.views.anonymous.edit);
     expect(html).toBe(FIXTURE.targets.deck_level.views.anonymous.edit);
+  });
+
+  it("an assigned type previews the editor without changing stored or subsequent render state", async () => {
+    const s = storage!;
+    const before = normalize(await s.engine.render("Oracle Basics", "edit_form"));
+    const preview = await s.engine.render("Oracle Basics", "edit_form", {
+      assignedType: "Phrase", viewOpts: { show: ["type_form"] },
+    });
+    expect(preview).toContain('data-card-type-id="53"');
+    expect(preview).toMatch(/<option selected="selected" value="Phrase">/);
+    expect((await s.fetcher.fetchByName("Oracle Basics"))?.typeId).toBe(2);
+    expect(normalize(await s.engine.render("Oracle Basics", "edit_form"))).toBe(before);
+  });
+
+  it("a missing assigned type fails without poisoning the next editor", async () => {
+    const s = storage!;
+    await expect(s.engine.render("Oracle Basics", "edit_form", { assignedType: "Absent type" })).rejects.toThrow("card type not found");
+    expect(normalize(await s.engine.render("Oracle Basics", "edit_form"))).toBe(FIXTURE.targets.basic_note.views.bot.edit_form);
+  });
+
+  it("the board XHR carries assign and slot show into the replacement editor", async () => {
+    const s = storage!;
+    const request = new Request("https://example.test/Oracle_Basics/edit_form?assign=true&card%5Btype%5D=Phrase&slot%5Bshow%5D%5B%5D=type_form", {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    });
+    const response = await handleEngineRequest(request, { fetcher: s.fetcher, render: s.engine });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toMatch(/<option selected="selected" value="Phrase">/);
+    expect((await s.fetcher.fetchByName("Oracle Basics"))?.typeId).toBe(2);
   });
 
   it("anonymous :edit_form renders the full form (read passes; no update check)", async () => {

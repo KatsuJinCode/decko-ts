@@ -729,6 +729,13 @@ async function dispatchEngineRequest(
     // CardController's XHR read returns a slot, unless an explicit layout
     // was requested. Inserting a complete page here duplicates the chrome.
     const bareRead = isXhr(request) && !url.searchParams.has("layout");
+    // Ruby Card.uri_fetch assigns the submitted type before rendering the
+    // board's replacement editor. This GET must not persist the preview.
+    const assignedType = bareRead && url.searchParams.get("assign") === "true"
+      ? url.searchParams.get("card[type]") : null;
+    const editorParams = assignedType !== null
+      ? { ...historyParams, assignedType, viewOpts: { show: url.searchParams.getAll("slot[show][]") } }
+      : historyParams;
     const renderNormal = async () => {
       const deck = await source.deck();
       if (!bareRead) return renderPageWithStatus(deck.render, parsed.name, pageView, historyParams);
@@ -739,7 +746,7 @@ async function dispatchEngineRequest(
           home_view: url.searchParams.get("slot[home_view]") ?? view,
         });
       }
-      const html = await deck.render.render(parsed.name, view, { ...historyParams, focalRoot: true });
+      const html = await deck.render.render(parsed.name, view, { ...editorParams, focalRoot: true });
       return { html, status: deck.render.pageErrorStatus ?? 200 };
     };
     const renderLive = async () => {
@@ -759,7 +766,7 @@ async function dispatchEngineRequest(
           },
           {
             requestedView: view,
-            historyParams: bareRead && !focalSlot ? { ...historyParams, focalRoot: true } : historyParams,
+            historyParams: bareRead && !focalSlot ? { ...editorParams, focalRoot: true } : historyParams,
             signal,
             ...(bareRead ? { keep: false } : {}),
             ...(focalSlot ? { bareMainOpts: {
