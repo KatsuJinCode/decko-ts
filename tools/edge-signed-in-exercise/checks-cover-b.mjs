@@ -733,7 +733,6 @@ export async function runCoverBChecks(ctx) {
   // stop_follow_link.rb: link_text "following", hover "unfollow"). Junction
   // rules carry no name column in this deck, so the grade reads that state.
   const followOn = async (card) => {
-    const followRule = `${card}+*self+Harness_Member+*follow`;
     const before = null;
     const board = await visit(`/${card}/board`);
     await page.waitForTimeout(1500);
@@ -744,6 +743,11 @@ export async function runCoverBChecks(ctx) {
     const links = await page.evaluate(() => [...document.querySelectorAll("#main a, .board a")].map((a) => ({ text: a.textContent.replace(/\s+/g, " ").trim(), href: a.getAttribute("href"), cls: String(a.className).slice(0, 50) })).filter((l) => /follow|following|unfollow|watch/i.test(l.text) || /follow|watch/i.test(l.href ?? "")));
     const followLink = links.find((l) => /^(follow|watch)$/i.test(l.text));
     if (followLink === undefined) return { board: board.status, tab: true, links: links.slice(0, 8), before };
+    // The link's own href names the rule the act writes ("/update/<card>
+    // +*self+<viewer>+*follow?..."), so the tracked and reported rule name
+    // is the href's mark — not an assumed viewer (W3's cardtype half is
+    // watched by the administrator, not the member).
+    const followRule = decodeURIComponent(new URL(followLink.href, stack.origin).pathname.replace(/^\/update\//, "")) || `${card}+*self+Harness_Member+*follow`;
     const beforeClick = ledger().length;
     await page.locator(`#main a[href="${followLink.href}"], .board a[href="${followLink.href}"]`).first().dispatchEvent("click").catch(() => undefined);
     await page.waitForTimeout(2500);
@@ -774,21 +778,33 @@ export async function runCoverBChecks(ctx) {
   });
 
   await attempt("W3 a card and a cardtype can be watched (both get a *follow rule)", async () => {
+    // This deck's stored rules give the Cardtype TYPE-set both its create
+    // and its update rule to the "Shark" role (rule cards 34793/34794 on the
+    // Cardtype+*type set), so a role-less member may neither create a card
+    // of type Cardtype (GET /new/Cardtype answers 403 — the engine's
+    // rule-driven denial, byte-identical in the 50717cca run ledger, where
+    // the old create helper's silent retry-as-Basic is what made the
+    // 2026-10-16 run "pass" without ever watching a cardtype) nor write the
+    // follow rule of any existing type card. The card half stays the
+    // member's; the type card is created and watched by the administrator,
+    // whose role the engine's read rules treat as always_ok
+    // (lib/seed-local-accounts.mjs). The actor is not the capability:
+    // capabilities.json W3 is "Watch a card and a type card".
     await signIn(admin);
+    const cardtype = ensure("Harness_CB_Watched_Type");
+    await create(cardtype, "", "Cardtype");
     await signIn(member);
     const card = ensure(cardName("watchcard"));
     await create(card, "Harness watched card", "Basic");
     const cardResult = await followOn(card);
-    const cardtype = ensure("Harness_CB_Watched_Type");
-    await create(cardtype, "", "Cardtype");
+    await signIn(admin);
     const typeResult = await followOn(cardtype);
     const rules = ctx.database().prepare("SELECT name FROM cards WHERE name LIKE ? AND trash = 0 ORDER BY name").all("%+*follow");
-    record("W3 a card and a cardtype can be watched (each gets a *follow rule for the member)",
+    record("W3 a card and a cardtype can be watched (each gets a *follow rule: the card for the member, the cardtype for the administrator)",
       cardResult.ruleExists === true && typeResult.ruleExists === true,
       { card, cardResult: { followLink: cardResult.followLink?.text ?? null, rule: cardResult.followRule, ruleExists: cardResult.ruleExists },
         cardtype, typeResult: { followLink: typeResult.followLink?.text ?? null, rule: typeResult.followRule, ruleExists: typeResult.ruleExists, links: typeResult.links?.slice(0, 4) },
         followRules: rules.map((r) => r.name) });
-    await signIn(admin);
   });
 
   // (A1 and A3 live in the runner's own account journey, which changes the
