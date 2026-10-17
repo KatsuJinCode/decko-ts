@@ -443,7 +443,7 @@ export async function runCoverBChecks(ctx) {
     const ruleLink = page.locator(".board a[href*='rule_form'], .board a[href$='/edit']").first();
     const opened = await ruleLink.count();
     if (opened === 0) {
-      record("E14 a rule card's type can be changed in the board's Rules tab", false, { note: "no rule row edit link in the Rules tab", rows, rulesTabLinks: await page.evaluate(() => [...document.querySelectorAll(".board a")].map((a) => a.getAttribute("href")).slice(0, 20)) });
+      record("E14 a rule card's type can be changed in the board's Rules tab", false, { note: "no rule row edit link in the Rules tab", rows, rulesTabLinks: await page.evaluate(() => [...document.querySelectorAll(".board a")].map((a) => a.getAttribute("href"))), raw: ctx.captureEvidence(await page.content(), { check: "E14-rules-tab" }) });
       return;
     }
     await ruleLink.dispatchEvent("click").catch(() => undefined);
@@ -1062,7 +1062,10 @@ export async function runCoverBChecks(ctx) {
       await page.waitForTimeout(2500);
       // Ruby's signin redirect: after signing in, the person lands back on the card.
       back = /Harness Admin/.test(await page.evaluate(() => document.body.innerText)) && new URL(page.url()).pathname.replace(/\/$/, "") !== "/*signin";
-      back = back && (await page.url()).includes(`/${target}`);
+      // The configured Home card is also served at /. Verify the displayed
+      // card's stored identity instead of rejecting that canonical root URL.
+      const targetId = fixtureCard(ctx.database(), target)?.id;
+      back = back && targetId !== undefined && await page.locator(`#main[data-card-id="${targetId}"], #main [data-card-id="${targetId}"]`).count() > 0;
     }
     record("S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card",
       denied && signinLink !== null && back, { denied, signinLink, landedOn: page.url().replace(stack.origin, "") });
