@@ -835,14 +835,45 @@ export async function runCoverBChecks(ctx) {
   //  E22, H1, M1, N5, S3, S5; A5 and W5 need a mail sink and are out of scope)
   group("cover-b. more odd-position capabilities (C6, E3, E16, E18, E22, H1, M1, N5, S3, S5)");
 
+  // C6 grades the create offer decko actually implements: a nonexistent term
+  // gets an `add` item in the search box's search_box_complete JSON
+  // (card-mod-search set/self/search.rb:70-72, view :search_box_complete =
+  // search_box_items :search_item, :add_item, :goto_items; :100-106 add_item
+  // yields action "add" only when exact.add_autocomplete_ok? —
+  // set/all/autocomplete.rb:1-3 `new_card? && name.valid? && !virtual? &&
+  // ok?(:create)` — with url = the new card's own path (:29-31) and the html
+  // add_autocomplete_item label (:10-12); the term rides as `?term=`, the
+  // wire format the deck script's autocomplete fetches (search_box.js.coffee,
+  // search.rb:26-29 complete_path)). The results PAGE this check visited
+  // before (2026-10-16/17 fails) carries no create link in the reference:
+  // the html :no_search_results view is an empty div (0_search/views.rb:
+  // 126-128), and on SQLite the keyword query cannot even run — the
+  // active_record match patch raises "%{func} not implemented"
+  // (card-1.110.0 config/initializers/02_patches/active_record.rb:82; the
+  // Ruby 3.3 oracle answered 500 to this exact URL when probed 2026-10-17;
+  // the journey battery's navbox-paging covers note says the same). The
+  // legacy whole-page-regex check passed only via unrelated matches (a deck
+  // card named "New Card" in the navbar, an SVG "Created with Sketch" desc).
   await attempt("C6 Search for a nonexistent name offers a create link", async () => {
     const missing = "zzq harness nonexistent name";
-    await visit(`/*search?query%5Bkeyword%5D=${encodeURIComponent(missing)}`);
-    await page.waitForTimeout(1200);
-    const hrefs = await page.evaluate(() => [...document.querySelectorAll("#main a[href], .search-result-item a[href]")].map((a) => a.getAttribute("href")));
-    const createLink = hrefs.find((h) => h && /\/new\//.test(h));
-    record("C6 Search for a nonexistent name offers a create link", createLink !== undefined,
-      { createLink: createLink ?? null, linksSample: hrefs.slice(0, 6) });
+    const answer = await page.evaluate(async (url) => {
+      const r = await fetch(url, { credentials: "include" });
+      return { status: r.status, body: await r.text() };
+    }, `${stack.origin}/*search/search_box_complete.json?term=${encodeURIComponent(missing)}`);
+    let items = [];
+    try { items = JSON.parse(answer.body); } catch { /* a non-JSON body fails the check below */ }
+    const addItem = items.find((i) => i?.action === "add");
+    const createLink = typeof addItem?.url === "string" ? addItem.url : null;
+    const underscored = missing.toLowerCase().replaceAll(" ", "_");
+    const searchItem = items.find((i) => i?.action === "search");
+    record("C6 Search for a nonexistent name offers a create link",
+      answer.status === 200 && addItem !== undefined
+        && createLink !== null && createLink.toLowerCase().includes(underscored)
+        && addItem.value === missing && typeof addItem.label === "string" && addItem.label.length > 0
+        && searchItem !== undefined,
+      { status: answer.status, actions: items.map((i) => i?.action),
+        addItem: { url: createLink, value: addItem?.value ?? null, labelHead: typeof addItem?.label === "string" ? addItem.label.slice(0, 120) : null },
+        searchItemUrl: typeof searchItem?.url === "string" ? searchItem.url : null });
   });
 
   await attempt("E3 TinyMCE loads with its nest plugin and toolbar", async () => {
