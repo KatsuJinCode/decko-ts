@@ -832,9 +832,12 @@
       ],
       "status": "partial",
       "checks": [
-        "a CQL search runs and answers without an error page"
+        "legacy search route renders the search card without an error page",
+        "JSON CQL is submitted through the visible navbox and Enter",
+        "JSON CQL returns only the expected owned member",
+        "JSON CQL missing-name control returns no result cards"
       ],
-      "finding": "No error regex is not positive CQL result/status verification."
+      "finding": "Rewritten 2026-10-17 (9e85acea): the legacy route's page check no longer reads words out of inline scripts - it asserts the rendered surface (HTTP 200, the *search card root under #main, and no server_error/not_found/denial/errors view). The dangling check name this row declared until then, 'a CQL search runs and answers without an error page', was removed by that commit, and verifiedCapabilities matches result.check by exact string (lib/local-policy.mjs:49), so N2 was credited to nothing while its replacement check ran and passed. Positive and negative CQL result controls come from the cql-navbox module. Residue: both CQL shapes exercised are type+name; no operator breadth (AND/OR/!=, view= variants, nest scopes) is driven, so this stays partial."
     },
     {
       "id": "N3",
