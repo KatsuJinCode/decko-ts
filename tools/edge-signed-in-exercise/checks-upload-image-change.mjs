@@ -96,6 +96,28 @@ export const checks = [{
       const row = () => database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(name);
       const actionCount = () => database().prepare("SELECT COUNT(*) AS n FROM card_actions WHERE card_id=?").get(row()?.id ?? -1)?.n ?? -1;
       const servedImageSrc = async () => page.evaluate(() => document.querySelector("#main img")?.src ?? null);
+      /** What the edit page actually renders, so a structural miss is a
+       *  recorded finding with evidence instead of a locator timeout. */
+      const formInventory = () => page.evaluate(() => [...document.querySelectorAll("form.card-form")].map(f => ({
+        action: f.getAttribute("action"),
+        hasFileInput: f.querySelector('input[type="file"]') !== null,
+        hasContentInput: f.querySelector('[name="card[content]"]') !== null,
+        buttons: [...f.querySelectorAll("button, input[type=submit]")].map(b => ({ tag: b.tagName, type: b.getAttribute("type"), cls: b.className.slice(0, 60), text: (b.textContent ?? b.value ?? "").trim().slice(0, 30), visible: b.getClientRects().length > 0 })),
+      })));
+      /** The update form is the card-form that carries the file input; its
+       *  submit is the engine's own .submit-button (card-mod-edit.ts). */
+      const updateForm = () => page.locator("form.card-form").filter({ has: page.locator('input[type="file"]') }).first();
+      const submitUpdateForm = async form => {
+        const action = new URL(await form.getAttribute("action"), stack.origin);
+        if (action.origin !== stack.origin) throw Error("upload edit form action leaves owned origin");
+        const submit = form.locator("button.submit-button, button[type=submit], input[type=submit]").first();
+        const submitPending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() !== "GET", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
+        await submit.click({ timeout: 15000 });
+        const sent = await submitPending;
+        if (sent.e) throw sent.e;
+        await sent.r.finished();
+        return sent.r;
+      };
 
       // F6 leg 1 — create through the real form with a file chosen in the form.
       await page.goto(stack.origin + "/new/Image", { waitUntil: "load" });
@@ -104,7 +126,7 @@ export const checks = [{
       await page.locator('form.card-form input[name="card[name]"]').first().fill(name);
       await fileInput.setInputFiles({ name: "harness-red.png", mimeType: "image/png", buffer: RED_1X1() });
       const createPending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === "/card/create" && r.request().method() === "POST", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
-      await page.locator('form.card-form button[type="submit"]').first().click();
+      await page.locator('form.card-form button[type="submit"]').first().click({ timeout: 15000 });
       const createdResponse = await createPending;
       if (createdResponse.e) throw createdResponse.e;
       await createdResponse.r.finished();
@@ -116,60 +138,47 @@ export const checks = [{
 
       // F6 leg 2 — update: the edit form carries a file input; replacing it must store a different image.
       await page.goto(stack.origin + "/" + name + "?view=edit", { waitUntil: "load" });
-      const editForm = page.locator("form.card-form").filter({ has: page.locator('input[type="file"], [name="card[content]"]') }).first();
-      const editFileInput = page.locator('form.card-form input[type="file"]').first();
-      const hasEditFileInput = (await editFileInput.count()) > 0;
-      if (!hasEditFileInput) {
-        record(capabilityChecks.F6[1], false, { note: "the image edit form offers no file input; a user cannot replace an upload through the form", raw: captureEvidence(await page.content(), { check: "upload-edit-no-file-input", name }) });
-      } else {
-        const actionsBeforeUpdate = actionCount();
-        await editFileInput.setInputFiles({ name: "harness-blue-green.png", mimeType: "image/png", buffer: BLUE_GREEN_2X1() });
-        const updatePending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname.startsWith("/update/") && r.request().method() !== "GET", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
-        await editForm.locator('button[type="submit"], input[type="submit"]').first().click();
-        const updated = await updatePending;
-        if (updated.e) throw updated.e;
-        await updated.r.finished();
-        await page.waitForTimeout(1500);
-        await page.goto(stack.origin + "/" + name + "?harness_verify=" + Date.now(), { waitUntil: "load" });
-        const srcB = await servedImageSrc();
-        record(capabilityChecks.F6[1], updated.r.status() < 400 && srcB !== null && srcB !== srcA && actionCount() > actionsBeforeUpdate,
-          { actor: creds.admin.name, actorId: creds.admin.id, updateStatus: updated.r.status(), srcBefore: srcA, srcAfter: srcB, storedActionsGrew: actionCount() > actionsBeforeUpdate, raw: captureEvidence(await page.content(), { check: "upload-update", name }) });
-        var srcCurrent = srcB;
+      const editInventory = await formInventory();
+      if ((await updateForm().count()) === 0) {
+        record(capabilityChecks.F6[1], false, { note: "the image edit form offers no file input; a user cannot replace an upload through the form", editInventory, raw: captureEvidence(await page.content(), { check: "upload-edit-no-file-input", name }) });
+        record(capabilityChecks.F6[2], false, { note: "not exercised: no file-input form to resubmit", editInventory });
+        record(capabilityChecks.F2[0], false, { note: "not exercised: no file-input form whose preview could offer a remove control", editInventory });
+        return;
       }
+      const actionsBeforeUpdate = actionCount();
+      await updateForm().locator('input[type="file"]').first().setInputFiles({ name: "harness-blue-green.png", mimeType: "image/png", buffer: BLUE_GREEN_2X1() });
+      const updated = await submitUpdateForm(updateForm());
+      await page.waitForTimeout(1500);
+      await page.goto(stack.origin + "/" + name + "?harness_verify=" + Date.now(), { waitUntil: "load" });
+      const srcB = await servedImageSrc();
+      record(capabilityChecks.F6[1], updated.status() < 400 && srcB !== null && srcB !== srcA && actionCount() > actionsBeforeUpdate,
+        { actor: creds.admin.name, actorId: creds.admin.id, updateStatus: updated.status(), srcBefore: srcA, srcAfter: srcB, storedActionsGrew: actionCount() > actionsBeforeUpdate, raw: captureEvidence(await page.content(), { check: "upload-update", name }) });
+      const srcCurrent = srcB;
 
       // F6 leg 3 — submit without updating: resaving the untouched form must keep the stored image.
       await page.goto(stack.origin + "/" + name + "?view=edit", { waitUntil: "load" });
-      const untouchedForm = page.locator("form.card-form").first();
       const actionsBeforeResubmit = actionCount();
-      const resubmitPending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname.startsWith("/update/") && r.request().method() !== "GET", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
-      await untouchedForm.locator('button[type="submit"], input[type="submit"]').first().click();
-      const resubmitted = await resubmitPending;
-      if (resubmitted.e) throw resubmitted.e;
-      await resubmitted.r.finished();
+      const resubmitted = await submitUpdateForm(updateForm());
       await page.waitForTimeout(1500);
       await page.goto(stack.origin + "/" + name + "?harness_verify=" + Date.now(), { waitUntil: "load" });
       const srcC = await servedImageSrc();
-      record(capabilityChecks.F6[2], resubmitted.r.status() < 400 && srcCurrent !== undefined && srcC === srcCurrent,
-        { actor: creds.admin.name, actorId: creds.admin.id, resubmitStatus: resubmitted.r.status(), srcBefore: srcCurrent ?? null, srcAfter: srcC, preserved: srcCurrent !== undefined && srcC === srcCurrent, raw: captureEvidence(await page.content(), { check: "upload-resubmit-unchanged", name }) });
+      record(capabilityChecks.F6[2], resubmitted.status() < 400 && srcC === srcCurrent,
+        { actor: creds.admin.name, actorId: creds.admin.id, resubmitStatus: resubmitted.status(), srcBefore: srcCurrent, srcAfter: srcC, preserved: srcC === srcCurrent, raw: captureEvidence(await page.content(), { check: "upload-resubmit-unchanged", name }) });
 
       // F2 — the preview offers a remove-the-upload control; using it stores the removal.
       await page.goto(stack.origin + "/" + name + "?view=edit", { waitUntil: "load" });
-      const formHtml = await page.evaluate(() => [...document.querySelectorAll("form.card-form")].map(f => f.outerHTML).join("\n").slice(0, 4000));
+      const removeInventory = await formInventory();
       const removeControl = page.locator('form.card-form input[type="checkbox"][name*="remove" i], form.card-form button:has-text("Remove"), form.card-form a:has-text("Remove"), form.card-form [title*="remove" i]').first();
       if ((await removeControl.count()) === 0) {
-        record(capabilityChecks.F2[0], false, { note: "the image edit form offers no remove-the-upload control in its preview; the remove action cannot be performed as a user", formHtmlHead: formHtml, raw: captureEvidence(await page.content(), { check: "upload-remove-absent", name }) });
+        record(capabilityChecks.F2[0], false, { note: "the image edit form offers no remove-the-upload control in its preview; the remove action cannot be performed as a user", removeInventory, raw: captureEvidence(await page.content(), { check: "upload-remove-absent", name }) });
       } else {
-        await removeControl.click();
-        const removePending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname.startsWith("/update/") && r.request().method() !== "GET", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
-        await untouchedForm.locator('button[type="submit"], input[type="submit"]').first().click();
-        const removed = await removePending;
-        if (removed.e) throw removed.e;
-        await removed.r.finished();
+        await removeControl.click({ timeout: 15000 });
+        const removed = await submitUpdateForm(updateForm());
         await page.waitForTimeout(1500);
         await page.goto(stack.origin + "/" + name + "?harness_verify=" + Date.now(), { waitUntil: "load" });
         const srcD = await servedImageSrc();
-        record(capabilityChecks.F2[0], removed.r.status() < 400 && srcD === null,
-          { actor: creds.admin.name, actorId: creds.admin.id, removeStatus: removed.r.status(), servedImageSrcAfterRemove: srcD, removed: srcD === null, raw: captureEvidence(await page.content(), { check: "upload-removed", name }) });
+        record(capabilityChecks.F2[0], removed.status() < 400 && srcD === null,
+          { actor: creds.admin.name, actorId: creds.admin.id, removeStatus: removed.status(), servedImageSrcAfterRemove: srcD, removed: srcD === null, raw: captureEvidence(await page.content(), { check: "upload-removed", name }) });
       }
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "upload-image-change browser operation timed out";

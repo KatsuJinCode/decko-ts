@@ -87,13 +87,14 @@ export const checks = [{
       await deleted.r.finished();
       await admin.page.waitForTimeout(1500);
       const afterDelete = row();
+      const actionsAtDelete = actionCount();
       record("admin deletes the card through the page's Delete control (card trashed)",
         deleted.r.status() < 400 && afterDelete?.trash === 1,
-        { actorId: creds.admin.id, deleteStatus: deleted.r.status(), trash: afterDelete?.trash, actionsAtDelete: actionCount(), raw: captureEvidence(await admin.page.content(), { check: "race-delete", name }) });
+        { actorId: creds.admin.id, deleteStatus: deleted.r.status(), trash: afterDelete?.trash, actionsAtDelete, raw: captureEvidence(await admin.page.content(), { check: "race-delete", name }) });
 
       // The member submits the held stale form against the now-deleted card.
       const submitPending = member.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() !== "GET", { timeout: 30000 }).then(r => ({ r }), e => ({ e }));
-      await form.locator('button[type="submit"], input[type="submit"]').first().click();
+      await form.locator('button[type="submit"], input[type="submit"]').first().click({ timeout: 15000 });
       const stale = await submitPending;
       if (stale.e) throw stale.e;
       await stale.r.finished();
@@ -101,10 +102,11 @@ export const checks = [{
       const afterSubmit = row();
       const actionsAfterSubmit = actionCount();
       const resurrected = Number(database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name=? AND trash=0").get(name)?.n ?? -1);
+      const rowState = afterSubmit ?? { gone: true };
       record("member's stale submit is refused after the delete", stale.r.status() >= 400, { actorId: creds.member.id, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stale-submit", name }) });
       record("the refused stale write leaves the card trashed, unchanged, and unhistorical (no resurrection, no new action)",
-        afterSubmit?.trash === 1 && afterSubmit?.db_content === before && actionsAfterSubmit === actionCount() && resurrected === 0,
-        { trash: afterSubmit?.trash, storedContentUnchanged: afterSubmit?.db_content === before, actionCountAfterSubmit: actionsAfterSubmit, nonTrashedRowsWithName: resurrected, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stored-state", name }) });
+        afterSubmit?.trash === 1 && afterSubmit?.db_content === before && actionsAfterSubmit === actionsAtDelete && resurrected === 0,
+        { rowAfter: rowState, contentBecameMemberText: afterSubmit?.db_content === memberEdit, actionsAtDelete, actionCountAfterSubmit: actionsAfterSubmit, nonTrashedRowsWithName: resurrected, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stored-state", name }) });
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "delete-edit-race browser operation timed out";
       throw error;

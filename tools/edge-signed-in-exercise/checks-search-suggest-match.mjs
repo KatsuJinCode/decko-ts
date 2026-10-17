@@ -1,5 +1,5 @@
-// checks-search-suggest-match.mjs — pinning instrument for the search
-// as-you-type over-match, a KNOWN-OPEN bug:
+// checks-search-suggest-match.mjs — precision instrument for the search
+// as-you-type surfaces, related to the KNOWN-OPEN over-match:
 //   - C:/localProjects/brandonDojoTech/docs/reports/silent-failure-scan-2026-10-16.md,
 //     "Known class members" item 1: "Search over-match (port >=143/242 vs
 //     original 127) ... case-fold fixed in bundle 0d5624c4, over-match
@@ -7,13 +7,15 @@
 //   - C:/localProjects/brandonDojoTech/docs/reports/permission-system-debrief-2026-10-16.md
 //     section 5: "Whole-count search divergence ... viewer scope IS rule
 //     data — the divergence is again one no instrument reads."
-// The check creates uniquely-termed fixture cards plus a non-matching
-// control, then asserts BOTH suggestion surfaces — the name_match JSON the
-// nest editor fetches and the visible /*search results page — return ONLY
-// names containing the term. While the over-match is open this check FAILS;
-// that failure is the point (a pinning test for a known-open bug stays
-// failing until the engine is fixed). Matrix rows retired when green:
-// search-as-you-type over-match pinning (N12 autocomplete/nesting surface).
+// Scope note (honest): the known-open divergence is a WHOLE-COUNT effect on
+// broad terms attributed to viewer scope and deck drift; no local oracle
+// exists for broad-term counts (that is the search diagnosis lane's line).
+// This instrument pins what CAN be judged locally: at a unique-term
+// granularity, BOTH surfaces — the name_match JSON the nest editor fetches
+// and the visible /*search results page — must return only names that
+// contain the term, must contain both term fixtures, and must not return a
+// non-matching control. A PASS here does NOT close the known-open
+// whole-count row; a FAIL is a precision defect on its own evidence.
 //
 // Selected by `--only unmeasured-matrix` or `--only search-suggest-match`.
 
@@ -48,7 +50,10 @@ export const checks = [{
       await signedIn.finished();
       if (signedIn.status() >= 400) throw Error("search-suggest actor was not signed in: " + signedIn.status());
 
-      for (const [cardName, content] of [[alpha, "match fixture alpha"], [beta, "match fixture beta"], [control, "must never match " + term]]) {
+      // The control's content and name must not contain the term anywhere —
+      // a keyword search legitimately matches content, so a term-bearing
+      // control would be matched CORRECTLY and read as a false over-match.
+      for (const [cardName, content] of [[alpha, "match fixture alpha"], [beta, "match fixture beta"], [control, "unrelated control body text"]]) {
         created.push(cardName);
         const response = await page.context().request.post(stack.origin + "/card/create", {
           headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
@@ -85,8 +90,10 @@ export const checks = [{
         for (const a of main.querySelectorAll("a[href]")) {
           const url = new URL(a.getAttribute("href"), location.origin);
           if (url.origin !== location.origin) continue;
+          // A decko card URL's FIRST path segment is the card name, whatever
+          // view follows it (/Name, /Name/board, /Name/edit).
           const segments = decodeURIComponent(url.pathname).split("/").filter(Boolean);
-          const cardName = segments[segments.length - 1];
+          const cardName = segments[0] ?? "";
           if (cardName && !cardName.startsWith("*") && !["new", "edit"].includes(cardName.toLowerCase())) names.add(cardName);
         }
         return [...names];

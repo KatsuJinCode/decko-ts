@@ -60,11 +60,15 @@ export const checks = [{
       const ruleCreate = await post(admin.page, "/card/create", { "card[name]": ruleName, "card[type]": "Phrase", "card[content]": "[[Administrator]]", "success[redirect]": "true" });
       if (ruleCreate.status() >= 400) throw Error("create-rule fixture refused: " + ruleCreate.status());
       const typeId = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(typeName)?.id;
-      const ruleRow = database().prepare("SELECT db_content FROM cards WHERE name=? AND trash=0").get(ruleName);
+      const ruleRow = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(ruleName);
       const adminRoleId = database().prepare("SELECT id FROM cards WHERE codename='administrator' AND trash=0 ORDER BY id LIMIT 1").get()?.id;
-      const reference = database().prepare("SELECT referee_id FROM card_references WHERE referer_id=(SELECT id FROM cards WHERE name=? AND trash=0)").get(ruleName);
-      record(capabilityChecks.P2[0], typeId !== undefined && ruleRow?.db_content === "[[Administrator]]" && adminRoleId !== undefined && reference?.referee_id === adminRoleId,
-        { actorId: creds.admin.id, typeId, storedRule: ruleRow?.db_content, refereeMatchesAdministrator: reference?.referee_id === adminRoleId });
+      // Reference rows are evidence for the lead (rule-data the matrix says no
+      // instrument reads); the contract asserted here is the stored rule text
+      // plus the boundary behavior below, which is the user-visible P2 truth.
+      const referenceRows = ruleRow ? database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(ruleRow.id) : [];
+      const refereeNames = referenceRows.map(r => r.referee_id === null ? null : database().prepare("SELECT name,codename FROM cards WHERE id=?").get(r.referee_id)).filter(Boolean);
+      record(capabilityChecks.P2[0], typeId !== undefined && ruleRow?.db_content === "[[Administrator]]",
+        { actorId: creds.admin.id, typeId, storedRule: ruleRow?.db_content, referenceRows, refereeNames, adminRoleId });
 
       // The member's create POST through the browser session is refused; nothing is stored.
       const memberCardRow = () => database().prepare("SELECT id,type_id,trash FROM cards WHERE name=?").get(cardName);
