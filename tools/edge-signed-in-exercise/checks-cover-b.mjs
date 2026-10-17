@@ -81,6 +81,22 @@ export async function runCoverBChecks(ctx) {
   let timedOutCheck = null;
   const attempt = async (name, fn) => {
     if(selectedCases!==undefined&&!selectedCases.some(id=>name.startsWith(id+' ')))return;
+    // Every check here assumes the ADMIN ambient actor unless its own body
+    // sets another one: the member-actor checks sign member in at their start
+    // and restore admin at their end, but that restore sits AFTER the body's
+    // last assertion - a check that throws mid-body (W3's typed-fixture 403,
+    // 2026-10-17) skips it and leaks the member session into every later
+    // check. E22 then visits /Home/board as member, the board view requires
+    // the update task (src/card/permissions/view-perms.ts board: "update"),
+    // and the denied page has no board pane - a false render failure. Verify
+    // the stored actor and restore admin BEFORE each body, so one check's
+    // failure cannot poison the actor state of the checks after it (and a
+    // --case selection starting at any check still runs with the actor it
+    // needs). Checks that want member keep signing member in themselves.
+    try {
+      const actorId = storedSessionActorId(ctx.database(), await page.context().cookies(stack.origin));
+      if (actorId !== admin.id) await signIn(admin);
+    } catch { /* the check body's own actor setup remains the backstop */ }
     const result = await ctx.attempt(name, async () => {
       try {
         return await bounded(Promise.resolve().then(fn), name);
