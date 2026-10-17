@@ -512,11 +512,27 @@ export async function runCoverBChecks(ctx) {
     }
     if (accountTab.href && !accountTab.href.startsWith("#")) await page.goto(new URL(accountTab.href, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
     else { await page.locator(".board .nav-link", { hasText: /account/i }).first().click().catch(() => undefined); await page.waitForTimeout(1500); }
+    // The Account tab pane is a PILL LIST on both engines, never a bare form:
+    // oracle card-mod-account set/abstract/account_holder.rb:132-137 `view
+    // :account_tab` renders board_pill_sections only (Settings/Content
+    // sections), and default_board_tab (:128-130) makes it the active tab, so
+    // the tab click itself swaps nothing. The email/password form lives one
+    // pill deeper - "Email and Password" fetches +*account/content into the
+    // board's overlay slot (inside the same modal, so .modal input sees it).
+    // A person reaches the fields through that pill; the check does too.
+    const pill = page.locator(".board .board-pills a", { hasText: /email and password/i }).first();
+    if (await pill.count() === 0) {
+      record("E19 the account card's board has an Account tab that exposes email and password", false, { accountTab, note: "the Account tab offers no Email and Password pill", pills: await page.evaluate(() => [...document.querySelectorAll(".board .board-pills a")].map((a) => ({ text: a.textContent.replace(/\s+/g, " ").trim().slice(0, 40), href: a.getAttribute("href") })).slice(0, 12)) });
+      return;
+    }
+    const pillHref = await pill.getAttribute("href");
+    const pillLines = await clickAndWait(pill);
+    const pillFetch = pillLines.find((l) => /account\/content/.test(l.path ?? ""));
     const fields = await page.evaluate(() => [...document.querySelectorAll("#main input, .modal input")].map((i) => ({ name: i.name, type: i.type })));
     const emailField = fields.find((f) => /email/i.test(f.name ?? "") && f.type !== "hidden");
     const passwordField = fields.find((f) => /password/i.test(f.name ?? "") && f.type !== "hidden");
     record("E19 the account card's board has an Account tab that exposes email and password",
-      emailField !== undefined && passwordField !== undefined, { accountTab, fields });
+      emailField !== undefined && passwordField !== undefined, { accountTab, pill: { href: pillHref, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null }, fields });
   });
 
   await attempt("E21 the board History tab lists the run's change", async () => {
