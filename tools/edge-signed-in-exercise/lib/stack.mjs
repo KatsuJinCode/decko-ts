@@ -14,6 +14,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from 'node:crypto';
 import { startLocalHrana } from "./local-hrana.mjs";
 import { startEdgeHost } from "./edge-host.mjs";
+import { createDeterministicLoopbackFetch } from "./deterministic-loopback-fetch.mjs";
 export { localEnv } from "./local-policy.mjs";
 import { localEnv } from "./local-policy.mjs";
 import { startMockBunnyStorage } from '../../../tests/server/mock-bunny-storage.mjs';
@@ -72,9 +73,19 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
   try {
   storage = await startMockBunnyStorage({ filesRoot: join(runtimeDir, 'storage-files') });
   const storagePrefix = `https://${storage.host}/`;
+  // The engine's db/storage fetches ride the pinned loopback transport.
+  // Node's global fetch dispatcher costs a process-state-dependent ~13-15 ms
+  // per loopback POST on this machine, while the identical request through a
+  // keep-alive agent is ~0.4-0.7 ms in every process measured — and the
+  // engine's BunnyDbDriver binds fetch.bind(globalThis) at construction, so
+  // the global dispatcher's bad days multiplied every db hop (the whole-
+  // harness save-latency budget failed both graded nights at ~5.5 s with
+  // ~94% of the wall in pipeline-POST transport, ~6% in SQLite). See
+  // deterministic-loopback-fetch.mjs for the measurements.
+  const engineFetch = createDeterministicLoopbackFetch({ fallback: originalFetch });
   globalThis.fetch = (input, init) => {
     const value = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    return originalFetch(value.startsWith(storagePrefix) ? `http://${storage.host}/${value.slice(storagePrefix.length)}` : input, init);
+    return engineFetch(value.startsWith(storagePrefix) ? `http://${storage.host}/${value.slice(storagePrefix.length)}` : input, init);
   };
   // The origin is only known once the TLS listener binds, so start the host
   // with a placeholder, then set the trusted origin on the bundle's env.
