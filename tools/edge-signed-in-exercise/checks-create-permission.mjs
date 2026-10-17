@@ -61,6 +61,11 @@ export const checks = [{
       if (ruleCreate.status() >= 400) throw Error("create-rule fixture refused: " + ruleCreate.status());
       const typeId = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(typeName)?.id;
       const ruleRow = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(ruleName);
+      // Where did the rule actually go? The boundary below works, so a rule
+      // exists; if it is not under the exact requested name, the family and
+      // any-trash lookups name the row the engine really wrote.
+      const ruleRowAnyTrash = database().prepare("SELECT id,name,trash FROM cards WHERE name=?").get(ruleName);
+      const familyRows = database().prepare("SELECT id,name,trash,substr(coalesce(db_content,''),1,50) AS content_head FROM cards WHERE name LIKE ?").all("%" + stamp + "%");
       const adminRoleId = database().prepare("SELECT id FROM cards WHERE codename='administrator' AND trash=0 ORDER BY id LIMIT 1").get()?.id;
       // Reference rows are evidence for the lead (rule-data the matrix says no
       // instrument reads); the contract asserted here is the stored rule text
@@ -68,7 +73,7 @@ export const checks = [{
       const referenceRows = ruleRow ? database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(ruleRow.id) : [];
       const refereeNames = referenceRows.map(r => r.referee_id === null ? null : database().prepare("SELECT name,codename FROM cards WHERE id=?").get(r.referee_id)).filter(Boolean);
       record(capabilityChecks.P2[0], typeId !== undefined && ruleRow?.db_content === "[[Administrator]]",
-        { actorId: creds.admin.id, typeId, storedRule: ruleRow?.db_content, referenceRows, refereeNames, adminRoleId });
+        { actorId: creds.admin.id, typeId, storedRule: ruleRow?.db_content ?? null, ruleRowAnyTrash: ruleRowAnyTrash ?? null, familyRows, ruleCreateStatus: ruleCreate.status(), ruleCreateRedirect: ruleCreate.headers()?.location ?? null, typeCreateRedirect: typeCreate.headers()?.location ?? null, referenceRows, refereeNames, adminRoleId });
 
       // The member's create POST through the browser session is refused; nothing is stored.
       const memberCardRow = () => database().prepare("SELECT id,type_id,trash FROM cards WHERE name=?").get(cardName);
