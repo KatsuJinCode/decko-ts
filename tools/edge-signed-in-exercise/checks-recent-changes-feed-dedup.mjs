@@ -46,6 +46,15 @@ export const capabilityChecks = {
   N14_SEEN: ["N14 the recent-changes feed carries an act this run just made"],
 };
 
+/** The smallest feed over which "no act repeats" is worth certifying. The
+ *  crawl saw one act repeated 2 to 6 times, so a verdict needs room for a
+ *  repeat to exist at all: on a one-entry feed "no duplicates" is true by
+ *  arithmetic, not by evidence. The first live measurement of this check read
+ *  exactly one entry (the deck snapshot carries no acts of its own — its
+ *  21,676 cards arrive without card_actions), so the check now makes its own
+ *  feed: one act per card it creates. */
+export const MIN_FEED_ENTRIES_FOR_DEDUP = 4;
+
 /**
  * The repeat finding, over the rendered feed's own act ids.
  * @param {{actId: string}[]} entries in rendered DOM order
@@ -80,20 +89,26 @@ export const checks = [{
     const signedIn = await signIn(creds.admin);
     if (signedIn?.hasSessionCookie !== true) throw Error("recent-changes-feed browser signin failed");
 
-    // A real act this run can be identified by: create through the app, so the
-    // feed's newest act is one the check itself caused.
-    const stamp = Date.now().toString(36), name = "Harness_feed_" + stamp;
-    created.push(name);
-    const create = await page.context().request.post(stack.origin + "/card/create", {
-      headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-      maxRedirects: 0,
-      data: new URLSearchParams({
-        "card[name]": name, "card[type]": "Basic", "card[content]": "harness recent-changes feed act",
-        "success[redirect]": "true",
-      }).toString(),
-    });
-    const stored = ctx.database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(name)?.id;
-    if (create.status() >= 400 || stored === undefined) throw Error("feed act fixture was not stored: " + create.status());
+    // Real acts this run can be identified by: create through the app, so the
+    // feed carries acts the check itself caused. MIN_FEED_ENTRIES_FOR_DEDUP
+    // cards, because the local deck snapshot brings no acts of its own.
+    const stamp = Date.now().toString(36);
+    const created0 = "Harness_feed_" + stamp;
+    for (let index = 0; index < MIN_FEED_ENTRIES_FOR_DEDUP; index += 1) {
+      const name = created0 + "_" + index;
+      created.push(name);
+      const create = await page.context().request.post(stack.origin + "/card/create", {
+        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+        maxRedirects: 0,
+        data: new URLSearchParams({
+          "card[name]": name, "card[type]": "Basic", "card[content]": "harness recent-changes feed act",
+          "success[redirect]": "true",
+        }).toString(),
+      });
+      const stored = ctx.database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(name)?.id;
+      if (create.status() >= 400 || stored === undefined) throw Error("feed act fixture was not stored: " + create.status());
+    }
+    const name = created0;
 
     const response = await page.goto(stack.origin + "/*recent", { waitUntil: "load" });
     await page.waitForSelector("#main .accordion .accordion-item", { timeout: 20000 }).catch(() => undefined);
@@ -116,19 +131,20 @@ export const checks = [{
     const raw = captureEvidence(await page.content(), { check: "recent-changes-feed", name, status: response?.status?.() ?? null });
 
     record(capabilityChecks.N14[0],
-      entries.length > 0 && duplicates.length === 0,
+      entries.length >= MIN_FEED_ENTRIES_FOR_DEDUP && duplicates.length === 0,
       {
         actor: "admin",
         actorId: creds.admin?.id ?? null,
         feedUrl: "/*recent",
         status: response?.status?.() ?? null,
         renderedActEntries: entries.length,
+        minEntriesForDedup: MIN_FEED_ENTRIES_FOR_DEDUP,
         distinctActIds: unique,
         duplicates,
         actIdSequence: actIdSequence(entries),
         titlesSample: entries.slice(0, 12).map(entry => entry.title),
-        note: entries.length === 0
-          ? "the feed rendered no act entries, so dedup cannot be graded; this is NOT a pass"
+        note: entries.length < MIN_FEED_ENTRIES_FOR_DEDUP
+          ? `the feed rendered ${entries.length} act entries, fewer than the ${MIN_FEED_ENTRIES_FOR_DEDUP} this verdict needs; dedup is UNVERIFIED here, not held`
           : duplicates.length === 0
             ? "each rendered act id appears once"
             : "the same act is rendered more than once in the feed",
