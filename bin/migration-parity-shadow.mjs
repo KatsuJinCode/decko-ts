@@ -964,31 +964,58 @@ export async function runShadow(opts) {
   const maxArtifacts = opts.maxDivergenceArtifacts ?? DEFAULT_MAX_DIVERGENCE_ARTIFACTS;
   const divergenceDir = path.join(outDir, "divergences");
 
-  // Spawn BOTH engines' render servers (the parallel run behind the policy).
-  // The spawned instruments get DECKO_SHADOW_VIEW_LANE=1 so
-  // vm-staging-server.mjs serves its BARE view lane (raise -> CAPTURE_ERROR
-  // sentinel at 200 — this stage's byte-comparison contract). Servers NOT
-  // spawned here (the graded pins, the session-replay surface, default
-  // staging) never see the flag and keep Ruby's unsupported-view 422 — the
-  // standing-net member tests/server/edit-session-replay.test.ts pins that
-  // shape.
   const shadowLaneEnv = { ...process.env, DECKO_SHADOW_VIEW_LANE: "1" };
-  const baseProc = spawn(process.execPath, [baseInstrument, copyBase, String(urls.basePort)], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: shadowLaneEnv,
-  });
-  const candidateProc = spawn(process.execPath, [candidateInstrument, copyCandidate, String(urls.candidatePort)], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: shadowLaneEnv,
-  });
-  collectOutput(baseProc);
-  collectOutput(candidateProc);
 
   let routeRecords = [];
   let baseBoot = { ok: false, error: "not attempted" };
   let candidateBoot = { ok: false, error: "not attempted" };
 
+  // Custody before creation (tooling audit P2, 2026-10-16): the two servers
+  // used to be spawned BEFORE the try whose finally stops them, and nothing
+  // handled SIGINT/SIGTERM, so Ctrl-C mid-run leaked both processes. They are
+  // now declared up front, spawned INSIDE the try, and an interrupt handler
+  // runs the same teardown. Interrupt exit 130 mirrors
+  // dual-lane-verifier-fast's convention.
+  let baseProc = null;
+  let candidateProc = null;
+  let serversStopped = false;
+  const stopServers = async () => {
+    if (serversStopped) return;
+    serversStopped = true;
+    await Promise.all([
+      baseProc ? stopChild(baseProc, "BASE render server", teardownLog) : Promise.resolve(),
+      candidateProc ? stopChild(candidateProc, "CANDIDATE render server", teardownLog) : Promise.resolve(),
+    ]);
+  };
+  const onInterrupt = (sig) => {
+    console.error(`shadow: ${sig} — stopping both owned render servers, then exiting 130`);
+    stopServers().finally(() => process.exit(130));
+  };
+  process.on("SIGINT", onInterrupt);
+  process.on("SIGTERM", onInterrupt);
+
   try {
+    // Spawn BOTH engines' render servers (the parallel run behind the policy).
+    // The spawned instruments get DECKO_SHADOW_VIEW_LANE=1 so
+    // vm-staging-server.mjs serves its BARE view lane (raise -> CAPTURE_ERROR
+    // sentinel at 200 — this stage's byte-comparison contract). Servers NOT
+    // spawned here (the graded pins, the session-replay surface, default
+    // staging) never see the flag and keep Ruby's unsupported-view 422 — the
+    // standing-net member tests/server/edit-session-replay.test.ts pins that
+    // shape.
+    baseProc = spawn(process.execPath, [baseInstrument, copyBase, String(urls.basePort)], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: shadowLaneEnv,
+      windowsHide: true,
+    });
+    candidateProc = spawn(process.execPath, [candidateInstrument, copyCandidate, String(urls.candidatePort)], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: shadowLaneEnv,
+      windowsHide: true,
+    });
+    collectOutput(baseProc);
+    collectOutput(candidateProc);
+
     [baseBoot, candidateBoot] = await Promise.all([
       waitForStatus(urls.base, bootTimeoutMs, "BASE"),
       waitForStatus(urls.candidate, bootTimeoutMs, "CANDIDATE"),
@@ -1060,11 +1087,12 @@ export async function runShadow(opts) {
       }
     }
   } finally {
-    // Teardown ALWAYS (never leak servers), even if the fetch loop threw.
-    await Promise.all([
-      stopChild(baseProc, "BASE render server", teardownLog),
-      stopChild(candidateProc, "CANDIDATE render server", teardownLog),
-    ]);
+    // Interrupt custody ends with the run (no listener accumulation across
+    // in-process runs); teardown ALWAYS (never leak servers), even if a
+    // spawn or the fetch loop threw.
+    process.off("SIGINT", onInterrupt);
+    process.off("SIGTERM", onInterrupt);
+    await stopServers();
   }
 
   const finishedAt = new Date().toISOString();

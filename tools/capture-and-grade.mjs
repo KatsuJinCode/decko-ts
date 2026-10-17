@@ -133,6 +133,17 @@
 //   --oracle-repo <dir>     checkout holding the Ruby oracle app + corpus
 //                           (used read-only).
 //   --quiet                 do not forward the capture's live output lines.
+//   --capture-deadline-min <f>
+//                           hard deadline for the capture child in minutes
+//                           (default 60). On breach the recorded child tree
+//                           is killed with the grader's scoped kill
+//                           (verifier-fast killPhaseTree) and the capture
+//                           phase resolves exit 2 (the grader's own stall
+//                           semantics); the run then takes the capture-failed
+//                           path: stale manifest renamed away, verdict line,
+//                           exit 1. Without this the longest, most fragile
+//                           phase of the pipeline is unbounded (a hung Rails
+//                           boot would block forever).
 //
 // EXIT CODES: 0 pass (floors met), 1 fail, 2 stalled, 3 staging gate failed
 // (the deploy is not live -- do not grade a dead or mid-restart origin),
@@ -166,6 +177,10 @@ import {
   stageFile,
   verifyManifestForGrading,
 } from "./capture-manifest-provenance.mjs";
+// The scoped per-phase kill is the grader's own house shape (downward-only
+// process-table walk + taskkill /T /F + residue check). The module is
+// import-safe: its CLI main is guarded by INVOKED_DIRECTLY.
+import { killPhaseTree } from "./dual-lane-verifier-fast.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // dual-lane-verifier-fast.mjs is the grading engine this runner drives. It is
@@ -217,6 +232,11 @@ function parseArgs(argv) {
     // default: this checkout, which carries tools/oracle/ itself
     oracleRepo: path.resolve(SCRIPT_DIR, ".."),
     quiet: false,
+    // Capture deadline floor: no measured FULL-capture duration exists on
+    // disk to tune this against; 60 min is 3x the grader's own flat
+    // per-phase deadline floor (20 min) and exists to trip a hung Rails
+    // boot, not to judge a healthy capture. CLI-overridable.
+    captureDeadlineMin: 60,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -239,6 +259,12 @@ function parseArgs(argv) {
     else if (a === "--staging-auth") opts.stagingAuth = next();
     else if (a === "--oracle-repo") opts.oracleRepo = path.resolve(next());
     else if (a === "--quiet") opts.quiet = true;
+    else if (a === "--capture-deadline-min") {
+      opts.captureDeadlineMin = Number(next());
+      if (!Number.isFinite(opts.captureDeadlineMin) || opts.captureDeadlineMin <= 0) {
+        fail("--capture-deadline-min must be a positive number");
+      }
+    }
     else fail(`unknown argument: ${a}`);
   }
   return opts;
@@ -587,7 +613,8 @@ async function main() {
     log(
       `${label}: START via ${ORACLE_APP} (Rails boot ~60s amortized; ` +
         `${samplePath ? "sample mode, always rewritten" : "FULL mode, complete shard pairs resume-skip"}; ` +
-        `corpus opened READ-ONLY: sqlite3:...?readonly=true + PRAGMA query_only=1)`,
+        `corpus opened READ-ONLY: sqlite3:...?readonly=true + PRAGMA query_only=1; ` +
+        `deadline ${opts.captureDeadlineMin} min)`,
     );
     const t0 = Date.now();
     return new Promise((resolve) => {
@@ -614,7 +641,33 @@ async function main() {
       };
       child.stdout.on("data", collect);
       child.stderr.on("data", collect);
+      // Hard deadline for the longest, most fragile phase (tooling audit P2,
+      // 2026-10-16): a hung Rails boot previously blocked this pipeline
+      // forever. On breach: the grader's own scoped kill (killPhaseTree --
+      // snapshot before kill, rooted at THIS child's recorded pid and walked
+      // strictly downward, then residue check), and the promise resolves with
+      // the grader's stall semantics (exit 2). The run's capture-failed path
+      // below then renames the stale manifest and prints the verdict, so a
+      // half-written shard set can never grade as proven.
+      const deadlineMs = opts.captureDeadlineMin * 60_000;
+      const deadlineTimer = setTimeout(() => {
+        log(
+          `${label}: CAPTURE-DEADLINE-BREACHED after ${opts.captureDeadlineMin} min ` +
+            `-- scoped kill of this child's recorded tree (pid ${child.pid})`,
+        );
+        killPhaseTree(child.pid, label, "capture-deadline");
+        const rubyPid = (output.match(/capture_boot_pid=(\d+)/) || [])[1] ?? null;
+        resolve({
+          code: 2,
+          secs: ((Date.now() - t0) / 1000).toFixed(1),
+          shardLines: [],
+          done: "",
+          bootPids: { runner: child.pid, ruby: rubyPid ? Number(rubyPid) : null },
+          timedOut: true,
+        });
+      }, deadlineMs);
       child.on("close", (code) => {
+        clearTimeout(deadlineTimer);
         const secs = ((Date.now() - t0) / 1000).toFixed(1);
         const shardLines = output.split("\n").filter((l) => /shard=\S+ cards=\d+/.test(l));
         const done = output.split("\n").find((l) => l.startsWith("DONE dual_lane_shards="));
@@ -902,7 +955,7 @@ async function main() {
         log(`capture FAILED: renamed stale capture manifest out of the way (content preserved) -> ${stale}`);
       }
       console.log(
-        `VERDICT: CAPTURE FAILED (exit ${cap.code}) -- see [capture] output above. ` +
+        `VERDICT: CAPTURE FAILED (exit ${cap.code}${cap.timedOut ? ", capture deadline breached" : ""}) -- see [capture] output above. ` +
           "If a deploy restart landed mid-run this is the expected signature; wait for the deploy to settle and re-run (resume-safe).",
       );
       process.exit(1);

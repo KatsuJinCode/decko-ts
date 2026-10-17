@@ -117,6 +117,31 @@ mkdirSync(RAW);
 writeFileSync(MEMORY, '', { flag: 'wx' });
 memoryAdmitted = true;
 sampleMemory('before-build');
+// Zero-orphaned-custody for RUN_DIR (tooling audit P1, 2026-10-16). The audit
+// proposed wrapping the setup sequence in a try/finally; that shape is not
+// expressible in this module without breaking it: localDeck, creds, stack,
+// page, mailInbox and friends are captured by top-level function
+// declarations, so a block-scoped try would take those bindings out of their
+// scope. The same custody semantics therefore live at the process boundary —
+// verified on this machine's Node (v24.19): a throw anywhere in a
+// top-level-await ESM module reports as uncaughtException. From RUN_DIR's
+// creation until the run completes, any fatal error removes RUN_DIR
+// (credentials.json and the deck copy) before the process dies with the
+// original failure. A completed run keeps (or removes) RUN_DIR via the
+// --keep decision at the end only.
+let runCompleted = false;
+process.on("uncaughtException", (error) => {
+  console.error(String(error?.stack ?? error));
+  if (!runCompleted) {
+    try {
+      rmSync(RUN_DIR, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      console.error(`run did not complete; removed run directory ${RUN_DIR}`);
+    } catch (rmError) {
+      console.error(`run did not complete; COULD NOT remove run directory ${RUN_DIR} (${String(rmError)})`);
+    }
+  }
+  process.exit(1);
+});
 mkdirSync(RUN_DIR, { recursive: true });
 
 console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
@@ -1149,6 +1174,9 @@ const coverageIncomplete = capabilityCoverage.counts.not_covered > 0 || capabili
 markdown += `\nComplete capability acceptance: ${!coverageIncomplete && failures.length === 0 ? 'pass' : 'incomplete or failed'}. Unrun capabilities are never credited.\n`;
 writeFileSync(OUT, markdown, { flag: 'wx' });
 writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), failedRequests, consoleErrors }, null, 2) + '\n', { flag: 'wx' });
+// The run record now exists on disk; RUN_DIR custody belongs to the --keep
+// decision below, not to the failure net above.
+runCompleted = true;
 
 console.log(`\n${results.length - failures.length} / ${results.length} checks passed.`);
 if (failures.length > 0) {
