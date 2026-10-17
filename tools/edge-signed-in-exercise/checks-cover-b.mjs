@@ -1001,11 +1001,28 @@ export async function runCoverBChecks(ctx) {
     const tab = await page.evaluate(() => {
       const pane = document.querySelector("#tab-home-8-rule, .board .tab-pane.active, .board [id*='rule']");
       const text = pane?.textContent?.replace(/\s+/g, " ") ?? "";
-      const selects = [...(pane?.querySelectorAll("select, .select2, input") ?? [])].length;
-      return { text: text.slice(0, 160), selects, mentionsSelect: /select/i.test(text) };
+      const controls = [...(pane?.querySelectorAll("select, .select2, input") ?? [])];
+      // The pane loads by ajax (the board's Rules nav-link carries
+      // data-url="/Home/rules_tab"), so the verdict must name the controls a
+      // user would actually operate - a count alone cannot say WHICH set and
+      // setting selectors rendered, and P6 ("administrator sets read/write
+      // rules") has no other instrument to read them from.
+      return {
+        text: text.slice(0, 160),
+        selects: controls.length,
+        mentionsSelect: /select/i.test(text),
+        controls: controls.slice(0, 8).map((el) => ({
+          tag: el.tagName.toLowerCase(),
+          name: el.getAttribute("name"),
+          id: el.id || null,
+          type: el.getAttribute("type"),
+          options: el.tagName === "SELECT" ? [...el.options].slice(0, 6).map((o) => `${o.value}:${o.textContent.trim()}`) : null,
+        })),
+        forms: [...(pane?.querySelectorAll("form") ?? [])].map((f) => f.getAttribute("action")),
+      };
     });
     record("E22 Edit board: rules tab (no set selected; warns when set 'all' selected)",
-      tab.selects > 0 && tab.mentionsSelect, { tab });
+      tab.selects > 0 && tab.mentionsSelect, { tab, raw: ctx.captureEvidence(await page.content(), { check: "e22-rules-tab", name: "Home" }) });
   });
 
   await attempt("H1 View a card's history page", async () => {
@@ -1087,7 +1104,14 @@ export async function runCoverBChecks(ctx) {
     const denial = await page.evaluate(() => document.body.innerText);
     const signinLink = await page.evaluate(() => [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && /\*signin/.test(h)) ?? null);
     const denied = /Sorry|sign in|not permitted|permission/i.test(denial) && !/card-form|edit_card/.test(await page.content());
+    // Each leg of "lands back on the card" is recorded on its own: the verdict
+    // is the AND of three reads (the account name renders, the URL is not the
+    // sign-in route, the target card's own id is in #main), and before this the
+    // evidence carried only {denied, signinLink, landedOn} - so the 2026-10-16
+    // and 2026-10-17 FAILs printed evidence byte-identical to a PASS and named
+    // nothing about which leg broke.
     let back = false;
+    const backLegs = { accountNameShown: null, offSigninRoute: null, targetCardRendered: null };
     if (signinLink !== null) {
       await page.goto(new URL(signinLink, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
       await page.fill('input[name="card[subcards][+*email][content]"]', admin.email).catch(() => undefined);
@@ -1095,14 +1119,17 @@ export async function runCoverBChecks(ctx) {
       await page.locator('form[action="/update/*signin"] button[type="submit"]').first().click().catch(() => undefined);
       await page.waitForTimeout(2500);
       // Ruby's signin redirect: after signing in, the person lands back on the card.
-      back = /Harness Admin/.test(await page.evaluate(() => document.body.innerText)) && new URL(page.url()).pathname.replace(/\/$/, "") !== "/*signin";
+      const landedPath = new URL(page.url()).pathname.replace(/\/$/, "");
+      backLegs.accountNameShown = /Harness Admin/.test(await page.evaluate(() => document.body.innerText));
+      backLegs.offSigninRoute = landedPath !== "/*signin";
       // The configured Home card is also served at /. Verify the displayed
       // card's stored identity instead of rejecting that canonical root URL.
       const targetId = fixtureCard(ctx.database(), target)?.id;
-      back = back && targetId !== undefined && await page.locator(`#main[data-card-id="${targetId}"], #main [data-card-id="${targetId}"]`).count() > 0;
+      backLegs.targetCardRendered = targetId !== undefined && await page.locator(`#main[data-card-id="${targetId}"], #main [data-card-id="${targetId}"]`).count() > 0;
+      back = backLegs.accountNameShown && backLegs.offSigninRoute && backLegs.targetCardRendered;
     }
     record("S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card",
-      denied && signinLink !== null && back, { denied, signinLink, landedOn: page.url().replace(stack.origin, "") });
+      denied && signinLink !== null && back, { denied, signinLink, landedOn: page.url().replace(stack.origin, ""), target, backLegs });
     await signIn(admin);
   });
 }
