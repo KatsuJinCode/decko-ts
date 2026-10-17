@@ -50,8 +50,11 @@ export const checks = [{
         maxRedirects: 0,
       });
       if (seeded.status() >= 400) throw Error("delete-edit-race fixture create refused: " + seeded.status());
-      const row = () => database().prepare("SELECT id,db_content,trash FROM cards WHERE name=?").get(name);
-      const cardId = row()?.id;
+      let cardId;
+      const row = () => cardId === undefined
+        ? database().prepare("SELECT id,db_content,trash FROM cards WHERE name=?").get(name)
+        : database().prepare("SELECT id,db_content,trash FROM cards WHERE id=?").get(cardId);
+      cardId = row()?.id;
       if (!cardId) throw Error("delete-edit-race fixture is absent");
       const actionCount = () => database().prepare("SELECT COUNT(*) AS n FROM card_actions WHERE card_id=?").get(cardId)?.n ?? -1;
 
@@ -101,12 +104,14 @@ export const checks = [{
       await member.page.waitForTimeout(1500);
       const afterSubmit = row();
       const actionsAfterSubmit = actionCount();
-      const resurrected = Number(database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name=? AND trash=0").get(name)?.n ?? -1);
+      // Revival can canonicalize the stored name's underscores to spaces.
+      // Track the original row and its lexical identity across that rename.
+      const resurrected = Number(database().prepare("SELECT COUNT(*) AS n FROM cards WHERE trash=0 AND (id=? OR key=(SELECT key FROM cards WHERE id=?))").get(cardId,cardId)?.n ?? -1);
       const rowState = afterSubmit ?? { gone: true };
       record("member's stale submit is refused after the delete", stale.r.status() >= 400, { actorId: creds.member.id, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stale-submit", name }) });
       record("the refused stale write leaves the card trashed, unchanged, and unhistorical (no resurrection, no new action)",
         afterSubmit?.trash === 1 && afterSubmit?.db_content === before && actionsAfterSubmit === actionsAtDelete && resurrected === 0,
-        { rowAfter: rowState, contentBecameMemberText: afterSubmit?.db_content === memberEdit, actionsAtDelete, actionCountAfterSubmit: actionsAfterSubmit, nonTrashedRowsWithName: resurrected, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stored-state", name }) });
+        { cardId, rowAfter: rowState, contentBecameMemberText: afterSubmit?.db_content === memberEdit, actionsAtDelete, actionCountAfterSubmit: actionsAfterSubmit, nonTrashedRowsWithIdentity: resurrected, submitStatus: stale.r.status(), raw: captureEvidence(await member.page.content(), { check: "race-stored-state", name }) });
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "delete-edit-race browser operation timed out";
       throw error;
