@@ -1776,7 +1776,7 @@ export class RenderEngine implements RenderEngineLike {
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
-    if (CREATEABLE_TYPES_VIEWS.has(view)) {
+    if (CREATEABLE_TYPES_VIEWS.has(view) || params.assignedType !== undefined) {
       await this.ensureCreateableTypes();
       // new_type_permitted? reads the root's OWN type verdict (new.rb:150-152),
       // which the list above does not carry for basket-filtered types.

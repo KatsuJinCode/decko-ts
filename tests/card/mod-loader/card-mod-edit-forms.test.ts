@@ -339,6 +339,8 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
     });
     expect(preview).toContain('data-card-type-id="53"');
     expect(preview).toMatch(/<option selected="selected" value="Phrase">/);
+    expect(preview).toContain('value="PlainText"');
+    expect(preview).toContain('value="RichText"');
     expect((await s.fetcher.fetchByName("Oracle Basics"))?.typeId).toBe(2);
     expect(normalize(await s.engine.render("Oracle Basics", "edit_form"))).toBe(before);
   });

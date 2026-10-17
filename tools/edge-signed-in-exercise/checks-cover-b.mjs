@@ -447,8 +447,11 @@ export async function runCoverBChecks(ctx) {
     await setSelect.waitFor({state:"attached",timeout:15000});
     // Ruby's rules_tab is a set selector. The rule list appears only after
     // selecting the card's self set; opening the tab is not that selection.
-    await setSelect.selectOption(`${target}+*self`);
-    await page.waitForTimeout(1500);
+    // The stock widget submits on select2:select, not the native change
+    // event produced by selectOption. Use its visible option as a person does.
+    await page.locator('.board .rules_tab-view .select2-selection').click();
+    await page.getByRole('option', {name:`The card "${target}"`,exact:true}).click();
+    await page.locator('.board a[href*="overlay_rule"]').first().waitFor({state:"attached",timeout:15000});
     const rows = await page.evaluate(() => [...document.querySelectorAll(".board .card-slot, .board .rule-row, .board [id*='rule']")].map((r) => ({ id: r.id, text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 40) })).slice(0, 15));
     const ruleLink = page.locator(`.board a[href^="/${ruleName}/overlay_rule"]`).first();
     const opened = await ruleLink.count();
