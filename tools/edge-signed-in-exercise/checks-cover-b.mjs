@@ -528,11 +528,25 @@ export async function runCoverBChecks(ctx) {
     const pillHref = await pill.getAttribute("href");
     const pillLines = await clickAndWait(pill);
     const pillFetch = pillLines.find((l) => /account\/content/.test(l.path ?? ""));
+    // The pill target renders the +*account card (oracle
+    // right/account/views.rb :core = email+password field_nests, view:
+    // :labeled; the edit: :inline variant sits commented out in the gem), so
+    // the swapped region is read-style: email and password show up as labeled
+    // rows, not bare form inputs. Grade the exposure the person sees where
+    // the board pane stood: the fetch answering 200 and both words visible in
+    // the swapped region. Inputs, when an edit form is open, still count.
+    const regionText = await page.evaluate(() => {
+      const region = document.querySelector(".board-main > .overlay-container > .card-slot._bottomlay-slot, .board-main > ._overlay-container-placeholder > .card-slot");
+      return region === null ? null : region.textContent.replace(/\s+/g, " ").trim().slice(0, 400);
+    });
     const fields = await page.evaluate(() => [...document.querySelectorAll("#main input, .modal input")].map((i) => ({ name: i.name, type: i.type })));
     const emailField = fields.find((f) => /email/i.test(f.name ?? "") && f.type !== "hidden");
     const passwordField = fields.find((f) => /password/i.test(f.name ?? "") && f.type !== "hidden");
+    const showsEmail = emailField !== undefined || (regionText !== null && /email/i.test(regionText));
+    const showsPassword = passwordField !== undefined || (regionText !== null && /password/i.test(regionText));
     record("E19 the account card's board has an Account tab that exposes email and password",
-      emailField !== undefined && passwordField !== undefined, { accountTab, pill: { href: pillHref, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null }, fields });
+      pillFetch?.status === 200 && showsEmail && showsPassword,
+      { accountTab, pill: { href: pillHref, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null }, regionText, fields });
   });
 
   await attempt("E21 the board History tab lists the run's change", async () => {
@@ -986,10 +1000,28 @@ export async function runCoverBChecks(ctx) {
   await attempt("N5 Changes link lists recently updated cards, newest first", async () => {
     const name = ensure(cardName("newest"));
     await create(name, "Harness newest body", "Basic");
+    // The deck's own Changes menu item is *main menu's [[*search|Changes]],
+    // so this check grades the *search card page. Result rows there are bar
+    // views whose card names are never anchor text — Ruby's bar.haml renders
+    // each row a _card-link div with only menu-icon <a>s inside — and the
+    // search card's paging links ("1","2",…) are the page's first text
+    // anchors, so an anchor-text selector reads pagination, not rows (the
+    // graded search-card-pages journey exercises exactly those paging links
+    // on both engines). Oracle contract for the page's order: the card's CQL
+    // sort "relevance" orders by updated_at DESC (card-1.110.0
+    // sql_statement/order.rb ORDER_MAP deprecated alias + query.rb
+    // DEFAULT_ORDER_DIRS), so the just-created card must be the first result
+    // row. Rows are read as data-card-name and matched space/underscore- and
+    // case-insensitively (static renders print canonical spaces, live renders
+    // the requested underscores).
     await visit("/*search");
     await page.waitForTimeout(1200);
-    const first = await page.evaluate(() => [...document.querySelectorAll("#main a[href^='/']")].map((a) => a.textContent.trim()).filter((t) => t && !/^(edit|space_dashboard|more_horiz|open_in|fullscreen|modal|page|advanced|help|Changes|Opportunities|Culturesmith)/.test(t)).slice(0, 6));
-    record("N5 Changes link lists recently updated cards, newest first", first.some((t) => t.includes(name)) && first.findIndex((t) => t.includes(name)) <= 1,
+    const first = await page.evaluate(() => [...document.querySelectorAll("#main [data-card-name]")]
+      .map((n) => n.getAttribute("data-card-name"))
+      .filter((t) => t && t !== "*search")
+      .slice(0, 6));
+    const key = (t) => t.replace(/_/g, " ").trim().toLowerCase();
+    record("N5 Changes link lists recently updated cards, newest first", first.some((t) => key(t) === key(name)) && first.findIndex((t) => key(t) === key(name)) <= 1,
       { newest: name, firstRows: first });
   });
 
