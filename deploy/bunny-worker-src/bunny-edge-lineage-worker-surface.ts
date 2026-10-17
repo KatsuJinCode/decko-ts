@@ -60,7 +60,11 @@ function parsePath(
   const path = pathname.replace(/\/+$/, "").replace(/^\/+/, "");
   if (path === "") {
     const params = wireParams();
-    return { name: "Home", view: "open", ...(params ? { params } : {}) };
+    // Rules' set selector submits to /?mark=<set>&view=... . Ruby's
+    // Card.uri_fetch uses params[:mark] before falling back to the home card.
+    // URLSearchParams already decoded the query; do not decode it twice.
+    const mark = searchParams?.get("mark");
+    return { name: mark ? mark.replace(/_/g, " ") : "Home", view: "open", ...(params ? { params } : {}) };
   }
   if (path === "api/status") return { kind: "api" };
   if (path.startsWith("api/card/")) return { kind: "api" };
