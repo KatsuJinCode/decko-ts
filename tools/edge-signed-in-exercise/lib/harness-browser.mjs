@@ -42,6 +42,25 @@ export function browserAssetFailures(browsers) {
   .map(item=>({...item,contextIndex})));
 }
 
+/**
+ * True when a console message is Chromium's echo of this harness's own
+ * request blocking. The two context.route handlers below abort with
+ * 'blockedbyclient', which Chromium reports to the page as
+ * net::ERR_BLOCKED_BY_CLIENT (suffixed '.Inspector' on current Chromium,
+ * marking CDP-initiated blocking) and logs as a console error. In this
+ * browser that error can come only from those handlers: the launch is a
+ * throwaway profile with --disable-extensions, so no other client-side
+ * blocker exists. Every aborted request is already recorded per-request in
+ * `blocked` (url, status, resourceType, context) and graded by the
+ * subresource and final-asset checks; recording the echo again as a page
+ * console error made the signed-in console check grade the harness's own
+ * request policy as a page defect (2026-10-16 and 2026-10-17 runs failed on
+ * exactly that echo). Genuine page errors never carry this token.
+ */
+export function isHarnessRequestAbortEcho(text) {
+ return typeof text === 'string' && text.includes('net::ERR_BLOCKED_BY_CLIENT');
+}
+
 function findBrowser() {
   for (const p of BROWSER_CANDIDATES) if (existsSync(p)) return p;
   throw new Error("no installed Chrome/Edge found for the harness browser");
@@ -110,7 +129,8 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     dialog.accept().catch(() => undefined);
   });
   page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
+    const text = message.text();
+    if (message.type() === "error" && !isHarnessRequestAbortEcho(text)) consoleErrors.push(text);
   });
   page.on("pageerror", (error) => consoleErrors.push(`pageerror: ${error.message}`));
   page.on("response", (response) => {
