@@ -46,12 +46,13 @@ import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
 import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
 import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artifact.mjs';
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
+import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
 const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
 const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
-const supportedTopics = ['account','owner','owner-replay','richtext','member-delete',...moduleTopics];
+const supportedTopics = ['account','owner','owner-replay','richtext','member-delete','cql-search',...moduleTopics];
 const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
@@ -632,6 +633,9 @@ try {
   } else if (argOf('only') === 'richtext') {
     await signIn(creds.admin);
     await richTextJourney();
+  } else if (argOf('only') === 'cql-search') {
+    await signIn(creds.admin);
+    await searchPageJourney(moduleContext());
   } else if (['owner','owner-replay'].includes(argOf('only'))) {
     await ownerAudit(argOf('only') === 'owner-replay');
   } else if (moduleTopics.includes(argOf('only'))) {
@@ -1013,12 +1017,7 @@ try {
   });
 
   await attempt("N2 cql search", async () => {
-    const q = 'type="RichText"';
-    await page.goto(`${stack.origin}/*search?query%5Bquery%5D=${encodeURIComponent(q)}`, { waitUntil: "load" });
-    await page.waitForTimeout(1000);
-    const body = await page.content();
-    const ranIt = !/error|exception/i.test(body);
-    record("a CQL search runs and answers without an error page", ranIt, { url: page.url(), query: q });
+    await searchPageJourney(moduleContext());
   });
 
   for (const account of [creds.admin, creds.member]) await accountSettings(account);
