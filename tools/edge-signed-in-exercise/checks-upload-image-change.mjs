@@ -66,7 +66,7 @@ export const capabilityChecks = {
     "F6 replacing the upload through the edit form stores a different image",
     "F6 resubmitting the edit form without touching the file keeps the stored image",
   ],
-  F2: ["F2 the image edit form offers a remove-the-upload control and removing stores the removal"],
+  F2: ["F2 removing a pending upload from its preview preserves the previously stored image"],
 };
 
 const RED_1X1 = () => verifiedPng(1, 1, Buffer.from([255, 0, 0, 255]));
@@ -165,20 +165,26 @@ export const checks = [{
       record(capabilityChecks.F6[2], resubmitted.status() < 400 && srcC === srcCurrent,
         { actor: creds.admin.name, actorId: creds.admin.id, resubmitStatus: resubmitted.status(), srcBefore: srcCurrent, srcAfter: srcC, preserved: srcC === srcCurrent, raw: captureEvidence(await page.content(), { check: "upload-resubmit-unchanged", name }) });
 
-      // F2 — the preview offers a remove-the-upload control; using it stores the removal.
+      // F2 is cancellation of a pending upload, not deletion of a saved
+      // attachment. Ruby's preview_editor.haml renders .cancel-upload after
+      // file selection; upload.js.coffee empties .chosen-file on that click.
       await page.goto(stack.origin + "/" + name + "?view=edit", { waitUntil: "load" });
+      const contentBeforeCancel = row()?.db_content;
+      await updateForm().locator('input[type="file"]').first().setInputFiles({ name: "harness-cancel-red.png", mimeType: "image/png", buffer: RED_1X1() });
+      await updateForm().locator('.cancel-upload').waitFor({state:"visible",timeout:15000});
       const removeInventory = await formInventory();
-      const removeControl = page.locator('form.card-form input[type="checkbox"][name*="remove" i], form.card-form button:has-text("Remove"), form.card-form a:has-text("Remove"), form.card-form [title*="remove" i]').first();
+      const removeControl = updateForm().locator('.cancel-upload').first();
       if ((await removeControl.count()) === 0) {
         record(capabilityChecks.F2[0], false, { note: "the image edit form offers no remove-the-upload control in its preview; the remove action cannot be performed as a user", removeInventory, raw: captureEvidence(await page.content(), { check: "upload-remove-absent", name }) });
       } else {
         await removeControl.click({ timeout: 15000 });
+        const previewCleared = await updateForm().locator('.chosen-file input').count() === 0;
         const removed = await submitUpdateForm(updateForm());
         await page.waitForTimeout(1500);
         await page.goto(stack.origin + "/" + name + "?harness_verify=" + Date.now(), { waitUntil: "load" });
         const srcD = await servedImageSrc();
-        record(capabilityChecks.F2[0], removed.status() < 400 && srcD === null,
-          { actor: creds.admin.name, actorId: creds.admin.id, removeStatus: removed.status(), servedImageSrcAfterRemove: srcD, removed: srcD === null, raw: captureEvidence(await page.content(), { check: "upload-removed", name }) });
+        record(capabilityChecks.F2[0], removed.status() < 400 && previewCleared && srcD === srcC && row()?.db_content === contentBeforeCancel,
+          { actor: creds.admin.name, actorId: creds.admin.id, removeStatus: removed.status(), previewCleared, servedImageSrcBeforeCancel:srcC, servedImageSrcAfterCancel:srcD, storedContentUnchanged:row()?.db_content === contentBeforeCancel, raw: captureEvidence(await page.content(), { check: "upload-preview-cancelled", name }) });
       }
     } catch (error) {
       if (error?.name === "TimeoutError") fixtureState.fatalReason = "upload-image-change browser operation timed out";

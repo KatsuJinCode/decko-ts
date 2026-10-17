@@ -450,7 +450,7 @@ export async function runCoverBChecks(ctx) {
     // The stock widget submits on select2:select, not the native change
     // event produced by selectOption. Use its visible option as a person does.
     await page.locator('.board .rules_tab-view .select2-selection').click();
-    await page.getByRole('option', {name:`The card "${target}"`,exact:true}).click();
+    await page.getByRole('treeitem', {name:`The card "${target}"`,exact:true}).click();
     await page.locator('.board a[href*="overlay_rule"]').first().waitFor({state:"attached",timeout:15000});
     const rows = await page.evaluate(() => [...document.querySelectorAll(".board .card-slot, .board .rule-row, .board [id*='rule']")].map((r) => ({ id: r.id, text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 40) })).slice(0, 15));
     const ruleLink = page.locator(`.board a[href^="/${ruleName}/overlay_rule"]`).first();
