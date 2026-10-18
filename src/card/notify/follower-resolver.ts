@@ -150,7 +150,7 @@ function optionApplies(
   return candidateIds.includes(followerId); // followed_by.rb:62 default
 }
 
-/** The saved card's containing sets, Ruby order. Pattern applicability
+/** The saved card's containing sets, Ruby lookup order. Pattern applicability
  *  per mod/core/set_pattern/01_all.rb .. 09_self.rb:
  *   01 all     always                         -> "*all"
  *   02 all_plus compound? (compound_only)     -> "*all plus"   (anchorless)
@@ -219,7 +219,9 @@ async function setPatternsOf(fetch: FetchEngine, card: CardRecord): Promise<Card
   }
 
   patterns.push({ setName: `${name.s}+*self`, lookupKey: `${card.id}+self` });
-  return patterns;
+  // Core files load 01..09, but Pattern.register inserts each at index 0.
+  // Match the shared registry's specific-to-general lookup order.
+  return patterns.reverse();
 }
 
 /** card.rule? (lib/card/rule/all.rb:33-47): standard_rule? (right is a
@@ -378,8 +380,8 @@ async function enumeratedUserIds(
  *  FOLLOWED card: walk the card's rule_lookup_keys in pattern order;
  *  per set try the user's own rule first, then the SET+*all+*follow
  *  default (the fallback_suffix, rule/all.rb:69); the first set that
- *  yields a rule wins — even if a more specific set has a different
- *  rule (Ruby walks general -> specific and stops at the first hit). */
+ *  yields a rule wins (Ruby walks specific -> general and stops at the
+ *  first hit; Pattern.register front-inserts each numbered pattern). */
 async function followRuleContent(
   fetch: FetchEngine,
   index: PreferenceIndex,

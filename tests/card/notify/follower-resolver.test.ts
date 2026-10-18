@@ -10,9 +10,8 @@
 //   - an *never follower is excluded
 //   - a follower matching two set rules resolves ONCE, first pattern wins
 //   - a non-follower resolves to nothing
-//   - option precedence: line order inside one rule; a more-general
-//     set's rule shadows a more-specific set's rule (rule/all.rb:66-73
-//     first-hit walk — *never there blocks even a specific *always)
+//   - option precedence: line order inside one rule; most-specific set
+//     first (Pattern.register front-inserts, rule/all.rb:66-73 first hit)
 //   - *created / *edited restrictive options (candidate membership)
 //   - the default save-path wiring: engine with no integrationHooks
 //     resolves real followers and mails them; the actor is excluded
@@ -125,8 +124,7 @@ async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixt
     typeId: ID.set,
   });
 
-  // RichText+*type set row (Watched Card's type set — pattern order puts
-  // it BEFORE *self, which is what the precedence tests pin).
+  // RichText+*type set row (less specific than the card's self set).
   await seedCard(storage, {
     id: ID.richTextTypeSet,
     leftId: 2,
@@ -267,9 +265,8 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
 
   it("resolves a follower matching two set rules exactly once, first pattern wins the reason", async () => {
     const { storage, f } = await freshDeck();
-    // Joe follows BOTH the type set and the self set. Pattern order
-    // (set_pattern/01..09) walks *all, then RichText+*type, then
-    // Watched Card+*self; the first confirmed match yields the reason
+    // Numbered files load 01..09 but register inserts at index 0. The
+    // self pattern therefore precedes type and all. The first match yields the reason
     // (follower_ids.rb:97-99 + the ids dedupe at :109).
     await seedFollowRule(storage, {
       setId: ID.richTextTypeSet,
@@ -291,18 +288,17 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
       makeEvent(2, "anonymous", ID.watchedCard),
     );
     expect(refs).toHaveLength(1);
-    expect(refs[0]?.followedSetName).toBe("RichText+*type");
+    expect(refs[0]?.followedSetName).toBe("Watched Card+*self");
     expect(refs[0]?.followOption).toBe("*always");
     storage.close();
   });
 
-  it("a more-general set's *never shadows a more-specific set's *always", async () => {
+  it("a self *always overrides a more-general type *never, as installed Ruby lookup does", async () => {
     const { storage, f } = await freshDeck();
     // Ruby's preference lookup walks rule_lookup_keys and stops at the
     // FIRST set holding any rule for the user (rule/all.rb:66-73) —
-    // user-specific before the *all-user fallback, per set, general
-    // before specific. The type set's *never is that first hit, so the
-    // self set's *always is never consulted and Joe is no follower.
+    // user-specific before the *all-user fallback, per set, most-specific
+    // before general. The self set's *always is the first hit.
     await seedFollowRule(storage, {
       setId: ID.richTextTypeSet,
       userId: ID.joeUser,
@@ -322,7 +318,26 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
       ID.watchedCard,
       makeEvent(2, "anonymous", ID.watchedCard),
     );
-    expect(refs).toEqual([]);
+    expect(refs.map(ref => ref.followerId)).toEqual([ID.joeUser]);
+    expect(refs[0].followedSetName).toBe('Watched Card+*self');
+    storage.close();
+  });
+
+  it("a self *never denies despite a more-general type *always", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, { setId: ID.richTextTypeSet, userId: ID.joeUser, content: '*always', joinId: 480, prefId: 481 });
+    await seedFollowRule(storage, { setId: ID.watchedSelfSet, userId: ID.joeUser, content: '*never', joinId: 482, prefId: 483 });
+    expect(await resolveFollowers(f.engine, ID.watchedCard, makeEvent(2, 'anonymous', ID.watchedCard))).toEqual([]);
+    storage.close();
+  });
+
+  it("a self user preference overrides an all-user global *never without notifying other users", async () => {
+    const { storage, f } = await freshDeck();
+    const all = (await storage.selectAll<{ id: number }>("SELECT id FROM cards WHERE codename='all' AND trash=0"))[0].id;
+    await seedFollowRule(storage, { setId: all, userId: all, content: '*never', joinId: 480, prefId: 481 });
+    await seedFollowRule(storage, { setId: ID.watchedSelfSet, userId: ID.joeUser, content: '*always', joinId: 482, prefId: 483 });
+    const refs = await resolveFollowers(f.engine, ID.watchedCard, makeEvent(2, 'anonymous', ID.watchedCard));
+    expect(refs.map(ref => ref.followerId)).toEqual([ID.joeUser]);
     storage.close();
   });
 
