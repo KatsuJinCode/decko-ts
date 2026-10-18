@@ -150,8 +150,11 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
 
   // 5. The Edit affordance of a real card: the card menu's edit anchor,
   //    a.edit-link[title="Edit"] (card-mod-format's edit_link_opts: class
-  //    "edit-link", title "Edit"; the icon is the link text, so the visible
-  //    word "Edit" never appears on the page). Seeking that word on the home
+  //    "edit-link", href ending /edit; the icon is the link text, so the visible
+  //    word "Edit" never appears on the page). Note the anchor's title: the
+  //    engine emits title="Edit" and bootstrap's tooltip plugin moves it to
+  //    data-bs-original-title and blanks title in the live DOM, so the probe
+  //    keys on the edit href. Seeking the word on the home
   //    page (ACT-136) could not match any rendered card, on either engine.
   if (/E[0-9]+ +Edit/i.test(t) || /edit a/i.test(t)) {
     await goto(`/${encodeURIComponent(card)}`);
@@ -159,7 +162,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     sequence.push({
       interaction: "assert-present",
       selector: `Edit affordance on /${card}`,
-      count: await countSelector("a.edit-link[title='Edit'], a.btn-outline-primary"),
+      count: await countSelector("a.edit-link[href$='/edit']"),
     });
   }
 
