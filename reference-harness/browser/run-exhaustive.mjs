@@ -17,7 +17,8 @@
 // ~1,500 raw interactive elements -> 48 affordance classes -> 125+ actions ->
 // 190 enumerated action rows in today's matrix). This runner consumes the
 // matrix's `actions` array, decodes the English description of each action,
-// groups by surface (one page visit per unique surface), and for each action
+// groups by surface (one page visit per unique surface, plus each additional
+// page the SURFACES entry declares), and for each action
 // drives an interaction plan: locate-affordance, observe-page, optionally
 // click-fill-submit, observe-after. Each step inside the plan counts as one
 // interaction. The runner's total interaction count is the sum across all
@@ -250,7 +251,11 @@ const SURFACES = {
   "capability catalog: search": { signin: "form", card: "/*search?query[keyword]=Harness", actor: signinActor },
   "capability catalog: history": { signin: "form", card: "/" + (actorCardName ?? "Harness_richtext") + "/History", actor: signinActor },
   "capability catalog: follow": { signin: "form", card: "/" + (actorCardName ?? "Home+board"), actor: signinActor },
-  "capability catalog: account": { signin: "form", card: "/" + (actorCardName ?? "Harness_Admin") + "/Account", actor: signinActor },
+  // A2's "sign in with the new password" and A4's "Sign up for a new account
+  // (anonymous), then sign in" (ACT-158, ACT-159) name the sign-in page's
+  // affordances; the account page itself renders neither a "Sign in" nor a
+  // "Sign up" control, so the surface declares the page its contracts share.
+  "capability catalog: account": { signin: "form", card: "/" + (actorCardName ?? "Harness_Admin") + "/Account", actor: signinActor, additionalPages: ["/*signin"] },
 };
 
 // ============================================================================
@@ -369,52 +374,11 @@ async function locateByHint(page, hint) {
   }
 }
 
-// A tiny helper to record one observation against the page.
-async function observeAt(page, lastStatus, label) {
-  await settle(page);
-  const raw = await page.evaluate(SNAPSHOT_JS);
-  return { label, at: Date.now(), url: page.url(), status: lastStatus ?? null, ...normalizeObservation({ ...raw, url: page.url(), status: lastStatus }) };
-}
-
-// Some matrix actions cannot be exercised in a browser under the local
-// harness (no mail sink) or are descriptive cross-cutting contracts whose
-// only witness is a different battery. Those get an `out_of_scope` outcome;
-// the runner still visited the related page (one observation) and recorded
-// the reason. Operators can still see what the matrix names but the run does
-// not pretend to grade them.
-function isOutOfScope(action) {
-  const text = String(action.action ?? "");
-  const notes = String(action.notes ?? "");
-  const lower = (text + " " + notes).toLowerCase();
-  if (action.kind === "test-type-gap") return false; // page-only witness lives in this run
-  if (/mail sink|no mail sink|smtp sink/i.test(lower)) return true;
-  if (/watcher notified|unfollow link in the email|w[5-6]/i.test(text) && /mail|email/.test(lower)) return true;
-  if (/mail reset|reset link arrives by mail/.test(lower)) return true;
-  if (/upstream-disabled|disabled_upstream/.test(lower)) return true;
-  return false;
-}
-
-async function probeAction(page, action, lastStatusRef) {
-  const surface = action.surface;
-  const text = action.action ?? "";
-  const meta = SURFACES[surface];
-  const surfaceUrl = meta?.card ?? "/";
-  const sequence = [];
-  const observations = [];
-
-  // 1. Visit the surface page.
-  await page.goto(lastStatusRef.base + surfaceUrl, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {});
-  sequence.push({ interaction: "visit", url: surfaceUrl, status: lastStatusRef.status });
-  let snap = await observeAt(page, lastStatusRef.status, "surface");
-  observations.push(snap);
-
-  // 2. Locate every affordance hint; presence/absence is the per-action evidence.
-  // The cleanup surface's action ("every card the run created is removed from
-  // the local copy", ACT-066) verifies ABSENCE — it has no positive
-  // affordance to locate, and the verb extractor was minting a text hint
-  // "Copy" from the phrase "the local copy", guaranteeing a permanent
-  // affordance-not-found red regardless of engine state.
-  const hints = surface === "cleanup" ? [] : affordanceHints(text);
+// The per-page probe steps, shared by the surface card and every additional
+// page a SURFACES entry declares: locate every affordance hint (per-page
+// presence/absence is the per-action evidence), then run the per-class
+// targeted probes against the page currently loaded.
+async function runHintLocates(page, hints, sequence) {
   let firstLocated = null;
   for (const hint of hints) {
     try {
@@ -430,8 +394,10 @@ async function probeAction(page, action, lastStatusRef) {
       sequence.push({ interaction: "locate", hint, error: String(err?.message ?? err) });
     }
   }
+  return firstLocated;
+}
 
-  // 3. Per-class targeted probes (the affordance-class detectors the matrix names).
+async function runPerClassAsserts(page, text, sequence) {
   const t = text.toLowerCase();
   if (/\btinymce\b|\bnest button\b|\bnest dialog\b|\bnest plugin\b/.test(t)) {
     const editorPresent = await page.evaluate(() => !!window.tinyMCE).catch(() => false);
@@ -485,6 +451,58 @@ async function probeAction(page, action, lastStatusRef) {
     // operator compare against the edge evidence in docs/runs.
     sequence.push({ interaction: "witness", selector: "console errors", note: "see tools/edge-signed-in-exercise.mjs group 2" });
   }
+}
+
+// A tiny helper to record one observation against the page.
+async function observeAt(page, lastStatus, label) {
+  await settle(page);
+  const raw = await page.evaluate(SNAPSHOT_JS);
+  return { label, at: Date.now(), url: page.url(), status: lastStatus ?? null, ...normalizeObservation({ ...raw, url: page.url(), status: lastStatus }) };
+}
+
+// Some matrix actions cannot be exercised in a browser under the local
+// harness (no mail sink) or are descriptive cross-cutting contracts whose
+// only witness is a different battery. Those get an `out_of_scope` outcome;
+// the runner still visited the related page (one observation) and recorded
+// the reason. Operators can still see what the matrix names but the run does
+// not pretend to grade them.
+function isOutOfScope(action) {
+  const text = String(action.action ?? "");
+  const notes = String(action.notes ?? "");
+  const lower = (text + " " + notes).toLowerCase();
+  if (action.kind === "test-type-gap") return false; // page-only witness lives in this run
+  if (/mail sink|no mail sink|smtp sink/i.test(lower)) return true;
+  if (/watcher notified|unfollow link in the email|w[5-6]/i.test(text) && /mail|email/.test(lower)) return true;
+  if (/mail reset|reset link arrives by mail/.test(lower)) return true;
+  if (/upstream-disabled|disabled_upstream/.test(lower)) return true;
+  return false;
+}
+
+async function probeAction(page, action, lastStatusRef) {
+  const surface = action.surface;
+  const text = action.action ?? "";
+  const meta = SURFACES[surface];
+  const surfaceUrl = meta?.card ?? "/";
+  const sequence = [];
+  const observations = [];
+
+  // 1. Visit the surface page.
+  await page.goto(lastStatusRef.base + surfaceUrl, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {});
+  sequence.push({ interaction: "visit", url: surfaceUrl, status: lastStatusRef.status });
+  let snap = await observeAt(page, lastStatusRef.status, "surface");
+  observations.push(snap);
+
+  // 2. Locate every affordance hint; presence/absence is the per-action evidence.
+  // The cleanup surface's action ("every card the run created is removed from
+  // the local copy", ACT-066) verifies ABSENCE — it has no positive
+  // affordance to locate, and the verb extractor was minting a text hint
+  // "Copy" from the phrase "the local copy", guaranteeing a permanent
+  // affordance-not-found red regardless of engine state.
+  const hints = surface === "cleanup" ? [] : affordanceHints(text);
+  await runHintLocates(page, hints, sequence);
+
+  // 3. Per-class targeted probes (the affordance-class detectors the matrix names).
+  await runPerClassAsserts(page, text, sequence);
 
   // 3b. Affordance-target cases: actions whose affordance does not live on
   // the surface page (board tabs on a card's board view, the rename name
@@ -505,6 +523,28 @@ async function probeAction(page, action, lastStatusRef) {
     sequence.push(...targetProbes);
   } catch (err) {
     sequence.push({ interaction: "assert-present", selector: "affordance-target probes", error: String(err?.message ?? err) });
+  }
+
+  // 3c. Additional pages. A SURFACES entry's additionalPages name the further
+  // pages the surface's actions share observation coverage with (the
+  // signed-out sign-in page for the sign-in / sign-up / refusal contracts,
+  // the create forms for the create surfaces). The table declared them since
+  // dad99296 but probeAction never read them: it visited the surface card
+  // only, so a hint whose affordance lives on a declared page was located on
+  // a page that rightly renders none - after 6d829984's per-action session
+  // identity, the signed-in reds of ACT-048, ACT-049, ACT-050, ACT-097,
+  // ACT-158 and ACT-159 each sought 'Sign in' / 'Sign up' on "/" or the
+  // account page. Each declared page is visited, observed, and probed with
+  // the same hints and per-class asserts as the surface card. This only ever
+  // ADDS find opportunities: the grade still passes when any locate or assert
+  // finds its affordance on any of the action's pages, and a genuinely absent
+  // affordance still fails.
+  for (const extra of meta?.additionalPages ?? []) {
+    await page.goto(lastStatusRef.base + extra, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {});
+    sequence.push({ interaction: "visit", url: extra, additional: true, status: lastStatusRef.status });
+    observations.push(await observeAt(page, lastStatusRef.status, "additional " + extra));
+    await runHintLocates(page, hints, sequence);
+    await runPerClassAsserts(page, text, sequence);
   }
 
   // 4. Final observation; one per action.
