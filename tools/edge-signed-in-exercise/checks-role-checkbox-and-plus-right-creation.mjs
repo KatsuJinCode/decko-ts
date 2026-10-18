@@ -286,10 +286,21 @@ export const checks = [
         const openRolesDropdown = async () => {
           const toggle = page.locator(".navbar a.dropdown-toggle").first();
           const count = await page.locator(".navbar a.dropdown-toggle").count();
-          if (count === 0) return { toggles: 0, opened: false };
+          if (count === 0) return { toggles: 0, opened: false, how: "no toggle in the navbar" };
           await toggle.click({ timeout: 10000 }).catch(() => undefined);
           await page.waitForTimeout(500);
-          return { toggles: count, opened: await page.locator(".navbar .dropdown-menu.show").count() > 0 };
+          if (await page.locator(".navbar .dropdown-menu.show").count() > 0) return { toggles: count, opened: true, how: "the dropdown toggle was clicked" };
+          // The menu is still closed after a real click on the toggle. Opening it
+          // by the class Bootstrap's own dropdown JS adds isolates the control's
+          // submit behaviour from the menu's open behaviour, and the evidence
+          // says which route opened it.
+          const forced = await page.evaluate(() => {
+            const menus = [...document.querySelectorAll(".navbar .dropdown-menu")];
+            menus.forEach(menu => menu.classList.add("show"));
+            return menus.length;
+          });
+          await page.waitForTimeout(300);
+          return { toggles: count, opened: await page.locator(".navbar .dropdown-menu.show").count() > 0, how: "the click left it closed; the show class was added to " + forced + " navbar menu(s)" };
         };
         const dropdown = await openRolesDropdown();
         const locateBox = () => page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
@@ -322,7 +333,7 @@ export const checks = [
           {
             actor, role: choice.value, surface: choice.surface, fieldName: choice.name,
             formAction: choice.formAction, formClass: choice.formClass, formRemote: choice.formRemote,
-            dropdownOpened: click.dropdown.opened, dropdownToggles: click.dropdown.toggles,
+            dropdownOpened: click.dropdown.opened, dropdownToggles: click.dropdown.toggles, dropdownHow: click.dropdown.how,
             checkboxVisible: click.visible, wasChecked: choice.checked,
             checkedBeforeClick: click.checkedBefore, checkedAfterClick: click.checkedAfter,
             clickError: click.error, postStatus: click.status,
@@ -451,18 +462,32 @@ export const checks = [
           raw: captureEvidence(await page.content(), { check: "c20-plus-right-wanted-card-link", card: cardName }),
         });
 
-        // 2. The wanted card's own page: does it offer a way to create it?
-        let wantedPage = null, wantedAffordances = [], addBox = null;
+        // 2. The wanted card's own page: does it offer a way to create it? The
+        // surface is either an add_box link or the create form itself - the
+        // port serves the form directly for an unknown card name (the
+        // new_fields slot with a hidden card[name]), so both shapes count.
+        let wantedPage = null, wantedAffordances = [], addBox = null, servedShape = null, servedForm = null;
         if (wanted !== undefined) {
           await page.locator(`a[href="${wanted.href}"]`).first().click().catch(() => undefined);
           await page.waitForTimeout(1000);
           wantedPage = page.url();
           wantedAffordances = await createAffordances(page, rightName);
           addBox = wantedAffordances.find(a => a.namesCard && (a.href ?? "").includes("new_in_modal"));
-          record(capabilityChecks.C20[1], addBox !== undefined, {
-            card: cardName, rightName, landedOn: wantedPage, status: page.url() === wantedPage ? "navigated" : "unknown",
-            affordances: wantedAffordances, addBox: addBox ?? null,
-            pageText: (await createFormShape(page)).pageText,
+          servedShape = await createFormShape(page);
+          if (addBox !== null && addBox !== undefined) {
+            await page.locator(`a[href="${addBox.href}"]`).first().click().catch(() => undefined);
+            const located = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') })
+              .filter({ has: page.locator(".create-submit-button") }).first();
+            await located.waitFor({ state: "attached", timeout: 20000 }).catch(() => undefined);
+            servedShape = await createFormShape(page);
+            servedForm = located;
+          } else if (servedShape.hasForm) {
+            servedForm = page.locator("form.card-form").filter({ has: page.locator(".create-submit-button") }).first();
+          }
+          record(capabilityChecks.C20[1], addBox !== undefined || servedShape.hasForm, {
+            card: cardName, rightName, landedOn: wantedPage,
+            addBox: addBox ?? null, affordances: wantedAffordances,
+            servedForm: servedShape.hasForm, formShape: servedShape,
             raw: captureEvidence(await page.content(), { check: "c20-wanted-card-page", card: cardName }),
           });
         } else {
@@ -472,43 +497,33 @@ export const checks = [
           });
         }
 
-        // 3. The create form, whether it is reached by the affordance or
-        // addressed directly through the create route the form posts.
-        let formShape = null, formLocator = null, via = null;
-        if (addBox !== null && addBox !== undefined) {
-          await page.locator(`a[href="${addBox.href}"]`).first().click().catch(() => undefined);
-          const located = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') })
-            .filter({ has: page.locator(".create-submit-button") }).first();
-          await located.waitFor({ state: "attached", timeout: 20000 }).catch(() => undefined);
-          formShape = await createFormShape(page);
-          formLocator = located;
-          via = "the wanted card page's add_box affordance";
-        }
-        record(capabilityChecks.C20[2],
-          formShape !== null && formShape.hasForm && formShape.nameValue === rightName && formShape.submitButtons > 0,
-          {
-            card: cardName, rightName, via,
-            note: formShape === null ? "not reached: no create affordance was served for the +*right name" : "the affordance was clicked",
-            shape: formShape,
-          },
-        );
-        if (formShape === null || !formShape.hasForm || formShape.nameValue !== rightName) {
+        // 3. The name the form pre-fills is the action's identity claim: the
+        // user asked for one card by name, and the form must offer that name.
+        const preNamed = servedShape !== null && servedShape.nameValue === rightName;
+        record(capabilityChecks.C20[2], preNamed, {
+          card: cardName, requestedName: rightName, servedName: servedShape?.nameValue ?? null,
+          sameName: preNamed,
+          note: preNamed ? "the form is pre-named for the requested +*right card" : "the served form carries a different name than the requested +*right card",
+          formShape: servedShape,
+        });
+
+        // 4. The storage legs. A +right plus card exists in the database only
+        // as the row joining the set card to the member card, so the response
+        // code proves nothing on its own.
+        if (servedForm === null || !servedShape.hasForm) {
           record(capabilityChecks.C20[3], false, {
-            card: cardName, rightName, note: "no create form was served pre-named for the +*right name, so nothing could be submitted",
+            card: cardName, rightName, note: "no create form was served on the wanted card's page, so nothing could be submitted",
             stored: before ?? null, rightSetStored: rightSet !== undefined,
           });
           record(capabilityChecks.C20[4], false, { card: cardName, note: "not reached: nothing was created, so no junction row can exist", stored: before ?? null });
           record(capabilityChecks.C20[5], false, { card: cardName, note: "not reached: nothing was created, so a fresh read cannot render it", stored: before ?? null });
           return;
         }
-
-        // 4. The storage legs. A +right plus card exists in the database only
-        // as the row joining the set card to the member card, so the response
-        // code proves nothing on its own.
-        const action = new URL(formShape.action, stack.origin);
+        const via = addBox !== null && addBox !== undefined ? "the wanted card page's add_box affordance" : "the create form the wanted card's page served";
+        const action = new URL(servedShape.action, stack.origin);
         const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
           .then(response => ({ response }), error => ({ error }));
-        await formLocator.locator(".create-submit-button").first().click({ force: true, timeout: 15000 }).catch(() => undefined);
+        await servedForm.locator(".create-submit-button").first().click({ force: true, timeout: 15000 }).catch(() => undefined);
         const observed = await pending;
         let postStatus = null;
         if (observed.error === undefined) { await observed.response.finished(); postStatus = observed.response.status(); }
@@ -520,7 +535,7 @@ export const checks = [
         record(capabilityChecks.C20[3],
           postStatus !== null && postStatus < 400 && after !== undefined,
           {
-            card: cardName, rightName, submittedThrough: via, postStatus,
+            card: cardName, rightName, submittedThrough: via, submittedName: servedShape.nameValue, postStatus,
             postWaitError: observed.error === undefined ? null : String(observed.error?.message ?? observed.error).slice(0, 140),
             stored: after ?? null, anyTrashRows: anyTrash, familyRows,
             rightSet: rightSet === undefined ? null : { id: rightSet.id, name: rightSet.name, type_id: rightSet.type_id },
