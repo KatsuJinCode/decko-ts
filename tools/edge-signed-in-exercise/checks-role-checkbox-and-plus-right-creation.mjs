@@ -488,7 +488,7 @@ export const checks = [
         // check refuses to build the click leg on it.
         const canonicalGrantRows = listId => listId === null ? [] : database().prepare(
           "SELECT r.referer_id, r.referee_id, r.referee_key, r.ref_type " +
-          "FROM card_references r WHERE r.referer_id=? AND r.referee_id=? AND r.trash=0",
+          "FROM card_references r WHERE r.referer_id=? AND r.referee_id=?",
         ).all(listId, memberActor.id);
         const grantListRowAfterSeed = seededGrantListId === null ? null : database().prepare(
           "SELECT db_content FROM cards WHERE id=? AND trash=0",
@@ -507,7 +507,7 @@ export const checks = [
         const seedGrantMemberships = membersId === null ? [] : database().prepare(
           "SELECT r.referer_id, c.left_id AS role_id, cr.name AS role_name " +
           "FROM card_references r JOIN cards c ON r.referer_id=c.id JOIN cards cr ON c.left_id=cr.id " +
-          "WHERE r.referee_id=? AND c.right_id=? AND r.trash=0 AND c.trash=0",
+          "WHERE r.referee_id=? AND c.right_id=? AND c.trash=0",
         ).all(memberActor.id, membersId);
         const initialVisit = await openInlineRoleEditor(memberActor.name);
         const initialInventory = await inventoryEnabledRolesCheckboxes(memberActor.name);

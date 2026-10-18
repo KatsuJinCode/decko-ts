@@ -285,7 +285,7 @@ export const checks = [
           [`${host} => ${field}`, database().prepare(
             "SELECT r.id, r.ref_type FROM card_references r " +
             "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
-            "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0",
+            "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0)",
           ).get(host, field) ?? null]));
 
         await signInAs(ctx, member);
