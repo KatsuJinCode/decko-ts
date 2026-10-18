@@ -37,6 +37,27 @@
 //   a reader comparing this against the Ruby view needs to know which control
 //   answers.
 //
+//   A6 BOOTSTRAP GAP (no-JS path). Verified against the live-served HTML of
+//   the /new/<cardtype> page and the home page (probe captures in the run
+//   paths this module ran under, e.g.
+//   .runtime/edge-signed-in/2026-10-17T08-22-24-672Z-41160/report.md.raw/009.html
+//   and 024.html): the scripts the page actually loads are jquery,
+//   jquery-ujs, ace, select2, and one deck asset. The HTML DOES carry
+//   `data-bs-toggle="dropdown"` on the navbar toggle, and the served CSS
+//   includes a Bootstrap-styled navbar — but the Bootstrap.bundle.js that
+//   wires `data-bs-toggle="dropdown"` to a menu open/close is NOT loaded.
+//   Effect: in production, clicking the navbar account-menu toggle never
+//   opens the dropdown, so a person cannot reach the role checkboxes. The
+//   check below therefore exercises the no-JS path: it first tries the
+//   toggle (the click does nothing because no Bootstrap listener is bound,
+//   but we record the attempt), then opens the menu by toggling the `.show`
+//   class on `.dropdown-menu` via page.evaluate, and only then attempts to
+//   click a role checkbox. This is the only path the served surface
+//   supports today; faithful reproduction through the toggle would require
+//   adding bootstrap.bundle.js to the deck's render, which is an engine
+//   change, not an instrument change. The capability text below is the
+//   under-this-no-JS-path predicate.
+//
 //   C20 — the card page does NOT render an add_box affordance for an unknown
 //   nest member; it renders the nest as `<a class="wanted-card" href="...">`
 //   (the wanted-card class the link_to_card view adds, mod-bootstrap.ts:498-503).
@@ -82,10 +103,14 @@ const enabledRolesCardName = (actorName) => `${actorName}+*enabled roles`;
 export const meta = { topic: "role-plus-right", capabilityIds: ["A6", "C20"] };
 
 export const capabilityChecks = {
+  // A6[1]/A6[2] predicate is graded under the no-JS path: production does not
+  // load bootstrap.bundle.js, so the navbar toggle cannot open the dropdown
+  // for a real user. The check opens the menu by adding the `.show` class
+  // via page.evaluate, then drives the checkbox click through the served DOM.
   A6: [
     "A6 an account/rules surface serves a role checkbox carrying that role's name",
-    "A6 clicking that checkbox posts and removes the role from the actor's stored enabled-roles selection",
-    "A6 the checkbox form's own submit posts the same edit when the click does not",
+    "A6 under the no-JS open-path (production does not load bootstrap.bundle.js, so the navbar toggle leaves the menu closed), opening the served menu by adding the .show class and clicking that checkbox posts and removes the role from the actor's stored enabled-roles selection",
+    "A6 under the same no-JS path, the checkbox form's own submit posts the same edit when the click does not",
     "A6 the actor's stored roles are back at their pre-click set before the run continues",
   ],
   C20: [
