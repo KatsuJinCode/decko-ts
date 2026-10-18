@@ -279,6 +279,11 @@ const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.ex
 const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
 
 function captureEvidence(html, metadata) {
+  // The harness mkdirSync's RAW once at start (line 119), but later checks
+  // (e.g. checks-unmeasured-save-edit-create E7/E11/E15/CM1/N15) saw ENOENT
+  // here because the directory had been removed between check bodies. Re-
+  // create defensively: it is a no-op when RAW already exists.
+  mkdirSync(RAW, { recursive: true });
   const label = String(metadata.check??'owner-delete-after').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,80);
   const capture = String(++htmlSequence).padStart(3, '0') + '-'+label;
   writeFileSync(join(RAW, capture + '.html'), html, { flag: 'wx' });
