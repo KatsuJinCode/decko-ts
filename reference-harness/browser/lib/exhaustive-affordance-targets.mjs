@@ -128,7 +128,7 @@ async function dispatchClick(page, selector) {
  * engine base URL and the settle helper. Returns the sequence entries to
  * append; an empty list means the action needs none of these cases.
  */
-export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest }) {
+export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout = 30_000 }) {
   const ctx = { text, base, card, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout };
   const sequence = [];
   const t = String(text ?? "");
