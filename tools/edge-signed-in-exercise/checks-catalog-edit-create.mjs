@@ -58,8 +58,8 @@ export const checks = [
   {
     name: "E7 a set card renders a nest_rules slot carrying the rule list",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       // Ruby contract (filtered_rule_lists.rb:2-5 view :nest_rules, wrap:
       // :slot): a Set card's edit_rules nests the current_set_card under
       // view :board_rules_tab. Find a Set card and open its edit form to
@@ -106,8 +106,8 @@ export const checks = [
   {
     name: "E9 a NestList card renders a nest_list_input with {{...}} rows",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const nestListId = nestListCardtypeId(database());
       if (!nestListId) {
         record(
@@ -146,8 +146,8 @@ export const checks = [
   {
     name: "E11 a card with a +summary nested field renders that field's editor",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const summaryTypeRow = database()
         .prepare(
           "SELECT id, name FROM cards WHERE codename='account' AND trash=0 LIMIT 1"
@@ -192,8 +192,8 @@ export const checks = [
   {
     name: "E13 a /new form serves a card[type] selector the user can change",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const startType = fixtureType(database(), "Basic");
       await visit("/new/" + encodeURIComponent(startType.name));
       await page.waitForTimeout(2500);
@@ -228,7 +228,7 @@ export const checks = [
     name: "E15 the edit modal's Save and Close updates the main slot",
     run: async (ctx) => {
       const { page, database, record, visit, signIn, admin, ledger, linesSince } = ctx;
-      await signIn(admin);
+      await signIn(creds.admin);
       const fixtureName = "Harness_saveclose_" + Date.now().toString(36);
       await createTypedFixture(ctx, { type: "Phrase", name: fixtureName, content: "save close before" });
       await visit("/" + encodeURIComponent(fixtureName) + "/edit");
@@ -289,8 +289,8 @@ export const checks = [
   {
     name: "C7 a plain-input card can be created through the editor",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const fixtureName = "Harness_plaintext_" + Date.now().toString(36);
       const plainType = fixtureType(database(), "PlainText");
       await visit("/new/" + encodeURIComponent(plainType.name));
@@ -340,8 +340,8 @@ export const checks = [
   {
     name: "C9 an invalid number is refused in the editor",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const fixtureName = "Harness_badnumber_" + Date.now().toString(36);
       const numberType = fixtureType(database(), "Number");
       await visit("/new/" + encodeURIComponent(numberType.name));
@@ -389,8 +389,8 @@ export const checks = [
   {
     name: "C11 an autoname cardtype generates its name on save",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin } = ctx;
-      await signIn(admin);
+      const { page, database, record, visit, signIn, creds } = ctx;
+      await signIn(creds.admin);
       const autoRow = findAutonameSetCardId(database());
       const inventory = {
         autonameCodenamePresent: autoRow !== undefined,
