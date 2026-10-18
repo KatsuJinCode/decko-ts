@@ -1,3 +1,4 @@
+import { checks as roleChecks, capabilityChecks as roleCapabilityChecks } from './checks-role-checkbox-and-plus-right-creation.mjs';
 import { runCodedImageChange } from './lib/coded-image-change.mjs';
 // checks-widget-interactions.mjs — instruments for the WIDGET/INLINE-CONTROL
 // rows the instrument-coverage matrix
@@ -86,31 +87,6 @@ async function clickAndSettle(ctx, locator, settleMs = 1500) {
 const searchResultNames = page => page.evaluate(() =>
   [...document.querySelectorAll("#main .search-result-list > .search-result-item")]
     .map(row => row.querySelector("[data-card-name]")?.getAttribute("data-card-name") ?? null));
-
-/** Everything a person could see and press on the account board's role
- *  controls, so an absent or inert control is a recorded finding.
- *
- *  The WHOLE document is scanned, not just `#main`: the Roles pill fetches its
- *  content into the board's OVERLAY SLOT inside the same modal, which is
- *  exactly why the E19 fix reads `.modal input` and not `#main input` — scoping
- *  the read to `#main` misses the pill's own content entirely. */
-const roleControlInventory = page => page.evaluate(() =>
-  [...document.querySelectorAll('input[type="checkbox"], a[href*="role"], a[href*="members"], input[name*="role" i], input[name*="members" i]')]
-    .slice(0, 20)
-    .map(node => ({
-      tag: node.tagName,
-      type: node.getAttribute("type"),
-      name: node.getAttribute("name"),
-      value: node.getAttribute("value"),
-      href: node.getAttribute("href"),
-      checked: node.type === "checkbox" ? node.checked : null,
-      visible: node.getClientRects().length > 0,
-      insideForm: node.form !== null || node.closest("form") !== null,
-      formAction: node.closest("form")?.getAttribute("action") ?? null,
-      insideModal: node.closest(".modal") !== null,
-      insideBoard: node.closest(".board") !== null,
-      text: (node.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
-    })));
 
 export const meta = {
   topic: "widget-interactions",
@@ -439,118 +415,21 @@ export const checks = [
     only: "unmeasured-matrix",
     run: async ctx => {
       requireLoopback(ctx);
-      const { stack, page, creds, signIn, record, captureEvidence } = ctx;
-      const signedIn = await signIn(creds.admin);
-      if (!signedIn.hasSessionCookie) throw Error("A6 browser signin failed");
-
-      const holder = creds.admin.name.replace(/ /g, "_");
-      const board = await page.goto(stack.origin + "/" + holder + "/board", { waitUntil: "load" });
-      await page.waitForTimeout(2500);
-      // The account board's tab panes are pill lists (oracle
-      // account_holder.rb:132-137 board_pill_sections), and ACCOUNT_DETAILS_ITEMS
-      // (card-mod-account.ts:827-850) pairs the label "Roles" with the codename
-      // `*roles` at view :content. A person reaches the role controls through
-      // that pill; the check does too.
-      const pills = await page.evaluate(() =>
-        [...document.querySelectorAll(".board .board-pills a")].map(a => ({ text: (a.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40), href: a.getAttribute("href") })));
-      const rolesPill = pills.find(p => /roles/i.test(p.text));
-      if (rolesPill === undefined) {
-        record(capabilityChecks.A6[0], false, {
-          note: "the account board offers no Roles pill, so no role checkbox is reachable",
-          boardStatus: board?.status() ?? null,
-          pills,
-          raw: captureEvidence(await page.content(), { check: "role-pill-absent" }),
-        });
-        return;
-      }
-      const caused = await clickAndSettle(ctx, page.locator(".board .board-pills a", { hasText: /roles/i }).first(), 2500);
-      const pillFetch = caused.find(l => /roles/i.test(l.path ?? ""));
-      const inventory = await roleControlInventory(page);
-      const checkboxes = inventory.filter(i => i.type === "checkbox");
-      if (checkboxes.length === 0) {
-        record(capabilityChecks.A6[0], false, {
-          note: "the Roles pill rendered no role checkbox at all",
-          pill: { text: rolesPill.text, href: rolesPill.href, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null },
-          controlsSeen: inventory,
-          raw: captureEvidence(await page.content(), { check: "role-checkbox-absent" }),
-        });
-        return;
-      }
-      // Where the role checkboxes actually are: the account board's Roles PILL
-      // rendered none, but the ACCOUNT MENU in the navbar carries them —
-      // <h6 class="dropdown-header">Roles</h6> then one
-      // <div class="pointer-checkbox dropdown-item"> per role, each with
-      // <input type=checkbox class="pointer-checkbox-button _submit-on-change"
-      // form action="/update/<actor>+*enabled_roles">. They sit inside a
-      // collapsed dropdown, so a person OPENS the menu first and clicks the
-      // checkbox, which auto-submits (_submit-on-change). Measure that path.
-      const menuToggle = page.locator('button.dropdown-toggle, a.dropdown-toggle').last();
-      await menuToggle.click({ timeout: 10000 }).catch(() => undefined);
-      await page.waitForTimeout(1200);
-      // Whether the menu actually opened, so the verdict names the cause rather
-      // than only the symptom (a checkbox that stayed hidden).
-      const dropdownState = await page.evaluate(() => {
-        const toggle = [...document.querySelectorAll('[data-bs-toggle="dropdown"]')].pop();
-        return {
-          ariaExpanded: toggle?.getAttribute("aria-expanded") ?? null,
-          menuHasShowClass: document.querySelector(".dropdown-menu.show") !== null,
-        };
+      // Both A6 entries observe the same native Session action. Reuse the
+      // neutral-member fixture and cookie/fresh-request witnesses instead of
+      // maintaining an administrator-only click walk with different selectors.
+      const observed = [];
+      const subject = roleChecks.find(check => check.name.startsWith("A6 "));
+      if (!subject) throw Error("Canonical role-checkbox instrument missing");
+      await subject.run({ ...ctx, record: (check, pass, evidence) => observed.push({ check, pass, evidence }) });
+      const expected = roleCapabilityChecks.A6;
+      const complete = observed.length === expected.length && expected.every(name => observed.some(row => row.check === name));
+      ctx.record(capabilityChecks.A6[0], complete && observed.every(row => row.pass === true), {
+        sharedInstrument: "checks-role-checkbox-and-plus-right-creation.mjs/A6",
+        originalEntryPreserved: true,
+        complete, witnesses: observed,
+        note: "Same native neutral-member action and actual Session persistence witnesses as the dedicated A6 entry; not independent additional coverage.",
       });
-      const menuInventory = await roleControlInventory(page);
-      const menuBoxes = menuInventory.filter(i => i.type === "checkbox" && i.visible === true);
-      if (menuBoxes.length === 0) {
-        const allBoxes = menuInventory.filter(i => i.type === "checkbox");
-        record(capabilityChecks.A6[0], false, {
-          note: allBoxes.length === 0
-            ? "no role checkbox renders anywhere on the account board or the account menu"
-            : `the ${allBoxes.length} role checkboxes render with their values and their /update/<actor>+*enabled_roles form, but they sit inside a collapsed account menu that does not open: the toggle's aria-expanded stayed ${dropdownState.ariaExpanded} and no .dropdown-menu gained its show class after a click. The page loads no Bootstrap JavaScript (script srcs are jquery, jquery-ujs, ace, select2 and one deck asset), so every data-bs-toggle affordance on a signed-in page is inert`,
-          rolesPill: { text: rolesPill.text, href: rolesPill.href, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null },
-          accountMenuAfterClick: dropdownState,
-          checkboxesInWholeDocument: allBoxes,
-          raw: captureEvidence(await page.content(), { check: "role-checkbox-absent" }),
-        });
-        return;
-      }
-      // Toggle, read the STORED state, then restore the fixture. "Anyone Signed
-      // In" is chosen over "Administrator" so a failed restore can never lock the
-      // actor out of the rest of the run.
-      const target = menuBoxes.find(b => b.value !== "Administrator") ?? menuBoxes[0];
-      const before = target.checked;
-      const box = page.locator(`input[type="checkbox"][name="${target.name}"][value="${target.value}"]`).first();
-      const writePending = ctx.page.waitForResponse(r => r.request().method() !== "GET" && /enabled_roles/.test(new URL(r.url()).pathname), { timeout: 20000 }).then(r => ({ r }), e => ({ e }));
-      await box.click({ timeout: 10000 }).catch(() => undefined);
-      const sent = await writePending;
-      await ctx.page.waitForTimeout(1500);
-      if (sent.e !== undefined) await ctx.page.waitForTimeout(1500);
-      const storedAfter = await page.locator(`input[type="checkbox"][name="${target.name}"][value="${target.value}"]`).first().isChecked().catch(() => null);
-      const writeStatus = sent.e === undefined ? sent.r.status() : null;
-      // Restore the fixture to the state the run found it in.
-      const restorePending = ctx.page.waitForResponse(r => r.request().method() !== "GET" && /enabled_roles/.test(new URL(r.url()).pathname), { timeout: 20000 }).then(r => ({ r }), e => ({ e }));
-      await box.click({ timeout: 10000 }).catch(() => undefined);
-      const restored = await restorePending;
-      await ctx.page.waitForTimeout(1200);
-      const restoredState = await page.locator(`input[type="checkbox"][name="${target.name}"][value="${target.value}"]`).first().isChecked().catch(() => null);
-      record(capabilityChecks.A6[0],
-        storedAfter !== null
-          && storedAfter !== before
-          && writeStatus !== null
-          && writeStatus < 400
-          && restoredState === before,
-        {
-          actor: creds.admin.name,
-          actorId: creds.admin.id,
-          rolesPill: { text: rolesPill.text, href: rolesPill.href, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null },
-          rolesPillRenderedNoCheckbox: checkboxes.length === 0,
-          roleCheckboxesInAccountMenu: menuBoxes.map(b => ({ value: b.value, name: b.name, checked: b.checked, formAction: b.formAction })),
-          target,
-          checkedBefore: before,
-          checkedAfterToggle: storedAfter,
-          autoSubmitWriteStatus: writeStatus,
-          autoSubmitPath: sent.e === undefined ? sent.r.url() : null,
-          restoredToOriginalState: restoredState === before,
-          restoreWriteStatus: restored.e === undefined ? restored.r.status() : null,
-          raw: captureEvidence(await page.content(), { check: "role-checkbox-toggle" }),
-        });
     },
   },
 
