@@ -29,6 +29,13 @@
 
 import { createTypedFixture, fixtureCard, fixtureType } from "./lib/typed-fixture.mjs";
 
+/** The create form on /new/:type (the page's own form, not the navbar's
+ *  roles form which is also `form.card-form`). The /new page renders
+ *  the navbar's account roles form first, so an unscoped form.card-form
+ *  read returns that form's action (/update/<actor>+*enabled_roles)
+ *  instead of /card/create. The MAIN_FORM selector rules those out. */
+const MAIN_FORM = 'form#new_card[action="/card/create"], #main form.card-form, form.card-form[action*="/card/create"], form.card-form[id="new_card"]';
+
 export const meta = {
   topic: "catalog-edit-create",
   capabilityIds: ["E7", "E9", "E11", "E13", "E15", "C7", "C9", "C11"],
@@ -66,7 +73,7 @@ export const checks = [
       // grade the slot.
       const setCardRow = database()
         .prepare(
-          "SELECT id, name FROM cards WHERE type_id IN (SELECT id FROM cards WHERE codename='set' AND trash=0) AND trash=0 LIMIT 1"
+          "SELECT id, name FROM cards WHERE type_id = (SELECT id FROM cards WHERE codename='set' AND trash=0) AND name IS NOT NULL AND trash=0 ORDER BY id LIMIT 1"
         )
         .get();
       if (!setCardRow) {
@@ -118,7 +125,7 @@ export const checks = [
         return;
       }
       const fixtureName = "Harness_nestlist_" + Date.now().toString(36);
-      await createTypedFixture(ctx, { type: "NestList", name: fixtureName, content: "" });
+      await createTypedFixture(ctx, { type: "Nest list", name: fixtureName, content: "" });
       await visit("/" + encodeURIComponent(fixtureName) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
@@ -198,7 +205,7 @@ export const checks = [
       await visit("/new/" + encodeURIComponent(startType.name));
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
-        const form = document.querySelector("form.card-form") ?? document.querySelector("form#new_card");
+        const form = document.querySelector("form#new_card[action='/card/create']") ?? document.querySelector("form#new_card") ?? document.querySelector("#main form.card-form");
         const inputs = form ? [...form.querySelectorAll("input,select,textarea")] : [];
         const radios = [...(form?.querySelectorAll('input[type="radio"][name="card[type]"]') ?? [])];
         const select = form?.querySelector('select[name="card[type]"], select[name="card[type_id]"]') ?? null;
@@ -227,7 +234,7 @@ export const checks = [
   {
     name: "E15 the edit modal's Save and Close updates the main slot",
     run: async (ctx) => {
-      const { page, database, record, visit, signIn, admin, ledger, linesSince } = ctx;
+      const { page, database, record, visit, signIn, creds, ledger, linesSince } = ctx;
       await signIn(creds.admin);
       const fixtureName = "Harness_saveclose_" + Date.now().toString(36);
       await createTypedFixture(ctx, { type: "Phrase", name: fixtureName, content: "save close before" });
@@ -296,7 +303,7 @@ export const checks = [
       await visit("/new/" + encodeURIComponent(plainType.name));
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
-        const form = document.querySelector("form.card-form") ?? document.querySelector("form#new_card");
+        const form = document.querySelector("form#new_card[action='/card/create']") ?? document.querySelector("form#new_card") ?? document.querySelector("#main form.card-form");
         const inputs = form ? [...form.querySelectorAll("input,textarea,select")] : [];
         const nameField = form?.querySelector('input[name="card[name]"]') ?? null;
         const contentField = form?.querySelector('input[name="card[content]"], textarea[name="card[content]"]') ?? null;
@@ -321,9 +328,9 @@ export const checks = [
         (r) => new URL(r.url()).pathname === "/card/create" && r.request().method() === "POST",
         { timeout: 60_000 }
       ).then((response) => ({ response }), (error) => ({ error }));
-      await page.locator('form.card-form input[name="card[name]"]').first().fill(fixtureName);
-      await page.locator('form.card-form input[name="card[content]"], form.card-form textarea[name="card[content]"]').first().fill("plain text body " + Date.now().toString(36));
-      await page.locator('.create-submit-button, form.card-form button[type=submit]').first().click();
+      await page.locator("form#new_card[action='/card/create'] input[name='card[name]']").first().fill(fixtureName);
+      await page.locator("form#new_card[action='/card/create'] input[name='card[content]'], form#new_card[action='/card/create'] textarea[name='card[content]']").first().fill("plain text body " + Date.now().toString(36));
+      await page.locator(".create-submit-button, form#new_card[action='/card/create'] button[type=submit]").first().click();
       const seen = await pending;
       if (seen.error) throw seen.error;
       await seen.response.finished();
@@ -346,12 +353,12 @@ export const checks = [
       const numberType = fixtureType(database(), "Number");
       await visit("/new/" + encodeURIComponent(numberType.name));
       await page.waitForTimeout(2500);
-      const form = page.locator("form.card-form").first();
+      const form = page.locator("form#new_card[action='/card/create']").first();
       if ((await form.count()) === 0) {
         record(
           "C9 an invalid number is refused in the editor",
           false,
-          { note: "no new form rendered for Number type", numberType: numberType.name }
+          { note: "no /card/create form rendered for Number type", numberType: numberType.name }
         );
         return;
       }
@@ -408,27 +415,42 @@ export const checks = [
         );
         return;
       }
+      // The 1.110.0 deck keeps the autoname codename on the *autoname set
+      // card (id 247); the autoname rule on a TYPE is a junction row with
+      // right_id = 247 and left_id = type_id. No seeded cardtype here has
+      // such a rule (the typesWithAutonameRule count is 1 = the set card
+      // itself), so the contract cannot be exercised on this deck. Record
+      // the surface state.
       const autoTypeRow = database()
         .prepare(
-          "SELECT t.id, t.name FROM cards t JOIN cards r ON r.left_id=t.id AND r.codename='autoname' AND r.trash=0 WHERE t.trash=0 LIMIT 1"
+          "SELECT t.id, t.name FROM cards t JOIN cards r ON r.left_id = t.id AND r.right_id = (SELECT id FROM cards WHERE codename='autoname' AND trash=0) AND r.trash=0 WHERE t.trash=0 AND t.type_id = (SELECT id FROM cards WHERE codename='cardtype' AND trash=0) LIMIT 1"
         )
         .get();
       if (!autoTypeRow) {
         record(
           "C11 an autoname cardtype generates its name on save",
           false,
-          { note: "no type with +*autoname rule in the seeded deck", ...inventory }
+          { note: "no Cardtype has a +*autoname rule in the seeded deck; surface not exercisable here", ...inventory }
         );
         return;
       }
       await visit("/new/" + encodeURIComponent(autoTypeRow.name));
       await page.waitForTimeout(2500);
-      const form = page.locator("form.card-form").first();
+      const form = page.locator("form#new_card[action='/card/create']").first();
+      if ((await form.count()) === 0) {
+        record(
+          "C11 an autoname cardtype generates its name on save",
+          false,
+          { note: "no /card/create form rendered", autoTypeRow: autoTypeRow.name, ...inventory }
+        );
+        return;
+      }
       const nameField = form.locator('input[name="card[name]"]').first();
-      const nameHidden = (await nameField.count()) > 0 && (await nameField.getAttribute("type")) === "hidden";
+      const nameFieldType = (await nameField.count()) > 0 ? await nameField.getAttribute("type") : null;
+      const nameHidden = nameFieldType === "hidden";
       const promptVisible = await page.evaluate(() => {
-        const form = document.querySelector("form.card-form") ?? document.querySelector("form#new_card");
-        const nameInput = form?.querySelector('input[name="card[name]"]') ?? null;
+        const f = document.querySelector("form#new_card[action='/card/create']") ?? document.querySelector("form#new_card");
+        const nameInput = f?.querySelector('input[name="card[name]"]') ?? null;
         if (!nameInput) return false;
         const isVisible = nameInput.offsetParent !== null && nameInput.type !== "hidden";
         return isVisible;
