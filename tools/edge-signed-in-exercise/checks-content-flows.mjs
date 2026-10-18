@@ -281,12 +281,19 @@ export const checks = [
           const main = document.querySelector('#main, main');
           return { slotClasses: [...(main?.querySelectorAll('[class*="SELF-"], .card-slot, .d0-card-body') ?? [])].map((el) => el.className.slice(0, 120)).slice(0, 20) };
         });
+        // The rendered-slot + ref_type='I' evidence (diagnostic only — no
+        // positive rests on it). Junction cards carry NULL name columns, so
+        // both sides resolve to ids through fixtureCard before the reference
+        // read (the same resolution fixtureCard.mjs documents).
+        const refRowFor = (host, field) => {
+          const h = fixtureCard(database(), host), f = fixtureCard(database(), field);
+          if (h === undefined || f === undefined) return null;
+          return database().prepare(
+            "SELECT r.id, r.ref_type FROM card_references r WHERE r.referer_id=? AND r.referee_id=?",
+          ).get(h.id, f.id) ?? null;
+        };
         const inclusionRows = Object.fromEntries([[includer, authorPlus], [includer, nestedStandalone], [plusHost, detailPlus]].map(([host, field]) =>
-          [`${host} => ${field}`, database().prepare(
-            "SELECT r.id, r.ref_type FROM card_references r " +
-            "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
-            "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0)",
-          ).get(host, field) ?? null]));
+          [`${host} => ${field}`, refRowFor(host, field)]));
 
         await signInAs(ctx, member);
         const follows = {
