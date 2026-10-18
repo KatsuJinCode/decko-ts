@@ -3695,33 +3695,31 @@ export class CardActionEngine {
         nesterRows.set(id, results[i].rows.map((r) => Number((r as { referer_id: number }).referer_id)));
       });
     };
-    const nestersOf = async (id: number): Promise<number[]> => {
-      const known = nesterRows.get(id);
-      if (known !== undefined) return known;
-      await prefetchNesters([id]);
-      return nesterRows.get(id) ?? [];
-    };
-    // Level-by-level prefetch: the walk reads nesters of cards at levels 0..5.
+    // Level-by-level walk, the save path's block batching: the nesters AND
+    // the liveness rows of each level ride ONE batch per level (read-only
+    // statements issued at the same sequence point — no write runs between
+    // them — so each ordered batch answers its statements exactly as their
+    // individual round trips did; on a hosted database every round trip is a
+    // network hop, and the depth-first walk paid one per nester). The result
+    // set is the previous recursion's: every nester at levels 1..6 of the
+    // start cards, with descent only through live nesters (`id.card&.` — a
+    // trash-filtered fetch). That union feeds a Set and one order-free
+    // IN-list UPDATE, so collecting it breadth-first cannot change what the
+    // walk names.
+    const cardRowSql = "SELECT * FROM cards WHERE id = ? LIMIT 1";
+    const ids = new Set<number>();
     let frontier = [...new Set(cardIds)];
     for (let level = 0; level <= 5 && frontier.length > 0; level += 1) {
       await prefetchNesters(frontier);
-      frontier = frontier.flatMap((id) => nesterRows.get(id) ?? []);
+      const next = [...new Set(frontier.flatMap((id) => nesterRows.get(id) ?? []))];
+      for (const n of next) ids.add(n);
+      if (next.length === 0) break;
+      const liveness = await driver.batch(next.map((id) => ({ sql: cardRowSql, params: [id] })));
+      frontier = next.filter((_, i) => {
+        const row = liveness[i].rows[0] as { trash: number } | undefined;
+        return row !== undefined && row.trash === 0;
+      });
     }
-    const isLive = async (id: number): Promise<boolean> => {
-      const row = await this.fetchRowById(id);
-      return row !== undefined && row.trash === 0;
-    };
-    const ancestors = async (id: number, level: number): Promise<number[]> => {
-      if (level > 5) return [];
-      const direct = await nestersOf(id);
-      const out = [...direct];
-      for (const parent of direct) {
-        if (await isLive(parent)) out.push(...(await ancestors(parent, level + 1)));
-      }
-      return out;
-    };
-    const ids = new Set<number>();
-    for (const cardId of cardIds) for (const a of await ancestors(cardId, 0)) ids.add(a);
     if (ids.size === 0) return;
     const list = [...ids];
     const actingId = this.currentActorId ?? (await this.actingIdForWrite()) ?? this.actor?.id ?? null;
@@ -3729,12 +3727,62 @@ export class CardActionEngine {
       `UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (${list.map(() => "?").join(", ")})`,
       [actingId, sqlDateTime(this.clock()), ...list],
     );
-    for (const id of list) {
-      const row = await this.fetchRowById(id);
+    // The expiry records ride the same batching: EVERY ancestor's row in ONE
+    // batch, then the side rows their junction-name compositions need in one
+    // batch per closure round — seated into the lexicon through
+    // noteIdToLexRow/noteIdToLexMiss, which write exactly what idToLex's own
+    // cache write would write for the same db-read row (lexicon.ts), so each
+    // composedNameOf below answers from cache instead of paying a row read
+    // and a side read per ancestor.
+    const ancestorRows = (
+      await driver.batch(list.map((id) => ({ sql: cardRowSql, params: [id] })))
+    ).map((r) => r.rows[0] as CardsRow | undefined);
+    const nameTripleSql = "SELECT id, name, left_id, right_id FROM cards WHERE id = ? LIMIT 1";
+    const seated = new Set<number>();
+    let pending: number[] = [];
+    for (const row of ancestorRows) {
+      // composedNameOf composes only a junction (left set; lexToName bails
+      // on a null side before any read), so only those need their sides.
+      if (row !== undefined && row.left_id !== null && row.left_id !== undefined &&
+          row.right_id !== null && row.right_id !== undefined) {
+        pending.push(row.left_id, row.right_id);
+      }
+    }
+    while (pending.length > 0) {
+      // An id the lexicon already holds (a positive from an earlier phase of
+      // this request, or a proven-absent negative) is skipped: the entry IS
+      // the answer, and re-fetching it would spend a round trip re-learning
+      // it (heldIdEntry reads exactly what idToLex's cacheFetch reads).
+      const todo = [...new Set(pending)].filter(
+        (id) => !seated.has(id) && !this.fetch.lexicon.heldIdEntry(id),
+      );
+      pending = [];
+      if (todo.length === 0) break;
+      for (const id of todo) seated.add(id);
+      const sideResults = await driver.batch(todo.map((id) => ({ sql: nameTripleSql, params: [id] })));
+      todo.forEach((id, i) => {
+        const side = sideResults[i].rows[0] as
+          | Pick<CardsRow, "id" | "name" | "left_id" | "right_id">
+          | undefined;
+        if (side === undefined) {
+          this.fetch.lexicon.noteIdToLexMiss(id);
+          return;
+        }
+        this.fetch.lexicon.noteIdToLexRow(side);
+        // A side that is itself a junction composes through ITS sides.
+        if ((side.name === null || side.name === undefined) &&
+            side.left_id !== null && side.left_id !== undefined &&
+            side.right_id !== null && side.right_id !== undefined) {
+          pending.push(side.left_id, side.right_id);
+        }
+      });
+    }
+    for (let i = 0; i < list.length; i += 1) {
+      const row = ancestorRows[i];
       const name = row !== undefined ? await this.composedNameOf(row) : undefined;
       if (name !== undefined) {
         const record = newCardRecord(name);
-        record.id = id;
+        record.id = list[i];
         this.fetch.expireCard(record);
       }
     }
