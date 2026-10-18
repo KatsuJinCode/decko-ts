@@ -329,6 +329,7 @@ export const checks = [
           return;
         }
         const editorCarriesRule = await editor.count() > 0 && await editor.locator(`input[name="card[name]"][value="${ruleName}"]`).count() > 0;
+        let submitError = null;
         const contentField = editor.locator('[name="card[content]"]').first();
         if (await contentField.count() === 0) {
           record(capabilityChecks.P6[1], false, {
@@ -348,11 +349,33 @@ export const checks = [
           await contentField.fill(wanted);
         }
         const action = new URL(await editor.getAttribute("action"), stack.origin);
-        const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
+        const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && r.request().method() === "POST" && [action.pathname, "/card/update"].includes(new URL(r.url()).pathname), { timeout: 20000 })
           .then(response => ({ response }), error => ({ error }));
-        await editor.locator("button[type='submit']").first().click().catch(() => undefined);
+        // The rule editor's save control is button[data-cy=save]
+        // (src/card/mod-loader/mods/card-mod-rules.ts:2256-2259, submitButton at
+        // mod-form-substrate.ts:66-82). It renders inside the overlay, so it is
+        // scrolled to and clicked with force: a plain click waits out Playwright's
+        // actionability timeout when the overlay has not settled, and a swallowed
+        // click timeout looks identical to "the form never submitted".
+        const save = editor.locator("button[data-cy='save'], button[type='submit']").first();
+        await save.scrollIntoViewIfNeeded().catch(() => undefined);
+        await save.click({ force: true, timeout: 15000 }).catch(error => { submitError = String(error?.message ?? error).slice(0, 120); });
         const observed = await pending;
-        if (observed.error) throw observed.error;
+        if (observed.error) {
+          // A submit that never answered must leave its evidence behind rather
+          // than throw the rest of the run away (the standard S5's evidence
+          // extension set).
+          record(capabilityChecks.P6[1], false, {
+            card: cardName, ruleName, readRuleHref: readPill.href, editorCarriesRule,
+            editorAction: action.pathname, submitClickError: submitError ?? null,
+            submitWaitError: String(observed.error?.message ?? observed.error).slice(0, 120),
+            ruleContentBefore: beforeRule?.db_content ?? null,
+            contentAfterFill: await contentField.inputValue().catch(() => null),
+            editorButtons: await editor.evaluate(f => [...f.querySelectorAll("button,input[type=submit]")].map(b => ({ tag: b.tagName.toLowerCase(), type: b.getAttribute("type"), cy: b.getAttribute("data-cy"), text: (b.textContent ?? "").trim().slice(0, 20), visible: b.offsetParent !== null }))),
+            raw: captureEvidence(await admin.page.content(), { check: "p6-read-rule-submit", name: cardName }),
+          });
+          return;
+        }
         await observed.response.finished();
         const afterRule = fixtureCard(database(), ruleName);
 
