@@ -6597,11 +6597,13 @@ export class RenderEngine implements RenderEngineLike {
         this.searchResults.set(this.searchCacheKey(card), items);
         queue.push(...items);
       } catch (err) {
-        // Same parse-failure contract as prepareSearches: BadQuery seats an
-        // empty result and records the exact error for the dispatched view to
-        // re-raise; unknown errors are NOT parse failures — rethrow.
-        if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
-        this.searchFailures.set(this.searchCacheKey(card), err);
+        // Same seat-everything contract as prepareSearches: a parse
+        // (BadQuery) OR an execution failure (a raw REGEXP/database error)
+        // seats an empty result and records the exact error for the
+        // dispatched view to re-raise — Ruby raises inside the view method,
+        // never at prefetch scope.
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.searchFailures.set(this.searchCacheKey(card), error);
         this.searchResults.set(this.searchCacheKey(card), []);
       }
       executed++;
@@ -10532,13 +10534,19 @@ export class RenderEngine implements RenderEngineLike {
             if (!visited.has(item.key)) queue.push(item.record);
           }
         } catch (err) {
-          // Parse failures (cql_search.rb:29-38 BadQuery, both the
-          // invalid-JSON and the empty-content branches) become dispatch
-          // re-raises: seat an empty result (closureWarm's has(key) stays
-          // true — the perf contract the prewarm pins) and record the exact
-          // error. Unknown errors are NOT parse failures — rethrow.
-          if (!(err instanceof Error) || (err.name !== BAD_QUERY_CLASS_NAME && !(err instanceof CqlBadQuery))) throw err;
-          this.searchFailures.set(searchKey, err);
+          // ANY failure — parse (cql_search.rb:29-38 BadQuery, both the
+          // invalid-JSON and the empty-content branches) OR execution (a raw
+          // REGEXP/database error, e.g. an uncompilable `~~[` pattern) —
+          // seats the same way: Ruby raises inside the DISPATCHED view
+          // method, never at prefetch scope, so the seat + dispatch
+          // re-raise (the searchFailures read in the view dispatch) is the
+          // Ruby shape for execution errors too. Rethrowing HERE aborts the
+          // whole page at prepare scope: one broken search card would 500
+          // every page nesting it where Ruby carries the quiet
+          // lib_error_rendering span (the input-abuse search pin measured
+          // exactly that against `{"match":"~~["}`).
+          const error = err instanceof Error ? err : new Error(String(err));
+          this.searchFailures.set(searchKey, error);
           this.searchResults.set(searchKey, []);
         }
         continue;
@@ -10691,8 +10699,13 @@ export class RenderEngine implements RenderEngineLike {
       const items = await this.runSearch(source.card, limit);
       this.searchResults.set(key, items);
     } catch (err) {
-      if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
-      this.searchFailures.set(key, err);
+      // Same seat-everything contract as prepareSearches: an execution
+      // failure (a raw REGEXP/database error) seats like a BadQuery —
+      // Ruby raises inside the dispatched view method, never at prepare
+      // scope, and a rethrow here would 500 the whole page over one
+      // hostile options search card.
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.searchFailures.set(key, error);
       this.searchResults.set(key, []);
     }
   }
