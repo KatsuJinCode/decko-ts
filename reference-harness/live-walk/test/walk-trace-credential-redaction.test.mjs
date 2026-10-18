@@ -36,6 +36,7 @@ function fakeLocator({ failOn, action } = {}) {
     isVisible: async () => true,
     isChecked: async () => false,
     inputValue: async () => "",
+    evaluate: async fn => fn({type:"text",name:"ordinary",id:"ordinary",autocomplete:""}),
     fill: async (value) => { if (failOn === "fill") throw new Error(`fill rejected: value ${value} refused by stub for ${action}`); },
     click: async () => { if (failOn === "click") throw new Error(`click refused by stub for ${action}`); },
     pressSequentially: async () => { if (failOn === "type") throw new Error(`type refused by stub for ${action}`); },

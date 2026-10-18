@@ -174,44 +174,65 @@ async function assertSignedIn(page, label, actor) {
 
 const safeFilePart = (s) => String(s).replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 80) || "unnamed";
 
-// R1 for the journey trace. The exchange records are redacted at capture
-// (redactForStorage, applied by attachExchangeCapture before anything is
-// stored) — but the walk's other stored record, the trace (result.steps,
-// saved as <side>/<journey>.json by walk-and-compare.mjs), kept a fill/
-// type/editor step's raw value, so a credential typed into a password field
-// landed in the saved JSON in plaintext. Every push site therefore routes
-// through traceStepRecord: a step whose fill/type/editor target names or
-// selects a credential field — password / passwort / token / secret in the
-// field key, the html name=, or the css selector (which covers
-// type=password) — carries the redaction token instead of its value.
-// Everything else on the step survives byte-intact: the action, the target,
-// non-credential values, and the ok/failed/skipped verdict. No evidence is
-// removed beyond the secret itself. The failed path scrubs the error text
-// too, because a thrown failure can embed the very value the step was
-// filling. The journey list's own step objects are never mutated: the other
-// side of a comparison must still walk with the real value.
-const CREDENTIAL_FIELD_WORD = /password|passwort|token|secret/i;
-const TRACE_REDACTION_TOKEN = "R1#redacted";
-
+// Exchange redaction does not cover the journey's step/error metadata. Keep
+// execution inputs intact and redact only the copies returned for storage.
 export function stepTargetsCredentialField(step) {
   const kind = Object.keys(step ?? {}).filter((k) => k !== "note" && k !== "value" && k !== "option" && k !== "file" && k !== "within" && k !== "hidden")[0];
   if (!["fill", "type", "editor"].includes(kind)) return false;
   const target = step[kind];
   if (!target || typeof target !== "object") return false;
-  return Object.values(target).some((v) => typeof v === "string" && CREDENTIAL_FIELD_WORD.test(v));
+  return Object.values(target).some((v) => typeof v === "string" && /password|passwort|passphrase|passcode|token|secret|credential|api[-_ ]?key|one[-_ ]?time/i.test(v));
 }
 
-/** The trace record for one step, pushed on all three outcome paths. */
-function traceStepRecord(step, outcome, extra = {}) {
-  const { i, ...rest } = extra;
-  const record = { i, step, outcome, ...rest };
-  if (stepTargetsCredentialField(step) && typeof step.value === "string" && step.value !== "") {
-    record.step = { ...step, value: TRACE_REDACTION_TOKEN };
-    if (typeof record.error === "string") {
-      record.error = record.error.split(step.value).join(TRACE_REDACTION_TOKEN);
+function traceRedactor(actors, journey) {
+  const credential = /password|passwort|passphrase|passcode|token|secret|credential|api[-_ ]?key|one[-_ ]?time/i;
+  const secrets = new Set();
+  const remember = (value) => { if (typeof value === "string" && value.length) secrets.add(value); };
+  const collect = (object) => {
+    if (!object || typeof object !== "object") return;
+    for (const [key, value] of Object.entries(object)) {
+      if (credential.test(key)) remember(value);
+      collect(value);
     }
+  };
+  collect(actors);
+  for (const step of journey.steps) {
+    const target = step.fill ?? step.type ?? step.editor;
+    if (target !== undefined && credential.test(JSON.stringify(target))) remember(step.value);
   }
-  return record;
+  const text = (value) => {
+    if (value === "R1#redacted" || !secrets.size) return value;
+    const escaped = [...secrets].sort((a, b) => b.length - a.length)
+      .map(s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return value.replace(new RegExp(escaped.join("|"), "g"), "R1#redacted");
+  };
+  const scrub = (value) => {
+    if (typeof value === "string") return text(value);
+    if (Array.isArray(value)) return value.map(scrub);
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrub(item)]));
+    return value;
+  };
+  return {
+    text, scrub,
+    async step(step, page) {
+      const target = step.fill ?? step.type ?? (step.editor !== undefined ? (typeof step.editor === "object" ? step.editor : { name: step.editor }) : undefined);
+      if (target !== undefined && typeof step.value === "string") {
+        let sensitive = credential.test(JSON.stringify(target));
+        if (!sensitive) {
+          try {
+            const control = await locate(page, target);
+            // A failed/skipped step may have no live field to classify. Its
+            // unexecuted value must not become a credential leak by default.
+            sensitive = await control.count() !== 1 || await control.evaluate(el =>
+              /password|passwort|passphrase|passcode|token|secret|credential|api[-_ ]?key|one[-_ ]?time/i.test(
+                [el.type, el.name, el.id, el.autocomplete].join(" ")));
+          } catch { sensitive = true; }
+        }
+        if (sensitive) remember(step.value);
+      }
+      return scrub(step);
+    },
+  };
 }
 
 /** Exchange capture for one browser context. Response bodies are read
@@ -308,6 +329,7 @@ function attachExchangeCapture({ context, origin, extraSessionNames }) {
 /** Walks one journey against one base. Returns the side's journey record;
  *  `exchangesInMemory` carries bodyText for the in-process comparison. */
 export async function walkJourney({ base, journey, actors, outDir, browserFactory, label, side, mailFn, restartFn, filesDir }) {
+  const redaction = traceRedactor(actors, journey);
   const result = {
     id: journey.id, side, label, base, startedAt: new Date().toISOString(),
     steps: [], completed: false, screenshots: [], mail: [], error: null,
@@ -336,11 +358,12 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
       lastStatus: null,
       captureExchange: (record) => capture.addExchange(record),
       screenshot: async (name) => {
+        name = redaction.text(String(name));
         const n = result.screenshots.length + 1;
         const file = `${String(n).padStart(2, "0")}-${safeFilePart(name)}.png`;
         mkdirSync(shotDir, { recursive: true });
         await ctx.page.screenshot({ path: path.join(shotDir, file), fullPage: true, type: "png" });
-        result.screenshots.push({ step: result.steps.length, name, file, url: ctx.page.url() });
+        result.screenshots.push({ step: result.steps.length, name, file, url: redaction.text(ctx.page.url()) });
       },
     };
     ctx.freshSession = async () => {
@@ -367,7 +390,8 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
     }
     let failed = false;
     for (const [i, step] of journey.steps.entries()) {
-      if (failed) { result.steps.push(traceStepRecord(step, "skipped", { i })); continue; }
+      const storedStep = await redaction.step(step, ctx.page);
+      if (failed) { result.steps.push({ i, step: storedStep, outcome: "skipped" }); continue; }
       const stepStarted = Date.now();
       try {
         await runStep(ctx, step);
@@ -377,10 +401,10 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
         if (step.observe !== undefined || step.screenshot !== undefined || ["visit", "signin", "click", "mail_link"].includes(kind)) {
           await ctx.screenshot(step.observe ?? step.screenshot ?? `step-${i}`);
         }
-        result.steps.push(traceStepRecord(step, "ok", { i, ms: Date.now() - stepStarted }));
+        result.steps.push({ i, step: storedStep, outcome: "ok", ms: Date.now() - stepStarted });
       } catch (err) {
         failed = true;
-        result.steps.push(traceStepRecord(step, "failed", { i, ms: Date.now() - stepStarted, error: String(err?.message ?? err).split("\n")[0] }));
+        result.steps.push({ i, step: storedStep, outcome: "failed", ms: Date.now() - stepStarted, error: redaction.text(String(err?.message ?? err).split("\n")[0]) });
         try { await ctx.screenshot(`failed-at-step-${i}`); } catch { /* page gone */ }
       }
     }
@@ -405,6 +429,11 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
+  // Later skipped steps can introduce a credential also present in an earlier
+  // error. Re-scrub metadata with the final set, without changing verdicts or
+  // exchange bodies used by the comparison.
+  result.steps = result.steps.map(entry => ({ ...entry, step: redaction.scrub(entry.step), ...(entry.error !== undefined ? { error: redaction.text(entry.error) } : {}) }));
+  if (result.error !== null) result.error = redaction.text(result.error);
   return result;
 }
 
