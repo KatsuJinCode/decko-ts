@@ -131,6 +131,7 @@ import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js"
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError } from "./dist/src/server/worker-shared-surface.js";
+import {configureMaterialIconsMode,materialIconsHeadTag} from "./dist/src/card/render/material-icons.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -1356,6 +1357,7 @@ const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 defaultDeckLoader();
 const render = new RenderEngine(fetcher);
 render.fontAwesomeAssetMode = configureFontAwesomeMode(process.env.DECKO_FONT_AWESOME);
+render.materialIconsAssetMode=configureMaterialIconsMode(process.env.DECKO_MATERIAL_ICONS);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
 render.tokenConfig = TOKEN_CONFIG;
@@ -2310,7 +2312,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
     (pageOpts.headExtraLine ?? "") +
     `\n` +
     `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n` +
-    `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +
+    materialIconsHeadTag(render.materialIconsAssetMode) + `\n` +
     `<link media="all" rel="stylesheet" type="text/css" href="${escapeHtml(cssUrl)}" />\n` +
     `\n` +
     `<!-- mod: format (remote) -->\n` +
@@ -3118,6 +3120,7 @@ async function engineForActor(actorId, cookieHeader) {
     engine = new RenderEngine(fetcher);
     engine.imageCdnHost = render.imageCdnHost;
     engine.fontAwesomeAssetMode = render.fontAwesomeAssetMode;
+    engine.materialIconsAssetMode=render.materialIconsAssetMode;
     engine.renderAbsentCards = render.renderAbsentCards;
     engine.tokenConfig = TOKEN_CONFIG;
     engine.viewer = viewer;
