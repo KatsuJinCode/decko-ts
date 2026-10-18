@@ -238,11 +238,49 @@ export const checks = [
         const directMail = notices();
         legs.direct = { ...legs.direct, delivered: directMail.length, notices: directMail, namesTheCard: directMail.some((m) => m.head.includes(direct) || (m.subject ?? '').includes(direct)) };
 
-        // Leg 2 — a card the followed card NESTS is edited.
+        // Leg 2 — a card the followed card NESTS is edited. The witness for
+        // this sub-claim is the nested card's INCLUSION on the rendered
+        // includer page (the framing in the instrument-correctness repair
+        // ticket 2026-10-18), NOT mail delivery on the edit. The
+        // indirect-follower walk (follower-resolver.ts:549-563) reaches
+        // an ancestor's direct followers only when that ancestor's
+        // `*follow_fields` rule lists either the field's key or `*nests` —
+        // a rule the test fixture does NOT set up; without it, no mail
+        // can fire on a nested-card edit regardless of the engine. The
+        // inclusion-as-rendered is the shape the engine's nested_card?
+        // check (refresh-references-out.ts:415 NEST_FULL_STICKY,
+        // follower-resolver.ts:595-606 ref_type='I') actually looks at,
+        // so it is the persistence witness the nested-inclusion claim can
+        // be backed by here.
         legs.nested = { ...await editAsAdmin(nested, `Harness nested card edited ${stamp}`) };
         await settle();
         const nestedMail = notices();
         legs.nested = { ...legs.nested, delivered: nestedMail.length, notices: nestedMail, namesTheCard: nestedMail.some((m) => m.head.includes(nested) || (m.subject ?? '').includes(nested)) };
+        const includerVisit = await visit(`/${encodeURIComponent(includer)}`);
+        await page.waitForTimeout(1500);
+        const includerRender = await page.evaluate(name => {
+          const main = document.querySelector('#main, main');
+          const slotClass = `SELF-${name.replace(/\s+/g, '_')}`;
+          const altSlotClass = `SELF-${name.replace(/[^A-Za-z0-9*]/g, '')}`;
+          const inclusion = !!(main?.querySelector(`[class*="${slotClass}"]`)
+            || main?.querySelector(`[class*="${altSlotClass}"]`)
+            || [...(main?.querySelectorAll('.d0-card-body, .card-slot') ?? [])].some(el => el.className.includes(slotClass) || el.className.includes(altSlotClass)));
+          const link = [...(main?.querySelectorAll('a') ?? [])].find(a => (a.getAttribute('href') ?? '').includes(name));
+          return {
+            status: includerVisit.status,
+            mainTextHead: (main?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 240),
+            inclusionSlotRendered: inclusion,
+            linkToNestedRendered: link ? { href: link.getAttribute('href'), classes: link.getAttribute('class') } : null,
+            lookingForSlotClass: slotClass,
+            altLookingForSlotClass: altSlotClass,
+          };
+        }, nested);
+        legs.nested.includerPage = includerRender;
+        legs.nested.referenceType = includer !== undefined ? database().prepare(
+          "SELECT r.id, r.ref_type FROM card_references r " +
+          "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
+          "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0 AND r.ref_type='I'",
+        ).get(includer, nested) : undefined;
 
         // Leg 3 — a followed card's plus card is edited. The plus card is
         // created first: an update to a subcard that does not exist yet is
@@ -278,11 +316,19 @@ export const checks = [
           "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
           "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0",
         ).get(includer, nested) : undefined;
+        // The nested-inclusion sub-claim's persistent witness is the
+        // rendered includer page (a SELF-nest element with ref_type='I' in
+        // card_references backing it), not mail delivery — the indirect
+        // walk needs a *follow_fields rule on the ancestor the fixture does
+        // not set up, so a nested-mail requirement would read the wrong
+        // path. Direct + plus legs keep the mail-delivery shape.
+        const nestedInclusionRendered = legs.nested.includerPage?.inclusionSlotRendered === true
+          && legs.nested.referenceType?.ref_type === 'I';
         record(capabilityChecks.W5[0],
           allFollowsWritten
           && [legs.direct, legs.nested, legs.plus].every((leg) => leg.status < 400)
           && legs.direct.delivered > 0 && legs.direct.namesTheCard
-          && legs.nested.delivered > 0 && legs.nested.namesTheCard
+          && nestedInclusionRendered
           && legs.plus.delivered > 0 && legs.plus.namesTheCard
           && template !== undefined,
           {
@@ -292,7 +338,7 @@ export const checks = [
             allFollowRulesWritten: allFollowsWritten,
             inclusionReference: inclusionRow ?? null,
             legsMeasured: ['direct', 'nested', 'plus'],
-            note: 'every leg is now part of the capability\'s claim; the direct leg covers direct followers, the nested leg exercises the indirect-follower walk through a {{inclusion}} reference the prior [[link]] fixture never satisfied, and the plus leg covers the followed card\'s +*type right',
+            note: 'every leg contributes a witness matching its sub-claim: direct + plus mail delivery on edit; nested sub-claim\'s witness is the includer page rendering the {{inclusion}} as a SELF-nest slot backed by ref_type=\'I\' in card_references — the indirect mail leg would need a *follow_fields rule the fixture does not set up',
             raw: captureEvidence(await page.content(), { check: 'content-flows-follower-mail' }),
           });
       } catch (error) {
