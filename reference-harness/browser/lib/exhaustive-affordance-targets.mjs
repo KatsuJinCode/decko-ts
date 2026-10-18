@@ -281,5 +281,85 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     });
   }
 
+  // 8. The Save (without close) affordance (E16): the board view's editor
+  //    renders it as button[data-cy="save"] inside the .board wrap - the
+  //    same control the cover-b E16 contract check drives
+  //    (tools/edge-signed-in-exercise/checks-cover-b.mjs:1012) - and the
+  //    open board itself as .board .board-main ("leaves the board open").
+  //    The home layout the surface visits renders no board and no editor,
+  //    so seeking the words "Save"/"Close" there (ACT-092) measured
+  //    affordance-not-found against a page that never carries the
+  //    affordance, while the graded E16 contract passes on this tree
+  //    (docs/reports/save-server-time-budget-2026-10-18.md:94 - "no engine
+  //    defect left to fix under this entry"). Verified on the ts engine over
+  //    synthetic-v1: /Brief/board and /Decko_Bot/board each render
+  //    .board .board-main and .board button[data-cy='save'].
+  if (/\bwithout close\b/i.test(t)) {
+    await goto(`/${encodeURIComponent(card)}/board`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `open board (.board .board-main) on /${card}/board`,
+      count: await countSelector(".board .board-main"),
+    });
+    sequence.push({
+      interaction: "assert-present",
+      selector: `Save (without close) control button[data-cy='save'] on /${card}/board`,
+      count: await countSelector(".board button[data-cy='save']"),
+    });
+  }
+
+  // 9. The owner's save row (POST /update/~<id>): the affordance the row
+  //    names is an HTTP request, not a page control, so the verb decoder's
+  //    "Save" text hint could only seek a button - on the home layout the
+  //    row measured affordance-not-found (ACT-119) while the same request
+  //    answered 303 on both instruments that actually issue it (the live
+  //    lane and the whole-harness http-verb probe,
+  //    native-whole-50717cca report.md:92). Two asserts: the replayed save
+  //    against the hosted deck's own card (its current db_content read from
+  //    the engine's own JSON, posted back verbatim as the form does -
+  //    owner-checks.original.mjs:126-145) must answer a redirect, not 5xx;
+  //    and the row's literal mark must fail CLEAN (4xx, e.g. not-found:
+  //    synthetic-v1 carries no card 1743) rather than 5xx when the deck
+  //    does not carry it - the 500 the owner audit originally recorded.
+  //    Posts ride pageRequest (shares the signed-in browser session's
+  //    cookies; an anonymous post is permission-refused 403).
+  const rowSave = /POST\s+\/update\/~(\d+)/.exec(t);
+  if (rowSave !== null) {
+    if (typeof pageRequest === "undefined") {
+      throw new Error("owner-save row probe needs the runner's pageRequest helper");
+    }
+    const current = await fetch(`${base}/${encodeURIComponent(card)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    const content =
+      current && typeof current === "object" && typeof current.db_content === "string" ? current.db_content : null;
+    if (content === null) throw new Error(`owner-save row probe could not read /${card}.json db_content`);
+    const form = { "card[content]": content, "success[redirect]": "true" };
+    const save = await pageRequest.post(`${base}/update/${encodeURIComponent(card)}`, {
+      headers: { origin: base },
+      form,
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    sequence.push({
+      interaction: "assert-present",
+      selector: `owner-save replay: POST /update/${card} (current db_content) answers a redirect, not 5xx`,
+      count: save.error || save.status() >= 400 ? 0 : 1,
+      status: save.error ? null : save.status(),
+    });
+    const mark = await pageRequest.post(`${base}/update/~${rowSave[1]}`, {
+      headers: { origin: base },
+      form,
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const markStatus = mark.error ? null : mark.status();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `owner-save row mark POST /update/~${rowSave[1]} fails clean (4xx), not 5xx, when the deck does not carry it`,
+      count: markStatus !== null && markStatus >= 400 && markStatus < 500 ? 1 : 0,
+      status: markStatus,
+    });
+  }
+
   return sequence;
 }

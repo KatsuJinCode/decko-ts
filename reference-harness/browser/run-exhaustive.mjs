@@ -528,8 +528,10 @@ async function probeAction(page, action, lastStatusRef, actors) {
   // case (E18): reading the edit form's conflict token off the page, saving
   // with the visiting actor's own session, and signing the SECOND editor in
   // on a fresh request context (the conflict predicate is false when the
-  // intervening save is the submitting actor's own). Each created context is
-  // closed before probeAction returns.
+  // intervening save is the submitting actor's own). pageRequest also serves
+  // the owner-save row case (ACT-119): the row's POST /update/~<id> replay
+  // must ride the signed-in session, not an anonymous request. Each created
+  // context is closed before probeAction returns.
   const createdActorContexts = [];
   try {
     const targetProbes = await affordanceTargetProbes({
