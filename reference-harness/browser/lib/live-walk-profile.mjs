@@ -112,11 +112,13 @@ export function readScratchAllowlist(filePath) {
 }
 
 /** Decko card names reach the gate either as the typed name ("Harness_Admin")
- *  or as a URL mark ("Harness_Admin", "Harness_Admin+*email"); underscores in
- *  a mark stand for spaces. Both spellings of a prefix and name are compared. */
+ *  or as a URL mark, whose underscores stand for spaces and whose space form
+ *  is all markToName preserves ("Harness exhaustive save timing x"). A prefix
+ *  written "Harness_*" must match both spellings, so every spelling is
+ *  derived in both directions. */
 function nameSpellings(name) {
   const raw = String(name ?? "");
-  return [...new Set([raw, raw.replace(/_/g, " ")])].filter(Boolean);
+  return [...new Set([raw, raw.replace(/_/g, " "), raw.replace(/ /g, "_")])].filter(Boolean);
 }
 
 function prefixMatches(prefix, name) {
