@@ -464,7 +464,9 @@ export const checks = [
           if (listInfo === null) return { listId: null, urlName: null, before: null, after: null, post: null };
           const beforeContent = listInfo.content;
           const lines = beforeContent.split("\n").map(s => s.trim()).filter(s => s.length > 0);
-          if (lines.includes(memberActor.name)) {
+          // The stored list carries `~<id>` reference marks for known members
+          // (measured), so the already-granted check reads both shapes.
+          if (lines.includes(memberActor.name) || lines.includes(`~${memberActor.id}`)) {
             return { listId: listInfo.id, urlName: listInfo.urlName, before: beforeContent, after: beforeContent, post: { status: 200, location: null, note: "member was already granted" } };
           }
           const newContent = beforeContent === "" ? memberActor.name : `${beforeContent}\n${memberActor.name}`;
@@ -490,10 +492,12 @@ export const checks = [
         const seededGrantListId = seedGrant.listId;
         // Canonical-grant verification: rolePartyStatement reads
         // card_references joined to the members list, so the grant only
-        // exists if BOTH the list content names the member AND the
-        // canonical reference row (referee_key NULL) is present. A grant
-        // that posts green but stores neither row is not a grant; the
-        // check refuses to build the click leg on it.
+        // exists if the CANONICAL reference row is present — the exact shape
+        // the coordination names: IdList L rows with referee_key NULL
+        // (measured row: ref_type "L", referee_key null). The list's
+        // db_content is NOT the witness for known members: the engine stores
+        // `~<id>` reference marks there (measured: "~393\n~727\n..."), so a
+        // literal-name check reads the wrong format.
         const canonicalGrantRows = listId => listId === null ? [] : database().prepare(
           "SELECT r.referer_id, r.referee_id, r.referee_key, r.ref_type " +
           "FROM card_references r WHERE r.referer_id=? AND r.referee_id=?",
@@ -502,10 +506,10 @@ export const checks = [
           "SELECT db_content FROM cards WHERE id=? AND trash=0",
         ).get(seededGrantListId) ?? null;
         const grantVerified =
-          seedGrant.post !== null && seedGrant.post.status !== undefined && seedGrant.post.status < 400
+          seedGrant.post !== null && typeof seedGrant.post.status === "number" && seedGrant.post.status < 400
           && grantListRowAfterSeed !== null
-          && (grantListRowAfterSeed?.db_content ?? "").split("\n").map(s => s.trim()).includes(memberActor.name)
-          && canonicalGrantRows(seededGrantListId).length > 0;
+          && canonicalGrantRows(seededGrantListId).some(r =>
+            r.referee_id === memberActor.id && r.referee_key === null && r.ref_type === "L");
         // The A6 surface now: navigate to the member's account settings
         // page, read the inline :edit_inline view's role checkboxes,
         // record the witness chain (cookie -> decoder -> session card
@@ -747,9 +751,14 @@ export const checks = [
               }).toString(),
               maxRedirects: 0,
             }).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
-            restoreRoute = typeof restorePost.status === "number" && restorePost.status < 400
-              ? `POST /update/<actor>+*enabled roles with the pre-click content and the form's own fields (status ${restorePost.status}); the click affordance cannot post — the served checkbox is 0x0`
-              : "NOT RESTORED: neither the click nor the endpoint POST could write (" + JSON.stringify(restorePost).slice(0, 140) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
+            // Playwright's APIResponse exposes status as a METHOD, not a
+            // property — the first restore run recorded "NOT RESTORED" while
+            // the write had succeeded (restoredToBefore true) because the
+            // label read the function object as a property.
+            const restoreStatus = typeof restorePost.status === "function" ? restorePost.status() : restorePost.status;
+            restoreRoute = typeof restoreStatus === "number" && restoreStatus < 400
+              ? `POST /update/<actor>+*enabled roles with the pre-click content and the form's own fields (status ${restoreStatus}); the click affordance cannot post — the served checkbox is 0x0`
+              : "NOT RESTORED: neither the click nor the endpoint POST could write (" + JSON.stringify({ status: restoreStatus, error: restorePost.error ?? null }).slice(0, 140) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
           }
           await page.waitForTimeout(800);
           restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
