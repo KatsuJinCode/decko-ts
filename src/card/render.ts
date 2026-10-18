@@ -9165,7 +9165,13 @@ export class RenderEngine implements RenderEngineLike {
     const valueCache = new Map<number, Map<string, string | number | boolean | null | undefined>>();
     const previousCache = new Map<number, Map<string, string | number | boolean | null | undefined>>();
     const diffFields = ["name", "type_id", "db_content"] as const;
-    for (const action of actions) {
+    // Each action's projections are independent. A speculative live-store
+    // read can temporarily omit its create action and lastChangeOn then
+    // raises; a serial walk would stop discovery at that action on every
+    // pass, exhausting the pass budget on an ordinary recent-edits feed.
+    // Let every action ask its questions before propagating the first error.
+    // Await all settlements so no provisional work outlives this pass.
+    const projections = await Promise.allSettled(actions.map(async (action) => {
       for (const field of diffFields) {
         const value = await actionValue(driver, action, field);
         const previous = await actionPreviousValue(driver, action, field);
@@ -9176,6 +9182,9 @@ export class RenderEngine implements RenderEngineLike {
         if (ownPrev === undefined) previousCache.set(action.id, (ownPrev = new Map()));
         ownPrev.set(field, previous);
       }
+    }));
+    for (const projection of projections) {
+      if (projection.status === "rejected") throw projection.reason;
     }
 
     // Type names for the cardtype diff (create actions render
