@@ -306,7 +306,20 @@ function affordanceHints(text) {
   if (/\bcopy\b/i.test(text)) hints.push({ kind: "text", value: "Copy" });
   if (/\bpaste\b/i.test(text)) hints.push({ kind: "text", value: "Paste" });
   if (/\bupload\b/i.test(text)) hints.push({ kind: "css", value: "input[type=file]" });
-  if (/\bsearch keyword\b|\bkeyword search\b|\bnavbox\b|\bquick search\b/i.test(text)) hints.push({ kind: "css", value: ".navbox input[name*='query']" });
+  // The navbox is card-mod-search's search_box.haml: `.d0-search-box` wrapping
+  // `search_form`'s <form role="search" class="search-box-form"> around the
+  // input[name="query[keyword]"] that search_box.rb's search_box_contents emits.
+  // `.navbox` is NOT a class the reference emits: its only two hits in the gem
+  // tree are the 2023 fix-old-navbar data transform, which REWRITES a
+  // {{*navbox|navbar}} nest into {{:search|search_box}}, and a jasmine support
+  // yml. Decko's own cucumber steps type into `.search-box-form`
+  // (decko/features/step_definitions/select2_steps.rb:1-3). So
+  // `.navbox input[name*=query]` matched nothing on any rendered page of any
+  // engine: ACT-057 (keyword search from the navbox returns the run's card) and
+  // ACT-103 (N1 the navbox offers suggestions and Enter runs the search) were
+  // guaranteed reds on the ts engine and on the Ruby oracle alike while the
+  // affordance they name was present and correct.
+  if (/\bsearch keyword\b|\bkeyword search\b|\bnavbox\b|\bquick search\b/i.test(text)) hints.push({ kind: "css", value: ".search-box-form input[name*='query']" });
   if (/\baccount tab\b/i.test(text)) hints.push({ kind: "text", value: "Account" });
   if (/\bguide tab\b/i.test(text)) hints.push({ kind: "text", value: "Guide" });
   if (/\bengage tab\b/i.test(text)) hints.push({ kind: "text", value: "Engage" });
