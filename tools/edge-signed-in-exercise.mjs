@@ -946,7 +946,7 @@ try {
     // green, and Boolean(original) never compared the value with the card's
     // stored content). The stored content is the owned database row's
     // db_content for this card.
-    const storedDateRow = database().prepare("SELECT db_content FROM cards WHERE name = ? AND trash = 0").get(dateCard);
+    const storedDateRow = database().prepare("SELECT db_content FROM cards WHERE name IN (?, ?) AND trash = 0").get(dateCard, dateCard.replace(/_/g, " "));
     const storedDate = storedDateRow?.db_content ?? null;
     const showsStoredDate = storedDate !== null && String(original ?? "").trim() === String(storedDate).trim();
     record("content field is a date picker showing the stored date", type === "date" && showsStoredDate,
@@ -1051,8 +1051,8 @@ try {
     // which does not start with "delete" (adversarial blindness-review F6
     // item 4), so the guard could not fire for exactly the case it exists
     // for. Count run-created rows carrying this run's delete-target shape.
-    const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND (name LIKE ? ESCAPE ? OR name = ?)").get(baselineMaxCardId, "Harness\\_delete%", "\\", deleteName).n;
-    record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId, pattern: "Harness\\_delete% OR = " + deleteName });
+    const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND trash = 0 AND (name LIKE ? ESCAPE ? OR name = ?)").get(baselineMaxCardId, "Harness\\_delete%", "\\", deleteName).n;
+    record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId, pattern: "trash=0 AND (Harness\\_delete% OR = " + deleteName + ")" });
   }
   }
   await attempt("navbar sign out revokes the session", async () => {
@@ -1102,8 +1102,12 @@ try {
     // blindness-review F6 item 2: the old predicate was /Harness_/ over the
     // whole page HTML, satisfied by the signed-in navbar's "Harness_Admin" on
     // ANY signed-in changes page, and "first" — the actual contract — was
-    // never tested).
-    const orderedRows = await page.evaluate(() => [...document.querySelectorAll("tr, .search-result, .card")]
+    // never tested). The changes entries are the served list's own items —
+    // .search-result-list .search-result-item on this engine (measured
+    // 2026-10-18: the entries are DIV.search-result-item.item-bar inside
+    // DIV.card-list.search-result-list; tr/.search-result/.card match only
+    // chrome), kept in served order.
+    const orderedRows = await page.evaluate(() => [...document.querySelectorAll(".search-result-list .search-result-item, tr, .search-result, .card")]
       .map((r) => ({ text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 80), linked: r.querySelector("a[href]") !== null }))
       .filter((r) => r.text && r.linked)
       .map((r) => r.text)
@@ -1112,9 +1116,10 @@ try {
     if (!richName) record("/*search lists the cards this run just created/edited first", null, { skipped: true, reason: `${liveWalk.mode}: the run created no cards, so there is nothing of this run's to look for` });
     else {
       // The ordering claim: the FIRST listed entry is one of this run's own
-      // touched cards (Harness_* or the run-edited date card) — the newest
-      // act at the top, before anything older.
-      const runCardsFirst = orderedRows.length > 0 && /Harness_|2011_12_14/.test(orderedRows[0]);
+      // touched cards (Harness_* or the run-edited date card, whose stored
+      // name carries spaces: "2011 12 14") — the newest act at the top,
+      // before anything older.
+      const runCardsFirst = orderedRows.length > 0 && /Harness_|2011[ _]12[ _]14/.test(orderedRows[0]);
       record("/*search lists the cards this run just created/edited first", changes.status === 200 && runCardsFirst,
         { runCardsFirst, firstRow: orderedRows[0] ?? null, rows: orderedRows.slice(0, 6) });
     }

@@ -157,46 +157,37 @@ export const checks = [
       // `name LIKE '%+*account'`, an account RULE card with no +summary
       // field, and the predicate was hasContentField || hasEmailOrPassword —
       // any content or email/password input anywhere in the modal, so the
-      // +summary editor the name claims was never opened). The fixture's own
-      // +summary carrier is the first seeded `<card>+summary` junction (e.g.
-      // "Topic 001+summary", whose Topic+*type+*structure rule nests
-      // {{+summary}}); its parent's edit form renders .RIGHT-summary with the
-      // field's content editor.
-      const summaryCardRow = database()
-        .prepare(
-          "SELECT id, name FROM cards WHERE name LIKE '%+summary' AND trash=0 ORDER BY id LIMIT 1"
-        )
-        .get();
-      if (!summaryCardRow) {
-        record(
-          "E11 a card with a +summary nested field renders that field's editor",
-          false,
-          { note: "no +summary junction card in the seeded deck" }
-        );
-        return;
-      }
-      const target = summaryCardRow.name.replace(/\+summary$/, "");
-      await visit("/" + encodeURIComponent(target) + "/edit");
+      // +summary editor the name claims was never opened). Neither this
+      // battery's deck copy nor a seeded +summary junction can be assumed
+      // (the local deck copy carries none — measured in the 2026-10-18
+      // re-grade: `name LIKE '%+summary'` found no row), so the case STAGES
+      // the whole shape it grades: a host card, its +*self+*structure rule
+      // nesting {{+summary}}, and the +summary junction with its own content.
+      // Measured 2026-10-18 on the ts engine: the host's edit modal then
+      // renders .RIGHT-summary (2 groups) whose d0-card-content editor holds
+      // the junction's stored content.
+      const stamp = Date.now().toString(36);
+      const host = `Harness_E11_summary_host_${stamp}`;
+      const summaryContent = `E11 summary content ${stamp}`;
+      await createTypedFixture(ctx, { name: host, content: "E11 host", type: "Basic" });
+      await createTypedFixture(ctx, { name: `${host}+*self+*structure`, content: "{{+summary}}", type: "Phrase" });
+      await createTypedFixture(ctx, { name: `${host}+summary`, content: summaryContent, type: "Phrase" });
+      await visit("/" + encodeURIComponent(host) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
         const root = document.querySelector(".modal.show") ?? document;
-        const summaryEditors = [
-          ...root.querySelectorAll(
-            ".RIGHT-summary textarea.d0-card-content, .RIGHT-summary input.d0-card-content, .RIGHT-summary input[type=file]"
-          ),
-        ];
-        const summaryGroups = root.querySelectorAll(".RIGHT-summary").length;
+        const editors = [...root.querySelectorAll(".RIGHT-summary textarea.d0-card-content, .RIGHT-summary input.d0-card-content")];
         return {
           modalOpen: document.querySelector(".modal.show") !== null,
-          summaryGroups,
-          summaryEditorNames: summaryEditors.map((i) => i.getAttribute("name") ?? "").slice(0, 8),
-          mainTextSnippet: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
+          summaryGroups: root.querySelectorAll(".RIGHT-summary").length,
+          summaryEditorNames: editors.map((i) => i.getAttribute("name") ?? "").slice(0, 8),
+          summaryEditorValues: editors.map((i) => i.value?.slice(0, 60) ?? null).slice(0, 8),
         };
       });
       record(
         "E11 a card with a +summary nested field renders that field's editor",
-        inventory.modalOpen && inventory.summaryEditors.length >= 1,
-        { target, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
+        inventory.modalOpen && inventory.summaryEditorNames.length >= 1,
+        { target: host, summaryContent, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
       );
     },
   },
