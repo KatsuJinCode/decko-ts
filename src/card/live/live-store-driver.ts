@@ -25,7 +25,7 @@
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import { referencedNames } from "../render/nest-syntax.js";
 import { DeckoName } from "../name.js";
-import { RequestStore, type Missing, type Widening } from "./request-store.js";
+import { RequestStore, needsOf, type Missing, type Widening } from "./request-store.js";
 import { CARDS_COLUMNS, foldNoCase } from "./store-row-evaluator.js";
 import { compactStatement, compactWrap, decodeCompact } from "./compact-rows.js";
 import { searchWithRelatedStatement, decodeSearchWithRelated } from "./search-with-related.js";
@@ -210,6 +210,9 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   private markDemanded(s: SQLStatement, ans: SQLQueryResult): void {
+    // Identity/name lookups establish identity, not demand for the card's
+    // content and descendants. A later full projection still expands it.
+    if (needsOf(s.sql, s.params ?? [])?.full !== true) return;
     for (const r of ans.rows as Record<string, unknown>[]) if (r.id != null) this.demanded.add(Number(r.id));
     if (/WHERE id = \?/.test(s.sql)) this.demanded.add(Number((s.params ?? [])[0]));
   }
