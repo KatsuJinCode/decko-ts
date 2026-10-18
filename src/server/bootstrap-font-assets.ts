@@ -1,6 +1,9 @@
 import { assets } from "../../vendor/decko-bootstrap-fonts/assets.js";
+import {serveMaterialIconsAsset} from './material-icons-assets.js';
 
 export function serveBootstrapFontAsset(request: Request): Response | undefined {
+  const material=serveMaterialIconsAsset(request);
+  if(material)return material;
   const prefix = "/mod/bootstrap/fonts/";
   const pathname = new URL(request.url).pathname;
   if (!pathname.startsWith(prefix)) return undefined;

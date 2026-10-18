@@ -8,6 +8,7 @@
 //        [--asset-host <additional known public asset hostname>]
 //        [--favicon-url <exact public favicon URL>]
 //        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
+//        [--material-icons local|stock] (explicit local-stack asset configuration)
 //
 // LIVE-WALK PROFILE (host-override): the same journeys can be attached to a
 // RUNNING engine — any base URL the operator names — instead of booting the
@@ -263,8 +264,8 @@ if (restrictWrites) {
   // Host-override attach: nothing is built, staged, seeded or read from any
   // provider. The engine is whatever already serves --base-url; the render
   // configuration belongs to it, not to this run.
-  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined) {
-    throw new Error('--ajax-save-redirect / --conflict-retry are render-configuration overrides for the local stack; a host-override target carries its own configuration');
+  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined || argOf('material-icons') !== undefined) {
+    throw new Error('--ajax-save-redirect / --conflict-retry / --material-icons are render-configuration overrides for the local stack; a host-override target carries its own configuration');
   }
   const credentialsFile = argOf("credentials");
   if (!credentialsFile) throw new Error(`host-override target ${liveWalk.origin} needs --credentials <file> naming the target's own accounts ({admin:{name,email,password},member:{...}}); this run seeds nothing and the file's content is never recorded (path and presence only, sha256 deliberately omitted for a secret-bearing file)`);
@@ -321,6 +322,12 @@ if (restrictWrites) {
    if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
    captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
    provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
+  }
+  const materialIcons=argOf('material-icons');
+  if(materialIcons!==undefined){
+    if(!['stock','local'].includes(materialIcons))throw Error('material-icons must be stock or local');
+    captureEnv.DECKO_MATERIAL_ICONS=materialIcons;
+    provenance.renderConfigurationOverrides.DECKO_MATERIAL_ICONS=materialIcons;
   }
   provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
     keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
