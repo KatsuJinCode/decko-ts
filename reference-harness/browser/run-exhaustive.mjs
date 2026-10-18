@@ -324,9 +324,20 @@ function affordanceHints(text) {
   if (/\bedit\b/i.test(text)) hints.push({ kind: "text", value: "Edit" });
   if (/\bcancel\b/i.test(text)) hints.push({ kind: "text", value: "Cancel" });
   if (/\bclose\b/i.test(text)) hints.push({ kind: "text", value: "Close" });
-  if (/\bfollow\b/i.test(text)) hints.push({ kind: "text", value: "Follow" });
+  // "follow the mailed link" (ACT-126, A5 password reset) is the actor
+  // opening a link from their mailbox - prose, not a page label. Minting the
+  // "Follow" hint from it guaranteed a permanent affordance-not-found red on
+  // the anonymous reset page regardless of engine state (the same extractor
+  // class as "the local copy" minting "Copy" for the cleanup surface, and
+  // "referers follow" in exhaustive-affordance-targets.mjs case 3).
+  if (/\bfollow\b/i.test(text) && !/\bfollow\s+(?:the\s+)?(?:mailed|reset|password)\s+link\b/i.test(text)) hints.push({ kind: "text", value: "Follow" });
   if (/\bunfollow\b/i.test(text)) hints.push({ kind: "text", value: "Unfollow" });
   if (/\breset password\b/i.test(text)) hints.push({ kind: "text", value: "Reset password" });
+  // The noun order "a password reset" (ACT-126: "request a password reset")
+  // names the same button the verb order names; the extractor was
+  // order-sensitive and minted nothing for it, leaving the action's only
+  // hints to the mailed-link prose misfire above.
+  if (/\bpassword reset\b/i.test(text) && !/\breset password\b/i.test(text)) hints.push({ kind: "text", value: "Reset password" });
   if (/\bsign up\b/i.test(text)) hints.push({ kind: "text", value: "Sign up" });
   if (/\bcut\b/i.test(text)) hints.push({ kind: "text", value: "Cut" });
   if (/\bcopy\b/i.test(text)) hints.push({ kind: "text", value: "Copy" });
@@ -478,7 +489,7 @@ function isOutOfScope(action) {
   return false;
 }
 
-async function probeAction(page, action, lastStatusRef) {
+async function probeAction(page, action, lastStatusRef, actors) {
   const surface = action.surface;
   const text = action.action ?? "";
   const meta = SURFACES[surface];
@@ -512,6 +523,14 @@ async function probeAction(page, action, lastStatusRef) {
   // case drives the affordance's own page and asserts the engine's own
   // bytes, and an affordance that is genuinely absent still fails (ACT-024,
   // ACT-056, ACT-084, ACT-102 in the 2026-10-18 run).
+  //
+  // evaluate / pageRequest / newActorRequest serve the second-save conflict
+  // case (E18): reading the edit form's conflict token off the page, saving
+  // with the visiting actor's own session, and signing the SECOND editor in
+  // on a fresh request context (the conflict predicate is false when the
+  // intervening save is the submitting actor's own). Each created context is
+  // closed before probeAction returns.
+  const createdActorContexts = [];
   try {
     const targetProbes = await affordanceTargetProbes({
       text,
@@ -519,10 +538,33 @@ async function probeAction(page, action, lastStatusRef) {
       goto: async (p) => { await page.goto(lastStatusRef.base + p, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {}); },
       settle: () => settle(page),
       countSelector: async (selector) => await page.locator(selector).count().catch(() => 0),
+      evaluate: (fn) => page.evaluate(fn),
+      pageRequest: page.context().request,
+      newActorRequest: async (actorName) => {
+        const actor = (actors ?? {})[actorName];
+        if (!actor?.email) throw new Error(`second-save conflict probe: no fixture actor "${actorName}"`);
+        const actorContext = await page.context().browser().newContext();
+        createdActorContexts.push(actorContext);
+        actorContext.setDefaultTimeout(STEP_TIMEOUT);
+        const signInResponse = await actorContext.request.post(lastStatusRef.base + "/*signin", {
+          form: {
+            "card[subcards][+*email][content]": actor.email,
+            "card[subcards][+*password][content]": actor.password,
+          },
+        });
+        if (signInResponse.status() >= 400) {
+          throw new Error(`second editor sign-in as ${actorName} refused (${signInResponse.status()})`);
+        }
+        return actorContext.request;
+      },
     });
     sequence.push(...targetProbes);
   } catch (err) {
     sequence.push({ interaction: "assert-present", selector: "affordance-target probes", error: String(err?.message ?? err) });
+  } finally {
+    for (const actorContext of createdActorContexts.splice(0)) {
+      await actorContext.close().catch(() => {});
+    }
   }
 
   // 3c. Additional pages. A SURFACES entry's additionalPages name the further
@@ -645,7 +687,7 @@ async function run() {
 
       let probe;
       try {
-        probe = await probeAction(page, action, lastStatusRef);
+        probe = await probeAction(page, action, lastStatusRef, actors);
       } catch (err) {
         probe = { sequence: [{ interaction: "error", error: String(err?.message ?? err) }], observations: [], outcome: "error" };
       }

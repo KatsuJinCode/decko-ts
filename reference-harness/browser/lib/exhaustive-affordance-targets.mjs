@@ -61,7 +61,7 @@ export function nameMatchRequest(text) {
  * engine base URL and the settle helper. Returns the sequence entries to
  * append; an empty list means the action needs none of these cases.
  */
-export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector }) {
+export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, pageRequest, newActorRequest }) {
   const sequence = [];
   const t = String(text ?? "");
 
@@ -173,7 +173,16 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    btn-item-delete) when the actor follows the card. W2 names the unfollow
   //    control, so both states are counted: the control's presence is the
   //    affordance, and the followed-state marker is recorded beside it.
-  if (/follow/i.test(t)) {
+  //
+  //    The match EXCLUDES the prose use "follow the mailed link" (ACT-126, A5
+  //    password reset): there the verb describes a person opening a link from
+  //    their mailbox - no page ever renders a follow control for it, so the
+  //    probe navigated the anonymous reset page away to /Brief/follow_section
+  //    and counted 0 there, a guaranteed red regardless of engine state (the
+  //    same prose class as "referers follow" in case 3). The reset form's own
+  //    affordance is asserted by the runner's "Reset password" hint instead.
+  const followMailedLinkProse = /\bfollow\s+(?:the\s+)?(?:mailed|reset|password)\s+link\b/i.test(t);
+  if (/follow/i.test(t) && !followMailedLinkProse) {
     await goto(`/${encodeURIComponent(card)}/follow_section`);
     await settle();
     sequence.push({
@@ -185,6 +194,90 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       interaction: "assert-present",
       selector: `unfollow (followed) state of the follow control on /${card}/follow_section`,
       count: await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']"),
+    });
+  }
+
+  // 7. The second-save conflict (E18): the affordance ("Save") lives on the
+  //    card's edit form, and the contract "second save refused (conflict)"
+  //    lives in the round-trip: the edit form carries the hidden
+  //    :conflict_tracker field last_action_id_before_edit
+  //    (card-mod-edit set/all/form.rb:27-31, ported at
+  //    src/card/mod-loader/mods/card-mod-edit.ts:561-588); the update route
+  //    wires it (src/server/write-routes.ts:2066); the engine refuses with
+  //    error :conflict (409, the card's :conflict view) when the card's last
+  //    action advanced AND its actor is someone else
+  //    (src/card/mod-loader/mods/card-mod-history.ts:976-1001,
+  //    events.rb:65-72). Probing it on the deck home (the surface page)
+  //    measured affordance-not-found against a page that never carries a
+  //    Save button. The staging needs a SECOND ACTOR (the conflict predicate
+  //    is false when the intervening save is the submitting actor's own), so
+  //    the runner passes newActorRequest: a fresh, separately-signed-in
+  //    request context. The probe card is Date 1 - a card the member (the
+  //    second editor) may update on this fixture.
+  if (/\bsecond save\b/i.test(t) && /conflict/i.test(t)) {
+    const conflictCard = "Date_1";
+    if (typeof newActorRequest !== "function" || typeof pageRequest === "undefined" || typeof evaluate !== "function") {
+      throw new Error("second-save conflict probe needs the runner's newActorRequest, pageRequest and evaluate helpers");
+    }
+    await goto(`/${conflictCard}/edit`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `Save affordance on /${conflictCard}/edit`,
+      count: await countSelector("form.card-form button[type='submit'], form.card-form input[type='submit']"),
+    });
+    // The stale-revision token the form carries at load; a card with no
+    // actions yet carries none, so save once to mint one and reload.
+    let staleToken = await evaluate(
+      () => document.querySelector("form.card-form input[name='card[last_action_id_before_edit]']")?.value ?? null,
+    );
+    if (staleToken === null || staleToken === undefined || staleToken === "") {
+      const warm = await pageRequest.post(`${base}/update/${conflictCard}`, {
+        form: { "card[content]": "2026-01-11", "success[redirect]": "false" },
+        maxRedirects: 0,
+      }).catch((e) => ({ error: String(e?.message ?? e) }));
+      sequence.push({
+        interaction: "assert-present",
+        selector: `conflict-token minting save on /${conflictCard} (form had no last_action_id_before_edit)`,
+        count: warm.error || warm.status() >= 400 ? 0 : 1,
+        status: warm.error ? null : warm.status(),
+      });
+      await goto(`/${conflictCard}/edit`);
+      await settle();
+      staleToken = await evaluate(
+        () => document.querySelector("form.card-form input[name='card[last_action_id_before_edit]']")?.value ?? null,
+      );
+    }
+    // The second editor saves: the card's last action advances under the
+    // member's actor id.
+    const second = await newActorRequest("member");
+    const secondSave = await second.post(`${base}/update/${conflictCard}`, {
+      form: { "card[content]": "2026-01-12", "success[redirect]": "false" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    sequence.push({
+      interaction: "assert-present",
+      selector: `second editor's (member's) save accepted on /${conflictCard}`,
+      count: secondSave.error || secondSave.status() >= 400 ? 0 : 1,
+      status: secondSave.error ? null : secondSave.status(),
+    });
+    // The first editor's stale form submits: refused with :conflict.
+    const staleSave = await pageRequest.post(`${base}/update/${conflictCard}`, {
+      form: {
+        "card[content]": "2026-01-13",
+        "card[last_action_id_before_edit]": String(staleToken ?? ""),
+        "success[redirect]": "false",
+      },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const staleBody = staleSave.error ? "" : await staleSave.text().catch(() => "");
+    sequence.push({
+      interaction: "assert-present",
+      selector: `stale second save refused with conflict (409 + :conflict view) on /${conflictCard}`,
+      count: !staleSave.error && staleSave.status() === 409 && /conflict/i.test(staleBody) ? 1 : 0,
+      status: staleSave.error ? null : staleSave.status(),
+      staleToken: String(staleToken ?? null),
+      refusedBodySnippet: staleBody.replace(/\s+/g, " ").slice(0, 200),
     });
   }
 
