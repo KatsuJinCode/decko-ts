@@ -39,6 +39,22 @@
 // so the pin covers the real substitution chain, not a snapshot).
 
 import { describe, expect, it } from "vitest";
+import { Script } from "node:vm";
+
+function errorPageEditorCalls(html: string): Array<[string, string]> {
+  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .find(match => match[1]?.includes("decko.setAceConfig"))?.[1];
+  expect(script).toBeDefined();
+  const calls: Array<[string, string]> = [];
+  new Script(script!).runInNewContext({
+    decko: {
+      setAceConfig: (value: string) => calls.push(["ace", value]),
+      setTinyMCEConfig: (value: string) => calls.push(["tiny_mce", value]),
+    },
+    $: () => ({ ready: () => {}, trigger: () => {} }),
+  }, { timeout: 100 });
+  return calls;
+}
 
 import { escapeHtml } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
@@ -410,6 +426,35 @@ describe("bunny edge — no-route 404 (staging router stub class)", () => {
     } finally {
       storage.close();
     }
+  });
+});
+
+describe("error-page editor configuration is valid JavaScript and deck-owned", () => {
+  it("round-trips multiline settings and closing-script text as data", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedShellHeadDeck(storage);
+      const ace = JSON.stringify({ default: { theme: "owner's theme", note: "</script><script>throw Error('must remain data')</script>" } }, null, 2);
+      const tiny = JSON.stringify({ toolbar: "owner's toolbar", note: "backslash \\ and newline\n" }, null, 2);
+      await storage.counting.query("UPDATE cards SET db_content = ? WHERE id = 400", [ace]);
+      await storage.counting.query("UPDATE cards SET db_content = ? WHERE id = 401", [tiny]);
+      const response = await handleEngineRequest(edgeGet("/MissingEditorFixture"), realDeck(storage));
+      expect(response.status).toBe(404);
+      const html = await response.text();
+      expect(html).not.toContain("<script>throw Error('must remain data')</script>");
+      expect(errorPageEditorCalls(html)).toEqual([["ace", ace], ["tiny_mce", tiny]]);
+    } finally { storage.close(); }
+  });
+
+  it("does not invent another deck's settings when the codenames are absent", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedShellHeadDeck(storage);
+      await storage.counting.query("DELETE FROM cards WHERE id IN (400, 401)", []);
+      const response = await handleEngineRequest(edgeGet("/MissingEditorFixture"), realDeck(storage));
+      expect(response.status).toBe(404);
+      expect(errorPageEditorCalls(await response.text())).toEqual([["ace", ""], ["tiny_mce", ""]]);
+    } finally { storage.close(); }
   });
 });
 

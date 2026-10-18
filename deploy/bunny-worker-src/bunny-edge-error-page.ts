@@ -630,6 +630,22 @@ interface WrapPageOpts {
   titleText?: string;
 }
 
+/** Same setting-card lookup as page.ts scriptCallsTag. Serialize each raw
+ * setting as one JavaScript string; HTML's script parser must never see a
+ * closing-script sequence from configuration content. */
+async function editorConfigScriptCalls(deck: ErrorPageDeck): Promise<string> {
+  const [ace, tiny] = await Promise.all(["ace", "tiny_mce"].map(async code => {
+    if (await deck.fetcher.codenames.id(code) === undefined) return "";
+    return (await deck.fetcher.fetchByName(`:${code}`))?.dbContent ?? "";
+  }));
+  const literal = (value: string) => JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+  return `decko.setAceConfig(${literal(ace ?? "")})\n\n` +
+    `decko.setTinyMCEConfig(${literal(tiny ?? "")})\n`;
+}
+
 /** Wrap the rendered error region in the default layout's body and the outer
  *  HTML doc, byte-for-byte the staging host's wrapWithLayout. */
 async function wrapWithLayout(
@@ -639,7 +655,9 @@ async function wrapWithLayout(
   layout: DefaultLayout,
   pageOpts: WrapPageOpts,
 ): Promise<string> {
-  const boot = await ensureBootValues(deck);
+  const [boot, editorConfigs] = await Promise.all([
+    ensureBootValues(deck), editorConfigScriptCalls(deck),
+  ]);
   // Resolved only when the title needs it (the server_error shape; the
   // not_found shape passes titleText) — byte-neutral, one query fewer on
   // the not_found path (module-header deviation note).
@@ -736,9 +754,8 @@ async function wrapWithLayout(
     `</script>\n` +
     `<script>\n` +
     `//<![CDATA[\n` +
-    `decko.setAceConfig('{\n  \\"default\\": {\\n  \\"showGutter\\": true,\\n  \\"theme\\": \\"ace/theme/github\\",\\n  \\"printMargin\\": false,\\n  \\"tabSize\\": 2,\\n  \\"useSoftTabs\\": true,\\n  \\"maxLines\\": 30\\n  }\\n}\\n')\n` +
+    editorConfigs +
     `\n` +
-    `decko.setTinyMCEConfig('{\n  \\"theme\\": \\"silver\\",\\n  \\"menubar\\": \\"edit view insert format table\\",\\n  \\"plugins\\": \\"autoresize code lists hr link autolink table\\",\\n  \\"toolbar1\\": \\"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\\",\n  \\"width\\":\\"100%\\",\n  \\"auto_resize\\":true,\\n  \\"autoresize_max_height\\": 500,\\n  \\"relative_urls\\":false,\\n  \\"extended_valid_elements\\": \\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }\\n')\n` +
     `\n` +
     `$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })\n` +
     `//]]>\n` +
