@@ -657,11 +657,18 @@ describe("mods: a hand-ported Ruby mod view beyond the byte-pins", () => {
         }
       })(join(REPO_ROOT, root));
     }
-    // The converge merged the synthetic-v2 corpus, whose Ruby oracle
-    // exercises the view - the corpus grade (reference-harness/runner/grade.mjs
-    // over synthetic-v2) is what checks its bytes now, and this walk is the
-    // guard that the coverage claim and the committed fixtures stay in sync.
-    expect(mentions.every((m) => m.includes("synthetic-v2"))).toBe(true);
+    // The mod-probe corpora whose Ruby oracles exercise the view —
+    // synthetic-v2 and synthetic-v2-mod-probes, and since b9397c5b the
+    // canonical synthetic-v3-mod-probes-ruby33 generation (two probe-view
+    // entries: the rendered slot and a NoMethodError capture). The corpus
+    // grade (reference-harness/runner/grade.mjs over the fixture) is what
+    // checks its bytes now, and this walk is the guard that the coverage
+    // claim and the committed fixtures stay in sync: a mention under any
+    // committed corpus generation keeps the claim true, while a mention
+    // anywhere ELSE (a stray capture tree, an ungraded fixture) fails here.
+    expect(
+      mentions.every((m) => m.includes("synthetic-v2") || m.includes("synthetic-v3-mod-probes")),
+    ).toBe(true);
     expect(mentions.length).toBeGreaterThan(0);
 
     // With no deck mounted the view does not exist at all - Ruby mods are
