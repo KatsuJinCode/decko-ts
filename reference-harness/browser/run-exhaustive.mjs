@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
+import { affordanceTargetProbes } from "./lib/exhaustive-affordance-targets.mjs";
 import { richEditorsReady } from "./lib/editor-ready.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -463,6 +464,27 @@ async function probeAction(page, action, lastStatusRef) {
     // edge-signed-in-exercise's domain). Mark the interaction and let an
     // operator compare against the edge evidence in docs/runs.
     sequence.push({ interaction: "witness", selector: "console errors", note: "see tools/edge-signed-in-exercise.mjs group 2" });
+  }
+
+  // 3b. Affordance-target cases: actions whose affordance does not live on
+  // the surface page (board tabs on a card's board view, the rename name
+  // field, the card-name suggestions JSON). Probing them on the surface page
+  // measured affordance-not-found against a page that never carries the
+  // affordance - an aim artifact of the probe, not an engine verdict. Each
+  // case drives the affordance's own page and asserts the engine's own
+  // bytes, and an affordance that is genuinely absent still fails (ACT-024,
+  // ACT-056, ACT-084, ACT-102 in the 2026-10-18 run).
+  try {
+    const targetProbes = await affordanceTargetProbes({
+      text,
+      base: lastStatusRef.base,
+      goto: async (p) => { await page.goto(lastStatusRef.base + p, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {}); },
+      settle: () => settle(page),
+      countSelector: async (selector) => await page.locator(selector).count().catch(() => 0),
+    });
+    sequence.push(...targetProbes);
+  } catch (err) {
+    sequence.push({ interaction: "assert-present", selector: "affordance-target probes", error: String(err?.message ?? err) });
   }
 
   // 4. Final observation; one per action.
