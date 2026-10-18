@@ -18,10 +18,12 @@ it('creating and deleting a non-read rule preserves unrelated stored read-rule c
  await engine.deleteCard({cardId:help.cardId});
  expect(await s.selectOne('SELECT read_rule_id,read_rule_class FROM cards WHERE id=50')).toEqual(before);
 });
-it('a new read rule still updates the governed cards',async()=>{
+it('creating and deleting read rules still updates the governed cards',async()=>{
  const {s,engine}=await fixture();
  const rule=await engine.createCard({name:'*all+*read',content:'[[Anyone]]'});
  expect(await s.selectOne('SELECT read_rule_id FROM cards WHERE id=50')).toEqual({read_rule_id:rule.cardId});
+ await engine.deleteCard({cardId:rule.cardId});
+ expect(await s.selectOne('SELECT read_rule_id FROM cards WHERE id=50')).toEqual({read_rule_id:null});
 });
 it('renaming a read rule to another setting retains its old-binding cascade',async()=>{
  const {s,engine}=await fixture();
