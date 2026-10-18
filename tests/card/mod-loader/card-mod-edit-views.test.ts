@@ -400,6 +400,9 @@ beforeAll(async () => {
     "Nest list": "nest_list",
     "Notification template": "notification_template",
     "Email template": "email_template",
+    // card-1.110.0/mod/core/data/real.yml seeds User with codename user;
+    // the preference cache uses UserID and excludes untyped impostors.
+    User: "user",
     Role: "role",
     Layout: "layout_type",
     Skin: "skin",
@@ -408,8 +411,6 @@ beforeAll(async () => {
     JSON: "json",
     JavaScript: "java_script",
     CoffeeScript: "coffee_script",
-    // User declares no codename in any real.yml, so it gets none here
-    // either - a fixture must not invent one Ruby does not have.
   };
   for (const name of TYPE_CARDS) {
     const codename = CARDTYPE_CODENAME[name];
@@ -518,9 +519,11 @@ beforeAll(async () => {
   // targets, "following" verb); the admin follows nothing ("follow" verb);
   // 1 follower each. The per-card advanced rule cards are ABSENT
   // (wanted-card). The +*followers junctions EXIST (known-card).
-  await seedCard(s, { id: 583, name: "Tova" });
+  await seedCard(s, { id: 583, name: "Tova", typeId: typeIdByName.get("User")! });
   await seedCard(s, { id: 150, name: "*follow", codename: "follow", typeId: 14 });
   await seedCard(s, { id: 151, name: "*followers", codename: "followers" });
+  // The preference's option must resolve to the real follow option card.
+  await seedCard(s, { id: 154, name: "*always", codename: "always" });
   await seedCard(s, { id: 160, leftId: 10, rightId: 583, name: "*all+Tova" });
   await seedCard(s, { id: 161, leftId: 160, rightId: 150, dbContent: "[[*always]]" });
   // the +*followers junctions the followers pills link (known-card)
@@ -872,6 +875,27 @@ describeOrSkipLoud(
     );
     expect(BOARD_FIXTURE.targets.basic_note.visibility.bot["show_guide_tab?"]).toBe(true);
     expect(BOARD_FIXTURE.targets.basic_note.visibility.anonymous["show_engage_tab?"]).toBe(false);
+  });
+
+  it("a derived default type remains selectable while a requested type stays preset", async () => {
+    const fetcher = new FetchEngine(storage!.counting);
+    const engine = new RenderEngine(fetcher);
+    const mods = new ModLoader([{ manifest: cardModEdit }]);
+    mods.load();
+    engine.modLoader = mods;
+    engine.viewer = { signedIn: true, actorId: 1 };
+    engine.pageSession = engine.viewer;
+    engine.renderAbsentCards = true;
+    await mods.installInto(modEngineHost(engine, fetcher));
+    const derived = await engine.render("E13 New Default", "new_fields", {
+      focalRoot: true, newCard: { typeId: 2, typePreset: false },
+    });
+    expect(derived).toMatch(/<select\b[^>]*name=["']card\[type\]["']/);
+    const explicit = await engine.render("E13 New Typed", "new_fields", {
+      focalRoot: true, newCard: { typeId: 2, typePreset: true },
+    });
+    expect(explicit).not.toMatch(/<select\b[^>]*name=["']card\[type\]["']/);
+    expect(explicit).toMatch(/name=["']card\[type_id\]["']/);
   });
 
   it("the recorded new-card surface carries the name-prompt arm (fixture record)", () => {

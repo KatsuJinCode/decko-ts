@@ -2300,7 +2300,8 @@ function needsName(ctx: ViewContext): boolean {
 function newTypePrompt(ctx: ViewContext): boolean {
   const { fmt, voo } = ctx;
   // new_type_preset?: params[:type] (the request's new-card type) || voo.type
-  const preset = voo.opts["type"] !== undefined || fmt.engine.requestNewCard?.typeId !== undefined;
+  const request = fmt.engine.requestNewCard;
+  const preset = voo.opts["type"] !== undefined || (request?.typePreset ?? (request?.typeId !== undefined));
   const context = fmt.isMain || isSimpleCard(fmt) || isTemplateCard(fmt);
   const permitted = newTypePermitted(ctx);
   return visibleWrite(voo, "new_type_formgroup", !preset && context && permitted);

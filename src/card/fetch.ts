@@ -96,6 +96,9 @@ export interface NewCardOptions {
   supercard?: Nameish;
   /** store.rb:26 eager_cache type merge / results.rb type handling. */
   typeId?: number;
+  /** The new-form type was explicitly requested rather than derived from
+   *  a default. Undefined preserves existing callers' preset typeId. */
+  typePreset?: boolean;
   /** Ruby's :type / :type_code new-opts (results.rb:80, 112). */
   typeCode?: string;
   typeName?: Nameish;
@@ -535,7 +538,7 @@ export class FetchEngine {
    *  (Ruby's: supercard, name, type_id, type, type_code, content,
    *  default_content). */
   private fancyRenew(newOpts: NewCardOptions): boolean {
-    const handled = new Set(["supercard", "name", "typeId", "typeCode", "typeName", "content", "defaultContent"]);
+    const handled = new Set(["supercard", "name", "typeId", "typePreset", "typeCode", "typeName", "content", "defaultContent"]);
     return Object.keys(newOpts).some((key) => !handled.has(key));
   }
 

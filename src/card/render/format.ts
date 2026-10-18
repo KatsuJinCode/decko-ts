@@ -3973,7 +3973,7 @@ export interface RenderEngineLike {
   /** The current request's new-card arguments (Ruby's params[:type] and
    *  card hash for a card that does not exist yet); undefined when the
    *  request carries none. */
-  readonly requestNewCard?: { typeId?: number };
+  readonly requestNewCard?: { typeId?: number; typePreset?: boolean };
   /** The current request's TinyMCE snippet-editor params (tinymce_id,
    *  tm_snippet_raw, tm_snippet_start; HistoryRenderParams#editorParams).
    *  Read by the link and nest-image editor views to bind Apply to the

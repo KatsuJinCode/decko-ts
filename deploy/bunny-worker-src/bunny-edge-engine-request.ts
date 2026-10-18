@@ -626,6 +626,7 @@ async function dispatchEngineRequest(
           signal,
           url.searchParams.get("card[name]") ?? parsed.cardName ?? "",
           url.searchParams.get("card[content]") ?? undefined,
+          parsed.typeId !== undefined || Boolean(parsed.typeName),
         );
         return page ?? (await signedInNewCardRouteResponse(newCardDeck, typeName));
       }
@@ -786,8 +787,20 @@ async function dispatchEngineRequest(
     // board's replacement editor. This GET must not persist the preview.
     const assignedType = bareRead && url.searchParams.get("assign") === "true"
       ? url.searchParams.get("card[type]") : null;
+    let newFieldTypeId: number | undefined;
+    if (assignedType !== null && pageView === "new_fields") {
+      const deck = await source.deck();
+      await deck.render.ensureFreshness();
+      newFieldTypeId = (await deck.fetcher.fetchByName(assignedType))?.id;
+      if (newFieldTypeId === undefined) return renderDeckoNotFoundErrorPage(deck, assignedType);
+    }
     const editorParams = assignedType !== null
-      ? { ...historyParams, assignedType, viewOpts: { show: url.searchParams.getAll("slot[show][]") } }
+      ? { ...historyParams, assignedType,
+          ...(pageView === "new_fields" ? { absentCard: true, newCard: {
+            typeId: newFieldTypeId!, typePreset: false,
+            ...(url.searchParams.has("card[content]") ? { content: url.searchParams.get("card[content]")! } : {}),
+          } } : {}),
+          viewOpts: { show: url.searchParams.getAll("slot[show][]") } }
       : historyParams;
     const renderNormal = async () => {
       const deck = await source.deck();
@@ -924,7 +937,7 @@ async function dispatchEngineRequest(
             );
           }
         }
-        const page = await signedInNewCardPage(source, deck, typeName, options, signal, newCardNameFor(parsed.name))
+        const page = await signedInNewCardPage(source, deck, typeName, options, signal, newCardNameFor(parsed.name), undefined, false)
           .catch(() => undefined);
         if (page !== undefined) return page;
       }
@@ -957,6 +970,7 @@ async function signedInNewCardPage(
   signal: AbortSignal | undefined,
   cardName = "",
   content?: string,
+  typePreset = true,
 ): Promise<Response | undefined> {
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
@@ -1010,7 +1024,7 @@ async function signedInNewCardPage(
       engines.render.pageSession = viewer;
       engines.render.renderAbsentCards = true;
       return engines;
-    }, { signal, requestedView: "new", requestScope, keepScope, historyParams: { focalRoot: true, newCard: { typeId: typeRecord.id, ...(content === undefined ? {} : { content }) } } });
+    }, { signal, requestedView: "new", requestScope, keepScope, historyParams: { focalRoot: true, newCard: { typeId: typeRecord.id, typePreset, ...(content === undefined ? {} : { content }) } } });
     return result;
   };
   const form = await (requestContextAvailable()
