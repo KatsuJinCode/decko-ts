@@ -37,6 +37,18 @@ const STOCK_LAYOUT_CDNS = new Set([
   "ka-f.fontawesome.com",
 ]);
 
+
+// Google's documented reCAPTCHA script/frame/connect paths. Keep every
+// unrelated Google path blocked, and retain the explicit offline policy.
+export function allowedBrowserRequest(url, offline = false) {
+  if (LOCAL_HOSTS.has(url.hostname)) return true;
+  if (offline) return false;
+  if (STOCK_LAYOUT_CDNS.has(url.hostname)) return true;
+  return url.protocol === "https:" &&
+    ["www.google.com", "www.gstatic.com", "recaptcha.google.com"].includes(url.hostname) &&
+    url.pathname.startsWith("/recaptcha/");
+}
+
 const CANDIDATES = [
   "C:/Program Files/Google/Chrome/Application/chrome.exe",
   "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
@@ -86,8 +98,7 @@ export async function launchBrowser({ viewport = { width: 1280, height: 900 } } 
   await context.route(
     (url) =>
       /^(https?|wss?):$/.test(url.protocol) &&
-      !LOCAL_HOSTS.has(url.hostname) &&
-      (offline || !STOCK_LAYOUT_CDNS.has(url.hostname)),
+      !allowedBrowserRequest(url, offline),
     (route) => route.abort("blockedbyclient"),
   );
   const close = async () => {

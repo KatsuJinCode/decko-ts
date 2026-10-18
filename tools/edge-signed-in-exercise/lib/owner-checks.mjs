@@ -270,15 +270,24 @@ export async function ownerReplay(ctx) {
     const before = ledger().length;
     let note = null;
     try { note = await fn(); } catch (e) { note = `threw: ${String(e?.message ?? e).slice(0, 120)}`; }
-    await page.waitForTimeout(400);
+
     const lines = ledger().slice(before);
     // The status is the step's OWN request. Assets the page then pulls (TinyMCE,
     // fonts, /mod/ files) land in the same window and answer 302 or 200; taking
     // the last line of the window would grade the asset, not the step.
     const hint = /\b(GET|POST|PUT|PATCH|DELETE)\s+(\/[^\s]*)/.exec(label);
     const request = note?.request ?? (hint ? {method:hint[1],path:hint[2]} : undefined);
-    const last = request && lines.find(line => line.method === request.method &&
-      new URL(line.path,O).pathname === new URL(request.path,O).pathname);
+    const matches = line => line.method === request.method &&
+      new URL(line.path,O).pathname === new URL(request.path,O).pathname;
+    let last = request && lines.find(matches);
+    // Await the named host record only when it is not already present.
+    // Preserve request order and assertions without an unconditional pause.
+    const deadline = Date.now() + 2000;
+    while (request && !last && Date.now() < deadline &&
+           !(typeof note === "string" && note.startsWith("threw:"))) {
+      await page.waitForTimeout(10);
+      last = ledger().slice(before).find(matches);
+    }
     const status = last?.status ?? null;
     const threw = typeof note === 'string' && note.startsWith('threw:');
     const ok = !threw && (typeof expect === "function" ? expect(status, note) : status !== null && status === expect);
