@@ -480,7 +480,7 @@ async function followerEmail(fetch: FetchEngine, followerId: number): Promise<st
 export async function resolveFollowers(
   fetch: FetchEngine,
   cardId: number | null,
-  event: SavePathEvent,
+  event?: Pick<SavePathEvent, "isDeletePath">,
 ): Promise<readonly FollowerRef[]> {
   if (cardId === null) return [];
   // A deleted card's followers are those it had before the delete

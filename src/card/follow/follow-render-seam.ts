@@ -22,10 +22,12 @@ import type { RenderCard } from "../render/format.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
 import { DeckoName } from "../name.js";
 import { FOLLOW_OPTION_ALL } from "./follow-options.js";
+import { followRuleContent, resolveFollowers } from "../notify/follower-resolver.js";
 import {
   followRuleNameFor,
   followRuleOptionFor,
   followSetCardName,
+  followWalkContext,
 } from "./follow-rule-walk.js";
 
 /** The views whose bodies read the seam. Gated so a :titled/:open/:content
@@ -454,17 +456,13 @@ export async function prepareFollowRender(
     // card-mod-edit set/all/board/follow_section.rb:2-11 follow_section:
     // the show_follow? gate (follow_link_views.rb:6-8) + the button group
     // read followed?; followers_board_link reads follower_ids.size
-    // (follower_ids.rb:95-115 direct_follower_ids - the set-chain walk
-    // below mirrors its simple-card arms)
+    // (follower_ids.rb:63-72). Reuse the notification walk: a preference
+    // row contributes only when its option applies, including field follows.
     const setName = `${rootCard.name.s}+*self`;
     const users = new Set<number>();
     await followerCountInto(fetch, rootCard, users);
     if (session !== undefined) {
-      // followed? (followed_by.rb:1-9): the actor's follow preference
-      // applies to the card's set chain - the same walk the count runs,
-      // asked for the actor's id. (followRuleOptionFor's notify-module walk
-      // answers the SELF-set preference only; an *all-covering
-      // preference is the count walk's shape.)
+      // The resolved followers include this actor only if a rule applies.
       followed = users.has(session.actorId);
       followMark = followRuleNameFor(setName, session.actorName);
     }
@@ -522,7 +520,6 @@ export async function prepareFollowRender(
       leftFollowPreference = await appliedFollowPreferenceContent(
         fetch,
         leftName,
-        leftTypeCard?.name?.s,
         session.actorId,
       );
       ruleEditorTargetName = leftFollowPreference ?? ruleEditorPreferenceName;
@@ -544,100 +541,26 @@ export async function prepareFollowRender(
   };
 }
 
-/** rule/all.rb:66-73 rule_id_lookup over the LEFT card's simple-card set
- *  chain for the :follow setting: the first chain set holding a preference
- *  rule for the SESSION actor ("follow+<uid>"), falling back per chain set
- *  to the *all-user rule ("follow+<AllID>", all/rule.rb:28-30) — the
- *  applied rule's db_content, or undefined when no rule applies. The chain
- *  shape is followerCountInto's documented simple-card arms (<name>+*self,
- *  <type>+*type, *all). Read-only SELECT. */
+/** The applied preference uses the same ID-based, specific-first walk as
+ * notification delivery. Compound set rows need not carry a stored key. */
 async function appliedFollowPreferenceContent(
   fetch: FetchEngine,
   leftName: string,
-  leftTypeName: string | undefined,
   actorId: number,
 ): Promise<string | undefined> {
-  const chain: string[] = [DeckoName.parse(`${leftName}+*self`).key];
-  if (leftTypeName !== undefined && leftTypeName !== "") {
-    chain.push(DeckoName.parse(`${leftTypeName}+*type`).key);
-  }
-  chain.push(DeckoName.parse("*all").key);
-  const followId = await fetch.codenames.id("follow");
-  const allUserId = await fetch.codenames.id("all");
-  if (followId === undefined) return undefined;
-  const r = await fetch.driver.query<{
-    set_key: string | null;
-    user_id: number;
-    user_codename: string | null;
-    content: string | null;
-  }>(
-    `SELECT s.key AS set_key, u.id AS user_id,
-            u.codename AS user_codename, p.db_content AS content
-       FROM cards p
-       JOIN cards us ON p.left_id = us.id
-       JOIN cards s  ON us.left_id = s.id
-       JOIN cards u  ON us.right_id = u.id
-      WHERE p.right_id = ? AND p.trash = 0 AND s.trash = 0
-        AND us.trash = 0 AND u.trash = 0
-        AND (u.id = ? OR u.codename = 'all')`,
-    [followId, actorId],
-  );
-  const rows = r.rows ?? [];
-  for (const chainKey of chain) {
-    // Ruby's lookup: the FIRST chain key with a rule wins (rule_id_lookup
-    // returns on the first hit); within one key the actor's own rule beats
-    // the *all-user fallback (all.rb:68-69 rule_id ||= fallback). The SET
-    // side reads the stored KEY column (junction rows carry key, name NULL
-    // - the seed/render-test storage discipline).
-    const mine = rows.find(
-      (row) => row.user_id === actorId && row.set_key === chainKey,
-    );
-    if (mine !== undefined) return mine.content ?? "";
-    const allRow =
-      allUserId !== undefined
-        ? rows.find((row) => row.user_codename === "all" && row.set_key === chainKey)
-        : undefined;
-    if (allRow !== undefined) return allRow.content ?? "";
-  }
-  return undefined;
+  const card = await fetch.fetchByName(leftName);
+  if (card === undefined) return undefined;
+  const walk = await followWalkContext(fetch, card);
+  return (await followRuleContent(fetch, walk.index, walk.patterns, actorId, walk.allId)) ?? undefined;
 }
 
-/** follower_ids.rb:95-115 direct_follower_ids - the simple-card set chain
- *  (<name>+*self, <type>+*type, *all): every "*follow" preference card
- *  whose "<set>+<user>" junction names a covering set contributes its user
- *  (distinct). Read-only SELECTs. */
+/** follower_ids includes direct and field followers whose selected option
+ * applies, rather than every identity mentioned in a preference row. */
 async function followerCountInto(
   fetch: FetchEngine,
   rootCard: RenderCard,
   users: Set<number>,
 ): Promise<void> {
-  const setKeys = new Set<string>(["*all"]);
-  setKeys.add(DeckoName.parse(`${rootCard.name.s}+*self`).key);
-  if (rootCard.typeName !== undefined) {
-    setKeys.add(DeckoName.parse(`${rootCard.typeName}+*type`).key);
-  }
-  const followIdRow = await fetch.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE codename = 'follow' AND trash = 0 ORDER BY id LIMIT 1",
-    [],
-  );
-  const followId = Number(followIdRow.rows?.[0]?.id ?? 0);
-  if (followId === 0) return;
-  const rules = await fetch.driver.query<{ left_id: number }>(
-    "SELECT left_id FROM cards WHERE right_id = ? AND trash = 0",
-    [followId],
-  );
-  for (const row of (rules.rows ?? []) as Array<{ left_id: number }>) {
-    const junction = await fetch.fetchById(Number(row.left_id));
-    if (
-      junction === undefined ||
-      junction.leftId === null || junction.leftId === undefined ||
-      junction.rightId === null || junction.rightId === undefined
-    ) {
-      continue;
-    }
-    const setCard = await fetch.fetchById(Number(junction.leftId));
-    if (setCard === undefined || setCard.name === undefined) continue;
-    if (!setKeys.has(DeckoName.parse(setCard.name).key)) continue;
-    users.add(Number(junction.rightId));
-  }
+  const refs = await resolveFollowers(fetch, rootCard.id ?? null);
+  for (const ref of refs) users.add(ref.followerId);
 }
