@@ -209,16 +209,37 @@ export const checks = [
         const roles = codenames.role === null ? [] : database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY name").all(codenames.role.id);
         const roleNames = new Set(roles.map(r => r.name));
 
-        // The stored side of the action, read for whichever actor holds the
-        // role: a reference from the role's `<role>+*members` list card to the
-        // holder - the shape lib/seed-local-accounts.mjs:108-115 writes.
-        const membershipsFor = actorId => database().prepare("SELECT referer_id FROM card_references WHERE referee_id=?").all(actorId)
-          .map(row => {
-            const referer = database().prepare("SELECT id,left_id FROM cards WHERE id=?").get(row.referer_id);
-            const left = referer?.left_id === null || referer === undefined ? null : database().prepare("SELECT id,name FROM cards WHERE id=?").get(referer.left_id);
-            return { refererId: row.referer_id, roleId: referer?.left_id ?? null, roleName: left?.name ?? null };
-          })
-          .sort((a, b) => String(a.roleName).localeCompare(String(b.roleName)));
+        // The stored side of the action. The control's persistence witness
+        // is the actor's `<actor>+*enabled roles` card content — the Session
+        // card the autosave form on /update/<actor>+*enabled roles
+        // (navbar-views.ts:498 `action="/update/${urlKey}"`,
+        // sessionRolesInput at render.ts:8421-8473) writes; ensure_roles
+        // fills its blank content with every current role at render time.
+        // `<role>+*members` card_references are the GRANT membership
+        // (the role's members list the actor was added to by
+        // seed-local-accounts.mjs:108-115), which is a different witness:
+        // editing `<actor>+*enabled roles` content does NOT touch any
+        // `<role>+*members` reference, and the prior instrument read those
+        // grant references and graded movement against them, so a working
+        // engine post would never move the witness. This repair swaps the
+        // witness: db_content of the `<actor>+*enabled roles` card,
+        // newline-split, trimmed, sorted — the same shape the dropdown's
+        // hidden card[content] input carries (`roles.join("\n")`,
+        // navbar-views.ts:503).
+        const enabledRolesCard = (actorId) => {
+          const enabledCode = codenames.enabled_roles;
+          if (enabledCode === null) return null;
+          return database().prepare(
+            "SELECT id, name, db_content, type_id, left_id, right_id, trash FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1",
+          ).get(actorId, enabledCode.id) ?? null;
+        };
+        const enabledRolesFor = actorId => {
+          const row = enabledRolesCard(actorId);
+          if (row === null) return { exists: false, cardId: null, content: [], dbContent: null, typeId: null };
+          const content = (row.db_content ?? "").split("\n").map(s => s.trim()).filter(s => s.length > 0).sort();
+          return { exists: true, cardId: row.id, content, dbContent: row.db_content ?? null, typeId: row.type_id };
+        };
+        const enabledRolesSnapshot = (actorId) => JSON.stringify(enabledRolesFor(actorId).content);
 
         // The account board's Roles tab loads by ajax, so it is clicked the way
         // a person clicks it; the dropdown that carries the boxes ships closed.
@@ -262,7 +283,7 @@ export const checks = [
           const open = await checkboxInventory(page);
           probes.push({
             actor: actor.label, actorName: actor.creds.name, actorId: actor.creds.id,
-            storedMemberships: membershipsFor(actor.creds.id),
+            storedEnabledRoles: enabledRolesFor(actor.creds.id),
             boardStatus: read.opened.status(), rolesTabCount: read.tabs,
             dropdown, boxesClosed: closed.boxes, boxesOpen: open.boxes,
             raw: captureEvidence(await page.content(), { check: "a6-roles-dropdown-" + actor.creds.name.replace(/\s+/g, "_"), actor: actor.creds.name }),
@@ -278,7 +299,7 @@ export const checks = [
           probes: probes.map(p => ({
             actor: p.actor, boardStatus: p.boardStatus, rolesTabCount: p.rolesTabCount,
             dropdownOpened: p.dropdown.opened, dropdownHow: p.dropdown.how,
-            storedMemberships: p.storedMemberships,
+            storedEnabledRoles: p.storedEnabledRoles,
             boxes: p.boxesOpen.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display, menuOpen: b.menuOpen, formAction: b.formAction })),
           })),
           roleBoxes: roleBoxes.map(b => ({ actor: b.actor, name: b.name, value: b.value, checked: b.checked, display: b.display, formAction: b.formAction })),
@@ -293,17 +314,19 @@ export const checks = [
             note: "no served role checkbox is both displayed and outside the power roles, so no edit can be driven through this surface without toggling the administrator role",
             roleBoxes: roleBoxes.map(b => ({ actor: b.actor, value: b.value, display: b.display })),
             notClickable: hidden.map(b => ({ actor: b.actor, value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "hidden by the served stylesheet" })),
-            unmeasured: "whether the control submits and stores at all is therefore unmeasured here: no clickable non-power box exists on this deck, and this check writes no fixture rows directly (ctx.database() is read-only, run 01-08-09)",
+            storedEnabledRoles: probes.map(p => ({ actor: p.actor, snapshot: p.storedEnabledRoles })),
+            unmeasured: "whether the control submits and stores the +*enabled roles content is therefore unmeasured here: no clickable non-power box exists on this deck, and this check writes no fixture rows directly (ctx.database() is read-only, run 01-08-09)",
           });
           record(capabilityChecks.A6[2], false, { note: "not reached: no clickable non-power role checkbox is served" });
-          record(capabilityChecks.A6[3], true, { note: "nothing was changed, so the fixture is unchanged", storedMemberships: probes.map(p => ({ actor: p.actor, memberships: p.storedMemberships })) });
+          record(capabilityChecks.A6[3], true, { note: "nothing was changed, so the fixture is unchanged", storedEnabledRoles: probes.map(p => ({ actor: p.actor, snapshot: p.storedEnabledRoles })) });
           return;
         }
 
         const choice = clickable[0];
         const postPath = new URL(choice.formAction ?? stack.origin, stack.origin).pathname;
         const actorCreds = creds[choice.actor === creds.admin.name ? "admin" : "member"];
-        const before = membershipsFor(actorCreds.id);
+        const beforeRoles = enabledRolesFor(actorCreds.id);
+        const before = enabledRolesSnapshot(actorCreds.id);
         const box = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
         const visible = await box.isVisible().catch(() => false);
         const checkedBefore = await box.isChecked().catch(() => null);
@@ -321,17 +344,20 @@ export const checks = [
         } else {
           clickError = "the box is not visible even with the menu marked open";
         }
-        const after = membershipsFor(actorCreds.id);
-        const moved = JSON.stringify(after) !== JSON.stringify(before);
+        const afterRoles = enabledRolesFor(actorCreds.id);
+        const after = enabledRolesSnapshot(actorCreds.id);
+        const moved = after !== before;
         record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved, {
           actor: choice.actor, role: choice.value, fieldName: choice.name, formAction: choice.formAction,
           checkboxVisible: visible, checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
-          clickError, postStatus, storedBefore: before, storedAfterClick: after, storedMembershipMoved: moved,
+          clickError, postStatus,
+          storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
+          storedEnabledRolesMoved: moved, expectedToggledRoleRemoved: choice.value,
           raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor: choice.actor }),
         });
 
         if (postStatus !== null && postStatus < 400 && moved) {
-          record(capabilityChecks.A6[2], true, { actor: choice.actor, role: choice.value, note: "not needed: the click itself posted and moved the stored membership", postStatus });
+          record(capabilityChecks.A6[2], true, { actor: choice.actor, role: choice.value, note: "not needed: the click itself posted and moved the +*enabled roles content", postStatus });
         } else {
           const form = page.locator(`form[action="${choice.formAction ?? ""}"]`).first();
           const controls = await form.evaluate(f => [...f.querySelectorAll("button,input[type=submit]")].map(b => ({
@@ -345,24 +371,27 @@ export const checks = [
           let submitStatus = null;
           if (seen.error === undefined) { await seen.response.finished(); submitStatus = seen.response.status(); }
           await page.waitForTimeout(1000);
-          const afterSubmit = membershipsFor(actorCreds.id);
+          const afterSubmit = enabledRolesFor(actorCreds.id);
+          const submitSnapshot = enabledRolesSnapshot(actorCreds.id);
           record(capabilityChecks.A6[2],
-            submitted && submitStatus !== null && submitStatus < 400 && JSON.stringify(afterSubmit) !== JSON.stringify(before),
+            submitted && submitStatus !== null && submitStatus < 400 && submitSnapshot !== before,
             {
               actor: choice.actor, role: choice.value, formAction: choice.formAction, controls,
               route: "the served autosave form submitted through the DOM (it renders no submit control)",
-              submitted, submitStatus, storedBefore: before, storedAfterSubmit: afterSubmit,
-              storedMembershipMoved: JSON.stringify(afterSubmit) !== JSON.stringify(before),
+              submitted, submitStatus,
+              storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterSubmit: afterSubmit,
+              storedEnabledRolesMoved: submitSnapshot !== before,
             },
           );
         }
-        // Restore leg: whatever happened, the stored membership must end where
-        // the check found it. The dropdown lists the CURRENT roles, so a
-        // removed role is not offered again; the leg says which route restored
-        // it rather than claiming a restore it did not perform.
-        let restored = membershipsFor(actorCreds.id);
-        let restoreRoute = "the stored membership never moved, so there was nothing to restore";
-        if (JSON.stringify(restored) !== JSON.stringify(before)) {
+        // Restore leg: whatever happened, the +*enabled roles content must
+        // end where the check found it. The dropdown lists the CURRENT roles,
+        // so a removed role is not offered again; the leg says which route
+        // restored it rather than claiming a restore it did not perform.
+        let restoredRoles = enabledRolesFor(actorCreds.id);
+        let restored = enabledRolesSnapshot(actorCreds.id);
+        let restoreRoute = "the +*enabled roles content never moved, so there was nothing to restore";
+        if (restored !== before) {
           await signInActor(page, stack.origin, actorCreds);
           await openBoardRolesTab();
           await openDropdown();
@@ -374,14 +403,16 @@ export const checks = [
               await box2.click({ timeout: 10000 }).catch(() => undefined);
               await page.waitForTimeout(1500);
             }
-            restored = membershipsFor(actorCreds.id);
+            restoredRoles = enabledRolesFor(actorCreds.id);
+            restored = enabledRolesSnapshot(actorCreds.id);
           } else {
             restoreRoute = "NOT RESTORED: the dropdown no longer offers the role and this check writes no fixture rows directly; the run's deck copy is disposable (built per run by lib/build-local-deck.mjs), so the residue cannot reach a later run";
           }
         }
-        record(capabilityChecks.A6[3], JSON.stringify(restored) === JSON.stringify(before), {
-          actor: choice.actor, role: choice.value, restoreRoute, storedBefore: before, storedAfterRestore: restored,
-          restoredToBefore: JSON.stringify(restored) === JSON.stringify(before),
+        record(capabilityChecks.A6[3], restored === before, {
+          actor: choice.actor, role: choice.value, restoreRoute,
+          storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterRestore: restoredRoles,
+          restoredToBefore: restored === before,
         });
       } finally {
         await browser?.close().catch(() => {});

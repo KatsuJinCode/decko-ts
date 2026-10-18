@@ -207,9 +207,17 @@ export const checks = [
         await signInAs(ctx, creds.admin);
         await createTypedFixture(ctx, { type: 'RichText', name: direct, content: `Harness followed card ${stamp}` });
         // The includer NESTS the nested card, so a follower of the includer is
-        // the recipient the oracle's update_includers scenarios grade.
+        // the recipient the oracle's update_includers scenarios grade. The
+        // inclusion MUST be a `{{nested}}` nest (refresh-references-out.ts
+        // NEST_FULL_STICKY at :415 -> ref_type 'I'), not a `[[link]]` —
+        // nested_card? in follower-resolver.ts:595-606 walks card_references
+        // WHERE ref_type='I', so a wiki link would never satisfy the
+        // inclusion check the indirect-follower walk (lines 549-563) uses
+        // to decide whether the includer's followers are notified when the
+        // nested card changes. The prior instrument used `[[nested]]`,
+        // making the nested-inclusion leg a no-op from the engine's view.
         await createTypedFixture(ctx, { type: 'RichText', name: nested, content: `Harness nested card ${stamp}` });
-        await createTypedFixture(ctx, { type: 'RichText', name: includer, content: `Harness includer ${stamp}\n[[${nested}]]` });
+        await createTypedFixture(ctx, { type: 'RichText', name: includer, content: `Harness includer ${stamp}\n{{${nested}}}` });
         await createTypedFixture(ctx, { type: 'RichText', name: plusHost, content: `Harness plus host ${stamp}` });
         await visit(`/${encodeURIComponent(includer)}`);
 
@@ -255,18 +263,36 @@ export const checks = [
         const storedBodies = Object.fromEntries([direct, includer, nested, plusHost, plusCard].map((name) => [name, fixtureCard(database(), name)?.db_content?.slice(0, 80) ?? null]));
         const template = database().prepare("SELECT id FROM cards WHERE name='follower notification email' AND trash=0").get();
         const allFollowsWritten = Object.values(follows).every((f) => f?.storedOption === '*always');
+        // The witness the capability's CLAIM requires: the indirect-follower
+        // walk (follower-resolver.ts:549-563 + nested_card? :595-606) MUST
+        // reach the includer's follower when the nested card is edited. The
+        // previous instrument graded only the direct leg and recorded the
+        // nested leg without acting on it — a pass that ignored whether the
+        // engine actually walked the inclusion. All three legs now contribute
+        // to the verdict: nested-mail delivered AND namesTheCard is the
+        // RIGHT witness for the nested-inclusion claim. direct-mail and
+        // plus-mail each carry their own leg into the verdict for the same
+        // reason.
+        const inclusionRow = includer !== undefined ? database().prepare(
+          "SELECT r.id, r.referer_id, r.referee_id, r.ref_type FROM card_references r " +
+          "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
+          "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0",
+        ).get(includer, nested) : undefined;
         record(capabilityChecks.W5[0],
           allFollowsWritten
           && [legs.direct, legs.nested, legs.plus].every((leg) => leg.status < 400)
           && legs.direct.delivered > 0 && legs.direct.namesTheCard
+          && legs.nested.delivered > 0 && legs.nested.namesTheCard
+          && legs.plus.delivered > 0 && legs.plus.namesTheCard
           && template !== undefined,
           {
             actor: member.name, mailArmed: mail.enabled, recipient: member.email,
             follows, legs, storedBodies,
             notificationTemplateRow: template ?? null,
             allFollowRulesWritten: allFollowsWritten,
+            inclusionReference: inclusionRow ?? null,
             legsMeasured: ['direct', 'nested', 'plus'],
-            note: 'the direct leg is the capability\'s claim; the nested (includer) and plus legs are the two other shapes the oracle\'s update_includers scenarios name, recorded separately',
+            note: 'every leg is now part of the capability\'s claim; the direct leg covers direct followers, the nested leg exercises the indirect-follower walk through a {{inclusion}} reference the prior [[link]] fixture never satisfied, and the plus leg covers the followed card\'s +*type right',
             raw: captureEvidence(await page.content(), { check: 'content-flows-follower-mail' }),
           });
       } catch (error) {
