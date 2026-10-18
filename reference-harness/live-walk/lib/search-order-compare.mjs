@@ -362,9 +362,9 @@ export async function verifyCardsOnly(verdict, baseA, baseB, { fetchImpl = fetch
   return verdict;
 }
 
-/** The full walk keeps terms and surfaces sequential on each origin.
- *  Independent origins answer the same step together; one origin never
- *  receives overlapping requests, including when both labels name it. */
+/** The full walk: discover both hosts' endpoints, then probe both surfaces
+ *  on both hosts, term by term, strictly sequentially. Returns the report
+ *  object; callers print and/or persist it. */
 export async function walkAndCompare(
   hostA,
   hostB,
@@ -376,13 +376,8 @@ export async function walkAndCompare(
   } = {},
 ) {
   const bases = { A: String(hostA).replace(/\/$/, ""), B: String(hostB).replace(/\/$/, "") };
-  let sameOrigin = true;
-  try { sameOrigin = new URL(bases.A).origin === new URL(bases.B).origin; } catch { /* discovery reports invalid bases */ }
-  const paired = async capture => sameOrigin
-    ? [await capture("A"), await capture("B")]
-    : Promise.all(["A", "B"].map(capture));
-  const discovery = { A: null, B: null };
-  await paired(async side => {
+  const discovery = {};
+  for (const side of ["A", "B"]) {
     try {
       const res = await getText(fetchImpl, bases[side], homePath, timeoutMs);
       const endpoints = res.status === 200
@@ -397,7 +392,7 @@ export async function walkAndCompare(
     } catch (e) {
       discovery[side] = { base: bases[side], ok: false, error: `home page request failed: ${e?.message ?? e}` };
     }
-  });
+  }
   const failedDiscovery = ["A", "B"].filter((s) => !discovery[s].ok);
   if (failedDiscovery.length > 0) {
     return { hostA: bases.A, hostB: bases.B, discovery, probes: [], summary: null, discoveryFailed: failedDiscovery };
@@ -414,9 +409,12 @@ export async function walkAndCompare(
   for (const term of terms) {
     const surfaces = {};
     for (const surface of ["autocomplete", "results"]) {
-      const [capA, capB] = await paired(side => surface === "autocomplete"
-        ? captureAutocomplete(fetchImpl, bases[side], discovery[side].completepath, term, { timeoutMs })
-        : captureResultsPage(fetchImpl, bases[side], discovery[side].formAction, term, { timeoutMs }));
+      const capA = surface === "autocomplete"
+        ? await captureAutocomplete(fetchImpl, bases.A, discovery.A.completepath, term, { timeoutMs })
+        : await captureResultsPage(fetchImpl, bases.A, discovery.A.formAction, term, { timeoutMs });
+      const capB = surface === "autocomplete"
+        ? await captureAutocomplete(fetchImpl, bases.B, discovery.B.completepath, term, { timeoutMs })
+        : await captureResultsPage(fetchImpl, bases.B, discovery.B.formAction, term, { timeoutMs });
       surfaces[surface] = await verifyCardsOnly(verdictForCapture(capA, capB), bases.A, bases.B, { fetchImpl, timeoutMs });
     }
     probes.push({ term, surfaces });

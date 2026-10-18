@@ -10,10 +10,8 @@ differences are BEHAVIOR or just DATA.
 
 ## What it walks
 
-Two surfaces per host, per probe term, sequentially within each origin.
-The two independent origins answer the same step together; each receives
-at most one outstanding request. If both labels name the same origin,
-their requests remain sequential too:
+Two surfaces per host, per probe term, strictly sequentially (a person
+typing, not a load test):
 
 - **autocomplete** — the navbox's `data-completepath` (read off the host's
   own rendered home page, never assumed; stock Decko declares
