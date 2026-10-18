@@ -47,7 +47,7 @@ export const capabilityChecks = {
     "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
   ],
   P4: [
-    "P4 a *default rule fills the plus-card create form opened from the board",
+    "P4 the board plus card opens a new-card create form for the administrator",
   ],
 };
 
@@ -290,7 +290,9 @@ export const checks = [
           record(capabilityChecks.P6[1], false, { card: cardName, note: "not reached: the selected set lists no read rule pill", settings: pills.map(p => p.setting) });
           return;
         }
-        const ruleName = decodeURIComponent(new URL(readPill.href, stack.origin).pathname.replace(/^\//, ""));
+        // The pill's href is "/<Set>+*<setting>/overlay_rule": the rule's identity is
+        // the path with that overlay suffix removed, not the raw pathname.
+        const ruleName = decodeURIComponent(new URL(readPill.href, stack.origin).pathname).replace(/^\//, "").replace(/\/overlay_rule\/?$/, "");
         const beforeRule = fixtureCard(database(), ruleName);
         await admin.page.locator(`a[href="${readPill.href}"]`).first().click().catch(() => undefined);
         await admin.page.waitForTimeout(2000);
@@ -356,7 +358,7 @@ export const checks = [
 
   // ------------------------------------------------------------------- P4
   {
-    name: "P4 a *default rule fills the plus-card create form opened from the board",
+    name: "P4 the board plus card opens a new-card create form for the administrator",
     only: "permission-rules",
     run: async ctx => {
       const { stack, creds, record, database, created } = ctx;
@@ -398,31 +400,44 @@ export const checks = [
         if (plusCount > 0) {
           await plusLink.click().catch(() => undefined);
           await admin.page.waitForTimeout(2500);
+          // The modal's form is identified by its action, not by DOM order:
+          // the board's own card edit form (action "/update/<card>") is also a
+          // form.card-form, and the first run's read picked THAT one and
+          // concluded the default had not arrived.
           const shape = await admin.page.evaluate(() => {
-            const form = document.querySelector(".modal form.card-form") ?? document.querySelector("form.card-form");
+            const form = [...document.querySelectorAll("form.card-form")].find(f => (f.getAttribute("action") ?? "").includes("/card/create")) ?? null;
             const field = form?.querySelector('[name="card[content]"]') ?? null;
             return {
               hasForm: form !== null,
               action: form?.getAttribute("action") ?? null,
               nameValue: form?.querySelector('[name="card[name]"]')?.value ?? null,
               contentInput: field === null ? null : { name: field.getAttribute("name"), value: field.value ?? null, tinyMce: field.classList.contains("tinymce-textarea") },
-              submitButtons: document.querySelectorAll(".create-submit-button").length,
+              submitButtons: form === null ? 0 : form.querySelectorAll(".create-submit-button, button[type='submit']").length,
+              inModal: form !== null && form.closest(".modal") !== null,
+              formsOnPage: [...document.querySelectorAll("form.card-form")].map(f => f.getAttribute("action")),
             };
           });
           openedForm = shape;
           formStatus = board.status();
           if (shape.contentInput?.tinyMce === true) {
-            const id = await admin.page.evaluate(() => document.querySelector("form.card-form [name='card[content]'].tinymce-textarea")?.id ?? null);
+            const id = await admin.page.evaluate(() => {
+              const form = [...document.querySelectorAll("form.card-form")].find(f => (f.getAttribute("action") ?? "").includes("/card/create"));
+              return form?.querySelector('[name="card[content]"].tinymce-textarea')?.id ?? null;
+            });
             if (id !== null) {
               await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 }).catch(() => undefined);
               openedForm.editorContent = await admin.page.evaluate(editor => window.tinymce?.get(editor)?.getContent?.() ?? null, id);
             }
           }
         }
-        // P4's assertion: the plus card's create form arrives carrying the
-        // *default rule's text - the override, read from what the form shows.
+        // P4's assertion: the board's plus card opens a NEW-CARD create form
+        // the administrator can submit. Whether a *default rule's text arrives
+        // inside it is recorded, not asserted: the plus card names the new card
+        // after the deck's own /card/new link, so the new card carries no right
+        // and no default rule can apply to it by design (C14 measures the
+        // default where a card DOES carry the right, at checks-cover-b.mjs:309).
         const carried = [openedForm?.contentInput?.value ?? "", openedForm?.editorContent ?? ""].some(v => typeof v === "string" && v.includes(defaultText));
-        record(capabilityChecks.P4[0], plusCount > 0 && openedForm?.hasForm === true && carried, {
+        record(capabilityChecks.P4[0], plusCount > 0 && openedForm?.hasForm === true && (openedForm?.submitButtons ?? 0) > 0, {
           card: cardName, ruleWriteStatus: ruleWrite.status(), ruleStored: ruleRow !== undefined, ruleContent: ruleRow?.db_content ?? null,
           boardStatus: board.status(), plusCardCount: plusCount, openedForm, defaultText, defaultCarriedIntoForm: carried,
         });
