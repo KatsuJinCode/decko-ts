@@ -130,7 +130,7 @@ import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
-import { jsonViewSearchParams } from "./dist/src/server/worker-shared-surface.js";
+import { jsonViewSearchParams, mapRenderError } from "./dist/src/server/worker-shared-surface.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -2960,7 +2960,16 @@ async function matchingCardNames(renderEngine, term, contains) {
   return names;
 }
 
-async function cardRecordJson(cardName, renderEngine = render) {  const record = await fetcher.fetchByName(cardName);
+async function cardRecordJson(cardName, renderEngine = render) {
+  let record;
+  try {
+    record = await fetcher.fetchByName(cardName);
+  } catch (error) {
+    // Numeric and codename marks raise the same NotFound family the Worker
+    // entries already map. Keep genuine database/runtime failures as500.
+    if (mapRenderError(error instanceof Error ? error.message : String(error)).status !== 404) throw error;
+    return jsonResponse(404, { error: "card not found", name: cardName });
+  }
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
   }
