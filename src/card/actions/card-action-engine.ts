@@ -3481,7 +3481,7 @@ export class CardActionEngine {
           currentName !== undefined && currentName.key !== nameAfter?.key
             ? new Map([[currentName.key, savedRow.id]])
             : undefined;
-        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true, overlay);
+        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true, overlay, row);
       }
     }
     if (nameChanged) await this.refreshDescendantCaches(row.id);

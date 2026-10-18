@@ -448,8 +448,14 @@ export async function cascadeReadRuleAfterRuleSave(
   ruleCardRow: CardsRow,
   nameOrTrashChanging: boolean,
   overlay?: RuleLookupOverlay,
+  priorRuleCardRow?: CardsRow,
 ): Promise<void> {
   if (!nameOrTrashChanging) return; // read.rb:11
+  // This event belongs to set/right/read.rb, not every Setting rule.
+  // A rename keeps the event composed from its pre-save read-rule binding.
+  const readId = await typeIdByCodename(deps, "read");
+  if (readId === undefined ||
+      (ruleCardRow.right_id !== readId && priorRuleCardRow?.right_id !== readId)) return;
   if (!(await isStandardRuleCardRow(deps, ruleCardRow))) return; // when: :rule?
   const changed = new Set<number>();
 
