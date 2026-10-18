@@ -340,14 +340,23 @@ export const checks = [
           return;
         }
         const isTiny = await contentField.evaluate(el => el.classList.contains("tinymce-textarea"));
-        const wanted = "[[Administrator]]";
-        if (isTiny) {
+        // jQuery serializeArray normalizes the checkbox carrier to CRLF.
+        const wanted = "Administrator\r\n";
+        const permissionEditor = editor.locator('.perm-editor');
+        if (await permissionEditor.count() > 0) {
+          // This editor owns a hidden content carrier. Drive its real role
+          // controls instead of leaving that hidden field unchanged.
+          await permissionEditor.locator('input.perm-checkbox-button[value="Anyone"]').uncheck();
+          await permissionEditor.locator('input.perm-checkbox-button[value="Administrator"]').check();
+        } else if (isTiny) {
           const id = await contentField.getAttribute("id");
           await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 });
           await admin.page.evaluate(([editor, text]) => { const instance = window.tinymce.get(editor); instance.setContent(text); instance.save(); }, [id, wanted]);
         } else if (await contentField.isVisible()) {
           await contentField.fill(wanted);
         }
+        // The rule-submit handler requires an explicit, card-specific Set.
+        await editor.locator('input[name="card[name]"][value="'+ruleName+'"]').check();
         const action = new URL(await editor.getAttribute("action"), stack.origin);
         const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && r.request().method() === "POST" && [action.pathname, "/card/update"].includes(new URL(r.url()).pathname), { timeout: 20000 })
           .then(response => ({ response }), error => ({ error }));
@@ -357,7 +366,7 @@ export const checks = [
         // scrolled to and clicked with force: a plain click waits out Playwright's
         // actionability timeout when the overlay has not settled, and a swallowed
         // click timeout looks identical to "the form never submitted".
-        const save = editor.locator("button[data-cy='save'], button[type='submit']").first();
+        const save = editor.locator("button[data-cy='save']").first();
         await save.scrollIntoViewIfNeeded().catch(() => undefined);
         await save.click({ force: true, timeout: 15000 }).catch(error => { submitError = String(error?.message ?? error).slice(0, 120); });
         const observed = await pending;
