@@ -187,15 +187,27 @@ export const checks = [
         const roles = codenames.role === null ? [] : database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY name").all(codenames.role.id);
         const roleNames = new Set(roles.map(r => r.name));
 
-        // The actor's stored enabled-roles selection: the pointer card's row,
-        // its references (the selection itself) and its content. Snapshotted,
-        // not assumed, because the control's storage shape is the claim under
-        // test.
+        // The actor's stored roles, snapshotted rather than assumed. Two
+        // places can hold them: the `<actor>+*enabled roles` pointer card the
+        // served form addresses, and the role-membership references the deck
+        // stores (a `<role>+*members` list card referencing its holders, per
+        // lib/seed-local-accounts.mjs:12-16 and read-rules rolePartyStatement).
+        // The navbar renders that pointer card from the session, so the card
+        // row may legitimately not exist; the reference fingerprint is what
+        // proves a write.
         const snapshot = () => {
           const card = fixtureCard(database(), enabledRolesName);
+          const holders = database().prepare("SELECT referer_id FROM card_references WHERE referee_id=? AND ref_type='L'").all(creds.admin.id);
+          const memberships = holders.map(row => {
+            const referer = database().prepare("SELECT id,name,left_id,right_id,type_id FROM cards WHERE id=?").get(row.referer_id);
+            if (referer === undefined) return { refererId: row.referer_id, role: null };
+            const left = referer.left_id === null ? null : database().prepare("SELECT id,name FROM cards WHERE id=?").get(referer.left_id);
+            return { refererId: referer.id, refererName: referer.name, roleId: referer.left_id, roleName: left?.name ?? null };
+          }).sort((a, b) => String(a.roleName ?? a.refererId).localeCompare(String(b.roleName ?? b.refererId)));
           return {
             pointerCard: card === undefined ? null : { id: card.id, name: card.name, type_id: card.type_id, content: card.db_content },
-            references: card === undefined ? [] : database().prepare("SELECT id,referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(card.id),
+            pointerReferences: card === undefined ? [] : database().prepare("SELECT id,referee_key,referee_id,ref_type FROM card_references WHERE referer_id=?").all(card.id),
+            memberships,
           };
         };
         const before = snapshot();
@@ -267,20 +279,42 @@ export const checks = [
         // role checked), and the restore leg must put it back.
         const choice = found.find(box => String(box.value).toLowerCase() !== "administrator") ?? found[0];
         const postPath = new URL(choice.formAction ?? stack.origin, stack.origin).pathname;
-        const clickAndWait = async () => {
-          const box = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
+        // The boxes live inside the account dropdown, which ships closed. The
+        // previous run clicked the input with force and got no POST at all; the
+        // click landed on a closed dropdown, not on the control. Open the
+        // dropdown the way a person does, then click the visible box.
+        const openRolesDropdown = async () => {
+          const toggle = page.locator(".navbar a.dropdown-toggle").first();
+          const count = await page.locator(".navbar a.dropdown-toggle").count();
+          if (count === 0) return { toggles: 0, opened: false };
+          await toggle.click({ timeout: 10000 }).catch(() => undefined);
+          await page.waitForTimeout(500);
+          return { toggles: count, opened: await page.locator(".navbar .dropdown-menu.show").count() > 0 };
+        };
+        const dropdown = await openRolesDropdown();
+        const locateBox = () => page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
+        const driveClick = async () => {
+          // Re-open the dropdown every time: the surface is re-read between
+          // legs, and a shipped-closed dropdown swallows a forced click (the
+          // first run's no-POST evidence).
+          const opened = await openRolesDropdown();
+          const box = locateBox();
+          const visible = await box.isVisible().catch(() => false);
+          const checkedBefore = await box.isChecked().catch(() => null);
+          if (!visible) return { status: null, error: "the checkbox is not visible with the dropdown open", visible, checkedBefore, checkedAfter: null, dropdown: opened };
           await box.scrollIntoViewIfNeeded().catch(() => undefined);
           const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
             .then(response => ({ response }), error => ({ error }));
-          await box.click({ force: true, timeout: 10000 }).catch(() => undefined);
+          await box.click({ timeout: 10000 }).catch(() => undefined);
+          const checkedAfter = await box.isChecked().catch(() => null);
           const observed = await pending;
-          if (observed.error !== undefined) return { status: null, error: String(observed.error?.message ?? observed.error).slice(0, 140) };
+          if (observed.error !== undefined) return { status: null, error: "no POST to " + postPath, visible, checkedBefore, checkedAfter, dropdown: opened };
           await observed.response.finished();
           await page.waitForTimeout(1000);
-          return { status: observed.response.status(), error: null };
+          return { status: observed.response.status(), error: null, visible, checkedBefore, checkedAfter, dropdown: opened };
         };
 
-        const click = await clickAndWait();
+        const click = await driveClick();
         const afterClick = snapshot();
         const moved = JSON.stringify(afterClick) !== JSON.stringify(before);
         record(capabilityChecks.A6[1],
@@ -288,7 +322,10 @@ export const checks = [
           {
             actor, role: choice.value, surface: choice.surface, fieldName: choice.name,
             formAction: choice.formAction, formClass: choice.formClass, formRemote: choice.formRemote,
-            wasChecked: choice.checked, clickError: click.error, postStatus: click.status,
+            dropdownOpened: click.dropdown.opened, dropdownToggles: click.dropdown.toggles,
+            checkboxVisible: click.visible, wasChecked: choice.checked,
+            checkedBeforeClick: click.checkedBefore, checkedAfterClick: click.checkedAfter,
+            clickError: click.error, postStatus: click.status,
             storedBefore: before, storedAfterClick: afterClick, storedStateMoved: moved,
             raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor }),
           },
@@ -309,24 +346,26 @@ export const checks = [
             tag: b.tagName.toLowerCase(), type: b.getAttribute("type"), cy: b.getAttribute("data-cy"),
             text: (b.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 30), visible: b.offsetParent !== null,
           }))).catch(() => []);
-          const submit = form.locator("button[data-cy='save'], button[type='submit'], input[type='submit']").first();
+          // The autosave form ships no submit control at all (the roles dropdown
+          // renders only the hidden card[content], the type id and the boxes),
+          // so the fallback submits the real form through the DOM with the
+          // served field state. That exercises the endpoint's storage without
+          // the change handler, which is the distinction this leg exists for.
+          const again = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
+            .then(response => ({ response }), error => ({ error }));
+          const submitted = await form.evaluate(f => { f.requestSubmit(); return true; }).catch(() => false);
+          const seen = await again;
           let submitStatus = null, submitError = null;
-          if (await submit.count() > 0) {
-            const again = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
-              .then(response => ({ response }), error => ({ error }));
-            await submit.scrollIntoViewIfNeeded().catch(() => undefined);
-            await submit.click({ force: true, timeout: 10000 }).catch(() => undefined);
-            const seen = await again;
-            if (seen.error === undefined) { await seen.response.finished(); submitStatus = seen.response.status(); }
-            else submitError = String(seen.error?.message ?? seen.error).slice(0, 140);
-            await page.waitForTimeout(1000);
-          }
+          if (seen.error === undefined) { await seen.response.finished(); submitStatus = seen.response.status(); }
+          else submitError = "no POST to " + postPath;
+          await page.waitForTimeout(1000);
           const afterSubmit = snapshot();
           record(capabilityChecks.A6[2],
-            submitStatus !== null && submitStatus < 400 && JSON.stringify(afterSubmit) !== JSON.stringify(before),
+            submitted && submitStatus !== null && submitStatus < 400 && JSON.stringify(afterSubmit) !== JSON.stringify(before),
             {
               actor, role: choice.value, formAction: choice.formAction, controls,
-              submitStatus, submitError, storedBefore: before, storedAfterSubmit: afterSubmit,
+              route: "the served autosave form submitted through the DOM (it renders no submit control)",
+              submitted, submitStatus, submitError, storedBefore: before, storedAfterSubmit: afterSubmit,
               storedStateMoved: JSON.stringify(afterSubmit) !== JSON.stringify(before),
             },
           );
@@ -344,8 +383,8 @@ export const checks = [
           const again = await checkboxInventory(page);
           const stillOffered = again.boxes.some(b => b.name === choice.name && b.value === choice.value);
           if (stillOffered) {
-            restoreRoute = "the same checkbox, clicked again";
-            await clickAndWait();
+            restoreRoute = "the same checkbox, clicked again (dropdown re-opened first)";
+            await driveClick();
             restored = snapshot();
           } else {
             restoreRoute = "the autosave endpoint the control posts, with the control's own field";
