@@ -357,20 +357,27 @@ export const checks = [
           return formLocator;
         };
         const openInlineRoleEditor = async (actorName) => {
-          // The seeded account settings page renders the inline editor
-          // for the signed-in actor. We navigate to the actor's own
-          // account settings URL the role editor is served on; the
-          // release-verification worker's r5 walked it natively (no
-          // CSS-forcing) and observed a working checkbox/reload/cookie
-          // round trip.
-          const response = await page.goto(
-            `${stack.origin}/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*account_settings`,
-            { waitUntil: "load" },
-          );
-          await page.waitForTimeout(1500);
-          const form = await findInlineEnabledRolesForm(actorName);
-          const formCount = await form.count();
-          return { status: response.status(), formCount, pageUrl: page.url() };
+          // The editor is the +*enabled roles :edit_inline slot the navbar's
+          // my_card item renders on EVERY page once can_disable_roles? holds
+          // (render.ts prepareSessionAccountLinks -> sessionRolesInput: the
+          // actor holds more than one current role and *enabled_roles
+          // exists). The Account settings page is tried first (the navbar
+          // Account item's own target); if that page carries no form, the
+          // check falls back to the home page, where the same navbar form
+          // renders. Which page carried it is recorded, not assumed.
+          const tried = [];
+          for (const path of [
+            `/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*account_settings`,
+            `/`,
+          ]) {
+            const response = await page.goto(`${stack.origin}${path}`, { waitUntil: "load" });
+            await page.waitForTimeout(1500);
+            const form = await findInlineEnabledRolesForm(actorName);
+            const formCount = await form.count();
+            tried.push({ path, status: response.status(), formCount });
+            if (formCount > 0) return { status: response.status(), formCount, pageUrl: page.url(), tried };
+          }
+          return { status: tried[0]?.status ?? null, formCount: 0, pageUrl: page.url(), tried };
         };
         const inventoryEnabledRolesCheckboxes = async (actorName) => {
           const form = await findInlineEnabledRolesForm(actorName);
@@ -395,37 +402,103 @@ export const checks = [
         // and is the release-verification worker's separate contract). On
         // this seeded deck the member holds no role, so every role is
         // "unheld" — we therefore seed a benign role the member can
-        // hold, via the deck's own role grant mechanism (a temporary
-        // reference in the role's +*members list, the same shape
-        // seed-local-accounts.mjs:108-115 writes; the grant is reverted
-        // at end so the deck returns to its seeded state).
+        // hold, via the NORMAL Role+members List create API the way a
+        // real grant lands: POST /update/<role>+*members with the list
+        // content containing the member's name. The harness's database
+        // handle is read-only (per the prior instrument's note, run
+        // 01-08-09), so a synthetic card_references INSERT is not the
+        // witness — only the engine-driven path is. The grant is
+        // reverted at end by posting the original list content back.
         const memberActor = creds.member;
         const adminActor = creds.admin;
         const grantableRole = roles.find(r => !powerRoles.has(String(r.name).toLowerCase()));
-        const grantsListIdFor = roleId => database().prepare(
-          "SELECT id FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1",
-        ).get(roleId, codenames.members?.id)?.id ?? null;
         const membersId = codenames.members?.id ?? null;
-        const seedMemberRoleGrant = (roleId) => {
+        const membersListNameFor = roleId => {
           if (membersId === null) return null;
-          const listId = grantsListIdFor(roleId);
-          if (listId === null) return null;
-          database().prepare(
-            "INSERT OR IGNORE INTO card_references (referer_id, referee_id, ref_type) VALUES (?, ?, '')",
-          ).run(listId, memberActor.id);
-          return listId;
+          const listRow = database().prepare(
+            "SELECT id, db_content FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1",
+          ).get(roleId, membersId);
+          return listRow === undefined ? null : { id: listRow.id, content: listRow.db_content ?? "", roleId };
         };
-        const revokeMemberRoleGrant = (roleId) => {
-          if (membersId === null) return;
-          const listId = grantsListIdFor(roleId);
-          if (listId === null) return;
-          database().prepare("DELETE FROM card_references WHERE referer_id=? AND referee_id=?").run(listId, memberActor.id);
+        // NORMAL Role+members List create API: POST /update/<list> with
+        // card[content] = "Name1\nName2" (IdList format, names separated
+        // by newlines, brackets stripped — see pointer-list.ts:94
+        // rawItemStrings). The rolePartyStatement
+        // (read-rules.ts:285-301) reads refs.referee_id from card_references
+        // joined to the list; the engine's save path writes both the
+        // list content AND the canonical card_references row (with
+        // referee_key=NULL — the same shape seed-local-accounts.mjs:111
+        // uses). The harness's database handle is read-only, so the only
+        // way to add a member to a role is through the engine.
+        const postListContent = async (listId, content) => {
+          // The list card's name is `<role>+*members`; the engine's
+          // /update route accepts the form-encoded card[content] and
+          // writes through the list-content standardizeIdListContent
+          // path (card-action-engine.ts:5624).
+          const listRow = database().prepare(
+            "SELECT name FROM cards WHERE id=? AND trash=0",
+          ).get(listId);
+          if (listRow === undefined) return { status: 0, error: "list not found" };
+          const name = listRow.name;
+          const url = `/update/${encodeURIComponent(name.replace(/ /g, "_"))}`;
+          const response = await page.context().request.post(`${stack.origin}${url}`, {
+            headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+            data: new URLSearchParams({
+              "card[content]": content,
+              "success[redirect]": "true",
+            }).toString(),
+            maxRedirects: 0,
+          });
+          return { status: response.status(), location: response.headers()["location"] ?? null };
+        };
+        const seedMemberRoleGrant = async (role) => {
+          if (membersId === null) return { listId: null, before: null, after: null, post: null };
+          const listInfo = membersListNameFor(role.id);
+          if (listInfo === null) return { listId: null, before: null, after: null, post: null };
+          const beforeContent = listInfo.content;
+          const lines = beforeContent.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+          if (lines.includes(memberActor.name)) {
+            return { listId: listInfo.id, before: beforeContent, after: beforeContent, post: { status: 200, location: null, note: "member was already granted" } };
+          }
+          const newContent = beforeContent === "" ? memberActor.name : `${beforeContent}\n${memberActor.name}`;
+          const post = await postListContent(listInfo.id, newContent);
+          return { listId: listInfo.id, before: beforeContent, after: newContent, post };
+        };
+        const revokeMemberRoleGrant = async (role, listIdSnapshot, beforeContent) => {
+          if (membersId === null || listIdSnapshot === null) return null;
+          return postListContent(listIdSnapshot, beforeContent ?? "");
         };
         // We give the member a benign, non-power role grant for the
         // duration of the test. The grant is dropped at the end of the
-        // check (the `try/finally` below) so the deck returns to its
-        // seeded state.
-        const seededGrantListId = grantableRole ? seedMemberRoleGrant(grantableRole.id) : null;
+        // check (the `try/finally` below) by posting the original
+        // content back, so the deck returns to its seeded state.
+        // ORDER MATTERS: the grant POST is an /update write, so it needs an
+        // actor that may edit the role's +*members list — the check signs in
+        // as the ADMIN first, posts the grant, verifies the canonical rows,
+        // and only then signs in as the member for the click legs. (The
+        // prior staged shape posted the grant before any sign-in, i.e. as an
+        // anonymous visitor, which the engine refuses.)
+        await signInActor(page, stack.origin, adminActor);
+        const seedGrant = grantableRole ? await seedMemberRoleGrant(grantableRole) : { listId: null, before: null, after: null, post: null };
+        const seededGrantListId = seedGrant.listId;
+        // Canonical-grant verification: rolePartyStatement reads
+        // card_references joined to the members list, so the grant only
+        // exists if BOTH the list content names the member AND the
+        // canonical reference row (referee_key NULL) is present. A grant
+        // that posts green but stores neither row is not a grant; the
+        // check refuses to build the click leg on it.
+        const canonicalGrantRows = listId => listId === null ? [] : database().prepare(
+          "SELECT r.referer_id, r.referee_id, r.referee_key, r.ref_type " +
+          "FROM card_references r WHERE r.referer_id=? AND r.referee_id=? AND r.trash=0",
+        ).all(listId, memberActor.id);
+        const grantListRowAfterSeed = seededGrantListId === null ? null : database().prepare(
+          "SELECT db_content FROM cards WHERE id=? AND trash=0",
+        ).get(seededGrantListId) ?? null;
+        const grantVerified =
+          seedGrant.post !== null && seedGrant.post.status !== undefined && seedGrant.post.status < 400
+          && grantListRowAfterSeed !== null
+          && (grantListRowAfterSeed?.db_content ?? "").split("\n").map(s => s.trim()).includes(memberActor.name)
+          && canonicalGrantRows(seededGrantListId).length > 0;
         // The A6 surface now: navigate to the member's account settings
         // page, read the inline :edit_inline view's role checkboxes,
         // record the witness chain (cookie -> decoder -> session card
@@ -449,6 +522,10 @@ export const checks = [
           powerRoles: [...powerRoles],
           fixture: "the seeded member (neutral, no role grant) with a one-test-time grant of a benign non-power role",
           member: { name: memberActor.name, id: memberActor.id, seededGrantRoleName: grantableRole?.name ?? null, seededGrantListId },
+          fixtureGrant: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name, listId: seededGrantListId, seededContent: seedGrant.before, postedContent: seedGrant.after, post: seedGrant.post } : null,
+          grantVerified,
+          grantCanonicalReferenceRows: canonicalGrantRows(seededGrantListId),
+          grantListRowAfterSeed,
           storeGrantMemberships: seedGrantMemberships,
           inlineEditor: { status: initialVisit.status, formCount: initialVisit.formCount, pageUrl: initialVisit.pageUrl },
           inlineFormCheckboxes: allBoxes.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display })),
@@ -460,20 +537,29 @@ export const checks = [
         });
 
         if (clickable.length === 0) {
+          // Revoke the temporary grant before leaving: the fixture must not
+          // outlive the check even when the click leg cannot be driven.
+          let grantRevokedHere = null;
+          if (grantableRole && seededGrantListId !== null) {
+            await signInActor(page, stack.origin, adminActor).catch(() => undefined);
+            grantRevokedHere = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
+          }
           record(capabilityChecks.A6[1], false, {
             note: "no clickable non-power role box is served in the inline :edit_inline view the member's account_settings page renders; the click leg cannot be driven",
             roleBoxes: roleBoxes.map(b => ({ value: b.value, display: b.display })),
             notClickable: hidden.map(b => ({ value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "hidden by the served stylesheet" })),
             fixtureGrant: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name, listId: seededGrantListId } : null,
+            grantVerified,
             storeGrantMemberships: seedGrantMemberships,
             initialCookieSnapshot: seedSnapshot,
             unmeasured: "the +*enabled roles control's full round trip (cookie write, reload, fresh request) is unmeasured here because the served inline :edit_inline view did not offer a clickable non-power box",
           });
           record(capabilityChecks.A6[2], false, { note: "not reached: no clickable non-power role checkbox is served" });
-          record(capabilityChecks.A6[3], true, {
-            note: "nothing was changed, so the fixture is unchanged",
+          record(capabilityChecks.A6[3], grantRevokedHere === null || (grantRevokedHere.status !== undefined && grantRevokedHere.status < 400), {
+            note: "nothing was changed in the visitor session, so the fixture is unchanged; the temporary grant's revoke is recorded",
             initialCookieSnapshot: seedSnapshot,
             storeGrantMemberships: seedGrantMemberships,
+            grantRevokePost: grantRevokedHere,
           });
           return;
         }
@@ -523,10 +609,19 @@ export const checks = [
         const after = await enabledRolesSnapshot(actorCreds.name);
         const cookieContent = (await cookieHeaderFromContext()) ?? null;
         const moved = after !== before;
-        record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved && checkedAfter === true, {
-          actor: choice.actor, role: choice.value, fieldName: choice.name,
+        // Direction-aware: the granted role's box can render EITHER state
+        // before the click (ensure_roles fills the session card's blank
+        // content with every current role at render time, and the visitor
+        // session may or may not already carry a selection), so the honest
+        // predicate is "the rendered checkbox flipped AND the visitor-session
+        // content moved", not "the box ended checked".
+        const expectedCheckedAfter = checkedBefore === null ? null : !checkedBefore;
+        const renderedFlipped = checkedBefore !== null && checkedAfter !== null && checkedAfter === expectedCheckedAfter;
+        record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved && renderedFlipped, {
+          actor: actorCreds.name, role: choice.value, fieldName: choice.name,
           checkboxVisible: true,
           checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
+          expectedCheckedAfter, renderedFlipped,
           clickError, postStatus, reload,
           storeEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
           storedEnabledRolesMoved: moved, expectedRoleAdded: choice.value,
@@ -571,7 +666,7 @@ export const checks = [
           record(capabilityChecks.A6[2],
             submitted && submitStatus !== null && submitStatus < 400 && submitSnapshot !== before,
             {
-              actor: choice.actor, role: choice.value, controls,
+              actor: actorCreds.name, role: choice.value, controls,
               route: "the served autosave form submitted through the DOM (it renders no submit control)",
               submitted, submitStatus,
               storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterSubmit: afterSubmit,
@@ -607,14 +702,32 @@ export const checks = [
           restored = await enabledRolesSnapshot(actorCreds.name);
         }
         // Drop the temporary role grant so the seeded deck is unchanged.
-        if (grantableRole && membersId !== null) {
-          try { revokeMemberRoleGrant(grantableRole.id); } catch { /* the run's deck is disposable */ }
+        // The revoke is a /update write too, so it runs as the ADMIN (the
+        // member session cannot edit the role's +*members list), through the
+        // same normal List create API the seed used, posting the ORIGINAL
+        // content back. The db then confirms the list row holds exactly the
+        // pre-test content — a revoke that posts green but leaves the member
+        // named in the list is recorded as a failed restore, not assumed.
+        let grantRevoke = null, grantListRowAfterRevoke = null;
+        if (grantableRole && seededGrantListId !== null) {
+          await signInActor(page, stack.origin, adminActor).catch(() => undefined);
+          grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
+          grantListRowAfterRevoke = database().prepare(
+            "SELECT db_content FROM cards WHERE id=? AND trash=0",
+          ).get(seededGrantListId) ?? null;
         }
-        record(capabilityChecks.A6[3], restored === before, {
-          actor: choice.actor, role: choice.value, restoreRoute,
+        const grantRestored = seededGrantListId === null || (
+          grantRevoke !== null && grantRevoke.status !== undefined && grantRevoke.status < 400
+          && grantListRowAfterRevoke !== null
+          && (grantListRowAfterRevoke?.db_content ?? "") === (seedGrant.before ?? "")
+          && canonicalGrantRows(seededGrantListId).length === 0
+        );
+        record(capabilityChecks.A6[3], restored === before && grantRestored, {
+          actor: actorCreds.name, role: choice.value, restoreRoute,
           storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterRestore: restoredRoles,
           restoredToBefore: restored === before,
-          grantRevoked: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name } : null,
+          grantRevoked: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name, listId: seededGrantListId, restoredContent: grantListRowAfterRevoke?.db_content ?? null, post: grantRevoke } : null,
+          grantRestored,
         });
       } finally {
         await browser?.close().catch(() => {});

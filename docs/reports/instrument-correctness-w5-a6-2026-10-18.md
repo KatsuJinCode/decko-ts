@@ -96,12 +96,26 @@ clean tree:
 - `legs.plus.delivered > 0 && legs.plus.namesTheCard` — plus mail fires AND names the plus card
 - `template !== undefined`, all legs' HTTP POSTs status<400, `allFollowsWritten === true`
 
+**CORRECTION (2026-10-18, per the release-verification worker): the
+PASS prediction below is a PREDICTED-FROM-CODE-TRACE verdict, NOT a
+measured pass — and per the standing rule, no predicted source-only
+verdict is accepted as an actual pass. The W5 capability remains
+OPEN until a fresh selected capture measures it on the corrected
+instrument. The nested predicate also checks rendered
+inclusion/ref_type I instead of actual mail delivery — the witness
+correction is in progress with the A6 author chain.**
+
 The expected verdict, given the engine's known-good render of
 inclusions (cards' `d0-card-body`/`card-slot` class system) and
 `refresh-references-out.ts:415`'s `NEST_FULL_STICKY` producing
-`ref_type='I'`, is **PASS** on every leg and therefore **PASS** on
-`W5[0]`. This is the verdict under the corrected witness. There is no
-engine finding to file for W5 on this surface.
+`ref_type='I'`, was **PREDICTED PASS** on every leg and therefore
+**PREDICTED PASS** on `W5[0]`. This prediction is superseded by the
+release-verification worker's diagnosis: the nested predicate checks
+rendered inclusion/ref_type I instead of actual mail, so the
+prediction does not close the stated W5 capability. The actual
+verdict awaits the fresh selected capture when the A6 source is
+clean. There is no accepted engine finding either way for W5 on this
+surface from a code trace alone.
 
 The earlier baseline (which the user expected me to reproduce first
 end-to-end) was not captured cleanly here either, for the same

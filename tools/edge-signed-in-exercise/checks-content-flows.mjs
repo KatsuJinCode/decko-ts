@@ -152,15 +152,32 @@ export const checks = [
       const stamp = Date.now().toString(36);
       const member = creds.member;
 
-      // Three distinct recipients so each leg's mail can be attributed: the
-      // followed card itself, a card the followed card NESTS (the indirect
-      // walk in follower-resolver.ts), and a followed card's plus card.
+      // The oracle this capability is graded against is the installed
+      // update_includers.feature (decko-ruby-reference/decko/features/):
+      //   Scenario "Watcher should be notified of updates to included plus
+      //   card" — the follower of a card IS mailed when an INCLUDED PLUS
+      //   FIELD of that card is created/edited;
+      //   Scenario "Should not notify of included but not plussed card" and
+      //   "Should not notify of plussed but not included card" — a plain
+      //   {{nest}} (no plus ancestry) and an unnested plus card are both
+      //   SILENT.
+      // The positive fixtures are therefore INCLUDED PLUS FIELDS (a plus
+      // card the followed card nests through {{+field}}), backed by the
+      // proper *follow_fields rule (the *all+*follow fields default,
+      // content *nests; seeded per card when the deck lacks the default),
+      // and every positive assertion grades ACTUAL MAIL DELIVERY naming the
+      // changed card. The rendered slot / ref_type='I' row are recorded as
+      // evidence but no positive rests on them — a rendered slot proves
+      // nothing about mail (that was the superseded witness). The two
+      // oracle negatives are carried as their own assertions.
       const direct = `Harness_CF_Followed_${stamp}`;
       const includer = `Harness_CF_Includer_${stamp}`;
-      const nested = `Harness_CF_Nested_${stamp}`;
+      const authorPlus = `${includer}+author_${stamp}`;          // included plus field of the followed includer
+      const nestedStandalone = `Harness_CF_Nested_${stamp}`;     // included ({{}}) but NOT plussed — the silent negative
+      const stray = `${includer}+stray_${stamp}`;                // plussed but NOT included — the other silent negative
       const plusHost = `Harness_CF_Plus_Host_${stamp}`;
-      const plusCard = `${plusHost}+*type`;
-      for (const name of [direct, includer, nested, plusHost, plusCard]) if (!created.includes(name)) created.push(name);
+      const detailPlus = `${plusHost}+detail_${stamp}`;          // included plus field of the followed plus host
+      for (const name of [direct, includer, authorPlus, nestedStandalone, stray, plusHost, detailPlus]) if (!created.includes(name)) created.push(name);
 
       /** The follow link on the board's Engage tab writes the rule
        *  "<card>+*self+<viewer>+*follow" = *always (the storage the W1/W3
@@ -205,23 +222,71 @@ export const checks = [
         subject: m.subject, seq: m.seq, mentionsCard: null, head: (m.textBody ?? '').replace(/\s+/g, ' ').slice(0, 200),
       }));
 
+      /** The *follow_fields rule state the indirect walk reads
+       *  (follower-resolver.ts followedField -> followFieldsRuleContent):
+       *  the *all+*follow fields default row first; the deck may instead
+       *  carry (or be given) a per-card <host>+*self+*follow fields rule.
+       *  A positive leg without a resolvable rule cannot mail regardless of
+       *  the engine, so the rule the walk reads is part of the record. */
+      const followFieldsId = database().prepare("SELECT id FROM cards WHERE codename='follow_fields' AND trash=0 ORDER BY id LIMIT 1").get()?.id ?? null;
+      const allCardId = database().prepare("SELECT id FROM cards WHERE codename='all' AND trash=0 ORDER BY id LIMIT 1").get()?.id ?? null;
+      const ruleRowFor = (setId) => (followFieldsId === null || setId === undefined || setId === null) ? null : database().prepare(
+        "SELECT id, db_content FROM cards WHERE left_id=? AND right_id=? AND trash=0 ORDER BY id LIMIT 1",
+      ).get(setId, followFieldsId) ?? null;
+      const selfSetIdFor = (cardName) => database().prepare(
+        "SELECT f.id FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=(SELECT id FROM cards WHERE name=? AND trash=0) AND r.codename='self' AND f.trash=0 LIMIT 1",
+      ).get(cardName)?.id ?? null;
+      const allRuleRow = ruleRowFor(allCardId);
+      const allRuleCoversNests = allRuleRow !== null && allRuleRow.db_content.split('\n').map(s => s.trim()).some(s => s !== '' && (s === '*nests' || s === '*nest'));
+      const ensureFollowFields = async (host) => {
+        if (allRuleCoversNests) return { host, source: '*all+*follow fields', content: allRuleRow.db_content, written: false };
+        const existing = ruleRowFor(selfSetIdFor(host));
+        if (existing !== null) return { host, source: `${host}+*self+*follow fields`, content: existing.db_content, written: false };
+        // No default and no per-card rule: write the per-card rule the same
+        // way a user's rule editor does (POST /update/<set>+*follow fields).
+        const ruleName = `${host}+*self+*follow fields`;
+        const write = await page.context().request.post(`${stack.origin}/update/${encodeURIComponent(ruleName)}`, {
+          headers: { origin: stack.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
+          data: new URLSearchParams({ 'card[content]': '*nests', 'success[redirect]': 'true' }).toString(),
+          maxRedirects: 0,
+        });
+        const after = ruleRowFor(selfSetIdFor(host));
+        return { host, source: ruleName, content: after?.db_content ?? null, written: true, writeStatus: write.status(), stored: after !== null };
+      };
+
       try {
         await signInAs(ctx, creds.admin);
         await createTypedFixture(ctx, { type: 'RichText', name: direct, content: `Harness followed card ${stamp}` });
-        // The includer NESTS the nested card, so a follower of the includer is
-        // the recipient the oracle's update_includers scenarios grade. The
-        // inclusion MUST be a `{{nested}}` nest (refresh-references-out.ts
-        // NEST_FULL_STICKY at :415 -> ref_type 'I'), not a `[[link]]` —
-        // nested_card? in follower-resolver.ts:595-606 walks card_references
-        // WHERE ref_type='I', so a wiki link would never satisfy the
-        // inclusion check the indirect-follower walk (lines 549-563) uses
-        // to decide whether the includer's followers are notified when the
-        // nested card changes. The prior instrument used `[[nested]]`,
-        // making the nested-inclusion leg a no-op from the engine's view.
-        await createTypedFixture(ctx, { type: 'RichText', name: nested, content: `Harness nested card ${stamp}` });
-        await createTypedFixture(ctx, { type: 'RichText', name: includer, content: `Harness includer ${stamp}\n{{${nested}}}` });
-        await createTypedFixture(ctx, { type: 'RichText', name: plusHost, content: `Harness plus host ${stamp}` });
+        // The includer NESTS two things: its own PLUS FIELD ({{+author}} — the
+        // positive shape) and a standalone card ({{nested}} — included but not
+        // plussed, the negative shape). Both store ref_type='I' rows; only
+        // the plus field has the left-ancestry the indirect walk follows.
+        await createTypedFixture(ctx, { type: 'RichText', name: nestedStandalone, content: `Harness nested card ${stamp}` });
+        await createTypedFixture(ctx, { type: 'RichText', name: includer, content: `Harness includer ${stamp}\n{{+author_${stamp}}}\n{{${nestedStandalone}}}` });
+        await createTypedFixture(ctx, { type: 'RichText', name: authorPlus, content: `James Joyce ${stamp}` });
+        await createTypedFixture(ctx, { type: 'RichText', name: stray, content: `plussed but not included ${stamp}` });
+        await createTypedFixture(ctx, { type: 'RichText', name: plusHost, content: `Harness plus host ${stamp}\n{{+detail_${stamp}}}` });
+        await createTypedFixture(ctx, { type: 'RichText', name: detailPlus, content: `detail body ${stamp}` });
+        // Re-touch both hosts: the {{+field}} nests were first parsed when
+        // the plus cards did not exist yet, so the hosts are rewritten once
+        // (same content) to force a fresh reference pass over existing
+        // targets. This happens BEFORE the member follows, so none of it can
+        // contaminate the graded legs.
+        await editAsAdmin(includer, `Harness includer ${stamp}\n{{+author_${stamp}}}\n{{${nestedStandalone}}}`);
+        await editAsAdmin(plusHost, `Harness plus host ${stamp}\n{{+detail_${stamp}}}`);
         await visit(`/${encodeURIComponent(includer)}`);
+        // The rendered-slot + ref_type='I' evidence (diagnostic only — no
+        // positive rests on it):
+        const includerRenderCheck = await page.evaluate(() => {
+          const main = document.querySelector('#main, main');
+          return { slotClasses: [...(main?.querySelectorAll('[class*="SELF-"], .card-slot, .d0-card-body') ?? [])].map((el) => el.className.slice(0, 120)).slice(0, 20) };
+        });
+        const inclusionRows = Object.fromEntries([[includer, authorPlus], [includer, nestedStandalone], [plusHost, detailPlus]].map(([host, field]) =>
+          [`${host} => ${field}`, database().prepare(
+            "SELECT r.id, r.ref_type FROM card_references r " +
+            "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
+            "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0",
+          ).get(host, field) ?? null]));
 
         await signInAs(ctx, member);
         const follows = {
@@ -229,118 +294,89 @@ export const checks = [
           includer: await followOn(includer),
           plusHost: await followOn(plusHost),
         };
+        const followFields = [];
+        await signInAs(ctx, creds.admin);
+        followFields.push(await ensureFollowFields(includer));
+        followFields.push(await ensureFollowFields(plusHost));
 
         mail.drain();
-        await signInAs(ctx, creds.admin);
         const legs = {};
 
-        // Leg 1 — a followed card is edited.
+        // Leg 1 — a followed card is edited. Positive: mail MUST arrive and
+        // name the changed card.
         legs.direct = { ...await editAsAdmin(direct, `Harness followed card edited ${stamp}`) };
         await settle();
         const directMail = notices();
         legs.direct = { ...legs.direct, delivered: directMail.length, notices: directMail, namesTheCard: directMail.some((m) => m.head.includes(direct) || (m.subject ?? '').includes(direct)) };
-
-        // Leg 2 — a card the followed card NESTS is edited. The witness for
-        // this sub-claim is the nested card's INCLUSION on the rendered
-        // includer page (the framing in the instrument-correctness repair
-        // ticket 2026-10-18), NOT mail delivery on the edit. The
-        // indirect-follower walk (follower-resolver.ts:549-563) reaches
-        // an ancestor's direct followers only when that ancestor's
-        // `*follow_fields` rule lists either the field's key or `*nests` —
-        // a rule the test fixture does NOT set up; without it, no mail
-        // can fire on a nested-card edit regardless of the engine. The
-        // inclusion-as-rendered is the shape the engine's nested_card?
-        // check (refresh-references-out.ts:415 NEST_FULL_STICKY,
-        // follower-resolver.ts:595-606 ref_type='I') actually looks at,
-        // so it is the persistence witness the nested-inclusion claim can
-        // be backed by here.
-        legs.nested = { ...await editAsAdmin(nested, `Harness nested card edited ${stamp}`) };
-        await settle();
-        const nestedMail = notices();
-        legs.nested = { ...legs.nested, delivered: nestedMail.length, notices: nestedMail, namesTheCard: nestedMail.some((m) => m.head.includes(nested) || (m.subject ?? '').includes(nested)) };
-        const includerVisit = await visit(`/${encodeURIComponent(includer)}`);
-        await page.waitForTimeout(1500);
-        const includerRender = await page.evaluate(({ name, includerStatus }) => {
-          const main = document.querySelector('#main, main');
-          const slotClass = `SELF-${name.replace(/\s+/g, '_')}`;
-          const altSlotClass = `SELF-${name.replace(/[^A-Za-z0-9*]/g, '')}`;
-          const inclusion = !!(main?.querySelector(`[class*="${slotClass}"]`)
-            || main?.querySelector(`[class*="${altSlotClass}"]`)
-            || [...(main?.querySelectorAll('.d0-card-body, .card-slot') ?? [])].some(el => el.className.includes(slotClass) || el.className.includes(altSlotClass)));
-          const link = [...(main?.querySelectorAll('a') ?? [])].find(a => (a.getAttribute('href') ?? '').includes(name));
-          return {
-            status: includerStatus,
-            mainTextHead: (main?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 240),
-            inclusionSlotRendered: inclusion,
-            linkToNestedRendered: link ? { href: link.getAttribute('href'), classes: link.getAttribute('class') } : null,
-            lookingForSlotClass: slotClass,
-            altLookingForSlotClass: altSlotClass,
-          };
-        }, { name: nested, includerStatus: includerVisit.status });
-        legs.nested.includerPage = includerRender;
-        legs.nested.referenceType = includer !== undefined ? database().prepare(
-          "SELECT r.id, r.ref_type FROM card_references r " +
-          "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
-          "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0 AND r.ref_type='I'",
-        ).get(includer, nested) : undefined;
-
-        // Leg 3 — a followed card's plus card is edited. The plus card is
-        // created first: an update to a subcard that does not exist yet is
-        // refused (the first run answered 422 and stored nothing), so the leg
-        // measures an update to an existing plus card, which is what the
-        // oracle's update_includers scenarios edit.
-        const plusCreate = await page.context().request.post(`${stack.origin}/card/create`, {
-          headers: { origin: stack.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
-          data: new URLSearchParams({ 'card[name]': plusCard, 'card[type]': 'RichText', 'card[content]': `Harness plus card ${stamp}`, 'success[redirect]': 'true' }).toString(),
-          maxRedirects: 0,
-        });
         mail.drain();
-        legs.plus = { createStatus: plusCreate.status(), ...await editAsAdmin(plusCard, `Harness plus card edited ${stamp}`) };
+
+        // Leg 2 — a card the followed card NESTS is edited: the oracle's
+        // included plus field. authorPlus is a PLUS card of the followed
+        // includer and is nested in its content ({{+author}}); the
+        // indirect walk (left ancestry + followedField + nestedCard?) must
+        // reach the includer's follower. Positive: mail MUST arrive and
+        // name the plus card.
+        legs.nestedPlus = { ...await editAsAdmin(authorPlus, `Jim ${stamp}`) };
+        await settle();
+        const nestedPlusMail = notices();
+        legs.nestedPlus = { ...legs.nestedPlus, delivered: nestedPlusMail.length, notices: nestedPlusMail, namesTheCard: nestedPlusMail.some((m) => m.head.includes(authorPlus) || (m.subject ?? '').includes(authorPlus)) };
+        mail.drain();
+
+        // Leg 3 — a followed card's plus card is edited: the same oracle
+        // shape on the second host. Positive: mail MUST arrive and name the
+        // plus card.
+        legs.plus = { ...await editAsAdmin(detailPlus, `detail edited ${stamp}`) };
         await settle();
         const plusMail = notices();
-        legs.plus = { ...legs.plus, delivered: plusMail.length, notices: plusMail, namesTheCard: plusMail.some((m) => m.head.includes(plusCard) || (m.subject ?? '').includes(plusHost)) };
+        legs.plus = { ...legs.plus, delivered: plusMail.length, notices: plusMail, namesTheCard: plusMail.some((m) => m.head.includes(detailPlus) || (m.subject ?? '').includes(detailPlus)) };
+        mail.drain();
 
-        const storedBodies = Object.fromEntries([direct, includer, nested, plusHost, plusCard].map((name) => [name, fixtureCard(database(), name)?.db_content?.slice(0, 80) ?? null]));
+        // Leg 4 — NEGATIVE (oracle: "Should not notify of included but not
+        // plussed card"): nestedStandalone is nested inside the FOLLOWED
+        // includer but is nobody's plus card — no left ancestry, so the
+        // indirect walk never reaches the includer's follower. Silence is
+        // the correct outcome and is asserted.
+        legs.includedNotPlussed = { ...await editAsAdmin(nestedStandalone, `Harness nested card edited ${stamp}`) };
+        await settle();
+        legs.includedNotPlussed = { ...legs.includedNotPlussed, delivered: notices().length };
+        mail.drain();
+
+        // Leg 5 — NEGATIVE (oracle: "Should not notify of plussed but not
+        // included card"): stray is a plus card of the includer but is
+        // nested NOWHERE, so nestedCard? is false. Silence is asserted.
+        legs.plussedNotIncluded = { ...await editAsAdmin(stray, `stray edited ${stamp}`) };
+        await settle();
+        legs.plussedNotIncluded = { ...legs.plussedNotIncluded, delivered: notices().length };
+        mail.drain();
+
+        const storedBodies = Object.fromEntries([direct, includer, authorPlus, nestedStandalone, stray, plusHost, detailPlus].map((name) => [name, fixtureCard(database(), name)?.db_content?.slice(0, 80) ?? null]));
         const template = database().prepare("SELECT id FROM cards WHERE name='follower notification email' AND trash=0").get();
         const allFollowsWritten = Object.values(follows).every((f) => f?.storedOption === '*always');
-        // The witness the capability's CLAIM requires: the indirect-follower
-        // walk (follower-resolver.ts:549-563 + nested_card? :595-606) MUST
-        // reach the includer's follower when the nested card is edited. The
-        // previous instrument graded only the direct leg and recorded the
-        // nested leg without acting on it — a pass that ignored whether the
-        // engine actually walked the inclusion. All three legs now contribute
-        // to the verdict: nested-mail delivered AND namesTheCard is the
-        // RIGHT witness for the nested-inclusion claim. direct-mail and
-        // plus-mail each carry their own leg into the verdict for the same
-        // reason.
-        const inclusionRow = includer !== undefined ? database().prepare(
-          "SELECT r.id, r.referer_id, r.referee_id, r.ref_type FROM card_references r " +
-          "WHERE r.referer_id = (SELECT id FROM cards WHERE name=? AND trash=0) " +
-          "AND r.referee_id = (SELECT id FROM cards WHERE name=? AND trash=0) AND r.trash=0",
-        ).get(includer, nested) : undefined;
-        // The nested-inclusion sub-claim's persistent witness is the
-        // rendered includer page (a SELF-nest element with ref_type='I' in
-        // card_references backing it), not mail delivery — the indirect
-        // walk needs a *follow_fields rule on the ancestor the fixture does
-        // not set up, so a nested-mail requirement would read the wrong
-        // path. Direct + plus legs keep the mail-delivery shape.
-        const nestedInclusionRendered = legs.nested.includerPage?.inclusionSlotRendered === true
-          && legs.nested.referenceType?.ref_type === 'I';
+        // The witness for every positive sub-claim is ACTUAL MAIL DELIVERY
+        // naming the changed card; the two oracle negatives must stay
+        // silent. The rendered slot and the ref_type='I' rows ride in the
+        // evidence only.
         record(capabilityChecks.W5[0],
           allFollowsWritten
-          && [legs.direct, legs.nested, legs.plus].every((leg) => leg.status < 400)
+          && [legs.direct, legs.nestedPlus, legs.plus, legs.includedNotPlussed, legs.plussedNotIncluded].every((leg) => leg.status < 400)
           && legs.direct.delivered > 0 && legs.direct.namesTheCard
-          && nestedInclusionRendered
+          && legs.nestedPlus.delivered > 0 && legs.nestedPlus.namesTheCard
           && legs.plus.delivered > 0 && legs.plus.namesTheCard
+          && legs.includedNotPlussed.delivered === 0
+          && legs.plussedNotIncluded.delivered === 0
           && template !== undefined,
           {
             actor: member.name, mailArmed: mail.enabled, recipient: member.email,
             follows, legs, storedBodies,
             notificationTemplateRow: template ?? null,
             allFollowRulesWritten: allFollowsWritten,
-            inclusionReference: inclusionRow ?? null,
-            legsMeasured: ['direct', 'nested', 'plus'],
-            note: 'every leg contributes a witness matching its sub-claim: direct + plus mail delivery on edit; nested sub-claim\'s witness is the includer page rendering the {{inclusion}} as a SELF-nest slot backed by ref_type=\'I\' in card_references — the indirect mail leg would need a *follow_fields rule the fixture does not set up',
+            followFieldsRules: followFields,
+            allFollowFieldsRuleRow: allRuleRow,
+            inclusionReferenceRows: inclusionRows,
+            includerRenderSlots: includerRenderCheck.slotClasses,
+            legsMeasured: ['direct', 'nestedPlus (included plus field)', 'plus (included plus field)', 'includedNotPlussed (negative)', 'plussedNotIncluded (negative)'],
+            oracle: 'update_includers.feature: included plus card notifies; included-but-not-plussed and plussed-but-not-included are silent',
+            note: 'every positive leg grades actual mail delivery naming the changed card; the rendered slot / ref_type=\'I\' rows are evidence only; both oracle negatives assert silence',
             raw: captureEvidence(await page.content(), { check: 'content-flows-follower-mail' }),
           });
       } catch (error) {
