@@ -3373,6 +3373,44 @@ async function handleAssetFile(pathname) {
             (err instanceof Error ? err.message : String(err)),
           );
         }
+        // An IMAGE upload stores the rendition set, not the bare name: the
+        // version-less file lives under the -original spelling the
+        // ImageCardUploader writes (image_card_uploader.rb:44-57; the store
+        // seam names it in attachment-store.ts store(), and the engine's own
+        // read() resolves the bare identifier through that spelling). Serve
+        // it here so the stored identifier the deck writes down answers the
+        // bytes it names — a bare 404 here short-circuits
+        // handleAttachmentRoute below, whose store-level fall-through never
+        // runs for the spelling FILES_PATTERN matches.
+        if (err && err.code === "ENOENT") {
+          const originalPath = path.join(DECKO_FILES_DIR, String(cardId), `${actionId}-original.${extLower}`);
+          try {
+            const bytes = await fs.readFile(originalPath);
+            return {
+              status: 200,
+              headers: {
+                "Content-Type":
+                  extLower === "png" || extLower === "jpg" || extLower === "jpeg" || extLower === "gif" ?
+                    `image/${extLower === "jpg" ? "jpeg" : extLower}` :
+                  extLower === "svg" ? "image/svg+xml" :
+                  "application/octet-stream",
+                "Cache-Control": "no-store",
+                "Connection": "close",
+                "Content-Length": String(bytes.length),
+                "X-Decko-Asset-Source": `local:${originalPath}`,
+                "X-Decko-Asset-Note": "local-upload-original-rendition",
+              },
+              body: bytes,
+            };
+          } catch (originalErr) {
+            if (originalErr && originalErr.code !== "ENOENT") {
+              console.warn(
+                `[vm-staging] local upload original-rendition read failed ${originalPath}: ` +
+                (originalErr instanceof Error ? originalErr.message : String(originalErr)),
+              );
+            }
+          }
+        }
         // fall through to the corpus 404s below — the identifier says
         // local but the bytes are gone; that is a real 404.
       }

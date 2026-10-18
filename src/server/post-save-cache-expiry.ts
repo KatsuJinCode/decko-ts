@@ -27,9 +27,29 @@ export interface RenderCacheEngines {
   /** FetchEngine#expireName drops the fetched-card cache entry. */
   fetcher: FetchEngine;
   /** The boot (anonymous) render engine. */
-  renderEngine: { expireRenderCard(name: string): void };
+  renderEngine: {
+    expireRenderCard(name: string): void;
+    /** RenderEngine#expireRuleCache drops the deck-wide rule lookup hash
+     *  (render.ts; Ruby's Card::Rule.clear_rule_cache, rule.rb:37-39). A
+     *  rule write that reaches the save seam must clear it synchronously:
+     *  the page-layout walk (resolvePageLayout, page.ts:397 "the *layout
+     *  rule walk happens BEFORE the main render") reads the hash BEFORE the
+     *  main render's freshness gate can fire, so a hash that survives the
+     *  write leaves the very next page render answering rule questions
+     *  (layout, and every other ruleCardForSetting consumer) from pre-write
+     *  rows for one render. Measured 2026-10-18: a *self+*layout rule
+     *  written through /update rendered no layout on the immediately
+     *  following page render and the corrected layout on the one after
+     *  (gate log: layout lookup at hashSize=145 preceded the gate's 0->54
+     *  move; the next render rebuilt at 147). Optional so existing callers
+     *  keep compiling; every real engine carries it. */
+    expireRuleCache?(): void;
+  };
   /** The per-actor signed-in render engines. */
-  signedInEngines: Iterable<{ expireRenderCard(name: string): void }>;
+  signedInEngines: Iterable<{
+    expireRenderCard(name: string): void;
+    expireRuleCache?(): void;
+  }>;
 }
 
 /** Expire the saved card's render caches after one write response. The
@@ -56,6 +76,14 @@ export function expireRenderCachesAfterSave(
   // is re-iterable, which is all the fan-out needs.
   const signedInEngines = Array.from(engines.signedInEngines);
   engines.fetcher.expireName(name);
+  // The deck-wide RULE lookup hash is write-sensitive state on the render
+  // engines exactly like the per-card maps: Ruby clears it in the save
+  // (Card::Rule.clear_rule_cache on every card save, rule.rb:37-39), and
+  // the layout walk reads it before any freshness gate can re-derive it.
+  engines.renderEngine.expireRuleCache?.();
+  for (const engine of signedInEngines) {
+    engine.expireRuleCache?.();
+  }
   // the enriched render-card maps live on the RENDER engines (the
   // fetch-layer expiry above cannot reach them)
   engines.renderEngine.expireRenderCard(name);
