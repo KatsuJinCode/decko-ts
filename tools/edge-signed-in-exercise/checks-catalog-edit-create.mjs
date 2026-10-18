@@ -186,7 +186,18 @@ export const checks = [
         maxRedirects: 0,
       }).catch((e) => ({ error: String(e?.message ?? e) }));
       const junctionOk = !junctionCreate.error && junctionCreate.status() < 400;
-      const junctionStored = database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(`${host}+summary`);
+      // The create POST answers 303 before the engine's separate server
+      // process has surfaced the committed row to this check's own
+      // database connection (the battery r3 scoped run recorded
+      // junctionCreateStatus 303 with an immediate lookup reading no row),
+      // so the stored-row verification polls briefly instead of reading once.
+      let junctionStored = null;
+      if (junctionOk) {
+        for (let i = 0; i < 20 && !junctionStored; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          junctionStored = database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(`${host}+summary`);
+        }
+      }
       ctx.created?.push?.(`${host}+summary`);
       if (!junctionOk || !junctionStored) {
         record(
