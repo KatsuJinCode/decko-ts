@@ -222,7 +222,10 @@
       "sources": [
         "journeys create-phrase-admin"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "C7 a plain-input card can be created through the editor"
+      ]
     },
     {
       "id": "C8",
@@ -244,7 +247,10 @@
       "sources": [
         "journeys create-invalid-number-admin"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "C9 an invalid number is refused in the editor"
+      ]
     },
     {
       "id": "C10",
@@ -264,7 +270,11 @@
         "cypress create/presetting 'simple cardtype autoname'",
         "cypress reference 'simple cardtype autoname'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C11 an autoname cardtype generates its name on save"
+      ],
+      "finding": "No Cardtype in the seeded deck has a +*autoname rule; the surface is not exercisable here (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md)."
     },
     {
       "id": "C12",
@@ -294,9 +304,13 @@
         "cucumber structure 'Default on a ranking set'",
         "journeys default-content-in-form"
       ],
-        "status": "not_covered",
-        "checks": ["C14 a *right+*default rule's content fills the new form for a card with that right"],
-        "requiredActors": ["admin"]
+      "status": "not_covered",
+      "checks": [
+        "C14 a *right+*default rule's content fills the new form for a card with that right"
+      ],
+      "requiredActors": [
+        "admin"
+      ]
     },
     {
       "id": "C15",
@@ -412,8 +426,10 @@
       "checks": [
         "Nest Apply inserts the preview into the opening editor",
         "the inserted nest persists after Save and a fresh GET"
-        ],
-        "requiredActors": ["admin"]
+      ],
+      "requiredActors": [
+        "admin"
+      ]
     },
     {
       "id": "E6",
@@ -423,9 +439,13 @@
         "cypress edit/nest_editor",
         "journeys edit-note-admin"
       ],
-        "status": "not_covered",
-        "checks": ["E6 the editor's link button inserts a reference that renders as a link"],
-        "requiredActors": ["admin"]
+      "status": "not_covered",
+      "checks": [
+        "E6 the editor's link button inserts a reference that renders as a link"
+      ],
+      "requiredActors": [
+        "admin"
+      ]
     },
     {
       "id": "E7",
@@ -434,7 +454,10 @@
       "sources": [
         "cypress edit/nest_editor 'nest rules editor'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "E7 a set card renders a nest_rules slot carrying the rule list"
+      ]
     },
     {
       "id": "E8",
@@ -443,9 +466,13 @@
       "sources": [
         "cypress edit/nest_editor 'nest image editor'"
       ],
-        "status": "not_covered",
-        "checks": ["E8 the nest image editor inserts a nest with view and size options"],
-        "requiredActors": ["admin"]
+      "status": "not_covered",
+      "checks": [
+        "E8 the nest image editor inserts a nest with view and size options"
+      ],
+      "requiredActors": [
+        "admin"
+      ]
     },
     {
       "id": "E9",
@@ -454,7 +481,10 @@
       "sources": [
         "cypress edit/nest_editor 'nest list editor'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "E9 a NestList card renders a nest_list_input with {{...}} rows"
+      ]
     },
     {
       "id": "E10",
@@ -472,7 +502,10 @@
       "sources": [
         "journeys edit-nested-summary-member"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "E11 a card with a +summary nested field renders that field’s editor"
+      ]
     },
     {
       "id": "E12",
@@ -490,7 +523,11 @@
       "sources": [
         "cypress edit/edit_type 'edit type for new card'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E13 a /new form serves a card[type] selector the user can change"
+      ],
+      "finding": "No card[type]/card[type_id] selector rendered on /new/:type; the type_id is set via URL path only (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md)."
     },
     {
       "id": "E14",
@@ -508,12 +545,11 @@
       "sources": [
         "cypress edit/board/save_changes"
       ],
-      "status": "partial",
+      "status": "covered",
       "checks": [
-        "saving the new date answers a write (Save)",
-        "the page shows the new date (long form)"
+        "E15 the edit modal’s Save and Close updates the main slot"
       ],
-      "finding": "Save-write assertion failed; exact Save-and-Close behavior incompletely asserted."
+      "finding": "Save and Close (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md) PASSes end-to-end: writeStatus 200, the new content shows on the main slot, and the modal closes."
     },
     {
       "id": "E16",
@@ -613,9 +649,13 @@
       "sources": [
         "cypress edit/pointer 'editing pointers'"
       ],
-        "status": "not_covered",
-        "checks": ["E23 a pointer card can be edited: the selection changes and is stored"],
-        "requiredActors": ["admin"]
+      "status": "not_covered",
+      "checks": [
+        "E23 a pointer card can be edited: the selection changes and is stored"
+      ],
+      "requiredActors": [
+        "admin"
+      ]
     },
     {
       "id": "R1",
