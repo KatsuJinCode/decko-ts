@@ -1,3 +1,4 @@
+import { storedSessionActorId } from './lib/session-actor.mjs';
 // checks-role-checkbox-and-plus-right-creation.mjs — instruments for the two
 // PERMISSION / RULE-STORAGE actions the coverage matrix
 // (docs/registry/instrument-coverage-matrix.json, last_recomputed
@@ -151,7 +152,10 @@ const stamp = () => Date.now().toString(36);
 const loopbackOnly = origin => ["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname);
 
 /** Signs one isolated browser actor in through the real sign-in form. */
-const signInActor = async (page, origin, creds) => {
+const signInActor = async (page, origin, creds, db) => {
+  // Actor setup uses a fresh browser cookie jar, as the runner's own
+  // isolated-actor fixture does; never infer identity from a 200 response.
+  await page.context().clearCookies();
   await page.goto(origin + "/*signin", { waitUntil: "load" });
   await page.fill('input[name="card[subcards][+*email][content]"]', creds.email);
   await page.fill('input[name="card[subcards][+*password][content]"]', creds.password);
@@ -162,6 +166,8 @@ const signInActor = async (page, origin, creds) => {
   if (observed.error) throw observed.error;
   await observed.response.finished();
   if (observed.response.status() >= 400) throw Error("role-plus-right actor was not signed in");
+  const actorId = db ? storedSessionActorId(db, await page.context().cookies(origin)) : null;
+  if (db && actorId !== creds.id) throw Error('Fixture sign-in actor does not match the stored session');
   return observed.response.status();
 };
 
@@ -360,7 +366,7 @@ export const checks = [
           // `id="${safeKey}-edit_inline-view"`), and the form's action
           // names the actor's enabled-roles card.
           const formLocator = page.locator(
-            `form.card-form[action$="/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*enabled_roles"]`,
+            ` .navbar form.card-form[action$="/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*enabled_roles"]`,
           ).first();
           return formLocator;
         };
@@ -375,15 +381,23 @@ export const checks = [
           // renders. Which page carried it is recorded, not assumed.
           const tried = [];
           for (const path of [
-            `/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*account_settings`,
             `/`,
+            `/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*account_settings`,
           ]) {
             const response = await page.goto(`${stack.origin}${path}`, { waitUntil: "load" });
             await page.waitForTimeout(1500);
             const form = await findInlineEnabledRolesForm(actorName);
             const formCount = await form.count();
             tried.push({ path, status: response.status(), formCount });
-            if (formCount > 0) return { status: response.status(), formCount, pageUrl: page.url(), tried };
+            if (formCount > 0) {
+              // The form is in the navbar dropdown; its existence alone does
+              // not make the checkbox visible through its ancestors.
+              await page.locator('.navbar [data-bs-toggle="dropdown"]').last().click({ timeout: 5000 });
+              await page.locator('.navbar .dropdown-menu.show').first().waitFor({ state: 'visible', timeout: 5000 });
+              const menuMetrics = await form.evaluate(f => [...f.querySelectorAll('input.pointer-checkbox-button')].map(b => ({name:b.name,value:b.value,width:b.getBoundingClientRect().width,height:b.getBoundingClientRect().height,ancestors:(()=>{const rows=[];for(let p=b.parentElement;p&&rows.length<8;p=p.parentElement)rows.push({tag:p.tagName,classes:p.className,display:getComputedStyle(p).display});return rows})()})));
+              captureEvidence(await page.content(), { check:'a6-isolated-native-menu', menuMetrics });
+              return { status: response.status(), formCount, pageUrl: page.url(), tried };
+            }
           }
           return { status: tried[0]?.status ?? null, formCount: 0, pageUrl: page.url(), tried };
         };
@@ -448,7 +462,7 @@ export const checks = [
         const postListContent = async (urlName, content) => {
           if (urlName === null || urlName === undefined) return { status: 0, error: "no list url name" };
           const url = `/update/${encodeURIComponent(urlName.replace(/ /g, "_"))}`;
-          const response = await page.context().request.post(`${stack.origin}${url}`, {
+          const response = await ctx.page.context().request.post(`${stack.origin}${url}`, {
             headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
             data: new URLSearchParams({
               "card[content]": content,
@@ -456,7 +470,7 @@ export const checks = [
             }).toString(),
             maxRedirects: 0,
           });
-          return { status: response.status(), location: response.headers()["location"] ?? null };
+          return { status: response.status(), location: response.headers()["location"] ?? null, fixtureActorId: storedSessionActorId(database(), await ctx.page.context().cookies(stack.origin)), bodyHead: (await response.text()).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,400) };
         };
         const seedMemberRoleGrant = async (role) => {
           if (membersId === null) return { listId: null, urlName: null, before: null, after: null, post: null };
@@ -487,7 +501,8 @@ export const checks = [
         // and only then signs in as the member for the click legs. (The
         // prior staged shape posted the grant before any sign-in, i.e. as an
         // anonymous visitor, which the engine refuses.)
-        await signInActor(page, stack.origin, adminActor);
+        await ctx.signIn(creds.admin);
+        if (storedSessionActorId(database(), await ctx.page.context().cookies(stack.origin)) !== creds.admin.id) throw Error('Fixture administrator session is not verified');
         const seedGrant = grantableRole ? await seedMemberRoleGrant(grantableRole) : { listId: null, urlName: null, before: null, after: null, post: null };
         const seededGrantListId = seedGrant.listId;
         // Canonical-grant verification: rolePartyStatement reads
@@ -514,21 +529,40 @@ export const checks = [
         // page, read the inline :edit_inline view's role checkboxes,
         // record the witness chain (cookie -> decoder -> session card
         // content), and grade the click.
-        await signInActor(page, stack.origin, memberActor);
-        const seedSnapshot = await enabledRolesFor(memberActor.id, memberActor.name);
+        await signInActor(page, stack.origin, memberActor, database());
+        let seedSnapshot = await enabledRolesFor(memberActor.id, memberActor.name);
         const seedGrantMemberships = membersId === null ? [] : database().prepare(
           "SELECT r.referer_id, c.left_id AS role_id, cr.name AS role_name " +
           "FROM card_references r JOIN cards c ON r.referer_id=c.id JOIN cards cr ON c.left_id=cr.id " +
           "WHERE r.referee_id=? AND c.right_id=? AND c.trash=0",
         ).all(memberActor.id, membersId);
         const initialVisit = await openInlineRoleEditor(memberActor.name);
+        // Give implicit all-held roles an explicit equivalent Session baseline
+        // through the served form. This is fixture setup, not native-click
+        // acceptance: the measured click and restore below remain unchanged.
+        let sessionBaselineSetup = null;
+        if (!seedSnapshot.exists || seedSnapshot.dbContent?.trim() === '') {
+          const form = await findInlineEnabledRolesForm(memberActor.name);
+          const shape = await form.evaluate(f => ({ action: f.action, selected: [...f.querySelectorAll('input.pointer-checkbox-button:checked')].map(b => b.value).sort() }));
+          if (new URL(shape.action).origin !== stack.origin) throw Error('Fixture baseline left the local origin');
+          const pending = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === new URL(shape.action).pathname, {timeout:10000});
+          const navigation = page.waitForNavigation({waitUntil:'load',timeout:10000});
+          await form.evaluate(f => f.requestSubmit());
+          const response = await pending;
+          await response.finished();await navigation;
+          sessionBaselineSetup = { status: response.status(), scope: 'fixture-only explicit equivalent of initially selected held roles' };
+          seedSnapshot = await enabledRolesFor(memberActor.id, memberActor.name);
+          const storedNames = seedSnapshot.content.map(line => line.replaceAll('[[','').replaceAll(']]','')).sort();
+          if (response.status() >= 400 || !seedSnapshot.exists || JSON.stringify(storedNames) !== JSON.stringify(shape.selected)) throw Error('Explicit Session fixture baseline did not preserve the initially checked held roles');
+          await openInlineRoleEditor(memberActor.name);
+        }
         const initialInventory = await inventoryEnabledRolesCheckboxes(memberActor.name);
         const renderedChecked = initialInventory.boxes.filter(b => b.checked).map(b => b.value);
         const allBoxes = initialInventory.boxes;
         const roleBoxes = allBoxes.filter(b => roleNames.has(b.value));
         const clickable = roleBoxes.filter(b => b.display !== "none" && b.boxVisibility !== "hidden" && !powerRoles.has(String(b.value).toLowerCase()));
         const hidden = roleBoxes.filter(b => !clickable.includes(b));
-        record(capabilityChecks.A6[0], roleBoxes.length > 0, {
+        record(capabilityChecks.A6[0], roleBoxes.length > 0 && grantVerified, {
           codenames, roleCount: roles.length, roles: roles.slice(0, 12),
           powerRoles: [...powerRoles],
           fixture: "the seeded member (neutral, no role grant) with a one-test-time grant of a benign non-power role",
@@ -543,7 +577,7 @@ export const checks = [
           roleBoxes: roleBoxes.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display })),
           clickableNonPower: clickable.map(b => ({ name: b.name, value: b.value })),
           notClickable: hidden.map(b => ({ value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "the served stylesheet does not display it" })),
-          initialCookieSnapshot: seedSnapshot,
+          initialCookieSnapshot: seedSnapshot, sessionBaselineSetup,
           raw: await rawCapture({ check: "a6-roles-dropdown-member", actor: memberActor.name }),
         });
 
@@ -552,7 +586,7 @@ export const checks = [
           // outlive the check even when the click leg cannot be driven.
           let grantRevokedHere = null;
           if (grantableRole && seededGrantListId !== null) {
-            await signInActor(page, stack.origin, adminActor).catch(() => undefined);
+            // The fixture administrator stays in the separate parent browser context.
             grantRevokedHere = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
           }
           record(capabilityChecks.A6[1], false, {
@@ -562,13 +596,13 @@ export const checks = [
             fixtureGrant: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name, listId: seededGrantListId } : null,
             grantVerified,
             storeGrantMemberships: seedGrantMemberships,
-            initialCookieSnapshot: seedSnapshot,
+            initialCookieSnapshot: seedSnapshot, sessionBaselineSetup,
             unmeasured: "the +*enabled roles control's full round trip (cookie write, reload, fresh request) is unmeasured here because the served inline :edit_inline view did not offer a clickable non-power box",
           });
           record(capabilityChecks.A6[2], false, { note: "not reached: no clickable non-power role checkbox is served" });
           record(capabilityChecks.A6[3], grantRevokedHere === null || (grantRevokedHere.status !== undefined && grantRevokedHere.status < 400), {
             note: "nothing was changed in the visitor session, so the fixture is unchanged; the temporary grant's revoke is recorded",
-            initialCookieSnapshot: seedSnapshot,
+            initialCookieSnapshot: seedSnapshot, sessionBaselineSetup,
             storeGrantMemberships: seedGrantMemberships,
             grantRevokePost: grantRevokedHere,
           });
@@ -773,7 +807,7 @@ export const checks = [
         // named in the list is recorded as a failed restore, not assumed.
         let grantRevoke = null, grantListRowAfterRevoke = null;
         if (grantableRole && seededGrantListId !== null) {
-          await signInActor(page, stack.origin, adminActor).catch(() => undefined);
+          // The fixture administrator stays in the separate parent browser context.
           grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));          grantListRowAfterRevoke = database().prepare(
             "SELECT db_content FROM cards WHERE id=? AND trash=0",
           ).get(seededGrantListId) ?? null;
