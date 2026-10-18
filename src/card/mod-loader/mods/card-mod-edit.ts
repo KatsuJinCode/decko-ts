@@ -662,6 +662,7 @@ function inputTypeRuleContent(ctx: ViewContext): string | undefined {
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    isNew: card.record.isNew === true,
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;
@@ -671,7 +672,7 @@ function inputTypeRuleContent(ctx: ViewContext): string | undefined {
   }
   for (const candidate of ruleNamesForCard(input, "*input type")) {
     const record = ctx.fmt.engine.fetchRenderCard(candidate);
-    if (record === undefined) continue; // no rule at this pattern
+    if (record === undefined || record.unknown === true) continue; // no stored rule at this pattern
     return record.dbContent;
   }
   return undefined;

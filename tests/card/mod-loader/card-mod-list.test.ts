@@ -36,6 +36,9 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
+import cardModEdit from "../../../src/card/mod-loader/mods/card-mod-edit.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
 
 const FIXTURE = JSON.parse(
   readFileSync(
@@ -147,6 +150,31 @@ afterAll(() => {
 });
 
 describe("card-mod-list through the mod loader (A/B)", () => {
+  it("a new pointer form uses its right-side radio rule and option cards before storage", async () => {
+    const s=storage!;
+    await seedCard(s,{id:900,name:'Pointer Editor Bot',codename:'decko_bot'});
+    await seedCard(s,{id:901,name:'New Pointer Parent'});
+    await seedCard(s,{id:902,name:'Pointer Choice'});
+    await seedCard(s,{id:903,name:'*right',codename:'right',typeId:14});
+    await seedCard(s,{id:904,leftId:902,rightId:903,typeId:13});
+    await seedCard(s,{id:905,leftId:904,rightId:15,typeId:14,dbContent:'radio'});
+    await seedCard(s,{id:906,leftId:904,rightId:16,typeId:4,dbContent:'Option One\nOption Two'});
+    const fetcher=new FetchEngine(s.counting),engine=new RenderEngine(fetcher);
+    const mods=new ModLoader([{manifest:cardModEdit},{manifest:cardModList}]);mods.load();
+    try {
+    engine.modLoader=mods;engine.viewer={signedIn:true,actorId:900};engine.pageSession=engine.viewer;
+    await mods.installInto(modEngineHost(engine,fetcher));
+    const body=await engine.render('New Pointer Parent+Pointer Choice','new_fields',{
+      absentCard:true,focalRoot:true,newCard:{typeId:56,typePreset:true},
+    });
+    expect(body).toContain('type="radio"');
+    expect(body).toContain('value="Option One"');
+    expect(body).toContain('value="Option Two"');
+    expect(body).not.toContain('name="pointer_item"');
+    const stored=await s.counting.query('SELECT id FROM cards WHERE left_id=? AND right_id=?',[901,902]);
+    expect(stored.rows).toHaveLength(0);
+    } finally { mods.reset(); }
+  });
   it("WITHOUT the mod: the pointer editor views are unsupported", async () => {
     const s = storage!;
     for (const view of ["list", "input", "one_line_content"]) {

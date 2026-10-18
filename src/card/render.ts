@@ -2046,14 +2046,14 @@ export class RenderEngine implements RenderEngineLike {
     // The pointer/list editors' options walk (card-mod-layout options_api.rb,
     // the checkbox/radio/select/multiselect editors' card.options_hash): the
     // sync editor views read seated items, so the chain's search member
-    // seats here, on the one view whose root renders an editor (the
-    // journeys' ?view=edit surface). No-op for every other root.
-    if (view === "edit") {
+    // seats here for both stored-card editors and new-card forms.
+    const pointerEditorView = view === "edit" || view === "new" || view === "new_fields" || view === "new_in_modal" || view === "simple_new";
+    if (pointerEditorView) {
       // The default loader dispatches synchronous list editors without the
       // explicit installInto warm used by isolated mod tests. Seat the
       // winning input rule before that dispatch, including newly saved,
       // null-name junction rules reached through the rule cache by ID.
-      if (rootCard.unknown !== true && (rootCard.typeCode === "pointer" || rootCard.typeCode === "list")) {
+      if (rootCard.typeCode === "pointer" || rootCard.typeCode === "list") {
         const inputRule = await this.ruleCardForSetting(this.structurePatternInputForSync(rootCard), "input_type");
         if (inputRule !== undefined && inputRule.name !== undefined) await this.enrichAndStore(inputRule);
       }
@@ -10647,7 +10647,6 @@ export class RenderEngine implements RenderEngineLike {
    *  Literal (non-search) rule members need no seat — the sync walk reads
    *  their dbContent items directly. */
   private async ensurePointerEditorOptions(rootCard: RenderCard): Promise<void> {
-    if (rootCard.unknown === true) return;
     if (rootCard.typeCode !== "pointer" && rootCard.typeCode !== "list") return;
     const source = this.optionsCardSource(rootCard);
     if (source === undefined) return;

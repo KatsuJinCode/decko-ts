@@ -238,12 +238,12 @@ function ruleCard(
   setting: string,
 ): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
   const card = ctx.fmt.card;
-  if (card.unknown === true) return undefined;
   const input: PatternCardInput = {
     name: card.name.s,
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    isNew: card.record.isNew === true,
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;
@@ -253,7 +253,7 @@ function ruleCard(
   }
   for (const candidate of ruleNamesForCard(input, setting)) {
     const record = ctx.fmt.engine.fetchRenderCard(candidate);
-    if (record === undefined) continue; // candidate rule does not exist
+    if (record === undefined || record.unknown === true) continue; // candidate rule does not exist
     if (ctx.fmt.engine.isDenied(record)) continue; // ok?(:read) false
     return record;
   }
