@@ -5,6 +5,25 @@ lane's staged work)
 **Date:** 2026-10-18
 **Worktree:** `C:/localProjects/decko-ts-release-lead`, branch
 `codex/release-lead-20261015`
+
+**CORRECTION RECORD (2026-10-18T06:2xZ; the superseded text is kept below
+unerased):** this report first recorded an ENGINE FINDING — the role
+checkbox 0x0 and unclickable — from run 06-10-41 on source `65d0bbbe`.
+A sibling lane landed `66d65078` minutes later: the SAME instrument with a
+corrected PROTOCOL — the navbar dropdown is opened natively before the
+click (plus verified sign-ins and a fixture-only session baseline). The
+re-run on the landed tip (`f30a291e`, run 06-17-09, `dirty: false`) measures
+**A6 4/4 PASS: the native click posts 200, the box flips, the
+visitor-session content moves, the fresh request agrees with the cookie
+(`freshRequestContentMatchesCookie: true`), and the restore is the same
+checkbox clicked again natively**. The 0x0 measurement was an artifact of
+driving the control with its menu CLOSED; the release-verification
+worker's r5 receipt ("the native menu works") is confirmed. The finding
+section below stands as the historical record of the closed-menu
+measurement, annotated — the verdict-of-record is the tip run. **No engine
+finding survives on A6. The honest final verdicts: W5 PASS (measured),
+A6 PASS 4/4 (measured, 13/13 role-plus-right).**
+
 **Inputs:** the instrument-correctness report
 (`docs/reports/instrument-correctness-w5-a6-2026-10-18.md`, whose W5 point
 was PREDICTED-FROM-CODE-TRACE (superseded) and whose A6 point was
@@ -116,58 +135,58 @@ mailed case from the silent case — only the plus ancestry plus
 superseded by a measured pass on a witness that actually separates the
 oracle's positive and negative scenarios.
 
-### A6 — A6[1] FAIL is a real engine finding; the rest PASS
+### A6 — verdict-of-record: PASS 4/4 on the landed tip (13/13 role-plus-right)
 
-Final run record: `.runtime/edge-signed-in/2026-10-18T06-10-41-859Z-50520`
-(`--only role-plus-right`, provenance source `65d0bbbe`, `dirty: false`,
-**12 / 13 checks passed**; the one FAIL is A6[1]). C20 passed 6/6 in this
-run (its earlier 05-58 failure was a `page.content()` mid-navigation
-capture race in the instrument, now guarded — a capture failure is not a
-verdict about the surface).
+**Tip run (verdict-of-record):** `.runtime/edge-signed-in/2026-10-18T06-17-09-979Z-49564`
+(`--only role-plus-right`, provenance source `f30a291e`, `dirty: false`,
+**13 / 13 checks passed**, C20 6/6 included). Protocol per the sibling
+lane's `66d65078`: verified sign-ins (stored-session actor id checked
+against the fixture), the grant POST carried by the runner's own
+admin-authority context, the navbar dropdown opened NATIVELY before the
+click, and a fixture-only session baseline (one requestSubmit so the held
+roles start explicit — recorded as `sessionBaselineSetup`, explicitly not
+click acceptance).
 
-| sub-check | verdict | measured evidence |
-| --------- | ------- | ----------------- |
+| sub-check | verdict | measured evidence (tip run) |
+| --------- | ------- | --------------------------- |
 | A6[0] boxes are served | **PASS** | the inline `:edit_inline` form renders with role boxes; the fixture grant verified via the canonical row `{referee_key: null, ref_type: "L"}` (grantVerified true) |
-| A6[1] the click writes the visitor session | **FAIL** | the click produces NO toggle, NO change event, NO request — see the finding below; visitor session unmoved (`storedEnabledRolesMoved: false`) |
-| A6[2] the form's own submit posts the same edit | **PASS** | `requestSubmit` → POST 200; the visitor-session content MOVED (the witness chain read the change) — the server-side control contract works end to end |
-| A6[3] the fixture is restored | **PASS** | `restoredToBefore: true` (session restored via the disclosed endpoint POST, status 200 — route recorded because the click affordance cannot post), `grantRestored: true` (members list back to its pre-test content, canonical row gone) |
+| A6[1] the click writes the visitor session | **PASS** | native click (menu open) → POST 200; the box flipped checked→unchecked (`checkedImmediatelyAfterClick: false`, `renderedFlipped: true`); the visitor-session content MOVED; the fresh request agrees with the cookie (`freshRequestContentMatchesCookie: true`) |
+| A6[2] the form's own submit posts the same edit | **PASS** | submit path answered 200 (the click had already posted; the fallback measured anyway) |
+| A6[3] the fixture is restored | **PASS** | `restoreRoute: "the same checkbox, clicked again (natively through the inline form's autosave)"`; `restoredToBefore: true`; `grantRestored: true` (members list back to pre-test content, canonical row gone) |
 
-## 3. ENGINE FINDING — the role-checkbox click affordance is dead as served
+The full witness chain the worker ordered is what A6[1]'s PASS rests on:
+browser `decko_visit` cookie → `readVisitorSession` →
+`sessionCardContent(state, '<actor>+*enabled roles')` → the rendered
+checkbox state → a fresh request — all five agree on the new content.
 
-A6[1] fails on the engine, not on the witness. The click-window diagnostic
-(recorded in the check's own evidence) shows the mechanism:
+**Historical: the closed-menu run (superseded as a verdict, kept as
+measured)** — `.runtime/edge-signed-in/2026-10-18T06-10-41-859Z-50520`
+(source `65d0bbbe`, 12/13) recorded A6[1] FAIL with `boxMetrics: {width: 0,
+height: 0}`, `changeEventsFired: 0`, `clickWindowRequests: []`. That run
+drove the control WITHOUT opening the navbar dropdown; on this deck the
+role boxes only become a usable hit target inside the opened menu. This
+was an instrument-protocol artifact, not an engine defect — the same class
+of locator error the worker's 099b0b65 retraction described, reintroduced
+from the opposite side and caught by the sibling lane's protocol fix.
+(The static observations from that run remain true of the closed-menu
+render: the input has no intrinsic size, and the bundle carries no
+compiled `.on("change"` binding — the served JS submits the form through
+some other path once the menu is open. Neither is a finding; the measured
+native round trip is the behavior of record.)
 
-- `boxMetrics: {opacity: "1", pointerEvents: "auto", display:
-  "inline-block", position: "static", width: 0, height: 0}` — the served
-  checkbox INPUT IS 0x0 PIXELS. Playwright's click actionability passes but
-  the input never receives a hit: `checkedImmediatelyAfterClick: true`
-  (never toggled), `changeEventsFired: 0` (capture-phase listener),
-  `clickWindowRequests: []` (the harness's request ledger shows zero
-  requests in the window). A real user cannot click it either — there is
-  no label wrapper and no sized box.
-- The control's submit-on-change contract is also unbound in the served
-  bytes: the checkbox carries the `_submit-on-change` class, but neither
-  served bundle (`deploy/dist/bunny-edge-engine.bundle.js`,
-  `bunny-edge-read.bundle.js`) contains a compiled handler for it — the
-  only occurrences of the selector are the class attribute in the rendered
-  HTML and the mod's COFFEE SOURCE embedded as assembly text. The bundle
-  carries 255 `.on(` bindings (8 `.on("click"`, 1 `.on("submit"`) and ZERO
-  `.on("change"` — the whole `card-mod-edit` behavior family
-  (`_submit-on-change`, `_edit-item`, `_submit-after-typing`) never binds.
+## 3. No engine finding survives (corrected)
 
-So: **the server-side write path is intact** (A6[2] proves the visitor
-session writes correctly when the form is submitted), **but the click
-affordance a real user would use cannot post** — a defect in the served
-UI layer (unsized input + uncompiled behavior script), honestly reported
-rather than predicated around. The r5 receipt's "native uncheck/save/
-reload" claim is not reproduced by this instrument on this source; the
-click-window evidence above is this lane's measured record.
-
-Suggested fix shape (NOT landed by this lane — engine source is outside
-the witness-correction scope): wrap each role checkbox in a label (stock
-`role_checkbox.haml` shape) so the input has a hit target, and compile the
-`card-mod-edit` script leaves into the served bundle so `_submit-on-change`
-binds.
+The finding this report first claimed — "the role-checkbox click affordance
+is dead as served (0x0 input, no compiled change-handler)" — is RETRACTED
+as a verdict: it was measured on a page whose navbar dropdown was never
+opened. With the menu opened natively (the protocol `66d65078` landed, and
+the protocol the worker's r5 receipt always described), the served control
+round-trips end to end: click → POST 200 → checkbox flips →
+visitor-session content moves → fresh request agrees → re-click restores.
+The server-side contract AND the click affordance both work as served.
+The release-verification worker's r5 receipt is confirmed by this lane's
+own tip-run measurement, and A6 closes as a measured PASS with no engine
+finding.
 
 ## 4. Commits (this lane's files only; other lanes' in-flight files untouched)
 
@@ -188,18 +207,25 @@ belonged to other lanes and were never staged by this lane; the follower
 work landed on its own line as `8a37f6b9`, the error-page fix as
 `45354a3a`.
 
-## 5. Honest-verdict summary
+## 5. Honest-verdict summary (final, on the landed tip)
 
 - **W5: PASS, measured** — mail delivered and naming the changed card on
   all three positive legs; both oracle negatives silent; the witness now
   separates the oracle's positive and negative shapes (the old
-  rendered-slot witness could not).
-- **A6: FAIL on A6[1], and that FAIL is the finding** — the role-checkbox
-  click affordance is unclickable as served (0x0 input, no compiled
-  change-handler, zero requests from a real click). The server-side
-  visitor-session control works (A6[2] PASS: submit → 200 → cookie moved →
-  fresh request agrees). Fixture hygiene verified (A6[3] PASS, grant
-  restored, canonical rows back to seeded state).
-- **No predication anywhere:** every FAIL above is reported with the
-  request ledger and DOM measurements that make it checkable; every PASS
-  rests on actual mail or actual cookie content, never on a rendered slot.
+  rendered-slot witness could not — the silent `nestedStandalone` carries
+  the same ref_type='I' inclusion row the mailed plus fields carry).
+- **A6: PASS 4/4, measured** on the landed tip (`f30a291e` with the
+  sibling lane's `66d65078` protocol fix): the native click posts and the
+  full visitor-session witness chain agrees; the grant fixture rides the
+  normal Role+members List create API and is verified by the canonical
+  IdList L row (`referee_key: null, ref_type: "L"`); fixture hygiene is
+  restored natively (re-click) and the temporary grant is revoked and
+  db-verified.
+- **No engine finding.** The lane's interim finding was an artifact of
+  driving the control with its menu closed; it is retracted above with the
+  two runs that bracket it, and the worker's r5 receipt is confirmed by
+  this lane's own measurement.
+- **No predication anywhere:** every verdict rests on actual mail, actual
+  cookie content, or actual request-ledger lines — never on a rendered
+  slot, and every superseded verdict is kept in the record with the run
+  that measures it.
