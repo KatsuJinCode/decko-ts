@@ -61,6 +61,12 @@ import {
 } from "../../src/server/worker-shared-surface.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
+  readVisitorSession,
+  saveLocation,
+  shouldSaveLocation,
+  visitorSessionCookie,
+} from "../../src/card/session/visitor-session.js";
+import {
   applyServedEnvironmentDeltas,
   filesLeafVariant,
   filesNotFoundBody,
@@ -870,7 +876,55 @@ async function dispatchEngineRequest(
     const pageHtml = applyServedEnvironmentDeltas(page.html, deckServedDeltas(await source.deck()));
     // Signed-in only: those responses bypass every shared cache, whose keys
     // carry no X-Requested-With.
-    return html(page.status, options?.viewer !== undefined && isXhr(request) ? ajaxSlotFromPage(pageHtml) : pageHtml);
+    const pageResponse = html(page.status, options?.viewer !== undefined && isXhr(request) ? ajaxSlotFromPage(pageHtml) : pageHtml);
+    // THE READ-PATH LOCATION HISTORY (card-mod-session set/all/location_history.rb
+    // :6-8, `event :save_current_location, before: :show_page, on: :read` +
+    // lib/card/env/location_history.rb save_location): a page show of a KNOWN
+    // card — the denial page included; save_location? asks the card's own
+    // known-ness, not the view's success — pushes the request's original URL
+    // onto the visitor session's location history (the decko_visit cookie),
+    // unless the view is an ajax slot read or the card is *signin
+    // (location_history.rb:47-51 save_location?: !Env.ajax? && Env.html? &&
+    // card.known? && card.codename != :signin). The *signin success mark
+    // (set/self/signin.rb:170-174, `{ redirect: true, mark: "*previous" }`)
+    // resolves that history's last entry, so an anonymous visitor who follows
+    // a denial's sign-in link lands back on the card they were denied on
+    // instead of on the history default "/". Without this read-path save, the
+    // history stayed at its default and every sign-in landed on "/" — the
+    // 2026-10-16 native-whole S5 fail (landedOn "/") that this fixes.
+    // Post-render because the port's page has no pre-show event hook; a
+    // history-write failure never fails an already-rendered page.
+    if (!isXhr(request)) {
+      try {
+        const deckForHistory = await source.deck();
+        const shown = await deckForHistory.fetcher.fetchByName(parsed.name);
+        if (
+          shouldSaveLocation({
+            known: shown !== undefined && shown.name !== undefined,
+            html: true,
+            ajax: false,
+            codename: shown?.codename,
+          })
+        ) {
+          const visit = readVisitorSession(request.headers.get("cookie") ?? undefined);
+          const beforeCookie = visitorSessionCookie(visit);
+          // request.original_url's shape (scheme, host, path, query). The
+          // forwarders name the visitor's own host in x-forwarded-host /
+          // x-forwarded-proto (bunny-edge-read-handler.ts forwardToFullEngine),
+          // so the split-script engine records the visitor's address, not the
+          // internal forward target.
+          const host = request.headers.get("x-forwarded-host") ?? url.host;
+          const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(/:$/, "");
+          saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);
+          const afterCookie = visitorSessionCookie(visit, { secure: proto === "https" });
+          if (afterCookie !== beforeCookie) pageResponse.headers.set("Set-Cookie", afterCookie);
+        }
+      } catch {
+        // a location-history read or write must never turn a rendered page
+        // into an error; the visitor just keeps the previous history
+      }
+    }
+    return pageResponse;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Status mapping aligned with the CF worker's render path

@@ -174,13 +174,28 @@ export async function serveWithEdgeCache(
 
   const response = await render();
   const cacheClass = edgeRouteCacheClass(key.pathname, response.status);
+  // THE PER-VISITOR RESPONSE RULE: a page whose render touched the visitor
+  // session carries Set-Cookie (the decko_visit location history the read
+  // path saves on every page show — location_history.rb save_current_location).
+  // Its bytes stay shared, but its HEADER is one visitor's state: storing it
+  // would replay that Set-Cookie to every later visitor of the entry (the
+  // same cross-visitor hazard the perViewer bypass exists for), and a
+  // honoring shared layer must never reuse a Set-Cookie response. Such a
+  // response is therefore never stored here and carries the private label
+  // instead of the L1 shared one.
+  const hasVisitorSetCookie = response.headers.has("Set-Cookie");
   const observable = cache === undefined ? "unavailable" : isGet ? "miss" : "bypass-head";
   response.headers.set(DIAGNOSTIC_HEADER, `armed; cache=${observable}`);
   // L1 headers: harmless even though the outer layer rewrites Cache-Control
   // (measured); if a future zone config honors them the script drops off the
-  // hot path entirely.
-  applyEdgeCacheHeaders(response, key.pathname, env);
-  if (cache !== undefined && isGet && cacheClass !== "uncacheable" && response.status === 200) {
+  // hot path entirely. A Set-Cookie response is labeled private so neither
+  // this cache nor an honoring CDN treats it as shared.
+  if (hasVisitorSetCookie) {
+    response.headers.set("Cache-Control", "private, no-store");
+  } else {
+    applyEdgeCacheHeaders(response, key.pathname, env);
+  }
+  if (cache !== undefined && isGet && cacheClass !== "uncacheable" && response.status === 200 && !hasVisitorSetCookie) {
     try {
       const stored = response.clone();
       stored.headers.set("X-Decko-Stored-At", String(Date.now()));
@@ -202,6 +217,10 @@ export async function serveWithEdgeCache(
       const message = String(error instanceof Error ? error.message : error).slice(0, 80);
       response.headers.set(DIAGNOSTIC_HEADER, `armed; cache=miss; store-error=${message}`);
     }
+  } else if (cache !== undefined && isGet && hasVisitorSetCookie && response.status === 200) {
+    // The skip is observable, in the shape the CF worker's cache uses for the
+    // same decision (worker-edge-cache.ts shareable).
+    response.headers.set(DIAGNOSTIC_HEADER, "armed; cache=miss; not-stored");
   }
   return response;
 }

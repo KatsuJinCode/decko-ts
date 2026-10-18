@@ -73,6 +73,12 @@ import {
   queryViewFromUrl,
   decodeViewSegment,
 } from "./src/server/worker-shared-surface.js";
+import {
+  readVisitorSession,
+  saveLocation,
+  shouldSaveLocation,
+  visitorSessionCookie,
+} from "./src/card/session/visitor-session.js";
 
 interface Env {
   DECKO_EDGE_CACHE?: string;
@@ -534,7 +540,37 @@ export default {
         view,
         historyViewParams(url.searchParams),
       );
-      return html(200, layoutPage(`${parsed.name} (${view})`, htmlBody), anonymousPage && view === "open");
+      const pageResponse = html(200, layoutPage(`${parsed.name} (${view})`, htmlBody), anonymousPage && view === "open");
+      // THE READ-PATH LOCATION HISTORY — the same arm the Bunny edge's page
+      // dispatch carries (bunny-edge-engine-request.ts, location_history.rb
+      // :6-8 save_current_location before :show_page): a page show of a known
+      // non-signin card, non-ajax, pushes the request's original URL onto the
+      // visitor session's history so the sign-in form's *previous success mark
+      // (set/self/signin.rb:170-174) lands the visitor back on the card a
+      // denial came from. Post-render, and a history failure never fails the
+      // rendered page.
+      try {
+        const shown = await deck.fetcher.fetchByName(parsed.name);
+        if (
+          shouldSaveLocation({
+            known: shown !== undefined && shown.name !== undefined,
+            html: true,
+            ajax: false,
+            codename: shown?.codename,
+          })
+        ) {
+          const visit = readVisitorSession(request.headers.get("cookie") ?? undefined);
+          const beforeCookie = visitorSessionCookie(visit);
+          const host = request.headers.get("x-forwarded-host") ?? url.host;
+          const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(/:$/, "");
+          saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);
+          const afterCookie = visitorSessionCookie(visit, { secure: proto === "https" });
+          if (afterCookie !== beforeCookie) pageResponse.headers.set("Set-Cookie", afterCookie);
+        }
+      } catch {
+        // keep the rendered page; the visitor keeps the previous history
+      }
+      return pageResponse;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // The Card::Error status_code table (card 1.110.0 lib/card/error.rb),
