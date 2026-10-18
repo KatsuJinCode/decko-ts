@@ -268,8 +268,16 @@ async function settle(page) {
 function affordanceHints(text) {
   const hints = [];
   const lower = String(text ?? "").toLowerCase();
-  // Quoted phrases are usually the affordance label.
-  const quoted = String(text ?? "").match(/"([^"]{2,40})"|'([^']{2,40})'/g);
+  // Quoted phrases are usually the affordance label. A single-quote pair
+  // only counts when the opener is not preceded by a word character and the
+  // closer is not followed by one: a possessive or contraction apostrophe is
+  // not a quote pair. Decoding one minted an unfillable prose hint - ACT-124
+  // located "s session answers as the owner" (the fragment between the
+  // possessive apostrophes in "the owner's session ... as the owner's did
+  // not") and ACT-084 located "s type can be changed in the board". Both reds
+  // were guaranteed by the extractor, on the ts engine and on the Ruby oracle
+  // alike. Double-quoted spans are unchanged.
+  const quoted = String(text ?? "").match(/"([^"]{2,40})"|(?<![A-Za-z0-9])'([^']{2,40})'(?![A-Za-z0-9])/g);
   if (quoted) for (const m of quoted) {
     const v = m.replace(/^['"]|['"]$/g, "");
     if (v.length >= 2 && !/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(v)) hints.push({ kind: "text", value: v });
