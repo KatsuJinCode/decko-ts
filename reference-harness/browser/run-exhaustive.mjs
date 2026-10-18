@@ -354,7 +354,16 @@ const SURFACES = {
   // on the old page).
   "cover-b. follow: follow a card and a type from the board (W1, W3)": { signin: "form", card: "/Date_1?view=engage_tab", actor: signinActor },
   "cover-b. more odd-position capabilities (C6, E3, E16, E18, E22, H1, M1, N5, S3, S5)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/*signin"] },
-  "cover-b. permissions: member denied read and edit of a restricted card (P1, P3)": { signin: "form", card: "/", actor: signinActor },
+  // The member-denial surface probes AS THE MEMBER (blindness-review F5: it
+  // signed in as the default admin, so the denial contracts graded as the
+  // one role the rules must deny). The visited card is the fixture's own
+  // read-restricted card — Topic 003+*self+*read is [[Administrator]]
+  // (synthetic-v1 deck.json; measured 2026-10-18 on the ts engine: member
+  // GET /Topic_003 answers 403, admin 200) — so the page the actions observe
+  // is the denial itself. P3's target case stages its restriction through an
+  // explicit admin context (the member cannot create a +*self+*update rule —
+  // measured 403).
+  "cover-b. permissions: member denied read and edit of a restricted card (P1, P3)": { signin: "form", card: "/Topic_003", actor: "member" },
   "cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)": { signin: "form", card: "/", actor: signinActor },
   "cover-b. rename (R1)": { signin: "form", card: "/", actor: signinActor },
   "cover-b. search, layouts and references (N1, N3, N8, N11)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/*search?query[keyword]=Harness"] },
@@ -988,31 +997,64 @@ async function run() {
     const perAction = [];
     let totalInteractions = 0;
     let activeActor = null;
+    // Session identity failures are graded, never swallowed (blindness-review
+    // F4, 2026-10-18): a missing fixture actor, a failed sign-in, or a failed
+    // cookie clear each make the affected action's outcome "error" INSTEAD of
+    // probing under the previous context's identity, and the run exits
+    // non-zero. Mechanisms closed, each previously silent: the missing-actor
+    // demote `?? actors.admin ?? actors.anonymous` graded member-permission
+    // surfaces as admin whenever the fixture lost the member; a thrown
+    // signIn was logged and skipped so the action probed under whatever
+    // identity was left over; and `clearCookies().catch(() => {})` let the
+    // "anonymous" surfaces (sign-in refusals, wanted-card flow) probe
+    // signed-in whenever the clear failed — including a clear that "succeeded"
+    // but left cookies behind.
+    const sessionFailures = [];
     for (const action of actions) {
       const t0 = Date.now();
       const meta = SURFACES[action.surface];
       const actorName = meta?.actor ?? signinActor;
+      let sessionError = null;
       if (meta?.signin === "none") {
-        await ctxb.clearCookies().catch(() => {});
+        try {
+          await ctxb.clearCookies();
+          const leftover = await ctxb.cookies();
+          if (leftover.length > 0) {
+            sessionError = `clearCookies left ${leftover.length} cookie(s) (${leftover.map((c) => c.name).join(", ")}): the anonymous surface would probe signed-in`;
+          }
+        } catch (err) {
+          sessionError = `clearCookies failed: ${err?.message ?? err}`;
+        }
         activeActor = null;
       } else if (activeActor !== actorName) {
-        const actor = actors[actorName] ?? actors.admin ?? actors.anonymous;
-        if (actor?.email) {
+        const actor = actors[actorName];
+        if (!actor?.email) {
+          sessionError = `no fixture actor "${actorName}" with an email (surface: ${action.surface}); refusing to probe under a demoted identity`;
+        } else {
           try {
             await signIn(page, server.base, actor);
             activeActor = actorName;
             console.log(`[run-exhaustive] signed in as ${actorName} (${actor.email}) for ${action.id}`);
           } catch (err) {
-            console.error(`[run-exhaustive] sign-in for ${action.id} (${actorName}): ${err?.message ?? err}`);
+            sessionError = `sign-in as ${actorName} failed: ${err?.message ?? err}; refusing to probe under the previous identity`;
           }
         }
       }
+      // The identity the action's probes actually ran under: null for the
+      // anonymous (signin:"none") surfaces and for actions that errored on
+      // session setup; otherwise the signed-in actor's fixture name.
+      const probedAs = sessionError ? null : (meta?.signin === "none" ? null : actorName);
+      if (sessionError) sessionFailures.push({ id: action.id, actor: actorName, reason: sessionError });
 
       let probe;
-      try {
-        probe = await probeAction(page, action, lastStatusRef, actors);
-      } catch (err) {
-        probe = { sequence: [{ interaction: "error", error: String(err?.message ?? err) }], observations: [], outcome: "error" };
+      if (sessionError) {
+        probe = { sequence: [{ interaction: "error", actor: actorName, error: sessionError }], observations: [], outcome: "error" };
+      } else {
+        try {
+          probe = await probeAction(page, action, lastStatusRef, actors);
+        } catch (err) {
+          probe = { sequence: [{ interaction: "error", error: String(err?.message ?? err) }], observations: [], outcome: "error" };
+        }
       }
       const sequenceCount = probe.sequence.length;
       const observationsCount = probe.observations.length;
@@ -1026,6 +1068,12 @@ async function run() {
         capability_id: action.capability_id ?? null,
         outcome: probe.outcome,
         delegated_to_battery: probe.delegated ?? null,
+        // Session identity of THIS action's grade (blindness-review F4: the
+        // record carried no actor field, so post-hoc no one could tell which
+        // identity graded any action).
+        actor: actorName,
+        probed_as: probedAs,
+        session_error: sessionError,
         interactions,
         sequence_count: sequenceCount,
         observation_count: observationsCount,
@@ -1086,10 +1134,20 @@ async function run() {
         skippedWriteActions: totals.per_outcome.skipped_write ?? 0,
       },
       totals,
-      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, exactFound: r.exactFound, witnessFound: r.witnessFound, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed, delegated_to_battery: r.delegated_to_battery ? { verdict: r.outcome, matched_rows: r.delegated_to_battery.matched_rows, failed_rows: r.delegated_to_battery.failed_rows, probe_outcome_without_delegation: r.delegated_to_battery.probe_outcome_without_delegation } : null })),
+      // Session identity failures (blindness-review F4): named in the
+      // receipt, and the run exits non-zero below.
+      session_failures: sessionFailures,
+      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, actor: r.actor, probed_as: r.probed_as, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, exactFound: r.exactFound, witnessFound: r.witnessFound, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed, delegated_to_battery: r.delegated_to_battery ? { verdict: r.outcome, matched_rows: r.delegated_to_battery.matched_rows, failed_rows: r.delegated_to_battery.failed_rows, probe_outcome_without_delegation: r.delegated_to_battery.probe_outcome_without_delegation } : null })),
     };
     writeFileSync(path.join(out, "run-meta.json"), JSON.stringify(runMeta, null, 2));
     writeRunMarkdown(path.join(out, "run.md"), runMeta, engine);
+    if (sessionFailures.length > 0) {
+      // Fail the run on session identity failures (blindness-review F4): a
+      // missing actor, a failed sign-in, or a failed cookie clear is a graded
+      // error above, and this exit code is what the runner refuses to hide.
+      console.error(`[run-exhaustive] RUN FAILED: ${sessionFailures.length} session identity failure(s): ${sessionFailures.map((f) => `${f.id} (${f.actor})`).join(", ")}`);
+      process.exitCode = 1;
+    }
     console.log(`[run-exhaustive] DONE actions=${perAction.length} totalInteractions=${totalInteractions} out=${path.relative(repo, out)}`);
     await browserHandle.close();
     browserHandle = undefined;

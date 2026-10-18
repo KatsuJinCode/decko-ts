@@ -185,6 +185,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   // 1. Board tabs: the affordance is the tab control on a card's board view
   //    (card-mod-edit boardTabsView renders BOARD_TABS as data-tab-name
   //    links; the home layout renders no board wrapper at all).
+  //    BEHAVIOR GRADING (blindness-review F7: this case was presence-graded —
+  //    the tab control's existence was the whole verdict). The tab is DRIVEN:
+  //    clicking it must activate ITS pane. Measured on the ts engine over
+  //    synthetic-v1 (2026-10-18 probe, local): the controls are
+  //    a[data-tab-name] anchors on /<card>/board and a click moves .active to
+  //    the pane .tab-pane-<Label> (class "tab-pane tab-pane-History active"
+  //    after clicking History; the History pane carries the act list, Engage
+  //    the follow controls). Control presence stays, demoted to a witness.
   const tabs = namedBoardTabs(t);
   if (tabs.length > 0) {
     currentCase = "case 1 board tabs";
@@ -193,9 +201,26 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     for (const label of tabs) {
       const count = await countSelector(`[data-tab-name="${label}"]`);
       push({
-        interaction: "assert-present",
+        interaction: "witness",
         selector: `board tab "${label}" on /${card}/board`,
         count,
+      });
+      let clicked = false;
+      let activeAfter = 0;
+      if (count > 0 && page) {
+        clicked = await dispatchClick(page, `[data-tab-name="${label}"]`);
+        if (clicked) {
+          await page.waitForTimeout(800);
+          await settle();
+        }
+        activeAfter = await countSelector(`.tab-pane-${label}.active`);
+      }
+      push({
+        interaction: "assert-present",
+        selector: `clicking the "${label}" tab activates its pane (.tab-pane-${label}.active) on /${card}/board`,
+        count: clicked && activeAfter > 0 ? 1 : 0,
+        clicked,
+        activeAfter,
       });
     }
   }
@@ -235,13 +260,62 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     // field (`card[name]`, alongside `success[name]`). The edit mode's name
     // ROW (`?view=edit_name_row`) carries no input - it is the row that
     // opens this form - so the probe drives the form itself.
+    // BEHAVIOR GRADING (blindness-review F7: the case graded the name
+    // field's PRESENCE, "no fill, no submit, no stored-row check"). The
+    // rename is now driven on this action's own scratch card and graded by
+    // the card's stored name: POST /update/<card> with card[name] through
+    // the signed-in session's own request channel (cases 7/9/11/12's
+    // driver), then fresh GETs of BOTH names. Measured 2026-10-18 on the ts
+    // engine over synthetic-v1: POST -> 303, /<new>.json -> 200 carrying the
+    // new name, /<old>.json -> 404. (The board-modal renamer click issues no
+    // POST on this engine - the click re-renders the edit_name_row slot with
+    // no request - so the route is the driver, the fresh GETs are the
+    // contract.) The presence witness on the fixture card stays.
     await goto(`/${encodeURIComponent(card)}/name_form`);
     await settle();
     const nameField = await countSelector("input[name='card[name]'], textarea[name='card[name]']");
     push({
-      interaction: "assert-present",
+      interaction: "witness",
       selector: `rename name field card[name] on /${card}/name_form`,
       count: nameField,
+    });
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_rename_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "rename probe's own scratch card and its rename" })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") {
+      throw new Error("rename probe needs the runner's pageRequest helper");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": `rename probe ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    const newName = `Harness_exhaustive_renamed_${stamp}`;
+    const renamed = createdOk
+      ? await pageRequest.post(`${base}/update/${encodeURIComponent(scratch)}`, {
+          headers: { origin: base },
+          form: { "card[name]": newName, "success[redirect]": "true" },
+          maxRedirects: 0,
+        }).catch((e) => ({ error: String(e?.message ?? e) }))
+      : null;
+    const renamedOk = !!renamed && !renamed.error && renamed.status() < 400;
+    const newJson = await fetch(`${base}/${encodeURIComponent(newName)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    const oldJsonStatus = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+      .then((r) => r.status)
+      .catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `rename moves the card: POST /update/<card> (card[name]) answered ${renamed && !renamed.error ? renamed.status() : "nothing"}, /${newName}.json answers ${newJson.status ?? "nothing"} carrying the new name, the old /${scratch}.json answers ${oldJsonStatus ?? "nothing"}`,
+      count: renamedOk && newJson.status === 200 && newJson.parsed?.name === newName && oldJsonStatus === 404 ? 1 : 0,
+      createStatus: created.error ? null : created.status(),
+      renameStatus: renamed && !renamed.error ? renamed.status() : null,
+      newNameJsonStatus: newJson.status,
+      oldNameJsonStatus: oldJsonStatus,
     });
   }
 
@@ -254,18 +328,70 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    against a page that never carries it, on the ts engine and on the Ruby
   //    oracle alike.
   if (/delete/i.test(t) && /(delete|confirm)/i.test(t)) {
-    currentCase = "case 4 delete affordance";
+    currentCase = "case 4 delete control";
+    // The presence witnesses keep their aim (the edit form's own Delete
+    // control) but no longer gate: as the member they read 0 because the
+    // member is denied /Brief?view=edit outright (measured 2026-10-18: 403 —
+    // Brief+*type+*read is [[Administrator]]), and a denied read must not
+    // grade the delete BEHAVIOR graded below.
     await goto(`/${encodeURIComponent(card)}/edit`);
     await settle();
     push({
-      interaction: "assert-present",
+      interaction: "witness",
       selector: `confirm-guarded Delete link to /delete/<name> on /${card}/edit`,
       count: await countSelector("a.btn-outline-danger[href^='/delete/']"),
     });
     push({
-      interaction: "assert-present",
+      interaction: "witness",
       selector: `Delete link carries the confirm guard on /${card}/edit`,
       count: await countSelector("a.btn-outline-danger[data-confirm][href^='/delete/']"),
+    });
+    // BEHAVIOR GRADING (blindness-review F7: "the delete is never driven —
+    // the runner's global dialog auto-accept sits unused by this path"). The
+    // delete is now driven on this action's own scratch card: create it,
+    // open its edit form, click its confirm-guarded Delete link (the
+    // runner's dialog auto-accept answers the confirm), and grade the card's
+    // absence by fresh GETs. Measured 2026-10-18 on the ts engine over
+    // synthetic-v1: the link is a.btn-outline-danger[data-confirm]
+    // [href^='/delete/<name>'], the click's POST answers 200, and after it
+    // /<name>.json answers 404 {error:"card not found"} and /<name> 404.
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_delete_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "delete probe's own scratch card and its driven delete" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("delete probe needs the runner's page and pageRequest helpers");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": `delete probe ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    await goto(`/${encodeURIComponent(scratch)}/edit`);
+    await settle();
+    const deleteHref = await evaluate(() => document.querySelector("a.btn-outline-danger[href^='/delete/']")?.getAttribute("href") ?? null).catch(() => null);
+    let deleteStatus = null;
+    let clickedDelete = false;
+    if (createdOk && deleteHref) {
+      const responded = page.waitForResponse((r) => r.url().includes("/delete/"), { timeout: stepTimeout }).catch(() => null);
+      clickedDelete = await dispatchClick(page, "a.btn-outline-danger[href^='/delete/']");
+      const answered = await responded;
+      deleteStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const afterJsonStatus = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+      .then((r) => r.status)
+      .catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `driven delete removes the card (Delete control ${deleteHref ? "found" : "absent"}, POST /delete/ answered ${deleteStatus ?? "nothing"}, /${scratch}.json answers ${afterJsonStatus ?? "nothing"})`,
+      count: createdOk && !!deleteHref && clickedDelete === true && deleteStatus !== null && deleteStatus < 400 && afterJsonStatus === 404 ? 1 : 0,
+      createStatus: created.error ? null : created.status(),
+      deleteHref,
+      deleteStatus,
+      afterJsonStatus,
     });
   }
 
@@ -306,17 +432,69 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   const followMailedLinkProse = /\bfollow\s+(?:the\s+)?(?:mailed|reset|password)\s+link\b/i.test(t);
   if (/follow/i.test(t) && !followMailedLinkProse) {
     currentCase = "case 6 follow control";
-    await goto(`/${encodeURIComponent(card)}/follow_section`);
+    // BEHAVIOR GRADING (blindness-review F7: "presence counts, either follow
+    // state accepted as the affordance"; grading-integrity F4's tightening:
+    // "drive the control like case 18 drives accordions - click follow,
+    // assert the followed state, click again, assert unfollowed"). The drive
+    // runs on this action's own scratch card, so no fixture card's follow
+    // state is left flipped for later actions. Measured 2026-10-18 on the ts
+    // engine over synthetic-v1: a.follow-link starts as the unfollowed
+    // control (no btn-item-delete, no hover text), a click flips it to
+    // "follow-link btn-item-delete ..." with data-hover-text="unfollow",
+    // and a second click restores the unfollowed control. The *follow RULE
+    // row is a witness, not a leg: the owned-DB read right after the click
+    // shows the engine stores no <card>+*follow rule row for the click drive
+    // (the rule contract belongs to the W3 battery check, which owns it).
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_follow_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "follow probe's own scratch card and its follow/unfollow drive" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("follow probe needs the runner's page and pageRequest helpers");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": `follow probe ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    await goto(`/${encodeURIComponent(scratch)}/follow_section`);
     await settle();
+    const controlCount = await countSelector("a.follow-link");
+    let followedAfterClick = 0;
+    let followedAfterSecondClick = 0;
+    if (createdOk && controlCount > 0) {
+      await dispatchClick(page, "a.follow-link");
+      await page.waitForResponse((r) => r.request().method() !== "GET", { timeout: stepTimeout }).catch(() => null);
+      await settle();
+      followedAfterClick = await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']");
+      await dispatchClick(page, "a.follow-link");
+      await page.waitForResponse((r) => r.request().method() !== "GET", { timeout: stepTimeout }).catch(() => null);
+      await settle();
+      followedAfterSecondClick = await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']");
+    }
+    const ruleJsonStatus = await fetch(`${base}/${encodeURIComponent(`${scratch}+*self+*follow`)}.json`, { headers: { connection: "close" } })
+      .then((r) => r.status)
+      .catch(() => null);
     push({
-      interaction: "assert-present",
-      selector: `follow control on /${card}/follow_section`,
-      count: await countSelector("a.follow-link"),
+      interaction: "witness",
+      selector: `*follow rule row after the drive (/${scratch}+*self+*follow.json answers ${ruleJsonStatus ?? "nothing"}; the ts engine stores no rule row for the click drive - measured 2026-10-18)`,
+      count: ruleJsonStatus === 200 ? 1 : 0,
+      ruleJsonStatus,
     });
     push({
       interaction: "assert-present",
-      selector: `unfollow (followed) state of the follow control on /${card}/follow_section`,
-      count: await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']"),
+      selector: `clicking the follow control follows the card (followed state: a.follow-link.btn-item-delete[data-hover-text='unfollow']) on /${scratch}/follow_section`,
+      count: createdOk && controlCount > 0 && followedAfterClick > 0 ? 1 : 0,
+      controlCount,
+      followedAfterClick,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `clicking the followed control unfollows (the followed state is gone, the control remains) on /${scratch}/follow_section`,
+      count: createdOk && controlCount > 0 && followedAfterClick > 0 && followedAfterSecondClick === 0 ? 1 : 0,
+      followedAfterSecondClick,
     });
   }
 
@@ -504,37 +682,78 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     <button data-cy="save">Save</button> on ?view=edit_form - and the
   //     write it answers is the form's POST to /update/<name>. The runner's
   //     surface page for this action is the deck home read view, where no
-  //     Save exists. The case drives the fixture's own RichText card
-  //     ("Topic 001+summary") edit form, asserts the Save control, and
-  //     answers the action's own question by clicking it: the POST /update
-  //     response is the write the save made.
+  //     Save exists. The case stages its own scratch RichText card, changes
+  //     the content in the editor, asserts the Save control, clicks it, and
+  //     grades the action's own word - PERSISTS - on the stored row
+  //     (/<card>.json db_content carries the new content); a POST that
+  //     answers <400 while dropping the write now fails.
   if (/RichText card persists/i.test(t)) {
     currentCase = "case 10 RichText save (ACT-020)";
-    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: "Topic 001+summary", detail: "ACT-020 the RichText edit form's Save click" })) {
+    // BEHAVIOR GRADING (blindness-review F7: the action says "persists" and
+    // the case graded `saveStatus < 400` — "answered", not "persisted"). The
+    // drive now stages its own scratch RichText card (a fixture card's edit
+    // cannot prove persistence: its content does not change, so a no-op
+    // write and a persisted write are indistinguishable), CHANGES the
+    // content in the editor, clicks Save, and grades the action's own claim
+    // on the stored row: /<card>.json db_content must carry the new content.
+    // Measured 2026-10-18 on the ts engine over synthetic-v1: the
+    // RichText ?view=edit_form renders the content textarea under TinyMCE,
+    // editor.setContent + the Save click answers 200, and /<card>.json then
+    // carries db_content exactly "<p>after <stamp></p>".
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_richtext_persist_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "ACT-020 the persistence probe's own RichText card and its saved content" })) {
       return sequence;
     }
-    if (typeof page === "undefined" || page === null) {
-      throw new Error("RichText save probe needs the runner's page helper");
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("RichText save probe needs the runner's page and pageRequest helpers");
     }
-    const richPath = `/${encodeURIComponent("Topic 001+summary")}?view=edit_form`;
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "RichText", "card[content]": `<p>before ${stamp}</p>`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    const richPath = `/${encodeURIComponent(scratch)}?view=edit_form`;
     await goto(richPath);
     await settle();
+    const saveControl = await countSelector('button[data-cy="save"]');
     push({
       interaction: "assert-present",
       selector: `RichText edit form's Save control (button[data-cy="save"]) on ${richPath}`,
-      count: await countSelector('button[data-cy="save"]'),
+      count: createdOk ? saveControl : 0,
     });
-    const responded = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: 30_000 }).catch(() => null);
-    await page.locator('button[data-cy="save"]').first().click().catch(() => {});
-    const saveResponse = await responded;
-    const saveStatus = saveResponse ? saveResponse.status() : null;
-    push({
-      interaction: "assert-present",
-      selector: `Save answers a write: the edit form's POST /update responded ${saveStatus ?? "nothing"}`,
-      count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
-      status: saveStatus,
-    });
-    await settle();
+    let saveStatus = null;
+    if (createdOk && saveControl > 0) {
+      const newContent = `<p>after ${stamp}</p>`;
+      await page.evaluate((c) => {
+        if (window.tinymce?.activeEditor) window.tinymce.activeEditor.setContent(c);
+        const ta = document.querySelector("textarea[name='card[content]']");
+        if (ta) ta.value = c;
+      }, newContent);
+      const responded = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: 30_000 }).catch(() => null);
+      await page.locator('button[data-cy="save"]').first().click().catch(() => {});
+      const saveResponse = await responded;
+      saveStatus = saveResponse ? saveResponse.status() : null;
+      push({
+        interaction: "assert-present",
+        selector: `Save answers a write: the edit form's POST /update responded ${saveStatus ?? "nothing"}`,
+        count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
+        status: saveStatus,
+      });
+      await settle();
+      const stored = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+        .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+        .catch(() => ({ status: null, parsed: null }));
+      const storedContent = typeof stored.parsed?.db_content === "string" ? stored.parsed.db_content : null;
+      push({
+        interaction: "assert-present",
+        selector: `Save PERSISTS: /${scratch}.json db_content carries the content the editor held (${storedContent === null ? "none read" : JSON.stringify(storedContent.slice(0, 60))})`,
+        count: saveStatus !== null && saveStatus < 400 && stored.status === 200 && storedContent !== null && storedContent.includes(`<p>after ${stamp}</p>`) ? 1 : 0,
+        storedJsonStatus: stored.status,
+        storedContentSnippet: storedContent === null ? null : storedContent.slice(0, 120),
+      });
+    }
   }
 
   // 11. The save the timings action quantifies over (ACT-064, B-064 "no save
@@ -587,9 +806,13 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     card, a member then finds no editor on it - and the runner's surface
   //     page (the deck home, as the signing-in actor) renders neither role.
   //     The case mirrors the named instrument
-  //     (tools/edge-signed-in-exercise/checks-permissions.mjs): as the
-  //     visiting (admin) actor it creates a scratch card plus its
-  //     +*self+*update rule naming Administrator; as the member (a fresh
+  //     (tools/edge-signed-in-exercise/checks-permissions.mjs): an explicit
+  //     ADMIN context (newActorRequest("admin"), a separately-signed-in
+  //     request context closed by the runner) creates the scratch card plus
+  //     its +*self+*update rule naming Administrator - the visiting session
+  //     is no longer the staging actor, because the denial surface now
+  //     probes AS THE MEMBER (blindness-review F5) and the member cannot
+  //     create a +*self+*update rule (measured 403); as the member (a fresh
   //     separately-signed-in request context, closed by the runner) the card
   //     reads 200 with its content, the edit view refuses 403 and renders no
   //     editor FOR THE TARGET CARD - the page-wide content-input count reads
@@ -608,13 +831,23 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     if (typeof pageRequest === "undefined" || typeof newActorRequest !== "function") {
       throw new Error("P3 member-denied-edit probe needs the runner's pageRequest and newActorRequest helpers");
     }
+    // The RESTRICTION is staged through an explicit ADMIN context, no longer
+    // through the visiting session's channel: the denial surface now probes
+    // AS THE MEMBER (blindness-review F5 — it signed in as the default
+    // admin, so the denial contracts graded as admin), and the member cannot
+    // stage the rule at all (measured 2026-10-18 on the ts engine over
+    // synthetic-v1: member POST /card/create of a +*self+*update rule
+    // answers 403). newActorRequest("admin") is the same separately-signed-in
+    // request context the second-save conflict case uses; the runner closes
+    // it with the action's other created contexts.
+    const admin = await newActorRequest("admin");
     const secret = `UNCHANGED_UPDATE_${stamp}`;
-    const createdCard = await pageRequest.post(`${base}/card/create`, {
+    const createdCard = await admin.post(`${base}/card/create`, {
       headers: { origin: base },
       form: { "card[name]": restricted, "card[type]": "Basic", "card[content]": secret, "success[redirect]": "true" },
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
-    const createdRule = await pageRequest.post(`${base}/card/create`, {
+    const createdRule = await admin.post(`${base}/card/create`, {
       headers: { origin: base },
       form: { "card[name]": `${restricted}+*self+*update`, "card[type]": "Phrase", "card[content]": "[[Administrator]]", "success[redirect]": "true" },
       maxRedirects: 0,
