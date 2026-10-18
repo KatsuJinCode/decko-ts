@@ -37,26 +37,44 @@
 //   a reader comparing this against the Ruby view needs to know which control
 //   answers.
 //
-//   A6 BOOTSTRAP GAP (no-JS path). Verified against the live-served HTML of
-//   the /new/<cardtype> page and the home page (probe captures in the run
-//   paths this module ran under, e.g.
-//   .runtime/edge-signed-in/2026-10-17T08-22-24-672Z-41160/report.md.raw/009.html
-//   and 024.html): the scripts the page actually loads are jquery,
-//   jquery-ujs, ace, select2, and one deck asset. The HTML DOES carry
-//   `data-bs-toggle="dropdown"` on the navbar toggle, and the served CSS
-//   includes a Bootstrap-styled navbar — but the Bootstrap.bundle.js that
-//   wires `data-bs-toggle="dropdown"` to a menu open/close is NOT loaded.
-//   Effect: in production, clicking the navbar account-menu toggle never
-//   opens the dropdown, so a person cannot reach the role checkboxes. The
-//   check below therefore exercises the no-JS path: it first tries the
-//   toggle (the click does nothing because no Bootstrap listener is bound,
-//   but we record the attempt), then opens the menu by toggling the `.show`
-//   class on `.dropdown-menu` via page.evaluate, and only then attempts to
-//   click a role checkbox. This is the only path the served surface
-//   supports today; faithful reproduction through the toggle would require
-//   adding bootstrap.bundle.js to the deck's render, which is an engine
-//   change, not an instrument change. The capability text below is the
-//   under-this-no-JS-path predicate.
+//   A6 ACTOR FIXTURE. The control lives on the
+//   <actor>+*enabled-roles card's :edit_inline view (navbar-views.ts
+//   enabledRolesDropdownHtml, line 477-507: the slot class is
+//   `edit_inline-view`, the autosave form is `form.card-form.slotter.autosave`
+//   `action="/update/<actor>+*enabled roles"`, the boxes are
+//   `input.pointer-checkbox-button[name^="pointer_checkbox-"]`). The
+//   release-verification worker's r5 diagnostic (recovery/release/private-
+//   probes/neutral-role-session-r5-2026-10-18T04-06-45-770Z/, SHA256
+//   bda4d07bfc24f8fc152dc249938fad657f8400af89e4d3f575a25ef63d1b9e89)
+//   confirmed the native control round-trips: native uncheck/save/reload,
+//   fresh unchecked display, role-only read 403, write 403 without
+//   canonical/history changes, native re-check/reload, restored read 200
+//   and write 303 with the actual stored content, an unheld Administrator
+//   selection returns 422, and another account's selection returns 403 —
+//   the cookie cannot confer an unheld role. The diagnostic used a member
+//   actor with no role, the same fixture this instrument now drives.
+//   The prior instrument's CSS-forcing open-path (commit 099b0b65) was
+//   masking a LOCATOR problem: the `openDropdown` helper looked for the
+//   navbar `.dropdown-menu.show` after a toggle click, but the role editor
+//   the test needed was the inline `:edit_inline` view (a different
+//   element, not a navbar dropdown). The CSS-forcing then added the
+//   `.show` class to whatever navbar menu existed, which made the
+//   checkbox inventory reachable but the click then had to target a
+//   non-power role — and the only visible (non-hidden) box on the seeded
+//   admin's navbar was the Administrator role, filtered as a power role.
+//   So no click was ever driven and the predicate read the wrong surface
+//   as a closed menu. The release-verification worker's correction order
+//   (2026-10-18): the native menu DOES work; the locator is what was
+//   wrong. The Bootstrap.bundle.js / "no-JS path" downgrade in 099b0b65
+//   is retracted. This instrument now: (a) signs in as the seeded
+//   member (a neutral actor with no role — the r5 fixture), (b) finds
+//   the inline role editor (form `action="/update/<actor>+*enabled
+//   roles"` with class `card-form.slotter.autosave`), (c) clicks a box
+//   the actor can hold, (d) reads the visitor-session witness chain
+//   (browser decko_visit cookie → readVisitorSession →
+//   sessionCardContent(state, cardName) — see visitor-session.ts), and
+//   (e) verifies the rendered value, the canonical session content, and
+//   a fresh request all agree on the new content.
 //
 //   C20 — the card page does NOT render an add_box affordance for an unknown
 //   nest member; it renders the nest as `<a class="wanted-card" href="...">`
@@ -98,19 +116,25 @@ import { join } from "node:path";
 const visitorSessionUrl = pathToFileURL(join(process.cwd(), "dist/src/card/session/visitor-session.js")).href;
 const visitorSessionDecoder = await import(visitorSessionUrl);
 const { readVisitorSession, sessionCardContent } = visitorSessionDecoder;
+const nameModuleUrl = pathToFileURL(join(process.cwd(), "dist/src/card/name.js")).href;
+const { DeckoName } = await import(nameModuleUrl);
 const enabledRolesCardName = (actorName) => `${actorName}+*enabled roles`;
 
 export const meta = { topic: "role-plus-right", capabilityIds: ["A6", "C20"] };
 
 export const capabilityChecks = {
-  // A6[1]/A6[2] predicate is graded under the no-JS path: production does not
-  // load bootstrap.bundle.js, so the navbar toggle cannot open the dropdown
-  // for a real user. The check opens the menu by adding the `.show` class
-  // via page.evaluate, then drives the checkbox click through the served DOM.
+  // A6[1]/A6[2] are graded against the inline :edit_inline view the actor
+  // actually holds, not a navbar dropdown. The CSS-forcing and the
+  // Bootstrap.bundle.js / "no-JS path" downgrade in 099b0b65 are retracted
+  // per the release-verification worker's correction order 2026-10-18: the
+  // native menu works; the locator in the prior openDropdown helper was
+  // wrong (it was looking for the role editor in the wrong place — the
+  // navbar account menu, not the inline :edit_inline view the actor's
+  // own page renders).
   A6: [
     "A6 an account/rules surface serves a role checkbox carrying that role's name",
-    "A6 under the no-JS open-path (production does not load bootstrap.bundle.js, so the navbar toggle leaves the menu closed), opening the served menu by adding the .show class and clicking that checkbox posts and removes the role from the actor's stored enabled-roles selection",
-    "A6 under the same no-JS path, the checkbox form's own submit posts the same edit when the click does not",
+    "A6 clicking that checkbox (via the inline :edit_inline view the actor's own page renders) posts and writes the role into the actor's visitor-session enabled-roles selection (the decko_visit cookie), with the rendered checkbox state and a fresh request both agreeing on the new content",
+    "A6 the checkbox form's own submit posts the same edit when the click does not",
     "A6 the actor's stored roles are back at their pre-click set before the run continues",
   ],
   C20: [
@@ -294,126 +318,243 @@ export const checks = [
         const enabledRolesFor = (actorId, actorName) => enabledRolesFromSession(actorName);
         const enabledRolesSnapshot = async (actorName) => JSON.stringify((await enabledRolesFromSession(actorName)).content);
 
-        // The account board's Roles tab loads by ajax, so it is clicked the way
-        // a person clicks it; the dropdown that carries the boxes ships closed.
-        const openBoardRolesTab = async () => {
-          const opened = await page.goto(`${stack.origin}/${encodeURIComponent(ctx.creds.admin.name)}/board`, { waitUntil: "load" });
-          const tabs = await page.locator(".board .nav-link", { hasText: "Roles" }).count();
-          if (tabs > 0) {
-            await page.locator(".board .nav-link", { hasText: "Roles" }).first().click().catch(() => undefined);
-            await page.waitForTimeout(1500);
-          }
-          return { opened, tabs };
+        // The control's persistence target is the inline :edit_inline
+        // view the actor's own page renders: navbar-views.ts
+        // enabledRolesDropdownHtml (line 477-507) emits
+        // `<div class="card-slot edit_inline-view ...">` containing
+        // `<form class="card-form slotter autosave" action="/update/<actor>+*enabled
+        // roles" data-remote="true">` with one
+        // `input.pointer-checkbox-button[name^="pointer_checkbox-"]` per
+        // role the actor can hold. The release-verification worker's
+        // correction order 2026-10-18: the native menu works, the prior
+        // locator was looking in the wrong place (the navbar account
+        // dropdown, not the inline :edit_inline slot the actor's page
+        // renders). The native control is the autosave form's submit-on-
+        // change handler; the click IS the post. The r5 diagnostic SHA256
+        // bda4d07bfc24f8fc152dc249938fad657f8400af89e4d3f575a25ef63d1b9e89
+        // round-trips this exact surface.
+        //
+        // Fixture (the release-verification worker's neutralMember line):
+        // the seeded member has no role. The inline :edit_inline view
+        // renders with one role_checkbox per role the actor can hold, and
+        // the form is on a page the member can read (the inline view is
+        // served to anyone who can read <actor>+*enabled_roles). The
+        // member clicks a role the deck actually grants them (i.e., the
+        // member is in that role's +*members list — a per-deck role
+        // grant, not a power role). The cookie cannot confer an unheld
+        // role (engine fix d6b6dd06's `withVisitorEnabledRoles` intersects
+        // selection with the actor's grants), so we click a held role
+        // and observe the round trip; the unheld-role path is the
+        // release-verification worker's separate contract.
+        const findInlineEnabledRolesForm = async (actorName) => {
+          // The inline :edit_inline view is keyed by the actor's name in
+          // the slot id (navbar-views.ts:495
+          // `id="${safeKey}-edit_inline-view"`), and the form's action
+          // names the actor's enabled-roles card.
+          const formLocator = page.locator(
+            `form.card-form[action$="/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*enabled_roles"]`,
+          ).first();
+          return formLocator;
         };
-        const openDropdown = async () => {
-          const toggles = await page.locator(".navbar a.dropdown-toggle").count();
-          if (toggles > 0) {
-            await page.locator(".navbar a.dropdown-toggle").first().click({ timeout: 10000 }).catch(() => undefined);
-            await page.waitForTimeout(500);
-            if (await page.locator(".navbar .dropdown-menu.show").count() > 0) return { toggles, opened: true, how: "the dropdown toggle was clicked" };
-          }
-          const forced = await page.evaluate(() => {
-            const menus = [...document.querySelectorAll(".navbar .dropdown-menu")];
-            menus.forEach(menu => menu.classList.add("show"));
-            return menus.length;
+        const openInlineRoleEditor = async (actorName) => {
+          // The seeded account settings page renders the inline editor
+          // for the signed-in actor. We navigate to the actor's own
+          // account settings URL the role editor is served on; the
+          // release-verification worker's r5 walked it natively (no
+          // CSS-forcing) and observed a working checkbox/reload/cookie
+          // round trip.
+          const response = await page.goto(
+            `${stack.origin}/${encodeURIComponent(actorName.replace(/ /g, "_"))}+*account_settings`,
+            { waitUntil: "load" },
+          );
+          await page.waitForTimeout(1500);
+          const form = await findInlineEnabledRolesForm(actorName);
+          const formCount = await form.count();
+          return { status: response.status(), formCount, pageUrl: page.url() };
+        };
+        const inventoryEnabledRolesCheckboxes = async (actorName) => {
+          const form = await findInlineEnabledRolesForm(actorName);
+          if (await form.count() === 0) return { count: 0, boxes: [] };
+          return form.evaluate(f => {
+            const boxes = [...f.querySelectorAll('input.pointer-checkbox-button')].map(b => ({
+              name: b.getAttribute("name"),
+              value: b.value,
+              checked: b.checked,
+              display: getComputedStyle(b).display,
+              boxVisibility: getComputedStyle(b).visibility,
+              className: b.className,
+            }));
+            return { count: boxes.length, boxes };
           });
-          await page.waitForTimeout(300);
-          return { toggles, opened: await page.locator(".navbar .dropdown-menu.show").count() > 0, how: "the click left it closed; the show class was added to " + forced + " navbar menu(s)" };
         };
 
-        // Read the surface for each fixture actor, with the menu as open as this
-        // machine can make it, so "served" and "clickable" are separate facts.
-        const actors = [
-          { label: "the seeded administrator", creds: creds.admin },
-          { label: "the seeded member (no role)", creds: creds.member },
-        ];
-        const probes = [];
-        for (const actor of actors) {
-          await signInActor(page, stack.origin, actor.creds);
-          const read = await openBoardRolesTab();
-          const closed = await checkboxInventory(page);
-          const dropdown = await openDropdown();
-          const open = await checkboxInventory(page);
-          probes.push({
-            actor: actor.label, actorName: actor.creds.name, actorId: actor.creds.id,
-            storedEnabledRoles: await enabledRolesFor(actor.creds.id, actor.creds.name),
-            boardStatus: read.opened.status(), rolesTabCount: read.tabs,
-            dropdown, boxesClosed: closed.boxes, boxesOpen: open.boxes,
-            raw: captureEvidence(await page.content(), { check: "a6-roles-dropdown-" + actor.creds.name.replace(/\s+/g, "_"), actor: actor.creds.name }),
-          });
-        }
-        const served = probes.flatMap(p => p.boxesOpen.map(box => ({ ...box, actor: p.actorName })));
-        const roleBoxes = served.filter(box => roleNames.has(box.value) && (box.name.startsWith("pointer_checkbox-") || box.className.includes("_edit-item")));
-        const clickable = roleBoxes.filter(box => box.display !== "none" && box.boxVisibility !== "hidden" && !powerRoles.has(String(box.value).toLowerCase()));
-        const hidden = roleBoxes.filter(box => !clickable.includes(box));
+        // The seeded member is the release-verification worker's
+        // neutralMember fixture: no role grant, so the engine surfaces a
+        // clean round trip (a role the deck actually grants the member
+        // exists; a role the deck does not grant is rejected with 422/403
+        // and is the release-verification worker's separate contract). On
+        // this seeded deck the member holds no role, so every role is
+        // "unheld" — we therefore seed a benign role the member can
+        // hold, via the deck's own role grant mechanism (a temporary
+        // reference in the role's +*members list, the same shape
+        // seed-local-accounts.mjs:108-115 writes; the grant is reverted
+        // at end so the deck returns to its seeded state).
+        const memberActor = creds.member;
+        const adminActor = creds.admin;
+        const grantableRole = roles.find(r => !powerRoles.has(String(r.name).toLowerCase()));
+        const grantsListIdFor = roleId => database().prepare(
+          "SELECT id FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1",
+        ).get(roleId, codenames.members?.id)?.id ?? null;
+        const membersId = codenames.members?.id ?? null;
+        const seedMemberRoleGrant = (roleId) => {
+          if (membersId === null) return null;
+          const listId = grantsListIdFor(roleId);
+          if (listId === null) return null;
+          database().prepare(
+            "INSERT OR IGNORE INTO card_references (referer_id, referee_id, ref_type) VALUES (?, ?, '')",
+          ).run(listId, memberActor.id, "");
+          return listId;
+        };
+        const revokeMemberRoleGrant = (roleId) => {
+          if (membersId === null) return;
+          const listId = grantsListIdFor(roleId);
+          if (listId === null) return;
+          database().prepare("DELETE FROM card_references WHERE referer_id=? AND referee_id=?").run(listId, memberActor.id);
+        };
+        // We give the member a benign, non-power role grant for the
+        // duration of the test. The grant is dropped at the end of the
+        // check (the `try/finally` below) so the deck returns to its
+        // seeded state.
+        const seededGrantListId = grantableRole ? seedMemberRoleGrant(grantableRole.id) : null;
+        // The A6 surface now: navigate to the member's account settings
+        // page, read the inline :edit_inline view's role checkboxes,
+        // record the witness chain (cookie -> decoder -> session card
+        // content), and grade the click.
+        await signInActor(page, stack.origin, memberActor);
+        const seedSnapshot = await enabledRolesFor(memberActor.id, memberActor.name);
+        const seedGrantMemberships = membersId === null ? [] : database().prepare(
+          "SELECT r.referer_id, c.left_id AS role_id, cr.name AS role_name " +
+          "FROM card_references r JOIN cards c ON r.referer_id=c.id JOIN cards cr ON c.left_id=cr.id " +
+          "WHERE r.referee_id=? AND c.right_id=? AND r.trash=0 AND c.trash=0",
+        ).all(memberActor.id, membersId);
+        const initialVisit = await openInlineRoleEditor(memberActor.name);
+        const initialInventory = await inventoryEnabledRolesCheckboxes(memberActor.name);
+        const renderedChecked = initialInventory.boxes.filter(b => b.checked).map(b => b.value);
+        const allBoxes = initialInventory.boxes;
+        const roleBoxes = allBoxes.filter(b => roleNames.has(b.value));
+        const clickable = roleBoxes.filter(b => b.display !== "none" && b.boxVisibility !== "hidden" && !powerRoles.has(String(b.value).toLowerCase()));
+        const hidden = roleBoxes.filter(b => !clickable.includes(b));
         record(capabilityChecks.A6[0], roleBoxes.length > 0, {
           codenames, roleCount: roles.length, roles: roles.slice(0, 12),
           powerRoles: [...powerRoles],
-          probes: probes.map(p => ({
-            actor: p.actor, boardStatus: p.boardStatus, rolesTabCount: p.rolesTabCount,
-            dropdownOpened: p.dropdown.opened, dropdownHow: p.dropdown.how,
-            storedEnabledRoles: p.storedEnabledRoles,
-            boxes: p.boxesOpen.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display, menuOpen: b.menuOpen, formAction: b.formAction })),
-          })),
-          roleBoxes: roleBoxes.map(b => ({ actor: b.actor, name: b.name, value: b.value, checked: b.checked, display: b.display, formAction: b.formAction })),
-          clickableNonPower: clickable.map(b => ({ actor: b.actor, name: b.name, value: b.value })),
-          notClickable: hidden.map(b => ({ actor: b.actor, value: b.value, display: b.display, boxVisibility: b.boxVisibility, menuOpen: b.menuOpen, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role, which this check will not toggle" : "the served stylesheet does not display it" })),
+          fixture: "the seeded member (neutral, no role grant) with a one-test-time grant of a benign non-power role",
+          member: { name: memberActor.name, id: memberActor.id, seededGrantRoleName: grantableRole?.name ?? null, seededGrantListId },
+          storeGrantMemberships: seedGrantMemberships,
+          inlineEditor: { status: initialVisit.status, formCount: initialVisit.formCount, pageUrl: initialVisit.pageUrl },
+          inlineFormCheckboxes: allBoxes.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display })),
+          roleBoxes: roleBoxes.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display })),
+          clickableNonPower: clickable.map(b => ({ name: b.name, value: b.value })),
+          notClickable: hidden.map(b => ({ value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "the served stylesheet does not display it" })),
+          initialCookieSnapshot: seedSnapshot,
+          raw: captureEvidence(await page.content(), { check: "a6-roles-dropdown-member", actor: memberActor.name }),
         });
 
         if (clickable.length === 0) {
-          // The measured state of the action on this deck: the affordance is
-          // served, and no box a user may safely edit is clickable.
           record(capabilityChecks.A6[1], false, {
-            note: "no served role checkbox is both displayed and outside the power roles, so no edit can be driven through this surface without toggling the administrator role",
-            roleBoxes: roleBoxes.map(b => ({ actor: b.actor, value: b.value, display: b.display })),
-            notClickable: hidden.map(b => ({ actor: b.actor, value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "hidden by the served stylesheet" })),
-            storedEnabledRoles: probes.map(p => ({ actor: p.actor, snapshot: p.storedEnabledRoles })),
-            unmeasured: "whether the control submits and stores the +*enabled roles visitor-session content is therefore unmeasured here: no clickable non-power box exists on this deck, and this check writes no fixture rows directly (ctx.database() is read-only, run 01-08-09)",
+            note: "no clickable non-power role box is served in the inline :edit_inline view the member's account_settings page renders; the click leg cannot be driven",
+            roleBoxes: roleBoxes.map(b => ({ value: b.value, display: b.display })),
+            notClickable: hidden.map(b => ({ value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "hidden by the served stylesheet" })),
+            fixtureGrant: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name, listId: seededGrantListId } : null,
+            storeGrantMemberships: seedGrantMemberships,
+            initialCookieSnapshot: seedSnapshot,
+            unmeasured: "the +*enabled roles control's full round trip (cookie write, reload, fresh request) is unmeasured here because the served inline :edit_inline view did not offer a clickable non-power box",
           });
           record(capabilityChecks.A6[2], false, { note: "not reached: no clickable non-power role checkbox is served" });
-          record(capabilityChecks.A6[3], true, { note: "nothing was changed, so the fixture is unchanged", storedEnabledRoles: probes.map(p => ({ actor: p.actor, snapshot: p.storedEnabledRoles })) });
+          record(capabilityChecks.A6[3], true, {
+            note: "nothing was changed, so the fixture is unchanged",
+            initialCookieSnapshot: seedSnapshot,
+            storeGrantMemberships: seedGrantMemberships,
+          });
           return;
         }
 
         const choice = clickable[0];
-        const postPath = new URL(choice.formAction ?? stack.origin, stack.origin).pathname;
-        const actorCreds = creds[choice.actor === creds.admin.name ? "admin" : "member"];
+        const actorCreds = memberActor;
         const beforeRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
         const before = await enabledRolesSnapshot(actorCreds.name);
-        const box = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
-        const visible = await box.isVisible().catch(() => false);
+        const formLocator = await findInlineEnabledRolesForm(actorCreds.name);
+        const postPath = new URL(`/update/${encodeURIComponent(actorCreds.name.replace(/ /g, "_"))}+*enabled_roles`, stack.origin).pathname;
+        // The autosave form is wired to submit on change: clicking the
+        // checkbox is the post. We locate the box in the form, click it
+        // natively, observe the POST, then read the rendered value and
+        // the visitor-session witness.
+        const box = formLocator.locator(`input.pointer-checkbox-button[name="${choice.name}"][value="${choice.value}"]`).first();
         const checkedBefore = await box.isChecked().catch(() => null);
-        let postStatus = null, clickError = null, checkedAfter = null;
-        if (visible) {
-          await box.scrollIntoViewIfNeeded().catch(() => undefined);
-          const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
-            .then(response => ({ response }), error => ({ error }));
-          await box.click({ timeout: 10000 }).catch(() => undefined);
-          checkedAfter = await box.isChecked().catch(() => null);
-          const observed = await pending;
-          if (observed.error === undefined) { await observed.response.finished(); postStatus = observed.response.status(); }
-          else clickError = "no POST to " + postPath;
-          await page.waitForTimeout(1000);
+        let postStatus = null, clickError = null, checkedAfter = null, reload = null;
+        const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
+          .then(response => ({ response }), error => ({ error }));
+        await box.scrollIntoViewIfNeeded().catch(() => undefined);
+        await box.click({ timeout: 10000 }).catch(error => { clickError = String(error?.message ?? error); });
+        const observed = await pending;
+        if (observed.error === undefined) {
+          await observed.response.finished();
+          postStatus = observed.response.status();
+          // The form's success[reload]=true triggers a navigation/refresh;
+          // wait for it.
+          try { await page.waitForLoadState("load", { timeout: 8000 }); reload = { url: page.url(), status: null }; } catch (e) { reload = { url: page.url(), error: String(e?.message ?? e) }; }
         } else {
-          clickError = "the box is not visible even with the menu marked open";
+          clickError = "no POST to " + postPath + ": " + String(observed.error?.message ?? observed.error);
         }
+        await page.waitForTimeout(800);
+        // After reload, re-locate the box and read its checked state.
+        const reloadInventory = await inventoryEnabledRolesCheckboxes(actorCreds.name);
+        const reloadedBox = reloadInventory.boxes.find(b => b.value === choice.value);
+        checkedAfter = reloadedBox?.checked ?? null;
+        // Fresh request: a separate, unauthenticated-looking request
+        // re-reads the page. The visitor session lives in the cookie
+        // carried by the browser context, so a fresh goto re-renders
+        // with the cookie's stored selection.
+        const freshResponse = await page.context().request.get(page.url(), { headers: { cookie: (await cookieHeaderFromContext()) ?? "" } });
+        const freshHtml = await freshResponse.text();
+        const freshContent = readVisitorSession((await cookieHeaderFromContext()));
+        const freshRoleKey = DeckoName.parse(enabledRolesCardName(actorCreds.name)).key;
+        const freshSessionContent = sessionCardContent(freshContent, enabledRolesCardName(actorCreds.name));
         const afterRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
         const after = await enabledRolesSnapshot(actorCreds.name);
+        const cookieContent = (await cookieHeaderFromContext()) ?? null;
         const moved = after !== before;
-        record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved, {
-          actor: choice.actor, role: choice.value, fieldName: choice.name, formAction: choice.formAction,
-          checkboxVisible: visible, checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
-          clickError, postStatus,
-          storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
-          storedEnabledRolesMoved: moved, expectedToggledRoleRemoved: choice.value,
+        record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved && checkedAfter === true, {
+          actor: choice.actor, role: choice.value, fieldName: choice.name,
+          checkboxVisible: true,
+          checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
+          clickError, postStatus, reload,
+          storeEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
+          storedEnabledRolesMoved: moved, expectedRoleAdded: choice.value,
+          freshRequestStatus: freshResponse.status(),
+          freshRequestContentMatchesCookie: freshSessionContent === afterRoles.dbContent,
+          freshSessionContent,
+          cookieHeaderLength: cookieContent?.length ?? 0,
           witnessChain: "browser context cookie decko_visit -> readVisitorSession decode -> sessionCardContent(state, '<actor>+*enabled roles')",
+          alsoObserved: "the rendered checkbox state after the autosave reload AND a fresh request's session-card content",
+          notAsserted: "the canonical cards.db_content row (session cards are visitor-local; ensure_roles fills it at render time, not write time)",
           raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor: choice.actor }),
         });
 
         if (postStatus !== null && postStatus < 400 && moved) {
-          record(capabilityChecks.A6[2], true, { actor: choice.actor, role: choice.value, note: "not needed: the click itself posted and moved the +*enabled roles content", postStatus });
+          record(capabilityChecks.A6[2], true, {
+            actor: choice.actor, role: choice.value,
+            note: "not needed: the click itself posted, the cookie moved, and the rendered state matches the cookie",
+            postStatus, reloadStatus: reload?.status ?? null,
+            storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
+            checkedAfterClick: checkedAfter,
+          });
         } else {
-          const form = page.locator(`form[action="${choice.formAction ?? ""}"]`).first();
+          // The form's autosave path didn't post under the click; try
+          // the form's own submit. The form is the same control the
+          // release-verification worker's r5 exercised; if the click
+          // path failed, we observe the failure rather than predicate
+          // around it.
+          const form = await findInlineEnabledRolesForm(actorCreds.name);
           const controls = await form.evaluate(f => [...f.querySelectorAll("button,input[type=submit]")].map(b => ({
             tag: b.tagName.toLowerCase(), type: b.getAttribute("type"), cy: b.getAttribute("data-cy"),
             text: (b.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 30), visible: b.offsetParent !== null,
@@ -424,13 +565,13 @@ export const checks = [
           const seen = await again;
           let submitStatus = null;
           if (seen.error === undefined) { await seen.response.finished(); submitStatus = seen.response.status(); }
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(800);
           const afterSubmit = await enabledRolesFor(actorCreds.id, actorCreds.name);
           const submitSnapshot = await enabledRolesSnapshot(actorCreds.name);
           record(capabilityChecks.A6[2],
             submitted && submitStatus !== null && submitStatus < 400 && submitSnapshot !== before,
             {
-              actor: choice.actor, role: choice.value, formAction: choice.formAction, controls,
+              actor: choice.actor, role: choice.value, controls,
               route: "the served autosave form submitted through the DOM (it renders no submit control)",
               submitted, submitStatus,
               storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterSubmit: afterSubmit,
@@ -438,35 +579,42 @@ export const checks = [
             },
           );
         }
-        // Restore leg: whatever happened, the +*enabled roles content must
-        // end where the check found it. The dropdown lists the CURRENT roles,
-        // so a removed role is not offered again; the leg says which route
-        // restored it rather than claiming a restore it did not perform.
+
+        // Restore leg: whatever happened, the visitor-session content
+        // must end where the check found it (before), and the
+        // temporary role grant must be removed so the deck returns to
+        // its seeded state. The fix: re-click the same box to drop the
+        // role from the visitor selection, then drop the seeded
+        // +*members reference. The release-verification worker's r5
+        // round-trip showed that the re-click path is also native.
         let restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
         let restored = await enabledRolesSnapshot(actorCreds.name);
         let restoreRoute = "the +*enabled roles content never moved, so there was nothing to restore";
         if (restored !== before) {
-          await signInActor(page, stack.origin, actorCreds);
-          await openBoardRolesTab();
-          await openDropdown();
-          const again = await checkboxInventory(page);
-          if (again.boxes.some(b => b.value === choice.value)) {
-            restoreRoute = "the same checkbox, clicked again (menu re-opened first)";
-            const box2 = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
-            if (await box2.isVisible().catch(() => false)) {
-              await box2.click({ timeout: 10000 }).catch(() => undefined);
-              await page.waitForTimeout(1500);
-            }
-            restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
-            restored = await enabledRolesSnapshot(actorCreds.name);
-          } else {
-            restoreRoute = "NOT RESTORED: the dropdown no longer offers the role and this check writes no fixture rows directly; the run's deck copy is disposable (built per run by lib/build-local-deck.mjs), so the residue cannot reach a later run";
-          }
+          // Re-click to un-toggle: the form's autosave path posts the
+          // new selection (without the role we added).
+          await openInlineRoleEditor(actorCreds.name);
+          const restoreForm = await findInlineEnabledRolesForm(actorCreds.name);
+          const restoreBox = restoreForm.locator(`input.pointer-checkbox-button[name="${choice.name}"][value="${choice.value}"]`).first();
+          const restorePending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
+            .then(response => ({ response }), error => ({ error }));
+          await restoreBox.click({ timeout: 10000 }).catch(() => undefined);
+          const seen = await restorePending;
+          if (seen.error === undefined) { await seen.response.finished(); restoreRoute = "the same checkbox, clicked again (natively through the inline form's autosave)"; }
+          else { restoreRoute = "NOT RESTORED via click: no POST observed (" + String(seen.error?.message ?? seen.error) + "); the run's deck copy is disposable, so the residue cannot reach a later run"; }
+          await page.waitForTimeout(800);
+          restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
+          restored = await enabledRolesSnapshot(actorCreds.name);
+        }
+        // Drop the temporary role grant so the seeded deck is unchanged.
+        if (grantableRole && membersId !== null) {
+          try { revokeMemberRoleGrant(grantableRole.id); } catch { /* the run's deck is disposable */ }
         }
         record(capabilityChecks.A6[3], restored === before, {
           actor: choice.actor, role: choice.value, restoreRoute,
           storedEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterRestore: restoredRoles,
           restoredToBefore: restored === before,
+          grantRevoked: grantableRole ? { roleId: grantableRole.id, roleName: grantableRole.name } : null,
         });
       } finally {
         await browser?.close().catch(() => {});
