@@ -265,7 +265,7 @@ export const checks = [
     name: "A6 a role checkbox on an account/rules surface edits the actor's stored roles",
     only: "role-plus-right",
     run: async ctx => {
-      const { stack, creds, record, database, captureEvidence } = ctx;
+      const { stack, creds, record, database, captureEvidence, ledger, linesSince } = ctx;
       if (!loopbackOnly(stack.origin)) throw Error("role-plus-right requires the disposable loopback fixture");
       const powerRoles = new Set(["administrator"]);
       let browser;
@@ -575,12 +575,31 @@ export const checks = [
         // the visitor-session witness.
         const box = formLocator.locator(`input.pointer-checkbox-button[name="${choice.name}"][value="${choice.value}"]`).first();
         const checkedBefore = await box.isChecked().catch(() => null);
-        let postStatus = null, clickError = null, checkedAfter = null, reload = null;
+        // The click-window diagnostic, so the FAIL branch (if it comes) names
+        // its mechanism instead of a naked timeout: does the click reach the
+        // input (box metrics + whether the checked property flips), does a
+        // native change event fire at all (capture-phase listener), and what
+        // did the browser actually request (the harness's request ledger)?
+        await page.evaluate(() => {
+          window.__a6ChangeFired = 0;
+          document.addEventListener("change", e => {
+            if (e.target instanceof Element && e.target.classList.contains("_submit-on-change")) window.__a6ChangeFired += 1;
+          }, true);
+        });
+        const boxMetrics = await box.evaluate(b => {
+          const cs = getComputedStyle(b), r = b.getBoundingClientRect();
+          return { opacity: cs.opacity, pointerEvents: cs.pointerEvents, display: cs.display, position: cs.position, width: r.width, height: r.height, classes: b.className };
+        });
+        let postStatus = null, clickError = null, checkedAfter = null, reload = null, checkedImmediatelyAfterClick = null, changeEventsFired = null, clickWindowRequests = [];
+        const ledgerBefore = ledger().length;
         const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
           .then(response => ({ response }), error => ({ error }));
         await box.scrollIntoViewIfNeeded().catch(() => undefined);
         await box.click({ timeout: 10000 }).catch(error => { clickError = String(error?.message ?? error); });
+        checkedImmediatelyAfterClick = await box.isChecked().catch(() => null);
         const observed = await pending;
+        changeEventsFired = await page.evaluate(() => window.__a6ChangeFired).catch(() => null);
+        clickWindowRequests = linesSince(ledgerBefore).map((l) => ({ method: l.method, path: l.path.slice(0, 90), status: l.status }));
         if (observed.error === undefined) {
           await observed.response.finished();
           postStatus = observed.response.status();
@@ -620,7 +639,9 @@ export const checks = [
           actor: actorCreds.name, role: choice.value, fieldName: choice.name,
           checkboxVisible: true,
           checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
-          expectedCheckedAfter, renderedFlipped,
+          checkedImmediatelyAfterClick, expectedCheckedAfter, renderedFlipped,
+          boxMetrics, changeEventsFired, clickWindowRequests,
+          clickDiagnosticNote: "changeEventsFired counts native change events on _submit-on-change inputs (capture-phase listener); clickWindowRequests is every request the browser made in the click window, so a 'no POST' claim is checkable",
           clickError, postStatus, reload,
           storeEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
           storedEnabledRolesMoved: moved, expectedRoleAdded: choice.value,
@@ -686,7 +707,12 @@ export const checks = [
         let restoreRoute = "the +*enabled roles content never moved, so there was nothing to restore";
         if (restored !== before) {
           // Re-click to un-toggle: the form's autosave path posts the
-          // new selection (without the role we added).
+          // new selection (without the role we added). If the click cannot
+          // post (the measured click-path defect), the restore falls back to
+          // the SAME control's own form submit (requestSubmit on the served
+          // autosave form — the route the click's change handler is supposed
+          // to take), so the fixture hygiene does not depend on the broken
+          // affordance. Which route actually restored is recorded.
           await openInlineRoleEditor(actorCreds.name);
           const restoreForm = await findInlineEnabledRolesForm(actorCreds.name);
           const restoreBox = restoreForm.locator(`input.pointer-checkbox-button[name="${choice.name}"][value="${choice.value}"]`).first();
@@ -695,7 +721,18 @@ export const checks = [
           await restoreBox.click({ timeout: 10000 }).catch(() => undefined);
           const seen = await restorePending;
           if (seen.error === undefined) { await seen.response.finished(); restoreRoute = "the same checkbox, clicked again (natively through the inline form's autosave)"; }
-          else { restoreRoute = "NOT RESTORED via click: no POST observed (" + String(seen.error?.message ?? seen.error) + "); the run's deck copy is disposable, so the residue cannot reach a later run"; }
+          else {
+            const resubmitPending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
+              .then(response => ({ response }), error => ({ error }));
+            const submitted = await restoreForm.evaluate(f => { f.requestSubmit(); return true; }).catch(() => false);
+            const resubmitted = await resubmitPending;
+            if (submitted && resubmitted.error === undefined) {
+              await resubmitted.response.finished();
+              restoreRoute = "the form's own requestSubmit (the click affordance posted nothing — the measured click-path defect — so the restore used the same form's direct submit)";
+            } else {
+              restoreRoute = "NOT RESTORED: neither the click nor the form's requestSubmit produced a POST (" + String(seen.error?.message ?? seen.error).slice(0, 80) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
+            }
+          }
           await page.waitForTimeout(800);
           restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
           restored = await enabledRolesSnapshot(actorCreds.name);
