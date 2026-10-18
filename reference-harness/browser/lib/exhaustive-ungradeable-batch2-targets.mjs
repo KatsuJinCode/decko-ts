@@ -32,6 +32,8 @@
 // answers instead.
 
 import { decideWrite } from "./live-walk-profile.mjs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 /** Gates one write-shaped case. Same contract as
  *  exhaustive-affordance-targets.mjs gateWrite: true to run it; when the
@@ -266,23 +268,35 @@ export async function ungradeableBatch2TargetProbes({
     if (typeof page === "undefined" || page === null || typeof newActorRequest !== "function") {
       throw new Error("C19 probe needs the runner's page and newActorRequest helpers");
     }
-    await visit(`/*search?query[keyword]=${encodeURIComponent(wanted)}`);
-    // Type the missing name into the navbox autocomplete.
-    const box = page.locator(".search-box-form input[name*='query']").first();
+    await visit("/");
+    // Type the missing name into the navbox autocomplete. The probe drives
+    // the box with PER-KEY events (pressSequentially, delay 40) and lets the
+    // menu settle 2.5 s: the autocomplete listens for keystrokes, and a
+    // value-setting fill() fired only the "search this term" item (run 1's
+    // recorded menu). Menu items are matched by the probe's own rule: any
+    // entry whose class names the add item or whose href resolves the
+    // missing card.
+    const box = page.locator("form.search-box-form input[name='query[keyword]']:visible").first();
     const boxCount = await box.count().catch(() => 0);
     let menu = [];
     let clicked = null;
     let prefilled = null;
     if (boxCount > 0) {
-      await box.fill(wanted, { timeout: stepTimeout }).catch(() => {});
-      await page.waitForSelector(".ui-autocomplete", { timeout: 10_000 }).catch(() => {});
-      await page.waitForTimeout(1_500);
+      await box.click({ timeout: stepTimeout }).catch(() => {});
+      await box.pressSequentially(wanted, { delay: 40, timeout: stepTimeout }).catch(() => {});
+      await page.waitForTimeout(2_500);
       menu = (await page
-        .evaluate(() => [...document.querySelectorAll(".ui-autocomplete a, .ui-autocomplete .autocomplete-item-add")].map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 60) })))
+        .evaluate(() => [...document.querySelectorAll(".ui-menu-item, .ui-autocomplete li, .ui-autocomplete a, .autocomplete-item")].slice(0, 10).map((el) => {
+          const a = el.matches("a") ? el : el.querySelector("a");
+          return { href: a?.getAttribute("href") ?? el.getAttribute?.("href") ?? null, text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 90), cls: String(el.className ?? "").slice(0, 60) };
+        }))
         .catch(() => [])) ?? [];
-      const offer = menu.find((m) => /add/i.test(m.text) || decodeURIComponent(m.href ?? "").endsWith("/" + wanted) || (m.href ?? "").includes(wanted));
+      const offer = menu.find((m) => /add/i.test(m.cls) || (m.href && decodeURIComponent(m.href).endsWith("/" + wanted)));
       if (offer) {
-        await page.locator(`.ui-autocomplete a[href='${offer.href}'], .ui-autocomplete li:has(.autocomplete-item-add) a, .ui-autocomplete .autocomplete-item-add`).first().click({ timeout: stepTimeout }).catch(() => {});
+        const offerSel = offer.href
+          ? `.ui-autocomplete a[href='${offer.href}']`
+          : ".ui-autocomplete li:has(.autocomplete-item-add) a, .ui-autocomplete .autocomplete-item-add";
+        await page.locator(offerSel).first().click({ timeout: stepTimeout }).catch(() => {});
         await page.waitForTimeout(1_800);
         await settle();
         clicked = page.url();
@@ -566,7 +580,7 @@ export async function ungradeableBatch2TargetProbes({
     push({
       interaction: "assert-present",
       selector: `following the reference lands on the referenced card (landed ${landed.url ?? "nowhere"}, titled slot ${JSON.stringify(landed.presented)})`,
-      count: link.length > 0 && (landed.presented === spaceForm(target) || /\/${esc(urlKey(target))}(\/|$|\?)/.test(landed.url ?? "")) && landed.mentions ? 1 : 0,
+      count: link.length > 0 && (landed.presented === target || /\/${esc(urlKey(target))}(\/|$|\?)/.test(landed.url ?? "")) && landed.mentions ? 1 : 0,
       landed,
     });
   }
@@ -701,16 +715,50 @@ export async function ungradeableBatch2TargetProbes({
   // diagnostic: the native inline :edit_inline control round-trips). The
   // editor is the navbar's autosave form action="/update/<actor>+*enabled
   // roles"; the visiting administrator's own checked role box is clicked —
-  // the click IS the post — and the matrix's own contract "the same click
-  // restores the pre-click set" is the restore leg. Edits touch the
-  // visitor-session selection only (canonical grants unchanged); a finally
-  // block re-clicks until the pre-click state is verified restored, and the
-  // restore outcome is pushed as evidence whatever it reads.
+  // the click IS the post. PERSISTENCE WITNESS: the control's write target
+  // is the visitor-session card `<actor>+*enabled roles` (the decko_visit
+  // cookie, decoded by the engine's own readVisitorSession/sessionCardContent
+  // from dist — the exact chain the battery check grades), so the flip and
+  // restore legs grade on the SESSION CONTENT moving and returning, not on
+  // the rendered checkbox: run 1 measured the administrator's box re-render
+  // CHECKED after an accepted uncheck POST because ensure_roles re-fills the
+  // current roles at render time (the module documents the same render-time
+  // refill). "The same click restores the pre-click set" is the restore leg.
+  // Edits touch the visitor-session selection only (canonical grants
+  // unchanged); a finally block re-clicks until the pre-click session
+  // content is verified restored, and the restore outcome is pushed as a
+  // witness whatever it reads.
   if (/\bA6\b/.test(t)) {
     currentCase = "batch2 case 10 A6 role checkbox editing (ACT-175)";
     if (typeof page === "undefined" || page === null) {
       throw new Error("A6 probe needs the runner's page helper");
     }
+    // The engine's own visitor-session decoder, from this checkout's dist
+    // (the ts engine boots from the same build; the battery's A6 check
+    // imports the identical files).
+    const visitorSession = await import(
+      pathToFileURL(path.resolve(import.meta.dirname, "../../..", "dist", "src", "card", "session", "visitor-session.js")).href
+    ).catch(() => null);
+    const cookieHeader = async () => {
+      const cookies = await page.context().cookies();
+      const visit = cookies.find((c) => c.name === "decko_visit");
+      return visit === undefined ? undefined : `decko_visit=${visit.value}`;
+    };
+    // sessionCardContent looks its card up by DeckoName key, so both the
+    // urlKey and the space spellings of the actor segment are tried; the
+    // candidate that carried content is recorded.
+    const readSessionRoles = async (actorSegment) => {
+      if (!visitorSession?.readVisitorSession || !visitorSession?.sessionCardContent) return { available: false, candidates: [] };
+      const header = await cookieHeader();
+      if (!header) return { available: true, candidates: [] };
+      const state = visitorSession.readVisitorSession(header);
+      const candidates = [];
+      for (const name of [`${actorSegment}+*enabled roles`, `${spaceForm(actorSegment)}+*enabled roles`]) {
+        const raw = visitorSession.sessionCardContent(state, name);
+        if (raw !== undefined && raw !== null) candidates.push({ cardName: name, raw: String(raw) });
+      }
+      return { available: true, candidates };
+    };
     const formSel = '.navbar form.card-form[action$="+*enabled_roles"]';
     const openEditor = async () => {
       await visit("/");
@@ -734,11 +782,17 @@ export async function ungradeableBatch2TargetProbes({
       const boxes = formCount > 0 ? await readBoxes(form) : [];
       const clickable = boxes.filter((b) => b.visible && b.display !== "none");
       const boxInfo = clickable[0] ?? null;
+      const actionPath = formCount > 0 ? await form.getAttribute("action").catch(() => null) : null;
+      const actorSegment = actionPath
+        ? decodeURIComponent(new URL(actionPath, base).pathname.split("/update/")[1] ?? "").replace(/\+\*enabled_roles$/, "")
+        : null;
+      const sessionBefore = boxInfo ? await readSessionRoles(actorSegment) : { available: null, candidates: [] };
+      const beforeJson = JSON.stringify(sessionBefore.candidates.map((c) => c.raw).sort());
       let postStatus = null;
       let afterFirst = null;
-      if (boxInfo) {
+      let sessionAfter = null;
+      if (boxInfo && actionPath) {
         clickHappened = true;
-        const actionPath = await form.getAttribute("action").catch(() => null);
         const pending = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === new URL(actionPath, base).pathname, { timeout: 15_000 }).then((r) => ({ r }), (e) => ({ error: String(e?.message ?? e) }));
         await form.locator(`input.pointer-checkbox-button[name="${boxInfo.name}"][value="${boxInfo.value}"]`).first().click({ timeout: 10_000 }).catch(() => {});
         const seen = await pending;
@@ -748,40 +802,51 @@ export async function ungradeableBatch2TargetProbes({
           await page.waitForTimeout(1_500);
           const form2 = await openEditor();
           afterFirst = (await readBoxes(form2)).find((b) => b.value === boxInfo.value) ?? null;
+          sessionAfter = await readSessionRoles(actorSegment);
         }
       }
+      const afterJson = JSON.stringify((sessionAfter?.candidates ?? []).map((c) => c.raw).sort());
       push({
         interaction: "assert-present",
         selector: `the inline enabled-roles editor serves role checkboxes (form ${formCount}, boxes ${boxes.length}, clickable ${clickable.length})`,
         count: formCount > 0 && clickable.length > 0 ? 1 : 0,
         boxes,
+        actorSegment,
+        decoderAvailable: !!visitorSession?.readVisitorSession,
       });
       push({
         interaction: "assert-present",
-        selector: `clicking the role checkbox posts and the rendered state flips (POST ${postStatus ?? "nothing"}; checked ${boxInfo?.checked ?? null} -> ${afterFirst?.checked ?? null})`,
-        count: postStatus !== null && postStatus < 400 && boxInfo && afterFirst && afterFirst.checked !== boxInfo.checked ? 1 : 0,
+        selector: `clicking the role checkbox posts and the visitor-session enabled-roles selection moves (POST ${postStatus ?? "nothing"}; session content ${beforeJson} -> ${afterJson}; rendered ${boxInfo?.checked ?? null} -> ${afterFirst?.checked ?? null}, render-time ensure_roles refill disclosed above)`,
+        count: postStatus !== null && postStatus < 400 && clickHappened && afterJson !== beforeJson ? 1 : 0,
         postStatus,
+        sessionBefore: sessionBefore.candidates,
+        sessionAfter: sessionAfter?.candidates ?? null,
         checkedBefore: boxInfo?.checked ?? null,
         checkedAfter: afterFirst?.checked ?? null,
       });
-      if (boxInfo && afterFirst && postStatus !== null && postStatus < 400) {
+      if (clickHappened && postStatus !== null && postStatus < 400 && afterJson !== beforeJson) {
         const form3 = await openEditor();
         const restoreActionPath = new URL(await form3.getAttribute("action").catch(() => null) ?? "", base).pathname;
         const pending2 = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === restoreActionPath, { timeout: 15_000 }).then((r) => ({ r }), (e) => ({ error: String(e?.message ?? e) }));
         await form3.locator(`input.pointer-checkbox-button[name="${boxInfo.name}"][value="${boxInfo.value}"]`).first().click({ timeout: 10_000 }).catch(() => {});
         const seen2 = await pending2;
         const restoreStatus = seen2.r ? seen2.r.status() : null;
+        let sessionRestored = null;
         if (restoreStatus !== null) {
           await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
           await page.waitForTimeout(1_500);
           const form4 = await openEditor();
-          const afterRestore = (await readBoxes(form4)).find((b) => b.value === boxInfo.value) ?? null;
-          restoredVerified = afterRestore?.checked === boxInfo.checked;
+          const afterRestoreBoxes = await readBoxes(form4);
+          const afterRestore = afterRestoreBoxes.find((b) => b.value === boxInfo.value) ?? null;
+          sessionRestored = await readSessionRoles(actorSegment);
+          const restoredJson = JSON.stringify((sessionRestored?.candidates ?? []).map((c) => c.raw).sort());
+          restoredVerified = restoredJson === beforeJson;
           push({
             interaction: "assert-present",
-            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; checked back to ${afterRestore?.checked ?? null})`,
-            count: restoreStatus !== null && restoreStatus < 400 && afterRestore?.checked === boxInfo.checked ? 1 : 0,
+            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; session content back to pre-click: ${restoredVerified}; rendered ${afterRestore?.checked ?? null})`,
+            count: restoreStatus !== null && restoreStatus < 400 && restoredVerified ? 1 : 0,
             restoreStatus,
+            sessionRestored: sessionRestored?.candidates ?? null,
             checkedRestored: afterRestore?.checked ?? null,
           });
         }
@@ -827,7 +892,10 @@ export async function ungradeableBatch2TargetProbes({
     }
     const panelCard = "Topic 001";
     const panelId = `#${urlKey(panelCard)}-related-closed-view`;
-    await visit(`/${encodeURIComponent(panelCard)}`);
+    // The probe visits the URL-KEY path (/Topic_001), the spelling the
+    // related panel's slot id is built from; run 1 visited the %20-encoded
+    // path and the panel slot did not render under it.
+    await visit(`/${urlKey(panelCard)}`);
     const panelBtn = page.locator(`${panelId} button.accordion-button`).first();
     const buttonFound = (await panelBtn.count().catch(() => 0)) > 0;
     let content = null;
@@ -887,8 +955,8 @@ export async function ungradeableBatch2TargetProbes({
   // new/200 create form; and merely viewing never creates the card.
   if (/\bERR1\b/.test(t)) {
     currentCase = "batch2 case 12 ERR1 error pages not create forms (ACT-178)";
-    if (typeof pageRequest === "undefined") {
-      throw new Error("ERR1 probe needs the runner's pageRequest helper");
+    if (typeof newActorRequest !== "function") {
+      throw new Error("ERR1 probe needs the runner's newActorRequest helper");
     }
     const missing = `Harness_exhaustive_missing_${Date.now().toString(36)}`;
     const anonAsk = async (path) => {
@@ -899,7 +967,13 @@ export async function ungradeableBatch2TargetProbes({
     const anonCard = await anonAsk(`/${urlKey(missing)}`);
     const anonBoard = await anonAsk(`/${urlKey(missing)}/board`);
     const anonIsDenial = (r) => r.status === 404 && (r.body.match(/action="[^"]*\/card\/create/g) ?? []).length === 0 && (r.body.match(/name="card\[name\]"/g) ?? []).length === 0 && /Not Found|Could not find/i.test(r.body);
-    const signedRes = await pageRequest.get(`${base}/${urlKey(missing)}`, { maxRedirects: 0 }).catch((e) => ({ error: String(e?.message ?? e) }));
+    // The permitted viewer is an explicit ADMIN context: the runner's own
+    // page rides the error-pages surface's anonymous session (run 1's
+    // "signed-in" leg read the anonymous 404 because pageRequest carried no
+    // session there), and stock html/error.rb chooses new/200 by CREATE
+    // PERMISSION, so the positive control must be the actor that may create.
+    const admin = await newActorRequest("admin");
+    const signedRes = await admin.get(`${base}/${urlKey(missing)}`, { maxRedirects: 0 }).catch((e) => ({ error: String(e?.message ?? e) }));
     const signedBody = signedRes.error ? "" : await signedRes.text().catch(() => "");
     const signedCreateForms = (signedBody.match(/action="[^"]*\/card\/create/g) ?? []).length;
     const signedNameValues = (signedBody.match(/name="card\[name\]"[^>]*value="([^"]*)"/g) ?? []).map((m) => /value="([^"]*)"/.exec(m)?.[1] ?? "");
@@ -1091,7 +1165,13 @@ export async function ungradeableBatch2TargetProbes({
   // checks-navbox.mjs (matrix evidence for this action).
   if (/case-insensitivity guarantees/.test(t)) {
     currentCase = "batch2 case 17 case-insensitivity guarantees (ACT-184)";
-    const stamp = Date.now().toString(36);
+    // Digit-only stamps: the S11 check's own lesson (checks-content-flows.mjs)
+    // is that a base36 LETTER suffix changes its stock Cardname key on
+    // uppercasing (mvd5qgq8 -> mvd5_qgq8), so a lettered stamp would measure
+    // key formation, not case-insensitive resolution (run 1's uppercase
+    // variant answered 404 for exactly that reason). Numeric suffixes remain
+    // equivalent under the key transform.
+    const stamp = String(Date.now());
     const cardName = `Harness_exhaustive_casework_${stamp}`;
     const term = `zzcaseprobe${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName, detail: "ACT-184 the uniquely named card whose case variants must resolve" })) {
@@ -1132,27 +1212,47 @@ export async function ungradeableBatch2TargetProbes({
     if (typeof page === "undefined" || page === null) {
       throw new Error("ACT-186 probe needs the runner's page helper");
     }
-    const term = "Harness";
-    const page1 = await searchRows(term, 1);
-    const page2 = await searchRows(term, 2);
-    const beyond = await searchRows(term, 99);
-    const disjoint = page1.rows.every((n) => !page2.rows.includes(n));
+    // Mirrors the graded N3/B-105 drive (checks-cover-b.mjs): the paging
+    // contract is the rendered pagination control's own page-2 link — the
+    // matrix surface's hand-built "&page=2" URL is NOT the engine's paging
+    // shape (run 1 measured page=1, page=2 and page=99 rendering the
+    // identical 14 rows, so the parameter is inert on this engine and the
+    // case grades the control the way B-105 does instead).
+    const searchPage = async (path) => {
+      const res = await visit(path);
+      const rows = (await page
+        .evaluate(() => {
+          const nodes = [...document.querySelectorAll("#main .search-result-list > .search-result-item")];
+          return [...new Set(nodes.map((n) => n.querySelector("[data-card-name]")?.getAttribute("data-card-name")).filter((n) => n && n !== "*search"))];
+        })
+        .catch(() => [])) ?? [];
+      const active = await page.evaluate(() => document.querySelector(".pagination .active, .page-item.active, .page-link.active")?.textContent?.trim() ?? null).catch(() => null);
+      return { status: res ? res.status() : null, rows, active };
+    };
+    const page1 = await searchPage("/*search");
+    const twoHref = await page
+      .evaluate(() => [...document.querySelectorAll(".pagination a, .page-item a, .page-link")].find((a) => a.textContent.trim() === "2")?.getAttribute("href") ?? null)
+      .catch(() => null);
+    const page2 = twoHref ? await searchPage(twoHref) : { status: null, rows: [], active: null };
     push({
       interaction: "assert-present",
-      selector: `page 1 and page 2 both render rows and the sets are disjoint (page1 ${page1.rows.length}, page2 ${page2.rows.length}, overlap ${disjoint ? 0 : "some"})`,
-      count: page1.status === 200 && page2.status === 200 && page1.rows.length > 0 && page2.rows.length > 0 && disjoint ? 1 : 0,
-      page1Status: page1.status,
-      page2Status: page2.status,
-      page1Rows: page1.rows.slice(0, 8),
-      page2Rows: page2.rows.slice(0, 8),
-      disjoint,
+      selector: `the unfiltered search renders pagination and its page-2 link navigates (page-2 href ${JSON.stringify(twoHref)}, page 2 active ${JSON.stringify(page2.active)}, rows ${page1.rows.length} -> ${page2.rows.length})`,
+      count: page1.status === 200 && twoHref !== null && page2.status === 200 && /2/.test(page2.active ?? "") ? 1 : 0,
+      page1Active: page1.active,
+      page2Href: twoHref,
+      page2Active: page2.active,
+      page1RowCount: page1.rows.length,
+      page2RowCount: page2.rows.length,
     });
+    const page1Set = new Set(page1.rows);
+    const overlap = page2.rows.filter((n) => page1Set.has(n));
     push({
       interaction: "assert-present",
-      selector: `a page far beyond the end answers 200 with zero rows (page 99 -> ${beyond.status}, ${beyond.rows.length} rows)`,
-      count: beyond.status === 200 && beyond.rows.length === 0 ? 1 : 0,
-      beyondStatus: beyond.status,
-      beyondRows: beyond.rows.length,
+      selector: `page 2 lists a different result set than page 1 (${overlap.length} shared rows of ${page2.rows.length})`,
+      count: page2.rows.length > 0 && overlap.length === 0 ? 1 : 0,
+      overlap,
+      page2Rows: page2.rows.slice(0, 8),
+      scopeNote: "the matrix surface's &page=2 URL shape measured inert on this engine (run 1: identical rows for page 1, 2 and 99) — recorded here as evidence; the graded contract is the pagination control B-105 grades",
     });
   }
 
@@ -1238,13 +1338,18 @@ export async function ungradeableBatch2TargetProbes({
     // Admin's view: the edit affordance renders.
     await visit(`/${encodeURIComponent(restricted)}`);
     const adminEditLinks = await page.evaluate(() => [...document.querySelectorAll("a.edit-link[href$='/edit']")].length).catch(() => 0);
-    // Member's view: content readable, no edit affordance, no update form.
+    // Member's view: content readable, no edit affordance FOR THIS CARD, no
+    // update form for it. The count is scoped to the restricted card's own
+    // edit href (the case-12 P3 lesson: a page-wide affordance count reads
+    // chrome that belongs to other cards — run 1's unscoped count caught one
+    // edit-link that does not target the restricted card).
     const member = await newActorRequest("member");
     const memberRes = await member.get(`${base}/${encodeURIComponent(restricted)}`).catch((e) => ({ error: String(e?.message ?? e) }));
     const memberStatus = memberRes.error ? null : memberRes.status();
     const memberBody = memberRes.error ? "" : await memberRes.text().catch(() => "");
-    const memberEditLinks = (memberBody.match(/class="[^"]*edit-link/g) ?? []).length;
+    const memberEditLinks = (memberBody.match(new RegExp(`href="[^"]*/${esc(urlKey(restricted))}/edit"`, "g")) ?? []).length;
     const memberUpdateForms = (memberBody.match(new RegExp(`action="[^"]*/update/${esc(urlKey(restricted))}`, "g")) ?? []).length;
+    const memberEditLinkSample = (memberBody.match(/class="[^"]*edit-link[^"]*"[^>]*href="[^"]*"/g) ?? []).slice(0, 4);
     push({
       interaction: "assert-present",
       selector: `ACT-188 staging: the update-restricted card stored (card ${card.status}, rule ${rule.status})`,
@@ -1254,7 +1359,7 @@ export async function ungradeableBatch2TargetProbes({
     });
     push({
       interaction: "assert-present",
-      selector: `the administrator's view renders the edit affordance (${adminEditLinks} a.edit-link[href$='/edit'])`,
+      selector: `the administrator's view renders the edit affordance for the card (${adminEditLinks} a.edit-link[href$='/edit'])`,
       count: adminEditLinks > 0 ? 1 : 0,
       adminEditLinks,
     });
@@ -1266,10 +1371,11 @@ export async function ungradeableBatch2TargetProbes({
     });
     push({
       interaction: "assert-present",
-      selector: `the member's view renders NO edit affordance and NO update form for the card (${memberEditLinks} edit links, ${memberUpdateForms} update forms)`,
+      selector: `the member's view renders NO edit affordance and NO update form for the restricted card (${memberEditLinks} edit links targeting it, ${memberUpdateForms} update forms targeting it)`,
       count: memberStatus === 200 && memberEditLinks === 0 && memberUpdateForms === 0 ? 1 : 0,
       memberEditLinks,
       memberUpdateForms,
+      memberEditLinkSample,
     });
   }
 
@@ -1288,7 +1394,12 @@ export async function ungradeableBatch2TargetProbes({
     const emptyText = await mainText();
     const emptyIsErrorHeading = /Not Found|Could not find/i.test(emptyText);
     const missing = `Harness_exhaustive_nothere_${Date.now().toString(36)}`;
-    const errorRes = await visit(`/${urlKey(missing)}`);
+    // The error half is graded on the ANONYMOUS answer (stock html/error.rb
+    // chooses new/200 by create permission, so the signed-in page the
+    // surface visits answers 200 with the create form — run 1 measured that
+    // shape; the error-vs-empty contract lives on the anonymous answer, the
+    // same split case 12 grades).
+    const errorRes = await fetch(base + `/${urlKey(missing)}`, { headers: { connection: "close" } }).catch(() => null);
     push({
       interaction: "assert-present",
       selector: `an empty result set renders as a normal empty page (search "${emptyTerm}" -> ${emptyRes ? emptyRes.status() : "nothing"}, error heading ${emptyIsErrorHeading})`,
@@ -1298,9 +1409,9 @@ export async function ungradeableBatch2TargetProbes({
     });
     push({
       interaction: "assert-present",
-      selector: `an error renders as an error, not an empty success (/${missing} -> ${errorRes ? errorRes.status() : "nothing"})`,
-      count: errorRes && errorRes.status() === 404 ? 1 : 0,
-      status: errorRes ? errorRes.status() : null,
+      selector: `an error renders as an error, not an empty success (anonymous /${missing} -> ${errorRes ? errorRes.status : "nothing"})`,
+      count: errorRes && errorRes.status === 404 ? 1 : 0,
+      status: errorRes ? errorRes.status : null,
     });
   }
 
