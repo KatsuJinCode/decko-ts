@@ -166,7 +166,12 @@ const SURFACES = {
   "6. delete a card": { signin: "form", card: "/", actor: signinActor },
   "7. rename, history, search, changes, sign out and back in": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/*search", "/Home+name_form"] },
   "7b. further signed-in capabilities (Decko's own browser tests as the checklist)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/*signin", "/Home+board"] },
-  "8. ordinary (non-admin) account permissions": { signin: "form", card: "/", actor: "member" },
+  // The member's Delete control lives on a card's EDIT view, not on the deck
+  // home the surface used to visit: probed signed in as the fixture's member
+  // (mira.member) against synthetic-v1, /Date_1 -> 0 Delete controls while
+  // /Date_1?view=edit -> 1, href="/delete/Date_1?success[mark]=*previous..."
+  // (ACT-061's and ACT-062's "Delete" locate could never match on "/").
+  "8. ordinary (non-admin) account permissions": { signin: "form", card: "/Date_1?view=edit", actor: "member" },
   "9. timings": { signin: "form", card: "/", actor: signinActor },
   "cleanup": { signin: "form", card: "/", actor: signinActor },
   "edit: nest dialog (group 4 rows + cover-b row)": { signin: "form", card: "/", actor: signinActor },
@@ -181,7 +186,14 @@ const SURFACES = {
   "cover-b. edit: pointer editing (E23)": { signin: "form", card: "/", actor: signinActor },
   "cover-b. edit: type for a rule (E14)": { signin: "form", card: "/", actor: signinActor },
   "cover-b. files: upload a file, an image, empty refused, member (F1, F3, F5, F7)": { signin: "form", card: "/new/File", actor: signinActor },
-  "cover-b. follow: follow a card and a type from the board (W1, W3)": { signin: "form", card: "/" + (actorCardName ?? "Home+board"), actor: signinActor },
+  // The Follow control is rendered by the board's Engage tab (card-mod-edit.ts's
+  // followSectionView -> followButton), not by the card page the surface used to
+  // visit: probed signed in as admin against synthetic-v1, "/Home+board" and
+  // "/Home+board?view=engage_tab" render 0 a.follow-link, while
+  // "/Date_1?view=engage_tab" renders 1 a.follow-link plus the
+  // data-cy="follow-overview" link (ACT-088's "Follow" locate could never match
+  // on the old page).
+  "cover-b. follow: follow a card and a type from the board (W1, W3)": { signin: "form", card: "/Date_1?view=engage_tab", actor: signinActor },
   "cover-b. more odd-position capabilities (C6, E3, E16, E18, E22, H1, M1, N5, S3, S5)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/*signin"] },
   "cover-b. permissions: member denied read and edit of a restricted card (P1, P3)": { signin: "form", card: "/", actor: signinActor },
   "cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)": { signin: "form", card: "/", actor: signinActor },
@@ -224,7 +236,15 @@ const SURFACES = {
   "capability catalog: session": { signin: "form", card: "/*signin", actor: signinActor },
   "capability catalog: create": { signin: "form", card: "/new/Basic", actor: signinActor },
   "capability catalog: edit": { signin: "form", card: "/", actor: signinActor },
-  "capability catalog: rename-delete": { signin: "form", card: "/", actor: signinActor },
+  // R4 ("Refuse to delete a system card") probes a codenamed system card, and
+  // the deck renders its Delete control on the card's EDIT view: probed signed
+  // in as admin against synthetic-v1, "/*credit" -> 0 Delete controls while
+  // "/*credit?view=edit" -> 1, href="/delete/*credit?success[mark]=*previous..."
+  // The refusal half of R4 is not a locate probe; it is witnessed by the
+  // engine's own test (tests/card/actions/delete.test.ts, "refuses codenamed
+  // (system) cards" -> code protected-card, zero card_actions) and by
+  // tools/edge-signed-in-exercise/checks-system-delete-refusal.mjs.
+  "capability catalog: rename-delete": { signin: "form", card: "/*credit?view=edit", actor: signinActor },
   "capability catalog: permissions": { signin: "form", card: "/", actor: signinActor },
   "capability catalog: files": { signin: "form", card: "/new/File", actor: signinActor },
   "capability catalog: search": { signin: "form", card: "/*search?query[keyword]=Harness", actor: signinActor },
