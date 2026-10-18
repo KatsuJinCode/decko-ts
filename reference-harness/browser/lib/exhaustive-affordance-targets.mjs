@@ -27,15 +27,19 @@
 // "Delete" verb-hint locate. Witness entries are diagnostics, never pass
 // evidence; "write-skipped" entries stay the live-walk mode's own signal.
 //
-// WRITE-PATH CASES AND THE LIVE-WALK GATE: cases 7, 9, 10, 11, 12, 13, 14 and
-// 17 perform writes (saves, creates, a revert). Under a host-override target
-// (engines/live.json + --base-url; see lib/live-walk-profile.mjs) the run's
-// write mode gates them: read-only skips every write case; scratch-allowlist
-// admits only writes on cards carrying an approved scratch prefix. A gated
-// case pushes a "write-skipped" entry instead of running, and the runner
-// grades its action "skipped_write" — the write IS the claim those actions
-// probe, so the run neither passes nor fails them, it declines to grade.
+// WRITE-PATH CASES AND THE LIVE-WALK GATE: cases 7, 9, 10, 11, 12, 13, 14,
+// 17, 22, 24, 25, 27, 29, 30, 31, 32, 34, 35, 36, 37, 39, 41 and 42 perform
+// writes (saves, creates, a revert, rule staging, uploads, a coded-image
+// replacement, feed acts, an account email change). Under a host-override
+// target (engines/live.json + --base-url; see lib/live-walk-profile.mjs) the
+// run's write mode gates them: read-only skips every write case;
+// scratch-allowlist admits only writes on cards carrying an approved scratch
+// prefix. A gated case pushes a "write-skipped" entry instead of running, and
+// the runner grades its action "skipped_write" — the write IS the claim those
+// actions probe, so the run neither passes nor fails them, it declines to
+// grade.
 
+import { deflateSync } from "node:zlib";
 import { decideWrite } from "./live-walk-profile.mjs";
 
 /** Gates one write-shaped case. Returns true to run it; when the profile
@@ -53,6 +57,52 @@ function gateWrite(sequence, writeGate, { verb, cardName, detail }) {
     reason: decision.reason,
   });
   return false;
+}
+
+/** A real minimal PNG built from the given pixels (RGBA, 8-bit), for the
+ *  upload cases (F4's coded-image replacement, F9's Image card). Distinct
+ *  uploads must be distinct byte streams, so a replace leg can prove the
+ *  SERVED file changed. Self-verified by re-parsing the chunk structure
+ *  before use (the same encoder shape
+ *  tools/edge-signed-in-exercise/checks-upload-image-change.mjs:30-70
+ *  runs). */
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function pngChunk(type, data) {
+  const out = Buffer.alloc(12 + data.length);
+  out.writeUInt32BE(data.length, 0);
+  out.write(type, 4, "ascii");
+  Buffer.from(data).copy(out, 8);
+  let crc = 0xffffffff;
+  for (const byte of [...Buffer.from(type, "ascii"), ...data]) crc = PNG_CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  out.writeUInt32BE((crc ^ 0xffffffff) >>> 0, 8 + data.length);
+  return out;
+}
+export function generatedPng(width, height, rgbaPixels) {
+  if (rgbaPixels.length !== width * height * 4) throw new Error("png pixel buffer does not match dimensions");
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 6; // color type RGBA
+  const stride = width * 4;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0; // no filter
+    rgbaPixels.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
+  }
+  const png = Buffer.concat([PNG_SIGNATURE, pngChunk("IHDR", ihdr), pngChunk("IDAT", deflateSync(raw)), pngChunk("IEND", Buffer.alloc(0))]);
+  if (!png.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error("png self-check: signature");
+  if (png.readUInt32BE(8) !== 13 || png.readUInt32BE(16) !== width || png.readUInt32BE(20) !== height) throw new Error("png self-check: IHDR");
+  return png;
 }
 
 /** The fixture card these target cases probe. Resolved from the surface's
@@ -1396,6 +1446,1215 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       selector: `the same view navigates with no modal wrapper on /${card} (navigation mode)`,
       count: plainModal === 0 ? 1 : 0,
       plainModalWrapperCount: plainModal,
+    });
+  }
+
+  // 22. Cleanup removal (ACT-066, "every card the run created is removed from
+  //     the local copy"): the removal the claim quantifies over is the deck's
+  //     own delete, driven here on the case's own scratch card through the
+  //     edit view's confirm-guarded Delete control (case 4's proven drive; the
+  //     runner's dialog auto-accept answers the confirm) and graded on fresh
+  //     GETs: /<name>.json must answer 404 after the delete. Measured
+  //     2026-10-18 on the ts engine over synthetic-v1: the create answers
+  //     200, the driven delete's POST answers <400, and the card's .json
+  //     answers 404 after. Disclosed residual: the run-level sweep (the
+  //     runner's own lifecycle over all its created cards) is not observable
+  //     from inside a run - the staged deck is a throwaway copy discarded
+  //     with the engine process (lib/engines.mjs startEngine), which is the
+  //     mechanism the "local copy" clause names; what this case proves is the
+  //     removal capability on that copy.
+  if (/every card the run created is removed/.test(t)) {
+    currentCase = "case 22 cleanup removal (ACT-066)";
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_cleanup_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "ACT-066 the cleanup probe's own scratch card and its driven removal" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("cleanup removal probe needs the runner's page and pageRequest helpers");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": `cleanup probe ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    await goto(`/${encodeURIComponent(scratch)}/edit`);
+    await settle();
+    const deleteHref = await evaluate(() => document.querySelector("a.btn-outline-danger[href^='/delete/']")?.getAttribute("href") ?? null).catch(() => null);
+    let deleteStatus = null;
+    let clickedDelete = false;
+    if (createdOk && deleteHref) {
+      const responded = page.waitForResponse((r) => r.url().includes("/delete/"), { timeout: stepTimeout }).catch(() => null);
+      clickedDelete = await dispatchClick(page, "a.btn-outline-danger[href^='/delete/']");
+      const answered = await responded;
+      deleteStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const afterJsonStatus = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+      .then((r) => r.status)
+      .catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `driven removal empties the card from the local copy (delete control ${deleteHref ? "found" : "absent"}, POST /delete/ answered ${deleteStatus ?? "nothing"}, /${scratch}.json answers ${afterJsonStatus ?? "nothing"})`,
+      count: createdOk && !!deleteHref && clickedDelete === true && deleteStatus !== null && deleteStatus < 400 && afterJsonStatus === 404 ? 1 : 0,
+      createStatus: created.error ? null : created.status(),
+      deleteStatus,
+      afterJsonStatus,
+    });
+  }
+
+  // 23. A1's account email surface (ACT-068, "the account settings page shows
+  //     the signed-in member's email"): the navbar's Account item targets
+  //     /<actor>+*account_settings (measured 2026-10-18 on the ts engine),
+  //     which renders no email; the email the action names renders on the
+  //     account card's own view /<actor>+*account as the labeled .RIGHT-Xemail
+  //     row (the page the account surface's Email-and-Password pill fetches -
+  //     the E19 battery check's proven target). The case resolves the
+  //     SIGNED-IN actor from the navbar link (no fixture read), reads the
+  //     expected value from the engine's own /<actor>+*account+*email.json,
+  //     and grades the page bytes: the labeled row present AND the page
+  //     carrying exactly the stored address. A page that drops or falsifies
+  //     the email fails; an anonymous session (no navbar account link) reads
+  //     0 and fails.
+  if (/\bA1\b/.test(t)) {
+    currentCase = "case 23 A1 account email (ACT-068)";
+    // The stored-address read rides pageRequest (the signed-in session's own
+    // channel): +*account+*email is not anonymous-readable (measured
+    // 2026-10-18: bare fetch answers 403, the signed-in session 200).
+    if (typeof pageRequest === "undefined") throw new Error("A1 account-email probe needs the runner's pageRequest helper");
+    const actorHref = await evaluate(() => document.querySelector("a[href*='+*account_settings']")?.getAttribute("href") ?? null).catch(() => null);
+    const actorMark = typeof actorHref === "string" && actorHref.includes("+*account_settings")
+      ? decodeURIComponent(actorHref).replace(/^\//, "").replace(/\+\*account_settings$/, "")
+      : null;
+    if (actorMark) {
+      const emailJson = await pageRequest.get(`${base}/${encodeURIComponent(`${actorMark}+*account+*email`)}.json`)
+        .then(async (r) => ({ status: r.status(), parsed: await r.json().catch(() => null) }))
+        .catch((e) => ({ status: null, parsed: null, error: String(e?.message ?? e) }));
+      const expectedEmail = typeof emailJson.parsed?.db_content === "string" ? emailJson.parsed.db_content : null;
+      await goto(`/${encodeURIComponent(`${actorMark}+*account`)}`);
+      await settle();
+      const emailRowCount = await countSelector(".RIGHT-Xemail");
+      const pageText = await evaluate(() => document.body.innerText).catch(() => "");
+      const showsEmail = expectedEmail !== null && pageText.includes(expectedEmail);
+      push({
+        interaction: "assert-present",
+        selector: `signed-in actor ${actorMark}'s account view carries the labeled email row (.RIGHT-Xemail) on /${actorMark}+*account`,
+        count: emailRowCount > 0 ? 1 : 0,
+        emailRowCount,
+      });
+      push({
+        interaction: "assert-present",
+        selector: `the account view shows the stored address (/${actorMark}+*account+*email.json answers ${emailJson.status ?? "nothing"}; page shows ${showsEmail ? "the address" : "not the address"})`,
+        count: emailJson.status === 200 && expectedEmail !== null && showsEmail ? 1 : 0,
+        emailJsonStatus: emailJson.status,
+        showsEmail,
+      });
+    } else {
+      push({
+        interaction: "assert-present",
+        selector: "signed-in navbar account link (a[href*='+*account_settings']) resolved the actor",
+        count: 0,
+        actorHref,
+      });
+    }
+  }
+
+  // 24. A3's email change (ACT-069, "the account's email can be changed (the
+  //     new address shows on the account page)"): the change is driven on the
+  //     case's OWN scratch account - the runner's fixture actors are signed
+  //     in with their recorded credentials by every later action, so changing
+  //     one of their addresses would break the run's own sessions. The admin
+  //     session creates the scratch User card with its +*account subcards
+  //     (measured 2026-10-18 on the ts engine: POST /card/create with
+  //     card[subcards][+*account][subcards][+*email][content] and
+  //     [+*password][content] answers 303 and stores the address), then the
+  //     account edit modal (/<user>+*account?view=edit - the
+  //     account-change-email journey's own page) is opened, its email input
+  //     filled with the new address, and Save-and-Close clicked. The verdict
+  //     is the stored row AND the account view: /<user>+*account+*email.json
+  //     must carry the new address and /<user>+*account must show it.
+  if (/\bA3\b/.test(t)) {
+    currentCase = "case 24 A3 email change (ACT-069)";
+    const stamp = Date.now().toString(36);
+    const user = `Harness_exhaustive_a3_user_${stamp}`;
+    const newEmail = `harness.exhaustive.a3.${stamp}@example.test`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: user, detail: "ACT-069 the email-change probe's own scratch account and its changed address" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("email-change probe needs the runner's page and pageRequest helpers");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: {
+        "card[name]": user,
+        "card[type]": "User",
+        "card[subcards][+*account][subcards][+*email][content]": `harness.exhaustive.a3.old.${stamp}@example.test`,
+        "card[subcards][+*account][subcards][+*password][content]": `Harness a3 pass ${stamp} 6#`,
+        "success[redirect]": "true",
+      },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    await goto(`/${encodeURIComponent(`${user}+*account`)}?view=edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+    const emailInput = page.locator('.modal.show input[name="card[subcards][+*email][content]"]');
+    const inputCount = await emailInput.count().catch(() => 0);
+    let changeStatus = null;
+    if (createdOk && inputCount > 0) {
+      await emailInput.first().fill(newEmail).catch(() => {});
+      const responded = page.waitForResponse((r) => r.request().method() !== "GET" && new URL(r.url()).pathname.startsWith("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await page.locator(".modal.show button.submit-button").first().click().catch(() => {});
+      const answered = await responded;
+      changeStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const afterJson = await pageRequest.get(`${base}/${encodeURIComponent(`${user}+*account+*email`)}.json`)
+      .then(async (r) => ({ status: r.status(), parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    await goto(`/${encodeURIComponent(`${user}+*account`)}`);
+    await settle();
+    const showsNew = await evaluate((e) => document.body.innerText.includes(e), newEmail).catch(() => false);
+    push({
+      interaction: "assert-present",
+      selector: `the scratch account's email change is stored (/${user}+*account+*email.json answers ${afterJson.status ?? "nothing"} carrying ${JSON.stringify(String(afterJson.parsed?.db_content ?? "").slice(0, 40))})`,
+      count: createdOk && inputCount > 0 && changeStatus !== null && changeStatus < 400 && afterJson.status === 200 && afterJson.parsed?.db_content === newEmail ? 1 : 0,
+      createStatus: created.error ? null : created.status(),
+      changeStatus,
+      emailJsonStatus: afterJson.status,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the new address shows on the account page (/${user}+*account)`,
+      count: showsNew ? 1 : 0,
+      showsNew,
+    });
+  }
+
+  // 25. P1's read denial (ACT-099, "a member is denied read of a card the
+  //     viewer-set rule restricts (admin reads it, member does not)"): the
+  //     denial is a TWO-ACTOR property, staged by the case the way case 12
+  //     stages P3: an explicit ADMIN context (newActorRequest("admin"))
+  //     creates the scratch card with a secret and its +*self+*read rule
+  //     naming [[Administrator]], then the read is graded from BOTH sides -
+  //     the admin context reads 200 carrying the secret, the member context
+  //     (newActorRequest("member")) is refused 403 and its body carries no
+  //     secret. Measured 2026-10-18 on the ts engine over synthetic-v1:
+  //     member GET of the restricted card answers 403
+  //     (permission-denied), admin 200; the member also cannot create the
+  //     rule itself (403), which is why the staging rides the admin context.
+  if (/\bP1\b/.test(t)) {
+    currentCase = "case 25 P1 member read denial (ACT-099)";
+    const stamp = Date.now().toString(36);
+    const restricted = `Harness_exhaustive_p1_read_restricted_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: restricted, detail: "P1 the probe's own read-restricted scratch card and its *read rule" })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined" || typeof newActorRequest !== "function") {
+      throw new Error("P1 read-denial probe needs the runner's pageRequest and newActorRequest helpers");
+    }
+    const admin = await newActorRequest("admin");
+    const secret = `P1_SECRET_${stamp}`;
+    const createdCard = await admin.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": restricted, "card[type]": "Basic", "card[content]": secret, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdRule = await admin.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `${restricted}+*self+*read`, "card[type]": "Pointer", "card[content]": "[[Administrator]]", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const staged = !createdCard.error && createdCard.status() < 400 && !createdRule.error && createdRule.status() < 400;
+    const adminRead = await admin.get(`${base}/${encodeURIComponent(restricted)}`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const adminReadStatus = adminRead.error ? null : adminRead.status();
+    const adminReadBody = adminRead.error ? "" : await adminRead.text().catch(() => "");
+    const member = await newActorRequest("member");
+    const memberRead = await member.get(`${base}/${encodeURIComponent(restricted)}`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberReadStatus = memberRead.error ? null : memberRead.status();
+    const memberReadBody = memberRead.error ? "" : await memberRead.text().catch(() => "");
+    push({
+      interaction: "assert-present",
+      selector: `the administrator reads the read-restricted card (${adminReadStatus})`,
+      count: staged && adminReadStatus === 200 && adminReadBody.includes(secret) ? 1 : 0,
+      adminReadStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the member is denied read of the restricted card (${memberReadStatus}) and the denial carries no secret`,
+      count: staged && memberReadStatus === 403 && !memberReadBody.includes(secret) ? 1 : 0,
+      memberReadStatus,
+      leaked: memberReadBody.includes(secret),
+    });
+  }
+
+  // 26. N3's search paging (ACT-104, "paging to the next page of results
+  //     shows different results (page 2 is active and lists different
+  //     cards)"): the pager is the search results page's own control -
+  //     .paging .page-item.active marks the active page and
+  //     a.card-paging-link[aria-label="Next"] advances the result window
+  //     (probe-search-paging.mjs's measured contract). The case drives
+  //     /*search?query[keyword]=Topic - the fixture's 30 Topic cards give a
+  //     deterministic second page - reads page 1's active marker and result
+  //     ids, clicks the Next control, and grades page 2: the active marker
+  //     moved to "2" AND the result ids differ. Read-only; no fixture data.
+  if (/\bN3\b/.test(t)) {
+    currentCase = "case 26 N3 search paging (ACT-104)";
+    if (typeof page === "undefined" || page === null) throw new Error("search paging probe needs the runner's page helper");
+    await goto("/*search?query[keyword]=Topic");
+    await settle();
+    const read = () => evaluate(() => ({
+      activePage: document.querySelector(".paging .page-item.active")?.textContent.trim() ?? null,
+      resultIds: [...document.querySelectorAll(".search-result-list > .search-result-item [data-card-id]")].map((e) => e.getAttribute("data-card-id")),
+    })).catch(() => ({ activePage: null, resultIds: [] }));
+    const first = await read();
+    let second = { activePage: null, resultIds: [] };
+    let clicked = false;
+    const next = page.locator('a.card-paging-link[aria-label="Next"]').first();
+    if ((await next.count().catch(() => 0)) > 0) {
+      const pending = next.click({ timeout: stepTimeout }).catch(() => {});
+      await page.waitForFunction(() => document.querySelector(".paging .page-item.active")?.textContent.trim() === "2", null, { timeout: stepTimeout }).catch(() => {});
+      await pending;
+      clicked = true;
+      await settle();
+      second = await read();
+    }
+    const different = first.resultIds.length > 0 && second.resultIds.length > 0 && first.resultIds[0] !== second.resultIds[0];
+    push({
+      interaction: "assert-present",
+      selector: `page 1 of the keyword results is the active page (.paging .page-item.active = ${JSON.stringify(first.activePage)}) on /*search?query[keyword]=Topic`,
+      count: first.activePage === "1" && first.resultIds.length > 0 ? 1 : 0,
+      activePage: first.activePage,
+      resultCount: first.resultIds.length,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `paging to the next page activates page 2 and lists different results (clicked ${clicked}, page 2 active = ${JSON.stringify(second.activePage)}, first ids differ: ${different})`,
+      count: clicked && second.activePage === "2" && different ? 1 : 0,
+      secondActivePage: second.activePage,
+      secondResultCount: second.resultIds.length,
+      different,
+    });
+  }
+
+  // 27. N8's self layout (ACT-105, "a card with a self layout renders through
+  //     that layout (Simple Header and Simple Footer around the main)"): a
+  //     layout is engine behavior over a *layout RULE - the fixture seeds no
+  //     layout rules (synthetic-v1 deck.json carries none), so the case
+  //     stages the whole shape on private cards: an HTML layout card whose
+  //     bytes wrap {{_main}} in the case's own header/footer marks, a scratch
+  //     Basic host, and the host's +*self+*layout rule naming the layout
+  //     card. Measured 2026-10-18 on the ts engine: the staged rule renders -
+  //     the host's page then carries the header mark, the host's body, and
+  //     the footer mark. All three marks are required legs; a layout that
+  //     swallows the main or renders the card unwrapped fails.
+  if (/\bN8\b/.test(t)) {
+    currentCase = "case 27 N8 self layout (ACT-105)";
+    const stamp = Date.now().toString(36);
+    const host = `Harness_exhaustive_n8_${stamp}`;
+    const layoutName = `Harness_exhaustive_n8_layout_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: host, detail: `N8 the probe's scratch host ${host}, its layout card ${layoutName} and its +*self+*layout rule` })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") throw new Error("self-layout probe needs the runner's pageRequest helper");
+    const headerMark = `N8_HEADER_${stamp}`;
+    const footerMark = `N8_FOOTER_${stamp}`;
+    const bodyMark = `N8_BODY_${stamp}`;
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": host, "card[type]": "Basic", "card[content]": bodyMark, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": layoutName, "card[type]": "HTML", "card[content]": `<div class="harness-n8-header">${headerMark}</div>{{_main}}<div class="harness-n8-footer">${footerMark}</div>`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    const rule = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `${host}+*self+*layout`, "card[type]": "Phrase", "card[content]": `[[${layoutName}]]`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    await goto(`/${encodeURIComponent(host)}`);
+    await settle();
+    const html = await evaluate(() => document.body.innerHTML).catch(() => "");
+    push({
+      interaction: "assert-present",
+      selector: `the self layout renders its header around the main on /${host}`,
+      count: !rule.error && rule.status() < 400 && html.includes(headerMark) ? 1 : 0,
+      headerMark: html.includes(headerMark),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the self layout renders the card's own body inside it on /${host}`,
+      count: html.includes(bodyMark) ? 1 : 0,
+      bodyMark: html.includes(bodyMark),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the self layout renders its footer around the main on /${host}`,
+      count: html.includes(footerMark) ? 1 : 0,
+      footerMark: html.includes(footerMark),
+    });
+  }
+
+  // 28. N11's reference link (ACT-106, "a reference renders as a link to the
+  //     referenced card"): the claim is the RENDERED bytes of a card whose
+  //     content holds a [[wikilink]]. The case stages its own RichText card
+  //     whose content links the fixture's Brief card and grades the render:
+  //     an anchor to /Brief labelled "Brief" must be on the page. Measured
+  //     2026-10-18 on the ts engine: the stored "[[Brief]]" renders
+  //     <a href="/Brief">Brief</a>.
+  if (/\bN11\b/.test(t)) {
+    currentCase = "case 28 N11 reference link (ACT-106)";
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_n11_link_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "N11 the reference-link probe's own wikilink card" })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") throw new Error("reference-link probe needs the runner's pageRequest helper");
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "RichText", "card[content]": "<p>see [[Brief]] here</p>", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    await goto(`/${encodeURIComponent(scratch)}`);
+    await settle();
+    const anchor = await evaluate(() => {
+      const a = [...document.querySelectorAll("#main a[href]")].find((el) => (el.getAttribute("href") ?? "").endsWith("/Brief"));
+      return a ? { href: a.getAttribute("href"), text: a.textContent.trim() } : null;
+    }).catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `the stored [[Brief]] reference renders as a link to the referenced card on /${scratch}`,
+      count: !created.error && created.status() < 400 && anchor !== null && anchor.href === "/Brief" && anchor.text === "Brief" ? 1 : 0,
+      anchor,
+    });
+  }
+
+  // 29. C7's plain-input create (ACT-128, "create a plain-input card through
+  //     the editor"): the editor is the create FORM at /new/PlainText - the
+  //     page the C7 battery check drives (form with editable name field,
+  //     content field, create submit). The case fills the form in the page
+  //     (createThroughNewCardForm, case 17's driver), waits for the POST the
+  //     form issues, and grades the STORED card: /<name>.json must answer 200
+  //     carrying type PlainText and the exact content the editor held.
+  if (/\bC7\b/.test(t)) {
+    currentCase = "case 29 C7 plain-input create (ACT-128)";
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_c7_plain_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "C7 the plain-input create probe's own card" })) {
+      return sequence;
+    }
+    const content = `plain text body ${stamp}`;
+    const submitted = await createThroughNewCardForm(ctx, { newPath: "/new/PlainText", name: scratch, content });
+    const stored = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    push({
+      interaction: "assert-present",
+      selector: `the plain-input create form stores the card (POST answered ${submitted.status ?? "nothing"}, /${scratch}.json answers ${stored.status ?? "nothing"})`,
+      count: submitted.ok && stored.status === 200 && stored.parsed?.type_name === "PlainText" && stored.parsed?.db_content === content ? 1 : 0,
+      submitStatus: submitted.status,
+      storedJsonStatus: stored.status,
+      storedType: stored.parsed?.type_name ?? null,
+    });
+  }
+
+  // 30. C9's invalid number (ACT-129, "invalid number refused in the
+  //     editor"): the Number cardtype validates content, and the refusal is
+  //     a WRITE answer, not a page state. The case posts the create form's
+  //     fields with a non-numeric content and grades the refusal two ways -
+  //     the answer is 4xx AND the card is not stored (/<name>.json 404) -
+  //     then proves the refusal is content-specific with a control create of
+  //     a valid number, which must store (json 200 carrying "42"). Measured
+  //     2026-10-18 on the ts engine: invalid answers 422 (user-error) with
+  //     the json 404 after; valid answers 303 and stores.
+  if (/\bC9\b/.test(t)) {
+    currentCase = "case 30 C9 invalid number (ACT-129)";
+    const stamp = Date.now().toString(36);
+    const bad = `Harness_exhaustive_c9_bad_${stamp}`;
+    const good = `Harness_exhaustive_c9_good_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: bad, detail: "C9 the invalid-number probe's refused card and its valid control card" })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") throw new Error("invalid-number probe needs the runner's pageRequest helper");
+    const badPost = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": bad, "card[type]": "Number", "card[content]": `not a number ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const badStatus = badPost.error ? null : badPost.status();
+    const badJson = await fetch(`${base}/${encodeURIComponent(bad)}.json`, { headers: { connection: "close" } }).then((r) => r.status).catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `the invalid number is refused in the editor (POST answered ${badStatus ?? "nothing"}, /${bad}.json answers ${badJson ?? "nothing"})`,
+      count: badStatus !== null && badStatus >= 400 && badJson === 404 ? 1 : 0,
+      badStatus,
+      badJson,
+    });
+    const goodPost = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": good, "card[type]": "Number", "card[content]": "42", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const goodJson = await fetch(`${base}/${encodeURIComponent(good)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    push({
+      interaction: "assert-present",
+      selector: `the refusal is content-specific: a valid number stores (control answers ${goodPost.error ? "nothing" : goodPost.status()}, /${good}.json db_content ${JSON.stringify(String(goodJson.parsed?.db_content ?? ""))})`,
+      count: !goodPost.error && goodPost.status() < 400 && goodJson.status === 200 && goodJson.parsed?.db_content === "42" ? 1 : 0,
+      goodStatus: goodPost.error ? null : goodPost.status(),
+      goodJsonStatus: goodJson.status,
+    });
+  }
+
+  // 31. C15's radio input (ACT-132, "radio input in a new card"): the radio
+  //     editor renders when the field's input-type rule says "radio" and an
+  //     options rule supplies the choices - the pointer_inputs journey's own
+  //     staging (journeys/synthetic-v1.json pointer-radio-input: tags
+  //     +*right+*input_type = radio, tags+*right+*options = a Tag search),
+  //     here on the case's own scratch host card and +tags Pointer field.
+  //     Measured 2026-10-18 on the ts engine: with the rules staged, the
+  //     field's edit modal renders input[type=radio] per Tag card
+  //     (Tag 01..Tag 10), choosing Tag 03 and Save-and-Close stores "Tag 03"
+  //     on /<host>+tags. Both halves are required: the radios render, and
+  //     the driven choice is what the engine stores.
+  if (/\bC15\b/.test(t)) {
+    currentCase = "case 31 C15 radio input (ACT-132)";
+    const stamp = Date.now().toString(36);
+    const host = `Harness_exhaustive_c15_${stamp}`;
+    const pointer = `${host}+tags`;
+    // The gate names the GLOBAL rule card, not the scratch host: the rule
+    // write is the one a restricted mode cannot admit (the host is scratch
+    // -prefixed, the rule is not), and a mode that refuses it must refuse the
+    // whole case rather than send a write it cannot name (case 9's rule).
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: "tags+*right+*input_type", detail: "C15 the probe's scratch host and +tags Pointer, plus the tags+*right input-type/options rules" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("radio-input probe needs the runner's page and pageRequest helpers");
+    }
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": host, "card[type]": "Basic", "card[content]": "radio host", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": pointer, "card[type]": "Pointer", "card[content]": "[[Tag 01]]", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": "tags+*right+*input_type", "card[type]": "Phrase", "card[content]": "radio", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": "tags+*right+*options", "card[type]": "Search", "card[content]": JSON.stringify({ type: "Tag", sort: "name" }), "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await goto(`/${encodeURIComponent(pointer)}?view=edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+    const radioValues = await evaluate(() => [...document.querySelectorAll(".modal.show input[type=radio], input[type=radio]")].map((r) => r.value)).catch(() => []);
+    let saveStatus = null;
+    if (radioValues.includes("Tag 03")) {
+      await page.locator("input[type=radio][value='Tag 03']").first().check().catch(() => {});
+      const responded = page.waitForResponse((r) => r.request().method() !== "GET" && new URL(r.url()).pathname.startsWith("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await page.locator(".modal.show button.submit-button").first().click().catch(() => {});
+      const answered = await responded;
+      saveStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const stored = await fetch(`${base}/${encodeURIComponent(pointer)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    push({
+      interaction: "assert-present",
+      selector: `the radio editor renders the option cards as radio inputs (${radioValues.length} radios) on /${pointer} edit`,
+      count: radioValues.length > 0 ? 1 : 0,
+      radioValues: radioValues.slice(0, 12),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the driven radio choice is stored (save answered ${saveStatus ?? "nothing"}, /${pointer}.json carries ${JSON.stringify(String(stored.parsed?.db_content ?? ""))})`,
+      count: saveStatus !== null && saveStatus < 400 && stored.status === 200 && String(stored.parsed?.db_content ?? "") === "Tag 03" ? 1 : 0,
+      saveStatus,
+      storedContent: stored.parsed?.db_content ?? null,
+    });
+  }
+
+  // 32. C17's multiselect input (ACT-133, "multiselect input in a new
+  //     card"): the same staging shape as case 31 with the input-type rule
+  //     set to "multiselect" (the pointer-multiselect-input journey's
+  //     contract), updated via the rule card's own update route. Measured
+  //     2026-10-18 on the ts engine: the field's edit modal renders
+  //     select[multiple] with the Tag options, choosing Tag 04 and Tag 02
+  //     stores both ("Tag 02\nTag 04"). Both halves required: the multiselect
+  //     renders, and both driven choices are stored.
+  if (/\bC17\b/.test(t)) {
+    currentCase = "case 32 C17 multiselect input (ACT-133)";
+    const stamp = Date.now().toString(36);
+    const host = `Harness_exhaustive_c17_${stamp}`;
+    const pointer = `${host}+tags`;
+    // Case 31's gate rule: the GLOBAL rule card is the write a restricted
+    // mode cannot name.
+    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: "tags+*right+*input_type", detail: "C17 the probe's scratch host and +tags Pointer, plus the tags+*right input-type/options rules" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("multiselect-input probe needs the runner's page and pageRequest helpers");
+    }
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": host, "card[type]": "Basic", "card[content]": "multiselect host", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": pointer, "card[type]": "Pointer", "card[content]": "", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    const ruleExisting = await fetch(`${base}/${encodeURIComponent("tags+*right+*input_type")}.json`, { headers: { connection: "close" } }).then((r) => r.status).catch(() => null);
+    if (ruleExisting === 200) {
+      await pageRequest.post(`${base}/update/${encodeURIComponent("tags+*right+*input_type")}`, {
+        headers: { origin: base },
+        form: { "card[content]": "multiselect", "success[redirect]": "true" },
+        maxRedirects: 0,
+      }).catch(() => null);
+    } else {
+      await pageRequest.post(`${base}/card/create`, {
+        headers: { origin: base },
+        form: { "card[name]": "tags+*right+*input_type", "card[type]": "Phrase", "card[content]": "multiselect", "success[redirect]": "true" },
+        maxRedirects: 0,
+      }).catch(() => null);
+    }
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": "tags+*right+*options", "card[type]": "Search", "card[content]": JSON.stringify({ type: "Tag", sort: "name" }), "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await goto(`/${encodeURIComponent(pointer)}?view=edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+    const multi = await evaluate(() => {
+      const s = document.querySelector(".modal.show select[multiple], select[multiple]");
+      return s ? { name: s.name, options: [...s.options].map((o) => o.value) } : null;
+    }).catch(() => null);
+    let saveStatus = null;
+    if (multi !== null) {
+      await page.locator(`select[name="${multi.name}"]`).first().selectOption(["Tag 04", "Tag 02"]).catch(() => {});
+      const responded = page.waitForResponse((r) => r.request().method() !== "GET" && new URL(r.url()).pathname.startsWith("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await page.locator(".modal.show button.submit-button").first().click().catch(() => {});
+      const answered = await responded;
+      saveStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const stored = await fetch(`${base}/${encodeURIComponent(pointer)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    const storedContent = typeof stored.parsed?.db_content === "string" ? stored.parsed.db_content : null;
+    push({
+      interaction: "assert-present",
+      selector: `the multiselect editor renders a multiple select of the option cards on /${pointer} edit`,
+      count: multi !== null ? 1 : 0,
+      options: multi ? multi.options.slice(0, 12) : [],
+    });
+    push({
+      interaction: "assert-present",
+      selector: `both driven choices are stored (save answered ${saveStatus ?? "nothing"}, /${pointer}.json carries ${JSON.stringify(storedContent)})`,
+      count: saveStatus !== null && saveStatus < 400 && storedContent !== null && storedContent.includes("Tag 02") && storedContent.includes("Tag 04") ? 1 : 0,
+      saveStatus,
+      storedContent,
+    });
+  }
+
+  // 33. E7's nest rules editor (ACT-134, "nest rules editor"): the editor is
+  //     a SET card's :nest_rules view - filtered_rule_lists.rb's view renders
+  //     .nest_rules-view with ._setting-list li rows carrying the rules'
+  //     update forms (the E7 battery check's measured bytes). The seeded
+  //     type-set Topic+*type carries the deck's rules, so the case opens its
+  //     rules editor and grades the editor's structure: the view present, its
+  //     setting list populated, and its rows wired to update routes. Read
+  //     -only on a seeded set (a scratch self set renders no nest_rules view
+  //     on this engine - measured 2026-10-18 - so the seeded set is the
+  //     editor's real host).
+  if (/\bE7\b/.test(t)) {
+    currentCase = "case 33 E7 nest rules editor (ACT-134)";
+    const setMark = "Topic+*type";
+    await goto(`/${encodeURIComponent(setMark)}?view=nest_rules`);
+    await settle();
+    const viewCount = await countSelector(".nest_rules-view");
+    const listItems = await countSelector(".nest_rules-view ._setting-list li");
+    const updateForms = await countSelector(".nest_rules-view form[action^='/update/']");
+    push({
+      interaction: "assert-present",
+      selector: `the nest rules editor view renders on /${setMark}?view=nest_rules`,
+      count: viewCount > 0 ? 1 : 0,
+      viewCount,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the editor's setting list carries rule rows (${listItems} li) on /${setMark}?view=nest_rules`,
+      count: listItems > 0 ? 1 : 0,
+      listItems,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the editor's rule rows are wired to update routes (${updateForms} forms) on /${setMark}?view=nest_rules`,
+      count: updateForms > 0 ? 1 : 0,
+      updateForms,
+    });
+  }
+
+  // 34. E9's nest list editor (ACT-135, "nest list editor"): a Nest list
+  //     card's editor renders nest rows - the _nest-form rows whose
+  //     reference input (input.pointer-item-text) autocompletes card names
+  //     (the E9 battery check's measured bytes). The case creates its own
+  //     Nest list card, opens the editor, fills the reference row with the
+  //     fixture's Brief card, saves, and grades the STORED nest: the card's
+  //     content must be the {{Brief}} nest. Measured 2026-10-18 on the ts
+  //     engine: the editor answers 200 and stores exactly "{{Brief}}".
+  if (/\bE9\b/.test(t)) {
+    currentCase = "case 34 E9 nest list editor (ACT-135)";
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_e9_nestlist_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "E9 the nest-list probe's own Nest list card and its saved nest" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("nest-list probe needs the runner's page and pageRequest helpers");
+    }
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Nest list", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdOk = !created.error && created.status() < 400;
+    await goto(`/${encodeURIComponent(scratch)}?view=edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+    const rowCount = await countSelector(".modal.show ._nest-form, .modal.show .pointer-li");
+    const refInput = page.locator(".modal.show input.pointer-item-text").first();
+    let saveStatus = null;
+    if (createdOk && rowCount > 0 && (await refInput.count().catch(() => 0)) > 0) {
+      await refInput.fill("Brief").catch(() => {});
+      const responded = page.waitForResponse((r) => r.request().method() !== "GET", { timeout: stepTimeout }).catch(() => null);
+      await page.locator(".modal.show button.submit-button").first().click().catch(() => {});
+      const answered = await responded;
+      saveStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const stored = await fetch(`${base}/${encodeURIComponent(scratch)}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    push({
+      interaction: "assert-present",
+      selector: `the nest list editor renders nest rows (${rowCount}) on /${scratch} edit`,
+      count: createdOk && rowCount > 0 ? 1 : 0,
+      rowCount,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the filled nest row stores the {{Brief}} nest (save answered ${saveStatus ?? "nothing"}, /${scratch}.json carries ${JSON.stringify(String(stored.parsed?.db_content ?? ""))})`,
+      count: saveStatus !== null && saveStatus < 400 && stored.status === 200 && stored.parsed?.db_content === "{{Brief}}" ? 1 : 0,
+      saveStatus,
+      storedContent: stored.parsed?.db_content ?? null,
+    });
+  }
+
+  // 35. P2's type create denial (ACT-140, "member denied create of a
+  //     restricted type"): staged by the case the way case 12 stages P3 -
+  //     an explicit ADMIN context creates a scratch Cardtype and its
+  //     +*type+*create rule naming [[Administrator]] - and the denial is
+  //     graded from both sides: the member's create POST is refused 403 AND
+  //     the member's /new/<type> page is refused, while the administrator's
+  //     own create of the same restricted type answers <400 (the control
+  //     that proves the denial is the rule's, not a broken type). Measured
+  //     2026-10-18 on the ts engine: member create 403 (permission-denied),
+  //     member /new 403, admin create 303.
+  if (/\bP2\b/.test(t)) {
+    currentCase = "case 35 P2 type create denial (ACT-140)";
+    const stamp = Date.now().toString(36);
+    const typeName = `Harness_exhaustive_p2_type_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: typeName, detail: `P2 the probe's private restricted Cardtype ${typeName} and its +*type+*create rule` })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined" || typeof newActorRequest !== "function") {
+      throw new Error("P2 create-denial probe needs the runner's pageRequest and newActorRequest helpers");
+    }
+    const admin = await newActorRequest("admin");
+    const createdType = await admin.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": typeName, "card[type]": "Cardtype", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdRule = await admin.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `${typeName}+*type+*create`, "card[type]": "Pointer", "card[content]": "[[Administrator]]", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const staged = !createdType.error && createdType.status() < 400 && !createdRule.error && createdRule.status() < 400;
+    const adminCreate = await admin.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `Harness_exhaustive_p2_admin_ok_${stamp}`, "card[type]": typeName, "card[content]": "admin can create", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const adminCreateStatus = adminCreate.error ? null : adminCreate.status();
+    const member = await newActorRequest("member");
+    const memberCreate = await member.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `Harness_exhaustive_p2_member_denied_${stamp}`, "card[type]": typeName, "card[content]": "member must not create", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberCreateStatus = memberCreate.error ? null : memberCreate.status();
+    const memberNewPage = await member.get(`${base}/new/${encodeURIComponent(typeName)}`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberNewStatus = memberNewPage.error ? null : memberNewPage.status();
+    push({
+      interaction: "assert-present",
+      selector: `the administrator can still create the restricted type (control answered ${adminCreateStatus ?? "nothing"})`,
+      count: staged && adminCreateStatus !== null && adminCreateStatus < 400 ? 1 : 0,
+      adminCreateStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the member's create POST of the restricted type is refused (${memberCreateStatus})`,
+      count: staged && memberCreateStatus === 403 ? 1 : 0,
+      memberCreateStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the member's /new/${typeName} page is refused (${memberNewStatus})`,
+      count: staged && memberNewStatus === 403 ? 1 : 0,
+      memberNewStatus,
+    });
+  }
+
+  // 36. P4's rule default plus plus-card override (ACT-141, "Rules: default
+  //     setting and plus-card override"): the contract the cypress rules
+  //     spec stages (decko spec/cypress/e2e/rules.spec.coffee "default
+  //     setting and plus card override") is the *help setting - a broad
+  //     default rule applies where nothing narrower exists, and a plus
+  //     -card-scoped rule overrides it on its own scope. The case stages the
+  //     two rules on private cards: <field>+*right+*help (the broad default)
+  //     and <hostA>+<field>+*self+*help (the plus-card override), then reads
+  //     both hosts' +field pages. Measured 2026-10-18 on the ts engine: the
+  //     host with the override shows ONLY the override text, the plain host
+  //     shows the default text - both legs required, so a precedence
+  //     regression in either direction fails. (The *default setting's
+  //     new-card prefill was also measured: runtime-created default rules do
+  //     not reach the prefill on this engine - even cold, and after unrelated
+  //     writes - so the prefill seam cannot stage this contract and the help
+  //     setting is the seam the original spec itself uses.)
+  if (/\bP4\b/.test(t)) {
+    currentCase = "case 36 P4 rule default + override (ACT-141)";
+    const stamp = Date.now().toString(36);
+    const field = `Harness_exhaustive_p4f_${stamp}`;
+    const hostA = `Harness_exhaustive_p4_override_${stamp}`;
+    const hostB = `Harness_exhaustive_p4_plain_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: hostA, detail: `P4 the probe's two scratch hosts, the +${field} junctions, the broad +*right+*help default and ${hostA}'s +*self+*help override` })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") throw new Error("rule-override probe needs the runner's pageRequest helper");
+    const genericText = `P4_GENERIC_HELP_${stamp}`;
+    const overrideText = `P4_OVERRIDE_HELP_${stamp}`;
+    for (const form of [
+      { "card[name]": hostA, "card[type]": "Basic", "card[content]": "" },
+      { "card[name]": `${hostA}+${field}`, "card[type]": "Phrase", "card[content]": "" },
+      { "card[name]": hostB, "card[type]": "Basic", "card[content]": "" },
+      { "card[name]": `${hostB}+${field}`, "card[type]": "Phrase", "card[content]": "" },
+      { "card[name]": `${field}+*right+*help`, "card[type]": "Phrase", "card[content]": genericText },
+      { "card[name]": `${hostA}+${field}+*self+*help`, "card[type]": "Phrase", "card[content]": overrideText },
+    ]) {
+      await pageRequest.post(`${base}/card/create`, { headers: { origin: base }, form: { ...form, "success[redirect]": "true" }, maxRedirects: 0 }).catch(() => null);
+    }
+    const readPage = async (mark) => {
+      const r = await fetch(`${base}/${encodeURIComponent(mark)}`, { headers: { connection: "close" } })
+        .then((r) => r.text())
+        .catch(() => "");
+      return { override: r.includes(overrideText), generic: r.includes(genericText) };
+    };
+    const onOverrideHost = await readPage(`${hostA}+${field}`);
+    const onPlainHost = await readPage(`${hostB}+${field}`);
+    push({
+      interaction: "assert-present",
+      selector: `the plus-card-scoped rule overrides the default on ${hostA}+${field} (shows the override text, not the generic text)`,
+      count: onOverrideHost.override && !onOverrideHost.generic ? 1 : 0,
+      ...onOverrideHost,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the broad default rule still applies where no override exists on ${hostB}+${field} (shows the generic text)`,
+      count: onPlainHost.generic && !onPlainHost.override ? 1 : 0,
+      ...onPlainHost,
+    });
+  }
+
+  // 37. F4's coded image change (ACT-146, "change a coded image"): the
+  //     deck's coded image card is *logo (codename logo, seeded with the
+  //     coded file reference ":logo/carrierwave.svg" - measured in the
+  //     fixture sqlite). The case reads the stored identifier and the served
+  //     coded bytes FIRST (the change's before-state), drives the image
+  //     card's own edit form (the modal's file input, the engine's
+  //     preliminary-upload arm, then Save), and grades the change on the
+  //     stored state: the identifier must move from the coded ":logo/..."
+  //     reference to the upload's own action reference, and /files/<new> must
+  //     serve exactly the uploaded byte stream. Measured 2026-10-18 on the
+  //     ts engine: update 200, identifier ":logo/carrierwave.svg" ->
+  //     "~<id>/<n>.png", served bytes 4206 -> 70 (the upload's length).
+  if (/\bF4\b/.test(t)) {
+    currentCase = "case 37 F4 coded image change (ACT-146)";
+    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: "*logo", detail: "F4 the coded *logo image's replacement upload" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("coded-image probe needs the runner's page and pageRequest helpers");
+    }
+    const logoJson = await fetch(`${base}/${encodeURIComponent("*logo")}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    const identifierBefore = typeof logoJson.parsed?.db_content === "string" ? logoJson.parsed.db_content : null;
+    const beforeBytes = identifierBefore
+      ? await fetch(`${base}/files/${identifierBefore}`, { headers: { connection: "close" } })
+          .then(async (r) => ({ status: r.status, size: (await r.arrayBuffer()).byteLength }))
+          .catch(() => null)
+      : null;
+    push({
+      interaction: "assert-present",
+      selector: `*logo carries a coded file reference before the change (identifier ${JSON.stringify(identifierBefore)}, /files answers ${beforeBytes?.status ?? "nothing"})`,
+      count: logoJson.status === 200 && identifierBefore !== null && identifierBefore.startsWith(":") && beforeBytes?.status === 200 ? 1 : 0,
+      identifierBefore,
+      beforeBytesStatus: beforeBytes?.status ?? null,
+    });
+    const png = generatedPng(1, 1, Buffer.from([0, 0, 255, 255]));
+    await goto(`/${encodeURIComponent("*logo")}?view=edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+    const fileForm = page.locator("form.card-form").filter({ has: page.locator('input[type="file"]') }).first();
+    let updateStatus = null;
+    if ((await fileForm.count().catch(() => 0)) > 0) {
+      await fileForm.locator('input[type="file"]').first().setInputFiles({ name: "harness-coded-replace.png", mimeType: "image/png", buffer: png }).catch(() => {});
+      await page.waitForFunction(() => {
+        const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+        return draft !== null && /^\d+$/.test(draft.value);
+      }, undefined, { timeout: stepTimeout }).catch(() => {});
+      const responded = page.waitForResponse((r) => r.request().method() !== "GET" && new URL(r.url()).pathname.startsWith("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await fileForm.locator("button.submit-button, button[type=submit]").first().click().catch(() => {});
+      const answered = await responded;
+      updateStatus = answered ? answered.status() : null;
+      await settle();
+    }
+    const logoJsonAfter = await fetch(`${base}/${encodeURIComponent("*logo")}.json`, { headers: { connection: "close" } })
+      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+      .catch(() => ({ status: null, parsed: null }));
+    const identifierAfter = typeof logoJsonAfter.parsed?.db_content === "string" ? logoJsonAfter.parsed.db_content : null;
+    const afterBytes = identifierAfter
+      ? await fetch(`${base}/files/${identifierAfter}`, { headers: { connection: "close" } })
+          .then(async (r) => ({ status: r.status, size: (await r.arrayBuffer()).byteLength }))
+          .catch(() => null)
+      : null;
+    push({
+      interaction: "assert-present",
+      selector: `the coded image is changed to the upload (update answered ${updateStatus ?? "nothing"}, identifier ${JSON.stringify(identifierBefore)} -> ${JSON.stringify(identifierAfter)}, /files answers ${afterBytes?.status ?? "nothing"} with ${afterBytes?.size ?? "no"} bytes)`,
+      count: updateStatus !== null && updateStatus < 400 && identifierAfter !== null && identifierAfter !== identifierBefore && afterBytes?.status === 200 && afterBytes.size === png.length ? 1 : 0,
+      updateStatus,
+      identifierAfter,
+      afterBytesStatus: afterBytes?.status ?? null,
+      afterBytesSize: afterBytes?.size ?? null,
+      uploadedBytes: png.length,
+    });
+  }
+
+  // 38. N4's search card paging (ACT-150, "search card paging"): the fixture
+  //     carries the Search card All Topics ({"type":"Topic","sort":"name"} -
+  //     synthetic-v1 deck.json) whose own page renders the same .paging
+  //     pager the search results page renders (the search-card-pages
+  //     journey's contract: visit /All_Topics, click the "2" link). The case
+  //     drives the page-2 control and grades what page 2 shows: the active
+  //     marker on "2" and a different first result id than page 1's.
+  //     Read-only on a fixture card - the deck's 30 Topic cards against the
+  //     20-per-page limit make the second page deterministic.
+  if (/\bN4\b/.test(t)) {
+    currentCase = "case 38 N4 search card paging (ACT-150)";
+    if (typeof page === "undefined" || page === null) throw new Error("search-card paging probe needs the runner's page helper");
+    await goto("/All_Topics");
+    await settle();
+    const read = () => evaluate(() => ({
+      activePage: document.querySelector(".paging .page-item.active")?.textContent.trim() ?? null,
+      resultIds: [...document.querySelectorAll(".search-result-list > .search-result-item [data-card-id]")].map((e) => e.getAttribute("data-card-id")),
+    })).catch(() => ({ activePage: null, resultIds: [] }));
+    const first = await read();
+    let second = { activePage: null, resultIds: [] };
+    let clicked = false;
+    const next = page.locator('a.card-paging-link[aria-label="Next"]').first();
+    if ((await next.count().catch(() => 0)) > 0) {
+      const pending = next.click({ timeout: stepTimeout }).catch(() => {});
+      await page.waitForFunction(() => document.querySelector(".paging .page-item.active")?.textContent.trim() === "2", null, { timeout: stepTimeout }).catch(() => {});
+      await pending;
+      clicked = true;
+      await settle();
+      second = await read();
+    }
+    const different = first.resultIds.length > 0 && second.resultIds.length > 0 && first.resultIds[0] !== second.resultIds[0];
+    push({
+      interaction: "assert-present",
+      selector: `the search card's page renders its pager with page 1 active (.paging .page-item.active = ${JSON.stringify(first.activePage)}, ${first.resultIds.length} results) on /All_Topics`,
+      count: first.activePage === "1" && first.resultIds.length > 0 ? 1 : 0,
+      activePage: first.activePage,
+      resultCount: first.resultIds.length,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the search card's page 2 is active and lists different cards (clicked ${clicked}, active = ${JSON.stringify(second.activePage)}, first ids differ: ${different})`,
+      count: clicked && second.activePage === "2" && different ? 1 : 0,
+      secondActivePage: second.activePage,
+      secondResultCount: second.resultIds.length,
+      different,
+    });
+  }
+
+  // 39. N9's User card layout (ACT-151, "visit a User card with the user
+  //     layout"): the same layout machinery case 27 proves, on a User-type
+  //     card. The fixture seeds no layout rules (synthetic-v1 deck.json),
+  //     so the case stages its own: a scratch User-type card, an HTML layout
+  //     card wrapping {{_main}} in the case's own marks, and the User card's
+  //     +*self+*layout rule. Measured 2026-10-18 on the ts engine: the User
+  //     card's page then renders header mark, card body, and footer mark.
+  //     Disclosed residual: the layout proven is the case's own staged
+  //     layout, not a fixture-shipped "user layout" - the fixture carries
+  //     none (the deck.json rule list has no *layout rule).
+  if (/\bN9\b/.test(t)) {
+    currentCase = "case 39 N9 User card layout (ACT-151)";
+    const stamp = Date.now().toString(36);
+    const host = `Harness_exhaustive_n9_user_${stamp}`;
+    const layoutName = `Harness_exhaustive_n9_layout_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: host, detail: `N9 the probe's scratch User card ${host}, its layout card ${layoutName} and its +*self+*layout rule` })) {
+      return sequence;
+    }
+    if (typeof pageRequest === "undefined") throw new Error("user-layout probe needs the runner's pageRequest helper");
+    const headerMark = `N9_HEADER_${stamp}`;
+    const footerMark = `N9_FOOTER_${stamp}`;
+    const bodyMark = `N9_USER_BODY_${stamp}`;
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": host, "card[type]": "User", "card[content]": bodyMark, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": layoutName, "card[type]": "HTML", "card[content]": `<div class="harness-n9-header">${headerMark}</div>{{_main}}<div class="harness-n9-footer">${footerMark}</div>`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    const rule = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `${host}+*self+*layout`, "card[type]": "Phrase", "card[content]": `[[${layoutName}]]`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    await goto(`/${encodeURIComponent(host)}`);
+    await settle();
+    const html = await evaluate(() => document.body.innerHTML).catch(() => "");
+    push({
+      interaction: "assert-present",
+      selector: `the User card renders through the staged layout: header mark on /${host}`,
+      count: !rule.error && rule.status() < 400 && html.includes(headerMark) ? 1 : 0,
+      headerMark: html.includes(headerMark),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the User card's own body renders inside the layout on /${host}`,
+      count: html.includes(bodyMark) ? 1 : 0,
+      bodyMark: html.includes(bodyMark),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the User card renders through the staged layout: footer mark on /${host}`,
+      count: html.includes(footerMark) ? 1 : 0,
+      footerMark: html.includes(footerMark),
+    });
+  }
+
+  // 40. N10's reading flows (ACT-152, "read pages with nests, links, files,
+  //     chains and loops"): the fixture ships a card for every shape -
+  //     Report Index (transcludes the File cards Report 1/2 and holds the
+  //     [[Report 3]] reference), Chain 01 (nests Chain 02 nesting Chain 03:
+  //     a three-deep chain), and Loop A (nests Loop B which nests Loop A
+  //     back). The case reads all three pages and grades the renders: the
+  //     chain's third depth is present, the loop's page terminates (both
+  //     cards' marks present, the recursion bounded - measured 2026-10-18:
+  //     59/60 occurrences, 51 KB), and the files page carries its /files/
+  //     download anchors and the /Report_3 reference link. Read-only on
+  //     fixture cards.
+  if (/\bN10\b/.test(t)) {
+    currentCase = "case 40 N10 nests links files chains loops (ACT-152)";
+    await goto("/Chain_01");
+    await settle();
+    const chainText = await evaluate(() => document.body.innerText).catch(() => "");
+    push({
+      interaction: "assert-present",
+      selector: "the nest chain renders through its third depth (Depth 3. visible on /Chain_01)",
+      count: chainText.includes("Depth 1.") && chainText.includes("Depth 3.") ? 1 : 0,
+      hasDepth1: chainText.includes("Depth 1."),
+      hasDepth3: chainText.includes("Depth 3."),
+    });
+    await goto("/Loop_A");
+    await settle();
+    const loop = await evaluate(() => {
+      const text = document.body.innerText;
+      return { hasA: text.includes("Loop A"), hasB: text.includes("Loop B"), loopBCount: (text.match(/Loop B/g) ?? []).length, length: text.length };
+    }).catch(() => ({ hasA: false, hasB: false, loopBCount: 0, length: 0 }));
+    push({
+      interaction: "assert-present",
+      selector: `the transclusion loop terminates: /Loop_A renders both cards (${loop.loopBCount} Loop B occurrences, ${loop.length} chars) instead of recursing unbounded`,
+      count: loop.hasA && loop.hasB && loop.loopBCount > 0 && loop.loopBCount <= 200 ? 1 : 0,
+      ...loop,
+    });
+    await goto("/Report_Index");
+    await settle();
+    const filesLinks = await countSelector("#main a[href^='/files/']");
+    const report3Link = await countSelector("#main a[href='/Report_3']");
+    push({
+      interaction: "assert-present",
+      selector: `the nests render the File cards' download anchors (${filesLinks} /files/ links) and the [[Report 3]] reference link on /Report_Index`,
+      count: filesLinks >= 2 && report3Link > 0 ? 1 : 0,
+      filesLinks,
+      report3Link,
+    });
+  }
+
+  // 41. N14's feed dedup (ACT-160, crawl-defect "the recent-changes feed
+  //     shows the same act repeated 2 to 6 times"): the feed is the *recent
+  //     card's core - one accordion item per act, the act id stamped in
+  //     data-bs-target='#act-id-<id>' (the dedup key the
+  //     recent-changes-feed-dedup instrument established: a repeated card
+  //     NAME is not a repeat, several acts legitimately touch one card). The
+  //     case makes its own feed first - four scratch cards, one act each -
+  //     then reads the rendered feed and grades three legs: the feed is
+  //     non-empty enough for a repeat to exist at all (>= 4 entries), the
+  //     run's own acts are in it, and no act id appears twice. On the ts
+  //     engine the measured feed carried 25 distinct acts and no duplicates,
+  //     so the defect the crawl recorded is absent here and the legs hold;
+  //     an engine that repeats an act fails the third leg.
+  if (/\bN14\b/.test(t)) {
+    currentCase = "case 41 N14 feed dedup (ACT-160)";
+    const stamp = Date.now().toString(36);
+    const feedPrefix = `Harness_exhaustive_n14_feed_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: `${feedPrefix}_0`, detail: "N14 the dedup probe's four feed-act scratch cards" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("feed-dedup probe needs the runner's page and pageRequest helpers");
+    }
+    let createdOk = true;
+    for (let i = 0; i < 4; i++) {
+      const create = await pageRequest.post(`${base}/card/create`, {
+        headers: { origin: base },
+        form: { "card[name]": `${feedPrefix}_${i}`, "card[type]": "Basic", "card[content]": "harness feed act", "success[redirect]": "true" },
+        maxRedirects: 0,
+      }).catch((e) => ({ error: String(e?.message ?? e) }));
+      if (create.error || create.status() >= 400) createdOk = false;
+    }
+    await goto("/*recent");
+    await settle();
+    await page.waitForSelector("#main .accordion .accordion-item", { timeout: stepTimeout }).catch(() => {});
+    const feed = await evaluate((prefix) => {
+      const nodes = [...document.querySelectorAll("#main .accordion .accordion-item")];
+      const actIds = nodes.map((n) => n.querySelector("[data-bs-target^='#act-id-']")?.getAttribute("data-bs-target")?.replace(/^#/, "") ?? null);
+      const duplicates = actIds.filter((id, i) => id !== null && actIds.indexOf(id) !== i);
+      return {
+        entries: nodes.length,
+        distinct: new Set(actIds.filter(Boolean)).size,
+        duplicates: duplicates.slice(0, 8),
+        hasOurs: nodes.some((n) => (n.textContent ?? "").includes(prefix)),
+      };
+    }, feedPrefix).catch(() => ({ entries: 0, distinct: 0, duplicates: [], hasOurs: false }));
+    push({
+      interaction: "assert-present",
+      selector: `the recent-changes feed is non-empty enough to certify dedup (${feed.entries} entries, this run's acts present: ${feed.hasOurs})`,
+      count: createdOk && feed.entries >= 4 && feed.hasOurs ? 1 : 0,
+      entries: feed.entries,
+      hasOurs: feed.hasOurs,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `no act repeats in the feed (${feed.distinct} distinct act ids over ${feed.entries} entries; duplicates: ${JSON.stringify(feed.duplicates)})`,
+      count: feed.entries > 0 && feed.duplicates.length === 0 ? 1 : 0,
+      distinct: feed.distinct,
+      duplicates: feed.duplicates,
+    });
+  }
+
+  // 42. F9's image standalone page (ACT-161, crawl-defect "an image card
+  //     standalone page renders blank (no image)"): the crawl's blank-page
+  //     shape is graded the way checks-upload-image-change grades F9 - an
+  //     <img> tag alone satisfies nothing; the element must DECODE. The case
+  //     creates its own Image card through the real form (name field, file
+  //     choice through the engine's preliminary-upload arm, create submit),
+  //     then reads the standalone page's img: complete, naturalWidth > 0,
+  //     and the /files route behind its src answering 200 with the uploaded
+  //     bytes. Measured 2026-10-18 on the ts engine: the created image's
+  //     standalone page rendered the img decoded (naturalWidth 2, src
+  //     /files/~<id>/<n>-large.png, 200, image/png), so the defect the crawl
+  //     recorded is absent here; a page that renders blank fails every leg.
+  if (/\bF9\b/.test(t)) {
+    currentCase = "case 42 F9 image standalone decode (ACT-161)";
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_f9_image_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "F9 the standalone-image probe's own Image card" })) {
+      return sequence;
+    }
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("standalone-image probe needs the runner's page and pageRequest helpers");
+    }
+    const png = generatedPng(2, 1, Buffer.from([255, 0, 0, 255, 0, 255, 0, 255]));
+    await page.goto(`${base}/new/Image`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    const nameInput = page.locator('form.card-form input[name="card[name]"]').first();
+    const fileInput = page.locator('form.card-form input[type="file"]').first();
+    let createStatus = null;
+    if ((await nameInput.count().catch(() => 0)) > 0 && (await fileInput.count().catch(() => 0)) > 0) {
+      await nameInput.fill(scratch).catch(() => {});
+      await fileInput.setInputFiles({ name: "harness-f9.png", mimeType: "image/png", buffer: png }).catch(() => {});
+      await page.waitForFunction(() => {
+        const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+        return draft !== null && /^\d+$/.test(draft.value);
+      }, undefined, { timeout: stepTimeout }).catch(() => {});
+      const responded = page.waitForResponse((r) => new URL(r.url()).pathname === "/card/create" && r.request().method() === "POST", { timeout: stepTimeout }).catch(() => null);
+      await page.locator('form.card-form button[type="submit"]').first().click().catch(() => {});
+      const answered = await responded;
+      createStatus = answered ? answered.status() : null;
+      await page.waitForTimeout(1200);
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the Image create form stores the image card (POST /card/create answered ${createStatus ?? "nothing"})`,
+      count: createStatus !== null && createStatus < 400 ? 1 : 0,
+      createStatus,
+    });
+    await goto(`/${encodeURIComponent(scratch)}`);
+    await settle();
+    const rendered = await evaluate(async () => {
+      const img = document.querySelector("#main img");
+      if (img === null) return { present: false };
+      if (img.complete === false) await img.decode().catch(() => {});
+      return { present: true, src: img.getAttribute("src"), complete: img.complete, naturalWidth: img.naturalWidth };
+    }).catch(() => ({ present: false }));
+    const served = rendered.src
+      ? await fetch(new URL(rendered.src, base).href, { headers: { connection: "close" } })
+          .then(async (r) => ({ status: r.status, size: (await r.arrayBuffer()).byteLength, contentType: r.headers.get("content-type") }))
+          .catch(() => null)
+      : null;
+    push({
+      interaction: "assert-present",
+      selector: `the standalone image page renders an image the browser decodes (img ${rendered.present ? `present, complete ${rendered.complete}, naturalWidth ${rendered.naturalWidth}` : "absent"}; src ${JSON.stringify(rendered.src ?? null)} answers ${served?.status ?? "nothing"} with ${served?.size ?? "no"} bytes)`,
+      count: rendered.present === true && rendered.complete === true && rendered.naturalWidth > 0 && served !== null && served.status === 200 && served.size > 0 ? 1 : 0,
+      imgPresent: rendered.present,
+      naturalWidth: rendered.naturalWidth ?? null,
+      servedStatus: served?.status ?? null,
+      servedBytes: served?.size ?? null,
     });
   }
 

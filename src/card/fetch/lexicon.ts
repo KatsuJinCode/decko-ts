@@ -512,6 +512,23 @@ export class DbLexicon {
     return false;
   }
 
+  /** db round-trip elimination: whether an id -> lex entry EXISTS for this
+   *  id — the String(id) key idToLex's cacheFetch reads, same read order,
+   *  without the write-back. The save path's batched side seating uses this
+   *  to skip rows the cache already holds (a held entry is an answer
+   *  somebody asked for; re-fetching it would spend a round trip to re-learn
+   *  it). A held NEGATIVE (a proven-absent id, the undefined entry a point
+   *  read cached) counts as held: the later name(id) answers unknown from it,
+   *  exactly as the batched read's noteIdToLexMiss would have. */
+  heldIdEntry(id: number): boolean {
+    const key = String(id);
+    if (this.cache.temp.exist(key)) return true;
+    if (this.cache.shared !== undefined) {
+      return this.cache.shared.read(key) !== undefined;
+    }
+    return false;
+  }
+
   /** lexicon.rb#lex_to_id - trash: false filter (lex_query merge). */
   private async lexToId(lex: Lex): Promise<number | undefined> {
     const found = (await this.cacheFetch(cacheKey(lex), async () => {

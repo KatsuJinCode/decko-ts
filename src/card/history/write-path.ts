@@ -333,6 +333,13 @@ export class ActWriter {
     } else {
       actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
     }
+    // The first_create? count rides the SAME batch as a trailing read: the
+    // batch runs in order on the server, so a COUNT placed after the
+    // action-row INSERT (or the reserved-row fill) reads the exact state the
+    // separate round trip read — one hop fewer per created card (the save
+    // path's block batching).
+    const actionCountIndex = stmts.length;
+    stmts.push(this.actionCountStmt(cardId));
     const batch = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
     const actId = batch.actId;
     const actionId = input.reservedActionId ?? batch.actionId;
@@ -342,7 +349,7 @@ export class ActWriter {
     // change storage entirely; a plain create leaves card_changes untouched
     // (seed truth: mod/core/data/fixtures/real/card_changes.yml is empty
     // while card_actions.yml is full of create rows).
-    const actionCount = await this.actionCount(cardId);
+    const actionCount = Number((batch.results[actionCountIndex].rows[0] as { n: number }).n);
     if (actionCount !== 1) {
       // first_create? is false; Ruby would then run store_card_changes for
       // the create action. Unreachable for a fresh INSERT — refuse to guess.
@@ -447,7 +454,19 @@ export class ActWriter {
 
     // Pre-reads (single-writer assumption as in ActiveRecord; the values are
     // re-derivable, not authoritative, so no locking is attempted).
-    const actionCountBefore = await this.actionCount(input.cardId);
+    //
+    // The three card_actions reads ride ONE batch — the save path's block
+    // batching: read-only statements issued at the same sequence point (no
+    // write runs between them), so the ordered batch answers each exactly as
+    // its individual round trip did. On a hosted database every round trip is
+    // a network hop (measured: tools/diagnose-owner-save-statement-ladder.mjs
+    // — one Person-card save issued one pipeline POST per statement).
+    const [countResult, draftResult, firstActionResult] = await this.driver.batch([
+      this.actionCountStmt(input.cardId),
+      this.ownDraftCountStmt(input.cardId),
+      this.firstNonDraftActionStmt(input.cardId),
+    ]);
+    const actionCountBefore = Number((countResult.rows[0] as { n: number }).n);
     // first_change? (set/all/history.rb:32-36 — action_type != :create &&
     // action_count == 2 && create_action.card_changes.empty?). Ruby counts
     // AFTER the :store-stage clear_drafts (event :set_content,
@@ -455,11 +474,17 @@ export class ActWriter {
     // `@current_action.update! card_id: id` saved the new action row, so the
     // port subtracts the drafts the batch is about to clear and adds the
     // action it is about to insert.
-    const ownDrafts = await this.ownDraftCount(input.cardId);
+    const ownDrafts = Number((draftResult.rows[0] as { n: number }).n);
     const actionCountAtFinalize = actionCountBefore - ownDrafts + 1;
     let backfill: { createActionId: number } | null = null;
     if (actionType !== "create" && actionCountAtFinalize === 2) {
-      const createAction = await this.firstNonDraftAction(input.cardId);
+      const firstRow = firstActionResult.rows[0] as
+        | { id: number; action_type: number }
+        | undefined;
+      const createAction =
+        firstRow === undefined
+          ? undefined
+          : { id: Number(firstRow.id), action_type: Number(firstRow.action_type) };
       if (createAction !== undefined) {
         if ((await this.changeCount(createAction.id)) === 0) {
           backfill = { createActionId: createAction.id };
@@ -939,13 +964,38 @@ export class ActWriter {
     return Number(rows.rows[0].id);
   }
 
+  /** The pre-read and read-back statements, built once so the batched and
+   *  point-query forms are the SAME text and parameters by construction. */
+  private actionCountStmt(cardId: number): SQLStatement {
+    return {
+      sql: "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+      params: [cardId],
+    };
+  }
+
+  private ownDraftCountStmt(cardId: number): SQLStatement {
+    return {
+      sql: `SELECT COUNT(*) AS n FROM card_actions
+       WHERE card_actions.card_id = ? AND card_actions.draft = 1
+         AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`,
+      params: [cardId, this.actorId],
+    };
+  }
+
+  private firstNonDraftActionStmt(cardId: number): SQLStatement {
+    return {
+      sql: `SELECT id, action_type FROM card_actions
+       WHERE card_id = ? AND (draft IS NULL OR draft = 0)
+       ORDER BY id LIMIT 1`,
+      params: [cardId],
+    };
+  }
+
   /** Card::Action count INCLUDING drafts — set/all/history.rb:42-44
    *  (`Card::Action.where(card_id: ...)` has no draft filter). */
   private async actionCount(cardId: number): Promise<number> {
-    const result = await this.driver.query<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
-      [cardId],
-    );
+    const stmt = this.actionCountStmt(cardId);
+    const result = await this.driver.query<{ n: number }>(stmt.sql, stmt.params);
     return Number(result.rows[0].n);
   }
 
@@ -954,12 +1004,8 @@ export class ActWriter {
    *  pushClearOwnDrafts, built from drafts.created_by,
    *  lib/card/content/all.rb:33-35). */
   private async ownDraftCount(cardId: number): Promise<number> {
-    const result = await this.driver.query<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM card_actions
-       WHERE card_actions.card_id = ? AND card_actions.draft = 1
-         AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`,
-      [cardId, this.actorId],
-    );
+    const stmt = this.ownDraftCountStmt(cardId);
+    const result = await this.driver.query<{ n: number }>(stmt.sql, stmt.params);
     return Number(result.rows[0].n);
   }
 
@@ -969,12 +1015,8 @@ export class ActWriter {
   private async firstNonDraftAction(
     cardId: number,
   ): Promise<{ id: number; action_type: number } | undefined> {
-    const result = await this.driver.query<{ id: number; action_type: number }>(
-      `SELECT id, action_type FROM card_actions
-       WHERE card_id = ? AND (draft IS NULL OR draft = 0)
-       ORDER BY id LIMIT 1`,
-      [cardId],
-    );
+    const stmt = this.firstNonDraftActionStmt(cardId);
+    const result = await this.driver.query<{ id: number; action_type: number }>(stmt.sql, stmt.params);
     return result.rows[0];
   }
 
