@@ -33,3 +33,9 @@ without a target mark during cleanup (404). The successful corrected receipt is
 the process repository's private-probes/coded-image-native-r4-2026-10-18T04-17-56-116Z/.
 These diagnostics do not update the frozen 206/223 score. A clean selected
 capture of both corrected first-party checks follows this instrument commit.
+
+The first selected capture passes both replacement/restore checks and cleanup,
+but fails its asset audit on an in-flight draft preview (HTTP404). Numeric draft
+readiness precedes image loading; saving immediately promotes/removes the draft.
+The helper now requires its real preview image to decode before pressing Save.
+The asset audit is unchanged, and the failing capture is retained.

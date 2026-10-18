@@ -39,6 +39,15 @@ export async function runCodedImageChange(ctx, checkName) {
         await draft.waitFor({ state: 'attached', timeout: 15000 });
         await page.waitForFunction(() => /^\d+$/.test(document.querySelector('input[name="card[action_id_of_cached_upload]"]')?.value ?? ''), undefined, { timeout: 15000 });
         observed.draftActionId = await draft.inputValue();
+        // The hidden draft arrives with the preview HTML, before its image
+        // request completes. Wait for the visible preview before saving: the
+        // save promotes/removes that draft, so an in-flight preview can 404.
+        const preview = form.locator('.chosen-file img').first();
+        await preview.waitFor({ state: 'attached', timeout: 15000 });
+        observed.preview = await preview.evaluate(async image => {
+          await image.decode();
+          return { src: image.src, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight };
+        });
         const pending = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname === actionPath, { timeout: 15000 });
         await form.locator('.submit-button,button[type="submit"]').first().click({ timeout: 5000 });
         const saved = await pending; await saved.finished();
@@ -75,6 +84,7 @@ export async function runCodedImageChange(ctx, checkName) {
       }
       record(checkName,
         !observed.error && observed.original?.status === 200 && observed.saveStatus < 400
+        && observed.preview?.complete && observed.preview.width > 0
         && observed.stored?.codename === coded.codename && /^~/.test(observed.stored?.db_content ?? '')
         && observed.image?.complete && observed.image.width === png.readUInt32BE(16) && observed.image.height === png.readUInt32BE(20)
         && observed.served?.status === 200 && observed.served.sha256 !== observed.original.sha256
