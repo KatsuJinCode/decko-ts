@@ -1735,6 +1735,11 @@ async function dispatchWriteRequest(
   let parsed: ParsedBody;
   try {
     parsed = foldCardArrays(applyQuery(parseBody(req), req.search));
+    // The stock comment form posts card[comment] (text_area :comment).
+    // Carry that card attribute into the save-event input for every body
+    // transport. Keep the older flat shortcut only when it is absent.
+    parsed.comment = parsed.card["comment"] ?? parsed.comment;
+    parsed.commentAuthor = parsed.card["comment_author"] ?? parsed.commentAuthor;
   } catch (error) {
     if (error instanceof CardActionError) {
       return errorResponse(json, error, false, { url: requestUrl(req), now: ctx.now?.() ?? new Date() });

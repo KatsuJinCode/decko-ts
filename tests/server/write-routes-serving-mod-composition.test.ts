@@ -177,6 +177,29 @@ describe("E-16: the serving write surface composes the deck's mod-event runtime"
     );
   });
 
+  it("the stock comment form's card attribute appends to the existing content", async () => {
+    const before = await storage!.fetcher.fetchByKey("commented_card");
+    const res = await call(baseUrl, "POST", "/Commented_Card", {
+      token: joeToken,
+      form: { _method: "patch", "card[comment]": "posted by the stock comment form" },
+    });
+    expect(res.status).toBe(303);
+    const after = await storage!.fetcher.fetchByKey("commented_card");
+    expect(after?.dbContent).toBe(before!.dbContent +
+      '\n<hr>\n<p>posted by the stock comment form</p>\n' +
+      '<div class="w-comment-author">[[Joe User]].....2026-09-29 12:00:00 UTC</div>');
+  });
+
+  it("a blank stock comment does not fall back to a conflicting flat comment", async () => {
+    const before = await storage!.fetcher.fetchByKey("commented_card");
+    const res = await call(baseUrl, "POST", "/Commented_Card", {
+      token: joeToken,
+      form: { _method: "patch", "card[comment]": "", comment: "must not append" },
+    });
+    expect(res.status).toBeLessThan(400);
+    expect((await storage!.fetcher.fetchByKey("commented_card"))?.dbContent).toBe(before!.dbContent);
+  });
+
   it("the deck-boot runtime seam carries the whole deck's registry + merged predicates", () => {
     const runtime = defaultDeckEventRuntime();
     const names = new Set(runtime.registry.all().map((e) => e.event));
