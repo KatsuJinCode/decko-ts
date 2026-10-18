@@ -1,3 +1,4 @@
+import { renderFormatShow } from "../../src/card/render/format-families.js";
 // deploy/bunny-worker-src/bunny-edge-engine-request.ts — the SDK-free request
 // core of the Bunny edge engine entry (bunny-edge-engine-entry.ts).
 //
@@ -478,6 +479,57 @@ async function dispatchEngineRequest(
   // discipline mirrors the page arm: live-context renders when a request
   // context is available, the isolate lock (with the name-environment
   // handback) otherwise.
+  if (!("kind" in parsed) && parsed.format === "rss") {
+    const renderRss = async () => {
+      const deck = await source.deck();
+      deck.fetcher.installNameEnvironment?.();
+      // Retained handlers must observe revocations before reading any format.
+      await deck.render.ensureFreshness();
+      const record = await deck.fetcher.fetchByName(parsed.name);
+      if (record?.name === undefined) {
+        return json(404, { error: "card not found", name: parsed.name });
+      }
+      const type = record.typeId === undefined
+        ? undefined : await deck.fetcher.fetchById(record.typeId);
+      if (!await deck.render.canReadCard(record, type?.name?.s)) {
+        return json(403, { error: "permission denied", name: parsed.name });
+      }
+      const body = parsed.view === "feed"
+        ? await renderFormatShow({
+            fetchRenderCard: name => deck.render.fetchRenderCard(name),
+            prepareItemForRender: name => deck.render.prepareItemForRender(name),
+            render: (name, view) => deck.render.render(name, view),
+            codenameById: id => deck.fetcher.codenames.nameForId(id),
+          }, record.name.s, "rss", {
+            // Same stock default as the retained Cloudflare format route.
+            // Recognizing the URL must not silently enable disabled feeds.
+            rssEnabled: false,
+          })
+        : await deck.render.render(record.name.s, parsed.view, {
+            format: "rss", requestUrl: url.href,
+          });
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/rss+xml; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
+    };
+    try {
+      return requestContextAvailable()
+        ? await runInRequestContext(getNameEnvironment(), renderRss)
+        : await withIsolateRenderLock(async () => {
+            try { return await renderRss(); }
+            finally { (await source.deck()).fetcher.installNameEnvironment?.(); }
+          });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const mapped = mapRenderError(message);
+      return json(mapped.status, { error: mapped.title, message });
+    }
+  }
+
   if (!("kind" in parsed) && parsed.format === "json") {
     const search = jsonViewSearchParams(url.searchParams);
     const params = {

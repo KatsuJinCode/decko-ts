@@ -35,7 +35,23 @@
 
 import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
 
-function parsePath(
+// engine_routes.rb:22,51: RSS is a format on the mark or view, not its name.
+// Keep the existing JSON route precedence and every non-RSS path unchanged.
+function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:"rss"} {
+  const segments=pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  const suffix=segments.length<=2&&pathname.endsWith(".rss");
+  const requested=suffix||searchParams?.get("format")==="rss";
+  if(!requested)return parseBasePath(pathname,searchParams);
+  const normalized=suffix?pathname.slice(0,-4):pathname;
+  if(suffix&&normalized.replace(/\//g,"")==="")return {kind:"notFound"};
+  const parsed=parseBasePath(normalized,searchParams);
+  if("kind" in parsed)return suffix?parseBasePath(pathname,searchParams):parsed;
+  if(parsed.format==="json")return parsed;
+  const view=segments.length<=1?(searchParams?.get("view")||searchParams?.get("v")||"feed"):parsed.view;
+  return {...parsed,view,format:"rss"};
+}
+
+function parseBasePath(
   pathname: string,
   searchParams?: URLSearchParams,
 ):
