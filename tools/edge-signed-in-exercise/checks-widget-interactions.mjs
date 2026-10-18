@@ -470,92 +470,50 @@ export const checks = [
     },
   },
 
-  // ---------------------------------------------------------------- UI2
+  // UI2: the stock rule editor registers help on its Set-selection field.
+  // A plain single-card editor uses inline help and is not a popover fixture.
   {
     name: "the help popover on an editor field shows its registered help text",
     only: "unmeasured-matrix",
-    run: async ctx => {
+    run: async ctx=>{
       requireLoopback(ctx);
-      const { stack, page, creds, signIn, record, created, captureEvidence, database } = ctx;
-      const signedIn = await signIn(creds.admin);
-      if (!signedIn.hasSessionCookie) throw Error("UI2 browser signin failed");
-
-      const name = "HarnessHelpPop_" + Date.now().toString(36);
-      created.push(name);
-      const createResponse = await page.context().request.post(stack.origin + "/card/create", {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        maxRedirects: 0,
-        data: new URLSearchParams({ "card[name]": name, "card[type]": "Basic", "card[content]": "help popover fixture", "success[redirect]": "true" }).toString(),
-      });
-      if (createResponse.status() >= 400 || database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(name) === undefined) {
-        throw Error("UI2 help-popover fixture card was not stored");
-      }
-
-      let measured = null;
-      const perSurface = [];
-      for (const surface of ["/" + name + "?view=edit", "/" + name, "/Skin"]) {
-        await page.goto(stack.origin + surface, { waitUntil: "load" });
-        // The row is the help popover ON AN EDITOR FIELD. The card MENU's own
-        // popover (class _card-menu-popover, menu.rb#help_popover_opts,
-        // views.ts:459-461) is a DIFFERENT affordance that happens to share the
-        // attribute, so both are inventoried and only a field-level anchor can
-        // satisfy the check.
-        const anchors = await page.evaluate(() =>
-          [...document.querySelectorAll('a[data-bs-toggle="popover"]')].map(a => ({
-            class: String(a.className),
-            title: a.getAttribute("data-bs-title"),
-            content: a.getAttribute("data-bs-content"),
-            trigger: a.getAttribute("data-bs-trigger"),
-            visible: a.getClientRects().length > 0,
-            isCardMenuPopover: a.classList.contains("_card-menu-popover"),
-            insideAFormField: a.closest(".form-group, .d0-card-field, .form-field, .field, td.field, label") !== null,
-            nearestForm: a.closest("form") !== null,
-          })));
-        const fieldAnchors = anchors.filter(a => a.isCardMenuPopover === false);
-        perSurface.push({ surface, anchors: anchors.length, fieldLevelAnchors: fieldAnchors.length, classes: anchors.map(a => a.class) });
-        if (fieldAnchors.length === 0) continue;
-        const withText = fieldAnchors.find(a => (a.content ?? "").trim().length > 0 && a.content.trim() !== "&nbsp;") ?? fieldAnchors[0];
-        // The popover widget is Bootstrap's; trigger it the way the anchor
-        // declares (hover focus) and see whether a popover element appears.
-        const anchor = page.locator('a[data-bs-toggle="popover"]:not(._card-menu-popover)').first();
-        let appeared = true;
-        try {
-          await anchor.hover({ timeout: 8000 });
-          await page.waitForSelector(".popover, [role=tooltip]", { state: "visible", timeout: 6000 });
-        } catch { appeared = false; }
-        await anchor.click({ timeout: 5000 }).catch(() => undefined);
-        await page.waitForTimeout(1200);
-        const shown = await page.evaluate(() => {
-          const node = document.querySelector(".popover");
-          return node === null ? null : { title: node.querySelector(".popover-header")?.textContent?.replace(/\s+/g, " ").trim().slice(0, 60) ?? null, body: node.querySelector(".popover-body")?.textContent?.replace(/\s+/g, " ").trim().slice(0, 80) ?? null, visible: node.getClientRects().length > 0 };
+      const {stack,page,creds,signIn,record,created,captureEvidence}=ctx;
+      if(!(await signIn(creds.admin)).hasSessionCookie)throw Error("UI2 browser signin failed");
+      const name="HarnessHelpPop_"+Date.now().toString(36),selfSet=name+"+*self",rule=selfSet+"+*read";
+      created.push(name,selfSet,rule);
+      const writes=[];
+      for(const [card,type,content] of [[name,"RichText","help popover fixture"],[rule,"Phrase","[[Anyone]]"]]){
+        const response=await page.context().request.post(stack.origin+"/card/create",{
+          headers:{origin:stack.origin,"Content-Type":"application/x-www-form-urlencoded"},maxRedirects:0,
+          data:new URLSearchParams({"card[name]":card,"card[type]":type,"card[content]":content,"success[redirect]":"true"}).toString(),
         });
-        measured = { surface, anchorCount: fieldAnchors.length, anchor: withText, popoverAppeared: appeared, popover: shown, rendered: anchors.slice(0, 4), perSurface };
-        break;
+        await response.body();writes.push(response.status());
+        if(response.status()>=400)throw Error("UI2 fixture refused: "+response.status());
       }
-      if (measured === null) {
-        record(capabilityChecks.UI2[0], false, {
-          note: "no help popover anchor on an editor FIELD renders on any reachable surface: on all three surfaces the only a[data-bs-toggle=popover] elements are the card MENU's _card-menu-popover (menu.rb#help_popover_opts, views.ts:459-461), which is the menu affordance rather than field help, so the row's subject is not rendered at all",
-          card: name,
-          perSurface,
-          raw: captureEvidence(await page.content(), { check: "help-popover-absent" }),
+      const opened=await page.goto(stack.origin+"/"+encodeURIComponent(rule)+"/rule_form",{waitUntil:"load"});
+      const selector='form.card-rule-form a[data-bs-toggle="popover"]:not(._card-menu-popover)';
+      const anchor=page.locator(selector).first(),anchorCount=await anchor.count();
+      // Stock rule_form.haml's help for the real card[name] Set radio controls.
+      const expected="Each rule applies to a set of cards. Rules for more specific sets override rules for more general ones.";
+      const setControls=await page.locator('form.card-rule-form input[name="card[name]"]').count();
+      let registered=null,shown=null,interactionError=null;
+      if(anchorCount){
+        registered=await anchor.getAttribute("data-bs-content");
+        try{
+          await anchor.hover({timeout:5000});
+          await page.waitForFunction(({selector,expected})=>{
+            const a=document.querySelector(selector),id=a?.getAttribute("aria-describedby"),node=id?document.getElementById(id):null;
+            return node?.classList.contains("popover")&&node.getClientRects().length>0&&node.querySelector(".popover-body")?.textContent?.trim()===expected;
+          },{selector,expected},{timeout:5000});
+        }catch(error){interactionError=String(error.message).split("\n")[0];}
+        shown=await anchor.evaluate(el=>{
+          const id=el.getAttribute("aria-describedby"),node=id?document.getElementById(id):null;
+          return {describedBy:id,body:node?.querySelector(".popover-body")?.textContent?.trim()??null,visible:!!node?.getClientRects().length};
         });
-        return;
       }
-      record(capabilityChecks.UI2[0],
-        measured.popoverAppeared === true
-          && measured.popover !== null
-          && measured.popover.visible === true
-          && (measured.popover.body ?? "").length > 0,
-        {
-          actor: creds.admin.name,
-          actorId: creds.admin.id,
-          card: name,
-          ...measured,
-          note: measured.popoverAppeared === false
-            ? "the field help popover anchor renders and carries its help text, but no popover widget ever appears in the browser when a person hovers or clicks it (the served page loads no Bootstrap script — its script srcs are jquery, jquery-ujs, ace, select2 and one deck asset)"
-            : undefined,
-          raw: captureEvidence(await page.content(), { check: "help-popover-click" }),
-        });
+      record(capabilityChecks.UI2[0],opened.status()===200&&setControls>0&&registered===expected&&shown?.visible===true&&shown?.body===expected&&interactionError===null,
+        {card:name,rule,writes,status:opened.status(),fieldName:"card[name]",fieldHeading:"Apply to set",setControls,anchorCount,registered,expected,shown,interactionError,
+          raw:captureEvidence(await page.content(),{check:"ui2-rule-field-popover",name:rule,status:opened.status()})});
     },
   },
 
