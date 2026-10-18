@@ -61,7 +61,7 @@ export function nameMatchRequest(text) {
  * engine base URL and the settle helper. Returns the sequence entries to
  * append; an empty list means the action needs none of these cases.
  */
-export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, pageRequest, newActorRequest }) {
+export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest }) {
   const sequence = [];
   const t = String(text ?? "");
 
@@ -359,6 +359,300 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       count: markStatus !== null && markStatus >= 400 && markStatus < 500 ? 1 : 0,
       status: markStatus,
     });
+  }
+
+  // 10. The RichText card's save (ACT-020, B-020 "saving the RichText card
+  //     persists (Save answers a write)"): the Save control is an EDIT-FORM
+  //     affordance - card-mod-edit.ts renders the edit form's submit as
+  //     <button data-cy="save">Save</button> on ?view=edit_form - and the
+  //     write it answers is the form's POST to /update/<name>. The runner's
+  //     surface page for this action is the deck home read view, where no
+  //     Save exists. The case drives the fixture's own RichText card
+  //     ("Topic 001+summary") edit form, asserts the Save control, and
+  //     answers the action's own question by clicking it: the POST /update
+  //     response is the write the save made.
+  if (/RichText card persists/i.test(t)) {
+    if (typeof page === "undefined" || page === null) {
+      throw new Error("RichText save probe needs the runner's page helper");
+    }
+    const richPath = `/${encodeURIComponent("Topic 001+summary")}?view=edit_form`;
+    await goto(richPath);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `RichText edit form's Save control (button[data-cy="save"]) on ${richPath}`,
+      count: await countSelector('button[data-cy="save"]'),
+    });
+    const responded = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: 30_000 }).catch(() => null);
+    await page.locator('button[data-cy="save"]').first().click().catch(() => {});
+    const saveResponse = await responded;
+    const saveStatus = saveResponse ? saveResponse.status() : null;
+    sequence.push({
+      interaction: "assert-present",
+      selector: `Save answers a write: the edit form's POST /update responded ${saveStatus ?? "nothing"}`,
+      count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
+      status: saveStatus,
+    });
+    await settle();
+  }
+
+  // 11. The save the timings action quantifies over (ACT-064, B-064 "no save
+  //     exceeded 3 s of server time"): a bound over saves is measured on
+  //     real saves, not by seeking the word "Save" on the home page the
+  //     surface visits - that probe never saved anything. The case creates
+  //     its own scratch card (the staged deck dies with the engine's staging
+  //     directory), saves it twice through the visiting actor's own session
+  //     (pageRequest), and asserts every save's answer arrived inside the
+  //     3 s bound, recording the raw times either way so a slow engine is
+  //     attributable.
+  if (/\bno save\b/i.test(t)) {
+    if (typeof pageRequest === "undefined") {
+      throw new Error("save-timing probe needs the runner's pageRequest helper");
+    }
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_save_timing_${stamp}`;
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": "timing baseline", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const saves = [];
+    for (let i = 0; i < 2; i++) {
+      const started = Date.now();
+      const saved = await pageRequest.post(`${base}/update/${encodeURIComponent(scratch)}`, {
+        headers: { origin: base },
+        form: { "card[content]": `timing save ${i}`, "success[redirect]": "true" },
+        maxRedirects: 0,
+      }).catch((e) => ({ error: String(e?.message ?? e) }));
+      saves.push({ ms: Date.now() - started, status: saved.error ? null : saved.status() });
+    }
+    const createdOk = !created.error && created.status() < 400;
+    const allInside = createdOk && saves.every((s) => s.status !== null && s.status < 400 && s.ms < 3000);
+    sequence.push({
+      interaction: "assert-present",
+      selector: `every save answered under 3000 ms (${saves.map((s) => `${s.ms} ms / ${s.status}`).join(", ")})`,
+      count: allInside ? saves.length : 0,
+      saves,
+    });
+  }
+
+  // 12. The P3 permission boundary (ACT-100, "P3 a member is denied edit of
+  //     a card the update rule restricts (403 or the denial, no editor)"):
+  //     the denial is a TWO-ACTOR property - an administrator restricts a
+  //     card, a member then finds no editor on it - and the runner's surface
+  //     page (the deck home, as the signing-in actor) renders neither role.
+  //     The case mirrors the named instrument
+  //     (tools/edge-signed-in-exercise/checks-permissions.mjs): as the
+  //     visiting (admin) actor it creates a scratch card plus its
+  //     +*self+*update rule naming Administrator; as the member (a fresh
+  //     separately-signed-in request context, closed by the runner) the card
+  //     reads 200 with its content, the edit view refuses 403 and renders no
+  //     editor FOR THE TARGET CARD - the page-wide content-input count reads
+  //     1 on a page that carries no editor, because the signed-in navbar's
+  //     roles form carries its own hidden content input as session chrome -
+  //     and the member's update POST is refused. The restriction is engine
+  //     behavior (the update rule's party list), so a genuinely permissive
+  //     engine still fails every leg.
+  if (/\bP3\b/.test(t)) {
+    if (typeof pageRequest === "undefined" || typeof newActorRequest !== "function") {
+      throw new Error("P3 member-denied-edit probe needs the runner's pageRequest and newActorRequest helpers");
+    }
+    const stamp = Date.now().toString(36);
+    const restricted = `Harness_exhaustive_p3_update_restricted_${stamp}`;
+    const secret = `UNCHANGED_UPDATE_${stamp}`;
+    const createdCard = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": restricted, "card[type]": "Basic", "card[content]": secret, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const createdRule = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": `${restricted}+*self+*update`, "card[type]": "Phrase", "card[content]": "[[Administrator]]", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const fixturesOk = !createdCard.error && createdCard.status() < 400 && !createdRule.error && createdRule.status() < 400;
+    const member = await newActorRequest("member");
+    const memberRead = await member.get(`${base}/${encodeURIComponent(restricted)}`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberReadStatus = memberRead.error ? null : memberRead.status();
+    const memberReadBody = memberRead.error ? "" : await memberRead.text().catch(() => "");
+    const memberEdit = await member.get(`${base}/${encodeURIComponent(restricted)}?view=edit`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberEditStatus = memberEdit.error ? null : memberEdit.status();
+    const memberEditBody = memberEdit.error ? "" : await memberEdit.text().catch(() => "");
+    // Editors OF THIS CARD: form blocks whose action targets this card's
+    // update route. The navbar's roles form is session chrome and does not
+    // target the card, so it stays out of the count.
+    const formBlocks = memberEditBody.match(/<form\b[\s\S]*?<\/form>/g) ?? [];
+    const targetForms = formBlocks.filter((block) => {
+      const action = /<form\b[^>]*\baction="([^"]*)"/.exec(block)?.[1] ?? "";
+      return action.includes(`/update/${restricted}`);
+    });
+    const targetContentInputs = targetForms.reduce((n, f) => n + (f.match(/name="card\[content\]"/g) ?? []).length, 0);
+    const deniedUpdate = await member.post(`${base}/update/${encodeURIComponent(restricted)}`, {
+      headers: { origin: base },
+      form: { "card[content]": "UNAUTHORIZED_ATTEMPT", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const deniedStatus = deniedUpdate.error ? null : deniedUpdate.status();
+    sequence.push(
+      {
+        interaction: "assert-present",
+        selector: `member reads the update-restricted card (${memberReadStatus})`,
+        count: memberReadStatus === 200 && memberReadBody.includes(secret) ? 1 : 0,
+        status: memberReadStatus,
+      },
+      {
+        interaction: "assert-present",
+        selector: `member's edit view of the update-restricted card is denied (${memberEditStatus})`,
+        count: memberEditStatus === 403 ? 1 : 0,
+        status: memberEditStatus,
+      },
+      {
+        interaction: "assert-present",
+        selector: `no editor for the restricted card on the member's edit view (${targetForms.length} target forms, ${targetContentInputs} content inputs)`,
+        count: fixturesOk && targetForms.length === 0 && targetContentInputs === 0 ? 1 : 0,
+        targetForms: targetForms.length,
+        targetContentInputs,
+      },
+      {
+        interaction: "assert-present",
+        selector: `member's update POST is refused (${deniedStatus})`,
+        count: deniedStatus === 403 ? 1 : 0,
+        status: deniedStatus,
+      },
+    );
+  }
+
+  // 13. E15's Save and Close (ACT-138, "E15 Save and Close updates the main
+  //     slot"): the control is the edit modal's button.submit-button, the
+  //     modal is served by /<card>/edit and opens client-side, and "the main
+  //     slot" is the card's own page after the update POST. The runner's
+  //     surface page for the catalog:edit actions is the deck home, where
+  //     neither "Save and close" nor "Close" exists. The case creates a
+  //     scratch Phrase card (the shape the named check measured), opens its
+  //     edit modal in the page, asserts the Save-and-Close control, saves
+  //     changed content through it, and asserts the update POST answered and
+  //     the main slot shows the new content.
+  if (/save and close/i.test(t)) {
+    if (typeof page === "undefined" || page === null) {
+      throw new Error("Save-and-Close probe needs the runner's page helper");
+    }
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_e15_save_close_${stamp}`;
+    const created = await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Phrase", "card[content]": "save close before", "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    await goto(`/${encodeURIComponent(scratch)}/edit`);
+    await settle();
+    await page.waitForSelector(".modal.show", { timeout: 15_000 }).catch(() => {});
+    const submitCount = await countSelector(".modal button.submit-button");
+    sequence.push({
+      interaction: "assert-present",
+      selector: "edit modal's Save-and-Close control (button.submit-button) on /<card>/edit",
+      count: !created.error && created.status() < 400 ? submitCount : 0,
+    });
+    if (submitCount > 0) {
+      const newContent = `save close after ${stamp}`;
+      const field = page.locator(".modal input[name$='[content]']:not([type=hidden]), .modal textarea[name$='[content]']:not([type=hidden])").first();
+      if ((await field.count().catch(() => 0)) > 0) await field.fill(newContent).catch(() => {});
+      const responded = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: 30_000 }).catch(() => null);
+      await page.locator(".modal button.submit-button").first().click().catch(() => {});
+      const saveResponse = await responded;
+      const saveStatus = saveResponse ? saveResponse.status() : null;
+      sequence.push({
+        interaction: "assert-present",
+        selector: `Save and Close answered a write (POST /update responded ${saveStatus ?? "nothing"})`,
+        count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
+        status: saveStatus,
+      });
+      await settle();
+      await goto(`/${encodeURIComponent(scratch)}`);
+      await settle();
+      const showsNew = await evaluate((c) => document.body.innerText.includes(c), newContent).catch(() => false);
+      sequence.push({
+        interaction: "assert-present",
+        selector: "main slot shows the content Save and Close saved",
+        count: showsNew ? 1 : 0,
+      });
+    }
+  }
+
+  // 14. H3's history rollback (ACT-176, "H3 expand an act and roll back with
+  //     Save-as-current from the history page"): the history page is the
+  //     card's own /history view (the engine routes the lowercase view path;
+  //     a capitalized "/History" segment answers 422, and the surface's old
+  //     default card name names no card in synthetic-v1 - the surface now
+  //     visits a real card's history). The acts are the accordion items
+  //     (act-id-<n> collapse targets - the "expand an act" affordance), and
+  //     the rollback control is the history list's "revert to this" link
+  //     (actions.rb:81-89 revert_actions_link - the engine's own bytes for
+  //     what the matrix text paraphrases as "Save-as-current"), rendered on
+  //     every act that is not the card's current one. The case creates a
+  //     scratch card, saves a second act onto it, and asserts the history
+  //     page lists the acts, carries the revert link, and that driving the
+  //     link restores the earlier act's content as the card's content.
+  if (/\bH3\b/.test(t)) {
+    if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
+      throw new Error("history rollback probe needs the runner's page and pageRequest helpers");
+    }
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_h3_rollback_${stamp}`;
+    const beforeContent = `h3 roll back to this ${stamp}`;
+    await pageRequest.post(`${base}/card/create`, {
+      headers: { origin: base },
+      form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": beforeContent, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await pageRequest.post(`${base}/update/${encodeURIComponent(scratch)}`, {
+      headers: { origin: base },
+      form: { "card[content]": `h3 superseded content ${stamp}`, "success[redirect]": "true" },
+      maxRedirects: 0,
+    }).catch(() => null);
+    await goto(`/${encodeURIComponent(scratch)}/history`);
+    await settle();
+    // The acts are bootstrap accordion items: each carries an
+    // accordion-button toggle targeting #act-id-<n> - the "expand an act"
+    // affordance - and the revert link sits inside the collapsed body, so
+    // the case expands the acts before looking for it (the action's own
+    // order: expand an act, THEN roll back).
+    const expandCount = await countSelector("button.accordion-button[data-bs-target^='#act-id-']");
+    sequence.push({
+      interaction: "assert-present",
+      selector: "history page lists the acts (accordion-button toggles to expand them) on /<card>/history",
+      count: expandCount,
+    });
+    for (let i = 0; i < expandCount; i++) {
+      await page.locator("button.accordion-button[data-bs-target^='#act-id-']").nth(i).click().catch(() => {});
+    }
+    await settle();
+    const revertCount = await countSelector("a._close-modal.slotter[href*='revert_actions']");
+    sequence.push({
+      interaction: "assert-present",
+      selector: "rollback control (the history list's revert link) on a non-current act",
+      count: revertCount,
+    });
+    if (revertCount > 0) {
+      const responded = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: 30_000 }).catch(() => null);
+      await page.locator("a._close-modal.slotter[href*='revert_actions']").first().click().catch(() => {});
+      const revertResponse = await responded;
+      const revertStatus = revertResponse ? revertResponse.status() : null;
+      sequence.push({
+        interaction: "assert-present",
+        selector: `rollback answered a write (POST /update/...revert_actions responded ${revertStatus ?? "nothing"})`,
+        count: revertStatus !== null && revertStatus < 400 ? 1 : 0,
+        status: revertStatus,
+      });
+      await settle();
+      await goto(`/${encodeURIComponent(scratch)}`);
+      await settle();
+      const restored = await evaluate((c) => document.body.innerText.includes(c), beforeContent).catch(() => false);
+      sequence.push({
+        interaction: "assert-present",
+        selector: "rolled-back act's content is the card's content again",
+        count: restored ? 1 : 0,
+      });
+    }
   }
 
   return sequence;

@@ -219,7 +219,15 @@ const SURFACES = {
   "accordions": { signin: "form", card: "/", actor: signinActor },
   "help popover": { signin: "form", card: "/", actor: signinActor },
   "role checkboxes": { signin: "form", card: "/" + (actorCardName ?? "Harness_Admin") + "/Account", actor: signinActor },
-  "history": { signin: "form", card: "/" + (actorCardName ?? "Harness_richtext") + "/History", actor: signinActor },
+  // The history surface's affordances live on a card's own /history view.
+  // Both halves of the old URL were defective: the engine routes the
+  // LOWERCASE view path (measured 2026-10-18 on the regrade build - a
+  // capitalized "/History" path segment is not a view route and answers 422),
+  // and the default card name Harness_richtext names no card in synthetic-v1
+  // (the deck's fixture names carry spaces - "Topic 001"), so the surface
+  // visit rendered a new-card form for a missing card (ACT-176's surface
+  // observation in the 2026-10-18 regrade).
+  "history": { signin: "form", card: "/" + (actorCardName ?? "Topic 001") + "/history", actor: signinActor },
   "related-card panel": { signin: "form", card: "/" + (actorCardName ?? "Harness_richtext"), actor: signinActor },
   "error pages": { signin: "none", card: "/no_such_card_harness", actor: signinActor },
   "case-handling": { signin: "form", card: "/", actor: signinActor },
@@ -540,7 +548,12 @@ async function probeAction(page, action, lastStatusRef, actors) {
       goto: async (p) => { await page.goto(lastStatusRef.base + p, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {}); },
       settle: () => settle(page),
       countSelector: async (selector) => await page.locator(selector).count().catch(() => 0),
-      evaluate: (fn) => page.evaluate(fn),
+      evaluate: (fn, arg) => page.evaluate(fn, arg),
+      // `page` serves the cases whose affordance is the control's own browser
+      // event chain: the RichText edit form's Save click (ACT-020), the edit
+      // modal's open/fill/Save-and-Close click (ACT-138) and the history
+      // page's revert-link click (ACT-176).
+      page,
       pageRequest: page.context().request,
       newActorRequest: async (actorName) => {
         const actor = (actors ?? {})[actorName];
