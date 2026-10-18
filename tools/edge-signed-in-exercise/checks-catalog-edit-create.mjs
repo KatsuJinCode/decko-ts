@@ -76,16 +76,16 @@ export const checks = [
         return;
       }
       const setCardName = setCardRow.name;
-      await visit("/" + encodeURIComponent(setCardName) + "/edit");
-      await page.waitForTimeout(2500);
+      await visit("/" + encodeURIComponent(setCardName) + "?view=nest_rules");
+      await page.locator('#main .nest_rules-view ._setting-list li').first().waitFor({state:'attached',timeout:10000});
       const inventory = await page.evaluate(() => {
         const modal = document.querySelector(".modal.show");
         const main = document.querySelector("#main");
         const modalText = (modal?.textContent ?? "") + " " + (main?.textContent ?? "");
         return {
           modalOpen: modal !== null,
-          hasNestRulesSlot: (modal ?? document).querySelector('[class*="nest-rules"], [class*="nest_rules"]') !== null,
-          hasSettingList: (modal ?? document).querySelector('[class*="quick-edit-setting-list"], [class*="_setting-list"]') !== null,
+          hasNestRulesSlot: Boolean(main?.querySelector('.nest_rules-view')),
+          hasSettingList: (main?.querySelectorAll('.nest_rules-view ._setting-list li form[action^="/update/"] [name="card[type]"], .nest_rules-view ._setting-list li form[action^="/update/"] [name="card[content]"]').length ?? 0) > 0,
           hasRuleListText: /setting|rule/i.test(modalText),
           mainTextSnippet: (main?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
         };
@@ -96,7 +96,7 @@ export const checks = [
       // 2026-10-18 full run graded this PASS with hasNestRulesSlot:false and
       // hasSettingList:false, carried by hasRuleListText alone. The slot the
       // name promises is structural.
-      const rendered = inventory.hasNestRulesSlot || inventory.hasSettingList;
+      const rendered = inventory.hasNestRulesSlot && inventory.hasSettingList;
       record(
         "E7 a set card renders a nest_rules slot carrying the rule list",
         rendered,
@@ -151,44 +151,30 @@ export const checks = [
     run: async (ctx) => {
       const { page, database, record, visit, signIn, creds } = ctx;
       await signIn(creds.admin);
-      // The check's name promises a +summary NESTED FIELD's editor — the
-      // field group a parent card's edit form renders for its +summary right
-      // (adversarial blindness-review F6 item 8: the old target was
-      // `name LIKE '%+*account'`, an account RULE card with no +summary
-      // field, and the predicate was hasContentField || hasEmailOrPassword —
-      // any content or email/password input anywhere in the modal, so the
-      // +summary editor the name claims was never opened). Neither this
-      // battery's deck copy nor a seeded +summary junction can be assumed
-      // (the local deck copy carries none — measured in the 2026-10-18
-      // re-grade: `name LIKE '%+summary'` found no row), so the case STAGES
-      // the whole shape it grades: a host card, its +*self+*structure rule
-      // nesting {{+summary}}, and the +summary junction with its own content.
-      // Measured 2026-10-18 on the ts engine: the host's edit modal then
-      // renders .RIGHT-summary (2 groups) whose d0-card-content editor holds
-      // the junction's stored content.
-      const stamp = Date.now().toString(36);
-      const host = `Harness_E11_summary_host_${stamp}`;
-      const summaryContent = `E11 summary content ${stamp}`;
-      await createTypedFixture(ctx, { name: host, content: "E11 host", type: "Basic" });
-      await createTypedFixture(ctx, { name: `${host}+*self+*structure`, content: "{{+summary}}", type: "Phrase" });
-      await createTypedFixture(ctx, { name: `${host}+summary`, content: summaryContent, type: "Phrase" });
-      await visit("/" + encodeURIComponent(host) + "/edit");
-      await page.waitForTimeout(2500);
-      const inventory = await page.evaluate(() => {
-        const root = document.querySelector(".modal.show") ?? document;
-        const editors = [...root.querySelectorAll(".RIGHT-summary textarea.d0-card-content, .RIGHT-summary input.d0-card-content")];
-        return {
-          modalOpen: document.querySelector(".modal.show") !== null,
-          summaryGroups: root.querySelectorAll(".RIGHT-summary").length,
-          summaryEditorNames: editors.map((i) => i.getAttribute("name") ?? "").slice(0, 8),
-          summaryEditorValues: editors.map((i) => i.value?.slice(0, 60) ?? null).slice(0, 8),
-        };
+      const summaryName = database().prepare("SELECT name FROM cards WHERE key='summary' AND trash=0").get()?.name;
+      if (!summaryName) throw Error('Canonical summary tag is unavailable');
+      const host = 'Harness_catalog_summary_' + Date.now().toString(36);
+      const nestedName = host + '+' + summaryName;
+      ctx.created.push(host, nestedName);
+      await createTypedFixture(ctx, {name:host,type:'RichText'});
+      await createTypedFixture(ctx, {name:nestedName,type:'RichText',content:'catalog nested summary witness'});
+      const before = fixtureCard(database(), nestedName);
+      const write = await page.context().request.post(ctx.stack.origin+'/update/'+encodeURIComponent(host), {
+        headers:{origin:ctx.stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,
+        data:new URLSearchParams({'card[content]':'host {{'+nestedName+'|open}}'}).toString()
       });
-      record(
-        "E11 a card with a +summary nested field renders that field's editor",
-        inventory.modalOpen && inventory.summaryEditorNames.length >= 1,
-        { target: host, summaryContent, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
-      );
+      if(write.status()>=400)throw Error('Summary host fixture update refused');
+      await visit('/'+encodeURIComponent(host));
+      const slot=page.locator('#main .card-slot[data-card-id="'+before.id+'"]').filter({has:page.locator('a.edit-link[href$="/edit"]')}).first();
+      await slot.locator('a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+      const form=page.locator('.modal.show form.card-form[id^="edit_card"]:visible').filter({has:page.locator('textarea[name="card[content]"]')}).first();
+      await form.waitFor({state:'visible',timeout:20000});
+      const targetId=Number(await form.locator('xpath=ancestor::*[@data-card-id][1]').getAttribute('data-card-id'));
+      const action=new URL(await form.getAttribute('action'),ctx.stack.origin);
+      const content=await form.locator('textarea[name="card[content]"]').first().inputValue();
+      record("E11 a card with a +summary nested field renders that field's editor",
+        targetId===before.id && action.origin===ctx.stack.origin && action.pathname.startsWith('/update/') && content===before.db_content,
+        {host,nestedName,nestedId:before.id,targetId,action:action.pathname,stored:before.db_content,editorContent:content,raw:ctx.captureEvidence?.(await page.content(),{check:'E11-nested-summary'})});
     },
   },
 

@@ -640,9 +640,11 @@ export const checks = [
         const ledgerBefore = ledger().length;
         const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
           .then(response => ({ response }), error => ({ error }));
+        const pendingNavigation = page.waitForEvent('framenavigated', {predicate:frame=>frame===page.mainFrame(),timeout:20000})
+          .then(frame=>({url:frame.url()}),error=>({error:String(error?.message??error)}));
         await box.scrollIntoViewIfNeeded().catch(() => undefined);
         await box.click({ timeout: 10000 }).catch(error => { clickError = String(error?.message ?? error); });
-        checkedImmediatelyAfterClick = await box.isChecked().catch(() => null);
+        checkedImmediatelyAfterClick = await box.evaluate(el=>el.checked,{timeout:1000}).catch(() => null);
         const observed = await pending;
         changeEventsFired = await page.evaluate(() => window.__a6ChangeFired).catch(() => null);
         clickWindowRequests = linesSince(ledgerBefore).map((l) => ({ method: l.method, path: l.path.slice(0, 90), status: l.status }));
@@ -651,12 +653,20 @@ export const checks = [
           postStatus = observed.response.status();
           // The form's success[reload]=true triggers a navigation/refresh;
           // wait for it.
-          try { await page.waitForLoadState("load", { timeout: 8000 }); reload = { url: page.url(), status: null }; } catch (e) { reload = { url: page.url(), error: String(e?.message ?? e) }; }
+          reload = await pendingNavigation;
+          if(reload.error)throw Error('Role autosave did not complete its native reload: '+reload.error);
+          await page.waitForLoadState('load',{timeout:15000});
         } else {
           clickError = "no POST to " + postPath + ": " + String(observed.error?.message ?? observed.error);
         }
-        await page.waitForTimeout(800);
-        // After reload, re-locate the box and read its checked state.
+        // Reopen the dropdown in the completed native navigation. Starting
+        // another goto here races the application's success[reload].
+        const reloadedForm = await findInlineEnabledRolesForm(actorCreds.name);
+        await reloadedForm.waitFor({state:'attached',timeout:10000});
+        const menuOpen = await reloadedForm.evaluate(form=>form.closest('.dropdown-menu')?.classList.contains('show')===true);
+        if(!menuOpen)await page.locator('.navbar [data-bs-toggle="dropdown"]').last().click({timeout:5000});
+        await reloadedForm.locator(`input.pointer-checkbox-button[name="${choice.name}"][value="${choice.value}"]`).first().waitFor({state:'visible',timeout:5000});
+        const reopenedAfterClick={url:page.url(),menuOpen:true};
         const reloadInventory = await inventoryEnabledRolesCheckboxes(actorCreds.name);
         const reloadedBox = reloadInventory.boxes.find(b => b.value === choice.value);
         checkedAfter = reloadedBox?.checked ?? null;
@@ -688,7 +698,7 @@ export const checks = [
           checkedImmediatelyAfterClick, expectedCheckedAfter, renderedFlipped,
           boxMetrics, changeEventsFired, clickWindowRequests,
           clickDiagnosticNote: "changeEventsFired counts native change events on _submit-on-change inputs (capture-phase listener); clickWindowRequests is every request the browser made in the click window, so a 'no POST' claim is checkable",
-          clickError, postStatus, reload,
+          clickError, postStatus, reload, reopenedAfterClick,
           storeEnabledRolesBefore: beforeRoles, storedEnabledRolesAfterClick: afterRoles,
           storedEnabledRolesMoved: moved, expectedRoleAdded: choice.value,
           freshRequestStatus: freshResponse.status(),

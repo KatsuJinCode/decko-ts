@@ -644,26 +644,22 @@ export async function runCoverBChecks(ctx) {
   });
 
   await attempt("E21 the board History tab lists the run's change", async () => {
-    const name = created.find((n) => n.startsWith("Harness_") && n.endsWith("_renamed")) ?? created[created.length - 1];
-    await visit(`/${name}/board`);
-    await page.waitForTimeout(1500);
-    const tab = page.locator(".board .nav-link", { hasText: "History" }).first();
-    if (await tab.count() === 0) { record("E21 the board History tab lists the run's change", false, { note: "no History tab", url: page.url() }); return; }
-    await tab.click().catch(() => undefined);
-    await page.waitForTimeout(1500);
-    // The check's name promises the RUN'S CHANGE in the act list, not "any
-    // list items on any tab pane" (adversarial blindness-review F6 item 6:
-    // rows.length > 0 over #main .pill, .act, .card-slot, li was satisfied by
-    // page chrome — the 2026-10-18 full run's rows were the card header and
-    // home-layout content snippets). The act entries are the history list's
-    // own accordion items (act-id-<n> targets, as on /<card>/history), and
-    // the pane must carry this run's own card name.
-    const pane = await page.evaluate(() => ({
-      actMarkers: document.querySelectorAll("#main button.accordion-button[data-bs-target^='#act-id-'], #main [id^='act-id-'], #main .history-act").length,
-      mainText: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 600),
-    }));
-    record("E21 the board History tab lists the run's change", pane.actMarkers >= 1 && pane.mainText.includes(name),
-      { card: name, actMarkers: pane.actMarkers, mainTextSnippet: pane.mainText.slice(0, 200) });
+    const name=ensure('Harness_CB_History_'+Date.now().toString(36));
+    await create(name,'history fixture created by this run');
+    const card=exists(name);
+    const expectedActId=ctx.database().prepare('SELECT card_act_id FROM card_actions WHERE card_id=? ORDER BY id DESC LIMIT 1').get(card.id)?.card_act_id;
+    if(!expectedActId)throw Error('Fresh history fixture has no recorded act');
+    await visit('/'+encodeURIComponent(name)+'/board');
+    const tab=page.locator('.board a.nav-link[data-url$="/history_tab"]').first();
+    const href=await tab.getAttribute('data-url');
+    const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin && new URL(r.url()).pathname===new URL(href,stack.origin).pathname,{timeout:15000}).then(response=>({response}),error=>({error}));
+    await tab.click();
+    const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
+    const history=page.locator('.board .history_tab-view[data-card-id="'+card.id+'"]');
+    await history.waitFor({state:'visible',timeout:10000});
+    const acts=await history.locator('a[href*="/board_act?"]').evaluateAll(links=>links.map(a=>Number(new URL(a.href).searchParams.get('act_id'))));
+    record("E21 the board History tab lists the run's change",seen.response.status()===200&&acts.includes(Number(expectedActId)),
+      {card:name,cardId:card.id,expectedActId,actIds:acts,tabStatus:seen.response.status(),raw:ctx.captureEvidence?.(await page.content(),{check:'E21-board-history'})});
   });
 
   // ------------------------------------------------------------------ E23

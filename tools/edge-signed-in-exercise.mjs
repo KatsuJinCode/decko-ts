@@ -81,6 +81,7 @@ import Database from "better-sqlite3";
 import { pathToFileURL } from "node:url";
 import { createHash, randomBytes } from 'node:crypto';
 import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
+import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
@@ -121,7 +122,7 @@ const liveWalk = liveWalkProfilePath
 const restrictWrites = liveWalk.override;
 const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
 const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
-const supportedTopics = ['account','owner','owner-replay','richtext','member-delete','cql-search',...moduleTopics];
+const supportedTopics = ['account','owner','owner-replay','richtext','member-delete','cql-search','basic-lifecycle',...moduleTopics];
 const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
@@ -395,7 +396,7 @@ async function ownerAudit(replayOnly = false) {
 }
 
 function moduleContext() {
-  return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
+  return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,openEdit,saveEditForm,cardName,restrictWrites,liveWalk,baselineMaxCardId,longDate,
     launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,coverBCase:argOf('case'),mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
 }
 
@@ -878,6 +879,12 @@ try {
     await searchPageJourney(moduleContext());
   } else if (['owner','owner-replay'].includes(argOf('only'))) {
     await ownerAudit(argOf('only') === 'owner-replay');
+  } else if (argOf('only') === 'basic-lifecycle') {
+    await signIn(creds.admin);
+    await dateJourney(moduleContext());
+    const richName = await richTextJourney();
+    await deleteJourney(moduleContext());
+    await changesJourney(moduleContext(), richName);
   } else if (moduleTopics.includes(argOf('only'))) {
     if (restrictWrites && liveWalk.mode === 'read-only') {
       group(`checks module ${argOf('only')} (read-only host-override)`);
@@ -923,50 +930,7 @@ try {
   });
 
   // -- 3 -----------------------------------------------------------------
-  group("3. edit a Date card");
-  const dateCard = "2011_12_14";
-  // The page load is a read and is graded in every mode; the edit legs are
-  // the group's subject and are skipped, never failed, when the target's
-  // write mode refuses an update on the date card.
-  const dateWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "update", cardName: dateCard }).allowed;
-  const datePage = await attempt("date page loads", () => visit(`/${dateCard}`));
-  if (datePage) record("date card page loads", datePage.status === 200, { status: datePage.status, title: datePage.title }, { wallMs: datePage.wallMs });
-  if (dateWriteRefused) {
-    record("open date edit", null, { skipped: true, reason: `${liveWalk.mode} refuses writes on ${dateCard}; the edit legs are the group's subject` });
-  } else {
-  const dateEdit = await attempt("open date edit", () => openEdit(`/${dateCard}`));
-  if (dateEdit) {
-    record("edit opens as a modal from the card page (no duplicated page behind it)", dateEdit.modals > 0, { modals: dateEdit.modals, href: dateEdit.href });
-    const dateField = await page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
-    const type = await dateField.getAttribute("type").catch(() => null);
-    const original = await dateField.inputValue().catch(() => null);
-    // The check's name promises a DATE PICKER showing the STORED date
-    // (adversarial blindness-review F6 item 5: the old predicate accepted
-    // type==="text" as well, so a regression losing input[type=date] graded
-    // green, and Boolean(original) never compared the value with the card's
-    // stored content). The stored content is the owned database row's
-    // db_content for this card.
-    const storedDateRow = database().prepare("SELECT db_content FROM cards WHERE name IN (?, ?) AND trash = 0").get(dateCard, dateCard.replace(/_/g, " "));
-    const storedDate = storedDateRow?.db_content ?? null;
-    const showsStoredDate = storedDate !== null && String(original ?? "").trim() === String(storedDate).trim();
-    record("content field is a date picker showing the stored date", type === "date" && showsStoredDate,
-      { type, value: original, stored: storedDate, showsStoredDate });
-    if (original) {
-      const newDate = original === "2011-12-15" ? "2011-12-16" : "2011-12-15";
-      await dateField.fill(newDate).catch(() => undefined);
-      const saved = await saveEditForm();
-      record("saving the new date answers a write (Save)", saved.status !== null && saved.status < 400, { status: saved.status, action: saved.action, serverTotalMs: saved.serverTotalMs });
-      const after = await visit(`/${dateCard}`);
-      record("the page shows the new date (long form)", after.html.includes(longDate(newDate)), { newDate, shown: longDate(newDate) });
-      await openEdit(`/${dateCard}`);
-      const restoreField = page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
-      await restoreField.fill(original).catch(() => undefined);
-      await saveEditForm();
-      const restored = await visit(`/${dateCard}`);
-      record("the original date is restored afterwards (long form)", restored.html.includes(longDate(original)), { original, shown: longDate(original) });
-    }
-  }
-  }
+  await dateJourney(moduleContext());
 
   const richName = await richTextJourney();
 
@@ -1005,56 +969,7 @@ try {
   });
 
   // -- 6 -----------------------------------------------------------------
-  group("6. delete a card");
-  const deleteName = cardName("delete");
-  const deleteWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: deleteName }).allowed;
-  if (deleteWriteRefused) {
-    // The group's subject is the create-then-delete round trip of the run's
-    // own card; refused writes record skips, and the navbar sign-out check
-    // below (a session operation plus reads) still runs in every mode.
-    for (const c of ["create the card to delete", "open delete target edit", "the edit form's Delete button is a confirm-guarded link to /delete/<name>", "the delete removes the card (trashed, content gone, new-card page shown)", "no card named delete… was created by this run (cards with id above the run baseline)"]) {
-      record(c, null, { skipped: true, reason: `${liveWalk.mode} refuses the create/delete of ${deleteName}` });
-    }
-  } else {
-  created.push(deleteName);
-  await attempt("create the card to delete", async () => {
-    await visit(`/new/RichText`);
-    await page.locator('form.card-form input[name="card[name]"]').first().fill(deleteName).catch(() => undefined);
-    await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
-    await page.waitForTimeout(2500);
-  });
-  const deleteEdit = await attempt("open delete target edit", () => openEdit(`/${deleteName}`));
-  if (deleteEdit) {
-    const href = await page.evaluate(() => document.querySelector('#edit_card a[href^="/delete/"], .modal a[href^="/delete/"]')?.getAttribute("href") ?? null);
-    record("the edit form's Delete button is a confirm-guarded link to /delete/<name>", href !== null && href.startsWith(`/delete/${deleteName}`), { href });
-    const guarded = await page.evaluate(() => {
-      const a = document.querySelector('#edit_card a[href^="/delete/"], .modal a[href^="/delete/"]');
-      return a ? { onclick: a.getAttribute("onclick") ?? null, dataConfirm: a.dataset.confirm ?? null } : null;
-    });
-    const before = ledger().length;
-    await page.evaluate((target) => {
-      const a = [...document.querySelectorAll('a[href^="/delete/"]')].find((x) => x.getAttribute("href")?.startsWith(target));
-      if (a && a.dataset.confirm && !window.confirm(a.dataset.confirm)) return;
-      a?.click();
-    }, `/delete/${deleteName}`).catch(() => undefined);
-    await page.waitForTimeout(2500);
-    const lines = linesSince(before);
-    const write = lines.find((l) => l.path.startsWith("/delete/"));
-    const gone = await visit(`/${deleteName}`);
-    const trashed = database().prepare("SELECT trash FROM cards WHERE name = ?").get(deleteName)?.trash === 1;
-    const stillHasContent = gone.html.includes("Harness rich text");
-    record("the delete removes the card (trashed, content gone, new-card page shown)", write !== undefined && trashed && !stillHasContent,
-      { deleteStatus: write?.status, serverSaid: write?.bodyHead, afterStatus: gone.status, afterTitle: gone.title, trashed, stillHasContent });
-    // The guard its name promises: the deleted card is not recreated. The old
-    // pattern LIKE 'delete%' never matched the run's own card name — this run
-    // names its delete target `Harness_delete_<stamp>` (cardName("delete")),
-    // which does not start with "delete" (adversarial blindness-review F6
-    // item 4), so the guard could not fire for exactly the case it exists
-    // for. Count run-created rows carrying this run's delete-target shape.
-    const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND trash = 0 AND (name LIKE ? ESCAPE ? OR name = ?)").get(baselineMaxCardId, "Harness\\_delete%", "\\", deleteName).n;
-    record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId, pattern: "trash=0 AND (Harness\\_delete% OR = " + deleteName + ")" });
-  }
-  }
+  await deleteJourney(moduleContext());
   await attempt("navbar sign out revokes the session", async () => {
     await visit("/");
     const link = page.locator('a.signout-link').first();
@@ -1095,35 +1010,7 @@ try {
   if (historyPage) record("a card's history view renders", historyPage.status === 200, { status: historyPage.status }, { wallMs: historyPage.wallMs });
   }
 
-  const changes = await attempt("changes", () => visit("/*search"));
-  if (changes) {
-    // Rows that carry a link are list entries; chrome rows (layout tables,
-    // empty wrappers) have no anchor and are dropped (adversarial
-    // blindness-review F6 item 2: the old predicate was /Harness_/ over the
-    // whole page HTML, satisfied by the signed-in navbar's "Harness_Admin" on
-    // ANY signed-in changes page, and "first" — the actual contract — was
-    // never tested). The changes entries are the served list's own items —
-    // .search-result-list .search-result-item on this engine (measured
-    // 2026-10-18: the entries are DIV.search-result-item.item-bar inside
-    // DIV.card-list.search-result-list; tr/.search-result/.card match only
-    // chrome), kept in served order.
-    const orderedRows = await page.evaluate(() => [...document.querySelectorAll(".search-result-list .search-result-item, tr, .search-result, .card")]
-      .map((r) => ({ text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 80), linked: r.querySelector("a[href]") !== null }))
-      .filter((r) => r.text && r.linked)
-      .map((r) => r.text)
-      .slice(0, 12));
-    record("the Changes link (/*search) lists cards", changes.status === 200, { status: changes.status, sample: orderedRows.slice(0, 3) }, { wallMs: changes.wallMs });
-    if (!richName) record("/*search lists the cards this run just created/edited first", null, { skipped: true, reason: `${liveWalk.mode}: the run created no cards, so there is nothing of this run's to look for` });
-    else {
-      // The ordering claim: the FIRST listed entry is one of this run's own
-      // touched cards (Harness_* or the run-edited date card, whose stored
-      // name carries spaces: "2011 12 14") — the newest act at the top,
-      // before anything older.
-      const runCardsFirst = orderedRows.length > 0 && /Harness_|2011[ _]12[ _]14/.test(orderedRows[0]);
-      record("/*search lists the cards this run just created/edited first", changes.status === 200 && runCardsFirst,
-        { runCardsFirst, firstRow: orderedRows[0] ?? null, rows: orderedRows.slice(0, 6) });
-    }
-  }
+  await changesJourney(moduleContext(), richName);
 
   await attempt("sign out", async () => {
     const before = ledger().length;
