@@ -7,6 +7,7 @@
 // checks create is named Harness_owner_* and pushed on the run's cleanup list.
 
 import { deleteOutcome } from './delete-outcome.mjs';
+import { replayDelete } from './replay-delete.mjs';
 
 const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
 const NEW_CARD_FORM_RE = /<form[^>]*class="[^"]*card-form/;
@@ -386,11 +387,10 @@ export async function ownerReplay(ctx) {
     await step(`GET /${deleteName}/board`, 200, nav(`/${deleteName}/board`));
     await step(`Delete button GET /delete/${deleteName}`, (s) => s !== null && s < 400, async () => {
       await page.goto(`${O}/${deleteName}/edit`, { waitUntil: "load" });
-      await page.evaluate((target) => {
-        const a = [...document.querySelectorAll("a[href^='/delete/']")].find((x) => x.getAttribute("href")?.startsWith(target));
-        a?.click();
-      }, `/delete/${deleteName}`).catch(() => undefined);
-      await page.waitForTimeout(2500);
+      const beforeDelete = ledger().length;
+      await replayDelete({ page, name: deleteName, origin: O,
+        responseBodyFallback: () => ledger().slice(beforeDelete)
+          .find(line => decodeURIComponent(new URL(line.path, O).pathname) === `/delete/${deleteName}`)?.deleteResponseBody ?? '' });
     });
     await step("GET /  (after delete)", 200, nav("/"));
     await step("GET /*search  (after delete)", 200, nav("/*search"));
