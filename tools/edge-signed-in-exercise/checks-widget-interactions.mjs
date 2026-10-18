@@ -388,17 +388,15 @@ export const checks = [
         throw Error("UI1 accordion fixture card was not stored");
       }
 
-      // Where the port actually emits accordion groups:
-      //  - card-mod-edit.ts:3963-3973 on an EDIT form's rules section, and
-      //  - views.ts:3143-3171 renderCategoryAccordion for the Rules section of a
-      //    set card (setRulesCoreHtml, views.ts:2859-2868) and the Skin
-      //    configuration accordion (views.ts:1479, reached on the Skin card).
-      // Every Set/Rule card INSTANCE in this deck is a nameless template row
-      // (type_id 259 / 47 all have name IS NULL), so the set-card Rules section
-      // is not reachable by URL; the Skin card is. Try each candidate surface
-      // and record what each one actually rendered — an accordion that exists on
-      // no reachable surface is a finding, not a skip.
-      const surfaces = ["/" + name + "?view=edit", "/" + name, "/Skin"];
+      // The Rules accordion belongs to a Set, not an arbitrary Basic card.
+      // Canonical junction names are routable even when their name column is NULL.
+      const setName=name+"+*self";created.push(setName);
+      const setWrite=await page.context().request.post(stack.origin+"/card/create",{
+        headers:{origin:stack.origin,"Content-Type":"application/x-www-form-urlencoded"},maxRedirects:0,
+        data:new URLSearchParams({"card[name]":setName,"card[type]":"Set","card[content]":"","success[redirect]":"true"}).toString(),
+      });
+      await setWrite.body();if(setWrite.status()>=400)throw Error("UI1 Set fixture refused: "+setWrite.status());
+      const surfaces=["/"+encodeURIComponent(setName)+"/accordion_rule_list"];
       const perSurface = [];
       let measured = null;
       for (const surface of surfaces) {
@@ -430,10 +428,15 @@ export const checks = [
         }, withButton.targetId);
         const beforeOpen = await visibleState(withButton.targetId);
         const button = page.locator(`button.accordion-button[data-bs-target='#${withButton.targetId}']`).first();
-        const caused = await clickAndSettle(ctx, button, 2000);
-        const afterOpenClick = await visibleState(withButton.targetId);
-        // Click it again: an accordion a person can only open is not an accordion.
-        await clickAndSettle(ctx, page.locator(`button.accordion-button[data-bs-target='#${withButton.targetId}']`).first(), 2000);
+        const clickAndObserve=async expected=>{
+          const ledgerStart=ctx.ledger().length;
+          await button.click({timeout:5000});
+          await page.waitForFunction(([id,visible])=>{const el=document.getElementById(id);return el&&!el.classList.contains("collapsing")&&(el.getClientRects().length>0)===visible;},[withButton.targetId,expected],{timeout:5000});
+          return ctx.linesSince(ledgerStart);
+        };
+        const caused=await clickAndObserve(!beforeOpen);
+        const afterOpenClick=await visibleState(withButton.targetId);
+        await clickAndObserve(beforeOpen);
         const afterSecondClick = await visibleState(withButton.targetId);
 
         measured = {
@@ -451,7 +454,7 @@ export const checks = [
       }
       if (measured === null) {
         record(capabilityChecks.UI1[0], false, {
-          note: "no reachable surface renders an accordion group with an open/close control: the card's edit form, the card page and the Skin card's page all render zero .accordion-item AND zero .accordion wrapper elements. The Skin page itself renders fully (Skin, Configure Skins and the skin list are all present), and the only data-bs-toggle='collapse' control on those pages is the navbar-toggler, so the accordion widget does not RENDER at all rather than rendering inert",
+          note: "the stored Set fixture served no accordion group with an open/close control",
           card: name,
           surfacesTried: surfaces,
           perSurface,
