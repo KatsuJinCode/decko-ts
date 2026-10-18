@@ -609,12 +609,25 @@ export const checks = [
   // ---------------------------------------------------------------------- F4
   {
     name: capabilityChecks.F4[0],
-    only: 'content-flows',
+    only: 'content-flows-media',
     run: async (ctx) => {
       const { page, stack, record, database, captureEvidence, visit, created, ledger, linesSince } = ctx;
       const stamp = Date.now().toString(36);
       const name = `Harness_CF_Coded_Image_${stamp}`;
       if (!created.includes(name)) created.push(name);
+
+      /** The port's own upload contract: the file input only names a cached
+       *  upload action, and the form carries that action id on submit. */
+      const cachedUploadDraft = async (scope) => {
+        const field = scope.locator('input[name="card[action_id_of_cached_upload]"]');
+        const appeared = await field.waitFor({ state: 'attached', timeout: 20_000 }).then(() => true).catch(() => false);
+        if (!appeared) return null;
+        await page.waitForFunction(() => {
+          const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+          return draft !== null && /^\d+$/.test(draft.value);
+        }, undefined, { timeout: 20_000 }).catch(() => undefined);
+        return field.inputValue().catch(() => null);
+      };
 
       // What a "coded" image is on this surface: an attachment held in the
       // mod's coded store rather than the deck's own store (storage_type
@@ -651,18 +664,6 @@ export const checks = [
         await page.waitForTimeout(3000);
         create.status = linesSince(beforeCreate).find((l) => l.method !== 'GET')?.status ?? null;
       }
-      /** The port's own upload contract: the file input only names a cached
-       *  upload action, and the form carries that action id on submit. */
-      const cachedUploadDraft = async (scope) => {
-        const field = scope.locator('input[name="card[action_id_of_cached_upload]"]');
-        const appeared = await field.waitFor({ state: 'attached', timeout: 20_000 }).then(() => true).catch(() => false);
-        if (!appeared) return null;
-        await page.waitForFunction(() => {
-          const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
-          return draft !== null && /^\d+$/.test(draft.value);
-        }, undefined, { timeout: 20_000 }).catch(() => undefined);
-        return field.inputValue().catch(() => null);
-      };
 
       /** The attachment an image card holds. The upload lands on a subcard whose
        *  stored content is the storage identifier (the local deck's are
