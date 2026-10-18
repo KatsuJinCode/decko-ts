@@ -211,15 +211,26 @@ async function main() {
          *  predicate is that input's name/type pair (the edge exercise
          *  reads the FIELD, not merely the row's presence). */
         const openField = async (right) => {
+          const row = page.locator(`.RIGHT-X${right}.labeled-view`).first();
+          if ((await row.count()) === 0) return { rowPresent: 0, editLinkPresent: 0 };
+          // The row itself is what the named instrument waits for before
+          // clicking (edge-signed-in-exercise.mjs:449-452).
+          const rowVisible = await row.waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
           const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
-          if ((await link.count()) === 0) return { rowPresent: 0, editLinkPresent: 0 };
+          if ((await link.count()) === 0) return { rowPresent: 1, rowVisible, editLinkPresent: 0 };
           await link.dispatchEvent("click").catch(() => {});
+          // The row's editor arrives over the modal's own XHR after it opens,
+          // so wait for the modal first and then for the input, with the
+          // deadline the named instrument uses.
+          const modalShown = await page.locator(".modal.show").first().waitFor({ state: "visible", timeout: 30_000 }).then(() => true, () => false);
           const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
-          await input.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+          const inputVisible = await input.waitFor({ state: "visible", timeout: 45_000 }).then(() => true, () => false);
           return {
             rowPresent: 1,
+            rowVisible,
             editLinkPresent: 1,
-            inputVisible: await input.isVisible().catch(() => false),
+            modalShown,
+            inputVisible,
             name: await input.getAttribute("name").catch(() => null),
             type: await input.getAttribute("type").catch(() => null),
           };
@@ -229,7 +240,9 @@ async function main() {
         // to hide before opening the password row (edge-signed-in-exercise.mjs
         // :471-475); a fixed pause left the modal up and the password row
         // out of the DOM, which read as rowPresent:0 in round 2.
-        await page.locator(".modal .cancel-button:visible, #edit_card .cancel-button:visible, .modal .close:visible, .modal [data-dismiss='modal']:visible").first().click({ timeout: 15_000 }).catch(() => {});
+        // The engine renders a._close-modal.btn-close on this modal (the
+        // run-3 capture), so that is the control a person clicks.
+        await page.locator("a._close-modal.btn-close:visible, .modal .cancel-button:visible, #edit_card .cancel-button:visible, .modal [data-dismiss='modal']:visible").first().click({ timeout: 30_000 }).catch(() => {});
         acct077.modalHidden = await page.locator(".modal.show").first().waitFor({ state: "hidden", timeout: 15_000 }).then(() => true, () => false);
         acct077.passwordField = await openField("password");
         writeFileSync(path.join(out, "act077-account-tab.html"), await page.content());
