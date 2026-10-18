@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { applyBrowserSigninProfile } from "../lib/ts-signin-profile.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "../../..");
@@ -49,6 +50,7 @@ process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
 // deltas Ruby never writes. Ruby-side parity is the engine behavior under
 // test; the production PBKDF2 default is a host decision, not an engine one.
 const productionProfile = process.argv.includes("--production");
+applyBrowserSigninProfile(process.env, productionProfile);
 // Both journey profiles default to the vendored same-origin Font Awesome
 // (docs/self-hosted-font-awesome.md, vendor/fontawesome-free-6.7.2): the stock
 // external kit answers 403, which the journey evidence gate fail-closes on.
