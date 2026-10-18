@@ -1,3 +1,4 @@
+import { runCodedImageChange } from './lib/coded-image-change.mjs';
 // checks-content-flows.mjs — first instruments for the CONTENT-FLOW rows the
 // coverage matrix carries as never-observed (instrument-coverage-matrix.json,
 // last_recomputed 2026-10-17T09:57Z; 48 actions with no entry whose status is
@@ -682,117 +683,7 @@ export const checks = [
   {
     name: capabilityChecks.F4[0],
     only: 'content-flows-media',
-    run: async (ctx) => {
-      const { page, stack, record, database, captureEvidence, visit, created, ledger, linesSince } = ctx;
-      const stamp = Date.now().toString(36);
-      const name = `Harness_CF_Coded_Image_${stamp}`;
-      if (!created.includes(name)) created.push(name);
-
-      /** The port's own upload contract: the file input only names a cached
-       *  upload action, and the form carries that action id on submit. */
-      const cachedUploadDraft = async (scope) => {
-        const field = scope.locator('input[name="card[action_id_of_cached_upload]"]');
-        const appeared = await field.waitFor({ state: 'attached', timeout: 20_000 }).then(() => true).catch(() => false);
-        if (!appeared) return null;
-        await page.waitForFunction(() => {
-          const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
-          return draft !== null && /^\d+$/.test(draft.value);
-        }, undefined, { timeout: 20_000 }).catch(() => undefined);
-        return field.inputValue().catch(() => null);
-      };
-
-      // What a "coded" image is on this surface: an attachment held in the
-      // mod's coded store rather than the deck's own store (storage_type
-      // :coded — src/card/actions/card-action-engine.ts:351-355, 1205-1209).
-      // The census says whether the deck under test holds one to change at
-      // all, which is the precondition the capability needs.
-      const storageClass = (identifier) => {
-        if (identifier == null || identifier === '') return 'empty';
-        if (/^\(/.test(identifier)) return 'bucket-cloud';
-        if (/^~/.test(identifier)) return 'local-tilde';
-        if (/^\//.test(identifier) || /^[a-z][a-z0-9+.-]*:/i.test(identifier)) return 'coded-or-absolute';
-        return 'bare-relative';
-      };
-      const imageRows = database().prepare("SELECT f.db_content AS identifier FROM cards f JOIN cards r ON r.id=f.right_id WHERE r.codename='image' AND f.trash=0 AND f.db_content <> ''").all();
-      const census = imageRows.reduce((acc, row) => {
-        const key = storageClass(row.identifier);
-        acc[key] = (acc[key] ?? 0) + 1;
-        return acc;
-      }, {});
-      const codedCandidates = imageRows.filter((row) => storageClass(row.identifier) === 'coded-or-absolute').slice(0, 5);
-
-      // The verb itself, through the image edit form: create with an upload,
-      // then change the image, and read the stored identifier and the served
-      // src back.
-      await visit('/new/Image');
-      const createFormOffered = await page.locator('#main input[type="file"], form.card-form input[type="file"]').count() > 0;
-      const create = { status: null, draftActionId: null };
-      if (createFormOffered) {
-        await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
-        await page.locator('#main input[type="file"], form.card-form input[type="file"]').first().setInputFiles({ name: 'harness-coded-a.png', mimeType: 'image/png', buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, 'base64') });
-        create.draftActionId = await cachedUploadDraft(page.locator('form.card-form:visible').first());
-        const beforeCreate = ledger().length;
-        await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
-        await page.waitForTimeout(3000);
-        create.status = linesSince(beforeCreate).find((l) => l.method !== 'GET')?.status ?? null;
-      }
-
-      /** The attachment an image card holds. The upload lands on a subcard whose
-       *  stored content is the storage identifier (the local deck's are
-       *  "~<card id>/<action id>.png", the same shape the F8 leg reads off a
-       *  File card's own row); the join on the image TYPE's codename does not
-       *  see it, which is why the first run read null while the page served
-       *  /files/~.../33-large.png. */
-      const storedIdentifier = () => {
-        const card = fixtureCard(database(), name);
-        if (card === undefined) return null;
-        return database().prepare("SELECT db_content FROM cards WHERE left_id=? AND trash=0 AND db_content LIKE '%/%' ORDER BY id LIMIT 1").get(card.id)?.db_content ?? null;
-      };
-
-      const servedSrc = async () => {
-        await visit(`/${encodeURIComponent(name)}`);
-        await page.waitForTimeout(1200);
-        return page.evaluate(() => [...document.querySelectorAll('#main img, main img')].map((i) => i.getAttribute('src')).filter(Boolean).slice(0, 4));
-      };
-      const identifierBefore = storedIdentifier();
-      const srcBefore = await servedSrc();
-
-      const change = { editFormOffered: false, inventory: null, status: null };
-      await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click').catch(() => undefined);
-      const editForm = page.locator('.modal.show form.card-form:visible').first();
-      const formUp = await editForm.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true).catch(() => false);
-      if (formUp) {
-        const fileInputs = editForm.locator('input[type="file"]');
-        change.inventory = await editForm.evaluate((form) => [...form.querySelectorAll('input,textarea,select')].map((i) => ({ name: i.name, type: i.type || i.tagName })).slice(0, 20)).catch(() => null);
-        change.editFormOffered = await fileInputs.count() > 0;
-        if (change.editFormOffered) {
-          await fileInputs.first().setInputFiles({ name: 'harness-coded-b.png', mimeType: 'image/png', buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, 'base64') });
-          change.draftActionId = await cachedUploadDraft(editForm);
-          const beforeUpdate = ledger().length;
-          await editForm.locator('.submit-button, button[type="submit"]').first().click().catch(() => undefined);
-          await page.waitForTimeout(3000);
-          change.status = linesSince(beforeUpdate).find((l) => l.method !== 'GET')?.status ?? null;
-        }
-      }
-      const identifierAfter = storedIdentifier();
-      const srcAfter = await servedSrc();
-      const codedCount = census['coded-or-absolute'] ?? 0;
-      record(capabilityChecks.F4[0],
-        createFormOffered && create.status !== null && create.status < 400 && identifierBefore !== null
-        && change.editFormOffered === true && change.status !== null && change.status < 400
-        && identifierAfter !== null && identifierAfter !== identifierBefore,
-        {
-          card: name, createFormOffered, create,
-          identifierBefore, identifierAfter, identifierChanged: identifierAfter !== identifierBefore,
-          storageClassBefore: storageClass(identifierBefore), storageClassAfter: storageClass(identifierAfter),
-          servedSrcBefore: srcBefore, servedSrcAfter: srcAfter, change,
-          imageAttachmentCensus: census, imageAttachmentCount: imageRows.length,
-          codedAttachmentCount: codedCount, codedCandidates: codedCandidates.map((r) => r.identifier),
-          codedBranchExercised: codedCount > 0,
-          note: 'the change verb is measured through the image edit form; whether the CODED storage branch is reachable at all is the census and codedBranchExercised, which is not part of this predicate',
-          raw: captureEvidence(await page.content(), { check: 'content-flows-coded-image' }),
-        });
-    },
+    run: ctx => runCodedImageChange(ctx, capabilityChecks.F4[0]),
   },
 
   // ---------------------------------------------------------------------- N9

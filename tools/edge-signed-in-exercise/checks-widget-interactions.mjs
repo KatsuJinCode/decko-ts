@@ -1,3 +1,4 @@
+import { runCodedImageChange } from './lib/coded-image-change.mjs';
 // checks-widget-interactions.mjs — instruments for the WIDGET/INLINE-CONTROL
 // rows the instrument-coverage matrix
 // (C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
@@ -130,92 +131,7 @@ export const checks = [
   {
     name: "a coded image can be changed through the card a person edits it on",
     only: "unmeasured-matrix",
-    run: async ctx => {
-      requireLoopback(ctx);
-      const { stack, page, creds, signIn, record, database, created, captureEvidence } = ctx;
-      const signedIn = await signIn(creds.admin);
-      if (!signedIn.hasSessionCookie) throw Error("F4 browser signin failed");
-
-      // A coded attachment is an image whose bytes live in a MOD's shipped asset
-      // table, not in an uploaded file: attachment-content.ts:162-164
-      // codedAttachmentIdentifier renders `:codename/mod.ext`, and
-      // stockCodedFile (src/card/attachments/stock-coded-files.ts:4-11) resolves
-      // only an EXACT shipped codename. This deck carries 22 such cards. So the
-      // measure is two-sided and BOTH sides are recorded: does the engine serve
-      // coded bytes for a coded identifier, and does any person-facing control
-      // change a coded image?
-      const codedCards = database()
-        .prepare("SELECT id,name,codename,db_content FROM cards WHERE trash=0 AND db_content LIKE ':%/%' AND name IS NOT NULL LIMIT 5")
-        .all();
-      if (codedCards.length === 0) {
-        record(capabilityChecks.F4[0], false, {
-          note: "this deck carries no addressable card whose content is a coded attachment identifier, so the coded-image surface cannot be reached at all",
-          raw: captureEvidence(await page.content(), { check: "coded-image-absent" }),
-        });
-        return;
-      }
-      const coded = codedCards[0];
-      const served = await page.context().request.get(stack.origin + "/files/" + coded.db_content);
-      const servedBytes = (await served.body()).length;
-      const servedType = served.headers()["content-type"] ?? null;
-      const unknown = await page.context().request.get(stack.origin + "/files/:no_such_coded_attachment/carrierwave.svg");
-
-      const name = coded.name;
-      await page.goto(stack.origin + "/" + name + "?view=edit", { waitUntil: "load" });
-      const editForm = page.locator("form.card-form").filter({ has: page.locator('input[type="file"]') }).first();
-      const hasEditForm = (await editForm.count()) > 0;
-      // What a person could actually press to CHANGE this image.
-      const changeControls = await page.evaluate(() =>
-        [...document.querySelectorAll("form.card-form button, form.card-form input[type=submit], form.card-form a")]
-          .filter(n => n.getClientRects().length > 0)
-          .map(n => ({ tag: n.tagName, type: n.getAttribute("type"), cls: String(n.className).slice(0, 50), text: (n.textContent ?? n.value ?? "").replace(/\s+/g, " ").trim().slice(0, 30) }))
-          .slice(0, 25));
-      // A control that writes the CODED image would have to name the coded
-      // content or the coded card in the form it submits.
-      const codedControlPresent = await page.evaluate(content =>
-        [...document.querySelectorAll("form.card-form [name], form.card-form [data-codename]")]
-          .some(n => (n.getAttribute("name") ?? "").includes(":") || (n.getAttribute("data-codename") ?? "") !== "" || (n.getAttribute("value") ?? "").startsWith(":")),
-      coded.db_content);
-      const renderedImage = await page.evaluate(async () => {
-        const img = document.querySelector("#main img");
-        if (img === null) return { present: false };
-        if (img.complete === false) await img.decode().catch(() => {});
-        return { present: true, src: img.src, naturalWidth: img.naturalWidth, complete: img.complete };
-      });
-
-      const evidence = {
-        actor: creds.admin.name,
-        actorId: creds.admin.id,
-        codedCard: { id: coded.id, name: coded.name, codename: coded.codename, dbContent: coded.db_content },
-        codedCardsInDeck: codedCards.length,
-        codedServedStatus: served.status(),
-        codedServedContentType: servedType,
-        codedServedBytes: servedBytes,
-        codedServed: served.status() === 200 && servedBytes > 0,
-        unknownCodedIdentifierStatus: unknown.status(),
-        editFormOffered: hasEditForm,
-        changeControls,
-        codedChangeControlPresent: codedControlPresent,
-        renderedImage,
-        raw: captureEvidence(await page.content(), { check: "coded-image-change", name }),
-      };
-
-      // The action as the capability states it — CHANGE a coded image — is only
-      // performable if a person can point a control at the coded image's bytes.
-      // An edit form carrying a file input replaces a UPLOADED file (that is F6's
-      // contract, checked in checks-upload-image-change.mjs); it does not reach a
-      // mod-shipped coded asset. Record what the surface actually offers.
-      record(capabilityChecks.F4[0],
-        codedControlPresent === true
-          && codedServed.status === 200
-          && servedBytes > 0,
-        {
-          ...evidence,
-          note: codedControlPresent === false
-            ? "the coded image's card offers no control that changes a CODED image: coded attachment bytes resolve only from the mod's shipped asset table (stockCodedFile, src/card/attachments/stock-coded-files.ts:4-11; codedAttachmentIdentifier, src/card/attachments/attachment-content.ts:162-164), so a person cannot change a coded image from any card surface"
-            : undefined,
-        });
-    },
+    run: ctx => runCodedImageChange(ctx, capabilityChecks.F4[0]),
   },
 
   // ---------------------------------------------------------------- N4
