@@ -35,7 +35,7 @@
 // capabilities.json still carries them as out_of_scope for the absence of an
 // SMTP sink.
 
-import { createTypedFixture } from './lib/typed-fixture.mjs';
+import { createTypedFixture, fixtureCard } from './lib/typed-fixture.mjs';
 
 export const meta = {
   topic: 'content-flows',
@@ -87,16 +87,19 @@ async function renderedShape(page, url) {
   return { requested: new URL(url).pathname, status: response?.status() ?? null, ...shape };
 }
 
-/** The id the engine resolved a URL to, read out of the page the port serves
- *  (`decko.card_id` is the port's own meta pair; the S10 check reads
- *  decko.signed_in the same way). null means the page carried none, which is
- *  itself the answer for a variant that did not resolve. */
+/** How the port names the card a URL resolved to. There is no decko.card_id
+ *  meta pair on the page (decko.signed_in is a script variable,
+ *  src/card/render/page.ts:1261), so identity is read from the carriers the
+ *  port does emit: the slot attributes data-card-id / data-card-name
+ *  (mod-form-substrate.ts:163, mod-view-helpers.ts:71) plus the page title. A
+ *  page that resolved to nothing carries none of them. */
 async function servedCardId(page) {
   return page.evaluate(() => {
-    const meta = document.querySelector('meta[name="decko.card_id"]');
-    const raw = meta?.getAttribute('content') ?? null;
-    const numeric = raw === null ? null : Number(String(raw).replace(/\D+/g, ''));
-    return { raw, numeric: Number.isFinite(numeric) && numeric > 0 ? numeric : null };
+    const slots = [...document.querySelectorAll('[data-card-id], [data-card-name]')]
+      .map((el) => ({ id: el.getAttribute('data-card-id'), name: el.getAttribute('data-card-name') }))
+      .filter((s) => s.id !== null || s.name !== null);
+    const numeric = slots.map((s) => Number(s.id)).find((n) => Number.isFinite(n) && n > 0) ?? null;
+    return { slots: slots.slice(0, 6), numeric, title: document.title };
   });
 }
 
@@ -154,7 +157,10 @@ export const checks = [
         const ruleName = decodeURIComponent(new URL(link, stack.origin).pathname.replace(/^\/update\//, ''));
         if (!created.includes(ruleName)) created.push(ruleName);
         const requests = linesSince(before).map((l) => ({ method: l.method, path: l.path.slice(0, 90), status: l.status }));
-        const storedOption = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(ruleName)?.db_content ?? null;
+        // Junction rules carry no name column in this deck, so the state is
+        // read through the repo's own junction resolver (fixtureCard), the
+        // same read the W1/W3 docstring names.
+        const storedOption = fixtureCard(database(), ruleName)?.db_content ?? null;
         return { board: board.status, tab: true, href: link, ruleName, storedOption, requests };
       };
 
@@ -208,13 +214,23 @@ export const checks = [
         const nestedMail = notices();
         legs.nested = { ...legs.nested, delivered: nestedMail.length, notices: nestedMail, namesTheCard: nestedMail.some((m) => m.head.includes(nested) || (m.subject ?? '').includes(nested)) };
 
-        // Leg 3 — a followed card's plus card is edited.
-        legs.plus = { ...await editAsAdmin(plusCard, `Harness plus card edited ${stamp}`) };
+        // Leg 3 — a followed card's plus card is edited. The plus card is
+        // created first: an update to a subcard that does not exist yet is
+        // refused (the first run answered 422 and stored nothing), so the leg
+        // measures an update to an existing plus card, which is what the
+        // oracle's update_includers scenarios edit.
+        const plusCreate = await page.context().request.post(`${stack.origin}/card/create`, {
+          headers: { origin: stack.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
+          data: new URLSearchParams({ 'card[name]': plusCard, 'card[type]': 'RichText', 'card[content]': `Harness plus card ${stamp}`, 'success[redirect]': 'true' }).toString(),
+          maxRedirects: 0,
+        });
+        mail.drain();
+        legs.plus = { createStatus: plusCreate.status(), ...await editAsAdmin(plusCard, `Harness plus card edited ${stamp}`) };
         await settle();
         const plusMail = notices();
         legs.plus = { ...legs.plus, delivered: plusMail.length, notices: plusMail, namesTheCard: plusMail.some((m) => m.head.includes(plusCard) || (m.subject ?? '').includes(plusHost)) };
 
-        const storedBodies = Object.fromEntries([direct, includer, nested, plusHost, plusCard].map((name) => [name, database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(name)?.db_content?.slice(0, 80) ?? null]));
+        const storedBodies = Object.fromEntries([direct, includer, nested, plusHost, plusCard].map((name) => [name, fixtureCard(database(), name)?.db_content?.slice(0, 80) ?? null]));
         const template = database().prepare("SELECT id FROM cards WHERE name='follower notification email' AND trash=0").get();
         const allFollowsWritten = Object.values(follows).every((f) => f?.storedOption === '*always');
         record(capabilityChecks.W5[0],
@@ -272,7 +288,7 @@ export const checks = [
         await page.waitForTimeout(2500);
         const ruleName = decodeURIComponent(new URL(link, stack.origin).pathname.replace(/^\/update\//, ''));
         if (!created.includes(ruleName)) created.push(ruleName);
-        const optionBefore = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(ruleName)?.db_content ?? null;
+        const optionBefore = fixtureCard(database(), ruleName)?.db_content ?? null;
 
         // The administrator's edit produces the notice the link rides in.
         mail.drain();
@@ -309,7 +325,7 @@ export const checks = [
           await page.waitForTimeout(1500);
           linksAfter = await page.evaluate(() => [...document.querySelectorAll('#main a, .board a')].map((a) => a.textContent.replace(/\s+/g, ' ').trim()).filter((t) => /follow|unfollow|watch/i.test(t)).slice(0, 6));
         }
-        const optionAfter = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(ruleName)?.db_content ?? null;
+        const optionAfter = fixtureCard(database(), ruleName)?.db_content ?? null;
         record(capabilityChecks.W6[0],
           message !== undefined && ownsOrigin
           && optionBefore === '*always' && optionAfter === '*never'
@@ -363,15 +379,20 @@ export const checks = [
         fileStatus = linesSince(before).find((l) => l.method !== 'GET')?.status ?? null;
       }
 
+      // NEST SYNTAX IS {{Card}}, NOT [[Card]]. format.ts:2907-2935 documents the
+      // two as different chunks: [[Target]] is a wiki LINK (rendered
+      // <a class="known-card">), {{Target}} is the content nest/inclusion.
+      // The first run used [[...]] for all four shapes and therefore measured
+      // links where it meant nests.
       await createTypedFixture(ctx, { type: 'RichText', name: linkTarget, content: `link target body ${stamp}` });
       await createTypedFixture(ctx, { type: 'RichText', name: chainC, content: `chain leaf ${stamp}` });
-      await createTypedFixture(ctx, { type: 'RichText', name: chainB, content: `chain middle [[${chainC}]]` });
-      await createTypedFixture(ctx, { type: 'RichText', name: chainA, content: `chain head [[${chainB}]]` });
-      await createTypedFixture(ctx, { type: 'RichText', name: loopB, content: `loop back [[${loopA}]]` });
-      await createTypedFixture(ctx, { type: 'RichText', name: loopA, content: `loop head [[${loopB}]]` });
-      // The page under test: a reference, the uploaded file, a chain head and
-      // a loop head, so one read has to render every shape.
-      await createTypedFixture(ctx, { type: 'RichText', name: pageCard, content: `page body ${stamp}\n[[${linkTarget}]]\n[[${fileCard}]]\n[[${chainA}]]\n[[${loopA}]]` });
+      await createTypedFixture(ctx, { type: 'RichText', name: chainB, content: `chain middle {{${chainC}}}` });
+      await createTypedFixture(ctx, { type: 'RichText', name: chainA, content: `chain head {{${chainB}}}` });
+      await createTypedFixture(ctx, { type: 'RichText', name: loopB, content: `loop back {{${loopA}}}` });
+      await createTypedFixture(ctx, { type: 'RichText', name: loopA, content: `loop head {{${loopB}}}` });
+      // The page under test: a link, the uploaded file, a chain head and a
+      // loop head, so one read has to render every shape.
+      await createTypedFixture(ctx, { type: 'RichText', name: pageCard, content: `page body ${stamp}\n[[${linkTarget}]]\n{{${fileCard}}}\n{{${chainA}}}\n{{${loopA}}}` });
 
       const read = await visit(`/${encodeURIComponent(pageCard)}`);
       await page.waitForTimeout(1500);
@@ -381,15 +402,21 @@ export const checks = [
         return {
           textHead: text.slice(0, 1400),
           nestAnchors: [...(main?.querySelectorAll('a[href]') ?? [])].map((a) => a.getAttribute('href')).filter((h) => h && !/^https?:/i.test(h)).slice(0, 30),
+          // A rendered nest is a card slot (d0-card-body / card-slot with a
+          // SELF- class naming the nested card); a rendered link is an anchor.
+          nestSlots: [...(main?.querySelectorAll('[class*="SELF-"], .card-slot, .d0-card-body') ?? [])].map((el) => el.className.slice(0, 120)).slice(0, 20),
           attachmentSources: [...(main?.querySelectorAll('a[href*="/files/"], img[src], a[download]') ?? [])].map((a) => a.getAttribute('href') ?? a.getAttribute('src')).filter(Boolean).slice(0, 12),
           markers: Object.fromEntries(markers.map((m) => [m, text.includes(m)])),
         };
       }, [`page body ${stamp}`, `link target body ${stamp}`, `chain head ${stamp}`, `chain middle ${stamp}`, `chain leaf ${stamp}`, `loop head ${stamp}`, `loop back ${stamp}`, `harness file body ${stamp}`]);
+      // Capture the page under test itself, not whatever page the last leg
+      // left open (the first run's raw capture held the loop page).
+      const pageCapture = captureEvidence(await page.content(), { check: 'content-flows-read-pages-page', card: pageCard });
 
       const loopRead = await visit(`/${encodeURIComponent(loopA)}`);
       await page.waitForTimeout(1500);
       const loopRendered = await page.evaluate(() => (document.querySelector('#main, main')?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 600));
-      const stored = Object.fromEntries(all.map((name) => [name, database().prepare('SELECT id FROM cards WHERE name=? AND trash=0').get(name)?.id ?? null]));
+      const stored = Object.fromEntries(all.map((name) => [name, fixtureCard(database(), name)?.id ?? null]));
       const m = rendered.markers;
       const pass = fileFormOffered && fileStatus !== null && fileStatus < 400
         && read.status === 200 && loopRead.status === 200
@@ -400,10 +427,10 @@ export const checks = [
       record(capabilityChecks.N10[0], pass, {
         page: pageCard, status: read.status, loopStatus: loopRead.status,
         fileFormOffered, fileWriteStatus: fileStatus, stored,
-        markers: m, nestAnchors: rendered.nestAnchors, attachmentSources: rendered.attachmentSources,
-        textHead: rendered.textHead, loopTextHead: loopRendered,
-        note: 'a file card that is nested is read through the same page; the marker for its body proves the attachment\'s own view rendered',
-        raw: captureEvidence(await page.content(), { check: 'content-flows-read-pages' }),
+        markers: m, nestAnchors: rendered.nestAnchors, nestSlots: rendered.nestSlots,
+        attachmentSources: rendered.attachmentSources,
+        textHead: rendered.textHead, loopTextHead: loopRendered, raw: pageCapture,
+        note: 'the link is written [[Card]] and the nests {{Card}} (format.ts:2907-2935); the file marker proves the attachment\'s own view rendered inside the page',
       });
     },
   },
@@ -516,7 +543,7 @@ export const checks = [
         const id = await servedCardId(page);
         reads.push({
           label: variant.label, path: variant.path, status: shape.status,
-          servedCardId: id, resolvedStoredId: id.numeric,
+          slots: id.slots, resolvedStoredId: id.numeric, servedTitle: id.title,
           sameCard: id.numeric !== null && storedId !== null && id.numeric === storedId,
           rendersTheBody: /plural pin body/.test(shape.mainText),
           rendersItsOwnCreateForm: shape.createForms > 0 || shape.nameInputs > 0,
@@ -528,7 +555,7 @@ export const checks = [
       record(capabilityChecks.S11[0], pinned.length === reads.length, {
         card: plural, storedId, variants: reads,
         variantsResolvingToTheSameCard: pinned.map((r) => r.label),
-        variantsNotResolvingToTheSameCard: drifted.map((r) => ({ label: r.label, path: r.path, status: r.status, servedCardId: r.servedCardId, rendersItsOwnCreateForm: r.rendersItsOwnCreateForm, heading: r.heading })),
+        variantsNotResolvingToTheSameCard: drifted.map((r) => ({ label: r.label, path: r.path, status: r.status, resolvedStoredId: r.resolvedStoredId, servedTitle: r.servedTitle, rendersItsOwnCreateForm: r.rendersItsOwnCreateForm, heading: r.heading })),
         note: 'plurality/slug pinning: a variant that renders its OWN create form is a different card, not the pinned one, so it counts as not round-tripping',
         raw: captureEvidence(await page.content(), { check: 'content-flows-slug-round-trip' }),
       });
@@ -570,16 +597,39 @@ export const checks = [
       // src back.
       await visit('/new/Image');
       const createFormOffered = await page.locator('#main input[type="file"], form.card-form input[type="file"]').count() > 0;
-      let createStatus = null;
+      const create = { status: null, draftActionId: null };
       if (createFormOffered) {
         await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
         await page.locator('#main input[type="file"], form.card-form input[type="file"]').first().setInputFiles({ name: 'harness-coded-a.png', mimeType: 'image/png', buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, 'base64') });
+        create.draftActionId = await cachedUploadDraft(page.locator('form.card-form:visible').first());
         const beforeCreate = ledger().length;
         await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
         await page.waitForTimeout(3000);
-        createStatus = linesSince(beforeCreate).find((l) => l.method !== 'GET')?.status ?? null;
+        create.status = linesSince(beforeCreate).find((l) => l.method !== 'GET')?.status ?? null;
       }
-      const storedIdentifier = () => database().prepare("SELECT f.db_content FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=(SELECT id FROM cards WHERE name=? AND trash=0) AND r.codename='image' AND f.trash=0").get(name)?.db_content ?? null;
+      /** The attachment an image card holds. The upload lands on a subcard whose
+       *  stored content is the storage identifier (the local deck's are
+       *  "~<card id>/<action id>.png", the same shape the F8 leg reads off a
+       *  File card's own row); the join on the image TYPE's codename does not
+       *  see it, which is why the first run read null while the page served
+       *  /files/~.../33-large.png. */
+      const storedIdentifier = () => {
+        const card = fixtureCard(database(), name);
+        if (card === undefined) return null;
+        return database().prepare("SELECT db_content FROM cards WHERE left_id=? AND trash=0 AND db_content LIKE '%/%' ORDER BY id LIMIT 1").get(card.id)?.db_content ?? null;
+      };
+      /** The port's own upload contract: the file input only names a cached
+       *  upload action, and the form carries that action id on submit. */
+      const cachedUploadDraft = async (scope) => {
+        const field = scope.locator('input[name="card[action_id_of_cached_upload]"]');
+        const appeared = await field.waitFor({ state: 'attached', timeout: 20_000 }).then(() => true).catch(() => false);
+        if (!appeared) return null;
+        await page.waitForFunction(() => {
+          const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+          return draft !== null && /^\d+$/.test(draft.value);
+        }, undefined, { timeout: 20_000 }).catch(() => undefined);
+        return field.inputValue().catch(() => null);
+      };
       const servedSrc = async () => {
         await visit(`/${encodeURIComponent(name)}`);
         await page.waitForTimeout(1200);
@@ -598,6 +648,7 @@ export const checks = [
         change.editFormOffered = await fileInputs.count() > 0;
         if (change.editFormOffered) {
           await fileInputs.first().setInputFiles({ name: 'harness-coded-b.png', mimeType: 'image/png', buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, 'base64') });
+          change.draftActionId = await cachedUploadDraft(editForm);
           const beforeUpdate = ledger().length;
           await editForm.locator('.submit-button, button[type="submit"]').first().click().catch(() => undefined);
           await page.waitForTimeout(3000);
@@ -608,11 +659,11 @@ export const checks = [
       const srcAfter = await servedSrc();
       const codedCount = census['coded-or-absolute'] ?? 0;
       record(capabilityChecks.F4[0],
-        createFormOffered && createStatus !== null && createStatus < 400 && identifierBefore !== null
+        createFormOffered && create.status !== null && create.status < 400 && identifierBefore !== null
         && change.editFormOffered === true && change.status !== null && change.status < 400
         && identifierAfter !== null && identifierAfter !== identifierBefore,
         {
-          card: name, createFormOffered, createStatus,
+          card: name, createFormOffered, create,
           identifierBefore, identifierAfter, identifierChanged: identifierAfter !== identifierBefore,
           storageClassBefore: storageClass(identifierBefore), storageClassAfter: storageClass(identifierAfter),
           servedSrcBefore: srcBefore, servedSrcAfter: srcAfter, change,
@@ -665,7 +716,7 @@ export const checks = [
         data: new URLSearchParams({ 'card[content]': `[[${layout}]]`, 'success[redirect]': 'true' }).toString(),
         maxRedirects: 0,
       });
-      const ruleStored = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(ruleName)?.db_content ?? null;
+      const ruleStored = fixtureCard(database(), ruleName)?.db_content ?? null;
       const visited = await visit(`/${encodeURIComponent(userCard)}`);
       await page.waitForTimeout(1500);
       const rendered = await page.evaluate((marks) => {
