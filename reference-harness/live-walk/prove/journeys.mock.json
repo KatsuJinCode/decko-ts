@@ -1,0 +1,28 @@
+{
+  "format": "decko-browser-journeys/1",
+  "about": "Journey list for the mock-host proof of the walk comparison (reference-harness/live-walk/prove/base-url-mock-proof.mjs). Two journeys over the mock site: one whose pages are identical on both mock hosts (the negative control), one whose /about page differs by a seeded headline change (the positive control).",
+  "journeys": [
+    {
+      "id": "mock-home",
+      "covers": ["negative control: both mock hosts agree"],
+      "steps": [
+        {"visit": "/"},
+        {"observe": "home"},
+        {"click": {"link": "About this mock"}},
+        {"observe": "about"}
+      ]
+    },
+    {
+      "id": "mock-signin",
+      "covers": ["sign-in form, csrf token, session cookie"],
+      "steps": [
+        {"visit": "/sign-in"},
+        {"observe": "sign-in form"},
+        {"fill": {"css": "input[name=email]"}, "value": "walker@example.test"},
+        {"fill": {"css": "input[name=password]"}, "value": "throwaway-mock-pass"},
+        {"click": {"button": "Sign in"}},
+        {"observe": "after sign-in"}
+      ]
+    }
+  ]
+}
