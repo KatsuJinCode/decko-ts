@@ -24,6 +24,14 @@
  *  Related) - the artifact this module exists to remove. */
 export const AFFORDANCE_TARGET_CARD = "Brief";
 
+/** The fixture card the RichText-edit cases probe. ACT-018 names the RICHTEXT
+ *  editor specifically and the modal that opens must carry the TinyMCE
+ *  editor: Brief is a plain-input card, so its edit modal proves the modal
+ *  machinery but not the RichText claim. Note 001 is a plain (non-nested)
+ *  RichText card of synthetic-v1 (deck.json: 102 RichText rows; Note 001 the
+ *  first plain one). */
+export const RICHTEXT_AFFORDANCE_TARGET_CARD = "Note 001";
+
 /** The board tabs and the tab views they open, keyed by the label the
  *  matrix's action text names (board.rb:2-7 BOARD_TABS). */
 const BOARD_TAB_VIEWS = {
@@ -56,12 +64,72 @@ export function nameMatchRequest(text) {
   return { view, path: `/*all+by name.json?view=${view}&term=${encodeURIComponent(term)}` };
 }
 
+
+/** A create-form driver shared by the autoname case: opens /new/<path> with
+ *  card[name] (and card[content]) prefilled in the query, clicks the form's
+ *  create submit control, waits for the POST the form issues, and reads the
+ *  engine's JSON redirect answer. Same form bytes the edge harness's
+ *  typed-fixture.mjs:28-61 drives. When requireNameField is false the form
+ *  is matched on the submit control alone - the autonamed create form renders
+ *  NO name field (card-mod-edit.ts:2367 returns undefined for the name row
+ *  when the type carries an autoname rule). */
+async function createThroughNewCardForm({ page, base, stepTimeout }, { newPath, name, content, requireNameField = true }) {
+  if (!page) throw new Error("create-form probe needs the runner's page helper");
+  const params = new URLSearchParams({});
+  if (name !== undefined && name !== "") params.set("card[name]", name);
+  if (content !== undefined) params.set("card[content]", content);
+  const opened = await page
+    .goto(`${base}${newPath}?${params.toString()}`, { waitUntil: "domcontentloaded", timeout: stepTimeout })
+    .catch(() => null);
+  if (!opened || opened.status() >= 400) return { ok: false, status: opened ? opened.status() : null, redirectPath: null };
+  let form = page.locator("form.card-form").filter({ has: page.locator(".create-submit-button") });
+  if (requireNameField) form = form.filter({ has: page.locator("input[name='card[name]']") });
+  form = form.first();
+  if ((await form.count()) === 0) return { ok: false, status: opened.status(), redirectPath: null };
+  const action = new URL(await form.getAttribute("action"), base);
+  const pending = page
+    .waitForResponse(
+      (r) => new URL(r.url()).origin === base && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST",
+      { timeout: stepTimeout },
+    )
+    .then((response) => ({ response }), (error) => ({ error }));
+  await form.locator(".create-submit-button").first().click({ timeout: stepTimeout });
+  const seen = await pending;
+  if (seen.error) return { ok: false, status: null, redirectPath: null, error: String(seen.error).slice(0, 120) };
+  await seen.response.finished().catch(() => {});
+  const outcome = await seen.response.json().catch(() => null);
+  let redirectPath = null;
+  if (typeof outcome?.redirect === "string") {
+    const redirect = new URL(outcome.redirect, base);
+    if (redirect.origin === base) {
+      redirectPath = redirect.pathname + redirect.search;
+      await page.waitForURL(redirect.href, { timeout: stepTimeout }).catch(() => {});
+    }
+  }
+  return { ok: seen.response.status() < 400 && redirectPath !== null, status: seen.response.status(), redirectPath };
+}
+
+/** Clicks a selector through the page context. The card menu's edit anchor
+ *  sits in the hover-hidden menu, so a visibility-gated locator click refuses;
+ *  the anchor's own handler (data-slotter-mode="modal", data-remote="true")
+ *  is what opens the modal, and dispatching click on the element runs it. */
+async function dispatchClick(page, selector) {
+  if (!page) throw new Error("click probe needs the runner's page helper");
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return false;
+    el.click();
+    return true;
+  }, selector);
+}
+
 /**
  * Drives the affordance-target probes for one action. `ctx` carries the
  * engine base URL and the settle helper. Returns the sequence entries to
  * append; an empty list means the action needs none of these cases.
  */
 export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest }) {
+  const ctx = { text, base, card, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout };
   const sequence = [];
   const t = String(text ?? "");
 
@@ -653,6 +721,305 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
         count: restored ? 1 : 0,
       });
     }
+  }
+
+
+  // 15. RichText edit opens as a modal (ACT-018, B-018): the edit modal is
+  //     opened by the card menu's edit anchor (a.edit-link, href ending /edit,
+  //     data-slotter-mode="modal"), and the :edit view it loads is the
+  //     modal-wrapped dialog (card-mod-edit.ts:70 haml :modal_dialog machinery;
+  //     :1599 emits div.modal#modal-container[role=dialog]). The surface page
+  //     for surface 4 is the deck home, where no edit link and no modal ever
+  //     render, so the runner's "Edit" locate and modal assert measured
+  //     affordance-not-found against a page that cannot carry either. The
+  //     probe card is the RichText fixture card (the action names the RichText
+  //     editor; the modal must carry TinyMCE). Both halves of the action's
+  //     claim are asserted: the anchor opens the modal IN PAGE, and the shown
+  //     modal carries the edit form. Pass requires the modal to actually open;
+  //     the anchor's presence is recorded as a witness.
+  if (/richtext edit opens/i.test(t)) {
+    const richCard = RICHTEXT_AFFORDANCE_TARGET_CARD;
+    await goto(`/${encodeURIComponent(richCard)}`);
+    await settle();
+    const editLinks = await countSelector("a.edit-link[href$='/edit']");
+    sequence.push({
+      interaction: "witness",
+      selector: `edit affordance on /${richCard}`,
+      count: editLinks,
+    });
+    let clicked = false;
+    if (editLinks > 0) {
+      clicked = await dispatchClick(page, "a.edit-link[href$='/edit']");
+      if (clicked) {
+        await page.waitForSelector(".modal.show", { timeout: stepTimeout }).catch(() => {});
+        await settle();
+      }
+    }
+    const modalShown = clicked ? await countSelector(".modal.show") : 0;
+    const formInModal = clicked ? await countSelector(".modal.show form.card-form") : 0;
+    sequence.push({
+      interaction: "assert-present",
+      selector: `edit link opens the edit modal in page on /${richCard} (.modal.show carrying form.card-form)`,
+      count: modalShown > 0 && formInModal > 0 ? 1 : 0,
+      editLinks,
+      clicked,
+      modalShown,
+      formInModal,
+    });
+  }
+
+  // 16. The File create form (ACT-059, B-059): the form that renders
+  //     input[type=file] is the File create form at /new/File - the same page
+  //     the files surfaces drive ("capability catalog: files" and "cover-b.
+  //     files" both point at /new/File, where the same 2026-10-18-regrade run
+  //     recorded input[type=file] count 1 in ACT-143/ACT-148). Surface 7b
+  //     points at the deck home, which carries no upload control, so the
+  //     action measured affordance-not-found against a page that never
+  //     carries it.
+  if (/file create form/i.test(t)) {
+    await goto("/new/File");
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: "file input on the File create form /new/File",
+      count: await countSelector("input[type=file]"),
+    });
+    sequence.push({
+      interaction: "witness",
+      selector: "save control on the File create form /new/File",
+      count: await countSelector("form.card-form .create-submit-button"),
+    });
+  }
+
+  // 17. C11 Autoname cardtype (ACT-130): the capability is a behavior, not a
+  //     static control - "name generated on save". The engine implements it
+  //     end to end (card-action-engine.ts:1774 autonamedCreateInput chooses
+  //     the first unoccupied successor on create; card-mod-edit.ts:2367 drops
+  //     the name row from the new form when the type carries an autoname
+  //     rule), but synthetic-v1 seeds no +*autoname rule, so no page of the
+  //     seeded deck can render the capability, and the runner's verb decoder
+  //     minted a "Save" text hint no decko create form ever matches (the
+  //     control is labeled "Submit" - the create form's save control is
+  //     form.card-form .create-submit-button). The probe stages the real
+  //     contract on a private fixture: a scratch Cardtype plus its type-scoped
+  //     +*autoname rule (both through the create form, as the edge harness's
+  //     C11 check does - tools/edge-signed-in-exercise/checks-unmeasured-save-
+  //     edit-create.mjs:113-181), then asserts the engine's own bytes of each
+  //     half: the autonamed create form renders NO name field, the unnamed
+  //     save answers a redirect AT THE RULE'S GENERATED NAME, and that page
+  //     renders. Pass requires the whole chain; a failed setup asserts 0 and
+  //     the action stays red. Names are run-stamped; the session deck is a
+  //     throwaway copy (lib/engines.mjs), and no other matrix action creates
+  //     the scratch type.
+  if (/autoname/i.test(t)) {
+    const stamp = `F${Date.now().toString(36)}`;
+    const typeName = `ScratchC11Type_${stamp}`;
+    const seedName = `ScratchC11Card_${stamp}`;
+    const typeCreate = await createThroughNewCardForm(ctx, { newPath: "/new/Cardtype", name: typeName });
+    const ruleCreate = typeCreate.ok
+      ? await createThroughNewCardForm(ctx, { newPath: "/new/Phrase", name: `${typeName}+*type+*autoname`, content: seedName })
+      : { ok: false, status: null, redirectPath: null };
+    sequence.push({
+      interaction: "assert-present",
+      selector: "C11 setup: private Cardtype and its type-scoped +*autoname rule stored",
+      count: typeCreate.ok && ruleCreate.ok ? 1 : 0,
+      typeStatus: typeCreate.status,
+      ruleStatus: ruleCreate.status,
+      typeName,
+      ruleName: `${typeName}+*type+*autoname`,
+      seedName,
+    });
+    if (typeCreate.ok && ruleCreate.ok) {
+      await goto(`/new/${encodeURIComponent(typeName)}`);
+      await settle();
+      const nameFields = await countSelector("input[name='card[name]']");
+      sequence.push({
+        interaction: "assert-present",
+        selector: `autonamed create form renders no name field on /new/${typeName}`,
+        count: nameFields === 0 ? 1 : 0,
+        nameFields,
+      });
+      sequence.push({
+        interaction: "witness",
+        selector: `save control on the autonamed create form /new/${typeName}`,
+        count: await countSelector("form.card-form .create-submit-button"),
+      });
+      const submitted = await createThroughNewCardForm({ ...ctx, stepTimeout }, { newPath: `/new/${encodeURIComponent(typeName)}`, name: "", requireNameField: false });
+      const redirectPath = submitted.redirectPath;
+      const generated =
+        submitted.ok && !!redirectPath && decodeURIComponent(redirectPath).toLowerCase().includes(seedName.toLowerCase());
+      sequence.push({
+        interaction: "assert-present",
+        selector: "unnamed save answers a redirect at the rule's generated name",
+        count: generated ? 1 : 0,
+        status: submitted.status,
+        redirectPath,
+      });
+      if (redirectPath) {
+        await goto(redirectPath);
+        await settle();
+        sequence.push({
+          interaction: "assert-present",
+          selector: `generated card page renders at ${redirectPath}`,
+          count: await countSelector(".d0-card-header-title"),
+        });
+      }
+    }
+  }
+
+  // 18. Accordion open/close behavior (ACT-173, UI1): the accordion open/close
+  //     control is button.accordion-button[data-bs-toggle=collapse], rendered
+  //     by the rules views' accordion emitters (card-mod-rules.ts
+  //     accordionItem:1672-1690) on a SET card's rules view - measured on this
+  //     tree, /*all?view=board_rules_tab renders the .accordion with 6 toggles
+  //     and Basic+*type (no rules on this deck) renders none. The deck home
+  //     the surface visits renders no accordion, so the verb decoder's "Close"
+  //     text hint measured affordance-not-found against a page that never
+  //     carries the control. Both halves of the named behavior are asserted:
+  //     a click opens the group (the button's collapsed class drops and the
+  //     collapse body shows) and a second click closes it. Pass requires the
+  //     toggling; toggle presence is recorded as a witness.
+  if (/accordion/i.test(t)) {
+    await goto("/*all?view=board_rules_tab");
+    await settle();
+    const toggles = await countSelector("button.accordion-button[data-bs-toggle='collapse']");
+    sequence.push({
+      interaction: "witness",
+      selector: "accordion open/close toggles on /*all?view=board_rules_tab",
+      count: toggles,
+    });
+    if (toggles > 0) {
+      await dispatchClick(page, "button.accordion-button");
+      await page.waitForTimeout(600);
+      await settle();
+      const open = await countSelector("button.accordion-button:not(.collapsed)");
+      const openBody = await countSelector(".accordion-collapse.collapse.show");
+      sequence.push({
+        interaction: "assert-present",
+        selector: "accordion button opens its group on click on /*all?view=board_rules_tab",
+        count: open === 1 && openBody > 0 ? 1 : 0,
+        open,
+        openBody,
+      });
+      await dispatchClick(page, "button.accordion-button");
+      await page.waitForTimeout(600);
+      await settle();
+      const openAfterClose = await countSelector("button.accordion-button:not(.collapsed)");
+      sequence.push({
+        interaction: "assert-present",
+        selector: "accordion button closes its group on a second click on /*all?view=board_rules_tab",
+        count: openAfterClose === 0 ? 1 : 0,
+        openAfterClose,
+      });
+    }
+  }
+
+  // 19. C14's *right+*default prefill (ACT-075): the affordance is the NEW
+  //     form of a card whose RIGHT side the rule names - the fixture's
+  //     summary+*right+*default ("<p>No summary yet.</p>",
+  //     reference-harness/fixtures/synthetic-v1/deck.json) prefills the
+  //     +summary field group of <card>+summary's create form
+  //     (render.ts newCardDefaultContent, format.ts's fabricated new-card
+  //     dbContent). Probing "/new" - the unnamed generic form - and decoding
+  //     the rule names in the prose ("*right", "*default") as field hints
+  //     measured affordance-not-found against a page that never carries the
+  //     rule's field group: /new renders no .RIGHT-* group for any rule, on
+  //     the ts engine and on the Ruby oracle alike. The junction create form
+  //     is <left>+summary/new (measured on this tree: .RIGHT-summary renders
+  //     1 field group whose textarea carries the rule content verbatim).
+  //     The count asserts the CONTRACT - group present AND value equal to
+  //     the rule's content - so an engine regression that empties the
+  //     prefill (the shape the 50717cca whole-harness C14 red recorded)
+  //     stays red here.
+  if (/\*right\+\*default/.test(t)) {
+    if (!page) throw new Error("*right+*default probe needs the runner's page helper");
+    const junctionPath = `/${encodeURIComponent(card)}+summary/new`;
+    await goto(junctionPath);
+    await settle();
+    const groups = await countSelector(".RIGHT-summary");
+    const value =
+      groups > 0
+        ? await page
+            .locator(".RIGHT-summary textarea.d0-card-content, .RIGHT-summary input.d0-card-content")
+            .first()
+            .inputValue()
+            .catch(() => null)
+        : null;
+    const expected = "<p>No summary yet.</p>";
+    sequence.push({
+      interaction: "assert-present",
+      selector: `*right+*default rule content prefills the new +summary field on ${junctionPath}`,
+      count: groups > 0 && value === expected ? 1 : 0,
+      fieldGroups: groups,
+      value,
+      expected,
+    });
+  }
+
+  // 20. P5's structure-in-the-main-slot rendering (ACT-101): the affordance
+  //     is a structured card's rendered structure - the fixture's
+  //     Topic+*type+*structure ("{{+summary}}\n{{+tags|link}}\n{{+related|closed}}",
+  //     synthetic-v1 deck.json) renders its nests as the main slot of
+  //     /Topic_001: .card-slot.RIGHT-summary (the +summary nest) and
+  //     .card-slot.closed-view.RIGHT-related (the +related nest with the
+  //     template's |closed option). Probing the deck home and decoding the
+  //     rule-set names in the prose ("*right", "*self", "*structure") as
+  //     field hints measured affordance-not-found against a page that never
+  //     carries a card, let alone its structure. Disclosed residual: the
+  //     action text names a *self+*structure rule; synthetic-v1 holds no
+  //     X+*self+*structure card (its only *self rule is
+  //     Topic 003+*self+*read), so the SELF-set selection itself has no
+  //     fixture witness and this probe cannot create one (read-only, GET
+  //     only - a mid-run write would contaminate every later action). What
+  //     is pinned here is the structure-renders-in-the-main-slot behavior
+  //     the action names, on the fixture's own structure rule; the engine's
+  //     self-set rule resolution is engine-covered (rules/lookup.ts's
+  //     *self candidate walk) and the whole-harness instrument graded P5
+  //     pass on a self-made *self+*structure witness.
+  if (/\*self\+\*structure/.test(t)) {
+    const structureCard = "Topic_001";
+    await goto(`/${structureCard}`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `structure rule (fixture Topic+*type+*structure) renders its +summary nest in the main slot on /${structureCard}`,
+      count: await countSelector(".card-slot.RIGHT-summary"),
+    });
+    sequence.push({
+      interaction: "assert-present",
+      selector: `structure rule renders its +related nest with the template's closed view on /${structureCard}`,
+      count: await countSelector(".card-slot.closed-view.RIGHT-related"),
+    });
+  }
+
+  // 21. Render-mode semantics (ACT-182): the contract is the SAME card view
+  //     answering in two render modes - inline-modal (the engine's :modal
+  //     wrapper, card-mod-layout modal.rb; ported views listed in
+  //     render/page.ts's modal-wrapper set) and plain navigation. The
+  //     wrapper has its own URL: /<card>?view=modal renders .modal.show;
+  //     the plain /<card> navigates with none. Probing the deck home with
+  //     no view parameter measured modal-not-present against a navigation
+  //     - a page state that cannot carry the affordance on any engine; the
+  //     modal is not "unobservable", it lives on its own page like every
+  //     other case here. Both halves are asserted: the wrapper renders in
+  //     modal mode, and the same view navigates with no wrapper.
+  if (/inline-modal|render-mode/i.test(t)) {
+    await goto(`/${encodeURIComponent(card)}?view=modal`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `modal wrapper of the card view renders on /${card}?view=modal (inline-modal mode)`,
+      count: await countSelector(".modal.show"),
+    });
+    await goto(`/${encodeURIComponent(card)}`);
+    await settle();
+    const plainModal = await countSelector(".modal.show");
+    sequence.push({
+      interaction: "assert-present",
+      selector: `the same view navigates with no modal wrapper on /${card} (navigation mode)`,
+      count: plainModal === 0 ? 1 : 0,
+      plainModalWrapperCount: plainModal,
+    });
   }
 
   return sequence;
