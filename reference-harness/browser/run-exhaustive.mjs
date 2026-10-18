@@ -142,6 +142,7 @@ import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine, attachEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { affordanceTargetProbes } from "./lib/exhaustive-affordance-targets.mjs";
+import { ungradeableBatch2TargetProbes } from "./lib/exhaustive-ungradeable-batch2-targets.mjs";
 import { richEditorsReady } from "./lib/editor-ready.mjs";
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest } from "./lib/live-walk-profile.mjs";
 
@@ -754,6 +755,33 @@ async function probeAction(page, action, lastStatusRef, actors) {
   // must ride the signed-in session, not an anonymous request. Each created
   // context is closed before probeAction returns.
   const createdActorContexts = [];
+  // The second-actor helper both probe modules share: a fresh, separately
+  // signed-in request context for a fixture actor, closed by the runner with
+  // the action's other created contexts (hoisted so the batch-2 target-case
+  // module receives the same helper the primary module gets).
+  const newActorRequest = async (actorName) => {
+    const actor = (actors ?? {})[actorName];
+    if (!actor?.email) throw new Error(`second-save conflict probe: no fixture actor "${actorName}"`);
+    const actorContext = await page.context().browser().newContext();
+    createdActorContexts.push(actorContext);
+    actorContext.setDefaultTimeout(STEP_TIMEOUT);
+    await installWriteGateRoute(actorContext, liveWalk, { onBlocked: recordBlockedWrite });
+    // The sign-in form's action is /update/*signin (the browser sign-in
+    // drives form[action="/update/*signin"]'s submit button); POSTing the
+    // page URL /*signin itself is refused 403 (measured 2026-10-18 - the
+    // GET route does not answer POSTs), which refused every actor sign-in
+    // here.
+    const signInResponse = await actorContext.request.post(lastStatusRef.base + "/update/*signin", {
+      form: {
+        "card[subcards][+*email][content]": actor.email,
+        "card[subcards][+*password][content]": actor.password,
+      },
+    });
+    if (signInResponse.status() >= 400) {
+      throw new Error(`second editor sign-in as ${actorName} refused (${signInResponse.status()})`);
+    }
+    return guardRequest(actorContext.request, liveWalk, { onBlocked: recordBlockedWrite });
+  };
   try {
     const targetProbes = await affordanceTargetProbes({
       text,
@@ -772,31 +800,33 @@ async function probeAction(page, action, lastStatusRef, actors) {
       page,
       writeGate: { profile: liveWalk },
       pageRequest: guardRequest(page.context().request, liveWalk, { onBlocked: recordBlockedWrite }),
-      newActorRequest: async (actorName) => {
-        const actor = (actors ?? {})[actorName];
-        if (!actor?.email) throw new Error(`second-save conflict probe: no fixture actor "${actorName}"`);
-        const actorContext = await page.context().browser().newContext();
-        createdActorContexts.push(actorContext);
-        actorContext.setDefaultTimeout(STEP_TIMEOUT);
-        await installWriteGateRoute(actorContext, liveWalk, { onBlocked: recordBlockedWrite });
-        // The sign-in form's action is /update/*signin (the browser sign-in
-        // drives form[action="/update/*signin"]'s submit button); POSTing the
-        // page URL /*signin itself is refused 403 (measured 2026-10-18 - the
-        // GET route does not answer POSTs), which refused every actor sign-in
-        // here.
-        const signInResponse = await actorContext.request.post(lastStatusRef.base + "/update/*signin", {
-          form: {
-            "card[subcards][+*email][content]": actor.email,
-            "card[subcards][+*password][content]": actor.password,
-          },
-        });
-        if (signInResponse.status() >= 400) {
-          throw new Error(`second editor sign-in as ${actorName} refused (${signInResponse.status()})`);
-        }
-        return guardRequest(actorContext.request, liveWalk, { onBlocked: recordBlockedWrite });
-      },
+      newActorRequest,
     });
     sequence.push(...targetProbes);
+    // Batch-2 ungradeable-target cases (ungradeable-2 lane, 2026-10-18): the
+    // SECOND half by id order of the F2-ungradeable actions named by
+    // .runtime/exhaustive/2026-10-18-f2-ungradeable-full/run.md — batch 1 =
+    // ACT-066..ACT-161 (the sibling ungradeable-1 lane), batch 2 (this
+    // wiring) = ACT-163..ACT-190. Same required-legs contract as
+    // lib/exhaustive-affordance-targets.mjs; a driver throw is recorded as a
+    // failed required leg, never swallowed.
+    try {
+      const batch2Probes = await ungradeableBatch2TargetProbes({
+        text,
+        base: lastStatusRef.base,
+        goto: async (p) => { await page.goto(lastStatusRef.base + p, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {}); },
+        settle: () => settle(page),
+        countSelector: async (selector) => await page.locator(selector).count().catch(() => 0),
+        evaluate: (fn, arg) => page.evaluate(fn, arg),
+        page,
+        writeGate: { profile: liveWalk },
+        pageRequest: guardRequest(page.context().request, liveWalk, { onBlocked: recordBlockedWrite }),
+        newActorRequest,
+      });
+      sequence.push(...batch2Probes);
+    } catch (err) {
+      sequence.push({ interaction: "assert-present", case: "batch-2 target probes (driver threw)", required: true, selector: "batch-2 target probes", count: 0, error: String(err?.message ?? err) });
+    }
   } catch (err) {
     sequence.push({ interaction: "assert-present", case: "affordance-target probes (driver threw)", required: true, selector: "affordance-target probes", count: 0, error: String(err?.message ?? err) });
   } finally {
