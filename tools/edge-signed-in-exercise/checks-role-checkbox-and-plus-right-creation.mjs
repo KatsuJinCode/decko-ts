@@ -1,4 +1,5 @@
 import { storedSessionActorId } from './lib/session-actor.mjs';
+import { waitForCreatedCardLanding } from './lib/create-landing.mjs';
 // checks-role-checkbox-and-plus-right-creation.mjs — instruments for the two
 // PERMISSION / RULE-STORAGE actions the coverage matrix
 // (docs/registry/instrument-coverage-matrix.json, last_recomputed
@@ -963,7 +964,13 @@ export const checks = [
         const observed = await pending;
         let postStatus = null;
         if (observed.error === undefined) { await observed.response.finished(); postStatus = observed.response.status(); }
-        await page.waitForTimeout(1000);
+        // A direct main-slot create redirects asynchronously after its POST.
+        // A fixed pause can expire before that redirect and race the fresh read.
+        if (!servedShape.inModal && postStatus !== null && postStatus < 400) {
+          await waitForCreatedCardLanding(page, stack.origin, rightName);
+        } else {
+          await page.waitForTimeout(1000);
+        }
 
         const after = fixtureCard(database(), rightName);
         const anyTrash = database().prepare("SELECT id,name,trash,type_id,left_id,right_id FROM cards WHERE name=?").all(rightName);

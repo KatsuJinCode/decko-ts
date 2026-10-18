@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { replayDelete } from '../lib/replay-delete.mjs';
+import { waitForCreatedCardLanding } from '../lib/create-landing.mjs';
 
 test('owner delete waits for its actual AJAX redirect landing, even after 2500ms', async () => {
   let landingFinished = false;
@@ -43,6 +44,32 @@ test('owner delete waits for its actual AJAX redirect landing, even after 2500ms
     assert.equal(landingFinished, true, 'the next owner step must not race the pending redirect');
     assert.equal(page.url(), `${origin}/landing`);
     assert.equal(await page.locator('h1').textContent(), 'Deleted');
+  } finally {
+    await browser?.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('direct create waits for its delayed application redirect before a fresh read', async () => {
+  const server = createServer((req, res) => {
+    res.setHeader('content-type', 'text/html');
+    res.end(req.url === '/Card+*right+Member' ? '<h1>Created member</h1>' :
+      '<script>setTimeout(() => { location.href="/Card+*right+Member"; }, 1700)</script>');
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const { chromium } = createRequire(import.meta.url)('playwright-core');
+  const executablePath = ['C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(existsSync);
+  assert.ok(executablePath);
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true, executablePath });
+    const page = await browser.newPage();
+    await page.goto(origin);
+    await waitForCreatedCardLanding(page, origin, 'Card+*right+Member');
+    assert.equal(page.url(), `${origin}/Card+*right+Member`);
+    assert.equal(await page.locator('h1').textContent(), 'Created member');
   } finally {
     await browser?.close();
     await new Promise(resolve => server.close(resolve));
