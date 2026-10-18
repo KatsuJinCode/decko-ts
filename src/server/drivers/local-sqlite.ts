@@ -6,6 +6,14 @@
 // the calling thread, so this driver is only appropriate for local
 // development, tests and CLI tooling — never for an edge deployment.
 
+// The ambient module declaration lives in tests/schema/better-sqlite3.d.ts
+// (see BetterSqlite3Statement below for why the shared shim is not grown).
+// Under the engine typecheck's strict mode the untyped import would be a
+// TS7016, and the declaration only joins the program through this reference
+// — the config's explicit `types: ["node"]` excludes typeRoot auto-inclusion.
+// It sits here because a triple-slash directive is honored only before any
+// statement; below the imports it is an ordinary comment.
+/// <reference path="../../../tests/schema/better-sqlite3.d.ts" />
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
 import { rowIdOrOmit, TransactionGate } from "../driver.js";
 import Database from "better-sqlite3";
