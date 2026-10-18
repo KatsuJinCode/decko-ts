@@ -1987,6 +1987,16 @@ async function dispatchWriteRequest(
         name = existing.name?.s ?? updateName;
         result = await engine.useAsCurrentSkin(existing.id);
       } else if (existing === undefined) {
+        // A version-tracked editor targeted an existing card. Deletion must
+        // not turn that stale update into a create/revival. Explicit create,
+        // unversioned revival and look_in_trash history restores keep their
+        // existing paths; no canonical/history mutation has happened here.
+        const heldRevision = card["last_action_id_before_edit"];
+        if (heldRevision !== undefined && /^\d+$/.test(heldRevision) &&
+            await lookupTrashedCard(ctx.fetcher, markName ?? updateName)) {
+          throw new CardActionError("conflict", "Card changed or was deleted while being edited");
+        }
+
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
         // the create path revives). The name rides the request's own

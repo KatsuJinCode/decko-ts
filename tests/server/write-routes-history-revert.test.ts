@@ -183,4 +183,26 @@ describe("history revert requests over HTTP (:rollback_actions)", () => {
     expect((await actions()).length).toBe(countBefore + 1);
     expect((await actions()).at(-1)!.action_type).toBe(0); // the revival is a :create
   });
+
+  it("a held version-tracked edit cannot revive a deleted card or add history; explicit create still can", async () => {
+    const heldRevision = (await actions()).at(-1)!.id;
+    const deleted = await fetch(baseUrl + "/delete/Revert_Note?token=" + joeToken, {method:"DELETE",redirect:"manual"});
+    await deleted.text();
+    expect((await row()).trash).toBe(1);
+    const snapshot = async () => {
+      const rows: Record<string,unknown[]> = {};
+      for (const table of ["cards","card_references","card_acts","card_actions","card_changes"])
+        rows[table] = (await storage!.counting.query("SELECT * FROM " + table + " ORDER BY id",[])).rows;
+      return rows;
+    };
+    const before = await snapshot();
+    expect(await post("/update/Revert_Note", {
+      "card[content]":"stale edit after delete",
+      "card[last_action_id_before_edit]":String(heldRevision),
+    })).toBe(409);
+    expect(await snapshot()).toEqual(before);
+    expect(await post("/card/create", {"card[name]":"Revert Note","card[content]":"explicit new creation"})).toBe(303);
+    expect((await row()).trash).toBe(0);
+    expect((await row()).db_content).toBe("explicit new creation");
+  });
 });
