@@ -107,7 +107,10 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   // 3. Rename: the affordance is the card's own name form (the name field in
   //    the edit mode's name row), never a "follow" control - "referers
   //    follow" is the referers' behaviour, not a label on the page.
-  if (/\brename\b/i.test(t)) {
+  //    The match is the STEM ("rename" in "a card can be renamed"): a
+  //    trailing word boundary misses the inflected form, which is the form
+  //    the action text actually uses.
+  if (/rename/i.test(t)) {
     await goto(`/${encodeURIComponent(card)}?view=edit_name_row`);
     await settle();
     const nameField = await countSelector("input[name='card[name]'], textarea[name='card[name]']");
