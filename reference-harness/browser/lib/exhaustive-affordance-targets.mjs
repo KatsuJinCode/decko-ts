@@ -111,12 +111,16 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    trailing word boundary misses the inflected form, which is the form
   //    the action text actually uses.
   if (/rename/i.test(t)) {
-    await goto(`/${encodeURIComponent(card)}?view=edit_name_row`);
+    // The name form is its own view: /<card>/name_form renders the rename
+    // field (`card[name]`, alongside `success[name]`). The edit mode's name
+    // ROW (`?view=edit_name_row`) carries no input - it is the row that
+    // opens this form - so the probe drives the form itself.
+    await goto(`/${encodeURIComponent(card)}/name_form`);
     await settle();
     const nameField = await countSelector("input[name='card[name]'], textarea[name='card[name]']");
     sequence.push({
       interaction: "assert-present",
-      selector: `rename name field on /${card}?view=edit_name_row`,
+      selector: `rename name field card[name] on /${card}/name_form`,
       count: nameField,
     });
   }
