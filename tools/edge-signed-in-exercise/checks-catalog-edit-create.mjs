@@ -88,13 +88,15 @@ export const checks = [
       await visit("/" + encodeURIComponent(setCardName) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
-        const root = document.querySelector(".modal.show") ?? document;
+        const modal = document.querySelector(".modal.show");
+        const main = document.querySelector("#main");
+        const modalText = (modal?.textContent ?? "") + " " + (main?.textContent ?? "");
         return {
-          modalOpen: document.querySelector(".modal.show") !== null,
-          hasNestRulesSlot: root.querySelector('[class*="nest-rules"], [class*="nest_rules"]') !== null,
-          hasSettingList: root.querySelector('[class*="quick-edit-setting-list"], [class*="_setting-list"]') !== null,
-          hasRuleListText: /setting|rule/i.test(root.textContent ?? ""),
-          mainTextSnippet: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
+          modalOpen: modal !== null,
+          hasNestRulesSlot: (modal ?? document).querySelector('[class*="nest-rules"], [class*="nest_rules"]') !== null,
+          hasSettingList: (modal ?? document).querySelector('[class*="quick-edit-setting-list"], [class*="_setting-list"]') !== null,
+          hasRuleListText: /setting|rule/i.test(modalText),
+          mainTextSnippet: (main?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
         };
       });
       const rendered =
