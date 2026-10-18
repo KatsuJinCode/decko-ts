@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
+import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const STOCK_LAYOUT_CDNS = new Set([
@@ -84,9 +85,19 @@ function assetHostsFromEnv(env) {
 
 /**
  * Launches the throwaway browser and returns { page, close, consoleErrors, blocked }.
- * @param {{ origin: string, assetHosts: string[] }} opts
+ * @param {{ origin: string, assetHosts: string[], writeGate?: object, ledgerSink?: (line: object) => void }} opts
+ *   writeGate  — a live-walk profile (reference-harness/browser/lib/live-walk-profile.mjs).
+ *                When present, EVERY context this function creates (main and
+ *                isolated children) registers the write-mode backstop route
+ *                first: any page-driven write the profile does not admit is
+ *                aborted before the ordinary request policy runs. Absent/full
+ *                mode -> no gate, the local stack runs as always.
+ *   ledgerSink — when present (host-override targets: the owned request ledger
+ *                does not exist), every same-origin response is summarized
+ *                into it, so ledger-reading checks see the browser's own view
+ *                of real traffic and never invented evidence.
  */
-export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser }) {
+export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser, writeGate, ledgerSink }) {
   const { chromium } = await loadPlaywright();
   const executablePath = findBrowser();
   const allowedAssets = new Set(assetHosts);
@@ -110,6 +121,33 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     if (!sharedBrowser) await browser?.close().catch(() => undefined);
     throw error;
   }
+  // A non-loopback host-override target must be reachable at all: the two
+  // policy routes below admit only loopback origins, asset hosts and stock
+  // CDNs. The admit route continues the target origin's own requests; the
+  // write-mode gate (registered LAST, so it runs FIRST) has already aborted
+  // the writes its mode refuses before anything reaches this route.
+  if (writeGate?.override && !LOCAL_HOSTS.has(new URL(origin).hostname)) {
+    await context.route((url) => url.origin === origin, (route) => route.continue());
+  }
+  if (ledgerSink) {
+    context.on("requestfinished", async (request) => {
+      try {
+        const url = new URL(request.url());
+        if (url.origin !== origin) return;
+        const response = await request.response();
+        if (!response) return;
+        const t = request.timing();
+        ledgerSink({
+          method: request.method(),
+          path: url.pathname + url.search,
+          status: response.status(),
+          ms: Number.isFinite(t?.responseEnd) ? Math.round(t.responseEnd - t.startTime) : null,
+          serverTiming: response.headers()["server-timing"] ?? null,
+          channel: "browser-observed",
+        });
+      } catch { /* a context closing mid-request must not kill the run */ }
+    });
+  }
   // Requests may reach the local origin, the deck's configured asset host and
   // the stock layout CDNs. Anything else is blocked, so the page can never
   // reach the live site.
@@ -121,6 +159,12 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     const hosts = new Set([...allowedAssets, ...STOCK_LAYOUT_CDNS]);
     return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts, allowedFaviconUrls }) ? route.fallback() : route.abort('blockedbyclient');
   });
+  // The live-walk write gate is registered LAST, so it runs FIRST: it aborts
+  // the writes its mode refuses and defers (route.fallback) everything else
+  // to the routes above. context.route covers page forms and page fetches;
+  // the context.request channel is guarded separately at call sites
+  // (guardRequest), because APIRequestContext bypasses routing (measured).
+  if (writeGate) await installWriteGateRoute(context, writeGate);
   const page = await context.newPage();
   // Delete links are confirm-guarded; the harness answers the confirm as a
   // person who pressed OK, and records that it did.
@@ -151,7 +195,9 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     dialogs,
     blocked,
     // Independent cookies/storage, one owned browser process for the run.
-    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, ...options, sharedBrowser: browser }),
+    // Isolated children inherit the write gate and the ledger sink: a child
+    // context must never be a side door around the run's write mode.
+    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, ...options, sharedBrowser: browser }),
     close: async () => {
       try { await context.close(); } finally { if (!sharedBrowser) await browser.close(); }
     },

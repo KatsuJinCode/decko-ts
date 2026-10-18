@@ -9,6 +9,55 @@
 //        [--favicon-url <exact public favicon URL>]
 //        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
 //
+// LIVE-WALK PROFILE (host-override): the same journeys can be attached to a
+// RUNNING engine — any base URL the operator names — instead of booting the
+// local stack. Nothing is built, staged or seeded in that mode; the target's
+// own accounts are supplied with --credentials. The proof target is always a
+// LOCAL mock (reference-harness/browser/serve-local-mock-engine.mjs); this
+// tool records whatever host it is given, it never initiates one:
+//
+//   node tools/edge-signed-in-exercise.mjs \
+//     --base-url http://127.0.0.1:4603 \
+//     --credentials <target-accounts.json> \
+//     --only cql-search --out .runtime/edge-signed-in/<date>/report.md
+//
+//   --base-url <url> | env DECKO_LIVE_BASE
+//       Attach to the engine serving this origin. Requires --credentials
+//       ({admin:{name,email,password},member:{...}}; content never recorded,
+//       its path is). Render-configuration overrides (--ajax-save-redirect,
+//       --conflict-retry) are refused: the render configuration belongs to
+//       the target, not this run.
+//   --engine-profile <engines/*.json>
+//       Recorded in the receipt and validated (engines/live.json is the
+//       matching host-override profile and the default once --base-url is
+//       given). A host-override profile without a base URL is refused.
+//   --write-mode read-only|scratch-allowlist|full  (env HARNESS_WRITE_MODE)
+//       Default: read-only whenever --base-url/DECKO_LIVE_BASE is present
+//       (fail-safe), full for the local stack.
+//       - read-only skips EVERY write-path action (card create/update/
+//         delete/upload/mail — the engine's whole write-route table,
+//         including the GET /update/<mark> first-class write route) and
+//         grades read journeys only; write-subject groups record skips,
+//         never passes, never fails, and read-only modules are refused at
+//         startup (an attached host exposes no owned mail sink).
+//       - scratch-allowlist admits a write only when the card it targets
+//         carries an operator-approved scratch prefix from
+//         --scratch-allowlist <file> (env HARNESS_SCRATCH_ALLOWLIST; one
+//         prefix per line, e.g. "Harness_*"). The file is read AT RUN TIME:
+//         ABSENT or empty means every write is skipped (fail-safe).
+//   Session operations (sign-in POST /update/*signin, sign-out) stay
+//   permitted in every mode: no card is created, changed or mailed.
+//   Checks whose evidence reads the owned local database or request ledger
+//   beyond the browser's own view are recorded as skipped on a host-override
+//   target — a receipt never pretends evidence it could not collect.
+//   The target host and write mode are recorded in EVERY run report
+//   (provenance ".liveWalk", the report header, and the JSON run record).
+//   Enforcement is two layers (reference-harness/browser/lib/
+//   live-walk-profile.mjs): a browser-route backstop that aborts any
+//   page-driven write the mode refuses, and a guard on the request-context
+//   channel that routes cannot see (measured: context.request bypasses
+//   context.route).
+//
 // It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
 // engine.bundle.js, rebuilt from deploy/bunny-worker-src by
 // tools/bundle-bunny-edge-engine.mjs — behind a local HTTPS host, with the
@@ -48,9 +97,28 @@ import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artif
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
+import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
+import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
 const hasFlag = (name) => process.argv.includes(`--${name}`);
+// Live-walk profile: the host-override target and its write mode, resolved
+// before anything runs so a mis-specified target is refused, not half-run.
+// Without --base-url/DECKO_LIVE_BASE the local stack runs exactly as before.
+const LIVE_WALK_DEFAULT_PROFILE = join(REPO, "reference-harness/browser/engines/live.json");
+const liveWalkProfilePath = argOf("engine-profile") ?? ((argOf("base-url") ?? process.env.DECKO_LIVE_BASE) ? LIVE_WALK_DEFAULT_PROFILE : null);
+const liveWalkArgs = {
+  "base-url": argOf("base-url") ?? process.env.DECKO_LIVE_BASE,
+  "write-mode": argOf("write-mode") ?? process.env.HARNESS_WRITE_MODE,
+  "scratch-allowlist": argOf("scratch-allowlist") ?? process.env.HARNESS_SCRATCH_ALLOWLIST,
+};
+if (!liveWalkArgs["base-url"] && liveWalkArgs["write-mode"] && !liveWalkProfilePath) {
+  throw new Error("--write-mode needs a target: pass --base-url <url> (the local stack always runs full — it stages a throwaway deck copy)");
+}
+const liveWalk = liveWalkProfilePath
+  ? resolveLiveWalkProfile({ args: liveWalkArgs, env: process.env, engine: loadEngine(resolve(liveWalkProfilePath)) })
+  : { override: false, mode: "full", modeSource: "default: full for the locally booted stack", scratch: null, origin: null, host: null, engineName: null, sessionOpsAllowed: true };
+const restrictWrites = liveWalk.override;
 const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
 const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
 const supportedTopics = ['account','owner','owner-replay','richtext','member-delete','cql-search',...moduleTopics];
@@ -58,6 +126,9 @@ const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
   (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
 if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
 if(hasFlag('case')&&(argOf('only')!=='cover-b'||!(argOf('case')??'').split(',').every(id=>checkModules.find(m=>m.meta.topic==='cover-b')?.meta.capabilityIds.includes(id))))throw Error('--case requires --only cover-b and comma-separated declared capability IDs');
+// A host-override target exposes no owned mail sink and the run must never
+// imply one: mail-required modules are refused at startup, not run degraded.
+if (restrictWrites && mailRequired) throw new Error(`host-override target (${liveWalk.origin}, mode ${liveWalk.mode}): owned local mail capture is impossible; refusing mail-required check modules: ${checkModules.filter(m => m.meta.requiresMail === true).map(m => m.meta.topic).join(", ")}`);
 
 const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
 const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
@@ -77,6 +148,9 @@ let htmlSequence = 0;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
 const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
+// The host this run drives and the write mode it runs under — recorded for
+// EVERY run, local stack or host override (lib/live-walk-profile.mjs).
+provenance.liveWalk = { ...targetProvenance(liveWalk), engineProfile: liveWalkProfilePath ? liveWalkProfilePath.replace(/\\/g, "/") : null };
 provenance.selection = { only: argOf('only') ?? null, case:argOf('case')??null, diagnosticOnly: argOf('only') !== undefined };
 provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,requiresMail:meta.requiresMail===true,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
 
@@ -86,14 +160,24 @@ const results = [];
 let currentGroup = "";
 const group = (name) => { currentGroup = name; sampleMemory(`group:${name}`); console.log(`\n== ${name}`); };
 function record(check, pass, evidence, timing = {}) {
-  results.push({ group: currentGroup, check, pass, evidence, timing });
-  sampleMemory('check', { checks: results.length, failed: results.filter(item => !item.pass).length });
-  console.log(`  ${pass ? "PASS" : "FAIL"}  ${check}${timing.wallMs !== undefined ? `  (${timing.wallMs}ms)` : ""}`);
-  if (!pass) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
+  results.push({ group: currentGroup, check, pass, skipped: pass === null ? true : undefined, evidence, timing });
+  sampleMemory('check', { checks: results.length, failed: results.filter(item => item.pass === false).length });
+  console.log(`  ${pass === true ? "PASS" : pass === null ? "SKIP" : "FAIL"}  ${check}${timing.wallMs !== undefined ? `  (${timing.wallMs}ms)` : ""}`);
+  if (pass === false) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
 }
-/** One check body. A thrown error is a failure, never a fatal. */
+/**
+ * One check body. A thrown error is a failure, never a fatal — EXCEPT the two
+ * skip shapes a host-override run produces honestly: a write the live-walk
+ * mode refuses (WriteSkippedError) and a check whose evidence lives in the
+ * owned local surface the override does not have (database reads). Either is
+ * recorded as a SKIP with its reason, never as a pass and never as a failure.
+ */
 async function attempt(check, fn) {
   try { return await fn(); } catch (error) {
+    if (error?.writeSkipped || error?.ownedLocalSurfaceUnavailable) {
+      record(check, null, { skipped: true, reason: String(error?.message ?? error) });
+      return undefined;
+    }
     try {
       const capture = String(++htmlSequence).padStart(3, '0') + '-failure';
       writeFileSync(join(RAW, `${capture}.html`), await browser.page.content(), { flag: 'wx' });
@@ -106,11 +190,21 @@ async function attempt(check, fn) {
 
 // ------------------------------------------------------------------- setup
 
-if (!existsSync(SOURCE_DECK)) throw new Error(`source deck not found: ${SOURCE_DECK}`);
-if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0) throw new Error('use an immutable database snapshot without an active WAL');
-provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
+// A host-override target stages no local deck: the source-deck snapshot checks
+// (and the source-deck sha256 in the receipt) belong to the local stack only.
+if (!restrictWrites) {
+  if (!existsSync(SOURCE_DECK)) throw new Error(`source deck not found: ${SOURCE_DECK}`);
+  if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0) throw new Error('use an immutable database snapshot without an active WAL');
+  provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
+} else {
+  provenance.sourceDeckSha256 = null;
+  provenance.sourceDeckNote = 'host-override target: no local deck snapshot is staged or read';
+}
 provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signed-in-exercise/capabilities.json')));
-if (argOf('supplemental-checks')) provenance.supplementalChecks = { path:resolve(argOf('supplemental-checks')), sha256:digest(readFileSync(resolve(argOf('supplemental-checks')))) };
+if (argOf('supplemental-checks')) {
+  if (restrictWrites) throw new Error('supplemental-checks drive writes; they are not offered against a host-override target');
+  provenance.supplementalChecks = { path:resolve(argOf('supplemental-checks')), sha256:digest(readFileSync(resolve(argOf('supplemental-checks')))) };
+}
 const pinnedArtifact = argOf('engine-bundle') ? pinnedEngineArtifact({ path:argOf('engine-bundle'), sha256:argOf('engine-bundle-sha256'), sourceCommit:argOf('engine-source') }) : undefined;
 if (!pinnedArtifact && (hasFlag('engine-bundle') || hasFlag('engine-bundle-sha256') || hasFlag('engine-source'))) throw new Error('engine artifact flags require a bundle path, exact SHA-256 and declared source commit');
 if (pinnedArtifact) provenance.engineArtifact = pinnedArtifact;
@@ -147,22 +241,136 @@ process.on("uncaughtException", (error) => {
 });
 mkdirSync(RUN_DIR, { recursive: true });
 
-console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
-console.log(pinnedArtifact ? 'compiling local test support + verifying pinned engine artifact' : "compiling engine + rebuilding the deployed bundle");
-ensureEngineDist();
-const bundlePath = pinnedArtifact?.path ?? buildBundle();
-provenance.bundleSha256 = digest(readFileSync(bundlePath));
-if (pinnedArtifact && provenance.bundleSha256 !== pinnedArtifact.sha256) throw new Error('pinned artifact changed after admission');
-provenance.buildReceipt = JSON.parse(readFileSync(join(REPO, '.runtime/browser-build.json'), 'utf8'));
-provenance.buildReceiptScope = pinnedArtifact ? 'local harness support, not the supplied engine artifact' : 'engine and local support from this checkout';
-console.log(`bundle: ${bundlePath} (${(readFileSync(bundlePath).length / 1048576).toFixed(1)} MB)`);
+let localDeck = null;
+let cardsCopied = null;
+// ---- target setup: host-override attach OR the local stack (as before) ----
+let stack;
+let assetHosts = [];
+let allowedFaviconUrls = [];
+if (restrictWrites) {
+  // Host-override attach: nothing is built, staged, seeded or read from any
+  // provider. The engine is whatever already serves --base-url; the render
+  // configuration belongs to it, not to this run.
+  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined) {
+    throw new Error('--ajax-save-redirect / --conflict-retry are render-configuration overrides for the local stack; a host-override target carries its own configuration');
+  }
+  const credentialsFile = argOf("credentials");
+  if (!credentialsFile) throw new Error(`host-override target ${liveWalk.origin} needs --credentials <file> naming the target's own accounts ({admin:{name,email,password},member:{...}}); this run seeds nothing and the file's content is never recorded (path and presence only, sha256 deliberately omitted for a secret-bearing file)`);
+  if (!existsSync(resolve(credentialsFile))) throw new Error(`credentials file not found: ${credentialsFile}`);
+  provenance.credentialsFile = { path: credentialsFile.replace(/\\/g, "/"), note: "secret-bearing: content and sha256 never recorded" };
+  provenance.bundleSha256 = null;
+  provenance.buildReceipt = null;
+  provenance.buildReceiptScope = "host-override target: nothing built; the engine is the target's own";
+  provenance.renderConfigurationOverrides = {};
+  provenance.effectiveLiveFlags = null;
+  provenance.readOnlyAssetHosts = [];
+  provenance.readOnlyFaviconUrls = [];
+  provenance.renderConfigurationSha256 = null;
+  provenance.executedBundleSha256 = null;
+  provenance.localMailCapture = { enabled: false, transport: null, externalDelivery: false, note: "host-override target: no owned mail sink" };
+  provenance.memoryEvidence = null;
+  var creds = JSON.parse(readFileSync(resolve(credentialsFile), "utf8"));
+  if (!creds?.admin?.email || !creds?.member?.email) throw new Error("credentials file must carry {admin:{name,email,password},member:{name,email,password}}");
+  stack = { origin: liveWalk.origin, host: { requests: [] }, renderConfigurationSha256: null, close: async () => {}, cleanup: () => {} };
+  console.log(`edge signed-in exercise — host-override target ${stack.origin} (mode ${liveWalk.mode}, profile ${liveWalk.engineName})`);
+} else {
+  console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
+  console.log(pinnedArtifact ? 'compiling local test support + verifying pinned engine artifact' : "compiling engine + rebuilding the deployed bundle");
+  ensureEngineDist();
+  const bundlePath = pinnedArtifact?.path ?? buildBundle();
+  provenance.bundleSha256 = digest(readFileSync(bundlePath));
+  if (pinnedArtifact && provenance.bundleSha256 !== pinnedArtifact.sha256) throw new Error('pinned artifact changed after admission');
+  provenance.buildReceipt = JSON.parse(readFileSync(join(REPO, '.runtime/browser-build.json'), 'utf8'));
+  provenance.buildReceiptScope = pinnedArtifact ? 'local harness support, not the supplied engine artifact' : 'engine and local support from this checkout';
+  console.log(`bundle: ${bundlePath} (${(readFileSync(bundlePath).length / 1048576).toFixed(1)} MB)`);
 
-const localDeck = join(RUN_DIR, "deck.sqlite3");
-console.log("building the local deck on the engine schema (rows copied, indexes + ANALYZE)");
-const deckReport = await buildLocalDeck({ source: SOURCE_DECK, out: localDeck });
-if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)) throw new Error('source changed during snapshot copy; refusing mixed-state capture');
-const cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
-console.log(`  cards copied: ${cardsCopied}`);
+  localDeck = join(RUN_DIR, "deck.sqlite3");
+  console.log("building the local deck on the engine schema (rows copied, indexes + ANALYZE)");
+  const deckReport = await buildLocalDeck({ source: SOURCE_DECK, out: localDeck });
+  if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)) throw new Error('source changed during snapshot copy; refusing mixed-state capture');
+  cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
+  console.log(`  cards copied: ${cardsCopied}`);
+
+  const credentialsPath = join(RUN_DIR, "credentials.json");
+  await seedLocalAccounts({ deck: localDeck, credentialsOut: credentialsPath });
+  var creds = JSON.parse(readFileSync(credentialsPath, "utf8"));
+  console.log(`seeded local accounts: ${creds.admin.name} (admin), ${creds.member.name} (member)`);
+
+  const { env: liveEnv } = await readLiveScriptEnv(SECRETS);
+  const captureEnv = { ...liveEnv };
+  const ajaxSaveRedirect = argOf('ajax-save-redirect');
+  if (ajaxSaveRedirect !== undefined) {
+    if (!['0', '1'].includes(ajaxSaveRedirect)) throw new Error('ajax-save-redirect must be 0 or 1');
+    captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
+  }
+  provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
+  const conflictRetry=argOf('conflict-retry');
+  if(conflictRetry!==undefined){
+   if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
+   captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
+   provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
+  }
+  provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
+    keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
+    liveEnabled: captureEnv.DECKO_LIVE_RENDER !== '0', liveDefaulted: captureEnv.DECKO_LIVE_RENDER === undefined };
+  assetHosts = [...new Set(Object.entries(liveEnv)
+    .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
+    .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
+    .filter(Boolean))];
+  // A migrated deck may retain an asset URL outside its configured current
+  // CDN. Admit an explicitly named public host for read-only resources; the
+  // browser policy still refuses navigation, fetch/XHR and every write there.
+  const additionalAssetHost = argOf('asset-host');
+  if (additionalAssetHost) {
+    const candidate = new URL(`https://${additionalAssetHost}`);
+    if (candidate.hostname !== additionalAssetHost || candidate.port || candidate.pathname !== '/' || candidate.username || candidate.password || ['localhost', '127.0.0.1', '[::1]'].includes(candidate.hostname)) throw new Error('asset-host must name one public hostname');
+    assetHosts.push(candidate.hostname);
+  }
+  provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
+  // A page's favicon read arrives as resourceType `other`, which the browser
+  // policy admits only by exact URL. The deployment's own render configuration
+  // names that URL (DECKO_SERVED_FAVICON_URL; for this deck it is
+  // byte-identical to the head's card-derived favicon_tag href), so the default
+  // invocation admits it; --favicon-url overrides; neither leaves it blocked.
+  allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href]
+    : (liveEnv.DECKO_SERVED_FAVICON_URL ? [new URL(liveEnv.DECKO_SERVED_FAVICON_URL).href] : []);
+  for (const value of allowedFaviconUrls) {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('declared favicon URL must be an exact HTTPS resource on a declared public asset host');
+  }
+  provenance.readOnlyFaviconUrls = allowedFaviconUrls;
+
+  let mailSettings;
+  if(mailRequired){
+    mkdirSync(MAIL_DIR);
+    const mailDb=new Database(localDeck,{readonly:true});
+    let siteTitle;
+    try{siteTitle=mailDb.prepare("SELECT db_content FROM cards WHERE codename='title' AND trash=0 LIMIT 1").get()?.db_content;}finally{mailDb.close();}
+    mailSettings={siteTitle,tokenSecret:randomBytes(32).toString('hex'),sink:message=>{
+      mailInbox.push(message);
+      writeFileSync(join(MAIL_DIR,String(message.seq).padStart(3,'0')+'.json'),JSON.stringify(message,null,2)+'\n',{flag:'wx'});
+    }};
+  }
+  provenance.localMailCapture={enabled:mailRequired,transport:mailRequired?'owned in-process capture':null,externalDelivery:false};
+  stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,mail:mailSettings,
+    onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
+      status: line.status, responseBytes: line.bytes ?? 0 }) });
+  provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
+  provenance.executedBundleSha256 = stack.host.sourceBundleSha256;
+  provenance.memoryEvidence = { file: basename(MEMORY), scope: 'combined SDK and harness process', forcedGc: false };
+  sampleMemory('stack-ready');
+  console.log(`local edge host: ${stack.origin}`);
+}
+if (!restrictWrites) {
+  try {
+    execFileSync(process.execPath, [join(REPO, "tools/deploy/build-nest-index.mjs"), "--db", localDeck], { cwd: REPO, stdio: "ignore", timeout: 600_000 });
+    console.log("  nest index: built");
+  } catch (error) {
+    console.log(`  nest index: NOT built (${String(error).slice(0, 100)}) — pages will be slower`);
+  }
+} else {
+  console.log("  nest index: not applicable (host-override target serves its own)");
+}
 async function ownerAudit(replayOnly = false) {
   const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,captureEvidence,
     launchBrowser:newIsolatedBrowser};
@@ -180,84 +388,11 @@ function moduleContext() {
     launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,coverBCase:argOf('case'),mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
 }
 
-try {
-  execFileSync(process.execPath, [join(REPO, "tools/deploy/build-nest-index.mjs"), "--db", localDeck], { cwd: REPO, stdio: "ignore", timeout: 600_000 });
-  console.log("  nest index: built");
-} catch (error) {
-  console.log(`  nest index: NOT built (${String(error).slice(0, 100)}) — pages will be slower`);
-}
-
-const credentialsPath = join(RUN_DIR, "credentials.json");
-await seedLocalAccounts({ deck: localDeck, credentialsOut: credentialsPath });
-const creds = JSON.parse(readFileSync(credentialsPath, "utf8"));
-console.log(`seeded local accounts: ${creds.admin.name} (admin), ${creds.member.name} (member)`);
-
-const { env: liveEnv } = await readLiveScriptEnv(SECRETS);
-const captureEnv = { ...liveEnv };
-const ajaxSaveRedirect = argOf('ajax-save-redirect');
-if (ajaxSaveRedirect !== undefined) {
-  if (!['0', '1'].includes(ajaxSaveRedirect)) throw new Error('ajax-save-redirect must be 0 or 1');
-  captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
-}
-provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
-const conflictRetry=argOf('conflict-retry');
-if(conflictRetry!==undefined){
- if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
- captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
- provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
-}
-provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
-  keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
-  liveEnabled: captureEnv.DECKO_LIVE_RENDER !== '0', liveDefaulted: captureEnv.DECKO_LIVE_RENDER === undefined };
-const assetHosts = [...new Set(Object.entries(liveEnv)
-  .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
-  .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
-  .filter(Boolean))];
-// A migrated deck may retain an asset URL outside its configured current
-// CDN. Admit an explicitly named public host for read-only resources; the
-// browser policy still refuses navigation, fetch/XHR and every write there.
-const additionalAssetHost = argOf('asset-host');
-if (additionalAssetHost) {
-  const candidate = new URL(`https://${additionalAssetHost}`);
-  if (candidate.hostname !== additionalAssetHost || candidate.port || candidate.pathname !== '/' || candidate.username || candidate.password || ['localhost', '127.0.0.1', '[::1]'].includes(candidate.hostname)) throw new Error('asset-host must name one public hostname');
-  assetHosts.push(candidate.hostname);
-}
-provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
-// A page's favicon read arrives as resourceType `other`, which the browser
-// policy admits only by exact URL. The deployment's own render configuration
-// names that URL (DECKO_SERVED_FAVICON_URL; for this deck it is
-// byte-identical to the head's card-derived favicon_tag href), so the default
-// invocation admits it; --favicon-url overrides; neither leaves it blocked.
-const allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href]
-  : (liveEnv.DECKO_SERVED_FAVICON_URL ? [new URL(liveEnv.DECKO_SERVED_FAVICON_URL).href] : []);
-for (const value of allowedFaviconUrls) {
-  const url = new URL(value);
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('declared favicon URL must be an exact HTTPS resource on a declared public asset host');
-}
-provenance.readOnlyFaviconUrls = allowedFaviconUrls;
-
+// Mail capture surface (module scope: moduleContext exposes it; the local
+// stack path fills it, a host-override target leaves it empty and refuses
+// mail-required modules at startup).
 const MAIL_DIR=join(RAW,'mail');
 const mailInbox=[];
-let mailSettings;
-if(mailRequired){
-  mkdirSync(MAIL_DIR);
-  const mailDb=new Database(localDeck,{readonly:true});
-  let siteTitle;
-  try{siteTitle=mailDb.prepare("SELECT db_content FROM cards WHERE codename='title' AND trash=0 LIMIT 1").get()?.db_content;}finally{mailDb.close();}
-  mailSettings={siteTitle,tokenSecret:randomBytes(32).toString('hex'),sink:message=>{
-    mailInbox.push(message);
-    writeFileSync(join(MAIL_DIR,String(message.seq).padStart(3,'0')+'.json'),JSON.stringify(message,null,2)+'\n',{flag:'wx'});
-  }};
-}
-provenance.localMailCapture={enabled:mailRequired,transport:mailRequired?'owned in-process capture':null,externalDelivery:false};
-const stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,mail:mailSettings,
-  onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
-    status: line.status, responseBytes: line.bytes ?? 0 }) });
-provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
-provenance.executedBundleSha256 = stack.host.sourceBundleSha256;
-provenance.memoryEvidence = { file: basename(MEMORY), scope: 'combined SDK and harness process', forcedGc: false };
-sampleMemory('stack-ready');
-console.log(`local edge host: ${stack.origin}`);
 
 let browser;
 const childBrowsers=[];
@@ -266,9 +401,26 @@ async function newIsolatedBrowser(options) {
   childBrowsers.push(child);
   return child;
 }
-try { browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts, allowedFaviconUrls }); }
-catch (error) { await stack.close(); stack.cleanup(); throw error; }
+try {
+  browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts, allowedFaviconUrls,
+    // The write-mode backstop rides every context this harness creates (main
+    // and isolated children): it aborts any page-driven write the profile does
+    // not admit, before the ordinary request policy runs. A no-op for the
+    // locally booted stack (full mode).
+    writeGate: liveWalk,
+    // A host-override target has no owned request ledger; the browser's own
+    // view of same-origin requests stands in (method/path/status/timing), so
+    // ledger-reading checks see real traffic and never invented evidence.
+    ledgerSink: restrictWrites ? (line) => stack.host.requests.push(line) : null });
+} catch (error) { await stack.close(); stack.cleanup(); throw error; }
 const page = browser.page;
+// Every write the live-walk gate refused, on both channels (page routes and
+// guarded request contexts), for the run record.
+const blockedHarnessWrites = [];
+const recordBlockedHarnessWrite = (entry) => {
+  blockedHarnessWrites.push(entry);
+  console.log(`  write-gate blocked ${entry.method} ${entry.url ?? ""} — ${entry.reason}`);
+};
 
 // ---------------------------------------------------------------- helpers
 
@@ -349,9 +501,11 @@ async function signIn(account) {
   const session = cookies.find((c) => c.name === "decko_ts_session");
   const lines = linesSince(before);
   const landing = session ? await visit("/",{waitUntil:'domcontentloaded'}) : { signedIn:false, hasSignOut:false, status:observed.response.status(), url:page.url() };
-  const storedActorId=storedSessionActorId(database(),cookies);
-  const expectedActorId=account.id??[creds.admin,creds.member].find(actor=>actor.email===account.email)?.id??null;
-  (provenance.actorWitnesses??=[]).push({expectedActorId,actualActorId:storedActorId,hasSessionCookie:Boolean(session),backendSignedIn:landing.signedIn});
+  // A host-override target has no owned deck file to read the stored actor id
+  // from; the witness records the session-cookie and backend facts only.
+  const storedActorId=restrictWrites?null:storedSessionActorId(database(),cookies);
+  const expectedActorId=account.id??(Array.isArray(creds)?null:[creds.admin,creds.member].find(actor=>actor.email===account.email)?.id)??null;
+  (provenance.actorWitnesses??=[]).push({expectedActorId,actualActorId:storedActorId,hasSessionCookie:Boolean(session),backendSignedIn:landing.signedIn,...(restrictWrites?{note:'host-override target: stored actor id not readable (no owned deck)'}:{})});
   return { hasSessionCookie: Boolean(session), storedActorId, landedOn: page.url(), landing, lines };
 }
 
@@ -412,10 +566,26 @@ async function saveEditForm() {
 /** The long form a Date card shows (its stored ISO value is not printed verbatim). */
 const longDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" });
 
-/** A read-only handle on the local deck, for checks that assert on stored rows. */
-const dbHandle = new Database(localDeck, { readonly: true });
-const baselineMaxCardId = Number(dbHandle.prepare("SELECT MAX(id) AS m FROM cards").get().m);
-const database = () => dbHandle;
+/**
+ * A read-only handle on the local deck, for checks that assert on stored rows.
+ * A host-override target has no owned local deck: database() throws the skip
+ * shape instead, so a check whose evidence reads rows is recorded as SKIPPED
+ * (the receipt says exactly which evidence was unavailable) rather than failed
+ * or, worse, faked. Local runs are unchanged.
+ */
+class OwnedLocalDatabaseUnavailableError extends Error {
+  constructor() {
+    super("the owned local deck does not exist for a host-override target: this check's evidence reads the local database directly, so it is skipped, not graded");
+    this.name = "OwnedLocalDatabaseUnavailableError";
+    this.ownedLocalSurfaceUnavailable = true;
+  }
+}
+const dbHandle = restrictWrites ? null : new Database(localDeck, { readonly: true });
+const baselineMaxCardId = restrictWrites ? null : Number(dbHandle.prepare("SELECT MAX(id) AS m FROM cards").get().m);
+const database = () => { if (restrictWrites) throw new OwnedLocalDatabaseUnavailableError(); return dbHandle; };
+// The gate the write-shaped check bodies consult: in override mode it throws
+// the skip shape for a named card the mode refuses; locally it is a no-op.
+const gateCardWrite = (cardName, verb = "update") => { if (restrictWrites) assertCardWrite(liveWalk, cardName, { verb }); };
 
 const cardName = (label) => `Harness_${label}_${Date.now().toString(36)}`;
 const created = [];
@@ -427,6 +597,10 @@ async function accountSettings(account = creds.admin) {
   const signedIn = await signIn(account);
   if (!signedIn.hasSessionCookie) throw new Error('account diagnostic could not sign in');
   await attempt("A1/A2 account settings and change password", async () => {
+    // The account card is the target's own account, not a scratch card: under
+    // a host-override write mode the password/email changes are refused unless
+    // the account name itself carries an approved scratch prefix.
+    gateCardWrite(`${account.name.replace(/ /g, "_")}+*password`, "update");
     // Account settings live on the account card's board (cypress
     // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
     const holder = account.name.replace(/ /g, "_");
@@ -542,6 +716,16 @@ async function richTextJourney() {
   // -- 4 -----------------------------------------------------------------
   group("4. edit a RichText card (TinyMCE, nest dialog, link button)");
   const richName = cardName("richtext");
+  // The journey's subject is the write chain (create, edit, save, nest, save).
+  // Under a host-override write mode that refuses the create, the whole
+  // journey records skips — the reads that follow the created card are graded
+  // nowhere rather than graded against a card that was never allowed to exist.
+  if (restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: richName }).allowed) {
+    for (const c of ["create rich card", "create a RichText card via /new/RichText and land on it", "open rich edit", "RichText editor journey"]) {
+      record(c, null, { skipped: true, reason: `${liveWalk.mode} refuses the create of ${richName}; the RichText journey's writes are its subject` });
+    }
+    return null;
+  }
   created.push(richName);
   const created1 = await attempt("create rich card", async () => {
     const form = await visit(`/new/RichText`);
@@ -652,12 +836,17 @@ async function richTextJourney() {
 
 try {
   if(argOf('only')==='member-delete'){
+    // Fail-closed: this instrument stages its own card through the request
+    // context and reads the owned database for its verdicts — the owned-local
+    // surface a host-override target does not have. Refused at startup, so it
+    // can never half-run against a live host.
+    if (restrictWrites) throw new Error(`member-delete needs the owned local fixture (its own staged card and database verdicts); it is refused against the host-override target ${liveWalk.origin}`);
     const admin=await signIn(creds.admin);
     if(!verifiedActorSession(admin,creds.admin.id))throw Error('fixture admin actor not verified');
     const name=cardName('member_delete');created.push(name);
     const type=database().prepare("SELECT name FROM cards WHERE codename='basic' AND trash=0").get()?.name;
     if(!type)throw Error('canonical basic cardtype missing');
-    const response=await page.context().request.post(stack.origin+'/card/create',{headers:{origin:stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,data:new URLSearchParams({'card[name]':name,'card[type]':type,'card[content]':'UNCHANGED_'+name,'success[redirect]':'true'}).toString()});
+    const response=await guardRequest(page.context().request,liveWalk,{onBlocked:recordBlockedHarnessWrite}).post(stack.origin+'/card/create',{headers:{origin:stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,data:new URLSearchParams({'card[name]':name,'card[type]':type,'card[content]':'UNCHANGED_'+name,'success[redirect]':'true'}).toString()});
     if(response.status()>=400)throw Error('member-delete fixture create refused');
     await memberDeleteJourney(moduleContext(),name);
   } else if (argOf('only') === 'account') {
@@ -672,7 +861,12 @@ try {
   } else if (['owner','owner-replay'].includes(argOf('only'))) {
     await ownerAudit(argOf('only') === 'owner-replay');
   } else if (moduleTopics.includes(argOf('only'))) {
+    if (restrictWrites && liveWalk.mode === 'read-only') {
+      group(`checks module ${argOf('only')} (read-only host-override)`);
+      record(`checks module ${argOf('only')} ran`, null, { skipped: true, reason: `read-only host-override: the module drives writes through page forms, which the write mode refuses` });
+    } else {
     provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext(),argOf('only'));
+    }
   } else {
   // -- 1 -----------------------------------------------------------------
   group("1. sign in, and stay signed in");
@@ -713,8 +907,15 @@ try {
   // -- 3 -----------------------------------------------------------------
   group("3. edit a Date card");
   const dateCard = "2011_12_14";
+  // The page load is a read and is graded in every mode; the edit legs are
+  // the group's subject and are skipped, never failed, when the target's
+  // write mode refuses an update on the date card.
+  const dateWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "update", cardName: dateCard }).allowed;
   const datePage = await attempt("date page loads", () => visit(`/${dateCard}`));
   if (datePage) record("date card page loads", datePage.status === 200, { status: datePage.status, title: datePage.title }, { wallMs: datePage.wallMs });
+  if (dateWriteRefused) {
+    record("open date edit", null, { skipped: true, reason: `${liveWalk.mode} refuses writes on ${dateCard}; the edit legs are the group's subject` });
+  } else {
   const dateEdit = await attempt("open date edit", () => openEdit(`/${dateCard}`));
   if (dateEdit) {
     record("edit opens as a modal from the card page (no duplicated page behind it)", dateEdit.modals > 0, { modals: dateEdit.modals, href: dateEdit.href });
@@ -736,6 +937,7 @@ try {
       const restored = await visit(`/${dateCard}`);
       record("the original date is restored afterwards (long form)", restored.html.includes(longDate(original)), { original, shown: longDate(original) });
     }
+  }
   }
 
   const richName = await richTextJourney();
@@ -777,6 +979,15 @@ try {
   // -- 6 -----------------------------------------------------------------
   group("6. delete a card");
   const deleteName = cardName("delete");
+  const deleteWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: deleteName }).allowed;
+  if (deleteWriteRefused) {
+    // The group's subject is the create-then-delete round trip of the run's
+    // own card; refused writes record skips, and the navbar sign-out check
+    // below (a session operation plus reads) still runs in every mode.
+    for (const c of ["create the card to delete", "open delete target edit", "the edit form's Delete button is a confirm-guarded link to /delete/<name>", "the delete removes the card (trashed, content gone, new-card page shown)", "no card named delete… was created by this run (cards with id above the run baseline)"]) {
+      record(c, null, { skipped: true, reason: `${liveWalk.mode} refuses the create/delete of ${deleteName}` });
+    }
+  } else {
   created.push(deleteName);
   await attempt("create the card to delete", async () => {
     await visit(`/new/RichText`);
@@ -809,6 +1020,7 @@ try {
     const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND name LIKE ? ESCAPE ?").get(baselineMaxCardId, "delete%", "\\").n;
     record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId });
   }
+  }
   await attempt("navbar sign out revokes the session", async () => {
     await visit("/");
     const link = page.locator('a.signout-link').first();
@@ -839,8 +1051,15 @@ try {
 
   // -- 7 -----------------------------------------------------------------
   group("7. rename, history, search, changes, sign out and back in");
+  // The history read follows the card the RichText journey created; when the
+  // write mode refused that create, the read grades nothing (a null
+  // richName never names a page) and records the skip honestly.
+  if (!richName) {
+    record("a card's history view renders", null, { skipped: true, reason: "the RichText journey was skipped by the write mode; this read follows the card its create would have made" });
+  } else {
   const historyPage = await attempt("history", () => visit(`/${richName}/history`));
   if (historyPage) record("a card's history view renders", historyPage.status === 200, { status: historyPage.status }, { wallMs: historyPage.wallMs });
+  }
 
   const changes = await attempt("changes", () => visit("/*search"));
   if (changes) {
@@ -849,7 +1068,8 @@ try {
       return rows.map((r) => r.textContent.trim().slice(0, 60));
     });
     record("the Changes link (/*search) lists cards", changes.status === 200, { status: changes.status, sample: updatedFirst.slice(0, 3) }, { wallMs: changes.wallMs });
-    record("/*search lists the cards this run just created/edited first", /Harness_/.test(changes.html), { mentionsHarnessCard: /Harness_/.test(changes.html) });
+    if (!richName) record("/*search lists the cards this run just created/edited first", null, { skipped: true, reason: `${liveWalk.mode}: the run created no cards, so there is nothing of this run's to look for` });
+    else record("/*search lists the cards this run just created/edited first", /Harness_/.test(changes.html), { mentionsHarnessCard: /Harness_/.test(changes.html) });
   }
 
   await attempt("sign out", async () => {
@@ -913,6 +1133,10 @@ try {
   });
 
   const preName = cardName("preset");
+  const presetWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: preName }).allowed;
+  if (presetWriteRefused) {
+    record("C10 presetting content from the URL", null, { skipped: true, reason: `${liveWalk.mode} refuses the create of ${preName}; the check's subject is the stored write` });
+  } else {
   created.push(preName);
   await attempt("C10 presetting content from the URL", async () => {
     const marker = "Harness preset";
@@ -939,7 +1163,14 @@ try {
     record("card content preset in the /new URL is submitted and stored", observed.response.status() < 400 && prefilled.editor?.includes(marker) && row?.trash === 0 && row.db_content.includes(marker) && after.html.includes(marker),
       { status: observed.response.status(), prefilledEditor: (prefilled.editor ?? "").slice(0, 60), marker, storedMarker:row?.db_content?.includes(marker) ?? false, afterStatus: after.status });
   });
+  }
 
+  if (restrictWrites) {
+    // C8 submits a create for the deck's own Home card to watch the engine
+    // refuse it. A refused-by-mode run sends nothing at all: the skip names
+    // the write the mode would not let the engine refuse.
+    record("C8 duplicate name refused", null, { skipped: true, reason: `${liveWalk.mode}: the run does not submit creates for non-scratch names (Home)` });
+  } else {
   await attempt("C8 duplicate name refused", async () => {
     await visit("/new/RichText");
     await page.locator('form.card-form input[name="card[name]"]').first().fill("Home");
@@ -953,8 +1184,16 @@ try {
     record("creating a card whose name already exists is refused (Home not touched)", refused && homeStillThere,
       { status: line?.status ?? null, homeStillThere, errorShown: /already|taken|exists/i.test(body) });
   });
+  }
 
   let currentName = richName;
+  if (!currentName) {
+    // The run's card does not exist under this write mode; the checks whose
+    // subject is that card record skips, and N2 (an independent read) runs.
+    for (const c of ["R1 rename", "rename through the board's name row moves the card to its new name", "H1 history shows the run's edits", "the history page lists the card's acts (not just a 200)", "E19-E22 board tabs", "the card board renders with its tabs (guide, engage, history, rules)", "the Engage tab shows the follow controls", "N1 quick search", "keyword search endpoint returns the run's card"]) {
+      record(c, null, { skipped: true, reason: `${liveWalk.mode}: the run's RichText card was never created, and this check's subject is that card` });
+    }
+  } else {
   await attempt("R1 rename", async () => {
     // The rename control is the board's name row (cypress edit/board/save_changes:
     // .edit_name_row .edit-link -> a renamer), not the content modal.
@@ -1048,6 +1287,7 @@ try {
     const body = await page.content();
     record("keyword search endpoint returns the run's card", body.includes(richName.slice(0, 14)), { url: page.url() });
   });
+  }
 
   await attempt("N2 cql search", async () => {
     await searchPageJourney(moduleContext());
@@ -1064,6 +1304,7 @@ try {
       record("upload: the File create form offers a file input", false, { note: "no file input on /new/File" });
     } else {
       const uploadName = cardName('file');
+      gateCardWrite(uploadName, "create");
       const bytes = Buffer.from('Owned harness file bytes.\n');
       created.push(uploadName);
       await page.locator('input[name="card[name]"]').first().fill(uploadName);
@@ -1081,6 +1322,14 @@ try {
       const observed = await pending;
       if (observed.error) throw observed.error;
       await observed.response.finished();
+      // The stored-row and byte-exact-download verdicts read the owned local
+      // deck; a host-override target grades the create POST's own answer and
+      // says so, never silently narrowing a named check's evidence.
+      if (restrictWrites) {
+        record('a file can be uploaded through the File create form', observed.response.status() < 400,
+          { status: observed.response.status(), evidenceScope: 'host-override: create POST status only (stored-row and byte-exact download need the owned local deck)', requests: linesSince(before) });
+        return;
+      }
       const row = database().prepare('SELECT id,db_content,trash FROM cards WHERE name = ?').get(uploadName);
       let downloadStatus = null;
       let exactBytes = false;
@@ -1109,8 +1358,23 @@ try {
   }
 
   // -- 9 -----------------------------------------------------------------
-  await ownerAudit();
+  if (restrictWrites) {
+    // The owner audit drives writes and replays the owned request log; a
+    // host-override target offers neither. Skipped, never degraded.
+    group('owner audit required checks');
+    record('owner audit required checks', null, { skipped: true, reason: `host-override target (${liveWalk.mode}): the owner audit drives writes against the target's own rows` });
+    group('owner request-log replay; fixture administrator actor');
+    record('owner request-log replay', null, { skipped: true, reason: `host-override target (${liveWalk.mode}): the replay re-posts the target's own rows and reads the owned request log` });
+  } else {
+    await ownerAudit();
+  }
+  if (restrictWrites && liveWalk.mode === 'read-only') {
+    provenance.checkModulesRan = [];
+    group('checks modules (read-only host-override)');
+    record('checks modules ran', null, { skipped: true, reason: 'read-only host-override: the check modules drive writes through page forms; the phase records one skip instead of per-check blocked-write failures' });
+  } else {
   provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext());
+  }
   group("9. timings");
   const slowPages = ledger().filter((l) => {
     if (!l.serverTiming || (l.method !== "GET")) return false;
@@ -1134,10 +1398,41 @@ try {
 } finally {
   // -- cleanup -----------------------------------------------------------
   group("cleanup");
+  let closed = false;
+  if (restrictWrites) {
+    // No owned local copy exists: the run's own scratch cards are cleaned
+    // through the site itself — while the browser is still open — only in
+    // the mode that admitted their creates, and each removal is verified by
+    // the card's own .json answering 404 (a missing card's .json answers 404;
+    // its page answers 200). Anything not verifiably removed is named for the
+    // operator, never deleted by a guess.
+    const scratchCleanupAdmitted = liveWalk.mode === 'scratch-allowlist' && liveWalk.scratch?.present === true && (liveWalk.scratch.prefixes?.length ?? 0) > 0;
+    if (!scratchCleanupAdmitted || created.length === 0) {
+      record("every journey-created card is removed from the local copy", created.length === 0,
+        created.length === 0
+          ? { note: `${liveWalk.mode}: the run created no cards on the target` }
+          : { note: `${liveWalk.mode} does not admit the cleanup deletes; leftovers named for the operator, never deleted by a guess`, leftover: created });
+    } else {
+      const leftovers = [];
+      for (const name of created) {
+        try {
+          const delStatus = await page.evaluate(async (n) => (await fetch('/delete/' + encodeURIComponent(n), { method: 'DELETE', credentials: 'include', redirect: 'manual' })).status, name);
+          const jsonStatus = await page.evaluate(async (n) => (await fetch('/' + encodeURIComponent(n) + '.json', { credentials: 'include' })).status, name);
+          if (!(delStatus < 400 && jsonStatus === 404)) leftovers.push({ name, delStatus, jsonStatus });
+        } catch (error) {
+          leftovers.push({ name, error: String(error?.message ?? error).slice(0, 160) });
+        }
+      }
+      record("every journey-created card is removed from the local copy", leftovers.length === 0,
+        { note: 'site-side scratch cleanup on the host-override target (DELETE + .json 404 verification)', removed: created.length - leftovers.length, leftover: leftovers });
+    }
+    await browser.close().catch(() => undefined);
+    try { await stack.close(); closed = true; record('owned local stack closed', true, { note: 'host-override target: nothing was staged; close is a no-op' }); }
+    catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
+  } else {
   // A timed-out promise can still finish an old operation. Close its browser
   // and drain the owned application before inspecting or cleaning the copy.
   await browser.close().catch(() => undefined);
-  let closed = false;
   try { await stack.close(); closed = true; record('owned local stack closed', true, {}); }
   catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
   try {
@@ -1149,6 +1444,7 @@ try {
       }finally{db.close()}
     }else record("every journey-created card is removed from the local copy",false,{reason:'owned stack did not close; preserving the fixture instead of racing its writes'});
   }finally{dbHandle.close()}
+  }
   if (closed) stack.cleanup();
 }
 
@@ -1164,22 +1460,44 @@ group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
   assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
 
-const failures = results.filter((r) => !r.pass);
+const failures = results.filter((r) => r.pass === false);
+const skipped = results.filter((r) => r.pass === null);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
+if (restrictWrites) {
+  const lw = provenance.liveWalk;
+  markdown += `- **Target host: \`${lw.host}\` — write mode: **${lw.mode}** (host-override profile \`${lw.engineProfile}\`)**\n`;
+  if (lw.mode === 'scratch-allowlist') {
+    const a = lw.scratchAllowlist ?? {};
+    markdown += `- Scratch allowlist: \`${a.path ?? "(none)"}\` ${a.present ? `present (sha256 \`${a.sha256?.slice(0, 12)}\`), prefixes: ${(a.prefixes ?? []).join(", ") || "(none approved)"}` : "**ABSENT at run time — every write skipped (fail-safe)**"}\n`;
+  }
+  markdown += `- Session operations (sign-in/out) remained permitted; ${skipped.length} check(s) recorded skips the mode owes them, ${blockedHarnessWrites.length} write(s) were blocked at the browser.\n`;
+} else {
+  markdown += `- Target host: local stack booted by this run (write mode: full)\n`;
+}
 if (pinnedArtifact) markdown += `- Harness source differs from the engine artifact: engine source claim \`${pinnedArtifact.sourceCommit}\`, exact artifact SHA256 \`${pinnedArtifact.sha256}\`; source claim is caller-declared, artifact bytes are verified. No vendor-runtime acceptance.\n`;
 markdown += `- Source: \`${provenance.source}\`, source files clean${provenance.worktreeHasOperationalMarker ? '; worktree has separately hashed operational .keep-root marker' : ''}; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
-markdown += `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
-markdown += `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;
+markdown += restrictWrites
+  ? `- Runtime: the target's own engine; nothing was built, staged or seeded by this run.\n`
+  : `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
+markdown += restrictWrites
+  ? `- Providers: the target's own; this run holds no credentials beyond the --credentials accounts it was given.\n`
+  : `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;
 markdown += `- Command: \`node tools/edge-signed-in-exercise.mjs\`\n`;
-markdown += `- Artifact: \`deploy/dist/bunny-edge-engine.bundle.js\`, rebuilt from source, run against a LOCAL deck copy on the engine schema\n`;
-markdown += `- Deck source (local, never Bunny): \`${basename(SOURCE_DECK)}\`, ${cardsCopied} cards copied\n`;
-markdown += `- Accounts: two throwaway local accounts (one holding the \`administrator\` role, one signed in with no role)\n`;
+markdown += restrictWrites
+  ? `- Artifact: none from this checkout — the engine is the host-override target's own\n`
+  : `- Artifact: \`deploy/dist/bunny-edge-engine.bundle.js\`, rebuilt from source, run against a LOCAL deck copy on the engine schema\n`;
+markdown += restrictWrites
+  ? `- Deck source: none staged (host-override target serves its own deck)\n`
+  : `- Deck source (local, never Bunny): \`${basename(SOURCE_DECK)}\`, ${cardsCopied} cards copied\n`;
+markdown += restrictWrites
+  ? `- Accounts: the target's own accounts from --credentials (content never recorded)\n`
+  : `- Accounts: two throwaway local accounts (one holding the \`administrator\` role, one signed in with no role)\n`;
 markdown += `- Browser: headless Chromium, throwaway profile, local origin + the deck's configured asset host + stock layout CDNs only\n`;
-markdown += `- Result: **${results.length - failures.length} / ${results.length} passed**, ${failures.length} failed\n\n`;
+markdown += `- Result: **${results.length - failures.length - skipped.length} / ${results.length} passed**, ${failures.length} failed, ${skipped.length} skipped by write mode\n\n`;
 markdown += `| check | result | evidence |\n|---|---|---|\n`;
 for (const r of results) {
   const evidence = (typeof r.evidence === "string" ? r.evidence : JSON.stringify(r.evidence)).replace(/\|/g, "/").slice(0, 260);
-  markdown += `| ${r.group} / ${r.check} | ${r.pass ? "PASS" : "**FAIL**"} | ${evidence} |\n`;
+  markdown += `| ${r.group} / ${r.check} | ${r.pass === true ? "PASS" : r.pass === null ? "skipped" : "**FAIL**"} | ${evidence} |\n`;
 }
 mkdirSync(dirname(OUT), { recursive: true });
 
@@ -1211,7 +1529,7 @@ let capabilityCoverage;
 const coverageIncomplete = capabilityCoverage.counts.not_covered > 0 || capabilityCoverage.counts.partial > 0 || capabilityCoverage.counts.out_of_scope > 0;
 markdown += `\nComplete capability acceptance: ${!coverageIncomplete && failures.length === 0 ? 'pass' : 'incomplete or failed'}. Unrun capabilities are never credited.\n`;
 writeFileSync(OUT, markdown, { flag: 'wx' });
-writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), failedRequests, consoleErrors }, null, 2) + '\n', { flag: 'wx' });
+writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), blockedWrites: blockedHarnessWrites, failedRequests, consoleErrors }, null, 2) + '\n', { flag: 'wx' });
 // The run record now exists on disk; RUN_DIR custody belongs to the --keep
 // decision below, not to the failure net above.
 runCompleted = true;

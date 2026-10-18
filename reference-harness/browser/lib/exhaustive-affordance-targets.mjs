@@ -15,6 +15,34 @@
 // runner's guess at where it lives. Nothing here weakens a probe: each case
 // ADDS an assert, and an action whose affordance is genuinely absent still
 // fails.
+//
+// WRITE-PATH CASES AND THE LIVE-WALK GATE: cases 7, 9, 10, 11, 12, 13, 14 and
+// 17 perform writes (saves, creates, a revert). Under a host-override target
+// (engines/live.json + --base-url; see lib/live-walk-profile.mjs) the run's
+// write mode gates them: read-only skips every write case; scratch-allowlist
+// admits only writes on cards carrying an approved scratch prefix. A gated
+// case pushes a "write-skipped" entry instead of running, and the runner
+// grades its action "skipped_write" — the write IS the claim those actions
+// probe, so the run neither passes nor fails them, it declines to grade.
+
+import { decideWrite } from "./live-walk-profile.mjs";
+
+/** Gates one write-shaped case. Returns true to run it; when the profile
+ *  refuses, pushes the skip into the sequence (the receipt shows exactly what
+ *  was declined and why) and returns false. */
+function gateWrite(sequence, writeGate, { verb, cardName, detail }) {
+  if (!writeGate || writeGate.profile.mode === "full") return true;
+  const decision = decideWrite(writeGate.profile, { verb, cardName, detail });
+  if (decision.allowed) return true;
+  sequence.push({
+    interaction: "write-skipped",
+    verb,
+    cardName: cardName ?? null,
+    mode: writeGate.profile.mode,
+    reason: decision.reason,
+  });
+  return false;
+}
 
 /** The fixture card these target cases probe. Resolved from the surface's
  *  own card name when that card exists in the deck; the enumeration's
@@ -130,7 +158,7 @@ async function dispatchClick(page, selector) {
  * engine base URL and the settle helper. Returns the sequence entries to
  * append; an empty list means the action needs none of these cases.
  */
-export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout = 30_000 }) {
+export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TARGET_CARD, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, writeGate = null, stepTimeout = 30_000 }) {
   const ctx = { text, base, card, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout };
   const sequence = [];
   const t = String(text ?? "");
@@ -286,6 +314,9 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    second editor) may update on this fixture.
   if (/\bsecond save\b/i.test(t) && /conflict/i.test(t)) {
     const conflictCard = "Date_1";
+    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: conflictCard, detail: "E18 second-save conflict staging saves" })) {
+      return sequence;
+    }
     if (typeof newActorRequest !== "function" || typeof pageRequest === "undefined" || typeof evaluate !== "function") {
       throw new Error("second-save conflict probe needs the runner's newActorRequest, pageRequest and evaluate helpers");
     }
@@ -396,6 +427,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    cookies; an anonymous post is permission-refused 403).
   const rowSave = /POST\s+\/update\/~(\d+)/.exec(t);
   if (rowSave !== null) {
+    // The named-content leg writes the affordance-target card; the ~<id> leg
+    // writes an id mark whose card name is unknowable before the request, so
+    // under a restricted write mode it is admitted by the named leg's gate or
+    // not at all (fail-safe: a mode that refuses the named card refuses the
+    // whole case rather than sending a write it cannot name).
+    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: card, detail: "owner-save row replay POST /update/<card>" })) {
+      return sequence;
+    }
     if (typeof pageRequest === "undefined") {
       throw new Error("owner-save row probe needs the runner's pageRequest helper");
     }
@@ -442,6 +481,9 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     answers the action's own question by clicking it: the POST /update
   //     response is the write the save made.
   if (/RichText card persists/i.test(t)) {
+    if (!gateWrite(sequence, writeGate, { verb: "update", cardName: "Topic 001+summary", detail: "ACT-020 the RichText edit form's Save click" })) {
+      return sequence;
+    }
     if (typeof page === "undefined" || page === null) {
       throw new Error("RichText save probe needs the runner's page helper");
     }
@@ -476,11 +518,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     3 s bound, recording the raw times either way so a slow engine is
   //     attributable.
   if (/\bno save\b/i.test(t)) {
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_save_timing_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "ACT-064 the save-timing probe's own scratch card" })) {
+      return sequence;
+    }
     if (typeof pageRequest === "undefined") {
       throw new Error("save-timing probe needs the runner's pageRequest helper");
     }
-    const stamp = Date.now().toString(36);
-    const scratch = `Harness_exhaustive_save_timing_${stamp}`;
     const created = await pageRequest.post(`${base}/card/create`, {
       headers: { origin: base },
       form: { "card[name]": scratch, "card[type]": "Basic", "card[content]": "timing baseline", "success[redirect]": "true" },
@@ -524,11 +569,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     behavior (the update rule's party list), so a genuinely permissive
   //     engine still fails every leg.
   if (/\bP3\b/.test(t)) {
+    const stamp = Date.now().toString(36);
+    const restricted = `Harness_exhaustive_p3_update_restricted_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: restricted, detail: "P3 the probe's own restricted scratch card and its *update rule" })) {
+      return sequence;
+    }
     if (typeof pageRequest === "undefined" || typeof newActorRequest !== "function") {
       throw new Error("P3 member-denied-edit probe needs the runner's pageRequest and newActorRequest helpers");
     }
-    const stamp = Date.now().toString(36);
-    const restricted = `Harness_exhaustive_p3_update_restricted_${stamp}`;
     const secret = `UNCHANGED_UPDATE_${stamp}`;
     const createdCard = await pageRequest.post(`${base}/card/create`, {
       headers: { origin: base },
@@ -603,11 +651,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     changed content through it, and asserts the update POST answered and
   //     the main slot shows the new content.
   if (/save and close/i.test(t)) {
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_e15_save_close_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "E15 Save-and-Close probe's own scratch card" })) {
+      return sequence;
+    }
     if (typeof page === "undefined" || page === null) {
       throw new Error("Save-and-Close probe needs the runner's page helper");
     }
-    const stamp = Date.now().toString(36);
-    const scratch = `Harness_exhaustive_e15_save_close_${stamp}`;
     const created = await pageRequest.post(`${base}/card/create`, {
       headers: { origin: base },
       form: { "card[name]": scratch, "card[type]": "Phrase", "card[content]": "save close before", "success[redirect]": "true" },
@@ -663,11 +714,14 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     page lists the acts, carries the revert link, and that driving the
   //     link restores the earlier act's content as the card's content.
   if (/\bH3\b/.test(t)) {
+    const stamp = Date.now().toString(36);
+    const scratch = `Harness_exhaustive_h3_rollback_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "H3 history-rollback probe's own scratch card" })) {
+      return sequence;
+    }
     if (typeof page === "undefined" || page === null || typeof pageRequest === "undefined") {
       throw new Error("history rollback probe needs the runner's page and pageRequest helpers");
     }
-    const stamp = Date.now().toString(36);
-    const scratch = `Harness_exhaustive_h3_rollback_${stamp}`;
     const beforeContent = `h3 roll back to this ${stamp}`;
     await pageRequest.post(`${base}/card/create`, {
       headers: { origin: base },
@@ -819,6 +873,9 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   if (/autoname/i.test(t)) {
     const stamp = `F${Date.now().toString(36)}`;
     const typeName = `ScratchC11Type_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: typeName, detail: `C11 the probe's private Cardtype ${typeName}, its +*type+*autoname rule and its generated seed ${`ScratchC11Card_${stamp}`}` })) {
+      return sequence;
+    }
     const seedName = `ScratchC11Card_${stamp}`;
     const typeCreate = await createThroughNewCardForm(ctx, { newPath: "/new/Cardtype", name: typeName });
     const ruleCreate = typeCreate.ok

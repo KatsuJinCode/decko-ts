@@ -25,6 +25,45 @@ export function loadEngine(manifestPath) {
   return { ...manifest, dir: path.dirname(path.resolve(manifestPath)) };
 }
 
+/**
+ * Attaches the journeys to a RUNNING engine instead of booting one — the
+ * host-override path of the live-walk profile (engines/live.json +
+ * --base-url / DECKO_LIVE_BASE; see lib/live-walk-profile.mjs). Nothing is
+ * staged and nothing is spawned: the returned handle's stop() is a no-op and
+ * its mail drain answers empty (an attached host exposes no owned mail sink).
+ * Fails fast when the target does not answer the manifest's ready path, so a
+ * run never half-attaches to a dead host.
+ */
+export async function attachEngine(engine, baseUrl, { readyTimeoutMs = 30_000 } = {}) {
+  const base = new URL(baseUrl).origin;
+  const probePath = engine.ready ?? "/";
+  let reached = null;
+  const deadline = Date.now() + readyTimeoutMs;
+  for (;;) {
+    try {
+      const res = await fetch(base + probePath, { headers: { connection: "close" } });
+      reached = { status: res.status, ok: res.ok };
+      break;
+    } catch {
+      /* not listening (yet) */
+    }
+    if (Date.now() > deadline) throw new Error(`host-override target ${base} did not answer GET ${probePath} within ${readyTimeoutMs} ms; refusing to attach to a host that may not be the engine`);
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return {
+    base,
+    attached: true,
+    name: engine.name,
+    bootMs: 0,
+    reachProbe: { path: probePath, ...reached },
+    db: null,
+    files: null,
+    mail: async () => [],
+    restart: undefined,
+    stop: async () => {},
+  };
+}
+
 async function freePort() {
   return new Promise((resolve, reject) => {
     const srv = net.createServer();

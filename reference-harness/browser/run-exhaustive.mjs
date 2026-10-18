@@ -13,6 +13,50 @@
 //     --out tmp/exhaustive-runs/<date> [--filter <regex>] [--signin admin] \
 //     [--actor-card-name <card>] [--fail-fast 0]
 //
+// LIVE-WALK PROFILE (host-override): the identical journeys can be pointed at
+// ANY base URL the operator names, without code changes, by attaching instead
+// of booting. The target is a RUNNING engine — for proof and rehearsal that is
+// always a LOCAL mock (reference-harness/browser/serve-local-mock-engine.mjs);
+// pointing at anything else is an operator decision this runner records but
+// never initiates:
+//
+//   node reference-harness/browser/run-exhaustive.mjs \
+//     --engine reference-harness/browser/engines/live.json \
+//     --base-url http://127.0.0.1:4603 \
+//     --fixture reference-harness/fixtures/synthetic-v1 \
+//     --matrix <matrix.json> --out <out> [--filter <regex>] \
+//     [--write-mode read-only|scratch-allowlist] [--scratch-allowlist <file>]
+//
+//   --base-url <url> | env DECKO_LIVE_BASE
+//       Attach to the engine already serving this origin instead of booting
+//       one (engines/live.json is the matching host-override profile; giving
+//       it with a booting profile like ts.json, or giving --base-url with no
+//       way to reach the host, is refused). Absent -> a local boot, as above.
+//   --write-mode read-only|scratch-allowlist|full   (env HARNESS_WRITE_MODE)
+//       Default: read-only whenever --base-url/DECKO_LIVE_BASE is present
+//       (fail-safe: an attached host is never written to until the operator
+//       names a mode), full for a locally booted engine (which stages a
+//       throwaway deck copy).
+//       - read-only skips EVERY write-path action (card create/update/delete/
+//         upload/mail — including the GET /update/<mark> first-class write
+//         route) and grades read journeys only; actions whose subject is the
+//         write itself are graded "skipped_write", never pass, never fail.
+//       - scratch-allowlist admits a write only when the card it targets
+//         carries an operator-approved scratch prefix from
+//         --scratch-allowlist <file> (env HARNESS_SCRATCH_ALLOWLIST; one
+//         prefix per line, e.g. "Harness_*", # comments). The file is read AT
+//         RUN TIME: ABSENT or empty means every write is skipped (fail-safe).
+//   Session operations (sign-in POST /update/*signin, sign-out) stay
+//   permitted in every mode: they create no card, change no card, send no
+//   mail, and are how signed-in read journeys authenticate.
+//   The target host and the write mode are recorded in EVERY run report
+//   (provenance.json "target", run-meta.json "target" and "writeGate",
+//   run.md's target lines) — a receipt never leaves the host ambiguous.
+//   Enforcement is two layers (lib/live-walk-profile.mjs): a browser-route
+//   backstop that aborts any page-driven write the mode refuses, and a guard
+//   on the request-context channel that routes cannot see (measured:
+//   context.request bypasses context.route).
+//
 // The matrix is the action source (the enumeration the handoff named as the
 // ~1,500 raw interactive elements -> 48 affordance classes -> 125+ actions ->
 // 190 enumerated action rows in today's matrix). This runner consumes the
@@ -46,10 +90,11 @@ import { existsSync, readdirSync, lstatSync, readFileSync, writeFileSync, mkdirS
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { launchBrowser } from "./lib/launch.mjs";
-import { loadEngine, startEngine } from "./lib/engines.mjs";
+import { loadEngine, startEngine, attachEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { affordanceTargetProbes } from "./lib/exhaustive-affordance-targets.mjs";
 import { richEditorsReady } from "./lib/editor-ready.mjs";
+import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest } from "./lib/live-walk-profile.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -64,6 +109,17 @@ for (const k of ["engine", "fixture", "matrix", "out"]) {
   if (!args[k]) throw new Error(`--${k} is required`);
 }
 const engineManifest = path.resolve(args.engine);
+const engine = loadEngine(engineManifest);
+// Live-walk profile: target override (--base-url / DECKO_LIVE_BASE) and write
+// mode, resolved once and refused early (lib/live-walk-profile.mjs). Resolved
+// BEFORE the provenance write so every receipt names its host and mode from
+// the first byte.
+const liveWalk = resolveLiveWalkProfile({ args, env: process.env, engine });
+const writeGateBlocked = [];
+const recordBlockedWrite = (entry) => {
+  writeGateBlocked.push(entry);
+  console.log(`[run-exhaustive] write-gate blocked ${entry.method} ${entry.url} — ${entry.reason}`);
+};
 const fixtureDir = path.resolve(args.fixture);
 const matrixPath = path.resolve(args.matrix);
 const out = path.resolve(args.out);
@@ -118,8 +174,12 @@ const provenance = {
   matrixSha256,
   matrixSource: path.relative(repo, matrixPath) || matrixPath,
   engine: path.relative(repo, engineManifest) || engineManifest,
+  engineMode: engine.mode ?? "boot",
   filter: args.filter ?? null,
   signinActor,
+  // The host this run drives and the write mode it runs under — recorded for
+  // EVERY run, local boot or host override (lib/live-walk-profile.mjs).
+  target: targetProvenance(liveWalk),
 };
 writeFileSync(path.join(out, "provenance.json"), JSON.stringify(provenance, null, 2));
 
@@ -552,15 +612,20 @@ async function probeAction(page, action, lastStatusRef, actors) {
       // `page` serves the cases whose affordance is the control's own browser
       // event chain: the RichText edit form's Save click (ACT-020), the edit
       // modal's open/fill/Save-and-Close click (ACT-138) and the history
-      // page's revert-link click (ACT-176).
+      // page's revert-link click (ACT-176). Under a host-override profile the
+      // request contexts are guarded: context.request bypasses context.route
+      // (measured), so the APIRequestContext channel carries its own gate and
+      // refuses a refused write before any bytes leave for the target.
       page,
-      pageRequest: page.context().request,
+      writeGate: { profile: liveWalk },
+      pageRequest: guardRequest(page.context().request, liveWalk, { onBlocked: recordBlockedWrite }),
       newActorRequest: async (actorName) => {
         const actor = (actors ?? {})[actorName];
         if (!actor?.email) throw new Error(`second-save conflict probe: no fixture actor "${actorName}"`);
         const actorContext = await page.context().browser().newContext();
         createdActorContexts.push(actorContext);
         actorContext.setDefaultTimeout(STEP_TIMEOUT);
+        await installWriteGateRoute(actorContext, liveWalk, { onBlocked: recordBlockedWrite });
         // The sign-in form's action is /update/*signin (the browser sign-in
         // drives form[action="/update/*signin"]'s submit button); POSTing the
         // page URL /*signin itself is refused 403 (measured 2026-10-18 - the
@@ -575,7 +640,7 @@ async function probeAction(page, action, lastStatusRef, actors) {
         if (signInResponse.status() >= 400) {
           throw new Error(`second editor sign-in as ${actorName} refused (${signInResponse.status()})`);
         }
-        return actorContext.request;
+        return guardRequest(actorContext.request, liveWalk, { onBlocked: recordBlockedWrite });
       },
     });
     sequence.push(...targetProbes);
@@ -621,13 +686,21 @@ async function probeAction(page, action, lastStatusRef, actors) {
   const asserted = sequence.filter((s) => s.interaction === "assert-present");
   const anyAsserted = asserted.some((a) => a.count > 0);
 
+  // A write the live-walk mode declined (lib/exhaustive-affordance-targets.mjs
+  // gateWrite) means the action's subject was not exercised: for every gated
+  // case the write IS the claim the action probes, so the action is graded
+  // "skipped_write" — never pass, never fail — whatever its read-side asserts
+  // saw. Read-only journeys carry no write-skips and grade exactly as before.
+  const writeSkipped = sequence.some((s) => s.interaction === "write-skipped");
+
   let outcome;
   if (isOutOfScope(action)) outcome = "out_of_scope";
+  else if (writeSkipped) outcome = "skipped_write";
   else if (anyFound || anyAsserted) outcome = "pass";
   else if (located.length > 0 || asserted.length > 0) outcome = "fail";
   else outcome = "page-only";
 
-  return { sequence, observations, outcome, anyFound, anyAsserted, located: located.length, asserted: asserted.length };
+  return { sequence, observations, outcome, anyFound, anyAsserted, located: located.length, asserted: asserted.length, writeSkipped };
 }
 
 // ============================================================================
@@ -644,17 +717,38 @@ async function signIn(page, base, actor) {
 
 async function run() {
   const startedAt = new Date().toISOString();
-  const engine = loadEngine(engineManifest);
   const spec = JSON.parse(readFileSync(path.join(fixtureDir, "deck.json"), "utf8"));
   const actors = { ...spec.actors };
   const serverLog = path.join(out, "server.log");
-  const server = await startEngine(engine, fixtureDir, { logFile: serverLog });
-  console.log(`[run-exhaustive] engine ${engine.name} booted in ${server.bootMs} ms on ${server.base}`);
+  // Host-override profile attaches to the RUNNING engine the operator named;
+  // a local profile boots one here, exactly as before.
+  const server = liveWalk.override
+    ? await attachEngine(engine, liveWalk.baseUrl)
+    : await startEngine(engine, fixtureDir, { logFile: serverLog });
+  console.log(`[run-exhaustive] ${liveWalk.override ? "attached to" : "engine booted"} ${engine.name} in ${server.bootMs} ms on ${server.base} (mode ${liveWalk.mode})`);
+  // The receipt's host line is only complete once the base is known; rewrite
+  // provenance.json with the resolved base before any action runs.
+  provenance.target.resolvedBase = server.base;
+  provenance.target.bootedByThisRun = !liveWalk.override;
+  provenance.target.attachReachProbe = server.reachProbe ?? null;
+  writeFileSync(path.join(out, "provenance.json"), JSON.stringify(provenance, null, 2));
 
   let browserHandle;
   try {
     browserHandle = await launchBrowser();
     const ctxb = browserHandle.context;
+    // A non-loopback host-override target must be reachable at all: the
+    // launch policy only admits loopback origins and the stock CDNs. The
+    // admit route continues the target origin's own requests; the write-mode
+    // gate (registered after it, so it runs BEFORE it) has already aborted
+    // the writes its mode refuses before anything reaches this route.
+    if (liveWalk.override && !["127.0.0.1", "localhost", "[::1]"].includes(new URL(liveWalk.origin).hostname)) {
+      await ctxb.route((url) => url.origin === liveWalk.origin, (route) => route.continue());
+    }
+    // The write-mode backstop: aborts any page-driven write the profile does
+    // not admit, before the context's ordinary request policy runs. A no-op
+    // for a locally booted engine (full mode).
+    const writeRouteGate = await installWriteGateRoute(ctxb, liveWalk, { onBlocked: recordBlockedWrite });
     const page = ctxb.pages()[0] ?? (await ctxb.newPage());
     page.setDefaultTimeout(STEP_TIMEOUT);
     page.on("dialog", (d) => d.accept().catch(() => {}));
@@ -761,7 +855,15 @@ async function run() {
     const runMeta = {
       startedAt,
       finishedAt: new Date().toISOString(),
-      server: { engine: engine.name, base: server.base, bootMs: server.bootMs, logFile: path.relative(repo, serverLog) },
+      server: { engine: engine.name, base: server.base, bootMs: server.bootMs, attached: !!server.attached, logFile: server.attached ? null : path.relative(repo, serverLog) },
+      // Host + write mode of THIS run, and what the write gate did (every
+      // run report names its target; lib/live-walk-profile.mjs).
+      target: provenance.target,
+      writeGate: {
+        mode: liveWalk.mode,
+        blockedWrites: writeGateBlocked.length,
+        skippedWriteActions: totals.per_outcome.skipped_write ?? 0,
+      },
       totals,
       per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count })),
     };
@@ -784,7 +886,13 @@ function writeRunMarkdown(file, meta, engine) {
   lines.push(`# Exhaustive enumeration run`);
   lines.push("");
   lines.push(`- Out dir: \`${path.relative(repo, out)}\``);
-  lines.push(`- Engine: \`${engine.name}\` (${meta.server.engine})`);
+  lines.push(`- Engine: \`${engine.name}\` (${meta.server.engine}${meta.server.attached ? ", attached to a running host" : ", booted locally"})`);
+  lines.push(`- Target host: \`${meta.target.host}\` (write mode: **${meta.target.mode}**)`);
+  if (meta.target.mode === "scratch-allowlist") {
+    const a = meta.target.scratchAllowlist ?? {};
+    lines.push(`- Scratch allowlist: \`${a.path ?? "(none)"}\` ${a.present ? `present (sha256 ${a.sha256?.slice(0, 12)}), prefixes: ${(a.prefixes ?? []).join(", ") || "(none approved)"}` : "**ABSENT at run time — every write skipped (fail-safe)**"}`);
+  }
+  if (meta.writeGate.blockedWrites > 0) lines.push(`- Write gate blocked ${meta.writeGate.blockedWrites} page write(s); ${meta.writeGate.skippedWriteActions} action(s) graded skipped_write`);
   lines.push(`- Source commit: \`${sourceCommit}\``);
   lines.push(`- Source dirty: ${sourceDirty}`);
   lines.push(`- Matrix sha256: \`${matrixSha256}\``);
