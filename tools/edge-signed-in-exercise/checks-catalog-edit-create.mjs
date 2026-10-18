@@ -76,16 +76,16 @@ export const checks = [
         return;
       }
       const setCardName = setCardRow.name;
-      await visit("/" + encodeURIComponent(setCardName) + "/edit");
-      await page.waitForTimeout(2500);
+      await visit("/" + encodeURIComponent(setCardName) + "?view=nest_rules");
+      await page.locator('#main .nest_rules-view ._setting-list li').first().waitFor({state:'attached',timeout:10000});
       const inventory = await page.evaluate(() => {
         const modal = document.querySelector(".modal.show");
         const main = document.querySelector("#main");
         const modalText = (modal?.textContent ?? "") + " " + (main?.textContent ?? "");
         return {
           modalOpen: modal !== null,
-          hasNestRulesSlot: (modal ?? document).querySelector('[class*="nest-rules"], [class*="nest_rules"]') !== null,
-          hasSettingList: (modal ?? document).querySelector('[class*="quick-edit-setting-list"], [class*="_setting-list"]') !== null,
+          hasNestRulesSlot: Boolean(main?.querySelector('.nest_rules-view')),
+          hasSettingList: (main?.querySelectorAll('.nest_rules-view ._setting-list li form[action^="/update/"] [name="card[type]"], .nest_rules-view ._setting-list li form[action^="/update/"] [name="card[content]"]').length ?? 0) > 0,
           hasRuleListText: /setting|rule/i.test(modalText),
           mainTextSnippet: (main?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
         };
@@ -96,7 +96,7 @@ export const checks = [
       // 2026-10-18 full run graded this PASS with hasNestRulesSlot:false and
       // hasSettingList:false, carried by hasRuleListText alone. The slot the
       // name promises is structural.
-      const rendered = inventory.hasNestRulesSlot || inventory.hasSettingList;
+      const rendered = inventory.hasNestRulesSlot && inventory.hasSettingList;
       record(
         "E7 a set card renders a nest_rules slot carrying the rule list",
         rendered,
@@ -198,6 +198,50 @@ export const checks = [
         inventory.modalOpen && inventory.summaryEditorNames.length >= 1,
         { target: host, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
       );
+    },
+  },
+
+  // Preserved verbatim from the verification line's integration candidate
+  // (d4ae2340 "Integrate exact owner, lifecycle and board witnesses onto the
+  // current lead base"). It stages the +summary junction card itself and
+  // grades the junction's OWN edit modal (form targets the junction card's
+  // data-card-id, action is same-origin /update/, content equals the
+  // junction's stored db_content) — a different staged shape from E11 above,
+  // which stages host + structure rule only because every junction-create
+  // route is refused on this battery's local deck copy (measured at
+  // f43dbd1e: create form 200 stored null, request channel 303 with the row
+  // never surfacing after 5 s of polling). Where the deck stores the
+  // junction this witness grades it exactly; where the deck refuses it,
+  // createTypedFixture throws — a refused typed fixture is this file's
+  // designated broken-fixture signal, and the refusal is the deck-policy
+  // finding, recorded rather than silently dropped.
+  {
+    name: "E11b the +summary junction's own edit modal targets the junction card with its stored content",
+    run: async (ctx) => {
+      const summaryName = database().prepare("SELECT name FROM cards WHERE key='summary' AND trash=0").get()?.name;
+      if (!summaryName) throw Error('Canonical summary tag is unavailable');
+      const host = 'Harness_catalog_summary_' + Date.now().toString(36);
+      const nestedName = host + '+' + summaryName;
+      ctx.created.push(host, nestedName);
+      await createTypedFixture(ctx, {name:host,type:'RichText'});
+      await createTypedFixture(ctx, {name:nestedName,type:'RichText',content:'catalog nested summary witness'});
+      const before = fixtureCard(database(), nestedName);
+      const write = await page.context().request.post(ctx.stack.origin+'/update/'+encodeURIComponent(host), {
+        headers:{origin:ctx.stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,
+        data:new URLSearchParams({'card[content]':'host {{'+nestedName+'|open}}'}).toString()
+      });
+      if(write.status()>=400)throw Error('Summary host fixture update refused');
+      await visit('/'+encodeURIComponent(host));
+      const slot=page.locator('#main .card-slot[data-card-id="'+before.id+'"]').filter({has:page.locator('a.edit-link[href$="/edit"]')}).first();
+      await slot.locator('a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+      const form=page.locator('.modal.show form.card-form[id^="edit_card"]:visible').filter({has:page.locator('textarea[name="card[content]"]')}).first();
+      await form.waitFor({state:'visible',timeout:20000});
+      const targetId=Number(await form.locator('xpath=ancestor::*[@data-card-id][1]').getAttribute('data-card-id'));
+      const action=new URL(await form.getAttribute('action'),ctx.stack.origin);
+      const content=await form.locator('textarea[name="card[content]"]').first().inputValue();
+      record("E11 a card with a +summary nested field renders that field's editor",
+        targetId===before.id && action.origin===ctx.stack.origin && action.pathname.startsWith('/update/') && content===before.db_content,
+        {host,nestedName,nestedId:before.id,targetId,action:action.pathname,stored:before.db_content,editorContent:content,raw:ctx.captureEvidence?.(await page.content(),{check:'E11b-junction-modal'})});
     },
   },
 

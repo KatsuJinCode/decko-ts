@@ -25,6 +25,7 @@
 // tests/deploy/worker-twins-shared-surface-parity.test.ts.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
+import { withStockResponseSecurity } from "./src/server/stock-response-security.js";
 import { edgeCacheArmed, edgeRouteCacheClass, readEdgeCacheStamp, resolveEdgeCache, serveWithEdgeCache } from "./deploy/src/worker-edge-cache.js";
 import {
   cloudflareAfterResponse,
@@ -391,13 +392,13 @@ export default {
 
   async fetch(request: Request, env: Env, ctx?: WaitUntilContext): Promise<Response> {
     if (edgeCacheArmed(env) && edgeRouteCacheClass(request.method, new URL(request.url).pathname) !== "uncacheable") {
-      return serveWithEdgeCache(request, env, {
+      return withStockResponseSecurity(await serveWithEdgeCache(request, env, {
         cache: resolveEdgeCache(),
         stamp: () => readEdgeCacheStamp(new CloudflareD1Adapter(env.DB)),
         render: anonymousPage => this.fetchUncached(request, env, ctx, anonymousPage),
-      });
+      }));
     }
-    return this.fetchUncached(request, env, ctx);
+    return withStockResponseSecurity(await this.fetchUncached(request, env, ctx));
   },
 
   async fetchUncached(request: Request, env: Env, ctx?: WaitUntilContext, anonymousPage = false): Promise<Response> {

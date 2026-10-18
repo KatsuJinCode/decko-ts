@@ -39,9 +39,11 @@
 //   independent postures, none implies another. Unarmed + cookieless +
 //   read-verb is the byte-identical path: a Cookie header scan finds
 //   nothing, serveWithEdgeCache calls render() directly, no cache contact,
-//   no extra headers.
+//   no extra cache headers. Stock HTTP security defaults are applied at the
+//   outer response boundary, independently of the cache and write switches.
 
 import { TINYMCE_NEST_PLUGIN_JS } from "./bunny-edge-tinymce-nest-plugin.js";
+import { withStockResponseSecurity } from "../../src/server/stock-response-security.js";
 import { serveFontAwesomeAsset } from "../../src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "../../src/server/bootstrap-font-assets.js";
 import { configureFontAwesomeMode } from "../../src/card/render/font-awesome.js";
@@ -244,10 +246,10 @@ export async function handleBunnyEngineRequest(
     } catch {
       /* immutable headers: unlabeled */
     }
-    return applyEdgeServerTimingHeader(profile, response);
+    return withStockResponseSecurity(applyEdgeServerTimingHeader(profile, response));
   }
   const response = await routeBunnyEngineRequest(request, env, profile, services);
-  return applyEdgeServerTimingHeader(profile, response);
+  return withStockResponseSecurity(applyEdgeServerTimingHeader(profile, response));
 }
 
 /** The serve route body — the dispatch order documented above, unchanged

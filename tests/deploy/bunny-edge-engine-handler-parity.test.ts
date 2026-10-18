@@ -185,6 +185,18 @@ function get(path: string, env: Record<string, string> = CREDENTIAL_ENV): Promis
 }
 
 describe("bunny edge engine handler — the shared read surface", () => {
+  it("stock response security headers cover successful and error pages", async () => {
+    for (const path of ["/", "/No+Such+Card", "/Home/nonsense"]) {
+      const response = await get(path);
+      expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+      expect(response.headers.get("x-download-options")).toBe("noopen");
+      expect(response.headers.get("x-permitted-cross-domain-policies")).toBe("none");
+      expect(response.headers.get("x-xss-protection")).toBe("1; mode=block");
+      await response.body?.cancel();
+    }
+  });
   it("GET / boots the engine over the stubbed seam and renders Home", async () => {
     const response = await get("/");
     expect(response.status).toBe(200);

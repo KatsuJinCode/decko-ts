@@ -622,9 +622,10 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    answered 303 on both instruments that actually issue it (the live
   //    lane and the whole-harness http-verb probe,
   //    native-whole-50717cca report.md:92). Two asserts: the replayed save
-  //    against the hosted deck's own card (its current db_content read from
-  //    the engine's own JSON, posted back verbatim as the form does -
-  //    owner-checks.original.mjs:126-145) must answer a redirect, not 5xx;
+  //    against the hosted deck's own card replays its actual edit form,
+  //    including raw nested fields, CSRF and revision. Default JSON differs
+  //    between hosts and can contain rendered content, so is not a write
+  //    source. The replay must answer a redirect, not merely a non-5xx;
   //    and the row's literal mark must fail CLEAN (4xx, e.g. not-found:
   //    synthetic-v1 carries no card 1743) rather than 5xx when the deck
   //    does not carry it - the 500 the owner audit originally recorded.
@@ -644,27 +645,62 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     if (typeof pageRequest === "undefined") {
       throw new Error("owner-save row probe needs the runner's pageRequest helper");
     }
-    const current = await fetch(`${base}/${encodeURIComponent(card)}.json`, { headers: { connection: "close" } })
-      .then(async (r) => (r.ok ? r.json() : null))
-      .catch(() => null);
-    const content =
-      current && typeof current === "object" && typeof current.db_content === "string" ? current.db_content : null;
-    if (content === null) throw new Error(`owner-save row probe could not read /${card}.json db_content`);
-    const form = { "card[content]": content, "success[redirect]": "true" };
-    const save = await pageRequest.post(`${base}/update/${encodeURIComponent(card)}`, {
-      headers: { origin: base },
-      form,
-      maxRedirects: 0,
-    }).catch((e) => ({ error: String(e?.message ?? e) }));
+    if (typeof evaluate !== "function") throw new Error("owner-save row probe needs the actual edit form");
+    const currentResponse = await pageRequest.get(`${base}/${encodeURIComponent(card)}.json`);
+    const current = currentResponse.ok() ? await currentResponse.json().catch(() => null) : null;
+    const cardId = Number(current?.id);
+    if (!Number.isSafeInteger(cardId) || cardId < 1) throw new Error(`owner-save row probe could not identify /${card}.json`);
+    const readForm = async () => {
+      await goto(`/${encodeURIComponent(card)}?view=edit_form`);
+      await settle();
+      const snapshot = await evaluate(({ card, cardId, base }) => {
+        const main = document.querySelector("#main") ?? document.body;
+        const candidates = main.matches("form.card-form") ? [main] : [...main.querySelectorAll("form.card-form")];
+        const normalize = value => value.replace(/_/g, " ").toLowerCase();
+        const forms = candidates.filter(form => {
+          const action = new URL(form.action, base);
+          if (action.origin !== new URL(base).origin || form.method.toLowerCase() !== "post" || !action.pathname.startsWith("/update/")) return false;
+          const mark = decodeURIComponent(action.pathname.slice("/update/".length));
+          return mark === "~" + cardId || normalize(mark) === normalize(card);
+        });
+        if (forms.length !== 1) return null;
+        return { action: forms[0].action, entries: [...new FormData(forms[0])].filter(([, value]) => typeof value === "string") };
+      }, { card, cardId, base });
+      if (!snapshot) throw new Error("owner-save edit form is absent, ambiguous, or targets a different card");
+      const fields = new URLSearchParams(snapshot.entries);
+      fields.set("success[redirect]", "true");
+      return { action: snapshot.action, data: fields.toString() };
+    };
+    const postForm = async (form, action = form.action) => pageRequest.post(action, {
+      headers: { origin: base, "content-type": "application/x-www-form-urlencoded" },
+      data: form.data, maxRedirects: 0,
+    }).catch(e => ({ error: String(e?.message ?? e) }));
+    const redirects = response => !response.error && [302, 303].includes(response.status()) && Boolean(response.headers().location);
+    const save = await postForm(await readForm());
     push({
       interaction: "assert-present",
-      selector: `owner-save replay: POST /update/${card} (current db_content) answers a redirect, not 5xx`,
-      count: save.error || save.status() >= 400 ? 0 : 1,
+      selector: `owner-save replay: the actual /${card} edit form answers a redirect without replacing raw nested fields from rendered JSON`,
+      count: redirects(save) ? 1 : 0,
       status: save.error ? null : save.status(),
     });
+    if (!redirects(save)) return sequence;
+    if (Number(rowSave[1]) === cardId) {
+      const mark = await postForm(await readForm(), `${base}/update/~${cardId}`);
+      push({ interaction: "assert-present", selector: "owner-save literal ID resolves to the same card and its fresh form redirects", count: redirects(mark) ? 1 : 0, status: mark.error ? null : mark.status() });
+      return sequence;
+    }
+    if (writeGate && writeGate.profile.mode !== "full") {
+      sequence.push({ interaction: "write-skipped", verb: "update", cardName: null, mode: writeGate.profile.mode, reason: "literal ID is not bound to the permitted owner's form" });
+      return sequence;
+    }
+    const literal = await pageRequest.get(`${base}/~${rowSave[1]}.json`, { maxRedirects: 0 });
+    if (literal.status() !== 404) {
+      push({ interaction: "assert-present", selector: "literal ID must be proven absent before its refusal is exercised; no unrelated card is posted", count: 0, status: literal.status() });
+      return sequence;
+    }
     const mark = await pageRequest.post(`${base}/update/~${rowSave[1]}`, {
       headers: { origin: base },
-      form,
+      form: { "success[redirect]": "true" },
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
     const markStatus = mark.error ? null : mark.status();
