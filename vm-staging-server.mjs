@@ -201,6 +201,16 @@ import { withVisitorEnabledRoles, permissionViewerKey } from "./dist/src/card/se
 // default; the rule walk and the real siteverify GET stay the engine's
 // defaults. Key NAMES only here; no key VALUES live in this repo.
 import { recaptchaConfigFromHostEnv } from "./dist/src/server/staging-server-recaptcha-env-config.js";
+// The stock oracle's security response headers (referrer-policy,
+// x-content-type-options, x-download-options, x-frame-options,
+// x-permitted-cross-domain-policies, x-xss-protection — the measured
+// every-response set, src/server/oracle-security-response-headers.ts),
+// applied at every response emit below: Ruby's action_dispatch default
+// headers middleware answers every response class with them, and the port's
+// served pages carried none (the 2026-10-18 header-parity gap).
+import {
+  applyOracleSecurityResponseHeaders,
+} from "./dist/src/server/oracle-security-response-headers.js";
 // The attachment storage seam: new uploads land as
 // files/<cardId>/<actionId><ext> under DECKO_FILES_DIR — Ruby's
 // Card.paths["files"] port (card-mod-carrierwave paths.rb:14-17) — and
@@ -3836,6 +3846,19 @@ async function applyWriteResponseTail(writeResponse, startedAt, method, pathname
 
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
+  // THE ORACLE'S SECURITY HEADERS, middleware-style: every response this
+  // server writes passes here (Ruby answers every response class with the
+  // same set through action_dispatch's default-headers middleware, captured
+  // live on pages, 404s, json and file arms — see
+  // src/server/oracle-security-response-headers.ts), so the merge sits on
+  // writeHead itself rather than at each branch's emit: a per-branch apply
+  // would silently skip the next added route. An explicitly set header
+  // wins (applyOracleSecurityResponseHeaders never overwrites), so the
+  // attachment route's own X-Content-Type-Options and any Set-Cookie
+  // branch carries are untouched.
+  const rawWriteHead = res.writeHead.bind(res);
+  res.writeHead = (status, headers) =>
+    rawWriteHead(status, applyOracleSecurityResponseHeaders(headers));
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "127.0.0.1"}`);
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
