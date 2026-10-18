@@ -133,7 +133,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    "Delete" on the surface page (ACT-034) measured affordance-not-found
   //    against a page that never carries it, on the ts engine and on the Ruby
   //    oracle alike.
-  if (/delete/i.test(t) && /delete/|confirm/i.test(t)) {
+  if (/delete/i.test(t) && /(delete|confirm)/i.test(t)) {
     await goto(`/${encodeURIComponent(card)}/edit`);
     await settle();
     sequence.push({
@@ -153,7 +153,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    "edit-link", title "Edit"; the icon is the link text, so the visible
   //    word "Edit" never appears on the page). Seeking that word on the home
   //    page (ACT-136) could not match any rendered card, on either engine.
-  if (/Ed+s+Edit/i.test(t) || /edit a/i.test(t)) {
+  if (/E[0-9]+ +Edit/i.test(t) || /edit a/i.test(t)) {
     await goto(`/${encodeURIComponent(card)}`);
     await settle();
     sequence.push({
@@ -170,7 +170,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    btn-item-delete) when the actor follows the card. W2 names the unfollow
   //    control, so both states are counted: the control's presence is the
   //    affordance, and the followed-state marker is recorded beside it.
-  if (/follow/i.test(t)) {
+  if (/follow/i.test(t)) {
     await goto(`/${encodeURIComponent(card)}/follow_section`);
     await settle();
     sequence.push({
