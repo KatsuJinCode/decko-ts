@@ -91,6 +91,8 @@ prove/                        the local proofs (no live host is contacted)
 node --test "reference-harness/live-walk/test/*.test.mjs"
 node reference-harness/live-walk/prove/two-local-engines-proof.mjs
 node reference-harness/live-walk/prove/base-url-mock-proof.mjs
+node reference-harness/live-walk/prove/search-order-two-local-engines-proof.mjs
+node reference-harness/live-walk/prove/search-order-default-invocation-proof.mjs
 ```
 
 The proofs seed differences they then require the harness to find (a mutated

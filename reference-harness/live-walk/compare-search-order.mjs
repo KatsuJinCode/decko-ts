@@ -26,7 +26,7 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { defaultProbeTerms, walkAndCompare, verdictLinesForProbe } from "./lib/search-order-compare.mjs";
+import { defaultProbeTerms, walkAndCompare, verdictLinesForProbe, DEFAULT_LETTER_PROBES } from "./lib/search-order-compare.mjs";
 
 function parseArgs(argv) {
   const args = { letters: true };
@@ -49,7 +49,12 @@ if (args.terms !== undefined) {
   terms = args.terms === "" ? [] : String(args.terms).split(",").map((t) => t.trim()).filter(Boolean);
 } else {
   terms = defaultProbeTerms({
-    letters: args.letters !== false,
+    // --letters/--no-letters is a boolean FLAG; defaultProbeTerms's `letters`
+    // is the letter ARRAY (its default applies only when the key is absent),
+    // so the flag must be converted, never passed through. Passing the raw
+    // boolean spread a non-iterable here: "TypeError: letters is not
+    // iterable" on the plain default invocation (2026-10-18 rehearsal find).
+    letters: args.letters ? DEFAULT_LETTER_PROBES : [],
     partialWords: args.partial !== undefined ? String(args.partial).split(",").map((t) => t.trim()).filter(Boolean) : undefined,
     exactName: args.exact,
   });
