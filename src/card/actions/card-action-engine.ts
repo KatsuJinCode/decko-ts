@@ -93,6 +93,7 @@ import {
   assertNameAvailable,
   findTrashedCardByLex,
   findTrashedKeyObstacle,
+  validateComputedKey,
   validateNameLegality,
 } from "./name-validation.js";
 import { knownTypeSpec, resolveTypeId } from "./type-resolution.js";
@@ -2028,6 +2029,7 @@ export class CardActionEngine {
       if (templateContent !== undefined) input.content = templateContent;
     }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
+    validateComputedKey(name); // event :validate_key (name_events.rb:44-49, after: :validate_name)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -2992,6 +2994,15 @@ export class CardActionEngine {
       validateNameLegality(newName); // validate_legality_of_name
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
+    // event :validate_key (name_events.rb:44-49) carries no `changed:` — it
+    // fires on EVERY save (create and update, renamed or not), so a save
+    // whose (unchanged or new) name computes the empty key is refused here
+    // exactly as Ruby refuses it. A name that cannot compose at all (a
+    // compound row whose side vanished — composedNameOf undefined) is left
+    // alone: Ruby's Card#key there still carries the joint ("a+", "+b"),
+    // never the empty string.
+    const postSaveName = newName ?? currentName;
+    if (postSaveName !== undefined) validateComputedKey(postSaveName);
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event — its guard snapshot must exist before this
     // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The

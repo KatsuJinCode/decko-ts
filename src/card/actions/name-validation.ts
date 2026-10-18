@@ -19,8 +19,18 @@ import { lexQuery, type Lex } from "../fetch/lexicon.js";
 import { CardActionError } from "./types.js";
 
 /** The 255-char limit of validate_legality_of_name
- *  (name_events.rb:36-38, `name.length > 255` → core_error_too_long). */
+ *  (name_events.rb:36-38, `name.length > 255` → core_error_too_long).
+ *  Ruby String#length counts CHARACTERS (codepoints); the comparison and
+ *  the error's %{length} both use the codepoint count, so a name of 200
+ *  astral-plane emoji (400 UTF-16 units) is legal here exactly as in Ruby. */
 export const MAX_NAME_LENGTH = 255;
+
+/** Ruby String#length on a JS string: codepoint count. */
+function rubyStringLength(str: string): number {
+  let count = 0;
+  for (const _ of str) count += 1;
+  return count;
+}
 
 /** validate_legality_of_name (name_events.rb:35-47). Order follows the
  *  Ruby condition chain: too long → blank → incomplete → banned characters.
@@ -28,9 +38,10 @@ export const MAX_NAME_LENGTH = 255;
  *  context exists; the action layer has no supercard context, so the
  *  autoname escape does not apply.) */
 export function validateNameLegality(name: DeckoName): void {
-  if (name.s.length > MAX_NAME_LENGTH) {
-    throw new CardActionError("name-illegal", `name is too long (${name.s.length} characters)`,
-      `NAME: is too long (255 character maximum; length is ${name.s.length})`);
+  const length = rubyStringLength(name.s);
+  if (length > MAX_NAME_LENGTH) {
+    throw new CardActionError("name-illegal", `name is too long (${length} characters)`,
+      `NAME: is too long (255 character maximum; length is ${length})`);
   }
   if (name.s === "") {
     throw new CardActionError("name-illegal", "name cannot be blank", "NAME: can't be blank");
@@ -44,6 +55,32 @@ export function validateNameLegality(name: DeckoName): void {
       `name contains illegal characters: ${name.s}`,
     );
   }
+}
+
+/**
+ * event :validate_key, after: :validate_name, on: :save, when: :no_autoname?
+ * (name_events.rb:44-49): `if key.empty? → errors.add :key,
+ * t(:core_error_blank_key)`. The card's computed key (Card#key = name.key
+ * for a fresh save) must not be EMPTY: a name whose every character falls
+ * outside the key alphabet ("!!!", "???", pure emoji) computes the empty
+ * key, and Ruby refuses the save with "Key cannot be blank" instead of
+ * storing a row whose key column would then collide with every other
+ * punctuation-only name on the cards.key unique index. The port never
+ * reaches that index with an empty key through this event either.
+ *
+ * The `elsif key != name.key` arm is out of scope: it only fires when the
+ * KEY COLUMN was assigned a value different from the computed one, and the
+ * action layer derives the column from the name (no external key input).
+ */
+export function validateComputedKey(name: DeckoName): void {
+  if (name.key !== "") return;
+  throw new CardActionError(
+    "validation-failed",
+    "Validation failed: Key cannot be blank",
+    "KEY: cannot be blank",
+    { key: "cannot be blank" },
+    name.s,
+  );
 }
 
 /** validate_uniqueness_of_name (name_events.rb:19-26): the Lexicon's id for
@@ -64,8 +101,9 @@ export async function assertNameAvailable(
   if (result.rows[0] !== undefined) {
     throw new CardActionError(
       "name-conflict",
-      `name is already taken: ${name.s}`,
-      // core_error_name_exists names the EXISTING card (name_events.rb:25)
+      // core_error_name_exists names the EXISTING card in BOTH forms
+      // (name_events.rb:25 binds `name: existing_card.name`)
+      `name is already taken: ${result.rows[0].name ?? name.s}`,
       `NAME: must be unique; '${result.rows[0].name ?? name.s}' already exists.`,
       undefined,
       name.s,
