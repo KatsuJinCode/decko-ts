@@ -2117,8 +2117,21 @@ async function dispatchWriteRequest(
     // page; the deleted card's URL then serves the create form through the
     // unknown-card page branch).
     const successMark = parsed.success["mark"];
+    // Card::Env::Success::Target#target= (target.rb:63-65) resolves its value
+    // EAGERLY: the moment success[mark] is read off the request, *previous
+    // becomes Env.previous_location and is memoized in @target. That read
+    // happens while the params are still being parsed — BEFORE the delete's
+    // :finalize event runs Env.discard_locations_for (location_history.rb:1-4).
+    // So a delete link carrying success[mark]=*previous redirects to the
+    // location the deleted card itself was on; the discard cannot take it away
+    // afterwards. Resolving *previous lazily, after the discard, instead
+    // dropped one level further and sent the visitor to the page below —
+    // the delete-admin journey's "after delete" landed on / instead of
+    // /Phrase_2?view=edit. Capture it here, before any discard below.
     const previousRedirect =
-      successMark === "*previous" && ctx.previousLocation !== undefined ? ctx.previousLocation() : undefined;
+      successMark === "*previous" || successMark === ":previous"
+        ? (ctx.previousLocation?.() ?? previousLocation(visit))
+        : undefined;
     const successName =
       previousRedirect !== undefined
         ? undefined
@@ -2229,9 +2242,14 @@ async function dispatchWriteRequest(
     // non-ajax delete to the previous location; other saves go to the
     // success target.
     if (saved.verb === "delete") discardLocationsFor(visit, name);
+    // The no-mark delete keeps resolving :previous AFTER the discard: that
+    // target is the one configure_successful_deletion writes during the
+    // finalize event, so Ruby's own read is post-discard. A *previous that
+    // arrived on the request is the other case — it was memoized at parse
+    // time, so use the pre-discard capture.
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
       ? previousLocation(visit)
-      : await successTargetPath(ctx.fetcher, parsed, name, visit);
+      : (previousRedirect ?? await successTargetPath(ctx.fetcher, parsed, name, visit));
     const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
     return response;
   } catch (error) {

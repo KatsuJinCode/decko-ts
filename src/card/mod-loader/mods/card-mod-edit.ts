@@ -424,13 +424,35 @@ function modalCancelButton(): string {
 const structureRuleFetchInstances = new WeakSet<object>();
 
 /** all/form_buttons.rb:56-77 delete_button + delete_button_opts +
- *  delete_confirm + delete_success (NOT main? branch - the engine render
- *  surface is non-focal; the main? branch is the page layer's remainder):
- *  add_class "slotter btn btn-outline-danger ms-auto"; data-confirm
- *  "Are you sure you want to delete #{safe_name}?"; path action :delete,
- *  success {view: :just_deleted}; remote. link_to (links.rb) appends href
- *  then data-remote LAST; the success hash rides the query string
- *  Rails-deep-encoded (success[view]=just_deleted percent-encoded).
+ *  delete_confirm + delete_success: add_class "slotter btn btn-outline-danger
+ *  ms-auto"; data-confirm "Are you sure you want to delete #{safe_name}?";
+ *  path action :delete; the success hash rides the query string
+ *  Rails-deep-encoded; remote. link_to (links.rb) appends href then
+ *  data-remote LAST.
+ *
+ *  delete_success (form_buttons.rb:72-78) forks on `main?`, and BOTH arms are
+ *  live:
+ *      elsif main? then { redirect: true, mark: "*previous" }
+ *      else             { view: :just_deleted }
+ *  `main?` is the depth-zero format (subformat.rb:35; Director#main?
+ *  director.rb:160) — `fmt.isMain`, which RenderFormat also seeds isFocal
+ *  from (format.ts:867-868). On a card PAGE the button sits in the main
+ *  format, so the oracle takes the redirect arm: measured on
+ *  /Phrase_2?view=edit it serves
+ *  href="/delete/Phrase_2?success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true"
+ *  and answers the ajax delete with {"redirect":"<that page's own address>"},
+ *  because success[mark]=*previous is resolved while the request params are
+ *  read (target.rb:63-65) — BEFORE the delete's :finalize event discards the
+ *  deleted card's locations (location_history.rb:1-4), so the visitor returns
+ *  to the page the delete was fired from.
+ *
+ *  This port hardcoded the else arm on the stated premise that the engine
+ *  render surface is non-focal. That premise is false for the page's main
+ *  format: the button asked for the just_deleted slot instead, the delete
+ *  resolved its own (post-discard) target, and the delete-admin journey's
+ *  "after delete" observation landed on / instead of /Phrase_2?view=edit.
+ *  The non-main arm is kept unchanged: a nested or modal slot still gets
+ *  {view: :just_deleted}.
  *
  *  On a card whose instance came from the structure_rule_card fetch (the
  *  skip_modules posture above) the Rule set's delete_confirm override runs
@@ -453,7 +475,10 @@ function deleteButton(fmt: ViewContext["fmt"]): string | undefined {
     throw new NoMethodError("undefined method `rule_setting_name' for an instance of Card");
   }
   const name = h(fmt.card.name.s);
-  return `<a class="slotter btn btn-outline-danger ms-auto" data-confirm="Are you sure you want to delete ${name}?" href="/delete/${fmt.urlKey()}?success%5Bview%5D=just_deleted" data-remote="true">Delete</a>`;
+  const successQuery = fmt.isMain
+    ? "success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true"
+    : "success%5Bview%5D=just_deleted";
+  return `<a class="slotter btn btn-outline-danger ms-auto" data-confirm="Are you sure you want to delete ${name}?" href="/delete/${fmt.urlKey()}?${successQuery}" data-remote="true">Delete</a>`;
 }
 
 /** all/editing.rb:24-27 button_formgroup:
