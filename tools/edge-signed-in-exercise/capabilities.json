@@ -527,7 +527,7 @@
       "checks": [
         "E13 a /new form serves a card[type] selector the user can change"
       ],
-      "finding": "No card[type]/card[type_id] selector rendered on /new/:type; the type_id is set via URL path only (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md)."
+      "finding": "The 2026-10-17T20:08:35Z run graded one surface and reported it whole: /new/:type carries no selector because stock Decko deliberately presets a typed route's type (that preset is now asserted as the contract), while the defect was that the generic /card/new form also served only a hidden card[type_id]. Fixed by 0e949cc7 (typePreset distinguishes explicit typed routes from the generic form; the selected type rides the new_fields XHR without saving a preview): /card/new serves a changeable select[name=card[type]], and choosing Phrase stores a Phrase card with the exact typed content. Tip proof: E13 PASS, source 53c86269, .runtime/edge-signed-in/2026-10-18T08-41-33-963Z-9180/report.md (typedHasChooser false, typedTypeId 3, chooserPresent true, storedTypeId 52 = expectedTypeId 52)."
     },
     {
       "id": "E14",
