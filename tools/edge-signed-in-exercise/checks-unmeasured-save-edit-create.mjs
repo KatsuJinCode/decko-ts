@@ -41,7 +41,10 @@
 // check names below match the matrix action text so a future coverage
 // pass credits them.
 
-import { fixtureCard } from "./lib/typed-fixture.mjs";
+import { fixtureCard, createTypedFixture } from "./lib/typed-fixture.mjs";
+import { nestRulesJourney } from "./lib/nest-rules-journey.mjs";
+import { newPointerInput } from "./lib/new-pointer-input.mjs";
+import { matchingRichEditor } from "./lib/rich-editor.mjs";
 
 export const meta = {
   topic: "unmeasured-save-edit-create",
@@ -98,63 +101,15 @@ async function signInActor(page, stack, creds) {
  *  returns the response plus the row's id from the running fixture database.
  *  This is the same transport create-permission / permission-rules use. */
 async function createThroughForm(page, stack, database, { name, type, content = "" }) {
-  const opened = await page.goto(`${stack.origin}/new/${encodeURIComponent(type)}?card%5Bname%5D=${encodeURIComponent(name)}`, { waitUntil: "domcontentloaded" });
-  if (opened.status() >= 400) throw Error(`create form refused (${type}): HTTP ${opened.status()}`);
-  const form = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') }).first();
-  if (await form.count() === 0) throw Error(`create form is absent (${type})`);
-  const field = form.locator('[name="card[content]"]').first();
-  if (content !== "" && await field.count() > 0) {
-    const isTiny = await field.evaluate(el => el.classList.contains("tinymce-textarea"));
-    if (isTiny) {
-      const id = await field.getAttribute("id");
-      if (id === null) throw Error("create editor has no identity");
-      await page.waitForFunction(editorId => Boolean(window.tinymce?.get(editorId)), id, { timeout: 20000 });
-      await page.evaluate(([editorId, text]) => { const editor = window.tinymce.get(editorId); editor.setContent(text); editor.save(); }, [id, content]);
-    } else if (await field.isVisible()) {
-      await field.fill(content);
-    }
-  }
-  const action = new URL(await form.getAttribute("action"), stack.origin);
-  const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
-    .then(response => ({ response }), error => ({ error }));
-  await form.locator(".create-submit-button").first().click();
-  const observed = await pending;
-  if (observed.error) throw observed.error;
-  await observed.response.finished();
-  const row = database().prepare("SELECT id,name,type_id,trash FROM cards WHERE name=? AND trash=0").get(name);
-  return { status: observed.response.status(), row };
-}
-
-/** What the nest dialog offers as the picker after the {{}} button is clicked:
- *  a list of nest types with their picker affordance. The E7 row is "Nest
- *  rules editor" - the engine ships nest pickers for List, Image, Link, and
- *  Rules; this is the picker for the rules shape (src/card/mod-loader/mods/
- *  card-mod-editor-nest-types.ts is the dispatch, but the rendered DOM is
- *  the source of truth here). */
-async function nestPickerOffered(page) {
-  return page.evaluate(() => {
-    const dialog = document.querySelector(".modal, .ui-dialog, [role='dialog']") ?? document.body;
-    const buttons = [...dialog.querySelectorAll("button, a.button, .btn, a")];
-    return {
-      buttons: buttons.map(b => (b.textContent ?? "").replace(/\s+/g, " ").trim()).filter(t => t !== "").slice(0, 30),
-      hasRulesOption: buttons.some(b => /rules?/i.test((b.textContent ?? ""))),
-      hasListOption: buttons.some(b => /^list$/i.test((b.textContent ?? "").trim())),
-      hasImageOption: buttons.some(b => /^image$/i.test((b.textContent ?? "").trim())),
-      hasLinkOption: buttons.some(b => /^link$/i.test((b.textContent ?? "").trim())),
-    };
-  });
+  const result = await createTypedFixture({ page, stack, database }, { name, type, content });
+  return { status: result.status, row: fixtureCard(database(), name) };
 }
 
 export const checks = [
   // -------------------------------------------------------------------- C11
-  // What the cypress reference 'simple cardtype autoname' asserts: a cardtype
-  // with name set to "_self/{{year}}+{{month}}+{{day}}+birthday" auto-derives
-  // the name from the inserted date tokens. The deck does not carry an
-  // autoname-pattern cardtype by default in this snapshot, so this check
-  // creates one (with a stable name pattern that produces a known token) and
-  // then submits a card through the form with that cardtype selected. The
-  // verdict is whether a card row exists afterwards, named after the generated
-  // token - the "name generated on save" claim.
+  // core/set/all/autoname.rb and its installed spec: a type-set autoname
+  // rule supplies the name on save. Create a private Cardtype and real rule,
+  // submit the unnamed form, and verify the exact typed row and rule seed.
   {
     name: capabilityChecks.C11[0],
     only: "unmeasured-save-edit-create",
@@ -164,26 +119,18 @@ export const checks = [
       const signedIn = await signInActor(page, stack, creds.admin);
       if (signedIn >= 400) throw Error("C11 admin was not signed in");
       const s = stamp();
-      // The cardtype's own name pattern is the engine's documented autoname
-      // anchor (decko-ruby-reference/decko/spec/cypress/e2e/create/presetting_spec.coffee
-      // 'simple cardtype autoname'): a leading underscore triggers autoname.
       const cardtypeName = "HarnessC11Type_" + s;
       const cardName = "HarnessC11Card_" + s;
       created.push(cardtypeName, cardName);
 
-      // Seed the autoname cardtype through the engine's own /card/create.
-      const typeCreate = await page.context().request.post(stack.origin + "/card/create", {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        data: new URLSearchParams({
-          "card[name]": cardtypeName,
-          "card[type]": "CardType",
-          "card[content]": "harness C11 autoname cardtype " + s,
-          "success[redirect]": "true",
-        }).toString(),
-        maxRedirects: 0,
-      });
+      // Stock autoname is a type-set rule, not the cardtype's content.
+      const typeCreate = await createThroughForm(page, stack, database, { name: cardtypeName, type: "Cardtype" });
       const cardtypeRow = fixtureCard(database(), cardtypeName);
-      if (typeCreate.status() >= 400 || cardtypeRow === undefined) throw Error("C11 cardtype was not stored: HTTP " + typeCreate.status());
+      if (typeCreate.status >= 400 || cardtypeRow === undefined) throw Error("C11 cardtype was not stored: HTTP " + typeCreate.status);
+      const ruleName = cardtypeName + "+*type+*autoname";
+      created.push(ruleName);
+      await createThroughForm(page, stack, database, { name: ruleName, type: "Phrase", content: cardName });
+      const beforeRowCount = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE type_id=? AND trash=0").get(cardtypeRow.id)?.n ?? 0;
 
       // Open the new-card form for the cardtype and submit with the seed name
       // empty so the autoname branch can run. The form's name input is left
@@ -191,6 +138,7 @@ export const checks = [
       const opened = await page.goto(`${stack.origin}/new/${encodeURIComponent(cardtypeName)}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
       const form = page.locator("form.card-form").filter({ has: page.locator('.create-submit-button') }).first();
       if (await form.count() === 0) throw Error("C11 cardtype create form is absent");
+      const nameFieldsBeforeSubmit=await form.locator('[name="card[name]"]').count();
       const action = new URL(await form.getAttribute("action"), stack.origin);
       const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30_000 })
         .then(response => ({ response }), error => ({ error }));
@@ -198,21 +146,21 @@ export const checks = [
       const observed = await pending;
       if (observed.error) throw observed.error;
       await observed.response.finished();
+      const outcome=await observed.response.json().catch(()=>null);
+      if(typeof outcome?.redirect==='string'){
+        const redirect=new URL(outcome.redirect,stack.origin);
+        if(redirect.origin!==stack.origin)throw Error('Autoname create left the owned origin');
+        await page.waitForURL(redirect.href,{waitUntil:'domcontentloaded',timeout:20000});
+      }
 
-      // Read every card with the cardtype (the autoname branch may have named
-      // the new card after the date pattern - we do not assert the exact name
-      // because the harness clock produces a fresh date string per run, but we
-      // DO assert: (a) the create request returned 2xx/3xx (the engine did
-      // something), (b) at least one card with this cardtype now exists that
-      // did not exist before, and (c) the row was stored under a non-empty
-      // name (autoname does not store an empty name).
+      // The before count precedes submission; the generated name must equal the rule seed.
       const cardsBefore = cardtypeRow.id;
-      const beforeRowCount = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE type_id=? AND trash=0").get(cardsBefore)?.n ?? 0;
       const afterRow = database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY id DESC LIMIT 1").get(cardsBefore);
       const allRowsAfter = database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY id").all(cardsBefore).map(r => r.name);
       const newRows = allRowsAfter.length;
       const storedName = afterRow?.name ?? "";
-      const verdict = observed.response.status() < 400 && newRows > beforeRowCount && storedName.length > 0 && storedName !== cardtypeName;
+      const ruleContentAfter=fixtureCard(database(),ruleName)?.db_content;
+      const verdict = nameFieldsBeforeSubmit===0 && observed.response.status() < 400 && newRows === beforeRowCount + 1 && storedName === cardName && ruleContentAfter===storedName;
       const html = await page.content();
       record(capabilityChecks.C11[0], verdict, {
         actor: creds.admin.name,
@@ -223,6 +171,8 @@ export const checks = [
         cardsAfterTypeWrite: newRows,
         mostRecentCardName: storedName,
         allCardsForType: allRowsAfter,
+        nameFieldsBeforeSubmit,
+        ruleContentAfter,
         requestStatus: opened.status(),
         raw: captureEvidence(html, { check: "c11-autoname", cardtype: cardtypeName }),
       });
@@ -230,256 +180,22 @@ export const checks = [
     },
   },
 
-  // -------------------------------------------------------------------- C15
-  // Cucumber 'radio input': a Phrase cardtype with a pointer slot that the
-  // form renders as a radio. The simplest proof that C15's flow path passes
-  // is: (a) a cardtype exists with a slot whose pointer view is single-choice,
-  // (b) the new-card form on that cardtype shows radio inputs (multiple input
-  // type="radio" sharing a name), and (c) clicking one radio and submitting
-  // persists the picked value (read from the stored card content or from a
-  // fresh GET on the persisted slot).
-  {
-    name: capabilityChecks.C15[0],
-    only: "unmeasured-save-edit-create",
-    run: async ctx => {
-      const { stack, page, creds, record, database, created, captureEvidence, fixtureState } = ctx;
-      if (!isLocalOrigin(stack.origin)) throw Error("C15 requires the disposable loopback fixture");
-      const signedIn = await signInActor(page, stack, creds.admin);
-      if (signedIn >= 400) throw Error("C15 admin was not signed in");
-      const s = stamp();
-      const cardtypeName = "HarnessC15Type_" + s;
-      const optionName = "HarnessC15Option_" + s;
-      const cardName = "HarnessC15Card_" + s;
-      created.push(cardtypeName, optionName, cardName);
-
-      // The option card the slot will point at - a regular Phrase.
-      const optionCreate = await createThroughForm(page, stack, database, { name: optionName, type: "Phrase", content: "C15 option " + s });
-      if (optionCreate.status >= 400 || optionCreate.row === undefined) throw Error("C15 option was not stored");
-
-      // Seed a cardtype with a pointer slot typed as Phrase; the form should
-      // render a radio input. We add the slot through a raw type-rule storage
-      // because the engine's own /card/create does not expose a slot editor.
-      const typeCreate = await page.context().request.post(stack.origin + "/card/create", {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        data: new URLSearchParams({
-          "card[name]": cardtypeName,
-          "card[type]": "CardType",
-          "card[content]": "harness C15 pointer cardtype " + s,
-          "success[redirect]": "true",
-        }).toString(),
-        maxRedirects: 0,
-      });
-      if (typeCreate.status() >= 400) throw Error("C15 cardtype was not stored");
-
-      // Now open the new-card form for the cardtype and read its rendered
-      // inputs. If the engine renders a radio input, multiple `input[type=radio]`
-      // with a shared name appear; otherwise the form omits the slot input.
-      await page.goto(`${stack.origin}/new/${encodeURIComponent(cardtypeName)}?card%5Bname%5D=${encodeURIComponent(cardName)}`, { waitUntil: "domcontentloaded" });
-      const form = page.locator("form.card-form").filter({ has: page.locator('.create-submit-button') }).first();
-      if (await form.count() === 0) throw Error("C15 new-card form is absent");
-      const radioInventory = await form.evaluate(f => {
-        const inputs = [...f.querySelectorAll("input[type='radio'], input[type=radio]")];
-        return {
-          radioCount: inputs.length,
-          names: [...new Set(inputs.map(i => i.getAttribute("name")))].filter(Boolean),
-          values: inputs.slice(0, 12).map(i => i.getAttribute("value")),
-        };
-      });
-      const radioPresent = radioInventory.radioCount > 0;
-      // Click the first radio and submit. The radio's value is the junction
-      // form name for the slot option; the engine stores it on the new card.
-      let submissionVerdict = false;
-      let submissionEvidence = null;
-      if (radioPresent) {
-        const first = form.locator("input[type=radio]").first();
-        const value = await first.getAttribute("value");
-        await first.check().catch(() => undefined);
-        const action = new URL(await form.getAttribute("action"), stack.origin);
-        const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30_000 })
-          .then(response => ({ response }), error => ({ error }));
-        await form.locator(".create-submit-button").first().click();
-        const observed = await pending;
-        if (observed.error) { submissionVerdict = false; submissionEvidence = { error: String(observed.error.message ?? observed.error) }; }
-        else {
-          await observed.response.finished();
-          submissionEvidence = { status: observed.response.status(), chosenValue: value };
-          // Read back the stored card. The `card_references` table carries the
-          // picked option for a pointer slot.
-          const stored = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(cardName);
-          submissionVerdict = stored !== undefined && observed.response.status() < 400;
-          if (stored !== undefined) {
-            submissionEvidence.storedRowId = stored.id;
-            submissionEvidence.references = database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=? LIMIT 5").all(stored.id);
-          }
-        }
-      }
-      record(capabilityChecks.C15[0], radioPresent && submissionVerdict, {
-        actor: creds.admin.name,
-        cardtype: cardtypeName,
-        option: optionName,
-        card: cardName,
-        radioInventory,
-        submissionEvidence,
-        raw: captureEvidence(await page.content(), { check: "c15-radio-input", cardtype: cardtypeName }),
-      });
-      if (fixtureState?.fatalReason) throw Error("C15 fixture quarantined: " + fixtureState.fatalReason);
+  // New Pointer cards use real *right input-type/content-options rules.
+  ...[['C15','radio'],['C17','multiselect']].map(([id,widget])=>({
+    name:capabilityChecks[id][0],only:'unmeasured-save-edit-create',
+    run:async ctx=>{
+      await signInActor(ctx.page,ctx.stack,ctx.creds.admin);
+      const observed=await newPointerInput(ctx,widget);
+      ctx.record(capabilityChecks[id][0],observed.pass,observed.evidence);
     },
-  },
+  })),
 
-  // -------------------------------------------------------------------- C17
-  // Same shape as C15 but with a multiselect slot. The form renders a
-  // multi-select control (HTML select with multiple attribute OR a checked
-  // set of checkboxes). Clicking two options and submitting persists the
-  // selection.
-  {
-    name: capabilityChecks.C17[0],
-    only: "unmeasured-save-edit-create",
-    run: async ctx => {
-      const { stack, page, creds, record, database, created, captureEvidence, fixtureState } = ctx;
-      if (!isLocalOrigin(stack.origin)) throw Error("C17 requires the disposable loopback fixture");
-      const signedIn = await signInActor(page, stack, creds.admin);
-      if (signedIn >= 400) throw Error("C17 admin was not signed in");
-      const s = stamp();
-      const cardtypeName = "HarnessC17Type_" + s;
-      const option1 = "HarnessC17Opt1_" + s;
-      const option2 = "HarnessC17Opt2_" + s;
-      const cardName = "HarnessC17Card_" + s;
-      created.push(cardtypeName, option1, option2, cardName);
-      const c1 = await createThroughForm(page, stack, database, { name: option1, type: "Phrase", content: "C17 option 1 " + s });
-      const c2 = await createThroughForm(page, stack, database, { name: option2, type: "Phrase", content: "C17 option 2 " + s });
-      if (c1.status >= 400 || c1.row === undefined || c2.status >= 400 || c2.row === undefined) throw Error("C17 options were not stored");
-
-      const typeCreate = await page.context().request.post(stack.origin + "/card/create", {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        data: new URLSearchParams({
-          "card[name]": cardtypeName,
-          "card[type]": "CardType",
-          "card[content]": "harness C17 multi-pointer cardtype " + s,
-          "success[redirect]": "true",
-        }).toString(),
-        maxRedirects: 0,
-      });
-      if (typeCreate.status() >= 400) throw Error("C17 cardtype was not stored");
-
-      await page.goto(`${stack.origin}/new/${encodeURIComponent(cardtypeName)}?card%5Bname%5D=${encodeURIComponent(cardName)}`, { waitUntil: "domcontentloaded" });
-      const form = page.locator("form.card-form").filter({ has: page.locator('.create-submit-button') }).first();
-      if (await form.count() === 0) throw Error("C17 new-card form is absent");
-      const multiInventory = await form.evaluate(f => {
-        const selects = [...f.querySelectorAll("select[multiple], select[multiple='multiple'], select[multiple=true]")];
-        const checkboxes = [...f.querySelectorAll("input[type='checkbox'], input[type=checkbox]")];
-        return {
-          selectMultipleCount: selects.length,
-          checkboxCount: checkboxes.length,
-          selectNames: selects.map(s => s.getAttribute("name")).filter(Boolean),
-          checkboxNames: [...new Set(checkboxes.map(c => c.getAttribute("name")))].filter(Boolean),
-        };
-      });
-      const multiPresent = multiInventory.selectMultipleCount > 0 || multiInventory.checkboxCount > 1;
-      let submissionVerdict = false;
-      let submissionEvidence = null;
-      if (multiPresent) {
-        // For a multi-select: select option1 and option2 then submit.
-        if (multiInventory.selectMultipleCount > 0) {
-          const sel = form.locator("select[multiple]").first();
-          // Playwright's selectOption respects multiple.
-          await sel.selectOption({ index: 0 }).catch(() => undefined);
-          await sel.selectOption({ index: 1 }).catch(() => undefined);
-        } else {
-          const cbs = form.locator("input[type=checkbox]");
-          const n = await cbs.count();
-          if (n >= 2) { await cbs.nth(0).check().catch(() => undefined); await cbs.nth(1).check().catch(() => undefined); }
-        }
-        const action = new URL(await form.getAttribute("action"), stack.origin);
-        const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30_000 })
-          .then(response => ({ response }), error => ({ error }));
-        await form.locator(".create-submit-button").first().click();
-        const observed = await pending;
-        if (observed.error) { submissionEvidence = { error: String(observed.error.message ?? observed.error) }; }
-        else {
-          await observed.response.finished();
-          submissionEvidence = { status: observed.response.status() };
-          const stored = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(cardName);
-          submissionVerdict = stored !== undefined && observed.response.status() < 400;
-          if (stored !== undefined) {
-            submissionEvidence.storedRowId = stored.id;
-            submissionEvidence.references = database().prepare("SELECT referee_key,referee_id,ref_type FROM card_references WHERE referer_id=? LIMIT 8").all(stored.id);
-          }
-        }
-      }
-      record(capabilityChecks.C17[0], multiPresent && submissionVerdict, {
-        actor: creds.admin.name,
-        cardtype: cardtypeName,
-        options: [option1, option2],
-        card: cardName,
-        multiInventory,
-        submissionEvidence,
-        raw: captureEvidence(await page.content(), { check: "c17-multiselect-input", cardtype: cardtypeName }),
-      });
-      if (fixtureState?.fatalReason) throw Error("C17 fixture quarantined: " + fixtureState.fatalReason);
-    },
-  },
-
-  // -------------------------------------------------------------------- E7
-  // Cypress 'nest rules editor': click the {{}} nest button on a RichText
-  // editor, look for a Rules option in the dialog, click it, and assert the
-  // rules editor opens (it has a name input and content field).
-  {
-    name: capabilityChecks.E7[0],
-    only: "unmeasured-save-edit-create",
-    run: async ctx => {
-      const { stack, page, creds, record, database, created, captureEvidence, fixtureState } = ctx;
-      if (!isLocalOrigin(stack.origin)) throw Error("E7 requires the disposable loopback fixture");
-      const signedIn = await signInActor(page, stack, creds.admin);
-      if (signedIn >= 400) throw Error("E7 admin was not signed in");
-      const s = stamp();
-      const cardName = "HarnessE7Card_" + s;
-      const nestRuleName = "HarnessE7Rule_" + s;
-      created.push(cardName, nestRuleName);
-
-      // The card whose RichText editor this check drives.
-      const seeded = await createThroughForm(page, stack, database, { name: cardName, type: "RichText", content: "Harness E7 nest-rules editor " + s });
-      if (seeded.status >= 400) throw Error("E7 fixture card was not stored");
-
-      // Open the card's edit view and wait for TinyMCE.
-      await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}?view=edit`, { waitUntil: "load" });
-      await page.waitForFunction(() => typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null, undefined, { timeout: 30_000 }).catch(() => undefined);
-
-      // Click the {{}} nest button. The toolbar locator is the same one
-      // checks-cover-b.mjs uses (its E4 check, lines around the nestDialogJourney
-      // helper that the cover-b file imports for the {{}} button click).
-      let dialogState = null;
-      let rulesOptionPresent = false;
-      try {
-        // First attempt: the stock {{}} toolbar button inside tinymce's iframe.
-        const nestButton = page.locator(".tox-toolbar button[title*='nest' i], .tox-toolbar button[aria-label*='nest' i], .tox-toolbar .tox-tbtn[title*='nest' i]").first();
-        if (await nestButton.count() > 0) {
-          await nestButton.click().catch(() => undefined);
-          await page.waitForTimeout(1500);
-          dialogState = await nestPickerOffered(page);
-          rulesOptionPresent = dialogState.hasRulesOption;
-        }
-      } catch { /* fall through to the record() call below */ }
-      // If the toolbar button is not present, look for an in-page nest button
-      // (the harness sees the same control paths content-flows uses).
-      if (!dialogState) {
-        const pageNestButton = page.locator("button[title*='nest' i], a[title*='nest' i], .nest-button, .nest-add").first();
-        if (await pageNestButton.count() > 0) {
-          await pageNestButton.click().catch(() => undefined);
-          await page.waitForTimeout(1500);
-          dialogState = await nestPickerOffered(page);
-          rulesOptionPresent = dialogState.hasRulesOption;
-        }
-      }
-      record(capabilityChecks.E7[0], dialogState !== null && rulesOptionPresent, {
-        actor: creds.admin.name,
-        card: cardName,
-        dialogState: dialogState ?? { buttons: [] },
-        rulesOptionPresent,
-        raw: captureEvidence(await page.content(), { check: "e7-nest-rules", card: cardName }),
-      });
-      if (fixtureState?.fatalReason) throw Error("E7 fixture quarantined: " + fixtureState.fatalReason);
-    },
-  },
+  // Installed nest_editor_tabs.rb exposes rules as a tab after naming a nest.
+  {name:capabilityChecks.E7[0],only:'unmeasured-save-edit-create',run:async ctx=>{
+    await signInActor(ctx.page,ctx.stack,ctx.creds.admin);
+    const observed=await nestRulesJourney(ctx);
+    ctx.record(capabilityChecks.E7[0],observed.pass,observed.evidence);
+  }},
 
   // -------------------------------------------------------------------- E11
   // Journeys 'edit-nested-summary-member': a card with nested summary
@@ -498,44 +214,44 @@ export const checks = [
       if (signedIn >= 400) throw Error("E11 admin was not signed in");
       const s = stamp();
       const hostName = "HarnessE11Host_" + s;
-      const nestedName = "HarnessE11Nested_" + s;
+      const summaryName = database().prepare("SELECT name FROM cards WHERE key='summary' AND trash=0").get()?.name;
+      if (!summaryName) throw Error('The canonical summary tag is unavailable');
+      const nestedName = hostName + "+" + summaryName;
       created.push(hostName, nestedName);
-      const host = await createThroughForm(page, stack, database, { name: hostName, type: "Basic", content: "host " + s });
-      if (host.status >= 400) throw Error("E11 host card was not stored");
+      // Establish the parent before creating its plus field.
+      await createThroughForm(page, stack, database, { name: hostName, type: "Basic" });
       const nested = await createThroughForm(page, stack, database, { name: nestedName, type: "RichText", content: "nested original " + s });
       if (nested.status >= 400) throw Error("E11 nested card was not stored");
+      const host = await page.context().request.post(stack.origin + '/update/' + hostName, {headers:{origin:stack.origin,'Content-Type':'application/x-www-form-urlencoded'},data:new URLSearchParams({'card[content]':'host {{'+nestedName+'|open}} '+s}).toString(),maxRedirects:0});
+      if (host.status() >= 400) throw Error("E11 host fixture content was not stored");
 
-      // Drive the engine's own update endpoint through the nested card's view.
-      // The form action on the nested edit page is the same POST path the
-      // other checks use; this proves the persist side of the edit cycle.
-      const before = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(nestedName);
-      const update = await page.context().request.post(`${stack.origin}/update/${encodeURIComponent(nestedName)}`, {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        data: new URLSearchParams({ "card[content]": "nested edited " + s, "success[redirect]": "true" }).toString(),
-        maxRedirects: 0,
+      const before = fixtureCard(database(), nestedName);
+      await page.goto(stack.origin+"/"+encodeURIComponent(hostName),{waitUntil:"load"});
+      const slot=page.locator('#main .card-slot[data-card-id="'+before.id+'"]')
+        .filter({has:page.locator('a.edit-link[href$="/edit"]')}).first();
+      await slot.locator('a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+      const form=page.locator('.modal.show form.card-form[id^="edit_card"]:visible').filter({has:page.locator('textarea[name="card[content]"]')}).first();
+      await form.waitFor({state:'visible',timeout:20000});
+      const action=new URL(await form.getAttribute('action'),stack.origin);
+      const targetId=Number(await form.locator('xpath=ancestor::*[@data-card-id][1]').getAttribute('data-card-id'));
+      if(action.origin!==stack.origin||!action.pathname.startsWith('/update/')||targetId!==before.id)throw Error('Nested editor updates a different card');
+      const field=form.locator('textarea[name="card[content]"]').first(),id=await field.getAttribute('id');
+      if(!id)throw Error('Nested editor has no identity');
+      await page.waitForFunction(matchingRichEditor,[id,false],{timeout:20000});
+      const newContent='nested edited '+s;
+      await page.evaluate(([id,text])=>{const editor=window.tinymce.get(id);editor.setContent(text);editor.save()},[id,newContent]);
+      const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==='POST',{timeout:30000}).then(response=>({response}),error=>({error}));
+      await form.locator('button.submit-button').first().click();
+      const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
+      await form.waitFor({state:'hidden',timeout:20000});
+      const after=fixtureCard(database(),nestedName);
+      const hostPage=await page.goto(stack.origin+'/'+encodeURIComponent(hostName),{waitUntil:'load'});
+      const nestedSlot=page.locator('#main .card-slot[data-card-id="'+before.id+'"]');
+      const nestedShowsNewContent=await nestedSlot.first().innerText().then(text=>text.includes(newContent));
+      record(capabilityChecks.E11[0],seen.response.status()<400&&after?.id===before.id&&after.db_content.includes(newContent)&&hostPage.status()===200&&nestedShowsNewContent,{
+        actor:creds.admin.name,host:hostName,nested:nestedName,updateStatus:seen.response.status(),sameNestedId:after?.id===before.id,storedContent:after?.db_content,nestedShowsNewContent,hostPageStatus:hostPage.status(),nativeEditorAction:action.pathname,
+        raw:captureEvidence(await page.content(),{check:'e11-nested-summary-edit',host:hostName,nested:nestedName})
       });
-      const after = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(nestedName);
-      // Visit the host page and confirm the nested card still renders as
-      // nested (data-card-name present in a slot) under the host's main slot.
-      const hostPage = await page.goto(`${stack.origin}/${encodeURIComponent(hostName)}`, { waitUntil: "load" });
-      const nestedSlotRendered = await page.evaluate(name => {
-        const slots = [...document.querySelectorAll(`#main [data-card-name="${name}"]`)];
-        return slots.length > 0 ? { count: slots.length } : { count: 0 };
-      }, nestedName);
-      record(capabilityChecks.E11[0],
-        update.status() < 400 && after !== undefined && after.db_content !== before?.db_content && hostPage.status() === 200 && nestedSlotRendered.count > 0,
-        {
-          actor: creds.admin.name,
-          host: hostName,
-          nested: nestedName,
-          updateStatus: update.status(),
-          before: { id: before?.id ?? null, content: before?.db_content ?? null },
-          after: { id: after?.id ?? null, content: after?.db_content ?? null },
-          hostPageStatus: hostPage.status(),
-          nestedSlotRendered,
-          raw: captureEvidence(await page.content(), { check: "e11-nested-summary-edit", host: hostName, nested: nestedName }),
-        }
-      );
       if (fixtureState?.fatalReason) throw Error("E11 fixture quarantined: " + fixtureState.fatalReason);
     },
   },
@@ -564,26 +280,30 @@ export const checks = [
       if (seeded.status >= 400) throw Error("E15 fixture card was not stored");
       const before = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(cardName);
 
-      // Open the card's edit page and find the Save-and-Close button.
-      await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}?view=edit`, { waitUntil: "load" });
-      await page.waitForFunction(() => typeof window.tinymce !== "undefined" && window.tinymce.activeEditor !== null, undefined, { timeout: 30_000 }).catch(() => undefined);
-
-      const editorForm = page.locator("form.card-form").filter({ has: page.locator('[name="card[content]"]') }).first();
-      if (await editorForm.count() === 0) throw Error("E15 edit form is absent");
+      // Open the editor using the application's native edit navigation.
+      await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
+      await page.locator('#main a.edit-link[href$="/edit"]').first().dispatchEvent('click');
+      const editorForm = page.locator('.modal.show form.card-form[id^="edit_card"]:visible').filter({ has: page.locator('textarea[name="card[content]"]') }).first();
+      await editorForm.waitFor({ state: 'visible', timeout: 20000 });
+      if (await editorForm.count() === 0) {
+        const inventory = await page.locator('form.card-form').evaluateAll(forms => forms.map(form => ({action:form.getAttribute('action'),visible:form.getClientRects().length>0,fields:[...form.querySelectorAll('textarea,input,button')].map(field=>({tag:field.tagName,name:field.name,type:field.type,classes:field.className,text:field.tagName==='BUTTON'?field.textContent:null}))})));
+        captureEvidence(await page.content(),{check:'e15-form-inventory',inventory});
+        throw Error("E15 edit form is absent: "+JSON.stringify(inventory));
+      }
       // Set the editor content (TinyMCE if present).
       const field = editorForm.locator('[name="card[content]"]').first();
       const isTiny = await field.evaluate(el => el.classList.contains("tinymce-textarea"));
       if (isTiny) {
         const id = await field.getAttribute("id");
         if (id !== null) {
-          await page.waitForFunction(editorId => Boolean(window.tinymce?.get(editorId)), id, { timeout: 20_000 });
+          await page.waitForFunction(matchingRichEditor, [id, false], { timeout: 20_000 });
           await page.evaluate(([editorId, text]) => { const editor = window.tinymce.get(editorId); editor.setContent(text); editor.save(); }, [id, newContent]);
         }
       } else if (await field.isVisible()) {
         await field.fill(newContent);
       }
       // Find Save and Close. Several stock selectors in decko.
-      const saveAndClose = page.locator(
+      const saveAndClose = editorForm.locator(
         'button[data-cy="save-and-close"], button[data-cy="save_and_close"], button:has-text("Save and Close"), button:has-text("Save & Close"), input[name="save_and_close"]'
       ).first();
       const saveAndClosePresent = await saveAndClose.count() > 0;
@@ -600,24 +320,26 @@ export const checks = [
       // What the click posts and where it lands.
       const urlBefore = page.url();
       const action = new URL(await editorForm.getAttribute("action"), stack.origin);
-      const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && r.request().method() === "POST", { timeout: 30_000 })
+      const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30_000 })
         .then(response => ({ response }), error => ({ error }));
-      await saveAndClose.click().catch(() => undefined);
+      await saveAndClose.click();
       const observed = await pending;
       if (observed.error) throw observed.error;
       await observed.response.finished();
       // Wait for any redirect navigation to settle so the read-after follows
       // the post-redirect URL the engine itself hands back.
-      await page.waitForLoadState("load").catch(() => undefined);
+      await editorForm.waitFor({ state: 'hidden', timeout: 20000 });
+      await page.waitForFunction(text => document.querySelector('#main')?.textContent?.includes(text), newContent, { timeout: 20000 });
       const urlAfter = page.url();
+      const mainShowsNewContent = await page.locator('#main').innerText().then(text => text.includes(newContent));
       const afterRow = database().prepare("SELECT id,db_content FROM cards WHERE name=? AND trash=0").get(cardName);
       // The act of editing is also recorded as a card_actions row.
       const actionsCount = database().prepare("SELECT COUNT(*) AS n FROM card_actions WHERE card_id=?").get(before?.id ?? 0)?.n ?? -1;
       record(capabilityChecks.E15[0],
         observed.response.status() < 400 &&
         afterRow !== undefined &&
-        afterRow.db_content !== before?.db_content &&
-        urlBefore !== urlAfter,
+        afterRow.db_content.includes(newContent) &&
+        mainShowsNewContent && new URL(urlAfter).pathname === new URL(urlBefore).pathname,
         {
           actor: creds.admin.name,
           card: cardName,
@@ -628,6 +350,7 @@ export const checks = [
           actionsCount,
           urlBefore,
           urlAfter,
+          mainShowsNewContent,
           raw: captureEvidence(await page.content(), { check: "e15-save-and-close-after", card: cardName }),
         }
       );
@@ -651,80 +374,25 @@ export const checks = [
       if (signedIn >= 400) throw Error("CM1 member was not signed in");
       const s = stamp();
       const cardName = "HarnessCM1Parent_" + s;
-      const commentName = cardName + "+*comment";
       const commentText = "CM1 comment from member " + s;
       created.push(cardName);
-
-      // Member creates a Basic parent card first (members can do that).
-      const parent = await page.context().request.post(stack.origin + "/card/create", {
-        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-        data: new URLSearchParams({
-          "card[name]": cardName,
-          "card[type]": "Basic",
-          "card[content]": "CM1 parent " + s,
-          "success[redirect]": "true",
-        }).toString(),
-        maxRedirects: 0,
-      });
-      const parentRow = fixtureCard(database(), cardName);
-      if (parent.status >= 400 || parentRow === undefined) throw Error("CM1 parent was not stored");
-
-      // The comment attempt: a typed fixture creation through the engine's
-      // own /card/create. The engine accepts arbitrary card names; whether
-      // "<parent>+*comment" stores depends on whether the deck recognises the
-      // *comment codename. We try through the create form first and if that
-      // route is refused, fall back to a plain Basic child card to record
-      // what the surface DOES support.
-      let createAttempt = null;
-      let fallbackUsed = false;
-      try {
-        const direct = await page.context().request.post(stack.origin + "/card/create", {
-          headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-          data: new URLSearchParams({
-            "card[name]": commentName,
-            "card[type]": "Basic",
-            "card[content]": commentText,
-            "success[redirect]": "true",
-          }).toString(),
-          maxRedirects: 0,
-        });
-        createAttempt = { status: direct.status(), name: commentName };
-      } catch (error) {
-        createAttempt = { status: -1, error: String(error?.message ?? error), name: commentName };
-      }
-      const storedComment = database().prepare("SELECT id,db_content,trash,name FROM cards WHERE name=? AND trash=0").get(commentName);
-      if (storedComment === undefined) {
-        // Fall back: store a plain child card to record what the surface DOES.
-        const plainChild = cardName + "_plain_" + s;
-        await page.context().request.post(stack.origin + "/card/create", {
-          headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-          data: new URLSearchParams({
-            "card[name]": plainChild, "card[type]": "Basic", "card[content]": commentText, "success[redirect]": "true",
-          }).toString(),
-          maxRedirects: 0,
-        });
-        const storedPlain = database().prepare("SELECT id,db_content,trash,name FROM cards WHERE name=? AND trash=0").get(plainChild);
-        fallbackUsed = true;
-        createAttempt = { ...createAttempt, fallbackName: plainChild, fallbackStored: storedPlain !== undefined };
-      }
-      // Read the parent's own page and look for the comment marker in the
-      // rendered bytes (either by data-card-name=commentName, or by the
-      // literal comment text appearing inside #main).
-      const parentPage = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
-      const html = await page.content();
-      const matchesName = html.includes(commentName) || html.includes(encodeURIComponent(commentName));
-      const matchesText = html.includes(commentText);
-      const verdict = storedComment !== undefined && (matchesName || matchesText);
-      record(capabilityChecks.CM1[0], verdict, {
-        actor: creds.member.name,
-        parent: cardName,
-        commentAttempt: createAttempt,
-        fallbackUsed,
-        storedComment: storedComment ?? null,
-        parentPageStatus: parentPage.status(),
-        pageIncludesCommentName: matchesName,
-        pageIncludesCommentText: matchesText,
-        raw: captureEvidence(html, { check: "cm1-comment-on-card", parent: cardName }),
+      await createThroughForm(page, stack, database, {name:cardName,type:"RichText",content:"CM1 parent "+s});
+      const before = fixtureCard(database(),cardName);
+      const opened = await page.goto(stack.origin+"/"+encodeURIComponent(cardName)+"?view=comment_box",{waitUntil:"load"});
+      const form = page.locator('form.card-form').filter({has:page.locator('textarea[name="card[comment]"]')}).first();
+      await form.waitFor({state:"visible",timeout:20000});
+      const action = new URL(await form.getAttribute("action"),stack.origin);
+      if(action.origin!==stack.origin || action.pathname!=="/update/"+encodeURIComponent(cardName))throw Error("Comment form does not update the owned parent");
+      await form.locator('textarea[name="card[comment]"]').fill(commentText);
+      const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname===action.pathname&&r.request().method()==="POST",{timeout:30000}).then(response=>({response}),error=>({error}));
+      await form.getByRole('button',{name:'Comment',exact:true}).click();
+      const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
+      const after=fixtureCard(database(),cardName);
+      const fresh=await page.goto(stack.origin+"/"+encodeURIComponent(cardName),{waitUntil:"load"});
+      const mainText=await page.locator('#main').innerText();
+      record(capabilityChecks.CM1[0],seen.response.status()<400&&after?.id===before.id&&after.db_content.includes(commentText)&&after.db_content.includes("CM1 parent "+s)&&fresh.status()===200&&mainText.includes(commentText),{
+        actor:creds.member.name,parent:cardName,openedStatus:opened.status(),submitStatus:seen.response.status(),sameParent:after?.id===before.id,storedComment:after?.db_content.includes(commentText),freshStatus:fresh.status(),mainShowsComment:mainText.includes(commentText),fallbackUsed:false,
+        raw:captureEvidence(await page.content(),{check:"cm1-comment-on-card",parent:cardName})
       });
       if (fixtureState?.fatalReason) throw Error("CM1 fixture quarantined: " + fixtureState.fatalReason);
     },

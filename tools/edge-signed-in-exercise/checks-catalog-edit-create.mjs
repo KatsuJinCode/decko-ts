@@ -27,6 +27,7 @@
 //
 // Selected by --only catalog-edit-create.
 
+import { checks as saveEditChecks, capabilityChecks as saveEditCapabilityChecks } from "./checks-unmeasured-save-edit-create.mjs";
 import { createTypedFixture, fixtureCard, fixtureType } from "./lib/typed-fixture.mjs";
 
 /** The create form on /new/:type (the page's own form, not the navbar's
@@ -47,16 +48,6 @@ export const meta = {
 function nestListCardtypeId(database) {
   return database
     .prepare("SELECT id FROM cards WHERE codename = 'nest_list' AND trash = 0")
-    .get()?.id;
-}
-
-/** Whether the deck has a cardtype with an autoname rule; the matrix
- *  carries C11 with no instrument of any kind. */
-function findAutonameSetCardId(database) {
-  return database
-    .prepare(
-      "SELECT id FROM cards WHERE codename IN ('autoname','trademark','year') AND trash = 0 LIMIT 1"
-    )
     .get()?.id;
 }
 
@@ -200,35 +191,49 @@ export const checks = [
   // --------------------------------------------------------------- E13
   {
     name: "E13 a /new form serves a card[type] selector the user can change",
-    run: async (ctx) => {
-      const { page, database, record, visit, signIn, creds } = ctx;
+    run: async ctx => {
+      const {page,stack,database,record,visit,signIn,creds}=ctx;
       await signIn(creds.admin);
-      const startType = fixtureType(database(), "Basic");
-      await visit("/new/" + encodeURIComponent(startType.name));
-      await page.waitForTimeout(2500);
-      const inventory = await page.evaluate(() => {
-        const form = document.querySelector("form#new_card[action='/card/create']") ?? document.querySelector("form#new_card") ?? document.querySelector("#main form.card-form");
-        const inputs = form ? [...form.querySelectorAll("input,select,textarea")] : [];
-        const radios = [...(form?.querySelectorAll('input[type="radio"][name="card[type]"]') ?? [])];
-        const select = form?.querySelector('select[name="card[type]"], select[name="card[type_id]"]') ?? null;
-        return {
-          formAction: form?.getAttribute("action") ?? null,
-          radioCount: radios.length,
-          radioNames: [...new Set(radios.map((r) => r.value).filter(Boolean))].slice(0, 10),
-          selectPresent: select !== null,
-          selectOptions: select ? [...select.options].map((o) => o.value).filter(Boolean).slice(0, 10) : [],
-          hiddenTypeId: form?.querySelector('input[name="card[type_id]"]')?.value ?? null,
-          mainTextSnippet: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
-        };
+      const startType=fixtureType(database(),'Basic'),chosenType=fixtureType(database(),'Phrase');
+      // /new/:type deliberately presets its type in stock Decko.
+      await visit('/new/'+encodeURIComponent(startType.name));
+      const typed=page.locator('form[action="/card/create"]').first();
+      const typedHasChooser=await typed.locator('select[name="card[type]"],select[name="card[type_id]"]').count()>0;
+      const typedTypeId=Number(await typed.locator('input[name="card[type_id]"]').inputValue());
+      const name='HarnessE13'+Date.now();ctx.created.push(name);
+      await visit('/card/new?'+new URLSearchParams({'card[name]':name}));
+      const form=page.locator('form[action="/card/create"]').first();
+      const field=form.locator('select[name="card[type]"],select[name="card[type_id]"]').first();
+      const chooserPresent=await field.count()>0;
+      if(!chooserPresent){record("E13 a /new form serves a card[type] selector the user can change",false,{name,chooserPresent,typedHasChooser,typedTypeId,raw:ctx.captureEvidence(await page.content(),{check:'E13-type-selector'})});return;}
+      const options=await field.locator('option').evaluateAll(items=>items.map(option=>({value:option.value,text:option.textContent.trim()})));
+      const choice=options.find(option=>option.text===chosenType.name||option.value===chosenType.name||option.value===String(chosenType.id));
+      if(!choice)throw Error('The new type chooser does not offer the canonical Phrase type');
+      if(await field.isVisible())await field.selectOption(choice.value);
+      else{
+        const control=field.locator('xpath=following-sibling::span[contains(@class,"select2-container")]').first();
+        await control.locator('.select2-selection').click();
+        const search=page.locator('.select2-container--open input.select2-search__field:visible');
+        if(await search.count())await search.last().fill(chosenType.name);
+        await page.locator('.select2-container--open .select2-results__option').filter({hasText:new RegExp('^\\s*'+chosenType.name+'\\s*$')}).last().click();
+      }
+      const updated=page.locator('form[action="/card/create"]').first();
+      const content=updated.locator('input[name="card[content]"]:not([type=hidden])').first();
+      await content.waitFor({state:'visible',timeout:20000});
+      const marker='E13 chosen phrase '+name;await content.fill(marker);
+      const pending=page.waitForResponse(r=>new URL(r.url()).origin===stack.origin&&new URL(r.url()).pathname==='/card/create'&&r.request().method()==='POST',{timeout:30000}).then(response=>({response}),error=>({error}));
+      await updated.locator('.create-submit-button').click();
+      const seen=await pending;if(seen.error)throw seen.error;await seen.response.finished();
+      const outcome=await seen.response.json().catch(()=>null);
+      if(typeof outcome?.redirect==='string'){
+        const redirect=new URL(outcome.redirect,stack.origin);
+        if(redirect.origin!==stack.origin)throw Error('Type-choice create left the owned origin');
+        await page.waitForURL(redirect.href,{waitUntil:'domcontentloaded',timeout:20000});
+      }
+      const stored=fixtureCard(database(),name);
+      record("E13 a /new form serves a card[type] selector the user can change",!typedHasChooser&&typedTypeId===startType.id&&seen.response.status()<400&&stored?.type_id===chosenType.id&&stored.db_content===marker,{
+        name,typedHasChooser,typedTypeId,chooserPresent,selected:choice,submitStatus:seen.response.status(),expectedTypeId:chosenType.id,storedTypeId:stored?.type_id,storedContent:stored?.db_content,raw:ctx.captureEvidence(await page.content(),{check:'E13-type-selector'})
       });
-      const changeable =
-        (inventory.radioCount > 1) ||
-        (inventory.selectPresent && inventory.selectOptions.length > 1);
-      record(
-        "E13 a /new form serves a card[type] selector the user can change",
-        changeable && inventory.hiddenTypeId !== null,
-        { startType: startType.name, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E13-type-selector" }) }
-      );
     },
   },
 
@@ -394,74 +399,14 @@ export const checks = [
     },
   },
 
-  // --------------------------------------------------------------- C11
+  // C11 shares the actual save/readback implementation. Its separate run
+  // uses a new private fixture; this is one capability, not extra coverage.
   {
-    name: "C11 an autoname cardtype generates its name on save",
-    run: async (ctx) => {
-      const { page, database, record, visit, signIn, creds } = ctx;
-      await signIn(creds.admin);
-      const autoRow = findAutonameSetCardId(database());
-      const inventory = {
-        autonameCodenamePresent: autoRow !== undefined,
-        typesWithAutonameRule: database()
-          .prepare(
-            "SELECT COUNT(*) AS n FROM cards WHERE codename='autoname' AND trash=0"
-          )
-          .get()?.n ?? 0,
-      };
-      if (!autoRow) {
-        record(
-          "C11 an autoname cardtype generates its name on save",
-          false,
-          { note: "no autoname codename in the seeded deck; the surface is not exercised", ...inventory }
-        );
-        return;
-      }
-      // The 1.110.0 deck keeps the autoname codename on the *autoname set
-      // card (id 247); the autoname rule on a TYPE is a junction row with
-      // right_id = 247 and left_id = type_id. No seeded cardtype here has
-      // such a rule (the typesWithAutonameRule count is 1 = the set card
-      // itself), so the contract cannot be exercised on this deck. Record
-      // the surface state.
-      const autoTypeRow = database()
-        .prepare(
-          "SELECT t.id, t.name FROM cards t JOIN cards r ON r.left_id = t.id AND r.right_id = (SELECT id FROM cards WHERE codename='autoname' AND trash=0) AND r.trash=0 WHERE t.trash=0 AND t.type_id = (SELECT id FROM cards WHERE codename='cardtype' AND trash=0) LIMIT 1"
-        )
-        .get();
-      if (!autoTypeRow) {
-        record(
-          "C11 an autoname cardtype generates its name on save",
-          false,
-          { note: "no Cardtype has a +*autoname rule in the seeded deck; surface not exercisable here", ...inventory }
-        );
-        return;
-      }
-      await visit("/new/" + encodeURIComponent(autoTypeRow.name));
-      await page.waitForTimeout(2500);
-      const form = page.locator("form#new_card[action='/card/create']").first();
-      if ((await form.count()) === 0) {
-        record(
-          "C11 an autoname cardtype generates its name on save",
-          false,
-          { note: "no /card/create form rendered", autoTypeRow: autoTypeRow.name, ...inventory }
-        );
-        return;
-      }
-      const nameField = form.locator('input[name="card[name]"]').first();
-      const nameFieldType = (await nameField.count()) > 0 ? await nameField.getAttribute("type") : null;
-      const nameHidden = nameFieldType === "hidden";
-      const promptVisible = await page.evaluate(() => {
-        const f = document.querySelector("form#new_card[action='/card/create']") ?? document.querySelector("form#new_card");
-        const nameInput = f?.querySelector('input[name="card[name]"]') ?? null;
-        if (!nameInput) return false;
-        const isVisible = nameInput.offsetParent !== null && nameInput.type !== "hidden";
-        return isVisible;
-      });
-      record(
-        "C11 an autoname cardtype generates its name on save",
-        nameHidden || !promptVisible,
-        { autoTypeRow: autoTypeRow.name, nameHidden, promptVisible, ...inventory }
-      );
+    name:"C11 an autoname cardtype generates its name on save",
+    run:async ctx=>{
+      const check=saveEditChecks.find(check=>check.name===saveEditCapabilityChecks.C11[0]);
+      if(!check)throw Error('Native autoname journey unavailable');
+      await check.run({...ctx,record:(_name,pass,evidence)=>ctx.record("C11 an autoname cardtype generates its name on save",pass,{...evidence,sharedImplementation:'save-edit-create/C11',sameCapability:true})});
     },
   },
 ];
