@@ -168,7 +168,7 @@ That sentence is the whole D1 answer. The save's ladder is precisely
 that consume the new rowid. On D1, a write and the read-back that consumes
 its result **cannot share a batch**; on the Bunny/libSQL shapes they can,
 because a batch runs in order on the save's open stream
-(`src/server/drivers/libsql-http.ts:36-45, 379-420`).
+(`src/server/drivers/libsql-http.ts:36-45, 140-180`).
 
 ### 2.3 The measured packing (R3 over R2)
 
@@ -185,7 +185,7 @@ that would observe a write already in the batch, and before a write-back.
 | **C. A + table-scoped read memo** | 540 | 155 | — | 1,378 ms | 2,618 ms |
 | **D. A + row-scoped read memo** | 480 | **142** | — | 1,313 ms | 2,449 ms |
 | **E. B + row-scoped read memo** | 480 | 173 | — | 1,468 ms | 2,852 ms |
-| **F. C on the D1 shape** (table-scoped memo) | 540 | 186 | — | 1,533 ms | 3,021 ms |
+| **F. table-scoped read memo on the D1 shape** | 540 | 186 | — | 1,533 ms | 3,021 ms |
 
 Every wall column is `round_trips x hop + the measured 603 ms
 statement-execution wall` from R2. The memo rows are an independent
