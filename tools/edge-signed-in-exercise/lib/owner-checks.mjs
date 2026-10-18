@@ -245,11 +245,19 @@ export async function ownerRequiredChecks(ctx) {
     }
     const after = await page.content();
     const trashed = database().prepare("SELECT trash FROM cards WHERE name = ?").get(name)?.trash === 1;
-    const outcome = deleteOutcome({ html: after, name, origin: O, finalUrl: page.url(), responseBody });
+    // "Without recreating that target" is read from what the deck STORES, not
+    // from what the landing page offers: a live (untrashed) row under the
+    // deleted name IS a recreation. Decko's unknown-card page serves its
+    // new-card form for any absent name by design, so the presence of that
+    // form is the oracle's own landing page (see delete-outcome.mjs) and cannot
+    // answer this clause.
+    const liveRowsForName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name = ? AND trash = 0").get(name)?.n ?? 0;
+    const targetRecreated = Number(liveRowsForName) > 0;
+    const outcome = deleteOutcome({ html: after, name, origin: O, finalUrl: page.url(), responseBody, targetRecreated });
     const raw = ctx.captureEvidence(after, { check: "owner-delete-after", name, url: page.url(), responseStatus: response?.status() ?? null, responseBody, responseBodySource, hostResponseSha256: line?.deleteResponseSha256, ...outcome });
     record("row 7: the Delete button removes the card and completes the previous-page redirect or deleted confirmation, without recreating that target",
       line !== undefined && line.status < 400 && response !== null && response.status() < 400 && trashed && outcome.pageAccepted,
-      { hostStatus: line?.status ?? null, trashed, showsNewCardForm: outcome.targetCreateForm, ...outcome, raw, url: page.url().slice(O.length) });
+      { hostStatus: line?.status ?? null, trashed, showsNewCardForm: outcome.targetCreateForm, liveRowsForName: Number(liveRowsForName), ...outcome, raw, url: page.url().slice(O.length) });
   });
 }
 
