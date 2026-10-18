@@ -13,11 +13,13 @@
 #   GET  /__harness/ready  200 once the deck is loaded
 
 require_relative "../../oracle/lib/harness_env"
+require_relative "../../oracle/lib/sqlite_regexp"
 require "thin"
 
 SPEC = JSON.parse(File.read(ENV.fetch("HARNESS_DECK_JSON")))
 HarnessEnv.freeze_clock!(SPEC["clock"])
 HarnessEnv.apply_environment!(SPEC["environment"])
+HarnessSQLiteRegexp.install_active_record!
 Cardio.config.asset_refresh = :never
 port = Integer(ENV.fetch("HARNESS_PORT"))
 # A browser follows Decko's absolute redirects, which are built on the deck
@@ -82,7 +84,7 @@ class HarnessPaths
 
   def call(env)
     case env["PATH_INFO"]
-    when "/__harness/runtime" then [200, { "content-type" => "application/json" }, [JSON.generate({ engine: "ruby", ruby: RUBY_VERSION, card: Gem.loaded_specs["card"].version.to_s, decko: Gem.loaded_specs["decko"].version.to_s })]]
+    when "/__harness/runtime" then [200, { "content-type" => "application/json" }, [JSON.generate({ engine: "ruby", ruby: RUBY_VERSION, card: Gem.loaded_specs["card"].version.to_s, decko: Gem.loaded_specs["decko"].version.to_s, sqlite_regexp_adapter: HarnessSQLiteRegexp::IMPLEMENTATION })]]
     when "/__harness/ready" then [200, { "content-type" => "text/plain" }, ["ready"]]
     when "/__harness/mail"
       mail = MAIL_LOCK.synchronize { MAIL.dup.tap { MAIL.clear } }
