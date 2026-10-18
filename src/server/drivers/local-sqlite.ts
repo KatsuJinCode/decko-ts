@@ -16,6 +16,7 @@
 /// <reference path="../../../tests/schema/better-sqlite3.d.ts" />
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
 import { rowIdOrOmit, TransactionGate } from "../driver.js";
+import { inTransactionStatementScope, runInTransactionStatementScope } from "../transaction-statement-scope.js";
 import Database from "better-sqlite3";
 
 /**
@@ -106,6 +107,18 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    // A statement issued OUTSIDE any transaction's call tree while another
+    // request's transaction is open on this driver's one connection is not
+    // part of that transaction, and cannot escape it either (one connection,
+    // an open BEGIN): queue behind it on the gate, then run free. Riding the
+    // transaction coupled the statement's fate to it — a save's ROLLBACK
+    // silently undid an unrelated request's already-acknowledged write, and
+    // its reads saw the transaction's uncommitted rows. Where attribution is
+    // impossible (no AsyncLocalStorage on the runtime), the historical
+    // shared-object coupling applies, per ../driver.ts.
+    if (this.db.inTransaction && inTransactionStatementScope() === false) {
+      return this.gate.run(() => this.query<T>(sql, params));
+    }
     const stmt = this.prepareCached(sql);
     if (stmt.reader) {
       // Reading statement: better-sqlite3's .all() gives object rows but no
@@ -126,6 +139,12 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
 
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     if (statements.length === 0) return [];
+    // Standalone routing for a batch, same rule as query() above: outside
+    // any transaction's call tree, queue behind an open transaction on the
+    // gate instead of executing inside its BEGIN..COMMIT.
+    if (this.db.inTransaction && inTransactionStatementScope() === false) {
+      return this.gate.run(() => this.batch(statements));
+    }
     // A single synchronous SQLite transaction: every statement in the batch
     // commits together or, on any error, rolls back and the error is
     // rethrown. Statement results are collected in order. Inside
@@ -152,23 +171,30 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   private readonly gate = new TransactionGate();
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
-    return this.gate.run(async () => {
-      this.prepareCached("BEGIN IMMEDIATE").run();
-      let result: R;
-      try {
-        result = await work();
-      } catch (error) {
-        this.rollbackQuietly();
-        throw error;
-      }
-      try {
-        this.prepareCached("COMMIT").run();
-      } catch (error) {
-        this.rollbackQuietly();
-        throw error;
-      }
-      return result;
-    });
+    return this.gate.run(async () =>
+      // Mark work's call tree as transaction work (transaction-statement-scope.ts):
+      // statements issued inside it attribute to this transaction and run on
+      // the connection as they must; statements issued outside any
+      // transaction's tree while this BEGIN is open queue behind it instead
+      // of silently joining it (query/batch above).
+      runInTransactionStatementScope(async () => {
+        this.prepareCached("BEGIN IMMEDIATE").run();
+        let result: R;
+        try {
+          result = await work();
+        } catch (error) {
+          this.rollbackQuietly();
+          throw error;
+        }
+        try {
+          this.prepareCached("COMMIT").run();
+        } catch (error) {
+          this.rollbackQuietly();
+          throw error;
+        }
+        return result;
+      }),
+    );
   }
 
   /** ROLLBACK unless SQLite already ended the transaction itself (some
