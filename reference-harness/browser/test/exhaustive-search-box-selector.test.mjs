@@ -62,14 +62,21 @@ after(async () => {
 test("the signed-out home page renders both halves of that selector", async () => {
   const html = await (await fetch(server.base + "/")).text();
   const [container, field] = searchBoxSelector().split(" ");
-  assert.match(html, new RegExp(`class="${container.slice(1)}"`));
-  // The field half: `[name*='query']` is a prefix match on the name attribute,
-  // and the reference emits `name="query[keyword]"`.
+  // Container half: `form.search-box-form` (search_box.haml's search_form).
+  assert.ok(
+    html.includes(`class="${container.slice(1)}"`),
+    `no class="${container.slice(1)}" on the home page`,
+  );
+  // Field half: `[name*='query']` is a prefix match on the name attribute, and
+  // the reference emits the full `name="query[keyword]"`.
   const attr = field.match(/\[name\*?=['"]([^'"]+)/);
   assert.ok(attr, `no name attribute in the field half: ${field}`);
-  assert.match(html, new RegExp(`name="${attr[1]}\[keyword\]"`));
+  assert.ok(
+    html.includes(`name="${attr[1]}[keyword]"`),
+    `no name="${attr[1]}[keyword]" on the home page`,
+  );
   // The whole form, as the reference nests it.
-  assert.match(html, /<form role="search" class="search-box-form"/);
+  assert.ok(html.includes(`<form role="search" class="${container.slice(1)}"`));
   // And the class the old hint asked for is absent.
-  assert.doesNotMatch(html, /class="navbox/);
+  assert.ok(!html.includes(`class="navbox`), "the page carries a .navbox class");
 });
