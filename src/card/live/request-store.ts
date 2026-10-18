@@ -85,23 +85,27 @@ export const MAX_COMPOUND_TERMS = 5;
  *  `name_0`, `name_1`, ... of up to five terms each, and `name` is their
  *  UNION. The set of ids is the same either way, and every statement that
  *  reads these CTEs tests membership only (`id IN (SELECT id FROM name)`),
- *  so neither the rows nor their order can change. */
-export function unionCtes(name: string, parts: readonly string[]): string[] {
-  if (parts.length <= MAX_COMPOUND_TERMS) return [`${name}(id) AS (${parts.join(" UNION ")})`];
+ *  so neither the rows nor their order can change. `columns` renames the
+ *  CTE's column list for callers whose rows are not single ids (the
+ *  junction-chain bound tuples: `requested(k0, k1, ...)`); every group
+ *  select projects the same columns, and the parameters keep their textual
+ *  order either way. */
+export function unionCtes(name: string, parts: readonly string[], columns = "id"): string[] {
+  if (parts.length <= MAX_COMPOUND_TERMS) return [`${name}(${columns}) AS (${parts.join(" UNION ")})`];
   const groups: string[] = [];
   const out: string[] = [];
   for (let i = 0; i < parts.length; i += MAX_COMPOUND_TERMS) {
     const sub = `${name}_${groups.length}`;
-    out.push(...unionCtes(sub, parts.slice(i, i + MAX_COMPOUND_TERMS)));
-    groups.push(`SELECT id FROM ${sub}`);
+    out.push(...unionCtes(sub, parts.slice(i, i + MAX_COMPOUND_TERMS), columns));
+    groups.push(`SELECT ${columns} FROM ${sub}`);
   }
   if (groups.length <= MAX_COMPOUND_TERMS) {
-    out.push(`${name}(id) AS (${groups.join(" UNION ")})`);
+    out.push(`${name}(${columns}) AS (${groups.join(" UNION ")})`);
   } else {
     // More than five groups: union the groups under a distinct name, so
     // their own sub-CTEs cannot collide with this level's.
-    out.push(...unionCtes(`${name}_g`, groups));
-    out.push(`${name}(id) AS (SELECT id FROM ${name}_g)`);
+    out.push(...unionCtes(`${name}_g`, groups, columns));
+    out.push(`${name}(${columns}) AS (SELECT ${columns} FROM ${name}_g)`);
   }
   return out;
 }
