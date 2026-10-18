@@ -77,6 +77,7 @@
 // the session logic has to be provable.
 
 import { SessionStore } from "../../src/card/auth/session-store.js";
+import { permissionViewerKey } from "../../src/card/session/enabled-roles.js";
 import { signoutAccount } from "../../src/card/auth/signin.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
@@ -172,7 +173,7 @@ export async function resolveRequestViewer(
  * insertion-order eviction.
  */
 export class ActorRenderEngines {
-  private readonly engines = new Map<number, RenderEngine>();
+  private readonly engines = new Map<string, RenderEngine>();
   private readonly base: Deck;
   private readonly maxWarm: number;
 
@@ -182,8 +183,11 @@ export class ActorRenderEngines {
   }
 
   /** The actor's engine, built on first use. */
-  deckFor(actorId: number): Deck {
-    const existing = this.engines.get(actorId);
+  deckFor(actorId: number, enabledRoleIds?: readonly number[]): Deck {
+    const viewer: ReadViewer = { signedIn: true, actorId,
+      ...(enabledRoleIds === undefined ? {} : { enabledRoleIds: [...new Set(enabledRoleIds)].sort((a, b) => a - b) }) };
+    const key = permissionViewerKey(viewer);
+    const existing = this.engines.get(key);
     if (existing !== undefined) return this.actorDeck(existing);
 
     const render = new RenderEngine(this.base.fetcher);
@@ -204,7 +208,6 @@ export class ActorRenderEngines {
     render.phantomItemType = this.base.render.phantomItemType;
     // The session itself. Set BEFORE the first render — the field docs
     // (render.ts:443-447) and the memoization above both say so.
-    const viewer: ReadViewer = { signedIn: true, actorId };
     render.viewer = viewer;
     render.pageSession = viewer;
 
@@ -215,7 +218,7 @@ export class ActorRenderEngines {
       const oldest = this.engines.keys().next();
       if (!oldest.done) this.engines.delete(oldest.value);
     }
-    this.engines.set(actorId, render);
+    this.engines.set(key, render);
     return this.actorDeck(render);
   }
 

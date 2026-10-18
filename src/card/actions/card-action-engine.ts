@@ -290,6 +290,8 @@ export interface CardActionEngineOptions {
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
    *  An actor NAMED "*anonymous" is treated the same way. */
   actor: Actor | null;
+  /** Visitor role selection, intersected with stored grants by permission resolution. */
+  enabledRoleIds?: readonly number[];
   /** The request's act actor before an authenticated event enters bot authority. */
   actActorId?: number;
   /** Auth.current_id differs from the permission proxy (Auth.as_id) during
@@ -478,6 +480,7 @@ export class CardActionEngine {
   readonly fetch: FetchEngine;
   readonly actor: Actor | null;
   private readonly actActorId: number | undefined;
+  private readonly enabledRoleIds: readonly number[] | undefined;
   private readonly currentActorId: number | undefined;
   private readonly rootStamperId: number | undefined;
   private readonly clock: () => Date;
@@ -536,6 +539,7 @@ export class CardActionEngine {
   constructor(fetchEngine: FetchEngine, options: CardActionEngineOptions) {
     this.fetch = fetchEngine;
     this.actor = options.actor;
+    this.enabledRoleIds = options.enabledRoleIds === undefined ? undefined : [...options.enabledRoleIds];
     this.actActorId = options.actActorId;
     this.currentActorId = options.currentActorId;
     this.rootStamperId = options.rootStamperId;
@@ -5129,7 +5133,8 @@ export class CardActionEngine {
         // `current_id != AnonymousID` (auth/current.rb:43-47)
         return { signedIn: false, actorId: anonId };
       }
-      return { signedIn: true, actorId: this.actor.id };
+      return { signedIn: true, actorId: this.actor.id,
+        ...(this.enabledRoleIds === undefined ? {} : { enabledRoleIds: this.enabledRoleIds }) };
     }
     return { signedIn: false, actorId: await this.anonymousActorId() };
   }

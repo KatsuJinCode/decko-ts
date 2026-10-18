@@ -411,6 +411,7 @@ export interface SessionRolesInput {
   /** Auth.current_roles: Anyone Signed In, then the role member cards'
    *  roles. */
   readonly roles: readonly string[];
+  readonly enabledRoles?: readonly string[];
 }
 
 /** card-mod-layout set/self/account_links.rb view :my_card, its
@@ -465,7 +466,7 @@ export function rolesAccountDropdownHtml(
       return (
         `<div class='pointer-checkbox dropdown-item'>\n` +
         `<input type="checkbox" name="pointer_checkbox-${safeKey}-${UNIQUE_ID_TOKEN}" id="pointer-checkbox-${h(roleName.key)}" ` +
-        `value="${h(role)}" class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
+        `value="${h(role)}" class="pointer-checkbox-button _submit-on-change me-2"${(input.enabledRoles ?? input.roles).includes(role) ? ' checked="checked"' : ''} />\n` +
         `<a class="known-card" href="/${h(roleName.urlKey)}">${h(role)}</a>\n` +
         `</div>\n`
       );
@@ -500,7 +501,7 @@ export function enabledRolesDropdownHtml(
     `<input type="hidden" name="success[reload]" id="success_reload" value="true" autocomplete="off" /> ` +
     `<input type="hidden" name="card[type_id]" id="card_type_id" value="${input.sessionTypeId}" autocomplete="off" />` +
     `<fieldset class="card-editor editor"><div class="editor content-editor">` +
-    `<input class="d0-card-content form-control" autocomplete="off" type="hidden"${contentFilled ? ` value="${h(input.roles.join("\n"))}"` : ""} name="card[content]" id="card_content" />` +
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden"${contentFilled || input.enabledRoles !== undefined ? ` value="${h((input.enabledRoles ?? input.roles).join("\n"))}"` : ""} name="card[content]" id="card_content" />` +
     `<div class="pointer-checkbox-list">${dropdown}</div>` +
     `</div></fieldset></form></div>`
   );

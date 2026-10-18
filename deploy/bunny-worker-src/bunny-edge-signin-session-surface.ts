@@ -71,6 +71,7 @@
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
+import { withVisitorEnabledRoles } from "../../src/card/session/enabled-roles.js";
 import type { AttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import { readSessionCookie } from "../../src/server/write-routes.js";
@@ -250,7 +251,9 @@ export async function mountBunnyEdgeWriteSurface(
         const actor = token === null ? null : await new SessionStore({ driver }).lookupSession(token);
         if (requireSession && actor === null) throw new Error("upload preview requires the authenticated request session");
         if (requireSession) deck.fetcher.expireName(name);
-        const viewer = actor === null ? { signedIn: false as const } : { signedIn: true as const, actorId: actor.id };
+        const viewer = await withVisitorEnabledRoles(deck.fetcher,
+          actor === null ? { signedIn: false as const } : { signedIn: true as const, actorId: actor.id },
+          request.headers.get("cookie") ?? undefined);
         const render = async () => {
           const result = await liveRenderView(driver, name, async (requestDriver) => {
             const engines = await bootEdgeServingEngines(requestDriver, servedBootOptionsFromEnv(env));

@@ -73,6 +73,8 @@ import {
 import { runAuthMigrations, SessionStore } from "../../../src/card/auth/index.js";
 import { viewerFromToken } from "../../../src/card/actions/render-viewer-for-session.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { withVisitorEnabledRoles, permissionViewerKey } from "../../../src/card/session/enabled-roles.js";
+import { visitorSessionCookie } from "../../../src/card/session/visitor-session.js";
 
 const SET_TYPE_ID = 2;
 const ROLE_TYPE_ID = 9;
@@ -266,6 +268,47 @@ describe("read permission actors: role parties (the fetch_roles port)", () => {
 });
 
 describe("read permission actor query shape (constant batch, never per-render)", () => {
+  it("a disabled held role loses its read grant while public and own parties survive", async () => {
+    storage!.counting.reset();
+    const state = await stateFor({ ...signedIn(ALICE), enabledRoleIds: [7] });
+    expect(state.parties).toEqual([5, 7, ALICE]);
+    expect(state.grantedRoleIds).toEqual([7, 20]);
+    expect(canReadByStoredRule(41, state)).toBe(false);
+    expect(canReadByStoredRule(40, state)).toBe(true);
+    expect(storage!.counting.snapshot().roundTrips).toBe(1);
+    expect(storage!.counting.snapshot().statements).toBe(4);
+  });
+  it("forged role selections cannot grant another role or Administrator", async () => {
+    const state = await stateFor({ ...signedIn(ALICE), enabledRoleIds: [8, 21] });
+    expect(state.parties).toEqual([5, ALICE]);
+    expect(state.alwaysOk).toBe(false);
+    expect(canReadByStoredRule(43, state)).toBe(false);
+  });
+  it("disabling Administrator removes always_ok but cannot disable the bot", async () => {
+    expect((await stateFor({ ...signedIn(CAROL), enabledRoleIds: [7] })).alwaysOk).toBe(false);
+    expect((await stateFor({ ...signedIn(DECKOBOT_CARD), enabledRoleIds: [] })).alwaysOk).toBe(true);
+  });
+  it("reads only the authenticated actor's session choice, with blank content keeping defaults", async () => {
+    const s = storage!;
+    await seedCard(s, { id: 95, name: '*enabled roles', codename: 'enabled_roles' });
+    s.fetcher.codenames.resetCache();
+    const cookie = (cards: Record<string, string>) => visitorSessionCookie({ cards }).split(';')[0];
+    const base = signedIn(ALICE);
+    expect(await withVisitorEnabledRoles(s.fetcher, base,
+      visitorSessionCookie({ cards: {}, history: ['/'] }),
+      async () => { throw Error('History-only visitors must keep the default fast path'); })).toBe(base);
+    expect(await withVisitorEnabledRoles(s.fetcher, base, cookie({'Bob+*enabled_role': 'Role R2'}))).toBe(base);
+    expect(await withVisitorEnabledRoles(s.fetcher, base, cookie({'alice+*enabled_role': '  '}))).toBe(base);
+    const chosen = await withVisitorEnabledRoles(s.fetcher, base,
+      cookie({'alice+*enabled_role': '[[Role R1]]\nAnyoneSignedIn'}));
+    expect(chosen.enabledRoleIds).toEqual([20, 7]);
+    const unknown = await withVisitorEnabledRoles(s.fetcher, base,
+      cookie({'alice+*enabled_role': 'Unheld nonexistent role'}));
+    expect(unknown.enabledRoleIds).toEqual([]);
+    expect((await stateFor(unknown)).parties).toEqual([5, ALICE]);
+    expect(permissionViewerKey(chosen)).toBe(permissionViewerKey({ ...base, enabledRoleIds: [7, 20, 7] }));
+    expect(permissionViewerKey(base)).not.toBe(permissionViewerKey({ ...base, enabledRoleIds: [] }));
+  });
   it("signed-in viewers fold ONE extra statement into the SAME batch", async () => {
     expect(readPermissionStatements().length).toBe(3);
     expect(readPermissionStatements(ANONYMOUS_VIEWER).length).toBe(3);

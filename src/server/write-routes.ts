@@ -1863,7 +1863,7 @@ async function dispatchWriteRequest(
     },
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
     ...(ctx.delayedJobs === undefined ? {} : { delayedJobs: ctx.delayedJobs }),
-  });
+  }, req.headers.cookie);
 
   // CardMount's mount argument: the card[<mount>] file part is the
   // file=/image= setter's argument (card_mount.rb:41-44). The deck's

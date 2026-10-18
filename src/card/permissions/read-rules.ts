@@ -96,6 +96,8 @@ export interface ReadViewer {
   /** The account card id (Ruby: Auth.as_card.id). Undefined for the pure
    *  signed-out viewer. */
   readonly actorId?: number;
+  /** Visitor selection only reduces the roles granted by storage. */
+  readonly enabledRoleIds?: readonly number[];
 }
 
 /** The signed-out corpus viewer — what the engine computes when no
@@ -138,6 +140,8 @@ export interface ReadPermissionState {
   readonly hasCatchAllReadRule: boolean;
   /** The party ids the readable set was computed from. */
   readonly parties: number[];
+  /** Unfiltered choices for the role editor, present only with a selection. */
+  readonly grantedRoleIds?: readonly number[];
   /** Auth.current_id when Auth.signed_in? (auth/current.rb:43-47), else
    *  undefined — what a set module's own-card permission override compares
    *  against (e.g. Right::Follow's allowed_to_change_follow_status?). */
@@ -355,10 +359,16 @@ export function readPermissionStateFromViewerResults(
   const deckobotId = byCodename.get(DECKOBOT_CODENAME);
 
   // Role member-card roles, deduped in statement order (ORDER BY role id).
-  const roles: number[] = [];
+  let roles: number[] = [];
   for (const row of roleRows) {
     if (!roles.includes(row.roleId)) roles.push(row.roleId);
   }
+  const grantedRoleIds = [
+    ...(signedIn && anyoneSignedIn !== undefined ? [anyoneSignedIn] : []), ...roles,
+  ];
+  const selected = signedIn && viewer.enabledRoleIds !== undefined
+    ? new Set(viewer.enabledRoleIds) : undefined;
+  if (selected !== undefined) roles = roles.filter(id => selected.has(id));
 
   const alwaysOk =
     signedIn &&
@@ -367,7 +377,7 @@ export function readPermissionStateFromViewerResults(
       (administratorId !== undefined && roles.includes(administratorId)));
 
   const parties: number[] = anyone !== undefined ? [anyone] : [];
-  if (signedIn && anyoneSignedIn !== undefined) parties.push(anyoneSignedIn);
+  if (signedIn && anyoneSignedIn !== undefined && (selected === undefined || selected.has(anyoneSignedIn))) parties.push(anyoneSignedIn);
   parties.push(...roles);
   if (actorId !== undefined) parties.push(actorId);
 
@@ -392,6 +402,7 @@ export function readPermissionStateFromViewerResults(
     hasCatchAllReadRule: (ruleCount[0]?.catchAll ?? 0) > 0,
     parties,
     signedInActorId: signedIn ? actorId : undefined,
+    ...(selected === undefined ? {} : { grantedRoleIds }),
   };
 }
 

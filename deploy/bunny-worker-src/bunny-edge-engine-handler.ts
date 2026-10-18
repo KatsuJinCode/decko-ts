@@ -60,6 +60,7 @@ import { servedBootOptionsFromEnv } from "./bunny-edge-served-deltas.js";
 export { setEdgeDbDriverFactory, type EdgeDbDriverFactory } from "./bunny-edge-deck-config.js";
 import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bunny-edge-isolate-probe.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
+import { withVisitorEnabledRoles } from "../../src/card/session/enabled-roles.js";
 import {
   bunnyEdgeWriteArmed,
   bunnyEdgeWriteFlags,
@@ -393,8 +394,10 @@ async function routeBunnyEngineRequest(
   // answers, as it did before this host had storage.
   if (url.pathname.startsWith("/files/")) {
     const deck = await getDeck(resolved, env);
-    const fileViewer = await resolveViewerFromToken(sessionTokenFromRequest(request), new SessionStore({ driver: deck.fetcher.driver }));
-    const readDeck = fileViewer.signedIn === true ? getActorEngines().deckFor(fileViewer.actorId as number) : deck;
+    const fileViewer = await withVisitorEnabledRoles(deck.fetcher,
+      await resolveViewerFromToken(sessionTokenFromRequest(request), new SessionStore({ driver: deck.fetcher.driver })),
+      request.headers.get("cookie") ?? undefined, () => deck.render.ensureFreshness());
+    const readDeck = fileViewer.signedIn === true ? getActorEngines().deckFor(fileViewer.actorId as number, fileViewer.enabledRoleIds) : deck;
     await readDeck.render.ensureFreshness();
     const coded = await handleStockCodedAttachmentRoute(request, {
       driver: deck.fetcher.driver, fetchEngine: deck.fetcher,
@@ -490,10 +493,12 @@ async function routeBunnyEngineRequest(
   // the identical cache call above.
   const deck = await getDeck(resolved, env);
   const viewerAuth0 = Date.now();
-  const viewer = await resolveViewerFromToken(
+  const authenticatedViewer = await resolveViewerFromToken(
     sessionToken,
     new SessionStore({ driver: deck.fetcher.driver }),
   );
+  const viewer = await withVisitorEnabledRoles(deck.fetcher, authenticatedViewer,
+    request.headers.get("cookie") ?? undefined, () => deck.render.ensureFreshness());
   profile.authMs += Math.max(0, Date.now() - viewerAuth0);
   if (viewer.signedIn !== true) {
     const match = await nameMatchResponse(request, url, deck);
@@ -515,7 +520,7 @@ async function routeBunnyEngineRequest(
       { wrapGlobal: true, globalCache: getGlobalRenderCache(env, resolved) },
     );
   }
-  const nameMatch = await nameMatchResponse(request, url, getActorEngines().deckFor(viewer.actorId as number));
+  const nameMatch = await nameMatchResponse(request, url, getActorEngines().deckFor(viewer.actorId as number, viewer.enabledRoleIds));
   if (nameMatch !== null) return nameMatch;
   return await serveProfiled(
     profile,
@@ -524,7 +529,7 @@ async function routeBunnyEngineRequest(
     async () =>
       handleEngineRequest(
         request,
-        { driver: getDriver(resolved, env), deck: async () => getActorEngines().deckFor(viewer.actorId as number) },
+        { driver: getDriver(resolved, env), deck: async () => getActorEngines().deckFor(viewer.actorId as number, viewer.enabledRoleIds) },
         {
           budgetMs: renderBudgetMs,
           // Signed-in pages take the same batched live render the anonymous

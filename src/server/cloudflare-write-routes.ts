@@ -102,6 +102,7 @@ import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
 import { staticUglifyHarmonySyntaxError } from "../card/assets/uglify-harmony-static.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { RenderEngine } from "../card/render.js";
+import { withVisitorEnabledRoles } from "../card/session/enabled-roles.js";
 import { SessionStore } from "../card/auth/session-store.js";
 import { readSessionCookie } from "./write-routes.js";
 import { cardWallClockNow } from "../card/wall-clock.js";
@@ -513,7 +514,8 @@ async function mountWrite(
         if (actor === null) throw new Error("upload preview requires the authenticated request session");
         ctx.fetcher.expireName(name);
         const render = new RenderEngine(ctx.fetcher);
-        render.viewer = { signedIn: true, actorId: actor.id };
+        render.viewer = await withVisitorEnabledRoles(ctx.fetcher,
+          { signedIn: true, actorId: actor.id }, req.headers.cookie);
         render.pageSession = render.viewer;
         render.imageCdnHost = ctx.renderEngine.imageCdnHost;
         return await render.render(name, "preview_editor", { viewOpts: opts });

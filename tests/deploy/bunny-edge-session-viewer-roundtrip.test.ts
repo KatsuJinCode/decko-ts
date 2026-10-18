@@ -499,6 +499,19 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
     expect(anonDeck.render.pageSession).toBeUndefined();
   });
 
+  it("partitions the same actor by role selection without mutating another request", () => {
+    const pool = new ActorRenderEngines(anonDeck, 4);
+    const defaults = pool.deckFor(1).render;
+    const selected = pool.deckFor(1, [21, 7, 21]).render;
+    const none = pool.deckFor(1, []).render;
+    expect(selected).not.toBe(defaults);
+    expect(none).not.toBe(defaults);
+    expect(none).not.toBe(selected);
+    expect(pool.deckFor(1, [7, 21]).render).toBe(selected);
+    expect(defaults.viewer).toEqual({ signedIn: true, actorId: 1 });
+    expect(selected.viewer).toEqual({ signedIn: true, actorId: 1, enabledRoleIds: [7, 21] });
+    expect(pool.size).toBe(3);
+  });
   it("one engine per actor, warm-set eviction, host config inherited not re-derived", () => {
     anonRender_imageCdnHost: {
       anonDeck.render.imageCdnHost = "cdn.example";

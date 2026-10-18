@@ -8423,7 +8423,7 @@ export class RenderEngine implements RenderEngineLike {
     if (actor.id === undefined || actor.name === undefined) return undefined;
     if ((await this.fetcher.codenames.id("enabled_roles")) === undefined) return undefined;
     const anyoneId = await this.fetcher.codenames.id("anyone");
-    const partyRoles = state.parties.filter((id) => id !== anyoneId && id !== actor.id);
+    const partyRoles = (state.grantedRoleIds ?? state.parties).filter((id) => id !== anyoneId && id !== actor.id);
     if (partyRoles.length <= 1) return undefined;
     // auth/current.rb current_roles: Anyone Signed In, then Role.role_ids in
     // the role hash's order — set/self/role.rb generate_rolehash iterates an
@@ -8469,6 +8469,9 @@ export class RenderEngine implements RenderEngineLike {
       sessionTypeId,
       sessionTypeName: sessionType.name.s,
       roles,
+      ...(state.grantedRoleIds === undefined ? {} : {
+        enabledRoles: roles.filter((_name, index) => state.parties.includes(roleIds[index]!)),
+      }),
     };
   }
 

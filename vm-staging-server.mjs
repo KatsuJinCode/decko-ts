@@ -194,6 +194,7 @@ import {
 // write path's `*previous` / configure_successful_deletion redirects resolve
 // to the last entry.
 import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
+import { withVisitorEnabledRoles, permissionViewerKey } from "./dist/src/card/session/enabled-roles.js";
 // The recaptcha seat's host-config source: reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -3036,15 +3037,18 @@ async function status() {
 const MAX_SIGNED_IN_ENGINES = 2;
 const signedInEngines = new Map();
 
-function engineForActor(actorId) {
-  let engine = signedInEngines.get(actorId);
+async function engineForActor(actorId, cookieHeader) {
+  const viewer = await withVisitorEnabledRoles(fetcher, { signedIn: true, actorId }, cookieHeader,
+    () => render.ensureFreshness());
+  const key = permissionViewerKey(viewer);
+  let engine = signedInEngines.get(key);
   if (engine === undefined) {
     engine = new RenderEngine(fetcher);
     engine.imageCdnHost = render.imageCdnHost;
     engine.fontAwesomeAssetMode = render.fontAwesomeAssetMode;
     engine.renderAbsentCards = render.renderAbsentCards;
     engine.tokenConfig = TOKEN_CONFIG;
-    engine.viewer = { signedIn: true, actorId };
+    engine.viewer = viewer;
     // The page chrome's session (Ruby Auth.current): the navbar's account
     // links, "my card" and roles dropdown render for this account. Without
     // it a signed-in page showed the signed-out navbar's empty account
@@ -3053,7 +3057,7 @@ function engineForActor(actorId) {
     if (signedInEngines.size >= MAX_SIGNED_IN_ENGINES) {
       signedInEngines.delete(signedInEngines.keys().next().value);
     }
-    signedInEngines.set(actorId, engine);
+    signedInEngines.set(key, engine);
   }
   return engine;
 }
@@ -3533,7 +3537,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               // (cache/all.rb) BEFORE the soft redirect re-renders it —
               // without this the slot render reads the pre-save warm maps.
               fetcher.expireName(name);
-              const actorEngine = engineForActor(cookieActor.id);
+              const actorEngine = await engineForActor(cookieActor.id, req.headers.cookie);
               actorEngine.expireRenderCard(name);
               // The save's POSTED subcards are cards too (subcards.rb —
               // each saves as its own card with its own post-commit
@@ -3596,7 +3600,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       // renderErrorPage in write-routes.ts). The page lane runs on the
       // request's own session engine, exactly like every GET page.
       renderErrorPage: async (name, view) => {
-        const actorEngine = cookieActor !== null ? engineForActor(cookieActor.id) : render;
+        const actorEngine = cookieActor !== null ? await engineForActor(cookieActor.id, req.headers.cookie) : render;
         // html/error.rb:200-204's @denied_task-nil arm: the controller
         // rescue's loud denial reads "to do that", not a view-level task.
         actorEngine.pageLoudDenialTaskPhrase = "do that";
@@ -3623,7 +3627,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
         cookieActor !== null
           ? async ({ name, opts }) => {
               fetcher.expireName(name);
-              const actorEngine = engineForActor(cookieActor.id);
+              const actorEngine = await engineForActor(cookieActor.id, req.headers.cookie);
               actorEngine.expireRenderCard(name);
               const { RenderFormat } = await import("./dist/src/card/render/format.js");
               // The seat render runs the view WITHOUT the round-trip opts —
@@ -3893,7 +3897,7 @@ const server = http.createServer(async (req, res) => {
     );
     return;
   }
-  const requestEngine = actor !== null ? engineForActor(actor.id) : render;
+  const requestEngine = actor !== null ? await engineForActor(actor.id, req.headers.cookie) : render;
 
   let response;
   // The card name the page branches served (the location-history push checks
@@ -4072,7 +4076,7 @@ const server = http.createServer(async (req, res) => {
       if (assetResp !== null) {
         response = assetResp;
       } else {
-        const actorRender = actor !== null ? engineForActor(actor.id) : render;
+        const actorRender = actor !== null ? await engineForActor(actor.id, req.headers.cookie) : render;
         await actorRender.ensureFreshness();
         const codedResponse = await handleAttachmentRoute(new Request(url, { method: req.method }), {
           driver, fetchEngine: fetcher, attachmentStore,

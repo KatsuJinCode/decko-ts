@@ -38,6 +38,7 @@ import { renderFormatShow } from "../../src/card/render/format-families.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import type { ReadViewer } from "../../src/card/permissions/read-rules.js";
+import { permissionViewerKey } from "../../src/card/session/enabled-roles.js";
 import { DeckoName } from "../../src/card/name.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { edgeHostLabels } from "./edge-host-labels.js";
@@ -827,7 +828,7 @@ async function dispatchEngineRequest(
             } } : {}),
             // Signed-in renders keep their rows per viewer: a kept entry is
             // never shared across viewers or with the anonymous path.
-            ...(options?.viewer !== undefined ? { keepScope: `viewer:${String(options.viewer.actorId)}` } : {}),
+            ...(options?.viewer !== undefined ? { keepScope: `viewer:${permissionViewerKey(options.viewer)}` } : {}),
           },
         );
     };
@@ -960,7 +961,7 @@ async function signedInNewCardPage(
   const viewer = options.viewer;
   if (viewer === undefined) return undefined;
   return await withLiveRenderScope(async (requestScope) => {
-  const keepScope = `new-form-viewer:${String(viewer.actorId)}`;
+    const keepScope = `new-form-viewer:${permissionViewerKey(viewer)}`;
   const typeKey = DeckoName.parse(typeName);
   const typeRecord = await deck.fetcher.fetchByKey(typeKey.key, { skipVirtual: true }).catch(() => undefined);
   if (typeRecord === undefined || typeRecord.name === undefined || typeRecord.id === undefined) return undefined;
