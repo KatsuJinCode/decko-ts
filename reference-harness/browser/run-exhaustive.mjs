@@ -153,7 +153,11 @@ console.log(`[run-exhaustive] source=${sourceCommit.slice(0, 10)} ${sourceDirty 
 const SURFACES = {
   "1. sign in, and stay signed in": { signin: "form", card: "/*signin", actor: signinActor },
   "2. styling and console on signed-in pages": { signin: "form", card: "/", actor: signinActor },
-  "3. edit a Date card": { signin: "form", card: "/2011_12_14", actor: signinActor },
+  // /Date_1 (fixture cards Date 1/2/3, type Date): the earlier /2011_12_14
+  // names no card in the fixture, so the surface could only ever serve a
+  // not_found page (ACT-012's red ran against that 404, never against a
+  // Date card).
+  "3. edit a Date card": { signin: "form", card: "/Date_1", actor: signinActor },
   "4. edit a RichText card (TinyMCE, nest dialog, link button)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/new?card[type]=RichText"] },
   "5. create a card every way the site offers": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/new/Basic", "/new/RichText", "/new/Date", "/Some_New_Name", "/new", "/card/new", "/*search?query[keyword]=zz_no_such_card_harness"] },
   "6. delete a card": { signin: "form", card: "/", actor: signinActor },
@@ -268,8 +272,11 @@ function affordanceHints(text) {
     const v = m.replace(/^['"]|['"]$/g, "");
     if (v.length >= 2 && !/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(v)) hints.push({ kind: "text", value: v });
   }
-  // Field names carry "*" as a marker ("*email", "*password", ...).
-  const fields = String(text ?? "").match(/\*(\w+)/g);
+  // Field names carry "*" as a marker ("*email", "*password", ...). A "*"
+  // directly after "/" is a URL path token (/*search, /*new, /delete/*signin),
+  // not a field reference — decoding it minted an unfillable
+  // .RIGHT-<name> field hint (ACT-039's "the Changes link (/*search)" red).
+  const fields = String(text ?? "").match(/(?<!\/)\*(\w+)/g);
   if (fields) for (const m of fields) hints.push({ kind: "field", value: m });
   // Common UI verbs -> a known label or selector.
   if (/\bsign[- ]?in\b/i.test(text)) hints.push({ kind: "text", value: "Sign in" });
@@ -491,46 +498,40 @@ async function run() {
     const actionsDir = path.join(out, "actions");
     mkdirSync(actionsDir, { recursive: true });
 
-    // Sign in once per actor the surfaces need.
-    const seenActorSignin = new Set();
-    const surfaceOrder = [];
-    for (const a of actions) if (a.surface && !surfaceOrder.includes(a.surface)) surfaceOrder.push(a.surface);
-    for (const surface of surfaceOrder) {
-      const meta = SURFACES[surface];
-      const actorName = meta?.actor ?? signinActor;
-      const actor = actors[actorName] ?? actors.admin ?? actors.anonymous;
-      if (meta?.signin === "form" && !seenActorSignin.has(actorName) && actor?.email) {
-        try {
-          await signIn(page, server.base, actor);
-          seenActorSignin.add(actorName);
-          console.log(`[run-exhaustive] signed in as ${actorName} (${actor.email})`);
-        } catch (err) {
-          console.error(`[run-exhaustive] sign-in failed for ${surface} (${actorName}): ${err.message ?? err}`);
-        }
-      } else if (meta?.signin === "none") {
-        await ctxb.clearCookies();
-      }
-    }
-
-    // Drive every action.
+    // Drive every action. Session identity is enforced per action: a
+    // signin:"none" surface clears cookies (anonymous observation); a
+    // signin:"form" surface whose actor differs from the context's current
+    // actor signs in first. The earlier design signed each actor in once in
+    // a pre-pass over the surface order and never re-established a session
+    // afterwards, so the pre-pass's trailing signin:"none" surfaces
+    // (cover-b. session, account (password reset)) cleared cookies and left
+    // every one of the 190 actions probing anonymously — the whole
+    // affordance-not-found fail class of the 2026-10-18 run (65 actions,
+    // including ACT-012 ACT-039 ACT-064 ACT-092 ACT-119 ACT-143 ACT-173),
+    // reproduced action-for-action in
+    // .runtime/exhaustive/2026-10-18-slice3-prefix-repro.
     const perAction = [];
     let totalInteractions = 0;
-    let lastActor = null;
+    let activeActor = null;
     for (const action of actions) {
       const t0 = Date.now();
       const meta = SURFACES[action.surface];
       const actorName = meta?.actor ?? signinActor;
-      if (lastActor !== actorName && meta?.signin === "form" && !seenActorSignin.has(actorName)) {
+      if (meta?.signin === "none") {
+        await ctxb.clearCookies().catch(() => {});
+        activeActor = null;
+      } else if (activeActor !== actorName) {
         const actor = actors[actorName] ?? actors.admin ?? actors.anonymous;
-        try {
-          await signIn(page, server.base, actor);
-          seenActorSignin.add(actorName);
-        } catch (err) {
-          console.error(`[run-exhaustive] sign-in for ${action.id}: ${err?.message ?? err}`);
+        if (actor?.email) {
+          try {
+            await signIn(page, server.base, actor);
+            activeActor = actorName;
+            console.log(`[run-exhaustive] signed in as ${actorName} (${actor.email}) for ${action.id}`);
+          } catch (err) {
+            console.error(`[run-exhaustive] sign-in for ${action.id} (${actorName}): ${err?.message ?? err}`);
+          }
         }
       }
-      if (meta?.signin === "none") await ctxb.clearCookies().catch(() => {});
-      lastActor = actorName;
 
       let probe;
       try {
