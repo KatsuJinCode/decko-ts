@@ -170,8 +170,32 @@ export const checks = [
       const host = `Harness_E11_summary_host_${stamp}`;
       const summaryContent = `E11 summary content ${stamp}`;
       await createTypedFixture(ctx, { name: host, content: "E11 host", type: "Basic" });
+      ctx.created?.push?.(host);
       await createTypedFixture(ctx, { name: `${host}+*self+*structure`, content: "{{+summary}}", type: "Phrase" });
-      await createTypedFixture(ctx, { name: `${host}+summary`, content: summaryContent, type: "Phrase" });
+      ctx.created?.push?.(`${host}+*self+*structure`);
+      // The +summary junction rides the request channel: under the structure
+      // rule the junction's create FORM answered 200 without storing the
+      // requested card (the battery r2 re-grade recorded "typed fixture was
+      // not created as requested: ...+summary; HTTP 200; stored null"),
+      // while POST /card/create with the same fields stores it — measured
+      // both ways on the ts engine (303, row present, editor renders the
+      // stored content).
+      const junctionCreate = await page.context().request.post(`${ctx.stack.origin}/card/create`, {
+        headers: { origin: ctx.stack.origin },
+        form: { "card[name]": `${host}+summary`, "card[type]": "Phrase", "card[content]": summaryContent, "success[redirect]": "true" },
+        maxRedirects: 0,
+      }).catch((e) => ({ error: String(e?.message ?? e) }));
+      const junctionOk = !junctionCreate.error && junctionCreate.status() < 400;
+      const junctionStored = database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(`${host}+summary`);
+      ctx.created?.push?.(`${host}+summary`);
+      if (!junctionOk || !junctionStored) {
+        record(
+          "E11 a card with a +summary nested field renders that field's editor",
+          false,
+          { target: host, junctionCreateStatus: junctionCreate.error ? null : junctionCreate.status(), junctionStored: !!junctionStored }
+        );
+        return;
+      }
       await visit("/" + encodeURIComponent(host) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
