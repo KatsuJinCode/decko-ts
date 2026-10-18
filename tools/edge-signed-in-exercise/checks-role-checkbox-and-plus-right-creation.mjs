@@ -415,10 +415,17 @@ export const checks = [
         const membersId = codenames.members?.id ?? null;
         const membersListNameFor = roleId => {
           if (membersId === null) return null;
+          // The +*members list is a JUNCTION row: its own name column is NULL
+          // (only left cards carry names in this deck — seed-local-accounts
+          // inserts junctions with name NULL). The URL name is composed from
+          // the LEFT card: `<role name>+*members`, whose urlKey the engine's
+          // update route resolves.
           const listRow = database().prepare(
-            "SELECT id, db_content FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1",
+            "SELECT l.id, l.db_content, c.name AS role_name FROM cards l " +
+            "JOIN cards c ON c.id=l.left_id WHERE l.left_id=? AND l.right_id=? AND l.trash=0 LIMIT 1",
           ).get(roleId, membersId);
-          return listRow === undefined ? null : { id: listRow.id, content: listRow.db_content ?? "", roleId };
+          return listRow === undefined ? null
+            : { id: listRow.id, content: listRow.db_content ?? "", urlName: `${listRow.role_name}+*members`, roleId };
         };
         // NORMAL Role+members List create API: POST /update/<list> with
         // card[content] = "Name1\nName2" (IdList format, names separated
@@ -430,17 +437,9 @@ export const checks = [
         // referee_key=NULL — the same shape seed-local-accounts.mjs:111
         // uses). The harness's database handle is read-only, so the only
         // way to add a member to a role is through the engine.
-        const postListContent = async (listId, content) => {
-          // The list card's name is `<role>+*members`; the engine's
-          // /update route accepts the form-encoded card[content] and
-          // writes through the list-content standardizeIdListContent
-          // path (card-action-engine.ts:5624).
-          const listRow = database().prepare(
-            "SELECT name FROM cards WHERE id=? AND trash=0",
-          ).get(listId);
-          if (listRow === undefined) return { status: 0, error: "list not found" };
-          const name = listRow.name;
-          const url = `/update/${encodeURIComponent(name.replace(/ /g, "_"))}`;
+        const postListContent = async (urlName, content) => {
+          if (urlName === null || urlName === undefined) return { status: 0, error: "no list url name" };
+          const url = `/update/${encodeURIComponent(urlName.replace(/ /g, "_"))}`;
           const response = await page.context().request.post(`${stack.origin}${url}`, {
             headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
             data: new URLSearchParams({
@@ -452,21 +451,21 @@ export const checks = [
           return { status: response.status(), location: response.headers()["location"] ?? null };
         };
         const seedMemberRoleGrant = async (role) => {
-          if (membersId === null) return { listId: null, before: null, after: null, post: null };
+          if (membersId === null) return { listId: null, urlName: null, before: null, after: null, post: null };
           const listInfo = membersListNameFor(role.id);
-          if (listInfo === null) return { listId: null, before: null, after: null, post: null };
+          if (listInfo === null) return { listId: null, urlName: null, before: null, after: null, post: null };
           const beforeContent = listInfo.content;
           const lines = beforeContent.split("\n").map(s => s.trim()).filter(s => s.length > 0);
           if (lines.includes(memberActor.name)) {
-            return { listId: listInfo.id, before: beforeContent, after: beforeContent, post: { status: 200, location: null, note: "member was already granted" } };
+            return { listId: listInfo.id, urlName: listInfo.urlName, before: beforeContent, after: beforeContent, post: { status: 200, location: null, note: "member was already granted" } };
           }
           const newContent = beforeContent === "" ? memberActor.name : `${beforeContent}\n${memberActor.name}`;
-          const post = await postListContent(listInfo.id, newContent);
-          return { listId: listInfo.id, before: beforeContent, after: newContent, post };
+          const post = await postListContent(listInfo.urlName, newContent);
+          return { listId: listInfo.id, urlName: listInfo.urlName, before: beforeContent, after: newContent, post };
         };
-        const revokeMemberRoleGrant = async (role, listIdSnapshot, beforeContent) => {
-          if (membersId === null || listIdSnapshot === null) return null;
-          return postListContent(listIdSnapshot, beforeContent ?? "");
+        const revokeMemberRoleGrant = async (role, listIdSnapshot, urlNameSnapshot, beforeContent) => {
+          if (membersId === null || listIdSnapshot === null || urlNameSnapshot === null) return { status: 0, error: "no grant to revoke" };
+          return postListContent(urlNameSnapshot, beforeContent ?? "");
         };
         // We give the member a benign, non-power role grant for the
         // duration of the test. The grant is dropped at the end of the
@@ -479,7 +478,7 @@ export const checks = [
         // prior staged shape posted the grant before any sign-in, i.e. as an
         // anonymous visitor, which the engine refuses.)
         await signInActor(page, stack.origin, adminActor);
-        const seedGrant = grantableRole ? await seedMemberRoleGrant(grantableRole) : { listId: null, before: null, after: null, post: null };
+        const seedGrant = grantableRole ? await seedMemberRoleGrant(grantableRole) : { listId: null, urlName: null, before: null, after: null, post: null };
         const seededGrantListId = seedGrant.listId;
         // Canonical-grant verification: rolePartyStatement reads
         // card_references joined to the members list, so the grant only
@@ -542,7 +541,7 @@ export const checks = [
           let grantRevokedHere = null;
           if (grantableRole && seededGrantListId !== null) {
             await signInActor(page, stack.origin, adminActor).catch(() => undefined);
-            grantRevokedHere = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
+            grantRevokedHere = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
           }
           record(capabilityChecks.A6[1], false, {
             note: "no clickable non-power role box is served in the inline :edit_inline view the member's account_settings page renders; the click leg cannot be driven",
@@ -711,7 +710,7 @@ export const checks = [
         let grantRevoke = null, grantListRowAfterRevoke = null;
         if (grantableRole && seededGrantListId !== null) {
           await signInActor(page, stack.origin, adminActor).catch(() => undefined);
-          grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
+          grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
           grantListRowAfterRevoke = database().prepare(
             "SELECT db_content FROM cards WHERE id=? AND trash=0",
           ).get(seededGrantListId) ?? null;
