@@ -6,10 +6,8 @@
 // drives real creates and updates through CardActionEngine and checks two
 // things:
 //   1. each save leaves the 'I' rows describing the content it just wrote;
-//   2. the rows the saves left are exactly the rows ensureNestIndex derives
-//      from the same content from scratch, so the save path and the boot
-//      build agree and a deck is never "current" by one and "stale" by the
-//      other.
+//   2. boot preserves every saved reference and derives matching hints for
+//      these static nests in the separate optional cache.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -80,7 +78,7 @@ describe("nest index: save-time maintenance", () => {
     expect(first.cardId).toBeGreaterThan(0);
   });
 
-  it("the rows the saves leave equal the rows a from-scratch build derives", async () => {
+  it("the build preserves saved references and derives matching static hints", async () => {
     const storage = await createActionsTestStorage();
     await seedStandardDeck(storage);
     const engine = actionEngine(storage);
@@ -99,5 +97,6 @@ describe("nest index: save-time maintenance", () => {
     const install = await ensureNestIndex(storage.driver, storage.engine.lexicon);
     expect(install.state).toBe("built");
     expect(await indexRows(storage)).toEqual(afterSaves);
+    expect(await storage.selectAll("SELECT referer_id, referee_id, referee_key FROM decko_nest_edges ORDER BY referer_id, referee_key, referee_id")).toEqual(afterSaves);
   });
 });

@@ -103,9 +103,9 @@ function withoutSlotNonces(html: string): string {
 }
 
 /** The 'I' rows a deck holds, as comparable strings. */
-async function indexRows(storage: RenderTestStorage): Promise<string[]> {
+async function indexRows(storage: RenderTestStorage, derived = false): Promise<string[]> {
   const rows = await storage.counting.query<{ referer_id: number; referee_id: number | null; referee_key: string | null }>(
-    `SELECT referer_id, referee_id, referee_key FROM card_references WHERE ref_type = 'I' ORDER BY referer_id, referee_key, referee_id`,
+    `SELECT referer_id, referee_id, referee_key FROM ${derived ? 'decko_nest_edges' : "card_references WHERE ref_type = 'I'"} ORDER BY referer_id, referee_key, referee_id`,
     [],
   );
   return rows.rows.map((r) => JSON.stringify([r.referer_id, r.referee_id, r.referee_key]));
@@ -144,21 +144,24 @@ async function measureShape(spec: ShapeSpec, posture: "built" | "hand"): Promise
   let html: string;
   try {
     await spec.seed(storage);
+    const canonicalBefore = await indexRows(storage);
     const install = await ensureNestIndex(storage.counting, storage.fetcher.lexicon);
+    expect(await indexRows(storage)).toEqual(canonicalBefore);
     expect(install.state).toBe("built");
     indexedCards = install.scanned;
-    const derived = await indexRows(storage);
+    const derived = await indexRows(storage, true);
     if (posture === "hand") {
       await storage.counting.query(`DELETE FROM card_references WHERE ref_type = 'I'`, []);
       for (const [refererId, refereeId, refereeKey] of spec.nestRows()) {
         await seedReference(storage, refererId, refereeId, DeckoName.parse(refereeKey).key, "I");
       }
-      // The hand-written index is the derived one, row for row: the build
-      // writes what the write path would have written for this content.
+      // Canonical save-time edges equal the optional hints on these static
+      // synthetic cards. Clear the hints to exercise canonical edges alone.
       expect({ label: spec.label, rows: (await indexRows(storage)).sort() }).toEqual({
         label: spec.label,
         rows: [...derived].sort(),
       });
+      await storage.counting.query("DELETE FROM decko_nest_edges", []);
     }
     // The marker is current now: a second boot reads it and writes nothing.
     expect(await ensureNestIndex(storage.counting, storage.fetcher.lexicon)).toEqual({

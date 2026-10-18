@@ -11,9 +11,8 @@
 //      without an account or a token.
 //
 // What is asserted: a deck with content and no marker is missing before the
-// build, the build derives the 'I' rows the write path would have written, the
-// marker says current afterwards, a second build reads the marker and writes
-// nothing, and a render of the root costs three round trips.
+// build, the build derives only optional prefetch hints and preserves canonical
+// references, the marker says current afterwards, and a second build is idle.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -61,7 +60,7 @@ async function seed(driver: CloudflareD1Adapter): Promise<void> {
 }
 
 async function indexRows(driver: CloudflareD1Adapter): Promise<unknown[]> {
-  return (await driver.query(`SELECT referer_id, referee_id, referee_key FROM card_references ORDER BY referer_id`, [])).rows;
+  return (await driver.query(`SELECT referer_id, referee_id, referee_key FROM decko_nest_edges ORDER BY referer_id`, [])).rows;
 }
 
 afterAll(async () => {
@@ -85,7 +84,9 @@ describe("nest index build step: D1 binding (Miniflare)", () => {
     expect(await readNestIndexMarker(driver)).toEqual({ state: "missing" });
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const lexicon = new FetchEngine(driver).lexicon;
-    const install = await ensureNestIndex(driver, lexicon);
+    const canonicalBefore = (await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows;
+      const install = await ensureNestIndex(driver, lexicon);
+      expect((await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows).toEqual(canonicalBefore);
     expect({ state: install.state, scanned: install.scanned }).toEqual({ state: "built", scanned: 2 });
     expect(await indexRows(driver)).toEqual([
       { referer_id: 101, referee_id: 102, referee_key: "child" },
@@ -155,7 +156,9 @@ describe("nest index build step: the REST transport's wire shape", () => {
       expect((await readNestIndexMarker(driver)).state).toBe("missing");
       applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
       const lexicon = new FetchEngine(driver).lexicon;
+      const canonicalBefore = (await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows;
       const install = await ensureNestIndex(driver, lexicon);
+      expect((await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows).toEqual(canonicalBefore);
       expect({ state: install.state, scanned: install.scanned }).toEqual({ state: "built", scanned: 1 });
       expect(await indexRows(driver)).toEqual([{ referer_id: 101, referee_id: 102, referee_key: "child" }]);
       expect((await readNestIndexMarker(driver)).state).toBe("current");

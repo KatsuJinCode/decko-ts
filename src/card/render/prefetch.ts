@@ -46,6 +46,7 @@
 // All fetching is read-only (SELECT); the write path is separate.
 
 import { DeckoName } from "../name.js";
+import { nestEdgeCacheAvailable } from "../nest-index-cache.js";
 import {
   CodenameNotFoundError,
   NameNotFoundError,
@@ -412,7 +413,8 @@ export async function prefetchInclusionClosure(
   // size. Its memory is the closure rows the render holds in its caches.
   let nestIndexSlot = -1;
   if (ctx.skipClosureWalk !== true && rootRow.id > 0) {
-    preludeStatements.push(nestIndexStatement(rootRow.id));
+    const useDerived = nestEdgeCacheAvailable(ctx.driver);
+    preludeStatements.push(nestIndexStatement(rootRow.id, useDerived));
     nestIndexSlot = preludeStatements.length - 1;
   }
 
@@ -540,7 +542,7 @@ export async function prefetchInclusionClosure(
  *  There is no row cap: the whole closure rides this one statement, so a
  *  cold render costs the same round trips at any closure size. Its memory
  *  is the closure rows the render holds in its caches. */
-export function nestIndexStatement(rootId: number): SQLStatement {
+export function nestIndexStatement(rootId: number, includeDerivedCache = false): SQLStatement {
   return {
     sql:
       `WITH RECURSIVE reach(id, via) AS (\n` +
@@ -548,6 +550,9 @@ export function nestIndexStatement(rootId: number): SQLStatement {
       `  UNION\n` +
       `  SELECT refs.referee_id, 'n' FROM card_references refs JOIN reach ON refs.referer_id = reach.id\n` +
       `   WHERE reach.via = 'n' AND refs.ref_type = 'I' AND refs.referee_id IS NOT NULL\n` +
+      (includeDerivedCache
+        ? `  UNION\n  SELECT cached.referee_id, 'n' FROM decko_nest_edges cached JOIN reach ON cached.referer_id = reach.id\n   WHERE reach.via = 'n' AND cached.referee_id IS NOT NULL\n`
+        : "") +
       `  UNION\n` +
       `  SELECT c.left_id, 's' FROM cards c JOIN reach ON c.id = reach.id WHERE c.left_id IS NOT NULL\n` +
       `  UNION\n` +

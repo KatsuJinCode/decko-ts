@@ -22,8 +22,8 @@
 // existence probe. A schema catalogue is a catalogue: SQLite reads
 // sqlite_master, MySQL reads information_schema.TABLES in the current
 // database, PostgreSQL reads information_schema.tables in the current schema.
-// The build then drops and re-derives the 'I' rows through the ordinary write
-// path, and a second call must be a marker read and nothing else.
+// The build populates only the port-owned derived cache. Canonical references
+// remain unchanged; a second call must be a marker read and nothing else.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -74,7 +74,7 @@ async function seedDeck(driver: SQLDatabaseDriver): Promise<void> {
 async function indexRows(driver: SQLDatabaseDriver): Promise<unknown[]> {
   return (
     await driver.query(
-      `SELECT referer_id, referee_id, referee_key, ref_type FROM card_references ORDER BY referer_id`,
+      `SELECT referer_id, referee_id, referee_key FROM decko_nest_edges ORDER BY referer_id`,
       [],
     )
   ).rows;
@@ -90,14 +90,16 @@ async function checkMarkerAndBuild(name: string, driver: SQLDatabaseDriver): Pro
 
   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const lexicon = new FetchEngine(driver).lexicon;
+  const canonicalBefore = (await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows;
   const built = await ensureNestIndex(driver, lexicon);
+  expect((await driver.query("SELECT * FROM card_references ORDER BY id", [])).rows).toEqual(canonicalBefore);
   expect({ state: built.state, scanned: built.scanned }).toEqual({ state: "built", scanned: 2 });
 
-  // The rows are the write path's rows: one 'I' row per nest, the referee
+  // The derived rows are hints: one entry per nest, the referee
   // absolutized and its id filled in.
   expect(await indexRows(driver)).toEqual([
-    { referer_id: 101, referee_id: 102, referee_key: "child", ref_type: "I" },
-    { referer_id: 102, referee_id: 103, referee_key: "grandchild", ref_type: "I" },
+    { referer_id: 101, referee_id: 102, referee_key: "child" },
+    { referer_id: 102, referee_id: 103, referee_key: "grandchild" },
   ]);
 
   expect(await readNestIndexMarker(driver)).toEqual({ state: "current", version: NEST_INDEX_BUILD_VERSION });

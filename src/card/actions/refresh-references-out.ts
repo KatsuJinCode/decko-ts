@@ -40,6 +40,7 @@
 // corresponding name-layer errors and skips the chunk, same outcome.
 
 import { DeckoName } from "../name.js";
+import {clearCachedNestEdges} from "../nest-index-cache.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
@@ -84,16 +85,13 @@ export async function refreshReferencesOut(
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
+  await clearCachedNestEdges(driver,refererId);
   // set/type/search_type.rb:6 `def chunk_list; :query; end` — a Search
   // referer's content parses QueryReference chunks ONLY (lib/card/content/
   // chunk/query_reference.rb: quoted strings after :, , or [ that are not
   // query keywords, reference_code "Q"); every other referer parses the
   // link/nest chunks (all.rb:56-58 each_reference_out).
-  const rows = (await isListCard(driver, refererId))
-    ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
-    : (await isSearchCard(driver, refererId))
-      ? await createQueryReferencesOut(lexicon, refererId, refererName, content)
-      : await createReferencesOut(lexicon, refererId, refererName, content);
+  const rows = await referenceRowsOut(driver, lexicon, refererId, refererName, content);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
   for (let slice = 0; slice < rows.length; slice += 5000) {
@@ -112,6 +110,23 @@ export async function refreshReferencesOut(
   }
 }
 
+/** Parse a card's reference rows without changing any stored relationship.
+ *  Boot-time derived indexes use this read-only seam; canonical reference
+ *  maintenance remains an explicit card save. */
+export async function referenceRowsOut(
+  driver: SQLDatabaseDriver,
+  lexicon: ReferenceLexicon,
+  refererId: number,
+  refererName: DeckoName,
+  content: string | null | undefined,
+): Promise<ReferenceRow[]> {
+  return (await isListCard(driver, refererId))
+    ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
+    : (await isSearchCard(driver, refererId))
+      ? await createQueryReferencesOut(lexicon, refererId, refererName, content)
+      : await createReferencesOut(lexicon, refererId, refererName, content);
+}
+
 /** event :clear_references (reference_events.rb:28-31): delete the
  *  referer's rows and unmap the deleted id from other cards' rows
  *  (unmap_referees, reference.rb:31-33). */
@@ -120,6 +135,7 @@ export async function clearReferencesOnDelete(
   cardId: number,
 ): Promise<void> {
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [cardId]);
+  await clearCachedNestEdges(driver,cardId);
   await driver.query(
     "UPDATE card_references SET referee_id = NULL WHERE referee_id = ?",
     [cardId],
