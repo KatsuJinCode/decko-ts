@@ -118,19 +118,31 @@ export const checks = [{
         if (response.status() >= 400) throw Error("search-overmatch fixture create refused: " + name + " -> " + response.status());
       }
 
-      // Fixture validity: the four cards exist, and the read rule really points
-      // at the administrator. Without this the scope assertion below would pass
-      // for the wrong reason (no rule = no restriction to leak).
+      // Fixture validity: the four cards exist, and the restricted card really
+      // has a read rule pointing at the administrator. Without this the scope
+      // assertion below would pass for the wrong reason (no rule = no
+      // restriction to leak).
+      //
+      // The rule is identified by the card it PROTECTS and by the grantee it
+      // references, never by the rule card's own name: a rule card's `name`
+      // column is NULL in this schema (its name is computed from its
+      // references), so a `c.name = ?` filter matches nothing. Verified against
+      // the harness deck on 2026-10-17: filtering on the rule's name returned
+      // 0 rows while this shape returns the real read rules. Same join order
+      // checks-permissions.mjs uses, which passes in every battery.
       const stored = database().prepare("SELECT name FROM cards WHERE name IN (?,?,?,?) AND trash=0")
         .all(byName, byContent, control, adminOnly).map(r => r.name);
       const administratorId = database().prepare("SELECT id FROM cards WHERE codename='administrator' AND trash=0 ORDER BY id LIMIT 1").get()?.id;
-      const ruleRow = database().prepare(
-        "SELECT refs.referee_id FROM cards c JOIN cards rule_set ON rule_set.id=c.left_id JOIN cards setting ON setting.id=c.right_id " +
-        "JOIN card_references refs ON refs.referer_id=c.id WHERE c.name=? AND rule_set.name=? AND rule_set.right_id=(SELECT id FROM cards WHERE codename='self' AND trash=0 ORDER BY id LIMIT 1) " +
-        "AND setting.codename='read' AND c.trash=0").get(readRule, adminOnly);
-      const fixturesValid = stored.length === 4 && administratorId !== undefined && ruleRow?.referee_id === administratorId;
+      const ruleRow = administratorId === undefined ? undefined : database().prepare(
+        "SELECT refs.referee_id FROM cards c JOIN cards rule_set ON rule_set.id=c.left_id JOIN cards target ON target.id=rule_set.left_id " +
+        "JOIN cards setting ON setting.id=c.right_id JOIN card_references refs ON refs.referer_id=c.id " +
+        "WHERE target.name=? AND setting.codename='read' AND refs.referee_id=? " +
+        "AND rule_set.right_id=(SELECT id FROM cards WHERE codename='self' AND trash=0 ORDER BY id LIMIT 1) AND c.trash=0")
+        .get(adminOnly, administratorId);
+      const fixturesValid = stored.length === 4 && administratorId !== undefined && ruleRow !== undefined;
       record(checksOut.fixtures, fixturesValid,
-        { term, expected: [byName, byContent, control, adminOnly], stored, administratorId, readRule, ruleRefereeId: ruleRow?.referee_id ?? null });
+        { term, expected: [byName, byContent, control, adminOnly], stored, administratorId, readRule,
+          ruleGrantsAdministrator: ruleRow !== undefined, ruleIdentifiedBy: "protected card name + grantee id (a rule card's name column is NULL)" });
       if (!fixturesValid) throw Error("search-overmatch fixtures are not the set this check reasons about");
 
       // One reader per actor, both through the rendered results page.
