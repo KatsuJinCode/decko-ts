@@ -901,7 +901,7 @@ export async function ungradeableBatch2TargetProbes({
     }
     const panelCard = "Topic 001";
     await visit(`/${urlKey(panelCard)}`);
-    const panelShape = await page
+    const panelShape = ((await page
       .evaluate(() => {
         const panel = document.querySelector("#main .card-slot.closed-view.RIGHT-related");
         if (!panel) return { found: false, id: null, button: 0 };
@@ -911,7 +911,7 @@ export async function ungradeableBatch2TargetProbes({
           button: panel.querySelectorAll("button.accordion-button").length,
         };
       })
-      .catch(() => ({ found: false, id: null, button: 0 }));
+      .catch(() => ({ found: false, id: null, button: 0 }))) ?? { found: false, id: null, button: 0 });
     const panelSel = () => "#main .card-slot.closed-view.RIGHT-related";
     let expanded = false;
     let content = null;
