@@ -25,6 +25,27 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {runInNewContext} from 'node:vm';
+import {TINYMCE_NEST_PLUGIN_JS} from '../../../deploy/bunny-worker-src/bunny-edge-tinymce-nest-plugin.js';
+
+it('the nest toolbar opens rules for its own field owner instead of the stock ~undefined mark',()=>{
+  const opened:unknown[][]=[],buttons=new Map<string,{onAction:()=>void}>();
+  const owner={getAttribute:(name:string)=>name==='data-card-link-name'?'Owned_Card':null};
+  const field={closest:()=>owner};
+  const editor={id:'owned-editor-1',ui:{registry:{addIcon:()=>{},addToggleButton:(name:string,options:{onAction:()=>void})=>buttons.set(name,options),addMenuItem:()=>{},addContextMenu:()=>{}}},addCommand:()=>{},addShortcut:()=>{}};
+  let available=true;
+  runInNewContext(TINYMCE_NEST_PLUGIN_JS,{
+    tinymce:{PluginManager:{add:(_name:string,install:(editor:unknown)=>void)=>install(editor)}},
+    document:{getElementById:(id:string)=>available&&id===editor.id?field:null},
+    $:(node:unknown)=>({node}),
+    nest:{editParams:(received:unknown)=>{expect(received).toBe(editor);return 'tm_snippet_start=7'},openNestEditorForSlot:(...args:unknown[])=>opened.push(args),openNestEditor:()=>{throw Error('broken stock path must not run')}},
+  });
+  buttons.get('nest')!.onAction();
+  expect(opened).toEqual([[{node:owner},{node:field},'tm_snippet_start=7&tinymce_id=owned-editor-1']]);
+  available=false;
+  expect(()=>buttons.get('nest')!.onAction()).toThrow('field is unavailable');
+  expect(opened).toHaveLength(1);
+});
 import { historyRenderParamsFromWire } from "../../../src/server/worker-shared-surface.js";
 import { parsePath } from "../../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 import {
