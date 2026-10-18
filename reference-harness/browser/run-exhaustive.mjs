@@ -645,7 +645,12 @@ async function probeAction(page, action, lastStatusRef, actors) {
     });
     sequence.push(...targetProbes);
   } catch (err) {
-    sequence.push({ interaction: "assert-present", selector: "affordance-target probes", error: String(err?.message ?? err) });
+    // A target-case driver that threw (e.g. a fixture shape it cannot read,
+    // the ACT-119 db_content throw the grading-integrity review measured on
+    // the Ruby oracle) has NOT witnessed its contract: the throw lands as a
+    // FAILED required leg so the action cannot pass on a generic locate hit
+    // (required-legs gating, F1).
+    sequence.push({ interaction: "assert-present", case: "affordance-target probes (driver threw)", required: true, selector: "affordance-target probes", count: 0, error: String(err?.message ?? err) });
   } finally {
     for (const actorContext of createdActorContexts.splice(0)) {
       await actorContext.close().catch(() => {});
@@ -693,14 +698,36 @@ async function probeAction(page, action, lastStatusRef, actors) {
   // saw. Read-only journeys carry no write-skips and grade exactly as before.
   const writeSkipped = sequence.some((s) => s.interaction === "write-skipped");
 
+  // Required-legs gating (adversarial reviews grading-integrity F1 and
+  // blindness F1, 2026-10-18). The old rule ORed every leg, so one incidental
+  // locate hit carried an action whose target-case contract legs all read 0 —
+  // proven on recorded run data: ACT-062 graded pass in
+  // 2026-10-18-regrade-slice4-proof with BOTH of its target-case asserts at
+  // count 0, carried entirely by the generic "Delete" verb-hint locate. Every
+  // assert a target case pushes is REQUIRED evidence (tagged with its case id
+  // by lib/exhaustive-affordance-targets.mjs): when the probe sequence carries
+  // ANY target-case entry, the case verdict outranks the OR of presence finds
+  // — the action passes only when every required leg read > 0, a required leg
+  // at 0 fails it regardless of locate hits, and the generic text-locate can
+  // no longer carry an action that has a target case. A case that fired but
+  // supplied no required leg (its affordance witness read 0 — case 18 with no
+  // toggles) likewise fails: its contract is unwitnessed. Actions without a
+  // target case grade exactly as before. A gated write still grades
+  // skipped_write ahead of everything: the write IS those actions' claim, and
+  // the run declines to grade it.
+  const requiredLegs = sequence.filter((s) => s.required === true);
+  const requiredFailed = requiredLegs.filter((l) => !(l.count > 0));
+  const hasTargetCase = sequence.some((s) => !!s.case);
+
   let outcome;
   if (isOutOfScope(action)) outcome = "out_of_scope";
   else if (writeSkipped) outcome = "skipped_write";
+  else if (hasTargetCase) outcome = requiredLegs.length > 0 && requiredFailed.length === 0 ? "pass" : "fail";
   else if (anyFound || anyAsserted) outcome = "pass";
   else if (located.length > 0 || asserted.length > 0) outcome = "fail";
   else outcome = "page-only";
 
-  return { sequence, observations, outcome, anyFound, anyAsserted, located: located.length, asserted: asserted.length, writeSkipped };
+  return { sequence, observations, outcome, anyFound, anyAsserted, located: located.length, asserted: asserted.length, requiredLegs: requiredLegs.length, requiredFailed: requiredFailed.length, hasTargetCase, writeSkipped };
 }
 
 // ============================================================================
@@ -823,6 +850,9 @@ async function run() {
         anyAsserted: !!probe.anyAsserted,
         located: probe.located ?? 0,
         asserted: probe.asserted ?? 0,
+        target_case: !!probe.hasTargetCase,
+        required_legs: probe.requiredLegs ?? 0,
+        required_failed: probe.requiredFailed ?? 0,
         ms: Date.now() - t0,
         sequence: probe.sequence,
         observations: probe.observations.map((o) => ({ label: o.label, url: o.url, status: o.status, fields: o.fields, text_excerpt: String(o.mainText ?? "").slice(0, 500), structure_excerpt: (o.structure ?? []).slice(0, 60) })),
@@ -865,7 +895,7 @@ async function run() {
         skippedWriteActions: totals.per_outcome.skipped_write ?? 0,
       },
       totals,
-      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count })),
+      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed })),
     };
     writeFileSync(path.join(out, "run-meta.json"), JSON.stringify(runMeta, null, 2));
     writeRunMarkdown(path.join(out, "run.md"), runMeta, engine);

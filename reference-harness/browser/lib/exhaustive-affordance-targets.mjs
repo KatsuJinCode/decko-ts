@@ -16,6 +16,17 @@
 // ADDS an assert, and an action whose affordance is genuinely absent still
 // fails.
 //
+// REQUIRED LEGS (adversarial reviews grading-integrity F1 and blindness F1,
+// 2026-10-18): every entry a case pushes carries the case's id, and every
+// "assert-present" entry is a REQUIRED leg. The runner (run-exhaustive.mjs
+// probeAction) fails the action unless every required leg read > 0, whatever
+// else its generic surface-page locates found — one incidental locate hit can
+// no longer carry an action whose case contract read 0. The proven instance
+// this closes: ACT-062 graded pass in 2026-10-18-regrade-slice4-proof with
+// BOTH of its target-case asserts at count 0, carried entirely by the generic
+// "Delete" verb-hint locate. Witness entries are diagnostics, never pass
+// evidence; "write-skipped" entries stay the live-walk mode's own signal.
+//
 // WRITE-PATH CASES AND THE LIVE-WALK GATE: cases 7, 9, 10, 11, 12, 13, 14 and
 // 17 perform writes (saves, creates, a revert). Under a host-override target
 // (engines/live.json + --base-url; see lib/live-walk-profile.mjs) the run's
@@ -162,17 +173,26 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   const ctx = { text, base, card, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, stepTimeout };
   const sequence = [];
   const t = String(text ?? "");
+  // The case currently pushing, stamped onto every entry it emits so the
+  // runner's receipt attributes each required leg to the case that demanded it.
+  let currentCase = null;
+  const push = (entry) => {
+    const tagged = { case: currentCase, ...entry };
+    if (tagged.interaction === "assert-present") tagged.required = true;
+    push(tagged);
+  };
 
   // 1. Board tabs: the affordance is the tab control on a card's board view
   //    (card-mod-edit boardTabsView renders BOARD_TABS as data-tab-name
   //    links; the home layout renders no board wrapper at all).
   const tabs = namedBoardTabs(t);
   if (tabs.length > 0) {
+    currentCase = "case 1 board tabs";
     await goto(`/${encodeURIComponent(card)}/board`);
     await settle();
     for (const label of tabs) {
       const count = await countSelector(`[data-tab-name="${label}"]`);
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `board tab "${label}" on /${card}/board`,
         count,
@@ -183,6 +203,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   // 2. Card-name suggestions: the JSON endpoint answers an array of names.
   const nameMatch = nameMatchRequest(t);
   if (nameMatch !== null) {
+    currentCase = "case 2 name-match suggestions";
     const res = await fetch(base + nameMatch.path, { headers: { connection: "close" } });
     const body = await res.text();
     let parsed = null;
@@ -192,7 +213,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       parsed = null;
     }
     const isArray = Array.isArray(parsed);
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `${nameMatch.path} answers a JSON name array`,
       count: res.status === 200 && isArray ? parsed.length + 1 : 0,
@@ -209,6 +230,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    trailing word boundary misses the inflected form, which is the form
   //    the action text actually uses.
   if (/rename/i.test(t)) {
+    currentCase = "case 3 rename name field";
     // The name form is its own view: /<card>/name_form renders the rename
     // field (`card[name]`, alongside `success[name]`). The edit mode's name
     // ROW (`?view=edit_name_row`) carries no input - it is the row that
@@ -216,7 +238,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     await goto(`/${encodeURIComponent(card)}/name_form`);
     await settle();
     const nameField = await countSelector("input[name='card[name]'], textarea[name='card[name]']");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `rename name field card[name] on /${card}/name_form`,
       count: nameField,
@@ -232,14 +254,15 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    against a page that never carries it, on the ts engine and on the Ruby
   //    oracle alike.
   if (/delete/i.test(t) && /(delete|confirm)/i.test(t)) {
+    currentCase = "case 4 delete affordance";
     await goto(`/${encodeURIComponent(card)}/edit`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `confirm-guarded Delete link to /delete/<name> on /${card}/edit`,
       count: await countSelector("a.btn-outline-danger[href^='/delete/']"),
     });
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `Delete link carries the confirm guard on /${card}/edit`,
       count: await countSelector("a.btn-outline-danger[data-confirm][href^='/delete/']"),
@@ -255,9 +278,10 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    keys on the edit href. Seeking the word on the home
   //    page (ACT-136) could not match any rendered card, on either engine.
   if (/E[0-9]+ +Edit/i.test(t) || /edit a/i.test(t)) {
+    currentCase = "case 5 edit affordance";
     await goto(`/${encodeURIComponent(card)}`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `Edit affordance on /${card}`,
       count: await countSelector("a.edit-link[href$='/edit']"),
@@ -281,14 +305,15 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    affordance is asserted by the runner's "Reset password" hint instead.
   const followMailedLinkProse = /\bfollow\s+(?:the\s+)?(?:mailed|reset|password)\s+link\b/i.test(t);
   if (/follow/i.test(t) && !followMailedLinkProse) {
+    currentCase = "case 6 follow control";
     await goto(`/${encodeURIComponent(card)}/follow_section`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `follow control on /${card}/follow_section`,
       count: await countSelector("a.follow-link"),
     });
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `unfollow (followed) state of the follow control on /${card}/follow_section`,
       count: await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']"),
@@ -313,6 +338,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    request context. The probe card is Date 1 - a card the member (the
   //    second editor) may update on this fixture.
   if (/\bsecond save\b/i.test(t) && /conflict/i.test(t)) {
+    currentCase = "case 7 second-save conflict (E18)";
     const conflictCard = "Date_1";
     if (!gateWrite(sequence, writeGate, { verb: "update", cardName: conflictCard, detail: "E18 second-save conflict staging saves" })) {
       return sequence;
@@ -322,7 +348,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     }
     await goto(`/${conflictCard}/edit`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `Save affordance on /${conflictCard}/edit`,
       count: await countSelector("form.card-form button[type='submit'], form.card-form input[type='submit']"),
@@ -337,7 +363,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
         form: { "card[content]": "2026-01-11", "success[redirect]": "false" },
         maxRedirects: 0,
       }).catch((e) => ({ error: String(e?.message ?? e) }));
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `conflict-token minting save on /${conflictCard} (form had no last_action_id_before_edit)`,
         count: warm.error || warm.status() >= 400 ? 0 : 1,
@@ -356,7 +382,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       form: { "card[content]": "2026-01-12", "success[redirect]": "false" },
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `second editor's (member's) save accepted on /${conflictCard}`,
       count: secondSave.error || secondSave.status() >= 400 ? 0 : 1,
@@ -372,7 +398,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
     const staleBody = staleSave.error ? "" : await staleSave.text().catch(() => "");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `stale second save refused with conflict (409 + :conflict view) on /${conflictCard}`,
       count: !staleSave.error && staleSave.status() === 409 && /conflict/i.test(staleBody) ? 1 : 0,
@@ -396,14 +422,15 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    synthetic-v1: /Brief/board and /Decko_Bot/board each render
   //    .board .board-main and .board button[data-cy='save'].
   if (/\bwithout close\b/i.test(t)) {
+    currentCase = "case 8 save-without-close board (E16)";
     await goto(`/${encodeURIComponent(card)}/board`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `open board (.board .board-main) on /${card}/board`,
       count: await countSelector(".board .board-main"),
     });
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `Save (without close) control button[data-cy='save'] on /${card}/board`,
       count: await countSelector(".board button[data-cy='save']"),
@@ -427,6 +454,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //    cookies; an anonymous post is permission-refused 403).
   const rowSave = /POST\s+\/update\/~(\d+)/.exec(t);
   if (rowSave !== null) {
+    currentCase = "case 9 owner-save row (POST /update/~id)";
     // The named-content leg writes the affordance-target card; the ~<id> leg
     // writes an id mark whose card name is unknowable before the request, so
     // under a restricted write mode it is admitted by the named leg's gate or
@@ -450,7 +478,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       form,
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `owner-save replay: POST /update/${card} (current db_content) answers a redirect, not 5xx`,
       count: save.error || save.status() >= 400 ? 0 : 1,
@@ -462,7 +490,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
     const markStatus = mark.error ? null : mark.status();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `owner-save row mark POST /update/~${rowSave[1]} fails clean (4xx), not 5xx, when the deck does not carry it`,
       count: markStatus !== null && markStatus >= 400 && markStatus < 500 ? 1 : 0,
@@ -481,6 +509,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     answers the action's own question by clicking it: the POST /update
   //     response is the write the save made.
   if (/RichText card persists/i.test(t)) {
+    currentCase = "case 10 RichText save (ACT-020)";
     if (!gateWrite(sequence, writeGate, { verb: "update", cardName: "Topic 001+summary", detail: "ACT-020 the RichText edit form's Save click" })) {
       return sequence;
     }
@@ -490,7 +519,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     const richPath = `/${encodeURIComponent("Topic 001+summary")}?view=edit_form`;
     await goto(richPath);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `RichText edit form's Save control (button[data-cy="save"]) on ${richPath}`,
       count: await countSelector('button[data-cy="save"]'),
@@ -499,7 +528,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     await page.locator('button[data-cy="save"]').first().click().catch(() => {});
     const saveResponse = await responded;
     const saveStatus = saveResponse ? saveResponse.status() : null;
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `Save answers a write: the edit form's POST /update responded ${saveStatus ?? "nothing"}`,
       count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
@@ -518,6 +547,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     3 s bound, recording the raw times either way so a slow engine is
   //     attributable.
   if (/\bno save\b/i.test(t)) {
+    currentCase = "case 11 save timing bound (ACT-064)";
     const stamp = Date.now().toString(36);
     const scratch = `Harness_exhaustive_save_timing_${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "ACT-064 the save-timing probe's own scratch card" })) {
@@ -543,7 +573,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     }
     const createdOk = !created.error && created.status() < 400;
     const allInside = createdOk && saves.every((s) => s.status !== null && s.status < 400 && s.ms < 3000);
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `every save answered under 3000 ms (${saves.map((s) => `${s.ms} ms / ${s.status}`).join(", ")})`,
       count: allInside ? saves.length : 0,
@@ -569,6 +599,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     behavior (the update rule's party list), so a genuinely permissive
   //     engine still fails every leg.
   if (/\bP3\b/.test(t)) {
+    currentCase = "case 12 P3 member-denied edit";
     const stamp = Date.now().toString(36);
     const restricted = `Harness_exhaustive_p3_update_restricted_${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: restricted, detail: "P3 the probe's own restricted scratch card and its *update rule" })) {
@@ -611,7 +642,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       maxRedirects: 0,
     }).catch((e) => ({ error: String(e?.message ?? e) }));
     const deniedStatus = deniedUpdate.error ? null : deniedUpdate.status();
-    sequence.push(
+    push(
       {
         interaction: "assert-present",
         selector: `member reads the update-restricted card (${memberReadStatus})`,
@@ -651,6 +682,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     changed content through it, and asserts the update POST answered and
   //     the main slot shows the new content.
   if (/save and close/i.test(t)) {
+    currentCase = "case 13 E15 Save and Close";
     const stamp = Date.now().toString(36);
     const scratch = `Harness_exhaustive_e15_save_close_${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "E15 Save-and-Close probe's own scratch card" })) {
@@ -668,7 +700,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     await settle();
     await page.waitForSelector(".modal.show", { timeout: 15_000 }).catch(() => {});
     const submitCount = await countSelector(".modal button.submit-button");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: "edit modal's Save-and-Close control (button.submit-button) on /<card>/edit",
       count: !created.error && created.status() < 400 ? submitCount : 0,
@@ -681,7 +713,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await page.locator(".modal button.submit-button").first().click().catch(() => {});
       const saveResponse = await responded;
       const saveStatus = saveResponse ? saveResponse.status() : null;
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `Save and Close answered a write (POST /update responded ${saveStatus ?? "nothing"})`,
         count: saveStatus !== null && saveStatus < 400 ? 1 : 0,
@@ -691,7 +723,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await goto(`/${encodeURIComponent(scratch)}`);
       await settle();
       const showsNew = await evaluate((c) => document.body.innerText.includes(c), newContent).catch(() => false);
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: "main slot shows the content Save and Close saved",
         count: showsNew ? 1 : 0,
@@ -714,6 +746,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     page lists the acts, carries the revert link, and that driving the
   //     link restores the earlier act's content as the card's content.
   if (/\bH3\b/.test(t)) {
+    currentCase = "case 14 H3 history rollback";
     const stamp = Date.now().toString(36);
     const scratch = `Harness_exhaustive_h3_rollback_${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: scratch, detail: "H3 history-rollback probe's own scratch card" })) {
@@ -741,7 +774,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     // the case expands the acts before looking for it (the action's own
     // order: expand an act, THEN roll back).
     const expandCount = await countSelector("button.accordion-button[data-bs-target^='#act-id-']");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: "history page lists the acts (accordion-button toggles to expand them) on /<card>/history",
       count: expandCount,
@@ -751,7 +784,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     }
     await settle();
     const revertCount = await countSelector("a._close-modal.slotter[href*='revert_actions']");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: "rollback control (the history list's revert link) on a non-current act",
       count: revertCount,
@@ -761,7 +794,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await page.locator("a._close-modal.slotter[href*='revert_actions']").first().click().catch(() => {});
       const revertResponse = await responded;
       const revertStatus = revertResponse ? revertResponse.status() : null;
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `rollback answered a write (POST /update/...revert_actions responded ${revertStatus ?? "nothing"})`,
         count: revertStatus !== null && revertStatus < 400 ? 1 : 0,
@@ -771,7 +804,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await goto(`/${encodeURIComponent(scratch)}`);
       await settle();
       const restored = await evaluate((c) => document.body.innerText.includes(c), beforeContent).catch(() => false);
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: "rolled-back act's content is the card's content again",
         count: restored ? 1 : 0,
@@ -794,11 +827,12 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     modal carries the edit form. Pass requires the modal to actually open;
   //     the anchor's presence is recorded as a witness.
   if (/richtext edit opens/i.test(t)) {
+    currentCase = "case 15 RichText edit modal (ACT-018)";
     const richCard = RICHTEXT_AFFORDANCE_TARGET_CARD;
     await goto(`/${encodeURIComponent(richCard)}`);
     await settle();
     const editLinks = await countSelector("a.edit-link[href$='/edit']");
-    sequence.push({
+    push({
       interaction: "witness",
       selector: `edit affordance on /${richCard}`,
       count: editLinks,
@@ -813,7 +847,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     }
     const modalShown = clicked ? await countSelector(".modal.show") : 0;
     const formInModal = clicked ? await countSelector(".modal.show form.card-form") : 0;
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `edit link opens the edit modal in page on /${richCard} (.modal.show carrying form.card-form)`,
       count: modalShown > 0 && formInModal > 0 ? 1 : 0,
@@ -833,14 +867,15 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     action measured affordance-not-found against a page that never
   //     carries it.
   if (/file create form/i.test(t)) {
+    currentCase = "case 16 File create form (ACT-059)";
     await goto("/new/File");
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: "file input on the File create form /new/File",
       count: await countSelector("input[type=file]"),
     });
-    sequence.push({
+    push({
       interaction: "witness",
       selector: "save control on the File create form /new/File",
       count: await countSelector("form.card-form .create-submit-button"),
@@ -871,6 +906,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     throwaway copy (lib/engines.mjs), and no other matrix action creates
   //     the scratch type.
   if (/autoname/i.test(t)) {
+    currentCase = "case 17 C11 autoname";
     const stamp = `F${Date.now().toString(36)}`;
     const typeName = `ScratchC11Type_${stamp}`;
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: typeName, detail: `C11 the probe's private Cardtype ${typeName}, its +*type+*autoname rule and its generated seed ${`ScratchC11Card_${stamp}`}` })) {
@@ -881,7 +917,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     const ruleCreate = typeCreate.ok
       ? await createThroughNewCardForm(ctx, { newPath: "/new/Phrase", name: `${typeName}+*type+*autoname`, content: seedName })
       : { ok: false, status: null, redirectPath: null };
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: "C11 setup: private Cardtype and its type-scoped +*autoname rule stored",
       count: typeCreate.ok && ruleCreate.ok ? 1 : 0,
@@ -895,13 +931,13 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await goto(`/new/${encodeURIComponent(typeName)}`);
       await settle();
       const nameFields = await countSelector("input[name='card[name]']");
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `autonamed create form renders no name field on /new/${typeName}`,
         count: nameFields === 0 ? 1 : 0,
         nameFields,
       });
-      sequence.push({
+      push({
         interaction: "witness",
         selector: `save control on the autonamed create form /new/${typeName}`,
         count: await countSelector("form.card-form .create-submit-button"),
@@ -923,7 +959,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
         !!generatedJson.parsed &&
         generatedJson.parsed.name === seedName &&
         generatedJson.parsed.type_name === typeName;
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: `unnamed save stores the card at the rule's generated name (/${seedName}.json answers the scratch type's card)`,
         count: generated ? 1 : 0,
@@ -948,10 +984,11 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     collapse body shows) and a second click closes it. Pass requires the
   //     toggling; toggle presence is recorded as a witness.
   if (/accordion/i.test(t)) {
+    currentCase = "case 18 accordion open/close (ACT-173)";
     await goto("/*all?view=board_rules_tab");
     await settle();
     const toggles = await countSelector("button.accordion-button[data-bs-toggle='collapse']");
-    sequence.push({
+    push({
       interaction: "witness",
       selector: "accordion open/close toggles on /*all?view=board_rules_tab",
       count: toggles,
@@ -962,7 +999,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await settle();
       const open = await countSelector("button.accordion-button:not(.collapsed)");
       const openBody = await countSelector(".accordion-collapse.collapse.show");
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: "accordion button opens its group on click on /*all?view=board_rules_tab",
         count: open === 1 && openBody > 0 ? 1 : 0,
@@ -973,7 +1010,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       await page.waitForTimeout(600);
       await settle();
       const openAfterClose = await countSelector("button.accordion-button:not(.collapsed)");
-      sequence.push({
+      push({
         interaction: "assert-present",
         selector: "accordion button closes its group on a second click on /*all?view=board_rules_tab",
         count: openAfterClose === 0 ? 1 : 0,
@@ -1000,6 +1037,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     prefill (the shape the 50717cca whole-harness C14 red recorded)
   //     stays red here.
   if (/\*right\+\*default/.test(t)) {
+    currentCase = "case 19 *right+*default prefill (ACT-075)";
     if (!page) throw new Error("*right+*default probe needs the runner's page helper");
     const junctionPath = `/${encodeURIComponent(card)}+summary/new`;
     await goto(junctionPath);
@@ -1014,7 +1052,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
             .catch(() => null)
         : null;
     const expected = "<p>No summary yet.</p>";
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `*right+*default rule content prefills the new +summary field on ${junctionPath}`,
       count: groups > 0 && value === expected ? 1 : 0,
@@ -1045,15 +1083,16 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     *self candidate walk) and the whole-harness instrument graded P5
   //     pass on a self-made *self+*structure witness.
   if (/\*self\+\*structure/.test(t)) {
+    currentCase = "case 20 P5 structure main slot (ACT-101)";
     const structureCard = "Topic_001";
     await goto(`/${structureCard}`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `structure rule (fixture Topic+*type+*structure) renders its +summary nest in the main slot on /${structureCard}`,
       count: await countSelector(".card-slot.RIGHT-summary"),
     });
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `structure rule renders its +related nest with the template's closed view on /${structureCard}`,
       count: await countSelector(".card-slot.closed-view.RIGHT-related"),
@@ -1072,9 +1111,10 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     other case here. Both halves are asserted: the wrapper renders in
   //     modal mode, and the same view navigates with no wrapper.
   if (/inline-modal|render-mode/i.test(t)) {
+    currentCase = "case 21 render-mode semantics (ACT-182)";
     await goto(`/${encodeURIComponent(card)}?view=modal`);
     await settle();
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `modal wrapper of the card view renders on /${card}?view=modal (inline-modal mode)`,
       count: await countSelector(".modal.show"),
@@ -1082,7 +1122,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     await goto(`/${encodeURIComponent(card)}`);
     await settle();
     const plainModal = await countSelector(".modal.show");
-    sequence.push({
+    push({
       interaction: "assert-present",
       selector: `the same view navigates with no modal wrapper on /${card} (navigation mode)`,
       count: plainModal === 0 ? 1 : 0,
