@@ -54,12 +54,13 @@ import { popoverLink } from "./card-mod-bootstrap.js";
  *  exist. */
 function helpRuleCard(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
   const card = ctx.fmt.card;
-  if (card.unknown === true) return undefined;
+  // Card.new also resolves help rules; its pattern walk omits the Self set.
   const input: PatternCardInput = {
     name: card.name.s,
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    ...(card.id === undefined ? { isNew: true } : {}),
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;

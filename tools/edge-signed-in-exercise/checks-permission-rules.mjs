@@ -47,7 +47,7 @@ export const capabilityChecks = {
     "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
   ],
   P4: [
-    "P4 the board plus card opens a new-card create form for the administrator",
+    "P4 default help applies and a plus-card right rule overrides it",
   ],
 };
 
@@ -413,93 +413,55 @@ export const checks = [
     },
   },
 
-  // ------------------------------------------------------------------- P4
+  // P4 follows stock Cypress rules.spec.coffee:5-11. "Plus card" means
+  // a junction with a more specific *right+*help rule, not a toolbar link.
   {
-    name: "P4 the board plus card opens a new-card create form for the administrator",
+    name: "P4 default help applies and a plus-card right rule overrides it",
     only: "permission-rules",
     run: async ctx => {
-      const { stack, creds, record, database, created } = ctx;
-      if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(stack.origin).hostname)) throw Error("permission-rules requires the disposable loopback fixture");
-      const s = stamp();
-      const cardName = "HarnessP4Card_" + s, defaultText = "P4_DEFAULT_" + s;
-      const defaultRule = cardName + "+*right+*default";
-      let admin;
+      const {stack,creds,record,database,created,captureEvidence}=ctx;
+      if (!["127.0.0.1","localhost","[::1]"].includes(new URL(stack.origin).hostname)) throw Error("P4 requires the disposable loopback fixture");
+      const suffix=stamp(),host="HarnessP4Host_"+suffix,right="HarnessP4Right_"+suffix;
+      const globalRule="*all+*help",rightRule=right+"+*right+*help";
+      const fallback="P4_DEFAULT_"+suffix,override="P4_OVERRIDE_"+suffix;
+      const original=fixtureCard(database(),globalRule);
+      let admin,changedGlobal=false;
       try {
-        admin = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
-        await signInActor(admin.page, stack, creds.admin);
-        created.push(cardName, defaultRule);
-
-        const fixture = await createThroughForm(admin.page, stack, { name: cardName, content: "", type: "RichText" });
-        if (!fixtureCard(database(), cardName)) throw Error("P4 fixture card was not stored: " + JSON.stringify(fixture));
-
-        // The default-setting rule for every card carrying this card's +*right
-        // set. C14 measures this rule's effect on /new/<Type>; P4's remaining
-        // half is the PLUS CARD - the affordance on the board that opens the
-        // same create form.
-        const ruleWrite = await admin.page.context().request.post(stack.origin + "/card/create", {
-          headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-          data: new URLSearchParams({ "card[name]": defaultRule, "card[type]": "RichText", "card[content]": defaultText, "success[redirect]": "true" }).toString(),
-          maxRedirects: 0,
-        });
-        const ruleRow = fixtureCard(database(), defaultRule);
-
-        const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}/board`, { waitUntil: "load" });
-        // The board's plus card is the "New Card" affordance, rendered from the
-        // deck's own https://culturesmith.com/card/new link as
-        // a.unknown-link[href$="/new_in_modal"][data-remote] carrying an
-        // add_box icon (measured in the 2026-10-17T23:52:10Z run's
-        // p6-rules-tab-set capture). The first version of this row hunted for
-        // text starting with "+" and found nothing - that was this read, not a
-        // missing affordance.
-        const plusLink = admin.page.locator("a[href*='new_in_modal']").first();
-        const plusCount = await admin.page.locator("a[href*='new_in_modal']").count();
-        let openedForm = null, formStatus = null;
-        if (plusCount > 0) {
-          await plusLink.click().catch(() => undefined);
-          await admin.page.waitForTimeout(2500);
-          // The modal's form is identified by its action, not by DOM order:
-          // the board's own card edit form (action "/update/<card>") is also a
-          // form.card-form, and the first run's read picked THAT one and
-          // concluded the default had not arrived.
-          const shape = await admin.page.evaluate(() => {
-            const form = [...document.querySelectorAll("form.card-form")].find(f => (f.getAttribute("action") ?? "").includes("/card/create")) ?? null;
-            const field = form?.querySelector('[name="card[content]"]') ?? null;
-            return {
-              hasForm: form !== null,
-              action: form?.getAttribute("action") ?? null,
-              nameValue: form?.querySelector('[name="card[name]"]')?.value ?? null,
-              contentInput: field === null ? null : { name: field.getAttribute("name"), value: field.value ?? null, tinyMce: field.classList.contains("tinymce-textarea") },
-              submitButtons: form === null ? 0 : form.querySelectorAll(".create-submit-button, button[type='submit']").length,
-              inModal: form !== null && form.closest(".modal") !== null,
-              formsOnPage: [...document.querySelectorAll("form.card-form")].map(f => f.getAttribute("action")),
-            };
+        admin=await ctx.launchBrowser({origin:stack.origin,assetHosts:ctx.assetHosts});
+        await signInActor(admin.page,stack,creds.admin);
+        const write=async(name,content,existing)=>{
+          const fields={"card[content]":content,"success[redirect]":"true"};
+          if(!existing){fields["card[name]"]=name;fields["card[type]"]="RichText";}
+          const response=await admin.page.context().request.post(stack.origin+(existing?"/update/~"+existing.id:"/card/create"),{
+            headers:{origin:stack.origin,"Content-Type":"application/x-www-form-urlencoded"},data:new URLSearchParams(fields).toString(),maxRedirects:0,
           });
-          openedForm = shape;
-          formStatus = board.status();
-          if (shape.contentInput?.tinyMce === true) {
-            const id = await admin.page.evaluate(() => {
-              const form = [...document.querySelectorAll("form.card-form")].find(f => (f.getAttribute("action") ?? "").includes("/card/create"));
-              return form?.querySelector('[name="card[content]"].tinymce-textarea')?.id ?? null;
-            });
-            if (id !== null) {
-              await admin.page.waitForFunction(editor => Boolean(window.tinymce?.get(editor)), id, { timeout: 20000 }).catch(() => undefined);
-              openedForm.editorContent = await admin.page.evaluate(editor => window.tinymce?.get(editor)?.getContent?.() ?? null, id);
-            }
-          }
-        }
-        // P4's assertion: the board's plus card opens a NEW-CARD create form
-        // the administrator can submit. Whether a *default rule's text arrives
-        // inside it is recorded, not asserted: the plus card names the new card
-        // after the deck's own /card/new link, so the new card carries no right
-        // and no default rule can apply to it by design (C14 measures the
-        // default where a card DOES carry the right, at checks-cover-b.mjs:309).
-        const carried = [openedForm?.contentInput?.value ?? "", openedForm?.editorContent ?? ""].some(v => typeof v === "string" && v.includes(defaultText));
-        record(capabilityChecks.P4[0], plusCount > 0 && openedForm?.hasForm === true && (openedForm?.submitButtons ?? 0) > 0, {
-          card: cardName, ruleWriteStatus: ruleWrite.status(), ruleStored: ruleRow !== undefined, ruleContent: ruleRow?.db_content ?? null,
-          boardStatus: board.status(), plusCardCount: plusCount, openedForm, defaultText, defaultCarriedIntoForm: carried,
-        });
+          await response.body();return response.status();
+        };
+        if(!original)created.push(globalRule);
+        created.push(right,right+"+*right",rightRule);
+        const globalStatus=await write(globalRule,fallback,original);changedGlobal=globalStatus<400;
+        const rightStatus=await write(rightRule,override);
+        const observe=async(name,label)=>{
+          const response=await admin.page.goto(stack.origin+"/"+encodeURIComponent(name),{waitUntil:"load"});
+          const html=await admin.page.content(),main=await admin.page.locator("#main").innerText();
+          return {name,status:response.status(),hasFallback:main.includes(fallback),hasOverride:main.includes(override),raw:captureEvidence(html,{check:label,name,status:response.status()})};
+        };
+        const plain=await observe(host,"p4-default-help"),plus=await observe(host+"+"+right,"p4-right-help"),plainAgain=await observe(host,"p4-default-help-again");
+        const globalStored=fixtureCard(database(),globalRule)?.db_content,rightStored=fixtureCard(database(),rightRule)?.db_content;
+        const readOnlyNames=fixtureCard(database(),host)===undefined&&fixtureCard(database(),host+"+"+right)===undefined;
+        record(capabilityChecks.P4[0],globalStatus<400&&rightStatus<400&&globalStored===fallback&&rightStored===override
+          &&plain.status===200&&plain.hasFallback&&!plain.hasOverride&&plus.status===200&&plus.hasOverride&&!plus.hasFallback
+          &&plainAgain.status===200&&plainAgain.hasFallback&&!plainAgain.hasOverride&&readOnlyNames,
+          {globalStatus,rightStatus,globalStored,rightStored,plain,plus,plainAgain,readOnlyNames});
       } finally {
-        await admin?.close().catch(() => {});
+        if(original&&changedGlobal&&admin){
+          const restored=await admin.page.context().request.post(stack.origin+"/update/~"+original.id,{
+            headers:{origin:stack.origin,"Content-Type":"application/x-www-form-urlencoded"},
+            data:new URLSearchParams({"card[content]":original.db_content??"","success[redirect]":"true"}).toString(),maxRedirects:0,
+          });
+          await restored.body();if(restored.status()>=400||fixtureCard(database(),globalRule)?.db_content!==original.db_content)throw Error("P4 failed to restore the pre-existing local help rule");
+        }
+        await admin?.close().catch(()=>{});
       }
     },
   },
