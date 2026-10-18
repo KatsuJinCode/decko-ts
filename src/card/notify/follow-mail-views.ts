@@ -235,10 +235,20 @@ ${body}`;
     return `\nThis update included the following changes:\n${list}`;
   };
 
-  // account.rb notify_of_act delivers with act.card as context. After
-  // AccountHolder#close_account that card has its ANON name, including when
-  // the delete action also records the rename (stock e23-e29 captures).
-  const actCardName = await nameOf(input.actCardId);
+  // A delete that also renamed the act card (a closed account's holder,
+  // renamed ANON-... in its own delete action) is announced under the name
+  // the card had before the act: the act card Ruby notifies about is the
+  // object the request loaded, which never saw the rename. The committed
+  // write-battery recording pins it (admin-deny-signup's notice names
+  // "Parity Joiner", the pre-act name, while the same act's stored rows
+  // carry the ANON name), and the close flows need nothing here: their act
+  // card is the +*account card, whose delete action records no name change,
+  // so the fallback below reads its current ANON-prefixed name.
+  const mainRename = main !== undefined && main.cardId === input.actCardId && main.type === "delete"
+    ? await changeValue(main, "name")
+    : undefined;
+  const actCardName = (mainRename !== undefined ? await previousValue(main!, "name") : undefined) ??
+    await nameOf(input.actCardId);
   const userName = await nameOf(input.actorId);
   const url = cardUrl(actCardName);
 

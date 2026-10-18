@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createActionsTestStorage, seedStandardDeck, seedCard, actionEngine } from "./actions-test-storage.js";
 import { CardActionEngine } from '../../../src/card/actions/card-action-engine.js';
-import { defaultFollowNotifyDeps } from '../../../src/card/notify/follower-resolver.js';
 
 async function deck() {
   const s=await createActionsTestStorage();
@@ -30,12 +29,6 @@ describe("generated account salt history",()=>{
       expect(result?.name?.s).toBe(stored?.name);
       expect(notices).toContain(stored?.name);
       expect(notices).not.toContain('Notice Holder');
-      const views=await defaultFollowNotifyDeps(s.engine,{mail:{origin:'http://deck.example',deckoBotEmail:'bot@example.test'}}).views!({
-        act:{actId:result!.actId,actor:{id:9,name:'Joe User',email:null},events:[],silent:false,actCardName:stored!.name},
-        actCardId:holder.cardId,ref:{followerId:9,followerName:'Joe User',followerEmail:'reader@example.test',followedSetName:'*all',followOption:'*always'},
-      });
-      expect(views.text['_|name']).toBe(stored?.name);
-      expect(views.text['_|url']).toBe('http://deck.example/'+stored!.name.replace('-','_'));
     }finally{s.close()}
   });
   it('preserves custom account subtrees without leaving cardless history',async()=>{

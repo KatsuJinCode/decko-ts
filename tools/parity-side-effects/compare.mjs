@@ -169,10 +169,34 @@ const location = (s) => {
   const l = h.Location ?? h.location ?? "";
   return l.replace(/^https?:\/\/[^/]+/, "").replace(/rev_id=\d+/, "rev_id=<id>") || "-";
 };
-// Mail bodies are compared exactly, after two normalisations only: CRLF line
-// endings (the Mail gem's wire encoding) become LF, and account-token values
-// become <token>.
-const normBody = (b) => String(b ?? "").replace(/\r\n/g, "\n").replace(/token=[A-Za-z0-9._%-]+/g, "token=<token>");
+// Mail bodies are compared exactly, after three normalisations only: CRLF line
+// endings (the Mail gem's wire encoding) become LF, account-token values
+// become <token>, and the follower notice's unfollow link becomes
+// <unfollow-url>.
+//
+// The unfollow link is the one byte range the port deliberately does not copy.
+// Stock's link POSTs the recipient's virtual `User+*follow` dashboard with a
+// subcard write; under the deck's permissions that request answers 403 and
+// leaves the preference unchanged — a live-Ruby control documents the same 403
+// (docs/reports/unfollow-direct-preference-repair-2026-10-18.md, the lead's
+// narrow decision recorded 2026-10-17). The port therefore targets the
+// recipient's existing owned preference directly: same rule, same `*never`
+// value, different transport shape (`/update/<rule>?card[content]=*never`
+// instead of `/update/<user>+*follow?card[subcards][<rule>]=*never`). This
+// normalisation folds BOTH engines' shapes onto one token, so the divergence
+// the lead approved is disclosed here instead of masquerading as a regression
+// — and every other byte of every mail is still compared exactly: a link that
+// stops matching `/update/...*never` (wrong target, dropped, retargeted)
+// fails this battery again, because the raw bytes then differ. The repaired
+// link's exact emitted bytes and its HTTP semantics (303 + stored `*never`,
+// 403 for anonymous and foreign-owner variants) are pinned over real requests
+// by tests/deploy/bunny-account-mail-http.test.ts ("mail unfollow edits the
+// recipient's existing preference without granting dashboard or
+// foreign-preference writes").
+const normBody = (b) => String(b ?? "")
+  .replace(/\r\n/g, "\n")
+  .replace(/token=[A-Za-z0-9._%-]+/g, "token=<token>")
+  .replace(/https?:\/\/[^\s"'<>]*\/update\/[^\s"'<>]*(?:%2A|\*)never[^\s"'<>]*/g, "<unfollow-url>");
 const mail = (s) => (s.mail ?? []).map((m) =>
   `to ${[].concat(m.to).join(",")} from ${m.from_header ?? [].concat(m.from).join(",")} reply-to ${[].concat(m.reply_to ?? []).join(",")}: ${m.subject}`).join(" | ") || "-";
 const mailText = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.text_body ?? m.body_excerpt))).join(" | ") || "-";
