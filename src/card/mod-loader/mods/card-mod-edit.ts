@@ -2281,15 +2281,22 @@ function newNamePrompt(ctx: ViewContext): boolean {
   return visibleWrite(ctx.voo, "name_formgroup", needsName(ctx));
 }
 
-/** new.rb:122-124 needs_name?: `card.name.blank? && !autoname?` - constant
- *  false on the engine surface: every card the engine renders is named, so
- *  Ruby's own first conjunct (name.blank?) answers false without reading
- *  the autoname rule; the unnamed-card arm is the disclosed remainder. */
+function newAutonameRule(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
+  const {card,engine}=ctx.fmt;
+  if(card.name.s!=="")return undefined;
+  const setting=engine.findSettingCard?.("autoname");
+  const settingName=setting?.name.s??"*autoname";
+  for(const candidate of ruleNamesForCard({name:card.name.s,isNew:true,typeId:card.typeId,typeName:card.typeName},settingName)){
+    const rule=engine.fetchRenderCard(candidate);
+    if(rule===undefined||rule.unknown===true)continue;
+    return typeof rule.dbContent==="string"&&rule.dbContent.trim()!==""?rule:undefined;
+  }
+  return undefined;
+}
+
+/** new.rb:122-124 needs_name?: `card.name.blank? && !autoname?`. */
 function needsName(ctx: ViewContext): boolean {
-  // A card the request names is never blank; the unnamed new card (Decko's
-  // new/:type route) is. autoname? (a *autoname rule on the type) is not
-  // consulted: an autonamed type's form still prompts for a name here.
-  return ctx.fmt.card.name.s === "";
+  return ctx.fmt.card.name.s === "" && newAutonameRule(ctx) === undefined;
 }
 
 /** new.rb:136-140 new_type_prompt?:
@@ -2357,8 +2364,7 @@ function newViewName(ctx: ViewContext): string | undefined {
       hiddenFieldTag("name_prompt", "true"),
     ]);
   }
-  // autoname? is false for every named card (see needsName) -> !autoname?
-  // is true: the hidden field always renders on the reachable surface
+  if(newAutonameRule(ctx)!==undefined)return undefined;
   return hiddenFieldTag("card[name]", ctx.fmt.card.name.s);
 }
 

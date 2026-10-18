@@ -200,6 +200,19 @@ describe("E-16: the serving write surface composes the deck's mod-event runtime"
     expect((await storage!.fetcher.fetchByKey("commented_card"))?.dbContent).toBe(before!.dbContent);
   });
 
+  it("an unnamed HTTP create reaches the model's autoname rule", async () => {
+    await seedCard(storage!,{id:10000,name:'*autoname',codename:'autoname'});
+    await seedCard(storage!,{id:10001,leftId:1,rightId:10000,dbContent:'HttpAuto001'});
+    storage!.fetcher.codenames.resetCache();
+    const response=await call(baseUrl,'POST','/card/create',{
+      token:joeToken,form:{'card[type_id]':'14','card[content]':'autonamed through HTTP'},
+    });
+    expect(response.status).toBe(303);
+    const stored=await storage!.fetcher.fetchByName('HttpAuto001');
+    expect(stored?.dbContent).toBe('autonamed through HTTP');
+    expect(stored?.typeId).toBe(14);
+  });
+
   it("the deck-boot runtime seam carries the whole deck's registry + merged predicates", () => {
     const runtime = defaultDeckEventRuntime();
     const names = new Set(runtime.registry.all().map((e) => e.event));

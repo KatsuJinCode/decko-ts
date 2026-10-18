@@ -2048,6 +2048,10 @@ export class RenderEngine implements RenderEngineLike {
     // sync editor views read seated items, so the chain's search member
     // seats here for both stored-card editors and new-card forms.
     const pointerEditorView = view === "edit" || view === "new" || view === "new_fields" || view === "new_in_modal" || view === "simple_new";
+    if (pointerEditorView && view !== "edit" && rootCard.name.s === "") {
+      const autoname = await this.ruleCardForSetting(this.structurePatternInputForSync(rootCard), "autoname");
+      if (autoname !== undefined && autoname.name !== undefined) await this.enrichAndStore(autoname);
+    }
     if (pointerEditorView) {
       // The default loader dispatches synchronous list editors without the
       // explicit installInto warm used by isolated mod tests. Seat the

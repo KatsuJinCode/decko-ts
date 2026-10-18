@@ -15,6 +15,7 @@ import {
   createActionsTestStorage,
   JOE,
   RICH_TEXT_ID,
+  seedCard,
   seedStandardDeck,
   type StandardFixture,
 } from "./actions-test-storage.js";
@@ -26,6 +27,79 @@ async function fresh(): Promise<StandardFixture> {
 }
 
 type Row = Record<string, unknown>;
+
+async function autonameFixture(seed='auto001') {
+  const fixture=await fresh(),s=fixture.storage;
+  await seedCard(s,{id:340,name:'*autoname',codename:'autoname'});
+  await seedCard(s,{id:341,name:'*type',codename:'type'});
+  await seedCard(s,{id:342,leftId:RICH_TEXT_ID,rightId:341,typeId:300});
+  await seedCard(s,{id:343,leftId:342,rightId:340,dbContent:seed});
+  return fixture;
+}
+
+describe('createCard autoname rule (installed core autoname_spec.rb)',()=>{
+  it('uses the seed, then advances past existing names without rule history',async()=>{
+    const f=await autonameFixture();try{
+      const engine=actionEngine(f.storage);
+      const first=await engine.createCard({name:'',typeId:RICH_TEXT_ID,content:'first'});
+      const second=await engine.createCard({name:'',typeId:RICH_TEXT_ID,content:'second'});
+      expect(first.name?.s).toBe('auto001');expect(second.name?.s).toBe('auto002');
+      expect((await f.storage.selectOne<Row>('SELECT db_content FROM cards WHERE id=343'))?.db_content).toBe('auto002');
+      expect(await f.storage.count('card_actions')).toBe(2);
+      expect(await f.storage.count('card_acts')).toBe(2);
+    }finally{f.storage.close()}
+  });
+  it('reuses the stored seed when its previous card is trashed',async()=>{
+    const f=await autonameFixture();try{
+      const engine=actionEngine(f.storage),first=await engine.createCard({name:'',typeId:RICH_TEXT_ID});
+      await engine.deleteCard({cardId:first.cardId});
+      const revived=await engine.createCard({name:'',typeId:RICH_TEXT_ID});
+      expect(revived.name?.s).toBe('auto001');expect(revived.cardId).toBe(first.cardId);
+    }finally{f.storage.close()}
+  });
+  it('treats canonical-name collisions as occupied and uses Ruby succession',async()=>{
+    const f=await autonameFixture('Auto Card 9');try{
+      await seedCard(f.storage,{id:344,name:'AUTO_card_9'});
+      const result=await actionEngine(f.storage).createCard({name:'',typeId:RICH_TEXT_ID});
+      expect(result.name?.s).toBe('Auto Card 10');
+    }finally{f.storage.close()}
+  });
+  it('rolls back the counter, cards and history if a child validation fails',async()=>{
+    const f=await autonameFixture();try{
+      const before=await f.storage.count('cards');
+      await expect(actionEngine(f.storage).createCard({name:'',typeId:RICH_TEXT_ID,subcards:{'+bad+':{content:'invalid child'}}})).rejects.toMatchObject({code:'name-illegal',message:expect.stringContaining('incomplete')});
+      expect((await f.storage.selectOne<Row>('SELECT db_content FROM cards WHERE id=343'))?.db_content).toBe('auto001');
+      expect(await f.storage.count('cards')).toBe(before);expect(await f.storage.count('card_actions')).toBe(0);expect(await f.storage.count('card_acts')).toBe(0);
+    }finally{f.storage.close()}
+  });
+  it('leaves the counter unchanged for an explicitly named card',async()=>{
+    const f=await autonameFixture();try{
+      await actionEngine(f.storage).createCard({name:'Named card',typeId:RICH_TEXT_ID});
+      expect((await f.storage.selectOne<Row>('SELECT db_content FROM cards WHERE id=343'))?.db_content).toBe('auto001');
+    }finally{f.storage.close()}
+  });
+  it('keeps blank-name validation when the rule is blank',async()=>{
+    const f=await autonameFixture('  ');try{
+      await expect(actionEngine(f.storage).createCard({name:'',typeId:RICH_TEXT_ID})).rejects.toMatchObject({code:'name-illegal'});
+    }finally{f.storage.close()}
+  });
+  it('does not advance the seed or write history for a denied create',async()=>{
+    const f=await autonameFixture();try{
+      const engine=actionEngine(f.storage,JOE,{canWrite:()=>false});
+      await expect(engine.createCard({name:'',typeId:RICH_TEXT_ID})).rejects.toMatchObject({code:'permission-denied'});
+      expect((await f.storage.selectOne<Row>('SELECT db_content FROM cards WHERE id=343'))?.db_content).toBe('auto001');
+      expect(await f.storage.count('card_actions')).toBe(0);expect(await f.storage.count('card_acts')).toBe(0);
+    }finally{f.storage.close()}
+  });
+  it('allocates distinct names across concurrent saves on separate engines',async()=>{
+    const f=await autonameFixture();try{
+      const a=actionEngine(f.storage),b=actionEngine(f.storage);
+      const results=await Promise.all([a.createCard({name:'',typeId:RICH_TEXT_ID}),b.createCard({name:'',typeId:RICH_TEXT_ID})]);
+      expect(results.map(result=>result.name?.s).sort()).toEqual(['auto001','auto002']);
+      expect((await f.storage.selectOne<Row>('SELECT db_content FROM cards WHERE id=343'))?.db_content).toBe('auto002');
+    }finally{f.storage.close()}
+  });
+});
 
 async function cardRow(f: StandardFixture, id: number): Promise<Row> {
   const row = await f.storage.selectOne<Row>("SELECT * FROM cards WHERE id = ?", [id]);

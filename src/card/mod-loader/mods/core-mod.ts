@@ -1495,12 +1495,9 @@ export const coreModEventPredicates = {
     card.act?.skip?.includes("update_referer_content") === true ||
     card.act?.forceSkip?.includes("update_referer_content") === true,
   /** autoname? (mod/core/set/all/autoname.rb:14): `name.blank? &&
-   *  rule(:autoname).present?`. The engine does not port set_autoname's
-   *  ladder (autoname.rb:1-8) — a create that arrives without a name is
-   *  lexed to `~<id>` rather than named from the deck's autoname rule — so
-   *  the blank half of the condition never holds and the event does not
-   *  fire. False states that; it does not infer an autoname from the `~`
-   *  placeholder, which is the engine's own naming, not Ruby's. */
+   *  rule(:autoname).present?`. The action engine performs the naming
+   *  during create preparation; dispatched event cards already have their
+   *  final name. This does not claim the generic event body/phase port. */
   "autoname?": (): boolean => false,
   /** no_autoname? (autoname.rb:10) = !autoname?. Gates :validate_name /
    *  :validate_key (name_events.rb:3/:38), which run whenever the deck did

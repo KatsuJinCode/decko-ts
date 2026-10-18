@@ -898,6 +898,25 @@ describeOrSkipLoud(
     expect(explicit).toMatch(/name=["']card\[type_id\]["']/);
   });
 
+  it("an unnamed autoname form omits both visible and hidden manual-name fields", async () => {
+    const s=storage!;
+    await seedCard(s,{id:8900,name:'*autoname',codename:'autoname',typeId:14});
+    await seedCard(s,{id:8901,leftId:2,rightId:8,typeId:13});
+    await seedCard(s,{id:8902,leftId:8901,rightId:8900,typeId:2,dbContent:'FormAuto001'});
+    const fetcher=new FetchEngine(s.counting),engine=new RenderEngine(fetcher);
+    const mods=new ModLoader([{manifest:cardModEdit}]);mods.load();
+    try {
+      engine.modLoader=mods;engine.viewer={signedIn:true,actorId:1};engine.pageSession=engine.viewer;
+      await mods.installInto(modEngineHost(engine,fetcher));
+      const body=await engine.render('','new_fields',{absentCard:true,focalRoot:true,newCard:{typeId:2,typePreset:true}});
+      expect(body).toContain('create-submit-button');
+      expect(body).not.toMatch(/name=["']card\[name\]["']/);
+      expect(body).not.toContain('name="name_prompt"');
+      const rule=await s.counting.query<{db_content:string}>('SELECT db_content FROM cards WHERE id=8902',[]);
+      expect(rule.rows[0].db_content).toBe('FormAuto001');
+    } finally { mods.reset(); }
+  });
+
   it("the recorded new-card surface carries the name-prompt arm (fixture record)", () => {
     // The engine cannot render an unnamed card; the recorded arms under
     // new_card hold the /new/:type surface (Card.new, blank name):

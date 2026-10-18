@@ -2509,10 +2509,9 @@ function createInputFromParams(
   const card = parsed.card;
   const subcards = subcardInputs(parsed.subcardTree);
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
-  if (name === "") {
-    // Ruby: Card.new(name: nil).save! -> validation error -> 422.
-    throw new CardActionError("name-illegal", "param is missing or the value is empty: name", "NAME: can't be blank");
-  }
+  // The model owns blank-name validation: a type's autoname rule can name
+  // this card. Rejecting here prevented the stock nameless form from ever
+  // reaching that save behavior.
   const typeName = card["type"] ?? route.typeShortcut;
   const typeIdRaw = card["type_id"];
   return {

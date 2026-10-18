@@ -1766,8 +1766,33 @@ export class CardActionEngine {
     return verdict === true;
   }
 
+  /** core/set/all/autoname.rb: choose the first unoccupied successor and
+   *  update the rule's content without creating a rule action. This runs
+   *  inside atomicSave, so a rejected parent/child save restores the seed.
+   *  The existing action engine prepares names before its validation/tree
+   *  walk; this is not a new generic mod-event phase implementation. */
+  private async autonamedCreateInput(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
+    const settingId = await this.fetch.codenames.id("autoname");
+    const setting = settingId === undefined ? undefined : await this.fetch.fetchById(settingId);
+    if (setting?.name === undefined) return input;
+    const pattern = await ruleWalkPatternInput(this.fetch, { name: DeckoName.parse(""), isNew: true, typeId });
+    const found = await findRule(this.fetch, pattern, setting.name);
+    const rule = found?.rule;
+    if (rule?.id === undefined || typeof rule.dbContent !== "string" || rule.dbContent.trim() === "") return input;
+    let name = DeckoName.parse(rule.dbContent);
+    for (;;) {
+      const existing = await this.fetch.fetchByName(name);
+      if (existing?.id === undefined || existing.trash === true) break;
+      name = name.succ();
+    }
+    await this.fetch.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [name.s, rule.id]);
+    this.fetch.expireCard(rule);
+    expireRuleResolutionCache(this.fetch.driver);
+    return { ...input, name: name.s };
+  }
+
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
-    const name = DeckoName.parse(input.name ?? "");    // The anonymous-create arm: Ruby's create permission chain has NO
+    let name = DeckoName.parse(input.name ?? "");    // The anonymous-create arm: Ruby's create permission chain has NO
     // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
     // card (auth/current.rb:7-9 + auth/proxy.rb:33-35), and ok_to_create?
     // (card-mod-permissions set/all/permissions.rb:120-125) runs for it
@@ -1792,6 +1817,10 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    if (name.s === "") {
+      input = await this.autonamedCreateInput(input, typeId);
+      name = DeckoName.parse(input.name ?? "");
+    }
     // card-mod-session set/type/session.rb:37-40 event :store_in_session,
     // :prepare_to_store, on: :save — session_content = db_content, then
     // abort :success. The save writes no card row and sends no mail; the

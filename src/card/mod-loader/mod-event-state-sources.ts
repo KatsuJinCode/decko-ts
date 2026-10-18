@@ -39,11 +39,9 @@ function coreSource(
   card: ModEventCard,
   ctx: ModEventCardStateContext,
 ): ModEventCardState {
-  // set_autoname's ladder is NOT ported: a create that arrives without a
-  // name is lexed to `~<id>` by the engine rather than named from the deck's
-  // autoname rule (autoname.rb:1-8). Ruby's `name.blank?` half of autoname?
-  // therefore never holds, which coreModEventPredicates states directly; no
-  // field carries it here.
+  // The action engine prepares an autoname before its validation/tree
+  // walk. Its event cards are already named; no separate predicate field
+  // claims a generic set_autoname event-phase implementation here.
   return ctx.params !== undefined ? { params: ctx.params } : {};
 }
 
