@@ -960,6 +960,8 @@ export const checks = [
         const action = new URL(servedShape.action, stack.origin);
         const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
           .then(response => ({ response }), error => ({ error }));
+        const landing = !servedShape.inModal ? waitForCreatedCardLanding(page, stack.origin, rightName)
+          .then(() => ({}), error => ({ error })) : null;
         await servedForm.locator(".create-submit-button").first().click({ force: true, timeout: 15000 }).catch(() => undefined);
         const observed = await pending;
         let postStatus = null;
@@ -967,7 +969,8 @@ export const checks = [
         // A direct main-slot create redirects asynchronously after its POST.
         // A fixed pause can expire before that redirect and race the fresh read.
         if (!servedShape.inModal && postStatus !== null && postStatus < 400) {
-          await waitForCreatedCardLanding(page, stack.origin, rightName);
+          const landed = await landing;
+          if (landed.error) throw landed.error;
         } else {
           await page.waitForTimeout(1000);
         }

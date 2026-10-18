@@ -51,10 +51,13 @@ test('owner delete waits for its actual AJAX redirect landing, even after 2500ms
 });
 
 test('direct create waits for its delayed application redirect before a fresh read', async () => {
+  let documents = 0;
   const server = createServer((req, res) => {
     res.setHeader('content-type', 'text/html');
-    res.end(req.url === '/Card+*right+Member' ? '<h1>Created member</h1>' :
-      '<script>setTimeout(() => { location.href="/Card+*right+Member"; }, 1700)</script>');
+    if (req.url !== '/Card+*right+Member') return res.end('');
+    documents++;
+    res.end(documents > 1 ? '<h1>Created member</h1>' :
+      '<button onclick="setTimeout(() => { location.href=location.href; }, 1700)">Create</button>');
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -66,8 +69,11 @@ test('direct create waits for its delayed application redirect before a fresh re
   try {
     browser = await chromium.launch({ headless: true, executablePath });
     const page = await browser.newPage();
-    await page.goto(origin);
-    await waitForCreatedCardLanding(page, origin, 'Card+*right+Member');
+    await page.goto(`${origin}/Card+*right+Member`);
+    const landing = waitForCreatedCardLanding(page, origin, 'Card+*right+Member');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await landing;
+    assert.equal(documents, 2, 'the old unknown-card document has the same URL and is not the create landing');
     assert.equal(page.url(), `${origin}/Card+*right+Member`);
     assert.equal(await page.locator('h1').textContent(), 'Created member');
   } finally {
