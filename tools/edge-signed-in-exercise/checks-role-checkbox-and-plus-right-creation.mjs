@@ -722,16 +722,22 @@ export const checks = [
           const seen = await restorePending;
           if (seen.error === undefined) { await seen.response.finished(); restoreRoute = "the same checkbox, clicked again (natively through the inline form's autosave)"; }
           else {
-            const resubmitPending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
-              .then(response => ({ response }), error => ({ error }));
-            const submitted = await restoreForm.evaluate(f => { f.requestSubmit(); return true; }).catch(() => false);
-            const resubmitted = await resubmitPending;
-            if (submitted && resubmitted.error === undefined) {
-              await resubmitted.response.finished();
-              restoreRoute = "the form's own requestSubmit (the click affordance posted nothing — the measured click-path defect — so the restore used the same form's direct submit)";
-            } else {
-              restoreRoute = "NOT RESTORED: neither the click nor the form's requestSubmit produced a POST (" + String(seen.error?.message ?? seen.error).slice(0, 80) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
-            }
+            // The click affordance cannot post (measured: the served checkbox
+            // input is 0x0, no change event fires, zero requests in the
+            // window), so the session restore uses the exact endpoint the
+            // autosave form posts, with the pre-click content — the same
+            // engine-driven write path, route disclosed in the record.
+            const restorePost = await page.context().request.post(`${stack.origin}${postPath}`, {
+              headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+              data: new URLSearchParams({
+                "card[content]": beforeRoles.dbContent ?? "",
+                "success[redirect]": "true",
+              }).toString(),
+              maxRedirects: 0,
+            }).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
+            restoreRoute = restorePost.status !== undefined && restorePost.status < 400
+              ? "POST /update/<actor>+*enabled roles with the pre-click content (the click affordance cannot post — the served checkbox is 0x0 — so the restore used the same endpoint the form posts, explicitly)"
+              : "NOT RESTORED: neither the click nor the endpoint POST could write (" + JSON.stringify(restorePost).slice(0, 100) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
           }
           await page.waitForTimeout(800);
           restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
