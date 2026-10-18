@@ -504,7 +504,7 @@
       ],
       "status": "covered",
       "checks": [
-        "E11 a card with a +summary nested field renders that field’s editor"
+        "E11 a card with a +summary nested field renders that field's editor"
       ]
     },
     {
@@ -627,11 +627,10 @@
       "sources": [
         "cypress edit/board/history_tab"
       ],
-      "status": "partial",
+      "status": "covered",
       "checks": [
-        "the card board renders with its tabs (guide, engage, history, rules)"
-      ],
-      "finding": "History tab present; changes pills not asserted."
+        "E21 the board History tab lists the run's change"
+      ]
     },
     {
       "id": "E22",
