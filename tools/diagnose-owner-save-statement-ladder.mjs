@@ -29,6 +29,16 @@
 // owns stderr; the trace is captured and re-emitted, never suppressed).
 //
 //   node tools/diagnose-owner-save-statement-ladder.mjs [--out tmp/...json]
+//        [--capture-results]
+//
+// --capture-results additionally records, per statement, the scalars the
+// execute result produced (every integer cell of every row plus
+// last_insert_rowid), parsed off the critical path from a response clone. It
+// is what lets a consumer PROVE which statements consume an earlier
+// statement's result value, instead of inferring dependency from SQL shape.
+// It costs a body parse per POST, so a --capture-results run's wall numbers
+// are not a transport measurement; its POST and statement counts must match
+// the plain run's, which is the check that the capture changed nothing.
 //
 // This is a diagnostic, not the graded instrument: pass/fail for the budget
 // is decided by tools/edge-signed-in-exercise.mjs's "9. timings" section.
@@ -89,6 +99,76 @@ function segment(name) {
   traceLines = [];
   if (!segments.has(name)) segments.set(name, { posts: 0, stmts: 0, wallMs: 0, stmtWallMs: 0, shapes: new Map(), slow: [], sequence: [] });
 }
+
+/** --capture-results (opt-in): which integers each statement PRODUCED, so a
+ *  consumer can prove statement-by-statement which later statements consume
+ *  an earlier statement's result VALUE (the only dependency that forbids
+ *  packing two statements into one ordered batch) instead of inferring it
+ *  from SQL shape. OFF by default: the default run's wall numbers are the
+ *  transport receipt, and parsing a body per POST would inflate them. With
+ *  --capture-results the statement ladder itself must be identical
+ *  (same POST and statement counts); only the wall numbers are inflated.
+ *  The clone is read without awaiting, so the engine is never blocked on it;
+ *  every capture is awaited before the report is written. */
+const CAPTURE_RESULTS = process.argv.includes("--capture-results");
+/** postKey -> the parsed per-statement results of that pipeline POST. */
+const postResults = new Map();
+/** postKey -> the response clone whose body carries those results. */
+const postResponses = new Map();
+/** postKey -> how many statements that POST carried, in POST order. */
+const postStatementCounts = new Map();
+/** postKey -> the event-loop TURN the pipeline POST was issued on. Two POSTs
+ *  on one turn are two statements the engine issued WITHOUT waiting for the
+ *  other's answer — the only group a DataLoader-style coalescing endpoint can
+ *  carry without predicting what comes next. A ladder that awaits every
+ *  answer lands one POST per turn, and no transport can help it. Always on:
+ *  it costs one number per POST. */
+let currentTick = 0;
+const bumpTick = () => { currentTick += 1; setImmediate(bumpTick); };
+setImmediate(bumpTick);
+const postTicks = new Map();
+const postCapturePromises = [];
+/** Per-segment POST counter, so a post key is stable and ordered. */
+const segmentPostCounter = new Map();
+/** Every scalar an execute result hands back: the integer cells of every row,
+ *  the TEXT cells too (the engine binds a row's key/codename back into later
+ *  statements just as it does an id), and last_insert_rowid. The transport
+ *  design's dependency test asks whether a later statement's bound argument
+ *  is one of these. Long text and blobs are skipped: they are card content,
+ *  which no statement binds back as an argument, and carrying them would
+ *  bloat the receipt. */
+function producedScalars(entry) {
+  const produced = [];
+  if (entry === null || typeof entry !== "object") return produced;
+  const result = entry.response?.result ?? entry.result;
+  if (result === null || typeof result !== "object") return produced;
+  if (typeof result.last_insert_rowid === "string") produced.push(Number(result.last_insert_rowid));
+  else if (typeof result.last_insert_rowid === "number") produced.push(result.last_insert_rowid);
+  for (const row of result.rows ?? []) {
+    for (const cell of row ?? []) {
+      if (cell?.type === "integer") produced.push(Number(cell.value));
+      else if (cell?.type === "text" && cell.value !== undefined && cell.value.length <= 64 && !cell.value.includes("\n")) produced.push(cell.value);
+    }
+  }
+  return produced;
+}
+function capturePostResults(key, statements) {
+  postStatementCounts.set(key, statements.length);
+  const promise = (async () => {
+    const response = await postResponses.get(key);
+    if (response === undefined) return;
+    let body;
+    try { body = await response.json(); } catch { return; }
+    const results = Array.isArray(body?.results) ? body.results : [];
+    postResults.set(key, results.map((entry) => ({
+      produced: producedScalars(entry),
+      rows: entry?.response?.result?.rows?.length ?? 0,
+      lastInsertRowId: entry?.response?.result?.last_insert_rowid ?? null,
+      error: entry?.type === "error" ? entry.error?.message ?? "error" : null,
+    })));
+  })();
+  postCapturePromises.push(promise);
+}
 function recordPipelinePost(statements, wallMs) {
   if (currentSegment === null) return;
   const seg = segments.get(currentSegment);
@@ -104,7 +184,7 @@ function recordPipelinePost(statements, wallMs) {
     shape.wallMs += ms;
     seg.shapes.set(sql, shape);
     if (ms >= 25) seg.slow.push({ ms, sql: sql.slice(0, 300) });
-    if (seg.sequence.length < 1200) seg.sequence.push({ sql: sql.slice(0, 200), ms, args: args.slice(0, 120) });
+    if (seg.sequence.length < 1200) seg.sequence.push({ sql: sql.slice(0, 200), ms, args: args.slice(0, 4000) });
   }
 }
 
@@ -146,8 +226,21 @@ globalThis.fetch = async (input, init) => {
   if (!value.startsWith(storagePrefix) && value === `${hrana.url}/v2/pipeline`) {
     let statements = [];
     try { statements = (JSON.parse(String(init?.body)).requests ?? []).filter((r) => r?.type === "execute").map((r) => r.stmt?.sql ?? ""); } catch { /* a malformed pipeline is the engine's error to surface */ }
+    const postNumber = currentSegment === null ? undefined : (segmentPostCounter.get(currentSegment) ?? 0) + 1;
+    const key = currentSegment === null ? undefined : `${currentSegment}#${postNumber}`;
+    if (postNumber !== undefined) segmentPostCounter.set(currentSegment, postNumber);
+    if (key !== undefined) postTicks.set(key, currentTick);
     const t0 = performance.now();
-    try { return await loopbackFetch(input, init); }
+    try {
+      const response = await loopbackFetch(input, init);
+      // Clone BEFORE the engine reads the body; the clone is parsed off the
+      // critical path (capturePostResults awaits it later, never here).
+      if (CAPTURE_RESULTS && key !== undefined) {
+        postResponses.set(key, response.clone());
+        capturePostResults(key, statements);
+      }
+      return response;
+    }
     finally { recordPipelinePost(statements, performance.now() - t0); }
   }
   return loopbackFetch(value.startsWith(storagePrefix) ? `http://${storage.host}/${value.slice(storagePrefix.length)}` : input, init);
@@ -240,12 +333,47 @@ try {
 
   // ----------------------------------------------------------------- report
 
-  const report = { bundleSha256: digest(readFileSync(bundlePath)), source: execFileSync("git", ["-C", REPO, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(), segments: {} };
+  if (CAPTURE_RESULTS) {
+    // Every capture is awaited HERE, never on the engine's critical path.
+    await Promise.all(postCapturePromises);
+    // Attach each statement's produced values to its sequence entry: the
+    // statements of a segment were pushed in POST order, and the results of a
+    // POST are index-aligned with its execute requests (the same alignment
+    // libsql-http.ts's decoder asserts).
+    for (const [name, seg] of segments) {
+      const cursor = { at: 0 };
+      for (const [key, count] of postStatementCounts) {
+        if (!key.startsWith(`${name}#`)) continue;
+        const results = postResults.get(key) ?? [];
+        for (let i = 0; i < count; i += 1) {
+          const entry = seg.sequence[cursor.at + i];
+          if (entry === undefined) break;
+          const produced = results[i] ?? { produced: [], rows: 0, lastInsertRowId: null, error: null };
+          entry.produced = produced.produced;
+          entry.rows = produced.rows;
+          entry.lastInsertRowId = produced.lastInsertRowId;
+          entry.error = produced.error;
+        }
+        cursor.at += count;
+      }
+    }
+    const captured = [...postResults.values()].reduce((n, r) => n + r.length, 0);
+    console.log(`captured results for ${captured} statements across ${postResults.size} POSTs`);
+  }
+
+  const report = { bundleSha256: digest(readFileSync(bundlePath)), source: execFileSync("git", ["-C", REPO, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(), captureResults: CAPTURE_RESULTS, segments: {} };
   for (const [name, seg] of segments) {
     const shapes = [...seg.shapes.entries()].map(([sql, { count, wallMs }]) => ({ count, wallMs, sql: sql.slice(0, 400) }))
       .sort((a, b) => b.wallMs - a.wallMs || b.count - a.count);
+    // How many POSTs share an event-loop turn: the group a coalescing
+    // endpoint can carry without predicting the next statement.
+    const ticks = [...postTicks.entries()].filter(([key]) => key.startsWith(`${name}#`)).map(([, tick]) => tick);
+    const perTick = new Map();
+    for (const tick of ticks) perTick.set(tick, (perTick.get(tick) ?? 0) + 1);
+    const largest = [...perTick.values()].sort((a, b) => b - a).slice(0, 5);
     report.segments[name] = {
       posts: seg.posts, stmts: seg.stmts, dbWallMs: Math.round(seg.wallMs), stmtWallMs: Math.round(seg.stmtWallMs),
+      distinct_ticks: perTick.size, posts_per_tick_max: largest[0] ?? 0, largest_ticks: largest,
       slowStatements: seg.slow.sort((a, b) => b.ms - a.ms).slice(0, 20),
       shapesByWall: shapes.slice(0, 25),
       distinctShapes: shapes.length,

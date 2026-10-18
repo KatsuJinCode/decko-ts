@@ -304,6 +304,56 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   /** When the open transaction's BEGIN succeeded (Date.now()). */
   private streamOpenedAt = 0;
 
+  // -- transaction-scoped read memo ------------------------------------------
+  //
+  // A save is one long write transaction that re-reads the same handful of
+  // constant rows over and over: the owner card's save issued 259 separate
+  // `SELECT * FROM cards WHERE id = ? LIMIT 1` statements, 92
+  // `SELECT codename FROM cards WHERE id = ?`, and so on — 699 reads of which
+  // 352 were repeats of a (sql, args) pair already answered earlier in the
+  // SAME transaction (measured: tools/diagnose-owner-save-statement-ladder.mjs,
+  // docs/reports/save-server-time-budget-2026-10-18.md). Each read is its own
+  // pipeline POST, and on the live host every POST is a real network round
+  // trip, so wall = hops x hop latency.
+  //
+  // The memo lives exactly as long as the transaction does: it is created when
+  // BEGIN succeeds and dropped on every terminal path (COMMIT, ROLLBACK, close,
+  // a lost baton). Nothing is cached across transactions, so no request can
+  // ever be answered from another request's view of the database.
+  //
+  // CORRECTNESS. A memoized read must not outlive a write that could change its
+  // answer. The rules, in order of how much they can see:
+  //   - Only reads are memoized. A statement whose leading keyword is not
+  //     SELECT/WITH, or a WITH that contains a mutating word once string
+  //     literals and comments are stripped, is never cached.
+  //   - A write invalidates every memoized read that depends on the table the
+  //     write targets, PLUS every table a trigger ON that table writes (the
+  //     deck carries 18 `bump_deck_data_version` triggers; a write to `cards`
+  //     really does change `deck_data_version`, and a rule that ignored that
+  //     would serve a stale version number). The trigger graph is READ FROM
+  //     THE DATABASE at the start of the transaction rather than hardcoded
+  //     here, so it tracks whatever schema the deck actually carries.
+  //   - A write whose target cannot be determined, and any statement the
+  //     classifier does not recognize (BEGIN/COMMIT/PRAGMA/CREATE/VACUUM/...),
+  //     drops the WHOLE memo. Unknown is treated as unsafe; a rule that guessed
+  //     would be a cache that silently answers with a stale row.
+  private readMemo: Map<string, ReadMemoEntry> | undefined;
+  /** In flight + resolved form of this transaction's trigger graph. */
+  private triggerGraph: Promise<Map<string, Set<string> | null>> | undefined;
+  private triggerGraphMap: Map<string, Set<string> | null> | undefined;
+  /** False when sqlite_master could not be read, so no invalidation may be
+   *  narrowed on the assumption that a table has no triggers. */
+  private triggerGraphUsable = true;
+
+  /** Drop the memo and its trigger graph. Called on every path that ends the
+   *  transaction's stream, so no entry can survive into the next transaction. */
+  private clearReadMemo(): void {
+    this.readMemo = undefined;
+    this.triggerGraph = undefined;
+    this.triggerGraphMap = undefined;
+    this.triggerGraphUsable = true;
+  }
+
   /** Decodes the results of requests sent on the open transaction's
    *  stream. Bunny Database ends an interactive transaction that has been
    *  open for 5 seconds and answers the next statement on it with
@@ -368,6 +418,8 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         isBunnyBeginBusy,
       );
       this.streamOpenedAt = Date.now();
+      this.readMemo = new Map();
+      this.triggerGraph = undefined;
       let result: R;
       try {
         result = await work();
@@ -395,6 +447,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       this.decodeOnStream(ended.results, requests);
     } finally {
       this.stream = undefined;
+      this.clearReadMemo();
     }
   }
 
@@ -407,6 +460,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       const response = await this.streamPipeline(requests, stream);
       if (response.baton === undefined) {
         this.stream = undefined;
+        this.clearReadMemo();
         throw new BunnyDbError("BunnyDb closed the transaction's stream (no baton returned)");
       }
       this.stream = { baton: response.baton, url: response.url };
@@ -465,13 +519,35 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    const stmt = toHranaStmt(sql, params);
+    // Inside a transaction, a repeated read of the same (sql, args) is
+    // answered from the memo instead of the wire. A memo hit performs NO
+    // database operation, so it does not reach the counter below either: the
+    // query-count metric counts DB operations, and a cache hit is not one.
+    const memo = this.stream !== undefined ? this.readMemo : undefined;
+    const facts = memo !== undefined ? cachedSqlFacts(sql) : undefined;
+    if (memo !== undefined && facts !== undefined && facts.isRead) {
+      const key = readMemoKey(sql, stmt.args);
+      const hit = memo.get(key);
+      if (hit !== undefined) return execResultToQueryResult<T>(hit.result);
+      this.counter.recordQuery(sql);
+      const fresh = (await this.sendOnStream([{ type: "execute", stmt }]))[0] as BunnyDbExecResult;
+      memo.set(key, { dependsOn: facts.dependsOn, result: fresh });
+      return execResultToQueryResult<T>(fresh);
+    }
     this.counter.recordQuery(sql);
     if (this.stream !== undefined) {
-      const onStream = await this.sendOnStream([{ type: "execute", stmt: toHranaStmt(sql, params) }]);
+      const onStream = await this.sendOnStream([{ type: "execute", stmt }]);
+      // Invalidate AFTER the write has been sent, not before. The memo is only
+      // consulted by reads and no read can be issued between these two awaits,
+      // so the ordering makes no difference to what a later read may see — and
+      // it keeps the statements on the wire exactly as the caller wrote them,
+      // with no bookkeeping statement pushed in front of the caller's own.
+      if (memo !== undefined) await this.invalidateReadMemo(sql);
       return execResultToQueryResult<T>(onStream[0] as BunnyDbExecResult);
     }
     const results = await this.pipeline([
-      { type: "execute", stmt: toHranaStmt(sql, params) },
+      { type: "execute", stmt },
       { type: "close" },
     ]);
     const first = results[0] as BunnyDbExecResult;
@@ -480,24 +556,60 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
 
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     if (statements.length === 0) return [];
-    // Record every statement as a query for the instrumentation hook.
-    // batch() makes ONE pipeline POST, but from the engine's
-    // DB-operations-per-page perspective each statement is one DB op.
-    for (const s of statements) this.counter.recordQuery(s.sql);
-    const requests: HranaPipelineRequest[] = statements.map((s) => ({
-      type: "execute",
-      stmt: toHranaStmt(s.sql, s.params),
-    }));
-    if (this.stream !== undefined) {
-      return (await this.sendOnStream(requests)).map((r) => execResultToQueryResult<unknown>(r as BunnyDbExecResult));
+    const memo = this.stream !== undefined ? this.readMemo : undefined;
+
+    // A batch executes in order on the server, so a write at position k
+    // invalidates what position k+1 may read. Walk the batch once against the
+    // memo as it stands BEFORE the batch, drop the reads it already holds, and
+    // apply each write's invalidation in the order the writes appear. A read
+    // repeated WITHIN the batch is not answered from an earlier element of the
+    // same batch (that answer does not exist yet) — it executes, as before.
+    const requests: HranaPipelineRequest[] = [];
+    /** One entry per INPUT statement, in order: where its answer comes from. */
+    const plan: Array<{ hit: ReadMemoEntry | null; store: { key: string; dependsOn: Set<string> | null } | null }> = [];
+    for (const s of statements) {
+      const stmt = toHranaStmt(s.sql, s.params);
+      if (memo !== undefined && cachedSqlFacts(s.sql).isRead) {
+        const key = readMemoKey(s.sql, stmt.args);
+        const hit = memo.get(key);
+        if (hit !== undefined) {
+          plan.push({ hit, store: null });
+          continue;
+        }
+        this.counter.recordQuery(s.sql);
+        requests.push({ type: "execute", stmt });
+        plan.push({ hit: null, store: { key, dependsOn: cachedSqlFacts(s.sql).dependsOn } });
+        continue;
+      }
+      if (memo !== undefined) await this.invalidateReadMemo(s.sql);
+      this.counter.recordQuery(s.sql);
+      requests.push({ type: "execute", stmt });
+      plan.push({ hit: null, store: null });
     }
-    requests.push({ type: "close" });
-    const results = await this.pipeline(requests);
-    // pipeline() results align 1:1 with requests; the trailing "close"
-    // entry decodes to null, so slice off exactly the execute entries.
-    return results
-      .slice(0, statements.length)
-      .map((r) => execResultToQueryResult<unknown>(r as BunnyDbExecResult));
+
+    /** Raw decoded results for the statements actually sent, in order. */
+    let raw: BunnyDbExecResult[];
+    if (this.stream !== undefined) {
+      raw = (await this.sendOnStream(requests)) as BunnyDbExecResult[];
+    } else {
+      raw = (await this.pipeline([...requests, { type: "close" }])).slice(0, requests.length) as BunnyDbExecResult[];
+    }
+
+    const answers: SQLQueryResult[] = [];
+    let taken = 0;
+    for (const p of plan) {
+      if (p.hit !== null) {
+        answers.push(execResultToQueryResult<unknown>(p.hit.result));
+        continue;
+      }
+      const result = raw[taken];
+      taken += 1;
+      answers.push(execResultToQueryResult<unknown>(result));
+      if (memo !== undefined && p.store !== null) {
+        memo.set(p.store.key, { dependsOn: p.store.dependsOn, result });
+      }
+    }
+    return answers;
   }
 
   /** Read the current accumulated query count from the instrumentation
@@ -505,6 +617,93 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    *  is in use. */
   queryCount(): number {
     return this.counter.count();
+  }
+
+  // -----------------------------------------------------------------------
+  // Transaction-scoped read memo (see the field block above for the rules)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Read this database's trigger graph once per transaction: for each table,
+   * the set of tables its triggers write. Read from sqlite_master rather than
+   * hardcoded so the invalidation rule tracks whatever schema the deck really
+   * carries.
+   *
+   * This is one extra statement per transaction. It buys correctness (the deck
+   * really does carry 18 triggers that write `deck_data_version` from a write
+   * to `cards`) at a cost the save ladder cannot see, because a save issues no
+   * read of a trigger-written table at all.
+   */
+  private async loadTriggerGraph(): Promise<void> {
+    if (this.triggerGraph !== undefined) { await this.triggerGraph; return; }
+    this.triggerGraph = (async () => {
+      const graph = new Map<string, Set<string> | null>();
+      let rows: BunnyDbExecResult;
+      try {
+        rows = (await this.sendOnStream([
+          {
+            type: "execute",
+            stmt: toHranaStmt("SELECT tbl_name, sql FROM sqlite_master WHERE type = 'trigger'", []),
+          },
+        ]))[0] as BunnyDbExecResult;
+      } catch {
+        // Could not read the graph at all. Mark it unusable rather than
+        // pretending there are no triggers: every write must then drop the
+        // whole memo.
+        this.triggerGraphUsable = false;
+        return graph;
+      }
+      for (const row of rows.rows) {
+        const tbl = row[0];
+        if (typeof tbl !== "string") continue;
+        const name = tbl.toLowerCase();
+        if (graph.get(name) === null) continue; // already "may touch anything"
+        const targets = triggerWriteTargets(typeof row[1] === "string" ? row[1] : "");
+        if (targets === null) {
+          graph.set(name, null);
+          continue;
+        }
+        graph.set(name, new Set([...(graph.get(name) ?? []), ...targets]));
+      }
+      this.triggerGraphMap = graph;
+      return graph;
+    })();
+    await this.triggerGraph;
+  }
+
+  /**
+   * Every table a write to `target` can change, or null when that cannot be
+   * proven. null means "drop the whole memo" — the unknown-is-unsafe
+   * direction, the same rule the deletion paths use.
+   */
+  private writeEffect(target: string): Set<string> | null {
+    if (!this.triggerGraphUsable || this.triggerGraphMap === undefined) return null;
+    const viaTriggers = this.triggerGraphMap.get(target);
+    if (viaTriggers === null) return null;
+    return new Set([target, ...(viaTriggers ?? [])]);
+  }
+
+  /** Apply one statement's invalidation to the memo. */
+  private async invalidateReadMemo(sql: string): Promise<void> {
+    const memo = this.readMemo;
+    if (memo === undefined) return;
+    const target = cachedSqlFacts(sql).writeTarget;
+    if (target === null) {
+      memo.clear();
+      return;
+    }
+    await this.loadTriggerGraph();
+    const effect = this.writeEffect(target);
+    if (effect === null) {
+      memo.clear();
+      return;
+    }
+    for (const [key, entry] of memo) {
+      if (entry.dependsOn === null) { memo.delete(key); continue; }
+      for (const t of effect) {
+        if (entry.dependsOn.has(t)) { memo.delete(key); break; }
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -893,6 +1092,154 @@ function isSafeIntegerValue(big: bigint): boolean {
 function base64ToBytes(base64: string): Uint8Array {
   const buf = Buffer.from(base64, "base64");
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+// ---------------------------------------------------------------------------
+// Transaction-scoped read memo — SQL classification helpers
+//
+// These answer one question about a statement: may its result be reused
+// later in this transaction, and if not, which tables' memoized reads must
+// die? Every rule here errs toward "do not reuse" and "invalidate more",
+// because the failure being prevented is a save that silently stores or
+// renders a stale row.
+// ---------------------------------------------------------------------------
+
+/** One memoized read and the tables its answer depends on. `dependsOn` is
+ *  null when the statement's tables could not be identified — such an entry
+ *  is dropped by ANY write, because nothing can rule it out. */
+interface ReadMemoEntry {
+  dependsOn: Set<string> | null;
+  result: BunnyDbExecResult;
+}
+
+/**
+ * Remove the parts of a statement that must not be read as SQL structure:
+ * string/identifier literals and comments. Without this, a card named
+ * "Update" would make `SELECT ... WHERE name = 'Update'` look like a write.
+ * Blobs are already sent out of band; `x'...'` blobs are consumed here too.
+ */
+function stripSqlNoise(sql: string): string {
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const ch = sql[i];
+    if (ch === "'" || ch === '"' || ch === "`") {
+      const quote = ch;
+      i += 1;
+      while (i < sql.length) {
+        if (sql[i] === quote) {
+          if (sql[i + 1] === quote) { i += 2; continue; } // doubled = escaped
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      out += " ";
+      continue;
+    }
+    if (ch === "-" && sql[i + 1] === "-") {
+      while (i < sql.length && sql[i] !== "\n") i += 1;
+      continue;
+    }
+    if (ch === "/" && sql[i + 1] === "*") {
+      i += 2;
+      while (i < sql.length && !(sql[i] === "*" && sql[i + 1] === "/")) i += 1;
+      i += 2;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * Everything about a statement the memo needs, derived from its TEXT ALONE.
+ * A save issues the same few hundred SQL texts over and over, and deriving
+ * these facts means stripping literals and running several regexes — work
+ * that must not be repeated per occurrence, because at ~0.5 ms per hop on the
+ * local loopback transport the CPU this wastes is visible in the measurement
+ * (measured: the first cut of this memo raised the local save's total;dur
+ * while cutting its hops, which is the wrong trade).
+ */
+interface SqlFacts {
+  isRead: boolean;
+  /** The table a write targets; null when it cannot be determined. */
+  writeTarget: string | null;
+  /** Tables a read's answer depends on; null when none could be named. */
+  dependsOn: Set<string> | null;
+}
+
+function sqlFactsOf(sql: string): SqlFacts {
+  const stripped = stripSqlNoise(sql).trimStart();
+  const isRead = /^SELECT\b/i.test(stripped)
+    ? true
+    : /^WITH\b/i.test(stripped)
+      ? !/\b(?:INSERT|UPDATE|DELETE|REPLACE)\b/i.test(stripped)
+      : false;
+  if (isRead) {
+    const tables = new Set<string>();
+    const re = /\b(?:FROM|JOIN)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/gi;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(stripped)) !== null) tables.add(m[1].toLowerCase());
+    return { isRead: true, writeTarget: null, dependsOn: tables.size === 0 ? null : tables };
+  }
+  const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/i.exec(stripped);
+  return { isRead: false, writeTarget: m === null ? null : m[1].toLowerCase(), dependsOn: null };
+}
+
+/** Bounded, so a workload with unbounded distinct SQL cannot grow it without
+ *  limit; a save's working set is a few hundred entries. */
+const SQL_FACTS_CACHE_LIMIT = 1024;
+const sqlFactsCache = new Map<string, SqlFacts>();
+
+function cachedSqlFacts(sql: string): SqlFacts {
+  const hit = sqlFactsCache.get(sql);
+  if (hit !== undefined) return hit;
+  const facts = sqlFactsOf(sql);
+  if (sqlFactsCache.size >= SQL_FACTS_CACHE_LIMIT) sqlFactsCache.clear();
+  sqlFactsCache.set(sql, facts);
+  return facts;
+}
+
+/** The table a write targets, or null when it cannot be determined (null is
+ *  the "drop the whole memo" case). Only the LEADING verb's table counts: a
+ *  statement's other FROM/JOIN tables are things it READS, not writes, and
+ *  treating them as write targets would discard memoized reads for no reason. */
+function writeTargetTable(stripped: string): string | null {
+  const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/i.exec(
+    stripped.trimStart(),
+  );
+  return m === null ? null : m[1].toLowerCase();
+}
+
+/** The tables a trigger body writes, or null when the body contains something
+ *  this cannot account for (an unrecognized statement inside BEGIN...END). */
+function triggerWriteTargets(body: string): Set<string> | null {
+  const stripped = stripSqlNoise(body);
+  // Everything through the first BEGIN is the trigger HEADER
+  // (`CREATE TRIGGER ... AFTER UPDATE ON "cards" BEGIN`), not a statement:
+  // scanning it for verbs finds the UPDATE inside "AFTER UPDATE ON" and
+  // concludes that every trigger is unparseable.
+  const header = /^\s*CREATE\s+TRIGGER\b[\s\S]*?\bBEGIN\b/i.exec(stripped);
+  const inner = header === null ? stripped : stripped.slice(header[0].length);
+  const targets = new Set<string>();
+  for (const raw of inner.split(";")) {
+    const statement = raw.trim();
+    if (statement === "" || /^END$/i.test(statement)) continue;
+    const target = writeTargetTable(statement);
+    if (target === null) return null;
+    targets.add(target);
+  }
+  return targets;
+}
+
+/** The memo key: the statement's text and its already-encoded wire args. Two
+ *  reads collide only when they are the same statement with the same
+ *  parameters. Uses the Hrana encoding rather than the raw params so the key
+ *  is JSON-safe for bigints and blobs too. */
+function readMemoKey(sql: string, args: HranaWireValue[]): string {
+  return `${sql}\u0000${JSON.stringify(args)}`;
 }
 
 // ---------------------------------------------------------------------------

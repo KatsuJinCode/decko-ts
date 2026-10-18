@@ -48,7 +48,17 @@ function encodeCell(v) {
 /** Runs one execute request and returns its Hrana result entry (ok or error). */
 function runExecute(db, sql, rawArgs, ledger) {
   const started = Date.now();
-  if (process.env.HRANA_TRACE === "1") process.stderr.write(`hrana ${sql.replace(/\s+/g, " ").slice(0, 120)} args=${JSON.stringify(rawArgs).slice(0, 80)}\n`);
+  // The args cap was 80 characters, which silently truncated the argument
+  // list of every multi-argument write (a save's `UPDATE cards SET ... WHERE
+  // id = ?` never survived it), so any consumer that needs to know WHICH rows
+  // a write touched — the save-ladder probe's memo-policy replay, for one —
+  // could not read them back. 600 covers the widest statement in the deck
+  // (the owner-card save's 20-id `WHERE id IN (...)`). Only the HRANA_TRACE
+  // line changes: no request, response, or count is touched, and the only
+  // reader of this field (tools/diagnose-owner-save-statement-ladder.mjs)
+  // captures `args=(.*)$` to end of line, so a longer line is strictly more
+  // information for it.
+  if (process.env.HRANA_TRACE === "1") process.stderr.write(`hrana ${sql.replace(/\s+/g, " ").slice(0, 120)} args=${JSON.stringify(rawArgs).slice(0, 600)}\n`);
   let entry;
   try {
     const args = rawArgs.map(decodeArg);
