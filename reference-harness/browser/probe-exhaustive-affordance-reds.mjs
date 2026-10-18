@@ -225,8 +225,12 @@ async function main() {
           };
         };
         acct077.emailField = await openField("email");
-        await page.locator(".modal .cancel-button:visible, .modal .close:visible, button[data-dismiss='modal']:visible").first().click().catch(() => {});
-        await page.waitForTimeout(300);
+        // The named instrument closes the email leg's modal and WAITS for it
+        // to hide before opening the password row (edge-signed-in-exercise.mjs
+        // :471-475); a fixed pause left the modal up and the password row
+        // out of the DOM, which read as rowPresent:0 in round 2.
+        await page.locator(".modal .cancel-button:visible, #edit_card .cancel-button:visible, .modal .close:visible, .modal [data-dismiss='modal']:visible").first().click({ timeout: 15_000 }).catch(() => {});
+        acct077.modalHidden = await page.locator(".modal.show").first().waitFor({ state: "hidden", timeout: 15_000 }).then(() => true, () => false);
         acct077.passwordField = await openField("password");
         writeFileSync(path.join(out, "act077-account-tab.html"), await page.content());
       }
@@ -279,7 +283,29 @@ async function main() {
       }
       const memberRead = await memberPage.goto(base + "/" + writeName, { waitUntil: "load", timeout: STEP_TIMEOUT });
       const memberEdit = await memberPage.goto(base + "/" + writeName + "?view=edit", { waitUntil: "load", timeout: STEP_TIMEOUT });
+      // The instrument's raw count is kept as evidence, but the predicate
+      // below is scoped: see the comment at the record call.
       const editInputs = await memberPage.locator("[name='card[content]']").count().catch(() => -1);
+      /** An EDITOR OF THIS CARD, as opposed to any input on the page: a
+       *  content input or textarea inside a form that updates this card.
+       *  The signed-in navbar's roles form (/update/<actor>+*enabled_roles)
+       *  carries its own hidden content input as session chrome, so a
+       *  page-wide count reads 1 for a page that carries no editor. */
+      const targetEditorCount = await memberPage.evaluate((name) => {
+        const wants = new RegExp("^/update/" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:$|[?])");
+        const forms = [...document.querySelectorAll("form")].filter((f) => wants.test(new URL(f.action, location.href).pathname));
+        return {
+          targetForms: forms.map((f) => f.getAttribute("action")),
+          targetContentInputs: forms.reduce((n, f) => n + f.querySelectorAll("[name='card[content]']").length, 0),
+          targetTextareas: forms.reduce((n, f) => n + f.querySelectorAll("textarea").length, 0),
+          visibleTargetContentInputs: forms.reduce(
+            (n, f) => n + [...f.querySelectorAll("[name='card[content]']")].filter((i) => i.getClientRects().length > 0).length,
+            0,
+          ),
+          pageTextareas: document.querySelectorAll("textarea").length,
+          tinymce: typeof window.tinyMCE,
+        };
+      }, writeName).catch((e) => ({ error: String(e?.message ?? e) }));
       // The named instrument's contract is "no editor": zero content inputs.
       // Capture what the denial page actually carries, so a non-zero count
       // is attributable (a denial view's own hidden input, or a live editor).
@@ -311,8 +337,12 @@ async function main() {
       const adminSees = await adminPage.goto(base + "/" + writeName, { waitUntil: "load", timeout: STEP_TIMEOUT });
       const storedUnchanged = (await adminPage.content()).includes("UNCHANGED_UPDATE_" + stamp);
       record("ACT-100-p3-member-denied-edit",
-        memberRead.status() === 200 && memberEdit.status() === 403 && editInputs === 0 && deniedPost === 403 && adminSees.status() === 200 && storedUnchanged,
-        { memberReadStatus: memberRead.status(), memberEditStatus: memberEdit.status(), editInputs, editPageFacts, deniedPostStatus: deniedPost, adminViewStatus: adminSees.status(), storedUnchanged });
+        memberRead.status() === 200 && memberEdit.status() === 403 &&
+        targetEditorCount.targetForms.length === 0 && targetEditorCount.targetContentInputs === 0 &&
+        targetEditorCount.visibleTargetContentInputs === 0 && targetEditorCount.targetTextareas === 0 &&
+        targetEditorCount.pageTextareas === 0 &&
+        deniedPost === 403 && adminSees.status() === 200 && storedUnchanged,
+        { memberReadStatus: memberRead.status(), memberEditStatus: memberEdit.status(), pageWideContentInputs: editInputs, targetEditorCount, editPageFacts, deniedPostStatus: deniedPost, adminViewStatus: adminSees.status(), storedUnchanged });
     } finally {
       await memberBrowser.close().catch(() => {});
       await adminBrowser2.close().catch(() => {});
