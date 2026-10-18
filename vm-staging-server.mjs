@@ -2897,6 +2897,59 @@ async function renderCardView(cardName, view, renderEngine = render) {
   }
 }
 
+// The editors' card-name autocomplete over HTTP: the edge host's
+// nameMatchResponse/matchingCardNames (deploy/bunny-worker-src/
+// bunny-edge-engine-handler.ts) ported to the loopback host's engine
+// objects. Up to 8 live card names — prefix matches first, then (when
+// `contains`) names containing the term, each group ordered by name —
+// Ruby's complete_or_match_search — with every row held to the viewer's
+// read rules exactly as the edge handler holds it. This host's generic
+// .json card-record arm answers 404 for the virtual search card the route
+// names; the deployed edge serves it (the live lane measured
+// /*all+by name.json?view=name_match answering a suggestion array on
+// 2026-10-16, docs/runs/edge-signed-in-exercise-live-4f2c817d-2026-10-16.md
+// line 38), and the CQL the edge handler drives is ported here too
+// (src/cql/parser.ts:552 name_match), so the gap was host coverage.
+async function nameMatchJsonResponse(url, renderEngine) {
+  const rawTerm = (url.searchParams.get("term") ?? url.searchParams.get("query[keyword]") ?? "").trim();
+  const view = url.searchParams.get("view");
+  const names = await matchingCardNames(renderEngine, rawTerm.toLowerCase(), view !== "name_complete");
+  return {
+    status: 200,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+    body: JSON.stringify(names),
+  };
+}
+
+async function matchingCardNames(renderEngine, term, contains) {
+  const limit = 8;
+  const like = (s) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const names = [];
+  const scope = await renderEngine.cqlPermissionOptions();
+  const readRuleSql = scope.alwaysOk ? "" : ` and read_rule_id in (${scope.readRuleIds.map(() => "?").join(",") || "NULL"})`;
+  const pick = async (pattern) => {
+    const excluded = [...names];
+    const notIn = excluded.length > 0 ? ` and name not in (${excluded.map(() => "?").join(",")})` : "";
+    let offset = 0;
+    while (names.length < limit) {
+      const result = await renderEngine.fetcher.driver.query(
+        `select id, name from cards where trash = 0 and name is not null and lower(name) like ? escape '\\'${readRuleSql}${notIn} order by name limit ? offset ?`,
+        [pattern, ...(scope.alwaysOk ? [] : scope.readRuleIds), ...excluded, limit, offset],
+      );
+      for (const row of result.rows) {
+        const record = await renderEngine.fetcher.fetchById(row.id);
+        if (record !== undefined && await renderEngine.canReadCard(record)) names.push(row.name);
+        if (names.length === limit) break;
+      }
+      if (result.rows.length < limit) break;
+      offset += result.rows.length;
+    }
+  };
+  await pick(`${like(term)}%`);
+  if (contains && term !== "" && names.length < limit) await pick(`%${like(term)}%`);
+  return names;
+}
+
 async function cardRecordJson(cardName, renderEngine = render) {  const record = await fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
@@ -4099,6 +4152,12 @@ const server = http.createServer(async (req, res) => {
           "Not found",
         );
       }
+    } else if (pathname.endsWith(".json") &&
+               ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
+      // The editors' card-name autocomplete (card-mod-search set/abstract/
+      // 0_search/views.rb name_match / name_complete on the `<anything>+by
+      // name` search card, the view read off ?view= as card#read does).
+      response = await nameMatchJsonResponse(url, requestEngine);
     } else if (pathname.endsWith(".json")) {
       const raw = pathname.slice(0, -".json".length).replace(/^\//, "");
       const name = decodeName(raw);
