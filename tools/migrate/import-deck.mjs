@@ -489,14 +489,15 @@ async function* readStagingRows(targetTableNames) {
   }
 }
 
-// The stored nest index, built here rather than on the target deck's first
-// request: it is derived from the imported content, and the D1 deploy path
-// (deploy/migrations 0013 + tools/deploy/build-nest-index.mjs) is where the
-// marker table comes from on the target. The build runs against the staging
-// DB BEFORE the chunked seed is written, so the uploaded deck lands with its
-// index already describing its content; without it the deck serves by walking
-// its nest closure (same bytes, one round trip per level). Skipped with
-// DECKO_SKIP_NEST_INDEX=1 for a staging DB that is about to be discarded.
+// The stored nest-index CACHE (port-owned prefetch hints; src/card/nest-index.ts),
+// installed on the staging DB before the chunked seed is written so a deck
+// booted from those chunks carries it. Canonical card_references are NOT
+// rebuilt here: they are source rows transferred through the schema map, and
+// re-deriving them is ruled out (cd4f2ef1 — they include structured and
+// actor-dependent Ruby references that drive history, search and mail). A
+// staging DB whose source lacked reference rows is served by walking its nest
+// closure (same bytes, more round trips). Skipped with DECKO_SKIP_NEST_INDEX=1
+// for a staging DB that is about to be discarded.
 if (process.env.DECKO_SKIP_NEST_INDEX === "1") {
   console.log("\nnest index: skipped (DECKO_SKIP_NEST_INDEX=1)");
 } else {

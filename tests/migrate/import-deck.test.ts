@@ -30,7 +30,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { dumpFile, cardsInsert, actsInsert } from "./synthetic-dump.js";
+import { dumpFile, cardsInsert, actsInsert, referencesInsert } from "./synthetic-dump.js";
 import { scratchDir } from "../support/scratch-dir.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -96,6 +96,14 @@ function writeMysqldumpFixture(dir: string): string {
     dumpFile([
       cardsInsert(FIXTURE()),
       actsInsert(FIXTURE_ACTS),
+      // The canonical inclusion row the Migra Guide -> Migra Section nest
+      // carries in a real dump: card_references rows are SOURCE data the
+      // importer transfers (schema-map), not rows the import re-derives —
+      // cd4f2ef1 ruled out re-deriving canonical references because they
+      // include structured and actor-dependent Ruby rows that drive
+      // history, search and mail. The row asserts the transfer path: it
+      // must survive staging and the chunk boundaries (chunk-rows 3) whole.
+      referencesInsert([[1, 2, "section", 4, "I", 1]]),
     ]),
     "utf8",
   );
@@ -304,8 +312,8 @@ describe("import-deck CLI - chunking + validation", () => {
     const dir = makeDir();
     const outDir = join(dir, "chunks");
     const dumpPath = writeMysqldumpFixture(dir);
-    // Seven cards, one act, and the derived Migra Guide -> Migra Section
-    // nest reference yield nine rows. The index is built before chunking.
+    // Seven cards, one act, and the Migra Guide -> Migra Section canonical
+    // reference the source carries yield nine rows.
     const result = runCLI([
       "--dump",
       dumpPath,
