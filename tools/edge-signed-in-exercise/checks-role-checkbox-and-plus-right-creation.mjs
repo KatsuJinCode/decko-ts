@@ -412,7 +412,7 @@ export const checks = [
           if (listId === null) return null;
           database().prepare(
             "INSERT OR IGNORE INTO card_references (referer_id, referee_id, ref_type) VALUES (?, ?, '')",
-          ).run(listId, memberActor.id, "");
+          ).run(listId, memberActor.id);
           return listId;
         };
         const revokeMemberRoleGrant = (roleId) => {
