@@ -4,7 +4,7 @@
 // and reports every failure.
 //
 //   node tools/edge-signed-in-exercise.mjs [--deck <source.sqlite3>]
-//        [--out docs/runs/edge-signed-in-exercise-<date>.md] [--keep]
+//        [--out .runtime/edge-signed-in/<date>/report.md] [--keep]
 //        [--asset-host <additional known public asset hostname>]
 //        [--favicon-url <exact public favicon URL>]
 //        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
@@ -46,6 +46,7 @@ import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
 import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
 import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artifact.mjs';
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
+import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 
 const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
@@ -63,6 +64,7 @@ const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/li
 const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-') + '-' + process.pid;
 const RUN_DIR = join(REPO, "tmp", `edge-signed-in-${RUN_ID}-${process.pid}`);
 const OUT = resolve(argOf("out") ?? join(REPO, '.runtime', 'edge-signed-in', RUN_ID, 'report.md'));
+assertOperationalCaptureOutput(REPO,OUT);
 if (existsSync(OUT) || existsSync(OUT + '.json') || existsSync(OUT + '.intent.json')) throw new Error('output already exists; use a fresh attempt destination');
 const RAW = OUT + '.raw';
 const MEMORY = OUT + '.memory.jsonl';
