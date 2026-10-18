@@ -2824,10 +2824,30 @@ export class RenderEngine implements RenderEngineLike {
     // so the no-mod render path stays byte-identical to the pre-chain
     // dispatcher — the 1080-test surface stays green untouched.
     const key = `${format}|${card.key}|${view}|g${modGeneration()}`;
-    const cached = this.viewDispatchCache.get(key);
+    // UNSAVED CARDS ARE NEVER MEMOIZED. The key carries no TYPE, and every
+    // unnamed new card shares one key (card.key of an absent card is the
+    // empty name), so two /new/<Type> forms collide: the first typed new page
+    // to render decides the :input viewFn for the rest of the process's
+    // life. Measured on ts (exhaustive ACT-148's red, "F7 Member uploads a
+    // file"): a fresh GET /new/File renders type/file's file_chooser
+    // (card-mod-carrierwave.ts fileInputView — the input[type=file] the
+    // F1/F3/F7 contract names), but after ANY prior typed /new/<Type> render
+    // — /new/Basic, /new/RichText, /new/Date — the same GET /new/File falls
+    // through to the all-set generic editor (card-mod-edit.ts inputView's
+    // tinymce textarea, id "-1" from the format-chain counter on the nameless
+    // card) and the upload input is gone. The poisoned page still carried
+    // card[type_id]=282 (File) and TYPE-file on its slot, so the card was
+    // typed correctly: the LOSS is the memo, not the type — the chain walk
+    // that reaches the File set's registration never ran. Ruby resolves a
+    // view per format object with no cross-card memo at all, so a memo is
+    // sound only where the key is unique per card, which a stored card's key
+    // is and an unsaved card's is not (a seated new card keeps id undefined,
+    // isNew true — seatAbsentRoot).
+    const unsaved = card.id === undefined;
+    const cached = unsaved ? undefined : this.viewDispatchCache.get(key);
     if (cached !== undefined) return cached;
     const resolved = this.computeResolvedView(card, view, format);
-    if (resolved !== undefined) this.viewDispatchCache.set(key, resolved);
+    if (resolved !== undefined && !unsaved) this.viewDispatchCache.set(key, resolved);
     return resolved;
   }
 
