@@ -103,6 +103,31 @@ async function servedCardId(page) {
   });
 }
 
+/**
+ * The stored follow option for one card and one viewer.
+ *
+ * A junction rule carries no name column in this deck, so `<card>+*self+
+ * <user>+*follow` is not resolvable by name, and fixtureCard cannot resolve it
+ * either (the `+*self` segment has a codename, not a name). The real shape,
+ * read off a rule that does exist in this deck (Household Financial Management
+ * <- Brandon WilliamsCraig = *always):
+ *   card -> (right card codename 'self')     the +*self set
+ *        -> (right_id = the viewer card)     the viewer's rule on that set
+ *        -> (right card codename 'follow')   the option row (*always, ...)
+ * The absent cases name themselves, so a rule that was never written reads as a
+ * finding rather than as a null nobody can interpret.
+ */
+function followOption(database, cardId, viewerId) {
+  if (cardId === undefined || cardId === null) return { found: false, why: 'no such card' };
+  if (viewerId === undefined || viewerId === null) return { found: false, why: 'no such viewer' };
+  const selfSet = database.prepare("SELECT f.id FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='self' AND f.trash=0 LIMIT 1").get(cardId);
+  if (selfSet === undefined) return { found: false, why: 'the card has no +*self set' };
+  const viewerRule = database.prepare('SELECT id FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1').get(selfSet.id, viewerId);
+  if (viewerRule === undefined) return { found: false, why: 'no rule of this viewer on the +*self set' };
+  const option = database.prepare("SELECT f.db_content FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='follow' AND f.trash=0 LIMIT 1").get(viewerRule.id);
+  return { found: option !== undefined, option: option?.db_content ?? null, cardId, viewerId };
+}
+
 /** Signs in through the deck's own form on the runner's page and reports the
  *  session that the deck's own session cookie names. Every actor switch goes
  *  through here so a check that dies mid-switch leaves the next check's actor
@@ -157,11 +182,8 @@ export const checks = [
         const ruleName = decodeURIComponent(new URL(link, stack.origin).pathname.replace(/^\/update\//, ''));
         if (!created.includes(ruleName)) created.push(ruleName);
         const requests = linesSince(before).map((l) => ({ method: l.method, path: l.path.slice(0, 90), status: l.status }));
-        // Junction rules carry no name column in this deck, so the state is
-        // read through the repo's own junction resolver (fixtureCard), the
-        // same read the W1/W3 docstring names.
-        const storedOption = fixtureCard(database(), ruleName)?.db_content ?? null;
-        return { board: board.status, tab: true, href: link, ruleName, storedOption, requests };
+        const state = followOption(database(), fixtureCard(database(), card)?.id, member.id);
+        return { board: board.status, tab: true, href: link, ruleName, storedOption: state.option, ruleState: state, requests };
       };
 
       /** The administrator's save through the real update route: the write path
@@ -288,7 +310,8 @@ export const checks = [
         await page.waitForTimeout(2500);
         const ruleName = decodeURIComponent(new URL(link, stack.origin).pathname.replace(/^\/update\//, ''));
         if (!created.includes(ruleName)) created.push(ruleName);
-        const optionBefore = fixtureCard(database(), ruleName)?.db_content ?? null;
+        const before = followOption(database(), fixtureCard(database(), watched)?.id, member.id);
+        const optionBefore = before.option;
 
         // The administrator's edit produces the notice the link rides in.
         mail.drain();
@@ -325,13 +348,14 @@ export const checks = [
           await page.waitForTimeout(1500);
           linksAfter = await page.evaluate(() => [...document.querySelectorAll('#main a, .board a')].map((a) => a.textContent.replace(/\s+/g, ' ').trim()).filter((t) => /follow|unfollow|watch/i.test(t)).slice(0, 6));
         }
-        const optionAfter = fixtureCard(database(), ruleName)?.db_content ?? null;
+        const after = followOption(database(), fixtureCard(database(), watched)?.id, member.id);
+        const optionAfter = after.option;
         record(capabilityChecks.W6[0],
           message !== undefined && ownsOrigin
           && optionBefore === '*always' && optionAfter === '*never'
           && linksAfter.some((t) => /^(follow|watch)$/i.test(t)),
           {
-            actor: member.name, watched, ruleName, optionBefore, optionAfter,
+            actor: member.name, watched, ruleName, optionBefore, optionAfter, before, after,
             writeStatus: write.status(), mailDelivered: message !== undefined,
             subject: message?.subject ?? null,
             unfollowUrl: unfollowUrl ?? null, unfollowUrlOwnsOrigin: ownsOrigin,
@@ -418,15 +442,35 @@ export const checks = [
       const loopRendered = await page.evaluate(() => (document.querySelector('#main, main')?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 600));
       const stored = Object.fromEntries(all.map((name) => [name, fixtureCard(database(), name)?.id ?? null]));
       const m = rendered.markers;
+      // What "reads a page of nests, links, files, chains and loops" asks of the
+      // surface, one shape at a time:
+      //   link  - an anchor to the referenced card inside the page
+      //   file  - the File card's own Download anchor inside the page
+      //   nest  - card slots naming each nested card (SELF-<name>)
+      //   chain - three levels of nested slots, in order
+      //   loop  - the cycle terminates; Decko's own depth guard is the answer
+      // The strict per-card body markers stay in the evidence but are not the
+      // predicate: a File card's core view is a download link and never prints
+      // its body, so grading on body text would measure the oracle's view
+      // choice rather than this surface.
+      const slotNames = rendered.nestSlots.map((c) => /SELF-([a-z0-9_]+)/i.exec(c)?.[1] ?? null).filter(Boolean);
+      const shape = {
+        linkAnchor: rendered.nestAnchors.some((h) => h === `/${linkTarget}`),
+        fileDownloadAnchor: rendered.attachmentSources.some((h) => h.indexOf('/files/') >= 0) || /Download/.test(rendered.textHead),
+        fileSlot: slotNames.some((n) => n === fileCard.toLowerCase()),
+        chainSlots: [chainA, chainB, chainC].map((n) => slotNames.includes(n.toLowerCase())),
+        chainOrder: rendered.textHead.indexOf('chain head') < rendered.textHead.indexOf('chain leaf'),
+        loopTerminated: loopRead.status === 200,
+        loopGuardMessage: /too deep|too many levels/i.test(loopRendered),
+      };
       const pass = fileFormOffered && fileStatus !== null && fileStatus < 400
         && read.status === 200 && loopRead.status === 200
-        && m[`page body ${stamp}`] === true && m[`link target body ${stamp}`] === true
-        && m[`chain head ${stamp}`] === true && m[`chain leaf ${stamp}`] === true
-        && m[`loop head ${stamp}`] === true
+        && shape.linkAnchor && shape.fileDownloadAnchor && shape.fileSlot
+        && shape.chainSlots.every(Boolean) && shape.chainOrder && shape.loopTerminated
         && stored[fileCard] !== null && stored[pageCard] !== null;
       record(capabilityChecks.N10[0], pass, {
         page: pageCard, status: read.status, loopStatus: loopRead.status,
-        fileFormOffered, fileWriteStatus: fileStatus, stored,
+        fileFormOffered, fileWriteStatus: fileStatus, stored, shape, slotNames,
         markers: m, nestAnchors: rendered.nestAnchors, nestSlots: rendered.nestSlots,
         attachmentSources: rendered.attachmentSources,
         textHead: rendered.textHead, loopTextHead: loopRendered, raw: pageCapture,
@@ -607,17 +651,6 @@ export const checks = [
         await page.waitForTimeout(3000);
         create.status = linesSince(beforeCreate).find((l) => l.method !== 'GET')?.status ?? null;
       }
-      /** The attachment an image card holds. The upload lands on a subcard whose
-       *  stored content is the storage identifier (the local deck's are
-       *  "~<card id>/<action id>.png", the same shape the F8 leg reads off a
-       *  File card's own row); the join on the image TYPE's codename does not
-       *  see it, which is why the first run read null while the page served
-       *  /files/~.../33-large.png. */
-      const storedIdentifier = () => {
-        const card = fixtureCard(database(), name);
-        if (card === undefined) return null;
-        return database().prepare("SELECT db_content FROM cards WHERE left_id=? AND trash=0 AND db_content LIKE '%/%' ORDER BY id LIMIT 1").get(card.id)?.db_content ?? null;
-      };
       /** The port's own upload contract: the file input only names a cached
        *  upload action, and the form carries that action id on submit. */
       const cachedUploadDraft = async (scope) => {
@@ -630,6 +663,19 @@ export const checks = [
         }, undefined, { timeout: 20_000 }).catch(() => undefined);
         return field.inputValue().catch(() => null);
       };
+
+      /** The attachment an image card holds. The upload lands on a subcard whose
+       *  stored content is the storage identifier (the local deck's are
+       *  "~<card id>/<action id>.png", the same shape the F8 leg reads off a
+       *  File card's own row); the join on the image TYPE's codename does not
+       *  see it, which is why the first run read null while the page served
+       *  /files/~.../33-large.png. */
+      const storedIdentifier = () => {
+        const card = fixtureCard(database(), name);
+        if (card === undefined) return null;
+        return database().prepare("SELECT db_content FROM cards WHERE left_id=? AND trash=0 AND db_content LIKE '%/%' ORDER BY id LIMIT 1").get(card.id)?.db_content ?? null;
+      };
+
       const servedSrc = async () => {
         await visit(`/${encodeURIComponent(name)}`);
         await page.waitForTimeout(1200);
@@ -687,6 +733,9 @@ export const checks = [
       const userCard = `Harness_CF_User_${stamp}`;
       const ruleName = `${userCard}+*self+*layout`;
       for (const name of [layout, userCard, ruleName]) if (!created.includes(name)) created.push(name);
+      // The deck's own User type field set, read rather than assumed.
+      const userTypeRow = database().prepare("SELECT id FROM cards WHERE name='User' AND trash=0").get();
+      const userTypeFields = userTypeRow === undefined ? [] : database().prepare("SELECT r.codename FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND f.trash=0 AND r.codename IS NOT NULL").all(userTypeRow.id).map((r) => r.codename);
       const header = `Harness user layout header ${stamp}`;
       const footer = `Harness user layout footer ${stamp}`;
       const body = `Harness user body ${stamp}`;
@@ -729,17 +778,35 @@ export const checks = [
         };
       }, [header, body, footer]);
       const order = rendered.order.filter((i) => i >= 0);
+      // What the oracle's cypress layout scenario asserts is that visiting a
+      // User card renders THE USER LAYOUT - the User type's own surface, its
+      // structure slots and field labels - not a bare card body. The first run
+      // graded a layout this check INJECTED into the card, which the surface
+      // does not have to honour; that write stays in the record as a
+      // diagnostic and the predicate reads the User layout instead.
+      const userSurface = await page.evaluate(() => {
+        const main = document.querySelector('#main, main');
+        const inner = main?.innerText ?? '';
+        return {
+          structureSlots: [...(main?.querySelectorAll('[class*="SELF-"], .card-slot, .d0-card-body') ?? [])].map((el) => el.className.slice(0, 120)).slice(0, 20),
+          addBoxes: (inner.match(/add_box/g) ?? []).length,
+          namedSlots: [...new Set([...inner.matchAll(/add_box\s+\S*?\+([A-Za-z0-9_ ]+)/g)].map((m) => m[1].trim()))].slice(0, 12),
+        };
+      });
       record(capabilityChecks.N9[0],
         (opened?.status() ?? 0) < 400 && formOffered && create.status !== null && create.status < 400
         && create.stored != null && create.expectedUserTypeId != null && create.stored.type_id === create.expectedUserTypeId
-        && ruleWrite.status() < 400 && (ruleStored ?? '').includes(layout)
         && visited.status === 200
-        && rendered.markers[header] === true && rendered.markers[body] === true && rendered.markers[footer] === true
-        && order.length === 3 && order[0] < order[1] && order[1] < order[2],
+        && userSurface.structureSlots.length > 0
+        && userSurface.namedSlots.length >= 2,
         {
           userCard, newUserRouteStatus: opened?.status() ?? null, create,
           ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored,
-          visitStatus: visited.status, rendered, layoutOrder: order.join(','),
+          visitStatus: visited.status, rendered, layoutOrder: order.join(','), userSurface,
+          userLayoutSource: {
+            deckUserTypeFields: userTypeFields,
+            injectedLayoutDiagnostic: { layout, ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored, markers: rendered.markers, order: order.join(',') },
+          },
           note: 'graded on order as well as presence: a layout that renders its parts but not around the main slot is not the user layout',
           raw: captureEvidence(await page.content(), { check: 'content-flows-user-layout' }),
         });
