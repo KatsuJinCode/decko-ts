@@ -540,7 +540,7 @@ async function swallowProbe(open: (path: string) => Promise<{ driver: SQLDatabas
   // INSERT. On Local's single connection a stray read queues, so the
   // observation cannot be made and stays undefined.
   let midTxSeesOnlyCommitted: boolean | undefined;
-  if (driver instanceof BunnyDbDriver) {
+  if (driver instanceof BunnyDbDriver || driver instanceof LibSqlHttpAdapter) {
     const midTx = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM swallow_probe", []);
     midTxSeesOnlyCommitted = Number(midTx.rows[0]?.n ?? 0) === 0;
   }
@@ -575,6 +575,18 @@ describe("a standalone write that lands inside another request's open save trans
     const outcome = await swallowProbe(async (path) => {
       const server = await startMockHranaServer({ path });
       const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+      return { driver, close: async () => void (await server.close()) };
+    });
+    expect(outcome.midTxSeesOnlyCommitted).toBe(true);
+    expect(outcome.bAnswered).toBe(true);
+    expect(outcome.survived).toBe(true);
+    expect(outcome.aRolledBack).toBe(true);
+  }, 240_000);
+
+  it("libSQL over HTTP: B's write queues, then commits — A's rollback cannot undo it, and mid-transaction reads see committed data only", async () => {
+    const outcome = await swallowProbe(async (path) => {
+      const server = await startMockHranaServer({ path });
+      const driver = new LibSqlHttpAdapter({ url: server.url });
       return { driver, close: async () => void (await server.close()) };
     });
     expect(outcome.midTxSeesOnlyCommitted).toBe(true);

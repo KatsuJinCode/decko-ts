@@ -49,6 +49,7 @@
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
 import { retryWhileBusy, TransactionGate } from "../driver.js";
+import { inTransactionStatementScope, runInTransactionStatementScope } from "../transaction-statement-scope.js";
 
 export interface LibSqlHttpOptions {
   /** Base URL of the libSQL server, e.g. "https://db.example.turso.io" or
@@ -138,40 +139,48 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
   }
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
-    return this.gate.run(async () => {
-      // Another connection holding the write lock makes BEGIN IMMEDIATE
-      // fail at once; wait for it, up to the lock timeout.
-      await retryWhileBusy(async () => {
-        const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
-        const opened = await this.pipeline(begin, { url: this.pipelineUrl(this.baseUrl) });
-        if (opened.baton === undefined) {
-          throw new LibSqlHttpError("libsql server returned no baton for an open stream (protocol violation)");
-        }
-        this.stream = { baton: opened.baton, url: opened.url };
+    return this.gate.run(async () =>
+      // Mark work's call tree as transaction work (transaction-statement-scope.ts):
+      // statements issued inside it attribute to this transaction and ride
+      // the stream; statements issued outside any transaction's tree while
+      // this stream is open are routed away from it (send above), so an
+      // unrelated request's statement can no longer join, extend, or be
+      // rolled back with this transaction.
+      runInTransactionStatementScope(async () => {
+        // Another connection holding the write lock makes BEGIN IMMEDIATE
+        // fail at once; wait for it, up to the lock timeout.
+        await retryWhileBusy(async () => {
+          const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+          const opened = await this.pipeline(begin, { url: this.pipelineUrl(this.baseUrl) });
+          if (opened.baton === undefined) {
+            throw new LibSqlHttpError("libsql server returned no baton for an open stream (protocol violation)");
+          }
+          this.stream = { baton: opened.baton, url: opened.url };
+          try {
+            opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+          } catch (error) {
+            // BEGIN failed (the database is busy, for one): close the stream.
+            await this.endStream(undefined).catch(() => undefined);
+            throw error;
+          }
+        });
+        let result: R;
         try {
-          opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+          result = await work();
         } catch (error) {
-          // BEGIN failed (the database is busy, for one): close the stream.
-          await this.endStream(undefined).catch(() => undefined);
+          await this.endStream("ROLLBACK").catch(() => undefined);
           throw error;
         }
-      });
-      let result: R;
-      try {
-        result = await work();
-      } catch (error) {
-        await this.endStream("ROLLBACK").catch(() => undefined);
-        throw error;
-      }
-      try {
-        await this.endStream("COMMIT");
-      } catch (error) {
-        // A failed COMMIT leaves the transaction open on the stream; end it.
-        if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
-        throw error;
-      }
-      return result;
-    });
+        try {
+          await this.endStream("COMMIT");
+        } catch (error) {
+          // A failed COMMIT leaves the transaction open on the stream; end it.
+          if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
+          throw error;
+        }
+        return result;
+      }),
+    );
   }
 
   /** Sends COMMIT or ROLLBACK and closes the stream. The stream is
@@ -192,8 +201,28 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
   }
 
   /** Runs the requests on the open transaction's stream, or, outside a
-   *  transaction, as a stand-alone pipeline closed at the end. */
+   *  transaction, as a stand-alone pipeline closed at the end. A statement
+   *  issued OUTSIDE any transaction's call tree while another request's
+   *  transaction holds this driver object's stream is routed away from that
+   *  stream (see the standalone branch): riding it coupled the statement's
+   *  fate to the transaction — a save's ROLLBACK silently undid an
+   *  unrelated request's already-acknowledged write — and let its reads see
+   *  the transaction's uncommitted rows. */
   private async send(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+    if (this.stream !== undefined && inTransactionStatementScope() === false) {
+      // Standalone relative to the open transaction: a read-shaped request
+      // runs as its own closed pipeline (SQLite WAL — a reader does not wait
+      // for the writer); anything else queues behind the open transaction
+      // through the gate as its own unit, the wait-then-succeed a second
+      // writer gets on every transactional database. Where attribution is
+      // impossible (no AsyncLocalStorage on the runtime), the historical
+      // shared-stream coupling applies, per ../driver.ts. The read test is
+      // deliberately narrow: a statement that does not begin with SELECT is
+      // treated as a write and queued, never guessed into the fast path.
+      const allReads = requests.every((r) => r.type === "close" || /^\s*SELECT\b/i.test(r.stmt.sql));
+      if (allReads) return this.sendNow(requests, true);
+      return this.transaction(() => this.send(requests));
+    }
     if (this.stream === undefined) return this.sendNow(requests);
     // A stream takes one request at a time (each needs the baton the last
     // one returned), so concurrent callers queue.
@@ -207,8 +236,8 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
 
   private streamTail: Promise<void> = Promise.resolve();
 
-  private async sendNow(requests: HranaPipelineRequest[]): Promise<unknown[]> {
-    const stream = this.stream;
+  private async sendNow(requests: HranaPipelineRequest[], forceStandalone = false): Promise<unknown[]> {
+    const stream = forceStandalone ? undefined : this.stream;
     const all: HranaPipelineRequest[] = stream === undefined ? [...requests, { type: "close" }] : requests;
     const response = await this.pipeline(all, stream === undefined ? { url: this.pipelineUrl(this.baseUrl) } : stream);
     if (stream !== undefined) {
