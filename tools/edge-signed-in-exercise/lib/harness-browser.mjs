@@ -130,13 +130,20 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     await context.route((url) => url.origin === origin, (route) => route.continue());
   }
   if (ledgerSink) {
+    // Wall-clock request duration per request object: request.timing() can
+    // answer partial garbage before the profile settles (observed: a ~1.8e12
+    // ms figure), so the start is recorded here and subtracted at finish.
+    const requestStarts = new Map();
+    context.on("request", (request) => {
+      if (new URL(request.url()).origin === origin) requestStarts.set(request, Date.now());
+    });
     context.on("requestfinished", async (request) => {
       try {
         const url = new URL(request.url());
         if (url.origin !== origin) return;
         const response = await request.response();
         if (!response) return;
-        const t = request.timing();
+        const startedAt = requestStarts.get(request);
         // The owned request ledger records what a write answered (bodyHead);
         // the browser-observed stand-in carries the same surface, or checks
         // like sign-in lose their redirect evidence on a host-override run
@@ -151,12 +158,13 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
           method: request.method(),
           path: url.pathname + url.search,
           status: response.status(),
-          ms: Number.isFinite(t?.responseEnd) ? Math.round(t.responseEnd - t.startTime) : null,
+          ms: startedAt !== undefined ? Date.now() - startedAt : null,
           serverTiming: response.headers()["server-timing"] ?? null,
           ...(bodyHead !== undefined ? { bodyHead } : {}),
           channel: "browser-observed",
         });
       } catch { /* a context closing mid-request must not kill the run */ }
+      finally { requestStarts.delete(request); }
     });
   }
   // Requests may reach the local origin, the deck's configured asset host and
