@@ -249,13 +249,14 @@ ${body}`;
     ? followOptionDescription(input.followOption.replace(/^\*/, ""), setLabel)
     : "*followed set of cards*";
 
-  // unfollow_url: update the follower's +*follow card, setting this set's
-  // rule for the follower to *never.
+  // Accepted usability repair: target the existing owned preference directly.
+  // Stock's virtual user+follow dashboard route can require a denied parent
+  // create. Its permission checks stay intact; only the emitted link changes.
   const ruleName = followRuleNameFor(input.followedSetName, input.followerName);
-  const followMark = DeckoName.parse(`${input.followerName}+*follow`).urlKey;
+  const followMark = DeckoName.parse(ruleName).urlKey;
   const unfollowUrl = input.followedSetName === ""
     ? ""
-    : `${input.origin}/update/${followMark}?${cgiEscape(`card[subcards][${ruleName}]`)}=${cgiEscape("*never")}`;
+    : `${input.origin}/update/${followMark}?${cgiEscape("card[content]")}=${cgiEscape("*never")}`;
 
   // These views use the default read permission. Names/URLs and subedits
   // have their own stock permissions; denying this card does not blank them.

@@ -496,6 +496,43 @@ it("follows the stock remote GET link through a real save, requested follow slot
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
+it("mail unfollow edits the recipient's existing preference without granting dashboard or foreign-preference writes", async () => {
+  services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
+  const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
+  const adminCookie = admin.headers.getSetCookie().map(x => x.split(';')[0]).join('; ');
+  const member = await signin("mira.member@example.test", "Fixture member pass 1#");
+  const memberCookie = member.headers.getSetCookie().map(x => x.split(';')[0]).join('; ');
+  const basic = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename='basic' AND trash=0", [])).rows[0];
+  const name = 'Owned Mail Unfollow', ruleName = name + '+*self+Mira Member+*follow';
+  expect((await post('/card/create', { 'card[name]': name, 'card[type_id]': String(basic.id), 'card[content]': 'before' }, adminCookie)).status).toBe(200);
+  const preference = await post('/card/create', { 'card[name]': ruleName, 'card[content]': '*always' }, adminCookie);
+  expect(preference.status).toBe(200);
+  const ruleId = (await preference.json() as { card_id: number }).card_id;
+  const ruleValue = async () => (await driver.query<{ db_content: string }>('SELECT db_content FROM cards WHERE id=?', [ruleId])).rows[0].db_content;
+  outbox.drain();
+  expect((await post('/update/Owned_Mail_Unfollow', { 'card[content]': 'after' }, adminCookie)).status).toBe(200);
+  const notice = outbox.drain().find(message => message.to === 'mira.member@example.test');
+  expect(notice).toBeDefined();
+  const link = [...(notice!.textBody + '\n' + notice!.htmlBody).matchAll(/https?:\/\/[^\s"'<>]+/g)]
+    .map(match => match[0].replaceAll('&amp;', '&')).find(url => url.includes('/update/') && url.includes('never'))!;
+  expect(new URL(link).origin).toBe(base);
+  expect(new URL(link).pathname).toBe('/update/Owned_Mail_Unfollow+*self+Mira_Member+*follow');
+  expect(new URL(link).searchParams.get('card[content]')).toBe('*never');
+  const refusalSnapshot = async () => ({ ...await snapshot(), references: (await driver.query('SELECT * FROM card_references ORDER BY id', [])).rows });
+  const before = await refusalSnapshot();
+  expect((await fetch(link, { redirect: 'manual' })).status).toBe(403);
+  const foreign = new URL(link); foreign.pathname = foreign.pathname.replace('Mira_Member', 'Ada_Admin');
+  expect((await fetch(foreign, { headers: { cookie: memberCookie }, redirect: 'manual' })).status).toBe(403);
+  const legacy = new URL('/update/Mira_Member+*follow', base);
+  legacy.searchParams.set(`card[subcards][${ruleName}]`, '*never');
+  expect((await fetch(legacy, { headers: { cookie: memberCookie }, redirect: 'manual' })).status).toBe(403);
+  expect(await refusalSnapshot()).toEqual(before);
+  const changed = await fetch(link, { headers: { cookie: memberCookie }, redirect: 'manual' });
+  expect(changed.status).toBeLessThan(400);
+  expect(await ruleValue()).toBe('*never');
+  expect(hrana.violations).toEqual([]);
+}, 60_000);
+
 it("completes a real reset email, token GET, account form write and fresh login while rejecting the old password", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   outbox.drain();
