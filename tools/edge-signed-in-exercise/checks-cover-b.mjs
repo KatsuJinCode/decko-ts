@@ -1193,13 +1193,21 @@ export async function runCoverBChecks(ctx) {
     // and 2026-10-17 FAILs printed evidence byte-identical to a PASS and named
     // nothing about which leg broke.
     let back = false;
+    let signInStatus = null, returnNavigation = null;
     const backLegs = { accountNameShown: null, offSigninRoute: null, targetCardRendered: null };
     if (signinLink !== null) {
-      await page.goto(new URL(signinLink, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
-      await page.fill('input[name="card[subcards][+*email][content]"]', admin.email).catch(() => undefined);
-      await page.fill('input[name="card[subcards][+*password][content]"]', admin.password).catch(() => undefined);
-      await page.locator('form[action="/update/*signin"] button[type="submit"]').first().click().catch(() => undefined);
-      await page.waitForTimeout(2500);
+      await page.goto(new URL(signinLink, stack.origin).href, { waitUntil: "load" });
+      await page.fill('input[name="card[subcards][+*email][content]"]', admin.email);
+      await page.fill('input[name="card[subcards][+*password][content]"]', admin.password);
+      const posted = page.waitForResponse(response => new URL(response.url()).origin === stack.origin && new URL(response.url()).pathname === '/update/*signin' && response.request().method() === 'POST', {timeout:30000})
+        .then(response=>({response}),error=>({error:String(error?.message??error)}));
+      const returned = page.waitForURL(url => decodeURIComponent(url.pathname).replace(/\/$/,'') !== '/*signin', {waitUntil:'domcontentloaded',timeout:30000})
+        .then(()=>({url:page.url()}),error=>({error:String(error?.message??error)}));
+      await page.locator('form[action="/update/*signin"] button[type="submit"]').first().click();
+      const observed = await posted;
+      if(observed.response){await observed.response.finished();signInStatus=observed.response.status();}
+      returnNavigation = await returned;
+      await page.locator('body').waitFor({state:'attached',timeout:10000});
       // Ruby's signin redirect: after signing in, the person lands back on the card.
       const landedPath = new URL(page.url()).pathname.replace(/\/$/, "");
       backLegs.accountNameShown = /Harness Admin/.test(await page.evaluate(() => document.body.innerText));
@@ -1208,10 +1216,10 @@ export async function runCoverBChecks(ctx) {
       // card's stored identity instead of rejecting that canonical root URL.
       const targetId = fixtureCard(ctx.database(), target)?.id;
       backLegs.targetCardRendered = targetId !== undefined && await page.locator(`#main[data-card-id="${targetId}"], #main [data-card-id="${targetId}"]`).count() > 0;
-      back = backLegs.accountNameShown && backLegs.offSigninRoute && backLegs.targetCardRendered;
+      back = signInStatus !== null && signInStatus < 400 && !returnNavigation.error && backLegs.accountNameShown && backLegs.offSigninRoute && backLegs.targetCardRendered;
     }
     record("S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card",
-      denied && signinLink !== null && back, { denied, signinLink, landedOn: page.url().replace(stack.origin, ""), target, backLegs });
+      denied && signinLink !== null && back, { denied, signinLink, signInStatus, returnNavigation, landedOn: page.url().replace(stack.origin, ""), target, backLegs });
     await signIn(admin);
   });
 }
