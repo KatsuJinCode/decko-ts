@@ -26,6 +26,7 @@ import { CardCache } from "./cache.js";
 
 /** lib/card/name.rb:16-17 Name.joint; Card::Name.joint delegates to it. */
 const JOINT = DeckoName.JOINT;
+type NameRow = Pick<CardsRow, "name" | "left_id" | "right_id">;
 
 export class DbLexicon {
   private readonly driver: SQLDatabaseDriver;
@@ -139,9 +140,13 @@ export class DbLexicon {
    *  This port returns undefined instead of the empty name; see
    *   ("empty-name fallback"). */
   async name(id: number | undefined): Promise<DeckoName | undefined> {
+    return this.nameFromRows(id);
+  }
+
+  private async nameFromRows(id: number | undefined, rows?: ReadonlyMap<number, NameRow | undefined>): Promise<DeckoName | undefined> {
     if (id === undefined || id === null) return undefined; // lexicon.rb#name guard
-    const lex = await this.idToLex(id);
-    const name = lex === undefined ? undefined : await this.lexToName(lex);
+    const lex = await this.idToLex(id, rows);
+    const name = lex === undefined ? undefined : await this.lexToName(lex, rows);
     if (name === undefined) return undefined;
     // lexToName's non-array branch returns the LEX verbatim, and the write
     // path caches DeckoName objects under ids (lexicon.rb:74-82
@@ -153,6 +158,45 @@ export class DbLexicon {
     const nameStr = typeof name === "string" ? name : name.s;
     this.recordDurableName(id, nameStr);
     return DeckoName.parse(nameStr);
+  }
+
+  /** The same cache-first name reads, acquired in bounded driver batches.
+   * Rows stay local until the original composition asks for them: reverse
+   * cache writes retain serial name() order, including aliases. */
+  async names(ids: readonly number[]): Promise<Map<number, DeckoName | undefined>> {
+    const release=this.cache.temp.hold();
+    try {
+      const rows=new Map<number,NameRow|undefined>(),asked=new Set<number>(),pending=new Set(ids);
+      const sides=(lex:unknown)=>{
+        if(!Array.isArray(lex))return;
+        for(const side of lex){
+          if(side===undefined)break;
+          if(typeof side==='number'&&!asked.has(side))pending.add(side);
+        }
+      };
+      while(pending.size){
+        const wave=[...pending],missing:number[]=[];pending.clear();
+        for(const id of wave){
+          if(asked.has(id))continue;
+          asked.add(id);
+          const held=this.cache.temp.exist(String(id)),lex=this.peekStored(String(id));
+          if(held||lex!==undefined)sides(lex);
+          else missing.push(id);
+        }
+        for(let start=0;start<missing.length;start+=500){
+          const chunk=missing.slice(start,start+500);
+          const results=await this.driver.batch(chunk.map(id=>({sql:"SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",params:[id]})));
+          if(results.length!==chunk.length)throw Error('Lexicon name batch returned incomplete results');
+          results.forEach((result,index)=>{
+            const row=(result.rows as NameRow[])[0];rows.set(chunk[index]!,row);
+            if(row!==undefined)sides(row.name??[row.left_id??undefined,row.right_id??undefined]);
+          });
+        }
+      }
+      const result=new Map<number,DeckoName|undefined>();
+      for(const id of ids)result.set(id,await this.nameFromRows(id,rows));
+      return result;
+    }finally{release()}
   }
 
   /** The sync boundary's read of the durable map (see the field comment).
@@ -391,13 +435,12 @@ export class DbLexicon {
 
   /** lexicon.rb#id_to_lex. NOTE: no trash filter here - the row is read by
    *  id whatever its trash state. */
-  private async idToLex(id: number): Promise<Lex | undefined> {
+  private async idToLex(id: number, rows?: ReadonlyMap<number, NameRow | undefined>): Promise<Lex | undefined> {
     const lex = (await this.cacheFetch(String(id), async () => {
-      const result = await this.driver.query<Pick<CardsRow, "name" | "left_id" | "right_id">>(
+      const row = rows?.has(id) ? rows.get(id) : (await this.driver.query<NameRow>(
         "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
         [id],
-      );
-      const row = result.rows[0];
+      )).rows[0];
       if (row === undefined) return undefined; // `return unless result`
       const resolved: Lex =
         row.name !== null && row.name !== undefined
@@ -438,12 +481,12 @@ export class DbLexicon {
    *  VERBATIM — which can be a DeckoName (the write path caches DeckoName
    *  objects under ids, lexicon.rb:74-82 write_to_temp_cache). Callers
    *  must normalize with the typeof check DbLexicon#name applies. */
-  private async lexToName(lex: Lex): Promise<string | DeckoName | undefined> {
+  private async lexToName(lex: Lex, rows?: ReadonlyMap<number, NameRow | undefined>): Promise<string | DeckoName | undefined> {
     if (!Array.isArray(lex)) return lex;
     const sides: string[] = [];
     for (const sideId of lex) {
       if (sideId === undefined) return undefined;
-      const side = await this.name(sideId);
+      const side = rows===undefined ? await this.name(sideId) : await this.nameFromRows(sideId,rows);
       // Ruby's public Lexicon.name is "" (truthy) for a missing row, so the
       // `or return` guard passes and the empty part joins (lexicon.rb:43-47
       // through lexicon.rb:11-15).

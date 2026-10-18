@@ -3602,15 +3602,11 @@ export class RenderEngine implements RenderEngineLike {
         statement.sql,
         statement.params ?? [],
       );
-      // Anchor names: one lexicon read per distinct anchor id, resolved
-      // here in the async half; the view-time answer is a Map hit.
-      const anchorNames = new Map<number, string | undefined>();
-      for (const row of result.rows) {
-        if (row.anchor_id === null) continue;
-        const anchorId = Number(row.anchor_id);
-        if (anchorNames.has(anchorId)) continue;
-        anchorNames.set(anchorId, (await this.fetcher.lexicon.name(anchorId))?.s);
-      }
+      // Acquire the same distinct anchors together; composition and cache
+      // writes stay in first-anchor order. View-time answers remain Map hits.
+      const anchorIds=[...new Set(result.rows.filter(row=>row.anchor_id!==null).map(row=>Number(row.anchor_id)))];
+      const names=await this.fetcher.lexicon.names(anchorIds);
+      const anchorNames=new Map([...names].map(([id,name])=>[id,name?.s]));
       const hash = new Map<string, RuleCacheEntry>();
       for (const row of result.rows) {
         const anchorId = row.anchor_id === null ? null : Number(row.anchor_id);
