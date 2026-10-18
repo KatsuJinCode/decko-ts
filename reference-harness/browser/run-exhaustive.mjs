@@ -69,6 +69,17 @@
 // actions and almost always lands in the hundreds to over 1,000, vs the 51
 // journeys the paired-battery runner drives.
 //
+// GRADING (adversarial finding F3): an affirmative finding grades ONLY from
+// an exact-control match — an interactive control whose whole visible label
+// is the hint (text hints), or the hint's literal control selector (css and
+// field hints). Every locate records which strategy hit ("exact-control",
+// "text-locate" — a whole-text non-control element, "substring-fallback" —
+// prose containing the hint) and whether it is passCarrying; text/substring
+// hits are witness evidence in the action's sequence and never pass an
+// action. The old ladder graded a substring fallback hit like a found
+// affordance, so a page with zero interactive controls could pass an 'Edit'
+// hint on the strength of its prose.
+//
 // Clean identity (source.commit + source.dirty) is captured at start; the
 // runner refuses to run from a dirty tree, by the same fail-closed rule the
 // journey evidence validator uses. The run's <out>/provenance.json binds
@@ -433,20 +444,53 @@ function affordanceHints(text) {
   return hints;
 }
 
+// The locate ladder's strategies, most to least specific (adversarial
+// finding F3). Only "exact-control" is pass-carrying: it matched an
+// interactive control (a, button, submit/button input, a.btn) whose whole
+// visible label is the hint — the affordance found the way a person uses it.
+// The css and field hint kinds are literal control selectors, so they are
+// exact-control by construction. The two text fallbacks are witness evidence
+// only: "text-locate" matched a NON-control element whose whole text is the
+// hint (a heading, a table cell), and "substring-fallback" matched any
+// element merely CONTAINING the hint (prose). The old ladder returned the
+// substring fallback when no exact control matched and graded its hit like a
+// found affordance — a page with zero interactive controls passed an 'Edit'
+// hint because its prose said "edit". Both tiers stay in the ladder (they
+// still locate, and every locate records which tier hit) but never carry a
+// pass.
+const STRATEGY_EXACT_CONTROL = "exact-control";
+const STRATEGY_TEXT_LOCATE = "text-locate";
+const STRATEGY_SUBSTRING_FALLBACK = "substring-fallback";
+
 async function locateByHint(page, hint) {
   switch (hint.kind) {
     case "text": {
       const v = hint.value;
       const exactRe = new RegExp(`^\\s*${v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i");
-      const exactLoc = page.locator("a, button, input[type=submit], input[type=button], a.btn").filter({ hasText: exactRe, visible: true });
-      if ((await exactLoc.count()) > 0) return exactLoc.first();
-      return page.getByText(v, { exact: false }).first();
+      const exactControlLoc = page.locator("a, button, input[type=submit], input[type=button], a.btn").filter({ hasText: exactRe, visible: true });
+      const wholeTextLoc = page.getByText(v, { exact: true });
+      const substringLoc = page.getByText(v, { exact: false });
+      const tiers = {
+        [STRATEGY_EXACT_CONTROL]: await exactControlLoc.count().catch(() => 0),
+        // Playwright's getByText exact:true is case-sensitive whole-string
+        // (still whitespace-trimmed); as a witness tier that is fine — it is
+        // evidence of a same-text non-control element, never a grade.
+        [STRATEGY_TEXT_LOCATE]: await wholeTextLoc.count().catch(() => 0),
+        [STRATEGY_SUBSTRING_FALLBACK]: await substringLoc.count().catch(() => 0),
+      };
+      const strategy =
+        tiers[STRATEGY_EXACT_CONTROL] > 0 ? STRATEGY_EXACT_CONTROL : tiers[STRATEGY_TEXT_LOCATE] > 0 ? STRATEGY_TEXT_LOCATE : STRATEGY_SUBSTRING_FALLBACK;
+      const locator = strategy === STRATEGY_EXACT_CONTROL ? exactControlLoc.first() : strategy === STRATEGY_TEXT_LOCATE ? wholeTextLoc.first() : substringLoc.first();
+      return { locator, strategy, tiers };
     }
     case "css":
-      return page.locator(hint.value).first();
+      return { locator: page.locator(hint.value).first(), strategy: STRATEGY_EXACT_CONTROL };
     case "field": {
       const safeKey = hint.value.toLowerCase().replace(/\s+/g, "_").replace(/\*/g, "X");
-      return page.locator(`.RIGHT-${safeKey} input.d0-card-content, .RIGHT-${safeKey} textarea.d0-card-content`).first();
+      return {
+        locator: page.locator(`.RIGHT-${safeKey} input.d0-card-content, .RIGHT-${safeKey} textarea.d0-card-content`).first(),
+        strategy: STRATEGY_EXACT_CONTROL,
+      };
     }
     default:
       return null;
@@ -461,14 +505,27 @@ async function runHintLocates(page, hints, sequence) {
   let firstLocated = null;
   for (const hint of hints) {
     try {
-      const loc = await locateByHint(page, hint);
-      if (!loc) {
-        sequence.push({ interaction: "locate", hint, found: false });
+      const hit = await locateByHint(page, hint);
+      if (!hit) {
+        sequence.push({ interaction: "locate", hint, found: false, strategy: null, passCarrying: false });
         continue;
       }
-      const count = await loc.count().catch(() => 0);
-      sequence.push({ interaction: "locate", hint, found: count > 0, count });
-      if (firstLocated == null && count > 0) firstLocated = { loc, hint };
+      const count = await hit.locator.count().catch(() => 0);
+      sequence.push({
+        interaction: "locate",
+        hint,
+        found: count > 0,
+        count,
+        strategy: hit.strategy,
+        // F3: true only for an exact-control hit; text-locate and
+        // substring-fallback hits are witness evidence, never pass-carrying.
+        passCarrying: hit.strategy === STRATEGY_EXACT_CONTROL && count > 0,
+        // Text hints carry every tier's count, so the record shows which
+        // strategies were present on the page even when a deeper tier is the
+        // recorded hit. css/field hints have no ladder (control selectors).
+        ...(hit.tiers ? { tiers: hit.tiers } : {}),
+      });
+      if (firstLocated == null && count > 0) firstLocated = { loc: hit.locator, hint };
     } catch (err) {
       sequence.push({ interaction: "locate", hint, error: String(err?.message ?? err) });
     }
@@ -645,11 +702,6 @@ async function probeAction(page, action, lastStatusRef, actors) {
     });
     sequence.push(...targetProbes);
   } catch (err) {
-    // A target-case driver that threw (e.g. a fixture shape it cannot read,
-    // the ACT-119 db_content throw the grading-integrity review measured on
-    // the Ruby oracle) has NOT witnessed its contract: the throw lands as a
-    // FAILED required leg so the action cannot pass on a generic locate hit
-    // (required-legs gating, F1).
     sequence.push({ interaction: "assert-present", case: "affordance-target probes (driver threw)", required: true, selector: "affordance-target probes", count: 0, error: String(err?.message ?? err) });
   } finally {
     for (const actorContext of createdActorContexts.splice(0)) {
@@ -683,11 +735,19 @@ async function probeAction(page, action, lastStatusRef, actors) {
   snap = await observeAt(page, lastStatusRef.status, "after-probe");
   observations.push(snap);
 
-  // 5. Pass/fail. The action is exercised if at least one of its probes
-  // found an affordance on the page; otherwise it is a page-only witness
+  // 5. Pass/fail. The action is exercised if at least one of its probes found
+  // an affordance on the page; otherwise it is a page-only witness
   // (descriptive cross-cutting contract with no click target).
   const located = sequence.filter((s) => s.interaction === "locate");
-  const anyFound = located.some((l) => l.found);
+  // F3 (adversarial review): an affirmative finding grades ONLY from an
+  // exact-control match. A text-locate or substring-fallback hit is witness
+  // evidence (the page talks about the affordance; it does not carry it) and
+  // never passes an action: with only a witness hit the action's located
+  // attempts still make it "fail", which is the honest grade for an
+  // affordance the page does not offer as a control.
+  const exactFound = located.some((l) => l.found && l.strategy === STRATEGY_EXACT_CONTROL);
+  const witnessFound = located.some((l) => l.found && l.strategy !== STRATEGY_EXACT_CONTROL);
+  const anyFound = located.some((l) => l.found); // legacy rollup: any strategy
   const asserted = sequence.filter((s) => s.interaction === "assert-present");
   const anyAsserted = asserted.some((a) => a.count > 0);
 
@@ -712,9 +772,9 @@ async function probeAction(page, action, lastStatusRef, actors) {
   // no longer carry an action that has a target case. A case that fired but
   // supplied no required leg (its affordance witness read 0 — case 18 with no
   // toggles) likewise fails: its contract is unwitnessed. Actions without a
-  // target case grade exactly as before. A gated write still grades
-  // skipped_write ahead of everything: the write IS those actions' claim, and
-  // the run declines to grade it.
+  // target case grade exactly as before (F3's exact-control rule governs
+  // them). A gated write still grades skipped_write ahead of everything: the
+  // write IS those actions' claim, and the run declines to grade it.
   const requiredLegs = sequence.filter((s) => s.required === true);
   const requiredFailed = requiredLegs.filter((l) => !(l.count > 0));
   const hasTargetCase = sequence.some((s) => !!s.case);
@@ -723,11 +783,11 @@ async function probeAction(page, action, lastStatusRef, actors) {
   if (isOutOfScope(action)) outcome = "out_of_scope";
   else if (writeSkipped) outcome = "skipped_write";
   else if (hasTargetCase) outcome = requiredLegs.length > 0 && requiredFailed.length === 0 ? "pass" : "fail";
-  else if (anyFound || anyAsserted) outcome = "pass";
+  else if (exactFound || anyAsserted) outcome = "pass";
   else if (located.length > 0 || asserted.length > 0) outcome = "fail";
   else outcome = "page-only";
 
-  return { sequence, observations, outcome, anyFound, anyAsserted, located: located.length, asserted: asserted.length, requiredLegs: requiredLegs.length, requiredFailed: requiredFailed.length, hasTargetCase, writeSkipped };
+  return { sequence, observations, outcome, exactFound, witnessFound, anyFound, anyAsserted, located: located.length, asserted: asserted.length, requiredLegs: requiredLegs.length, requiredFailed: requiredFailed.length, hasTargetCase, writeSkipped };
 }
 
 // ============================================================================
@@ -847,6 +907,8 @@ async function run() {
         sequence_count: sequenceCount,
         observation_count: observationsCount,
         anyFound: !!probe.anyFound,
+        exactFound: !!probe.exactFound,
+        witnessFound: !!probe.witnessFound,
         anyAsserted: !!probe.anyAsserted,
         located: probe.located ?? 0,
         asserted: probe.asserted ?? 0,
@@ -859,7 +921,7 @@ async function run() {
       };
       writeFileSync(path.join(actionsDir, `${action.id}.json`), JSON.stringify(record, null, 2));
       perAction.push(record);
-      console.log(`[run-exhaustive] ${action.id} ${action.kind.padEnd(20)} ${probe.outcome.padEnd(11)} interactions=${String(interactions).padStart(4)} hintFound=${probe.located ?? 0}/${(probe.located ?? 0) + 0} action="${String(action.action).slice(0, 70)}"`);
+      console.log(`[run-exhaustive] ${action.id} ${action.kind.padEnd(20)} ${probe.outcome.padEnd(11)} interactions=${String(interactions).padStart(4)} exactFound=${probe.exactFound ? 1 : 0} witnessFound=${probe.witnessFound ? 1 : 0} action="${String(action.action).slice(0, 70)}"`);
       if (failFast && probe.outcome === "error") {
         console.error(`[run-exhaustive] aborting on ${action.id}: probe error`);
         break;
@@ -895,7 +957,7 @@ async function run() {
         skippedWriteActions: totals.per_outcome.skipped_write ?? 0,
       },
       totals,
-      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed })),
+      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, exactFound: r.exactFound, witnessFound: r.witnessFound, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed })),
     };
     writeFileSync(path.join(out, "run-meta.json"), JSON.stringify(runMeta, null, 2));
     writeRunMarkdown(path.join(out, "run.md"), runMeta, engine);

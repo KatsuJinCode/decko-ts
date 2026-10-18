@@ -1,0 +1,618 @@
+{
+  "what": "F3 exact-control re-grade: which of the 11:59Z text-located passes survive the fixed grading rule",
+  "startedAt": "2026-10-18T18:39:17.038Z",
+  "finishedAt": "2026-10-18T18:39:37.160Z",
+  "runnerSource": {
+    "path": "reference-harness/browser/run-exhaustive.mjs",
+    "sha256": "0980e8eec711b6a2477d3d7fcc0db37938af8484731c5d7ae3b7e78cdee1e660"
+  },
+  "engine": {
+    "manifest": "reference-harness\\browser\\engines\\ts.json",
+    "name": "ts",
+    "distSha256": "2a24bb016442cd3ec034c6e2260a96b2e1f274836581838b002336c069a0567a"
+  },
+  "fixtureDir": "reference-harness\\fixtures\\synthetic-v1",
+  "fixtureSha256": "066062bd09c25629d43691461a23bf37580e5cfe63cf68780fc4dfea2384f8aa",
+  "matrixSource": "..\\brandonDojoTech\\docs\\registry\\instrument-coverage-matrix.json",
+  "matrixSha256": "50595523776c245c414dda12ec43a8edc0fd0a80cd1b02a8742a5035a16640ca",
+  "priorRun": {
+    "dir": ".runtime\\exhaustive\\2026-10-18-regrade",
+    "commit": "776349b23e6d19b538960c5425b9f04c2f25e1a1",
+    "distSha256": "ab8f16b4505ed1aad289ab5af9910b89b923b0114689798be618595a9338d3f7",
+    "fixtureSha256": "066062bd09c25629d43691461a23bf37580e5cfe63cf68780fc4dfea2384f8aa",
+    "matrixSha256": "a075b243102cdd9e3419761d47d5c0559e5add414e4d50c1da3d071d920d64c3"
+  },
+  "deltasVsPriorRun": {
+    "engineDistChanged": true,
+    "matrixChanged": true,
+    "note": "the prior run predates the additional-pages loop and per-action session identity; this probe runs the current instrument behaviors"
+  },
+  "discriminationProof": [
+    {
+      "name": "zero-control prose page",
+      "expect": {
+        "strategy": "substring-fallback",
+        "passCarrying": false
+      },
+      "got": {
+        "strategy": "substring-fallback",
+        "passCarrying": false,
+        "tiers": {
+          "exact-control": 0,
+          "text-locate": 0,
+          "substring-fallback": 1
+        }
+      },
+      "ok": true
+    },
+    {
+      "name": "non-control whole-text element",
+      "expect": {
+        "strategy": "text-locate",
+        "passCarrying": false
+      },
+      "got": {
+        "strategy": "text-locate",
+        "passCarrying": false,
+        "tiers": {
+          "exact-control": 0,
+          "text-locate": 1,
+          "substring-fallback": 1
+        }
+      },
+      "ok": true
+    },
+    {
+      "name": "exact control button",
+      "expect": {
+        "strategy": "exact-control",
+        "passCarrying": true
+      },
+      "got": {
+        "strategy": "exact-control",
+        "passCarrying": true,
+        "tiers": {
+          "exact-control": 1,
+          "text-locate": 1,
+          "substring-fallback": 1
+        }
+      },
+      "ok": true
+    }
+  ],
+  "rows": [
+    {
+      "id": "ACT-014",
+      "action": "saving the new date answers a write (Save)",
+      "surface": "3. edit a Date card",
+      "actor": "admin",
+      "pages": [
+        "/Date_1?view=edit"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Save"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "fail",
+      "exactFound": false,
+      "witnessFound": true,
+      "moved": true,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Save"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "substring-fallback",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 0,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-044",
+      "action": "the account card's board has an Account tab",
+      "surface": "7b. further signed-in capabilities (Decko's own browser tests as the checklist)",
+      "actor": "admin",
+      "pages": [
+        "/",
+        "/*signin",
+        "/Home+board"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Account"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "fail",
+      "exactFound": false,
+      "witnessFound": true,
+      "moved": true,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-045",
+      "action": "the Account tab exposes the account's email and password fields",
+      "surface": "7b. further signed-in capabilities (Decko's own browser tests as the checklist)",
+      "actor": "admin",
+      "pages": [
+        "/",
+        "/*signin",
+        "/Home+board"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Account"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "fail",
+      "exactFound": false,
+      "witnessFound": true,
+      "moved": true,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-061",
+      "action": "a member's delete attempt is refused with a clear message, not a form",
+      "surface": "8. ordinary (non-admin) account permissions",
+      "actor": "member",
+      "pages": [
+        "/Date_1?view=edit"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Delete"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "pass",
+      "exactFound": true,
+      "witnessFound": false,
+      "moved": false,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Delete"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 1,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-062",
+      "action": "the card the member tried to delete is still there",
+      "surface": "8. ordinary (non-admin) account permissions",
+      "actor": "member",
+      "pages": [
+        "/Date_1?view=edit"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Delete"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "pass",
+      "exactFound": true,
+      "witnessFound": false,
+      "moved": false,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Delete"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 1,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-077",
+      "action": "E19 the account card's board has an Account tab that exposes email and password",
+      "surface": "cover-b. edit: board name change, account tab, history tab (E17, E19, E21)",
+      "actor": "admin",
+      "pages": [
+        "/",
+        "/Home+name_form",
+        "/Home+board"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Account"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "fail",
+      "exactFound": false,
+      "witnessFound": true,
+      "moved": true,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Account"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "text-locate",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-107",
+      "action": "S2 sign-in refused on a wrong password, with an error shown and no session",
+      "surface": "cover-b. session: sign-in refusals and the signed-out links (S2, S4)",
+      "actor": "(anonymous — cookies cleared)",
+      "pages": [
+        "/*signin"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Sign in"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "pass",
+      "exactFound": true,
+      "witnessFound": false,
+      "moved": false,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Sign in"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 2,
+            "text-locate": 2,
+            "substring-fallback": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-108",
+      "action": "S4 the signed-out sign-in page links to Sign up and to Reset password, and the sign-up link works",
+      "surface": "cover-b. session: sign-in refusals and the signed-out links (S2, S4)",
+      "actor": "(anonymous — cookies cleared)",
+      "pages": [
+        "/*signin"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Sign in"
+        },
+        {
+          "kind": "text",
+          "value": "Reset password"
+        },
+        {
+          "kind": "text",
+          "value": "Sign up"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "pass",
+      "exactFound": true,
+      "witnessFound": false,
+      "moved": false,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Sign in"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 2,
+            "text-locate": 2,
+            "substring-fallback": 3
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Reset password"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 1,
+            "text-locate": 1,
+            "substring-fallback": 1
+          }
+        },
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Sign up"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 1,
+            "text-locate": 1,
+            "substring-fallback": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-122",
+      "action": "row 6: /Type/new refuses the existing name 'Type' with a clear name-conflict (422, not 500)",
+      "surface": "owner audit required checks",
+      "actor": "admin",
+      "pages": [
+        "/"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Type"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "fail",
+      "exactFound": false,
+      "witnessFound": true,
+      "moved": true,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Type"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "substring-fallback",
+          "passCarrying": false,
+          "tiers": {
+            "exact-control": 0,
+            "text-locate": 0,
+            "substring-fallback": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "ACT-162",
+      "action": "S10 a signed-in visit to the sign-in route falls through to a card-creation form",
+      "surface": "sign-in route while signed in",
+      "actor": "admin",
+      "pages": [
+        "/*signin"
+      ],
+      "hints": [
+        {
+          "kind": "text",
+          "value": "Sign in"
+        }
+      ],
+      "prior_outcome": "pass",
+      "prior_anyFound": true,
+      "new_outcome": "pass",
+      "exactFound": true,
+      "witnessFound": false,
+      "moved": false,
+      "located": [
+        {
+          "interaction": "locate",
+          "hint": {
+            "kind": "text",
+            "value": "Sign in"
+          },
+          "found": true,
+          "count": 1,
+          "strategy": "exact-control",
+          "passCarrying": true,
+          "tiers": {
+            "exact-control": 1,
+            "text-locate": 1,
+            "substring-fallback": 2
+          }
+        }
+      ]
+    }
+  ],
+  "failures": 0
+}
