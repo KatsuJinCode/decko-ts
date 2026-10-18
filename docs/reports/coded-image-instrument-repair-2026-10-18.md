@@ -34,8 +34,21 @@ the process repository's private-probes/coded-image-native-r4-2026-10-18T04-17-5
 These diagnostics do not update the frozen 206/223 score. A clean selected
 capture of both corrected first-party checks follows this instrument commit.
 
-The first selected capture passes both replacement/restore checks and cleanup,
-but fails its asset audit on an in-flight draft preview (HTTP404). Numeric draft
-readiness precedes image loading; saving immediately promotes/removes the draft.
-The helper now requires its real preview image to decode before pressing Save.
-The asset audit is unchanged, and the failing capture is retained.
+The first selected capture runs the widget F4 replacement/restore check and
+cleanup successfully, but fails its asset audit on the draft preview (HTTP404).
+It did not run the content-flow entry: --only unmeasured-matrix excludes that
+entry's distinct --only selector. The corrected two-entry selection uses a
+shared selected topic. The helper now requires its real preview image to decode
+before pressing Save. The audit is unchanged, and the failing capture is retained.
+
+Waiting for decode disproves the initial promotion-race hypothesis: the draft
+preview is already404 BEFORE Save. The coded-asset dispatcher in file-routes.ts
+claims every revision while the current card content is coded, then rejects a
+numeric draft as the wrong carrierwave revision. It must claim only the literal
+carrierwave revision, leaving numeric revisions to the existing owned-action,
+recorded-content and read-permission checks. A real-handler control reproduces
+404 versus expected200, and the complete file-route suite passes23/23 after
+that narrow repair. It includes draft GET/HEAD, unchanged current coded content,
+stock SVG access, denied reads, unknown and foreign actions, and a forged
+cross-card identifier. Normal typecheck passes. The next exact bundle/browser
+capture must confirm preview decoding and unchanged asset audit.

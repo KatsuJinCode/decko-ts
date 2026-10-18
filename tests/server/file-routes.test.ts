@@ -819,6 +819,33 @@ describe("stock coded logo and favicon attachments", () => {
     expect(codedSvgFileBytes(":logo/unknown.svg")).toBeUndefined();
   });
 
+  it("serves an owned numeric upload draft while its Image card still has coded content", async () => {
+    const cardId = 70201, actionId = 970201;
+    const codedContent = ':decko_logo/carrierwave.svg';
+    await seedSimpleCard(driver, { id: cardId, name: 'Coded preview fixture', codename: 'decko_logo', typeId: IMAGE_TYPE_ID, dbContent: codedContent });
+    await driver.query(
+      "INSERT INTO card_actions (id, card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, NULL, NULL, 1, 1, 'preview.png')", [actionId, cardId]);
+    await driver.query('INSERT INTO card_changes (card_action_id, field, value) VALUES (?, 2, ?)', [actionId, `~${cardId}/${actionId}.png`]);
+    await store.store({ cardId, actionId, ext: '.png', bytes: PNG_BYTES });
+    const request = new Request(`http://test.test/files/~${cardId}/${actionId}-medium.png`);
+    const response = (await handleAttachmentRoute(request, makeDeps()))!;
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/png');
+    expectBytesEqual(await bodyBytes(response), PNG_BYTES);
+    const head = (await handleAttachmentRoute(new Request(request.url, { method: 'HEAD' }), makeDeps()))!;
+    expect(head.status).toBe(200); expect(head.body).toBeNull();
+    expect((await handleAttachmentRoute(request, makeDeps({ canReadCard: () => false })))!.status).toBe(404);
+    for (const suffix of [`~70102/${actionId}-medium.png`, `~${cardId}/${actionId + 1}-medium.png`]) {
+      expect((await handleAttachmentRoute(new Request('http://test.test/files/' + suffix), makeDeps()))!.status).toBe(404);
+    }
+    const stock = (await handleAttachmentRoute(new Request('http://test.test/files/:decko_logo/carrierwave.svg'), makeDeps()))!;
+    expect(stock.status).toBe(200);
+    expect((await queryAll<{ db_content: string }>(driver, 'SELECT db_content FROM cards WHERE id=?', [cardId]))[0].db_content).toBe(codedContent);
+    // A same-owner action cannot use its recorded content to alias a foreign card.
+    await driver.query('UPDATE card_changes SET value=? WHERE card_action_id=? AND field=2', [`~70102/${actionId}.png`, actionId]);
+    expect((await handleAttachmentRoute(request, makeDeps()))!.status).toBe(404);
+  });
+
   it("serves coded SVG and the actual small favicon with MIME/security headers and HEAD", async () => {
     const logo = (await handleAttachmentRoute(new Request("http://test.test/files/:logo/carrierwave.svg"), makeDeps()))!;
     expect(logo.status).toBe(200);

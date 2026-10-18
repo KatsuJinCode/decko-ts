@@ -268,11 +268,15 @@ function fileResponse(request: Request, parsed: ParsedFileRequest, card: Resolve
 }
 
 async function codedFileResponse(request: Request, parsed: ParsedFileRequest, card: ResolvedMark, deps: Pick<FileRouteDeps, "driver">): Promise<Response | undefined> {
+  // A coded card may also own a numeric cached-upload or historical revision.
+  // Only the carrierwave revision belongs to the shipped-asset dispatcher;
+  // numeric requests must retain the ordinary action ownership/read checks.
+  if (parsed.revId !== "carrierwave") return undefined;
   const coded = stockCodedFile(card.dbContent, parsed.size);
   if (!coded) return undefined;
   // The requested card must own this current coded identifier.
   const owner = await deps.driver.query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [coded.codename]);
-  if (owner.rows[0]?.id !== card.id || parsed.revId !== "carrierwave" || parsed.format !== coded.extension) return fileNotFound();
+  if (owner.rows[0]?.id !== card.id || parsed.format !== coded.extension) return fileNotFound();
   return fileResponse(request, parsed, card, coded.extension, coded.bytes, coded.extension === "svg" ? "image/svg+xml" : "image/png");
 }
 
