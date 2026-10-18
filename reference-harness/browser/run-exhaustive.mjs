@@ -153,11 +153,13 @@ console.log(`[run-exhaustive] source=${sourceCommit.slice(0, 10)} ${sourceDirty 
 const SURFACES = {
   "1. sign in, and stay signed in": { signin: "form", card: "/*signin", actor: signinActor },
   "2. styling and console on signed-in pages": { signin: "form", card: "/", actor: signinActor },
-  // /Date_1 (fixture cards Date 1/2/3, type Date): the earlier /2011_12_14
-  // names no card in the fixture, so the surface could only ever serve a
-  // not_found page (ACT-012's red ran against that 404, never against a
-  // Date card).
-  "3. edit a Date card": { signin: "form", card: "/Date_1", actor: signinActor },
+  // /Date_1's EDIT view (fixture cards Date 1/2/3, type Date): the earlier
+  // /2011_12_14 names no card in the fixture, so the surface could only ever
+  // serve a not_found page (ACT-012's red ran against that 404, never against
+  // a Date card). The card's content view carries no date input — the picker
+  // the surface's actions describe renders only on the edit view
+  // (ACT-013's input[type=date], verified rendered at /Date_1?view=edit).
+  "3. edit a Date card": { signin: "form", card: "/Date_1?view=edit", actor: signinActor },
   "4. edit a RichText card (TinyMCE, nest dialog, link button)": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/new?card[type]=RichText"] },
   "5. create a card every way the site offers": { signin: "form", card: "/", actor: signinActor, additionalPages: ["/new/Basic", "/new/RichText", "/new/Date", "/Some_New_Name", "/new", "/card/new", "/*search?query[keyword]=zz_no_such_card_harness"] },
   "6. delete a card": { signin: "form", card: "/", actor: signinActor },
@@ -365,7 +367,12 @@ async function probeAction(page, action, lastStatusRef) {
   observations.push(snap);
 
   // 2. Locate every affordance hint; presence/absence is the per-action evidence.
-  const hints = affordanceHints(text);
+  // The cleanup surface's action ("every card the run created is removed from
+  // the local copy", ACT-066) verifies ABSENCE — it has no positive
+  // affordance to locate, and the verb extractor was minting a text hint
+  // "Copy" from the phrase "the local copy", guaranteeing a permanent
+  // affordance-not-found red regardless of engine state.
+  const hints = surface === "cleanup" ? [] : affordanceHints(text);
   let firstLocated = null;
   for (const hint of hints) {
     try {
