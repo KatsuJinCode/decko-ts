@@ -1,0 +1,4104 @@
+{
+  "capture": {
+    "file": "C:\\localProjects\\decko-ts-release-lead\\tmp\\save-ladder-value-flow-20261018.json",
+    "sha256": "71d5bc478c1473ab6d3efa54901f46783ff169352337c8221ee443df8f6305cd",
+    "source_commit": "108783f843c1cf7a30fe837398d0f25773f40fc0",
+    "bundle_sha256": "1387e384f4ebb0f63ee1d063a37590ba0f22f3c959ee636d7524f1ef9cd13f9e",
+    "capture_results": true,
+    "segment": "POST /update/Brandon_WilliamsCraig (the graded save)",
+    "posts_measured": 526,
+    "statements": 593,
+    "stmt_exec_wall_ms": 603,
+    "db_wall_ms": 1070
+  },
+  "model": {
+    "hop_ms": [
+      0.4,
+      5,
+      13,
+      20
+    ],
+    "byte_cap": 524288,
+    "caps": [
+      8,
+      16,
+      32,
+      64,
+      100,
+      128,
+      256,
+      100000
+    ],
+    "note": "round_trips counts batches; projected_wall_ms = round_trips x hop_ms + measured statement exec wall"
+  },
+  "baseline": {
+    "posts": 526,
+    "statements": 593
+  },
+  "wire_barriers": {
+    "total": 522,
+    "from_write": 26,
+    "from_read": 496,
+    "from_self_observing_sql": 17,
+    "bound_values_top": [
+      {
+        "value": "4",
+        "count": 33
+      },
+      {
+        "value": "393",
+        "count": 30
+      },
+      {
+        "value": "439",
+        "count": 18
+      },
+      {
+        "value": "26026",
+        "count": 16
+      },
+      {
+        "value": "2259",
+        "count": 16
+      },
+      {
+        "value": "3",
+        "count": 14
+      },
+      {
+        "value": "274",
+        "count": 13
+      },
+      {
+        "value": "53055",
+        "count": 9
+      },
+      {
+        "value": "8466",
+        "count": 9
+      },
+      {
+        "value": "294",
+        "count": 9
+      },
+      {
+        "value": "259",
+        "count": 8
+      },
+      {
+        "value": "53041",
+        "count": 7
+      },
+      {
+        "value": "\"brandon_william_craig\"",
+        "count": 7
+      },
+      {
+        "value": "419",
+        "count": 7
+      },
+      {
+        "value": "47",
+        "count": 6
+      }
+    ],
+    "distinct_pairs_floor": 348,
+    "detail": [
+      {
+        "at": 1,
+        "kind": "read-result",
+        "sql": "SELECT c.updated_at FROM cards a JOIN cards c ON c.left_id = a.id AND c.trash = 0 JOIN cards f ON f.id = c.rig",
+        "args": "[53041]",
+        "bound": 53041
+      },
+      {
+        "at": 5,
+        "kind": "read-result",
+        "sql": "SELECT f.codename AS field, c.db_content, c.updated_at FROM cards a JOIN cards c ON c.left_id = a.id AND c.tra",
+        "args": "[53041]",
+        "bound": 53041
+      },
+      {
+        "at": 9,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 13,
+        "kind": "read-result",
+        "sql": "SELECT lists.left_id AS roleId FROM card_references refs JOIN cards lists ON lists.id = refs.referer_id JOIN c",
+        "args": "[53041]",
+        "bound": 53041
+      },
+      {
+        "at": 15,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,19]",
+        "bound": 393
+      },
+      {
+        "at": 16,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[431]",
+        "bound": 431
+      },
+      {
+        "at": 17,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[431]",
+        "bound": 431
+      },
+      {
+        "at": 18,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[19]",
+        "bound": 19
+      },
+      {
+        "at": 20,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,13229]",
+        "bound": 13229
+      },
+      {
+        "at": 21,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 22,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[13229]",
+        "bound": 13229
+      },
+      {
+        "at": 23,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 24,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 26,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,437]",
+        "bound": 437
+      },
+      {
+        "at": 27,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 28,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[437]",
+        "bound": 437
+      },
+      {
+        "at": 29,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 30,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,146]",
+        "bound": 393
+      },
+      {
+        "at": 31,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 32,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 34,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,23613]",
+        "bound": 23613
+      },
+      {
+        "at": 35,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 36,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 38,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,23002]",
+        "bound": 23002
+      },
+      {
+        "at": 40,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,2975]",
+        "bound": 2975
+      },
+      {
+        "at": 41,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[3057]",
+        "bound": 3057
+      },
+      {
+        "at": 42,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2975]",
+        "bound": 2975
+      },
+      {
+        "at": 43,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3057]",
+        "bound": 3057
+      },
+      {
+        "at": 44,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 46,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,668]",
+        "bound": 668
+      },
+      {
+        "at": 47,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[792]",
+        "bound": 792
+      },
+      {
+        "at": 48,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[668]",
+        "bound": 668
+      },
+      {
+        "at": 49,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[792]",
+        "bound": 792
+      },
+      {
+        "at": 51,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,675]",
+        "bound": 675
+      },
+      {
+        "at": 52,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 54,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,1638]",
+        "bound": 1638
+      },
+      {
+        "at": 55,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[1743]",
+        "bound": 1743
+      },
+      {
+        "at": 56,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1638]",
+        "bound": 1638
+      },
+      {
+        "at": 57,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1743]",
+        "bound": 1743
+      },
+      {
+        "at": 59,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,418]",
+        "bound": 418
+      },
+      {
+        "at": 60,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[30]",
+        "bound": 30
+      },
+      {
+        "at": 61,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[30]",
+        "bound": 30
+      },
+      {
+        "at": 63,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,586]",
+        "bound": 586
+      },
+      {
+        "at": 64,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[791]",
+        "bound": 791
+      },
+      {
+        "at": 65,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[586]",
+        "bound": 586
+      },
+      {
+        "at": 66,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[791]",
+        "bound": 791
+      },
+      {
+        "at": 68,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,491]",
+        "bound": 491
+      },
+      {
+        "at": 70,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,512]",
+        "bound": 512
+      },
+      {
+        "at": 73,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,544]",
+        "bound": 544
+      },
+      {
+        "at": 75,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,548]",
+        "bound": 548
+      },
+      {
+        "at": 77,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,552]",
+        "bound": 552
+      },
+      {
+        "at": 79,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,556]",
+        "bound": 556
+      },
+      {
+        "at": 81,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,560]",
+        "bound": 560
+      },
+      {
+        "at": 83,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,564]",
+        "bound": 564
+      },
+      {
+        "at": 84,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 85,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 86,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
+        "args": "[393,53041,\"2026-10-18 20:10:20.600000\",\"127.0.0.1\"]",
+        "bound": 393
+      },
+      {
+        "at": 88,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:20.602000\",53041,393]",
+        "bound": 393
+      },
+      {
+        "at": 89,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[431]",
+        "bound": 431
+      },
+      {
+        "at": 90,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 91,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[19]",
+        "bound": 19
+      },
+      {
+        "at": 92,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"image\"]",
+        "bound": "image"
+      },
+      {
+        "at": 93,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[431]",
+        "bound": 431
+      },
+      {
+        "at": 94,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"image\"]",
+        "bound": "image"
+      },
+      {
+        "at": 95,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:20.614000\",53041,431]",
+        "bound": 431
+      },
+      {
+        "at": 96,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 97,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 98,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 99,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"bio\"]",
+        "bound": "bio"
+      },
+      {
+        "at": 100,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 101,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"bio\"]",
+        "bound": "bio"
+      },
+      {
+        "at": 102,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 103,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_acti",
+        "args": "[26026,53041]",
+        "bound": 26026
+      },
+      {
+        "at": 104,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[26026,53041]",
+        "bound": 26026
+      },
+      {
+        "at": 106,
+        "kind": "write-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[26026,1,1,0]",
+        "bound": 1
+      },
+      {
+        "at": 109,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 110,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 111,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 112,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 113,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 114,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[26026,264]",
+        "bound": 26026
+      },
+      {
+        "at": 115,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[259]",
+        "bound": 259
+      },
+      {
+        "at": 116,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,13229]",
+        "bound": 13229
+      },
+      {
+        "at": 117,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[5]",
+        "bound": 5
+      },
+      {
+        "at": 118,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[13229,260]",
+        "bound": 13229
+      },
+      {
+        "at": 119,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[22281]",
+        "bound": 22281
+      },
+      {
+        "at": 120,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[22281]",
+        "bound": 22281
+      },
+      {
+        "at": 121,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[3,266]",
+        "bound": 3
+      },
+      {
+        "at": 122,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[273,317]",
+        "bound": 273
+      },
+      {
+        "at": 123,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[273]",
+        "bound": 273
+      },
+      {
+        "at": 124,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[6543,317]",
+        "bound": 6543
+      },
+      {
+        "at": 126,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[274,317]",
+        "bound": 274
+      },
+      {
+        "at": 127,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"*all\"]",
+        "bound": "*all"
+      },
+      {
+        "at": 128,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_references WHERE referer_id = ?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 129,
+        "kind": "read-result",
+        "sql": "DELETE FROM decko_nest_edges WHERE referer_id=?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 130,
+        "kind": "read-result",
+        "sql": "SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_cod",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 131,
+        "kind": "read-result",
+        "sql": "SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 141,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE key COLLATE NOCASE = ? AND trash = 0 LIMIT 1",
+        "args": "[\"home\"]",
+        "bound": "home"
+      },
+      {
+        "at": 144,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 146,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 147,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"how_to_contact_me\"]",
+        "bound": "how_to_contact_me"
+      },
+      {
+        "at": 148,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 149,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_acti",
+        "args": "[439,53041]",
+        "bound": 439
+      },
+      {
+        "at": 150,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[439,53041]",
+        "bound": 439
+      },
+      {
+        "at": 151,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"\\n<p>brandon at culturesmith dot com</p>\\r\\n<p>https://www.linkedin.com/in/bdw",
+        "bound": 439
+      },
+      {
+        "at": 152,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[439,1,1,0]",
+        "bound": 0
+      },
+      {
+        "at": 154,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[439,2,\"\\n<p>brandon at culturesmith dot com</p>\\r\\n<p>https://www.linkedin.com/",
+        "bound": 2
+      },
+      {
+        "at": 155,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 156,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 157,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 158,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 159,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 160,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[439,264]",
+        "bound": 439
+      },
+      {
+        "at": 161,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,437]",
+        "bound": 437
+      },
+      {
+        "at": 162,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[437,260]",
+        "bound": 437
+      },
+      {
+        "at": 163,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_references WHERE referer_id = ?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 164,
+        "kind": "read-result",
+        "sql": "DELETE FROM decko_nest_edges WHERE referer_id=?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 165,
+        "kind": "read-result",
+        "sql": "SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_cod",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 166,
+        "kind": "read-result",
+        "sql": "SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 167,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 168,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"description\"]",
+        "bound": "description"
+      },
+      {
+        "at": 169,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 170,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"description\"]",
+        "bound": "description"
+      },
+      {
+        "at": 171,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 172,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_acti",
+        "args": "[2259,53041]",
+        "bound": 2259
+      },
+      {
+        "at": 173,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[2259,53041]",
+        "bound": 2259
+      },
+      {
+        "at": 175,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[2259,1,1,0]",
+        "bound": 0
+      },
+      {
+        "at": 178,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 179,
+        "kind": "write-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 180,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 181,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 182,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 183,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[2259,264]",
+        "bound": 2259
+      },
+      {
+        "at": 184,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,146]",
+        "bound": 146
+      },
+      {
+        "at": 185,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[181,262]",
+        "bound": 181
+      },
+      {
+        "at": 186,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[181]",
+        "bound": 181
+      },
+      {
+        "at": 187,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[146,260]",
+        "bound": 146
+      },
+      {
+        "at": 188,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_references WHERE referer_id = ?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 189,
+        "kind": "read-result",
+        "sql": "DELETE FROM decko_nest_edges WHERE referer_id=?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 190,
+        "kind": "read-result",
+        "sql": "SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_cod",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 191,
+        "kind": "read-result",
+        "sql": "SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 194,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[2259,634]",
+        "bound": 634
+      },
+      {
+        "at": 198,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[23615,2002]",
+        "bound": 2002
+      },
+      {
+        "at": 199,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type) VALUES (?, ?, ?, ?), (?, ?, ?, ?),",
+        "args": "[2259,\"b_whtml_header\",2663,\"I\"]",
+        "bound": 28236
+      },
+      {
+        "at": 201,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 202,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"company\"]",
+        "bound": "company"
+      },
+      {
+        "at": 203,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[1,0,0]",
+        "bound": 1
+      },
+      {
+        "at": 205,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 206,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[23613]",
+        "bound": 23613
+      },
+      {
+        "at": 207,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1",
+        "args": "[393,23613]",
+        "bound": 23613
+      },
+      {
+        "at": 208,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"set\"]",
+        "bound": "set"
+      },
+      {
+        "at": 209,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"setting\"]",
+        "bound": "setting"
+      },
+      {
+        "at": 211,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6569]",
+        "bound": 6569
+      },
+      {
+        "at": 212,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6568]",
+        "bound": 6568
+      },
+      {
+        "at": 213,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[274]",
+        "bound": 274
+      },
+      {
+        "at": 214,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6547]",
+        "bound": 6547
+      },
+      {
+        "at": 215,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6543]",
+        "bound": 6543
+      },
+      {
+        "at": 216,
+        "kind": "read-result",
+        "sql": "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, cr",
+        "args": "[393,23613,\"2026-10-18 20:10:20.931000\",\"2026-10-18 20:10:20.931000\"]",
+        "bound": "*all plus"
+      },
+      {
+        "at": 217,
+        "kind": "write-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[53053,53041]",
+        "bound": 53053
+      },
+      {
+        "at": 218,
+        "kind": "write-result",
+        "sql": "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+        "args": "[53053,0,4]",
+        "bound": 53053
+      },
+      {
+        "at": 219,
+        "kind": "write-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[53053]",
+        "bound": 53053
+      },
+      {
+        "at": 220,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53053]",
+        "bound": 53053
+      },
+      {
+        "at": 221,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"read\"]",
+        "bound": "read"
+      },
+      {
+        "at": 222,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 223,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[53053]",
+        "bound": 53053
+      },
+      {
+        "at": 224,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[53053,264]",
+        "bound": 53053
+      },
+      {
+        "at": 225,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,23613]",
+        "bound": 23613
+      },
+      {
+        "at": 226,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[23613,260]",
+        "bound": 23613
+      },
+      {
+        "at": 227,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 228,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"skill\"]",
+        "bound": "skill"
+      },
+      {
+        "at": 229,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 230,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 231,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"skill\"]",
+        "bound": "skill"
+      },
+      {
+        "at": 232,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[1,0,0]",
+        "bound": 1
+      },
+      {
+        "at": 234,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 235,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[23002]",
+        "bound": 23002
+      },
+      {
+        "at": 236,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1",
+        "args": "[393,23002]",
+        "bound": 393
+      },
+      {
+        "at": 237,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"set\"]",
+        "bound": "set"
+      },
+      {
+        "at": 238,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"setting\"]",
+        "bound": "setting"
+      },
+      {
+        "at": 240,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6569]",
+        "bound": 6569
+      },
+      {
+        "at": 241,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6568]",
+        "bound": 6568
+      },
+      {
+        "at": 242,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[274]",
+        "bound": 274
+      },
+      {
+        "at": 243,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6547]",
+        "bound": 6547
+      },
+      {
+        "at": 244,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6543]",
+        "bound": 6543
+      },
+      {
+        "at": 245,
+        "kind": "read-result",
+        "sql": "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, cr",
+        "args": "[393,23002,\"2026-10-18 20:10:21.141000\",\"2026-10-18 20:10:21.141000\"]",
+        "bound": "*all plus"
+      },
+      {
+        "at": 246,
+        "kind": "write-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[53054,53041]",
+        "bound": 53054
+      },
+      {
+        "at": 247,
+        "kind": "write-result",
+        "sql": "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+        "args": "[53054,0,5]",
+        "bound": 53054
+      },
+      {
+        "at": 248,
+        "kind": "write-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[53054]",
+        "bound": 53054
+      },
+      {
+        "at": 249,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53054]",
+        "bound": 53054
+      },
+      {
+        "at": 250,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"read\"]",
+        "bound": "read"
+      },
+      {
+        "at": 251,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 252,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[53054]",
+        "bound": 53054
+      },
+      {
+        "at": 253,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[53054,264]",
+        "bound": 53054
+      },
+      {
+        "at": 254,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,23002]",
+        "bound": 23002
+      },
+      {
+        "at": 255,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[23002,260]",
+        "bound": 23002
+      },
+      {
+        "at": 256,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3057]",
+        "bound": 3057
+      },
+      {
+        "at": 257,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 258,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 259,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"musing\"]",
+        "bound": "musing"
+      },
+      {
+        "at": 260,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3057]",
+        "bound": 3057
+      },
+      {
+        "at": 261,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"musing\"]",
+        "bound": "musing"
+      },
+      {
+        "at": 262,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:21.158000\",53041,3057]",
+        "bound": 3057
+      },
+      {
+        "at": 263,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[792]",
+        "bound": 792
+      },
+      {
+        "at": 264,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 265,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 266,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"page\"]",
+        "bound": "page"
+      },
+      {
+        "at": 267,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[792]",
+        "bound": 792
+      },
+      {
+        "at": 268,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"page\"]",
+        "bound": "page"
+      },
+      {
+        "at": 269,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:21.165000\",53041,792]",
+        "bound": 792
+      },
+      {
+        "at": 270,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1743]",
+        "bound": 1743
+      },
+      {
+        "at": 271,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 272,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 273,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"project_s_organizing\"]",
+        "bound": "project_s_organizing"
+      },
+      {
+        "at": 274,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[1743]",
+        "bound": 1743
+      },
+      {
+        "at": 275,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"project_s_organizing\"]",
+        "bound": "project_s_organizing"
+      },
+      {
+        "at": 276,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:21.173000\",53041,1743]",
+        "bound": 1743
+      },
+      {
+        "at": 277,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 278,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"project_s_participating\"]",
+        "bound": "project_s_participating"
+      },
+      {
+        "at": 279,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[30]",
+        "bound": 30
+      },
+      {
+        "at": 280,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[30]",
+        "bound": 30
+      },
+      {
+        "at": 281,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"project_s_participating\"]",
+        "bound": "project_s_participating"
+      },
+      {
+        "at": 282,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[1,0,0]",
+        "bound": 1
+      },
+      {
+        "at": 284,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 285,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[418]",
+        "bound": 418
+      },
+      {
+        "at": 286,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1",
+        "args": "[393,418]",
+        "bound": 393
+      },
+      {
+        "at": 287,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 288,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"set\"]",
+        "bound": "set"
+      },
+      {
+        "at": 289,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"setting\"]",
+        "bound": "setting"
+      },
+      {
+        "at": 291,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6569]",
+        "bound": 6569
+      },
+      {
+        "at": 292,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6568]",
+        "bound": 6568
+      },
+      {
+        "at": 293,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[274]",
+        "bound": 274
+      },
+      {
+        "at": 294,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6547]",
+        "bound": 6547
+      },
+      {
+        "at": 295,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6543]",
+        "bound": 6543
+      },
+      {
+        "at": 296,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 297,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_acti",
+        "args": "[419,53041]",
+        "bound": 53041
+      },
+      {
+        "at": 298,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[419,53041]",
+        "bound": 53041
+      },
+      {
+        "at": 299,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET type_id = ?, db_content = ?, trash = ?, left_id = ?, right_id = ?, read_rule_class = ?, read_",
+        "args": "[30,\"\\n{\\\"type\\\":\\\"project\\\",\\n\\\"plus\\\":[\\\"Participant(s)\\\", {\\\"refer_to\\\":\\\"_le",
+        "bound": 0
+      },
+      {
+        "at": 300,
+        "kind": "write-result",
+        "sql": "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+        "args": "[419,1,6]",
+        "bound": 6
+      },
+      {
+        "at": 301,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[419,1,\"30\"]",
+        "bound": 1
+      },
+      {
+        "at": 302,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[419,2,\"\\n{\\\"type\\\":\\\"project\\\",\\n\\\"plus\\\":[\\\"Participant(s)\\\", {\\\"refer_to\\\":\\\"",
+        "bound": 419
+      },
+      {
+        "at": 303,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[419,3,\"f\"]",
+        "bound": 3
+      },
+      {
+        "at": 304,
+        "kind": "write-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[419,4,\"393\"]",
+        "bound": 4
+      },
+      {
+        "at": 305,
+        "kind": "write-result",
+        "sql": "INSERT INTO card_changes (card_action_id, field, value) VALUES ((SELECT MAX(id) FROM card_actions WHERE card_i",
+        "args": "[419,5,\"418\"]",
+        "bound": 5
+      },
+      {
+        "at": 306,
+        "kind": "write-result",
+        "sql": "UPDATE card_actions SET action_type = ? WHERE id = ?",
+        "args": "[0,6]",
+        "bound": 6
+      },
+      {
+        "at": 307,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 308,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"read\"]",
+        "bound": "read"
+      },
+      {
+        "at": 309,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[791]",
+        "bound": 791
+      },
+      {
+        "at": 310,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 311,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[47]",
+        "bound": 47
+      },
+      {
+        "at": 312,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"core_project\"]",
+        "bound": "core_project"
+      },
+      {
+        "at": 313,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[791]",
+        "bound": 791
+      },
+      {
+        "at": 314,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 315,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        "args": "[\"core_project\"]",
+        "bound": "core_project"
+      },
+      {
+        "at": 316,
+        "kind": "read-result",
+        "sql": "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        "args": "[\"2026-10-18 20:10:21.345000\",53041,791]",
+        "bound": 53041
+      },
+      {
+        "at": 317,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 318,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 319,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 321,
+        "kind": "read-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[1,0,0]",
+        "bound": 1
+      },
+      {
+        "at": 323,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 324,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[318]",
+        "bound": 318
+      },
+      {
+        "at": 325,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"*structure\"]",
+        "bound": "*structure"
+      },
+      {
+        "at": 326,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[274,318]",
+        "bound": 318
+      },
+      {
+        "at": 327,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[28]",
+        "bound": 28
+      },
+      {
+        "at": 328,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[22281,266]",
+        "bound": 22281
+      },
+      {
+        "at": 329,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[22282]",
+        "bound": 22282
+      },
+      {
+        "at": 330,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[22282,317]",
+        "bound": 22282
+      },
+      {
+        "at": 331,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[22282,318]",
+        "bound": 22282
+      },
+      {
+        "at": 332,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[22281]",
+        "bound": 22281
+      },
+      {
+        "at": 333,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[22281]",
+        "bound": 22281
+      },
+      {
+        "at": 336,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[22283]",
+        "bound": 22283
+      },
+      {
+        "at": 337,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[22282]",
+        "bound": 22282
+      },
+      {
+        "at": 338,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"set\"]",
+        "bound": "set"
+      },
+      {
+        "at": 339,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6547]",
+        "bound": 6547
+      },
+      {
+        "at": 340,
+        "kind": "read-result",
+        "sql": "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, cr",
+        "args": "[\"Related People\",\"related_person\",\"2026-10-18 20:10:21.540000\",\"2026-10-18 20:1",
+        "bound": 0
+      },
+      {
+        "at": 341,
+        "kind": "write-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[53055,53041]",
+        "bound": 53055
+      },
+      {
+        "at": 342,
+        "kind": "write-result",
+        "sql": "INSERT INTO card_actions (card_id, card_act_id, super_action_id, action_type, draft, comment) VALUES (?, ?, ?,",
+        "args": "[53055,1,0,0]",
+        "bound": 53055
+      },
+      {
+        "at": 344,
+        "kind": "write-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 345,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 346,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"read\"]",
+        "bound": "read"
+      },
+      {
+        "at": 347,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 348,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[22281]",
+        "bound": 22281
+      },
+      {
+        "at": 349,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 350,
+        "kind": "read-result",
+        "sql": "DELETE FROM card_references WHERE referer_id = ?",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 351,
+        "kind": "read-result",
+        "sql": "DELETE FROM decko_nest_edges WHERE referer_id=?",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 352,
+        "kind": "read-result",
+        "sql": "SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_cod",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 353,
+        "kind": "read-result",
+        "sql": "SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?",
+        "args": "[53055]",
+        "bound": 53055
+      },
+      {
+        "at": 354,
+        "kind": "read-result",
+        "sql": "UPDATE card_references SET referee_id = ? WHERE referee_key = ?",
+        "args": "[53055,\"related_person\"]",
+        "bound": 53055
+      },
+      {
+        "at": 355,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1",
+        "args": "[393,53055]",
+        "bound": 53055
+      },
+      {
+        "at": 356,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 357,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"related_person\"]",
+        "bound": "related_person"
+      },
+      {
+        "at": 358,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 359,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3]",
+        "bound": 3
+      },
+      {
+        "at": 360,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"set\"]",
+        "bound": "set"
+      },
+      {
+        "at": 361,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"setting\"]",
+        "bound": "setting"
+      },
+      {
+        "at": 363,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6569]",
+        "bound": 6569
+      },
+      {
+        "at": 364,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6568]",
+        "bound": 6568
+      },
+      {
+        "at": 365,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[274]",
+        "bound": 274
+      },
+      {
+        "at": 366,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6547]",
+        "bound": 6547
+      },
+      {
+        "at": 367,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[6543]",
+        "bound": 6543
+      },
+      {
+        "at": 368,
+        "kind": "read-result",
+        "sql": "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, cr",
+        "args": "[393,53055,\"2026-10-18 20:10:21.765000\",\"2026-10-18 20:10:21.765000\"]",
+        "bound": "*all plus"
+      },
+      {
+        "at": 369,
+        "kind": "write-result",
+        "sql": "DELETE FROM card_actions WHERE card_actions.card_id = ? AND card_actions.draft = 1 AND card_actions.card_act_i",
+        "args": "[53056,53041]",
+        "bound": 53056
+      },
+      {
+        "at": 370,
+        "kind": "write-result",
+        "sql": "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+        "args": "[53056,0,7]",
+        "bound": 53056
+      },
+      {
+        "at": 371,
+        "kind": "write-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+        "args": "[53056]",
+        "bound": 53056
+      },
+      {
+        "at": 372,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53056]",
+        "bound": 53056
+      },
+      {
+        "at": 373,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[\"read\"]",
+        "bound": "read"
+      },
+      {
+        "at": 374,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        "args": "[\"brandon_william_craig\"]",
+        "bound": "brandon_william_craig"
+      },
+      {
+        "at": 375,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[53056]",
+        "bound": 53056
+      },
+      {
+        "at": 376,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[53056,264]",
+        "bound": 53056
+      },
+      {
+        "at": 377,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,53055]",
+        "bound": 53055
+      },
+      {
+        "at": 378,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[53055,260]",
+        "bound": 53055
+      },
+      {
+        "at": 379,
+        "kind": "read-result",
+        "sql": "UPDATE card_actions SET super_action_id = ? WHERE id IN (?)",
+        "args": "[7,8]",
+        "bound": 7
+      },
+      {
+        "at": 381,
+        "kind": "read-result",
+        "sql": "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id WHERE a.card_id = ? AND a",
+        "args": "[26026,1,2]",
+        "bound": 1
+      },
+      {
+        "at": 382,
+        "kind": "read-result",
+        "sql": "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id WHERE a.card_id = ? AND a",
+        "args": "[439,2,2]",
+        "bound": 439
+      },
+      {
+        "at": 383,
+        "kind": "read-result",
+        "sql": "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id WHERE a.card_id = ? AND a",
+        "args": "[2259,3,2]",
+        "bound": 3
+      },
+      {
+        "at": 384,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 385,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 386,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 387,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 388,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[53053]",
+        "bound": 53053
+      },
+      {
+        "at": 389,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[53054]",
+        "bound": 53054
+      },
+      {
+        "at": 390,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 391,
+        "kind": "write-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[53056]",
+        "bound": 53056
+      },
+      {
+        "at": 392,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[608]",
+        "bound": 608
+      },
+      {
+        "at": 393,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[619]",
+        "bound": 619
+      },
+      {
+        "at": 394,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[684]",
+        "bound": 684
+      },
+      {
+        "at": 395,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[725]",
+        "bound": 725
+      },
+      {
+        "at": 396,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[788]",
+        "bound": 788
+      },
+      {
+        "at": 397,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[12138]",
+        "bound": 12138
+      },
+      {
+        "at": 398,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[26028]",
+        "bound": 26028
+      },
+      {
+        "at": 399,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[798]",
+        "bound": 798
+      },
+      {
+        "at": 400,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[920]",
+        "bound": 920
+      },
+      {
+        "at": 401,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[921]",
+        "bound": 921
+      },
+      {
+        "at": 402,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[1632]",
+        "bound": 1632
+      },
+      {
+        "at": 403,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2210]",
+        "bound": 2210
+      },
+      {
+        "at": 404,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2312]",
+        "bound": 2312
+      },
+      {
+        "at": 405,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2313]",
+        "bound": 2313
+      },
+      {
+        "at": 406,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2476]",
+        "bound": 2476
+      },
+      {
+        "at": 407,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2753]",
+        "bound": 2753
+      },
+      {
+        "at": 408,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3112]",
+        "bound": 3112
+      },
+      {
+        "at": 409,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3156]",
+        "bound": 3156
+      },
+      {
+        "at": 410,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3275]",
+        "bound": 3275
+      },
+      {
+        "at": 411,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3531]",
+        "bound": 3531
+      },
+      {
+        "at": 412,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3563]",
+        "bound": 3563
+      },
+      {
+        "at": 413,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[26015]",
+        "bound": 26015
+      },
+      {
+        "at": 414,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[581]",
+        "bound": 581
+      },
+      {
+        "at": 415,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2451]",
+        "bound": 2451
+      },
+      {
+        "at": 416,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3292]",
+        "bound": 3292
+      },
+      {
+        "at": 417,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3353]",
+        "bound": 3353
+      },
+      {
+        "at": 418,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3565]",
+        "bound": 3565
+      },
+      {
+        "at": 419,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2574]",
+        "bound": 2574
+      },
+      {
+        "at": 420,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[9923]",
+        "bound": 9923
+      },
+      {
+        "at": 421,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2355]",
+        "bound": 2355
+      },
+      {
+        "at": 422,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[2878]",
+        "bound": 2878
+      },
+      {
+        "at": 423,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[398]",
+        "bound": 398
+      },
+      {
+        "at": 424,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3300]",
+        "bound": 3300
+      },
+      {
+        "at": 425,
+        "kind": "read-result",
+        "sql": "SELECT DISTINCT referer_id FROM card_references WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT ",
+        "args": "[3382]",
+        "bound": 3382
+      },
+      {
+        "at": 426,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[608]",
+        "bound": 608
+      },
+      {
+        "at": 427,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[619]",
+        "bound": 619
+      },
+      {
+        "at": 428,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[684]",
+        "bound": 684
+      },
+      {
+        "at": 429,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[725]",
+        "bound": 725
+      },
+      {
+        "at": 430,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[788]",
+        "bound": 788
+      },
+      {
+        "at": 431,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[798]",
+        "bound": 798
+      },
+      {
+        "at": 432,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[920]",
+        "bound": 920
+      },
+      {
+        "at": 433,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[921]",
+        "bound": 921
+      },
+      {
+        "at": 434,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1632]",
+        "bound": 1632
+      },
+      {
+        "at": 435,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2210]",
+        "bound": 2210
+      },
+      {
+        "at": 436,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2312]",
+        "bound": 2312
+      },
+      {
+        "at": 437,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2313]",
+        "bound": 2313
+      },
+      {
+        "at": 438,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2476]",
+        "bound": 2476
+      },
+      {
+        "at": 439,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[581]",
+        "bound": 581
+      },
+      {
+        "at": 440,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2753]",
+        "bound": 2753
+      },
+      {
+        "at": 441,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3112]",
+        "bound": 3112
+      },
+      {
+        "at": 442,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3156]",
+        "bound": 3156
+      },
+      {
+        "at": 443,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2451]",
+        "bound": 2451
+      },
+      {
+        "at": 444,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3292]",
+        "bound": 3292
+      },
+      {
+        "at": 445,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3353]",
+        "bound": 3353
+      },
+      {
+        "at": 446,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2355]",
+        "bound": 2355
+      },
+      {
+        "at": 447,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2878]",
+        "bound": 2878
+      },
+      {
+        "at": 448,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3300]",
+        "bound": 3300
+      },
+      {
+        "at": 449,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1482]",
+        "bound": 1482
+      },
+      {
+        "at": 450,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4132]",
+        "bound": 4132
+      },
+      {
+        "at": 451,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3382]",
+        "bound": 3382
+      },
+      {
+        "at": 452,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3565]",
+        "bound": 3565
+      },
+      {
+        "at": 453,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[398]",
+        "bound": 398
+      },
+      {
+        "at": 454,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3565]",
+        "bound": 3565
+      },
+      {
+        "at": 455,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[398]",
+        "bound": 398
+      },
+      {
+        "at": 456,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3275]",
+        "bound": 3275
+      },
+      {
+        "at": 457,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3531]",
+        "bound": 3531
+      },
+      {
+        "at": 458,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3563]",
+        "bound": 3563
+      },
+      {
+        "at": 459,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2574]",
+        "bound": 2574
+      },
+      {
+        "at": 460,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[9923]",
+        "bound": 9923
+      },
+      {
+        "at": 461,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[12138]",
+        "bound": 12138
+      },
+      {
+        "at": 462,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26028]",
+        "bound": 26028
+      },
+      {
+        "at": 463,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26015]",
+        "bound": 26015
+      },
+      {
+        "at": 465,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[608]",
+        "bound": 608
+      },
+      {
+        "at": 466,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[578]",
+        "bound": 578
+      },
+      {
+        "at": 467,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[607]",
+        "bound": 607
+      },
+      {
+        "at": 468,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[619]",
+        "bound": 619
+      },
+      {
+        "at": 469,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[684]",
+        "bound": 684
+      },
+      {
+        "at": 470,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[405]",
+        "bound": 405
+      },
+      {
+        "at": 471,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[725]",
+        "bound": 725
+      },
+      {
+        "at": 472,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[576]",
+        "bound": 576
+      },
+      {
+        "at": 473,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[788]",
+        "bound": 788
+      },
+      {
+        "at": 474,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[12138]",
+        "bound": 12138
+      },
+      {
+        "at": 475,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26028]",
+        "bound": 26028
+      },
+      {
+        "at": 476,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26015]",
+        "bound": 26015
+      },
+      {
+        "at": 477,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26027]",
+        "bound": 26027
+      },
+      {
+        "at": 478,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[798]",
+        "bound": 798
+      },
+      {
+        "at": 479,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[580]",
+        "bound": 580
+      },
+      {
+        "at": 480,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[920]",
+        "bound": 920
+      },
+      {
+        "at": 481,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[582]",
+        "bound": 582
+      },
+      {
+        "at": 482,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[921]",
+        "bound": 921
+      },
+      {
+        "at": 483,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[685]",
+        "bound": 685
+      },
+      {
+        "at": 484,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1632]",
+        "bound": 1632
+      },
+      {
+        "at": 485,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2210]",
+        "bound": 2210
+      },
+      {
+        "at": 486,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2207]",
+        "bound": 2207
+      },
+      {
+        "at": 487,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2312]",
+        "bound": 2312
+      },
+      {
+        "at": 488,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2313]",
+        "bound": 2313
+      },
+      {
+        "at": 489,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2476]",
+        "bound": 2476
+      },
+      {
+        "at": 490,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2753]",
+        "bound": 2753
+      },
+      {
+        "at": 491,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3112]",
+        "bound": 3112
+      },
+      {
+        "at": 492,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3107]",
+        "bound": 3107
+      },
+      {
+        "at": 493,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3156]",
+        "bound": 3156
+      },
+      {
+        "at": 494,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3275]",
+        "bound": 3275
+      },
+      {
+        "at": 495,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[637]",
+        "bound": 637
+      },
+      {
+        "at": 496,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3531]",
+        "bound": 3531
+      },
+      {
+        "at": 497,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3563]",
+        "bound": 3563
+      },
+      {
+        "at": 498,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[581]",
+        "bound": 581
+      },
+      {
+        "at": 499,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2451]",
+        "bound": 2451
+      },
+      {
+        "at": 500,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3292]",
+        "bound": 3292
+      },
+      {
+        "at": 501,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3353]",
+        "bound": 3353
+      },
+      {
+        "at": 502,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3565]",
+        "bound": 3565
+      },
+      {
+        "at": 503,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2355]",
+        "bound": 2355
+      },
+      {
+        "at": 504,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2878]",
+        "bound": 2878
+      },
+      {
+        "at": 505,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3300]",
+        "bound": 3300
+      },
+      {
+        "at": 506,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[3382]",
+        "bound": 3382
+      },
+      {
+        "at": 507,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1482]",
+        "bound": 1482
+      },
+      {
+        "at": 508,
+        "kind": "read-result",
+        "sql": "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        "args": "[1316]",
+        "bound": 1316
+      },
+      {
+        "at": 509,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4132]",
+        "bound": 4132
+      },
+      {
+        "at": 510,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[398]",
+        "bound": 398
+      },
+      {
+        "at": 511,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2574]",
+        "bound": 2574
+      },
+      {
+        "at": 512,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[9923]",
+        "bound": 9923
+      },
+      {
+        "at": 513,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26015]",
+        "bound": 26015
+      },
+      {
+        "at": 514,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 515,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 516,
+        "kind": "read-result",
+        "sql": "SELECT codename FROM cards WHERE id = ?",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 517,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 518,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[26026]",
+        "bound": 26026
+      },
+      {
+        "at": 519,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[439]",
+        "bound": 439
+      },
+      {
+        "at": 520,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[2259]",
+        "bound": 2259
+      },
+      {
+        "at": 521,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53053]",
+        "bound": 53053
+      },
+      {
+        "at": 522,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53054]",
+        "bound": 53054
+      },
+      {
+        "at": 523,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[419]",
+        "bound": 419
+      },
+      {
+        "at": 524,
+        "kind": "write-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[53056]",
+        "bound": 53056
+      },
+      {
+        "at": 525,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? LIMIT 1",
+        "args": "[393]",
+        "bound": 393
+      },
+      {
+        "at": 526,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 527,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[8466,21761]",
+        "bound": 8466
+      },
+      {
+        "at": 528,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[8466]",
+        "bound": 8466
+      },
+      {
+        "at": 529,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 530,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[294,21761]",
+        "bound": 294
+      },
+      {
+        "at": 531,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[294]",
+        "bound": 294
+      },
+      {
+        "at": 532,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[274,21761]",
+        "bound": 274
+      },
+      {
+        "at": 533,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 534,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 535,
+        "kind": "read-result",
+        "sql": "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        "args": "[22732]",
+        "bound": 22732
+      },
+      {
+        "at": 536,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 537,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 538,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 539,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 540,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 541,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,26026]",
+        "bound": 393
+      },
+      {
+        "at": 542,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 543,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 544,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 545,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 546,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 547,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 548,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 549,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,439]",
+        "bound": 393
+      },
+      {
+        "at": 550,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 551,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 552,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 553,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 554,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 555,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 556,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 557,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,2259]",
+        "bound": 393
+      },
+      {
+        "at": 558,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 559,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 560,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 561,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 562,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 563,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 564,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 565,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,53053]",
+        "bound": 393
+      },
+      {
+        "at": 566,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 567,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 568,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 569,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 570,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 571,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 572,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 573,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,53054]",
+        "bound": 393
+      },
+      {
+        "at": 574,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        "args": "[4,418]",
+        "bound": 4
+      },
+      {
+        "at": 575,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 576,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 577,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 578,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 579,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 580,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 581,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 582,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,419]",
+        "bound": 393
+      },
+      {
+        "at": 583,
+        "kind": "read-result",
+        "sql": "SELECT preferences.id AS rule_id, sets.id AS set_id, sets.left_id AS set_left_id, sets.codename AS set_own_cod",
+        "args": "[259,278,4]",
+        "bound": 259
+      },
+      {
+        "at": 584,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE type_id = ?",
+        "args": "[4]",
+        "bound": 4
+      },
+      {
+        "at": 585,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[393,264]",
+        "bound": 393
+      },
+      {
+        "at": 586,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[8466,22726]",
+        "bound": 8466
+      },
+      {
+        "at": 587,
+        "kind": "read-result",
+        "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[4,266]",
+        "bound": 4
+      },
+      {
+        "at": 588,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[294,22726]",
+        "bound": 294
+      },
+      {
+        "at": 589,
+        "kind": "read-result",
+        "sql": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+        "args": "[274,22726]",
+        "bound": 274
+      },
+      {
+        "at": 590,
+        "kind": "read-result",
+        "sql": "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
+        "args": "[393,53056]",
+        "bound": 393
+      },
+      {
+        "at": 591,
+        "kind": "read-result",
+        "sql": "SELECT account_card_id FROM auth_sessions WHERE token_hash = ?",
+        "args": "[\"7a5b95056474efabfb6a4fa79bace838fdc2180447c164ca2993e7761d3b2822\"]",
+        "bound": "7a5b95056474efabfb6a4fa79bace838fdc2180447c164ca2993e7761d3b2822"
+      },
+      {
+        "at": 592,
+        "kind": "read-result",
+        "sql": "SELECT c.updated_at FROM cards a JOIN cards c ON c.left_id = a.id AND c.trash = 0 JOIN cards f ON f.id = c.rig",
+        "args": "[53041]",
+        "bound": 53041
+      }
+    ]
+  },
+  "memo": {
+    "table_scoped": {
+      "dropped": 53,
+      "remaining": 540,
+      "at_cap_32": {
+        "hrana": {
+          "statements": 540,
+          "round_trips": 155,
+          "max_batch_statements": 25,
+          "median_batch_statements": 3,
+          "max_batch_bytes": 2722,
+          "projected_wall_ms": {
+            "5": 1378,
+            "13": 2618,
+            "20": 3703,
+            "0.4": 665
+          }
+        },
+        "d1": {
+          "statements": 540,
+          "round_trips": 186,
+          "max_batch_statements": 25,
+          "median_batch_statements": 2,
+          "max_batch_bytes": 2294,
+          "projected_wall_ms": {
+            "5": 1533,
+            "13": 3021,
+            "20": 4323,
+            "0.4": 677
+          }
+        }
+      }
+    },
+    "row_scoped": {
+      "dropped": 113,
+      "remaining": 480,
+      "at_cap_32": {
+        "hrana": {
+          "statements": 480,
+          "round_trips": 142,
+          "max_batch_statements": 25,
+          "median_batch_statements": 2,
+          "max_batch_bytes": 2722,
+          "projected_wall_ms": {
+            "5": 1313,
+            "13": 2449,
+            "20": 3443,
+            "0.4": 660
+          }
+        },
+        "d1": {
+          "statements": 480,
+          "round_trips": 173,
+          "max_batch_statements": 25,
+          "median_batch_statements": 2,
+          "max_batch_bytes": 2294,
+          "projected_wall_ms": {
+            "5": 1468,
+            "13": 2852,
+            "20": 4063,
+            "0.4": 672
+          }
+        }
+      }
+    },
+    "distinct_pairs_floor": 348
+  },
+  "options": [
+    {
+      "option": "hrana batch, cap 8",
+      "shape": "hrana",
+      "cap": 8,
+      "statements": 593,
+      "round_trips": 186,
+      "max_batch_statements": 8,
+      "median_batch_statements": 3,
+      "max_batch_bytes": 1446,
+      "projected_wall_ms": {
+        "5": 1533,
+        "13": 3021,
+        "20": 4323,
+        "0.4": 677
+      }
+    },
+    {
+      "option": "d1 batch, cap 8",
+      "shape": "d1",
+      "cap": 8,
+      "statements": 593,
+      "round_trips": 214,
+      "max_batch_statements": 8,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 1336,
+      "projected_wall_ms": {
+        "5": 1673,
+        "13": 3385,
+        "20": 4883,
+        "0.4": 689
+      }
+    },
+    {
+      "option": "hrana batch, cap 16",
+      "shape": "hrana",
+      "cap": 16,
+      "statements": 593,
+      "round_trips": 176,
+      "max_batch_statements": 16,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2233,
+      "projected_wall_ms": {
+        "5": 1483,
+        "13": 2891,
+        "20": 4123,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 16",
+      "shape": "d1",
+      "cap": 16,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 16,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 32",
+      "shape": "hrana",
+      "cap": 32,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 32",
+      "shape": "d1",
+      "cap": 32,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 64",
+      "shape": "hrana",
+      "cap": 64,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 64",
+      "shape": "d1",
+      "cap": 64,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 100",
+      "shape": "hrana",
+      "cap": 100,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 100",
+      "shape": "d1",
+      "cap": 100,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 128",
+      "shape": "hrana",
+      "cap": 128,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 128",
+      "shape": "d1",
+      "cap": 128,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 256",
+      "shape": "hrana",
+      "cap": 256,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 256",
+      "shape": "d1",
+      "cap": 256,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    },
+    {
+      "option": "hrana batch, cap 100000",
+      "shape": "hrana",
+      "cap": 100000,
+      "statements": 593,
+      "round_trips": 175,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2722,
+      "projected_wall_ms": {
+        "5": 1478,
+        "13": 2878,
+        "20": 4103,
+        "0.4": 673
+      }
+    },
+    {
+      "option": "d1 batch, cap 100000",
+      "shape": "d1",
+      "cap": 100000,
+      "statements": 593,
+      "round_trips": 207,
+      "max_batch_statements": 25,
+      "median_batch_statements": 2,
+      "max_batch_bytes": 2294,
+      "projected_wall_ms": {
+        "5": 1638,
+        "13": 3294,
+        "20": 4743,
+        "0.4": 686
+      }
+    }
+  ],
+  "longest_packed_runs": {
+    "hrana@100": [
+      25,
+      19,
+      15,
+      15,
+      14
+    ],
+    "d1@100": [
+      25,
+      15,
+      14,
+      13,
+      10
+    ]
+  }
+}
