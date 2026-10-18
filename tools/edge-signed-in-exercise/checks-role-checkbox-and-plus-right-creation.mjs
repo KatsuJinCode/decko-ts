@@ -166,92 +166,64 @@ const createAffordances = (page, name) => page.evaluate(wanted => [...document.q
     namesCard: decodeURIComponent(a.getAttribute("href") ?? "").includes(wanted),
   })), name);
 
-/** The stored content lines of a card row, as the engine reads them. */
-const contentLines = row => String(row?.db_content ?? "").split("\n").map(line => line.trim()).filter(line => line.length > 0);
 
 export const checks = [
 // ------------------------------------------------------------------- A6
+  // What the runs established about this surface, and what this check
+  // therefore measures:
+  //   * The account board's Roles tab and the navbar account dropdown serve
+  //     role_checkbox.haml's boxes: `input[name^="pointer_checkbox-"]
+  //     [value="<Role Name>"]` inside the autosave form
+  //     action="/update/<actor>+*enabled roles" (run 00-43-25, 00-48-40).
+  //   * The dropdown lists the actor's CURRENT roles, every one checked
+  //     (rolesAccountDropdownHtml, src/card/render/navbar-views.ts:452-472:
+  //     "one role_checkbox per current role (role_checkbox.haml), every box
+  //     checked (ensure_roles)").
+  //   * The product's own stylesheet hides one of them:
+  //     `.RIGHT-Xenabled_role.edit_inline-view .pointer-checkbox-list
+  //     #pointer-checkbox-anyone_signed_in { display: none }`
+  //     (mod-style-assets/card-mod-layout/assets/style/modal.scss in the built
+  //     bundle), so the seeded admin's two boxes leave exactly ONE clickable
+  //     box, and it is the administrator role itself.
+  // So this check reads the affordance for both fixture actors - served boxes,
+  // computed display, menu state - and clicks only a box that is both visible
+  // and NOT a power role. When no such box is served, the legs say so with the
+  // inventory that proves it. It writes nothing directly: ctx.database() is a
+  // read-only handle (run 01-08-09 failed A6 with "attempt to write a readonly
+  // database" when the check seeded a membership row through it), so seeding a
+  // benign role for the member would have to go through the engine's own
+  // `<role>+*members` list, which this check does not attempt.
   {
     name: "A6 a role checkbox on an account/rules surface edits the actor's stored roles",
     only: "role-plus-right",
     run: async ctx => {
-      const { stack, creds, record, database, created, captureEvidence } = ctx;
+      const { stack, creds, record, database, captureEvidence } = ctx;
       if (!loopbackOnly(stack.origin)) throw Error("role-plus-right requires the disposable loopback fixture");
-      const s = stamp();
-      // The actor is the fixture MEMBER, not the administrator. The run's
-      // earlier probe showed the administrator's own dropdown hides one of its
-      // two boxes with the product's own stylesheet rule
-      // (`.RIGHT-Xenabled_role.edit_inline-view .pointer-checkbox-list
-      // #pointer-checkbox-anyone_signed_in { display: none }`, from
-      // mod-style-assets/card-mod-layout/assets/style/modal.scss in the built
-      // bundle), and the only other box is the administrator role itself -
-      // editing that would change every permission boundary later in the run.
-      // A member account with one benign role gives the action a real, visible,
-      // low-blast-radius control to edit.
-      const actor = creds.member.name;
-      const actorId = creds.member.id;
+      const powerRoles = new Set(["administrator"]);
       let browser;
       try {
         browser = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
         const page = browser.page;
-        await signInActor(page, stack.origin, creds.member);
-
         const codenameRow = code => database().prepare("SELECT id,name FROM cards WHERE codename=? AND trash=0 ORDER BY id LIMIT 1").get(code) ?? null;
         const codenames = Object.fromEntries(["role", "disabled_roles", "enabled_roles", "members"].map(code => [code, codenameRow(code)]));
         const roles = codenames.role === null ? [] : database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY name").all(codenames.role.id);
         const roleNames = new Set(roles.map(r => r.name));
 
-        // Role membership is stored as a reference from the role's `<role>+*members`
-        // list card to the holder (the shape lib/seed-local-accounts.mjs writes,
-        // lines 108-115). That is the stored state the checkbox edits, and it is
-        // what the fingerprint below reads.
-        const membersListId = roleId => database()
-          .prepare("SELECT id FROM cards WHERE left_id=? AND right_id=? AND trash=0")
-          .get(roleId, codenames.members?.id)?.id ?? null;
-        const memberships = () => database().prepare("SELECT referer_id FROM card_references WHERE referee_id=?").all(actorId)
+        // The stored side of the action, read for whichever actor holds the
+        // role: a reference from the role's `<role>+*members` list card to the
+        // holder - the shape lib/seed-local-accounts.mjs:108-115 writes.
+        const membershipsFor = actorId => database().prepare("SELECT referer_id FROM card_references WHERE referee_id=?").all(actorId)
           .map(row => {
-            const referer = database().prepare("SELECT id,name,left_id,right_id FROM cards WHERE id=?").get(row.referer_id);
+            const referer = database().prepare("SELECT id,left_id FROM cards WHERE id=?").get(row.referer_id);
             const left = referer?.left_id === null || referer === undefined ? null : database().prepare("SELECT id,name FROM cards WHERE id=?").get(referer.left_id);
             return { refererId: row.referer_id, roleId: referer?.left_id ?? null, roleName: left?.name ?? null };
           })
           .sort((a, b) => String(a.roleName).localeCompare(String(b.roleName)));
-        const snapshot = () => ({ memberships: memberships(), enabledRolesCard: fixtureCard(database(), actor + "+*enabled roles") ?? null });
 
-        // Seed ONE benign role for this actor, so the dropdown offers a box the
-        // product does not hide. Fixture-only: the row is removed again by the
-        // restore leg whatever the control does.
-        const target = roles.find(r => !["administrator", "anyone", "anyone signed in"].includes(String(r.name).toLowerCase()));
-        if (target === undefined || codenames.members === null) {
-          record(capabilityChecks.A6[0], false, {
-            actor, note: "the deck exposes no benign role card to seed for this actor", codenames, roles: roles.slice(0, 12),
-          });
-          record(capabilityChecks.A6[1], false, { actor, note: "not reached: no role checkbox could be offered" });
-          record(capabilityChecks.A6[2], false, { actor, note: "not reached: no role checkbox could be offered" });
-          record(capabilityChecks.A6[3], true, { actor, note: "nothing was seeded, so the fixture is unchanged" });
-          return;
-        }
-        const listId = membersListId(target.id);
-        if (listId === null) {
-          record(capabilityChecks.A6[0], false, {
-            actor, target, note: "the deck has no <role>+*members list to seed the role membership through", codenames,
-          });
-          record(capabilityChecks.A6[1], false, { actor, note: "not reached: no membership could be seeded" });
-          record(capabilityChecks.A6[2], false, { actor, note: "not reached: no membership could be seeded" });
-          record(capabilityChecks.A6[3], true, { actor, note: "nothing was seeded, so the fixture is unchanged" });
-          return;
-        }
-        database().prepare("INSERT INTO card_references (referer_id, referee_id) VALUES (?, ?)").run(listId, actorId);
-        const before = snapshot();
-        // A fresh sign-in so the session reads the seeded membership rather
-        // than whatever the earlier login cached.
-        await page.goto(stack.origin + "/*signin", { waitUntil: "load" }).catch(() => undefined);
-        await signInActor(page, stack.origin, creds.member);
-
-        // The surfaces the matrix names, read as served. The account board's
-        // Roles tab loads by ajax (a nav-link, not a page), so it is clicked the
-        // way a person clicks it.
+        // The account board's Roles tab loads by ajax, so it is clicked the way
+        // a person clicks it; the dropdown that carries the boxes ships closed.
         const openBoardRolesTab = async () => {
-          const opened = await page.goto(`${stack.origin}/${encodeURIComponent(actor)}/board`, { waitUntil: "load" });
+          const opened = await page.goto(`${stack.origin}/${encodeURIComponent(ctx.creds.admin.name)}/board`, { waitUntil: "load" });
           const tabs = await page.locator(".board .nav-link", { hasText: "Roles" }).count();
           if (tabs > 0) {
             await page.locator(".board .nav-link", { hasText: "Roles" }).first().click().catch(() => undefined);
@@ -259,51 +231,7 @@ export const checks = [
           }
           return { opened, tabs };
         };
-        const openPath = (path) => async () => { await page.goto(stack.origin + path, { waitUntil: "load" }); };
-        const surfaces = [];
-        const first = await openBoardRolesTab();
-        surfaces.push({
-          surface: "account board Roles tab", status: first.opened.status(), tabCount: first.tabs,
-          inventory: await checkboxInventory(page), revisit: openBoardRolesTab,
-          raw: captureEvidence(await page.content(), { check: "a6-account-board-roles-tab", actor }),
-        });
-        const roleList = await openPath("/type/role")();
-        surfaces.push({
-          surface: "the role cardtype list (/type/role)", status: roleList.status(), tabCount: null,
-          inventory: await checkboxInventory(page), revisit: openPath("/type/role"),
-          raw: captureEvidence(await page.content(), { check: "a6-role-cardtype-list", actor }),
-        });
-        const rolePage = await openPath("/" + encodeURIComponent(target.name))();
-        surfaces.push({
-          surface: `the role card's own page (${target.name})`, status: rolePage.status(), tabCount: null,
-          inventory: await checkboxInventory(page), revisit: openPath("/" + encodeURIComponent(target.name)),
-          raw: captureEvidence(await page.content(), { check: "a6-role-card-page", role: target.name }),
-        });
-
-        const served = surfaces.flatMap(s => s.inventory.boxes.map(box => ({ ...box, surface: s.surface })));
-        // A role checkbox is a checkbox whose value is one of the deck's role
-        // names. The Ruby `_edit-item` shape is accepted too, so a deck that
-        // serves that view instead is measured, not misreported.
-        const found = served.filter(box => roleNames.has(box.value) && (box.name.startsWith("pointer_checkbox-") || box.className.includes("_edit-item")));
-        record(capabilityChecks.A6[0], found.length > 0, {
-          actor, codenames, seededRole: target, before, roleCount: roles.length,
-          surfaces: surfaces.map(s => ({
-            surface: s.surface, status: s.status, tabCount: s.tabCount,
-            checkboxes: s.inventory.total, codenameErrors: s.inventory.codenameErrors,
-            boxes: s.inventory.boxes.slice(0, 6).map(b => ({ name: b.name, value: b.value, checked: b.checked, className: b.className, formAction: b.formAction })),
-            mainTextHead: s.inventory.mainTextHead,
-          })),
-          matched: found,
-        });
-
-        // Which box can a person actually click? The dropdown ships closed and
-        // the product's stylesheet hides some boxes, so the served inventory is
-        // re-read with the menu open and each box's computed display recorded.
-        // Opening the menu: a real click on the navbar toggle, and - when that
-        // leaves it closed - the same `show` class Bootstrap's dropdown JS adds,
-        // so the control's submit behaviour is measured apart from the menu's
-        // open behaviour.
-        const openRolesDropdown = async () => {
+        const openDropdown = async () => {
           const toggles = await page.locator(".navbar a.dropdown-toggle").count();
           if (toggles > 0) {
             await page.locator(".navbar a.dropdown-toggle").first().click({ timeout: 10000 }).catch(() => undefined);
@@ -318,57 +246,94 @@ export const checks = [
           await page.waitForTimeout(300);
           return { toggles, opened: await page.locator(".navbar .dropdown-menu.show").count() > 0, how: "the click left it closed; the show class was added to " + forced + " navbar menu(s)" };
         };
-        await surfaces[0].revisit();
-        const dropdown = await openRolesDropdown();
-        const menuInventory = await checkboxInventory(page);
-        const clickable = menuInventory.boxes
-          .filter(box => box.value === target.name)
-          .map(box => ({ ...box, computedDisplay: box.display }));
-        const postPath = new URL(clickable[0]?.formAction ?? stack.origin, stack.origin).pathname;
-        const locatorFor = () => page.locator(`input[type="checkbox"][name="${clickable[0].name}"][value="${target.name}"]`).first();
-        const driveClick = async () => {
-          const box = locatorFor();
-          const visible = await box.isVisible().catch(() => false);
-          const checkedBefore = await box.isChecked().catch(() => null);
-          if (!visible) return { status: null, error: "the box is not visible even with the menu marked open", visible, checkedBefore, checkedAfter: null };
+
+        // Read the surface for each fixture actor, with the menu as open as this
+        // machine can make it, so "served" and "clickable" are separate facts.
+        const actors = [
+          { label: "the seeded administrator", creds: creds.admin },
+          { label: "the seeded member (no role)", creds: creds.member },
+        ];
+        const probes = [];
+        for (const actor of actors) {
+          await signInActor(page, stack.origin, actor.creds);
+          const read = await openBoardRolesTab();
+          const closed = await checkboxInventory(page);
+          const dropdown = await openDropdown();
+          const open = await checkboxInventory(page);
+          probes.push({
+            actor: actor.label, actorName: actor.creds.name, actorId: actor.creds.id,
+            storedMemberships: membershipsFor(actor.creds.id),
+            boardStatus: read.opened.status(), rolesTabCount: read.tabs,
+            dropdown, boxesClosed: closed.boxes, boxesOpen: open.boxes,
+            raw: captureEvidence(await page.content(), { check: "a6-roles-dropdown-" + actor.creds.name.replace(/\s+/g, "_"), actor: actor.creds.name }),
+          });
+        }
+        const served = probes.flatMap(p => p.boxesOpen.map(box => ({ ...box, actor: p.actorName })));
+        const roleBoxes = served.filter(box => roleNames.has(box.value) && (box.name.startsWith("pointer_checkbox-") || box.className.includes("_edit-item")));
+        const clickable = roleBoxes.filter(box => box.display !== "none" && box.boxVisibility !== "hidden" && !powerRoles.has(String(box.value).toLowerCase()));
+        const hidden = roleBoxes.filter(box => !clickable.includes(box));
+        record(capabilityChecks.A6[0], roleBoxes.length > 0, {
+          codenames, roleCount: roles.length, roles: roles.slice(0, 12),
+          powerRoles: [...powerRoles],
+          probes: probes.map(p => ({
+            actor: p.actor, boardStatus: p.boardStatus, rolesTabCount: p.rolesTabCount,
+            dropdownOpened: p.dropdown.opened, dropdownHow: p.dropdown.how,
+            storedMemberships: p.storedMemberships,
+            boxes: p.boxesOpen.map(b => ({ name: b.name, value: b.value, checked: b.checked, display: b.display, menuOpen: b.menuOpen, formAction: b.formAction })),
+          })),
+          roleBoxes: roleBoxes.map(b => ({ actor: b.actor, name: b.name, value: b.value, checked: b.checked, display: b.display, formAction: b.formAction })),
+          clickableNonPower: clickable.map(b => ({ actor: b.actor, name: b.name, value: b.value })),
+          notClickable: hidden.map(b => ({ actor: b.actor, value: b.value, display: b.display, boxVisibility: b.boxVisibility, menuOpen: b.menuOpen, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role, which this check will not toggle" : "the served stylesheet does not display it" })),
+        });
+
+        if (clickable.length === 0) {
+          // The measured state of the action on this deck: the affordance is
+          // served, and no box a user may safely edit is clickable.
+          record(capabilityChecks.A6[1], false, {
+            note: "no served role checkbox is both displayed and outside the power roles, so no edit can be driven through this surface without toggling the administrator role",
+            roleBoxes: roleBoxes.map(b => ({ actor: b.actor, value: b.value, display: b.display })),
+            notClickable: hidden.map(b => ({ actor: b.actor, value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "hidden by the served stylesheet" })),
+            unmeasured: "whether the control submits and stores at all is therefore unmeasured here: no clickable non-power box exists on this deck, and this check writes no fixture rows directly (ctx.database() is read-only, run 01-08-09)",
+          });
+          record(capabilityChecks.A6[2], false, { note: "not reached: no clickable non-power role checkbox is served" });
+          record(capabilityChecks.A6[3], true, { note: "nothing was changed, so the fixture is unchanged", storedMemberships: probes.map(p => ({ actor: p.actor, memberships: p.storedMemberships })) });
+          return;
+        }
+
+        const choice = clickable[0];
+        const postPath = new URL(choice.formAction ?? stack.origin, stack.origin).pathname;
+        const actorCreds = creds[choice.actor === creds.admin.name ? "admin" : "member"];
+        const before = membershipsFor(actorCreds.id);
+        const box = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
+        const visible = await box.isVisible().catch(() => false);
+        const checkedBefore = await box.isChecked().catch(() => null);
+        let postStatus = null, clickError = null, checkedAfter = null;
+        if (visible) {
           await box.scrollIntoViewIfNeeded().catch(() => undefined);
           const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === postPath && r.request().method() === "POST", { timeout: 15000 })
             .then(response => ({ response }), error => ({ error }));
           await box.click({ timeout: 10000 }).catch(() => undefined);
-          const checkedAfter = await box.isChecked().catch(() => null);
+          checkedAfter = await box.isChecked().catch(() => null);
           const observed = await pending;
-          if (observed.error !== undefined) return { status: null, error: "no POST to " + postPath, visible, checkedBefore, checkedAfter };
-          await observed.response.finished();
+          if (observed.error === undefined) { await observed.response.finished(); postStatus = observed.response.status(); }
+          else clickError = "no POST to " + postPath;
           await page.waitForTimeout(1000);
-          return { status: observed.response.status(), error: null, visible, checkedBefore, checkedAfter };
-        };
-
-        const click = clickable.length === 0 ? { status: null, error: "the dropdown serves no box for the seeded role", visible: false, checkedBefore: null, checkedAfter: null } : await driveClick();
-        const afterClick = snapshot();
-        const moved = JSON.stringify(afterClick.memberships) !== JSON.stringify(before.memberships);
-        record(capabilityChecks.A6[1],
-          click.status !== null && click.status < 400 && moved,
-          {
-            actor, role: target.name, fieldName: clickable[0]?.name ?? null, formAction: clickable[0]?.formAction ?? null,
-            dropdownOpened: dropdown.opened, dropdownHow: dropdown.how,
-            servedBox: clickable, checkboxVisible: click.visible,
-            checkedBeforeClick: click.checkedBefore, checkedAfterClick: click.checkedAfter,
-            clickError: click.error, postStatus: click.status,
-            storedBefore: before, storedAfterClick: afterClick, storedMembershipMoved: moved,
-            raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor }),
-          },
-        );
-
-        // Submit fallback, reached only when the click leg did not store the
-        // edit: it separates "this control does not autosave" from "the UI
-        // cannot produce this edit at all".
-        if (click.status !== null && click.status < 400 && moved) {
-          record(capabilityChecks.A6[2], true, {
-            actor, role: target.name, note: "not needed: the checkbox click itself posted and moved the stored membership",
-            postStatus: click.status,
-          });
         } else {
-          const form = page.locator(`form[action="${clickable[0]?.formAction ?? ""}"]`).first();
+          clickError = "the box is not visible even with the menu marked open";
+        }
+        const after = membershipsFor(actorCreds.id);
+        const moved = JSON.stringify(after) !== JSON.stringify(before);
+        record(capabilityChecks.A6[1], postStatus !== null && postStatus < 400 && moved, {
+          actor: choice.actor, role: choice.value, fieldName: choice.name, formAction: choice.formAction,
+          checkboxVisible: visible, checkedBeforeClick: checkedBefore, checkedAfterClick: checkedAfter,
+          clickError, postStatus, storedBefore: before, storedAfterClick: after, storedMembershipMoved: moved,
+          raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor: choice.actor }),
+        });
+
+        if (postStatus !== null && postStatus < 400 && moved) {
+          record(capabilityChecks.A6[2], true, { actor: choice.actor, role: choice.value, note: "not needed: the click itself posted and moved the stored membership", postStatus });
+        } else {
+          const form = page.locator(`form[action="${choice.formAction ?? ""}"]`).first();
           const controls = await form.evaluate(f => [...f.querySelectorAll("button,input[type=submit]")].map(b => ({
             tag: b.tagName.toLowerCase(), type: b.getAttribute("type"), cy: b.getAttribute("data-cy"),
             text: (b.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 30), visible: b.offsetParent !== null,
@@ -380,40 +345,43 @@ export const checks = [
           let submitStatus = null;
           if (seen.error === undefined) { await seen.response.finished(); submitStatus = seen.response.status(); }
           await page.waitForTimeout(1000);
-          const afterSubmit = snapshot();
+          const afterSubmit = membershipsFor(actorCreds.id);
           record(capabilityChecks.A6[2],
-            submitted && submitStatus !== null && submitStatus < 400 && JSON.stringify(afterSubmit.memberships) !== JSON.stringify(before.memberships),
+            submitted && submitStatus !== null && submitStatus < 400 && JSON.stringify(afterSubmit) !== JSON.stringify(before),
             {
-              actor, role: target.name, formAction: clickable[0]?.formAction ?? null, controls,
+              actor: choice.actor, role: choice.value, formAction: choice.formAction, controls,
               route: "the served autosave form submitted through the DOM (it renders no submit control)",
               submitted, submitStatus, storedBefore: before, storedAfterSubmit: afterSubmit,
-              storedMembershipMoved: JSON.stringify(afterSubmit.memberships) !== JSON.stringify(before.memberships),
+              storedMembershipMoved: JSON.stringify(afterSubmit) !== JSON.stringify(before),
             },
           );
         }
-
-        // Restore leg: the seeded membership must be back where the check found
-        // it, by whichever route actually restores it.
-        let restored = snapshot();
+        // Restore leg: whatever happened, the stored membership must end where
+        // the check found it. The dropdown lists the CURRENT roles, so a
+        // removed role is not offered again; the leg says which route restored
+        // it rather than claiming a restore it did not perform.
+        let restored = membershipsFor(actorCreds.id);
         let restoreRoute = "the stored membership never moved, so there was nothing to restore";
-        if (JSON.stringify(restored.memberships) !== JSON.stringify(before.memberships)) {
-          await surfaces[0].revisit();
-          await openRolesDropdown();
-          const after = await checkboxInventory(page);
-          const stillOffered = after.boxes.some(b => b.value === target.name);
-          if (stillOffered) {
+        if (JSON.stringify(restored) !== JSON.stringify(before)) {
+          await signInActor(page, stack.origin, actorCreds);
+          await openBoardRolesTab();
+          await openDropdown();
+          const again = await checkboxInventory(page);
+          if (again.boxes.some(b => b.value === choice.value)) {
             restoreRoute = "the same checkbox, clicked again (menu re-opened first)";
-            await driveClick();
-            restored = snapshot();
+            const box2 = page.locator(`input[type="checkbox"][name="${choice.name}"][value="${choice.value}"]`).first();
+            if (await box2.isVisible().catch(() => false)) {
+              await box2.click({ timeout: 10000 }).catch(() => undefined);
+              await page.waitForTimeout(1500);
+            }
+            restored = membershipsFor(actorCreds.id);
           } else {
-            restoreRoute = "the seeded membership row, re-inserted directly in the run's deck copy";
-            database().prepare("INSERT OR IGNORE INTO card_references (referer_id, referee_id) VALUES (?, ?)").run(listId, actorId);
-            restored = snapshot();
+            restoreRoute = "NOT RESTORED: the dropdown no longer offers the role and this check writes no fixture rows directly; the run's deck copy is disposable (built per run by lib/build-local-deck.mjs), so the residue cannot reach a later run";
           }
         }
-        const restoredToBefore = JSON.stringify(restored.memberships) === JSON.stringify(before.memberships);
-        record(capabilityChecks.A6[3], restoredToBefore, {
-          actor, role: target.name, restoreRoute, storedBefore: before, storedAfterRestore: restored, restoredToBefore,
+        record(capabilityChecks.A6[3], JSON.stringify(restored) === JSON.stringify(before), {
+          actor: choice.actor, role: choice.value, restoreRoute, storedBefore: before, storedAfterRestore: restored,
+          restoredToBefore: JSON.stringify(restored) === JSON.stringify(before),
         });
       } finally {
         await browser?.close().catch(() => {});
