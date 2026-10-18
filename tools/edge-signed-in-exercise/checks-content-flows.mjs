@@ -258,7 +258,7 @@ export const checks = [
         legs.nested = { ...legs.nested, delivered: nestedMail.length, notices: nestedMail, namesTheCard: nestedMail.some((m) => m.head.includes(nested) || (m.subject ?? '').includes(nested)) };
         const includerVisit = await visit(`/${encodeURIComponent(includer)}`);
         await page.waitForTimeout(1500);
-        const includerRender = await page.evaluate(name => {
+        const includerRender = await page.evaluate(({ name, includerStatus }) => {
           const main = document.querySelector('#main, main');
           const slotClass = `SELF-${name.replace(/\s+/g, '_')}`;
           const altSlotClass = `SELF-${name.replace(/[^A-Za-z0-9*]/g, '')}`;
@@ -267,14 +267,14 @@ export const checks = [
             || [...(main?.querySelectorAll('.d0-card-body, .card-slot') ?? [])].some(el => el.className.includes(slotClass) || el.className.includes(altSlotClass)));
           const link = [...(main?.querySelectorAll('a') ?? [])].find(a => (a.getAttribute('href') ?? '').includes(name));
           return {
-            status: includerVisit.status,
+            status: includerStatus,
             mainTextHead: (main?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 240),
             inclusionSlotRendered: inclusion,
             linkToNestedRendered: link ? { href: link.getAttribute('href'), classes: link.getAttribute('class') } : null,
             lookingForSlotClass: slotClass,
             altLookingForSlotClass: altSlotClass,
           };
-        }, nested);
+        }, { name: nested, includerStatus: includerVisit.status });
         legs.nested.includerPage = includerRender;
         legs.nested.referenceType = includer !== undefined ? database().prepare(
           "SELECT r.id, r.ref_type FROM card_references r " +
