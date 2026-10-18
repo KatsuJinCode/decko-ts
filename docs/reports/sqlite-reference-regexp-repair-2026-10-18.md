@@ -26,3 +26,12 @@ malformed expressions, wrong arity, preserving a supplied host function and
 real ActiveRecord existing/reconnected/thread connections. Runtime source is
 the installed sqlite3 gem2.9.6 and ActiveRecord7.2.4; no software was installed.
 Fresh actual browser/reference comparisons follow this coherent checkpoint.
+
+The first actual repeat still returns500 for all three: its next exception is
+Decko's AbstractAdapter#match not implemented. A new regression loads the real
+installed Card patch and reproduces that error. Card1.110 registers its concrete
+SQL matcher under SQLiteAdapter, whereas ActiveRecord7.2 uses SQLite3Adapter.
+The host now binds that same stock module to the actual class; no CQL builder
+or generated SQL is replaced. Runtime metadata reports whether the stock
+binding is present. The original failed repeat is retained. A fresh repeat of
+the three affected cases follows this additional coherent checkpoint.

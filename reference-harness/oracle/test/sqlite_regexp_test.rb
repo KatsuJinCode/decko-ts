@@ -62,9 +62,15 @@ class HarnessSQLiteRegexpTest < Minitest::Test
   def test_active_record_existing_reconnected_and_thread_connections
     require "active_record"
     require "active_record/connection_adapters/sqlite3_adapter"
+    # This is the actual installed Decko patch, not a replacement SQL builder.
+    require File.join(Gem::Specification.find_by_name("card").full_gem_path,
+                      "config/initializers/02_patches/active_record")
+    abstract_patch = Patches::ActiveRecord::ConnectionAdapters::AbstractAdapter
+    ActiveRecord::ConnectionAdapters::AbstractAdapter.include(abstract_patch)
     ActiveRecord::Base.establish_connection(adapter: "sqlite3", database: ":memory:", pool: 3)
     connection = ActiveRecord::Base.lease_connection
     HarnessSQLiteRegexp.install_active_record!
+    assert_equal "REGEXP 'Topic'", connection.match("'Topic'")
     assert_equal 1, connection.select_value("SELECT 'Topic' REGEXP 'topic'")
     connection.reconnect!
     assert_equal 1, connection.select_value("SELECT 'Memo' REGEXP 'memo'")

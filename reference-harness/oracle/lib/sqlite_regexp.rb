@@ -42,6 +42,14 @@ module HarnessSQLiteRegexp
     require "active_record"
     require "active_record/connection_adapters/sqlite3_adapter"
     adapter = ActiveRecord::ConnectionAdapters::SQLite3Adapter
+    # card1.110 names its concrete patch SQLiteAdapter; modern ActiveRecord
+    # serves through SQLite3Adapter. Bind that existing stock method instead
+    # of replacing the CQL query or leaving AbstractAdapter#match to raise.
+    if defined?(Patches::ActiveRecord::ConnectionAdapters::SQLiteAdapter)
+      stock_match = Patches::ActiveRecord::ConnectionAdapters::SQLiteAdapter
+      adapter.include(stock_match) unless adapter.ancestors.include?(stock_match)
+      @stock_match_bound = true
+    end
     adapter.prepend(ConnectionConfiguration) unless adapter.ancestors.include?(ConnectionConfiguration)
     # Decko has already booted by the time the browser server loads this file.
     # Configure those connections too; the hook covers later and reconnected ones.
@@ -51,4 +59,6 @@ module HarnessSQLiteRegexp
       end
     end
   end
+
+  def self.stock_match_bound? = @stock_match_bound == true
 end
