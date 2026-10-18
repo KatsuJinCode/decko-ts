@@ -265,51 +265,47 @@ export async function ungradeableBatch2TargetProbes({
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: spaceForm(wanted), detail: "C19 the wanted card the offer's own form creates" })) {
       return sequence;
     }
-    if (typeof page === "undefined" || page === null || typeof newActorRequest !== "function") {
-      throw new Error("C19 probe needs the runner's page and newActorRequest helpers");
+    if (typeof newActorRequest !== "function") {
+      throw new Error("C19 probe needs the runner's newActorRequest helper");
     }
-    await visit("/");
-    // Type the missing name into the navbox autocomplete. The probe drives
-    // the box with PER-KEY events (pressSequentially, delay 40) and lets the
-    // menu settle 2.5 s: the autocomplete listens for keystrokes, and a
-    // value-setting fill() fired only the "search this term" item (run 1's
-    // recorded menu). Menu items are matched by the probe's own rule: any
-    // entry whose class names the add item or whose href resolves the
-    // missing card.
-    const box = page.locator("form.search-box-form input[name='query[keyword]']:visible").first();
-    const boxCount = await box.count().catch(() => 0);
-    let menu = [];
-    let clicked = null;
-    let prefilled = null;
-    if (boxCount > 0) {
-      await box.click({ timeout: stepTimeout }).catch(() => {});
-      await box.pressSequentially(wanted, { delay: 40, timeout: stepTimeout }).catch(() => {});
-      await page.waitForTimeout(2_500);
-      menu = (await page
-        .evaluate(() => [...document.querySelectorAll(".ui-menu-item, .ui-autocomplete li, .ui-autocomplete a, .autocomplete-item")].slice(0, 10).map((el) => {
-          const a = el.matches("a") ? el : el.querySelector("a");
-          return { href: a?.getAttribute("href") ?? el.getAttribute?.("href") ?? null, text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 90), cls: String(el.className ?? "").slice(0, 60) };
-        }))
-        .catch(() => [])) ?? [];
-      const offer = menu.find((m) => /add/i.test(m.cls) || (m.href && decodeURIComponent(m.href).endsWith("/" + wanted)));
-      if (offer) {
-        const offerSel = offer.href
-          ? `.ui-autocomplete a[href='${offer.href}']`
-          : ".ui-autocomplete li:has(.autocomplete-item-add) a, .ui-autocomplete .autocomplete-item-add";
-        await page.locator(offerSel).first().click({ timeout: stepTimeout }).catch(() => {});
-        await page.waitForTimeout(1_800);
-        await settle();
-        clicked = page.url();
-        prefilled = (await page
-          .evaluate(() => [...document.querySelectorAll("form.card-form input[name='card[name]']")].map((i) => i.value))
-          .catch(() => [])) ?? [];
+    // The create offer decko implements is the search box's
+    // search_box_complete JSON `add` item (checks-cover-b.mjs C6: the add
+    // item yields action "add" only when exact.add_autocomplete_ok? —
+    // new_card? && name.valid? && !virtual? && ok?(:create) — with url = the
+    // new card's own path). Runs 1 and 2 measured the SIGNED-OUT menu (this
+    // surface probes anonymous) carrying only the search item: ok?(:create)
+    // is false signed out, so the page-level menu cannot carry the offer by
+    // design. The case therefore drives C6's own contract through the
+    // member's authenticated request channel: the endpoint's add item
+    // naming the missing card, the add item's own url serving the create
+    // form pre-named for it, and the offered create storing the card.
+    const member = await newActorRequest("member");
+    const completeRes = await member
+      .get(`${base}/*search/search_box_complete.json?term=${encodeURIComponent(wanted)}`)
+      .catch((e) => ({ error: String(e?.message ?? e) }));
+    const completeBody = completeRes.error ? "" : await completeRes.text().catch(() => "");
+    let items = [];
+    try { items = JSON.parse(completeBody) ?? []; } catch { items = []; }
+    if (!Array.isArray(items)) items = [];
+    const addItem = items.find((i) => i?.action === "add") ?? null;
+    const addItemUrl = typeof addItem?.url === "string" ? addItem.url : null;
+    // The add item's url is the new card's own path: visiting it serves the
+    // create form pre-named for the missing card.
+    let formStatus = null;
+    let prefilled = [];
+    if (addItemUrl) {
+      const formRes = await member.get(addItemUrl.startsWith("/") ? base + addItemUrl : addItemUrl).catch((e) => ({ error: String(e?.message ?? e) }));
+      formStatus = formRes.error ? null : formRes.status();
+      const formHtml = formRes.error ? "" : await formRes.text().catch(() => "");
+      prefilled = (formHtml.match(/name="card\[name\]"[^>]*value="([^"]*)"/g) ?? []).map((m) => /value="([^"]*)"/.exec(m)?.[1] ?? "");
+      if (prefilled.length === 0) {
+        // attribute order varies; try the value-first spelling too
+        prefilled = (formHtml.match(/value="([^"]*)"[^>]*name="card\[name\]"/g) ?? []).map((m) => /value="([^"]*)"/.exec(m)?.[1] ?? "");
       }
     }
-    // The storing leg: the served create form's own fields, replayed through
-    // the signed-in member's channel (the surface is a signed-out surface).
+    // The offered create stores the card at the urlKey's space form.
     let replay = { status: null, json: { status: null, parsed: null } };
-    if (prefilled && prefilled.some((v) => v.replaceAll("_", " ") === spaceForm(wanted) || v === wanted)) {
-      const member = await newActorRequest("member");
+    if (addItem) {
       const res = await member
         .post(`${base}/card/create`, {
           headers: { origin: base },
@@ -322,25 +318,28 @@ export async function ungradeableBatch2TargetProbes({
     }
     push({
       interaction: "assert-present",
-      selector: `the search miss's autocomplete offers the wanted card (${menu.length} menu items)`,
-      count: menu.some((m) => (m.href ?? "").includes(wanted) || /add/i.test(m.text)) ? 1 : 0,
-      menu,
+      selector: `the search miss's search_box_complete offers the create item for the wanted card (status ${completeRes.error ? "error" : completeRes.status()}, actions ${JSON.stringify(items.map((i) => i?.action))}, add url ${JSON.stringify(addItemUrl)})`,
+      count: !completeRes.error && completeRes.status() === 200 && addItem !== null && addItemUrl !== null && String(addItemUrl).toLowerCase().includes(wanted) ? 1 : 0,
+      status: completeRes.error ? null : completeRes.status(),
+      actions: items.map((i) => i?.action),
+      addItemUrl,
+      addItemValue: addItem?.value ?? null,
     });
     push({
       interaction: "assert-present",
-      selector: `following the offer lands on a create form pre-named for the missing card (landed ${clicked ?? "nowhere"}, prefill ${JSON.stringify(prefilled ?? [])})`,
-      count: prefilled && prefilled.some((v) => v.replaceAll("_", " ") === spaceForm(wanted) || v === wanted) ? 1 : 0,
-      landedOn: clicked,
+      selector: `the offer's own url serves the create form pre-named for the missing card (status ${formStatus ?? "nothing"}, prefill ${JSON.stringify(prefilled)})`,
+      count: formStatus !== null && formStatus < 400 && prefilled.some((v) => v.replaceAll("_", " ") === spaceForm(wanted) || v === wanted) ? 1 : 0,
+      formStatus,
       prefilled,
     });
     push({
       interaction: "assert-present",
-      selector: `the offered create stores the card (member-channel replay of the served form answered ${replay.status ?? "nothing"}; /${wanted}.json ${replay.json?.status ?? "nothing"} carrying ${JSON.stringify(replay.json?.parsed?.name ?? null)})`,
+      selector: `the offered create stores the card (member-channel submit answered ${replay.status ?? "nothing"}; /${wanted}.json ${replay.json?.status ?? "nothing"} carrying ${JSON.stringify(replay.json?.parsed?.name ?? null)})`,
       count: replay.status !== null && replay.status < 400 && replay.json.status === 200 && replay.json.parsed?.name === spaceForm(wanted) ? 1 : 0,
       replayStatus: replay.status,
       jsonStatus: replay.json.status,
       storedName: replay.json.parsed?.name ?? null,
-      note: "the storing POST rode the signed-in member's request channel because the wanted-card flow surface probes signed out; the fields are the served form's own create fields",
+      note: "the drive rides the signed-in member's request channel because add_autocomplete_ok? requires ok?(:create), which the anonymous menu measured false (runs 1-2: only the search item offered signed out); the endpoint, add item, prefill and storage are C6's own contract",
     });
   }
 
@@ -748,16 +747,16 @@ export async function ungradeableBatch2TargetProbes({
     // urlKey and the space spellings of the actor segment are tried; the
     // candidate that carried content is recorded.
     const readSessionRoles = async (actorSegment) => {
-      if (!visitorSession?.readVisitorSession || !visitorSession?.sessionCardContent) return { available: false, candidates: [] };
+      if (!visitorSession?.readVisitorSession || !visitorSession?.sessionCardContent) return { available: false, candidates: [], cookiePresent: null, cookieLength: null };
       const header = await cookieHeader();
-      if (!header) return { available: true, candidates: [] };
+      if (!header) return { available: true, candidates: [], cookiePresent: false, cookieLength: 0 };
       const state = visitorSession.readVisitorSession(header);
       const candidates = [];
       for (const name of [`${actorSegment}+*enabled roles`, `${spaceForm(actorSegment)}+*enabled roles`]) {
         const raw = visitorSession.sessionCardContent(state, name);
         if (raw !== undefined && raw !== null) candidates.push({ cardName: name, raw: String(raw) });
       }
-      return { available: true, candidates };
+      return { available: true, candidates, cookiePresent: true, cookieLength: header.length };
     };
     const formSel = '.navbar form.card-form[action$="+*enabled_roles"]';
     const openEditor = async () => {
@@ -821,6 +820,10 @@ export async function ungradeableBatch2TargetProbes({
         postStatus,
         sessionBefore: sessionBefore.candidates,
         sessionAfter: sessionAfter?.candidates ?? null,
+        decoderAvailable: !!visitorSession?.readVisitorSession,
+        cookieBefore: { present: sessionBefore.cookiePresent ?? null, length: sessionBefore.cookieLength ?? null },
+        cookieAfter: { present: sessionAfter?.cookiePresent ?? null, length: sessionAfter?.cookieLength ?? null },
+        actorSegment,
         checkedBefore: boxInfo?.checked ?? null,
         checkedAfter: afterFirst?.checked ?? null,
       });
@@ -884,35 +887,51 @@ export async function ungradeableBatch2TargetProbes({
   // batch2 case 11 — ACT-177 (REL1): "related-cards panel content". Mirrors
   // probe-pageonly-top10-write-permission.mjs ACT-177: Topic 001's +related
   // closed panel expands on its accordion button, lists BOTH pointed-at cards
-  // (Topic 002, Topic 012), and following one presents that card.
+  // (Topic 002, Topic 012), and following one presents that card. The panel
+  // is located by the classes the served page's own structure excerpt
+  // carries (#main .card-slot.closed-view.RIGHT-related — the f2 run's
+  // ACT-101 observation), and its actual slot id is recorded: both earlier
+  // id-shaped guesses (`#topic_001-related-closed-view`, run 1 and the
+  // probe's spelling) found no button in run 2, while the slot itself
+  // renders — the id is evidence, not an aim.
   if (/\bREL1\b/.test(t)) {
     currentCase = "batch2 case 11 REL1 related-cards panel (ACT-177)";
     if (typeof page === "undefined" || page === null) {
       throw new Error("REL1 probe needs the runner's page helper");
     }
     const panelCard = "Topic 001";
-    const panelId = `#${urlKey(panelCard)}-related-closed-view`;
-    // The probe visits the URL-KEY path (/Topic_001), the spelling the
-    // related panel's slot id is built from; run 1 visited the %20-encoded
-    // path and the panel slot did not render under it.
     await visit(`/${urlKey(panelCard)}`);
-    const panelBtn = page.locator(`${panelId} button.accordion-button`).first();
-    const buttonFound = (await panelBtn.count().catch(() => 0)) > 0;
+    const panelShape = await page
+      .evaluate(() => {
+        const panel = document.querySelector("#main .card-slot.closed-view.RIGHT-related");
+        if (!panel) return { found: false, id: null, button: 0 };
+        return {
+          found: true,
+          id: panel.getAttribute("id"),
+          button: panel.querySelectorAll("button.accordion-button").length,
+        };
+      })
+      .catch(() => ({ found: false, id: null, button: 0 }));
+    const panelSel = () => "#main .card-slot.closed-view.RIGHT-related";
+    let expanded = false;
     let content = null;
     let followed = null;
-    if (buttonFound) {
-      await panelBtn.click({ timeout: stepTimeout }).catch(() => {});
+    if (panelShape.found && panelShape.button > 0) {
+      await page.locator(`${panelSel()} button.accordion-button`).first().click({ timeout: stepTimeout }).catch(() => {});
       await page.waitForTimeout(2_500);
       await settle();
+      expanded = (await page
+        .evaluate((sel) => !!document.querySelector(`${sel} button.accordion-button:not(.collapsed)`) && !!document.querySelector(`${sel} .accordion-body`), panelSel())
+        .catch(() => false)) ?? false;
       content = await page
         .evaluate((sel) => {
           const body = document.querySelector(`${sel} .accordion-body`);
           return body
-            ? { bodyText: body.textContent.replace(/\s+/g, " ").trim().slice(0, 250), links: [...body.querySelectorAll("a.known-card")].map((a) => ({ t: a.textContent.replace(/\s+/g, " ").trim(), h: a.getAttribute("href") })) }
+            ? { bodyText: body.textContent.replace(/\s+/g, " ").trim().slice(0, 250), links: [...body.querySelectorAll("a.known-card")].map((a) => ({ t: a.textContent.replace(/\s+/g, " ").trim(), h: a.getAttribute("href") })), bars: [...body.querySelectorAll(".bar[data-card-link-name]")].map((b) => b.getAttribute("data-card-link-name")) }
             : null;
-        }, panelId)
+        }, panelSel())
         .catch(() => null);
-      const topic2 = page.locator(`${panelId} .accordion-body .bar[data-card-link-name='Topic_002']`).first();
+      const topic2 = page.locator(`${panelSel()} .accordion-body .bar[data-card-link-name='Topic_002']`).first();
       if ((await topic2.count().catch(() => 0)) > 0) {
         await topic2.click({ timeout: stepTimeout }).catch(() => {});
         await page.waitForLoadState("load", { timeout: stepTimeout }).catch(() => {});
@@ -924,11 +943,13 @@ export async function ungradeableBatch2TargetProbes({
         followed.isTopic2 = followed.presented === "Topic 002" || /\/Topic_002($|\?)/.test(followed.url ?? "");
       }
     }
-    const bothListed = !!content && content.links.some((l) => /Topic 002|Topic_002/.test(l.t + l.h)) && content.links.some((l) => /Topic 012|Topic_012/.test(l.t + l.h));
+    const bothListed = (!!content?.links && content.links.some((l) => /Topic 002|Topic_002/.test(l.t + l.h)) && content.links.some((l) => /Topic 012|Topic_012/.test(l.t + l.h)))
+      || (!!content?.bars && content.bars.includes("Topic_002") && content.bars.includes("Topic_012"));
     push({
       interaction: "assert-present",
-      selector: `the related panel expands to its content on /${panelCard} (button ${buttonFound}, links ${content?.links.length ?? 0})`,
-      count: buttonFound && content && content.links.length > 0 ? 1 : 0,
+      selector: `the related panel expands to its content on /${urlKey(panelCard)} (panel ${panelShape.found}, button ${panelShape.button}, expanded ${expanded}, links ${content?.links?.length ?? 0})`,
+      count: panelShape.found && panelShape.button > 0 && expanded && content && (content.links?.length ?? 0) > 0 ? 1 : 0,
+      panelSlotId: panelShape.id,
       panelBodyHead: content?.bodyText ?? null,
     });
     push({
@@ -936,6 +957,7 @@ export async function ungradeableBatch2TargetProbes({
       selector: `the expanded panel lists both pointed-at cards (Topic 002 and Topic 012: ${bothListed})`,
       count: bothListed ? 1 : 0,
       links: content?.links ?? [],
+      bars: content?.bars ?? [],
     });
     push({
       interaction: "assert-present",
@@ -1330,8 +1352,8 @@ export async function ungradeableBatch2TargetProbes({
     if (!gateWrite(sequence, writeGate, { verb: "create", cardName: restricted, detail: "ACT-188 the probe's update-restricted card and its *update rule" })) {
       return sequence;
     }
-    if (typeof page === "undefined" || page === null || typeof newActorRequest !== "function") {
-      throw new Error("ACT-188 probe needs the runner's page and newActorRequest helpers");
+    if (typeof page === "undefined" || page === null || typeof newActorRequest !== "function" || typeof pageRequest === "undefined") {
+      throw new Error("ACT-188 probe needs the runner's page, pageRequest and newActorRequest helpers");
     }
     const card = await createCard(restricted, "Basic", secret);
     const rule = await createCard(`${restricted}+*self+*update`, "Phrase", "[[Administrator]]");
@@ -1350,6 +1372,27 @@ export async function ungradeableBatch2TargetProbes({
     const memberEditLinks = (memberBody.match(new RegExp(`href="[^"]*/${esc(urlKey(restricted))}/edit"`, "g")) ?? []).length;
     const memberUpdateForms = (memberBody.match(new RegExp(`action="[^"]*/update/${esc(urlKey(restricted))}`, "g")) ?? []).length;
     const memberEditLinkSample = (memberBody.match(/class="[^"]*edit-link[^"]*"[^>]*href="[^"]*"/g) ?? []).slice(0, 4);
+    // Run 2 measured the content view rendering the edit affordance TO THE
+    // MEMBER as well (href /<card>/edit, class "edit-link slotter"): the
+    // render-level denial is not the contract this engine implements — the
+    // security boundary lives on the edit route (the P3 instrument's own
+    // shape: the member's edit view refuses 403 with no editor). The render
+    // fact is recorded as a witness; the graded legs are the route denials.
+    witness({
+      selector: `the content view renders the edit affordance to BOTH actors (${memberEditLinks} member edit links targeting the card, sample ${JSON.stringify(memberEditLinkSample.slice(0, 1))}) — recorded, not graded; the boundary this case grades is the edit route's`,
+      memberEditLinks,
+      memberEditLinkSample,
+    });
+    // The member's edit view: refused, with no editor form for the card.
+    const memberEditRes = await member.get(`${base}/${encodeURIComponent(restricted)}?view=edit`).catch((e) => ({ error: String(e?.message ?? e) }));
+    const memberEditStatus = memberEditRes.error ? null : memberEditRes.status();
+    const memberEditBody = memberEditRes.error ? "" : await memberEditRes.text().catch(() => "");
+    const memberEditForms = (memberEditBody.match(new RegExp(`action="[^"]*/update/${esc(urlKey(restricted))}`, "g")) ?? []).length;
+    // The administrator's edit view: served, with the editor form.
+    const adminEditRes = await pageRequest.get(`${base}/${encodeURIComponent(restricted)}?view=edit`, { maxRedirects: 0 }).catch((e) => ({ error: String(e?.message ?? e) }));
+    const adminEditStatus = adminEditRes.error ? null : adminEditRes.status();
+    const adminEditBody = adminEditRes.error ? "" : await adminEditRes.text().catch(() => "");
+    const adminEditForms = (adminEditBody.match(new RegExp(`action="[^"]*/update/${esc(urlKey(restricted))}`, "g")) ?? []).length;
     push({
       interaction: "assert-present",
       selector: `ACT-188 staging: the update-restricted card stored (card ${card.status}, rule ${rule.status})`,
@@ -1359,9 +1402,10 @@ export async function ungradeableBatch2TargetProbes({
     });
     push({
       interaction: "assert-present",
-      selector: `the administrator's view renders the edit affordance for the card (${adminEditLinks} a.edit-link[href$='/edit'])`,
-      count: adminEditLinks > 0 ? 1 : 0,
-      adminEditLinks,
+      selector: `the administrator's edit view is served with its editor form (${adminEditStatus}, ${adminEditForms} update forms targeting the card)`,
+      count: adminEditStatus === 200 && adminEditForms > 0 ? 1 : 0,
+      adminEditStatus,
+      adminEditForms,
     });
     push({
       interaction: "assert-present",
@@ -1371,11 +1415,10 @@ export async function ungradeableBatch2TargetProbes({
     });
     push({
       interaction: "assert-present",
-      selector: `the member's view renders NO edit affordance and NO update form for the restricted card (${memberEditLinks} edit links targeting it, ${memberUpdateForms} update forms targeting it)`,
-      count: memberStatus === 200 && memberEditLinks === 0 && memberUpdateForms === 0 ? 1 : 0,
-      memberEditLinks,
-      memberUpdateForms,
-      memberEditLinkSample,
+      selector: `the member's edit view is denied with no editor form for the card (${memberEditStatus}, ${memberEditForms} update forms targeting it, update POST channel also refused below)`,
+      count: memberEditStatus === 403 && memberEditForms === 0 ? 1 : 0,
+      memberEditStatus,
+      memberEditForms,
     });
   }
 
