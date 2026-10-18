@@ -272,6 +272,14 @@ export const checks = [
       try {
         browser = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
         const page = browser.page;
+        // A raw capture that cannot kill the check: page.content() throws
+        // when the page is mid-navigation (the C20 run at 05-58 lost its
+        // whole record to that race), and a capture failure is not a
+        // verdict about the surface.
+        const rawCapture = async meta => {
+          try { return captureEvidence(await page.content(), meta); }
+          catch { return { capture: "unavailable: the page was navigating when the capture fired" }; }
+        };
         const codenameRow = code => database().prepare("SELECT id,name FROM cards WHERE codename=? AND trash=0 ORDER BY id LIMIT 1").get(code) ?? null;
         const codenames = Object.fromEntries(["role", "disabled_roles", "enabled_roles", "members"].map(code => [code, codenameRow(code)]));
         const roles = codenames.role === null ? [] : database().prepare("SELECT id,name FROM cards WHERE type_id=? AND trash=0 ORDER BY name").all(codenames.role.id);
@@ -532,7 +540,7 @@ export const checks = [
           clickableNonPower: clickable.map(b => ({ name: b.name, value: b.value })),
           notClickable: hidden.map(b => ({ value: b.value, display: b.display, why: powerRoles.has(String(b.value).toLowerCase()) ? "a power role" : "the served stylesheet does not display it" })),
           initialCookieSnapshot: seedSnapshot,
-          raw: captureEvidence(await page.content(), { check: "a6-roles-dropdown-member", actor: memberActor.name }),
+          raw: await rawCapture({ check: "a6-roles-dropdown-member", actor: memberActor.name }),
         });
 
         if (clickable.length === 0) {
@@ -652,7 +660,7 @@ export const checks = [
           witnessChain: "browser context cookie decko_visit -> readVisitorSession decode -> sessionCardContent(state, '<actor>+*enabled roles')",
           alsoObserved: "the rendered checkbox state after the autosave reload AND a fresh request's session-card content",
           notAsserted: "the canonical cards.db_content row (session cards are visitor-local; ensure_roles fills it at render time, not write time)",
-          raw: captureEvidence(await page.content(), { check: "a6-role-checkbox-after-click", actor: choice.actor }),
+          raw: await rawCapture({ check: "a6-role-checkbox-after-click", actor: actorCreds.name }),
         });
 
         if (postStatus !== null && postStatus < 400 && moved) {
@@ -725,19 +733,23 @@ export const checks = [
             // The click affordance cannot post (measured: the served checkbox
             // input is 0x0, no change event fires, zero requests in the
             // window), so the session restore uses the exact endpoint the
-            // autosave form posts, with the pre-click content — the same
-            // engine-driven write path, route disclosed in the record.
+            // autosave form posts, with the SAME FIELDS the served form
+            // serializes (card[type_id]=Session, success[reload]) plus the
+            // pre-click content — the same engine-driven write path, route
+            // disclosed in the record.
+            const sessionTypeId = database().prepare("SELECT id FROM cards WHERE codename='session' AND trash=0 ORDER BY id LIMIT 1").get()?.id;
             const restorePost = await page.context().request.post(`${stack.origin}${postPath}`, {
               headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
               data: new URLSearchParams({
                 "card[content]": beforeRoles.dbContent ?? "",
-                "success[redirect]": "true",
+                ...(sessionTypeId === undefined ? {} : { "card[type_id]": String(sessionTypeId) }),
+                "success[reload]": "true",
               }).toString(),
               maxRedirects: 0,
             }).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
-            restoreRoute = restorePost.status !== undefined && restorePost.status < 400
-              ? "POST /update/<actor>+*enabled roles with the pre-click content (the click affordance cannot post — the served checkbox is 0x0 — so the restore used the same endpoint the form posts, explicitly)"
-              : "NOT RESTORED: neither the click nor the endpoint POST could write (" + JSON.stringify(restorePost).slice(0, 100) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
+            restoreRoute = typeof restorePost.status === "number" && restorePost.status < 400
+              ? `POST /update/<actor>+*enabled roles with the pre-click content and the form's own fields (status ${restorePost.status}); the click affordance cannot post — the served checkbox is 0x0`
+              : "NOT RESTORED: neither the click nor the endpoint POST could write (" + JSON.stringify(restorePost).slice(0, 140) + "); the run's deck copy is disposable, so the residue cannot reach a later run";
           }
           await page.waitForTimeout(800);
           restoredRoles = await enabledRolesFor(actorCreds.id, actorCreds.name);
@@ -753,8 +765,7 @@ export const checks = [
         let grantRevoke = null, grantListRowAfterRevoke = null;
         if (grantableRole && seededGrantListId !== null) {
           await signInActor(page, stack.origin, adminActor).catch(() => undefined);
-          grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));
-          grantListRowAfterRevoke = database().prepare(
+          grantRevoke = await revokeMemberRoleGrant(grantableRole, seededGrantListId, seedGrant.urlName ?? null, seedGrant.before).catch(e => ({ status: 0, error: String(e?.message ?? e) }));          grantListRowAfterRevoke = database().prepare(
             "SELECT db_content FROM cards WHERE id=? AND trash=0",
           ).get(seededGrantListId) ?? null;
         }
@@ -800,6 +811,12 @@ export const checks = [
       try {
         browser = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
         const page = browser.page;
+        // Same navigation-race guard as the A6 check: a capture failure is
+        // not a verdict about the surface.
+        const rawCapture = async meta => {
+          try { return captureEvidence(await page.content(), meta); }
+          catch { return { capture: "unavailable: the page was navigating when the capture fired" }; }
+        };
         await signInActor(page, stack.origin, creds.admin);
         created.push(cardName, rightSetName, rightName);
 
@@ -825,7 +842,7 @@ export const checks = [
           fixtureContent: fixtureRow?.db_content ?? null,
           setSeedStatus: setSeed.status(), rightSetStored: rightSet !== undefined,
           affordances, wanted: wanted ?? null,
-          raw: captureEvidence(await page.content(), { check: "c20-plus-right-wanted-card-link", card: cardName }),
+          raw: await rawCapture({ check: "c20-plus-right-wanted-card-link", card: cardName }),
         });
 
         // 2. The wanted card's own page: does it offer a way to create it? The
@@ -854,7 +871,7 @@ export const checks = [
             card: cardName, rightName, landedOn: wantedPage,
             addBox: addBox ?? null, affordances: wantedAffordances,
             servedForm: servedShape.hasForm, formShape: servedShape,
-            raw: captureEvidence(await page.content(), { check: "c20-wanted-card-page", card: cardName }),
+            raw: await rawCapture({ check: "c20-wanted-card-page", card: cardName }),
           });
         } else {
           record(capabilityChecks.C20[1], false, {
@@ -906,7 +923,7 @@ export const checks = [
             stored: after ?? null, anyTrashRows: anyTrash, familyRows,
             rightSet: rightSet === undefined ? null : { id: rightSet.id, name: rightSet.name, type_id: rightSet.type_id },
             note: after === undefined ? "the create answered without storing a row under the requested name" : "a row exists under the requested name",
-            raw: captureEvidence(await page.content(), { check: "c20-plus-right-after-create", card: cardName }),
+            raw: await rawCapture({ check: "c20-plus-right-after-create", card: cardName }),
           });
         // 5. The set membership read from the junction ids, not from the name.
         const member = after === undefined ? null : database().prepare("SELECT id,name,type_id,left_id,right_id,trash FROM cards WHERE id=?").get(after.id);
@@ -920,7 +937,7 @@ export const checks = [
         // 6. The user-visible outcome: a fresh read of the card page shows the
         // member the create was supposed to add, as a known card.
         const afterRead = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
-        const afterHtml = await page.content();
+        const afterHtml = await page.content().catch(() => "");
         const rendered = await page.evaluate(name => {
           const link = [...document.querySelectorAll("a")].find(a => decodeURIComponent(a.getAttribute("href") ?? "") === name || decodeURIComponent(a.getAttribute("href") ?? "").includes(name));
           return link === undefined ? null : { href: link.getAttribute("href"), classes: link.getAttribute("class"), text: (link.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40) };
