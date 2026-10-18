@@ -137,12 +137,23 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
         const response = await request.response();
         if (!response) return;
         const t = request.timing();
+        // The owned request ledger records what a write answered (bodyHead);
+        // the browser-observed stand-in carries the same surface, or checks
+        // like sign-in lose their redirect evidence on a host-override run
+        // (Chromium can evict a navigated-away XHR body from the response
+        // object, but the finished response's text is usually still here).
+        let bodyHead;
+        if (request.method() !== "GET" && request.method() !== "HEAD") {
+          const text = await response.text().catch(() => null);
+          if (typeof text === "string") bodyHead = text.replace(/\s+/g, " ").slice(0, 240);
+        }
         ledgerSink({
           method: request.method(),
           path: url.pathname + url.search,
           status: response.status(),
           ms: Number.isFinite(t?.responseEnd) ? Math.round(t.responseEnd - t.startTime) : null,
           serverTiming: response.headers()["server-timing"] ?? null,
+          ...(bodyHead !== undefined ? { bodyHead } : {}),
           channel: "browser-observed",
         });
       } catch { /* a context closing mid-request must not kill the run */ }
