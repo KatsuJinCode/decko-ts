@@ -218,6 +218,22 @@ export const checks = [
         if (!fixtureCard(database(), cardName)) throw Error("P6 fixture card was not stored: " + JSON.stringify(fixture));
         const before = await member.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
 
+        // The read rule exists before the tab is used, with the member allowed.
+        // P6's action is CHANGING a rule's value from the Rules tab and reading
+        // the boundary afterwards; a rule that does not move proves nothing, and
+        // the Rules tab's editor opens a new-rule form (no name field carrying
+        // the rule's identity) when the rule is absent - which is why the first
+        // two runs of this row found no rule form at all.
+        const readRule = selfSet + "+*read";
+        created.push(readRule);
+        const seedRule = await admin.page.context().request.post(stack.origin + "/card/create", {
+          headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+          data: new URLSearchParams({ "card[name]": readRule, "card[type]": "Phrase", "card[content]": "[[Anyone]]", "success[redirect]": "true" }).toString(),
+          maxRedirects: 0,
+        });
+        const seededRule = fixtureCard(database(), readRule);
+        if (seededRule === undefined) throw Error("P6 seed read rule was not stored (HTTP " + seedRule.status() + ")");
+
         const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}/board`, { waitUntil: "load" });
         const tabLink = admin.page.locator(".board .nav-link", { hasText: "Rules" }).first();
         if (await tabLink.count() === 0) throw Error("P6 the card board offers no Rules tab (HTTP " + board.status() + ")");
@@ -251,10 +267,11 @@ export const checks = [
         await admin.page.getByRole("treeitem", { name: `The card "${cardName}"`, exact: true }).click().catch(() => undefined);
         await admin.page.locator(".board a[href*='overlay_rule']").first().waitFor({ state: "attached", timeout: 15000 }).catch(() => undefined);
         await admin.page.waitForTimeout(1500);
-        const pills = await admin.page.evaluate(() => [...document.querySelectorAll(".board a[href*='overlay_rule']")]
+        const pills = await admin.page.evaluate(() => [...document.querySelectorAll(".card-slot._fixed-slot a[href*='overlay_rule'], .board a[href*='overlay_rule']")]
           .map(a => ({
             setting: (a.getAttribute("data-cy") ?? "").replace("-pill", "") || a.textContent.replace(/\s+/g, " ").trim().split(" ")[0],
             href: a.getAttribute("href"),
+            selectedSetPane: a.closest(".card-slot._fixed-slot") !== null,
           })));
         const readPill = pills.find(p => p.setting === "read");
         const updatePill = pills.find(p => p.setting === "update");
@@ -292,24 +309,31 @@ export const checks = [
         }
         // The pill's href is "/<Set>+*<setting>/overlay_rule": the rule's identity is
         // the path with that overlay suffix removed, not the raw pathname.
-        const ruleName = decodeURIComponent(new URL(readPill.href, stack.origin).pathname).replace(/^\//, "").replace(/\/overlay_rule\/?$/, "");
+        const ruleName = readRule;
         const beforeRule = fixtureCard(database(), ruleName);
-        await admin.page.locator(`a[href="${readPill.href}"]`).first().click().catch(() => undefined);
-        await admin.page.waitForTimeout(2000);
-        const ruleForm = admin.page.locator("form.card-rule-form").filter({ has: admin.page.locator(`input[name="card[name]"][value="${ruleName}"]`) }).first();
-        if (await ruleForm.count() === 0) {
+        // dispatchEvent, not a synthetic mouse click: the rule link is a
+        // data-remote slotter and this is the mechanism the repo's own E14 uses
+        // to open the same editor (checks-cover-b.mjs:520).
+        await admin.page.locator(`a[href="${readPill.href}"]`).first().dispatchEvent("click").catch(() => undefined);
+        const ruleFormLocator = admin.page.locator("form.card-rule-form").first();
+        await ruleFormLocator.waitFor({ state: "attached", timeout: 15000 }).catch(() => undefined);
+        const ruleForm = admin.page.locator("form.card-rule-form").filter({ has: admin.page.locator(`input[name="card[name]"][value="${ruleName}"]`) });
+        const editor = await ruleForm.count() > 0 ? ruleForm.first() : ruleFormLocator;
+        if (await editor.count() === 0) {
           record(capabilityChecks.P6[1], false, {
-            card: cardName, ruleName, note: "the read pill opened no card-rule-form carrying that rule's name",
+            card: cardName, ruleName, readRuleHref: readPill.href, seedRuleStatus: seedRule.status(), ruleContentBefore: beforeRule?.db_content ?? null,
+            note: "the read pill opened no card-rule-form",
             overlayForms: await admin.page.evaluate(() => [...document.querySelectorAll("form")].map(f => ({ action: f.getAttribute("action"), cls: f.className, names: [...f.querySelectorAll("[name]")].map(n => n.getAttribute("name")).slice(0, 8) }))),
             raw: captureEvidence(await admin.page.content(), { check: "p6-read-rule-form", name: cardName }),
           });
           return;
         }
-        const contentField = ruleForm.locator('[name="card[content]"]').first();
+        const editorCarriesRule = await editor.count() > 0 && await editor.locator(`input[name="card[name]"][value="${ruleName}"]`).count() > 0;
+        const contentField = editor.locator('[name="card[content]"]').first();
         if (await contentField.count() === 0) {
           record(capabilityChecks.P6[1], false, {
             card: cardName, ruleName, note: "the rule form offers no content field to set the rule's value",
-            formControls: await ruleForm.evaluate(f => [...f.querySelectorAll("input,select,textarea")].map(el => ({ name: el.getAttribute("name"), type: el.getAttribute("type"), value: el.value ?? null }))),
+            formControls: await editor.evaluate(f => [...f.querySelectorAll("input,select,textarea")].map(el => ({ name: el.getAttribute("name"), type: el.getAttribute("type"), value: el.value ?? null }))),
             raw: captureEvidence(await admin.page.content(), { check: "p6-read-rule-form", name: cardName }),
           });
           return;
@@ -323,10 +347,10 @@ export const checks = [
         } else if (await contentField.isVisible()) {
           await contentField.fill(wanted);
         }
-        const action = new URL(await ruleForm.getAttribute("action"), stack.origin);
+        const action = new URL(await editor.getAttribute("action"), stack.origin);
         const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 30000 })
           .then(response => ({ response }), error => ({ error }));
-        await ruleForm.locator("button[type='submit']").first().click().catch(() => undefined);
+        await editor.locator("button[type='submit']").first().click().catch(() => undefined);
         const observed = await pending;
         if (observed.error) throw observed.error;
         await observed.response.finished();
@@ -341,7 +365,8 @@ export const checks = [
           && after.status() >= 400
           && !afterHtml.includes(secret),
           {
-            card: cardName, ruleName, wanted,
+            card: cardName, ruleName, wanted, editorCarriesRule,
+            seedRuleStatus: seedRule.status(),
             ruleWriteStatus: observed.response.status(),
             ruleContentBefore: beforeRule?.db_content ?? null,
             ruleContentAfter: afterRule?.db_content ?? null,
