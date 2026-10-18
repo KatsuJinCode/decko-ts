@@ -39,13 +39,20 @@ export interface SQLDatabaseDriver {
    * fails), every write `work` made through this driver object is undone
    * and the error is rethrown; otherwise all of them persist together.
    *
-   * Every statement issued through THIS driver object while `work` runs
-   * belongs to the transaction — including statements from unrelated
-   * callers that share the object (see `readersIsolated`). Transactions on
-   * one driver object never overlap: a second call waits until the first
-   * has committed or rolled back. Do not call transaction() from inside
-   * `work`; the nested call waits for the outer one and fails with
-   * TransactionLockTimeoutError.
+   * Every statement issued through THIS driver object inside `work`'s call
+   * tree belongs to the transaction — attribution is by call tree
+   * (AsyncLocalStorage, src/server/transaction-statement-scope.ts), not by
+   * timing. A statement issued by an UNRELATED caller while a transaction
+   * is open does not join it: a standalone read runs beside the open
+   * transaction, a standalone write queues behind it as its own unit — the
+   * coupling that let an unrelated request's acknowledged write be rolled
+   * back by a save it never belonged to is closed. Where the runtime has no
+   * AsyncLocalStorage, attribution is impossible and a statement from an
+   * unrelated caller that lands mid-transaction keeps the historical
+   * shared-connection coupling. Transactions on one driver object never
+   * overlap: a second call waits until the first has committed or rolled
+   * back. Do not call transaction() from inside `work`; the nested call
+   * waits for the outer one and fails with TransactionLockTimeoutError.
    *
    * Absent on drivers that cannot make a unit of work atomic (read-only
    * drivers). The write path refuses to save through such a driver rather
@@ -82,9 +89,11 @@ export interface SQLTransactionGuarantee {
   readonly crashRecovery: "database" | "next-transaction" | "next-transaction-or-read";
   /** Whether a reader that does NOT share this driver object sees the
    *  transaction's uncommitted writes: false for compensating adapters,
-   *  where each statement commits as it runs. Readers that share the
-   *  driver object share its connection or stream, and see them on every
-   *  adapter. */
+   *  where each statement commits as it runs. On adapters that attribute by
+   *  call tree, a reader that shares the driver object but issues its
+   *  statement OUTSIDE the transaction's call tree does not see them either
+   *  (it reads beside the transaction); only statements issued inside the
+   *  transaction's own call tree see them. */
   readonly readersIsolated: boolean;
   /** Which writers are serialized against each other: "driver-object" —
    *  transactions through the same driver object; "database" — every

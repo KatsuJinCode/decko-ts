@@ -61,6 +61,7 @@
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
 import { isDatabaseBusyError, retryWhileBusy, TransactionGate } from "../../server/driver.js";
+import { inTransactionStatementScope, runInTransactionStatementScope } from "../../server/transaction-statement-scope.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -387,53 +388,61 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    * the transaction back. Stand-alone queries keep their retry.
    */
   async transaction<R>(work: () => Promise<R>): Promise<R> {
-    return this.gate.run(async () => {
-      // Another connection holding the write lock makes BEGIN IMMEDIATE
-      // fail; wait for it, up to the lock timeout. Only BEGIN is retried:
-      // the same answer to a statement inside the transaction means the
-      // save failed, and it surfaces from work().
-      await retryWhileBusy(
-        async () => {
-          const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
-          const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
-          if (opened.baton !== undefined) this.stream = { baton: opened.baton, url: opened.url };
-          try {
-            opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
-          } catch (error) {
-            await this.endStream(undefined).catch(() => undefined);
-            throw error;
-          }
-          if (opened.baton === undefined) {
-            // Bunny documents baton sessions but asks customers who need them
-            // to ask for them; a database without them closes every stream,
-            // and a save cannot be made atomic there. Refuse rather than write
-            // statement by statement.
-            throw new BunnyDbError(
-              "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
-            );
-          }
-        },
-        undefined,
-        undefined,
-        isBunnyBeginBusy,
-      );
-      this.streamOpenedAt = Date.now();
-      this.readMemo = new Map();
-      this.triggerGraph = undefined;
-      let result: R;
-      try {
-        result = await work();
-      } catch (error) {
-        await this.endStream("ROLLBACK").catch(() => undefined);
-        throw error;
-      }
-      try {
-        await this.endStream("COMMIT");      } catch (error) {
-        if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
-        throw error;
-      }
-      return result;
-    });
+    return this.gate.run(async () =>
+      // Mark work's call tree as transaction work (transaction-statement-scope.ts):
+      // every statement issued inside it — across every await — attributes to
+      // this transaction and rides the stream; a statement issued OUTSIDE any
+      // transaction's tree while this stream is open is routed away from it
+      // (query/batch below), so an unrelated request's statement can no longer
+      // join, extend, or be rolled back with this transaction.
+      runInTransactionStatementScope(async () => {
+        // Another connection holding the write lock makes BEGIN IMMEDIATE
+        // fail; wait for it, up to the lock timeout. Only BEGIN is retried:
+        // the same answer to a statement inside the transaction means the
+        // save failed, and it surfaces from work().
+        await retryWhileBusy(
+          async () => {
+            const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+            const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
+            if (opened.baton !== undefined) this.stream = { baton: opened.baton, url: opened.url };
+            try {
+              opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+            } catch (error) {
+              await this.endStream(undefined).catch(() => undefined);
+              throw error;
+            }
+            if (opened.baton === undefined) {
+              // Bunny documents baton sessions but asks customers who need them
+              // to ask for them; a database without them closes every stream,
+              // and a save cannot be made atomic there. Refuse rather than write
+              // statement by statement.
+              throw new BunnyDbError(
+                "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
+              );
+            }
+          },
+          undefined,
+          undefined,
+          isBunnyBeginBusy,
+        );
+        this.streamOpenedAt = Date.now();
+        this.readMemo = new Map();
+        this.triggerGraph = undefined;
+        let result: R;
+        try {
+          result = await work();
+        } catch (error) {
+          await this.endStream("ROLLBACK").catch(() => undefined);
+          throw error;
+        }
+        try {
+          await this.endStream("COMMIT");      } catch (error) {
+          if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
+          throw error;
+        }
+        return result;
+      }),
+    );
   }
 
   private async endStream(verb: "COMMIT" | "ROLLBACK" | undefined): Promise<void> {
@@ -520,6 +529,26 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     const stmt = toHranaStmt(sql, params);
+    // A statement issued OUTSIDE any transaction's call tree while another
+    // request's transaction holds this driver object's stream is not part of
+    // that transaction, and must not ride its baton: riding it coupled the
+    // statement's fate to the transaction (a save's ROLLBACK silently undid
+    // an unrelated request's already-acknowledged write) and let its reads
+    // see the transaction's uncommitted rows. A standalone READ runs on its
+    // own pipeline — the database is SQLite (WAL), so a reader does not wait
+    // for the writer. A standalone WRITE queues behind the open transaction
+    // through the gate and runs as its own unit, which is the wait-then-
+    // succeed behavior a second writer gets on every transactional database.
+    // Where attribution is impossible (no AsyncLocalStorage on the runtime),
+    // the historical shared-object coupling applies, per src/server/driver.ts.
+    if (this.stream !== undefined && inTransactionStatementScope() === false) {
+      if (cachedSqlFacts(sql).isRead) {
+        this.counter.recordQuery(sql);
+        const results = await this.pipeline([{ type: "execute", stmt }, { type: "close" }]);
+        return execResultToQueryResult<T>(results[0] as BunnyDbExecResult);
+      }
+      return this.transaction(() => this.query<T>(sql, params));
+    }
     // Inside a transaction, a repeated read of the same (sql, args) is
     // answered from the memo instead of the wire. A memo hit performs NO
     // database operation, so it does not reach the counter below either: the
@@ -556,6 +585,21 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
 
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     if (statements.length === 0) return [];
+    // Standalone routing for a batch, same rule as query() above: outside
+    // any transaction's call tree, a batch must not ride another request's
+    // open transaction. An all-read batch goes on its own pipeline; a batch
+    // containing any write queues behind the open transaction through the
+    // gate and runs as its own unit.
+    if (this.stream !== undefined && inTransactionStatementScope() === false) {
+      const allReads = statements.every((s) => cachedSqlFacts(s.sql).isRead);
+      if (allReads) {
+        const requests: HranaPipelineRequest[] = statements.map((s) => ({ type: "execute", stmt: toHranaStmt(s.sql, s.params) }));
+        for (const s of statements) this.counter.recordQuery(s.sql);
+        const raw = (await this.pipeline([...requests, { type: "close" }])).slice(0, requests.length) as BunnyDbExecResult[];
+        return raw.map((result) => execResultToQueryResult<unknown>(result));
+      }
+      return this.transaction(() => this.batch(statements));
+    }
     const memo = this.stream !== undefined ? this.readMemo : undefined;
 
     // A batch executes in order on the server, so a write at position k
