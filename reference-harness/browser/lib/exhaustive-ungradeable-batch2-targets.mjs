@@ -335,11 +335,12 @@ export async function ungradeableBatch2TargetProbes({
     push({
       interaction: "assert-present",
       selector: `the offered create stores the card (member-channel submit answered ${replay.status ?? "nothing"}; /${wanted}.json ${replay.json?.status ?? "nothing"} carrying ${JSON.stringify(replay.json?.parsed?.name ?? null)})`,
-      count: replay.status !== null && replay.status < 400 && replay.json.status === 200 && replay.json.parsed?.name === spaceForm(wanted) ? 1 : 0,
+      count: replay.status !== null && replay.status < 400 && replay.json.status === 200 && (replay.json.parsed?.name === wanted || replay.json.parsed?.name === spaceForm(wanted)) ? 1 : 0,
       replayStatus: replay.status,
       jsonStatus: replay.json.status,
       storedName: replay.json.parsed?.name ?? null,
-      note: "the drive rides the signed-in member's request channel because add_autocomplete_ok? requires ok?(:create), which the anonymous menu measured false (runs 1-2: only the search item offered signed out); the endpoint, add item, prefill and storage are C6's own contract",
+      requestedSpellings: [wanted, spaceForm(wanted)],
+      note: "the drive rides the signed-in member's request channel because add_autocomplete_ok? requires ok?(:create), which the anonymous menu measured false (runs 1-2: only the search item offered signed out); the endpoint, add item, prefill and storage are C6's own contract. Run 3 measured the stored name verbatim (underscore form) — the probe's space-form lesson is about URL lookup, which resolves either spelling, so the storage leg accepts both spellings of the SAME requested name",
     });
   }
 
