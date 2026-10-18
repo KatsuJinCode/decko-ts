@@ -179,24 +179,63 @@ async function main() {
 
       // ----------------------------------------------------------------
       // ACT-044 / ACT-077: the account card's board and its Account tab.
+      // The named instrument's flow (edge-signed-in-exercise.mjs:432-480):
+      // account settings live on the account card's BOARD page
+      // (`/{holder}/board`), not on `<holder>+*account_settings` — the
+      // tab is activated, the email_and_password pill opened, and each
+      // labeled row's pencil clicked; the email/password inputs live
+      // behind that pencil, in a modal.
       // ----------------------------------------------------------------
       const actorName = actors.admin.card; // "Ada Admin" in the synthetic fixture
+      const holder = actorName.replaceAll(" ", "_");
       const acct = {};
-      const acctResp = await page.goto(base + "/" + actorName.replaceAll(" ", "_"), { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => null);
+      const acctResp = await page.goto(`${base}/${holder}/board`, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => null);
       acct.boardStatus = acctResp ? acctResp.status() : null;
-      acct.tabs = await page.evaluate(() => [...document.querySelectorAll(".nav-tabs a, .board .nav-tabs a")].map((a) => a.textContent.trim()));
-      acct.accountTabHref = await page.evaluate(() => [...document.querySelectorAll("a")].filter((a) => a.textContent.trim() === "Account").map((a) => a.getAttribute("href"))[0] ?? null);
+      acct.boardUrl = `${base}/${holder}/board`;
+      acct.tabLinks = await page.evaluate(() =>
+        [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")]
+          .map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") }))
+          .filter((t) => t.text),
+      );
+      const accountTab = acct.tabLinks.find((t) => /account/i.test(t.text));
+      acct.accountTab = accountTab ?? null;
       let acct077 = { ...acct };
-      if (acct.accountTabHref) {
-        await page.locator("a").filter({ hasText: /^Account$/ }).first().click({ timeout: STEP_TIMEOUT }).catch(() => {});
-        await page.waitForLoadState("load", { timeout: STEP_TIMEOUT }).catch(() => {});
-        const emailCount = await page.locator("input[name='card[subcards][+*email][content]'], .RIGHT-Xemail input.d0-card-content").count().catch(() => 0);
-        const pwCount = await page.locator("input[name='card[subcards][+*password][content]'], .RIGHT-Xpassword input[type=password], .RIGHT-Xpassword input.d0-card-content").count().catch(() => 0);
-        acct077 = { ...acct077, emailCount, pwCount, landedOn: page.url() };
+      if (accountTab) {
+        await page.locator(".board .nav-tabs a, .board .nav-link, .board [role=tab]").filter({ hasText: /^Account$/i }).first().click({ timeout: STEP_TIMEOUT }).catch(() => {});
+        await page.waitForTimeout(500);
+        const pill = page.locator("[data-cy='email_and_password-pill']").first();
+        acct077.pillVisible = await pill.isVisible().catch(() => false);
+        if (acct077.pillVisible) await pill.click().catch(() => {});
+        await page.waitForTimeout(500);
+        /** One labeled row's pencil -> the modal input it opens. The
+         *  predicate is that input's name/type pair (the edge exercise
+         *  reads the FIELD, not merely the row's presence). */
+        const openField = async (right) => {
+          const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
+          if ((await link.count()) === 0) return { rowPresent: 0, editLinkPresent: 0 };
+          await link.dispatchEvent("click").catch(() => {});
+          const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
+          await input.waitFor({ state: "visible", timeout: 15_000 }).catch(() => {});
+          return {
+            rowPresent: 1,
+            editLinkPresent: 1,
+            inputVisible: await input.isVisible().catch(() => false),
+            name: await input.getAttribute("name").catch(() => null),
+            type: await input.getAttribute("type").catch(() => null),
+          };
+        };
+        acct077.emailField = await openField("email");
+        await page.locator(".modal .cancel-button:visible, .modal .close:visible, button[data-dismiss='modal']:visible").first().click().catch(() => {});
+        await page.waitForTimeout(300);
+        acct077.passwordField = await openField("password");
         writeFileSync(path.join(out, "act077-account-tab.html"), await page.content());
       }
-      record("ACT-044-account-tab", acct.boardStatus === 200 && acct.tabs.includes("Account"), acct);
-      record("ACT-077-e19-account-tab-fields", acct077.boardStatus === 200 && acct077.tabs.includes("Account") && acct077.emailCount > 0 && acct077.pwCount > 0, acct077);
+      record("ACT-044-account-tab", acct.boardStatus === 200 && accountTab !== undefined && accountTab !== null, acct);
+      record("ACT-077-e19-account-tab-fields",
+        acct077.boardStatus === 200 && Boolean(acct077.accountTab) &&
+        acct077.emailField?.inputVisible === true && acct077.emailField?.type !== "hidden" &&
+        acct077.passwordField?.inputVisible === true && acct077.passwordField?.type === "password",
+        acct077);
     } finally {
       await namedBrowser.close();
     }
@@ -241,6 +280,26 @@ async function main() {
       const memberRead = await memberPage.goto(base + "/" + writeName, { waitUntil: "load", timeout: STEP_TIMEOUT });
       const memberEdit = await memberPage.goto(base + "/" + writeName + "?view=edit", { waitUntil: "load", timeout: STEP_TIMEOUT });
       const editInputs = await memberPage.locator("[name='card[content]']").count().catch(() => -1);
+      // The named instrument's contract is "no editor": zero content inputs.
+      // Capture what the denial page actually carries, so a non-zero count
+      // is attributable (a denial view's own hidden input, or a live editor).
+      const editPageFacts = await memberPage.evaluate(() => {
+        const inputs = [...document.querySelectorAll("[name='card[content]']")];
+        return {
+          contentInputCount: inputs.length,
+          contentInputs: inputs.map((i) => ({
+            type: i.getAttribute("type"),
+            visible: i.getClientRects().length > 0,
+            form: i.closest("form")?.getAttribute("action") ?? null,
+          })),
+          cardForms: [...document.querySelectorAll("form.card-form")].map((f) => f.getAttribute("action")),
+          textareas: document.querySelectorAll("textarea").length,
+          tinymce: typeof window.tinyMCE,
+          denialClass: document.querySelector(".denial-view, .card-slot")?.className?.slice(0, 120) ?? null,
+          h1: document.querySelector("#main h1, h1")?.textContent?.replace(/\s+/g, " ").trim().slice(0, 140) ?? null,
+        };
+      }).catch((e) => ({ error: String(e?.message ?? e) }));
+      writeFileSync(path.join(out, "act100-member-denial.html"), await memberPage.content());
       const deniedPost = await memberPage.evaluate(async ({ origin, name }) => {
         const r = await fetch(origin + "/update/" + name, {
           method: "POST", credentials: "include",
@@ -253,7 +312,7 @@ async function main() {
       const storedUnchanged = (await adminPage.content()).includes("UNCHANGED_UPDATE_" + stamp);
       record("ACT-100-p3-member-denied-edit",
         memberRead.status() === 200 && memberEdit.status() === 403 && editInputs === 0 && deniedPost === 403 && adminSees.status() === 200 && storedUnchanged,
-        { memberReadStatus: memberRead.status(), memberEditStatus: memberEdit.status(), editInputs, deniedPostStatus: deniedPost, adminViewStatus: adminSees.status(), storedUnchanged });
+        { memberReadStatus: memberRead.status(), memberEditStatus: memberEdit.status(), editInputs, editPageFacts, deniedPostStatus: deniedPost, adminViewStatus: adminSees.status(), storedUnchanged });
     } finally {
       await memberBrowser.close().catch(() => {});
       await adminBrowser2.close().catch(() => {});
@@ -282,8 +341,16 @@ async function main() {
         const observed = await pending;
         if (!observed.e) await observed.r.finished();
         const mail = await server.mail();
-        const message = mail.filter((m) => m.to === actors.member.email && String(m.subject).startsWith("reset password for")).at(-1);
-        const link = message ? /https?:\/\/[^\s"<>]+\/update\/[^\s"<>]+/.exec(String(message.textBody ?? message.text ?? ""))?.[0] : undefined;
+        // The sink answers {to: string[] (sorted, split on commas),
+        // subject, text} — ts-server.mjs:95-104 wraps the host's captured
+        // mail, so the recipient is a LIST, not a string.
+        const message = mail.filter((m) =>
+          (Array.isArray(m.to) ? m.to : String(m.to).split(","))
+            .map((x) => String(x).trim())
+            .includes(actors.member.email) &&
+          String(m.subject).startsWith("reset password for"),
+        ).at(-1);
+        const link = message ? /https?:\/\/[^\s"<>]+\/update\/[^\s"<>]+/.exec(String(message.text ?? message.textBody ?? ""))?.[0] : undefined;
         leg = { ...leg, postStatus: observed.e ? null : observed.r.status(), mailMessages: mail.length, mailTo: message?.to, subject: message?.subject, link };
         if (link) {
           const landed = await page.goto(link, { waitUntil: "load", timeout: STEP_TIMEOUT });
