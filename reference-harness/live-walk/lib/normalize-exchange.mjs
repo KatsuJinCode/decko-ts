@@ -14,8 +14,10 @@
 //
 // Capture redaction (R1) is not a comparison rule and cannot be disabled:
 // passwords and session-cookie values are redacted when an exchange is
-// STORED, before disk, so the evidence directory never holds a live
-// credential even when the walk runs against a real host.
+// STORED, before disk, and the journey trace's credential step values are
+// redacted the same way at push (lib/walker.mjs traceStepRecord), so the
+// evidence directory never holds a live credential even when the walk runs
+// against a real host.
 
 import { normalizeHtml } from "../../runner/normalize.mjs";
 
@@ -79,7 +81,7 @@ export const WALK_RULES = [
   },
   {
     id: "R1", name: "capture-redaction", kind: "capture-time, always on", enabled: true, alwaysOn: true,
-    scope: "values of form fields named password/password_confirmation and of session-named cookies, redacted when the exchange is stored, before disk",
+    scope: "values of form fields named password/password_confirmation and of session-named cookies, redacted when the exchange is stored, before disk; likewise the journey trace's fill/type/editor values on password/passwort/token/secret-named fields, redacted at push before the trace JSON is written (lib/walker.mjs traceStepRecord)",
     about: "Not a comparison rule: the evidence directory must never hold a live credential, so the redaction happens at capture and cannot be disabled. Comparison still runs on every other byte.",
   },
 ];

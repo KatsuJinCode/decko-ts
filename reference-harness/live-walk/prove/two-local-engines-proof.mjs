@@ -145,6 +145,27 @@ if (walked.code === 0) {
     assert.doesNotMatch(jsonl, /Fixture member pass 1#/);
     assert.match(jsonl, /R1%23redacted/);
   });
+
+  check("the journey trace JSON carries no plaintext credential either (R1 trace redaction)", () => {
+    // The trace is the walk's other stored record: result.steps, saved as
+    // <side>/<journey>.json next to the exchanges. R1 covered the exchange
+    // records from the start; the trace kept the password fill step's raw
+    // value, so a production credential would land in the saved JSON. The
+    // trace must be as clean as the exchanges, with the step itself still on
+    // record (selector, verdict, and the non-credential values byte-intact).
+    for (const side of ["a", "b"]) {
+      const trace = readFileSync(path.join(work, "run", side, `${j.id}.json`), "utf8");
+      assert.doesNotMatch(trace, /Fixture member pass 1#/, `side ${side} trace stores the staged password in plaintext`);
+    }
+    const traceA = JSON.parse(readFileSync(path.join(work, "run", "a", `${j.id}.json`), "utf8"));
+    const fill = traceA.steps.find((s) => s.step?.fill?.field === "*password");
+    assert.ok(fill, "no password fill step in the saved trace");
+    assert.equal(fill.step.value, "R1#redacted", "the password fill step's value is not the redaction token");
+    assert.equal(fill.outcome, "ok", "the redacted password fill should still have run and succeeded");
+    const email = traceA.steps.find((s) => s.step?.fill?.field === "*email");
+    assert.equal(email?.step?.value, "mira.member@example.test", "the non-credential fill value did not survive byte-intact");
+    assert.deepEqual(traceA.steps.map((s) => s.outcome), ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"], "the journey's verdicts changed");
+  });
 } else {
   console.log(walked.stdout.slice(-3000), walked.stderr.slice(-3000));
   process.exitCode = 1;

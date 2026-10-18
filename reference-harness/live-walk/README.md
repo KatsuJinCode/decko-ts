@@ -59,8 +59,10 @@ block, `--actors-json`, or the fixture's `deck.json`. Useful flags:
   hosts and the stock layout CDNs are reachable; `--offline` refuses the CDNs
   too, so a walked page cannot wander to a third host.
 - **R1 (always on)**: passwords and session-cookie values are redacted when an
-  exchange is stored, before disk. The evidence tree never holds a live
-  credential.
+  exchange is stored, before disk, and credential step values are redacted out
+  of the journey trace at push (a fill/type/editor on a password/passwort/
+  token/secret-named field stores `R1#redacted` instead of its value). The
+  evidence tree never holds a live credential.
 
 ## Layout
 

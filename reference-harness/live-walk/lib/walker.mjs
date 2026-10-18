@@ -174,6 +174,46 @@ async function assertSignedIn(page, label, actor) {
 
 const safeFilePart = (s) => String(s).replace(/[^A-Za-z0-9._-]+/g, "-").slice(0, 80) || "unnamed";
 
+// R1 for the journey trace. The exchange records are redacted at capture
+// (redactForStorage, applied by attachExchangeCapture before anything is
+// stored) — but the walk's other stored record, the trace (result.steps,
+// saved as <side>/<journey>.json by walk-and-compare.mjs), kept a fill/
+// type/editor step's raw value, so a credential typed into a password field
+// landed in the saved JSON in plaintext. Every push site therefore routes
+// through traceStepRecord: a step whose fill/type/editor target names or
+// selects a credential field — password / passwort / token / secret in the
+// field key, the html name=, or the css selector (which covers
+// type=password) — carries the redaction token instead of its value.
+// Everything else on the step survives byte-intact: the action, the target,
+// non-credential values, and the ok/failed/skipped verdict. No evidence is
+// removed beyond the secret itself. The failed path scrubs the error text
+// too, because a thrown failure can embed the very value the step was
+// filling. The journey list's own step objects are never mutated: the other
+// side of a comparison must still walk with the real value.
+const CREDENTIAL_FIELD_WORD = /password|passwort|token|secret/i;
+const TRACE_REDACTION_TOKEN = "R1#redacted";
+
+export function stepTargetsCredentialField(step) {
+  const kind = Object.keys(step ?? {}).filter((k) => k !== "note" && k !== "value" && k !== "option" && k !== "file" && k !== "within" && k !== "hidden")[0];
+  if (!["fill", "type", "editor"].includes(kind)) return false;
+  const target = step[kind];
+  if (!target || typeof target !== "object") return false;
+  return Object.values(target).some((v) => typeof v === "string" && CREDENTIAL_FIELD_WORD.test(v));
+}
+
+/** The trace record for one step, pushed on all three outcome paths. */
+function traceStepRecord(step, outcome, extra = {}) {
+  const { i, ...rest } = extra;
+  const record = { i, step, outcome, ...rest };
+  if (stepTargetsCredentialField(step) && typeof step.value === "string" && step.value !== "") {
+    record.step = { ...step, value: TRACE_REDACTION_TOKEN };
+    if (typeof record.error === "string") {
+      record.error = record.error.split(step.value).join(TRACE_REDACTION_TOKEN);
+    }
+  }
+  return record;
+}
+
 /** Exchange capture for one browser context. Response bodies are read
  *  asynchronously and drained by drain(); every read failure is recorded on
  *  the exchange, never swallowed. writeEvidence writes each body under
@@ -327,7 +367,7 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
     }
     let failed = false;
     for (const [i, step] of journey.steps.entries()) {
-      if (failed) { result.steps.push({ i, step, outcome: "skipped" }); continue; }
+      if (failed) { result.steps.push(traceStepRecord(step, "skipped", { i })); continue; }
       const stepStarted = Date.now();
       try {
         await runStep(ctx, step);
@@ -337,10 +377,10 @@ export async function walkJourney({ base, journey, actors, outDir, browserFactor
         if (step.observe !== undefined || step.screenshot !== undefined || ["visit", "signin", "click", "mail_link"].includes(kind)) {
           await ctx.screenshot(step.observe ?? step.screenshot ?? `step-${i}`);
         }
-        result.steps.push({ i, step, outcome: "ok", ms: Date.now() - stepStarted });
+        result.steps.push(traceStepRecord(step, "ok", { i, ms: Date.now() - stepStarted }));
       } catch (err) {
         failed = true;
-        result.steps.push({ i, step, outcome: "failed", ms: Date.now() - stepStarted, error: String(err?.message ?? err).split("\n")[0] });
+        result.steps.push(traceStepRecord(step, "failed", { i, ms: Date.now() - stepStarted, error: String(err?.message ?? err).split("\n")[0] }));
         try { await ctx.screenshot(`failed-at-step-${i}`); } catch { /* page gone */ }
       }
     }
