@@ -427,7 +427,13 @@ export function guardRequest(requestContext, profile, { onBlocked } = {}) {
         throw new WriteSkippedError(decision.reason, record);
       }
     }
-    return requestContext[method](url, options);
+    // APIRequestContext names its senders lowercase (post/get/put/patch/
+    // delete/fetch); `method` is the HTTP verb. The proof's first scratch leg
+    // caught the mismatch: every guarded save answered TypeError and the
+    // probes recorded null statuses.
+    const send = requestContext[method.toLowerCase()];
+    if (typeof send !== "function") throw new Error(`guardedRequest: request context has no sender for ${method}`);
+    return send.call(requestContext, url, options);
   };
   return {
     get: call("GET"),
