@@ -11,13 +11,15 @@
 //     --fixture reference-harness/fixtures/synthetic-v1 \
 //     [--base-file <path>]   # write the resolved base URL here for the driver
 //
-// Stop it by closing its stdin (the parent driver's clean stop signal) or
-// Ctrl+C; on stop it kills the engine process it spawned itself and removes
-// the staged deck copy. It never touches another process.
+// Stop conditions: a stop file appearing beside the base file (--stop-file,
+// default <base-file>.stop), SIGINT or SIGTERM. Stdin is deliberately NOT a
+// stop signal: a detached background process (the proof driver's case) has no
+// stdin at all, and wiring "stdin closed = stop" made the holder exit the
+// moment it was launched that way. Closing stdin is harmless here.
 
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, existsSync, rmSync } from "node:fs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -32,17 +34,23 @@ if (engine.mode === "host-override") throw new Error("the host-override profile 
 const server = await startEngine(engine, fixtureDir);
 console.log(`[serve-local-mock-engine] engine=${engine.name} fixture=${fixtureDir}`);
 console.log(`[serve-local-mock-engine] base=${server.base}`);
-if (args["base-file"]) writeFileSync(args["base-file"], server.base, "utf8");
-console.log(`[serve-local-mock-engine] holding open — close this process's stdin (or Ctrl+C) to stop it and remove the staged deck`);
+const baseFile = args["base-file"] ?? null;
+if (baseFile) writeFileSync(baseFile, server.base, "utf8");
+const stopFile = args["stop-file"] ?? (baseFile ? `${baseFile}.stop` : null);
+console.log(`[serve-local-mock-engine] holding open — touch ${stopFile ?? "(SIGINT)"} to stop it and remove the staged deck`);
 
+let stopping = false;
 const stop = async () => {
+  if (stopping) return;
+  stopping = true;
   console.log(`[serve-local-mock-engine] stopping engine and removing the staged deck`);
   await server.stop();
+  if (stopFile && existsSync(stopFile)) rmSync(stopFile, { force: true });
   process.exit(0);
 };
-process.stdin.on("end", stop);
-process.stdin.on("close", stop);
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
-// Stay alive on stdin data; react only to its end.
-process.stdin.resume();
+const poll = setInterval(() => {
+  if (stopFile && existsSync(stopFile)) { clearInterval(poll); void stop(); }
+}, 500);
+poll.unref?.();
