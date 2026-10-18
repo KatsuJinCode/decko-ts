@@ -561,7 +561,12 @@ async function probeAction(page, action, lastStatusRef, actors) {
         const actorContext = await page.context().browser().newContext();
         createdActorContexts.push(actorContext);
         actorContext.setDefaultTimeout(STEP_TIMEOUT);
-        const signInResponse = await actorContext.request.post(lastStatusRef.base + "/*signin", {
+        // The sign-in form's action is /update/*signin (the browser sign-in
+        // drives form[action="/update/*signin"]'s submit button); POSTing the
+        // page URL /*signin itself is refused 403 (measured 2026-10-18 - the
+        // GET route does not answer POSTs), which refused every actor sign-in
+        // here.
+        const signInResponse = await actorContext.request.post(lastStatusRef.base + "/update/*signin", {
           form: {
             "card[subcards][+*email][content]": actor.email,
             "card[subcards][+*password][content]": actor.password,
