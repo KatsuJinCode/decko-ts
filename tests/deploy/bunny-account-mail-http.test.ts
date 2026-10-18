@@ -42,8 +42,20 @@ beforeAll(async () => {
       const chunks: Buffer[] = []; for await (const chunk of req) chunks.push(Buffer.from(chunk));
       const body = Buffer.concat(chunks);
       const response = await handleBunnyEngineRequest(new Request(base + req.url, { method: req.method, headers: req.headers as Record<string, string>, ...(body.length ? { body } : {}) }), env, services);
-      res.writeHead(response.status, Object.fromEntries(response.headers));
-      const cookies = response.headers.getSetCookie(); if (cookies.length) res.setHeader("set-cookie", cookies);
+      // Forward every header exactly once. Undici's Headers iteration INCLUDES
+      // set-cookie, and Node marks the headers sent the moment writeHead runs,
+      // so the cookie rode writeHead AND the setHeader below — the setHeader
+      // threw ERR_HTTP_HEADERS_SENT and the catch replaced the rendered page
+      // body with that error text (the decko_visit read-path location history
+      // made plain known-card page GETs the first cookie-bearing responses
+      // whose bodies a test reads). Set the cookies — all of them; fromEntries
+      // alone keeps only the last — BEFORE writeHead, which is legal on every
+      // supported Node line.
+      const headers = Object.fromEntries(response.headers);
+      delete headers["set-cookie"];
+      const cookies = response.headers.getSetCookie();
+      if (cookies.length) res.setHeader("set-cookie", cookies);
+      res.writeHead(response.status, headers);
       res.end(Buffer.from(await response.arrayBuffer()));
     } catch (error) { res.statusCode = 500; res.end(String(error)); }
   });
