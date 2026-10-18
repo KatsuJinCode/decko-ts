@@ -179,7 +179,7 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   const push = (entry) => {
     const tagged = { case: currentCase, ...entry };
     if (tagged.interaction === "assert-present") tagged.required = true;
-    push(tagged);
+    sequence.push(tagged);
   };
 
   // 1. Board tabs: the affordance is the tab control on a card's board view

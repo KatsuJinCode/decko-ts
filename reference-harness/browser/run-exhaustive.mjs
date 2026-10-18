@@ -11,7 +11,45 @@
 //     --fixture reference-harness/fixtures/synthetic-v1 \
 //     --matrix C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json \
 //     --out tmp/exhaustive-runs/<date> [--filter <regex>] [--signin admin] \
-//     [--actor-card-name <card>] [--fail-fast 0]
+//     [--actor-card-name <card>] [--fail-fast 0] [--battery-results <file>]
+//
+//   --battery-results <file>
+//       A machine-readable battery report (the edge-signed-in-exercise's
+//       report.md.json: a `results` array of {group, check, pass} rows). When
+//       given, a `battery-check` action whose paired battery check has
+//       recorded rows there DELEGATES its verdict to them — pass only when
+//       every recorded row of the check passed, fail when any failed
+//       (adversarial finding F2's "Better" clause: grade by the paired
+//       battery's recorded verdicts instead of resting on hints minted from
+//       prose). The pairing key is the battery's own (group, check), which the
+//       matrix's battery-check rows carry verbatim as (surface, action). No
+//       record given, or no rows for an action, or a row without a boolean
+//       pass (indeterminate) -> no delegation: the action grades by its own
+//       minted evidence like every other kind. The record (path, sha256,
+//       recordedAt, source commit) is named in provenance.json, run-meta.json
+//       and run.md, and every delegated action carries what its own probe
+//       would have said.
+//
+// OUTCOMES. Every action lands in exactly one bucket:
+//   pass | fail    the minted case (hint locate / per-class or target-case
+//                  assert) answered under the required-legs and
+//                  exact-control rules (F1, F3) — or, for a delegated
+//                  battery-check action, the paired battery check's recorded
+//                  verdict answered.
+//   out_of_scope   the action's subject is outside this harness (no mail
+//                  sink, upstream-disabled), recorded with the reason.
+//   skipped_write  the live-walk write mode declined the write that IS the
+//                  action's claim.
+//   error          the probe itself crashed.
+//   ungradeable    the runner minted NO case for the action: no hint locate,
+//                  no target case, no assertion (adversarial finding F2:
+//                  these actions could previously never fail — the ladder
+//                  parked them at "page-only", a verdict-shaped hiding place
+//                  no rollup treats as failure, and the observable fail set
+//                  of a full run collapsed to one action). The summary counts
+//                  them (totals.actions_ungradeable) and run.md names every
+//                  id, so an ungradeable share is visible instead of passing
+//                  silently.
 //
 // LIVE-WALK PROFILE (host-override): the identical journeys can be pointed at
 // ANY base URL the operator names, without code changes, by attaching instead
@@ -174,6 +212,44 @@ const matrixSha256 = sha256(matrixBytes);
 const matrix = JSON.parse(matrixBytes.toString("utf8"));
 const fixtureSha256 = treeDigest(fixtureDir);
 
+// The paired battery's recorded verdicts (--battery-results; adversarial
+// finding F2's delegation clause). The only accepted shape is the battery
+// run's machine-readable report: a `results` array of {group, check, pass}
+// rows (the edge-signed-in-exercise report.md.json). Rows roll up by
+// (group, check) — a check that expanded to several recorded rows passes
+// only when every row passed; a row without a boolean pass leaves the check
+// indeterminate and delegation declines it (fails safe: the action grades by
+// its own evidence rather than on an unreadable verdict).
+function loadBatteryResults(filePath) {
+  if (!filePath) return null;
+  const bytes = readFileSync(filePath);
+  const parsed = JSON.parse(bytes.toString("utf8"));
+  const rows = Array.isArray(parsed) ? parsed : parsed.results;
+  if (!Array.isArray(rows)) throw new Error(`--battery-results ${filePath}: no results array (expected a battery report.md.json with results[] of {group, check, pass})`);
+  const byPair = new Map();
+  for (const row of rows) {
+    if (!row || typeof row.group !== "string" || typeof row.check !== "string") continue;
+    const key = `${row.group}|${row.check}`;
+    const agg = byPair.get(key) ?? { total: 0, failed: 0, indeterminate: 0 };
+    agg.total += 1;
+    if (row.pass === false) agg.failed += 1;
+    if (typeof row.pass !== "boolean") agg.indeterminate += 1;
+    byPair.set(key, agg);
+  }
+  return {
+    path: filePath,
+    sha256: sha256(bytes),
+    recordedAt: parsed.completedAt ?? null,
+    source: parsed.provenance?.source ?? null,
+    rows: rows.length,
+    byPair,
+  };
+}
+const batteryResults = loadBatteryResults(args["battery-results"] ? path.resolve(args["battery-results"]) : null);
+if (batteryResults) {
+  console.log(`[run-exhaustive] battery results: ${path.relative(repo, batteryResults.path) || batteryResults.path} sha256=${batteryResults.sha256.slice(0, 12)} rows=${batteryResults.rows} battery-check actions with a paired check delegate their verdict to it`);
+}
+
 const provenance = {
   format: "decko-exhaustive-evidence/1",
   runId: args["run-id"] ?? randomUUID(),
@@ -188,6 +264,17 @@ const provenance = {
   engineMode: engine.mode ?? "boot",
   filter: args.filter ?? null,
   signinActor,
+  // The battery record battery-check actions delegated to, when --battery-results
+  // was given (adversarial finding F2); null otherwise.
+  batteryResults: batteryResults
+    ? {
+        path: path.relative(repo, batteryResults.path) || batteryResults.path,
+        sha256: batteryResults.sha256,
+        recordedAt: batteryResults.recordedAt,
+        source: batteryResults.source,
+        rows: batteryResults.rows,
+      }
+    : null,
   // The host this run drives and the write mode it runs under — recorded for
   // EVERY run, local boot or host override (lib/live-walk-profile.mjs).
   target: targetProvenance(liveWalk),
@@ -736,8 +823,8 @@ async function probeAction(page, action, lastStatusRef, actors) {
   observations.push(snap);
 
   // 5. Pass/fail. The action is exercised if at least one of its probes found
-  // an affordance on the page; otherwise it is a page-only witness
-  // (descriptive cross-cutting contract with no click target).
+  // an affordance on the page; an action whose probes minted no case at all
+  // is ungradeable (see the outcome ladder below — F2).
   const located = sequence.filter((s) => s.interaction === "locate");
   // F3 (adversarial review): an affirmative finding grades ONLY from an
   // exact-control match. A text-locate or substring-fallback hit is witness
@@ -779,15 +866,50 @@ async function probeAction(page, action, lastStatusRef, actors) {
   const requiredFailed = requiredLegs.filter((l) => !(l.count > 0));
   const hasTargetCase = sequence.some((s) => !!s.case);
 
-  let outcome;
-  if (isOutOfScope(action)) outcome = "out_of_scope";
-  else if (writeSkipped) outcome = "skipped_write";
-  else if (hasTargetCase) outcome = requiredLegs.length > 0 && requiredFailed.length === 0 ? "pass" : "fail";
-  else if (exactFound || anyAsserted) outcome = "pass";
-  else if (located.length > 0 || asserted.length > 0) outcome = "fail";
-  else outcome = "page-only";
+  // The probe's own verdict, before battery delegation: the required-legs and
+  // exact-control ladder (F1, F3) over the evidence this probe minted. The
+  // final branch is the F2 closure (blindness review 2026-10-18): an action
+  // that minted NO hint locate, NO target case and NO assertion has no
+  // gradeable evidence and could never fail by construction — the old ladder
+  // parked it at "page-only", a verdict-shaped hiding place no rollup treats
+  // as failure, and the observable fail set of a full run collapsed. It is
+  // now graded "ungradeable": the honest outcome naming that the run has no
+  // case for the action, counted in the summary and named by id in run.md.
+  let probeOutcome;
+  if (isOutOfScope(action)) probeOutcome = "out_of_scope";
+  else if (writeSkipped) probeOutcome = "skipped_write";
+  else if (hasTargetCase) probeOutcome = requiredLegs.length > 0 && requiredFailed.length === 0 ? "pass" : "fail";
+  else if (exactFound || anyAsserted) probeOutcome = "pass";
+  else if (located.length > 0 || asserted.length > 0) probeOutcome = "fail";
+  else probeOutcome = "ungradeable";
 
-  return { sequence, observations, outcome, exactFound, witnessFound, anyFound, anyAsserted, located: located.length, asserted: asserted.length, requiredLegs: requiredLegs.length, requiredFailed: requiredFailed.length, hasTargetCase, writeSkipped };
+  // Battery delegation (blindness review F2, "Better" clause): a
+  // battery-check action whose paired battery check has recorded rows in
+  // --battery-results inherits that verdict — pass only when every recorded
+  // row of the check passed, fail when any failed. The pairing key is the
+  // battery's own (group, check), which the matrix's battery-check rows carry
+  // verbatim as (surface, action). The delegation outranks the probe's own
+  // ladder because the battery's recorded verdict IS the evidence those
+  // actions name (the matrix paired them deliberately); the probe still runs
+  // and is receipted, and the delegation carries what the probe's own ladder
+  // would have said. A check with an indeterminate row (no boolean pass) is
+  // not delegated — the action grades by its own evidence instead.
+  let outcome = probeOutcome;
+  let delegated = null;
+  const batteryPair = action.kind === "battery-check" && batteryResults ? batteryResults.byPair.get(`${surface}|${text}`) : null;
+  if (batteryPair && batteryPair.indeterminate === 0) {
+    outcome = batteryPair.failed === 0 ? "pass" : "fail";
+    delegated = {
+      record: path.relative(repo, batteryResults.path) || batteryResults.path,
+      sha256: batteryResults.sha256,
+      matched_rows: batteryPair.total,
+      failed_rows: batteryPair.failed,
+      verdict: outcome,
+      probe_outcome_without_delegation: probeOutcome,
+    };
+  }
+
+  return { sequence, observations, outcome, delegated, exactFound, witnessFound, anyFound, anyAsserted, located: located.length, asserted: asserted.length, requiredLegs: requiredLegs.length, requiredFailed: requiredFailed.length, hasTargetCase, writeSkipped };
 }
 
 // ============================================================================
@@ -903,6 +1025,7 @@ async function run() {
         kind: action.kind,
         capability_id: action.capability_id ?? null,
         outcome: probe.outcome,
+        delegated_to_battery: probe.delegated ?? null,
         interactions,
         sequence_count: sequenceCount,
         observation_count: observationsCount,
@@ -933,6 +1056,10 @@ async function run() {
       actions_selected: actions.length,
       actions_exercised: perAction.length,
       total_interactions: totalInteractions,
+      // F2: the ungradeable share is a first-class summary number — actions
+      // the runner minted no case for, counted here and named by id in run.md.
+      actions_ungradeable: perAction.filter((r) => r.outcome === "ungradeable").length,
+      actions_delegated_to_battery: perAction.filter((r) => r.delegated_to_battery).length,
       per_outcome: perAction.reduce((m, r) => ((m[r.outcome] = (m[r.outcome] ?? 0) + 1), m), {}),
       per_kind: {},
       per_kind_outcome: {},
@@ -951,13 +1078,15 @@ async function run() {
       // Host + write mode of THIS run, and what the write gate did (every
       // run report names its target; lib/live-walk-profile.mjs).
       target: provenance.target,
+      // The battery record delegated to (F2), named again beside the totals.
+      battery: provenance.batteryResults,
       writeGate: {
         mode: liveWalk.mode,
         blockedWrites: writeGateBlocked.length,
         skippedWriteActions: totals.per_outcome.skipped_write ?? 0,
       },
       totals,
-      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, exactFound: r.exactFound, witnessFound: r.witnessFound, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed })),
+      per_action: perAction.map((r) => ({ id: r.id, kind: r.kind, surface: r.surface, outcome: r.outcome, interactions: r.interactions, sequence_count: r.sequence_count, observation_count: r.observation_count, exactFound: r.exactFound, witnessFound: r.witnessFound, target_case: r.target_case, required_legs: r.required_legs, required_failed: r.required_failed, delegated_to_battery: r.delegated_to_battery ? { verdict: r.outcome, matched_rows: r.delegated_to_battery.matched_rows, failed_rows: r.delegated_to_battery.failed_rows, probe_outcome_without_delegation: r.delegated_to_battery.probe_outcome_without_delegation } : null })),
     };
     writeFileSync(path.join(out, "run-meta.json"), JSON.stringify(runMeta, null, 2));
     writeRunMarkdown(path.join(out, "run.md"), runMeta, engine);
@@ -985,6 +1114,7 @@ function writeRunMarkdown(file, meta, engine) {
     lines.push(`- Scratch allowlist: \`${a.path ?? "(none)"}\` ${a.present ? `present (sha256 ${a.sha256?.slice(0, 12)}), prefixes: ${(a.prefixes ?? []).join(", ") || "(none approved)"}` : "**ABSENT at run time — every write skipped (fail-safe)**"}`);
   }
   if (meta.writeGate.blockedWrites > 0) lines.push(`- Write gate blocked ${meta.writeGate.blockedWrites} page write(s); ${meta.writeGate.skippedWriteActions} action(s) graded skipped_write`);
+  if (meta.battery) lines.push(`- Battery results: \`${meta.battery.path}\` (sha256 ${meta.battery.sha256?.slice(0, 12)}, rows ${meta.battery.rows}${meta.battery.recordedAt ? `, recorded ${meta.battery.recordedAt}` : ""}${meta.battery.source ? `, source \`${String(meta.battery.source).slice(0, 12)}\`` : ""}) — battery-check actions with a paired check delegate their verdict to it`);
   lines.push(`- Source commit: \`${sourceCommit}\``);
   lines.push(`- Source dirty: ${sourceDirty}`);
   lines.push(`- Matrix sha256: \`${matrixSha256}\``);
@@ -1000,6 +1130,8 @@ function writeRunMarkdown(file, meta, engine) {
   lines.push(`| actions in matrix | ${meta.totals.actions_total} |`);
   lines.push(`| actions selected | ${meta.totals.actions_selected} |`);
   lines.push(`| actions exercised | ${meta.totals.actions_exercised} |`);
+  lines.push(`| actions ungradeable (no minted case — cannot fail by construction) | ${meta.totals.actions_ungradeable ?? 0} |`);
+  lines.push(`| actions delegated to battery record | ${meta.totals.actions_delegated_to_battery ?? 0} |`);
   lines.push(`| **total interactions** | **${meta.totals.total_interactions}** |`);
   lines.push("");
   lines.push(`## Per outcome`);
@@ -1008,6 +1140,22 @@ function writeRunMarkdown(file, meta, engine) {
   lines.push(`|---|---:|`);
   for (const [k, v] of Object.entries(meta.totals.per_outcome ?? {})) lines.push(`| ${k} | ${v} |`);
   lines.push("");
+  const ungradeable = (meta.per_action ?? []).filter((r) => r.outcome === "ungradeable");
+  if (ungradeable.length) {
+    lines.push(`## Ungradeable actions (no minted hint, target case, or assertion — cannot fail by construction; F2)`);
+    lines.push("");
+    lines.push(ungradeable.map((r) => r.id).join(", "));
+    lines.push("");
+  }
+  const delegatedRows = (meta.per_action ?? []).filter((r) => r.delegated_to_battery);
+  if (delegatedRows.length) {
+    lines.push(`## Delegated to battery record (F2)`);
+    lines.push("");
+    lines.push(`| action | verdict | matched rows | failed rows | probe outcome without delegation |`);
+    lines.push(`|---|---|---:|---:|---|`);
+    for (const r of delegatedRows) lines.push(`| ${r.id} | ${r.delegated_to_battery.verdict} | ${r.delegated_to_battery.matched_rows} | ${r.delegated_to_battery.failed_rows} | ${r.delegated_to_battery.probe_outcome_without_delegation} |`);
+    lines.push("");
+  }
   lines.push(`## Per kind (action-level outcome count)`);
   lines.push("");
   lines.push(`| kind | count |`);
