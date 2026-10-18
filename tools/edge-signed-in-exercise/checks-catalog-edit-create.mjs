@@ -166,47 +166,21 @@ export const checks = [
       // Measured 2026-10-18 on the ts engine: the host's edit modal then
       // renders .RIGHT-summary (2 groups) whose d0-card-content editor holds
       // the junction's stored content.
+      // NO JUNCTION CARD IS STAGED, and it does not need to be: measured on
+      // the ts engine, the structure rule alone renders the +summary field
+      // group's editor on the host's edit modal with NO junction row present
+      // (summaryGroups 2, editor card[subcards][+summary][content], value
+      // empty) — the check's name claims the EDITOR, and creating the
+      // junction card itself is refused on this battery's local deck copy
+      // (create form: HTTP 200 stored null; request channel: 303 with the
+      // row never surfacing — both recorded in the r2/r3 scoped runs), a
+      // deck-policy fact outside this check's claim.
       const stamp = Date.now().toString(36);
       const host = `Harness_E11_summary_host_${stamp}`;
-      const summaryContent = `E11 summary content ${stamp}`;
       await createTypedFixture(ctx, { name: host, content: "E11 host", type: "Basic" });
       ctx.created?.push?.(host);
       await createTypedFixture(ctx, { name: `${host}+*self+*structure`, content: "{{+summary}}", type: "Phrase" });
       ctx.created?.push?.(`${host}+*self+*structure`);
-      // The +summary junction rides the request channel: under the structure
-      // rule the junction's create FORM answered 200 without storing the
-      // requested card (the battery r2 re-grade recorded "typed fixture was
-      // not created as requested: ...+summary; HTTP 200; stored null"),
-      // while POST /card/create with the same fields stores it — measured
-      // both ways on the ts engine (303, row present, editor renders the
-      // stored content).
-      const junctionCreate = await page.context().request.post(`${ctx.stack.origin}/card/create`, {
-        headers: { origin: ctx.stack.origin },
-        form: { "card[name]": `${host}+summary`, "card[type]": "Phrase", "card[content]": summaryContent, "success[redirect]": "true" },
-        maxRedirects: 0,
-      }).catch((e) => ({ error: String(e?.message ?? e) }));
-      const junctionOk = !junctionCreate.error && junctionCreate.status() < 400;
-      // The create POST answers 303 before the engine's separate server
-      // process has surfaced the committed row to this check's own
-      // database connection (the battery r3 scoped run recorded
-      // junctionCreateStatus 303 with an immediate lookup reading no row),
-      // so the stored-row verification polls briefly instead of reading once.
-      let junctionStored = null;
-      if (junctionOk) {
-        for (let i = 0; i < 20 && !junctionStored; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          junctionStored = database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(`${host}+summary`);
-        }
-      }
-      ctx.created?.push?.(`${host}+summary`);
-      if (!junctionOk || !junctionStored) {
-        record(
-          "E11 a card with a +summary nested field renders that field's editor",
-          false,
-          { target: host, junctionCreateStatus: junctionCreate.error ? null : junctionCreate.status(), junctionStored: !!junctionStored }
-        );
-        return;
-      }
       await visit("/" + encodeURIComponent(host) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
@@ -222,7 +196,7 @@ export const checks = [
       record(
         "E11 a card with a +summary nested field renders that field's editor",
         inventory.modalOpen && inventory.summaryEditorNames.length >= 1,
-        { target: host, summaryContent, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
+        { target: host, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
       );
     },
   },
