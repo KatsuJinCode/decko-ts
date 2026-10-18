@@ -34,6 +34,7 @@
 // docs/deploy-cloudflare.md.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/d1.js";
+import { withStockResponseSecurity } from "../src/server/stock-response-security.js";
 import { edgeCacheArmed, edgeRouteCacheClass, readEdgeCacheStamp, resolveEdgeCache, serveWithEdgeCache } from "./src/worker-edge-cache.js";
 import type { SQLQueryResult } from "../src/server/driver.js";
 import { FetchEngine } from "../src/card/fetch.js";
@@ -786,7 +787,7 @@ export default {
       throw error;
     }
     rec.endRequest(response.status);
-    return response;
+    return withStockResponseSecurity(response);
   },
 
   async handle(request: Request, env: Env): Promise<Response> {

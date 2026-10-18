@@ -146,6 +146,20 @@ afterAll(() => {
 });
 
 describe("worker twins — shared read surface parity", () => {
+  it("stock response security headers cover successful and error pages on both entries", async () => {
+    for (const read of [getRoot, getDeploy]) {
+      for (const path of ["/", "/No+Such+Card", "/Home/nonsense"]) {
+        const response = await read(path);
+        expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+        expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+        expect(response.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+      expect(response.headers.get("x-download-options")).toBe("noopen");
+      expect(response.headers.get("x-permitted-cross-domain-policies")).toBe("none");
+      expect(response.headers.get("x-xss-protection")).toBe("1; mode=block");
+        await response.body?.cancel();
+      }
+    }
+  });
   it("GET / boots both engines and renders Home :open", async () => {
     const root = await getRoot("/");
     const deploy = await getDeploy("/");
