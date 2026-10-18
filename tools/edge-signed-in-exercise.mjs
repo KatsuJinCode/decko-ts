@@ -247,6 +247,17 @@ let cardsCopied = null;
 let stack;
 let assetHosts = [];
 let allowedFaviconUrls = [];
+// Mail capture surface (module scope: moduleContext exposes it; the local
+// stack path fills it, a host-override target leaves it empty and refuses
+// mail-required modules at startup). Declared BEFORE the boot branch: the
+// local-boot arm executes at module evaluation (top-level await) and both
+// mkdirs MAIL_DIR and closes over it inside the mail sink, so a declaration
+// below the branch is a temporal-dead-zone ReferenceError that kills every
+// full run before its first check (measured 2026-10-18: boot died
+// "Cannot access 'MAIL_DIR' before initialization" when these two consts
+// sat after the branch).
+const MAIL_DIR=join(RAW,'mail');
+const mailInbox=[];
 if (restrictWrites) {
   // Host-override attach: nothing is built, staged, seeded or read from any
   // provider. The engine is whatever already serves --base-url; the render
@@ -387,12 +398,6 @@ function moduleContext() {
   return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,
     launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,coverBCase:argOf('case'),mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
 }
-
-// Mail capture surface (module scope: moduleContext exposes it; the local
-// stack path fills it, a host-override target leaves it empty and refuses
-// mail-required modules at startup).
-const MAIL_DIR=join(RAW,'mail');
-const mailInbox=[];
 
 let browser;
 const childBrowsers=[];
