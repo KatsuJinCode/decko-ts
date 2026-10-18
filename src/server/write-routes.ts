@@ -115,7 +115,7 @@ import {
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
-import { CardActionError, type ActionResult, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
+import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
@@ -1331,6 +1331,29 @@ function successResponse(
   };
 }
 
+/** Session cards keep content in the visitor cookie and have no database row. */
+async function saveVisitorSessionCard(
+  ctx: WriteRouteContext,
+  engine: CardActionEngine,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+  visit: VisitorSession,
+  input: CreateCardInput,
+  verb: "create" | "update",
+): Promise<WriteRouteResponse> {
+  // Runs the ordinary owner and role-subset validators; Session aborts storage.
+  const result = await engine.createCard(input);
+  const name = DeckoName.parse(input.name).s;
+  storeSessionCardContent(visit, name, input.content ?? undefined);
+  // rest.rb cud_success checks reload before choosing a redirect/slot response.
+  if (parsed.success["reload"] === "true") {
+    return { ...jsonResponse(200, { reload: true }), expiryName: name };
+  }
+  return successResponse(req, json, name, { ...result, verb },
+    await successTargetPath(ctx.fetcher, parsed, name, visit));
+}
+
 /** The URL form of a card name: Ruby's path(mark:) is the name's url_key
  *  (variants.rb), whose joint and key characters ("+", "*") stay literal;
  *  only characters a URL path cannot carry are percent-encoded. */
@@ -1897,19 +1920,7 @@ async function dispatchWriteRequest(
         recaptchaToken: parsed.recaptchaToken,
       };
       if (await isSessionTypeCreate(ctx.fetcher, input)) {
-        // card-mod-session set/type/session.rb: ok_to_create? is true for
-        // everyone, and store_in_session keeps the content in the visitor's
-        // session and aborts with success (abort :success at
-        // :prepare_to_store), so nothing reaches the card tables. The
-        // content is kept in the visitor session under the card's key.
-        storeSessionCardContent(visit, input.name, input.content);
-        return successResponse(
-          req,
-          json,
-          input.name,
-          { cardId: 0, actId: 0, actionId: 0, verb: "create" },
-          await successTargetPath(ctx.fetcher, parsed, input.name, visit),
-        );
+        return await saveVisitorSessionCard(ctx, engine, req, json, parsed, visit, input, "create");
       }
       await assertSignupMailConfigured(ctx, engine, input);
       result = await engine.createCard(input);
@@ -2001,6 +2012,10 @@ async function dispatchWriteRequest(
         // builds the card from the params; trashed marks fetch as new and
         // the create path revives). The name rides the request's own
         // resolution: card-hash name when present, else the URL mark.
+        const sessionInput = { ...createInputFromParams(route, parsed, attachment), name: updateName };
+        if (await isSessionTypeCreate(ctx.fetcher, sessionInput)) {
+          return await saveVisitorSessionCard(ctx, engine, req, json, parsed, visit, sessionInput, "update");
+        }
         const created = await engine.createCard({
           ...createInputFromParams(route, parsed, attachment),
           name: updateName,

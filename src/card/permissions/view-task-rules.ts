@@ -267,7 +267,11 @@ export async function taskVerdictForCard(
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
   if ((await followPreferencePermit(fetcher, card, state)) === true) return true; // right/follow.rb permit
   // card-mod-session set/type/session.rb ok_to_create? / ok_to_update?.
-  if (task !== "delete" && (await isSessionTyped(fetcher, card))) return true;
+  if (task !== "delete") {
+    const owner = await enabledRolesOwnerVerdict(fetcher, card, state);
+    if (owner !== undefined) return owner;
+    if (await isSessionTyped(fetcher, card)) return true;
+  }
   const trunk = await permitVerdict(fetcher, card, task, state);
   if (trunk !== true) return trunk; // false (denied) or undefined (no rule data)
   if (task === "create") {
@@ -305,12 +309,13 @@ export async function allTaskVerdictsForCard(
   // ok_to_update? are `true` for every viewer (session content is per
   // browser session, never a shared write). Delete keeps the rule walk.
   const session = await isSessionTyped(fetcher, card);
-  if (session) {
-    out.create = true;
-    out.update = true;
+  const owner = await enabledRolesOwnerVerdict(fetcher, card, state);
+  if (session || owner !== undefined) {
+    out.create = owner ?? true;
+    out.update = owner ?? true;
   }
   const needed = WRITE_TASK_CODENAMES.filter(
-    (task) => state.hasTaskRules[task] && !(session && task !== "delete"),
+    (task) => state.hasTaskRules[task] && !((session || owner !== undefined) && task !== "delete"),
   );
   if (needed.length === 0) return out;
   for (const task of needed) {
@@ -328,6 +333,22 @@ export async function allTaskVerdictsForCard(
     out.create = await createSidesAllowed(fetcher, card, state, depth); // :123-125
   }
   return out;
+}
+
+/** enabled_roles.rb:9-15: the right-set owner gate precedes Type::Session. */
+async function enabledRolesOwnerVerdict(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ViewTaskState,
+): Promise<boolean | undefined> {
+  const name = DeckoName.parse(card.name);
+  if (!name.isCompound || name.rightName === undefined || name.leftName === undefined) return undefined;
+  await fetcher.codenames.ensureLoaded();
+  const settingName = fetcher.codenames.peekName("enabled_roles");
+  if (settingName === undefined || DeckoName.parse(settingName).key !== name.rightName.key) return undefined;
+  const actorId = state.signedInActorId ?? await fetcher.codenames.id("anonymous");
+  const owner = await fetcher.fetchByName(name.leftName.s);
+  return actorId !== undefined && owner?.id === actorId;
 }
 
 /** Whether the card is typed by the Session cardtype (codename session). */
@@ -447,6 +468,10 @@ export async function saveTaskVerdictForCard(
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
   if ((await followPreferencePermit(fetcher, card, state)) === true) return true; // right/follow.rb permit
+  if (task !== "delete") {
+    const owner = await enabledRolesOwnerVerdict(fetcher, card, state);
+    if (owner !== undefined) return owner;
+  }
   if (task !== "update") {
     return taskVerdictForCard(fetcher, card, task, state); // :120-126 / :155-157
   }

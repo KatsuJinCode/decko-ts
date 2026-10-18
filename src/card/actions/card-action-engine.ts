@@ -1794,6 +1794,8 @@ export class CardActionEngine {
     // content lives in the visitor's session (the write route stores it).
     const typeRow = await this.fetchRowById(typeId);
     if (typeRow?.codename === "session") {
+      // Session saves abort before storage, after the ordinary validation phase.
+      await this.prepareCreateValidation(input, typeId);
       return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
     }
     // The two-step upload's final save (00_upload_cache.rb:27-34
