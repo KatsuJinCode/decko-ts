@@ -1519,14 +1519,18 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     0 and fails.
   if (/\bA1\b/.test(t)) {
     currentCase = "case 23 A1 account email (ACT-068)";
+    // The stored-address read rides pageRequest (the signed-in session's own
+    // channel): +*account+*email is not anonymous-readable (measured
+    // 2026-10-18: bare fetch answers 403, the signed-in session 200).
+    if (typeof pageRequest === "undefined") throw new Error("A1 account-email probe needs the runner's pageRequest helper");
     const actorHref = await evaluate(() => document.querySelector("a[href*='+*account_settings']")?.getAttribute("href") ?? null).catch(() => null);
     const actorMark = typeof actorHref === "string" && actorHref.includes("+*account_settings")
       ? decodeURIComponent(actorHref).replace(/^\//, "").replace(/\+\*account_settings$/, "")
       : null;
     if (actorMark) {
-      const emailJson = await fetch(`${base}/${encodeURIComponent(`${actorMark}+*account+*email`)}.json`, { headers: { connection: "close" } })
-        .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
-        .catch(() => ({ status: null, parsed: null }));
+      const emailJson = await pageRequest.get(`${base}/${encodeURIComponent(`${actorMark}+*account+*email`)}.json`)
+        .then(async (r) => ({ status: r.status(), parsed: await r.json().catch(() => null) }))
+        .catch((e) => ({ status: null, parsed: null, error: String(e?.message ?? e) }));
       const expectedEmail = typeof emailJson.parsed?.db_content === "string" ? emailJson.parsed.db_content : null;
       await goto(`/${encodeURIComponent(`${actorMark}+*account`)}`);
       await settle();
@@ -1607,8 +1611,8 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       changeStatus = answered ? answered.status() : null;
       await settle();
     }
-    const afterJson = await fetch(`${base}/${encodeURIComponent(`${user}+*account+*email`)}.json`, { headers: { connection: "close" } })
-      .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+    const afterJson = await pageRequest.get(`${base}/${encodeURIComponent(`${user}+*account+*email`)}.json`)
+      .then(async (r) => ({ status: r.status(), parsed: await r.json().catch(() => null) }))
       .catch(() => ({ status: null, parsed: null }));
     await goto(`/${encodeURIComponent(`${user}+*account`)}`);
     await settle();
