@@ -68,7 +68,9 @@ export function nameMatchRequest(text) {
 /** A create-form driver shared by the autoname case: opens /new/<path> with
  *  card[name] (and card[content]) prefilled in the query, clicks the form's
  *  create submit control, waits for the POST the form issues, and reads the
- *  engine's JSON redirect answer. Same form bytes the edge harness's
+ *  engine's answer (a 200; its JSON carries no redirect body - measured). The
+ *  create's ok is the HTTP status alone; whatever the answer names is
+ *  recorded beside it. Same form bytes the edge harness's
  *  typed-fixture.mjs:28-61 drives. When requireNameField is false the form
  *  is matched on the submit control alone - the autonamed create form renders
  *  NO name field (card-mod-edit.ts:2367 returns undefined for the name row
@@ -106,7 +108,7 @@ async function createThroughNewCardForm({ page, base, stepTimeout }, { newPath, 
       await page.waitForURL(redirect.href, { timeout: stepTimeout }).catch(() => {});
     }
   }
-  return { ok: seen.response.status() < 400 && redirectPath !== null, status: seen.response.status(), redirectPath };
+  return { ok: seen.response.status() < 400, status: seen.response.status(), redirectPath };
 }
 
 /** Clicks a selector through the page context. The card menu's edit anchor
@@ -805,9 +807,12 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
   //     +*autoname rule (both through the create form, as the edge harness's
   //     C11 check does - tools/edge-signed-in-exercise/checks-unmeasured-save-
   //     edit-create.mjs:113-181), then asserts the engine's own bytes of each
-  //     half: the autonamed create form renders NO name field, the unnamed
-  //     save answers a redirect AT THE RULE'S GENERATED NAME, and that page
-  //     renders. Pass requires the whole chain; a failed setup asserts 0 and
+  //     half: the autonamed create form renders NO name field, and the unnamed
+  //     save stores the card at the rule's generated name - witnessed by
+  //     /<seed>.json answering 200 with the seed name and the scratch type
+  //     (a missing card's .json answers 404; the page of a missing card
+  //     renders 200 with the requested name in its header, so the page is no
+  //     witness). Pass requires the whole chain; a failed setup asserts 0 and
   //     the action stays red. Names are run-stamped; the session deck is a
   //     throwaway copy (lib/engines.mjs), and no other matrix action creates
   //     the scratch type.
@@ -845,25 +850,31 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
         count: await countSelector("form.card-form .create-submit-button"),
       });
       const submitted = await createThroughNewCardForm({ ...ctx, stepTimeout }, { newPath: `/new/${encodeURIComponent(typeName)}`, name: "", requireNameField: false });
-      const redirectPath = submitted.redirectPath;
+      // The create answer is a 200 with no redirect body (measured: the form
+      // answers in place; the rule seed alone cannot be read off a Location
+      // header). The generated card is witnessed by the card's OWN JSON
+      // answer instead: /<seed>.json must answer 200 carrying the seed name
+      // and the scratch type - a missing card answers 404 (measured on this
+      // engine: /no_such_card_harness_probe.json -> 404 {error,name}), and
+      // the seed name is run-stamped so nothing else can own it.
+      const generatedJson = await fetch(`${base}/${encodeURIComponent(seedName)}.json`, { headers: { connection: "close" } })
+        .then(async (r) => ({ status: r.status, parsed: await r.json().catch(() => null) }))
+        .catch(() => ({ status: null, parsed: null }));
       const generated =
-        submitted.ok && !!redirectPath && decodeURIComponent(redirectPath).toLowerCase().includes(seedName.toLowerCase());
+        submitted.ok &&
+        generatedJson.status === 200 &&
+        !!generatedJson.parsed &&
+        generatedJson.parsed.name === seedName &&
+        generatedJson.parsed.type_name === typeName;
       sequence.push({
         interaction: "assert-present",
-        selector: "unnamed save answers a redirect at the rule's generated name",
+        selector: `unnamed save stores the card at the rule's generated name (/${seedName}.json answers the scratch type's card)`,
         count: generated ? 1 : 0,
         status: submitted.status,
-        redirectPath,
+        jsonStatus: generatedJson.status,
+        jsonName: generatedJson.parsed?.name ?? null,
+        jsonTypeName: generatedJson.parsed?.type_name ?? null,
       });
-      if (redirectPath) {
-        await goto(redirectPath);
-        await settle();
-        sequence.push({
-          interaction: "assert-present",
-          selector: `generated card page renders at ${redirectPath}`,
-          count: await countSelector(".d0-card-header-title"),
-        });
-      }
     }
   }
 
