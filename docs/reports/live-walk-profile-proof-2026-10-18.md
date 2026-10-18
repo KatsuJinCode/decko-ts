@@ -140,6 +140,17 @@ Provenance (every leg): `target.host`, `target.mode`, `target.scratchAllowlist`
   stack.mjs:26). This slice's constraint rules out requests to production
   endpoints, so the leg was not run. The unchanged local path is witnessed by
   the runner's leg A (boot mode, 12/12 pass) instead.
+- **Disclosure — the local harness boot path was broken by this slice and
+  repaired by a sibling lane during the proof**: at `8a9f802d` the harness's
+  new boot branch executed at module evaluation while `MAIL_DIR`/`mailInbox`
+  sat declared below it, so every mail-requiring local run died in the
+  temporal dead zone before its first check (a sibling lane measured it twice
+  on a clean worktree of `8a9f802d` and restored the declaration order in
+  `4af78994`, boot sequencing only). None of this slice's proof legs hit it —
+  every harness leg here is a host-override leg, and the override arm never
+  initializes the mail surface — which is exactly the blind spot of skipping
+  the boot-mode control leg above: the one leg this slice could not run was
+  the one that would have caught the defect before commit.
 
 ## Defects the proof caught and fixed (each committed with its receipt)
 
