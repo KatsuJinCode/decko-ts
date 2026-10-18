@@ -79,6 +79,7 @@ async function renderedShape(page, url) {
       title: document.title,
       createForms: createForms.length,
       nameInputs: inputs.length,
+      cardNameValues: inputs.map(input => input.value),
       formActions: [...new Set([...document.querySelectorAll('form')].map((f) => f.getAttribute('action')).filter(Boolean))].slice(0, 8),
       heading: (document.querySelector('#main h1, #main h2, main h1, main h2')?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120),
       mainText: (document.querySelector('#main, main')?.innerText ?? document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 400),
@@ -601,7 +602,7 @@ export const checks = [
     name: capabilityChecks.ERR1[0],
     only: 'content-flows',
     run: async (ctx) => {
-      const { page, stack, creds, record, signIn, captureEvidence } = ctx;
+      const { page, stack, creds, record, signIn, captureEvidence, database } = ctx;
       const stamp = Date.now().toString(36);
       const missing = `Harness_CF_Missing_${stamp}`;
       const anon = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
@@ -614,14 +615,22 @@ export const checks = [
         }
         await signIn(creds.admin);
         const signedIn = await renderedShape(page, `${stack.origin}/${missing}`);
-        const surfaces = [...anonymous, signedIn];
-        const withCreateForm = surfaces.filter((s) => s.createForms > 0 || s.nameInputs > 0);
-        const withErrorStatus = surfaces.filter((s) => s.status !== null && s.status >= 400);
-        record(capabilityChecks.ERR1[0], withCreateForm.length === 0 && withErrorStatus.length > 0, {
+        // Stock html/error.rb:81-86: create permission chooses new/200;
+        // without it the same unknown card is not_found/404. Authentication
+        // pages are controls, not unknown-card error pages.
+        const anonymousMissing = anonymous.slice(0, 2);
+        const anonymousDenied = anonymousMissing.every(surface => surface.status === 404
+          && surface.createForms === 0 && surface.nameInputs === 0
+          && /Not Found|Could not find/i.test(surface.mainText));
+        const signin = anonymous.find(surface => surface.requested === '/*signin');
+        const permittedCreate = signedIn.status === 200 && signedIn.createForms === 1
+          && signedIn.cardNameValues.some(value => value.replaceAll('_', ' ') === missing.replaceAll('_', ' '));
+        const noSilentCreation = fixtureCard(database(), missing) === undefined;
+        record(capabilityChecks.ERR1[0], anonymousDenied && permittedCreate && noSilentCreation
+          && signin?.status === 200 && signin.createForms === 0, {
           missing, anonymous, signedIn,
-          surfacesAnsweringWithACreateForm: withCreateForm.map((s) => s.requested),
-          surfacesAnsweringWithAnErrorStatus: withErrorStatus.map((s) => ({ path: s.requested, status: s.status })),
-          note: 'graded on the rendered surface (a form posting to /card/create with a card[name] field is a create form, whatever the URL says), the same boundary the S10 check grades',
+          anonymousDenied, permittedCreate, noSilentCreation,
+          note: 'stock unknown-card contract: anonymous denial renders not_found/404 without a create form; permitted admin gets the correctly named new/200 form; merely viewing never creates the card',
           raw: captureEvidence(await page.content(), { check: 'content-flows-error-pages' }),
         });
       } finally {
@@ -637,18 +646,20 @@ export const checks = [
     only: 'content-flows',
     run: async (ctx) => {
       const { page, stack, record, created, database, captureEvidence, visit } = ctx;
-      const stamp = Date.now().toString(36);
+      // A base36 digit/letter suffix changes its stock Cardname key on
+      // uppercasing (mvd5qgq8 -> mvd5_qgq8). Numeric suffixes remain equivalent.
+      const stamp = String(Date.now());
       const plural = `Harness_CF_Plural_Widgets_${stamp}`;
       if (!created.includes(plural)) created.push(plural);
       await createTypedFixture(ctx, { type: 'RichText', name: plural, content: `plural pin body ${stamp}` });
       await visit(`/${encodeURIComponent(plural)}`);
       const storedId = database().prepare('SELECT id FROM cards WHERE name=? AND trash=0').get(plural)?.id ?? null;
-      const singular = plural.replace(/s$/, '');
+      const singular = plural.replace('_Widgets_', '_Widget_');
       const withSpaces = plural.replaceAll('_', ' ');
       // Every variant a person or a stored link can produce for one name.
       const variants = [
         { label: 'exact', path: `/${encodeURIComponent(plural)}` },
-        { label: 'singular (trailing s dropped)', path: `/${encodeURIComponent(singular)}` },
+        { label: 'singular (Widgets to Widget)', path: `/${encodeURIComponent(singular)}` },
         { label: 'spaces for underscores', path: `/${encodeURIComponent(withSpaces)}` },
         { label: 'lowercased', path: `/${encodeURIComponent(plural.toLowerCase())}` },
         { label: 'uppercased', path: `/${encodeURIComponent(plural.toUpperCase())}` },
