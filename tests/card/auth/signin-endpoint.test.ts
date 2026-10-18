@@ -338,15 +338,23 @@ describeIfCorpus("staging server sign-in endpoints (booted server, disposable co
     });
 
     // Bounded readiness wait (the boot primes the engine; typically a few
-    // seconds). No unbounded polling.
+    // seconds). No unbounded polling: the budget is 90 s of this beforeAll's
+    // 240 s, and it is TIME, not a fetch count — the old loop allowed 120
+    // attempts but only delayed on a THROWN fetch, so its real budget was
+    // ~30 s, which a staging server booting under concurrent gate load (ten
+    // parallel lanes are normal on this machine) can exceed. The poll now
+    // waits 250 ms after every failed attempt, whatever the failure shape;
+    // a server that never becomes ready still fails, with the full output.
     let ready = false;
-    for (let attempt = 0; attempt < 120 && !ready; attempt++) {
+    const readyDeadline = Date.now() + 90_000;
+    while (!ready && Date.now() < readyDeadline) {
       try {
         const response = await fetch(`${fixture.baseUrl}/_status`);
         ready = response.status === 200;
       } catch {
-        await delay(250);
+        // not listening yet
       }
+      if (!ready) await delay(250);
     }
     if (!ready) {
       throw new Error(

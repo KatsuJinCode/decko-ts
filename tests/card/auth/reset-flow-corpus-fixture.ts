@@ -59,6 +59,36 @@ export function prepareResetFlowCorpusFixture(
   rmSync(fixturePath, { force: true });
   copyFileSync(CORPUS_PATH, fixturePath);
 
+  // Torn-copy guard. The copy is the suite's foundation, and a malformed
+  // image surfaces only later as "database disk image is malformed" at the
+  // first prepared statement (observed in the 2026-10-18 correctness gate:
+  // the copy opened, then PRAGMA table_info failed). The committed source
+  // is never written here, so a bad image is a filesystem-level copy tear —
+  // possible on a machine running many concurrent lanes. Verify the copy
+  // actually answers, re-copy ONCE if it does not, and fail loudly naming
+  // both paths if the retry is bad too; a corrupt SOURCE still fails, and
+  // nothing about the fixture's content contract changes.
+  let copyVerified = false;
+  for (let attempt = 0; attempt < 2 && !copyVerified; attempt++) {
+    const probe = new Database(fixturePath);
+    try {
+      copyVerified = probe.pragma("quick_check", { simple: true }) === "ok";
+    } catch {
+      copyVerified = false;
+    } finally {
+      probe.close();
+    }
+    if (!copyVerified && attempt === 0) {
+      rmSync(fixturePath, { force: true });
+      copyFileSync(CORPUS_PATH, fixturePath);
+    }
+  }
+  if (!copyVerified) {
+    throw new Error(
+      `corpus fixture copy is malformed even after one re-copy (copy: ${fixturePath}, source: ${CORPUS_PATH})`,
+    );
+  }
+
   const db = new Database(fixturePath);
   try {
     const columns = (db.prepare("PRAGMA table_info(cards)").all() as Array<{ name: string }>).map(

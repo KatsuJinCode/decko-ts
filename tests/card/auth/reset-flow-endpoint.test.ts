@@ -148,13 +148,23 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
     });
 
     let ready = false;
-    for (let attempt = 0; attempt < 120 && !ready; attempt++) {
+    // The readiness budget is TIME, not a fetch count: the old loop allowed
+    // 120 attempts but only delayed on a THROWN fetch, so its real budget
+    // was ~30 s — and a staging server booting under concurrent gate load
+    // (ten parallel lanes are normal on this machine) can exceed that while
+    // the beforeAll it runs inside allows 120 s. The poll gets 90 s of that
+    // budget and waits 250 ms after every failed attempt, whatever the
+    // failure shape; a server that never becomes ready still fails, with
+    // the full server output.
+    const readyDeadline = Date.now() + 90_000;
+    while (!ready && Date.now() < readyDeadline) {
       try {
         const response = await fetch(`${fixture.baseUrl}/_status`);
         ready = response.status === 200;
       } catch {
-        await delay(250);
+        // not listening yet
       }
+      if (!ready) await delay(250);
     }
     if (!ready) {
       throw new Error(`staging server did not become ready:\n${serverOutput.slice(-2000)}`);
@@ -617,13 +627,17 @@ describeIfCorpus("forgot-password inactive arm (booted server, pending account)"
       serverOutput += chunk.toString();
     });
     let ready = false;
-    for (let attempt = 0; attempt < 120 && !ready; attempt++) {
+    // Same time-based budget as the main arm above: 90 s of the beforeAll's
+    // 120 s, a 250 ms wait after every failed attempt.
+    const readyDeadline = Date.now() + 90_000;
+    while (!ready && Date.now() < readyDeadline) {
       try {
         const response = await fetch(`${baseUrl}/_status`);
         ready = response.status === 200;
       } catch {
-        await delay(250);
+        // not listening yet
       }
+      if (!ready) await delay(250);
     }
     if (!ready) {
       throw new Error(`pending-arm staging server did not become ready:\n${serverOutput.slice(-2000)}`);
