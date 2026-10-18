@@ -6,6 +6,7 @@ import {
   duplicateActIds,
   actIdSequence,
   MIN_FEED_ENTRIES_FOR_DEDUP,
+  CREATE_PLUS_EDITS,
 } from '../checks-recent-changes-feed-dedup.mjs';
 
 const entry = (actId, title) => ({ actId, collapseId: actId, title });
@@ -141,4 +142,72 @@ test('a fixture that did not store aborts before the feed is read', async () => 
 test('a non-loopback origin refuses the check', async () => {
   const ctx = { stack: { origin: 'https://example.com' } };
   await assert.rejects(checks[0].run(ctx), /disposable loopback deck/);
+});
+
+/** Drives the crawl-shape check (checks[1]) against a scripted feed and deck.
+ *  `deckActs` is the act count the scripted deck reports for the fixture
+ *  card; `entries` is the rendered feed (or a function of the created card
+ *  name, so the fixture can carry that name the way the live feed does). */
+const runShapeCheck = async (entries, { deckActs = CREATE_PLUS_EDITS, sink } = {}) => {
+  const recorded = sink ?? [];
+  const ctx = {
+    stack: { origin: 'https://127.0.0.1:1' },
+    page: {
+      context: () => ({ request: { post: async () => ({ status: () => 200 }) } }),
+      goto: async () => ({ status: () => 200 }),
+      waitForSelector: async () => undefined,
+      content: async () => '<html>rendered</html>',
+      evaluate: async () => (typeof entries === 'function' ? entries(ctx.created[0]) : entries),
+    },
+    creds: { admin: { id: 53041 } },
+    signIn: async () => ({ hasSessionCookie: true }),
+    database: () => ({ prepare: () => ({ get: () => ({ id: 4242, n: deckActs }) }) }),
+    created: [],
+    captureEvidence: () => ({ capture: 'test' }),
+    fixtureState: { fatalReason: null },
+    record: (name, pass, evidence) => recorded.push({ name, pass, evidence }),
+  };
+  await checks[1].run(ctx);
+  return { recorded, ctx };
+};
+
+test('the crawl-shape check grades PASS: one title repeats while every act id is distinct', async () => {
+  const { recorded } = await runShapeCheck(created =>
+    Array.from({ length: CREATE_PLUS_EDITS }, (_, i) =>
+      entry(`act-id-${500 - i}`, created))
+      .concat(entry('act-id-400', 'Some other card')));
+  assert.deepEqual(recorded.map(r => [r.name, r.pass]), [
+    ['feed title-repeat fixture stores create plus edits as distinct acts', true],
+    [capabilityChecks.N14_SHAPE[0], true],
+  ]);
+  const shape = recorded[1];
+  assert.equal(shape.evidence.largestTitleGroup, CREATE_PLUS_EDITS);
+  assert.match(shape.evidence.crawlReading, /the same act repeated 6x/);
+  assert.equal(shape.evidence.distinctActIdsAmongThem, shape.evidence.actIdsOfThoseEntries.length);
+  assert.deepEqual(shape.evidence.duplicatesAnywhere, []);
+});
+
+test('the crawl-shape check grades FAIL when the repeated title hides a repeated act id', async () => {
+  // The actual defect the instrument exists for: the same act rendered twice
+  // under the same title must fail even though a title reader sees nothing
+  // new (the group is still "the same act repeated").
+  const { recorded } = await runShapeCheck(created =>
+    Array.from({ length: CREATE_PLUS_EDITS }, (_, i) =>
+      entry(i <= 1 ? 'act-id-500' : `act-id-${500 - i}`, created)));
+  assert.equal(recorded[1].pass, false);
+  assert.deepEqual(recorded[1].evidence.duplicatesAnywhere, [
+    { actId: 'act-id-500', count: 2, at: [0, 1] },
+  ]);
+});
+
+test('the crawl-shape check refuses a deck that did not store one act per save', async () => {
+  const recorded = [];
+  await assert.rejects(
+    runShapeCheck(created =>
+      Array.from({ length: CREATE_PLUS_EDITS }, (_, i) =>
+        entry(`act-id-${500 - i}`, created)), { deckActs: 2, sink: recorded }),
+    /not the shape this check reasons about/,
+  );
+  assert.equal(recorded[0].pass, false);
+  assert.match(recorded[0].evidence.note, /did not each store an act/);
 });

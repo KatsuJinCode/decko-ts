@@ -20,7 +20,13 @@
 // PAGE: that is the key a person cannot see but a dedup grader must use.
 // A repeated card NAME is NOT a repeat — several distinct acts legitimately
 // name the same card (two edits, an edit and a follow) — so grading on title
-// would red a correct page. Titles are recorded as evidence only.
+// would red a correct page. Titles are recorded as evidence only. The third
+// check below turns that warning into a measurement: it edits ONE card
+// several times so the feed carries several entries with the SAME title —
+// the exact shape the 2026-10-16 crawl reported as "the same act repeated
+// 2 to 6 times" (docs/handoffs/edge-demo-coordination.md:920, matrix
+// ACT-160/ACT-187) — and grades it on act ids, where the entries must be
+// distinct acts.
 //
 // ANTI-VACUITY. A feed that renders zero acts trivially has no duplicates.
 // The verdict therefore requires a NON-EMPTY feed, and a second record proves
@@ -44,6 +50,9 @@ export const meta = { topic: "recent-changes-feed-dedup", capabilityIds: ["N14"]
 export const capabilityChecks = {
   N14: ["N14 the recent-changes feed lists each act exactly once"],
   N14_SEEN: ["N14 the recent-changes feed carries an act this run just made"],
+  N14_SHAPE: [
+    "N14 the crawl's 2-6x shape: one card's several edits share one feed title while every act id stays distinct",
+  ],
 };
 
 /** The smallest feed over which "no act repeats" is worth certifying. The
@@ -54,6 +63,12 @@ export const capabilityChecks = {
  *  21,676 cards arrive without card_actions), so the check now makes its own
  *  feed: one act per card it creates. */
 export const MIN_FEED_ENTRIES_FOR_DEDUP = 4;
+
+/** The acts the crawl-shape fixture needs rendered per fixture card: the
+ *  create plus five content edits — six entries all titling ONE card, the
+ *  top of the 2026-10-16 crawl's "the same act repeated 2 to 6 times" range
+ *  (docs/handoffs/edge-demo-coordination.md:920; matrix ACT-160/ACT-187). */
+export const CREATE_PLUS_EDITS = 6;
 
 /**
  * The repeat finding, over the rendered feed's own act ids.
@@ -169,5 +184,100 @@ export const checks = [{
       });
 
     if (fixtureState?.fatalReason) throw Error("changes-feed fixture quarantined: " + fixtureState.fatalReason);
+  },
+}, {
+  name: capabilityChecks.N14_SHAPE[0],
+  only: "unmeasured-matrix",
+  run: async ctx => {
+    const { stack, page, creds, signIn, record, created, captureEvidence, database, fixtureState } = ctx;
+    if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(stack.origin).hostname)) throw Error("recent-changes-feed fixture requires the disposable loopback deck");
+    const signedIn = await signIn(creds.admin);
+    if (signedIn?.hasSessionCookie !== true) throw Error("recent-changes-feed browser signin failed");
+
+    // The fixture: ONE card, created then edited CREATE_PLUS_EDITS-1 times.
+    // Each save writes its own act, so the feed legitimately carries
+    // CREATE_PLUS_EDITS entries that all title the same card — the reading
+    // under which the 2026-10-16 crawl called the feed "the same act
+    // repeated 2 to 6 times".
+    const stamp = Date.now().toString(36);
+    const name = "Harness_feedtitle_" + stamp;
+    created.push(name);
+    const create = await page.context().request.post(stack.origin + "/card/create", {
+      headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+      maxRedirects: 0,
+      data: new URLSearchParams({
+        "card[name]": name, "card[type]": "Basic", "card[content]": "feed title-repeat fixture, edit 0",
+        "success[redirect]": "true",
+      }).toString(),
+    });
+    if (create.status() >= 400) throw Error("feed title fixture create refused: " + create.status());
+    const editStatuses = [];
+    for (let edit = 1; edit < CREATE_PLUS_EDITS; edit += 1) {
+      const update = await page.context().request.post(stack.origin + "/update/" + encodeURIComponent(name), {
+        headers: { origin: stack.origin, accept: "application/json" },
+        form: { "card[content]": `feed title-repeat fixture, edit ${edit}` },
+        maxRedirects: 0,
+      });
+      editStatuses.push(update.status());
+    }
+
+    // Fixture validity on the deck itself: the card must carry at least
+    // CREATE_PLUS_EDITS acts (create + edits), else the page below could not
+    // show the shape and any green here would be vacuous.
+    const cardId = database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(name)?.id;
+    const deckActCount = cardId === undefined ? 0
+      : database().prepare(
+        "SELECT COUNT(DISTINCT card_acts.id) AS n FROM card_acts JOIN card_actions ON card_actions.card_act_id = card_acts.id " +
+        "WHERE card_actions.card_id=? AND card_actions.draft IS NOT TRUE").get(cardId)?.n ?? 0;
+    const fixtureValid = deckActCount >= CREATE_PLUS_EDITS;
+    record("feed title-repeat fixture stores create plus edits as distinct acts",
+      fixtureValid,
+      { card: name, cardId: cardId ?? null, deckActCount, createPlusEdits: CREATE_PLUS_EDITS,
+        createStatus: create.status(), editStatuses,
+        note: fixtureValid ? "the deck carries the acts the shape needs" : "the saves did not each store an act; the rendered shape below would be vacuous" });
+    if (!fixtureValid) throw Error("feed title-repeat fixture is not the shape this check reasons about");
+
+    const response = await page.goto(stack.origin + "/*recent", { waitUntil: "load" });
+    await page.waitForSelector("#main .accordion .accordion-item", { timeout: 20000 }).catch(() => undefined);
+    const entries = await page.evaluate(() => {
+      const nodes = [...document.querySelectorAll("#main .accordion .accordion-item")];
+      return nodes.map(node => {
+        const target = node.querySelector("[data-bs-target^='#act-id-']")?.getAttribute("data-bs-target") ?? "";
+        return {
+          actId: target.replace(/^#/, ""),
+          title: (node.querySelector(".col-8")?.textContent ?? "").replace(/\s+/g, " ").trim(),
+        };
+      });
+    });
+    const ours = entries.filter(entry => entry.title.includes(name));
+    const oursActIds = ours.map(entry => entry.actId);
+    const distinctOurs = new Set(oursActIds).size;
+    const duplicatesAnywhere = duplicateActIds(entries);
+    // The crawl's reading: entries sharing ONE identical title string.
+    const titleGroups = new Map();
+    for (const entry of entries) titleGroups.set(entry.title, (titleGroups.get(entry.title) ?? 0) + 1);
+    const largestTitleGroup = Math.max(0, ...titleGroups.values());
+    const raw = captureEvidence(await page.content(), { check: "recent-changes-feed-title-repeat", name, status: response?.status?.() ?? null });
+
+    record(capabilityChecks.N14_SHAPE[0],
+      entries.length > 0 && ours.length >= 2 && largestTitleGroup >= 2
+        && oursActIds.every(id => id !== "") && distinctOurs === oursActIds.length
+        && duplicatesAnywhere.length === 0,
+      {
+        actor: "admin",
+        actorId: creds.admin?.id ?? null,
+        feedUrl: "/*recent",
+        status: response?.status?.() ?? null,
+        card: name,
+        renderedActEntries: entries.length,
+        entriesTitlingTheFixtureCard: ours.length,
+        largestTitleGroup,
+        crawlReading: `a title-based reader counts ${largestTitleGroup} entries as "the same act repeated ${largestTitleGroup}x"`,
+        actIdsOfThoseEntries: oursActIds,
+        distinctActIdsAmongThem: distinctOurs,
+        duplicatesAnywhere,
+        actIdSequence: actIdSequence(entries),
+        raw,
+      });
   },
 }];
