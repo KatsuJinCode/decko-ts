@@ -90,10 +90,13 @@ export const checks = [
           mainTextSnippet: (main?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
         };
       });
-      const rendered =
-        inventory.hasNestRulesSlot ||
-        inventory.hasSettingList ||
-        inventory.hasRuleListText;
+      // The word-presence arm is evidence, not the verdict (adversarial
+      // blindness-review F6 item 7): /setting|rule/i over the modal text
+      // passed an edit whose nest_rules slot was entirely missing — the
+      // 2026-10-18 full run graded this PASS with hasNestRulesSlot:false and
+      // hasSettingList:false, carried by hasRuleListText alone. The slot the
+      // name promises is structural.
+      const rendered = inventory.hasNestRulesSlot || inventory.hasSettingList;
       record(
         "E7 a set card renders a nest_rules slot carrying the rule list",
         rendered,
@@ -148,41 +151,51 @@ export const checks = [
     run: async (ctx) => {
       const { page, database, record, visit, signIn, creds } = ctx;
       await signIn(creds.admin);
-      const summaryTypeRow = database()
+      // The check's name promises a +summary NESTED FIELD's editor — the
+      // field group a parent card's edit form renders for its +summary right
+      // (adversarial blindness-review F6 item 8: the old target was
+      // `name LIKE '%+*account'`, an account RULE card with no +summary
+      // field, and the predicate was hasContentField || hasEmailOrPassword —
+      // any content or email/password input anywhere in the modal, so the
+      // +summary editor the name claims was never opened). The fixture's own
+      // +summary carrier is the first seeded `<card>+summary` junction (e.g.
+      // "Topic 001+summary", whose Topic+*type+*structure rule nests
+      // {{+summary}}); its parent's edit form renders .RIGHT-summary with the
+      // field's content editor.
+      const summaryCardRow = database()
         .prepare(
-          "SELECT id, name FROM cards WHERE codename='account' AND trash=0 LIMIT 1"
+          "SELECT id, name FROM cards WHERE name LIKE '%+summary' AND trash=0 ORDER BY id LIMIT 1"
         )
         .get();
-      if (!summaryTypeRow) {
+      if (!summaryCardRow) {
         record(
           "E11 a card with a +summary nested field renders that field's editor",
           false,
-          { note: "no account cardtype in the seeded deck" }
+          { note: "no +summary junction card in the seeded deck" }
         );
         return;
       }
-      const accountCardRow = database()
-        .prepare(
-          "SELECT id, name FROM cards WHERE name LIKE '%+*account' AND trash=0 LIMIT 1"
-        )
-        .get();
-      const target = accountCardRow?.name ?? summaryTypeRow.name;
+      const target = summaryCardRow.name.replace(/\+summary$/, "");
       await visit("/" + encodeURIComponent(target) + "/edit");
       await page.waitForTimeout(2500);
       const inventory = await page.evaluate(() => {
         const root = document.querySelector(".modal.show") ?? document;
-        const inputs = [...root.querySelectorAll('input, textarea')];
+        const summaryEditors = [
+          ...root.querySelectorAll(
+            ".RIGHT-summary textarea.d0-card-content, .RIGHT-summary input.d0-card-content, .RIGHT-summary input[type=file]"
+          ),
+        ];
+        const summaryGroups = root.querySelectorAll(".RIGHT-summary").length;
         return {
           modalOpen: document.querySelector(".modal.show") !== null,
-          inputNames: inputs.map((i) => i.getAttribute("name") ?? "").filter(Boolean).slice(0, 20),
-          hasContentField: inputs.some((i) => /content/.test(i.getAttribute("name") ?? "")),
-          hasEmailOrPassword: inputs.some((i) => /email|password/i.test(i.getAttribute("name") ?? "")),
+          summaryGroups,
+          summaryEditorNames: summaryEditors.map((i) => i.getAttribute("name") ?? "").slice(0, 8),
           mainTextSnippet: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").slice(0, 200),
         };
       });
       record(
         "E11 a card with a +summary nested field renders that field's editor",
-        inventory.modalOpen && (inventory.hasContentField || inventory.hasEmailOrPassword),
+        inventory.modalOpen && inventory.summaryEditors.length >= 1,
         { target, ...inventory, raw: ctx.captureEvidence?.(await page.content(), { check: "E11-nested-summary" }) }
       );
     },

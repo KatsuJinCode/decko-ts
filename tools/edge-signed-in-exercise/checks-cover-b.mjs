@@ -610,20 +610,37 @@ export async function runCoverBChecks(ctx) {
     // :labeled; the edit: :inline variant sits commented out in the gem), so
     // the swapped region is read-style: email and password show up as labeled
     // rows, not bare form inputs. Grade the exposure the person sees where
-    // the board pane stood: the fetch answering 200 and both words visible in
-    // the swapped region. Inputs, when an edit form is open, still count.
-    const regionText = await page.evaluate(() => {
-      const region = document.querySelector(".board-main > .overlay-container > .card-slot._bottomlay-slot, .board-main > ._overlay-container-placeholder > .card-slot");
-      return region === null ? null : region.textContent.replace(/\s+/g, " ").trim().slice(0, 400);
+    // the board pane stood: the fetch answering 200, the email VALUE (the
+    // signed-in account's own address), and the password's own labeled row or
+    // a real input. Inputs, when an edit form is open, still count.
+    const regionInventory = await page.evaluate(() => {
+      const regionEl = document.querySelector(".board-main > .overlay-container > .card-slot._bottomlay-slot, .board-main > ._overlay-container-placeholder > .card-slot");
+      const fields = [...document.querySelectorAll("#main input, .modal input")].map((i) => ({ name: i.name, type: i.type }));
+      // The labeled rows the person reads: the sanitized right names the
+      // engine renders (.RIGHT-Xemail / .RIGHT-Xpassword, the same rows the
+      // A1 value-graded check opens).
+      const emailRow = regionEl?.querySelector(".RIGHT-Xemail, .RIGHT-email") ?? null;
+      const passwordRow = regionEl?.querySelector(".RIGHT-Xpassword, .RIGHT-password") ?? null;
+      return {
+        regionText: regionEl === null || regionEl === undefined ? null : regionEl.textContent.replace(/\s+/g, " ").trim().slice(0, 400),
+        emailRowPresent: emailRow !== null,
+        passwordRowPresent: passwordRow !== null,
+        fields,
+      };
     });
-    const fields = await page.evaluate(() => [...document.querySelectorAll("#main input, .modal input")].map((i) => ({ name: i.name, type: i.type })));
+    const fields = regionInventory.fields;
     const emailField = fields.find((f) => /email/i.test(f.name ?? "") && f.type !== "hidden");
     const passwordField = fields.find((f) => /password/i.test(f.name ?? "") && f.type !== "hidden");
-    const showsEmail = emailField !== undefined || (regionText !== null && /email/i.test(regionText));
-    const showsPassword = passwordField !== undefined || (regionText !== null && /password/i.test(regionText));
+    // Word presence in the region text is evidence, not the verdict
+    // (adversarial blindness-review F6 item 9): email grades by VALUE — the
+    // signed-in account's own address, the same value-graded shape as the
+    // strong A1 check — or by a real email input; password grades by a real
+    // password input or its own labeled row element.
+    const showsEmail = emailField !== undefined || (regionInventory.regionText !== null && regionInventory.regionText.includes(admin.email));
+    const showsPassword = passwordField !== undefined || regionInventory.passwordRowPresent;
     record("E19 the account card's board has an Account tab that exposes email and password",
       pillFetch?.status === 200 && showsEmail && showsPassword,
-      { accountTab, pill: { href: pillHref, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null }, regionText, fields });
+      { accountTab, pill: { href: pillHref, fetchStatus: pillFetch?.status ?? null, fetchPath: pillFetch?.path ?? null }, regionText: regionInventory.regionText, emailRowPresent: regionInventory.emailRowPresent, passwordRowPresent: regionInventory.passwordRowPresent, fields });
   });
 
   await attempt("E21 the board History tab lists the run's change", async () => {
@@ -634,8 +651,19 @@ export async function runCoverBChecks(ctx) {
     if (await tab.count() === 0) { record("E21 the board History tab lists the run's change", false, { note: "no History tab", url: page.url() }); return; }
     await tab.click().catch(() => undefined);
     await page.waitForTimeout(1500);
-    const rows = await page.evaluate(() => [...document.querySelectorAll("#main .pill, #main .act, #main .card-slot, #main li")].map((r) => r.textContent.replace(/\s+/g, " ").trim().slice(0, 60)).filter(Boolean).slice(0, 8));
-    record("E21 the board History tab lists the run's change", rows.length > 0, { card: name, rows });
+    // The check's name promises the RUN'S CHANGE in the act list, not "any
+    // list items on any tab pane" (adversarial blindness-review F6 item 6:
+    // rows.length > 0 over #main .pill, .act, .card-slot, li was satisfied by
+    // page chrome — the 2026-10-18 full run's rows were the card header and
+    // home-layout content snippets). The act entries are the history list's
+    // own accordion items (act-id-<n> targets, as on /<card>/history), and
+    // the pane must carry this run's own card name.
+    const pane = await page.evaluate(() => ({
+      actMarkers: document.querySelectorAll("#main button.accordion-button[data-bs-target^='#act-id-'], #main [id^='act-id-'], #main .history-act").length,
+      mainText: (document.querySelector("#main")?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 600),
+    }));
+    record("E21 the board History tab lists the run's change", pane.actMarkers >= 1 && pane.mainText.includes(name),
+      { card: name, actMarkers: pane.actMarkers, mainTextSnippet: pane.mainText.slice(0, 200) });
   });
 
   // ------------------------------------------------------------------ E23

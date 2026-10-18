@@ -940,7 +940,17 @@ try {
     const dateField = await page.locator('#edit_card input[name$="[content]"], .modal input[name$="[content]"]').first();
     const type = await dateField.getAttribute("type").catch(() => null);
     const original = await dateField.inputValue().catch(() => null);
-    record("content field is a date picker showing the stored date", (type === "date" || type === "text") && Boolean(original), { type, value: original });
+    // The check's name promises a DATE PICKER showing the STORED date
+    // (adversarial blindness-review F6 item 5: the old predicate accepted
+    // type==="text" as well, so a regression losing input[type=date] graded
+    // green, and Boolean(original) never compared the value with the card's
+    // stored content). The stored content is the owned database row's
+    // db_content for this card.
+    const storedDateRow = database().prepare("SELECT db_content FROM cards WHERE name = ? AND trash = 0").get(dateCard);
+    const storedDate = storedDateRow?.db_content ?? null;
+    const showsStoredDate = storedDate !== null && String(original ?? "").trim() === String(storedDate).trim();
+    record("content field is a date picker showing the stored date", type === "date" && showsStoredDate,
+      { type, value: original, stored: storedDate, showsStoredDate });
     if (original) {
       const newDate = original === "2011-12-15" ? "2011-12-16" : "2011-12-15";
       await dateField.fill(newDate).catch(() => undefined);
@@ -1035,8 +1045,14 @@ try {
     const stillHasContent = gone.html.includes("Harness rich text");
     record("the delete removes the card (trashed, content gone, new-card page shown)", write !== undefined && trashed && !stillHasContent,
       { deleteStatus: write?.status, serverSaid: write?.bodyHead, afterStatus: gone.status, afterTitle: gone.title, trashed, stillHasContent });
-    const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND name LIKE ? ESCAPE ?").get(baselineMaxCardId, "delete%", "\\").n;
-    record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId });
+    // The guard its name promises: the deleted card is not recreated. The old
+    // pattern LIKE 'delete%' never matched the run's own card name — this run
+    // names its delete target `Harness_delete_<stamp>` (cardName("delete")),
+    // which does not start with "delete" (adversarial blindness-review F6
+    // item 4), so the guard could not fire for exactly the case it exists
+    // for. Count run-created rows carrying this run's delete-target shape.
+    const deleteCardName = database().prepare("SELECT COUNT(*) AS n FROM cards WHERE id > ? AND (name LIKE ? ESCAPE ? OR name = ?)").get(baselineMaxCardId, "Harness\\_delete%", "\\", deleteName).n;
+    record("no card named delete… was created by this run (cards with id above the run baseline)", Number(deleteCardName) === 0, { cardsNamedDeleteCreatedThisRun: deleteCardName, baselineMaxCardId, pattern: "Harness\\_delete% OR = " + deleteName });
   }
   }
   await attempt("navbar sign out revokes the session", async () => {
@@ -1081,13 +1097,27 @@ try {
 
   const changes = await attempt("changes", () => visit("/*search"));
   if (changes) {
-    const updatedFirst = await page.evaluate(() => {
-      const rows = [...document.querySelectorAll("tr, .search-result, .card")].slice(0, 12);
-      return rows.map((r) => r.textContent.trim().slice(0, 60));
-    });
-    record("the Changes link (/*search) lists cards", changes.status === 200, { status: changes.status, sample: updatedFirst.slice(0, 3) }, { wallMs: changes.wallMs });
+    // Rows that carry a link are list entries; chrome rows (layout tables,
+    // empty wrappers) have no anchor and are dropped (adversarial
+    // blindness-review F6 item 2: the old predicate was /Harness_/ over the
+    // whole page HTML, satisfied by the signed-in navbar's "Harness_Admin" on
+    // ANY signed-in changes page, and "first" — the actual contract — was
+    // never tested).
+    const orderedRows = await page.evaluate(() => [...document.querySelectorAll("tr, .search-result, .card")]
+      .map((r) => ({ text: r.textContent.replace(/\s+/g, " ").trim().slice(0, 80), linked: r.querySelector("a[href]") !== null }))
+      .filter((r) => r.text && r.linked)
+      .map((r) => r.text)
+      .slice(0, 12));
+    record("the Changes link (/*search) lists cards", changes.status === 200, { status: changes.status, sample: orderedRows.slice(0, 3) }, { wallMs: changes.wallMs });
     if (!richName) record("/*search lists the cards this run just created/edited first", null, { skipped: true, reason: `${liveWalk.mode}: the run created no cards, so there is nothing of this run's to look for` });
-    else record("/*search lists the cards this run just created/edited first", /Harness_/.test(changes.html), { mentionsHarnessCard: /Harness_/.test(changes.html) });
+    else {
+      // The ordering claim: the FIRST listed entry is one of this run's own
+      // touched cards (Harness_* or the run-edited date card) — the newest
+      // act at the top, before anything older.
+      const runCardsFirst = orderedRows.length > 0 && /Harness_|2011_12_14/.test(orderedRows[0]);
+      record("/*search lists the cards this run just created/edited first", changes.status === 200 && runCardsFirst,
+        { runCardsFirst, firstRow: orderedRows[0] ?? null, rows: orderedRows.slice(0, 6) });
+    }
   }
 
   await attempt("sign out", async () => {
@@ -1272,10 +1302,21 @@ try {
 
   await attempt("H1 history shows the run's edits", async () => {
     const history = await visit(`/${currentName}/history`);
-    const acts = await page.evaluate(() => document.querySelectorAll(".act, tr, .history-act, [id^=act-]").length);
+    // The check's name promises the card's ACTS, not a 200 whose body happens
+    // to contain a navbar word (adversarial blindness-review F6 item 1:
+    // /act|change|edit/i was satisfied by the signed-in navbar's "Changes"
+    // link on any 200 page, and the actLikeNodes count was computed and never
+    // used). The acts are the history page's own accordion items
+    // (button.accordion-button[data-bs-target^='#act-id-'], the same bytes the
+    // exhaustive runner's H3 case reads), and the run's own edit content
+    // ("Harness rich text ", typed and saved by the RichText journey) must
+    // appear among the listed acts' drafts — a wrong-card or empty history
+    // under 200 fails.
+    const actToggles = await page.evaluate(() => document.querySelectorAll("button.accordion-button[data-bs-target^='#act-id-']").length);
     const body = await page.content();
-    record("the history page lists the card's acts (not just a 200)", history.status === 200 && /act|change|edit/i.test(body),
-      { status: history.status, actLikeNodes: acts });
+    const runEditListed = body.includes("Harness rich text");
+    record("the history page lists the card's acts (not just a 200)", history.status === 200 && actToggles >= 2 && runEditListed,
+      { status: history.status, actToggles, runEditListed });
   });
 
   await attempt("E19-E22 board tabs", async () => {
@@ -1300,10 +1341,19 @@ try {
   });
 
   await attempt("N1 quick search", async () => {
-    await page.goto(`${stack.origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(richName.slice(0, 14))}`, { waitUntil: "load" });
+    await page.goto(`${stack.origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(currentName.slice(0, 14))}`, { waitUntil: "load" });
     await page.waitForTimeout(1000);
-    const body = await page.content();
-    record("keyword search endpoint returns the run's card", body.includes(richName.slice(0, 14)), { url: page.url() });
+    // The verdict is a RESULT LINK to the run's card, not the query echoed
+    // back (adversarial blindness-review F6 item 3: body.includes(term) was
+    // satisfied by the search page echoing its own query into the search box
+    // with zero results — a broken endpoint graded green). Anchors only: an
+    // input value is the echo, an anchor is a result.
+    const resultLinks = await page.evaluate(() => [...document.querySelectorAll("#main a[href], tr a[href], .search-result a[href]")]
+      .map((a) => ({ text: a.textContent.replace(/\s+/g, " ").trim(), href: a.getAttribute("href") }))
+      .filter((e) => e.text || (e.href && e.href.length > 1)));
+    const hit = resultLinks.find((e) => e.text.includes(currentName) || decodeURIComponent(e.href ?? "").includes(currentName)) ?? null;
+    record("keyword search endpoint returns the run's card", hit !== null,
+      { url: page.url(), resultLinkCount: resultLinks.length, hit });
   });
   }
 
