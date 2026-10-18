@@ -125,5 +125,65 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     });
   }
 
+  // 4. The Delete affordance of the edit form: decko renders it in
+  //    card-mod-edit's view :edit_buttons as link_to "Delete",
+  //    delete_button_opts - class "slotter btn btn-outline-danger ms-auto", a
+  //    data-confirm guard, and a path { action: :delete } href, i.e.
+  //    /delete/<name>. It is NOT on a card's content view, so seeking the word
+  //    "Delete" on the surface page (ACT-034) measured affordance-not-found
+  //    against a page that never carries it, on the ts engine and on the Ruby
+  //    oracle alike.
+  if (/delete/i.test(t) && /delete/|confirm/i.test(t)) {
+    await goto(`/${encodeURIComponent(card)}/edit`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `confirm-guarded Delete link to /delete/<name> on /${card}/edit`,
+      count: await countSelector("a.btn-outline-danger[href^='/delete/']"),
+    });
+    sequence.push({
+      interaction: "assert-present",
+      selector: `Delete link carries the confirm guard on /${card}/edit`,
+      count: await countSelector("a.btn-outline-danger[data-confirm][href^='/delete/']"),
+    });
+  }
+
+  // 5. The Edit affordance of a real card: the card menu's edit anchor,
+  //    a.edit-link[title="Edit"] (card-mod-format's edit_link_opts: class
+  //    "edit-link", title "Edit"; the icon is the link text, so the visible
+  //    word "Edit" never appears on the page). Seeking that word on the home
+  //    page (ACT-136) could not match any rendered card, on either engine.
+  if (/Ed+s+Edit/i.test(t) || /edit a/i.test(t)) {
+    await goto(`/${encodeURIComponent(card)}`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `Edit affordance on /${card}`,
+      count: await countSelector("a.edit-link[title='Edit'], a.btn-outline-primary"),
+    });
+  }
+
+  // 6. The follow control: decko renders it as an a.follow-link anchor in the
+  //    card's follow section, signed in (follow_link_views.rb's show_follow?
+  //    requires Auth.signed_in?), in one of two states: StartFollowLink, or
+  //    StopFollowLink ("following", hover text "unfollow", class
+  //    btn-item-delete) when the actor follows the card. W2 names the unfollow
+  //    control, so both states are counted: the control's presence is the
+  //    affordance, and the followed-state marker is recorded beside it.
+  if (/follow/i.test(t)) {
+    await goto(`/${encodeURIComponent(card)}/follow_section`);
+    await settle();
+    sequence.push({
+      interaction: "assert-present",
+      selector: `follow control on /${card}/follow_section`,
+      count: await countSelector("a.follow-link"),
+    });
+    sequence.push({
+      interaction: "assert-present",
+      selector: `unfollow (followed) state of the follow control on /${card}/follow_section`,
+      count: await countSelector("a.follow-link.btn-item-delete[data-hover-text='unfollow']"),
+    });
+  }
+
   return sequence;
 }
