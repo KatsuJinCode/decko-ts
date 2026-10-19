@@ -653,26 +653,20 @@ const validateSyntaxField = "content";
  *    errors.add :content, e.message.remove("[stdin]:")
  *  end
  *
- *  SEAM: the TS engine has no `errors.add :content` write-path surface
- *  (errors live in lib/card/error.rb - card-1.110.0 - and the action
- *  engine's validate path is hardcoded for the name legality / type
- *  resolution checks, card-action-engine.ts:256-258). The :coffee_script
- *  gem (`coffeescript.org` -> coffeescript npm) is not installed in this
- *  project's node_modules; the ExecJS bridge is unported. The body is
- *  the declaration's recorded shape: it reads the card's content, names
- *  the field it would validate against, and leaves the compile + error
- *  composition as the seam the action engine's validate stage must wire
- *  when mod-event execution lands. */
+ *  BODY PORTED ENGINE-OWNED: the action engine's validate walk runs the
+ *  compile itself (card-action-engine.ts validateCssSaveTree, the
+ *  coffee_script arm) — this.coffeeCompiler(content, false) is
+ *  ::CoffeeScript.compile content, a failed compile refuses the save the
+ *  way errors.add does, and the message carries Ruby's
+ *  `e.message.remove("[stdin]:")` bytes rebuilt from the same-version
+ *  compiler's diagnostic (the coffeescript npm package IS in dependencies
+ *  at 1.12.2, the gemset's coffee-script-source version; oracle-run both
+ *  sides on the same input: identical "unexpected if" text, 1-based
+ *  line:col). The skipsEvent gate honors the act's skip lists under the
+ *  same event name this registration declares. This fn stays a no-op:
+ *  the walk is the body's owner, and a mod-side compile would double-run
+ *  it. */
 const validateCoffeescriptSyntaxFn: ModEventFn = (card, _host) => {
-  // SEAM (no-op stub, see header): when execution wiring lands, this body
-  // must (a) call ::CoffeeScript.compile on card.dbContent (the Ruby
-  // `content` method on the acting card), (b) rescue ExecJS::RuntimeError,
-  // strip the leading "[stdin]:" from e.message (Ruby's String#remove),
-  // and (c) call errors.add :content, <stripped message> against the
-  // action engine's write-path error surface. The :coffee_script + execjs
-  // gems are unported (no TS compiler bridge); the errors.add seam is
-  // unported (no TS error surface); the stage selector below is the only
-  // piece the event registry admits today.
   void validateSyntaxField;
   void card;
 };
@@ -684,10 +678,14 @@ const validateCoffeescriptSyntaxFn: ModEventFn = (card, _host) => {
  *    errors.add :content, "<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>".html_safe
  *  end
  *
- *  The optional host-backed implementation runs in the action engine's
- *  pre-store subtree guard. Node production boot and harness use the same
- *  real vendored Uglifier provider. Edge hosts pass its static-initialization
- *  equivalent; this declaration alone is not execution evidence. */
+ *  BODY PORTED ENGINE-OWNED: the optional host-backed implementation runs
+ *  in the action engine's pre-store subtree guard (validateCssSaveTree's
+ *  java_script arm — this.javascriptValidator(content), the diagnostic
+ *  wrapped in <pre> exactly as the Ruby body wraps ansi2html(e.message),
+ *  refused as a :content CardActionError). Node production boot and
+ *  harness use the same real vendored Uglifier provider. Edge hosts pass
+ *  its static-initialization equivalent; the diagnostic TEXT is the host
+ *  parser's vocabulary, as Ruby's is its ExecJS runtime's. */
 const validateJavascriptSyntaxFn: ModEventFn = () => {};
 
 /** A set file whose ported bytes are registration bookkeeping only (the
@@ -826,10 +824,11 @@ const cardModScript: DeckoModManifest = {
           // rescue ExecJS::RuntimeError => e
           //   errors.add :content, e.message.remove("[stdin]:")
           // end
-          // SEAM: body is a no-op stub - the action engine's validate path
-          // is hardcoded (no eventsForStage consult), the :coffee_script +
-          // execjs gems are unported (no TS compiler bridge), and the
-          // `errors.add :content` write-path surface has no TS port.
+          // BODY PORTED ENGINE-OWNED: validateCssSaveTree's coffee_script
+          // arm runs this.coffeeCompiler (the npm coffeescript@1.12.2
+          // package, the gemset's coffee-script-source version) on a
+          // content/type-changing save and refuses with the stripped
+          // Ruby-shaped diagnostic; skipsEvent honors this name.
           event: "validate_coffeescript_syntax",
           at: "validate",
           on: ["save"],

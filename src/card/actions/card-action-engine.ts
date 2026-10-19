@@ -2874,6 +2874,44 @@ export class CardActionEngine {
         : row.type_id
     );
     const typeCode = (await this.fetchRowById(typeId))?.codename;
+    if (
+      typeCode === "coffee_script" &&
+      !this.skipsEvent("validate_coffeescript_syntax") &&
+      this.coffeeCompiler !== undefined
+    ) {
+      // validate_coffeescript_syntax (card-mod-script
+      // set/type/coffee_script.rb:5-9): `::CoffeeScript.compile content`
+      // rescuing ExecJS::RuntimeError -> errors.add :content,
+      // e.message.remove("[stdin]:"). The npm coffeescript@1.12.2 package
+      // is the same compiler as the gemset's coffee-script-source 1.12.2
+      // (oracle: identical diagnostics, "unexpected if" both sides); the
+      // port rebuilds Ruby's "SyntaxError: LINE:COL: MESSAGE" shape from
+      // the npm error's location (0-based, Ruby's bytes are 1-based) and
+      // strips the [stdin]: prefix the event removes. Ruby wraps nothing:
+      // the message stays plain (the <pre> wrap is the java_script
+      // event's, not this one). No compiler composed = the arm stands
+      // down; the asset machinery refuses such saves on its own path.
+      const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
+      if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
+        try {
+          this.coffeeCompiler(content, false);
+        } catch (error) {
+          let message = error instanceof Error ? error.message : String(error);
+          const location = (error as { location?: { first_line?: number; first_column?: number } }).location;
+          if (location?.first_line !== undefined && !/^\[stdin\]:\d+:\d+:/.test(message) && !/^\d+:\d+:/.test(message)) {
+            message = `SyntaxError: ${location.first_line + 1}:${(location.first_column ?? 0) + 1}: ${message}`;
+          }
+          message = message.replace("[stdin]:", ""); // e.message.remove("[stdin]:")
+          throw new CardActionError(
+            "validation-failed",
+            `Validation failed: ${message}`,
+            `CONTENT: ${message}`,
+            { content: message },
+            name.s,
+          );
+        }
+      }
+    }
     if (typeCode === "java_script" && !this.skipsEvent("validate_javascript_syntax") && this.javascriptValidator !== undefined) {
       const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
       if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
