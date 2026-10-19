@@ -114,6 +114,7 @@ import {
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import { homeMarkContent } from "../card/render/page.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -920,6 +921,10 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
   if (pathname === "/" || pathname === "") {
     if (post) return { verb: "create", json: false };
     if (put) return { verb: "update", json: false };
+    // engine_routes.rb:31 `delete "/" => "card#delete"` — the markless
+    // delete, whose mark is the implicit one (mark.rb, like the markless
+    // put|patch arms).
+    if (del) return { verb: "delete", json: false };
     return null;
   }
   // (card)/<verb>(/<mark>) — engine_routes.rb:46-48. The "card/" prefix is
@@ -1933,13 +1938,16 @@ async function dispatchWriteRequest(
       await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
-      if (route.mark === undefined && card["name"] === undefined) {
-        throw new CardActionError(
-          "not-found",
-          "no card name in request (no mark, no card[name])",
-        );
-      }
-      const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
+      // mark.rb:28-40 implicit_mark for the MARKLESS routes (engine_routes
+      // .rb:29-30 put|patch "/"): mark_from_card_hash (params.dig(:card,
+      // :name)) when the body carries one, else home_mark (mark.rb:42-44 —
+      // the *home rule || "Home"; a missing home then rides the
+      // update-of-missing-card create fallback, rest.rb:14-16). The port
+      // previously answered 404 "no card name in request" here — the
+      // register's C7 divergence.
+      const markName = route.mark !== undefined
+        ? markToName(route.mark)
+        : card["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
       const hashName = card["name"];
       const updateName = hashName ?? markName;
       // The card is fetched by the URL mark when there is one (uri_fetch,
@@ -2071,10 +2079,15 @@ async function dispatchWriteRequest(
         name = result?.name?.s ?? updateName;
       }
     } else {
-      if (route.mark === undefined) {
-        throw new CardActionError("not-found", "no card name in request (no mark)");
-      }
-      const markName = markToName(route.mark);
+      // A12: engine_routes.rb:31 `delete "/" => "card#delete"` routes to
+      // card#delete with the IMPLICIT mark (mark.rb:28-40 — card[name] from
+      // the body, else home_mark per mark.rb:42-44), exactly like the
+      // markless put|patch arms above; Ruby then deletes that card (handle
+      // { card.delete! }), and a missing one raises the UserError the
+      // lookup miss below already answers.
+      const markName = route.mark !== undefined
+        ? markToName(route.mark)
+        : parsed.card?.["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
         throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
