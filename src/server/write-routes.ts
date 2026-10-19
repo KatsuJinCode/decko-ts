@@ -1681,13 +1681,18 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
 /** Type-set membership for scoped event set paths: a card belongs to the
  *  set module "type/<codename>[/...]" when its type card carries that
  *  codename (Card::Set::Type, card-1.110.0 lib/card/set/pattern; the set
- *  file's directory is the type's codename). Every other scoped pattern
- *  stays not-applicable, as before this resolver existed. */
+ *  file's directory is the type's codename). The PATTERN type — the modules
+ *  actually attached at this stage — wins when the walk supplies one (a
+ *  type-changing save validates with the stored type's modules; see
+ *  ModEventCard.patternTypeId). Every other scoped pattern stays
+ *  not-applicable, as before this resolver existed. */
 function typeSetMember(codenameOfType: ReadonlyMap<number, string>) {
-  return (setPath: string, card: { typeId?: number | null }): boolean => {
+  return (setPath: string, card: { typeId?: number | null; patternTypeId?: number | null }): boolean => {
     const match = /^type\/([^/]+)/.exec(setPath);
-    if (match === null || card.typeId === undefined || card.typeId === null) return false;
-    const ownType = codenameOfType.get(card.typeId);
+    if (match === null) return false;
+    const memberTypeId = card.patternTypeId !== undefined ? card.patternTypeId : card.typeId;
+    if (memberTypeId === undefined || memberTypeId === null) return false;
+    const ownType = codenameOfType.get(memberTypeId);
     if (ownType === match[1]) return true;
     // Stock rules/type/set.rb includes Type::SearchType, and search's
     // type/search_type.rb includes Type::Json. Their inherited validators

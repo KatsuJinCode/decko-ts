@@ -1451,6 +1451,85 @@ function stubEvent(_card: unknown, _host: unknown): void {
   // the write-path/stage seam is the named remainder (file header)
 }
 
+/** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
+ *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
+ *  Ruby's new_card? (the arm answers false without a query). */
+async function cardsOfTypeExist(
+  ctx: ModEventContext,
+  id: number | undefined,
+): Promise<boolean> {
+  if (id === undefined) return false;
+  const row = await ctx.driver
+    .query<{ id: number }>(
+      "SELECT id FROM cards WHERE trash = 0 AND type_id = ? LIMIT 1",
+      [id],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  return row !== undefined;
+}
+
+/** type/cardtype.rb:14-16 check_for_cards_of_type — the delete guard:
+ *  `errors.add :cardtype, t(:core_cards_exist, cardname: name) if
+ *  cards_of_type_exist?`. The dispatcher runs it as validate_delete's
+ *  after-child (declaration `after: :validate_delete`, no stage of its
+ *  own), so it inherits validate_delete's on: :delete gate. en.yml:4:
+ *  "Sorry, this card must remain a Cardtype so long as there are
+ *  %{cardname} cards." */
+async function checkForCardsOfTypeEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (!(await cardsOfTypeExist(ctx, card.id))) return;
+  const message = `Sorry, this card must remain a Cardtype so long as there are ${card.name} cards.`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `CARDTYPE: ${message}`,
+    { cardtype: message },
+    card.name,
+  );
+}
+
+/** type/cardtype.rb:18-22 check_for_cards_of_type_when_type_changed — the
+ *  type-change guard on a card whose type WAS Cardtype
+ *  (when: :was_cardtype?, changing: :type): `errors.add :cardtype,
+ *  t(:core_error_cant_alter, name: name_before_act) if cards_of_type_exist?`.
+ *  en.yml:8: "can't alter this type; %{name} cards still exist" — the name
+ *  is name_before_act (dirty.rb:66-68), the type the card is LEAVING. */
+async function checkForCardsOfTypeWhenTypeChangedEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (!(await cardsOfTypeExist(ctx, card.id))) return;
+  const message = `can't alter this type; ${card.nameBeforeAct ?? card.name} cards still exist`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `CARDTYPE: ${message}`,
+    { cardtype: message },
+    card.name,
+  );
+}
+
+/** type/cardtype.rb:25-29 validate_cardtype_name — a Cardtype card's name
+ *  refuses `<`, `>`, `/` (Ruby `%r{[<>/]}.match?(name)`): `errors.add :name,
+ *  t(:core_error_invalid_character_in_cardtype, banned: "<, >, /")`.
+ *  en.yml:14: "may not contain any of the following characters: %{banned}". */
+function validateCardtypeNameEvent(card: ModEventCard): void {
+  if (!/[<>/]/.test(card.name)) return;
+  const message = "may not contain any of the following characters: <, >, /";
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `NAME: ${message}`,
+    { name: message },
+    card.name,
+  );
+}
+
 /** reference_events.rb:2-4 refresh_references_out -> update_references_out
  *  (all.rb:47-50): the port is refresh-references-out.ts. The dispatcher
  *  has already enforced on: :save + changed: :content. */
@@ -1892,26 +1971,38 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/type/cardtype.rb — basket[:non_createable_types] +
-      // the three cardtype events. check_for_cards_of_type_when_type_
-      // changed's `changing: :type` (:19-20) now carries the manifest
-      // field (the seam's alias of changed:, event.rb:57); its when:
-      // predicate (was_cardtype?) stays unported — the dispatcher reports
-      // the skip as predicate-unresolved if a runtime ever walks it
-      // without porting the predicate.
+      // the three cardtype events, each with its real body:
+      //   check_for_cards_of_type (:14-16) — the delete guard (after:
+      //   validate_delete), errors.add :cardtype when cards of the type
+      //   exist.
+      //   check_for_cards_of_type_when_type_changed (:18-22) — the
+      //   type-change guard (when: :was_cardtype?, changing: :type; the
+      //   seam aliases changing to changed, event.rb:57), errors.add
+      //   :cardtype with the name_before_act wording. The engine supplies
+      //   typeIdBeforeAct on the update walk's event card
+      //   (card-action-engine.ts runUpdateValidationWalk).
+      //   validate_cardtype_name (:25-29) — the Cardtype cardtype's name
+      //   refuses <, >, / (on: :save, changed: :name).
       setPath: "type/cardtype",
       events: [
-        event({ event: "check_for_cards_of_type", after: "validate_delete" }),
+        event({
+          event: "check_for_cards_of_type",
+          after: "validate_delete",
+          fn: checkForCardsOfTypeEvent as ModEventFn,
+        }),
         event({
           event: "check_for_cards_of_type_when_type_changed",
           at: "validate",
           changing: ["type"],
           when: "was_cardtype?",
+          fn: checkForCardsOfTypeWhenTypeChangedEvent as ModEventFn,
         }),
         event({
           event: "validate_cardtype_name",
           at: "validate",
           on: ["save"],
           changed: ["name"],
+          fn: validateCardtypeNameEvent as ModEventFn,
         }),
       ],
     },

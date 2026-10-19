@@ -220,6 +220,15 @@ export interface ModEventCard {
   /** type_id_before_act (card/lib/card/dirty.rb, the dirty tracker) — read
    *  by `when: :was_cardtype?` (mod/core/set/type/cardtype.rb:11). */
   readonly typeIdBeforeAct?: number | null;
+  /** The type whose SET MODULES are attached at this stage — Ruby's
+   *  patterns. A type-CHANGING save assigns type_id through the plain
+   *  writer (all/type.rb:52 write_card_or_id), which does not reset
+   *  patterns (reset_patterns runs only on the resolution arm,
+   *  all/type.rb:60-64, and from the expire paths), so Ruby validates with
+   *  the STORED type's modules attached while card.type_id reads the new
+   *  value. The walk that knows both facts supplies this; absent, the set
+   *  resolution falls back to typeId. */
+  readonly patternTypeId?: number | null;
   /** Card::Env.params for this save (lib/card/env.rb) — the request-param
    *  bag Ruby's predicates read as a hash (`draft`, `attachment_upload`,
    *  `insert_item`). Undefined off a request path. */

@@ -2973,6 +2973,15 @@ export class CardActionEngine {
         action: "update",
         trash: false,
         typeId: incomingTypeId,
+        // type_id_before_act (dirty.rb): the stored type this save may be
+        // leaving — the cardtype events' was_cardtype? reads it
+        // (cardtype.rb:11 `type_id_before_act == Card::CardtypeID`).
+        typeIdBeforeAct: row.type_id,
+        // The set modules ATTACHED at this stage ride the stored type (the
+        // explicit type_id= writer does not reset patterns — all/type.rb:52
+        // vs :60-64), so the type-scoped set resolution uses it while the
+        // assigned type above stays what card.type_id reads.
+        patternTypeId: row.type_id,
         nameBeforeAct: currentName?.s,
         changedFields: validationChanged,
       });
@@ -3005,6 +3014,10 @@ export class CardActionEngine {
       validateNameLegality(newName); // validate_legality_of_name
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
+    // name_is_changing? (dirty.rb:57-60) feeds the validate walk's
+    // changed: :name events (validate_name, validate_cardtype_name, ...):
+    // the validationCard closure reads this same array at dispatch time.
+    if (nameChanged) validationChanged.push("name");
     // event :validate_key (name_events.rb:44-49) carries no `changed:` — it
     // fires on EVERY save (create and update, renamed or not), so a save
     // whose (unchanged or new) name computes the empty key is refused here
@@ -4510,6 +4523,8 @@ export class CardActionEngine {
     nameBeforeAct?: string;
     changedFields?: readonly string[];
     dbContentBeforeAct?: string | null;
+    typeIdBeforeAct?: number | null;
+    patternTypeId?: number | null;
   }): ModEventCard {
     return {
       name: input.name?.s ?? (input.id !== undefined ? `~${input.id}` : ""),
@@ -4522,6 +4537,10 @@ export class CardActionEngine {
       typeId: input.typeId ?? null,
       nameBeforeAct: input.nameBeforeAct,
       changedFields: input.changedFields ?? [],
+      // type_id_before_act (dirty.rb) — the type this save is LEAVING; the
+      // cardtype events' was_cardtype? predicate reads it (cardtype.rb:11).
+      typeIdBeforeAct: input.typeIdBeforeAct,
+      patternTypeId: input.patternTypeId,
       // Env.controller (env.rb:18): the engine's saves serve controller
       // requests (see the recaptcha guard's envController note).
       envController: true,

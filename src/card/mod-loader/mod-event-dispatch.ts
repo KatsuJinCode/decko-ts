@@ -379,12 +379,18 @@ async function setConditionApplies(
     return card.name !== "" ? DeckoName.parse(card.name).key === `*${selfMatch[1]}` : false;
   }
   const typeMatch = /^type\/(.+)$/.exec(event.setPath);
-  if (typeMatch === null || ctx === undefined || card.typeId === undefined) return false;
+  if (typeMatch === null || ctx === undefined) return false;
+  // The set modules attached at this stage ride the PATTERN type when the
+  // walk supplies one (Ruby validates a type-changing save with the stored
+  // type's modules still attached — see ModEventCard.patternTypeId); the
+  // card's assigned type is the fallback.
+  const memberTypeId = card.patternTypeId !== undefined ? card.patternTypeId : card.typeId;
+  if (memberTypeId === undefined || memberTypeId === null) return false;
   const codenameRow = await ctx.driver
     .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [typeMatch[1]])
     .then((r) => r.rows[0])
     .catch(() => undefined);
-  return codenameRow !== undefined && card.typeId === codenameRow.id;
+  return memberTypeId === codenameRow.id;
 }
 
 // ---------------------------------------------------------------------------
