@@ -145,6 +145,36 @@ import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 // behaves exactly as it did before this module existed.
 import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/server/first-run-routes.js";
 import { armGeneratedSetupToken } from "./dist/src/card/auth/setup-token.js";
+
+/**
+ * The TinyMCE snippet editors' request params (reference_editor.rb:4-5 and
+ * apply_tm_snippet_data:18-24): `tinymce_id`, `tm_snippet_raw`,
+ * `tm_snippet_start`. The dialog fetches carry them on their query strings and
+ * the rendered chrome reads them through RenderEngine#requestEditorParams
+ * (render.ts:1342 assigns params.editorParams at every render entry; the link
+ * and nest-image editor views bind their Apply button with
+ * `data-tinymce-id` = that value, card-mod-tinymce_editor.ts:663 drops the
+ * attribute when it is absent).
+ *
+ * WHY THIS EXISTS: the Bunny edge entry threads these params
+ * (worker-shared-surface.ts EDITOR_PARAM_KEYS — the edge twin carried the
+ * mapping first and the shared surface moved it to one copy), but the LOCAL
+ * serving host never did: every read here passed only `search`/`newCard`, so
+ * a locally served modal_link_editor / modal_nest_image chrome always dropped
+ * the wire. Measured 2026-10-18 on synthetic-v1: the served Apply button
+ * carried no data-tinymce-id while the edge bundle's did (full-run E6/E8
+ * evidence at .runtime/edge-signed-in/2026-10-18-runner-harness-full-run/
+ * report.md:134-135), and both dialogs stored their seed content after
+ * Apply+Save (probe-pageonly-batch6 runs 1-2, ACT-079/ACT-080).
+ */
+function editorWireParamsFromQuery(searchParams) {
+  const out = {};
+  for (const key of ["tinymce_id", "tm_snippet_raw", "tm_snippet_start"]) {
+    const value = searchParams.get(key);
+    if (value !== null) out[key] = value;
+  }
+  return out;
+}
 // The same-origin check every state-changing request passes (docs/SECURITY.md,
 // "Cross-site requests"): DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS, read at boot.
 import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy } from "./dist/src/server/request-origin.js";
@@ -4289,6 +4319,7 @@ const server = http.createServer(async (req, res) => {
         const pageRenderParams =
           STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined;
         const searchReqSingle = jsonViewSearchParams(url.searchParams);
+        const editorParamsSingle = editorWireParamsFromQuery(url.searchParams);
         response = actor === null && searchReqSingle?.offset > 1000
           ? htmlResponse(403, "<h1>Forbidden</h1><pre>limit parameter exceeds maximum for anonymous users (1000)</pre>", "Forbidden")
           : await renderCardPage(
@@ -4300,6 +4331,11 @@ const server = http.createServer(async (req, res) => {
             ...(searchReqSingle !== undefined
               ? {
                   search: searchReqSingle,
+                }
+              : {}),
+            ...(Object.keys(editorParamsSingle).length > 0
+              ? {
+                  editorParams: editorParamsSingle,
                 }
               : {}),
           },
@@ -4360,11 +4396,18 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const searchReq = jsonViewSearchParams(url.searchParams);
+      // The snippet editors' request params (see editorWireParamsFromQuery):
+      // threaded on the multi-segment card routes so the dialog views render
+      // their Apply wire, exactly as the single-segment and new-card routes
+      // below do.
+      const editorWireParams = editorWireParamsFromQuery(url.searchParams);
+      const hasEditorWireParams = Object.keys(editorWireParams).length > 0;
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
         routeView = "new";
         renderParams = await newCardRenderParams(newCardRoute.mark, url.searchParams, newCardRoute.typeName);
+        if (hasEditorWireParams) renderParams = { ...renderParams, editorParams: editorWireParams };
       } else if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
         routeName = segs[0];
         routeView = stripFormat(segs[1]);
@@ -4394,7 +4437,15 @@ const server = http.createServer(async (req, res) => {
           // the engine's UnsupportedViewError -> the 422 mapping inside
           // renderCardPage is Ruby's answer (the typeahead never rides this
           // form; the navbar's data-completepath carries the .json suffix).
-          response = await renderCardPage(name, requestEngine, routeView, searchReq ? { search: searchReq } : undefined, pageOpts);
+          response = await renderCardPage(
+            name,
+            requestEngine,
+            routeView,
+            searchReq || hasEditorWireParams
+              ? { ...(searchReq ? { search: searchReq } : {}), ...(hasEditorWireParams ? { editorParams: editorWireParams } : {}) }
+              : undefined,
+            pageOpts,
+          );
           servedCardName = name;
         }
       } else {
