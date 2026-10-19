@@ -113,6 +113,8 @@ import type {
 } from "../mod-manifest.js";
 import { superView, viewWrapInherited } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
+import type { FetchEngine } from "../../fetch.js";
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -121,6 +123,37 @@ function event(
   decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
 ): ModEventRegistration {
   return { fn: () => undefined, ...decl };
+}
+
+// ---------------------------------------------------------------------------
+// event bodies (Ruby source cited per block)
+// ---------------------------------------------------------------------------
+
+/** structure.rb:38-41 — `event :reset_cache_to_use_new_structure, before:
+ *  :update_structurees_references do Card::Cache.reset_shared;
+ *  Card::Cache.reset_temp end`. No stage of its own: options.rb:76 clears
+ *  @stage when before: is given, so the event rides the chain root's stage
+ *  (:integrate, update_structurees_references' stage) and runs before it.
+ *
+ *  Card::Cache.reset_shared / reset_temp (card-1.110.0
+ *  lib/card/cache/class_methods.rb:43-52, 67-77): every registered class
+ *  cache's SHARED and TEMPORARY layers reset (reset_shared also renews the
+ *  class-level Shared store). The port's cache_by_class is the fetch
+ *  engine's pair — Card::Cache[Card] and Card::Cache[Lexicon]
+ *  (fetch.ts:123-127, "a separate cache instance per Ruby class") — and
+ *  CardCache.reset is cache.rb#reset (`@shared&.reset; @temp.reset`,
+ *  fetch/cache.ts:346-349). Resetting both instances is the port's whole
+ *  registry; Codename is reset_other's business (class_methods.rb:81-84),
+ *  which this event does not call. */
+export async function resetCacheToUseNewStructureEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const fetch: FetchEngine | undefined = ctx.fetch;
+  if (fetch === undefined) return; // no engine cache pair composed — nothing to reset
+  fetch.cardCache.reset();
+  fetch.lexiconCache.reset();
 }
 
 // ---------------------------------------------------------------------------
@@ -372,8 +405,15 @@ const setModules: ModSetModuleFile[] = [
       // :update_structurees_references` — no stage of its own; hangs on
       // the update_structurees_references chain (:integrate), before it.
       // Recorded at the resolved stage; the before relation rides this
-      // comment (the check_setup precedent).
-      event({ event: "reset_cache_to_use_new_structure", at: "integrate" }),
+      // comment (the check_setup precedent). PORTED: the body resets the
+      // fetch engine's Card + Lexicon caches, shared + temporary —
+      // Ruby's Card::Cache.reset_shared + reset_temp
+      // (resetCacheToUseNewStructureEvent).
+      event({
+        event: "reset_cache_to_use_new_structure",
+        at: "integrate",
+        fn: resetCacheToUseNewStructureEvent,
+      }),
       event({ event: "update_structurees_type", at: "finalize", changed: ["type_id"] }),
     ],
     formats: {

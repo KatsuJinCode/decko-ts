@@ -18,6 +18,33 @@ export type ModEventSetMember = (
   card: { name?: string; id?: number },
 ) => boolean | Promise<boolean>;
 
+/** The right pattern (mod/core/set_pattern/07_right.rb): the set cards
+ *  "*<right-name" — all "+<right-name>" cards. A card matches set path
+ *  "right/<right-codename>" when its name is a junction whose LAST part's
+ *  key names the card whose codename is <right-codename> (the anchor is
+ *  resolved through the codename table — the same resolution the serving
+ *  runtime's enabled_roles case performs, generalized; card names' keys are
+ *  normalized through the port's key function, so the anchor rides the
+ *  codename, not a raw key comparison). */
+export function rightSetMember(driver: SQLDatabaseDriver): ModEventSetMember {
+  return (setPath, card) => {
+    const match = /^right\/([^/]+)$/.exec(setPath);
+    if (match === null) return false;
+    const name = card.name;
+    if (name === undefined || !name.includes("+")) return false;
+    const tagKey = DeckoName.parse(name).tagKey;
+    return (async () => {
+      const tagRow = await driver
+        .query<{ codename: string | null }>(
+          "SELECT codename FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+          [tagKey],
+        )
+        .catch(() => undefined);
+      return tagRow?.rows[0]?.codename === match[1];
+    })();
+  };
+}
+
 export function typePlusRightSetMember(driver: SQLDatabaseDriver): ModEventSetMember {
   return (setPath, card) => {
     const match = /^type_plus_right\/([^/]+)\/([^/]+)$/.exec(setPath);

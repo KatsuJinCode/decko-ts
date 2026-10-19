@@ -114,7 +114,7 @@ import {
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import { typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
+import { rightSetMember, typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -1661,11 +1661,17 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
     return {
       ...runtime,
       setMember: (setPath, card) => {
+        // right/<codename> — the Right pattern's membership
+        // (mod/core/set_pattern/07_right.rb), the general form of the
+        // enabled_roles resolution below. Gates the content mod's
+        // right/structure events (reset_cache_to_use_new_structure) at the
+        // stage walks.
+        const rightSupplied = rightSetMember(ctx.driver)(setPath, card);
+        if (rightSupplied !== false) return rightSupplied;
         if (setPath === "right/enabled_roles") {
           const right = DeckoName.parse(card.name).rightName;
           if (right === undefined) return false;
-          // Resolve the actual codename anchor, including renamed settings. Do
-          // not activate other right-scoped callbacks as a side effect of this one.
+          // Resolve the actual codename anchor, including renamed settings.
           return ctx.driver.query<{ codename: string }>(
             "SELECT codename FROM cards WHERE key = ? AND trash = 0",
             [right.key],
