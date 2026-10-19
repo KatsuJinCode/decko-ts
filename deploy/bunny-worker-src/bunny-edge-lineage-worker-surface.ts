@@ -99,6 +99,21 @@ function parseBasePath(
   // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
   // Query card params are already decoded by URLSearchParams; preserve names
   // rather than interpreting the literal "card" as a deck card.
+  if (segments[0] === "card" && segments[1] === "edit" && segments.length === 3 && segments[2] !== "") {
+    // engine_routes.rb:25's edit arm (view constraint /new|edit/): the
+    // legacy explicit form "/card/edit/<mark>" is a plain card route to
+    // card#read in the :edit view — the same render /<mark>?view=edit
+    // answers. Staging has carried both views since the register's A9
+    // pass (vm-staging-server.mjs card/:view arm); the edge 404'd this
+    // shape (3 segments, middle not "view" -> the no-route class).
+    // Named remainder: the MARKLESS /card/edit shape (Ruby renders the
+    // HOME card's edit view — implicit_mark) stays off this sync grammar;
+    // the async home resolution lives in the request core's bare arm.
+    const editName = decodeName(segments[2]!);
+    if (editName === undefined || editName === "") return { kind: "notFound" };
+    const params = wireParams();
+    return { name: editName, view: "edit", ...(params ? { params } : {}) };
+  }
   if (segments[0] === "card" && segments[1] === "new" && segments.length <= 3) {
     const typeId = searchParams?.get("card[type_id]");
     if (typeId !== undefined && typeId !== null && !/^\d+$/.test(typeId)) return { kind: "notFound" };
