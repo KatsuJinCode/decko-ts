@@ -1930,6 +1930,11 @@ async function dispatchWriteRequest(
           : {}),
         comment: parsed.comment,
         commentAuthor: parsed.commentAuthor,
+        // Env.session (comment.rb:6 + :16-19): the visitor-session bag is
+        // the request's session store - the event writes the resolved
+        // comment_author into it, and the cookie re-serialization after
+        // dispatchWriteRequest carries it to the next request.
+        commentAuthorSession: visit,
         recaptchaToken: parsed.recaptchaToken,
       };
       if (await isSessionTypeCreate(ctx.fetcher, input)) {
@@ -2034,6 +2039,9 @@ async function dispatchWriteRequest(
           name: updateName,
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
+          // Env.session (comment.rb:6 + :16-19): the visitor-session bag
+          // (see the create arm).
+          commentAuthorSession: visit,
           recaptchaToken: parsed.recaptchaToken,
         });
         name = created.name?.s ?? updateName;
@@ -2066,6 +2074,9 @@ async function dispatchWriteRequest(
             : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
+          // Env.session (comment.rb:6 + :16-19): the visitor-session bag
+          // (see the create arm).
+          commentAuthorSession: visit,
           recaptchaToken: parsed.recaptchaToken,
           // the edit form's :conflict_tracker hidden field
           // (card-mod-edit-0.20.0 set/all/form.rb:27-31) - the stale-revision

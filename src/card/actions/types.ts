@@ -205,6 +205,14 @@ export interface CreateCardInput extends TypeSpec {
   comment?: string;
   /** params[:comment_author]. */
   commentAuthor?: string;
+  /** Ruby's Env.session (env.rb:21-23) — the request's session bag the
+   *  add_comment event reads and writes (comment.rb:6 writes the resolved
+   *  comment_author into it; the reader's session arm, :16-19, wins over
+   *  the params). The CALLER owns the store and carries it across saves
+   *  (the route layer passes the visitor-session bag; the event's write
+   *  mutates it in place, and the caller re-serializes it). Undefined =
+   *  no session, Ruby's nil Env.session. */
+  commentAuthorSession?: { commentAuthor?: string };
   /** params[:recaptcha_token] — the event :recaptcha input
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Rides the
    *  save only when the recaptcha mod + config are composed; may be
@@ -249,6 +257,8 @@ export interface UpdateCardInput extends TypeSpec {
   comment?: string;
   /** params[:comment_author]. */
   commentAuthor?: string;
+  /** Ruby's Env.session for this save (see the create-side field). */
+  commentAuthorSession?: { commentAuthor?: string };
   /** The edit form's stale-revision field: the :conflict_tracker hidden
    *  input (card-mod-edit-0.20.0 set/all/form.rb:27-31,
    *  `hidden_field :last_action_id_before_edit, class:

@@ -4713,7 +4713,11 @@ export class CardActionEngine {
    * class="w-comment-author">AUTHOR.....YYYY-MM-DD HH:MM:SS UTC</div>".
    */
   private async applyAddComment(
-    input: { comment?: string; commentAuthor?: string },
+    input: {
+      comment?: string;
+      commentAuthor?: string;
+      commentAuthorSession?: { commentAuthor?: string };
+    },
     action: "create" | "update",
     name: DeckoName,
     pendingContent: string | undefined,
@@ -4730,6 +4734,13 @@ export class CardActionEngine {
     const saveInput: ModEventSaveInput = {
       comment: input.comment,
       commentAuthor: input.commentAuthor,
+      // Ruby's Env.session (comment.rb:6 writes it, :16-19 reads the
+      // session arm first): the CALLER's bag, mutated in place by the
+      // event, so the caller's store carries the resolved author to the
+      // next request. Undefined = nil Env.session.
+      ...(input.commentAuthorSession !== undefined
+        ? { session: input.commentAuthorSession }
+        : {}),
       signedInActorName: commentAuthorName,
       now: this.clock,
       pendingContent,

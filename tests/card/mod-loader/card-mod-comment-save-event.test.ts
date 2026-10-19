@@ -229,6 +229,72 @@ describe("E6 add_comment — the save event through the seam", () => {
     await engine.updateCard({ cardId: card.id, comment: "nobody listens" });
     expect(await contentOf(storage, card.id)).toBe("body");
   });
+
+  // The Env.session carry (comment.rb:6 writes the resolved author into
+  // the session before the blank skip; the reader's session arm :16-19
+  // wins over the params). The caller-side wiring (2026-10-19, the
+  // mods-first-half lane): UpdateCardInput.commentAuthorSession is the
+  // caller's bag - the engine passes it as the save input's session, the
+  // event mutates it in place, and the route's cookie re-serialization
+  // carries it to the next request.
+  it("a save carrying a session bag sticks its author; the next save reads the session arm first", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    const card = await seedCard(storage, {
+      name: "Sticky Author Probe",
+      dbContent: "base",
+    });
+    // ANON + the deck's *anonymous codename card: the engine reads the
+    // actor AS the anonymous session (isAnonymousSession), so the
+    // signed-in "[[Name]]" arm stays out of the way and the card-level
+    // resolution + the session arm are what the bytes show - Ruby's
+    // Auth.signed_in? false shape. Writes stay allowed (the actor is the
+    // anonymous ACCOUNT, not the read-only null session).
+    const anonCard = await seedCard(storage, { name: "*anonymous", codename: "anonymous", typeId: 14 });
+    const engine = commentEngine(storage, { id: anonCard.id, name: "*anonymous" } as typeof ANON);
+    const bag: { commentAuthor?: string } = {};
+    await engine.updateCard({
+      cardId: card.id,
+      comment: "first comment",
+      commentAuthor: "Zebra",
+      commentAuthorSession: bag,
+    });
+    // comment.rb:6: the CARD-LEVEL resolution (session -> params ->
+    // "Anonymous") lands in the session even though the actor is signed in.
+    expect(bag.commentAuthor).toBe("Zebra");
+    let content = await contentOf(storage, card.id);
+    expect(content).toContain("Zebra (Not signed in)");
+
+    // The SECOND save in the same session: the reader takes the session
+    // arm FIRST (comment.rb:16-19) - the freshly posted author loses to
+    // the sticky one, exactly as in Ruby.
+    await engine.updateCard({
+      cardId: card.id,
+      comment: "second comment",
+      commentAuthor: "Yak",
+      commentAuthorSession: bag,
+    });
+    content = await contentOf(storage, card.id);
+    expect(content).toContain("first comment");
+    expect(content).toContain("Zebra (Not signed in)");
+    expect(content).not.toContain("Yak");
+    // ...and the session keeps its first author (the write re-resolves
+    // session-first, so the sticky value is self-perpetuating).
+    expect(bag.commentAuthor).toBe("Zebra");
+    storage.close();
+  });
+
+  it("an anonymous save with no declared author sticks Anonymous (comment.rb:6 fallback)", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    const card = await seedCard(storage, { name: "Anon Author Probe", dbContent: "base" });
+    const anonCard = await seedCard(storage, { name: "*anonymous", codename: "anonymous", typeId: 14 });
+    const engine = commentEngine(storage, { id: anonCard.id, name: "*anonymous" } as typeof ANON);
+    const bag: { commentAuthor?: string } = {};
+    await engine.updateCard({ cardId: card.id, comment: "anon comment", commentAuthorSession: bag });
+    expect(bag.commentAuthor).toBe("Anonymous");
+    storage.close();
+  });
 });
 
 describe("E6 add_comment — the helper byte shapes (comment.jsonl + gem source)", () => {
