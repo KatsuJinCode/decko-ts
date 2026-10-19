@@ -51,7 +51,11 @@ import { applyFontAwesomeAssetConfiguration } from "../../src/card/render/font-a
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";
 import { newSlotId } from "../../src/card/render/slot-html.js";
-import { SERVER_ERROR_HTML } from "../../src/card/render/debug-server-error.js";
+import { SERVER_ERROR_HTML, debugServerErrorView } from "../../src/card/render/debug-server-error.js";
+import {
+  serverErrorArm,
+  type DebuggerCardReader,
+} from "../../src/server/server-error-debugger-arm.js";
 import { escapeHtml } from "./bunny-edge-lineage-worker-surface.js";
 import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
 
@@ -155,10 +159,16 @@ function minimalNotFoundResponse(cardName: string): Response {
 
 /** The server_error fallback stub, byte-verbatim from
  *  vm-staging-server.mjs:1543-1547 (the BUILDER's own failure message, not
- *  the original render's). */
-function minimalServerErrorResponse(builderMessage: string): Response {
+ *  the original render's).
+ *
+ *  The status is a parameter because ServerError.status_code (error.rb:51-55)
+ *  is 900 on a deck whose `*debugger` card is on. The builder's OWN failure
+ *  must not quietly downgrade that deck's report to the 500 a deck without
+ *  the card gets — the status is the one field of this answer that Ruby
+ *  computes per deck rather than per view. */
+function minimalServerErrorResponse(builderMessage: string, status: 500 | 900 = 500): Response {
   return minimalHtmlResponse(
-    500,
+    status,
     `<h1>Render error</h1><pre>${escapeHtml(builderMessage)}</pre>`,
     "Render error",
   );
@@ -610,6 +620,23 @@ function buildServerErrorSlotHtml(): string {
   return SERVER_ERROR_HTML;
 }
 
+/** The :debug_server_error slot — the port's own view function, which RAISES
+ *  on a stock deck (see src/card/render/debug-server-error.ts: better_errors
+ *  reaches a deck only through card-mod-monkey, so the constant lookup
+ *  raises stock Ruby's NameError). Called as a function rather than
+ *  dispatched through the engine, because this builder reads the deck
+ *  through the driver seam and never builds a render format; the raise is
+ *  the point, and it is raised here so it lands in
+ *  renderDeckoServerErrorPage's own catch at the deck's own status. */
+function buildDebugServerErrorSlotHtml(): string {
+  const rendered: unknown = debugServerErrorView({} as Parameters<typeof debugServerErrorView>[0]);
+  // Unreachable on a stock deck: the view throws before it can return. If a
+  // deck ever ships card-mod-monkey and the view finds its ported page, this
+  // is where those bytes would go — narrowed here rather than asserted,
+  // because nothing this builder can reach produces a non-string.
+  return typeof rendered === "string" ? rendered : String(rendered);
+}
+
 /** URL display form for a name with no stored card row: Decko's URL
  *  semantics fold "_" to " " (vm-staging-server.mjs:1444-1450). */
 function urlDisplayNameForSlug(slugName: string): string {
@@ -876,8 +903,54 @@ export async function renderDeckoNotFoundErrorPage(
 
 /** Decko's server_error page (vm-staging-server.mjs:1512-1518 + 1519-1529):
  *  the "Wild Card!" deck error block, no noindex, the stored-name title the
- *  same way the good pages title, status 500. Any failure inside the builder
- *  falls back to the staging minimal stub. */
+ *  same way the good pages title. Any failure inside the builder falls back
+ *  to the staging minimal stub.
+ *
+ *  THE STATUS IS NOT FIXED (register-routes C14). error.rb:51-55 computes
+ *  ServerError.status_code as `debugger_on? ? 900 : 500`, so a deck whose
+ *  `*debugger` card is on answers 900 and a deck without it answers 500 —
+ *  and the SAME predicate picks :debug_server_error over :server_error
+ *  (error.rb:47-49). Both reads are in serverErrorArm
+ *  (src/server/server-error-debugger-arm.ts).
+ *
+ *  The body of the 900 answer is the debug view, which RAISES in a stock
+ *  deck — error.rb's :debug_server_error block calls
+ *  `BetterErrors::ErrorPage.new` and better_errors reaches a deck only
+ *  through card-mod-monkey, a development-group gem (pinned by
+ *  src/card/render/debug-server-error.ts). So on such a deck the raise
+ *  lands in this function's own catch and the minimal stub is served — at
+ *  the status the deck's own card asked for. Ruby behaves the same way: the
+ *  correct status, and a view that cannot render. Synthesizing a debug
+ *  page here instead would be the divergence.
+ *
+ * ── THE ONE PLACE THIS HOST CANNOT MATCH RUBY, AND WHY ────────────────
+ *  THIS HOST SERVES 500 WHEN THE DECK SAYS 900. Not a choice: the 900
+ *  cannot be constructed. This host builds its answers with the Fetch
+ *  `Response` constructor, whose spec range is 200..599 — measured this
+ *  session, not assumed:
+ *
+ *      new Response("x", {status: 900})
+ *      RangeError: init["status"] must be in the range of 200 to 599,
+ *      inclusive.
+ *      new Response("x", {status: 599})   // accepted
+ *
+ *  900 is in RANGE for the other host: Node's ServerResponse accepts
+ *  100..999, measured the same way — `res.writeHead(900, …)` is accepted
+ *  and the client reads `statusCode 900`. So the staging host serves the
+ *  deck's own 900 and this one cannot, and the difference is the runtime's
+ *  status range rather than a modelling choice.
+ *
+ *  Ruby's 900 is meant to reach the client — error.rb:52-53 says so in the
+ *  source: "Errors with status code 900 are displayed as modal instead of
+ *  inside the 'card-notice' div". A Worker's answer is built from the same
+ *  Fetch `Response` every Cloudflare/Bunny edge runtime exposes, so this is
+ *  a property of the platform the port runs on, not of this module.
+ *
+ *  The VIEW selection is still honored here — the debug view runs and
+ *  raises exactly as it does in Ruby — so the only field this host cannot
+ *  report is the status. A named divergence, pinned by a leg in
+ *  tests/deploy/routes-server-error-debugger-arm-c14.test.ts, rather than a
+ *  silent 500 that would read as "the deck's card says 500". */
 export async function renderDeckoServerErrorPage(
   deck: ErrorPageDeck,
   cardName: string,
@@ -897,16 +970,64 @@ export async function renderDeckoServerErrorPage(
     if (causeLine !== undefined) response.headers.set("X-Decko-Error", causeLine.replace(/[^\x20-\x7e]/g, "?"));
     return response;
   };
+  // The arm is resolved BEFORE the build, so a reader that throws (a dead
+  // driver on the error path) lands on the 500 arm rather than taking the
+  // report down with it — serverErrorArm swallows that read by design.
+  const deckArm = await serverErrorArm(debuggerReaderOf(deck));
+  // The runtime's own clamp, applied where it is actually true. The VIEW is
+  // still the deck's; only the status falls back.
+  const status: 500 | 900 = deckArm.status === 900 ? FETCH_MAX_STATUS_FALLBACK : 500;
+  if (deckArm.status === 900) {
+    console.error(
+      `[bunny-edge-error-page] deck ${cardName} reports ServerError 900, but this host's Fetch ` +
+      `Response cannot carry a status above ${FETCH_MAX_STATUS_FALLBACK} (spec range 200..599); serving 500. ` +
+      `The staging host serves the deck's 900 — see the module header.`,
+    );
+  }
   try {
     const layout = await resolveDefaultLayout(deck);
-    const viewHtml = buildServerErrorSlotHtml();
+    const viewHtml = deckArm.view === "debug_server_error"
+      ? // The debug view, which raises on a stock deck — see the header.
+        buildDebugServerErrorSlotHtml()
+      : buildServerErrorSlotHtml();
     const body = await wrapWithLayout(deck, cardName, viewHtml, layout, {});
-    return marked(errorResponse(500, body));
+    return marked(errorResponse(status, body));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(
       `[bunny-edge-error-page] server_error build failed for ${cardName}: ${message}; serving minimal stub`,
     );
-    return marked(minimalServerErrorResponse(message));
+    return marked(minimalServerErrorResponse(message, status));
   }
+}
+
+/** The Fetch Response spec's upper bound. Named, because "the runtime said
+ *  no" and "the deck said 500" must never look alike in this file. */
+const FETCH_MAX_STATUS_FALLBACK = 500;
+
+/** `Card::Codename[:debugger]` / `Card[:debugger]` over an edge deck:
+ *  codename.rb:37-44's registration test, then card_class.rb:42-44
+ *  `fetch(*mark, skip_virtual: true)` — the port's `fetcher.bracket`.
+ *
+ *  The NAME read is `codenames.peekName(codename)`, which answers the card's
+ *  stored name ("*debugger"). It is deliberately NOT
+ *  `peekNameForId(codenameId)`, which answers the CODENAME string
+ *  ("debugger") — measured, not assumed: with a seeded `*debugger` card of
+ *  id 40002, peekId("debugger") is 40002, peekNameForId(40002) is
+ *  "debugger" and peekName("debugger") is "*debugger", and
+ *  `bracket("debugger")` finds no card while `bracket("*debugger")` does.
+ *  Ruby's `Card[:debugger]` takes the CODE NAME and resolves it to the card,
+ *  which is the peekName direction. */
+function debuggerReaderOf(deck: ErrorPageDeck): DebuggerCardReader {
+  return {
+    hasDebuggerCodename(): boolean {
+      return deck.fetcher.codenames.peekId("debugger") !== undefined;
+    },
+    async debuggerCardContent(): Promise<string | undefined> {
+      const name = deck.fetcher.codenames.peekName("debugger");
+      if (name === undefined) return undefined;
+      const record = await deck.fetcher.bracket(name);
+      return record?.dbContent ?? undefined;
+    },
+  };
 }

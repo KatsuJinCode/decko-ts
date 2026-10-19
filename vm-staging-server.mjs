@@ -137,6 +137,8 @@ setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { renderFormatShow } from "./dist/src/card/render/format-families.js";
 import { recordAsMain } from "./dist/src/card/name/environment.js";
+import { serverErrorArm } from "./dist/src/server/server-error-debugger-arm.js";
+import { debugServerErrorView } from "./dist/src/card/render/debug-server-error.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
@@ -2598,14 +2600,30 @@ async function renderDeckoErrorPage(cardName, kind) {
         titleText: `${displayName} - ${boot.siteTitle}`,
       };
     } else {
-      // Existing-card render failures keep the stored-name title the same
-      // way the regular pages do.
-      viewHtml = buildServerErrorSlotHtml();
+      // THE SERVER_ERROR STATUS IS NOT FIXED (register-routes C14):
+      // error.rb:51-55 computes ServerError.status_code as
+      // `debugger_on? ? 900 : 500`, and the SAME predicate picks
+      // :debug_server_error over :server_error (error.rb:47-49). Both reads
+      // live in src/server/server-error-debugger-arm.ts; this host asks them
+      // over its own engine. NotFound keeps its fixed 404 — the predicate
+      // governs ServerError only.
+      const arm = await serverErrorArm(stagingDebuggerReader());
+      serverErrorStatus = arm.status;
+      // The 900 body's view RAISES on a stock deck (error.rb's
+      // :debug_server_error block calls BetterErrors::ErrorPage.new, and
+      // better_errors reaches a deck only through card-mod-monkey —
+      // src/card/render/debug-server-error.ts pins the same raise). The
+      // raise lands in the catch below and the minimal stub is served AT THE
+      // 900 the deck's own card asked for. Ruby does exactly this: right
+      // status, view that cannot render.
+      viewHtml = arm.view === "debug_server_error"
+        ? buildDebugServerErrorSlotHtml()
+        : buildServerErrorSlotHtml();
       pageOpts = {};
     }
     const body = await wrapWithLayout(cardName, viewHtml, layout, pageOpts);
     return {
-      status: isNotFound ? 404 : 500,
+      status: isNotFound ? 404 : serverErrorStatus,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
@@ -2628,11 +2646,53 @@ async function renderDeckoErrorPage(cardName, kind) {
       );
     }
     return htmlResponse(
-      500,
+      serverErrorStatus,
       `<h1>Render error</h1><pre>${escapeHtml(message)}</pre>`,
       "Render error",
     );
   }
+}
+
+/** The status the server_error answer is being built with, for the arms
+ *  above and for the catch that serves the minimal stub when the build
+ *  raises. 500 is the pre-C14 value and the correct default: a build that
+ *  dies BEFORE the debugger read completes reports the way every deck
+ *  without the card reports. */
+let serverErrorStatus = 500;
+
+/** `Card::Codename[:debugger]` / `Card[:debugger]` over this host's engine:
+ *  codename.rb:37-44's registration test, then card_class.rb:42-44
+ *  `fetch(*mark, skip_virtual: true)` — the port's own `fetcher.bracket`.
+ *
+ *  The NAME read is `peekName(codename)`, which answers the stored card name
+ *  ("*debugger"). NOT `peekNameForId(codenameId)`, which answers the
+ *  CODE NAME ("debugger") and fetches no card — measured on a seeded
+ *  `*debugger` of id 40002: peekId("debugger")=40002,
+ *  peekNameForId(40002)="debugger", peekName("debugger")="*debugger",
+ *  bracket("debugger")=nothing, bracket("*debugger")=the card. Ruby's
+ *  `Card[:debugger]` takes the CODE NAME and resolves it, which is the
+ *  peekName direction. */
+function stagingDebuggerReader() {
+  return {
+    hasDebuggerCodename() {
+      return render.fetcher.codenames.peekId("debugger") !== undefined;
+    },
+    async debuggerCardContent() {
+      const name = render.fetcher.codenames.peekName("debugger");
+      if (name === undefined) return undefined;
+      const record = await render.fetcher.bracket(name);
+      return record?.dbContent ?? undefined;
+    },
+  };
+}
+
+/** The :debug_server_error slot — the port's own view function, which RAISES
+ *  on a stock deck (src/card/render/debug-server-error.ts). Called directly
+ *  because this builder reads the deck through the driver seam and never
+ *  builds a render format; the raise is the point, and raising here puts it
+ *  in renderDeckoErrorPage's own catch. */
+function buildDebugServerErrorSlotHtml() {
+  return debugServerErrorView({});
 }
 
 // ---------------------------------------------------------------------------
