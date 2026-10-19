@@ -2794,8 +2794,9 @@ const setModules: ModSetModuleFile[] = [
     //
     // Event — ENGINE-OWNED: the save path
     // moves the saved rule's setting to the top of the *recent settings
-    // list (card-action-engine.ts saveRecentlyEditedSettings, citing
-    // rules.rb:1-6; run on the create/update paths at :1347/:2012).
+    // list (card-action-engine.ts saveRecentlyEditedSettings, def :5402;
+    // its doc :5395-5401 names the event and cites rules.rb:1-6; run on the
+    // create path at :1947 and the update path at :2834).
     setPath: "rule/rules",
     events: [
       engineOwnedEvent({

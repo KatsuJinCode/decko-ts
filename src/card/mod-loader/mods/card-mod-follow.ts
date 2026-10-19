@@ -1370,12 +1370,20 @@ const cardModFollow: DeckoModManifest = {
     {
       ...passiveSetModule("all/follow/follower_ids"),
       // Ruby caches follower ids and the preference index and expires them
-      // on these saves; the port resolves followers from the rules on every
-      // notification (notify/follower-resolver.ts), so there is no cache to
-      // expire and the observable effect (fresh followers) is the same.
+      // on these saves. The port keeps NO follower cache: notify/follower-resolver.ts
+      // rebuilds the preference index per resolution — preferenceRows (:279)
+      // issues the preference SQL on every resolveFollowers (:480) walk, and
+      // the module holds no state across calls. There is therefore nothing
+      // for these two events to expire.
+      //
+      // Both are declared as NAMED REMAINDERS (event(), not engineOwnedEvent):
+      // no engine code implements a cache-expiry step here, so an
+      // engineOwnedEvent would assert an owner the port does not have. The
+      // observable effect is identical either way — the next notification
+      // sees fresh followers, which is what Ruby's expiry produced.
       events: [
-        engineOwnedEvent({ event: "cache_expired_for_type_change", at: "store", on: ["update"], changed: ["type_id", "name"] }),
-        engineOwnedEvent({ event: "expire_preferences_cache", at: "finalize", when: "expire_preferences?" }),
+        event({ event: "cache_expired_for_type_change", at: "store", on: ["update"], changed: ["type_id", "name"] }),
+        event({ event: "expire_preferences_cache", at: "finalize", when: "expire_preferences?" }),
       ],
     },
     passiveSetModule("all/follow/follow_link"),
@@ -1415,6 +1423,19 @@ const cardModFollow: DeckoModManifest = {
       // request (no transport) sends nothing, which is the effect of
       // silence_notifications.
       events: [
+        // silence_notifications (notify.rb:9-11 `event :silence_notifications,
+        // :initialize, when: :silence_notifications?`) — engine: the
+        // predicate that gates it lives in THIS mod file, not in
+        // notify/follow-notify.ts — followModEventPredicates
+        // "silence_notifications?" (card-mod-follow.ts:1302-1309:
+        // `!(envController || force_notifications)`; envController rides the
+        // save-path event the engine builds at card-action-engine.ts:4516 and
+        // :4770). notify/follow-notify.ts carries no silence_notifications arm —
+        // the name occurs nowhere in that file. Its `silent*` matches are
+        // the silent_change? machinery (:122 doc, :126, :269), prose about
+        // SKIPPING a send (:155, :179) and the Ruby header (:9); isNotable
+        // (:125-129) gates on event.silent, which is silent_change? — a
+        // different event.
         engineOwnedEvent({ event: "silence_notifications", at: "initialize", when: "silence_notifications?" }),
         engineOwnedEvent({
           event: "notify_followers_after_save",
@@ -1760,9 +1781,12 @@ const cardModFollow: DeckoModManifest = {
       // rule-walk methods.
       setPath: "type/set",
       formats: { html: { views: [] } },
-      // set.rb:1 expires the follower caches for a new set; the port keeps
-      // none (see all/follow/follower_ids above).
-      events: [engineOwnedEvent({ event: "cache_expired_for_new_set", at: "store", on: ["create"] })],
+      // set.rb:1 expires the follower caches for a new set. The port keeps none
+      // (notify/follower-resolver.ts rebuilds the preference index per
+      // resolveFollowers call) — a NAMED REMAINDER, not engineOwnedEvent, for
+      // the same reason as all/follow/follower_ids above: no engine cache to
+      // expire, same observable outcome.
+      events: [event({ event: "cache_expired_for_new_set", at: "store", on: ["create"] })],
     },
     {
       // card-mod-follow-0.20.0/set/type/user.rb - the User cardtype's
