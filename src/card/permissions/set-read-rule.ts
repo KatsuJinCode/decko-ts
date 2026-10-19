@@ -73,7 +73,10 @@ import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import { ruleClassName, ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
-import { resolveRuleIdsByKeys } from "./read-rules.js";
+import {
+  resolveComposedNameIdsByKeys,
+  resolveRuleIdsByKeys,
+} from "./read-rules.js";
 import { isPreferenceName, quickTypeName } from "../actions/rule-content-walk.js";
 
 /** permissions.rb:56 — the "_left" (or [[_left]]) rule content that makes a
@@ -598,15 +601,20 @@ async function anchoredPatternMemberIds(
   // self: members are the cards whose COMPOSED name is the anchor's name
   // (lib/card/lexicon.rb DbLexicon#name_to_lex). Per-key: the anchor's
   // composed name comes from the cached lexicon (one side walk), and the
-  // member lookup is the shared fragment-restricted resolver
-  // (resolveRuleIdsByKeys) — no whole-deck composition.
+  // member lookup is the per-key composed-name resolver
+  // (resolveComposedNameIdsByKeys), which walks only THIS key's own
+  // '+'-segment runs instead of the deck's whole composed-key universe.
+  // Equivalence with the universe walk is pinned by
+  // tests/card/permissions/composed-name-self-pattern-resolution-equivalence.test.ts.
+  // This lookup was the universe's only non-rule-key consumer, and the reason a
+  // save paid for five whole-deck walks.
   const anchorRow = await fetchCardsRow(deps.driver, setRow.left_id);
   if (anchorRow === undefined) return [];
   const anchorName = await composedRowName(deps, anchorRow);
   if (anchorName === undefined || anchorName === "") return [];
   const anchorKey = DeckoName.parse(anchorName).key;
-  const resolved = await resolveRuleIdsByKeys(deps.driver, [anchorKey]);
-  return [...resolved.values()];
+  const resolved = await resolveComposedNameIdsByKeys(deps.driver, [anchorKey]);
+  return resolved.get(anchorKey) ?? [];
 }
 
 /** The set pattern's code: anchored sets carry the pattern card as their

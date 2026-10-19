@@ -47,6 +47,7 @@
 import { describe, expect, it } from "vitest";
 import {
   expireRuleResolutionCache,
+  resolveComposedNameIdsByKeys,
   resolveRuleIdsByKeys,
 } from "../../../src/card/permissions/read-rules.js";
 import {
@@ -217,6 +218,224 @@ describe("the whole-deck composed-key universe this contract pins", () => {
       }
       const resolved = await resolveRuleIdsByKeys(storage.fetcher.driver, ["no_such_card+nope"]);
       expect(resolved.size).toBe(0);
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("the per-key walk answers the whole-deck walk", () => {
+  it("matches the whole-deck walk on EVERY composed name the deck has", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const universe = await wholeDeckUniverse(storage);
+      const driver = storage.fetcher.driver;
+      for (const [ckey, ids] of universe) {
+        const resolved = await resolveComposedNameIdsByKeys(driver, [ckey]);
+        if (ids.size === 1) {
+          // The unambiguous case: the per-key walk answers on its own, and the
+          // id SET must be identical to the walk it replaces.
+          expect([...(resolved.get(ckey) ?? [])], `ckey ${ckey}`).toEqual([...ids]);
+        } else {
+          // The ambiguous case (alpha+beta): the walk reports a SET of two, and
+          // deliberately answers with the ONE id the whole-deck Map decides —
+          // see the fallback describe block below.
+          expect([...ids].sort((a, b) => a - b), `ckey ${ckey} is ambiguous`).toEqual([4, 10]);
+          expect([...(resolved.get(ckey) ?? [])], `ckey ${ckey} decided`).toHaveLength(1);
+        }
+      }
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("matches the whole-deck walk on the whole key set in ONE call", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const universe = await wholeDeckUniverse(storage);
+      const ckeys = [...universe.keys()];
+      const driver = storage.fetcher.driver;
+      const narrow = await resolveComposedNameIdsByKeys(driver, ckeys);
+      const whole = await resolveRuleIdsByKeys(driver, ckeys);
+      for (const ckey of ckeys) {
+        const decided = whole.get(ckey);
+        expect(decided, `whole-deck id for ${ckey}`).toBeDefined();
+        expect(narrow.get(ckey) ?? [], `narrow ids for ${ckey}`).toEqual([decided]);
+      }
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("composes through a TRASHED side, exactly as the shipped arms do", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      // The shape a hand-written walk gets wrong by adding the trash test the
+      // arms do NOT have. Either one dropping is a fail-open change: the key
+      // stops resolving and the member lookup falls through.
+      const resolved = await resolveComposedNameIdsByKeys(storage.fetcher.driver, [
+        "alpha+trashed",
+        "trashed+beta",
+        "alpha+trashed+beta",
+      ]);
+      expect(resolved.get("alpha+trashed")).toEqual([7]);
+      expect(resolved.get("trashed+beta")).toEqual([8]);
+      expect(resolved.get("alpha+trashed+beta")).toEqual([9]);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("does NOT compose through a trashed junction, exactly as the shipped arms do not", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const resolved = await resolveComposedNameIdsByKeys(storage.fetcher.driver, ["beta+gamma"]);
+      expect(resolved.get("beta+gamma") ?? []).toEqual([]);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("resolves an absent key to nothing, at every segment count", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const resolved = await resolveComposedNameIdsByKeys(storage.fetcher.driver, [
+        "no_such_card",
+        "no_such_card+nope",
+        "alpha+no_such_card",
+        "alpha+beta+no_such_card",
+        "alpha+beta+gamma+no_such_card",
+      ]);
+      expect(resolved.size).toBe(0);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("answers the deep rule-shaped key the multi-level spine composes", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const resolved = await resolveComposedNameIdsByKeys(storage.fetcher.driver, [
+        "set_a+set_b+*read",
+        "*all+*read",
+      ]);
+      expect(resolved.get("set_a+set_b+*read")).toEqual([17]);
+      expect(resolved.get("*all+*read")).toEqual([13]);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("returns entries in SORTED key order, whatever order it was asked in", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const driver = storage.fetcher.driver;
+      const asked = ["gamma", "alpha+beta+gamma", "alpha", "set_a+set_b+*read"];
+      const one = await resolveComposedNameIdsByKeys(driver, asked);
+      expireRuleResolutionCache(driver);
+      const reordered = await resolveComposedNameIdsByKeys(driver, [...asked].reverse());
+      expect([...one.keys()]).toEqual([...asked].sort());
+      expect([...reordered.entries()]).toEqual([...one.entries()]);
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("the per-key walk's cost shape", () => {
+  it("answers a one-segment key with ONE indexed point read and one round trip", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      storage.counting.reset();
+      const resolved = await resolveComposedNameIdsByKeys(storage.fetcher.driver, ["alpha"]);
+      expect(resolved.get("alpha")).toEqual([1]);
+      const snap = storage.counting.snapshot();
+      expect(snap.statements).toBe(1);
+      expect(snap.roundTrips).toBe(1);
+      expect(storage.counting.statements[0]).toContain(`"key" IN`);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("never issues the whole-deck universe statement for an UNAMBIGUOUS key", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      storage.counting.reset();
+      await resolveComposedNameIdsByKeys(storage.fetcher.driver, [
+        "alpha+beta+gamma",
+        "set_a+set_b+*read",
+        "alpha",
+      ]);
+      for (const sql of storage.counting.statements) {
+        expect(sql).not.toContain("WITH RECURSIVE resolved(id, ckey)");
+      }
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("is memoized per driver generation, and dropped by the same expiry", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const driver = storage.fetcher.driver;
+      storage.counting.reset();
+      await resolveComposedNameIdsByKeys(driver, ["alpha+beta+gamma"]);
+      const afterFirst = storage.counting.snapshot().statements;
+      expect(afterFirst).toBeGreaterThan(0);
+
+      // A repeat is a memo hit: zero new statements.
+      await resolveComposedNameIdsByKeys(driver, ["alpha+beta+gamma"]);
+      expect(storage.counting.snapshot().statements).toBe(afterFirst);
+      // A new key walks, and the memoized one still answers from the memo.
+      await resolveComposedNameIdsByKeys(driver, ["alpha"]);
+      expect(storage.counting.snapshot().statements).toBe(afterFirst + 1);
+
+      // A committed change is visible only after the expiry seam runs. Card 5's
+      // sides move to (alpha, gamma) — a pair no other card on the deck holds,
+      // since index_cards_on_left_id_and_right_id is UNIQUE — so
+      // alpha+beta+gamma stops composing and alpha+gamma starts.
+      await storage.counting.query(`UPDATE cards SET left_id = 1, right_id = 3 WHERE id = 5`, []);
+      const stale = await resolveComposedNameIdsByKeys(driver, ["alpha+beta+gamma"]);
+      expect(stale.get("alpha+beta+gamma")).toEqual([5]); // memo still live
+
+      expireRuleResolutionCache(driver);
+      const fresh = await resolveComposedNameIdsByKeys(driver, ["alpha+beta+gamma"]);
+      expect(fresh.get("alpha+beta+gamma") ?? []).toEqual([]);
+      expect((await resolveComposedNameIdsByKeys(driver, ["alpha+gamma"])).get("alpha+gamma")).toEqual([5]);
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("the per-key walk falls back exactly where the whole-deck walk is not reproducible", () => {
+  it("falls back for an ambiguous key and returns the ONE id the whole-deck Map decides", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      const driver = storage.fetcher.driver;
+      storage.counting.reset();
+      const resolved = await resolveComposedNameIdsByKeys(driver, ["alpha+beta"]);
+      expect(resolved.get("alpha+beta")?.length).toBe(1);
+      // The fallback IS the whole-deck walk: which of two composing cards the
+      // key means is that walk's output order to decide, so it is run, not
+      // guessed.
+      expect(
+        storage.counting.statements.some((sql) => sql.includes("WITH RECURSIVE resolved(id, ckey)")),
+      ).toBe(true);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("does NOT fall back for an unambiguous key", async () => {
+    const storage = await seedComposedNameDeck();
+    try {
+      storage.counting.reset();
+      await resolveComposedNameIdsByKeys(storage.fetcher.driver, ["alpha+beta+gamma"]);
+      expect(
+        storage.counting.statements.some((sql) => sql.includes("WITH RECURSIVE resolved(id, ckey)")),
+      ).toBe(false);
     } finally {
       storage.close();
     }
