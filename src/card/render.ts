@@ -2962,11 +2962,28 @@ export class RenderEngine implements RenderEngineLike {
   /** Ruby's Card::Rule.clear_rule_cache (rule.rb:37-39 -> Cache.clear,
    *  cache.rb:36-38): the deck-wide rule lookup hash is dropped so the next
    *  rule walk reloads it. A committed rule write reaches here through the
-   *  save seam; fixture seams that insert rule rows call it directly. */
+   *  save seam; fixture seams that insert rule rows call it directly.
+   *
+   *  The rule-derived UNIVERSE memos drop with it: the *structure /
+   *  *default walks memoize rule-card content by composed key
+   *  (structureContents/structureRuleTypes/defaultRuleTypes/
+   *  defaultRuleContents) and the structure sweep's processed-markers key
+   *  on that content. Ruby's cache.rb:9-26 hash IS those rules' lookup —
+   *  clear_rule_cache clears all of it, and a *structure rule save whose
+   *  universe memo survived would re-bake the pre-save template into the
+   *  structuree renders the expire_related expiry just invalidated
+   *  (update_read_rules.rb:8-11 via card-action-engine.ts). */
   expireRuleCache(): void {
     this.ruleCacheSetLabels = undefined;
     this.ruleCacheSetLabelsLoad = undefined;
     this.ruleCacheAddressable = true;
+    this.structureContents = undefined;
+    this.structureRuleTypes = undefined;
+    this.structureProcessed.clear();
+    this.structureRefMisses.clear();
+    this.defaultRuleTypes = undefined;
+    this.defaultRuleContents = undefined;
+    this.defaultTypeNameById = undefined;
   }
 
   /** Drop every derived cache (the fetch engine's caches + the render-side

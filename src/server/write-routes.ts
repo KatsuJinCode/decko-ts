@@ -2163,6 +2163,13 @@ async function dispatchWriteRequest(
         .filter((slot) => slot.startsWith("+"))
         .map((slot) => `${name}${slot}`),
       ...(result?.nameBeforeAct !== undefined ? [result.nameBeforeAct.s] : []),
+      // expire_related's structuree arm (card-mod-permissions
+      // set/all/update_read_rules.rb:8-11): a *structure rule save queues
+      // its set's members for expiry (Director.expirees) — the engine
+      // expired them model-side and hands the names here so the host
+      // render-map expiry (post-save-cache-expiry.ts) drops the members'
+      // warm entries the same act.
+      ...engine.takeRelatedExpiryNames(),
     ];
     // The delete's success target is the deleted card itself (no mark, or
     // "_self"). Ruby's event :discard_deleted_locations, :finalize on :delete

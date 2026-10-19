@@ -629,11 +629,20 @@ const updateRuleCacheFn: ModEventFn = (_card, _host) => {
 
 /** update_read_rules.rb:8-11 `event :expire_related, :finalize do
  *  reset_patterns; structuree_names.each { |name| Director.expirees <<
- *  name } if is_structure? end`. Body: pattern reset + push structuree
- *  names onto the Director's expirees queue. Class-side / director-side
- *  state with no TS consumer. */
+ *  name } if is_structure? end`. BODY PORTED ENGINE-OWNED:
+ *  CardActionEngine.expireAfterWrite -> expireRelatedStructurees
+ *  (card-action-engine.ts) — is_structure? (templating.rb:10-13) via the
+ *  :structure codename, structuree_names (structure.rb:49-55/:71-76) via
+ *  the same set-member walk cascade_read_rule uses, and each member
+ *  through FetchEngine#expireCard (Director.expire, class_methods.rb:42-45)
+ *  plus the write response's expiryNames so the host render maps drop the
+ *  members too. reset_patterns is architecturally absorbed: the port keeps
+ *  no cross-act pattern memo (patterns resolve fresh per save). The mod-side
+ *  fn stays a no-op: the host surface cannot expire (ModEngineHost is
+ *  read+warm only), so the engine seam is the body's owner. Pinned by
+ *  tests/server/expire-related-structuree-expiry.test.ts. */
 const expireRelatedFn: ModEventFn = (_card, _host) => {
-  // no-op: see the header's "Event bodies" paragraph.
+  // engine-owned: see the doc block above.
 };
 
 /** right/read.rb:9-14 `event :cascade_read_rule, :finalize, after:

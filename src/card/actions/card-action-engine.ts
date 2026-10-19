@@ -105,9 +105,13 @@ import {
 } from "./content-clean.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
+  cardName as readRuleCardName,
   cascadeAllFieldReadRules,
   cascadeReadRuleAfterRuleSave,
   deriveReadRuleRecord,
+  fetchCardsRow as readRuleFetchCardsRow,
+  setMemberIds as readRuleSetMemberIds,
+  typeIdByCodename as readRuleTypeIdByCodename,
   type ReadRuleWriteDeps,
 } from "../permissions/set-read-rule.js";
 import {
@@ -6065,6 +6069,84 @@ export class CardActionEngine {
     if (input.codenameChanged === true) {
       // reset_codename_cache (mod/core/set/all/codename.rb:9-13).
       this.fetch.codenames.resetCache();
+    }
+    await this.expireRelatedStructurees(nameAfter);
+  }
+
+  /** expire_related's structuree arm (card-mod-permissions
+   *  set/all/update_read_rules.rb:8-11):
+   *
+   *    event :expire_related, :finalize do
+   *      reset_patterns
+   *      structuree_names.each { |name| Director.expirees << name } if is_structure?
+   *    end
+   *
+   *  - reset_patterns (lib/card/set/all/pattern.rb + Card::Pattern
+   *    instance memo): the port keeps NO cross-act pattern memo — every
+   *    save resolves its set modules fresh (patternInputFor /
+   *    ruleWalkPatternInput per act), so the reset is architecturally
+   *    absorbed and has no TS site to call.
+   *  - is_structure? (card-mod-content set/all/templating.rb:10-13): the
+   *    name's right card carries the :structure codename.
+   *  - structuree_names (card-mod-content set/right/structure.rb:49-55,
+   *    :71-76): the rule's trunk must be a Set-type card, and the members
+   *    are the set's item cards — the SAME membership walk
+   *    cascade_read_rule uses (setMemberIds; read.rb:71-73 all_members).
+   *  - Director.expirees (lib/card/director.rb + director/phases.rb):
+   *    the act-end expiry queue — processed as Card#expire per name
+   *    (cache/all.rb:17-24). The port's model-layer expire is
+   *    FetchEngine#expireCard; the names ALSO ride the write response's
+   *    expiryNames so the host's render-engine maps (a port-only cache
+   *    layer with no Ruby counterpart — post-save-cache-expiry.ts) drop
+   *    the structurees' warm entries the same way the director's queue
+   *    drops Ruby's caches.
+   *
+   *  Runs on EVERY committed save (the event is set/all at :finalize,
+   *  every act's phase list), gated exactly like Ruby: no compound name,
+   *  no :structure codename, or a non-Set trunk, and the body is a
+   *  no-op. */
+  private relatedExpiryNames: string[] = [];
+
+  /** The expire_related structuree names accumulated by this engine
+   *  instance's saves since the last take. The write routes append these
+   *  to the response's expiryNames so the host render-map expiry covers
+   *  the members (the Director.expirees processing Ruby runs at act end). */
+  takeRelatedExpiryNames(): string[] {
+    const names = this.relatedExpiryNames;
+    this.relatedExpiryNames = [];
+    return names;
+  }
+
+  private async expireRelatedStructurees(nameAfter: DeckoName | undefined): Promise<void> {
+    if (nameAfter === undefined || !nameAfter.isCompound) return;
+    // is_structure? (templating.rb:10-13): the tag card's codename is
+    // :structure — the codename table is 1:1, so the tag card carrying
+    // codename "structure" IS the tag card whose id the registry maps.
+    const structureId = await this.fetch.codenames.id("structure");
+    if (structureId === undefined) return;
+    const tagId = await this.fetch.lexicon.id(nameAfter.tagName);
+    if (tagId !== structureId) return;
+    const deps = this.readRuleDeps();
+    // structuree_query (structure.rb:71-76): set_card = trunk; return
+    // unless set_card.type_id == SetID.
+    const trunkName = nameAfter.leftName;
+    if (trunkName === undefined) return;
+    const trunkId = await this.fetch.lexicon.id(trunkName);
+    if (trunkId === undefined) return;
+    const trunkRow = await readRuleFetchCardsRow(deps.driver, trunkId);
+    if (trunkRow === undefined) return;
+    const setId = await readRuleTypeIdByCodename(deps, "set");
+    if (setId === undefined || trunkRow.type_id !== setId) return;
+    // structuree_names (structure.rb:49-55): the set's members, as bot —
+    // the expiry walk itself is permission-free, matching Auth.as_bot.
+    const memberIds = await readRuleSetMemberIds(deps, trunkRow);
+    for (const memberId of memberIds) {
+      const memberName = await readRuleCardName(deps, memberId);
+      if (memberName === undefined || memberName === "") continue;
+      const record = newCardRecord(DeckoName.parse(memberName));
+      record.id = memberId;
+      this.fetch.expireCard(record); // Director.expirees -> Card#expire
+      this.relatedExpiryNames.push(memberName);
     }
   }
 }

@@ -514,7 +514,11 @@ export const STAR_PREFIXED_MEMBERS_STATEMENT =
   `  JOIN star_prefixed sp ON sp.id = cards.right_id\n` +
   ` WHERE cards.trash = 0 AND cards.right_id IS NOT NULL`;
 
-async function setMemberIds(
+/** Exported for the expire_related structuree walk (update_read_rules.rb:8-11
+ *  via card-action-engine.ts — the *structure rule save expires its set's
+ *  members), which answers the same set-membership question this walk
+ *  answers for cascade_read_rule. */
+export async function setMemberIds(
   deps: ReadRuleWriteDeps,
   setRow: CardsRow,
 ): Promise<number[]> {
@@ -713,7 +717,9 @@ async function junctionsWithPartTypes(
   return r.rows.map((row) => row.id);
 }
 
-async function fetchCardsRow(
+/** Exported for the expire_related structuree walk (update_read_rules.rb:8-11
+ *  via card-action-engine.ts) — the set row the walk re-derives. */
+export async function fetchCardsRow(
   driver: SQLDatabaseDriver,
   id: number,
 ): Promise<CardsRow | undefined> {
@@ -763,13 +769,17 @@ async function composedRowName(
   return row.name ?? undefined;
 }
 
-async function cardName(deps: ReadRuleWriteDeps, id: number): Promise<string | undefined> {
+/** Exported for the expire_related structuree walk (update_read_rules.rb:8-11
+ *  via card-action-engine.ts) — the member's composed name, expiry's key. */
+export async function cardName(deps: ReadRuleWriteDeps, id: number): Promise<string | undefined> {
   const row = await fetchCardsRow(deps.driver, id);
   if (row === undefined) return undefined;
   return composedRowName(deps, row);
 }
 
-async function typeIdByCodename(
+/** Exported for the expire_related structuree walk (update_read_rules.rb:8-11
+ *  via card-action-engine.ts) — the Set-type check on the rule's trunk. */
+export async function typeIdByCodename(
   deps: ReadRuleWriteDeps,
   codename: string,
 ): Promise<number | undefined> {
