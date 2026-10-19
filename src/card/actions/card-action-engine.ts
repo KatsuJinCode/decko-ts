@@ -76,6 +76,7 @@ import type { Lex } from "../fetch/lexicon.js";
 import {
   ANONYMOUS_ACTOR_NAME,
   CardActionError,
+  ModEventAbortSuccess,
   type ActionResult,
   type Actor,
   type ActionRequest,
@@ -283,9 +284,7 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
   "update_referer_references_out",
   "refresh_references_in",
   "clear_references",
-]);
-
-export interface CardActionEngineOptions {
+]);export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -2500,8 +2499,15 @@ export class CardActionEngine {
   // changes nothing persists nothing (null result — history events.rb:34-37).
   // -----------------------------------------------------------------------
 
-  async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
-    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
+  /** Whether the save path's modEvents runtime registers this event name —
+   *  the takeover contract's stand-down question for built-in arms outside
+   *  the finalize seam (the delete path's validate_delete check, the
+   *  reference janitors' contract shape). */
+  private registeredEvent(name: string): boolean {
+    return this.modEvents?.registry.all().some((e) => e.event === name) === true;
+  }
+
+  async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
     // seen by every event of the act, nested saves included.
     const outerSkip = this.saveSkip;
     const outerAttributes = this.activeSaveAttributes;
@@ -2510,6 +2516,16 @@ export class CardActionEngine {
     }
     try {
       return await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
+    } catch (error) {
+      // abort :success (result.rb:41-58): an event body ended the save with
+      // the success abort — the admin_tasks task run (self/admin.rb:33) is
+      // the live case. The act writes nothing (its initialize-stage raise
+      // precedes every write) and the save answers SUCCESS: Ruby's
+      // abortable wrapper rescues the Abort and returns true
+      // (result.rb:82-88), the controller renders the ordinary success
+      // surface. The port's no-write success result is null.
+      if (error instanceof ModEventAbortSuccess) return null;
+      throw error;
     } finally {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
@@ -2962,6 +2978,15 @@ export class CardActionEngine {
         action: "update",
         trash: false,
         typeId: incomingTypeId,
+        // type_id_before_act (dirty.rb): the stored type this save may be
+        // leaving — the cardtype events' was_cardtype? reads it
+        // (cardtype.rb:11 `type_id_before_act == Card::CardtypeID`).
+        typeIdBeforeAct: row.type_id,
+        // The set modules ATTACHED at this stage ride the stored type (the
+        // explicit type_id= writer does not reset patterns — all/type.rb:52
+        // vs :60-64), so the type-scoped set resolution uses it while the
+        // assigned type above stays what card.type_id reads.
+        patternTypeId: row.type_id,
         nameBeforeAct: currentName?.s,
         changedFields: validationChanged,
       });
@@ -2994,6 +3019,10 @@ export class CardActionEngine {
       validateNameLegality(newName); // validate_legality_of_name
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
+    // name_is_changing? (dirty.rb:57-60) feeds the validate walk's
+    // changed: :name events (validate_name, validate_cardtype_name, ...):
+    // the validationCard closure reads this same array at dispatch time.
+    if (nameChanged) validationChanged.push("name");
     // event :validate_key (name_events.rb:44-49) carries no `changed:` — it
     // fires on EVERY save (create and update, renamed or not), so a save
     // whose (unchanged or new) name computes the empty key is refused here
@@ -4116,12 +4145,20 @@ export class CardActionEngine {
     if (row.trash === 1) return null; // already trashed: no-op (ActWriter contract)
     const card = await composeCardRecord(row, this.fetch.lexicon);
     await this.assertCanWrite(card, "delete"); // ok_to_delete? (permissions.rb:155-157)
-    if (row.codename !== null && row.codename !== "") {
-      // validate_delete (trash.rb:31-34): errors.add :delete,
-      // t(:core_error_system_card, name: name, codename: codename) —
-      // card/mod/core/config/locales/en.yml:18 "%{name} is is a system
-      // card. (%{codename})" (the doubled "is" is the shipped template's).
-      // The errors view shows the attribute upcased before the message
+    if (
+      row.codename !== null &&
+      row.codename !== "" &&
+      !this.registeredEvent("validate_delete")
+    ) {
+      // validate_delete (trash.rb:31-34) — the BUILT-IN arm of the system
+      // card check. It STANDS DOWN when the same-named event is registered
+      // at the save path's runtime (the takeover contract, the reference
+      // janitors' shape): the registered body carries all three Ruby checks
+      // (trash.rb:31-43 — codename, the indestructible *all rules tags, the
+      // holder-with-edits guard) and this inline code keeps only the
+      // unregistered path. en.yml:18 "%{name} is is a system card.
+      // (%{codename})" (the doubled "is" is the shipped template's). The
+      // errors view shows the attribute upcased before the message
       // (standard_errors "<KEY>: <message>") and titles the alert
       // "Problems with <name>".
       const message = `${card.name?.s ?? `~${row.id}`} is is a system card. (${row.codename})`;
@@ -4169,6 +4206,9 @@ export class CardActionEngine {
         action: "delete",
         trash: true,
         typeId: row.type_id,
+        // codename (lib/card/codename.rb:5) — validate_delete's system-card
+        // check reads it (trash.rb:32 `unless codename.blank?`).
+        codename: row.codename ?? undefined,
         changedFields: ["trash"],
       }),
     );
@@ -4499,6 +4539,9 @@ export class CardActionEngine {
     nameBeforeAct?: string;
     changedFields?: readonly string[];
     dbContentBeforeAct?: string | null;
+    typeIdBeforeAct?: number | null;
+    patternTypeId?: number | null;
+    codename?: string;
   }): ModEventCard {
     return {
       name: input.name?.s ?? (input.id !== undefined ? `~${input.id}` : ""),
@@ -4511,6 +4554,11 @@ export class CardActionEngine {
       typeId: input.typeId ?? null,
       nameBeforeAct: input.nameBeforeAct,
       changedFields: input.changedFields ?? [],
+      // type_id_before_act (dirty.rb) — the type this save is LEAVING; the
+      // cardtype events' was_cardtype? predicate reads it (cardtype.rb:11).
+      typeIdBeforeAct: input.typeIdBeforeAct,
+      patternTypeId: input.patternTypeId,
+      codename: input.codename,
       // Env.controller (env.rb:18): the engine's saves serve controller
       // requests (see the recaptcha guard's envController note).
       envController: true,
@@ -4592,6 +4640,10 @@ export class CardActionEngine {
   private async engineEventCardState(): Promise<ModEventCardState> {
     const state: ModEventCardState = {
       authCurrentId: this.actor?.id ?? null,
+      // Auth.always_ok? (auth.rb:20): the same memoized verdict the write
+      // gates consult (writePermissionState). The admin_tasks body's
+      // permission gate reads it off the event card (self/admin.rb:29).
+      alwaysOk: (await this.writePermissionState()).alwaysOk,
     };
     if (this.actor !== null) {
       return { ...state, canApprove: await this.canCreateDefaultAccountedType() };

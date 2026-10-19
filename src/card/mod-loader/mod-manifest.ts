@@ -220,6 +220,15 @@ export interface ModEventCard {
   /** type_id_before_act (card/lib/card/dirty.rb, the dirty tracker) — read
    *  by `when: :was_cardtype?` (mod/core/set/type/cardtype.rb:11). */
   readonly typeIdBeforeAct?: number | null;
+  /** The type whose SET MODULES are attached at this stage — Ruby's
+   *  patterns. A type-CHANGING save assigns type_id through the plain
+   *  writer (all/type.rb:52 write_card_or_id), which does not reset
+   *  patterns (reset_patterns runs only on the resolution arm,
+   *  all/type.rb:60-64, and from the expire paths), so Ruby validates with
+   *  the STORED type's modules attached while card.type_id reads the new
+   *  value. The walk that knows both facts supplies this; absent, the set
+   *  resolution falls back to typeId. */
+  readonly patternTypeId?: number | null;
   /** Card::Env.params for this save (lib/card/env.rb) — the request-param
    *  bag Ruby's predicates read as a hash (`draft`, `attachment_upload`,
    *  `insert_item`). Undefined off a request path. */
@@ -236,6 +245,12 @@ export interface ModEventCard {
    *  :auto_approve_with_verification (:20-22). The engine resolves it once
    *  per save (its own signup arm asks the same question). */
   readonly canApprove?: boolean;
+  /** Auth.always_ok? (card-1.110.0 lib/card/auth.rb:20) — bot/bypass mode.
+   *  The engine answers it from the same memoized permission state its write
+   *  gates use (card-action-engine.ts writePermissionState); the
+   *  admin_tasks body's permission gate reads it (self/admin.rb:29
+   *  `raise Card::Error::PermissionDenied, self unless Auth.always_ok?`). */
+  readonly alwaysOk?: boolean;
   /** history? (mod/history/set/all/history.rb:6) — the card type opts out
    *  of history when false; backs `actionable?` (events.rb:53). */
   readonly history?: boolean;
