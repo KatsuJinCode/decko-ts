@@ -266,12 +266,21 @@ export class SharedCache {
  * read: temp.fetch(key) { shared.read(key) } - a Shared hit is copied into
  * temp; write: shared first, then temp; delete/reset touch both.
  */
+
+/** Card::Cache.counter (cache.rb:105, `Card::Cache.counter ||= {}`) — the
+ *  process-global tally hash, keyed by the cache's class (undefined for the
+ *  default Card cache), then by tracked action. */
+export const cacheTallyCounter = new Map<string | undefined, Map<string, number>>();
+
 export class CardCache {
   readonly temp: TemporaryCache;
   readonly shared?: SharedCache;
   /** cache.rb#write / Temporary#write callback hook; Card's implementation
    *  (Cache::CardClass#after_write_to_temp_cache) writes the lexicon. */
   afterWriteToTempCache?: (value: unknown) => void;
+  /** cache.rb#initialize's `@klass = opts[:class]` — the counter key tally
+   *  buckets under. Undefined (Ruby nil) for the default Card cache. */
+  private readonly className: string | undefined;
 
   constructor(
     opts: {
@@ -281,6 +290,7 @@ export class CardCache {
       database?: string;
     } = {},
   ) {
+    this.className = opts.className;
     this.temp = new TemporaryCache(opts.maxTemporaryKeys);
     this.shared = opts.sharedStore
       ? new SharedCache({
@@ -289,6 +299,26 @@ export class CardCache {
           className: opts.className,
         })
       : undefined;
+  }
+
+  /**
+   * cache.rb#tally (:105-110):
+   *   `h = Card::Cache.counter ||= {}; t = h[@klass] ||= {};
+   *    t[type] ||= 0; t[type] += 1`
+   * One counter hash per process, keyed by the cache's class, then by the
+   * tracked action. Ruby's only caller is `track` (:98-104), which runs it
+   * whenever Cardio.config.cache_log_level is set — the port carries no
+   * logger, so tally is exposed directly for the callers that instrument.
+   */
+  tally(type: string): number {
+    let perClass = cacheTallyCounter.get(this.className);
+    if (perClass === undefined) {
+      perClass = new Map<string, number>();
+      cacheTallyCounter.set(this.className, perClass);
+    }
+    const next = (perClass.get(type) ?? 0) + 1;
+    perClass.set(type, next);
+    return next;
   }
 
   /** cache.rb#read */

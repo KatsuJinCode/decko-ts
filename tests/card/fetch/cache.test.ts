@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  cacheTallyCounter,
   CardCache,
   DEFAULT_MAX_TEMPORARY_CACHE_KEYS,
   SharedCache,
@@ -178,5 +179,27 @@ describe("CardCache (lib/card/cache.rb)", () => {
     expect(multi.get("a")).toBe(1);
     expect(multi.get("b")).toBe(2);
     expect(multi.has("c")).toBe(false);
+  });
+
+  // cache.rb:105-110 — `tally type; h = Card::Cache.counter ||= {};
+  // t = h[@klass] ||= {}; t[type] ||= 0; t[type] += 1; end`: one process-global
+  // hash, bucketed per cache class, counting up per tracked action.
+  it("tally counts per class and per action in one process-global hash (cache.rb:105-110)", () => {
+    const cardCache = new CardCache();
+    const lexCache = new CardCache({ className: "Card::Lexicon" });
+    try {
+      expect(cardCache.tally("read")).toBe(1);
+      expect(cardCache.tally("read")).toBe(2);
+      expect(cardCache.tally("write")).toBe(1);
+      // a different class buckets separately (h[@klass])
+      expect(lexCache.tally("read")).toBe(1);
+      // the default cache buckets under Ruby's nil klass
+      expect(cacheTallyCounter.get(undefined)?.get("read")).toBe(2);
+      expect(cacheTallyCounter.get("Card::Lexicon")?.get("read")).toBe(1);
+      expect(cacheTallyCounter.get(undefined)?.get("write")).toBe(1);
+    } finally {
+      cacheTallyCounter.delete(undefined);
+      cacheTallyCounter.delete("Card::Lexicon");
+    }
   });
 });
