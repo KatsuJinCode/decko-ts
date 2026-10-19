@@ -404,16 +404,26 @@ export function previousMarkRedirect(
  * that body at Rails' default `render body:` content type
  * (text/html; charset=utf-8).
  *
- * ONE implementation, reached through parsePath's `assetStub` kind
- * (bunny-edge-lineage-worker-surface.ts) by all three serving hosts — the
- * edge request core, the CF shell and the minimal Bunny reader — so the
- * three cannot drift. The answer is engine-independent Ruby source text, so
- * it must not touch the deck.
+ * ONE classification and ONE response body. Three serving hosts reach it
+ * through parsePath's `assetStub` kind (bunny-edge-lineage-worker-surface.ts)
+ * — the edge request core, the CF shell and the minimal Bunny reader — and
+ * the root worker.ts twin, whose own local parsePath does not classify the
+ * deprecated prefixes, reaches it through the pathname adapter below. Both
+ * entry shapes call the same classifier and return the same response, so
+ * the four cannot drift. The answer is engine-independent Ruby source text,
+ * so it must not touch the deck.
  */
 export const DEPRECATED_ASSET_ROUTE_PREFIXES = ["assets", "javascripts", "jasmine"] as const;
 
 export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {
   return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);
+}
+
+/** The pathname-shaped entry to the same route, for the host whose own
+ *  parsePath does not classify the prefixes. Null when the path is not one. */
+export function assetRouteResponse(pathname: string): Response | null {
+  const segments = pathname.split("/").filter((segment) => segment !== "");
+  return isDeprecatedAssetRoute(segments) ? deprecatedAssetStubResponse() : null;
 }
 
 export function deprecatedAssetStubResponse(): Response {

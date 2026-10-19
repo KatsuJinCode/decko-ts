@@ -459,8 +459,11 @@ export default {
 
     const parsed = parsePath(url.pathname);
 
-    // engine_routes.rb:17-19 — the deprecated asset prefixes answer the
+    // engine_routes.rb:14-16 — the deprecated asset prefixes answer the
     // card#asset 404 (the shared twin-surface arm) before any card dispatch.
+    // This host's own parsePath does not classify the prefixes, so it asks
+    // the shared classifier through the pathname adapter rather than
+    // carrying a second copy of the Ruby body.
     {
       const assetResponse = assetRouteResponse(url.pathname);
       if (assetResponse !== null) return assetResponse;
