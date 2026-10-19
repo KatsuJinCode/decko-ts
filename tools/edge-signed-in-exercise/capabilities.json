@@ -528,7 +528,7 @@
       ],
       "status": "covered",
       "checks": [
-        "E11 a card with a +summary nested field renders that field’s editor"
+        "E11 a card with a +summary nested field renders that field's editor"
       ]
     },
     {
@@ -577,7 +577,7 @@
       ],
       "status": "covered",
       "checks": [
-        "E15 the edit modal’s Save and Close updates the main slot"
+        "E15 the edit modal's Save and Close updates the main slot"
       ],
       "finding": "Save and Close (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md) PASSes end-to-end: writeStatus 200, the new content shows on the main slot, and the modal closes."
     },
