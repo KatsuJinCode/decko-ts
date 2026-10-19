@@ -276,6 +276,14 @@ export function cacheDeleteCardEvents(
  * manifest below (the live declarations ride the registry; this constant
  * is the read-only citation record used in tests + tooling).
  */
+// DISPOSITION (this lane's audit): the three observer_#{action} bodies are
+// ENGINE-OWNED — Ruby's execute_card_events (observer.rb:4-9: the act
+// card's *on <action> email rule, delivered for every actor) runs at the
+// engine's integrate seam through runObserverEvents (notify/observer.ts,
+// wired at card-action-engine.ts:719 for every committed act with the
+// follow-mail transport composed). cache_delete_card_events' cache note
+// rides the same observer machinery (its :store-stage snapshot is the
+// event_cards the integrate run consumes).
 export const OBSERVER_EVENT_DECLARATIONS = [
   { event: "observer_create", stage: "integrate", on: "create" },
   { event: "observer_update", stage: "integrate", on: "update" },
