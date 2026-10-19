@@ -317,6 +317,114 @@ describe("card-mod-collection through the mod loader", () => {
   });
 
   // -----------------------------------------------------------------------
+  // view :paging_urls - paging_views.rb:86-93 (json) + :106-120 (jsonld).
+  // Ported 2026-10-19 (the mods-first-half lane); the views live in the
+  // owning FORMAT's chain entry (the registration is in the json / jsonld
+  // format blocks of abstract/paging/paging_views).
+  // -----------------------------------------------------------------------
+
+  describe(":paging_urls (json + jsonld)", () => {
+    // The name.urlKey the two URL builders interpolate (Card::Path
+    // interpret_mark, path.rb:56-59 - url_key).
+    function ctxWithUrlKey(dbContent: string, opts: Record<string, unknown>): ViewContext {
+      const base = ctxWithOpts(dbContent, opts);
+      const card = base.fmt.card as RenderCard;
+      card.name = {
+        ...card.name,
+        urlKey: "Stub_Paging",
+      } as RenderCard["name"];
+      return base;
+    }
+
+    function jsonView(): ViewFn {
+      const fn = loader!.viewChainTable().viewForFormat(
+        "Abstract::Paging::PagingViews",
+        "paging_urls",
+        "json",
+      );
+      if (fn === undefined) throw new Error("json :paging_urls not registered");
+      return fn;
+    }
+
+    function jsonldView(): ViewFn {
+      const fn = loader!.viewChainTable().viewForFormat(
+        "Abstract::Paging::PagingViews",
+        "paging_urls",
+        "jsonld",
+      );
+      if (fn === undefined) throw new Error("jsonld :paging_urls not registered");
+      return fn;
+    }
+
+    it("the html format has no :paging_urls (the registration is json/jsonld-only)", async () => {
+      const s = storage!;
+      await expect(s.engine.render("Collection Paging", "paging_urls")).rejects.toThrow(
+        UnsupportedViewError,
+      );
+    });
+
+    it("json mid-pagination: previous + next in build order, the .json extension URL shape (paging_views.rb:86-104)", () => {
+      const registered = jsonView();
+      // 10 items, limit=4, offset=4 -> current_page=1, total_pages=2.
+      // previous = page 0; next = page 2. page_link_path_args (json block
+      // :77-84) = {limit, offset: page*limit, item: :name, format: :json};
+      // Card::Path renders the format as the .json EXTENSION and
+      // limit/offset/item as the to_param query in insertion order.
+      const result = registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 4, offset: 4 }));
+      // Ruby's hash insertion order (previous yields before next) is the
+      // serialization order - pinned through JSON.stringify.
+      expect(JSON.stringify(result)).toBe(
+        '{"paging":{' +
+          `"previous":"/Stub_Paging.json?limit=4&offset=0&item=name",` +
+          `"next":"/Stub_Paging.json?limit=4&offset=8&item=name"}}`,
+      );
+    });
+
+    it("json at the first page: no previous (paging_links.rb:88-90 previous_page false)", () => {
+      const registered = jsonView();
+      const result = registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 4, offset: 0 }));
+      expect(JSON.stringify(result)).toBe(
+        '{"paging":{"next":"/Stub_Paging.json?limit=4&offset=4&item=name"}}',
+      );
+    });
+
+    it("json with paging hidden is the empty hash (paging_views.rb:87 return {})", () => {
+      const registered = jsonView();
+      expect(registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 20, offset: 0 }))).toEqual({});
+    });
+
+    it("jsonld mid-pagination: the hydra:view emission over the same edges (paging_views.rb:106-120)", () => {
+      const registered = jsonldView();
+      const result = registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 4, offset: 4 }));
+      // Bare `path` (no opts) is the mark alone (path.rb:40-41 + :56-59);
+      // .compact drops the nil edges (none here).
+      expect(JSON.stringify(result)).toBe(
+        '{"hydra:view":{' +
+          '"@type":"hydra:PartialCollectionView",' +
+          '"@id":"/Stub_Paging",' +
+          '"hydra:previous":"/Stub_Paging.json?limit=4&offset=0&item=name",' +
+          '"hydra:next":"/Stub_Paging.json?limit=4&offset=8&item=name"}}',
+      );
+    });
+
+    it("jsonld at the first page: compact drops the absent previous edge", () => {
+      const registered = jsonldView();
+      const result = registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 4, offset: 0 }));
+      expect(JSON.stringify(result)).toBe(
+        '{"hydra:view":{' +
+          '"@type":"hydra:PartialCollectionView",' +
+          '"@id":"/Stub_Paging",' +
+          '"hydra:next":"/Stub_Paging.json?limit=4&offset=4&item=name"}}',
+      );
+    });
+
+    it("jsonld with paging hidden is the empty hash (paging_views.rb:108 return {})", () => {
+      const registered = jsonldView();
+      expect(registered(ctxWithUrlKey(PAGING_CONTENT, { limit: 20, offset: 0 }))).toEqual({});
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // mod loader bookkeeping
   // -----------------------------------------------------------------------
 

@@ -24,15 +24,12 @@
 //   (the PagingLinks class - ported verbatim to TS).
 //
 // NOT ported (honest remainder):
-// - set/abstract/paging/paging_views.rb:75-104 (json format block:
-//   paging_urls_hash + view :paging_urls, cache: :never): declared on
-//   format :json only. The engine's render pipeline is html-only (the
-//   HTML_VIEWS table is the only format populated); JSON/JSONLD views
-//   have no live render path. The Ruby code also depends on `path`
-//   (the Rails url helper) which the headless engine does not provide.
-// - set/abstract/paging/paging_views.rb:106-120 (jsonld format block:
-//   view :paging_urls, the hydra:PartialCollectionView emission): same
-//   format-availability blocker as the json branch.
+// - set/abstract/paging/paging_views.rb json + jsonld :paging_urls - PORTED
+//   2026-10-19 (the mods-first-half lane; see pagingUrlsJsonView /
+//   pagingUrlsJsonldView): the engine renders json (the format-families
+//   oracle suite) and the loader's formatLineage carries jsonld -> json ->
+//   data; the Ruby `path` helper's shapes (the .json extension +
+//   to_param query; the bare mark) are built directly.
 // - set/all/item.rb methods (item_names/item_cards/item_ids/item_strings/
 //   first_name/first_card/.../nest_item/item_links/implicit_item_view/...):
 //   the engine has no cardtype surface for "list/pointer" type cards (the
@@ -557,6 +554,68 @@ const pagingView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// paging_views.rb:75-104 (json) + :106-120 (jsonld) - view :paging_urls
+// (ported 2026-10-19, the mods-first-half lane; the engine renders json -
+// format-families tests - and the loader's formatLineage carries jsonld ->
+// json -> data)
+// ---------------------------------------------------------------------------
+
+/** paging_views.rb:99-104 add_paging_url + :95-98 paging_urls_hash:
+ *  PagingLinks.build (the DEFAULT window 2 - json does not pass one) with
+ *  a block that fills the hash for next/previous only:
+ *  `hash[status] = path page_link_path_args(page)`. The json
+ *  page_link_path_args (:77-84) is
+ *  `{limit:, offset: page * limit, item: default_item_view, format:
+ *  :json}` (default_item_view = :name, all/item.rb:145-147;
+ *  extra_paging_path_args is the empty hash of paging.rb:37-39), and
+ *  Card::Path#render (path.rb:31-34 + :40-41 + :65-72) turns
+ *  {format: :json} into the ".json" EXTENSION (not a query param) over
+ *  the mark, leaving `limit/offset/item` for to_param in insertion
+ *  order: `/<url_key>.json?limit=<l>&offset=<page*l>&item=name`. */
+function pagingUrlsHash(ctx: ViewContext): Record<string, string> {
+  const hash: Record<string, string> = {};
+  const limit = readNumericOpt(ctx, "limit");
+  const urlKey = ctx.fmt.card.name.urlKey;
+  new PagingLinks(totalPages(ctx), currentPage(ctx)).build(2, (_text, page, status) => {
+    if (page === null) return "";
+    if (status !== "next" && status !== "previous") return "";
+    hash[status] = `/${urlKey}.json?limit=${limit}&offset=${page * limit}&item=name`;
+    return "";
+  });
+  return hash;
+}
+
+/** paging_views.rb:86-93 (json block) view :paging_urls, cache: :never:
+ *  `return {} unless show_paging?; { paging: paging_urls_hash }`. The
+ *  hash insertion order is the build order - previous yields before
+ *  next (paging_links.rb:41 left_part first, :48 right_part's next last) -
+ *  so the serialized object reads {"paging":{"previous":...,"next":...}}
+ *  with an absent key when that edge does not exist. */
+const pagingUrlsJsonView: ViewFn = (ctx) => {
+  if (!showPaging(ctx)) return {};
+  return { paging: pagingUrlsHash(ctx) };
+};
+
+/** paging_views.rb:106-120 (jsonld block) view :paging_urls: the
+ *  hydra:PartialCollectionView emission - `{"hydra:view": {"@type":...,
+ *  "@id": path, "hydra:previous": phash[:previous], "hydra:next":
+ *  phash[:next]}.compact}`. Bare `path` (Card::Path with no opts) is the
+ *  mark alone (path.rb:40-41: no view, no format opt -> no extension,
+ *  no query): "/<url_key>". .compact drops the nil values - an absent
+ *  edge's key does not serialize. */
+const pagingUrlsJsonldView: ViewFn = (ctx) => {
+  if (!showPaging(ctx)) return {};
+  const phash = pagingUrlsHash(ctx);
+  const view: Record<string, string> = {
+    "@type": "hydra:PartialCollectionView",
+    "@id": `/${ctx.fmt.card.name.urlKey}`,
+  };
+  if (phash["previous"] !== undefined) view["hydra:previous"] = phash["previous"];
+  if (phash["next"] !== undefined) view["hydra:next"] = phash["next"];
+  return { "hydra:view": view };
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one setModules entry per gem file; format :html block holds
 // the two ported views). Files whose views are not ported carry a passive
 // `{ setPath, formats: { html: { views: [] } } }` entry - written inline so
@@ -623,7 +682,9 @@ const setModules: ModSetModuleFile[] = [
     // paging_path_args/page_link_path_args) + json format block
     // (page_link_path_args override + view :paging_urls +
     // paging_urls_hash/add_paging_url) + jsonld format block
-    // (view :paging_urls). Ported: the html :paging view.
+    // (view :paging_urls). Ported: the html :paging view AND (the
+    // mods-first-half lane 2026-10-19) the json + jsonld :paging_urls -
+    // the engine renders json and the format lineage carries jsonld.
     setPath: "abstract/paging/paging_views",
     formats: {
       html: {
@@ -634,6 +695,18 @@ const setModules: ModSetModuleFile[] = [
             viewFn: pagingView,
             config: { cache: "never" },
           },
+        ],
+      },
+      json: {
+        views: [
+          // paging_views.rb:86-93 view :paging_urls, cache: :never
+          { view: "paging_urls", viewFn: pagingUrlsJsonView, config: { cache: "never" } },
+        ],
+      },
+      jsonld: {
+        views: [
+          // paging_views.rb:107-119 view :paging_urls (the jsonld block)
+          { view: "paging_urls", viewFn: pagingUrlsJsonldView },
         ],
       },
     },
