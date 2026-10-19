@@ -1120,10 +1120,35 @@ const insertItemEvent: ModEventFn = () => {
   // not ported: the write path is absent (see the section header above)
 };
 
-/** delist.rb:2-9 delist (prepare_to_store, on: delete) - the Ruby body
- *  walks `referers`, gates on delistable? + Abstract::List + real?, and
- *  calls drop_item + subcard on each. The set membership + subcard
- *  machinery is not ported. */
+/** delist.rb:2-9 delist (prepare_to_store, on: delete) - the Ruby body walks
+ *  `referers` (reference/all.rb:13-15 - the card_references rows pointing at
+ *  self), gates each on `delistable? && is_a?(Abstract::List) && real?`, and
+ *  calls drop_item (item_assignment.rb:32-35 - rewrite the list content
+ *  without the item) + `subcard referer` (the modified referer saves within
+ *  the SAME act, with its own events).
+ *
+ *  SKIPPED-BY-NAME (residue lane 2026-10-20), two verified facts:
+ *
+ *  1. The event is UNREACHABLE in the pinned gemset: nothing includes
+ *     Abstract::Delist (exhaustive grep of the gemset - zero references to
+ *     the module name), and set_condition_applies? (card-1.110.0
+ *     lib/card/set/event/all.rb:26-29) fires the event only when the
+ *     declaring set module is in the card's set-module chain. Declared,
+ *     never fires - for any card.
+ *  2. The port's walk mirrors that deadness exactly: the registration
+ *     (setPath "abstract/delist", below) resolves set membership through
+ *     the serving runtime's setMember (write-routes.ts:1663 - right/*,
+ *     right/enabled_roles, type_plus_right/*, type/* only), so the
+ *     dispatcher answers set-not-applicable for every save - the same
+ *     observable behavior as Ruby's dead event.
+ *
+ *  The BODY itself is also not portable without divergence: `subcard
+ *  referer` folds the referer's content rewrite into the ACT as its own
+ *  save (validations, reference janitors, act rows) - the port's event seam
+ *  is single-card (ModEventContext carries no subcard surface; see the
+ *  section header above), and a substitute direct db_content UPDATE would
+ *  bypass exactly the machinery Ruby's subcard save runs. Per the parity
+ *  law: named, not faked. The fn stays the honest stub. */
 const delistEvent: ModEventFn = (_card, _host) => {
   // see header: write path / set membership / subcard not ported
 };
