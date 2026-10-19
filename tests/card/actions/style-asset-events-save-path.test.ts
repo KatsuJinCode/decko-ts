@@ -198,9 +198,19 @@ describe("the save path's style asset events", () => {
   // right cards) refreshes the SKIN's asset input when the skin itself has no
   // action in this act — Ruby's `return if !left || left.action;
   // left.update_asset_input` (style-asset-events.ts runs it at the finalize
-  // position, gate `!savedIds.has(card.leftId)`). The field's bytes land
-  // inside the skin's assembled +*asset input virtual row.
-  it("updating a skin field refreshes the skin's own asset input (skin_field.rb update_skin_asset_input)", async () => {
+  // position, gate `!savedIds.has(card.leftId)`).
+  //
+  // THE VIEW THE REFRESH READS. The recorded oracle proves the refresh
+  // assembles from the act field's PRE-ACT bytes, giving Ruby's one-save lag:
+  // reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+  // step admin-update-current-skin-colors (save $primary: #345678;) leaves
+  // Parity Skin+*asset input UNTOUCHED (the pre-act assembly reproduces the
+  // stored input) and writes the stylesheet from it; step
+  // admin-update-current-skin-colors-again (save $primary: #876543;) stores
+  // as the skin's input the assembly of #345678 — the PRE-ACT content, its
+  // sha256 4c45c2ac... byte-identical to the css file written in the same
+  // step. This test pins the same shape over two saves of the field.
+  it("updating a skin field refreshes the skin's input from the pre-act bytes, landing this save's bytes on the NEXT save (skin_field.rb update_skin_asset_input)", async () => {
     await seedCard(storage, { id: 452, name: "*variables", codename: "variables" });
     await seedCard(storage, { id: 453, name: "Probe Skin+*variables", leftId: ids.skin, rightId: 452,
       typeId: ids.scss, dbContent: "body { color: old; }" });
@@ -208,7 +218,8 @@ describe("the save path's style asset events", () => {
       "SELECT content, updated_at FROM card_virtuals WHERE left_id = ? AND right_id = ?",
       [ids.skin, ids.assetInput]);
     expect(await skinInput()).toBeUndefined();
-    const result = await engine(async (source) => libsassWasmCompiler()(source, "compressed")).updateCard({
+    const compile = libsassWasmCompiler();
+    const result = await engine((source) => compile(source, "compressed")).updateCard({
       cardId: 453,
       // the skin's asset input is the COMPRESSED rendering of its sources
       // (bootswatch_skin.rb:30 include_set Abstract::AssetInputter,
@@ -216,15 +227,28 @@ describe("the save path's style asset events", () => {
       content: "$primary: #0aa !default;\nbody { color: $primary; }",
     });
     expect(result).not.toBeNull();
+    // no input row existed, so the refresh creates it — from the field's
+    // PRE-ACT bytes ("body { color: old; }"), never the bytes this save
+    // assigned (the battery's Parity Skin colors-1 shape: the refresh is a
+    // no-op when the pre-act assembly reproduces the stored input, and the
+    // stored bytes always trail the field by one save)
     const refreshed = await skinInput();
     expect(refreshed).toBeDefined();
-    // the field's NEW bytes ride the skin's assembled input — not the
-    // pre-act ones the stale view carried before this arm read its own act
-    // card as saved
-    expect(refreshed!.content).toContain("body{color:#0aa}");
-    expect(refreshed!.content).not.toContain("body{color:old}");
+    expect(refreshed!.content).toContain("body{color:old}");
+    expect(refreshed!.content).not.toContain("body{color:#0aa}");
     // the skin itself has no action in this act (the field's save is the act)
     expect(await storage.selectAll("SELECT id FROM card_actions WHERE card_id = ?", [ids.skin]))
       .toHaveLength(0);
+    // the second save lands the FIRST save's bytes in the skin's input (the
+    // battery's colors-again shape: the stored input is the pre-act
+    // assembly, one save behind the field)
+    const second = await engine((source) => compile(source, "compressed")).updateCard({
+      cardId: 453,
+      content: "$primary: #0bb !default;\nbody { color: $primary; }",
+    });
+    expect(second).not.toBeNull();
+    const lagged = await skinInput();
+    expect(lagged!.content).toContain("body{color:#0aa}");
+    expect(lagged!.content).not.toContain("body{color:#0bb}");
   });
 });

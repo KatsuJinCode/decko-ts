@@ -621,15 +621,23 @@ export async function runStyleAssetEvents(ctx: StyleAssetEventContext, savedCard
     }
     // update_skin_asset_input: a skin field whose skin has no action in this act.
     // Ruby's body (skin_field.rb:2-4) is `return if !left || left.action;
-    // left.update_asset_input` — and update_asset_input assembles from the
-    // deck's CURRENT state, the just-assigned field bytes included. The
-    // assembly therefore reads the act card (this field) AS SAVED — the `own`
-    // view, the field's own pre-act entry dropped — while every OTHER card
-    // keeps the stale view. Passing the full `stale` map here leaked the
-    // field's OLD bytes into the refreshed skin input.
+    // left.update_asset_input` — and the recorded oracle proves the refresh
+    // reads the act field's PRE-ACT bytes, not the just-saved ones: on the
+    // write-battery deck (reference-harness/fixtures/write-battery-v1/
+    // expected/side-effects-ruby.json), Parity Skin+*colors save #1 leaves
+    // the skin's +*asset input untouched (assembling the pre-act colors
+    // reproduces the stored input, so save_virtual_content no-ops) and still
+    // writes the stylesheet from it, and save #2 (content #876543) stores as
+    // the skin's input the assembly of #345678 — the PRE-ACT content, byte
+    // for byte the css file it writes in the same act. One-save lag: each
+    // field save's bytes only reach the skin's input on the NEXT field save.
+    // Passing the field's own-view here leaks its NEW bytes into the skin
+    // input a step early (the regression the integration run caught: the
+    // battery's three asset steps and skin-stylesheet's colour-change case
+    // both fail on it). The full `stale` map is the faithful view.
     if (SKIN_FIELDS.has((await codenameOf(ctx, card.rightId)) ?? "") && card.leftId !== undefined && !savedIds.has(card.leftId)) {
       const skin = await cardById(ctx, card.leftId);
-      if (skin?.typeCode === "bootswatch_skin") await updateAssetInput(ctx, skin, own, new Set());
+      if (skin?.typeCode === "bootswatch_skin") await updateAssetInput(ctx, skin, stale, new Set());
     }
     // update_asset_output_file
     if (await isStyleOutputter(ctx, card)) await updateAssetOutput(ctx, card, own, "style");

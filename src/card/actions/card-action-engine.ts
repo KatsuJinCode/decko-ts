@@ -963,6 +963,75 @@ export class CardActionEngine {
     }
   }
 
+  /** Ruby's director runs the WHOLE branch's early phases before any validate
+   *  phase (director/phases.rb — the recorded oracle's signup order: every
+   *  card's reject_empty_subcards/set_stamper block, the +*email walk's
+   *  downcase_email included, precedes the act card's validate_name). The
+   *  port walks each card's validation on its own (early stage, then validate
+   *  stage), so a subcard's early-stage events would first fire after the act
+   *  card's validate events — the side-effects battery's signup /
+   *  admin-create-signup / probe-update-own-account order breaks on exactly
+   *  that once right/* set events became applicable (the 2026-10-20
+   *  integration run). This hoist fires each posted subcard's initialize +
+   *  prepare_to_validate dispatches at the branch root's early position, and
+   *  the subcard's own walk then skips its already-fired early stage
+   *  (earlyPhaseDispatchedKeys). Only dispatcher REPORTS move: the early
+   *  stage's registered bodies on these walks are the engine-owned stubs
+   *  (reject_empty_subcards, set_stamper, right/email's downcase_email), so
+   *  the report position is the only observable. A save-input-mutating early
+   *  body (translate_variables_to_scss) is set-gated to a direct +*colors
+   *  save — a request that carries both colors params and posted subcards
+   *  does not exist; if one ever does, the hoist must grow the subcard's own
+   *  save input threading first. */
+  private earlyPhaseDispatchedKeys = new Set<string>();
+
+  private async dispatchSubcardEarlyPhases(
+    mainName: DeckoName,
+    subcards: Record<string, SubcardInput> | undefined,
+  ): Promise<void> {
+    for (const [key, sub] of Object.entries(subcards ?? {})) {
+      // A trashed subcard's save runs the delete path (trashInWriter), which
+      // never ran an early-stage dispatch; a blank NEW subcard runs no walk
+      // (prepareNewSubcards skips it) and keeps that shape here.
+      if (sub.trash === true) continue;
+      const name = key.startsWith("+") ? DeckoName.parse(`${mainName.s}${key}`) : DeckoName.parse(key);
+      const existing = await this.fetch.fetchByName(name.s);
+      const exists = existing !== undefined && !existing.trash && existing.id !== undefined;
+      if (!exists && this.blankNewSubcard(sub)) continue;
+      const cardKey = name.key;
+      if (this.earlyPhaseDispatchedKeys.has(cardKey)) {
+        await this.dispatchSubcardEarlyPhases(name, sub.subcards);
+        continue;
+      }
+      this.earlyPhaseDispatchedKeys.add(cardKey);
+      const card = exists
+        ? this.eventCard({
+            name,
+            id: existing!.id,
+            key: existing!.key ?? cardKey,
+            dbContent: sub.content ?? existing!.dbContent ?? null,
+            dbContentBeforeAct: existing!.dbContent ?? null,
+            action: "update",
+            typeId: existing!.typeId,
+            codename: existing!.codename ?? undefined,
+            changedFields:
+              sub.content !== undefined && sub.content !== (existing!.dbContent ?? null) ? ["db_content"] : [],
+          })
+        : this.eventCard({
+            name,
+            key: cardKey,
+            dbContent: sub.content ?? null,
+            dbContentBeforeAct: null,
+            action: "create",
+            typeId: await resolveTypeId(this.fetch, { ...this.subcardCreateInput(name.s, sub), name }),
+            changedFields: ["name", "type_id", ...(sub.content != null ? ["db_content"] : [])],
+          });
+      await this.dispatchEventStage("initialize", card);
+      await this.dispatchEventStage("prepare_to_validate", card);
+      await this.dispatchSubcardEarlyPhases(name, sub.subcards);
+    }
+  }
+
   private async saveSubcardsInWriter(
     writer: ActWriter,
     mainName: DeckoName | undefined,
@@ -1797,6 +1866,9 @@ export class CardActionEngine {
   }
 
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
+    // A fresh top-level save: the subcard early-phase hoist memo is per save
+    // (earlyPhaseDispatchedKeys's doc).
+    this.earlyPhaseDispatchedKeys.clear();
     let name = DeckoName.parse(input.name ?? "");    // The anonymous-create arm: Ruby's create permission chain has NO
     // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
     // card (auth/current.rb:7-9 + auth/proxy.rb:33-35), and ok_to_create?
@@ -1995,8 +2067,16 @@ export class CardActionEngine {
         action: "create",
         typeId: eventTypeId,
       });
-    await this.dispatchEventStage("initialize", validationCard());
-    await this.dispatchEventStage("prepare_to_validate", validationCard());
+    if (this.earlyPhaseDispatchedKeys.has(name.key)) {
+      // The branch root's early-phase hoist (dispatchSubcardEarlyPhases)
+      // already fired this card's initialize + prepare_to_validate at Ruby's
+      // position; the validate stage below still runs here.
+    } else {
+      this.earlyPhaseDispatchedKeys.add(name.key);
+      await this.dispatchEventStage("initialize", validationCard());
+      await this.dispatchEventStage("prepare_to_validate", validationCard());
+      await this.dispatchSubcardEarlyPhases(name, input.subcards);
+    }
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
     const typeId =
       resolvedTypeId ??
@@ -2598,6 +2678,13 @@ export class CardActionEngine {
     walkNoopLifecycle?: boolean;
     finalize?: (writer: ActWriter) => Promise<void>;
   } = {}): Promise<ActionResult | null> {
+    // A fresh top-level save clears the subcard early-phase hoist memo; a
+    // save riding another act's writer (useAsCurrentSkin's rule save) keeps
+    // the outer save's memo — its cards are disjoint, and clearing would let
+    // the outer branch's subcard walks re-fire their early stages.
+    if (lifecycle.writer === undefined && input.withinOtherAct !== true) {
+      this.earlyPhaseDispatchedKeys.clear();
+    }
     // The anonymous-update arm: same chain as create — ok_to_update?
     // (permissions.rb:148-153 permit(:update) + the type-change clause)
     // has NO signed-in clause; an anonymous session's Auth.as_id IS the
@@ -3074,7 +3161,13 @@ export class CardActionEngine {
         changedFields: changed,
       });
     };
-    await this.dispatchEventStage("initialize", validationCard());
+    if (this.earlyPhaseDispatchedKeys.has((newName ?? currentName)?.key ?? currentKey)) {
+      // The branch root's early-phase hoist (dispatchSubcardEarlyPhases)
+      // already fired this card's initialize + prepare_to_validate at Ruby's
+      // position; the validate stage below still runs here.
+    } else {
+      await this.dispatchEventStage("initialize", validationCard());
+    }
     // translate_variables_to_scss (card-mod-bootstrap
     // set/type_plus_right/bootswatch_skin/colors.rb:116-119,
     // :prepare_to_validate, on: :update): the posted colors/theme_colors
@@ -3092,7 +3185,15 @@ export class CardActionEngine {
     // shape, at the prepare_to_validate position instead of SP). No-ops
     // unless the mod is loaded AND the act's trigger list names the event.
     await this.prepareApiKeyGenerateSaveInput(input, row);
-    await this.dispatchEventStage("prepare_to_validate", validationCard());
+    if (this.earlyPhaseDispatchedKeys.has((newName ?? currentName)?.key ?? currentKey)) {
+      // already fired at the branch root's early position (see initialize above)
+    } else {
+      this.earlyPhaseDispatchedKeys.add((newName ?? currentName)?.key ?? currentKey);
+      await this.dispatchEventStage("prepare_to_validate", validationCard());
+      // The subcard walks compose relative keys against the STORED name
+      // (saveSubcardsInWriter's composedNameOf), so the hoist does too.
+      if (currentName !== undefined) await this.dispatchSubcardEarlyPhases(currentName, input.subcards);
+    }
     this.pendingSaveInput = undefined;
     // "name is changing" per Card::Dirty (lib/card/dirty.rb:57-60,
     // DirtyNames#name_is_changing? = `super || left_id_is_changing? ||
