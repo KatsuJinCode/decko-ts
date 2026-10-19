@@ -805,6 +805,10 @@ const cardModPermissions: DeckoModManifest = {
       // the abstract/permission registration above stays for the abstract
       // home - the include-materialized shape).
       ...setModuleEntry("right/create"),
+      // right/create.rb:3 - `assign_type :list` (advanced_api.rb:5-8), on
+      // the manifest's assignsType field (mod-loader.ts:1265-1266
+      // registerSetTypeAssignment), like card-mod-email's right/to|cc.
+      assignsType: "list",
       formats: {
         html: {
           views: [{ view: "input", viewFn: inputView }],
@@ -814,6 +818,8 @@ const cardModPermissions: DeckoModManifest = {
     {
       // card-mod-permissions-0.20.0/set/right/delete.rb - same shape
       ...setModuleEntry("right/delete"),
+      // right/delete.rb:3 - assign_type :list
+      assignsType: "list",
       formats: {
         html: {
           views: [{ view: "input", viewFn: inputView }],
@@ -837,6 +843,8 @@ const cardModPermissions: DeckoModManifest = {
           fn: cascadeReadRuleFn,
         },
       ]),
+      // right/read.rb:3 - assign_type :list
+      assignsType: "list",
       formats: {
         html: {
           views: [{ view: "input", viewFn: inputView }],
@@ -846,6 +854,8 @@ const cardModPermissions: DeckoModManifest = {
     {
       // card-mod-permissions-0.20.0/set/right/update.rb - same shape
       ...setModuleEntry("right/update"),
+      // right/update.rb:3 - assign_type :list
+      assignsType: "list",
       formats: {
         html: {
           views: [{ view: "input", viewFn: inputView }],
