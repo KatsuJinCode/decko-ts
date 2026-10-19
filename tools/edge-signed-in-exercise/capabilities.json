@@ -66,6 +66,9 @@
         "cypress signin_redirect_spec"
       ],
       "status": "not_covered",
+      "checks": [
+        "S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card"
+      ],
       "finding": "Stock signin_redirect_spec.coffee asserts modal denial plus explicit signin-link click; it does not assert an automatic redirect. Independent probe evidence is separate until included in a coherent capability run."
     },
     {
@@ -260,6 +263,9 @@
         "cypress create/presetting 'presetting content in url'"
       ],
       "status": "not_covered",
+      "checks": [
+        "C10 content preset in the /new URL fills the editor and is stored on the card"
+      ],
       "finding": "URL presets ignored: the new-card form hardcodes an empty name and content"
     },
     {
@@ -284,7 +290,10 @@
         "cucumber structure 'New structured card'",
         "journeys new-topic-structured-form"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C12 a structured card's new form offers its subcards (+director and +lead)"
+      ]
     },
     {
       "id": "C13",
@@ -321,7 +330,10 @@
         "cypress edit/pointer 'create with select input'",
         "journeys pointer-radio-input"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C15 a new card form on a cardtype with a pointer slot renders the radio input and a selection persists"
+      ]
     },
     {
       "id": "C16",
@@ -331,7 +343,10 @@
         "cucumber pointer_inputs 'checkbox input'",
         "journeys pointer-checkbox-input"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C16 a checkbox pointer input can be checked and stored (card shows the checked value)"
+      ]
     },
     {
       "id": "C17",
@@ -342,7 +357,10 @@
         "cypress edit/pointer 'create with multiselect input'",
         "journeys pointer-multiselect-input"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C17 a new card form on a cardtype with a multi-pointer slot renders the multiselect input and a selection persists"
+      ]
     },
     {
       "id": "C18",
@@ -351,7 +369,10 @@
       "sources": [
         "cypress edit/pointer 'create a structured card including select input'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "C18 a select pointer input offers a choice and stores it (card shows the selection)"
+      ]
     },
     {
       "id": "E1",
@@ -493,7 +514,10 @@
       "sources": [
         "journeys edit-phrase-save-member"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E10 a plain-input card can be edited and saved (the new content shows on the card)"
+      ]
     },
     {
       "id": "E11",
@@ -514,7 +538,10 @@
       "sources": [
         "cypress edit/edit_type 'edit type in board'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E12 a card's type can be changed in the board (the card's stored type becomes Book)"
+      ]
     },
     {
       "id": "E13",
@@ -536,7 +563,10 @@
       "sources": [
         "cypress edit/edit_type 'edit type for rule'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E14 a rule card's type can be changed in the board's Rules tab (the write answers 200)"
+      ]
     },
     {
       "id": "E15",
@@ -559,6 +589,9 @@
         "cypress edit/board/save_changes 'save'"
       ],
       "status": "not_covered",
+      "checks": [
+        "E16 Save (without close) updates the slot and leaves the board open"
+      ],
       "check": "supplemental: Save without close persists the editor and revision while retaining the board"
     },
     {
@@ -568,7 +601,10 @@
       "sources": [
         "cypress edit/board/save_changes 'updates origin slot after name change'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E17 saving a name change updates the origin slot (the board and page show the new name)"
+      ]
     },
     {
       "id": "E18",
@@ -640,7 +676,10 @@
       "sources": [
         "cypress edit/board/rules_tab (2 specs)"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "E22 Edit board: rules tab (no set selected; warns when set 'all' selected)"
+      ]
     },
     {
       "id": "E23",
@@ -703,6 +742,9 @@
         "journeys delete-system-card-admin"
       ],
       "status": "not_covered",
+      "checks": [
+        "R4 deleting the system card *credit returns protected-card 422 and stores no product write"
+      ],
       "check": "supplemental: system-card deletion returns protected-card 422 without product writes"
     },
     {
@@ -740,7 +782,12 @@
       "sources": [
         "journeys denied-member-create"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "checks": [
+        "P2 member's create POST for the restricted type is refused and stores nothing",
+        "P2 member's /new/<Type> denial is not rendered as a create form",
+        "P2 admin positive control: the same form creates for the administrator"
+      ]
     },
     {
       "id": "P3",
