@@ -469,6 +469,19 @@ export class DbLexicon {
     return false;
   }
 
+  /** Synchronous pair-form mirror of lexToId over CACHE-WARM entries only:
+   *  the stored id when the entry is a held POSITIVE, undefined for a held
+   *  negative or a cold key — and it never materializes a miss (the same
+   *  hazard peekId's doc names: a materialized nil would answer the async
+   *  cacheFetch "unknown" for a card the db has). The wave's pair-gate seam
+   *  (render.ts seatNamesByWave): "the entry is known" and "the record is
+   *  held" are different facts — a primed-positive entry whose row nobody
+   *  composed still needs its row asked; a held NEGATIVE keeps the skip. */
+  peekIdByLex(lex: Lex): number | undefined {
+    const id = this.peekStored(cacheKey(lex));
+    return typeof id === "number" ? id : undefined;
+  }
+
   /** db round-trip elimination: whether an id -> lex entry EXISTS for this
    *  id — the String(id) key idToLex's cacheFetch reads, same read order,
    *  without the write-back. The save path's batched side seating uses this
