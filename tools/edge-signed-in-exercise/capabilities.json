@@ -65,11 +65,11 @@
       "sources": [
         "cypress signin_redirect_spec"
       ],
-      "status": "not_covered",
+      "status": "partial",
       "checks": [
         "S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card"
       ],
-      "finding": "Stock signin_redirect_spec.coffee asserts modal denial plus explicit signin-link click; it does not assert an automatic redirect. Independent probe evidence is separate until included in a coherent capability run."
+      "finding": "Stock signin_redirect_spec.coffee asserts modal denial plus explicit signin-link click; it does not assert an automatic redirect. Independent probe evidence is separate until included in a coherent capability run. The declared check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the denial modal renders, its signin link is /*signin and answers 200, and the back leg is witnessed (accountNameShown, offSigninRoute, targetCardRendered). The capability sentence ends at \"the credential form\", which this check does not assert - the evidence carries only a 200 on /*signin, no rendered email/password pair - so the row stays partial. S10's signed-in-route check does assert those fields, but that is the signed-in surface, not this anonymous leg."
     },
     {
       "id": "S6",
@@ -133,7 +133,7 @@
         "card-mod-account set/self/signin.rb file header :3, ok_to_read? :37-39, view :core :119-125",
         "enumeration 2026-10-16 (auth-route fallthrough)"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "S10 a signed-in visit to the sign-in route renders the sign-in form, not a card-creation form"
       ],
@@ -741,11 +741,12 @@
       "sources": [
         "journeys delete-system-card-admin"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "R4 deleting the system card *credit returns protected-card 422 and stores no product write"
       ],
-      "check": "supplemental: system-card deletion returns protected-card 422 without product writes"
+      "check": "supplemental: system-card deletion returns protected-card 422 without product writes",
+      "finding": "The declared name was the prose contract \"supplemental: system-card deletion returns protected-card 422 without product writes\" - a description, not a check name, so it could never match. Bound instead to the name the module registered, which PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): target *credit, status 422, trash 0, contentUnchanged, actionCountUnchanged with actionsBefore and actionsAfter both 0, and the protected-card error surface in the response head. Caveat: the name embeds the system card the fixture found (*credit, the first of *credit/*thanks/*favicon/*logo/*sidebar); on a deck without *credit the module emits a different target and this binding will not match until the row names a stable check."
     },
     {
       "id": "R5",
@@ -767,13 +768,14 @@
       "sources": [
         "journeys denied-member-read"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "P1 admin can read restricted card",
         "P1 member cannot read restricted card",
         "P1 member can read after grant",
         "P1 member loses access after warm revocation"
-      ]
+      ],
+      "finding": "All four declared checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) (admin 200 with the secret visible; member 403 without it, twice over two read cycles; member 200 after the grant; member 403 after the warm revocation), so the row's declared status was stale rather than its contract unmeasured."
     },
     {
       "id": "P2",
@@ -782,12 +784,13 @@
       "sources": [
         "journeys denied-member-create"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "P2 member's create POST for the restricted type is refused and stores nothing",
         "P2 member's /new/<Type> denial is not rendered as a create form",
         "P2 admin positive control: the same form creates for the administrator"
-      ]
+      ],
+      "finding": "All three legs PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the member's create POST refused 403 with storedRow null and nothingStored, the /new/<Type> denial 403 and form-free, and the administrator's positive control 200 with the intended type_id stored."
     },
     {
       "id": "P3",
@@ -796,13 +799,14 @@
       "sources": [
         "journeys denied-member-edit"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "P3 admin update positive control",
         "P3 member can read update-restricted card",
         "P3 member cannot open its editor",
         "P3 member cannot update through browser request"
-      ]
+      ],
+      "finding": "All four declared checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) (admin update 200 and stored; member reads 200, cannot open the editor (403, contentInputs 0), and cannot update through a browser request (403, unchanged)), so the row's declared status was stale."
     },
     {
       "id": "P4",
@@ -811,7 +815,11 @@
       "sources": [
         "cypress rules 'default setting and plus card override'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "P4 default help applies and a plus-card right rule overrides it"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with the negative control this capability needs: both rules stored, the plain card shows the default and not the override, the plus card shows the override and not the default, and a third read shows the plain card back on the default."
     },
     {
       "id": "P5",
@@ -820,7 +828,11 @@
       "sources": [
         "cypress rules (3 specs)"
       ],
-      "status": "not_covered"
+      "status": "partial",
+      "checks": [
+        "P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot"
+      ],
+      "finding": "One of the three rule kinds this capability names is measured: the check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with status 200, showsHeader and the stored structure \"<p>My very own header</p>\", but it labels itself the *right Set leg while its fixture is a +*self+*structure rule. No *type_plus_right Set and no Self Set leg ran, and there is no negative control (a card outside the set) - a rendering claim, not yet a permissions claim. The row stays partial."
     },
     {
       "id": "P6",
@@ -829,7 +841,12 @@
       "sources": [
         "journeys rule-board-admin"
       ],
-      "status": "not_covered"
+      "status": "partial",
+      "checks": [
+        "P6 the board Rules tab offers the set's read and update rules to an administrator",
+        "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it"
+      ],
+      "finding": "Both checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) and the read leg is end-to-end: the tab offers the read and update rules (readPill/updatePill hrefs), the administrator sets the read rule from the tab (ruleWriteStatus 200, stored content [[Anyone]] -> Administrator), and the member's read flips 200 -> 403 with the secret absent. The \"write\" half of \"sets read/write rules\" is only offered, never set: no check writes an update rule and re-reads a member's write verdict, so the row stays partial."
     },
     {
       "id": "F1",
@@ -851,7 +868,11 @@
         "cucumber attach 'remove the upload'",
         "journeys upload-remove-preview-admin"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F2 removing a pending upload from its preview preserves the previously stored image"
+      ],
+      "finding": "Bound recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the check PASSes with removeStatus 200, previewCleared, the served image src identical before and after the cancel, and storedContentUnchanged."
     },
     {
       "id": "F3",
@@ -861,7 +882,11 @@
         "cucumber attach 'Uploading and changing an image'",
         "journeys upload-image-admin"
       ],
-      "status": "not_covered"
+      "status": "partial",
+      "checks": [
+        "F3 an image can be uploaded through the Image create form"
+      ],
+      "finding": "Only the upload half of this capability is bound (PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true). No F3-named check asserts the \"and change\" half; that leg is measured by F4's coded-image replacement and F6's replace leg, which credit those rows, so this row stays partial rather than silently under-claiming."
     },
     {
       "id": "F4",
@@ -870,7 +895,11 @@
       "sources": [
         "cucumber attach 'Changing a coded image'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F4 a coded image can be changed through the image edit form"
+      ],
+      "finding": "Bound to one of two PASSing measurements of this single leg in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass); the other module measures the same leg on the card a person edits it on (recorded PASS, same evidence shape: coded card db_content :decko_logo/carrierwave.svg -> ~49302/<new>.png, served sha256, restore 303). The contract names one assertion per leg, so only one name is bound."
     },
     {
       "id": "F5",
@@ -880,7 +909,11 @@
         "cucumber attach 'Block creating a new empty file'",
         "journeys upload-empty-file-refused"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F5 an empty file is refused (Problems with … is missing, no card created)"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 422, errorShown true, createdAnyway false - refusal plus the absence check that separates it from a silent success."
     },
     {
       "id": "F6",
@@ -889,7 +922,13 @@
       "sources": [
         "cucumber attach (3 form scenarios)"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F6 an image uploaded in the create form is stored and served",
+        "F6 replacing the upload through the edit form stores a different image",
+        "F6 resubmitting the edit form without touching the file keeps the stored image"
+      ],
+      "finding": "All three legs the capability names PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): create form upload stored and served, edit-form replace storing a different image, and resubmit-without-touching preserving the stored image."
     },
     {
       "id": "F7",
@@ -898,7 +937,11 @@
       "sources": [
         "journeys upload-file-member"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F7 a member can upload a file"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true. The member identity rests on the module's actor switch (checks-cover-b.mjs:735-741 signs in as admin, then member, uploads, then restores admin) - the recorded result carries no evidence.actor witness."
     },
     {
       "id": "F8",
@@ -907,7 +950,11 @@
       "sources": [
         "journeys upload-replace-file-admin"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "F8 an uploaded file can be replaced through the File card's own edit form"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): stored identifier changed (~53250/275.txt -> ~53250/277.txt), the download anchor href changed and both downloads answered 200, and the served bytes are the replaced version."
     },
     {
       "id": "N1",
@@ -949,7 +996,11 @@
         "journeys navbox-paging",
         "cypress paging (2 specs)"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "N3 paging to the next page of results shows different results (page 2 is active and lists different cards)"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): page2Href /*search?limit=20&offset=20, the \"2\" control active and \"1\" inactive, and the two pages' texts differ. Known weaker leg: page text is compared, not the row-name sets."
     },
     {
       "id": "N4",
@@ -958,7 +1009,11 @@
       "sources": [
         "journeys search-card-pages"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "N4 a search result page's paging control moves to the next page of rows"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): a real click, clickedRemote true, the offset XHR answering 200 with the main-slot parameters, 20 rows on each page and rowsChanged true. The address bar keeps offset=0 because the page change is remote - the rows swap in place."
     },
     {
       "id": "N5",
@@ -1006,7 +1061,11 @@
       "sources": [
         "cypress layouts 'visit card with simple layout'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "N8 a card with a self layout renders through that layout (Simple Header and Simple Footer around the main)"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): status 200 with header, footer and main all true, and the stored rule \"[[Harness_CB_Simple_Layout]]\" recorded."
     },
     {
       "id": "N9",
@@ -1015,7 +1074,11 @@
       "sources": [
         "cypress layouts 'visit User card with user layout'"
       ],
-      "status": "not_covered"
+      "status": "partial",
+      "checks": [
+        "N9 a User card renders through the user layout"
+      ],
+      "finding": "Bound with an honest weakness from recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass), which PASSes: the type and the +*self+*layout rule are stored correctly (assignedTypeId 2693 = expectedUserTypeId, ruleWriteStatus 303) and the page answers 200, but rendered.markers are all false with order [-1,-1,-1] and an empty layoutOrder, so the user layout's own header/body/footer markers were not located. Until a probe decides whether the fixture markers are wrong or the layout genuinely does not render them, the layout-render leg is unproven and the row stays partial."
     },
     {
       "id": "N10",
@@ -1024,7 +1087,11 @@
       "sources": [
         "journeys read-pages-anonymous (also signed in)"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "N10 a page of nests, links, a file, a nest chain and a nest loop renders every one of them"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): status 200 and the structural shape asserts the link anchor, the file download anchor, all three chain slots in order, and loopTerminated with loopGuardMessage on the loop leg."
     },
     {
       "id": "N11",
@@ -1033,7 +1100,11 @@
       "sources": [
         "cypress reference"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "N11 a reference renders as a link to the referenced card"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): status 200 and linksToTarget names the referenced card's path. Known weaker leg: the negative control (the raw [[...]] syntax no longer appearing unrendered) is not asserted."
     },
     {
       "id": "H1",
@@ -1068,7 +1139,11 @@
         "journeys follow-from-board-admin",
         "cypress engage_tab 'follow button'"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "W1 a card can be followed from the board's Engage tab (link becomes following; *follow rule added)"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the follow link's href names the /update/<card>+*self+Harness_Member+*follow write, that write answers 200, the rule row exists, and the Engage tab then reads following / 1 follower / all followed cards."
     },
     {
       "id": "W2",
@@ -1077,7 +1152,8 @@
       "sources": [
         "journeys unfollow-from-board-member"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "finding": "Left not_covered: no id-prefixed check ran for this row in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) (the run's only unfollow result is W6's mail-link check, a different surface). The board unfollow leg is evidenced outside the harness, so this row needs a probe, not a binding."
     },
     {
       "id": "W3",
@@ -1086,7 +1162,11 @@
       "sources": [
         "cucumber notifications (3 scenarios)"
       ],
-      "status": "not_covered"
+      "status": "covered",
+      "checks": [
+        "W3 a card and a cardtype can be watched (each gets a *follow rule: the card for the member, the cardtype for the administrator)"
+      ],
+      "finding": "PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with the two-actor split the capability is about: the card's follow rule names Harness_Member and the cardtype's names Harness_Admin, each ruleExists true."
     },
     {
       "id": "W4",
@@ -1095,7 +1175,8 @@
       "sources": [
         "cypress engage_tab 'followers', 'all followed cards'"
       ],
-      "status": "not_covered"
+      "status": "not_covered",
+      "finding": "Left not_covered: no id-prefixed check ran for this row in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass). W1's evidence lists the \"1 follower\" and \"all followed cards\" links but never opens either view, so the followers list and the all-followed-cards view are unmeasured and this row needs a probe, not a binding."
     },
     {
       "id": "W5",
