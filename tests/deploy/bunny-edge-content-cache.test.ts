@@ -117,6 +117,53 @@ describe("serveWithEdgeCache — armed", () => {
     expect((await cache.match("https://edge.example/Nope")) === undefined).toBe(true);
   });
 
+  it("stores the negative class: a repeat 404 skips the render (the caching-cold fix)", async () => {
+    // MEASURED on the live edge 2026-10-19: 4/4 identical 404 requests were
+    // CDN-Cache: MISS with a live 127-287 ms render each. This is the L2
+    // half of the fix — independent of the pull zone's CacheErrorResponses
+    // setting, a second request must not re-render.
+    const cache = fakeCache();
+    const { render, state } = makeRender("<h1>Card not found</h1>", 404);
+    const url = "https://edge.example/NoSuchCard";
+    const r1 = await serveWithEdgeCache(new Request(url), ARMED, render, cache);
+    expect(r1.headers.get(EDGE_CACHE_DIAGNOSTIC_HEADER)).toBe("armed; cache=miss+stored; ttl=60");
+    expect(r1.headers.get("Cache-Control")).toBe("public, max-age=0, s-maxage=60");
+    // Read the stored entry BEFORE the hit path normalizes it: this fake
+    // caches the Response by reference, where a real Cache API serializes.
+    const stored = await cache.match(url);
+    expect(stored!.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=60");
+
+    const r2 = await serveWithEdgeCache(new Request(url), ARMED, render, cache);
+    expect(state.calls).toBe(1); // the render did NOT run a second time
+    expect(r2.headers.get(EDGE_CACHE_DIAGNOSTIC_HEADER)).toBe("armed; cache=hit");
+    expect(await r2.text()).toBe("<h1>Card not found</h1>");
+    // the hit is normalized back to the L1 browser contract and the internal
+    // storage stamp is stripped
+    expect(r2.headers.get("Cache-Control")).toBe("public, max-age=0, s-maxage=60");
+    expect(r2.headers.get("X-Decko-Stored-At")).toBeNull();
+  });
+
+  it("the negative class expires on the negative ttl, not the content ttl", async () => {
+    const cache = fakeCache();
+    const { render } = makeRender("<h1>Card not found</h1>", 404);
+    await serveWithEdgeCache(new Request("https://edge.example/Nope"), ARMED, render, cache);
+    const stored = await cache.match("https://edge.example/Nope");
+    // 60 s, not the 300 s content default: a negative is allowed to go stale
+    // for less time than a positive.
+    expect(stored!.headers.get("Cache-Control")).toContain("s-maxage=60");
+    expect(stored!.headers.get("Cache-Control")).not.toContain("s-maxage=300");
+  });
+
+  it("a 500 next to a 404: only the 404 is stored", async () => {
+    const cache = fakeCache();
+    const gone = makeRender("<h1>Card not found</h1>", 404);
+    const broken = makeRender("<pre>render error</pre>", 500);
+    await serveWithEdgeCache(new Request("https://edge.example/Gone"), ARMED, gone.render, cache);
+    await serveWithEdgeCache(new Request("https://edge.example/Broken"), ARMED, broken.render, cache);
+    expect((await cache.match("https://edge.example/Gone")) !== undefined).toBe(true);
+    expect((await cache.match("https://edge.example/Broken")) === undefined).toBe(true);
+  });
+
   it("health/status routes are never stored (classification holds through the cache wrapper)", async () => {
     const cache = fakeCache();
     const status = makeRender("{}", 200);
