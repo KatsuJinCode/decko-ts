@@ -589,13 +589,16 @@ export async function preparePermissionRoles(host: ModEngineHost): Promise<void>
 // ---------------------------------------------------------------------------
 
 /** permissions.rb:1-5 `event :set_read_rule, :store, on: :save, changed:
- *  %i[type_id name] do ... end`. Body: `read_rule_id, read_rule_class =
- *  permission_rule_id_and_class(:read); self.read_rule_id = read_rule_id;
- *  self.read_rule_class = read_rule_class` - mutates the acting card's
- *  read_rule columns on save. DB-write behavior with no TS write-path
- *  surface; the registry carries the declaration, the fn is a no-op. */
+ *  %i[type_id name] do ... end`. BODY PORTED ENGINE-OWNED: every
+ *  create/update save derives the acting card's read-rule pair through
+ *  deriveReadRuleRecord (set-read-rule.ts:165 — permission_rule_id_and_class
+ *  (:read), permissions.rb:55-65/:87-89) at the engine's row-write sites.
+ *  Pinned by tests/card/permissions/set-read-rule-store-event.test.ts
+ *  (the *right rule's id + the "*right" trunk-tag class over a compound
+ *  card; the *all rule's id over a simple card). The mod-side fn stays a
+ *  no-op: the host surface cannot write rows. */
 const setReadRuleFn: ModEventFn = (_card, _host) => {
-  // no-op: see the header's "Event bodies" paragraph.
+  // engine-owned: see the doc block above.
 };
 
 /** permissions.rb:7-9 `event :set_field_read_rules, after: :set_read_rule,
