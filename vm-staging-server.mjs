@@ -135,6 +135,7 @@ import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
+import { recordAsMain } from "./dist/src/card/name/environment.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
@@ -2760,6 +2761,12 @@ async function newCardRenderParams(mark, query, routeType) {
 }
 
 async function renderCardPage(cardName, renderEngine = render, requestedView, renderParams, pageOpts = {}) {
+  // rest.rb:53 load_card's last statement is record_as_main (rest.rb:63-66)
+  // — `Card::Env.main_name = params[:main] || card&.name || ""`. This host's
+  // load_card+show is this one function, so the record happens here, once
+  // per card load, ahead of every render branch below. `_main` resolves
+  // through it (cardname contextual.rb #absolutize_contextual_parts).
+  recordAsMain(pageOpts.mainParam, cardName);
   try {
     if (pageOpts.bare) {
       // show_without_page_layout: view ||= home_view || default_page_view.
@@ -3925,6 +3932,11 @@ const server = http.createServer(async (req, res) => {
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
     slotParams,
+    // rest.rb:64-66 record_as_main reads params[:main]; carried here so
+    // renderCardPage (this host's load_card) can set Card::Env.main_name.
+    // get() already answers null for an ABSENT param, so `?main=` (the empty
+    // string, truthy in Ruby) and no param at all stay distinguishable.
+    mainParam: url.searchParams.get("main") ?? undefined,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
