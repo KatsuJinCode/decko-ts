@@ -61,7 +61,9 @@ import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
 import {
   decodeName,
   decodeViewSegment,
+  deprecatedAssetStubResponse,
   historyViewParams,
+  isDeprecatedAssetRoute,
   jsonViewSearchParams,
   mapRenderError,
   queryViewFromUrl,
@@ -478,7 +480,11 @@ type ParsedRoute =
    *  single-segment route has always answered (not a missing route). */
   | { readonly kind: "empty-name" }
   /** Nothing in the grammar matches: the 404. */
-  | { readonly kind: "no-route" };
+  | { readonly kind: "no-route" }
+  /** engine_routes.rb:14-16 - the deprecated asset prefixes route to
+   *  card#asset, whose answer is a fixed installation-error 404
+   *  (rest.rb:22-27), not a card render. */
+  | { readonly kind: "asset-stub" };
 
 /** The read-route grammar, in Ruby's own order (engine_routes.rb:19, 24, 51).
  *
@@ -505,6 +511,12 @@ type ParsedRoute =
 function parseCardRoute(pathname: string): ParsedRoute {
   const segments = pathname.replace(/^\/+/, "").split("/");
   if (segments.some((segment) => segment === "")) return { kind: "no-route" };
+
+  // engine_routes.rb:14-16 - the deprecated asset routes, ahead of the
+  // :mark/:view arm that would otherwise parse /assets/<mark> as the card
+  // "assets" in view <mark>. The glob needs a segment after the prefix;
+  // /assets alone stays the single-segment card arm below.
+  if (isDeprecatedAssetRoute(segments)) return { kind: "asset-stub" };
 
   if (segments.length === 1) {
     const name = decodeName(segments[0]!);
@@ -972,6 +984,9 @@ export default {
     // never falls through to params. Root "/" is card#read too
     // (engine_routes.rb:7) and gets the same treatment above.
     const route = parseCardRoute(pathname);
+    if (route.kind === "asset-stub") {
+      return deprecatedAssetStubResponse();
+    }
     if (route.kind === "no-route") {
       return errorPage(404, "Not found", "No route for " + pathname + " — try /<card-name> or /<card-name>.json");
     }

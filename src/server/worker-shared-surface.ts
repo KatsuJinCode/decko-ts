@@ -342,3 +342,31 @@ export function publicDbContent(record: { name?: DeckoName; dbContent?: string }
   if (record.name?.rightName?.key === "*password") return "encrypted";
   return record.dbContent ?? "";
 }
+
+/**
+ * The deprecated asset-route prefixes (engine_routes.rb:14-16):
+ * `%w[assets javascripts jasmine].each { |prefix| get "#{prefix}/*mark" => "card#asset" }`.
+ * The glob needs at least one segment after the prefix — `/assets` alone is
+ * NOT this route (it falls to the standard /:mark arm, the card "assets").
+ *
+ * card#asset (decko-0.20.0/lib/card_controller/rest.rb:22-27, @deprecated)
+ * is a fixed installation-error answer, not a card render:
+ *   body = "Decko installation error: missing public directory symlinks"
+ *   Rails.logger.info "#{body}.\n  >>> Try `rake card:mod:symlink`"
+ *   render body: body, status: 404
+ * — the logger line is not HTTP-visible; the response is 404 with exactly
+ * that body at Rails' default `render body:` content type
+ * (text/html; charset=utf-8).
+ */
+export const DEPRECATED_ASSET_ROUTE_PREFIXES = ["assets", "javascripts", "jasmine"] as const;
+
+export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {
+  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);
+}
+
+export function deprecatedAssetStubResponse(): Response {
+  return new Response("Decko installation error: missing public directory symlinks", {
+    status: 404,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
