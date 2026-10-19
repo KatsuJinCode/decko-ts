@@ -73,8 +73,10 @@ import {
   publicDbContent,
   queryViewFromUrl,
   decodeViewSegment,
+  previousMarkRedirect,
 } from "./src/server/worker-shared-surface.js";
 import {
+  previousLocation,
   readVisitorSession,
   saveLocation,
   shouldSaveLocation,
@@ -440,6 +442,14 @@ export default {
     }
 
     const parsed = parsePath(url.pathname);
+
+    // card_controller/mark.rb:12-14 — the READ-path *previous hard redirect
+    // (the shared twin-surface arm; the write path resolves the same mark in
+    // write-routes' successTargetPath).
+    if (!("kind" in parsed)) {
+      const redirect = previousMarkRedirect(request, url, parsed.name);
+      if (redirect !== null) return redirect;
+    }
 
     if ("kind" in parsed) {
       if (parsed.kind === "notFound") {

@@ -16,6 +16,10 @@ import type { SQLDatabaseDriver } from "./driver.js";
 import { DeckoName } from "../card/name.js";
 import type { FetchEngine } from "../card/fetch.js";
 import type { HistoryRenderParams } from "../card/history/render-seam.js";
+import {
+  previousLocation,
+  readVisitorSession,
+} from "../card/session/visitor-session.js";
 
 // ---------------------------------------------------------------------------
 // Error -> HTTP status mapping (the Card::Error status_code table)
@@ -341,4 +345,46 @@ export async function installDeckNameEnvironment(
 export function publicDbContent(record: { name?: DeckoName; dbContent?: string }): string {
   if (record.name?.rightName?.key === "*password") return "encrypted";
   return record.dbContent ?? "";
+}
+
+
+// ---------------------------------------------------------------------------
+// The *previous read-path mark (card_controller/mark.rb:12-14)
+// ---------------------------------------------------------------------------
+
+/** card_controller/mark.rb:12-14 interpret_mark: the "*previous" mark
+ *  hard_redirects to Card::Env.previous_location (location_history.rb:29-31
+ *  = the visitor session's last history entry, seeded with card_path("")
+ *  so it is never empty) — BEFORE any view resolution, on every route whose
+ *  :mark carries it. The WRITE-path success-mark resolution lives in
+ *  write-routes (successTargetPath); this is the READ-path arm. Both Worker
+ *  entries call this at their mark-resolution point so the twins cannot
+ *  drift.
+ *
+ *  hard_redirect (response.rb:40-47): card_url makes the URL absolute (the
+ *  history already stores absolute original_url shapes; the seeded "/" entry
+ *  takes the request's own origin). Ajax answers JSON {redirect} (200) so
+ *  the client resets its own location; otherwise a 302. */
+export function previousMarkRedirect(
+  request: Request,
+  url: URL,
+  mark: string | undefined,
+): Response | null {
+  if (mark !== "*previous") return null;
+  const visit = readVisitorSession(request.headers.get("Cookie") ?? undefined);
+  const target = previousLocation(visit);
+  const absolute = /^https?:\/\//i.test(target) ? target : `${url.origin}${target}`;
+  if (/XMLHttpRequest/i.test(request.headers.get("X-Requested-With") ?? "")) {
+    return new Response(JSON.stringify({ redirect: absolute }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+  return new Response(null, {
+    status: 302,
+    headers: { Location: absolute, "Cache-Control": "no-store" },
+  });
 }
