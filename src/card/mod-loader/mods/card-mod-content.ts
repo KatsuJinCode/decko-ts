@@ -92,11 +92,12 @@
 // - set/right/default.rb methods (quick_form_opts/quick_editor/
 //   visible_cardtype_groups): rails (card_form, text_field, All::CardtypeGroups)
 // - set/right/structure.rb methods (item_names/raw_feed_items/visible_
-//   cardtype_groups + 3 events: update_structurees_references/reset_
-//   cache_to_use_new_structure/update_structurees_type + update_
-//   structurees_references?/structuree_names/update_structurees/
-//   structuree_query): events (integrate/finalize phases, Auth.as_bot,
-//   Card::Cache.reset_*, structurees walk) + rails (All::CardtypeGroups)
+//   cardtype_groups + structuree_names): rails (All::CardtypeGroups);
+//   structuree_names has no caller (the :return => :name reader). The
+//   three EVENTS are PORTED (update_structurees_references /
+//   reset_cache_to_use_new_structure / update_structurees_type over the
+//   shared structuree_query CQL walk; update_structurees_references?
+//   and the assigns_type? proc-method are the predicate table)
 // - 7 lib/card/content/chunk/*.rb files (EscapedLiteral/Link/Nest/
 //   QueryReference/Reference/Uri/ViewStub): content-parser (the
 //   engine's nest-syntax.ts implements these chunk classes)
@@ -115,6 +116,13 @@ import { superView, viewWrapInherited } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 import type { ModEventContext } from "../mod-event-dispatch.js";
 import type { FetchEngine } from "../../fetch.js";
+import { DeckoName } from "../../name.js";
+import { executeQuery, parseOptionsWithLexicon } from "../../../cql/execute.js";
+import { CqlBadQuery } from "../../../cql/ast.js";
+import { refreshReferencesOut } from "../../actions/refresh-references-out.js";
+import { composeCardRecord } from "../../fetch/card-record.js";
+import type { CardsRow } from "../../../server/schema.js";
+import { findPattern } from "../../set-patterns/registry.js";
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -154,6 +162,181 @@ export async function resetCacheToUseNewStructureEvent(
   if (fetch === undefined) return; // no engine cache pair composed — nothing to reset
   fetch.cardCache.reset();
   fetch.lexiconCache.reset();
+}
+
+// ---------------------------------------------------------------------------
+// structuree cascade (set/right/structure.rb) — shared machinery + the two
+// event bodies. The `Auth.as_bot` wrapper of both Ruby bodies needs no port
+// surface: it widens authority for the walk's reads/writes, and neither
+// refreshReferencesOut nor the bulk UPDATE carries a permission check (the
+// direct write IS the bot-authority shape).
+// ---------------------------------------------------------------------------
+
+/**
+ * structuree_query (structure.rb:71-75):
+ *
+ *     def structuree_query args={}
+ *       set_card = trunk
+ *       return unless set_card.type_id == SetID
+ *       set_card.fetch_query args
+ *     end
+ *
+ * `trunk` is trunk_name (cardname-0.20.0 parts.rb:101-103 — `simple? ? self
+ * : left_name`; the port's DeckoName.trunkName is the same split), so the
+ * set card of "Book+*type+*structure" is "Book+*type". A card whose trunk is
+ * not a Set-typed card yields NO query (Ruby returns nil; the events' bodies
+ * `return unless (query = ...)`).
+ *
+ * fetch_query (card-mod-search-0.20.0 set/abstract/cql_search.rb:58-64) runs
+ * the set card's own search; cql_content (:6-11) parses the card's content
+ * as JSON CQL — the oracle decks' set cards carry exactly that content
+ * ("{}" for *all, {"compound":true} for *all+*, {"right":{"complete":"*"}}
+ * for *rstar). parse_json_cql (:39-45) raises Error::BadQuery for an EMPTY
+ * content ("can't run search with empty content") and for unparseable JSON
+ * ("Invalid JSON search query: ...") — both propagate: the callers are
+ * :integrate-stage events, where Ruby's rescuing_if_integration
+ * (card.rb:163-171) contains the failure to this event (the dispatcher's
+ * report.failed), and a :finalize-stage caller lets it fail the save.
+ *
+ * standardized_query_args (cql_search.rb:68-71): the card's own name is the
+ * query CONTEXT (`args[:context] ||= name`), so relative references in the
+ * statement resolve against the set card.
+ *
+ * The caller carries `extraArgs` merged OVER the parsed content (cql_hash.
+ * merge args, :69) — `return: "id"` for update_structurees' id walk.
+ * `query.run` (:43-45) executes; with no `return` the result is the cards'
+ * own rows.
+ */
+async function structureeQueryRows(
+  ctx: ModEventContext,
+  ruleCardName: string,
+  extraArgs: Record<string, unknown>,
+): Promise<CardsRow[] | undefined> {
+  const fetch: FetchEngine | undefined = ctx.fetch;
+  if (fetch === undefined) return undefined; // no query engine composed — no query
+  const setCardName = DeckoName.parse(ruleCardName).trunkName;
+  const setTypeId = (
+    await ctx.driver
+      .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", ["set"])
+      .catch(() => undefined)
+  )?.rows[0]?.id;
+  if (setTypeId === undefined) return undefined;
+  // `trunk` is Card#trunk (name/all/parts.rb:25-27 — `simple? ? self :
+  // left(*)`, Card.fetch(name.left)): the fetch goes through the Lexicon
+  // (lexicon.rb#id), which is how compound set cards ("Widget+*right",
+  // stored with NULL name/key + left_id/right_id) resolve. A missing trunk
+  // row answers no query (Ruby: Card.fetch -> nil; the designed `return
+  // unless` arm — a saved rule's trunk always exists on both sides).
+  const setCardId = await ctx.lexicon.id(setCardName);
+  if (setCardId === undefined) return undefined;
+  const setRow = (
+    await ctx.driver.query<CardsRow>("SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1", [
+      setCardId,
+    ])
+  ).rows[0];
+  if (setRow === undefined || setRow.type_id !== setTypeId) return undefined;
+  // cql_content (cql_search.rb:6-11) + parse_json_cql (:39-45).
+  const raw = setRow.db_content ?? "";
+  if (raw.length === 0) throw new CqlBadQuery("can't run search with empty content");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new CqlBadQuery(`Invalid JSON search query: ${raw}`);
+  }
+  // fetch_query (:58-64) + standardized_query_args (:68-71): the parsed
+  // content merged with the call's args, the set card's own name as context.
+  const statement: Record<string, unknown> = {
+    ...(parsed as Record<string, unknown>),
+    ...extraArgs,
+    context: setCardName.s,
+  };
+  // Ruby resolves every CQL name value through Card::Lexicon (query/value.rb
+  // id_from_val); parseOptionsWithLexicon (cql/execute.ts:101) wires the same
+  // pair the render path's searches wire — the sync warm mirror + the async
+  // db fallback.
+  const result = await executeQuery(ctx.driver, statement, {
+    parse: parseOptionsWithLexicon(fetch.lexicon),
+  });
+  return "rows" in result ? (result.rows as CardsRow[]) : [];
+}
+
+/**
+ * event :update_structurees_references (structure.rb:25-32, :integrate,
+ * when: :update_structurees_references? — the predicate is
+ * contentModEventPredicates' "update_structurees_references?", ported at the
+ * bottom of this file):
+ *
+ *     return unless (query = structuree_query)
+ *     Auth.as_bot do
+ *       query.run.each(&:update_references_out)
+ *     end
+ *
+ * `query.run` returns the structurees as fresh card objects; each runs
+ * update_references_out (card-1.110.0 lib/card/reference/all.rb:47-50 =
+ * delete_references_out + create_references_out) — the port's
+ * refreshReferencesOut (actions/refresh-references-out.ts:78, the same pair
+ * the built-in refresh_references_out takes). The fresh-card read is the
+ * port's composeCardRecord over the executed row: name composition through
+ * the Lexicon is the same walk Ruby's fresh Card#name does
+ * (fetch/card-record.ts name map).
+ */
+export async function updateStructureesReferencesEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rows = await structureeQueryRows(ctx, card.name, {});
+  if (rows === undefined) return;
+  const fetch: FetchEngine | undefined = ctx.fetch;
+  if (fetch === undefined) return;
+  for (const row of rows) {
+    const record = await composeCardRecord(row, fetch.lexicon);
+    if (record.id === undefined || record.name === undefined) continue;
+    await refreshReferencesOut(ctx.driver, ctx.lexicon, record.id, record.name, record.dbContent);
+  }
+}
+
+/**
+ * event :update_structurees_type (structure.rb:44-47, :finalize,
+ * changed: :type_id, when: proc { |c| c.assigns_type? } — the proc's card
+ * method is ported as the "assigns_type?" predicate below) +
+ * update_structurees (structure.rb:57-68):
+ *
+ *     return unless (query = structuree_query(return: :id))
+ *     Auth.as_bot do
+ *       query.run.each_slice(100) do |id_batch|
+ *         Card.where(id: id_batch).update_all args
+ *       end
+ *     end
+ *
+ * `args` is { type_id: type_id } — the SAVING RULE CARD's new type: for the
+ * assigns_type patterns (right / type plus right) the template's type IS the
+ * members' type (Set::Pattern assigns_type, 07_right.rb:3, 08_type_plus_right
+ * .rb:5). update_all writes the column DIRECTLY — no validations, no
+ * callbacks, no updated_at bump — so the port's UPDATE is the same direct
+ * write, in slices of 100 ids.
+ */
+export async function updateStructureesTypeEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rows = await structureeQueryRows(ctx, card.name, { return: "id" });
+  if (rows === undefined) return;
+  const ids = rows
+    .map((row) => row.id)
+    .filter((id): id is number => typeof id === "number");
+  // each_slice(100) over an empty list runs no update_all — the loop below
+  // skips the same way.
+  for (let slice = 0; slice < ids.length; slice += 100) {
+    const batch = ids.slice(slice, slice + 100);
+    const placeholders = batch.map(() => "?").join(", ");
+    await ctx.driver.query(
+      `UPDATE cards SET type_id = ? WHERE id IN (${placeholders})`,
+      [card.typeId ?? null, ...batch],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -379,27 +562,27 @@ const setModules: ModSetModuleFile[] = [
     // ported), format :html do block: :one_line_content (port - the
     // type : raw template), visible_cardtype_groups (not ported).
     //
-    // Events — three STUBS with named
-    // reasons (structure.rb:25-46):
+    // Events (structure.rb:25-47) — all three bodies ported:
     // - update_structurees_references (:integrate, when:
     //   update_structurees_references?) re-runs update_references_out on
-    //   every structuree the set query selects (Auth.as_bot); the
-    //   engine's reference refresh runs for the SAVED card only
-    //   (actions/refresh-references-out.ts) — the structuree cascade has
-    //   no engine surface.
+    //   every structuree the set query selects (Auth.as_bot) —
+    //   updateStructureesReferencesEvent over refreshReferencesOut.
     // - reset_cache_to_use_new_structure (before:
-    //   update_structurees_references) resets Card::Cache shared+temp;
-    //   the port has no shared card cache (reads hit the DB per call) —
-    //   architecture-moot.
+    //   update_structurees_references) resets Card::Cache shared+temp —
+    //   resetCacheToUseNewStructureEvent (the fetch engine's Card + Lexicon
+    //   cache pair).
     // - update_structurees_type (:finalize, changed: :type_id, when the
-    //   proc assigns_type?) cascades a type change to structurees via
-    //   update_structurees — same missing cascade surface.
+    //   proc assigns_type?) cascades the rule card's new type to the
+    //   structurees' rows in id slices of 100 (update_all, direct write) —
+    //   updateStructureesTypeEvent; the proc's card method is the
+    //   "assigns_type?" predicate (set/all/templating.rb:30-38).
     setPath: "right/structure",
     events: [
       event({
         event: "update_structurees_references",
         at: "integrate",
         when: "update_structurees_references?",
+        fn: updateStructureesReferencesEvent,
       }),
       // Ruby: `event :reset_cache_to_use_new_structure, before:
       // :update_structurees_references` — no stage of its own; hangs on
@@ -414,7 +597,17 @@ const setModules: ModSetModuleFile[] = [
         at: "integrate",
         fn: resetCacheToUseNewStructureEvent,
       }),
-      event({ event: "update_structurees_type", at: "finalize", changed: ["type_id"] }),
+      event({
+        event: "update_structurees_type",
+        at: "finalize",
+        changed: ["type_id"],
+        // Ruby's when: is a PROC (`proc { |c| c.assigns_type? }`,
+        // structure.rb:45), not a symbol — the proc calls the card method
+        // assigns_type? (set/all/templating.rb:30-38), so the predicate
+        // carries that method's name.
+        when: "assigns_type?",
+        fn: updateStructureesTypeEvent,
+      }),
     ],
     formats: {
       html: {
@@ -483,6 +676,36 @@ const setModules: ModSetModuleFile[] = [
 export const contentModEventPredicates = {
   "update_structurees_references?": (card: ModEventCard): boolean =>
     (card.changedFields ?? []).includes("db_content") || card.action === "delete",
+
+  /** assigns_type? (set/all/templating.rb:30-38) — the card method the
+   *  update_structurees_type when-proc calls (structure.rb:45):
+   *
+   *      pattern_code = Card.quick_fetch(name.trunk_name.tag_name)&.codename
+   *      return false unless pattern_code && (set_class = Set::Pattern.find pattern_code)
+   *      set_class.assigns_type
+   *
+   *  The rule card's trunk's TAG ("Book+*type+*structure" -> "*type") names
+   *  the set pattern card; its codename is the pattern code; the pattern's
+   *  assigns_type option decides (07_right.rb:3 true, 08_type_plus_right.rb
+   *  :5 true, every other core pattern false — the Ruby comment's own
+   *  example: X+*type+*structure governs content, not type). quick_fetch
+   *  answers a LIVE card, so the lookup filters trash. */
+  "assigns_type?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    if (ctx === undefined) return false;
+    // name.trunk_name.tag_name (templating.rb:33): the TAG of the TRUNK —
+    // "Book+*type+*structure" -> trunk "Book+*type" -> tag "*type". The
+    // trunk itself ("book+*type") carries no codename; the star card does.
+    const tagKey = DeckoName.parse(card.name).trunkName.tagKey;
+    const tagRow = (
+      await ctx.driver.query<{ codename: string | null }>(
+        "SELECT codename FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        [tagKey],
+      ).catch(() => undefined)
+    )?.rows[0];
+    const patternCode = tagRow?.codename;
+    if (patternCode === null || patternCode === undefined || patternCode === "") return false;
+    return findPattern(patternCode)?.assignsType === true;
+  },
 } as const;
 
 const cardModContent: DeckoModManifest = {
