@@ -224,7 +224,7 @@ import {
 // host seam — a full-page read of a known card stores its own URL, and the
 // write path's `*previous` / configure_successful_deletion redirects resolve
 // to the last entry.
-import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
+import { emptyVisitorSession, pageViewCookie, visitorSessionCookie, previousLocation, readVisitorSession } from "./dist/src/card/session/visitor-session.js";
 import { withVisitorEnabledRoles, permissionViewerKey } from "./dist/src/card/session/enabled-roles.js";
 // The recaptcha seat's host-config source: reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
@@ -4342,6 +4342,26 @@ const server = http.createServer(async (req, res) => {
       // answer is the 422.
       const requestedView = url.searchParams.get("view");
       const shadowViewLane = process.env.DECKO_SHADOW_VIEW_LANE === "1";
+      // mark.rb:12-14 interpret_mark("*previous"): the READ-path *previous
+      // mark hard-redirects to Card::Env.previous_location — the visitor
+      // session's location history's last entry (the same seam the write
+      // path's success[mark]=*previous resolves). Ruby's hard_redirect
+      // (response.rb:39-50): absolute via card_url, 302 for a normal
+      // request, the {redirect: url} JSON for ajax. No card fetch happens.
+      if (name === "*previous" || name === ":previous") {
+        const previousVisit = readVisitorSession(req.headers.cookie);
+        const previousTarget = new URL(previousLocation(previousVisit), `http://${req.headers.host ?? "127.0.0.1"}`).toString();
+        if (req.headers["x-requested-with"] === "XMLHttpRequest") {
+          const xhrBody = JSON.stringify({ redirect: previousTarget });
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+          res.end(xhrBody);
+        } else {
+          res.writeHead(302, { Location: previousTarget, "Cache-Control": "no-store" });
+          res.end();
+        }
+        console.log(`[vm-staging] ${req.method} ${pathname} -> 302 *previous (${Date.now() - startedAt}ms)`);
+        return;
+      }
       // engine_routes.rb:41-43: the (card)/read and (card)/asset action
       // routes outrank /:mark for these names — /read is card#read of the
       // IMPLICIT mark (the home-mark page) and /asset is card#asset (the

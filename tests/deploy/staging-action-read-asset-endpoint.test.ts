@@ -148,6 +148,27 @@ describe("the GET action routes' read and asset halves (A17) through the booted 
     }
   }, 30_000);
 
+  it("the READ-path *previous mark 302s to the visitor's last location (B8)", async () => {
+    // A page read of a KNOWN card pushes the request URL onto the visitor's
+    // location history (the decko_visit cookie the response sets); the
+    // *previous mark then resolves that entry (mark.rb:12-14).
+    // the history push gates on an HTML Accept (save_location?'s html leg)
+    const first = await fetch(`${booted!.baseUrl}/Welcome`, { headers: { accept: "text/html" } });
+    expect(first.status).toBe(200);
+    const setCookies = first.headers.getSetCookie();
+    const visitPair = setCookies
+      .map((cookie) => cookie.split(";")[0]!)
+      .find((pair) => pair.trim().startsWith("decko_visit="));
+    expect(visitPair, "the page read sets the decko_visit cookie").toBeDefined();
+
+    const res = await fetch(`${booted!.baseUrl}/*previous`, {
+      headers: { cookie: visitPair! },
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toContain("/Welcome");
+  }, 30_000);
+
   it("the create/delete halves stay unadmitted: plain GETs mint and trash nothing", async () => {
     const createRes = await fetch(`${booted!.baseUrl}/create/Minted17`);
     expect(createRes.status).not.toBe(303);
