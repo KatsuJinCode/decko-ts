@@ -23,7 +23,7 @@ mkdirSync(out, { recursive: true });
 const fixtureDir = path.resolve("reference-harness/fixtures/synthetic-v1");
 const T = 30_000;
 const modDir = (r) => path.join(r, "reference-harness", "oracle", "app", "public");
-const engineManifest = path.resolve("C:/localProjects/decko-pageonly-ranks101-110-tip/reference-harness/browser/engines/ts.json");
+const engineManifest = path.join(repo, "reference-harness", "browser", "engines", "ts.json");
 let manifest = engineManifest;
 {
   const engineRepo = path.resolve(path.dirname(engineManifest), "..", "..", "..");

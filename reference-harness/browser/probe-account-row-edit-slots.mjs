@@ -20,8 +20,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
+import { fileURLToPath } from "node:url";
 
-const repo = "C:/localProjects/decko-ts-release-lead";
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const engineManifest = path.join(repo, "reference-harness/browser/engines/ts.json");
 const fixtureDir = path.join(repo, "reference-harness/fixtures/synthetic-v1");
 const out = path.join(repo, ".runtime/exhaustive/2026-10-18-lane6-act-077-row-edit");
