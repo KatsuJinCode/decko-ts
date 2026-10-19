@@ -238,6 +238,24 @@ function fileResponse(request: Request, parsed: ParsedFileRequest, card: Resolve
   // The files routes serve explicit files, so the 1-year Expires header
   // ships.
   headers.set("Expires", httpDateOneYearOut());
+  // Cache-Control beside it, for the SHARED caches. `Expires` is the
+  // HTTP/1.0-era form: a browser honors it, but a CDN or shared cache is not
+  // obliged to, and this deck's files — the compiled stylesheet above all —
+  // are exactly the traffic that goes through one. Measured before this
+  // header existed (tools/perf/asset-bytes/measure-asset-http-delivery.mjs,
+  // baseline run): the /files responses carried `Expires` and NO
+  // Cache-Control at all, so a shared cache had no stated policy to apply.
+  //
+  // max-age=86400, deliberately NOT `immutable`. The base spelling
+  // (<action id><ext>) is content-addressed and would take it, but a VARIANT
+  // spelling falls back to the bare file when no rendition exists
+  // (src/card/attachments/attachment-store.ts:198-211), so the same URL can
+  // start serving different bytes once a rendition is written. `immutable`
+  // tells caches never to re-check, and that URL would then serve a stale
+  // image indefinitely. A day plus revalidation is the honest policy; making
+  // that revalidation cheap is the named follow-up in
+  // tools/perf/asset-bytes/README-what-this-measures.md.
+  headers.set("Cache-Control", "public, max-age=86400");
   // Inline, except `attachment` when the request's format is literally
   // "file". The filename is the card's key plus the extension.
   headers.set(
