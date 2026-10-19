@@ -83,6 +83,15 @@ function gzipInlineWasmBlobsPlugin() {
 const here = resolve(process.cwd());
 const outArg = process.argv.indexOf("--out-dir");
 const outputDirectory = outArg < 0 ? undefined : process.argv[outArg + 1];
+// --metafile <dir> also writes esbuild metafile: the per-module byte
+// attribution of what actually lands in the script. The emitted bundle is
+// byte-for-byte unchanged; this only answers "what dominates the bytes"
+// from the real build instead of from a re-implementation of the build
+// options. Byte totals still come from assertBunnyScriptBudget below, not
+// from the metafile. See tools/perf/measure-bunny-edge-engine-boot-cost.mjs
+// for what those bytes cost.
+const metafileArg = process.argv.indexOf("--metafile");
+const metafileDirectory = metafileArg < 0 ? undefined : process.argv[metafileArg + 1];
 if (outArg >= 0 && (!outputDirectory || outputDirectory.startsWith("--") || /^[t]:/i.test(outputDirectory) || /[\\/]Downloads(?:[\\/]|$)/i.test(outputDirectory))) {
   throw new Error("--out-dir requires an allowed output directory");
 }
@@ -191,4 +200,10 @@ for (const target of TARGETS) {
   writeFileSync(out, code);
   writeFileSync(payload, JSON.stringify({ Code: code }));
   console.log(`payload written: ${payload} (${code.length} chars)`);
+  if (metafileDirectory !== undefined) {
+    mkdirSync(metafileDirectory, { recursive: true });
+    const metaPath = resolve(metafileDirectory, basename(target.out) + ".meta.json");
+    writeFileSync(metaPath, JSON.stringify(built.metafile, null, 1));
+    console.log(`metafile written: ${metaPath}`);
+  }
 }
