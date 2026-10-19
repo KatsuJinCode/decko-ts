@@ -40,10 +40,7 @@
 import { DeckoName } from "../name.js";
 import { setModuleShortname } from "../mod-loader/mod-registrar.js";
 import { safeSetKeys } from "../render/set-keys.js";
-import { safeKeyToModuleShortname } from "../render/set-keys-to-modules.js";
-import { anchorCodenames } from "../render/set-keys-to-modules.js";
-import { moduleShortnameForCodenames } from "../render/set-keys-to-modules.js";
-import { rubySelfToken } from "../render/set-keys-to-modules.js";
+import { setModuleShortnameForToken } from "./set-module-membership.js";
 
 /** The set-module shortnames whose Ruby file declares `virtual?`. Insertion
  *  order is load order; membership is what the predicate reads, so a later
@@ -115,20 +112,9 @@ export function isVirtualSetCardName(
   if (setKeys.trim() === "") return false;
   for (const token of setKeys.split(/\s+/)) {
     if (token === "") continue;
-    // Ruby's module lookup, exactly (set/pattern/base.rb:21-29 module_key +
-    // :39-43 anchor_codenames `anchor_parts.map { |part|
-    // part.cardname&.codename || break }`, and
-    // lib/card/name/name_variants.rb:37-39 `def codename; Codename[card_id]
-    // end` — a NAME part resolves to a codename ONLY when that exact string
-    // is a LEXICON KEY):
-    //
-    //  - SELF: rewritten to the anchor's codename, or DROPPED when the anchor
-    //    card has none (rubySelfToken -> null: no self module applies);
-    //  - ANCHORED: every anchor fragment must resolve through the lexicon
-    //    (an `X`-marked fragment is looked up with the star: `RIGHT-Xfollower`
-    //    -> `*follower` -> the `*followers` card -> codename `followers` ->
-    //    `Right::Followers`). A fragment that does NOT resolve makes Ruby's
-    //    `|| break` return nil and the pattern builds NO module key at all.
+    // Ruby's module lookup, exactly: setModuleShortnameForToken is the
+    // shared token->module resolution (base.rb:21-29 module_key over :40-44
+    // anchor_codenames, with the `|| break` nil arm).
     //
     // That nil is the arm that separates the STARRED address from the
     // UNSTARRED one: `*follow`'s lexicon key is `*follow`, so
@@ -144,16 +130,8 @@ export function isVirtualSetCardName(
     // UNLOADED name environment (mod-registrar.ts DIVERGENCE 1); by render
     // time the environment is installed, so an unresolved anchor really does
     // mean "no module" here.
-    const selfToken = rubySelfToken(token);
-    if (selfToken === null) continue;
-    if (selfToken !== token && selfToken.startsWith("SELF-")) {
-      if (virtualSetModuleShortnames.has(safeKeyToModuleShortname(selfToken))) return true;
-      continue;
-    }
-    const resolved = anchorCodenames(selfToken ?? token);
-    if (resolved === undefined || resolved === null) continue;
-    const code = (selfToken ?? token).slice(0, (selfToken ?? token).indexOf("-")).toLowerCase();
-    if (virtualSetModuleShortnames.has(moduleShortnameForCodenames(code, resolved.codenames))) {
+    const shortname = setModuleShortnameForToken(token);
+    if (shortname !== null && virtualSetModuleShortnames.has(shortname)) {
       return true;
     }
   }

@@ -422,6 +422,29 @@ export interface ModEventRegistration {
   readonly fn: ModEventFn;
 }
 
+/** One set-module `def content` as a manifest declares it.
+ *
+ *  A bare ContentFn is the shorthand: the method body, nothing else to say
+ *  about it. The object form is for the set modules whose `def content` needs
+ *  a fact Ruby reads off the file itself — the only one today being
+ *  `assign_type`:
+ *
+ *  `right/followers.rb` declares NO `assign_type` of its own; it reaches
+ *  `assign_type :list` through `include_set Abstract::List` (followers.rb:5)
+ *  and declares `view :core, cache: :never do super() end` (:8-10) — so the
+ *  card RETAINS its list type and the Abstract::List core runs with the
+ *  overridden raw as its item source. That is `supersedesType: false` (the
+ *  flag content-overrides.ts#RegisteredContentOverride carries; default true).
+ *  Without it the override bytes would REPLACE the pointer-list core instead
+ *  of feeding it, and the rendered shape would lose the list wrapper Ruby
+ *  emits. */
+export type ModContentOverride =
+  | ContentFn
+  | {
+      readonly fn: ContentFn;
+      readonly supersedesType?: boolean;
+    };
+
 export interface ModSetModuleFile {
   /** path under set/ minus the .rb extension, e.g. "all/help" or
    *  "right/comment". The first segment names the pattern; the rest is the
@@ -441,8 +464,40 @@ export interface ModSetModuleFile {
   /** the file's set-module `def content` overrides (right/when_created.rb:7,
    *  self/now.rb:1 - ContentFn = the method body). Registered in order on
    *  the deck's ContentOverrideRegistry with setPath + modName injected;
-   *  last registration wins per set path (Ruby's method redefinition). */
-  readonly contentOverrides?: readonly ContentFn[];
+   *  last registration wins per set path (Ruby's method redefinition).
+   *
+   *  A bare ContentFn is the shorthand for an override whose set module
+   *  neither carries an `assign_type` of its own nor answers a separate
+   *  supersedesType question; the object form spells out the per-override
+   *  flags. Both forms register identically apart from those flags. */
+  readonly contentOverrides?: readonly ModContentOverride[];
+
+  /** How this set module decides that a card is one of ITS cards.
+   *
+   *  Undefined (the default, and every set module except the follow family)
+   *  means the shared pure-NAME predicate, cardBelongsToSet
+   *  (content-overrides.ts), which compares the set path's anchor against the
+   *  card's name keys. `"set-module-chain"` means Ruby's own question
+   *  instead: is this module in the card's set-module chain
+   *  (lib/card/set/pattern/base.rb:21-29 module_key over :40-44
+   *  anchor_codenames, :27-29 lookup_module_list)?
+   *
+   *  A set module needs this when its anchor is a STARRED codename card, which
+   *  the name comparison cannot see: the card `Home+*followers` carries right
+   *  part name key `*follower`, not `followers` (Decko singularizes a codename
+   *  card key; MEASURED), so `right/followers` never matches on the name alone.
+   *
+   *  Declared per file on purpose. The chain predicate is CORRECT for the date
+   *  family too — `Home+*when created` does resolve `Right::WhenCreated` once
+   *  the name environment is installed (MEASURED) — but turning it on there
+   *  changes what every real `+*when created` card renders, which no lane has
+   *  measured against the oracle, and the loader registers date BEFORE follow
+   *  (contentOverrideRegistry().paths() order, MEASURED) while
+   *  resolveContentOverrideEntry keeps the LAST match: a predicate loose
+   *  enough to match both families would shadow the date overrides instead of
+   *  failing loudly. The date surface is left exactly as it stands; see
+   *  set-module-membership.ts#cardInSetModule. */
+  readonly membership?: "set-module-chain";
 
   /** the file's `event` declarations (see ModEventRegistration; the
    *  DECLARATION surface - execution wiring into the save path is the

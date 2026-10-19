@@ -30,7 +30,7 @@
 // reload_sets (loader.rb:23-28) is reset() + load().
 
 import { HTML_VIEWS } from "./render/views.js";
-import type { ViewFn } from "./render/format.js";
+import type { RenderCard, ViewFn } from "./render/format.js";
 import { PATTERN_TABLE, type PatternSpec } from "./set-patterns/registry.js";
 import {
   resolveModOrder,
@@ -62,7 +62,9 @@ import { getNameEnvironment } from "./name/environment.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
+  type RegisteredContentOverride,
 } from "./render/content-overrides.js";
+import { cardInSetModule } from "./set-modules/set-module-membership.js";
 import {
   registerGemTypeAssignments,
   registerSetTypeAssignment,
@@ -470,14 +472,29 @@ export class ModLoader {
               this.settings.register(anchor, file.settingOpts);
               registeredSettings.push(anchor);
             }
-            for (const fn of file.contentOverrides ?? []) {
+            for (const override of file.contentOverrides ?? []) {
               // set-module `def content` (right/when_created.rb:7-11):
               // registered per set path with the contributing mod named;
               // Map.set last-wins mirrors Ruby's method redefinition.
+              const fn = typeof override === "function" ? override : override.fn;
+              const supersedesType =
+                typeof override === "function" ? undefined : override.supersedesType;
+              // `membership: "set-module-chain"` hands this set module Ruby's
+              // own membership question ("is my module in this card's
+              // set-module chain?", lib/card/set/pattern/base.rb:21-29
+              // module_key over :40-44 anchor_codenames) instead of the
+              // pure-name cardBelongsToSet. Only the file that declares it
+              // gets it, so every other set path's verdict is untouched.
+              const belongsTo =
+                file.membership === "set-module-chain"
+                  ? (card: RenderCard): boolean => cardInSetModule(file.setPath, card.setKeys)
+                  : undefined;
               this.contentOverrides.register({
                 setPath: file.setPath,
                 modName: mod.manifest.name,
                 fn,
+                ...(supersedesType !== undefined ? { supersedesType } : {}),
+                ...(belongsTo !== undefined ? { belongsTo } : {}),
               });
               registeredContentOverrides.push(file.setPath);
             }

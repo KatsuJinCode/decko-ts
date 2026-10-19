@@ -1658,7 +1658,23 @@ const cardModFollow: DeckoModManifest = {
       // stock Ruby oracle: `/Home+*followers` is TYPE-list, and its pointer
       // list is what renders the follower names.
       assignsType: "list",
-      contentOverrides: [followersContentFn],
+      // followers.rb:5 `include_set Abstract::List` and :8-10 `view :core,
+      // cache: :never do super() end` — the file declares NO assign_type of
+      // its own and hands :core straight to the list set, so the card RETAINS
+      // its list type and the Abstract::List core renders with the overridden
+      // raw as its ITEM SOURCE (views.ts's list item walk reads
+      // resolveContentOverride(fmt) ?? dbContent). supersedesType: false is
+      // that reading; left at the default true the override bytes would
+      // REPLACE the pointer-list core instead of feeding it.
+      contentOverrides: [{ fn: followersContentFn, supersedesType: false }],
+      // The anchor is the STARRED codename card `*followers`, whose Decko key
+      // is `*follower` — so the pure-name cardBelongsToSet compares
+      // `right/followers` against `*follower` and never matches (MEASURED).
+      // Ruby asks "is Right::Followers in this card's chain?" instead
+      // (base.rb:21-29 module_key over :40-44 anchor_codenames), which the
+      // card's own set keys answer: `RIGHT-Xfollower` -> `*follower` ->
+      // codename `followers` -> `Right::Followers`.
+      membership: "set-module-chain",
       formats: {
         html: {
           views: [
@@ -1900,7 +1916,11 @@ const cardModFollow: DeckoModManifest = {
       // user/follow.rb:13-19 `def item_names` — the pointer list over the
       // user's follow preference rule cards, i.e. the "all followed cards"
       // content the board's follow_overview_button opens.
-      contentOverrides: [userFollowContentFn],
+      contentOverrides: [{ fn: userFollowContentFn, supersedesType: false }],
+      // Same starred-anchor reason as right/followers above: the anchor is
+      // the STARRED codename card `*follow` (key `*follow`), so the pure-name
+      // cardBelongsToSet has no `type_plus_right` arm to reach it at all.
+      membership: "set-module-chain",
       formats: {
         html: {
           views: [
