@@ -200,13 +200,29 @@ async function main() {
       const accountTab = acct.tabLinks.find((t) => /account/i.test(t.text));
       acct.accountTab = accountTab ?? null;
       let acct077 = { ...acct };
-      if (accountTab) {
+      /** Board -> Account tab -> email_and_password pill. Called once per
+       *  row, because the tab's labeled rows are NOT in a steady state
+       *  across a modal open/close: the close hands the board back to a
+       *  slot reload, and what that reload leaves on the page differs
+       *  between engines and between the instant the modal first reports
+       *  hidden and a couple of seconds later (measured 2026-10-20 on
+       *  d8050251 against the Ruby oracle: read at hide-instant the port
+       *  had no password row and Ruby had one; read 2.5 s later the port
+       *  had both rows and Ruby had none). Reading row 2 out of row 1's
+       *  teardown therefore grades the teardown, not the affordance. Each
+       *  row is re-entered from the board instead. */
+      const openAccountTab = async () => {
+        await page.goto(`${base}/${holder}/board`, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {});
         await page.locator(".board .nav-tabs a, .board .nav-link, .board [role=tab]").filter({ hasText: /^Account$/i }).first().click({ timeout: STEP_TIMEOUT }).catch(() => {});
         await page.waitForTimeout(500);
         const pill = page.locator("[data-cy='email_and_password-pill']").first();
-        acct077.pillVisible = await pill.isVisible().catch(() => false);
-        if (acct077.pillVisible) await pill.click().catch(() => {});
+        const pillVisible = await pill.isVisible().catch(() => false);
+        if (pillVisible) await pill.click().catch(() => {});
         await page.waitForTimeout(500);
+        return pillVisible;
+      };
+      if (accountTab) {
+        acct077.pillVisible = await openAccountTab();
         /** One labeled row's pencil -> the modal input it opens. The
          *  predicate is that input's name/type pair (the edge exercise
          *  reads the FIELD, not merely the row's presence). */
@@ -236,14 +252,14 @@ async function main() {
           };
         };
         acct077.emailField = await openField("email");
-        // The named instrument closes the email leg's modal and WAITS for it
-        // to hide before opening the password row (edge-signed-in-exercise.mjs
-        // :471-475); a fixed pause left the modal up and the password row
-        // out of the DOM, which read as rowPresent:0 in round 2.
-        // The engine renders a._close-modal.btn-close on this modal (the
-        // run-3 capture), so that is the control a person clicks.
+        // Close the email leg's modal the way a person does (the engine
+        // renders a._close-modal.btn-close on this modal; the run-3
+        // capture), confirm it is gone, and then RE-ENTER the account tab
+        // for the password row — openAccountTab's note above is why the
+        // second row does not read the first row's teardown.
         await page.locator("a._close-modal.btn-close:visible, .modal .cancel-button:visible, #edit_card .cancel-button:visible, .modal [data-dismiss='modal']:visible").first().click({ timeout: 30_000 }).catch(() => {});
         acct077.modalHidden = await page.locator(".modal.show").first().waitFor({ state: "hidden", timeout: 15_000 }).then(() => true, () => false);
+        acct077.passwordPillVisible = await openAccountTab();
         acct077.passwordField = await openField("password");
         writeFileSync(path.join(out, "act077-account-tab.html"), await page.content());
       }
