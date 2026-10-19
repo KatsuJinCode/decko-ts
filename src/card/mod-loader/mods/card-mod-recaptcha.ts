@@ -436,30 +436,6 @@ export function recaptchaHiddenFormTags(
  * hence `m`. (The author likely meant \A...\z; parity mirrors what shipped.) */
 const RECAPTCHA_SETTING_CONTENT_PATTERN = /^[a-zA-Z0-9\-_]*$/m;
 
-/** recaptcha_setting.rb:1-5 `event :validate_recaptcha_field, :validate,
- *  when: :recaptcha_setting? do return if content.match?(...); errors.add
- *  :content, "invalid key" end` — the event BODY: the ported grammar
- *  (recaptchaFieldContentError) decides, and a failing grammar refuses
- *  the save the way errors.add does (the CardActionError save-refusal
- *  shape, the detect_conflict pattern — the errors view's alert carries
- *  "Problems with <name>" over "CONTENT: invalid key"). The `when:`
- *  predicate (recaptcha_setting?) rides recaptchaModEventPredicates above;
- *  the dispatcher skips the event before the body runs when the card is
- *  not a *recaptcha settings child. */
-const validateRecaptchaFieldFn: ModEventFn = (card, _host) => {
-  const error = recaptchaFieldContentError(card.dbContent ?? "");
-  if (error !== undefined) {
-    // errors.add :content, "invalid key" (recaptcha_setting.rb:4).
-    throw new CardActionError(
-      "validation-failed",
-      error,
-      `CONTENT: ${error}`,
-      undefined,
-      card.name,
-    );
-  }
-};
-
 /** recaptcha_setting.rb:1-5 event validate_recaptcha_field's error branch,
  *  as the pure predicate: SOME line matching the pattern passes (undefined),
  *  otherwise the `:content` error "invalid key" (line 4). */
