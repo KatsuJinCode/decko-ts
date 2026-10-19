@@ -84,44 +84,65 @@ than weakened to reach a green bar.
 | ACT-188 | 1 | same |
 | ACT-189 | 3 | same |
 
-### Unfixed — 1 leg RED in both runs
+### Retracted 2026-10-19 — the RED leg was a mis-specified instrument, not a defect
 
 **ACT-185, "the all-caps spelling of a name ending digit+C resolves to that
-same card."** RED in run1 and run2.
+same card."** RED in run1 and run2. **That leg was wrong and has been
+re-graded.** The engine is oracle-faithful; the expectation it asserted was
+never a property of Ruby Decko. Everything this section originally claimed as
+a cause is corrected below.
 
-The exact failure: for a card named `Harness Plurality Digit 9c <stamp>`, the
-canonical address `/Harness_Plurality_Digit_9c_<stamp>` serves the card
-(`data-card-id 916`, 200). The all-caps address
-`/HARNESS_PLURALITY_DIGIT_9C_<STAMP>` also answers **200** — but
-`data-card-id` is **null** and `data-card-name` echoes the shouted spelling. The
-page is not the card: it is the **create form** silently served at the unknown
-card's address (`servedCreateFormInstead: true`).
+The observed behaviour, which stands: for a card named
+`Harness Plurality Digit 9c <stamp>`, the canonical address
+`/Harness_Plurality_Digit_9c_<stamp>` serves the card (`data-card-id 916`,
+200). The all-caps address `/HARNESS_PLURALITY_DIGIT_9C_<STAMP>` also answers
+**200** — but `data-card-id` is **null** and `data-card-name` echoes the
+shouted spelling. That page is the **create form** served at the unknown card's
+address (`servedCreateFormInstead: true`).
 
-The cause, measured with the engine's own code rather than inferred:
+The original section attributed this to a spurious `_` injected by the
+`NOT_OK_FOR_KEY` fold in `simpleKeyUncached` (`src/card/name.ts:128-135`), and
+cited the `cards.key` column's missing `COLLATE NOCASE` as the reason the
+by-key lookup missed. **Both attributions were wrong.** Measured against the
+pinned gemset (cardname-0.20.0 + activesupport-7.2.4, via card-1.110.0's
+`Card::Name`), and confirmed by a 678-name cross-check that found zero `key`,
+`underscore`, `url_key`, `safe_key`, `decoded`, `stripped` and `partNames`
+differences between Ruby and the port:
 
-1. `DeckoName`'s key algebra injects a spurious `_` into an **uppercase** token
-   ending in **digit+C**. In the receipt's own `keyAlgebra`:
-   `exactKey harness_plurality_digit_9c_…` vs
-   `shoutedKey harness_plurality_digit_9_c_…`, `keysMatch: false`.
-2. The fold lives in `simpleKeyUncached` (`src/card/name.ts:128-135`) — the
-   `NOT_OK_FOR_KEY` replace applied after `stableKey` (`src/card/name.ts:97-101`).
-3. The by-key lookup (`src/card/fetch/retrieve.ts:293`, `SELECT * FROM cards
-   WHERE key = ?`) compares against the fixture's `cards.key` column, which is
-   plain `varchar` with **no** `COLLATE NOCASE` (verified from the fixture's own
-   `sqlite_master` DDL), so the differing keys miss.
-4. The miss drops the request into the unknown-card `:new` branch
-   (`src/card/render/page.ts:309-351` — "an unknown card whose actor may create
-   renders the `:new` page at the requested address (status 200)"), which is why
-   the wrong answer is a **200 create form** rather than a visible 404.
+1. **Ruby produces the same keys.** `Card::Name.new("MVEMONUT31C").key ==
+   "mvemonut31_c"` and `Card::Name.new("mvemonut31c").key == "mvemonut31c"` —
+   byte-for-byte what `DeckoName` produces. In Ruby those are **two different
+   names**, so the engine's by-key lookup misses for exactly the reason Ruby's
+   does.
+2. **The separator comes from `underscore`, not the fold.** `Cardname#key`
+   (`cardname-0.20.0 lib/cardname.rb:106` `#simple_key`) runs
+   ActiveSupport's `underscore` first, and that inserts `_` between a lowercase
+   letter or digit and a following capital
+   (`activesupport-7.2.4 lib/active_support/inflector/methods.rb:100`,
+   `word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')`) before downcasing. The port of that
+   step is `src/card/name/inflect.ts:271-278`. The `NOT_OK_FOR_KEY` fold at
+   `src/card/name.ts:128` cannot be the source: on the word `underscore`
+   already returned, that fold is inert for any input built only from characters
+   it allows — `_` is `\p{Pc}` and is inside its own allowed class.
+3. **`COLLATE NOCASE` was never the operative difference.** The two keys differ
+   by an *underscore*, not by case, so a case-insensitive column would not have
+   matched them either.
+4. **The page is the faithful answer.** Ruby Decko renders `:new` at status 200
+   for an unknown card whose actor may create
+   (`card-mod-format-0.20.0 set/all/html/error.rb:81-86`), so the engine's
+   unknown-card branch (`src/card/render/page.ts:309-351`) answers as Ruby does.
 
-The trigger is narrow and is pinned by the receipt's own `triggerTable`, so the
-report does not overclaim that case-insensitivity is broken:
+The original section also said the trigger was "uppercase AND a final digit+C".
+**That is too narrow.** The rule is any digit before **any** capital:
 
-| input | `.key` | |
+| input | `.key` (Ruby and the port agree) | |
 |---|---|---|
-| `AB1C` | `ab1_c` | DIFFERS |
-| `AB99C` | `ab99_c` | DIFFERS |
-| `MVEMONUT31C` | `mvemonut31_c` | DIFFERS |
+| `AB1C` | `ab1_c` | DIFFERS from `ab1c` |
+| `AB99C` | `ab99_c` | DIFFERS from `ab99c` |
+| `MVEMONUT31C` | `mvemonut31_c` | DIFFERS from `mvemonut31c` |
+| `CARD 3X` | `card_3_x` | DIFFERS from `card_3x` — digit + a letter that is not `C` |
+| `CARD 2ND` | `card_2_nd` | DIFFERS from `card_2nd` |
+| `CARD 1ST` | `card_1_st` | DIFFERS from `card_1st` |
 | `ABC` | `abc` | same |
 | `CARDC` | `cardc` | same |
 | `STATUSC` | `statusc` | same |
@@ -129,15 +150,19 @@ report does not overclaim that case-insensitivity is broken:
 | `HOME` | `home` | same (case folding works) |
 | `FOCUS` | `focu` | same (`focus`→`focu` is correct singularization) |
 
-So: **uppercase AND a final digit+C**, not all-caps alone. ACT-184's own
-case-insensitivity legs (lowercase name, percent-encoded slug, lower/upper
-keyword search) are GREEN, and ACT-185's other variants — underscore slug,
-lowercase slug, percent-encoded spaces, uppercase slug of a name ending in a
-plain word — all pin to one card id. The defect is left unfixed: repairing
-`DeckoName`'s key algebra is an engine change well outside this lane's boundary
-("exercise ranks 91-100"), and it would need the whole correctness battery
-re-run. It is reported here for the registry owner, with the reproduction
-embedded in the probe.
+Case-insensitivity is not broken. ACT-184's own case-insensitivity legs
+(lowercase name, percent-encoded slug, lower/upper keyword search) are GREEN,
+and ACT-185's other variants — underscore slug, lowercase slug, percent-encoded
+spaces, uppercase slug of a name ending in a plain word — all pin to one card
+id, because those names have no digit-before-capital adjacency.
+
+The probe leg now asserts the oracle's answer: the engine's keys equal the
+measured Ruby keys across the trigger table, the canonical and shouted keys
+**differ**, the shouted address answers 200 with the create form and no card id,
+and exactly one live row exists for the canonical name. A case-insensitive or
+underscore-stripping fetch fallback for shouted addresses would be a deliberate
+divergence from Ruby, not a fix. The measured values are pinned as unit tests in
+`tests/card/name/ruby-oracle-key-algebra-parity.test.ts`.
 
 ## Selectors were pinned from bytes, not memory
 
@@ -188,7 +213,9 @@ The digit+C leg was itself reshaped by run 1: it first REDed because the card
 name carried a random stamp suffix that happened to end in digit+C, making the
 leg nondeterministic. The plurality leg now uses a fixed name
 (`Harness Plurality Caseprobe 91`), and the digit+C case is pinned deliberately
-in its own leg so the cause is attributable rather than random.
+in its own leg. (Pinning it made the leg's expectation checkable — and checking
+it against the Ruby oracle is what showed the expectation, not the engine, was
+wrong. See the retraction above.)
 
 ## Files
 
