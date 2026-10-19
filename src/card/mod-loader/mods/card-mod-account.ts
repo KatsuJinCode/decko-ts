@@ -54,7 +54,9 @@ import { quietDenial } from "../../permissions/view-perms.js";
 //   multi-card editor machinery its Ruby body rides stays unported, so
 //   the emitter reproduces the captured shape directly, deriving the
 //   per-deck values from the deck's rows where the render cache holds
-//   them). :open stays unported (the base :open super() target);
+//   them). :open IS PORTED now (the mods-first-half lane 2026-10-19:
+//   voo.show :help / voo.hide :menu then the superView dispatch to the
+//   base :open - signinOpenView);
 //   :title rides the render layer's SELF_SET_TITLE_OVERRIDES (see
 //   oneLineContentView's comment).
 // - signup new/new_buttons/content_formgroups: rails (the base :new
@@ -398,6 +400,23 @@ const openContentView: ViewFn = (ctx) => ctx.fmt.renderDelegated("core");
  *  no-wrap config means the body renders bare (no slot wrapper); the
  *  empty body returns the empty string. */
 const oneLineContentView: ViewFn = () => "";
+
+/** set/self/signin.rb:127-131 view :open:
+ *    voo.show :help
+ *    voo.hide :menu
+ *    super()
+ *  Both voo calls are the SETTER form (visibility.rb show!/hide! through
+ *  the first-write-wins viz write - format.ts showViz/hide), then super()
+ *  dispatches the base :open the self/signin registration overrides
+ *  (mod-view-helpers.ts superView: the next chain entry, falling to the
+ *  engine's compiled openView exactly where Ruby's super() reaches the
+ *  parent-class method). The :open slot payload therefore carries help in
+ *  the show list and menu hidden, over the base open bytes. */
+const signinOpenView: ViewFn = (ctx) => {
+  ctx.voo.showViz("help");
+  ctx.voo.hide("menu");
+  return superView(ctx, setModuleShortname("self/signin"), "open");
+};
 
 // session + the form shapes. Bytes are RENDERED-UNPINNED (no oracle
 // captures exist for these names - verified against the capture shards).
@@ -1636,6 +1655,9 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           { view: "core", viewFn: (ctx) => signinCoreHtml(ctx), config: { cache: "never" } },
+          // self/signin.rb:127-131 - voo.show :help, voo.hide :menu,
+          // super() (see signinOpenView).
+          { view: "open", viewFn: signinOpenView },
           { view: "open_content", viewFn: openContentView },
           { view: "one_line_content", viewFn: oneLineContentView },
           { view: "reset_password_success", viewFn: resetPasswordSuccessView },
