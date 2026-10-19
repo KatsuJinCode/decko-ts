@@ -1213,7 +1213,7 @@ async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
       const writeResponse = await dispatchWriteRequest(req, FORGOT_PASSWORD_SUBMIT_PATH, raw);
       if (writeResponse !== null) {
         await applyWriteResponseTail(writeResponse, startedAt, req.method, FORGOT_PASSWORD_SUBMIT_PATH);
-        return writeResponse;
+        return withVisitorSessionCookie(writeResponse);
       }
     }
     return jsonResponse(405, { error: "method not allowed" });
@@ -3251,6 +3251,153 @@ async function renderCardViewJson(cardName, view, url, renderEngine = render) {
   }
 }
 
+/**
+ * The NON-HTML format arms of `get "/:mark(.:format)" => "card#read"`
+ * (decko-0.20.0 config/engine_routes.rb:19) — the `.rss` / `.csv` mark
+ * suffixes and the `?format=` query form. MEASURED against the stock Ruby
+ * oracle deck (tmp/ruby-reference-act172-act175.json,
+ * tmp/ruby-reference-missing-mark.json; oracle booted from
+ * reference-harness/fixtures/synthetic-v1):
+ *
+ *   /Brief.rss                  200  text/html; charset=utf-8                  "RSS feeds disabled"
+ *   /Brief.csv                  200  text/comma-separated-values; charset=utf-8 "Name,Type\n"
+ *   /*search?format=rss&term=..  200  text/html; charset=utf-8                  "RSS feeds disabled"
+ *   /*search.rss?term=..        200  text/html; charset=utf-8                  "RSS feeds disabled"
+ *   /?format=rss                200  text/html; charset=utf-8                  "RSS feeds disabled"
+ *   /Never_Existed_XYZ.rss      200  text/html; charset=utf-8                  "" (empty)
+ *   /Never_Existed_XYZ.csv      404  text/comma-separated-values; charset=utf-8 "Could not find Never Existed XYZ."
+ *
+ * Three facts the gem source alone does not give, and this port got wrong:
+ *
+ * 1. The query form is REAL. `ActionDispatch::Http::Parameters#parameters`
+ *    (actionpack-7.2.4 http/parameters.rb:56-61) merges
+ *    `request_parameters.merge(query_parameters)` and THEN
+ *    `params.merge!(path_parameters)` — but path_parameters carries NO
+ *    `:format` key when the route's optional `(.:format)` group is absent
+ *    (measured: recognize_path("*search") => {mark: "*search"}, no :format).
+ *    So nothing clobbers a query-supplied format, and `?format=rss` and
+ *    `.rss` reach the same `params[:format]`.
+ * 2. The RSS content type is `text/html`, NOT application/rss+xml.
+ *    `RssFormat < HtmlFormat` (mod/format/lib/card/format/rss_format.rb:6)
+ *    overrides nothing, so `Card::Format#mime_type` resolves to HtmlFormat's
+ *    "text/html" (html_format.rb:24-26), and response.rb:17 renders with
+ *    `format.mime_type`. RSS MIMES only govern the REQUEST side
+ *    (actionpack-7.2.4 http/mime_types.rb:40 registers
+ *    application/rss+xml => :rss).
+ * 3. A missing mark answers DIFFERENTLY per format: rss 200 + empty body,
+ *    csv 404 + the format's own "Could not find <name>." bytes. Only the
+ *    split-off suffixes this port's families implement are formats at all —
+ *    `.pdf` / `.png` / an unknown suffix stay part of the CARD NAME, so the
+ *    asset and file routes keep their marks (Ruby's own file formats are a
+ *    separate FileFormat branch, unregistered in this port).
+ */
+const CARD_FORMAT_CONTENT_TYPES = {
+  rss: "text/html; charset=utf-8",
+  csv: "text/comma-separated-values; charset=utf-8",
+};
+
+/** Ruby's successful format show's cache header (measured above; the html
+ *  arms of this host keep their own no-store posture). */
+const CARD_FORMAT_CACHE_CONTROL = "max-age=0, private, must-revalidate";
+
+/** The `(.:format)` split for a mark, restricted to the formats this port
+ *  serves as their own family. Returns undefined when the request is not a
+ *  format show, so every other suffix keeps riding the mark. */
+function cardFormatRequest(pathname, searchParams) {
+  const queryFormat = searchParams.get("format");
+  if (queryFormat !== null && queryFormat in CARD_FORMAT_CONTENT_TYPES) {
+    // path_parameters wins over the query string ONLY when the path carries
+    // the segment; a query format on a path that does not survives (fact 1).
+    const suffix = /\.(json|rss|csv)$/i.exec(pathname);
+    if (suffix === null) {
+      const mark = pathname === "/" ? "" : pathname.slice(1);
+      return mark.includes("/") ? undefined : { mark, format: queryFormat };
+    }
+  }
+  const match = /\.(rss|csv)$/i.exec(pathname);
+  if (match === null) return undefined;
+  const mark = pathname.slice(0, match.index).slice(1);
+  if (mark === "" || mark.includes("/")) return undefined;
+  return { mark, format: match[1].toLowerCase() };
+}
+
+/** The engine surface the non-html families read (the same wiring the edge's
+ *  formatEngineSurface builds). */
+function stagingFormatEngineSurface(renderEngine, fetchEngine) {
+  return {
+    fetchRenderCard: (name) => renderEngine.fetchRenderCard(name),
+    prepareItemForRender: (name) => renderEngine.prepareItemForRender(name),
+    render: (name, view) => renderEngine.render(name, view),
+    codenameById: async (id) => await fetchEngine.codenames.nameForId(id),
+  };
+}
+
+/** One non-html format show (Ruby: card#read with params[:format] set).
+ *  Returns undefined when the card is absent-but-unreadable or otherwise
+ *  falls outside this arm, so the caller can keep its own answer. */
+async function cardFormatShowResponse(mark, format, renderEngine = render, fetchEngine = fetcher) {
+  const home = mark === "";
+  let record;
+  try {
+    record = home
+      ? await fetchEngine.fetchByName(HOME_CARD_NAME)
+      : await fetchEngine.fetchByName(decodeName(mark));
+  } catch (error) {
+    if (mapRenderError(error instanceof Error ? error.message : String(error)).status === 404) {
+      record = undefined;
+    } else {
+      throw error;
+    }
+  }
+  const contentType = CARD_FORMAT_CONTENT_TYPES[format];
+  if (record === undefined || record.name === undefined) {
+    // Measured (fact 3): rss answers 200 with NO bytes for a mark that is
+    // not a card; csv answers 404 with the format's own not-found text.
+    if (format === "rss") {
+      return {
+        status: 200,
+        headers: { "Content-Type": contentType, "Cache-Control": "no-cache", "Connection": "close" },
+        body: "",
+      };
+    }
+    const name = record?.name?.s ?? decodeName(mark);
+    return {
+      status: 404,
+      headers: { "Content-Type": contentType, "Cache-Control": "no-cache", "Connection": "close" },
+      body: `Could not find ${name}.`,
+    };
+  }
+  const typeRecord = record.typeId === undefined ? undefined : await fetchEngine.fetchById(record.typeId);
+  // The same read gate the json arm runs (cardRecordJson): a format route
+  // must not become a way around the page's permission answer.
+  if (!(await renderEngine.canReadCard(record, typeRecord?.name?.s))) return undefined;
+  try {
+    const body = await renderFormatShow(
+      stagingFormatEngineSurface(renderEngine, fetchEngine),
+      record.name.s,
+      format,
+      {
+        // Cardio.config.rss_enabled default FALSE (mod/format/lib/card/mod/
+        // format.rb:3); this host carries no config override surface, and
+        // recognizing the URL must not silently enable disabled feeds.
+        rssEnabled: false,
+      },
+    );
+    return {
+      status: 200,
+      headers: { "Content-Type": contentType, "Cache-Control": CARD_FORMAT_CACHE_CONTROL, "Connection": "close" },
+      body,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      status: 500,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Connection": "close" },
+      body: `<h1>Render error</h1><pre>${escapeHtml(message)}</pre>`,
+    };
+  }
+}
+
 async function status() {
   try {
     const { rows } = await driver.query("SELECT COUNT(*) AS n FROM cards", []);
@@ -4051,6 +4198,34 @@ async function applyWriteResponseTail(writeResponse, startedAt, method, pathname
   );
 }
 
+/** The write path's VISITOR-SESSION commit, merged into the response headers.
+ *
+ *  Ruby has no seam here: `store_in_session` (mod/session set/type/session.rb
+ *  :37-40) writes `Env.session[session_key] = db_content` and Rails' session
+ *  middleware commits the mutated session into that response's Set-Cookie by
+ *  itself. The port keeps the same state in the VISITOR_COOKIE_NAME cookie,
+ *  and its write module finishes that work before returning — handleWriteRequest
+ *  (src/server/write-routes.ts:1716-1721) reads the cookie, lets the request
+ *  mutate it, and hands the finished Set-Cookie value back on the response's
+ *  own `visitorCookie` field, leaving the commit to the HOST. The Cloudflare
+ *  host passes it on (cloudflare-write-routes.ts:565); this server read only
+ *  `response.headers`, so every Session-card save was answered 200 and then
+ *  forgotten — the navbar's role checkbox (`<actor>+*enabled roles`, mod/layout
+ *  set/right/enabled_roles.rb:3 `assign_type :session`) posted, reloaded, and
+ *  left the visitor's own selection exactly where it was.
+ *
+ *  Every emit site for a dispatchWriteRequest result goes through here, so a
+ *  host change cannot silently skip the commit again. */
+function withVisitorSessionCookie(response) {
+  const cookie = response?.visitorCookie;
+  if (cookie === undefined || cookie === null) return response;
+  const headers = { ...response.headers };
+  const existing = headers["Set-Cookie"];
+  headers["Set-Cookie"] =
+    existing === undefined ? [cookie] : [...(Array.isArray(existing) ? existing : [existing]), cookie];
+  return { ...response, headers };
+}
+
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
   // THE ORACLE'S SECURITY HEADERS, middleware-style: every response this
@@ -4188,7 +4363,8 @@ const server = http.createServer(async (req, res) => {
     if (writePathEnabled()) {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
-        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        const committed = withVisitorSessionCookie(writeResponse);
+        res.writeHead(committed.status, committed.headers).end(committed.body);
         // Ruby expires the saved card's cache on every save (card-1.110.0
         // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
         // The write engine runs on its own per-request fetcher, so the
@@ -4268,6 +4444,7 @@ const server = http.createServer(async (req, res) => {
     ) {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
+        const committed = withVisitorSessionCookie(writeResponse);
         expireRenderCachesAfterSave(
           {
             fetcher,
@@ -4279,7 +4456,7 @@ const server = http.createServer(async (req, res) => {
         console.log(
           `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
         );
-        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        res.writeHead(committed.status, committed.headers).end(committed.body);
         return;
       }
     }
@@ -4384,7 +4561,7 @@ const server = http.createServer(async (req, res) => {
         headers: req.headers,
         url: req.url,
       });
-      response = (await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" });
+      response = withVisitorSessionCookie((await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" }));
       expireRenderCachesAfterSave(
         { fetcher, renderEngine: render, signedInEngines: signedInEngines.values() },
         response,
@@ -4413,6 +4590,38 @@ const server = http.createServer(async (req, res) => {
       response = handleMailLog();
     } else if (pathname === "/_status") {
       response = await status();
+    } else if (cardFormatRequest(pathname, url.searchParams) !== undefined) {
+      // Ruby route line 19 (`get "/:mark(.:format)" => "card#read"`) is the
+      // FIRST GET route, so it claims a single-segment `.rss`/`.csv` mark (and
+      // a `?format=` query) before the page arm ever sees it. Without this
+      // arm the whole ".rss" spelled itself into the CARD NAME and the
+      // request rendered the new-card page for a card literally called
+      // "Brief.rss", while `?format=rss` was dropped as an unknown query key
+      // and the ordinary HTML search results answered. Measured Ruby bytes and
+      // the mime/missing-mark facts: cardFormatShowResponse above.
+      const formatRequest = cardFormatRequest(pathname, url.searchParams);
+      const formatResponse = await cardFormatShowResponse(
+        formatRequest.mark,
+        formatRequest.format,
+        requestEngine,
+      );
+      if (formatResponse !== undefined) {
+        // Its OWN emit: the shared tail's page-view history push keys on a
+        // text/html response, and Ruby's save_current_location is an HTML-
+        // format event only — an rss show must not join the history.
+        res.writeHead(formatResponse.status, formatResponse.headers).end(formatResponse.body);
+        console.log(
+          `[vm-staging] ${req.method} ${pathname} -> ${formatResponse.status} ${formatRequest.format} (${Date.now() - startedAt}ms)`,
+        );
+        return;
+      }
+      // Read-denied: undefined means the page arm keeps Ruby's own denial.
+      response = await renderCardPage(
+        decodeName(formatRequest.mark === "" ? HOME_CARD_NAME : formatRequest.mark),
+        requestEngine,
+        url.searchParams.get("view"),
+        undefined,
+      );
     } else if (pathname === "/") {
       // The home page renders for the session's account like any other page.
       // mark.rb:42-44: the bare arm's mark is implicit_mark -> home_mark —

@@ -502,22 +502,66 @@ try {
   // ---------------------------------------------------------------- ACT-172
   // N16 "RSS format view of a search or card" (batch2 case 8): BOTH the card
   // mark's .rss format and the search's format=rss answer, graded by the
-  // check's own looksRss predicate (an XML document or an rss/xml content-type).
-  // The port's default-disabled feed contract is recorded as evidence exactly
-  // as the check records it - no enabled-feed acceptance is claimed.
+  // check's own looksRss predicate - which accepts EXACTLY what stock Ruby
+  // answers at these two shapes, MEASURED TWICE against the oracle deck booted
+  // from reference-harness/browser/engines/ruby.json on this same synthetic-v1
+  // fixture (receipts: C:/localProjects/brandonDojoTech/tmp/act172-175-evidence/
+  // ruby-reference-act172-act175.json and .../ruby-reference-missing-mark.json,
+  // written by tmp/act172-175-evidence/measure-ruby-reference.mjs):
+  //
+  //   /Brief.rss                  200  text/html; charset=utf-8  "RSS feeds disabled"
+  //   /*search?format=rss&term=.. 200  text/html; charset=utf-8  "RSS feeds disabled"
+  //
+  // Both receipts record length 18 and body "RSS feeds disabled". Ruby ITSELF
+  // answers text/html on the rss format: RssFormat < HtmlFormat
+  // (mod/format/lib/card/format/rss_format.rb:6) overrides nothing, so
+  // Card::Format#mime_type resolves to HtmlFormat's "text/html"
+  // (html_format.rb:24-26) and response.rb:17 renders with format.mime_type;
+  // the RSS mimes register on the REQUEST side only
+  // (actionpack-7.2.4 http/mime_types.rb:40). So a predicate demanding an XML
+  // body or an xml content-type was demanding a shape stock Ruby does not
+  // answer here - it could only ever pass against an ENABLED feed
+  // (rss_enabled true), which this fixture never is
+  // (mod/format/lib/card/mod/format.rb:3 default FALSE).
+  //
+  // The prior note's cause - "the serving layer recognizes only .json as a
+  // format mark, so /Brief.rss resolves as the card name 'Brief.rss'" - is
+  // FALSE as of a5bc4702: the (.:format) arm is served (vm-staging-server.mjs
+  // :3139 cardFormatRequest, :3171 cardFormatShowResponse, rssEnabled: false
+  // :3216, RSS_DISABLED_BYTES src/card/render/format-families.ts:264), and the
+  // rssShape slot ids below now come back EMPTY because the arm answers a
+  // format body rather than a card page. The arm was already right; the
+  // instrument measured the wrong contract. No enabled-feed acceptance is
+  // claimed below - the enabled-feed arm is kept only so a deck that DOES
+  // enable feeds still grades green on its real feed document.
   {
     const card = "Brief";
+    // Ruby's measured rss answer for a card that exists: EXACTLY these bytes
+    // (length 18) at EXACTLY this content type. Exact equality, not `includes`
+    // - a longer body, another content type, or the ordinary HTML results page
+    // all fail, so the predicate cannot be satisfied by "some text mentioning
+    // RSS".
+    const RUBY_RSS_DISABLED_BODY = "RSS feeds disabled";
+    const RUBY_RSS_DISABLED_CONTENT_TYPE = /^text\/html;\s*charset=utf-8$/i;
     const ask = async (p) => {
       const res = await page.request.get(O + p, { maxRedirects: 0 }).catch((e) => ({ error: String(e?.message ?? e) }));
       if (res.error) return { path: p, status: null, contentType: null, body: "", looksRss: false, disclosesDisabled: false };
       const body = await res.text().catch(() => "");
       const contentType = res.headers()?.["content-type"] ?? null;
+      const matchesRubyDisabled = body === RUBY_RSS_DISABLED_BODY && RUBY_RSS_DISABLED_CONTENT_TYPE.test(contentType ?? "");
+      // The enabled-feed arm, unchanged: a real XML/RDF document, or an
+      // xml-ish content type.
+      const isFeedDocument = /<\?xml/i.test(body) || /<rss[\s>]/i.test(body) || /<rdf:RDF/i.test(body)
+        || /application\/(rss\+xml|atom\+xml|xml)/i.test(contentType ?? "");
       return {
         path: p,
         status: res.status(),
         contentType,
-        looksRss: /<\?xml/i.test(body) || /<rss[\s>]/i.test(body) || /<rdf:RDF/i.test(body) || /application\/(rss\+xml|atom\+xml|xml)/i.test(contentType ?? ""),
-        disclosesDisabled: body.includes("RSS feeds disabled"),
+        bodyLength: body.length,
+        matchesRubyDisabledAnswer: matchesRubyDisabled,
+        isFeedDocument,
+        looksRss: matchesRubyDisabled || isFeedDocument,
+        disclosesDisabled: body.includes(RUBY_RSS_DISABLED_BODY),
         head: body.replace(/\s+/g, " ").slice(0, 200),
       };
     };
@@ -537,10 +581,17 @@ try {
     })();
     witness("format-dispatch control: the same mark's .json answers JSON while the .rss answer is recorded exactly as the surface gave it",
       { jsonStatus: cardJson.status, jsonContentType: cardJson.contentType, jsonLooksRss: cardJson.looksRss, cardRssHead: cardRss.head, searchRssHead: searchRss.head });
+    // POSITIVE CONTROL, now graded rather than witnessed: the same mark and the
+    // same card must still answer JSON on the .json arm. Without this the leg
+    // could pass vacuously - any answer at all, including two identical
+    // answers, would satisfy the two looksRss clauses.
+    const jsonArmIsJson = cardJson.status === 200 && /^application\/json\b/i.test(cardJson.contentType ?? "") && cardJson.looksRss === false;
     grade("ACT-172", "the card mark's .rss and the search's format=rss both answer an RSS-format view",
-      cardRss.status === 200 && cardRss.looksRss && searchRss.status === 200 && searchRss.looksRss,
-      { cardRss, searchRss, rssShape,
-      note: "looksRss = an XML declaration / <rss> / <rdf:RDF> in the body, or an application/rss+xml|atom+xml|xml content-type (the N16 predicate). MEASURED cause of the red: the serving layer recognizes only .json as a format mark (src/server/write-routes.ts:21 'A \".json\" suffix is the format, not part of the name', :964, :1733; no rss/csv handling anywhere under src/server/), so the whole mark resolves as a CARD NAME - the slot ids above name the new-card view for a card literally called 'Brief.rss' - and /*search?format=rss ignores the parameter and serves the ordinary HTML results. renderFormatShow's rss builder (src/card/render/format-families.ts:557-583, RSS_DISABLED_BYTES :264) has no caller on this path: the only production caller is deploy/worker.ts:622, which requests the 'json' format only. The rss_enabled config gate (:573) is NOT what answers here." });
+      cardRss.status === 200 && cardRss.looksRss && searchRss.status === 200 && searchRss.looksRss
+        && cardRss.matchesRubyDisabledAnswer === true && searchRss.matchesRubyDisabledAnswer === true
+        && jsonArmIsJson,
+      { cardRss, searchRss, rssShape, jsonControl: { status: cardJson.status, contentType: cardJson.contentType, looksRss: cardJson.looksRss, isJson: jsonArmIsJson },
+      note: "looksRss = Ruby's measured default-disabled answer (body EXACTLY 'RSS feeds disabled', length 18, content-type EXACTLY text/html; charset=utf-8 - receipts C:/localProjects/brandonDojoTech/tmp/act172-175-evidence/ruby-reference-act172-act175.json and .../ruby-reference-missing-mark.json, oracle booted from reference-harness/browser/engines/ruby.json on synthetic-v1) OR a real enabled feed (XML declaration / <rss> / <rdf:RDF>, or an application/rss+xml|atom+xml|xml content-type). Both .rss arms here take the first branch, because Ruby itself answers exactly that with rss_enabled FALSE (mod/format/lib/card/mod/format.rb:3). The grade is pinned to the measured bytes: matchesRubyDisabledAnswer must be true on BOTH arms, and the same mark's .json arm must still answer application/json and NOT look like an RSS answer (the positive control). No enabled-feed acceptance is claimed - nothing here observes a real feed document. What this leg DOES now establish: the (.:format) route arms are served with Ruby's bytes rather than resolved as a card name (a5bc4702; vm-staging-server.mjs:3139/:3171/:3216), which is why rssShape.slotIds is now empty - the format arm answers no card page." });
   }
 
   // ---------------------------------------------------------------- ACT-174
