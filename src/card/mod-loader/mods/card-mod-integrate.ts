@@ -37,11 +37,15 @@
 //   class-side DSL call: Type.assignment[module_key] = :list (card-1.110.0
 //   lib/card/set/advanced_api.rb:5-8), consumed at type resolution by
 //   type_id_from_code (mod/core/set/all/type.rb:69-76) so every
-//   "+*on <action>" card saves as a List. Type.assignment has no TS
-//   surface (the action engine's type-resolution path is
-//   src/card/actions/type-resolution.ts, shared and not mod-writable), so
-//   the three set files register as basket entries only, with the
-//   assignment recorded in ASSIGN_TYPE_DECLARATIONS.
+//   "+*on <action>" card saves as a List. The manifest surface for that
+//   call IS the set-module entry's assignsType field
+//   (mod-manifest.ts ModSetModuleFile.assignsType), applied by the loader
+//   at registerSetModule (mod-loader.ts:1265-1266 ->
+//   registerSetTypeAssignment, the advanced_api.rb:5-8 port) - the same
+//   surface card-mod-email.ts (right/to|cc|from|bcc) and
+//   card-mod-account.ts (right/email|password|salt|status) carry. The
+//   three entries below declare it; ASSIGN_TYPE_DECLARATIONS stays as the
+//   test-side pin of the gem's three lines.
 // - the deliverers: Ruby duck-types `event_card.deliver self` (README.md);
 //   the shipped deliverers are the email/notification template card types
 //   from other mods, none ported here - deliver is an injected seam
@@ -374,8 +378,12 @@ function cacheDeleteCardEventsFn(
  * right/on_create.rb, right/on_delete.rb, right/on_update.rb (each file's
  * sole line): `assign_type :list` - advanced_api.rb:5-8 records
  * Type.assignment["Right::OnCreate" etc.] = :list; type_id_from_code
- * (mod/core/set/all/type.rb:69-76) forces the type at resolution. Pinned
- * as data until the save path grows a mod-writable assignment surface.
+ * (mod/core/set/all/type.rb:69-76) forces the type at resolution. The
+ * manifest entries below carry the same declarations via their
+ * `assignsType` field (the loader applies them at mod-loader.ts:1265-1266,
+ * idempotent with GEM_TYPE_ASSIGNMENTS' pre-registration of this mod's
+ * three lines, set-type-assignment.ts:125-127); this export remains the
+ * direct pin of the gem's three lines for the test suite.
  */
 export const ASSIGN_TYPE_DECLARATIONS = [
   { setPath: "right/on_create", setModule: "Right::OnCreate", type: "list" },
@@ -435,18 +443,22 @@ const cardModIntegrate: DeckoModManifest = {
       ],
     },
     {
-      // card-mod-integrate-0.20.0/set/right/on_create.rb - assign_type :list
-      // (ASSIGN_TYPE_DECLARATIONS[0]); no manifest surface for type
-      // assignment, so the file registers as its basket entry only.
+      // card-mod-integrate-0.20.0/set/right/on_create.rb:1 -
+      // `assign_type :list` (advanced_api.rb:5-8): the manifest's
+      // assignsType field, applied by the loader
+      // (mod-loader.ts:1265-1266 registerSetTypeAssignment).
       setPath: "right/on_create",
+      assignsType: "list",
     },
     {
-      // card-mod-integrate-0.20.0/set/right/on_delete.rb - assign_type :list
+      // card-mod-integrate-0.20.0/set/right/on_delete.rb:1 - assign_type :list
       setPath: "right/on_delete",
+      assignsType: "list",
     },
     {
-      // card-mod-integrate-0.20.0/set/right/on_update.rb - assign_type :list
+      // card-mod-integrate-0.20.0/set/right/on_update.rb:1 - assign_type :list
       setPath: "right/on_update",
+      assignsType: "list",
     },
     {
       // card-mod-integrate-0.20.0/set/self/on_create.rb
