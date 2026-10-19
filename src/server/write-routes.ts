@@ -1643,15 +1643,23 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   return {
     ...runtime,
     setMember: (setPath, card) => {
-      if (setPath !== "right/enabled_roles") return typeMember(setPath, card);
-      const right = DeckoName.parse(card.name).rightName;
-      if (right === undefined) return false;
-      // Resolve the actual codename anchor, including renamed settings. Do
-      // not activate other right-scoped callbacks as a side effect of this one.
-      return ctx.driver.query<{ codename: string }>(
-        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
-        [right.key],
-      ).then(result => result.rows[0]?.codename === "enabled_roles");
+      // The Right pattern (pattern/base.rb:21-29): a card belongs to the
+      // set module "right/<codename>" when its RIGHT card carries that
+      // codename - resolved through the right part's key to the actual
+      // codename anchor, so renamed settings keep their sets (the
+      // right/enabled_roles special case this generalizes; the query shape
+      // is that case's own). Ruby's right-scoped events (the account and
+      // api_key mods' event sets) gate on exactly this.
+      const rightMatch = /^right\/(.+)$/.exec(setPath);
+      if (rightMatch !== null) {
+        const right = DeckoName.parse(card.name).rightName;
+        if (right === undefined) return false;
+        return ctx.driver.query<{ codename: string }>(
+          "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+          [right.key],
+        ).then((result) => result.rows[0]?.codename === rightMatch[1]);
+      }
+      return typeMember(setPath, card);
     },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
   };
@@ -2064,6 +2072,11 @@ async function dispatchWriteRequest(
           // value detect_conflict validates (card-mod-history
           // set/all/history/events.rb:19-22, when: :edit_conflict?).
           lastActionIdBeforeEdit: card["last_action_id_before_edit"],
+          // card[trigger] (skip_and_trigger.rb:86-90): the generate
+          // button's hidden input (card-mod-api_key api_key.rb:96-98
+          // generate_button_hidden_tags) and the account mod's trigger
+          // forms ride the same param into the act's trigger list.
+          ...(card["trigger"] !== undefined ? { trigger: card["trigger"] } : {}),
           // Env.params["draft"] == "true" (mod/core/set/all/content.rb:20-22):
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",

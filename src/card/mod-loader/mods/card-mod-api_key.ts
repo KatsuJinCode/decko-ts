@@ -46,14 +46,25 @@
 //     files, so lib/ methods do not have a registration slot here. They
 //     also depend on the `jwt` gem, Card::Auth::Token, and the live
 //     request/header surface - none of which is ported
-//   - event :generate_api_key + event :validate_api_key + the
-//     authenticate_api_key / generate / generate! / simple_token /
-//     api_key_taken? / api_key_validation_error / history? / ok_to_read? /
-//     ok_to_create? methods: these are persistence + auth semantics that
-//     ride the save/validate/event cycle (prepare_to_validate, :validate
-//     on :save, :changed => :content, the Card::Auth.find_account_by_*
-//     lookup, the SecureRandom.base64 key generation, Card::Auth::Token.
-//     encode). The TS port has no save/validate/event surface today
+//   - the lib/ CardController::ApiKey mixin (X-API-Key header ->
+//     authenticators): route-layer (the read-path authenticator is the
+//     routes section's surface, not this mod's) - the mixin's lookup half
+//     (find_account_by_api_key) IS ported below as the validate event's
+//     api_key_taken? seam
+//   - event :generate_api_key PORTED 2026-10-19 (the mods-first-half lane):
+//     the real body runs at prepare_to_validate through the engine's
+//     general stage walk, gated on the act's card[trigger] (the save input
+//     arm prepareApiKeyGenerateSaveInput composes setContent)
+//   - event :validate_api_key PORTED 2026-10-19 (same lane): the real body
+//     runs at the validate stage - the /^\w{20,}$/ grammar + the
+//     api_key_taken? uniqueness lookup (find_account_by
+//     auth/current.rb:92-98's SQL shape); the errors.add surface throws
+//     CardActionError("validation-failed") exactly where Ruby's errors
+//     abort the save
+//   - STILL not ported: the authenticate_api_key / generate! /
+//     simple_token / history? / ok_to_read? / ok_to_create? method
+//     remainder (the auth-mixin runtime and the accounted-card surface
+//     they ride)
 //   - the include_set Abstract::AccountField directive: that set is
 //     card-mod-account's surface; the api_key set inherits its methods
 //     (history?, ok_to_read?, ok_to_create?). Those methods rely on
@@ -69,13 +80,16 @@
 //     it); the perms gate itself (view/permission.rb#task_allowed?) is
 //     not exercised in the headless render path
 
+import { randomBytes } from "node:crypto";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
+import { CardActionError } from "../../actions/types.js";
 import type {
   DeckoModManifest,
   ModEventFn,
   ModEventRegistration,
 } from "../mod-manifest.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
 import { superView } from "../mod-view-helpers.js";
 
 /** The set-module event declarations: stub-bodied, with the per-event
@@ -112,11 +126,108 @@ const LOCALE = {
   api_key_incorrect: "API key mismatch",
 } as const;
 
-/** api_key.rb:4-6 event :generate_api_key, :prepare_to_validate,
- *  trigger: :required - the sub-card trigger input on the form. The TS
- *  port has no event system; the trigger name is preserved in the form's
- *  hidden input name so an upstream event handler keys on the same string. */
+/** api_key.rb:85-94 - the generate button's hidden input value: the
+ *  trigger name the form posts as card[trigger] (generateButtonHiddenTags
+ *  below), which the save path turns into the act's trigger list. */
 const GENERATE_API_KEY_TRIGGER = "generate_api_key";
+
+// ---------------------------------------------------------------------------
+// set/right/api_key.rb - the two event bodies (ported 2026-10-19)
+// ---------------------------------------------------------------------------
+
+/** api_key.rb:95-97 `def generate; self.content = SecureRandom.base64
+ *  .tr "+/=", "Qrt" end`. SecureRandom.base64 (16 random bytes -> 24
+ *  base64 chars, one of them the "=" pad) then String#tr maps the three
+ *  specials character-by-character ("+"->"Q", "/"->"r", "="->"t"), so the
+ *  answer is always exactly 24 word characters (the validate grammar's
+ *  /^\w{20,}$/ passes by construction). Ruby oracle run this session:
+ *  20 fresh keys, every one length 24 and fully word-char. */
+export function generatedApiKey(): string {
+  return randomBytes(16)
+    .toString("base64")
+    .replace(/[+/=]/g, (c) => (c === "+" ? "Q" : c === "/" ? "r" : "t"));
+}
+
+/** api_key.rb:13-18 `def api_key_taken?; return false unless (acct =
+ *  Card::Auth.find_account_by_api_key content); acct.id != left_id end`,
+ *  with find_account_by_api_key (lib/card/auth/api_key.rb:22-27) =
+ *  find_account_by :api_key, api_key.strip (auth/current.rb:92-98:
+ *  as_bot { Card.search({ right_id: AccountID, right_plus: [ApikeyID,
+ *  { content: value }] }).first }). The SQL is that search's shape: the
+ *  +*account junction whose +*api_key child carries the (stripped) key.
+ *  Ruby's search excludes trashed rows; the comparison is the FOUND
+ *  junction's id against the SAVING card's left_id. */
+async function apiKeyTaken(
+  ctx: ModEventContext,
+  cardName: string,
+  cardId: number | undefined,
+  content: string,
+): Promise<boolean> {
+  const accountId = await ctx.fetch?.codenames.id("account");
+  const apiKeyId = await ctx.fetch?.codenames.id("api_key");
+  if (accountId === undefined || apiKeyId === undefined) return false;
+  const junction = (
+    await ctx.driver.query<{ id: number; left_id: number | null }>(
+      `SELECT a.id, a.left_id FROM cards a
+       JOIN cards k ON k.left_id = a.id AND k.right_id = ? AND k.trash = 0
+       WHERE a.right_id = ? AND a.trash = 0 AND k.db_content = ?
+       ORDER BY a.id LIMIT 1`,
+      [apiKeyId, accountId, content.trim()],
+    )
+  ).rows[0];
+  if (junction === undefined) return false;
+  // the saving card's left_id: the stored row on an update; otherwise the
+  // junction name's left part through the lexicon (the codename anchors
+  // the +*api key tag the same way the set pattern does).
+  let leftId: number | null | undefined = undefined;
+  if (cardId !== undefined) {
+    leftId = (
+      await ctx.driver.query<{ left_id: number | null }>(
+        "SELECT left_id FROM cards WHERE id = ?",
+        [cardId],
+      )
+    ).rows[0]?.left_id;
+  } else {
+    const name = DeckoName.parse(cardName);
+    if (name.isCompound) {
+      leftId = (await ctx.lexicon.id(name.leftName!)) ?? null;
+    }
+  }
+  return junction.id !== leftId;
+}
+
+/** api_key.rb:8-12 event :validate_api_key, :validate, on: :save,
+ *  changed: :content - the two errors.add arms in Ruby's order, then the
+ *  abort: the port's errors surface is the throw (the save propagates
+ *  non-integrate stage errors, mod-event-dispatch.ts error isolation) as
+ *  a CardActionError("validation-failed") whose user message is the
+ *  full_messages form ("<KEY>: <message>", error.rb standard_errors). */
+const validateApiKeyEvent: ModEventFn = async (card, _host, ctx) => {
+  const content = card.dbContent ?? "";
+  const messages: string[] = [];
+  // :9 errors.add :content, t(:api_key_invalid) unless content.match?(/^\w{20,}$/)
+  if (!/^\w{20,}$/.test(content)) messages.push(LOCALE.api_key_invalid);
+  // :10 errors.add :content, t(:api_key_taken) if api_key_taken?
+  if (await apiKeyTaken(ctx, card.name, card.id, content)) {
+    messages.push(LOCALE.api_key_taken);
+  }
+  if (messages.length === 0) return;
+  throw new CardActionError(
+    "validation-failed",
+    messages.join("\n"),
+    messages.map((m) => `Content: ${m}`).join("\n"),
+    Object.fromEntries(messages.map((m) => ["content", m])),
+    card.name,
+  );
+};
+
+/** api_key.rb:4-6 event :generate_api_key - `generate` is
+ *  `self.content = ...`; the port's setContent seam (the save input arm
+ *  the engine composes for this trigger) is that assignment, applied to
+ *  the pending write before the row write. */
+const generateApiKeyEvent: ModEventFn = (_card, _host, ctx) => {
+  ctx.saveInput?.setContent(generatedApiKey());
+};
 
 // ---------------------------------------------------------------------------
 // set/right/api_key.rb - the methods on the *api_key right set
@@ -376,22 +487,20 @@ const cardModApiKey: DeckoModManifest = {
     {
       // card-mod-api_key-0.20.0/set/right/api_key.rb
       //
-      // Events — two STUBS with a shared
-      // named reason: the port has no API-key AUTH runtime
-      // (Auth.find_account_by_api_key, api_key.rb:14-18 api_key_taken?,
-      // and the authenticate_api_key ladder :34-45 are account-lookup
-      // machinery the engine has not ported), so neither the
-      // trigger-driven regeneration nor the uniqueness validation has a
-      // surface to run against:
+      // Events — the two REAL bodies (ported 2026-10-19, the
+      // mods-first-half lane; see the header + the fn comments):
       // - generate_api_key (:prepare_to_validate, trigger: :required;
-      //   api_key.rb:4-6 — SecureRandom.base64 tr "+/=" -> "Qrt" via
-      //   generate).
+      //   api_key.rb:4-6) — SecureRandom.base64 tr "+/=" -> "Qrt" via
+      //   generate (generatedApiKey), through the engine's setContent
+      //   save-input arm.
       // - validate_api_key (:validate, on: :save, changed: :content;
-      //   :8-12 — the /^\w{20,}$/ grammar + api_key_taken? uniqueness).
+      //   :8-12) — the /^\w{20,}$/ grammar + api_key_taken? uniqueness
+      //   (find_account_by auth/current.rb:92-98's SQL shape); the
+      //   errors.add surface throws CardActionError("validation-failed").
       setPath: "right/api_key",
       events: [
-        event({ event: "generate_api_key", at: "prepare_to_validate", trigger: "required" }),
-        event({ event: "validate_api_key", at: "validate", on: ["save"], changed: ["content"] }),
+        event({ event: "generate_api_key", at: "prepare_to_validate", trigger: "required", fn: generateApiKeyEvent }),
+        event({ event: "validate_api_key", at: "validate", on: ["save"], changed: ["content"], fn: validateApiKeyEvent }),
       ],
       formats: {
         html: {

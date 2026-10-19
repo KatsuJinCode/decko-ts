@@ -259,6 +259,14 @@ export interface UpdateCardInput extends TypeSpec {
    *  edit form (the API saves, the autosave's callers) = never a conflict
    *  (events.rb:66 short-circuits on nil). */
   lastActionIdBeforeEdit?: number | string | null;
+  /** card[trigger] (skip_and_trigger.rb:86-90 + :105-108): the events this
+   *  save's act explicitly triggers - a `trigger: :required` event runs
+   *  only when the act's trigger list names it (the generate button's
+   *  hidden input card[trigger]=generate_api_key, api_key.rb:96-98
+   *  generate_button_hidden_tags). A string (the form param) or an array
+   *  (Rack's repeated param; hash_with_value :109-113 Array.wraps both).
+   *  The act card carries it, so the act's subcard saves see it too. */
+  trigger?: string | readonly string[];
   /** `Env.params["draft"] == "true"` (mod/core/set/all/content.rb:20-22) -
    *  the autosave POST's flag (card-mod-edit-0.20.0
    *  assets/script/autosave.js.coffee:20). A draft save records history

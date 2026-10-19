@@ -2505,8 +2505,16 @@ export class CardActionEngine {
     // seen by every event of the act, nested saves included.
     const outerSkip = this.saveSkip;
     const outerAttributes = this.activeSaveAttributes;
+    const outerTriggers = this.actTriggers;
     if (input.skip !== undefined && input.skip.length > 0) {
       this.saveSkip = [...(outerSkip ?? []), ...input.skip];
+    }
+    // card[trigger] (skip_and_trigger.rb:86-90, hash_with_value :109-113
+    // Array.wraps the string-or-array param): the act's trigger list. The
+    // act card carries it, so the act's subcard saves see it too.
+    if (input.trigger !== undefined) {
+      const raw = input.trigger;
+      this.actTriggers = typeof raw === "string" ? [raw] : [...raw];
     }
     try {
       return await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
@@ -2514,8 +2522,14 @@ export class CardActionEngine {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
       this.activeSaveAttributes = outerAttributes;
+      this.actTriggers = outerTriggers;
     }
   }
+
+  /** The current save's act trigger list (UpdateCardInput.trigger,
+   *  skip_and_trigger.rb trigger=) - what trigger: :required events gate
+   *  on (the eventCard's act.trigger read). */
+  private actTriggers: readonly string[] | undefined;
 
   /** The current save's own skip list (UpdateCardInput.skip), merged with
    *  the runtime's engine-wide skip list wherever an event asks. */
@@ -2952,20 +2966,40 @@ export class CardActionEngine {
     const validationChanged: string[] = [];
     if (input.content !== undefined && input.content !== row.db_content) validationChanged.push("db_content");
     if (incomingTypeId !== row.type_id) validationChanged.push("type_id");
-    const validationCard = (): ModEventCard =>
-      this.eventCard({
+    // The card snapshot is rebuilt per stage: a prepare_to_validate body
+    // that mutates the pending content (generate_api_key's setContent,
+    // below) must be visible to the validate walk that follows it - both
+    // as the card's db_content and as a db_content CHANGE (Ruby's dirty
+    // tracking sees the event's assignment; changed: :content gates on
+    // it). The initial-change snapshot (incomingContent/validationChanged)
+    // stays the no-event baseline.
+    const validationCard = (): ModEventCard => {
+      const content = input.content ?? row.db_content;
+      const changed = [...validationChanged];
+      if (content !== incomingContent && !changed.includes("db_content")) {
+        changed.push("db_content");
+      }
+      return this.eventCard({
         name: newName ?? currentName,
         id: row.id,
         key: currentKey,
-        dbContent: incomingContent,
+        dbContent: content,
         dbContentBeforeAct: row.db_content ?? null,
         action: "update",
         trash: false,
         typeId: incomingTypeId,
         nameBeforeAct: currentName?.s,
-        changedFields: validationChanged,
+        changedFields: changed,
       });
+    };
     await this.dispatchEventStage("initialize", validationCard());
+    // generate_api_key (card-mod-api_key set/right/api_key.rb:4-6,
+    // :prepare_to_validate, trigger: :required): the mutation arm runs
+    // BEFORE this walk so the registered body's setContent (Ruby's
+    // `self.content =`) lands on the pending write (the applyAddComment
+    // shape, at the prepare_to_validate position instead of SP). No-ops
+    // unless the mod is loaded AND the act's trigger list names the event.
+    await this.prepareApiKeyGenerateSaveInput(input, row);
     await this.dispatchEventStage("prepare_to_validate", validationCard());
     // "name is changing" per Card::Dirty (lib/card/dirty.rb:57-60,
     // DirtyNames#name_is_changing? = `super || left_id_is_changing? ||
@@ -4519,7 +4553,10 @@ export class CardActionEngine {
         actId: input.actId,
         skip: this.actSkipList(),
         forceSkip: this.modEvents?.forceSkip,
-        trigger: this.modEvents?.trigger,
+        // the act's trigger list (skip_and_trigger.rb:105-108): the save's
+        // card[trigger] (actTriggers) when the save carried one, else the
+        // runtime-composed list (unset on every existing caller).
+        trigger: this.actTriggers ?? this.modEvents?.trigger,
       },
     };
   }
@@ -4619,7 +4656,17 @@ export class CardActionEngine {
       this.eventStateContext(stage),
     );
     return runModEventStage(
-      this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
+      // The act's own skip/trigger lists (skip_and_trigger.rb :80-108: both
+      // accessors live on the act card) ride the runtime the walk reads -
+      // the saveSkip merge is the established shape; the save's card[]
+      // trigger merges the same way.
+      this.saveSkip === undefined && this.actTriggers === undefined
+        ? runtime
+        : {
+            ...runtime,
+            ...(this.saveSkip === undefined ? {} : { skip: this.actSkipList() }),
+            ...(this.actTriggers === undefined ? {} : { trigger: this.actTriggers }),
+          },
       stage,
       populated,
       {
@@ -4710,6 +4757,49 @@ export class CardActionEngine {
       ctx,
     );
     saveInput.commentApplied = true;
+  }
+
+  /**
+   * event :generate_api_key's save input (card-mod-api_key
+   * set/right/api_key.rb:4-6, `:prepare_to_validate, trigger: :required`):
+   * composes the setContent mutation seam so the registered body's
+   * `self.content =` (api_key.rb:96 `def generate`) lands on the pending
+   * write BEFORE the row write - the applyAddComment shape, at the
+   * prepare_to_validate position instead of SP. The dispatcher's
+   * trigger_condition_applies? (skip_and_trigger.rb:86-90) does the
+   * gating against this save's actTriggers; this arm only checks that the
+   * event IS registered (the mod loaded - Ruby: no gem, no event) and
+   * that the trigger names it (an untriggered save leaves pendingSaveInput
+   * unset, byte-identical pre-arm behavior).
+   */
+  private async prepareApiKeyGenerateSaveInput(
+    input: { content?: string },
+    row: CardsRow,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    if (runtime === undefined) return;
+    const registered = runtime.registry
+      .all()
+      .find((e) => e.event === "generate_api_key");
+    if (registered === undefined) return; // the mod is not loaded
+    const triggers = this.actTriggers ?? this.modEvents?.trigger ?? [];
+    if (!triggers.includes("generate_api_key")) return; // untriggered save
+    const saveInput: ModEventSaveInput = {
+      comment: undefined,
+      commentAuthor: undefined,
+      signedInActorName: this.actor?.name,
+      now: this.clock,
+      pendingContent: input.content ?? row.db_content ?? undefined,
+      // Ruby's `self.content =` inside the event body: the mutation lands
+      // on input.content, which updateInWriter's pending write reads
+      // (`if (input.content !== undefined) after.db_content = ...`) and
+      // the validate-stage card snapshot rebuilds from.
+      setContent: (dbContent: string) => {
+        input.content = dbContent;
+      },
+      commentApplied: false,
+    };
+    this.pendingSaveInput = saveInput;
   }
 
   /**
