@@ -2966,7 +2966,18 @@ export class CardActionEngine {
         changedFields: validationChanged,
       });
     await this.dispatchEventStage("initialize", validationCard());
+    // translate_variables_to_scss (card-mod-bootstrap
+    // set/type_plus_right/bootswatch_skin/colors.rb:116-119,
+    // :prepare_to_validate, on: :update): the posted colors/theme_colors
+    // groups reach the registered body through the save input, whose
+    // setContent closure mutates this update's pending content BEFORE the
+    // row write (Ruby mutates the assigned `content=` string inside the
+    // validation phase). Composed only when the request carried a group;
+    // the walk's set scoping (type_plus_right/bootswatch_skin/colors)
+    // gates which card the body runs for.
+    await this.prepareTranslateVariablesSaveInput(input, validationCard());
     await this.dispatchEventStage("prepare_to_validate", validationCard());
+    this.pendingSaveInput = undefined;
     // "name is changing" per Card::Dirty (lib/card/dirty.rb:57-60,
     // DirtyNames#name_is_changing? = `super || left_id_is_changing? ||
     // right_id_is_changing?`): the name COLUMN changed, or — the compound
@@ -4728,6 +4739,41 @@ export class CardActionEngine {
    * (the guard is off: recaptcha_keys? false, recaptcha.rb:46-48, or no
    * registered event at all).
    */
+
+  /** translate_variables_to_scss's save-input snapshot
+   *  (card-mod-bootstrap set/type_plus_right/bootswatch_skin/colors.rb
+   *  :116-146, :prepare_to_validate, on: :update): the posted
+   *  colors/theme_colors groups ride into the prepare_to_validate walk
+   *  through pendingSaveInput; the registered body's setContent closure
+   *  mutates the update's pending content before the row write. Composed
+   *  only when the request carried a group AND the mod is loaded (Ruby:
+   *  without the gem the params ride along inert); the walk's set scoping
+   *  gates which card the body runs for. Cleared right after that walk —
+   *  Ruby's event runs at that one stage. */
+  private prepareTranslateVariablesSaveInput(
+    input: UpdateCardInput,
+    card: ModEventCard,
+  ): void {
+    const runtime = this.modEvents;
+    if (runtime === undefined) return;
+    if (input.colorsParams === undefined && input.themeColorsParams === undefined) return;
+    const registered = runtime.registry.all().some((e) => e.event === "translate_variables_to_scss");
+    if (!registered) return; // the mod is not loaded (no gem, no event)
+    this.pendingSaveInput = {
+      comment: undefined,
+      commentAuthor: undefined,
+      signedInActorName: undefined,
+      now: this.clock,
+      pendingContent: card.dbContent ?? undefined,
+      setContent: (dbContent) => {
+        input.content = dbContent;
+      },
+      commentApplied: false,
+      colorsParams: input.colorsParams,
+      themeColorsParams: input.themeColorsParams,
+    };
+  }
+
   private async prepareRecaptchaSaveInput(
     recaptchaToken: string | undefined,
     action: "create" | "update" | "delete",

@@ -118,12 +118,99 @@ import {
   variableGroupWithValues,
 } from "../../render/bootswatch-colors.js";
 import { superView, viewWrapInherited } from "../mod-view-helpers.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
+
+// ---------------------------------------------------------------------------
+// translate_variables_to_scss (colors.rb:116-146) — the +*colors save's
+// param-driven SCSS variable fold
+// ---------------------------------------------------------------------------
+
+/** colors.rb:3-9 VARIABLE_NAMES — the two posted groups, and the ONLY names
+ *  each accepts (variable_values_from_params slices Env.params[group] to
+ *  exactly these, colors.rb:135). */
+export const BOOTSWATCH_VARIABLE_NAMES = {
+  colors: [
+    "blue", "indigo", "purple", "pink", "red", "orange", "yellow", "green",
+    "teal", "cyan", "black", "white", "gray-100", "gray-200", "gray-300",
+    "gray-400", "gray-500", "gray-600", "gray-700", "gray-800", "gray-900",
+  ],
+  themeColors: [
+    "primary", "secondary", "success", "info", "warning", "danger", "light",
+    "dark", "body-bg", "body-color",
+  ],
+} as const;
+
+/** colors.rb:36-38 definition_regex:
+ *  `/^(?<before>\s*\$#{name}:\s*)(?<value>.+?)(?<after> !default;)$/`.
+ *  Ruby's ^ and $ are LINE anchors without any flag; the JS form takes the
+ *  m flag for the same meaning. The non-greedy value runs to the LAST
+ *  " !default;" that ends the line (a value containing that token is
+ *  replaced whole — pinned by the oracle capture). */
+function definitionRegex(name: string): RegExp {
+  return new RegExp(`^(?<before>\\s*\\$${name}:\\s*)(?<value>.+?)(?<after> !default;)$`, "m");
+}
+
+/** colors.rb:123-132 replace_values over ONE group, prefix at its default
+ *  "" (the event's two call sites pass none, :117-118): for each posted
+ *  name→value pair — sliced to the group's vocabulary first (:135) —
+ *  rewrite the value of every `^\s*$name:\s*… !default;$` line in place
+ *  (gsub!, so EVERY matching line, :127), or append one new default line
+ *  when nothing defines the name (:129). */
+function replaceValues(
+  group: readonly string[],
+  params: Readonly<Record<string, string>> | undefined,
+  content: string,
+): string {
+  if (params === undefined) return content; // Env.params[group] nil → {} (:135)
+  let result = content;
+  for (const [name, val] of Object.entries(params)) {
+    if (!group.includes(name)) continue; // .slice(*VARIABLE_NAMES[group]) (:135)
+    const regex = definitionRegex(name);
+    if (regex.test(result)) {
+      result = result.replace(
+        new RegExp(regex.source, "gm"),
+        (_match, before: string, _value: string, after: string) => `${before}${val}${after}`,
+      );
+    } else {
+      result += `$${name}: ${val} !default;\n`;
+    }
+  }
+  return result;
+}
+
+/** colors.rb:116-119 — `event :translate_variables_to_scss,
+ *  :prepare_to_validate, on: :update do replace_values :colors;
+ *  replace_values :theme_colors end`. The posted colors/theme_colors
+ *  groups fold into the +*colors card's pending content: every vocabulary
+ *  name's default line is rewritten in place, missing names are appended.
+ *  The mutation is Ruby's `content.gsub!` / `self.content +=` on the save's
+ *  assigned content — the port writes the net result back through
+ *  ModEventSaveInput.setContent, and only when bytes changed (Ruby mutates
+ *  the assigned string; no change = no assignment = no dirty flag).
+ *
+ *  Oracle: tmp/oracle-captures/capture-translate-variables-to-scss.rb runs
+ *  the gem's own replace_values/variable_values_from_params/
+ *  definition_regex lines over the request vectors; the goldens pin this
+ *  fn and the save-path test. */
+export async function translateVariablesToScssEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const save = ctx.saveInput;
+  if (save === undefined) return; // no request params reached this save
+  const original = save.pendingContent ?? card.dbContent ?? "";
+  let content = replaceValues(BOOTSWATCH_VARIABLE_NAMES.colors, save.colorsParams, original);
+  content = replaceValues(BOOTSWATCH_VARIABLE_NAMES.themeColors, save.themeColorsParams, content);
+  if (content !== original) save.setContent(content);
+}
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -1409,15 +1496,23 @@ const cardModBootstrap: DeckoModManifest = {
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",
-      // translate_variables_to_scss — STUB,
-      // named remainder (colors.rb:116-119 + replace_values :121+): the
-      // body translates posted color-group params into SCSS variable
-      // lines inside the +*colors content (variable_values_from_params
-      // reads the REQUEST params); the engine's save input carries no
-      // colors-params channel (ModEventSaveInput is comment/recaptcha
-      // shaped), so the param-driven mutation has no surface.
+      // translate_variables_to_scss — PORTED (colors.rb:116-119 +
+      // replace_values :123-132 + variable_values_from_params :134-136 +
+      // definition_regex :36-38): the body folds the posted colors/
+      // theme_colors params into the pending content through
+      // ModEventSaveInput (colorsParams/themeColorsParams + setContent),
+      // composed by the engine's update path before the
+      // prepare_to_validate walk (card-action-engine.ts). Set-scoped to
+      // type_plus_right/bootswatch_skin/colors — the serving runtime's
+      // setMember resolves that pattern (write-routes.ts,
+      // typePlusRightSetMember).
       events: [
-        event({ event: "translate_variables_to_scss", at: "prepare_to_validate", on: ["update"] }),
+        event({
+          event: "translate_variables_to_scss",
+          at: "prepare_to_validate",
+          on: ["update"],
+          fn: translateVariablesToScssEvent,
+        }),
       ],
       formats: {
         html: {
