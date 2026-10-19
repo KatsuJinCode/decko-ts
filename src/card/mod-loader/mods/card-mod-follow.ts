@@ -222,6 +222,7 @@ import type {
 import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
 import { editModalWrapper, followButton } from "./card-mod-edit.js";
+import { toPointerContent, type ContentFn } from "../../render/content-overrides.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -253,6 +254,54 @@ const followersCoreView: ViewFn = (ctx) => {
   if (BASE_CORE === undefined) return "";
   return BASE_CORE(ctx);
 };
+
+// ---------------------------------------------------------------------------
+// set/right/followers.rb:13-15 `def content` + :17-19 `def item_names`.
+//
+//   def content
+//     left ? item_names.to_pointer_content : ""
+//   end
+//
+//   def item_names _args={}
+//     left ? left.follow_set_card.prototype.follower_names : []
+//   end
+//
+// Both are set-module CONTENT overrides (the `def content` hook the render
+// layer consults BEFORE dbContent — content-overrides.ts's ContentFn), and
+// the list they name is computed in the follow render seam
+// (follow-render-seam.ts `followerNames`, resolved through the same
+// `resolveFollowers` walk the "N followers" pill reads, so the two cannot
+// disagree). `to_pointer_content` is content-overrides.ts's helper
+// (card-1.110.0 config/initializers/01_core_extensions/array.rb:4-12: strip,
+// drop one leading "[[" and one trailing "]]", join "\n").
+//
+// MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
+// `/<card>+*followers` renders `titled` with the follower names as the
+// pointer list ("Mira Member" — the deck-wide `*all+Mira Member+*follow` rule,
+// fixture rows 909/910), and `/<card>+followers` (the UNSTARRED name, a
+// different card) renders the create form, exactly as this port does.
+// ---------------------------------------------------------------------------
+
+const followersContentFn: ContentFn = (fmt) => {
+  const bundle = fmt.engine.followRenderBundle?.();
+  const names = bundle?.followerNames ?? [];
+  // `left ? ... : ""` — a followers card with no left has no names.
+  if (names.length === 0) return toPointerContent(names);
+  return toPointerContent(names);
+};
+
+/** type_plus_right/user/follow.rb:13-19 `def item_names` — the `<user>+*follow`
+ *  card's content is the pointer list over the user's follow PREFERENCE RULE
+ *  CARDS (`Card::Rule.preference_names user.name, "follow"`), resolved in the
+ *  follow render seam. This is the "all followed cards" content the board's
+ *  follow_overview_button opens (card-mod-edit set/board/follow_section.rb
+ *  :17-23 -> `link_to_card([Auth.current, :follow], "all followed cards")`).
+ *
+ *  MEASURED against the stock Ruby oracle: `/Ada Admin+*follow` renders the
+ *  Follow/Ignore tabs, and `/<User>+*follow/content` renders the pointer list
+ *  over the user's preference cards. */
+const userFollowContentFn: ContentFn = (fmt) =>
+  toPointerContent(fmt.engine.followRenderBundle?.()?.followPreferenceNames ?? []);
 
 // ---------------------------------------------------------------------------
 // set/right/following.rb:13-22 view :status.
@@ -1596,8 +1645,20 @@ const cardModFollow: DeckoModManifest = {
       // super() end + content method (left ? item_names.to_pointer_content
       // : "") + item_names helper (left ?
       // left.follow_set_card.prototype.follower_names : []) + virtual?.
-      // Ported: :core (the literal super() passthrough).
+      // Ported: :core (the literal super() passthrough), the `def content`
+      // override (followersContentFn) and the `virtual?` override
+      // (followers.rb:22-24 `def virtual?; new?; end`).
       setPath: "right/followers",
+      virtual: true,
+      // include_set Abstract::List (followers.rb:5) — the abstract list set's
+      // OWN `assign_type :list`, reached through the include. The TS mod
+      // loader keeps set-module registrations flat (mod-registrar.ts
+      // DIVERGENCE 2: no include_set seam), so the assignment is declared
+      // here, on the file that pulls the module in. MEASURED against the
+      // stock Ruby oracle: `/Home+*followers` is TYPE-list, and its pointer
+      // list is what renders the follower names.
+      assignsType: "list",
+      contentOverrides: [followersContentFn],
       formats: {
         html: {
           views: [
@@ -1632,6 +1693,10 @@ const cardModFollow: DeckoModManifest = {
       // is what lets the same dispatch happen here (the unknown card's
       // denial check still runs - permission.rb:22-23).
       setPath: "right/following",
+      // right/following.rb:4-6 `def virtual?; new?; end`
+      virtual: true,
+      // assign_type :list (following.rb:1) — verbatim.
+      assignsType: "list",
       formats: {
         html: {
           views: [
@@ -1823,6 +1888,19 @@ const cardModFollow: DeckoModManifest = {
       // (rules_and_options_by_set_pattern / a_set_pattern_hash class-side
       // walks) feeds the already-ported tabs.
       setPath: "type_plus_right/user/follow",
+      // include_set Abstract::List (user/follow.rb:7) — the abstract list
+      // set's own `assign_type :list`, reached through the include (see the
+      // right/followers note). MEASURED: `/Ada Admin+*follow` is TYPE-list.
+      assignsType: "list",
+      // user/follow.rb:8-10 `def virtual?; new?; end` — every unsaved
+      // `<User>+*follow` card is KNOWN, so the address renders the Follow /
+      // Ignore tabs instead of the create form (MEASURED against the stock
+      // Ruby oracle on the synthetic-v1 fixture).
+      virtual: true,
+      // user/follow.rb:13-19 `def item_names` — the pointer list over the
+      // user's follow preference rule cards, i.e. the "all followed cards"
+      // content the board's follow_overview_button opens.
+      contentOverrides: [userFollowContentFn],
       formats: {
         html: {
           views: [

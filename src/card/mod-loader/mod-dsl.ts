@@ -138,6 +138,11 @@ export interface SetDsl extends FormatDsl {
   writer(name: string, options?: AccessorOptions): void;
   /** `assign_type :type`. */
   assignType(type: string): void;
+  /** `def virtual?; new?; end` — every unsaved card in this set module's
+   *  chain is a KNOWN virtual card (states.rb:44-50 `known? : real? ||
+   *  virtual?`), so its page renders its own views instead of the create
+   *  form. card-mod-follow-0.20.0 set/right/followers.rb:22-24. */
+  virtual(): void;
   /** a set-module `def content` override. */
   content(fn: ContentFn): void;
   /** a data/real.yml rule row the mod ships for this set. */
@@ -291,6 +296,9 @@ class SetFileBuilder {
       writer: (name, options) => accessorEntry(name, false, true, options),
       assignType(type: string): void {
         builder.file.assignsType = type;
+      },
+      virtual(): void {
+        builder.file.virtual = true;
       },
       content(fn: ContentFn): void {
         builder.push("contentOverrides", fn);

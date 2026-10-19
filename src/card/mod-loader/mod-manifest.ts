@@ -459,6 +459,20 @@ export interface ModSetModuleFile {
    *  type_id_from_template`). */
   readonly assignsType?: string;
 
+  /** The file's `def virtual?; new?; end` (card-mod-follow-0.20.0
+   *  set/right/followers.rb:22-24, set/right/following.rb:4-6,
+   *  set/type_plus_right/user/follow.rb:8-10). Ruby states.rb:44-50 treats
+   *  `virtual?` as a per-set-module override ("Some cards with hard-coded
+   *  content will also override the #virtual? method. This is established
+   *  practice"), and `known?` is `real? || virtual?` — so every UNSAVED card
+   *  whose chain holds this module is KNOWN and its page renders its own views
+   *  instead of the create form (card-mod-format set/all/html/error.rb:82-84
+   *  `page_view_for_unknown` fires only for an unknown card). The loader
+   *  registers the module shortname in the virtual-set-module registry
+   *  (src/card/set-modules/virtual-set-modules.ts), which the page and render
+   *  roots consult. */
+  readonly virtual?: boolean;
+
   /** The file's mod data rule seeds (data/real.yml rule rows the gem ships;
    *  card-mod-recaptcha data/real.yml's *captcha toggles are the ported
    *  case). Registered into the mod rule-seed registry (mod-rule-seeds.ts)

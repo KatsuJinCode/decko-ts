@@ -85,6 +85,7 @@ import { UnsupportedViewError } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { warmRuleCards } from "./rule-card-warm.js";
+import { inputView as editorBaseInputView } from "./card-mod-edit.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import { safeSetKeys } from "../../render/set-keys.js";
@@ -1036,7 +1037,24 @@ function addAnotherSpan(): string {
 
 /** html_views.rb:32-34 / nest_list.rb:24-26 / link_list.rb:27-29:
  *  `_render_hidden_content_field + super()` - the hidden field then the
- *  type's editor bytes, concatenated with no separator. */
+ *  type's editor bytes, concatenated with no separator.
+ *
+ *  THE NON-FAMILY ARM DELEGATES (was: threw). `include_set Abstract::List`
+ *  (set/abstract/01_list/html_views.rb) is what puts THIS :input in a list
+ *  card's chain; a card outside the family never enters that module, so
+ *  Ruby's chain reaches card-mod-edit's set/all/editor.rb:32-36
+ *  `view :input, unknown: true, cache: :never do try(input_method(
+ *  input_type)) || input_defined_by_card || send(input_method(
+ *  default_input_type)) end` instead. Before this arm delegated, the chain
+ *  walker still handed it every non-family card — the flat abstract
+ *  registration is deliberately kept flat (mod-registrar.ts DIVERGENCE 2: no
+ *  include_set seam) — and the create form's `content_field` -> `_render_input`
+ *  raised a 500. MEASURED: the stock Ruby oracle answers
+ *  `/Ada_Admin+follow/input` with 200 and the rich-text editor
+ *  (`<textarea rows="3" class="tinymce-textarea d0-card-content …">`), which
+ *  is card-mod-edit's `rich_text_input` (:42-44) under the deck's configured
+ *  editor; `miranda member + follow` (an unsaved junction card, so the create
+ *  form is the page) reached the same view and rendered the create form. */
 const inputView: ViewFn = (ctx) => {
   const typeCode = ctx.fmt.card.typeCode ?? "";
   let editor: string;
@@ -1047,7 +1065,10 @@ const inputView: ViewFn = (ctx) => {
   } else if (listFamilyCard(ctx.fmt)) {
     editor = listFamilyInputHtml(ctx);
   } else {
-    throw baseViewNotPorted("input", ctx.fmt);
+    // Not in the Abstract::List family: Ruby's chain lands on the base
+    // editor, so the base editor's body IS the answer (no hidden content
+    // field — that is this module's `super()` prefix, absent off-family).
+    return editorBaseInputView(ctx);
   }
   return hiddenContentField(ctx) + editor;
 };
