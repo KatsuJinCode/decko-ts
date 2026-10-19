@@ -24,9 +24,17 @@ import { ModLoader } from "../../../src/card/mod-loader.js";
 import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
 import type { ViewContext, ViewFn } from "../../../src/card/render/format.js";
 
+// The flat/base-format :core entry BEFORE this mod loads. The HTML_VIEWS
+// record is process-wide (sibling test files in the same worker may have
+// loaded other mods), so the "not masked" pin compares against THIS
+// snapshot rather than against undefined.
+import { HTML_VIEWS } from "../../../src/card/render/views.js";
+
+let flatCoreBeforeLoad: unknown;
 let loader: ModLoader | undefined;
 
 beforeAll(() => {
+  flatCoreBeforeLoad = HTML_VIEWS["core"];
   loader = new ModLoader([{ manifest: cardModAssets }]);
   loader.load();
 });
@@ -59,16 +67,22 @@ function viewFor(name: string): ViewFn {
 
 describe("card-mod-assets mod loader", () => {
   describe("manifest shape (set/right/group_remote.rb setModule entries)", () => {
-    // The manifest carries six set modules: the right/asset_output
-    // :not_found gate, the abstract/asset_outputter bookkeeping entry, the
-    // type_plus_right/set/{style,script} :asset_output_url registrations (the
-    // concrete includers of the abstract, where the TS pattern surface can
-    // dispatch it), and abstract/asset_inputter, which carries the two asset
-    // input events' declarations. The gem tree has every one of these
-    // files, so the basket mirrors the gem exactly.
-    it("registers the six set modules: group_remote + the cwwrite-seam asset-output surfaces + asset_inputter", () => {
+    // The manifest carries sixteen set modules: the six earlier ones
+    // (right/asset_output's :not_found gate, the abstract/asset_outputter
+    // bookkeeping entry, the type_plus_right/set/{style,script}
+    // :asset_output_url registrations, abstract/asset_inputter's event
+    // declarations, right/group_remote) PLUS the 2026-10-19 tree
+    // completions (the mods-first-half lane): the gem's remaining set
+    // files (abstract/01_manifest_group + the include-only abstracts
+    // asset_file/asset_group/folder_group/local_manifest_group/mod_assets,
+    // right/asset_input, type/mod) and the manifest-group :core on the
+    // abstract's two CONCRETE includers (the abstract itself carries no
+    // registration: an abstract-pattern view would FLAT-register and mask
+    // the engine's :core deck-wide - Ruby's include_set scoping never
+    // does; the type_plus_right/set/{style,script} precedent).
+    it("registers the sixteen set modules - the full gem tree + the concrete includers", () => {
       expect(cardModAssets.setModules).toBeDefined();
-      expect(cardModAssets.setModules?.length).toBe(6);
+      expect(cardModAssets.setModules?.length).toBe(16);
       expect(cardModAssets.setModules?.map((m) => m.setPath)).toEqual([
         "right/asset_output",
         "abstract/asset_outputter",
@@ -76,16 +90,26 @@ describe("card-mod-assets mod loader", () => {
         "type_plus_right/set/style",
         "type_plus_right/set/script",
         "right/group_remote",
+        "abstract/01_manifest_group",
+        "abstract/asset_file",
+        "abstract/asset_group",
+        "abstract/folder_group",
+        "abstract/local_manifest_group",
+        "abstract/mod_assets",
+        "right/asset_input",
+        "type/mod",
+        "type/local_script_manifest_group",
+        "type/local_style_manifest_group",
       ]);
     });
 
-    it("the right/group_remote format :html block lists both verdict-named views", () => {
+    it("the right/group_remote format :html block lists :core + the two verdict-named views", () => {
       const html = cardModAssets.setModules?.find((m) => m.setPath === "right/group_remote")
         ?.formats?.html;
       expect(html).toBeDefined();
       const viewNames = (html?.views ?? []).map((v) => v.view).sort();
       expect(viewNames).toEqual(
-        ["javascript_include_tag", "stylesheet_include_tag"].sort(),
+        ["core", "javascript_include_tag", "stylesheet_include_tag"].sort(),
       );
     });
 
@@ -138,6 +162,24 @@ describe("card-mod-assets mod loader", () => {
       const flat = loader!.viewsTable();
       expect(flat["javascript_include_tag"]).toBeUndefined();
       expect(flat["stylesheet_include_tag"]).toBeUndefined();
+    });
+
+    // group_remote.rb:40-42 view :core (`list_group urls`) and
+    // 01_manifest_group.rb:4-6 view :core (`list_group card.item_names`,
+    // registered on the two CONCRETE includer types - the abstract
+    // module itself stays registration-free so nothing flat-registers).
+    it("registers :core set-scoped: Right::GroupRemote + the two manifest-group types", () => {
+      const chain = loader!.viewChainTable();
+      expect(typeof chain.viewFor("Right::GroupRemote", "core")).toBe("function");
+      expect(typeof chain.viewFor("Type::LocalScriptManifestGroup", "core")).toBe("function");
+      expect(typeof chain.viewFor("Type::LocalStyleManifestGroup", "core")).toBe("function");
+      // The abstract module itself carries NO :core registration...
+      expect(chain.viewFor("Abstract::ManifestGroup", "core")).toBeUndefined();
+      // ...and the flat/base-format record is untouched by this mod (the
+      // process-wide record may carry other mods' registrations, so the
+      // pin is the unchanged identity, not absence).
+      const flat = loader!.viewsTable();
+      expect(flat["core"]).toBe(flatCoreBeforeLoad);
     });
   });
 
@@ -215,6 +257,45 @@ describe("card-mod-assets mod loader", () => {
       expect(registered(ctxForUrls("https://cdn.example.com/lib.css\n"))).toBe(
         '<link href="https://cdn.example.com/lib.css" media="all" rel="stylesheet" type="text/css" />',
       );
+    });
+  });
+
+  describe("view :core - group_remote.rb:40-42 + 01_manifest_group.rb:4-6", () => {
+    // Both :core bodies are `list_group <items>`: the bootstrap helper's
+    // byte shape (bootstrap/helper.rb:12-19 -> list_tag/list_item_tags),
+    // measured and quoted in haml-file-views.ts listGroup: items joined by
+    // "\n" inside <li class="list-group-item"> wrappers, NOT escaped.
+    it("group_remote :core renders the URL list as the bootstrap list-group (list_group urls)", () => {
+      const core = loader!.viewChainTable().viewFor("Right::GroupRemote", "core");
+      expect(core?.(ctxForUrls("https://a.example/x.js\nhttps://b.example/y.js"))).toBe(
+        '<ul class="list-group">' +
+          '<li class="list-group-item">https://a.example/x.js</li>\n' +
+          '<li class="list-group-item">https://b.example/y.js</li></ul>',
+      );
+    });
+
+    it("group_remote :core of no urls is the empty list-group (list_group [])", () => {
+      const core = loader!.viewChainTable().viewFor("Right::GroupRemote", "core");
+      expect(core?.(ctxForUrls(""))).toBe('<ul class="list-group"></ul>');
+    });
+
+    it("manifest-group :core renders item_names - the [[ ]] marks stripped (01_manifest_group.rb:4-6)", () => {
+      // item_names (collection item.rb): the content read as a newline
+      // list, [[ ]] marks stripped. A one-item content is one item; the
+      // [[...]] forms are the same item names without the marks. The
+      // registration lives on the concrete includer types (the abstract
+      // itself stays registration-free - see the set-scoped pin above).
+      const core = loader!.viewChainTable().viewFor("Type::LocalStyleManifestGroup", "core");
+      expect(core?.(ctxForUrls("[[angular.js]]\n[[jquery]]"))).toBe(
+        '<ul class="list-group">' +
+          '<li class="list-group-item">angular.js</li>\n' +
+          '<li class="list-group-item">jquery</li></ul>',
+      );
+    });
+
+    it("manifest-group :core of empty content is the empty list-group", () => {
+      const core = loader!.viewChainTable().viewFor("Type::LocalStyleManifestGroup", "core");
+      expect(core?.(ctxForUrls(""))).toBe('<ul class="list-group"></ul>');
     });
   });
 

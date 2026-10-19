@@ -39,6 +39,12 @@ import cardModAccount from "../../../src/card/mod-loader/mods/card-mod-account.j
 let storage: RenderTestStorage | undefined;
 let loader: ModLoader | undefined;
 
+// The mod-less *signin :open capture (the WITHOUT test) and the slot-id
+// normalizer the :open A/B shares across the loader boundary.
+let modlessSigninOpen = "";
+const normalizeSlotIdsForOpen = (html: string) =>
+  html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
+
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
@@ -201,6 +207,11 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Mail Probe+email", "raw")).rejects.toThrow(
       UnsupportedViewError,
     );
+    // The mod-less :open capture, stashed for the WITH-mod :open A/B below:
+    // without the mod the base :open has neither the help show nor the menu
+    // hide (self/signin.rb:127-131's voo writes are the whole mod-side
+    // delta).
+    modlessSigninOpen = normalizeSlotIdsForOpen(await s.engine.render("*signin", "open"));
   });
 
   // The byte assertions run unmarked: ModLoader#viewChain's nested-set-file
@@ -251,6 +262,60 @@ describe("card-mod-account through the mod loader (A/B)", () => {
   it("WITH the mod: :one_line_content renders the empty string (self/signin.rb:144-146)", async () => {
     const s = storage!;
     expect(await s.engine.render("*signin", "one_line_content")).toBe("");
+  });
+
+  // set/self/signin.rb:127-131 view :open - `voo.show :help; voo.hide
+  // :menu; super()`. The super() dispatch rides superView to the engine's
+  // compiled openView (the chain's terminal parent - the base :open), so
+  // the OBSERVABLE mod-side delta on the view's own slot is exactly the
+  // two voo visibility writes. The A/B pins it against the mod-less
+  // capture stashed in the WITHOUT test above: with every slot payload
+  // canonicalized the bytes are identical (the base open bytes), and the
+  // OUTER open slot's payload is exactly the base shape plus help joining
+  // the show list (first-write-wins viz write, format.ts showViz) and
+  // menu joining the hide list. The deeper slots' payloads are the
+  // engine's voo-inheritance machinery, not this view body's surface, and
+  // are not pinned here. The slot-id normalization matches the
+  // :open_content pin below (per-render random slot ids).
+  it("WITH the mod: :open carries help shown + menu hidden over the base open bytes (self/signin.rb:127-131)", async () => {
+    const s = storage!;
+    const withMod = normalizeSlotIdsForOpen(await s.engine.render("*signin", "open"));
+    const payloadRe = /data-slot="([^"]+)"/g;
+    const slotsOf = (h: string) => [...h.matchAll(payloadRe)].map((m) => m[1]!);
+    const withSlots = slotsOf(withMod);
+    const withoutSlots = slotsOf(modlessSigninOpen);
+    // (a) outside the slot payloads, the bytes are the base :open bytes -
+    // with ONE disclosed non-:open delta: the mod's all/password_input set
+    // module (self/signin.rb:127-131 knows nothing of it) rewrites the
+    // +password field's input inside the sign-in form's core (the
+    // _pw-input type=password + visibility toggle). That set module's
+    // surface is canonicalized here so the comparison stays scoped to
+    // :open.
+    const passwordEditorRe =
+      /<div class="editor content-editor">[\s\S]*?card_subcards__password_type_id" \/>/;
+    const canon = (h: string) =>
+      h
+        .replace(passwordEditorRe, 'data-password-editor="CANON"')
+        .replace(payloadRe, 'data-slot="PAYLOAD"');
+    expect(canon(withMod)).toBe(canon(modlessSigninOpen));
+    // (b) the :open body's own voo writes, on the OUTER open slot's
+    // payload: the engine's base :open emits {"view":"open",
+    // "show":["open"],"hide":["bar_middle"]}, and the mod render's is
+    // exactly that shape plus the two writes.
+    const parse = (escaped: string) =>
+      JSON.parse(escaped.replace(/&quot;/g, '"')) as {
+        view?: string; show?: string[]; hide?: string[];
+      };
+    expect(parse(withSlots[0]!)).toEqual({
+      view: "open",
+      show: ["open", "help"],
+      hide: ["menu", "bar_middle"],
+    });
+    expect(parse(withoutSlots[0]!)).toEqual({
+      view: "open",
+      show: ["open"],
+      hide: ["bar_middle"],
+    });
   });
 
   it("WITH the mod: :open_content delegates to :core (self/signin.rb:139-142)", async () => {

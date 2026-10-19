@@ -36,6 +36,11 @@ export interface VisitorSession {
   history?: string[];
   /** Session-type card content by card key (session.rb session_key). */
   cards: Record<string, string>;
+  /** Env.session[:comment_author] (card-mod-comment set/all/comment.rb:6):
+   *  the sticky comment author the add_comment event writes and its
+   *  reader's session arm (comment.rb:16-19) reads first. Undefined until
+   *  a comment save writes it. */
+  commentAuthor?: string;
 }
 
 export function emptyVisitorSession(): VisitorSession {
@@ -70,6 +75,7 @@ export function readVisitorSession(cookieHeader: string | undefined): VisitorSes
       const raw = JSON.parse(base64UrlDecode(part.slice(eq + 1).trim())) as {
         h?: unknown;
         c?: unknown;
+        a?: unknown;
       };
       if (Array.isArray(raw.h)) {
         state.history = raw.h.filter((l): l is string => typeof l === "string" && LOCATION.test(l));
@@ -78,6 +84,9 @@ export function readVisitorSession(cookieHeader: string | undefined): VisitorSes
         for (const [k, v] of Object.entries(raw.c as Record<string, unknown>)) {
           if (typeof v === "string") state.cards[k] = v;
         }
+      }
+      if (typeof raw.a === "string" && raw.a !== "") {
+        state.commentAuthor = raw.a;
       }
     } catch {
       // an unreadable cookie is a fresh session
@@ -90,10 +99,13 @@ export function readVisitorSession(cookieHeader: string | undefined): VisitorSes
  *  the state is empty). */
 export function visitorSessionCookie(state: VisitorSession, opts?: { secure?: boolean }): string {
   const attrs = `Path=/; HttpOnly; SameSite=Lax${opts?.secure === true ? "; Secure" : ""}`;
-  const payload: { h?: string[]; c?: Record<string, string> } = {};
+  const payload: { h?: string[]; c?: Record<string, string>; a?: string } = {};
   if (state.history !== undefined) payload.h = state.history;
   if (Object.keys(state.cards).length > 0) payload.c = state.cards;
-  if (payload.h === undefined && payload.c === undefined) {
+  if (state.commentAuthor !== undefined && state.commentAuthor !== "") {
+    payload.a = state.commentAuthor;
+  }
+  if (payload.h === undefined && payload.c === undefined && payload.a === undefined) {
     return `${VISITOR_COOKIE_NAME}=; ${attrs}; Max-Age=0`;
   }
   let value = base64UrlEncode(JSON.stringify(payload));

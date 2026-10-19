@@ -74,3 +74,18 @@ describe("Session card content", () => {
     expect(visitorSessionCookie(s)).toMatch(/Max-Age=0/);
   });
 });
+
+describe("Comment-author session carry (Env.session[:comment_author])", () => {
+  it("round-trips the sticky author through the cookie (comment.rb:6)", () => {
+    const s = readVisitorSession(undefined);
+    s.commentAuthor = "Zebra";
+    const back = readVisitorSession(cookieOf(visitorSessionCookie(s)));
+    expect(back.commentAuthor).toBe("Zebra");
+  });
+
+  it("an authorless session emits no cookie and reads back undefined", () => {
+    const s = readVisitorSession(undefined);
+    const back = readVisitorSession(cookieOf(visitorSessionCookie(s)));
+    expect(back.commentAuthor).toBeUndefined();
+  });
+});

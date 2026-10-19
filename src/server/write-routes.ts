@@ -1981,6 +1981,11 @@ async function dispatchWriteRequest(
           : {}),
         comment: parsed.comment,
         commentAuthor: parsed.commentAuthor,
+        // Env.session (comment.rb:6 + :16-19): the visitor-session bag is
+        // the request's session store - the event writes the resolved
+        // comment_author into it, and the cookie re-serialization after
+        // dispatchWriteRequest carries it to the next request.
+        commentAuthorSession: visit,
         recaptchaToken: parsed.recaptchaToken,
       };
       if (await isSessionTypeCreate(ctx.fetcher, input)) {
@@ -2085,6 +2090,9 @@ async function dispatchWriteRequest(
           name: updateName,
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
+          // Env.session (comment.rb:6 + :16-19): the visitor-session bag
+          // (see the create arm).
+          commentAuthorSession: visit,
           recaptchaToken: parsed.recaptchaToken,
         });
         name = created.name?.s ?? updateName;
@@ -2117,6 +2125,9 @@ async function dispatchWriteRequest(
             : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
+          // Env.session (comment.rb:6 + :16-19): the visitor-session bag
+          // (see the create arm).
+          commentAuthorSession: visit,
           recaptchaToken: parsed.recaptchaToken,
           // Env.params[:colors] / [:theme_colors] — translate_variables_to_scss
           // (card-mod-bootstrap colors.rb:116-146) folds them into the
@@ -2129,6 +2140,11 @@ async function dispatchWriteRequest(
           // value detect_conflict validates (card-mod-history
           // set/all/history/events.rb:19-22, when: :edit_conflict?).
           lastActionIdBeforeEdit: card["last_action_id_before_edit"],
+          // card[trigger] (skip_and_trigger.rb:86-90): the generate
+          // button's hidden input (card-mod-api_key api_key.rb:96-98
+          // generate_button_hidden_tags) and the account mod's trigger
+          // forms ride the same param into the act's trigger list.
+          ...(card["trigger"] !== undefined ? { trigger: card["trigger"] } : {}),
           // Env.params["draft"] == "true" (mod/core/set/all/content.rb:20-22):
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",

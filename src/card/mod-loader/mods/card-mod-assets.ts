@@ -26,13 +26,18 @@
 //   card (CSS / SCSS / JS / CoffeeScript), which the engine has no cardtype
 //   for, so registering the view would claim a fidelity no oracle here
 //   pins.
-// - set/abstract/01_manifest_group.rb:4-7 view :core and
-//   set/abstract/mod_assets.rb:171-182 view :core - both override the
-//   engine's :core with `list_group card.item_names` /
-//   `haml :group_list, groups: groups`; the List-group / HAML renderer
-//   surfaces are not in the TS engine's :core path, and the engine's :core
-//   (src/card/render/views.ts:163 coreView) already serves the structural
-//   bytes these cards need at runtime.
+// - set/abstract/01_manifest_group.rb:4-6 view :core (`list_group
+//   card.item_names`) IS PORTED now (the mods-first-half lane 2026-10-19:
+//   manifestGroupCoreView over haml-file-views listGroup - the same helper
+//   the group_list template renders through; the abstract reaches cards
+//   only through the include graph's ManifestGroup includers, never
+//   globally).
+// - set/abstract/mod_assets.rb:171-182 view :core (`haml :group_list,
+//   groups: groups` over group_remote_card.urls + item_cards +
+//   input_item_cards) stays unregistered: the group walk rides the
+//   remote-manifest fetch and the compile-input machinery, which have no
+//   port surface; the deck-pinned modAssetGroupsCoreHtml
+//   (haml-file-views.ts) remains the caller-fed variant of the template.
 // - set/right/asset_output.rb:24-29 view :not_found + set/abstract/
 //   asset_outputter.rb:61-63 view :asset_output_url - PORTED in the
 //   the Cloudflare write seam. The blockers named
@@ -55,6 +60,7 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { NoMethodError, rubyDefaultInspect, stableIdentity } from "../../render/format.js";
 import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
+import { listGroup } from "../../render/haml-file-views.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
@@ -225,6 +231,29 @@ function urlsFor(ctx: ViewContext): string[] {
   if (raw === "") return [];
   return raw.split("\n").filter((line) => line !== "");
 }
+
+/** group_remote.rb:40-42 view :core: `list_group urls` - the bootstrap
+ *  list_group helper (card-mod-bootstrap set/all/bootstrap/helper.rb:12-19)
+ *  over the same urlsFor URL source the two tag views read (ported
+ *  2026-10-19; the helper's byte shape is haml-file-views.ts listGroup -
+ *  the mod_asset group_list template already renders through it). */
+const groupRemoteCoreView: ViewFn = (ctx) => listGroup(urlsFor(ctx));
+
+/** set/abstract/01_manifest_group.rb:4-6 view :core: `list_group
+ *  card.item_names` (ported 2026-10-19). item_names is the collection
+ *  item-name parse (collection item.rb - the content read as a newline
+ *  list, [[ ]] marks stripped; the identical parse the json :content
+ *  override runs, format-families.ts itemNamesOf). The abstract reaches
+ *  cards only through the concrete sets that include it (set-include-graph:
+ *  Right::GroupRemote, Type::Local*ManifestGroup), never globally - Ruby's
+ *  include_set scoping. */
+const manifestGroupCoreView: ViewFn = (ctx) =>
+  listGroup(
+    (ctx.fmt.card.dbContent ?? "")
+      .split(/\n+/)
+      .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
+      .filter((s) => s !== ""),
+  );
 
 /** group_remote.rb:44-48 view :javascript_include_tag, cache: :never:
  *  `urls.map { |path| javascript_include_tag path }.join("\n")`. Rails'
@@ -465,6 +494,8 @@ const cardModAssets: DeckoModManifest = {
       formats: {
         html: {
           views: [
+            // group_remote.rb:40-42 - list_group urls
+            { view: "core", viewFn: groupRemoteCoreView },
             // group_remote.rb:44-48
             {
               view: "javascript_include_tag",
@@ -479,6 +510,54 @@ const cardModAssets: DeckoModManifest = {
           ],
         },
       },
+    },
+    // The gem tree's remaining set files (registered 2026-10-19 so the
+    // basket reflects the gem; each file's own surface):
+    // - abstract/01_manifest_group: view :core (list_group card.item_names,
+    //   manifestGroupCoreView) - REGISTERED ON ITS CONCRETE INCLUDERS below
+    //   (type/local_{script,style}_manifest_group, the set-include-graph's
+    //   ManifestGroup includers), the type_plus_right/set/{style,script}
+    //   precedent: an abstract-pattern registration would FLAT-register
+    //   (the loader's kind filter only excludes nonbase) and mask the
+    //   engine's :core deck-wide, which Ruby's include_set scoping never
+    //   does.
+    // - abstract/asset_file: view :javascript_include_tag (:55-59) reads
+    //   the asset file's compiled bytes off DISK and calls Rails'
+    //   javascript_include_tag on them - the filesystem surface named in
+    //   the header; no registration.
+    // - abstract/asset_group, abstract/folder_group,
+    //   abstract/local_manifest_group: include_set wiring only
+    //   (ReadOnly/Sources/Items/ManifestGroup) - no views, no events.
+    // - abstract/mod_assets: view :core (:171-182) walks
+    //   group_remote_card.urls + item_cards + input_item_cards (the
+    //   remote-manifest fetch and the compile-input machinery); the
+    //   card-driven walk has no port surface - the deck-pinned
+    //   modAssetGroupsCoreHtml (haml-file-views.ts) stays the caller-fed
+    //   variant.
+    // - right/asset_input: Abstract::VirtualCache + virtual_content
+    //   (left.assemble_asset_input_content - the compile-input assembly);
+    //   no views, no events.
+    // - type/mod: empty (the Mod cardtype's asset surface is
+    //   Abstract::ModAssets's includer walk).
+    { setPath: "abstract/01_manifest_group" },
+    { setPath: "abstract/asset_file" },
+    { setPath: "abstract/asset_group" },
+    { setPath: "abstract/folder_group" },
+    { setPath: "abstract/local_manifest_group" },
+    { setPath: "abstract/mod_assets" },
+    { setPath: "right/asset_input" },
+    { setPath: "type/mod" },
+    // 01_manifest_group.rb:4-6 view :core on the abstract's CONCRETE
+    // includers (set-include-graph.ts: the ManifestGroup html includers;
+    // Right::GroupRemote carries its own :core above, which Ruby's MRO
+    // - own module before the included abstract - also puts first).
+    {
+      setPath: "type/local_script_manifest_group",
+      formats: { html: { views: [{ view: "core", viewFn: manifestGroupCoreView }] } },
+    },
+    {
+      setPath: "type/local_style_manifest_group",
+      formats: { html: { views: [{ view: "core", viewFn: manifestGroupCoreView }] } },
     },
   ],
 };

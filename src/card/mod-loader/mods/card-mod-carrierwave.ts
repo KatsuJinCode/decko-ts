@@ -1309,7 +1309,23 @@ const cardModCarrierwave: DeckoModManifest = {
         event({ event: "update_public_link", after: "update_read_rule", when: "local?" }),
       ],
     },
-
+    // The gem tree's remaining set files (registered 2026-10-19, the
+    // mods-first-half lane, so the basket mirrors the gem; each is a
+    // method-only surface with no view or event to register - the named
+    // absences above):
+    // - abstract/attachment/paths.rb: store_dir/upload_dir/files_base_dir/
+    //   file_dir/public?/file_id - the Rails Card.paths + bucket-config
+    //   filesystem resolution the engine's LocalAttachmentStore models in
+    //   its own layout.
+    // - abstract/attachment/web.rb: the no_upload? predicate (web storage
+    //   or the configured storage type); the save-path state sources carry
+    //   the resolved facts (ModEventCard webStorage/storageType).
+    // - all/file_utils.rb: ClassMethods for the draft-upload GC
+    //   (delete_tmp_files_of_cached_uploads + the draft-actions SQL) - the
+    //   basket-task machinery the engine deliberately does not run.
+    { setPath: "abstract/attachment/paths" },
+    { setPath: "abstract/attachment/web" },
+    { setPath: "all/file_utils" },
   ],
 };
 

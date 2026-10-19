@@ -221,6 +221,14 @@ export interface CreateCardInput extends TypeSpec {
   comment?: string;
   /** params[:comment_author]. */
   commentAuthor?: string;
+  /** Ruby's Env.session (env.rb:21-23) — the request's session bag the
+   *  add_comment event reads and writes (comment.rb:6 writes the resolved
+   *  comment_author into it; the reader's session arm, :16-19, wins over
+   *  the params). The CALLER owns the store and carries it across saves
+   *  (the route layer passes the visitor-session bag; the event's write
+   *  mutates it in place, and the caller re-serializes it). Undefined =
+   *  no session, Ruby's nil Env.session. */
+  commentAuthorSession?: { commentAuthor?: string };
   /** params[:recaptcha_token] — the event :recaptcha input
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Rides the
    *  save only when the recaptcha mod + config are composed; may be
@@ -265,6 +273,8 @@ export interface UpdateCardInput extends TypeSpec {
   comment?: string;
   /** params[:comment_author]. */
   commentAuthor?: string;
+  /** Ruby's Env.session for this save (see the create-side field). */
+  commentAuthorSession?: { commentAuthor?: string };
   /** The edit form's stale-revision field: the :conflict_tracker hidden
    *  input (card-mod-edit-0.20.0 set/all/form.rb:27-31,
    *  `hidden_field :last_action_id_before_edit, class:
@@ -275,6 +285,14 @@ export interface UpdateCardInput extends TypeSpec {
    *  edit form (the API saves, the autosave's callers) = never a conflict
    *  (events.rb:66 short-circuits on nil). */
   lastActionIdBeforeEdit?: number | string | null;
+  /** card[trigger] (skip_and_trigger.rb:86-90 + :105-108): the events this
+   *  save's act explicitly triggers - a `trigger: :required` event runs
+   *  only when the act's trigger list names it (the generate button's
+   *  hidden input card[trigger]=generate_api_key, api_key.rb:96-98
+   *  generate_button_hidden_tags). A string (the form param) or an array
+   *  (Rack's repeated param; hash_with_value :109-113 Array.wraps both).
+   *  The act card carries it, so the act's subcard saves see it too. */
+  trigger?: string | readonly string[];
   /** `Env.params["draft"] == "true"` (mod/core/set/all/content.rb:20-22) -
    *  the autosave POST's flag (card-mod-edit-0.20.0
    *  assets/script/autosave.js.coffee:20). A draft save records history
