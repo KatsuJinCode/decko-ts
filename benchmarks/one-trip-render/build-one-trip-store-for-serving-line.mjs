@@ -17670,7 +17670,11 @@ async function buildOneTripClosure(options) {
       if (cardName === void 0) return;
       for (const group of ruleSeam.candidatesForCard(cardName)) {
         for (const candidateKey of group.candidateKeys) {
-          const candidateId = keyToId.get(candidateKey) ?? null;
+          let candidateLookupKey = candidateKey;
+          try {
+            candidateLookupKey = DeckoName.parse(candidateKey).key;
+          } catch {}
+          const candidateId = keyToId.get(candidateLookupKey) ?? null;
           if (candidateId !== null || isPageCard) {
             ruleRows.push({
               pageId,

@@ -4430,6 +4430,35 @@ export class RenderEngine implements RenderEngineLike {
             askedPairs.set(pairKey, { leftId, rightId, lex });
             callAskedPairs.add(pairKey);
             sideIdPairs.push({ leftId, rightId, lex });
+          } else if (
+            !askedPairs.has(pairKey) &&
+            this.fetcher.lexicon.peekIdByLex(lex) !== undefined
+          ) {
+            // A LEX ENTRY IS NOT A HELD RECORD — the pair form of the
+            // 2026-10-06 composer's simple-key lesson (the askSimple gate
+            // above). A primed-positive pair entry (the prefetch's priming
+            // writes L-<l>-<r> -> id without fetching the row) made this
+            // gate skip the ask, and the caller's fetch ladder then resolved
+            // the id from that entry and point-fetched the row solo —
+            // measured: structure instantiation's 147 one-at-a-time
+            // `WHERE id = ?` reads, every one a name whose pair the lexicon
+            // already held. Ask what the wave actually needs: the record
+            // held in the fetch cache -> seat it from cache (zero queries);
+            // a held POSITIVE without a record rides the same pair-tuple
+            // statement the unasked path uses (j.* — the row itself);
+            // a held NEGATIVE keeps the skip (the row does not exist). The
+            // ask lands once per engine lifetime (askedPairs), so warm
+            // renders still ask nothing new.
+            const held = this.fetcher.retrieveFromCacheByKey(name.key);
+            if (held !== undefined) {
+              heldSeatThisRound = true;
+              await this.cacheFetchedRecord(held);
+              seatedAny = true;
+            } else {
+              askedPairs.set(pairKey, { leftId, rightId, lex });
+              callAskedPairs.add(pairKey);
+              sideIdPairs.push({ leftId, rightId, lex });
+            }
           }
         } else if (prime && !left.isCompound && !right.isCompound) {
           const sidePairKey = `${left.key}~${right.key}`;
