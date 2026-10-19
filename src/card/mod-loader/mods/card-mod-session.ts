@@ -116,19 +116,26 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
   // ride the request Env / success object / controller page cycle -
   // no view registrations (see the header's NOT-ported list).
   //
-  // Events — two STUBS (declared without a body) with named reasons:
-  // - discard_deleted_locations (:finalize, on: :delete) drops the
-  //   deleted card's entries from the session location history
-  //   (configure_successful_deletion needs the delete-success
-  //   object); the visitor-session owns the history and no delete
-  //   hook reaches it.
-  // - save_current_location (Ruby `before: :show_page, on: :read`) —
-  //   the location-history MECHANISM is ported
-  //   (session/visitor-session.ts saveLocation, location_history.rb
-  //   :12-17) but the read-path EVENT hook is unwired (the port's
-  //   page views do not run card events); the declaration records
-  //   Ruby's set membership (the stage is show_page's read cycle,
-  //   outside the nine save stages — no stage to record).
+  // Events — BODY PORTED SERVER-OWNED (the request layer is where Ruby
+  // runs them too: Env is request state, and show_page is the controller
+  // page cycle):
+  // - discard_deleted_locations (:finalize, on: :delete): the write
+  //   route's delete path runs discardLocationsFor(visit, name)
+  //   (write-routes.ts, "if (saved.verb === 'delete')") BEFORE resolving
+  //   the deletion success target — location_history.rb:1-4's order —
+  //   and the ajax delete arm runs configure_successful_deletion's
+  //   redirect-previous rewrite (write-routes.ts deletesOwnTarget, citing
+  //   location_history.rb:12-20). Behavioral pin:
+  //   tests/card/session/visitor-session.test.ts (the history semantics,
+  //   oracle-tied to env/location_history.rb) and the write-routes
+  //   delete-redirect cases.
+  // - save_current_location (`before: :show_page, on: :read`): the page
+  //   GET handler runs saveLocation under the shouldSaveLocation gate
+  //   (known / html / non-ajax / non-signin — Ruby's Env.save_location
+  //   conditions), worker.ts; the write path's denial page rides the
+  //   same mechanism (write-routes.ts, the CardActionError catch citing
+  //   this event). The declaration records Ruby's shape; the body is the
+  //   server's, not the mod's.
   set("all/location_history", ({ event }) => {
     event("discard_deleted_locations", "finalize", { on: "delete" });
     // Ruby: `event :save_current_location, before: :show_page,
