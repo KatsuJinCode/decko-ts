@@ -8,6 +8,7 @@
 //        [--asset-host <additional known public asset hostname>]
 //        [--favicon-url <exact public favicon URL>]
 //        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
+//        [--material-icons local|stock] (explicit local-stack asset configuration)
 //
 // LIVE-WALK PROFILE (host-override): the same journeys can be attached to a
 // RUNNING engine — any base URL the operator names — instead of booting the
@@ -84,9 +85,11 @@ import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } fr
 import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
-import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
+import {waitForCreatedCardLanding} from './edge-signed-in-exercise/lib/create-landing.mjs';
+import {auditBindings} from './edge-signed-in-exercise/check-bindings.mjs';
 import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
 import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
@@ -138,6 +141,8 @@ const RUN_DIR = join(REPO, "tmp", `edge-signed-in-${RUN_ID}-${process.pid}`);
 const OUT = resolve(argOf("out") ?? join(REPO, '.runtime', 'edge-signed-in', RUN_ID, 'report.md'));
 assertOperationalCaptureOutput(REPO,OUT);
 if (existsSync(OUT) || existsSync(OUT + '.json') || existsSync(OUT + '.intent.json')) throw new Error('output already exists; use a fresh attempt destination');
+const harnessBindingCheck=auditBindings();
+if(!harnessBindingCheck.pass)throw Error('Harness lexical binding preflight refused: '+JSON.stringify(harnessBindingCheck));
 const RAW = OUT + '.raw';
 const MEMORY = OUT + '.memory.jsonl';
 let memoryAdmitted = false;
@@ -148,7 +153,7 @@ function sampleMemory(stage, counters = {}) {
 let htmlSequence = 0;
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
-const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false };
+const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false, harnessBindingCheck };
 // The host this run drives and the write mode it runs under — recorded for
 // EVERY run, local stack or host override (lib/live-walk-profile.mjs).
 provenance.liveWalk = { ...targetProvenance(liveWalk), engineProfile: liveWalkProfilePath ? liveWalkProfilePath.replace(/\\/g, "/") : null };
@@ -263,8 +268,8 @@ if (restrictWrites) {
   // Host-override attach: nothing is built, staged, seeded or read from any
   // provider. The engine is whatever already serves --base-url; the render
   // configuration belongs to it, not to this run.
-  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined) {
-    throw new Error('--ajax-save-redirect / --conflict-retry are render-configuration overrides for the local stack; a host-override target carries its own configuration');
+  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined || argOf('material-icons') !== undefined) {
+    throw new Error('--ajax-save-redirect / --conflict-retry / --material-icons are render-configuration overrides for the local stack; a host-override target carries its own configuration');
   }
   const credentialsFile = argOf("credentials");
   if (!credentialsFile) throw new Error(`host-override target ${liveWalk.origin} needs --credentials <file> naming the target's own accounts ({admin:{name,email,password},member:{...}}); this run seeds nothing and the file's content is never recorded (path and presence only, sha256 deliberately omitted for a secret-bearing file)`);
@@ -321,6 +326,12 @@ if (restrictWrites) {
    if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
    captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
    provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
+  }
+  const materialIcons=argOf('material-icons');
+  if(materialIcons!==undefined){
+    if(!['stock','local'].includes(materialIcons))throw Error('material-icons must be stock or local');
+    captureEnv.DECKO_MATERIAL_ICONS=materialIcons;
+    provenance.renderConfigurationOverrides.DECKO_MATERIAL_ICONS=materialIcons;
   }
   provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
     keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
@@ -1278,10 +1289,15 @@ try {
         const url = new URL(response.url());
         return url.origin === stack.origin && url.pathname === '/card/create' && response.request().method() === 'POST';
       }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+      const fileLanding = !restrictWrites ? waitForCreatedCardLanding(page,stack.origin,uploadName)
+        .then(()=>({}),error=>({error})) : null;
       await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click();
       const observed = await pending;
       if (observed.error) throw observed.error;
       await observed.response.finished();
+      if(fileLanding&&observed.response.status()<400){
+        const landed=await fileLanding;if(landed.error)throw landed.error;
+      }
       // The stored-row and byte-exact-download verdicts read the owned local
       // deck; a host-override target grades the create POST's own answer and
       // says so, never silently narrowing a named check's evidence.
@@ -1418,7 +1434,8 @@ const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
 const assetFailures = browserAssetFailures(allBrowsers);
 group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
-  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
+  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures,
+    navigationCancellations:browserAssetCancellations(allBrowsers) });
 
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);
@@ -1500,6 +1517,6 @@ if (failures.length > 0) {
   for (const f of failures) console.log(`  - ${f.group} / ${f.check}: ${(typeof f.evidence === "string" ? f.evidence : JSON.stringify(f.evidence)).slice(0, 220)}`);
 }
 console.log(`run record: ${OUT}`);
-if (hasFlag("keep")) console.log(`run directory kept: ${RUN_DIR} (credentials: ${credentialsPath})`);
+if (hasFlag("keep")) console.log(`run directory kept: ${RUN_DIR}${restrictWrites?'':` (credentials: ${join(RUN_DIR,'credentials.json')})`}`);
 else rmSync(RUN_DIR, { recursive: true, force: true });
 process.exit(failures.length === 0 && !coverageIncomplete ? 0 : 1);

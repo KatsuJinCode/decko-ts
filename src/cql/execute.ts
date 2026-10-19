@@ -875,15 +875,28 @@ async function runFoundByTargetIds(
       delete stripped[mod];
     }
   }
+  // A pure type-membership target contributes only IDs to the outer query.
+  // Do not transport every member's content (a RichText type set can hold
+  // thousands of large bodies). Keep this deliberately narrow: match
+  // post-filters need their full rows, and grouped queries must keep their
+  // existing representative-row selection. No limit or membership cap.
+  const keys = Object.keys(stripped);
+  const typeKeys = keys.filter((key) => key === "type" || key === "type_id");
+  const typeValue = typeKeys.length === 1 ? stripped[typeKeys[0]!] : undefined;
+  if (
+    typeKeys.length === 1 &&
+    keys.every((key) => key === "type" || key === "type_id" || key === "trash") &&
+    (typeof typeValue === "string" || (typeof typeValue === "number" && Number.isInteger(typeValue))) &&
+    (stripped["trash"] === undefined || typeof stripped["trash"] === "boolean")
+  ) {
+    stripped["return"] = "id";
+  }
   const result = await executeQuery(driver, stripped, {
     ...options,
     foundByDepth: depth + 1,
     parse: { ...options.parse, context: targetName },
   });
-  // The projection stays the found statement's default (full card rows):
-  // `return: "id"` would drop the columns the JS match post-filter
-  // re-applies against (executeRowsPostFiltered), so a found statement
-  // carrying a match condition would filter every row away.
+  // All other shapes retain full card rows, including match post-filters.
   const ids: number[] = [];
   for (const row of "rows" in result ? result.rows : []) {
     const id = (row as unknown as Record<string, unknown>)["id"];

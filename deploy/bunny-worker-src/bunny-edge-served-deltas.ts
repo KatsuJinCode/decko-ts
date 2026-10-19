@@ -1,3 +1,4 @@
+import {configureMaterialIconsMode} from "../../src/card/render/material-icons.js";
 import { configureFontAwesomeMode } from "../../src/card/render/font-awesome.js";
 // deploy/bunny-worker-src/bunny-edge-served-deltas.ts — the deployment
 // configuration that carries ONE deck's identity into the edge's served
@@ -148,6 +149,7 @@ export interface ServedEnvironmentDeltas {
    *  links only its own compiled CSS and main script. */
   headScripts?: string[];
   fontAwesomeAssetMode?: "local";
+  materialIconsAssetMode?: "local";
   /** The *logo fallback URL (used when the deck stores none). */
   logoUrl?: string;
   /** The *favicon fallback URL (used when the deck stores none). */
@@ -445,6 +447,8 @@ export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined)
     }
   }
 
+  const materialMode=configureMaterialIconsMode(src["DECKO_MATERIAL_ICONS"]);
+  if(materialMode!==undefined)out.materialIconsAssetMode=materialMode;
   const fontMode = configureFontAwesomeMode(src["DECKO_FONT_AWESOME"]);
   if (fontMode !== undefined) out.fontAwesomeAssetMode = fontMode;
   return out;
@@ -467,6 +471,7 @@ export function servedDeltasAreEmpty(deltas: ServedEnvironmentDeltas): boolean {
  *  an empty delta set yields the stock boot. */
 export interface ServedBootOptions {
   fontAwesomeAssetMode?: "local";
+  materialIconsAssetMode?: "local";
   assetHost?: string;
   phantomItemType?: PhantomTypeDelta;
   timeZone?: string;
@@ -476,6 +481,7 @@ export interface ServedBootOptions {
 export function servedBootOptions(deltas: ServedEnvironmentDeltas): ServedBootOptions {
   const out: ServedBootOptions = {};
   if (deltas.fontAwesomeAssetMode !== undefined) out.fontAwesomeAssetMode = deltas.fontAwesomeAssetMode;
+  if(deltas.materialIconsAssetMode!==undefined)out.materialIconsAssetMode=deltas.materialIconsAssetMode;
   if (deltas.assetHost !== undefined) out.assetHost = deltas.assetHost;
   if (deltas.phantomType !== undefined) out.phantomItemType = deltas.phantomType;
   if (deltas.timeZone !== undefined) out.timeZone = deltas.timeZone;

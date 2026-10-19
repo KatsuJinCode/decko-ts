@@ -218,6 +218,7 @@ export const checks = [
   {
     name: "E11b the +summary junction's own edit modal targets the junction card with its stored content",
     run: async (ctx) => {
+      const {database,page,visit,record}=ctx;
       const summaryName = database().prepare("SELECT name FROM cards WHERE key='summary' AND trash=0").get()?.name;
       if (!summaryName) throw Error('Canonical summary tag is unavailable');
       const host = 'Harness_catalog_summary_' + Date.now().toString(36);

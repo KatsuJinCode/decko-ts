@@ -678,7 +678,15 @@ async function run() {
       await page.waitForTimeout(2000);
       const rendered2Options = await page.locator(".select2-container--open .select2-results__option").evaluateAll((els) => els.map((e) => e.textContent.trim())).catch(() => []);
       const wantText = rendered2Options.find((t) => /logo/i.test(t)) ?? String(image.name ?? "*logo");
-      await page.locator(".select2-container--open .select2-results__option").filter({ hasText: wantText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") }).last().click({ timeout: T }).catch(() => {});
+      // filter({ hasText }) with a STRING is a literal (case-insensitive)
+      // substring match in Playwright — no regex engine involved — so the
+      // regex-escape this drive applied corrupted the pattern (every "*" in
+      // a card name became a literal "\*"), the option locator matched
+      // nothing, the click silently no-opped, and the leg stored whatever
+      // the dialog's default option was (image01, the autoname placeholder)
+      // in EVERY earlier run, including the Fleet B rerun. Pass the raw
+      // text: substring semantics is exactly what this pick wants.
+      await page.locator(".select2-container--open .select2-results__option").filter({ hasText: wantText }).last().click({ timeout: T }).catch(() => {});
       const picked = await picker.inputValue().catch(() => null);
       await dialog.getByRole("tab", { name: "options", exact: true }).click({ timeout: T }).catch(() => {});
       const viewSel = dialog.locator("select._image-view-select");
@@ -719,7 +727,30 @@ async function run() {
       const anyImg = page.locator("#main .card-slot img").first();
       const anyImgCount = await anyImg.count().catch(() => 0);
       const anyDecoded = anyImgCount > 0 ? await anyImg.evaluate((el) => el.complete && el.naturalWidth > 0).catch(() => false) : false;
-      rendered = { freshStatus: fresh.status, imgCount, decoded, anyImgCount, anyDecoded };
+      // The picked image card's slot rendering ITS OWN CONTENT is the
+      // render-side evidence this leg needs. An <img> element is only one
+      // shape of that: the synthetic fixture's only image (*logo) is an SVG
+      // asset (content ":logo/carrierwave.svg"), and the stock Ruby 3.3
+      // oracle renders that nest as the card's titled view with the SVG
+      // bytes INLINE — zero <img> tags on either side of the comparison
+      // (measured head-to-head 2026-10-19: the same created card on
+      // engines/ruby33.json and engines/ts.json both emit
+      // `.card-slot.titled-view[data-card-id='288']` whose body is the
+      // inline <svg>, no <img> anywhere). Grading this leg on
+      // anyImgCount > 0 alone contradicted the oracle's own answer and, fed
+      // by the autocomplete defect (the ?view=image_complete search
+      // returning no options), kept offering/storing the dialog's default
+      // autoname placeholder image01 — a card that does not exist — whose
+      // correct unknown-view render has no image at all. Accept either
+      // shape: a decoded <img>, or the picked card's slot carrying its
+      // inline file content.
+      const imageSlot = page.locator(`#main .card-slot[data-card-id='${image.id}']`).first();
+      const imageSlotCount = await imageSlot.count().catch(() => 0);
+      const imageSlotInlineSvg = imageSlotCount > 0
+        ? await imageSlot.evaluate((el) => el.innerHTML.includes("<svg")).catch(() => false)
+        : false;
+      const imageRendered = (imgCount > 0 && decoded === true) || (imageSlotCount > 0 && imageSlotInlineSvg === true);
+      rendered = { freshStatus: fresh.status, imgCount, decoded, anyImgCount, anyDecoded, imageSlotCount, imageSlotInlineSvg, imageRendered };
       answers.ACT080 = {
         name, image: { id: image.id, name: image.name }, picked, offered: offered.slice(0, 10), rendered2Options,
         preview, saveStatus, dialogRequests: editorDialogRequests.slice(),
@@ -734,7 +765,7 @@ async function run() {
           && String(contentAfterApply ?? "").includes("{{")
           && saveStatus !== null && saveStatus < 400
           && String(stored?.db_content ?? "").includes("{{")
-          && rendered.freshStatus === 200 && rendered.anyImgCount > 0 && rendered.anyDecoded === true,
+          && rendered.freshStatus === 200 && rendered.imageRendered === true,
         answers.ACT080);
     } else {
       answers.ACT080 = { name, image: image ? { id: image.id } : null, editorReady, note: !image ? "the fixture's *logo image row is unavailable" : "the RichText editor never initialized in the modal" };

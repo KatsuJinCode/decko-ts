@@ -58,6 +58,7 @@ import {
 } from "../../src/server/server-error-debugger-arm.js";
 import { escapeHtml } from "./bunny-edge-lineage-worker-surface.js";
 import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
+import {materialIconsHeadTag} from '../../src/card/render/material-icons.js';
 
 /** The deck the error pages build from. Structural, so tests can pass the
  *  real engines over the in-memory sqlite deck (the request core's Deck
@@ -762,7 +763,7 @@ async function wrapWithLayout(
     // deployment configured URLs for them: an unconfigured deck
     // gets no reference to another deck's asset files.
     (boot.faviconUrl === "" ? "" : `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n`) +
-    `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +
+    materialIconsHeadTag(deltas.materialIconsAssetMode) + `\n` +
     (cssUrl === "" ? "" : `<link media="all" rel="stylesheet" type="text/css" href="${escapeHtml(cssUrl)}" />\n`) +
     `\n` +
     // The remote script tags are the deployment's own, verbatim (their SRI

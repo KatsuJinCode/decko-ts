@@ -123,7 +123,7 @@ async function contentOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<stri
   return r.rows[0]?.db_content ?? null;
 }
 
-async function contentChangesOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<string[]> {
+async function contentChangesOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<Array<string | null>> {
   const r = await driver.query<{ value: string | null }>(
     "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id " +
       "WHERE a.card_id = ? AND ch.field = 2 ORDER BY ch.id",
@@ -523,7 +523,8 @@ async function swallowProbe(open: (path: string) => Promise<{ driver: SQLDatabas
     startedA = resolve;
   });
   let failA = false;
-  const txA = driver.transaction!(async () => {
+  if (!driver.transaction) throw Error('Swallow probe requires a transactional driver');
+  const txA = driver.transaction(async () => {
     await driver.query("UPDATE cards SET db_content = 'tx A uncommitted' WHERE id = 50", []);
     startedA();
     await aHolds;

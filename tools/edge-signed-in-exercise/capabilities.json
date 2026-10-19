@@ -667,11 +667,10 @@
       "sources": [
         "cypress edit/board/history_tab"
       ],
-      "status": "partial",
+      "status": "covered",
       "checks": [
-        "the card board renders with its tabs (guide, engage, history, rules)"
-      ],
-      "finding": "History tab present; changes pills not asserted."
+        "E21 the board History tab lists the run's change"
+      ]
     },
     {
       "id": "E22",
@@ -1190,8 +1189,11 @@
         "cucumber update_includers (6 scenarios)",
         "journeys edit-note-admin (follower mail)"
       ],
-      "status": "out_of_scope",
-      "reason": "the local harness does not run an SMTP sink; mail content and count are graded by Decko's own specs, not in the browser"
+      "status": "partial",
+      "checks": [
+        "W5 a follower is mailed when a followed card is edited, when a card the followed card nests is edited, and when a followed card's plus card is edited"
+      ],
+      "finding": "Owned local mail capture measures direct and included-plus notifications and two silence controls; type watching, multiedit, deduplication and unchanged-edit cases remain ungraded. External delivery is not accepted."
     },
     {
       "id": "W6",
@@ -1201,8 +1203,11 @@
         "cucumber notifications",
         "journeys unfollow-from-mail"
       ],
-      "status": "out_of_scope",
-      "reason": "needs a received email; no mail sink in the local harness"
+      "status": "partial",
+      "checks": [
+        "W6 the unfollow link in the follower mail stops the follow rule"
+      ],
+      "finding": "Owned local mail capture measures card-follow mail, its actual unfollow link, stored *never and restored Follow control; type-follow mail and unfollow remain ungraded. External delivery is not accepted."
     },
     {
       "id": "A1",

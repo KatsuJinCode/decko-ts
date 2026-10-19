@@ -82,5 +82,9 @@ export function inTransactionStatementScope(): boolean | undefined {
  *  impossible). */
 export function runInTransactionStatementScope<T>(fn: () => Promise<T>): Promise<T> {
   if (storage === undefined) return fn();
-  return storage.run({ active: true }, fn);
+  const scope = { active: true };
+  return storage.run(scope, async () => {
+    try { return await fn(); }
+    finally { scope.active = false; }
+  });
 }

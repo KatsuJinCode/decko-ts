@@ -63,6 +63,12 @@ export const RENDER_BLOCKING_TYPES = ["script", "stylesheet", "font", "image", "
 /** Chromium's echo of a CDP-initiated abort (lib/harness-browser.mjs:49). */
 export const HARNESS_ABORT_ERROR = "ERR_BLOCKED_BY_CLIENT";
 
+/** Chromium cancels requests no longer needed after a navigation/frame teardown.
+ * Keep these observations, separately from HTTP/network/policy failures. */
+export function isNavigationCancellation(observation) {
+  return typeof observation?.status === 'string' && observation.status.includes('ERR_ABORTED');
+}
+
 /** The graded predicate, reproduced exactly: mjs:702 grades `length === 0`. */
 export function harnessCheckVerdict(blocked) {
   return Array.isArray(blocked) && blocked.length === 0;
@@ -109,7 +115,7 @@ export function classifyRequestOutcome(observation, { origin, assetHosts = [] } 
   if (typeof status === "string") {
     // ERR_ABORTED is the browser cancelling a request it no longer needs
     // (a navigation moved on). It is neither a delivery failure nor a defect.
-    if (status.includes("ERR_ABORTED")) return "navigation-abort";
+    if (isNavigationCancellation(observation)) return "navigation-abort";
     // Any other failed load (refused, reset, timed out) is a delivery
     // failure; whose defect it is depends on who served the host.
     return owned ? "deployment-failure" : "third-party-failure";

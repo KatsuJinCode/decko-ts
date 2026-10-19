@@ -86,9 +86,14 @@ refusal, rename through the board's name row, history, Changes search, CQL and k
 delete (admin and member refusal), no `delete…` card, sign out and back in, the board's tabs and
 Engage follow controls, server-time flags, and cleanup.
 
-## Not browser-checkable on this harness
+## Mail and fresh-deck boundaries
 
-Follower notifications, unfollow-from-mail, and password reset by mailed link all need a
-received email. The local harness runs no SMTP sink, so those five capabilities are marked
-`out_of_scope` rather than passed. `history.feature` is marked `disabled_upstream` because it is
-commented out in Decko's own tree.
+The explicitly armed owned mail capture now drives password reset, selected follower
+notifications and the card-follow email's actual unfollow link on a disposable local deck.
+This accepts no external email delivery. W5 and W6 remain partial: the reference's type-watch,
+multiedit, deduplication and unchanged-edit notification cases, and type-follow unfollow,
+are not all driven. Their named passing checks are recorded without promoting those gaps.
+
+S9 remains out of scope for this already configured deck: first-administrator setup needs
+a separate fresh-deck fixture. `history.feature` remains `disabled_upstream` because it is
+commented out in Decko's own tree; the separate Cypress History-tab checks still apply.

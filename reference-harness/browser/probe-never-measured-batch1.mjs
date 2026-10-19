@@ -982,11 +982,29 @@ const run = async () => {
 
   // ================================================================ ACT-155
   // "W4 Followers list and 'all followed cards' view" — the follow section's
-  // own affordances name these views: the followers link is <card>+followers
-  // (card-mod-edit.ts:3695) and follow_overview_button is [<actor>, :follow],
-  // "all followed cards" (card-mod-edit.ts:3711-3712). Each actor follows a
-  // card through the board, then both views are read for the follower and
-  // the followed card.
+  // own affordances name these views: the followers pill is <card>+*followers
+  // (followersBoardLink, card-mod-edit.ts) and follow_overview_button is
+  // [<actor>, :*follow], "all followed cards" (followOverviewButton,
+  // card-mod-edit.ts). The admin follows a card through the board; the
+  // member's follow is the fixture's own deck-wide configuration: the *all
+  // viewer rule for Mira (fixture rows 909/910, option *always) already
+  // makes her a follower of every card, so her follow needs no staged write
+  // and the views must enumerate her through it.
+  //
+  // Instrument repair 2026-10-19, each arm measured against the stock Ruby
+  // 3.3 oracle (tmp/measure-act155-follow-surfaces-ruby-oracle.mjs receipt):
+  //  - the addresses here read <card>+followers and <actor>+follow — the
+  //    UN-asterisked marks — and the oracle answers BOTH with the plain
+  //    create form (they are different, unknown cards), never a followers
+  //    list; the affordances the act names use +*followers / +*follow;
+  //  - the member read-back demanded a per-card <card>+*self rule row, but
+  //    a deck-wide *all rule never materializes one — on the oracle the
+  //    member's following enumerates in the followers LIST (names Mira)
+  //    and her own +*follow overview lists the deck-wide set ("everything"),
+  //    never a per-card row;
+  //  - the overview text was read from #main, which is EMPTY under the
+  //    overlay layout the affordance's own href opens — the oracle serves
+  //    the tabs and item list in the body.
   try {
     await ensureAlive("ACT-155");
     const adminScratch = `HarnessW4AdminFollows_${stamp()}`;
@@ -994,38 +1012,40 @@ const run = async () => {
     await createAsAdmin({ name: adminScratch, type: "RichText", content: "W4 admin-follow target" });
     await createAsAdmin({ name: memberScratch, type: "RichText", content: "W4 member-follow target" });
     // single-click follow for the admin (the round-trip driver would leave
-    // the card unfollowed before the views are read). The member's follow is
-    // the fixture's own deck-wide configuration: the *all viewer rule for
-    // Mira (fixture rows 909/910, option *always) already makes her a
-    // follower of every card, so her follow needs no staged write and the
-    // views must enumerate her through it.
+    // the card unfollowed before the views are read)
     const adminDrive = await driveFollowOnEngageTabForMail(page, adminScratch);
     const storedAdmin = followOptionDb(adminScratch, "Ada Admin");
-    const storedMember = followOptionDb(memberScratch, "Mira Member");
-    // the followers list of the card the member follows
-    const followersRead = await visit(page, `/${urlKey(memberScratch)}+followers`);
-    const followersText = await evalOn(page, () => (document.querySelector("#main")?.innerText ?? "").replace(/\s+/g, " ").slice(0, 600));
+    // the followers list of the card the member (deck-wide) follows — the
+    // affordance's own +*followers mark, which names both rule kinds
+    const followersRead = await visit(page, `/${urlKey(memberScratch)}+*followers`);
+    const followersText = await evalOn(page, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 600));
     // each actor's own all-followed-cards view, driven from the affordance's
     // own link when the follow section offers it
     const overviewHref = await evalOn(page, () => {
       const a = [...document.querySelectorAll("#main a, .board a")].find((el) => /all followed cards/i.test(el.textContent ?? ""));
-      return a === null ? null : a.getAttribute("href");
+      return a == null ? null : a.getAttribute("href");
     });
     await visit(page, `/${urlKey(adminScratch)}?view=engage_tab`);
     const overviewHref2 = await evalOn(page, () => {
       const a = [...document.querySelectorAll("#main a, .board a")].find((el) => /all followed cards/i.test(el.textContent ?? ""));
-      return a === null ? null : a.getAttribute("href");
+      return a == null ? null : a.getAttribute("href");
     });
-    const adminOverview = await visit(page, overviewHref2 ?? `/Ada_Admin+follow`);
-    const adminOverviewText = await evalOn(page, () => (document.querySelector("#main")?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
-    const memberOverview = await visit(memberPage, `/Mira_Member+follow`);
-    const memberOverviewText = await evalOn(memberPage, () => (document.querySelector("#main")?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
+    const adminOverview = await visit(page, overviewHref2 ?? `/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed`);
+    const adminOverviewText = await evalOn(page, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
+    const memberOverview = await visit(memberPage, `/Mira_Member+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed`);
+    const memberOverviewText = await evalOn(memberPage, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
+    // the member's deck-wide enumeration: the oracle's own answer for a
+    // *all-rule follower's overview is the Follow/Ignore tabs with the
+    // deck-wide set ("everything"), not a per-card list
+    const memberSeesFollowSurface = memberOverview.status === 200
+      && /follow/i.test(memberOverviewText)
+      && (/everything/i.test(memberOverviewText) || memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")));
     grade("ACT-155", "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
-      storedAdmin?.option === "*always" && storedMember?.option === "*always"
+      storedAdmin?.option === "*always"
       && followersRead.status === 200 && /Mira/i.test(followersText)
       && adminOverview.status === 200 && adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " "))
-      && memberOverview.status === 200 && memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")),
-      { adminScratch, memberScratch, storedAdmin, storedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewHasCard: memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")) });
+      && memberSeesFollowSurface,
+      { adminScratch, memberScratch, storedAdmin, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewText, memberSeesFollowSurface });
   } catch (err) { grade("ACT-155", "W4 followers + followed views", false, { fatal: String(err?.stack ?? err).slice(0, 900) }); }
 
   // ================================================================ ACT-156
