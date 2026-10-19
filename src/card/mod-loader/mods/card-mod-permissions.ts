@@ -600,11 +600,16 @@ const setReadRuleFn: ModEventFn = (_card, _host) => {
 
 /** permissions.rb:7-9 `event :set_field_read_rules, after: :set_read_rule,
  *  on: :update, changed: :type_id do each_field_as_bot(&:update_read_rule)
- *  end`. Body: walks the card's field cards as Auth.as_bot and calls
- *  update_read_rule on each. The TS field-walk + Auth.as_bot role + the
- *  update_read_rule recursion are all DB-write surfaces. */
+ *  end`. BODY PORTED ENGINE-OWNED: CardActionEngine's update path runs
+ *  cascadeAllFieldReadRules (set-read-rule.ts:391 — each_field_as_bot +
+ *  update_read_rule, permissions.rb:174-181/:11-20, without_timestamps
+ *  :190-195) exactly when the save changed the card's type — the
+ *  changed: :type_id gate. Pinned by
+ *  tests/card/permissions/set-field-read-rules-type-change.test.ts
+ *  (repair + the negative gate). The mod-side fn stays a no-op: the host
+ *  surface cannot write rows. */
 const setFieldReadRulesFn: ModEventFn = (_card, _host) => {
-  // no-op: see the header's "Event bodies" paragraph.
+  // engine-owned: see the doc block above.
 };
 
 /** permissions.rb:11-20 `event :update_read_rule do without_timestamps do
