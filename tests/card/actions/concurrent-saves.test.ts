@@ -14,6 +14,12 @@
 //     refused because the name is taken, and exactly one card exists.
 //  4. On D1, the same holds for two driver objects (two isolates) over one
 //     database: the database lock row serializes them.
+//  5. The SAME-account stale replay (E18, 2026-10-19): one session re-sends
+//     its own held revision after it has already saved. Ruby exempts the
+//     saving account from detect_conflict (events.rb:65-70), so the replay is
+//     ANSWERED, not refused, and the replayed bytes overwrite the first
+//     writer's. Pinned here so the behavior is measured and owned rather
+//     than incidental; see the case below for the full reasoning.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -140,6 +146,67 @@ function scenarios(label: string, open: () => Promise<{ a: SQLDatabaseDriver; b:
       }
     }, 120_000);
 
+    it("same-account stale replay: the held revision is NOT refused and the replayed bytes overwrite the first writer's", async () => {
+      // E18 (2026-10-19). This pins the MEASURED shape of a stale edit
+      // replay from ONE session, so the live 200 has a named owner instead of
+      // being an unexamined surprise. The guard is Ruby-faithful, not broken:
+      //
+      //   Ruby  mod/history/set/all/history/events.rb:65-70
+      //     def edit_conflict?
+      //       last_action_id_before_edit &&
+      //         last_action_id_before_edit.to_i != last_action_id &&
+      //         (la = last_action) &&
+      //         la.act.actor_id != Auth.current_id     # <- exempts SAME account
+      //     end
+      //
+      // The third clause exempts the saving account, so a same-session
+      // replay answers "not a conflict" in Ruby exactly as it does here
+      // (src/card/mod-loader/mods/card-mod-history.ts:982-1001, called
+      // unconditionally at src/card/actions/card-action-engine.ts:2689
+      // BEFORE any persistence). Measured on every driver scenario below:
+      // the replay answers 200 and the first writer's bytes are gone.
+      //
+      // The cross-account shape of the same race IS refused 409 — see the
+      // "two updates of the same revision" case above (engine) and
+      // tests/server/write-routes-two-actor-races.test.ts case 1 (HTTP).
+      //
+      // OPEN DECISION for Julian: Decko 0.20.0 loses the first writer's
+      // bytes here too. Changing that means deliberately diverging from
+      // Ruby, which also breaks the same-account double-click contract
+      // pinned in tests/card/actions/write-path-races.test.ts:9-13 and
+      // :164-178. This test asserts the CURRENT (Ruby-parity) behavior so
+      // that whichever way the decision goes, the change is a visible,
+      // deliberate diff rather than a silent one.
+      const { a, b, dispose } = await open();
+      try {
+        const fa = new FetchEngine(a);
+        const fb = a === b ? fa : new FetchEngine(b);
+        // The editor loaded the form at this revision (the live value: the
+        // form's conflict_tracker hidden field, card[last_action_id_before_edit]).
+        const heldRevision = await lastActionId(a);
+        // The first writer: same session, same account.
+        await engineOver(fa).updateCard({ cardId: CARD, content: "FIRST WRITER BYTES" });
+        // The first writer's revision advanced past the held one.
+        expect(await lastActionId(a)).toBeGreaterThan(heldRevision);
+        // The stale replay: the SAME session re-sends the OLD held revision
+        // with the OLD bytes. Answered (not refused) — Ruby parity.
+        const replayed = await engineOver(fb).updateCard({
+          cardId: CARD,
+          content: "STALE REPLAY BYTES",
+          lastActionIdBeforeEdit: heldRevision,
+        });
+        expect(replayed?.actId).toBeDefined();
+        // The measured consequence: the replay's bytes are stored and the
+        // first writer's bytes are destroyed.
+        expect(await contentOf(a)).toBe("STALE REPLAY BYTES");
+        // Both writes are in history, in commit order — nothing merges and
+        // nothing is dropped, the last writer's value simply wins.
+        expect(await contentChangesOf(a)).toEqual(["FIRST WRITER BYTES", "STALE REPLAY BYTES"]);
+      } finally {
+        await dispose();
+      }
+    }, 120_000);
+
     it("two creates of one new name: one card, and the second save is refused", async () => {
       const { a, b, dispose } = await open();
       try {
@@ -163,9 +230,21 @@ const dirs: string[] = [];
 let mf: Miniflare | undefined;
 let d1Next = 0;
 
+/** Miniflare must be handed every D1 binding the matrix will ever ask for:
+ *  BOTH D1 scenarios share this one counter and increment it once per test
+ *  (see the two `d1Next += 1` sites below), so the budget is
+ *  (D1 scenarios x cases per scenario), not a fixed six. Ask for a binding
+ *  that was never declared and the case dies with
+ *  `No D1 database binding named "DB7" found in the worker` — a harness
+ *  budget miss, never a behavior failure. Sized with headroom so adding a
+ *  case does not silently break the last scenario. */
+const D1_BINDINGS_FOR_THE_WHOLE_MATRIX = 16;
+
 beforeAll(async () => {
   const d1Databases: Record<string, string> = {};
-  for (let i = 1; i <= 6; i++) d1Databases[`DB${i}`] = `decko-concurrent-${i}`;
+  for (let i = 1; i <= D1_BINDINGS_FOR_THE_WHOLE_MATRIX; i++) {
+    d1Databases[`DB${i}`] = `decko-concurrent-${i}`;
+  }
   mf = new Miniflare(
     convertV4MiniflareOptions({ modules: true, script: `export default { fetch() { return new Response("ok"); } }`, d1Databases }),
   );
