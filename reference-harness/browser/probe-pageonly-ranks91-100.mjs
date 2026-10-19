@@ -16,6 +16,7 @@
 //            search results
 //   ACT-184  case-insensitivity guarantees across search, names, and slugs
 //   ACT-185  plurality/slug pinning: name variants resolving to one card
+//            (third leg RE-GRADED AGAINST THE ORACLE 2026-10-19 — see below)
 //   ACT-186  pagination math: offsets, limits, and page counts beyond
 //            page-2-differs
 //   ACT-187  feed dedup: the same act must not repeat in a feed
@@ -65,6 +66,19 @@
 // private copy of the fixture deck (lib/engines.mjs), so every write this
 // probe makes dies with the staging directory. Exits non-zero if any leg is
 // RED.
+//
+// ACT-185's THIRD LEG IS RE-GRADED AGAINST THE ORACLE (2026-10-19). Runs 1-2
+// graded it RED against an expectation that was never an oracle property: the
+// all-caps address `/HARNESS_PLURALITY_DIGIT_9C_<stamp>` answers 200 with a
+// create form instead of the card. Measured against the pinned gemset
+// (cardname-0.20.0 + activesupport-7.2.4, card-1.110.0's Card::Name),
+// `Card::Name.new("MVEMONUT31C").key == "mvemonut31_c"` — the SAME key this
+// engine produces, byte for byte — because ActiveSupport's `underscore` inserts
+// "_" between a digit (or lowercase letter) and a following capital before
+// downcasing. The two spellings are therefore two DIFFERENT names in Ruby too,
+// so the by-key lookup misses identically and Ruby Decko serves the same page.
+// The leg now asserts the oracle's own answer. The framing is RETRACTED in
+// `docs/reports/pageonly-ranks91-100-case-slug-pinning-2026-10-18.md`.
 //
 //   node reference-harness/browser/probe-pageonly-ranks91-100.mjs \
 //     [--engine reference-harness/browser/engines/ts.json] \
@@ -626,22 +640,52 @@ try {
       idMark.status === 200 && String(idMarkIdentity.cardId) === String(mk.row?.id) && idMarkIdentity.cardName === name,
       { urlTried: `/~${mk.row?.id}`, status: idMark.status, ...idMarkIdentity });
 
-    // The all-caps spelling of a name whose FINAL TOKEN ENDS IN DIGIT+C.
-    // This is the narrow, measured divergence run 1 tripped over by accident,
-    // pinned here on purpose so the cause is attributable rather than random.
-    // Case folding itself is FINE — DeckoName.parse("HOME").key === "home",
-    // and the all-caps slug of a name ending in a plain word resolves to the
-    // same card (the leg above). What breaks is the KEY of an uppercase token
-    // ending in digit+C: DeckoName.parse("MVEMONUT31C").key === "mvemonut31_c"
-    // while parse("mvemonut31c").key === "mvemonut31c" — a spurious "_"
-    // injected by the NOT_OK_FOR_KEY fold in simpleKeyUncached
-    // (src/card/name.ts:128-135) after stableKey. The by-key lookup
-    // (src/card/fetch/retrieve.ts:293, "SELECT * FROM cards WHERE key = ?"
-    // against a plain `varchar` key column with no COLLATE NOCASE) then
-    // misses, and the page falls into the unknown-card :new branch
-    // (src/card/render/page.ts:309-351) — silently answering a CREATE FORM at
-    // status 200 where the card should be. Measured with the engine's own
-    // code; the trigger table is in the detail.
+    // The all-caps spelling of a name whose FINAL TOKEN ENDS IN DIGIT+CAPITAL.
+    //
+    // RE-GRADED AGAINST THE ORACLE 2026-10-19. Runs 1-2 graded this leg RED on
+    // an expectation that was never an oracle property: that an all-caps
+    // digit+capital address must resolve to the card it was created from. It
+    // must not, and the engine is right to answer otherwise.
+    //
+    // MECHANISM (measured, not inferred). Cardname#key runs the name through
+    // ActiveSupport's `underscore` FIRST (cardname-0.20.0
+    // lib/cardname.rb:106 #simple_key), and `underscore` inserts "_" between a
+    // lowercase letter or digit and a following capital
+    // (activesupport-7.2.4 lib/active_support/inflector/methods.rb:100,
+    // `word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')`) before downcasing. So in Ruby:
+    //   Card::Name.new("MVEMONUT31C").key == "mvemonut31_c"
+    //   Card::Name.new("mvemonut31c").key == "mvemonut31c"
+    // — TWO DIFFERENT NAMES. The engine produces the same two keys
+    // byte-for-byte, so its by-key lookup misses for the same reason Ruby's
+    // does, and Ruby Decko answers the same page: card-mod-format-0.20.0
+    // set/all/html/error.rb:81-86 renders :new at status 200 for an unknown
+    // card whose actor may create (the port of that decision is the
+    // unknown-card branch at src/card/render/page.ts:309-351).
+    //
+    // The previous comment here blamed the NOT_OK_FOR_KEY fold in
+    // simpleKeyUncached (src/card/name.ts:128). That attribution was WRONG: the
+    // fold cannot produce this separator. On the word `underscore` already
+    // returned, the fold is inert for any input built only from characters it
+    // allows — "_" is \p{Pc} (connector punctuation) and is inside its own
+    // allowed class. The separator is present the moment `underscore` returns,
+    // which is src/card/name/inflect.ts:271-278, a faithful port of the
+    // ActiveSupport step above.
+    //
+    // The trigger is also broader than "digit+C". It is any digit before ANY
+    // capital: "CARD 3X" -> "card_3_x", "CARD 2ND" -> "card_2_nd",
+    // "CARD 1ST" -> "card_1_st".
+    //
+    // So this leg now asserts what Ruby guarantees:
+    //   1. the engine's keys EQUAL the oracle's measured keys, for the whole
+    //      trigger table (real Ruby output, hardcoded below);
+    //   2. the canonical and shouted keys DIFFER — they are two names, in Ruby
+    //      too. This is the expectation the leg previously got backwards;
+    //   3. the shouted address answers 200 with the create form and NO card id,
+    //      the way Ruby Decko answers an unknown card;
+    //   4. exactly one live row exists for the canonical name — the shouted
+    //      visit created no second card.
+    // A case-insensitive (or underscore-stripping) fetch fallback for shouted
+    // addresses would be a DELIBERATE DIVERGENCE FROM RUBY, not a fix.
     {
       const digitCName = `Harness Plurality Digit 9c ${Date.now().toString(36)}`;
       const mkD = await createPlainText(digitCName, "plurality digit-C probe body");
@@ -649,6 +693,23 @@ try {
       const canonicalId = await cardIdentity();
       const shouted = await visit(`/${urlKey(digitCName).toUpperCase()}`);
       const shoutedId = await cardIdentity();
+      const d2 = db();
+      const shoutedRows = d2.prepare("SELECT id, name, trash FROM cards WHERE LOWER(name)=LOWER(?) ORDER BY id").all(digitCName);
+      d2.close();
+      const shoutedLiveRows = shoutedRows.filter((r) => r.trash === 0);
+      // Real Card::Name output from the pinned gemset (cardname-0.20.0 +
+      // activesupport-7.2.4, no deck inflection initializer), hardcoded so the
+      // receipt carries the measured comparison instead of the probe's own
+      // arithmetic. tests/card/name/ruby-oracle-key-algebra-parity.test.ts
+      // pins the same values as unit tests.
+      const ORACLE_TRIGGER = {
+        AB1C: "ab1_c", AB99C: "ab99_c", ABC: "abc", CARDC: "cardc", STATUSC: "statusc",
+        mvemonut31c: "mvemonut31c", MVEMONUT31C: "mvemonut31_c", HOME: "home", FOCUS: "focu",
+        // the trigger is digit + ANY capital, not digit + "C"
+        "CARD 3X": "card_3_x", "Card 3x": "card_3x",
+        "CARD 2ND": "card_2_nd", "Card 2nd": "card_2nd",
+        "CARD 1ST": "card_1_st", "Card 1st": "card_1st",
+      };
       // the engine's own key algebra for both spellings, computed in-process
       // from the ENGINE worktree's built dist (a Node-side dynamic import —
       // the browser context cannot import server modules)
@@ -661,27 +722,45 @@ try {
           const a = nameMod.DeckoName.parse(digitCName);
           const b = nameMod.DeckoName.parse(surfaceMod.decodeName(urlKey(digitCName).toUpperCase()) ?? "");
           const trigger = {};
-          for (const w of ["AB1C", "AB99C", "ABC", "CARDC", "STATUSC", "mvemonut31c", "MVEMONUT31C", "HOME", "FOCUS"]) {
-            trigger[w] = nameMod.DeckoName.parse(w).key;
+          const triggerMatchesOracle = {};
+          for (const w of Object.keys(ORACLE_TRIGGER)) {
+            const engineKey = nameMod.DeckoName.parse(w).key;
+            trigger[w] = engineKey;
+            triggerMatchesOracle[w] = engineKey === ORACLE_TRIGGER[w];
           }
-          return { exactKey: a.key, shoutedKey: b.key, keysMatch: a.key === b.key, triggerTable: trigger };
+          return {
+            exactKey: a.key, shoutedKey: b.key, keysMatch: a.key === b.key,
+            triggerTable: trigger, triggerMatchesOracle,
+            triggerAllMatchOracle: Object.values(triggerMatchesOracle).every(Boolean),
+          };
         } catch (e) {
           return { error: String(e?.message ?? e) };
         }
       })();
-      grade("ACT-185", "the all-caps spelling of a name ending digit+C resolves to that same card",
+      const shoutedIsUnknownName = shouted.status === 200 && shoutedId.cardId === null;
+      grade("ACT-185", "the all-caps digit+capital spelling keys exactly as the Ruby oracle does — a DIFFERENT name, so the unknown-card page is the faithful answer",
         mkD.postStatus !== null && mkD.postStatus < 400
           && canonical.status === 200 && canonicalId.cardId !== null
-          && shouted.status === 200 && String(shoutedId.cardId) === String(canonicalId.cardId),
+          && keyAlgebra.error === undefined
+          // parity: every engine key in the trigger table is the oracle's key
+          && keyAlgebra.triggerAllMatchOracle === true
+          // the oracle's own answer for this name: two names, not one
+          && keyAlgebra.keysMatch === false
+          // ...so the shouted address IS an unknown card, answered the way Ruby
+          // Decko answers an unknown card (create form at status 200)
+          && shoutedIsUnknownName
+          // and the shouted visit created nothing
+          && shoutedLiveRows.length === 1 && String(shoutedLiveRows[0].id) === String(mkD.row?.id),
         {
           name: digitCName,
           canonicalUrl: `/${urlKey(digitCName)}`, canonicalStatus: canonical.status, canonicalCardId: canonicalId.cardId,
           shoutedUrl: `/${urlKey(digitCName).toUpperCase()}`, shoutedStatus: shouted.status,
           shoutedCardId: shoutedId.cardId, shoutedCardName: shoutedId.cardName,
-          servedCreateFormInstead: shouted.status === 200 && shoutedId.cardId === null,
-          keyAlgebra,
-          cause: "DeckoName key algebra injects a spurious '_' into an uppercase token ending in digit+C (src/card/name.ts:128-135 simpleKeyUncached NOT_OK_FOR_KEY fold after stableKey); the by-key lookup at src/card/fetch/retrieve.ts:293 compares against a varchar key column with no COLLATE NOCASE, misses, and src/card/render/page.ts:309-351 answers the unknown-card :new page at status 200",
-          measuredTrigger: "parse('AB1C').key==='ab1_c', parse('AB99C').key==='ab99_c' (DIFFER); parse('ABC').key==='abc', parse('CARDC').key==='cardc', parse('STATUSC').key==='statusc', parse('mvemonut31c').key==='mvemonut31c', parse('HOME').key==='home' (SAME) — so it is uppercase AND a final digit+C, not all-caps alone",
+          shoutedIsUnknownName, deckRows: shoutedRows, liveRowCount: shoutedLiveRows.length,
+          keyAlgebra, oracleTrigger: ORACLE_TRIGGER,
+          cause: "ActiveSupport's underscore (activesupport-7.2.4 methods.rb:100, `gsub!(/([a-z\\d])([A-Z])/,'\\1_\\2')`, ported at src/card/name/inflect.ts:271-278) inserts '_' between a digit and a following capital BEFORE Cardname#simple_key folds anything, so the all-caps spelling is a genuinely different name in Ruby too. NOT the NOT_OK_FOR_KEY fold at src/card/name.ts:128: on the already-underscored word that fold is inert, '_' being \\p{Pc} and inside its own allowed class.",
+          oracleSource: "card-1.110.0 Card::Name on cardname-0.20.0 + activesupport-7.2.4 from the pinned gemset; the same values are pinned as unit tests in tests/card/name/ruby-oracle-key-algebra-parity.test.ts",
+          measuredTrigger: "parse('AB1C').key==='ab1_c', parse('AB99C').key==='ab99_c', parse('MVEMONUT31C').key==='mvemonut31_c' (DIFFER from the lowercase spelling); parse('ABC').key==='abc', parse('CARDC').key==='cardc', parse('STATUSC').key==='statusc', parse('mvemonut31c').key==='mvemonut31c', parse('HOME').key==='home', parse('Card 3x').key==='card_3x' (SAME) — so it is a digit before ANY capital in an uppercase token, not all-caps alone and not specifically digit+C",
         });
     }
   }
