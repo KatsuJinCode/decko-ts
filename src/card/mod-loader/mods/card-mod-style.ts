@@ -437,12 +437,17 @@ const validateScssSyntaxBody: ModEventFn = () => {
 //   const msg = skinDeletionError(itemKeys, card.name);
 //   if (msg !== undefined) /* card.errors.add("delete", msg) */;
 const noDeletionIfUsedBody: ModEventFn = (card: ModEventCard, _host: ModEngineHost) => {
-  // STUB - composes skinDeletionError (the verbatim predicate) so the
-  // save-path error seam replaces the comment with the real
-  // `card.errors.add("delete", msg)` once the seam lands. Until then
-  // the predicate is what the port pins: every line past `if ... end`
-  // is the engine's write seam (mod/core/set/all/errors.rb's
-  // errors.add), surface-unported today.
+  // BODY PORTED ENGINE-OWNED: the delete path's validate guard
+  // (card-action-engine.ts, beside the validate_delete port) runs
+  // skinDeletionError's item-keys check for every Skin-typed delete and
+  // refuses with the :delete CardActionError — the errors.add seam this
+  // STUB note called missing. The skipsEvent gate honors the event name.
+  // Behavioral pin:
+  // tests/card/permissions/no-deletion-if-used.test.ts (used-skin
+  // refusal with the verbatim en.yml message, unused-skin delete passes,
+  // the type/skin set membership). This fn stays a no-op: the walk is
+  // the body's owner.
+  void card;
 };
 
 // ---------------------------------------------------------------------------

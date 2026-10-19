@@ -176,6 +176,7 @@ import { renderStyleChunks } from "../assets/skin-stylesheet.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../assets/script-compressor.js";
 import type { JavascriptSyntaxValidator } from "../assets/javascript-syntax-validator.js";
+import { rawItemStrings } from "../render/pointer-list.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
@@ -4174,6 +4175,37 @@ export class CardActionEngine {
         { delete: message },
         card.name?.s,
       );
+    }
+    // no_deletion_if_used (card-mod-style set/type/skin.rb:13-17,
+    // `event :no_deletion_if_used, :validate, on: :delete do
+    // if Card[:all, :style].item_keys.include? key; errors.add :delete,
+    // t(:style_delete_error_skin_used) end end`): a Skin-typed card that
+    // is an item of the deck's *all+*style pointer cannot be deleted.
+    // The predicate is the mod's ported skinDeletionError byte-for-byte
+    // (the item-keys check over the pointer's parsed items, the exact
+    // en.yml message); this guard is its event body — Ruby runs it at
+    // :validate on the delete act, i.e. right beside validate_delete.
+    if (row.type_id !== null) {
+      const typeCode = (await this.fetchRowById(row.type_id))?.codename;
+      if (typeCode === "skin") {
+        const styleRule = await this.fetch.fetchByName("*all+*style");
+        if (styleRule?.dbContent !== undefined && styleRule.dbContent !== null) {
+          const cardKey = row.key ?? card.key ?? undefined;
+          const itemKeys = rawItemStrings(styleRule.dbContent).map(
+            (item) => DeckoName.parse(item).key,
+          );
+          if (cardKey !== undefined && itemKeys.includes(cardKey)) {
+            const message = "Can't delete skin because it's used.";
+            throw new CardActionError(
+              "protected-card",
+              message,
+              `DELETE: ${message}`,
+              { delete: message },
+              card.name?.s,
+            );
+          }
+        }
+      }
     }
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event with NO `on:` clause — Ruby's delete! IS an
