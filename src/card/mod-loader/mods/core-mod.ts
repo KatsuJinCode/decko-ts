@@ -42,18 +42,26 @@
 // ordered:
 //   all/autoname.rb   set_autoname — writes autoname rule content
 //                     (update_column) + pull_from_trash (write path).
-//   all/codename.rb   validate_codename (Auth.as_id permission gate),
-//                     reset_codename_cache (Codename.reset_cache).
-//   all/content.rb    set_content (prepare_db_content + clear_drafts),
-//                     save_draft (draft pipeline + abort :success),
-//                     set_default_content (template reads).
-//   all/name_events.rb — the name validators + lexicon/rename janitors;
-//                     the engine's write path implements their SEMANTICS
-//                     (src/card/name.ts, actions) but not as mod events.
+//   all/codename.rb   validate_codename/reset_codename_cache —
+//                     ENGINE-OWNED (the create input's codename handling;
+//                     the save path's codename-cache reset).
+//   all/content.rb    set_content/save_draft/set_default_content —
+//                     ENGINE-OWNED (audited: the writer's content
+//                     preparation, the update path's draft seam, the
+//                     create path's template read).
+//   all/name_events.rb — the nine name events ENGINE-OWNED (audited:
+//                     the validators are actions/name-validation.ts, the
+//                     janitors the save path's expire/lexicon/rename
+//                     machinery) — per-event citations at the
+//                     registration; they stay registry stubs because
+//                     moving them into the dispatch would reorder them
+//                     against an unobservable Ruby chain order.
 //   all/reference_events.rb — PORTED (the real batch above; the five
 //                     janitors run through the seam).
-//   all/result.rb     notable_exception_raised (Rails.logger surface).
-//   all/subcards.rb   reject_empty_subcards (subcard machinery).
+//   all/result.rb     notable_exception_raised — named remainder (the
+//                     Rails.logger seam).
+//   all/subcards.rb   reject_empty_subcards — ENGINE-OWNED (the save
+//                     input's subcard-tree no-change rule).
 //   all/trash.rb      validate_delete PORTED (the real body — the three
 //                     Ruby checks, trash.rb:31-43; the delete path's inline
 //                     codename arm stands down when registered).
@@ -69,7 +77,10 @@
 //                     cannot run through a registered body without
 //                     re-designing the write order; named remainders at
 //                     each registration.
-//   all/type.rb       validate_type_change/validate_type (type validators).
+//   all/type.rb       validate_type PORTED (the real body: no-such-type +
+//                     the structure lock); validate_type_change stays a
+//                     named remainder (the dup-as-new-card revalidation
+//                     walk).
 //   type/cardtype.rb  PORTED (the three cardtype events through the seam).
 //
 // SURFACE DIVERGENCES, each deliberate and cited at the code:
@@ -124,14 +135,16 @@ import {
   updateRefererContent,
   updateRefererReferencesOut,
 } from "../../actions/update-referer-content.js";
+import { findRule } from "../../rules/index.js";
+import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
+import { findPattern } from "../../set-patterns/registry.js";
 import {
   ADMIN_CONFIG,
   CORE_ADMIN_LOCALE,
   CORE_TASK_BASKET,
   CORE_WARNING_BASKET,
   MOD_SPECS,
-  MOD_SPEC_SHARED,
-  adminItemTitle,
+  MOD_SPEC_SHARED,  adminItemTitle,
   adminRuntimeConfig,
   adminRuntimeState,
   modBarRightSections,
@@ -1540,6 +1553,90 @@ function validateCardtypeNameEvent(card: ModEventCard): void {
   );
 }
 
+/** all/type.rb:24-30 event :validate_type — both Ruby arms:
+ *
+ *  1. (:25) `errors.add :type, t(:core_error_no_such_type) unless
+ *     type_name` — the type card must be a LIVE card (type.rb:32-34
+ *     quick_fetch(type_id)). On the engine's own saves the type-resolution
+ *     walk asserts the same fact earlier (type-resolution.ts
+ *     assertTypeCardExists — the built-in ordering, documented there), so
+ *     this arm answers for model-pure dispatches and as the event's own
+ *     statement of the check; en.yml:7 "no such type".
+ *  2. (:26-28) the STRUCTURE lock: `structure&.assigns_type? && type_id !=
+ *     structure.type_id` — a card whose *structure rule's SET pattern
+ *     assigns types (right + type_plus_right only — 07_right.rb:3,
+ *     08_type_plus_right.rb:5) cannot save under a different type than the
+ *     rule card's own; en.yml:12 "can't be changed because %{name} is
+ *     structured as a %{type_name}". structure_rule_card (card-mod-content
+ *     templating.rb:44-48) counts a "_self" rule as none; assigns_type?
+ *     (templating.rb:30-34) reads the SET card's tag codename through
+ *     Card::Set::Pattern. */
+async function validateTypeEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  const fail = (message: string): CardActionError =>
+    new CardActionError(
+      "validation-failed",
+      message,
+      `TYPE: ${message}`,
+      { type: message },
+      card.name,
+    );
+  if (card.typeId !== undefined && card.typeId !== null) {
+    const typeCard = await ctx.driver
+      .query<{ one: number }>(
+        "SELECT 1 AS one FROM cards WHERE id = ? AND trash = 0",
+        [card.typeId],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    if (typeCard === undefined) throw fail("no such type");
+  }
+  if (ctx.fetch === undefined) return;
+  const pattern = await ruleWalkPatternInput(ctx.fetch, {
+    name: DeckoName.parse(card.name),
+    id: card.id,
+    isNew: false,
+    typeId: card.typeId ?? undefined,
+  });
+  const structureRule = await findRule(ctx.fetch, pattern, "*structure");
+  if (structureRule === undefined) return;
+  const content = (structureRule.rule.dbContent ?? "").trim();
+  if (content === "" || content === "_self") return; // structure_rule_card :44-48
+  // assigns_type? (templating.rb:30-34): the SET card's tag codename names
+  // the pattern; only right and type_plus_right assign.
+  const setTag = DeckoName.parse(structureRule.setName).parts.slice(-1)[0];
+  if (setTag === undefined) return;
+  const tagRow = await ctx.driver
+    .query<{ codename: string | null }>(
+      "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+      [DeckoName.parse(setTag).key],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  const patternCode = tagRow?.codename;
+  if (patternCode === undefined || patternCode === null) return;
+  const spec = findPattern(patternCode);
+  if (spec?.assignsType !== true) return;
+  // the rule card's own type is what its set members must carry
+  const ruleTypeId = structureRule.rule.typeId;
+  if (ruleTypeId === undefined || ruleTypeId === null) return;
+  if (card.typeId !== ruleTypeId) {
+    const ruleType = await ctx.driver
+      .query<{ name: string | null }>(
+        "SELECT name FROM cards WHERE id = ? AND trash = 0",
+        [ruleTypeId],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    throw fail(
+      `${card.name} can't be changed because ${card.name} is structured as a ${ruleType?.name ?? ruleTypeId}`,
+    );
+  }
+}
+
 /** trash.rb:29-49 event :validate_delete — the delete save's own validation,
  *  all three Ruby checks in declaration order. Ruby ACCUMULATES errors
  *  (errors.add three times, the save fails after the stage with every
@@ -1792,7 +1889,11 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/codename.rb — events :validate_codename +
-      // :reset_codename_cache + the codename validators
+      // :reset_codename_cache, ENGINE-OWNED: validate_codename (:1-5,
+      // the Auth.as_id permission gate + uniqueness + simplicity) runs as
+      // the create input's codename handling; reset_codename_cache (:7-10)
+      // runs as the save path's codename-cache reset (the codename-cache-
+      // reset-save-path suite pins it). + the codename validators
       setPath: "all/codename",
       events: [
         event({
@@ -1810,6 +1911,15 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/content.rb — events :set_content, :save_draft,
+      // :set_default_content, each ENGINE-OWNED with its audited
+      // implementation: set_content (:1-5, prepare_db_content + the draft
+      // clear) is the writer's content preparation and the save's
+      // clearOwnDrafts; save_draft (:7-15) is the update path's draft seam
+      // (card-action-engine.ts: the input.draft arm runs the FULL validate
+      // walk then saveDraftInWriter, abort :success — no row write); 
+      // set_default_content (:12-15) is the create path's new-card
+      // template read (prepareCreateValidation's templateContent arm,
+      // content.rb:30's default_content).
       // :set_default_content + the draft/default-content predicates
       setPath: "all/content",
       events: [
@@ -1837,13 +1947,43 @@ const coreMod: DeckoModManifest = {
       setPath: "all/initialize",
     },
     {
-      // mod/core/set/all/name_events.rb — the nine name events. The two
-      // `skip: :allowed` declarations (validate_uniqueness_of_name :12,
-      // validate_renaming :46) now carry the field — the execution seam's
-      // ModEventRegistration.skip grew it (admin-surface's divergence #6).
-      // They stay STUBS: their bodies run as the engine's built-in
-      // validations (validateNameLegality/assertNameAvailable/the rename
-      // guards), and the takeover contract covers only the real batch.
+      // mod/core/set/all/name_events.rb — the nine name events, each
+      // ENGINE-OWNED with its audited implementation (the same shape the
+      // register grades PORTED for the account events). Per event:
+      //   validate_name (:3-10) — the create walk runs legality then
+      //     uniqueness (card-action-engine.ts prepareCreateValidation), the
+      //     update walk on renames (runUpdateValidationWalk); Ruby's
+      //     Card.write_to_temp_cache (:7) is a caching remainder (the
+      //     render cache is engine machinery).
+      //   validate_uniqueness_of_name (:12-20) — assertNameAvailable
+      //     (actions/name-validation.ts:90-115): the Lexicon fast check +
+      //     the live-row re-check, existing_id != id.
+      //   validate_legality_of_name (:23-35) — validateNameLegality
+      //     (name-validation.ts:40-73): the Ruby condition chain too long /
+      //     blank / incomplete / banned characters (codepoint length).
+      //   validate_key (:38-43) — validateComputedKey (name-validation.ts
+      //     :75-88): the empty-key arm; the `key != name.key` arm is out of
+      //     scope there (the action layer derives the key column).
+      //   validate_renaming (:46-51) — the rename guards (card-action-engine
+      //     .ts update walk): the variant early-return, the content/type
+      //     change refusals, detect_illegal_compound_names (the trashed-
+      //     stored-key convention makes `before.name !== null` the old-name-
+      //     is-simple test); skip: :allowed (skipValidateRenaming).
+      //   expire_old_name (:56-58) — the save path's expire machinery
+      //     (expireAfterWrite: both key versions via name_before_act).
+      //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
+      //     rename_as_trash_obstacle (name-validation.ts:130-147,
+      //     card-action-engine.ts:3658).
+      //   prepare_left_and_right (:68-73) — the junction side preparation
+      //     (card-action-engine.ts:5404, prepare_new_side).
+      //   update_lexicon (:76-79) — the post-store lexicon maintenance
+      //     (expireAfterWrite: creates add, renames update; deletes clean
+      //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
+      // They stay STUBS in the registry: moving the bodies into the
+      // dispatch would REORDER them relative to the other validate-stage
+      // checks the walk interleaves, and Ruby's true callback-chain order
+      // was never observed (the register's couldNotVerify records the
+      // same limit) — the built-in order is the audited, tested shape.
       setPath: "all/name_events",
       events: [
         event({
@@ -1944,7 +2084,14 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/result.rb — event :notable_exception_raised (no
-      // stage/triggers) + the abort/success machinery
+      // stage/triggers; result.rb:1-4 — Card::Error.current then
+      // Rails.logger.debug the message + backtrace) — the body stays a
+      // named remainder: the event hangs on Card::Error.report's callback
+      // chain, an error-REPORTING surface the headless port has no
+      // Rails.logger equivalent for; the port's error reporting is the
+      // route layer's, and a logger seam is the prerequisite. The file's
+      // abort/success machinery IS ported (the ModEventAbortSuccess
+      // contract the admin_tasks body rides).
       setPath: "all/result",
       events: [event({ event: "notable_exception_raised" })],
     },
@@ -1954,6 +2101,14 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/subcards.rb — event :reject_empty_subcards
+      // (:5-12): drops new, unfilled, non-triggered subcards from the
+      // director before validation. ENGINE-OWNED as the save input's
+      // subcard-tree handling (the engine saves the posted subcard tree —
+      // subcards.rb:1-16's same-act ride — and an empty posted subcard
+      // produces no card: the multiedit shape's no-change rule, events.rb
+      // :34-37); the director.subdirectors mutation the body performs is
+      // director machinery the port's save input model does not carry as
+      // a mutable collection.
       setPath: "all/subcards",
       events: [event({ event: "reject_empty_subcards", at: "prepare_to_validate" })],
     },
@@ -1990,7 +2145,14 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/type.rb — events :validate_type_change +
-      // :validate_type + the type readers
+      // :validate_type + the type readers. validate_type (:24-30) carries
+      // its REAL body: the no-such-type arm plus the STRUCTURE lock
+      // (a *structure rule whose set pattern assigns types — right and
+      // type_plus_right — holds its members to the rule card's own type;
+      // en.yml:12). validate_type_change (:8-15) stays a named remainder:
+      // its body re-validates a DUP of the card as a NEW card of the new
+      // type (c.valid? over the whole create validation surface), a walk
+      // the port's save path does not have as a callable unit.
       setPath: "all/type",
       events: [
         event({
@@ -2004,6 +2166,7 @@ const coreMod: DeckoModManifest = {
           at: "validate",
           changed: ["type_id"],
           on: ["save"],
+          fn: validateTypeEvent as ModEventFn,
         }),
       ],
     },

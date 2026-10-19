@@ -73,10 +73,95 @@ import type { ViewContext, ViewFn } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import type {
   DeckoModManifest,
+  ModEventCard,
   ModEventFn,
   ModEventRegistration,
 } from "../mod-manifest.js";
+import type { ModEventContext } from "../mod-event-dispatch.js";
+import { ModEngineHost } from "../mod-manifest.js";
+import { CardActionError } from "../../actions/types.js";
 import { superView } from "../mod-view-helpers.js";
+
+/** right/api_key.rb:8-12 event :validate_api_key — the API-key content
+ *  validation, both Ruby arms (card-mod-api_key set/right/api_key.rb):
+ *
+ *  1. (:9) `errors.add :content, t(:api_key_invalid) unless
+ *     content.match?(/^\w{20,}$/)` — en.yml "Invalid API Key; must contain
+ *     20+ alphanumeric characters only". Ruby \w = [A-Za-z0-9_].
+ *  2. (:10) `errors.add :content, t(:api_key_taken) if api_key_taken?`
+ *     (en.yml "API Key taken") — api_key_taken? (:14-17) = a found account
+ *     whose id differs from this card's left: Auth.find_account_by_api_key
+ *     (lib/card/auth/api_key.rb:30-32 -> card/auth/current.rb:92-97) is the
+ *     search "live +*account cards having a +*api_key child whose content is
+ *     the STRIPPED value" — the account card is the api_key card's LEFT's
+ *     LEFT (+*api_key sits under +*account under the holder). Taken iff
+ *     that holder is not this card's own left (acct.id != left_id). */
+async function validateApiKeyEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  const content = card.dbContent ?? "";
+  const fail = (message: string): CardActionError =>
+    new CardActionError(
+      "validation-failed",
+      message,
+      `CONTENT: ${message}`,
+      { content: message },
+      card.name,
+    );
+  // Ruby's ^...$ anchors: $ also matches before ONE final newline (a
+  // "KEY\n" content passes the grammar), while JS $ matches only at the
+  // very end — the port carries Ruby's shape with an optional trailing \n.
+  // The taken lookup's value is api_key.strip (auth/api_key.rb:31), so the
+  // newline never reaches the account search.
+  if (!/^\w{20,}\n?$/.test(content)) {
+    throw fail("Invalid API Key; must contain 20+ alphanumeric characters only");
+  }
+  const lookupValue = content.endsWith("\n") ? content.slice(0, -1).trim() : content.trim();
+  const ids = await ctx.driver
+    .query<{ id: number }>(
+      "SELECT id FROM cards WHERE codename = 'api_key' AND trash = 0 ORDER BY id LIMIT 1",
+      [],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  if (ids === undefined) return;
+  const apiKeyCardId = card.id;
+  if (apiKeyCardId === undefined) return;
+  // the saving +*api_key card's left is its +*account card (the +*api_key
+  // card sits under +*account under the holder) — acct.id != left_id
+  // compares the FOUND account card against this card's own left.
+  const mine = await ctx.driver
+    .query<{ left_id: number | null }>(
+      "SELECT left_id FROM cards WHERE id = ? AND trash = 0",
+      [apiKeyCardId],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  const myAccountId = mine?.left_id;
+  if (myAccountId === null || myAccountId === undefined) return;
+  // find_account_by_api_key (auth/current.rb:92-97): live +*account cards
+  // having a +*api_key child whose content equals the STRIPPED value —
+  // exact content equality, the strip applies to the SAVING value only.
+  const taken = await ctx.driver
+    .query<{ acct_id: number }>(
+      `SELECT acct.id AS acct_id
+         FROM cards apikey
+         JOIN cards acct ON acct.id = apikey.left_id AND acct.trash = 0
+        WHERE acct.right_id = (SELECT id FROM cards WHERE codename = 'account' AND trash = 0 ORDER BY id LIMIT 1)
+          AND apikey.right_id = ? AND apikey.trash = 0
+          AND apikey.id <> ?
+          AND apikey.db_content = ?`,
+      [ids.id, apiKeyCardId, lookupValue],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  if (taken === undefined) return;
+  if (taken.acct_id !== myAccountId) {
+    throw fail("API Key taken");
+  }
+}
 
 /** The set-module event declarations: stub-bodied, with the per-event
  *  reason on the declaration. Same shape as core-mod.ts's local helper. */
@@ -390,8 +475,22 @@ const cardModApiKey: DeckoModManifest = {
       //   :8-12 — the /^\w{20,}$/ grammar + api_key_taken? uniqueness).
       setPath: "right/api_key",
       events: [
+        // generate_api_key (:prepare_to_validate, trigger: :required;
+        // api_key.rb:4-6 `self.content = SecureRandom.base64.tr "+/=", "Qrt"`
+        // via generate :40-42) stays a named remainder: the body mutates
+        // self.content at the stage, and the port's content-mutation seam
+        // (ModEventSaveInput.setContent) exists only for the comment save
+        // input, while the param that TRIGGERS the event (the form's
+        // card[trigger] hidden tags, right/api_key.rb:96-98) is not parsed
+        // by the route. Porting the body without both is unreachable code.
         event({ event: "generate_api_key", at: "prepare_to_validate", trigger: "required" }),
-        event({ event: "validate_api_key", at: "validate", on: ["save"], changed: ["content"] }),
+        event({
+          event: "validate_api_key",
+          at: "validate",
+          on: ["save"],
+          changed: ["content"],
+          fn: validateApiKeyEvent as ModEventFn,
+        }),
       ],
       formats: {
         html: {

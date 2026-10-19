@@ -378,6 +378,22 @@ async function setConditionApplies(
     // lib/card/name, the star kept). A nameless card matches nothing.
     return card.name !== "" ? DeckoName.parse(card.name).key === `*${selfMatch[1]}` : false;
   }
+  // The RIGHT sets ("right/<codename>"): the card's right card carries the
+  // codename (lib/card/set/right.rb; the anchor card is "*<codename>" and
+  // keys keep the star, so the lookup is by the starred key).
+  const rightMatch = /^right\/(.+)$/.exec(event.setPath);
+  if (rightMatch !== null && ctx !== undefined) {
+    const right = DeckoName.parse(card.name).rightName;
+    if (right === undefined) return false;
+    const row = await ctx.driver
+      .query<{ codename: string | null }>(
+        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        [DeckoName.parse(right).key],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    return row?.codename === rightMatch[1];
+  }
   const typeMatch = /^type\/(.+)$/.exec(event.setPath);
   if (typeMatch === null || ctx === undefined) return false;
   // The set modules attached at this stage ride the PATTERN type when the

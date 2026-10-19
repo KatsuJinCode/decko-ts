@@ -1656,12 +1656,27 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
         // The SELF sets resolve without a deck read (set/self/<codename>
         // applies to the one card whose key is the starred anchor —
         // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
-        // live entry). Everything non-self delegates to the type resolver.
+        // live entry). The RIGHT sets ("right/<codename>") resolve by the
+        // right card's codename (lib/card/set/right.rb; the anchor card is
+        // "*<codename>", keys keep the star). Everything else delegates to
+        // the type resolver.
         const selfMatch = /^self\/(.+)$/.exec(setPath);
         if (selfMatch !== null) {
           return card.key !== undefined
             ? card.key === `*${selfMatch[1]}`
             : card.name !== "" && DeckoName.parse(card.name).key === `*${selfMatch[1]}`;
+        }
+        const rightMatch = /^right\/(.+)$/.exec(setPath);
+        if (rightMatch !== null) {
+          const right = DeckoName.parse(card.name).rightName;
+          if (right === undefined) return false;
+          return ctx.driver
+            .query<{ codename: string | null }>(
+              "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+              [DeckoName.parse(right).key],
+            )
+            .then((r) => r.rows[0]?.codename === rightMatch[1])
+            .catch(() => false);
         }
         return typeMember(setPath, card);
       }
