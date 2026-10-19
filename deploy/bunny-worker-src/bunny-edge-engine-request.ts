@@ -609,6 +609,26 @@ async function dispatchEngineRequest(
       // card render and not the router's no-route stub.
       return deprecatedAssetStubResponse();
     }
+    if (parsed.kind === "typeHome") {
+      // engine_routes.rb:23 via parsePath's typeHome kind: the render is
+      // the HOME MARK's page — load_mark's implicit_mark lands on home_mark
+      // (mark.rb:28-40 -> mark.rb:42-44; see the parsePath arm for the full
+      // uri_fetch walk). Dispatched as the bare "/" arm with the SAME query
+      // (view_from_params rides ?view=/?v= on every route); the bare arm
+      // resolves the *home rule per request (the homeMarkContent seam).
+      // Never recurses: the bare arm parses kind-less. Named remainder: the
+      // :type segment only matters for Ruby's missing-home fallback (the
+      // new-card fallback is TYPED by the segment, card_class.rb:128-133);
+      // this host's unknown-card page is not typed by it.
+      const typeHomeUrl = new URL("/", url);
+      typeHomeUrl.search = url.search;
+      return dispatchEngineRequest(
+        new Request(typeHomeUrl, { method: request.method, headers: request.headers }),
+        source,
+        options,
+        signal,
+      );
+    }
     if (parsed.kind === "new") {
       // THE /new/:type ARM: decko's
       // engine_routes.rb:22 card-creation route — the signup journey's

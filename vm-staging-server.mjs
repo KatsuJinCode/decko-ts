@@ -4430,11 +4430,29 @@ const server = http.createServer(async (req, res) => {
       const editorWireParams = editorWireParamsFromQuery(url.searchParams);
       const hasEditorWireParams = Object.keys(editorWireParams).length > 0;
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
+      // engine_routes.rb:23 `get "type/:type" => "card#read"` — no view,
+      // no mark. load_mark's implicit_mark (mark.rb:28-40) lands on
+      // home_mark (mark.rb:42-44, the *home rule || "Home"): the segment
+      // rides uri_fetch_opts' opts[:type] (card_class.rb:128-133), which
+      // standard_uri_fetch applies only to the new-card fallback — on any
+      // deck whose home mark exists the render is the HOME CARD's page.
+      // Routed ahead of the :mark/:view arm (Ruby's table order), which
+      // would otherwise parse /type/<x> as the card "type" in view <x>.
+      // The route carries no .:format capture, so the whole second segment
+      // is the :type param (inert for the render). The type threads into
+      // the missing-home new-card fallback via newCardRenderParams.
+      const typeRoute = segs.length === 2 && segs[0] === "type" && segs[1] !== "";
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
         routeView = "new";
         renderParams = await newCardRenderParams(newCardRoute.mark, url.searchParams, newCardRoute.typeName);
         if (hasEditorWireParams) renderParams = { ...renderParams, editorParams: editorWireParams };
+      } else if (typeRoute) {
+        routeName = await homeMarkContent(requestEngine);
+        renderParams = STOCK_DECK
+          ? await newCardRenderParams(routeName, url.searchParams, decodeName(segs[1]))
+          : undefined;
+        if (hasEditorWireParams) renderParams = { ...(renderParams ?? {}), editorParams: editorWireParams };
       } else if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
         routeName = segs[0];
         routeView = stripFormat(segs[1]);
@@ -4452,6 +4470,12 @@ const server = http.createServer(async (req, res) => {
       }
       if (newCardRoute !== null) {
         response = await renderCardPage(routeName, requestEngine, routeView, renderParams, pageOpts);
+      } else if (typeRoute && routeName !== undefined) {
+        // show(nil): the query's ?view= is view_from_params (rest.rb
+        // :100-103), exactly like the bare single-segment arm's
+        // requestedView.
+        response = await renderCardPage(routeName, requestEngine, url.searchParams.get("view"), renderParams, pageOpts);
+        servedCardName = routeName;
       } else if (routeName !== undefined && routeView !== undefined) {
         const name = decodeName(routeName);
         if (name === undefined || name === "") {
