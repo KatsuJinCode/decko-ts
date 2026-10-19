@@ -88,7 +88,7 @@ const runnerSource = readFileSync(runnerPath, "utf8");
 for (const marker of [
   'STRATEGY_EXACT_CONTROL = "exact-control"',
   "passCarrying: hit.strategy === STRATEGY_EXACT_CONTROL && count > 0",
-  'else if (exactFound || anyAsserted) outcome = "pass";',
+  'else if (exactFound || anyAsserted) probeOutcome = "pass";',
 ]) {
   if (!runnerSource.includes(marker)) {
     console.error(`[f3-regrade] run-exhaustive.mjs no longer carries the fixed-ladder marker ${JSON.stringify(marker)} — this copy is stale, refusing to re-grade`);
