@@ -1,5 +1,6 @@
 import { stripHtmlTags as stripTags } from "../../render/html-text.js";
 import { truncateHtmlSafeText } from "../../render/text-helpers.js";
+import type { ContentFn } from "../../render/content-overrides.js";
 // The card-mod-layout gem (card-mod-layout-0.20.0), ported through the mod
 // loader.
 //
@@ -36,7 +37,9 @@ import { truncateHtmlSafeText } from "../../render/text-helpers.js";
 //   un-implemented method predicate unverified-ALLOWED, so the bytes are
 //   the signed-OUT reader's. See the view block below.
 // - set/right/enabled_roles.rb: clear_roles_cache/session state remain
-//   unported. The held-role validation is implemented below.
+//   unported. The held-role validation is implemented below. The file's
+//   `assign_type :session` (enabled_roles.rb:3) rides the manifest's
+//   assignsType field.
 // - set/right/head.rb :one_line_content - body is card-mod-format's
 //   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
 //   (rightHeadOneLineContentView) using text-helpers.ts#truncate +
@@ -47,9 +50,11 @@ import { truncateHtmlSafeText } from "../../render/text-helpers.js";
 // - set/self/dropdown_divider.rb - its :nav_item/:nav_link_in_dropdown
 //   overrides are set-scoped (Self set of *dropdown divider); registering
 //   them in the flat table would corrupt every other card's navbar rendering
-// - set/self/alerts.rb + set/self/foot.rb - `def content` overrides (the
-//   deprecated-comment content); a card-method override with no view surface
-//   in this engine (db_content is read directly)
+// - set/self/alerts.rb + set/self/foot.rb - the `def content` overrides
+//   (the deprecated-comment content strings) PORT as the manifest's
+//   contentOverrides[] entries (the card-mod-date surface; the bytes are
+//   constant strings, gem source verbatim) - see the ContentFn section
+//   above the manifest.
 // - set/abstract/account_dropdown.rb, set/abstract/items.rb,
 //   set/abstract/list.rb, set/abstract/items/options_api.rb - method-only
 //   set modules (Auth-dependent dropdown, item/nest arrays, options rules);
@@ -64,7 +69,8 @@ import { truncateHtmlSafeText } from "../../render/text-helpers.js";
 //   (src/card/render/code-highlighting/index.ts routes typeCode
 //   "layout_type" through the html scanner); its update_layout_registry
 //   event is a write-path side effect with no TS consumer
-// - set/right/layout.rb - assign_type :pointer only (no registrations)
+// - set/right/layout.rb - `assign_type :pointer` (layout.rb:1, the file's
+//   sole live line) rides the manifest's assignsType field (entry below)
 // - assets/ (coffee/scss), config/locales, data/ - separate surfaces
 // - lib/card/layout*.rb - the Card::Layout class family (render/code layout
 //   dispatch, main-nest-chunk search); no TS consumer yet
@@ -1088,6 +1094,29 @@ const enabledRolesEditInlineView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// the `def content` overrides (set/self/alerts.rb:1-3, set/self/foot.rb:1-3)
+// ---------------------------------------------------------------------------
+//
+// Each file's entire live content is the constant-string content override
+// (the deprecated-setting comment; no interpolation, so the bytes are the
+// gem source verbatim). The trailing `# view :core, :raw` in each file is a
+// COMMENT - no view is declared. The ContentFns ride the manifest's
+// contentOverrides[] field (the card-mod-date surface; the loader registers
+// them on the ContentOverrideRegistry with setPath + modName injected,
+// mod-loader.ts:469-475, and the render path reads them via
+// contentOverrideFor).
+
+/** alerts.rb:1-3 `def content; "<!-- *alerts is deprecated. please remove
+ *  from layout -->"; end` - the constant string, byte for byte. */
+export const alertsContentFn: ContentFn = (_fmt) =>
+  "<!-- *alerts is deprecated. please remove from layout -->";
+
+/** foot.rb:1-3 `def content; "<!-- *foot is deprecated. please remove from
+ *  layout -->"; end` - the constant string, byte for byte. */
+export const footContentFn: ContentFn = (_fmt) =>
+  "<!-- *foot is deprecated. please remove from layout -->";
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per PORTED gem file; setPaths as in the gem tree;
 // the loader sorts entries by set path within each pattern group)
 // ---------------------------------------------------------------------------
@@ -1232,6 +1261,12 @@ const cardModLayout: DeckoModManifest = {
       //   roles change; same missing save path (and store_in_session,
       //   the session mod's event, is itself an unwired stub).
       setPath: "right/enabled_roles",
+      // right/enabled_roles.rb:3 - `assign_type :session` (advanced_api.rb:5-8):
+      // every "<set>+*enabled roles" card saves Session-typed. Carried on the
+      // manifest's assignsType field (mod-loader.ts:1265-1266
+      // registerSetTypeAssignment), the same surface card-mod-email and
+      // card-mod-integrate's right/on_* entries use.
+      assignsType: "session",
       events: [
         event({ event: "validate_role_enabling", at: "validate", on: ["save"], fn: validateRoleEnabling }),
         // Ruby: `event :clear_roles_cache, :prepare_to_store, before:
@@ -1252,6 +1287,37 @@ const cardModLayout: DeckoModManifest = {
           ],
         },
       },
+    },
+    {
+      // card-mod-layout-0.20.0/set/right/layout.rb:1 - `assign_type :pointer`
+      // (the file's sole live line; the commented-out item_references? below
+      // it declares no surface). Every "<set>+*layout" card saves
+      // Pointer-typed, via the manifest's assignsType field.
+      setPath: "right/layout",
+      assignsType: "pointer",
+    },
+    {
+      // card-mod-layout-0.20.0/set/self/alerts.rb - the file's entire live
+      // content is the set-module `def content` override (the
+      // deprecated-setting comment string, alerts.rb:1-3, no interpolation):
+      // `"<!-- *alerts is deprecated. please remove from layout -->"`.
+      // Carried as the manifest's contentOverrides[] (the same surface
+      // card-mod-date's when_created/when_last_edited/now entries use; the
+      // loader registers it on the ContentOverrideRegistry,
+      // mod-loader.ts:469-475). The trailing `# view :core, :raw` is a
+      // COMMENT in the gem - no view is declared.
+      setPath: "self/alerts",
+      contentOverrides: [alertsContentFn],
+      formats: { html: { views: [] } },
+    },
+    {
+      // card-mod-layout-0.20.0/set/self/foot.rb - same shape as
+      // self/alerts: the `def content` override (foot.rb:1-3),
+      // `"<!-- *foot is deprecated. please remove from layout -->"`, and a
+      // commented-out `# view :core, :raw`.
+      setPath: "self/foot",
+      contentOverrides: [footContentFn],
+      formats: { html: { views: [] } },
     },
     {
       // card-mod-layout-0.20.0/set/self/head.rb (the :core override is NOT

@@ -40,7 +40,7 @@ import {
   type ActionsTestStorage,
 } from "../actions/actions-test-storage.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
-import type { CardActionError } from "../../../src/card/actions/types.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
 import { ModLoader } from "../../../src/card/mod-loader.js";
 import cardModRecaptcha, {
   recaptchaModEventPredicates,
@@ -380,5 +380,101 @@ describe("event :recaptcha — the guard-on arms (seam level, the registered eve
     );
     expect(report.fired).not.toContain("recaptcha");
     expect(stub.calls).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// validate_recaptcha_field (set/abstract/recaptcha_setting.rb:1-5) - the
+// real body: the grammar predicate + the errors.add :content refusal
+// ---------------------------------------------------------------------------
+
+import {
+  validateRecaptchaFieldFn,
+} from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+import type { ModEventCard } from "../../../src/card/mod-loader/mod-manifest.js";
+
+describe("validate_recaptcha_field - the :validate refusal (recaptcha_setting.rb:1-5)", () => {
+  const card: ModEventCard = {
+    name: "*recaptcha settings+site key",
+    dbContent: "bad key!",
+    recaptchaSettingChild: true,
+    act: { action: "update" },
+  };
+
+  it("unit: invalid content throws the :content error (errors.add :content, 'invalid key')", async () => {
+    // Ruby: `return if content.match?(/^[a-zA-Z0-9\-_]*$/)` then
+    // `errors.add :content, "invalid key"` (recaptcha_setting.rb:2-4).
+    const err = await validateRecaptchaFieldFn({ ...card, dbContent: "bad key!" }).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(CardActionError);
+    const actionError = err as CardActionError;
+    expect(actionError.code).toBe("validation-failed");
+    expect(actionError.errorsByAttribute).toEqual({ content: "invalid key" });
+    expect(actionError.userMessage).toBe("CONTENT: invalid key");
+  });
+
+  it("unit: valid content passes (the grammar's /m line-anchor semantics)", async () => {
+    // "ok\nbad!" MATCHES in Ruby (the /m flag makes ^$ line anchors; one
+    // passing line suffices - the oracle-pinned quirk on the predicate).
+    await expect(
+      validateRecaptchaFieldFn({ ...card, dbContent: "ok\nbad!" }),
+    ).resolves.toBeUndefined();
+    await expect(
+      validateRecaptchaFieldFn({ ...card, dbContent: "ok-key_1" }),
+    ).resolves.toBeUndefined();
+    await expect(
+      validateRecaptchaFieldFn({ ...card, dbContent: undefined }),
+    ).resolves.toBeUndefined(); // nil content -> "" -> matches
+  });
+
+  it("seam: the validate walk REFUSES - the throw propagates (non-integrate stages re-throw, dispatch 536-546)", async () => {
+    const storage = await createActionsTestStorage();
+    const runtime: ModEventRuntime = {
+      registry: recaptchaRegistry(),
+      predicates: recaptchaModEventPredicates,
+      // the scoped event's set membership, composed by hand: the walk's card
+      // IS an Abstract::RecaptchaSetting child (recaptchaSettingChild true).
+      setMember: (setPath) => setPath === "abstract/recaptcha_setting",
+    };
+    const walk = runModEventStage(
+      runtime,
+      "validate",
+      card,
+      { driver: storage.engine.driver, lexicon: storage.engine.lexicon },
+      undefined,
+    );
+    await expect(walk).rejects.toBeInstanceOf(CardActionError);
+    await walk.catch((e: CardActionError) => {
+      expect(e.code).toBe("validation-failed");
+      expect(e.errorsByAttribute).toEqual({ content: "invalid key" });
+    });
+    storage.close();
+  });
+
+  it("seam: valid content FIRES and the walk completes", async () => {
+    const storage = await createActionsTestStorage();
+    const runtime: ModEventRuntime = {
+      registry: recaptchaRegistry(),
+      predicates: recaptchaModEventPredicates,
+      setMember: (setPath) => setPath === "abstract/recaptcha_setting",
+    };
+    const report = await runModEventStage(
+      runtime,
+      "validate",
+      { ...card, dbContent: "ok-key_1" },
+      { driver: storage.engine.driver, lexicon: storage.engine.lexicon },
+      undefined,
+    );
+    expect(report.fired).toContain("validate_recaptcha_field");
+    storage.close();
+  });
+
+  it("right/captcha.rb:1 assign_type :toggle rides the manifest's assignsType field", () => {
+    const entry = (cardModRecaptcha.setModules ?? []).find(
+      (f) => f.setPath === "right/captcha",
+    );
+    expect(entry?.assignsType).toBe("toggle");
   });
 });

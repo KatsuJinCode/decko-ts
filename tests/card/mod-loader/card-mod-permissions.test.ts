@@ -871,3 +871,62 @@ describe("preparePermissionRoles (the group_options warm)", () => {
     expect(out).not.toContain("perm-checkbox-button");
   });
 });
+
+// ---------------------------------------------------------------------------
+// the assign_type :list lines (right/create.rb:3, right/delete.rb:3,
+// right/read.rb:3, right/update.rb:3)
+// ---------------------------------------------------------------------------
+//
+// Self-contained suite: its own fetch-test storage for the codename walk and
+// a name-environment snapshot/restore (installNameEnvironment overwrites the
+// process-global environment).
+
+import {
+  createFetchTestStorage,
+  seedCard as seedFetchCard,
+} from "../fetch/fetch-test-storage.js";
+import { getNameEnvironment, setNameEnvironment } from "../../../src/card/name/environment.js";
+import { listAssignedTypeNamesForCard } from "../../../src/card/set-patterns/set-type-assignment.js";
+import { setModuleShortname } from "../../../src/card/mod-loader/mod-registrar.js";
+
+describe("card-mod-permissions assign_type :list lines", () => {
+  it("carries the four right/* assign_type lines on the manifest's assignsType field", () => {
+    // Each right/<action>.rb's line 3 is `assign_type :list`
+    // (advanced_api.rb:5-8), the manifest surface the loader applies at
+    // registerSetModule (mod-loader.ts:1265-1266).
+    const byPath = Object.fromEntries(
+      (cardModPermissions.setModules ?? [])
+        .filter((f) => f.setPath.startsWith("right/"))
+        .map((f) => [f.setPath, f.assignsType]),
+    );
+    expect(byPath).toEqual({
+      "right/create": "list",
+      "right/delete": "list",
+      "right/read": "list",
+      "right/update": "list",
+    });
+  });
+
+  it("the walk answers list for '+*create' / '+*read' / '+*update' / '+*delete' compounds (type.rb:69-76)", async () => {
+    const previousEnvironment = getNameEnvironment();
+    const storage = await createFetchTestStorage();
+    try {
+      await seedFetchCard(storage, { id: 660, name: "*create", codename: "create", typeId: 2 });
+      await seedFetchCard(storage, { id: 661, name: "*read", codename: "read", typeId: 2 });
+      await seedFetchCard(storage, { id: 662, name: "*update", codename: "update", typeId: 2 });
+      await seedFetchCard(storage, { id: 663, name: "*delete", codename: "delete", typeId: 2 });
+      const loader = new ModLoader([{ manifest: cardModPermissions }]);
+      loader.load();
+      storage.engine.installNameEnvironment();
+      await storage.engine.codenames.ensureLoaded();
+      expect(setModuleShortname("right/read")).toBe("Right::Read");
+      expect(listAssignedTypeNamesForCard({ name: "Home+*create", isNew: true })).toEqual(["list"]);
+      expect(listAssignedTypeNamesForCard({ name: "Home+*read", isNew: true })).toEqual(["list"]);
+      expect(listAssignedTypeNamesForCard({ name: "Home+*update", isNew: true })).toEqual(["list"]);
+      expect(listAssignedTypeNamesForCard({ name: "Home+*delete", isNew: true })).toEqual(["list"]);
+    } finally {
+      storage.close();
+      setNameEnvironment(previousEnvironment);
+    }
+  });
+});

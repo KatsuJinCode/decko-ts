@@ -856,3 +856,85 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     expect(normalize(await s.engine.render(HEAD, "bar_bottom"))).not.toBe("");
   });
 });
+
+// ---------------------------------------------------------------------------
+// the `def content` overrides (self/alerts.rb, self/foot.rb) + the
+// assign_type lines (right/enabled_roles.rb:3, right/layout.rb:1)
+// ---------------------------------------------------------------------------
+//
+// Self-contained suite: its own loader instance (the A/B suites above share
+// module state), its own fetch-test storage for the codename walk, and a
+// name-environment snapshot/restore (installNameEnvironment overwrites the
+// process-global environment the render suites' resolves depend on).
+
+import {
+  createFetchTestStorage,
+  seedCard as seedFetchCard,
+} from "../fetch/fetch-test-storage.js";
+import { getNameEnvironment, setNameEnvironment } from "../../../src/card/name/environment.js";
+import { listAssignedTypeNamesForCard } from "../../../src/card/set-patterns/set-type-assignment.js";
+import { setModuleShortname } from "../../../src/card/mod-loader/mod-registrar.js";
+
+describe("card-mod-layout def-content overrides + assign_type lines", () => {
+  it("registers alerts/foot content overrides with the gem's exact bytes", () => {
+    // self/alerts.rb:1-3 / self/foot.rb:1-3 - each file's entire live
+    // content is the constant-string `def content` (no interpolation), so
+    // the bytes ARE the gem source verbatim. The trailing `# view :core,
+    // :raw` in each file is a comment; no view is declared.
+    const loader = new ModLoader([{ manifest: cardModLayout }]);
+    const report = loader.load();
+    expect(report.registeredContentOverrides).toEqual(
+      expect.arrayContaining(["self/alerts", "self/foot"]),
+    );
+    const reg = loader.contentOverrideRegistry();
+    const alerts = reg.forPath("self/alerts");
+    const foot = reg.forPath("self/foot");
+    expect(alerts?.modName).toBe("layout");
+    expect(foot?.modName).toBe("layout");
+    expect(alerts?.fn(undefined as never)).toBe(
+      "<!-- *alerts is deprecated. please remove from layout -->",
+    );
+    expect(foot?.fn(undefined as never)).toBe(
+      "<!-- *foot is deprecated. please remove from layout -->",
+    );
+  });
+
+  it("carries the two assign_type lines on the manifest's assignsType field", () => {
+    // right/enabled_roles.rb:3 `assign_type :session`;
+    // right/layout.rb:1 `assign_type :pointer` (the file's sole live
+    // line) - advanced_api.rb:5-8, applied by the loader's
+    // registerSetModule (mod-loader.ts:1265-1266).
+    const byPath = Object.fromEntries(
+      (cardModLayout.setModules ?? [])
+        .filter((f) => f.setPath === "right/enabled_roles" || f.setPath === "right/layout")
+        .map((f) => [f.setPath, f.assignsType]),
+    );
+    expect(byPath).toEqual({
+      "right/enabled_roles": "session",
+      "right/layout": "pointer",
+    });
+  });
+
+  it("the walk answers session/pointer for '+*enabled roles' / '+*layout' compounds (type.rb:69-76)", async () => {
+    const previousEnvironment = getNameEnvironment();
+    const storage = await createFetchTestStorage();
+    try {
+      await seedFetchCard(storage, { id: 650, name: "*enabled roles", codename: "enabled_roles", typeId: 2 });
+      await seedFetchCard(storage, { id: 651, name: "*layout", codename: "layout", typeId: 2 });
+      await seedFetchCard(storage, { id: 652, name: "*alerts", codename: "alerts", typeId: 2 });
+      const loader = new ModLoader([{ manifest: cardModLayout }]);
+      loader.load();
+      storage.engine.installNameEnvironment();
+      await storage.engine.codenames.ensureLoaded();
+      expect(setModuleShortname("right/enabled_roles")).toBe("Right::EnabledRoles");
+      expect(setModuleShortname("right/layout")).toBe("Right::Layout");
+      expect(listAssignedTypeNamesForCard({ name: "Home+*enabled roles", isNew: true })).toEqual(["session"]);
+      expect(listAssignedTypeNamesForCard({ name: "Home+*layout", isNew: true })).toEqual(["pointer"]);
+      // *alerts carries no assign_type in the gem - its compound stays unassigned.
+      expect(listAssignedTypeNamesForCard({ name: "Home+*alerts", isNew: true })).toEqual([]);
+    } finally {
+      storage.close();
+      setNameEnvironment(previousEnvironment);
+    }
+  });
+});

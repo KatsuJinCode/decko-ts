@@ -13,7 +13,13 @@
 //   2. the event declarations (observer.rb:1-9) pinned as data: names,
 //      stages (:integrate x3, :store x1), on: actions.
 //   3. the assign_type declarations (right/on_*.rb via advanced_api.rb:5-8)
-//      pinned as data: module keys and the :list assignment.
+//      pinned as data: module keys and the :list assignment - AND the
+//      manifest surface that carries them (each right/on_* entry's
+//      assignsType field, the same surface card-mod-email's right/to|cc|
+//      from|bcc entries use), applied by the loader's registerSetModule
+//      (mod-loader.ts:1265-1266 registerSetTypeAssignment) so the
+//      "+*on <action>" compound card's type walk answers List
+//      (type_id_from_code, mod/core/set/all/type.rb:69-76).
 //   4. the observer semantics (observer.rb:11-22) over a stub lookup:
 //      the rule walk's precedence, recursed_item_cards expansion
 //      (recursed.rb:1-31: order, nesting, loop-safety, [self] for
@@ -27,9 +33,10 @@
 //     lib/card/set/event.rb's runner) is the wiring the port leaves open;
 //     this suite proves the declarations land, not that the stage seam
 //     fires them.
-//   - assign_type's save-path effect (Type.assignment ->
-//     type_id_from_code, mod/core/set/all/type.rb:69-76): the action
-//     engine's type resolution is shared, not mod-writable.
+//   - assign_type's save-path effect beyond the registry: the assignment
+//     TABLE and the walk that reads it (listAssignedTypeNamesForCard /
+//     resolveAssignedTypeId, set-type-assignment.ts) are proven here; the
+//     action engine's save-time resolveTypeId is shared, not mod-writable.
 //   - the per-card deliver: deliverers (email, notifications, ...) are
 //     unported - the events pass a documented NO_OP_DELIVER; the rule
 //     walk + recursed-item expansion run for real.
@@ -51,6 +58,13 @@ import cardModIntegrate, {
   type ObserverLookup,
 } from "../../../src/card/mod-loader/mods/card-mod-integrate.js";
 import { ruleNamesForCard } from "../../../src/card/set-patterns/rule-names.js";
+import { listAssignedTypeNamesForCard } from "../../../src/card/set-patterns/set-type-assignment.js";
+import { setModuleShortname } from "../../../src/card/mod-loader/mod-registrar.js";
+import {
+  createFetchTestStorage,
+  seedCard,
+} from "../fetch/fetch-test-storage.js";
+import { getNameEnvironment, setNameEnvironment } from "../../../src/card/name/environment.js";
 
 // ---------------------------------------------------------------------------
 // the stub lookup: cards by name (Card.fetch analog), list-typed verdict
@@ -281,7 +295,8 @@ describe("card-mod-integrate manifest structure", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2 + 3. the pinned declarations (the manifest cannot carry them)
+// 2 + 3. the pinned declarations (events as data; assign_type through the
+// manifest's assignsType surface AND the registry the loader feeds)
 // ---------------------------------------------------------------------------
 
 describe("card-mod-integrate pinned declarations", () => {
@@ -305,6 +320,68 @@ describe("card-mod-integrate pinned declarations", () => {
       { setPath: "right/on_delete", setModule: "Right::OnDelete", type: "list" },
       { setPath: "right/on_update", setModule: "Right::OnUpdate", type: "list" },
     ]);
+  });
+
+  it("carries the assign_type lines on the manifest's assignsType field", () => {
+    // The manifest surface advanced_api.rb:5-8 maps to: each set-module
+    // entry's assignsType (mod-manifest.ts ModSetModuleFile.assignsType),
+    // the same shape card-mod-email's right/to|cc|from|bcc entries use.
+    // The loader applies it at registerSetModule
+    // (mod-loader.ts:1265-1266: registerSetTypeAssignment(shortname,
+    // file.assignsType)).
+    const onEntries = Object.fromEntries(
+      cardModIntegrate.setModules!
+        .filter((f) => f.setPath.startsWith("right/on_"))
+        .map((f) => [f.setPath, f.assignsType]),
+    );
+    expect(onEntries).toEqual({
+      "right/on_create": "list",
+      "right/on_delete": "list",
+      "right/on_update": "list",
+    });
+  });
+
+  it("the loader's registerSetModule applies the field: a '+*on <action>' compound card types List (type.rb:69-76)", async () => {
+    // The production application path end to end: ModLoader#load over THIS
+    // manifest runs registerSetModule per set file
+    // (mod-loader.ts:1265-1266: registerSetTypeAssignment(shortname,
+    // file.assignsType)) with the shortname registerSetModule derives
+    // (mod-registrar.ts:120 setModuleShortname, "right/on_create" ->
+    // "Right::OnCreate" - the advanced_api.rb:6 module_key ||= shortname).
+    // The walk's module key needs the anchor's codename (base.rb:41's
+    // anchor_codenames), so the *on <action> setting cards are seeded with
+    // their deck codenames the way the parityfix-row8 suite seeds *to.
+    expect(setModuleShortname("right/on_create")).toBe("Right::OnCreate");
+    // installNameEnvironment overwrites the PROCESS-GLOBAL name environment;
+    // snapshot and restore so the later stub-lookup suites see the cold
+    // environment they were written against.
+    const previousEnvironment = getNameEnvironment();
+    const storage = await createFetchTestStorage();
+    try {
+      await seedCard(storage, { id: 640, name: "*on create", codename: "on_create", typeId: 2 });
+      await seedCard(storage, { id: 641, name: "*on update", codename: "on_update", typeId: 2 });
+      await seedCard(storage, { id: 642, name: "*on delete", codename: "on_delete", typeId: 2 });
+      await seedCard(storage, { id: 643, name: "*thanks", codename: "thanks", typeId: 2 });
+
+      const loader = new ModLoader([{ manifest: cardModIntegrate }], { ...HTML_VIEWS });
+      liveLoader = loader;
+      loader.load();
+
+      storage.engine.installNameEnvironment();
+      await storage.engine.codenames.ensureLoaded();
+      // "Right::OnCreate" is the module key the right-pattern emits for an
+      // anchor codename "on_create" (card-patterns.ts:71
+      // typeAssigningModuleKeys); the read helper mirrors pattern
+      // precedence and answers the registered type name verbatim.
+      expect(listAssignedTypeNamesForCard({ name: "Signup+*on create", isNew: true })).toEqual(["list"]);
+      expect(listAssignedTypeNamesForCard({ name: "Signup+*on update", isNew: true })).toEqual(["list"]);
+      expect(listAssignedTypeNamesForCard({ name: "Signup+*on delete", isNew: true })).toEqual(["list"]);
+      // A compound card over an unassigned codename stays unassigned.
+      expect(listAssignedTypeNamesForCard({ name: "Signup+*thanks", isNew: true })).toEqual([]);
+    } finally {
+      storage.close();
+      setNameEnvironment(previousEnvironment);
+    }
   });
 });
 
