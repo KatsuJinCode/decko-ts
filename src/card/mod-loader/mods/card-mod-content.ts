@@ -94,11 +94,10 @@
 // - set/right/structure.rb methods (item_names/raw_feed_items/visible_
 //   cardtype_groups + structuree_names): rails (All::CardtypeGroups);
 //   structuree_names has no caller (the :return => :name reader). The
-//   reference CASCADE events are PORTED (update_structurees_references +
-//   its before: rider reset_cache_to_use_new_structure over the shared
-//   structuree_query CQL walk; update_structurees_references? is the
-//   predicate table). The type cascade (update_structurees_type) follows
-//   in the next commit.
+//   three EVENTS are PORTED (update_structurees_references /
+//   reset_cache_to_use_new_structure / update_structurees_type over the
+//   shared structuree_query CQL walk; update_structurees_references?
+//   and the assigns_type? proc-method are the predicate table)
 // - 7 lib/card/content/chunk/*.rb files (EscapedLiteral/Link/Nest/
 //   QueryReference/Reference/Uri/ViewStub): content-parser (the
 //   engine's nest-syntax.ts implements these chunk classes)
@@ -123,6 +122,7 @@ import { CqlBadQuery } from "../../../cql/ast.js";
 import { refreshReferencesOut } from "../../actions/refresh-references-out.js";
 import { composeCardRecord } from "../../fetch/card-record.js";
 import type { CardsRow } from "../../../server/schema.js";
+import { findPattern } from "../../set-patterns/registry.js";
 
 /** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
@@ -294,6 +294,48 @@ export async function updateStructureesReferencesEvent(
     const record = await composeCardRecord(row, fetch.lexicon);
     if (record.id === undefined || record.name === undefined) continue;
     await refreshReferencesOut(ctx.driver, ctx.lexicon, record.id, record.name, record.dbContent);
+  }
+}
+
+/**
+ * event :update_structurees_type (structure.rb:44-47, :finalize,
+ * changed: :type_id, when: proc { |c| c.assigns_type? } — the proc's card
+ * method is ported as the "assigns_type?" predicate below) +
+ * update_structurees (structure.rb:57-68):
+ *
+ *     return unless (query = structuree_query(return: :id))
+ *     Auth.as_bot do
+ *       query.run.each_slice(100) do |id_batch|
+ *         Card.where(id: id_batch).update_all args
+ *       end
+ *     end
+ *
+ * `args` is { type_id: type_id } — the SAVING RULE CARD's new type: for the
+ * assigns_type patterns (right / type plus right) the template's type IS the
+ * members' type (Set::Pattern assigns_type, 07_right.rb:3, 08_type_plus_right
+ * .rb:5). update_all writes the column DIRECTLY — no validations, no
+ * callbacks, no updated_at bump — so the port's UPDATE is the same direct
+ * write, in slices of 100 ids.
+ */
+export async function updateStructureesTypeEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rows = await structureeQueryRows(ctx, card.name, { return: "id" });
+  if (rows === undefined) return;
+  const ids = rows
+    .map((row) => row.id)
+    .filter((id): id is number => typeof id === "number");
+  // each_slice(100) over an empty list runs no update_all — the loop below
+  // skips the same way.
+  for (let slice = 0; slice < ids.length; slice += 100) {
+    const batch = ids.slice(slice, slice + 100);
+    const placeholders = batch.map(() => "?").join(", ");
+    await ctx.driver.query(
+      `UPDATE cards SET type_id = ? WHERE id IN (${placeholders})`,
+      [card.typeId ?? null, ...batch],
+    );
   }
 }
 
@@ -520,8 +562,7 @@ const setModules: ModSetModuleFile[] = [
     // ported), format :html do block: :one_line_content (port - the
     // type : raw template), visible_cardtype_groups (not ported).
     //
-    // Events (structure.rb:25-47) — the reference cascade ported; the type
-    // cascade rides the next commit:
+    // Events (structure.rb:25-47) — all three bodies ported:
     // - update_structurees_references (:integrate, when:
     //   update_structurees_references?) re-runs update_references_out on
     //   every structuree the set query selects (Auth.as_bot) —
@@ -533,9 +574,8 @@ const setModules: ModSetModuleFile[] = [
     // - update_structurees_type (:finalize, changed: :type_id, when the
     //   proc assigns_type?) cascades the rule card's new type to the
     //   structurees' rows in id slices of 100 (update_all, direct write) —
-    //   registered as a declaration here; the body lands with the
-    //   "assigns_type?" predicate (set/all/templating.rb:30-38) in the
-    //   next commit.
+    //   updateStructureesTypeEvent; the proc's card method is the
+    //   "assigns_type?" predicate (set/all/templating.rb:30-38).
     setPath: "right/structure",
     events: [
       event({
@@ -557,7 +597,17 @@ const setModules: ModSetModuleFile[] = [
         at: "integrate",
         fn: resetCacheToUseNewStructureEvent,
       }),
-      event({ event: "update_structurees_type", at: "finalize", changed: ["type_id"] }),
+      event({
+        event: "update_structurees_type",
+        at: "finalize",
+        changed: ["type_id"],
+        // Ruby's when: is a PROC (`proc { |c| c.assigns_type? }`,
+        // structure.rb:45), not a symbol — the proc calls the card method
+        // assigns_type? (set/all/templating.rb:30-38), so the predicate
+        // carries that method's name.
+        when: "assigns_type?",
+        fn: updateStructureesTypeEvent,
+      }),
     ],
     formats: {
       html: {
@@ -626,6 +676,36 @@ const setModules: ModSetModuleFile[] = [
 export const contentModEventPredicates = {
   "update_structurees_references?": (card: ModEventCard): boolean =>
     (card.changedFields ?? []).includes("db_content") || card.action === "delete",
+
+  /** assigns_type? (set/all/templating.rb:30-38) — the card method the
+   *  update_structurees_type when-proc calls (structure.rb:45):
+   *
+   *      pattern_code = Card.quick_fetch(name.trunk_name.tag_name)&.codename
+   *      return false unless pattern_code && (set_class = Set::Pattern.find pattern_code)
+   *      set_class.assigns_type
+   *
+   *  The rule card's trunk's TAG ("Book+*type+*structure" -> "*type") names
+   *  the set pattern card; its codename is the pattern code; the pattern's
+   *  assigns_type option decides (07_right.rb:3 true, 08_type_plus_right.rb
+   *  :5 true, every other core pattern false — the Ruby comment's own
+   *  example: X+*type+*structure governs content, not type). quick_fetch
+   *  answers a LIVE card, so the lookup filters trash. */
+  "assigns_type?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    if (ctx === undefined) return false;
+    // name.trunk_name.tag_name (templating.rb:33): the TAG of the TRUNK —
+    // "Book+*type+*structure" -> trunk "Book+*type" -> tag "*type". The
+    // trunk itself ("book+*type") carries no codename; the star card does.
+    const tagKey = DeckoName.parse(card.name).trunkName.tagKey;
+    const tagRow = (
+      await ctx.driver.query<{ codename: string | null }>(
+        "SELECT codename FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+        [tagKey],
+      ).catch(() => undefined)
+    )?.rows[0];
+    const patternCode = tagRow?.codename;
+    if (patternCode === null || patternCode === undefined || patternCode === "") return false;
+    return findPattern(patternCode)?.assignsType === true;
+  },
 } as const;
 
 const cardModContent: DeckoModManifest = {
