@@ -92,6 +92,22 @@ export class CardActionError extends Error {
   }
 }
 
+/** Card::Error::Abort with status :success (mod/core/set/all/result.rb:41-58:
+ *  `abort :success` raises the Abort signal and the save's abortable wrapper
+ *  turns it into a SUCCESSFUL save that writes nothing — result.rb:94-101
+ *  with_transaction_returning_status keeps the transaction, result.rb:82-88
+ *  handle_abort_error answers true). Thrown by event bodies that Ruby ends
+ *  with `abort :success` (admin_tasks self/admin.rb:33, save_draft
+ *  all/content.rb:9, store_in_session mod/session set/type/session.rb:39).
+ *  The save entry that catches it returns its no-write success result; an
+ *  UNCAUGHT abort is a defect in the entry that hosts the body's stage. */
+export class ModEventAbortSuccess extends Error {
+  constructor() {
+    super("action canceled");
+    this.name = "ModEventAbortSuccess";
+  }
+}
+
 /** Type specification accepted by create/update — the `:type_id` /
  *  `:type_code` / `:type` args of Card.new (mod/core/set/all/type.rb:81-92
  *  extract_type_id!). Precedence: typeId > typeCode > typeName > default. */

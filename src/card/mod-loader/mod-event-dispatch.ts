@@ -53,6 +53,7 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
 import type { CardRecord } from "../fetch/card-record.js";
 import type { FetchEngine } from "../fetch.js";
+import { DeckoName } from "../name.js";
 import {
   ModEventRegistry,
   type RegisteredModEvent,
@@ -348,13 +349,19 @@ async function whenConditionApplies(
 
 /** set_condition_applies? (all.rb:26-29): "all/"-pattern set modules are
  *  included on every card; anything scoped consults the runtime resolver.
- *  The built-in fallback resolves the TYPE-scoped sets ("type/<codename>":
- *  the card's type carries the codename — set/type/number.rb's
- *  :validate_number and set/type/json.rb :validate_json are the registry's
- *  type-scoped entries); a runtime that supplies its own setMember keeps
- *  precedence. Without one of the two, a scoped event is
- *  set-not-applicable — the silent skip that left the port creating Number
- *  cards Ruby refuses. */
+ *  The built-in fallback resolves two patterns before giving up:
+ *  - the SELF sets ("self/<codename>": the card IS the anchor card —
+ *    lib/card/set/self.rb; the set file set/self/admin.rb defines
+ *    Self::Admin, whose set card "*admin+*self" applies to the one card
+ *    whose key is the anchor's, "*admin". Keys keep the star, so a plain
+ *    "admin" card does not match). set/self/admin.rb's :admin_tasks is the
+ *    live entry.
+ *  - the TYPE-scoped sets ("type/<codename>": the card's type carries the
+ *    codename — set/type/number.rb's :validate_number and set/type/json.rb
+ *    :validate_json are the registry's type-scoped entries);
+ *  a runtime that supplies its own setMember keeps precedence. Without one
+ *  of the two, a scoped event is set-not-applicable — the silent skip that
+ *  left the port creating Number cards Ruby refuses. */
 async function setConditionApplies(
   event: RegisteredModEvent,
   runtime: ModEventRuntime,
@@ -364,6 +371,13 @@ async function setConditionApplies(
   if (event.setPath.startsWith("all/")) return true;
   const supplied = runtime.setMember?.(event.setPath, card);
   if (supplied !== undefined) return supplied;
+  const selfMatch = /^self\/(.+)$/.exec(event.setPath);
+  if (selfMatch !== null) {
+    if (card.key !== undefined) return card.key === `*${selfMatch[1]}`;
+    // no key on the snapshot: compose it from the name (Card#key,
+    // lib/card/name, the star kept). A nameless card matches nothing.
+    return card.name !== "" ? DeckoName.parse(card.name).key === `*${selfMatch[1]}` : false;
+  }
   const typeMatch = /^type\/(.+)$/.exec(event.setPath);
   if (typeMatch === null || ctx === undefined || card.typeId === undefined) return false;
   const codenameRow = await ctx.driver

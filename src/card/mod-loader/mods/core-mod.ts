@@ -28,10 +28,13 @@
 // runtime, card-action-engine.ts). The events with real bodies are the
 // five reference janitors (all/reference_events.rb), whose bodies delegate to
 // the engine's port modules and TAKE OVER the engine's built-in janitor
-// calls when their names are registered at the runtime. event :admin_tasks
-// keeps its ported task-runner (runTaskFromTaskBasket below) exercised by
-// direct calls; its ABORT/permission-gate halves still need the request/
-// auth runtime.
+// calls when their names are registered at the runtime, and admin_tasks
+// (set/self/admin.rb:24-34 — the full body: the params read, the
+// always_ok? gate, the basket run, and the abort :success the engine's
+// update entry turns into the no-write success result). The task
+// POLICIES stay the basket's documented no-op remainders (core-admin-runtime
+// CORE_TASK_BASKET — the cache/assets/trash surfaces the engine does not
+// expose).
 //
 // PER-EVENT BODY REMAINDERS (the other 26): the bodies need the write
 // path, the director stage runner, or the lexicon janitors — none of which
@@ -89,6 +92,11 @@ import { serializerFollowsLive } from "../../render/deployment-follow-live-confi
 import { UnsupportedViewError } from "../../render/format.js";
 import { str, type ViewResult } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import {
+  ANONYMOUS_ACTOR_NAME,
+  CardActionError,
+  ModEventAbortSuccess,
+} from "../../actions/types.js";
 import {
   emitAttrs,
   h,
@@ -1348,13 +1356,12 @@ export function irreversiblesTasksAllowed(): boolean {
   return adminRuntimeConfig().allowIrreversibleAdminTasks === true;
 }
 
-/** self/admin.rb:24-38 event :admin_tasks' body (the task-runner half):
- *  Env.params[:task] selects the basket task, Auth.always_ok? gates the
- *  permission raise (the seam's caller decides; the runner receives the
- *  resolved task or undefined), run_task_from_task_basket runs it, and
- *  the event aborts :success. The ABORT and the permission gate need the
- *  request/auth runtime — named remainders; the runner ports the
- *  selection, the irreversible gate, and the policy dispatch.
+/** self/admin.rb:36-38 run_task_from_task_basket — the task-runner half of
+ *  event :admin_tasks' body: the irreversible gate (not_allowed raises the
+ *  PermissionDeniedError with the task's LINK-TEXT message) and the policy
+ *  dispatch. The FULL body is adminTasksEvent below (the params read, the
+ *  always_ok? gate, this call, the abort); tests may drive the runner
+ *  directly.
  *
  * @param task Env.params[:task]&.to_sym (undefined = no task named)
  * @param tasks the basket (CORE_TASK_BASKET or the caller's composition)
@@ -1377,6 +1384,55 @@ export function runTaskFromTaskBasket(
     );
   }
   taskConfig.executePolicy?.();
+}
+
+/** self/admin.rb:24-34 event :admin_tasks' FULL body, ported as the
+ *  registered ModEventFn (the execution seam fires it at the save's
+ *  initialize stage, on: :update — the update path's dispatchEventStage
+ *  ("initialize") in card-action-engine.ts). Ruby, verbatim:
+ *
+ *    return unless (task = Env.params[:task]&.to_sym) && (task_config =
+ *      basket[:tasks][task])
+ *    raise Card::Error::PermissionDenied, self unless Auth.always_ok?
+ *    run_task_from_task_basket task, task_config
+ *    abort :success
+ *
+ *  - Env.params[:task] reads the save's request params
+ *    (ModEventCard.params — the state sources copy the engine's saveParams
+ *    bag onto the event card, write-routes.ts requestParamsForEvents);
+ *    Ruby's &.to_sym on a String is the string itself here, the basket's
+ *    keys are the same names.
+ *  - basket[:tasks] is the deck basket (deckTaskBasket — core's own
+ *    entries plus the loader's mod contributions, self/admin.rb's
+ *    process-global in load order).
+ *  - Auth.always_ok? reads the event card's alwaysOk (auth/permissions.rb
+ *    :7-14: deckbot true, nil false, else admin? — the engine's
+ *    writePermissionState derives exactly that; card-action-engine.ts
+ *    engineEventCardState supplies it). The raise is Ruby's
+ *    Card::Error::PermissionDenied — the port's action-layer
+ *    permission-denied, which the write route answers 403 with.
+ *  - abort :success (result.rb:41-58) is the ModEventAbortSuccess throw;
+ *    the save entry catches it and answers the no-write success result
+ *    (card-action-engine.ts updateCard). */
+async function adminTasksEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  _ctx: ModEventContext,
+): Promise<void> {
+  const rawTask = card.params?.["task"];
+  const task = typeof rawTask === "string" ? rawTask : undefined;
+  if (task === undefined || !deckTaskBasket()[task]) return;
+  if (card.alwaysOk !== true) {
+    throw new CardActionError(
+      "permission-denied",
+      `actor ${card.authCurrentId === null || card.authCurrentId === undefined ? ANONYMOUS_ACTOR_NAME : String(card.authCurrentId)} may not run admin task ${task}`,
+      undefined,
+      { permission_denied: `You don't have permission to run admin task ${task}` },
+      card.name,
+    );
+  }
+  runTaskFromTaskBasket(task, deckTaskBasket());
+  throw new ModEventAbortSuccess();
 }
 
 /** The event bodies. The ModEventFn execution seam (mod-event-dispatch.ts)
@@ -1787,7 +1843,14 @@ const coreMod: DeckoModManifest = {
           ],
         },
       },
-      events: [event({ event: "admin_tasks", at: "initialize", on: ["update"] })],
+      events: [
+        event({
+          event: "admin_tasks",
+          at: "initialize",
+          on: ["update"],
+          fn: adminTasksEvent as ModEventFn,
+        }),
+      ],
     },
     {
       // mod/core/set/self/autoname.rb — the *autoname setting_opts

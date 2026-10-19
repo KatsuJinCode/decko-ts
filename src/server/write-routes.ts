@@ -507,6 +507,11 @@ interface ParsedBody {
    *  to_i, item_to_insert`, item_to_insert -> Env.params["insert_item"]). */
   insertItem?: string;
   itemIndex?: string;
+  /** params[:task] — the admin task the *admin update runs
+   *  (mod/core set/self/admin.rb:26 `task = Env.params[:task]&.to_sym`;
+   *  the :core/:warning task table's row links post
+   *  path: {action: :update, task: args[:task]}). */
+  task?: string;
 }
 
 /** The urlencoded/json key grammar every content type shares (the
@@ -566,6 +571,7 @@ function applyParam(
   else if (key === "drop_item" || key === "drop_item[]") (parsed.dropItem ??= []).push(value);
   else if (key === "insert_item") parsed.insertItem = value;
   else if (key === "item_index") parsed.itemIndex = value;
+  else if (key === "task") parsed.task = value;
 }
 
 /** Rails' array-named card params (`card[content][]`, the shape a repeated
@@ -726,6 +732,9 @@ function requestParamsForEvents(parsed: ParsedBody): Record<string, unknown> {
   if (parsed.dropItem !== undefined) params["drop_item"] = parsed.dropItem;
   if (parsed.insertItem !== undefined) params["insert_item"] = parsed.insertItem;
   if (parsed.itemIndex !== undefined) params["item_index"] = parsed.itemIndex;
+  // The admin task param the *admin update's event body reads off
+  // Env.params (set/self/admin.rb:26 `Env.params[:task]&.to_sym`).
+  if (parsed.task !== undefined) params["task"] = parsed.task;
   return params;
 }
 
@@ -1643,7 +1652,19 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   return {
     ...runtime,
     setMember: (setPath, card) => {
-      if (setPath !== "right/enabled_roles") return typeMember(setPath, card);
+      if (setPath !== "right/enabled_roles") {
+        // The SELF sets resolve without a deck read (set/self/<codename>
+        // applies to the one card whose key is the starred anchor —
+        // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
+        // live entry). Everything non-self delegates to the type resolver.
+        const selfMatch = /^self\/(.+)$/.exec(setPath);
+        if (selfMatch !== null) {
+          return card.key !== undefined
+            ? card.key === `*${selfMatch[1]}`
+            : card.name !== "" && DeckoName.parse(card.name).key === `*${selfMatch[1]}`;
+        }
+        return typeMember(setPath, card);
+      }
       const right = DeckoName.parse(card.name).rightName;
       if (right === undefined) return false;
       // Resolve the actual codename anchor, including renamed settings. Do

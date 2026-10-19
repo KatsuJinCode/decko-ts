@@ -236,6 +236,12 @@ export interface ModEventCard {
    *  :auto_approve_with_verification (:20-22). The engine resolves it once
    *  per save (its own signup arm asks the same question). */
   readonly canApprove?: boolean;
+  /** Auth.always_ok? (card-1.110.0 lib/card/auth.rb:20) — bot/bypass mode.
+   *  The engine answers it from the same memoized permission state its write
+   *  gates use (card-action-engine.ts writePermissionState); the
+   *  admin_tasks body's permission gate reads it (self/admin.rb:29
+   *  `raise Card::Error::PermissionDenied, self unless Auth.always_ok?`). */
+  readonly alwaysOk?: boolean;
   /** history? (mod/history/set/all/history.rb:6) — the card type opts out
    *  of history when false; backs `actionable?` (events.rb:53). */
   readonly history?: boolean;

@@ -76,6 +76,7 @@ import type { Lex } from "../fetch/lexicon.js";
 import {
   ANONYMOUS_ACTOR_NAME,
   CardActionError,
+  ModEventAbortSuccess,
   type ActionResult,
   type Actor,
   type ActionRequest,
@@ -2510,6 +2511,16 @@ export class CardActionEngine {
     }
     try {
       return await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
+    } catch (error) {
+      // abort :success (result.rb:41-58): an event body ended the save with
+      // the success abort — the admin_tasks task run (self/admin.rb:33) is
+      // the live case. The act writes nothing (its initialize-stage raise
+      // precedes every write) and the save answers SUCCESS: Ruby's
+      // abortable wrapper rescues the Abort and returns true
+      // (result.rb:82-88), the controller renders the ordinary success
+      // surface. The port's no-write success result is null.
+      if (error instanceof ModEventAbortSuccess) return null;
+      throw error;
     } finally {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
@@ -4592,6 +4603,10 @@ export class CardActionEngine {
   private async engineEventCardState(): Promise<ModEventCardState> {
     const state: ModEventCardState = {
       authCurrentId: this.actor?.id ?? null,
+      // Auth.always_ok? (auth.rb:20): the same memoized verdict the write
+      // gates consult (writePermissionState). The admin_tasks body's
+      // permission gate reads it off the event card (self/admin.rb:29).
+      alwaysOk: (await this.writePermissionState()).alwaysOk,
     };
     if (this.actor !== null) {
       return { ...state, canApprove: await this.canCreateDefaultAccountedType() };
